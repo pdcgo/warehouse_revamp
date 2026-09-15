@@ -441,10 +441,38 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(address).toContainText("Kabupaten Aceh Selatan");
   await expect(address).toContainText(KODE_POS);
 
+  // THE ORDER OPENED ITS OWN SETTLEMENT ACCOUNT (settlement #order-service-calls-settlement). Nobody
+  // typed anything on the Settlement tab — placing an order with a marketplace total is what posts its
+  // `initial_total`, after the commit, in-process. The tab reading the sale back is the whole seam,
+  // proven against the real server and database rather than a fake poster.
+  await page.getByTestId("order-detail-tab-settlement").click();
+  await expect(page.getByTestId("order-ledger-panel")).toBeVisible();
+  await expect(page.getByTestId("settlement-absent")).toHaveCount(0);
+  await expect(page.getByTestId("settlement-summary")).toContainText("Rp 58.000");
+  await expect(page.getByTestId("ledger-table").locator('[data-testid^="entry-"]')).toHaveCount(1);
+  await page.getByTestId("order-detail-tab-info").click();
+
   // And it now shows in the list.
   await page.getByTestId("order-detail-back").click();
   await expect(page.getByTestId("orders-table")).toBeVisible();
   await expect(page.getByTestId("orders-table")).toContainText(CUSTOMER);
+});
+
+// THE SETTLEMENT REPORT is wired end to end: the route, the analytics RPCs and their policy.
+//
+// ⚠ The e2e server runs NO broker, so nothing is folded and every figure reads 0. That is still a real
+// assertion: the report lays out EVERY day of the window as a row, so the series table exists only if
+// AnalyticTimeSearch answered — a policy or mounting mistake shows as the error line instead.
+test("Settlement report: the report screen answers from the analytics RPCs", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  await page.goto("/settlement/report");
+
+  await expect(page.getByTestId("settlement-report-page")).toBeVisible();
+  await expect(page.getByTestId("report-error")).toHaveCount(0);
+  await expect(page.getByTestId("report-summary")).toBeVisible();
+  await expect(page.getByTestId("report-series-table")).toBeVisible();
+  await expect(page.getByTestId("report-series-table").locator('[data-testid^="report-series-row-"]')).toHaveCount(20);
 });
 
 // SAVE AS DRAFT, the button above Create (owner): work that is not ready to be an order goes to the

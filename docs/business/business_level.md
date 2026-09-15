@@ -25,7 +25,7 @@ Our business is sell products to the customer in online platform.
 
 ## Other Context Related.
 For more explanation read this.
-1. [Stock Context](./stock/context.md)
+1. [Stock Context](./inventory/context.md)
 2. [Product Context](./product/context.md)
 3. [Team Balance Management Context](./balance/context.md)
 4. [Order Context](./order/context.md)

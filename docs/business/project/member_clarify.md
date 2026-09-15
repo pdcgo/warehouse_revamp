@@ -121,7 +121,7 @@ removed the third.
 
 | Context | Decides | Service | Why |
 | --- | --- | --- | --- |
-| [stock](../stock/context.md) | Toni ✅ | `inventory` — 52 RPC | as written |
+| [stock](../inventory/context.md) | Toni ✅ | `inventory` — 52 RPC | as written |
 | [product](../product/context.md) | Toni ✅ | `product` — 8 RPC | [products-follow-the-unit-price](./member_decision.md#products-follow-the-unit-price) |
 | [analytic](../analytic/context.md) | Toni ✅ | — not built | [analytic-sits-with-stock](./member_decision.md#analytic-sits-with-stock) |
 | [order](../order/context.md) | Heri ✅ | `selling` — 25 RPC | as written |
@@ -196,7 +196,7 @@ cosmetic only.
 
 ## the readme enumerates the domains as a closed list, and the tree has since grown two that are not in it
 
-> [business/readme.md](../readme.md): *"One `<big_context>` per domain (`stock`, `order`,
+> [business/readme.md](../readme.md): *"One `<big_context>` per domain (`inventory`, `order`,
 > `product`, `balance`, `ledger`, `settlement`, `user`)"*
 >
 > …and the tree today also holds **`analytic/`** and **`project/`**.
@@ -229,7 +229,7 @@ flowchart TD
    **Two riders never named:** does `category` (4 RPC) go with Products, and `team` (9 RPC) with
    Users & Roles? I read yes to both.
 2. **Does this doc grant DECISION authority, or only the work?** Concretely: from now on, does a
-   `_clarify.md` in `stock/` address **Toni** rather than *"the owner"*?
+   `_clarify.md` in `inventory/` address **Toni** rather than *"the owner"*?
 3. **Who settles a BOUNDARY?** Today's instance: the warehouse's loss reimbursement writes Toni's
    event onto Heri's balance. My proposal is *caller proposes, callee accepts*.
 4. **Who is the TIEBREAK?** ▼ narrowed — the addressee half is answered: this machine is **Heri's**,

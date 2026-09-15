@@ -28,7 +28,7 @@ file is always the current open set, never a log.
 
 Siblings: [user_context](./user/context_clarify.md) · [product_context](./product/context_clarify.md) ·
 [balance_context](./balance/context_clarify.md) · [order_context](./order/context_clarify.md) ·
-[stock_context](./stock/context_clarify.md) ·
+[inventory_context](./inventory/context_clarify.md) ·
 [systems/systems_product_context](./product/systems_clarify.md).
 
 ---
@@ -70,7 +70,7 @@ One selling team's stock for one product may sit in **several warehouses at once
 **Unit Price** of those goods — the landed cost, which by the doc set's own vocabulary excludes the cross
 markup (`COGS = UnitPrice + fee`, so `UnitPrice` is the fee-free half). *(§Warehouse Team 5)* — extended from
 the stock side to an unexplained count shortfall:
-[in-custody-shortfall-is-the-warehouses](./stock/context_clarify.md#in-custody-shortfall-is-the-warehouses).
+[in-custody-shortfall-is-the-warehouses](./inventory/context_clarify.md#in-custody-shortfall-is-the-warehouses).
 
 ⚠ **The "fee-free" half of that reading no longer holds for every unit.** `product_context.md`'s restored
 [return-price-is-the-orders-cogs](./product/context_clarify.md#return-price-is-the-orders-cogs) puts a
@@ -82,7 +82,7 @@ side by side at different Unit Prices, and this rule pays different amounts for 
 #### receiving-losses-are-not-the-warehouses
 **Warehouse team** · goods broken or lost **at restock receiving** or **at return-goods receiving** ·
 owes nothing. *(§Warehouse Team 6)* — the other half exists in the stock doc:
-[selling-team-bears-the-receiving-loss](./stock/context_clarify.md#selling-team-bears-the-receiving-loss).
+[selling-team-bears-the-receiving-loss](./inventory/context_clarify.md#selling-team-bears-the-receiving-loss).
 
 #### warehouse-runs-the-order-to-handover
 **Warehouse team** · a selling team's order exists · processes it "until order is taken by shipment
@@ -134,14 +134,14 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  R["at the door — restock receiving"] -->|"the SELLING team bears it"| S1["stock_context §Stock loss 1"]
+  R["at the door — restock receiving"] -->|"the SELLING team bears it"| S1["inventory_context §Stock loss 1"]
   B["back from a customer — return receiving"] -->|"is this 'receiving'? nobody says"| U["still open"]
-  C["on the shelf — in custody, including a count shortfall"] -->|"the WAREHOUSE pays Unit Price"| S2["stock_context §Stock loss 2"]
+  C["on the shelf — in custody, including a count shortfall"] -->|"the WAREHOUSE pays Unit Price"| S2["inventory_context §Stock loss 2"]
   T["in transit between warehouses"] --> U
   H["after handover to the courier"] --> U
 ```
 
-**→ Recommend** §Warehouse 6 **link** to `stock_context.md` §Stock loss rather than stating only the
+**→ Recommend** §Warehouse 6 **link** to `inventory/context.md` §Stock loss rather than stating only the
 negative half — the doc that defines the four teams' responsibilities says who does *not* pay, and who
 *does* is in a file it lists only as further reading.
 
@@ -164,11 +164,11 @@ negative half — the doc that defines the four teams' responsibilities says who
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **"provide transparency accounting" (§covered 3) is the project's third stated purpose and has no definition, no audience and no test.** Transparent *to whom* — the selling team reading what the warehouse charged it, or the owner reading the whole business? It cannot be satisfied ambiguously: it is the thing the warehouse and the selling team will argue about, the debt threshold gives that argument teeth, and [admin-team-manages-all-resource](#admin-team-manages-all-resource) now adds a third party who can change the numbers being argued over. | State it as a **provable claim**: "any team can see, for any charge against it, the event that caused it, the amount frozen at that moment, and **who** recorded it — including when that person was not on their team." Testable, and it drives the `actor` field every ledger then needs. |
-| **2** | **"Responsibility" is still used for two different things and the money hangs on the difference.** §Warehouse 3 says the warehouse *handles* returns, broken and lost. §Warehouse 6 says it has no *responsibility* for broken/lost at receiving. The first means "does the work", the second means "bears the cost". `stock_context.md` has adopted the sharper word — *"its shortfall a warehouse **liability**"* — and this doc still has not. | Use both words here: **handles** (does the physical work) vs **liable for** (pays). §3 is *handles*, §5 and §6 are *liable*. |
+| **2** | **"Responsibility" is still used for two different things and the money hangs on the difference.** §Warehouse 3 says the warehouse *handles* returns, broken and lost. §Warehouse 6 says it has no *responsibility* for broken/lost at receiving. The first means "does the work", the second means "bears the cost". `inventory/context.md` has adopted the sharper word — *"its shortfall a warehouse **liability**"* — and this doc still has not. | Use both words here: **handles** (does the physical work) vs **liable for** (pays). §3 is *handles*, §5 and §6 are *liable*. |
 | **3** | **[warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) now names a price and still not WHICH ONE.** A team's stock is FIFO layers at different unit prices — that is the whole point of [batch-fifo-pricing](./product/context_clarify.md#batch-fifo-pricing) — so "Unit Price" singular has no referent until the broken unit is tied to a **batch**. The cheap layer and the dear layer can differ by a lot, and the warehouse is paying the difference. Worse, a unit found short at opname is by definition **untraceable to a layer**, so the rule has no number at all in the case that produces the most losses. | Say which layer: **the batch the unit actually came from**, when it is known — the warehouse pays for what it broke. When it is **not** known (an opname shortfall), name a fallback rather than leaving it undefined: I would draw the shortfall **FIFO from the oldest layers**, the same order a sale would have consumed them, so the stock that remains is the stock the books say remains. |
 | **4** | **§Admin now says "manage all resource" and that is a very large sentence.** It answers whether Admin acts — it does — but not *what*. Managing a team's users is one thing; adjusting a stock count, editing a cross markup, or posting a balance entry are each a different order of power, and the third would make Admin a second set of books. | Enumerate it in §Admin: I would allow **manage users and roles · override a control · unblock · read everything**, and forbid **posting money** and **changing a count** — the two acts that would let a non-owner rewrite what another team owes. And every admin act is **recorded with actor and reason**, which is [Critique 1](#critique) again. |
 | **5** | **Whether a TEAM can be two types is still unanswered — and the person half being settled makes it sharper, not softer.** `user_context.md` §General now allows one human to hold roles in several teams, so a person standing on both sides of a money rule is a described case rather than a worry. If a **team** could also be both a warehouse and a selling team, [warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) would have it reimbursing itself, and a debt threshold would apply against itself. | State: **a team has exactly ONE type.** The four responsibilities are genuinely different jobs, and one team holding two of them turns three money rules into no-ops. The small-operation case that would otherwise tempt a dual-type team is already covered by the person-level flexibility — see [user_context_clarity Question 2](./user/context_clarify.md#question). |
-| **6** | **"until its shipped" ends the warehouse's job and nothing covers the parcel after it.** A courier loses a shipped parcel — not broken in the warehouse, not at receiving, not a return. `stock_context.md` §Stock loss covers only the two phases inside the building, and no role hands the parcel over. | Add a third loss phase — **in transit to the customer** — and name who bears it. I would put it on the **selling team** (it owns the sale and the courier relationship), with the courier claim as the recovery. |
+| **6** | **"until its shipped" ends the warehouse's job and nothing covers the parcel after it.** A courier loses a shipped parcel — not broken in the warehouse, not at receiving, not a return. `inventory/context.md` §Stock loss covers only the two phases inside the building, and no role hands the parcel over. | Add a third loss phase — **in transit to the customer** — and name who bears it. I would put it on the **selling team** (it owns the sale and the courier relationship), with the courier claim as the recovery. |
 | **7** | **Placement is now asserted twice in the same list.** *"§Warehouse 4: Ownership of stock is by selling team. But, warehouse managing phisique of goods and **placement of goods**"* · *"§Warehouse 8: manage **placements** of the stocks."* One responsibility, two homes, in the one place HARD RULE 11 says restated lists go stale — the next rule about placement has two items to be added to, and only one will get it. | **I read item 8 as a promotion, not a slip** — *placements* (plural, manageable things) is a different claim from *placement of goods* (an activity) — and if so the fix is to **fold the clause out of item 4**, leaving it to say only what it is about: ownership. Item 4 then reads *"Ownership of stock is by selling team, but the warehouse holds the goods physically"*, and item 8 owns placement outright. ⚠ If instead you meant item 8 as a restatement, delete one — but then [warehouse-manages-placements](#warehouse-manages-placements) is not a new capability and the questions it raises do not arise. **Only you can say which.** |
 
 ---
@@ -279,7 +279,7 @@ The first makes a parcel scanned and then lost not the warehouse's problem; the 
 accountable for something it cannot see.
 
 **I think the first is right** — custody ends when the goods leave the building, a moment a person in the
-warehouse actually witnesses. `stock_context.md` §Stock loss draws the same boundary for goods
+warehouse actually witnesses. `inventory/context.md` §Stock loss draws the same boundary for goods
 (*"already in Warehouse"*), which supports it — but stops at the door.
 
 **→ Recommend** keep **one** endpoint — *handover to the courier* — and treat any later "shipped" or

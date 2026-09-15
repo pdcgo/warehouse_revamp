@@ -1442,7 +1442,7 @@ flowchart LR
 
 # Awaiting
 
-- ➡ **MOVED — *how is a missing settlement account FOUND?* is now [order Q14](../order/context_clarify.md#question).**
+- ➡ **MOVED — *how is a missing settlement account FOUND?* is now [order: half-finished-orders-are-found-from-the-order](../order/context_clarify.md#half-finished-orders-are-found-from-the-order).**
   [the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) flagged
   it as its own undecided half, and the owner routed it (2026-09-10): *"for ensure order half success or
   not, its order service responsibility"*. ⚠ **It is one gap at three sites**, and settlement is only one

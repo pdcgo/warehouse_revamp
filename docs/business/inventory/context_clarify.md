@@ -1,8 +1,17 @@
-# Clarity — `stock_context.md`
+# Clarity — `inventory/context.md`
 
-[stock_context.md](./context.md) has grown from a heading to **one section**:
-§Stock loss. **That doc is yours — this one is mine.** Answered points are **deleted**, so this file is
-always the current open set.
+[inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
+this file is always the current open set.
+
+> **Merged.** The stock context now lives inside inventory
+> ([stock-merges-into-inventory](./context_decision.md#stock-merges-into-inventory)). Everything below was
+> written against `stock/context.md` and still applies verbatim: §Stock loss and §How Warehouse Team
+> Member Accept Stock / Return That Arrived moved unchanged. New questions from the merge are
+> [Question 8–10](#question).
+
+> **Re-examined after §Responsbility grew to four** — *managing restock*, *managing return* and *doing
+> opname* joined *managing stock*. It narrows [Question 8](#question) without closing it, and it leaves out
+> acts this doc's own flow and `business_level.md` already give the warehouse ([Critique 13](#critique)).
 
 > **Re-examined after your update.** Closed and deleted from here: **who bears a receiving loss** (the
 > selling team) and **whether a count shortfall is a warehouse liability** (yes). Both were my top two
@@ -24,6 +33,30 @@ Siblings: [business_level](../business_level_clarify.md) · [user_context](../us
 ---
 
 ## Proposed Design
+
+### §Responsbility, mapped to what happens in the building
+
+```mermaid
+flowchart LR
+  subgraph listed["§Responsbility — listed"]
+    stk["1 managing stock"]
+    rst["2 managing restock"]
+    ret["3 managing return"]
+    opn["4 doing opname"]
+  end
+  subgraph missing["required elsewhere, not listed"]
+    plc["placement — the flow ends at Set Placements"]
+    trf["transfer between warehouses"]
+    wo["broken and lost — §Stock loss 2"]
+    pick["stock leaving for an order"]
+  end
+  rst --> rcv["one receiving flow"]
+  ret --> rcv
+  rcv --> plc
+  opn --> wo
+  pick --> stk
+  trf --> stk
+```
 
 ### The rules, named
 
@@ -113,6 +146,7 @@ Three phases currently have no bearer, and each of them is a real event that hap
 | **10** | **A delivery that is both SHORT and DAMAGED can only record one of the two.** `Is Any Lost → yes → Input Losts → Calculate valid Qty` — the "yes" branch **skips the broken check entirely**. Only a delivery with *no* losses ever reaches *Is Any Broken*. Both happen in one delivery routinely: a carton missing and another crushed. Under the drawn flow the crushed one is never recorded, so it becomes stock the system believes is sellable — and the difference surfaces later as an unexplained shortfall, which under [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) is a **warehouse liability** for goods that arrived broken. | Make the two checks **sequential, not exclusive** — `Input Losts → Is Any Broken`. One arrow again, and it stops the warehouse inheriting a supplier's damage. |
 | **11** | **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and leave the goods **unplaced** until someone resolves it. Then the count reconciles and the manual report is a task rather than a dead end. |
 | **12** | **Placement now has two moments and only one is drawn.** The receiving flow ends at `Set Placements`, so a **first** placement always happens and nothing routinely sits unshelved — good, and it matches [warehouse-manages-placements](../business_level_clarify.md#warehouse-manages-placements). What the flow does not cover is the **later** move: reshelving, consolidating, moving between racks. My recording recommendation in row 4 covers both, but only the second is a *move* — the first is part of accepting, and it already has a natural record because the receipt exists. | Say the two are different acts: **placement at receiving is part of the receipt** · **a later move is its own recorded event with its own actor**. Otherwise "record every move" reads as demanding a second record for something the receipt already captured. |
+| **13** | **§Responsbility lists four acts, and the doc requires at least four more.** The receiving flow ends at `Set Placements`, and `business_level.md` §Warehouse 8 names placement a responsibility — not listed. §Stock loss 2 makes broken and lost a liability — no line records them. Two warehouses holding one team's stock ([Stock Ownership](../business_level.md#stock-ownership)) means goods move between them — not listed. And every shipped order takes units off a shelf — not listed. A responsibility missing from the list is an act nobody is asked to design. | Add **4. managing placement** (first placement at receiving + later moves), **5. transfer between warehouses**, **6. recording broken and lost** (and found back). For **stock leaving for an order**: inventory owns the *stock change*, the order owns the *job* — say so, because both contexts will otherwise claim the pick. |
 
 ---
 
@@ -137,6 +171,23 @@ Three phases currently have no bearer, and each of them is a real event that hap
 6. **After the warehouse has reimbursed a broken unit, whose object is it?** ([Critique 4](#critique))
    **→ I recommend the warehouse's.**
 7. **Does anything you sell expire?** ([Critique 8](#critique))
+8. **§Responsbility 2 *managing restock* — from the moment the selling team CREATES it, or only from the
+   door?** §Selling 4 has the selling team *decide and mint* the restock; §Warehouse accepts it.
+   **→ I now recommend inventory owns the restock record end to end** — I previously said purchasing should
+   be its own context, and your update changed my mind: the receiving flow's first step is *Check on
+   System*, so the expected-goods record and its acceptance belong in one place. What stays **out** is the
+   buying decision itself — **suppliers** (§Selling 5) and the price paid. Where do suppliers live?
+9. **What does inventory NOT own?** §Responsbility now says what it does and still draws no outer line.
+   Candidates at the edge: suppliers (Q8), the unit-price rule (defined in
+   [product](../product/context.md#unit-pricing-system), computed at receiving), the loss money (balance),
+   the pick job for an order ([Critique 13](#critique)).
+   **→ I recommend** a *"not responsible for"* list beside §Responsbility, each item naming who is.
+10. **Where is Toni's proposal, and who picks between the two?** The doc is marked as Heri's design;
+    [member.md](../project/member.md) gives Stock & Inventory to Toni, and the tiebreak is still open in
+    [member_clarify Q4](../project/member_clarify.md#question).
+    **→ I recommend** writing Toni's proposal into this repo too, so the two can be compared on the page.
+    ⚠ Also: [technical/stock/design.md](../../technical/stock/design.md) still sits at `stock/` coordinates —
+    move it to `technical/inventory/` when you are ready, so the three trees line up again.
 
 ---
 

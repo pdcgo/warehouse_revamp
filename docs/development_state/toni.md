@@ -47,7 +47,7 @@ Products here.
 
 ### Next
 
-1. **Read the two clarify files first** — [stock](../business/stock/context_clarify.md) (7 open
+1. **Read the two clarify files first** — [stock](../business/inventory/context_clarify.md) (7 open
    questions) and [product](../business/product/context_clarify.md) (6). They are the current
    argument, not a history.
 2. **Take the unit-cost question**, now that both halves of it are in one lane.

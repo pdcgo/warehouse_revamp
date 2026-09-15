@@ -22,7 +22,7 @@ current open set.
 Siblings: [balance_context](../balance/context_clarify.md) · [order_context](../order/context_clarify.md) ·
 [settlement_context](../settlement/context_clarify.md) ·
 [architectures/architecture_context](../../technical/architecture/context_clarify.md) ·
-[business_level](../business_level_clarify.md) · [stock_context](../stock/context_clarify.md) ·
+[business_level](../business_level_clarify.md) · [inventory_context](../inventory/context_clarify.md) ·
 [product_context](../product/context_clarify.md).
 
 ---

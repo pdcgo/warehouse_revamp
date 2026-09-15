@@ -1,8 +1,12 @@
 # Order Context.
 
+## General.
+1. for order settlement, its follow [this](../settlement/context.md).
+
 ## Whats Order Responsbility And Not.
 ### Responsbility.
 1. Manage Orders.
+2. Manage Draft Orders.
 
 ### Whats Not.
 1. The Cash, about withdrawal & platform wallet. we separate in other service. for now its defer development, we think later.
@@ -15,87 +19,180 @@ when order created. its bring 4 things.
 3. Marketplace Order Info Related.
 4. Product Related.
 
+## Table That Must Have.
+1. `orders`,
 
-## How Order Enter Our System.
-1. Order is recorded manually by Customer Service.
-2. We also exposed create order api. its because maybe Selling Team has own external app to speed up record the orders.
+    field that must have:
+    - `id`, primary key
+    - `order_external_ref_id`, its for order uniqueness, its cannot empty
+    - `shop_id`
+    - `status`
+    - `marketplace_type`
+    - `warehouse_fee`
+    - `receipt`
+    - `receipt_file`
 
-## What Make Our Order Unique.
-1. our order can contain partials shared products and own products.
-    - when product in order is own team, the debit is COGS and credit was from assets.
-    - when product in order is cross team, the debit is COGS and the credit is payable to cross team.
-    - in team that have product side, its also increase receivable from team that have order.
+
+2. `order_drafts`,
+
+    field that must have:
+    - `id`, primary key
+    - `order_external_ref_id`, its for order uniqueness, its cannot empty
+    - `shop_id`
+    - `marketplace_type`
+
+### Order Status.
+1. Status That Existed.
+    - `cancel`
+    - `pending`
+    - `processed`
+    - `shipped`
+    - `completed`
+    - `problem`
+    - `lost`
+    - `return`
+
+2. Status Move.
+    ```mermaid
+    stateDiagram-v2
+
+    pending-->cancel
+    pending-->processed
+    processed-->cancel
+    processed-->shipped
+    shipped-->completed
+    shipped-->problem
+    problem-->completed
+    problem-->lost
+    problem-->return
+    shipped-->lost
+    shipped-->return
+    completed-->return
+    ```
+
+    
+
+## How We Manage Order Uniqueness.
+1. Order uniqueness manage by code.
+2. Unique Scope by `order_external_ref_id` + `shop_id`
 
     ```mermaid
-    block-beta
-
-    columns 3
+    flowchart TD
     
-    block
-        columns 2
+    s(("Start"))
+    e(("End"))
 
-        sa["Selling Team A"]
-        space:1
+    s-->ordcreate["Order need Create"]
+    ordcreate-->refcheck{"is `order_external_ref_id` exist ?"}
+    refcheck-->|no|created["Order Created"]
+    refcheck-->|yes|fetch["Fetch existing order with `order_external_ref_id` that not canceled"]
 
-        space:2
+    fetch-->iscancel{"Is Existing Order Cancel"}
+    iscancel-->|no|created
+    iscancel-->|yes|deny["Deny Order Create"]
 
-        space:1
-        p2["Product 2"]
-        space:2
-
-        o["Order"]
-        space:2
-        space:2
-
-        cogs["COGS"]
-        
-
-        sa-->o
-        sa-->p2
-        o-->cogs
-        
-
-    end
-    
-    block
-        columns 3
-        w["Warehouse Team"]:3
-
-        space:3
-        space:1
-
-        s2["Stock Product 2"]
-        space:3
-        space:3
-        s1["Stock Product 1"]
-        space:3
-        space:3
-        wf["Warehouse Fee"]
-
-        w-->s1
-        w-->s2
-    end
-
-    block
-        columns 1
-
-        sb["Selling Team B"]
-        space:1
-
-        p1["Product 1"]
-        loan["Loan"]
-
-        sb-->p1
-    end
-    
-    p1-->s1
-    p2-->s2
-    s1-->o
-    s2-->o
-    o-->wf
-    o-->loan
-
+    deny-->e
+    created-->e
     ```
+
+## How Order Enter Our System.
+1. Order Draft is stored to another place. not in table `orders` but in `order_drafts`
+```mermaid
+stateDiagram-v2
+    state "Unrecorded New Order" as new
+    state "External App" as external
+    state "New Order Created" as new_order
+    state "Cs Manual Check Platform" as manual_check
+    state "Drop Draft" as drop_draft
+    state review <<choice>>
+
+    [*]-->new
+
+    new-->external
+    new-->manual_check
+    external-->draft: call by external app by rpc
+    manual_check-->new_order: Create Manually By Cs
+
+    draft-->review
+    review-->new_order: Cs Review And Accept
+    review-->drop_draft: Cs Review And Drop Draft
+    new_order-->[*]
+    drop_draft-->[*]
+    
+```
+
+## Cross Product Feature.
+### Preface
+1. Our system have multi selling team and multi warehouse team.
+2. Every selling team maybe have stock in across multiple warehouse team.
+3. Every Selling team can create order with own product or cross/shared product other selling team with same warehouse team (same warehouse location). 
+    Because its only can shipped and processed in single warehouse.
+```mermaid
+block-beta
+
+columns 3
+
+block
+    columns 2
+
+    sa["Selling Team A"]
+    space:1
+
+    space:2
+
+    space:1
+    p2["Product 2"]
+    space:2
+
+    o["Order"]
+    space:2
+    space:2
+
+    
+
+    sa-->o
+    sa-->p2
+    
+
+end
+
+block
+    columns 3
+    w["Warehouse Team"]:3
+
+    space:3
+    space:1
+
+    s2["Stock Product 2"]
+    space:3
+    space:3
+    s1["Stock Product 1"]
+    space:3
+    space:3
+
+    w-->s1
+    w-->s2
+end
+
+block
+    columns 1
+
+    sb["Selling Team B"]
+    space:1
+
+    p1["Product 1"]
+
+    sb-->p1
+end
+
+p1-->s1
+p2-->s2
+s1-->o
+s2-->o
+
+```
+
+    
 
 ## Complete Journey Of The Orders.
 ```mermaid
@@ -153,94 +250,6 @@ cancel-->|no|waccept["Warehouse Accept Order"]
     
     ```
 
-## Order Settlements.
-
-## About Customer Pays & Order Revenue.
-
-1. In our business, order is from other platform.
-2. Estimate Revenue is just recorded. its doesn't affect the ledger, its used for statistic.
-
-```mermaid
-stateDiagram-v2
-    platform: Selling Outside Platform
-    state platform {
-        state "Platform Order Created" as pcreated
-        state "Order Shipped" as pshipped
-        state "Order Completed" as pcompleted
-        state "Order Have Revenue" as prev
-        
-
-        [*] --> pcreated
-        
-        pcreated-->screated: Customer Service Record Order, and write estimate Revenue
-        pcreated-->pshipped
-        pshipped-->pcompleted
-        pcompleted-->prev
-        prev-->wallet: Cash Out to Balance.
-        prev-->revenue: Write to True Revenue System Ledger
-
-
-        wallet: Platform Wallet
-        state wallet {
-            state "Balance" as balance
-            state "Withdrawal" as wd
-            [*]-->balance
-            balance-->wd: Selling Admin/Customer Service do withdrawal
-            wd-->revenue: Selling Admin/Customer Record Withdrawal
-        }
-
-        
-    }
-
-
-
-    system: Our System
-    state system {
-
-        revenue: Revenue System Ledger
-        state revenue {
-            state "Balance" as sbalance
-            sbalance-->[*]
-        }
-        state "Order Created" as screated
-        
-        warehouse: Warehouse
-        state warehouse {
-            state "Order Processed" as process
-            state "Order Shipped" as shipped
-
-            screated-->process: Order Processed By Warehouse
-            process-->shipped
-            shipped-->[*]
-        }
-        
-    }
-
-```
-
-### Hold Funds, Revenue And Withdrawals.
-```mermaid
-stateDiagram-v2
-state ords{
-    state "Order" as ord
-    state "Hold Fund" as hfund
-    state "Revenue" as rev
-    [*]-->ord
-    ord-->hfund
-    ord-->rev
-
-}
-
-```
-
-### How Withdrawal/Revenue entered or left the business ?.
-Withdrawal/Revenue entered or left the business is inputted manually/batch import by customer service or admin to our system.
-
-### True Revenue.
-1. True revenue is order scoped.
-
-### 
-
 
 ## Stock Ownership When Order Return. 
 ```mermaid
@@ -271,10 +280,7 @@ ivcreate-->e
 2. its use for map product ownership when its return.
 
 
-## Order Draft
-When Order in draft stage, its not create this yet:
-- Stock
-- Placement
+
 
 ### Responsbility
 1. Order draft is keep :

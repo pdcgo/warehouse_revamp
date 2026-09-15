@@ -73,7 +73,7 @@ before answering anything — the rules are spread across them and cross-referen
 | Doc | Holds |
 | --- | --- |
 | `business/business_level.md` | the business core, what the project must cover, the four team types and their responsibilities, stock ownership, cross/shared goods, suppliers |
-| `business/stock/context.md` | stock |
+| `business/inventory/context.md` | inventory |
 | `business/product/context.md` | why pricing is per-batch FIFO, the cross/shared fee markup, COGS behaviour |
 | `business/balance/context.md` | why team balance exists, what moves it, the two-mirrored-row model |
 | `business/order/context.md` | order anatomy |

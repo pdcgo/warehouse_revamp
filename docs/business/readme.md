@@ -6,7 +6,7 @@ What the business needs, written by the owner.
 docs/business/<big_context>/<small_context>.md
 ```
 
-One `<big_context>` per domain (`stock`, `order`, `product`, `balance`, `ledger`, `settlement`,
+One `<big_context>` per domain (`inventory`, `order`, `product`, `balance`, `ledger`, `settlement`,
 `user`); `<small_context>` is the smallest slice that can go through the
 [development lifecycle](../development_lifecycle.md) and be previewed.
 

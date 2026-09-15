@@ -25,10 +25,6 @@
 3. when the product deleted, the code is updated to `[code]_deleted_ts`
 
 
-
-
-
-
 ## Business Problems.
 This is for preface so we can understand why and how we designing the system properly.
 1. because we have many suplier that mention in [this](../business_level.md#suplier-as-the-source-goods-of-the-product-we-sell), thats affect to our pricing:

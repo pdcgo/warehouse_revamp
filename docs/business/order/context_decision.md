@@ -7,6 +7,12 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | --- | --- |
 | [order-created-is-finalize](#order-created-is-finalize) | the two flows share one vertex — `finalize the order` **is** `Order Created` |
 | [a-draft-carries-its-shop](#a-draft-carries-its-shop) | a draft has its shop, and therefore its owning team, from the moment it exists |
+| [ensuring-an-order-is-whole-is-order-services-job](#ensuring-an-order-is-whole-is-order-services-job) | finding and repairing a half-succeeded order is `order_service`'s job |
+| [the-order-follows-settlement-for-its-money](#the-order-follows-settlement-for-its-money) | marketplace money is described by the settlement doc — the order only opens and cancels the sale |
+| [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) | no two live orders share `(shop_id, order_external_ref_id)` · the ref is never empty · checked in code |
+| [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
+| [the-order-has-eight-statuses](#the-order-has-eight-statuses) | the status set, and every move allowed between them |
+| [lost-is-final](#lost-is-final) | an order marked `lost` never moves again |
 
 ---
 
@@ -136,3 +142,168 @@ idempotent retry. **That is a recommendation, not this decision.**
 
 ⚠ And it carries one precondition the stamp alone does not meet: `0` must stop meaning both *unresolved*
 and *nobody to pay*, or the finder reports every legitimate case forever.
+
+---
+
+## the-order-follows-settlement-for-its-money
+
+> Owner, in the doc (2026-09-15): §General — *"for order settlement, its follow [this](../settlement/context.md)"*
+> — and §About Customer Pays & Order Revenue, §How Withdrawal/Revenue entered or left the business and §True
+> Revenue removed as *"irrelevant for settlement"*.
+
+**The verdict.** The order doc no longer describes marketplace money. The settlement doc is the authority, and
+what the order owes it is **two calls**.
+
+```mermaid
+flowchart LR
+  O["order_service"] -->|"order created: initial_total"| S["settlement_service"]
+  O -->|"order cancelled: initial_total_cancel"| S
+  S --> L["settlement_logs — whatever the order status"]
+  W["platform wallet and withdrawal"] -.->|"neither order nor settlement — deferred"| X["a cash service, later"]
+```
+
+**The spec.**
+
+| the order moves to | the order calls settlement |
+| --- | --- |
+| created (finalize) | `initial_total` |
+| `cancel` | `initial_total_cancel` |
+| any other status | nothing — fund, fees and adjustments are settlement entries, independent of status ([settlement-ignores-our-order-status](../settlement/context_decision.md#settlement-ignores-our-order-status)) |
+
+**What it closes.** *"Estimate Revenue … doesn't affect the ledger"*, which contradicted `initial_total` being a
+ledger row · a withdrawal written into the same revenue ledger as true revenue, which counted the money twice ·
+and a return after `completed` no longer needs `completed` to be final for the marketplace money.
+**What it leaves open:** whether `lost` and `return` also cancel the sale —
+[lost-and-return-do-not-reverse-initial-total](./context_clarify.md#lost-and-return-do-not-reverse-initial-total).
+
+---
+
+## an-order-is-unique-by-shop-and-marketplace-ref
+
+> Owner, in the doc (2026-09-15): §Table That Must Have — *"`order_external_ref_id`, its for order uniqueness,
+> its cannot empty"* · §How We Manage Order Uniqueness — *"Order uniqueness manage by code"*, *"Unique Scope by
+> `order_external_ref_id` + `shop_id`"*, and a fetch of the existing order *"that not canceled"*.
+
+**The verdict.** No two live orders share **`(shop_id, order_external_ref_id)`**. The ref is **required on
+every order** — every order comes from a marketplace, so there is no phone-order exception. A cancelled order
+does not hold its ref. The check is **in code**.
+
+```mermaid
+flowchart LR
+  N["a new order"] --> K{"a live order with this shop and ref?"}
+  K -->|"no"| C["created"]
+  K -->|"yes"| D["denied"]
+  X["a cancel order with the same ref"] -.->|"does not count"| K
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| scope | `shop_id` + `order_external_ref_id` — a marketplace issues its ids per storefront |
+| required | always. `""` is refused |
+| cancelled orders | excluded, so a mistaken order can be cancelled and re-recorded |
+| enforced | a handler check on create |
+
+⚠ **What it reverses in the build.** `orders.order_external_ref_id` is `NOT NULL DEFAULT ''` and deliberately not
+unique ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)), and
+`openSettlement` skips a `marketplace_total` of 0 as a phone order. ⚠ **And it re-homes a rule settlement once
+held:** [every-marketplace-order-carries-a-unique-platform-ref](../settlement/context_decision.md#every-marketplace-order-carries-a-unique-platform-ref)
+was reversed when settlement moved to keying on our `order_id`
+([settlement-keys-on-our-order-id](../settlement/context_decision.md#settlement-keys-on-our-order-id)) — and it had
+allowed `""` for phone orders. Uniqueness is now the **order's** rule, and stricter.
+
+**What it leaves open.** The drawn flow never reaches its deny branch, drafts versus orders, and the same-second
+race — [one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders).
+
+---
+
+## drafts-keep-their-own-table
+
+> Owner, in the doc (2026-09-15): §Table That Must Have 2 — `order_drafts`, with `id`, `order_external_ref_id`
+> (*"its for order uniqueness, its cannot empty"*) and `shop_id`. A `draft` status on `orders` was written and
+> then removed in the same session.
+
+**The verdict.** A draft is **not** an `orders` row. It lives in `order_drafts`, carrying the same ref and shop
+as the order it will become.
+
+```mermaid
+flowchart LR
+  D["order_drafts — shop_id, ref"] -->|"finalize"| O["orders — shop_id, ref, status"]
+  O -.->|"never holds a draft"| O
+```
+
+**Why it holds up.** Every reader of `orders` — the pick queue, lists, counts — stays free of unfinished scans
+without remembering to exclude them, and `orders` keeps its required fields. **What it costs:** the ref's
+uniqueness now spans two tables.
+
+**The spec.** `order_drafts.shop_id` is set at creation
+([a-draft-carries-its-shop](#a-draft-carries-its-shop)); its ref is never empty. ⚠ The build keys a draft on
+`(team_id, source, external_id)` — that moves to `shop_id` + the ref.
+
+**What it leaves open.** [one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders).
+
+---
+
+## the-order-has-eight-statuses
+
+> Owner, in the doc (2026-09-15): §Order Status — *Status That Existed* and *Status Move*, revised over the
+> session to the form below.
+
+**The verdict.** Eight statuses, and only these moves.
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending
+  pending --> cancel
+  pending --> processed
+  processed --> cancel
+  processed --> shipped
+  shipped --> completed
+  shipped --> problem
+  shipped --> lost
+  shipped --> return
+  problem --> completed
+  problem --> lost
+  problem --> return
+  completed --> return
+  cancel --> [*]
+  lost --> [*]
+  return --> [*]
+```
+
+**The spec.**
+
+| from | may move to |
+| --- | --- |
+| `pending` | `processed` · `cancel` |
+| `processed` | `shipped` · `cancel` |
+| `shipped` | `completed` · `problem` · `lost` · `return` |
+| `problem` | `completed` · `lost` · `return` |
+| `completed` | `return` |
+| `cancel` · `lost` · `return` | nothing — final |
+
+**What it settles.** An order can be **cancelled until it ships** · `problem` is a **holding state** that must
+end · `completed` is **not final** — a return can follow it. **What it leaves stale:** §Complete Journey still
+sets the old statuses ([Contradiction](./context_clarify.md#the-journey-still-sets-the-old-statuses)), and the
+build's proto (`placed, confirmed, picking, packed, shipped, cancelled`) needs a migration when built.
+
+---
+
+## lost-is-final
+
+> Asked: *"a lost parcel that turns up has nowhere to go — `lost --> return`, or is `lost` final?"*
+> **Owner: "lost is final".** Against my recommendation, which was the edge.
+
+**The verdict.** Nothing moves out of `lost`.
+
+```mermaid
+stateDiagram-v2
+  shipped --> lost
+  problem --> lost
+  lost --> [*]
+```
+
+**The spec.** Every move out of `lost` is refused. **The consequence, stated so it is not rediscovered:** a
+parcel found after being declared lost does **not** come back through its order — its goods re-enter stock by
+some other path, which no doc describes yet (clarify *Awaiting*).
