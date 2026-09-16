@@ -119,6 +119,23 @@ conscripted by the run instead of ignored. Kill anything listening on those port
 | 5174 | the UI dev server | `strictPort` makes it fail loudly rather than drift to 5175 — which is the e2e's port |
 | 5173 | **not us** — another project's dev server | fine |
 | 8080 / 8081 | dev API / e2e API | a stray dev API, or a stray e2e run |
+| 51234 | the story-test runner (`npm run test:stories`) | a second story run is still up |
+
+---
+
+## `npm run test:stories` dies with `listen EACCES: permission denied ::1:63315`
+
+Not a permission problem and not a stray process. **63315 is Vitest's default browser port, and Windows
+reserves the range it falls in** (Hyper-V / WinNAT). No story runs at all — the output ends in
+"no tests".
+
+```sh
+netsh interface ipv4 show excludedportrange protocol=tcp   # 63315 sits inside one of these
+```
+
+The port is **pinned to 51234** in [frontend/vitest.config.ts](../../frontend/vitest.config.ts)
+(`test.browser.api.port`). If that one is ever reserved too, move it outside every listed range — a
+`--browser.api.port` flag on the command line does not reach the `storybook` project.
 
 ---
 

@@ -39,6 +39,10 @@ export default defineConfig({
       headless: true,
       provider: playwright(),
       instances: [{ browser: "chromium" }],
+      // ⚠ PINNED. Vitest's default (63315) sits inside a TCP range Windows reserves for Hyper-V/WinNAT
+      // (`netsh interface ipv4 show excludedportrange protocol=tcp`), so the run dies on startup with
+      // "listen EACCES ::1:63315" before any story executes. 51234 is outside those ranges.
+      api: { port: 51234 },
     },
   },
   cacheDir: fileURLToPath(new URL("./node_modules/.vite-vitest", import.meta.url)),

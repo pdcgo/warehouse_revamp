@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import type { Shipping } from "../../gen/warehouse/shipping/v1/shipping_pb";
@@ -45,9 +45,14 @@ export function ShippingSelect({
 
   // The catalogue is shared and may already be cached, or may land after this mounts. Either way the
   // collection has to follow it — in an effect, never during render.
+  //
+  // `seeded` flips in the SAME effect that fills the collection, and the remount below keys on it.
+  const [seeded, setSeeded] = useState(false);
+
   useEffect(() => {
     set(couriers);
-  }, [set, couriers]);
+    if (!loading) setSeeded(true);
+  }, [set, couriers, loading]);
 
   return (
     <Combobox.Root
@@ -57,7 +62,12 @@ export function ShippingSelect({
       // An edit form that mounts this with a courier ALREADY set, while the catalogue is still in
       // flight, would look the code up in an empty collection, resolve to "", and never recover — the
       // field would read blank while a courier is in fact selected.
-      key={loading ? "loading" : "ready"}
+      //
+      // ⚠ Keyed on `seeded`, NOT on `loading`. The collection is filled by the effect above, one render
+      // AFTER loading flips — so a `loading` key remounted into a still-empty collection and hit exactly
+      // the blank field described above (PresetCourierShowsItsName). Not on items.length either: a search
+      // matching nothing empties the collection too, and remounting would wipe the typing.
+      key={seeded ? "ready" : "seeding"}
       // OPEN ON CLICK (#146, owner: "show few item first before search"). Without it, clicking the
       // field shows nothing until you type — reasonable for a picker over a catalogue too large to
       // display (ProductSelect searches the server and needs 2 characters), and wrong for a bounded

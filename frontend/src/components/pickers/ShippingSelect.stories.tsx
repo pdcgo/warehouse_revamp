@@ -98,3 +98,12 @@ export const Interactive: Story = {
     await waitFor(() => expect(canvas.getByRole("combobox")).toHaveValue(couriers[2]!.name));
   },
 };
+
+// An edit form mounting with a courier ALREADY set shows its NAME once the catalogue lands — the remount
+// must happen after the collection is seeded, or the field reads blank while a courier is selected.
+export const PresetCourierShowsItsName: Story = {
+  args: { value: couriers[0]!.code },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(within(canvasElement).getByRole("combobox")).toHaveValue(couriers[0]!.name));
+  },
+};

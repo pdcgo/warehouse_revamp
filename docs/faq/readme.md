@@ -134,6 +134,7 @@ second time will be slightly different. That drift is the actual cost.
 - [`graphify: command not found`](troubleshooting.md#graphify-command-not-found)
 - [`python3: command not found`](troubleshooting.md#python3-command-not-found)
 - [Storybook pickers never fill — every dropdown is empty](troubleshooting.md#storybook-pickers-never-fill--every-dropdown-is-empty)
+- [`npm run test:stories` dies with `listen EACCES ... 63315`](troubleshooting.md#npm-run-teststories-dies-with-listen-eacces-permission-denied-163315)
 - [My story needs `useTeam()` and throws](troubleshooting.md#my-story-needs-useteam-and-throws)
 - [`wire_gen.go` is not picking up my new provider](troubleshooting.md#wire_gengo-is-not-picking-up-my-new-provider)
 - [`buf generate` output does not match what CI expects](troubleshooting.md#buf-generate-output-does-not-match-what-ci-expects)
