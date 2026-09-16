@@ -11,7 +11,15 @@ deleted, so this file is always the current open set; what you settle goes in `c
 > 🔄 **Revised the same day — you added the `WarehouseFeeCalculate` payload.** ✅ It settles two things I had
 > asked for: the RPC takes a **basis, not an `order_id`** (so `warehouse_service` never depends on
 > `order_service`), and it **echoes the rate it used**, which is what makes a charge explainable months later.
-> ⛔ **And it opens three sharper ones:** every money field in it is a **`double`**, where this system has
+> ✅ **Then §Responsbility 2 settled the biggest question in this file** — *warehouse gives the RPC, balance
+> handles and records, order calls it*. Recorded as
+> [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records), and it closes the
+> ownership fork outright: the rate lives where the calculation lives, balance is **told** the amount, and the
+> number is fixed when the order calls. What is left of it is one narrow question — whether
+> `liability_terms.handling_fee`, which stores a rate and computes from it **today**, is
+> [dropped](#is-the-old-flat-rate-column-dropped).
+>
+> ⛔ **The payload still opens three sharper ones:** every money field in it is a **`double`**, where this system has
 > **no float anywhere** — `int64` whole rupiah in every proto, stated as a rule in
 > [expense.proto](../../../proto/warehouse/expense/v1/expense.proto) · the request names **no selling team**, which
 > both kills the per-pair rate liability already charges **and** leaves the message with no `use_scope` field, so
@@ -181,9 +189,9 @@ is shipped.
 
 | | |
 | --- | --- |
-| **A — the rate moves**, liability posts what it is handed | ✅ one owner, one number. The price of the warehouse's work is set by the warehouse, and liability goes back to owing and settling. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
-| **B — the rate stays**, `warehouse_service` only calculates | ⛔ `WarehouseFeeCalculate` becomes a proxy for another service's column, and `warehouse_service` owns nothing it can answer for |
-| **C — both hold a copy** | ⛔ this is what happens by DEFAULT if `fee_bp` is added while `handling_fee` stays. It is **#5 in the rollup happening a second time**: the screen quotes one number, the ledger charges the other, and nothing compares them |
+| ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
+| **B — the rate stays**, `warehouse_service` only calculates | ⛔ ruled out: `WarehouseFeeCalculate` would be a proxy for another service's column, and `warehouse_service` would own nothing it can answer for |
+| **C — both hold a copy** | ⛔ **still reachable by accident** — it is what happens if `fee_bp` lands in `warehouse_service` while `handling_fee` stays in balance. It is **#5 in the rollup happening a second time**: one number quoted, another charged, nothing comparing them. This is why [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped) is still open |
 
 **Five steps, each deployable on its own, none of them changing a charge:**
 
@@ -273,17 +281,25 @@ already ships.
 *(new)* The order form's question is which warehouse is cheapest for this order, and the response already echoes
 `warehouse_id` as if it were a batch. **→ Recommend `repeated` items in and out**, one call.
 
-### who-owns-the-rate-after-this
-`liability_terms.handling_fee` is live. Does it **move** to `warehouse_service` and get dropped there, or does
-`warehouse_service` only *calculate* while liability keeps storing?
-**→ Recommend the move** — [the five steps, the fork and what must travel with it](#the-rate-moves-in-five-steps-and-no-day-charges-differently).
-⚠ Doing nothing is not neutral: adding `fee_bp` while `handling_fee` stays **is** the two-copies option, chosen
-by accident.
+### is-the-old-flat-rate-column-dropped
+*(what is left of who-owns-the-rate-after-this, now that
+[warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records) has settled the fork)*
+`liability_terms.handling_fee` **stores a rate and computes from it today**. The decision leaves balance
+recording only — so does that column go, in the same change?
+**→ Recommend yes, dropped at step 5** of [the move](#the-rate-moves-in-five-steps-and-no-day-charges-differently).
+⚠ Doing nothing is not neutral: a `fee_bp` in `warehouse_service` while `handling_fee` stays **is** the
+two-copies option, chosen by accident. ⚠ And decide it **before**
+[technical/balance Q8](../../technical/balance/team_balance_design_clarify.md#question) renames that column.
 
-### does-the-order-freeze-the-fee
-Does `orders.warehouse_fee` hold the amount the order was quoted, with liability posting **that** number rather
-than recomputing? **→ Yes** — [the design](#the-order-freezes-the-fee-and-the-ledger-posts-it). Today a rate
-edited between commit and push delivery charges a number nobody was shown.
+### how-does-the-amount-reach-balance
+*(what is left of does-the-order-freeze-the-fee —
+[warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records) settled that balance is
+**told**, since it has no rate to compute from)* Does the amount ride on the `OrderPlaced` event balance already
+consumes, or does balance call back for it? And is it kept on `orders.warehouse_fee`, the column the order
+context promises and the build does not have?
+**→ Recommend both: stored on the order, and carried on the event** — [the design](#the-order-freezes-the-fee-and-the-ledger-posts-it).
+An event that carries ids only would force balance to ask somebody, and the only service that knows is the one
+that already has the number.
 
 ### does-the-warehouse-profile-move-out-of-team-service
 `warehouse_infos` (location + both weekly grids) lives in `team_service` and is built. Does it move whole into
@@ -327,9 +343,11 @@ answer. Grouped by cause, not by symptom.
 | the Credit Terms screen | edits *Handling fee* beside the credit limit | the fee field leaves, the limit stays |
 | [technical/balance Q8](../../technical/balance/team_balance_design_clarify.md#question) | asks whether `handling_fee` should be **renamed** `order_fee` | ⚠ **overtaken** — a column about to move should not be renamed first |
 
-**Which is wrong:** the build — the doc is your current statement. **→ Recommend** deciding
-[who-owns-the-rate-after-this](#who-owns-the-rate-after-this) **before** that Q8 rename is done, or the rename
-lands on a column that is being deleted.
+✅ **Which is wrong is no longer a judgement call** —
+[warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records) says balance *handles
+and records*, so **every site above that COMPUTES is stale**. What is left is disposal and ordering:
+**→ Recommend** answering [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped) **before**
+that Q8 rename runs, or the rename lands on a column that is being deleted.
 
 ```mermaid
 flowchart LR
