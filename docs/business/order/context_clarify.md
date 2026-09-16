@@ -19,6 +19,15 @@ are deleted, so this file is always the current open set; what was settled is in
 > Questions are **named, not numbered** now, so closing one no longer renumbers the rest. Old numbers are
 > kept in each entry as *(was Qn)*.
 
+> 🔄 **The doc moved again since this was written (2026-09-16), and neither edit opens a question.**
+> §Whats Charge In Order landed — `warehouse_fee` and `cross_product_cost`, *"managed by balance service"* — which
+> **agrees** with [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records)
+> next door: balance records, `warehouse_service` prices, and the order calls. ✅ Its `### How Fee Calculated.
+> [defer]` is therefore answered in the **warehouse** context, not here — the open parts of it are
+> [that clarify's](../warehouse/context_clarify.md#question), not this one's. `## How Order Enter Our System` also
+> gained a bare *"2. Inside order created."* — an empty heading, which per RULE 8b.11 reads as **not designed
+> yet**, not as a question.
+
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
 [product_context](../product/context_clarify.md) · [balance_context](../balance/context_clarify.md) ·
 [inventory_context](../inventory/context_clarify.md) · [settlement_context](../settlement/context_clarify.md).
