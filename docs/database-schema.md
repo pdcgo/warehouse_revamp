@@ -142,25 +142,39 @@ erDiagram
 
 ---
 
-## shipping_service
+## shipment_service
 
-`backend/services/shipping_service/db_migrations/`
+`backend/services/shipment_service/db_migrations/` — design: [business/shipment/context_decision.md](business/shipment/context_decision.md)
 
 ```mermaid
 erDiagram
-    shippings {
-        bigserial   id         PK
-        text        code       UK "required unique, stable machine key"
+    shipment_channels {
+        bigserial   id         PK "what an order's shipment_channel_id holds"
+        text        code       UK "unique over ALL rows, deleted included — never changes, CHECK a-z 0-9 _"
         text        name       "required, display label"
-        boolean     active     "default true"
+        text        desc       "default empty"
+        boolean     is_deleted "default false — soft delete"
         timestamptz created_at
-        timestamptz updated_at
+        timestamptz updated_at "set on edit, delete, restore"
     }
 ```
 
-- **`shippings`** — the courier catalogue (JNE, J&T, SiCepat, …), seeded by the migration as stable
-  reference data, and curated by root/admin. `code` is unique and is what a shipment stores;
-  `active = false` retires a courier without deleting it. No relations — it stands alone.
+- **`shipment_channels`** — the courier catalogue, one row per COURIER (never courier + service level).
+  Seeded with `jne`, `jnt`, `sicepat` by the migration, because it must exist in production too.
+  Curated by root only. No relations — it stands alone; other services hold its `id` (or, until the
+  order redesign, its `code`) with no FK.
+- **The unique index on `code` is PLAIN, not partial.** A deleted channel keeps its code, and creating
+  that code again is refused in favour of restore — a partial index would let a second `jne` split the
+  orders and the third-party app's mapping between two ids.
+
+## shipping_service — REMOVED
+
+⚠ **The service is gone; its TABLE is not.** `shipping_service` was replaced by `shipment_service` on
+2026-09-16 — see [the-old-catalogue-bridges-by-code](business/shipment/context_decision.md#the-old-catalogue-bridges-by-code).
+No drop migration was written: one service's migration never touches another's table (HARD RULE 3), so
+an existing database keeps an unused `shippings` table and `shipping_service_version`, and a fresh one
+never creates them. Rows that still store a courier code outside the new seed (`anteraja`, `tiki`, …)
+render as the raw code until root creates that channel.
 
 ---
 
@@ -265,7 +279,7 @@ erDiagram
         text        desa_name
         text        kode_pos         "as chosen (editable in the picker)"
         text        address_line     "jalan, no. rumah, RT/RW — free text"
-        text        shipping_code    "opaque shipping_service courier code"
+        text        shipping_code    "opaque courier code — matched against shipment_service.shipment_channels.code"
         bigint      subtotal         "whole rupiah"
         bigint      shipping_cost
         bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
@@ -691,7 +705,7 @@ erDiagram
         bigserial   id                 PK
         bigint      requesting_team_id "SELLING team that raised it, opaque, no FK"
         bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
-        text        shipping_code      "opaque shipping_service courier code"
+        text        shipping_code      "opaque courier code — matched against shipment_service.shipment_channels.code"
         text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
         text        order_ref          "optional: free-text reference to an order elsewhere; '' = none"
         text        receipt            "optional: courier tracking number (resi)"

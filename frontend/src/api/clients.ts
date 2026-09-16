@@ -5,7 +5,6 @@ import { ProductService } from "../gen/warehouse/product/v1/product_pb";
 import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
-import { ShippingService } from "../gen/warehouse/shipping/v1/shipping_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
 import { DocumentService } from "../gen/warehouse/document/v1/document_pb";
@@ -39,9 +38,7 @@ export const orderClient = createClient(OrderService, transport);
 // Drafts are PERSONAL as well as team-scoped (#192): the server narrows every call to the caller,
 // so a draft never appears for a colleague however the client asks.
 export const orderDraftClient = createClient(OrderDraftService, transport);
-export const shippingClient = createClient(ShippingService, transport);
-// ⚠ PROTOTYPE — served only by Storybook's stub until the shipment design is accepted; it replaces
-// shippingClient above, which is retired after that, not before.
+// The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
 export const categoryClient = createClient(CategoryService, transport);
 export const documentClient = createClient(DocumentService, transport);

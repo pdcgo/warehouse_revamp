@@ -18,8 +18,8 @@ export interface ShipmentChannelSelectProps {
 // (shipment-channel-is-an-id-into-shipment-service). Offers LIVE channels only: a deleted courier cannot
 // be chosen for new work, though an old order still names it through ShipmentChannelBadge.
 //
-// ⚠ PROTOTYPE — replaces ShippingSelect (which emits a code) once the shipment design is accepted. The
-// interaction rules are ShippingSelect's, learned there: opens on click, matches name OR code, clearing
+// For records that store the channel ID. Records still storing a courier CODE use ShippingSelect, which
+// reads the same catalogue (the-old-catalogue-bridges-by-code). The interaction rules are shared: opens on click, matches name OR code, clearing
 // emits "none", and the root remounts when the options land so a pre-set value shows its name.
 export const description =
   "Searchable courier picker over live shipment channels — matches name or code, emits the channel id, and can be cleared back to none.";

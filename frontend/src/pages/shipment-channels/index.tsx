@@ -35,9 +35,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // ShipmentChannelsPage — root curates the GLOBAL courier catalogue.
 // Design: docs/business/shipment/context_decision.md.
 //
-// ⚠ PROTOTYPE (implementation_analysis). Not in the router or the nav yet: it talks to
-// ShipmentChannelService, which only Storybook's stub serves. It replaces pages/shipping-channels after
-// the design is accepted.
+// Mounted at /shipping, offered in the nav to root only (only-root-manages-channels).
 //
 // The rules this screen carries:
 //  - deleted channels are HIDDEN by default and shown on request, because root restores from here;

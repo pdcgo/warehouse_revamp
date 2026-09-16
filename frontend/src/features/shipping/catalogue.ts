@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { rpcError, shippingClient } from "../../api/clients";
-import type { Shipping } from "../../gen/warehouse/shipping/v1/shipping_pb";
+import { rpcError, shipmentChannelClient } from "../../api/clients";
+import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
+import { channelListRowData, channelsFromList } from "../shipment/adapt";
 
 // The courier catalogue, loaded ONCE per session and shared by every component that needs it (#126).
+//
+// ⚠ THE CODE BRIDGE (the-old-catalogue-bridges-by-code, docs/business/shipment). Selling orders and
+// restocks still store a courier CODE, so ShippingSelect and ShippingBadge match on code — but the
+// catalogue itself is shipment_service's now. It loads DELETED channels too: a badge must still name the
+// courier an old order used, and ShippingSelect filters them out for new work.
 //
 // Why this is not a plain useEffect in each component: a courier is rendered per table ROW
 // (ShippingBadge), so a per-instance fetch would fire one ShippingList call per row — ~20 for a
@@ -14,29 +20,35 @@ import type { Shipping } from "../../gen/warehouse/shipping/v1/shipping_pb";
 //   - `inflight` is the single shared Promise, so N components mounting in the same tick await ONE
 //     request instead of racing N of them.
 //
-// The catalogue does change in one place — ShippingChannelsPage, where root/admin curate it. That
-// page calls invalidateShippingCatalogue() after every mutation, so a renamed courier does not keep
+// The catalogue changes in one place — ShipmentChannelsPage, where root curates it. Every write hook in
+// features/shipment/queries.ts calls invalidateShippingCatalogue(), so a renamed courier does not keep
 // its old name in every badge for the rest of the session.
-let cache: Shipping[] | null = null;
-let inflight: Promise<Shipping[]> | null = null;
+let cache: ShipmentChannel[] | null = null;
+let inflight: Promise<ShipmentChannel[]> | null = null;
 // Bumped on invalidation so a response that was already in flight cannot resurrect a cache that has
 // since been dropped.
 let generation = 0;
 
-export function loadShippingCatalogue(): Promise<Shipping[]> {
+export function loadShippingCatalogue(): Promise<ShipmentChannel[]> {
   if (cache !== null) return Promise.resolve(cache);
   if (inflight !== null) return inflight;
 
   const gen = generation;
 
-  const request = shippingClient
-    .shippingList({})
+  const request = shipmentChannelClient
+    // One page covers the catalogue: a curated handful of couriers, capped by the contract's limit.
+    .shipmentChannelList({
+      filter: { includeDeleted: true },
+      dataRequest: channelListRowData(),
+      page: { page: 1, limit: 200 },
+    })
     .then((res) => {
+      const channels = channelsFromList(res.items, res.ids);
       if (gen === generation) {
-        cache = res.data;
+        cache = channels;
         inflight = null;
       }
-      return res.data;
+      return channels;
     })
     .catch((err: unknown) => {
       // A failed load is never cached — the next caller retries.
@@ -56,7 +68,8 @@ export function invalidateShippingCatalogue() {
 }
 
 export interface ShippingCatalogue {
-  couriers: Shipping[];
+  /** Every channel, DELETED ones included — a picker must filter on isDeleted itself. */
+  couriers: ShipmentChannel[];
   loading: boolean;
   error: string;
 }
@@ -65,7 +78,7 @@ export interface ShippingCatalogue {
 // the first paint if the catalogue is already loaded, and otherwise re-renders when the one shared
 // request resolves.
 export function useShippingCatalogue(): ShippingCatalogue {
-  const [couriers, setCouriers] = useState<Shipping[]>(() => cache ?? []);
+  const [couriers, setCouriers] = useState<ShipmentChannel[]>(() => cache ?? []);
   const [loading, setLoading] = useState(() => cache === null);
   const [error, setError] = useState("");
 
@@ -101,7 +114,7 @@ export function useShippingCatalogue(): ShippingCatalogue {
 // courierName maps a stored courier CODE to its human name. It falls back to the raw code when the
 // courier is unknown or the catalogue has not loaded yet — a courier always renders as *something*,
 // never as a blank.
-export function courierName(couriers: Shipping[], code: string): string {
+export function courierName(couriers: ShipmentChannel[], code: string): string {
   const match = couriers.find((courier) => courier.code === code);
   return match?.name ?? code;
 }

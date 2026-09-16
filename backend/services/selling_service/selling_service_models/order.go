@@ -39,7 +39,8 @@ type Order struct {
 	DesaName      string
 	KodePos       string
 	AddressLine   string
-	// A shipping_service courier code (opaque).
+	// A courier code (opaque) — a shipment_service channel's `code`. Moves to shipment_channel_id with
+	// the order redesign (the-old-catalogue-bridges-by-code).
 	ShippingCode string
 
 	// THE MARKETPLACE'S OWN ID for this order (owner) — read off the storefront and typed in beside

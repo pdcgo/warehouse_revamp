@@ -703,7 +703,8 @@ type Order struct {
 	Status        OrderStatus            `protobuf:"varint,4,opt,name=status,proto3,enum=warehouse.selling.v1.OrderStatus" json:"status,omitempty"`
 	CustomerName  string                 `protobuf:"bytes,5,opt,name=customer_name,json=customerName,proto3" json:"customer_name,omitempty"`
 	CustomerPhone string                 `protobuf:"bytes,6,opt,name=customer_phone,json=customerPhone,proto3" json:"customer_phone,omitempty"`
-	// A shipping_service courier code (opaque; no FK).
+	// A courier code (opaque; no FK) — a shipment_service channel's `code`. Moves to
+	// shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
 	ShippingCode string `protobuf:"bytes,8,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	// The frozen money (whole rupiah). subtotal = sum(line quantity*unit_price); total includes
 	// shipping_cost. COGS/margin/fees are the revenue side (#74), not here.

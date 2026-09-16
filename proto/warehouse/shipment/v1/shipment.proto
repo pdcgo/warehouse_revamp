@@ -14,9 +14,9 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shi
 // The business design is docs/business/shipment/context_decision.md; every rule below names the
 // decision it comes from.
 //
-// ⚠ PROTOTYPE CONTRACT (implementation_analysis). No handler, no migration exists behind it yet — it
-// is served only by Storybook's stub transport until the design is accepted. It REPLACES
-// warehouse.shipping.v1, which is retired after acceptance, not before.
+// Accepted at design_accept (the-prototype-is-accepted) and served by backend/services/shipment_service.
+// It REPLACED warehouse.shipping.v1; records still storing a courier CODE read this catalogue by code
+// until the order redesign (the-old-catalogue-bridges-by-code).
 //
 // Reads are PUBLIC (the-channel-list-needs-no-login, by-ids-is-public-too): the third-party app maps
 // platform courier text onto these ids (the-app-converts-the-courier-to-a-channel-id). Writes are

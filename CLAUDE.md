@@ -413,9 +413,10 @@ breaking change; adding one to a list that already hurts is an incident.
   memberships (a handful in practice) but page anyway, for consistency — the bar is "returns a
   list", not "is currently large". A caller that needs the whole set (the team switcher) asks for
   a large first page.
-- **Exempt — bounded reference data, and the proto says so:** `ShippingList` (the courier
-  catalogue: curated, rarely-changing, dozens of rows). The moment it can grow unbounded, it stops
-  being exempt.
+- **Exempt — bounded reference data, and the proto says so.** There is none today: the courier
+  catalogue that was the example (`ShippingList`) was replaced by `ShipmentChannelList`, which pages
+  like every guideline List and whose picker asks for a large first page. An exemption is argued in
+  the proto the day it is taken, and lapses the moment the data can grow unbounded.
 - **The tree exception:** a picker that needs the WHOLE tree at once — `CategoryList` backing
   `CategorySelect` — cannot page, because a page is a flat window and a tree needs every node to
   assemble. A full-tree read is allowed ONLY as a deliberate, documented **picker feed**. A

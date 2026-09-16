@@ -33,7 +33,6 @@ import {
 import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
 import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
-import { ShippingService } from "../src/gen/warehouse/shipping/v1/shipping_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
@@ -70,7 +69,6 @@ const stubSourceType: Record<string, WireSourceType> = {
 
 import {
   categories,
-  couriers,
   shipmentChannels,
   dayKey,
   settlementReportDays,
@@ -421,14 +419,8 @@ export const transport = createRouterTransport(({ service }) => {
     categoryList: () => ({ categories }),
   });
 
-  service(ShippingService, {
-    shippingList: (req) => ({
-      data: req.includeInactive ? couriers : couriers.filter((c) => c.active),
-    }),
-  });
-
-  // The shipment prototype's contract, served with the rules the server will own — so a story that
-  // passes here is asserting on the decisions, not on a permissive echo.
+  // The courier catalogue, served with the rules shipment_service owns — so a story that passes here is
+  // asserting on the decisions, not on a permissive echo. ShippingSelect and ShippingBadge read it too.
   service(ShipmentChannelService, {
     shipmentChannelList: (req) => {
       const rows = channelTable

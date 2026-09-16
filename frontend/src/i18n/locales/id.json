@@ -1476,23 +1476,6 @@
       "noResults": "Kategori tidak ditemukan",
       "emptyColumn": "Kosong"
     },
-    "shipping": {
-      "title": "Pengiriman",
-      "empty": "Belum ada saluran pengiriman.",
-      "newChannel": "Saluran baru",
-      "newTitle": "Saluran Pengiriman Baru",
-      "editTitle": "Ubah {{name}}",
-      "code": "Kode",
-      "status": "Status",
-      "active": "Aktif",
-      "inactive": "Nonaktif",
-      "codeHelpCreate": "Kunci yang stabil (mis. \"jne\"). Tidak dapat diubah nanti.",
-      "codeHelpEdit": "Kode tidak dapat diubah.",
-      "createdToast": "Saluran \"{{name}}\" dibuat",
-      "updatedToast": "Saluran \"{{name}}\" diperbarui",
-      "activatedToast": "Saluran \"{{name}}\" diaktifkan",
-      "deactivatedToast": "Saluran \"{{name}}\" dinonaktifkan"
-    },
     "shippingSelect": {
       "placeholder": "Pilih kurir",
       "unavailable": "Kurir tidak tersedia",

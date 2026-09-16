@@ -279,7 +279,8 @@ export type Order = Message<"warehouse.selling.v1.Order"> & {
   customerPhone: string;
 
   /**
-   * A shipping_service courier code (opaque; no FK).
+   * A courier code (opaque; no FK) — a shipment_service channel's `code`. Moves to
+   * shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
    *
    * @generated from field: string shipping_code = 8;
    */

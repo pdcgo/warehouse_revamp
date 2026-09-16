@@ -204,7 +204,8 @@ message Order {
   // was `string customer_address` — free text, replaced by the structured snapshot `address` (#118).
   reserved 7;
   reserved "customer_address";
-  // A shipping_service courier code (opaque; no FK).
+  // A courier code (opaque; no FK) — a shipment_service channel's `code`. Moves to
+  // shipment_channel_id with the order redesign (the-old-catalogue-bridges-by-code).
   string shipping_code = 8;
 
   // The frozen money (whole rupiah). subtotal = sum(line quantity*unit_price); total includes

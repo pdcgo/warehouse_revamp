@@ -1481,23 +1481,6 @@
       "noResults": "No categories found",
       "emptyColumn": "Empty"
     },
-    "shipping": {
-      "title": "Shipping",
-      "empty": "No shipping channels yet.",
-      "newChannel": "New channel",
-      "newTitle": "New Shipping Channel",
-      "editTitle": "Edit {{name}}",
-      "code": "Code",
-      "status": "Status",
-      "active": "Active",
-      "inactive": "Inactive",
-      "codeHelpCreate": "A stable key (e.g. \"jne\"). Cannot be changed later.",
-      "codeHelpEdit": "The code cannot be changed.",
-      "createdToast": "Channel \"{{name}}\" created",
-      "updatedToast": "Channel \"{{name}}\" updated",
-      "activatedToast": "Channel \"{{name}}\" activated",
-      "deactivatedToast": "Channel \"{{name}}\" deactivated"
-    },
     "shippingSelect": {
       "placeholder": "Select a courier",
       "unavailable": "Couriers unavailable",

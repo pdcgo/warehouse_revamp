@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { couriers } from "../../../.storybook/fixtures";
+import { shipmentChannels as couriers } from "../../../.storybook/fixtures";
 import { ShippingSelect, description } from "./ShippingSelect";
 
 const meta = {
@@ -38,7 +38,8 @@ export const OpensOnClickWithTheWholeCatalogue: Story = {
   },
 };
 
-// Retired couriers are excluded by default — ShippingList returns only active ones unless asked.
+// DELETED channels are not offered for new work — the shared catalogue carries them for the badges, and
+// the picker filters them out ("pos" is deleted in the fixtures).
 export const InactiveCouriersAreNotOffered: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -46,7 +47,6 @@ export const InactiveCouriersAreNotOffered: Story = {
     await userEvent.click(canvas.getByRole("combobox"));
 
     await waitFor(() => expect(screen.getByTestId(`shipping-select-option-${couriers[0]!.code}`)).toBeVisible());
-    // "pos" is inactive in the fixtures.
     await expect(screen.queryByTestId(`shipping-select-option-${couriers[3]!.code}`)).toBeNull();
   },
 };

@@ -30,8 +30,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
-	shipping_service "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service"
-	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
+	shipment_service "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service"
+	shipment_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
 	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
@@ -48,7 +48,7 @@ func NewServeMux(
 	authService *user_v1.AuthService,
 	userService *user_v1.Service,
 	teamService *team_v1.Service,
-	shippingService *shipping_v1.Service,
+	shipmentService *shipment_v1.Service,
 	productService *product_v1.Service,
 	sellingService *selling_v1.Service,
 	categoryService *category_v1.Service,
@@ -94,7 +94,7 @@ func NewServeMux(
 	san_grpc.Register(mux,
 		user_service.NewRegister(mux, authService, userService, opts),
 		team_service.NewRegister(mux, teamService, opts),
-		shipping_service.NewRegister(mux, shippingService, opts),
+		shipment_service.NewRegister(mux, shipmentService, opts),
 		product_service.NewRegister(mux, productService, opts),
 		selling_service.NewRegister(mux, sellingService, opts),
 		category_service.NewRegister(mux, categoryService, opts),

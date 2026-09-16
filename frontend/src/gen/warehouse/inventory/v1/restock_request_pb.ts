@@ -169,7 +169,7 @@ export type RestockRequest = Message<"warehouse.inventory.v1.RestockRequest"> & 
   warehouseId: bigint;
 
   /**
-   * A shipping_service courier code (opaque) — how the goods reach the warehouse.
+   * A courier code (opaque) — a shipment_service channel's `code` — how the goods reach the warehouse.
    *
    * @generated from field: string shipping_code = 8;
    */

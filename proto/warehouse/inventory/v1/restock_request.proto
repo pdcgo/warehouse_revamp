@@ -153,7 +153,7 @@ message RestockRequest {
   // was product_id / sku / name / quantity — a request carries MANY priced lines now (#124).
   reserved 4, 5, 6, 7;
   reserved "product_id", "sku", "name", "quantity";
-  // A shipping_service courier code (opaque) — how the goods reach the warehouse.
+  // A courier code (opaque) — a shipment_service channel's `code` — how the goods reach the warehouse.
   string shipping_code = 8;
   RestockRequestStatus status = 9;
   int64 created_at_unix = 10;

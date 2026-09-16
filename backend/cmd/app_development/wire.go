@@ -15,7 +15,7 @@ import (
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
-	shipping_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
+	shipment_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
@@ -42,7 +42,7 @@ func InitializeApp() (*App, error) {
 		user_v1.NewAuthService,
 		user_v1.NewService,
 		team_v1.NewService,
-		shipping_v1.NewService,
+		shipment_v1.NewService,
 		product_v1.NewService,
 		selling_v1.NewService,
 		// Joins selling to inventory (#149/#70) — see stock_picker.go.

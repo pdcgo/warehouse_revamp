@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { shipmentChannelClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
+import { invalidateShippingCatalogue } from "../shipping/catalogue";
 import { channelByIdsRowData, channelListRowData, channelsFromByIds, channelsFromList } from "./adapt";
 
 // The courier catalogue — docs/business/shipment/context_decision.md.
@@ -78,7 +79,13 @@ export function useShipmentChannelsByIds(channelIds: bigint[]) {
 export function useInvalidateShipmentChannels() {
   const client = useQueryClient();
 
-  return () => client.invalidateQueries({ queryKey: ["shipmentChannels"] });
+  return () => {
+    // The session cache ShippingSelect and every ShippingBadge read (the code bridge) — dropped with the
+    // query, or a rename lingers in every badge until reload.
+    invalidateShippingCatalogue();
+
+    return client.invalidateQueries({ queryKey: ["shipmentChannels"] });
+  };
 }
 
 export function useCreateShipmentChannel() {

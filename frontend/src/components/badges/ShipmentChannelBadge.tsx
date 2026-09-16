@@ -14,8 +14,8 @@ import { courierColor } from "./ShippingBadge";
 //                      (a-deleted-channel-still-resolves-by-id).
 //  - an unknown id   → "#id", gray. Never a borrowed name.
 //
-// ⚠ PROTOTYPE — replaces ShippingBadge (keyed by code) once the shipment design is accepted. The colour
-// map is ShippingBadge's, keyed by the same stable code, so a courier keeps its colour across the move.
+// For records that store the channel ID; ShippingBadge serves records still storing a CODE, from the
+// same catalogue (the-old-catalogue-bridges-by-code). The colour map is shared, keyed by code.
 export const description =
   "An order's courier from its shipment_channel_id — standard colour by code, a deleted channel still named and marked, an unknown id shown as #id, no id as “—”.";
 

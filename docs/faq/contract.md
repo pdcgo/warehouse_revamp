@@ -50,7 +50,7 @@ that already hurts is an incident.
 | --- | --- |
 | a growing list (`TeamList`, `ProductList`, `UserList`) | **must paginate** |
 | a capped typeahead (`SearchUser`, limit 1–20) | fine — it can never return "everything" |
-| bounded reference data (`ShippingList`, the courier catalogue) | exempt, **and the proto says so**. The moment it can grow unbounded it stops being exempt |
+| bounded reference data | exempt, **and the proto says so** — none today: the courier catalogue now pages (`ShipmentChannelList`), and its picker asks for a large first page. The moment data can grow unbounded it stops being exempt |
 | a picker that needs a WHOLE TREE (`CategoryList` → `CategorySelect`) | the one exception — a page is a flat window and a tree needs every node. Allowed only as a deliberate, documented **picker feed** |
 
 ⚠ A *browse / management* screen over that same tree must still paginate (load a level's children

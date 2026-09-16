@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HStack } from "@chakra-ui/react";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
-import { couriers } from "../../../.storybook/fixtures";
+import { shipmentChannels as couriers } from "../../../.storybook/fixtures";
 import { ShippingBadge, description } from "./ShippingBadge";
 
 const meta = {
@@ -19,7 +19,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Jne: Story = {};
 
-export const SiCepat: Story = { args: { code: couriers[1]!.code } };
+export const SiCepat: Story = { args: { code: couriers[2]!.code } };
+
+// THE CODE BRIDGE (the-old-catalogue-bridges-by-code): an old order whose courier was since DELETED still
+// shows its name — the catalogue carries deleted channels for exactly this.
+export const ADeletedCourierIsStillNamed: Story = {
+  args: { code: couriers[3]!.code },
+  play: async ({ canvasElement }) => {
+    const badge = await within(canvasElement).findByTestId(`shipping-badge-${couriers[3]!.code}`);
+    await waitFor(() => expect(badge).toHaveTextContent(couriers[3]!.name));
+  },
+};
 
 // The badge shows the courier's NAME, which is server data an admin can edit, resolved from the
 // shared session catalogue by the stable CODE the shipment stores. That indirection is the reason

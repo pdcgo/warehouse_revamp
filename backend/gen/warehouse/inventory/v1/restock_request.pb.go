@@ -642,7 +642,7 @@ type RestockRequest struct {
 	Id               uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	RequestingTeamId uint64                 `protobuf:"varint,2,opt,name=requesting_team_id,json=requestingTeamId,proto3" json:"requesting_team_id,omitempty"`
 	WarehouseId      uint64                 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
-	// A shipping_service courier code (opaque) — how the goods reach the warehouse.
+	// A courier code (opaque) — a shipment_service channel's `code` — how the goods reach the warehouse.
 	ShippingCode  string               `protobuf:"bytes,8,opt,name=shipping_code,json=shippingCode,proto3" json:"shipping_code,omitempty"`
 	Status        RestockRequestStatus `protobuf:"varint,9,opt,name=status,proto3,enum=warehouse.inventory.v1.RestockRequestStatus" json:"status,omitempty"`
 	CreatedAtUnix int64                `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`

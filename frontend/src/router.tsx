@@ -21,8 +21,8 @@ const WarehouseEditPage = lazy(() =>
 const CategoriesPage = lazy(() =>
   import("./pages/categories").then((m) => ({ default: m.CategoriesPage })),
 );
-const ShippingChannelsPage = lazy(() =>
-  import("./pages/shipping-channels").then((m) => ({ default: m.ShippingChannelsPage })),
+const ShipmentChannelsPage = lazy(() =>
+  import("./pages/shipment-channels").then((m) => ({ default: m.ShipmentChannelsPage })),
 );
 const ProductsPage = lazy(() =>
   import("./pages/products").then((m) => ({ default: m.ProductsPage })),
@@ -222,7 +222,8 @@ export const router = createBrowserRouter([
       // type reaches it under /teams. Non-warehouse teams edit in a dialog instead (#59).
       { path: "teams/:teamId/edit", element: <WarehouseEditPage /> },
       { path: "categories", element: <CategoriesPage /> },
-      { path: "shipping", element: <ShippingChannelsPage /> },
+      // The courier catalogue — shipment_service (docs/business/shipment). Root only, from the nav.
+      { path: "shipping", element: <ShipmentChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "products/discover", element: <DiscoverProductsPage /> },
       { path: "products/new", element: <ProductEditPage /> },

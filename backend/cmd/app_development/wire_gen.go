@@ -16,7 +16,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/shipping_service/shipping_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
@@ -45,7 +45,7 @@ func InitializeApp() (*App, error) {
 	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
 	team_v1Service := team_v1.NewService(db, userServiceClient)
-	shipping_v1Service := shipping_v1.NewService(db)
+	shipment_v1Service := shipment_v1.NewService(db)
 	product_v1Service := product_v1.NewService(db)
 	liability_v1Service := liability_v1.NewService(db)
 	inventory_v1LiabilityPoster := NewLiabilityPoster(liability_v1Service)
@@ -68,7 +68,7 @@ func InitializeApp() (*App, error) {
 	docstoreConfig := NewDocumentConfig(config)
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
 	region_v1Service := region_v1.NewService(db)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipping_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, docstoreConfig, roleResolver, signer)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-code-never-changes](#a-code-never-changes) | `code` is fixed at create — only `name` and `desc` are editable |
 | [the-three-channels-are-seeded](#the-three-channels-are-seeded) | `jne`, `jnt`, `sicepat` arrive with the migration |
 | [a-channel-records-updated-at](#a-channel-records-updated-at) | `shipment_channels` gains `updated_at` |
+| [the-prototype-is-accepted](#the-prototype-is-accepted) | screens and `warehouse.shipment.v1` accepted at design_accept |
+| [the-old-catalogue-bridges-by-code](#the-old-catalogue-bridges-by-code) | `shipping_service` is deleted; code-storing screens read `shipment_service` by code |
 
 ---
 
@@ -326,3 +328,51 @@ erDiagram
     timestamp updated_at "edit, delete, restore"
   }
 ```
+
+---
+
+## the-prototype-is-accepted
+
+> Owner (2026-09-16): **"yes, i accept the design, make it fully implemented"** — at `design_accept` for the
+> Storybook prototype ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)).
+
+**The verdict.** The screens AND the contract (`warehouse.shipment.v1`) are accepted together
+([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)),
+including the five details the decisions did not state:
+
+| accepted with the screens | |
+| --- | --- |
+| `ShipmentChannelListFilter.include_deleted`, default false | the management page sets it; the picker and the app do not |
+| `ShipmentChannelByIds` | the repo's `ByIds` spelling |
+| proto field `desc` | the column's own name |
+| code `^[a-z0-9_]+$`, max 40 | a stable lowercase key |
+| restore has no confirm, delete does | restore is undone by deleting |
+
+A contract change from here is a new pass, not an amendment.
+
+---
+
+## the-old-catalogue-bridges-by-code
+
+> Owner (2026-09-16): **"Shipment, plus a code bridge"** — to *"how far does fully implemented go, while order and
+> restock screens still store a courier CODE?"*
+
+**The verdict.** `shipment_service` replaces `shipping_service` as the ONE courier catalogue now. Screens that still
+store a courier **code** (`shipping_code` on selling orders and restocks) read names from `shipment_service` by that
+code. Moving those records to `shipment_channel_id` belongs to the order redesign, not to this pass.
+
+```mermaid
+flowchart LR
+  ROOT["root — /shipping page"] --> S["shipment_service"]
+  NEW["future order_service — shipment_channel_id"] -.->|"ByIds"| S
+  OLD["selling orders, restocks — shipping_code"] -->|"List, matched by code"| S
+  X["shipping_service, warehouse.shipping.v1"] -->|"deleted"| GONE["—"]
+```
+
+| | |
+| --- | --- |
+| deleted | `shipping_service`, `warehouse.shipping.v1`, `pages/shipping-channels` |
+| kept, re-pointed | `ShippingSelect` (live channels, still emits a code), `ShippingBadge` (names by code, deleted ones included) |
+| the `/shipping` menu | opens the new page, **root only** ([only-root-manages-channels](#only-root-manages-channels)) |
+| ⚠ old data | existing rows with a code outside the new seed (e.g. `anteraja`) render as the raw code until root creates that channel |
+| ⚠ old table | `shippings` is left in existing databases, unused — no migration of another service may drop it |

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import type { Shipping } from "../../gen/warehouse/shipping/v1/shipping_pb";
+import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
 import { useShippingCatalogue } from "../../features/shipping/catalogue";
 
 export interface ShippingSelectProps {
@@ -28,9 +28,11 @@ export function ShippingSelect({
 }: ShippingSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("catalog.shippingSelect.placeholder");
-  const { couriers, loading, error } = useShippingCatalogue();
+  const { couriers: catalogue, loading, error } = useShippingCatalogue();
+  // A deleted channel is never offered for NEW work — the shared catalogue carries them for the badges.
+  const couriers = useMemo(() => catalogue.filter((c) => !c.isDeleted), [catalogue]);
 
-  const { collection, filter, set } = useListCollection<Shipping>({
+  const { collection, filter, set } = useListCollection<ShipmentChannel>({
     initialItems: couriers,
     itemToString: (courier) => courier.name,
     itemToValue: (courier) => courier.code,

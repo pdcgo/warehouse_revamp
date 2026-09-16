@@ -178,23 +178,17 @@ export const products = [
   ...anggrek,
 ];
 
-// ── Courier catalogue ───────────────────────────────────────────────────────────────────────────
-// ⚠ Codes are LOWERCASE, matching ShippingBadge's colour map (`jne`, `jnt`, `sicepat`, …). A badge
-// looks up its palette by code, so an uppercase fixture would quietly fall through to the unknown-
-// courier gray and the colour stories would be testing the wrong branch.
-export const couriers = [
-  { id: 81n, code: "jne", name: "JNE Reguler", active: true },
-  { id: 82n, code: "sicepat", name: "SiCepat REG", active: true },
-  { id: 83n, code: "anteraja", name: "AnterAja", active: true },
-  { id: 84n, code: "pos", name: "POS Indonesia", active: false },
-];
-
-// The SHIPMENT channel catalogue (docs/business/shipment) — the prototype that replaces `couriers`.
+// ── Courier catalogue — shipment_service (docs/business/shipment) ────────────────────────────────
 //
 // The three the owner named, plus one DELETED channel, because every rule worth testing is about the
 // difference: the picker hides it, the management list hides it until asked, and a by-id lookup still
-// names it (a-deleted-channel-still-resolves-by-id). Ids are distinct from `couriers` so a story can
-// never pass by reading the old catalogue.
+// names it (a-deleted-channel-still-resolves-by-id).
+//
+// ⚠ Codes are LOWERCASE, matching ShippingBadge's colour map. A badge looks up its palette by code, so an
+// uppercase fixture would quietly fall through to the unknown-courier gray.
+//
+// Some order fixtures below use `anteraja`, which is NOT here on purpose: it is the old-data case the
+// code bridge renders as the raw code (the-old-catalogue-bridges-by-code).
 export const shipmentChannels = [
   { id: 91n, code: "jne", name: "JNE", desc: "Pickup daily at 15:00", isDeleted: false },
   { id: 92n, code: "jnt", name: "J&T", desc: "", isDeleted: false },

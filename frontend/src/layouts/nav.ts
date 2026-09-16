@@ -227,8 +227,12 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     menu.push(TEAMS);
     // Categories are one GLOBAL taxonomy, curated by root/admin — same gate as Teams.
     menu.push(CATEGORIES);
-    // Shipping channels are one GLOBAL courier catalogue, curated by root/admin — same gate.
-    menu.push(SHIPPING);
+    // Shipping channels are one GLOBAL courier catalogue, and only ROOT curates it
+    // (only-root-manages-channels, docs/business/shipment). An admin would see a page of writes the
+    // server refuses — so the item is offered to root alone.
+    if (role === Role.ROOT) {
+      menu.push(SHIPPING);
+    }
     // Stock lives at warehouses; root/admin oversee every warehouse's inventory (they pick one).
     menu.push(INVENTORY);
   }

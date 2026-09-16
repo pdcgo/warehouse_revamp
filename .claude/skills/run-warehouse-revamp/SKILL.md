@@ -150,8 +150,8 @@ node .claude/skills/run-warehouse-revamp/driver.mjs setup --target test
 ```
 
 ```
-→ migrate up --service shipping_service
-2026/07/21 15:04:25 OK   00001_create_shippings.sql (19.7ms)
+→ migrate up --service shipment_service
+2026/09/16 17:58:42 OK   00001_create_shipment_channels.sql (17.5ms)
 → seed dev fixture
 2026/07/21 15:04:25 dev fixture seeded: teams DEVWH/DEVSELL, users dev/wh_owner/wh_staff/seller
 
