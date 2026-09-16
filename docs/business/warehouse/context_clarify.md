@@ -158,6 +158,52 @@ sequenceDiagram
 | ⛔ it is **batch** | not yet — one warehouse per call. [Why it should be](#the-payload-as-i-would-write-it) |
 | history | no effective-dating. The order froze the amount, and a `warehouse_fee_terms_log` records who changed the rate and when — the pattern `liability_terms_log` already uses |
 
+### the-rate-moves-in-five-steps-and-no-day-charges-differently
+
+The elaboration of [who-owns-the-rate-after-this](#who-owns-the-rate-after-this). **What is true today, read
+off the code** — this is what any answer has to survive:
+
+| | today |
+| --- | --- |
+| the rate | `liability_terms.handling_fee`, `int64`, **flat per order**, grain `(creditor, debtor)` with `counterparty_id = 0` as the default row |
+| the lookup | `termsFor(warehouse, seller)` → the pair's row, else the default, else nothing |
+| nothing configured | **charges nothing.** Also: no warehouse on the order, or the warehouse IS the seller → nothing |
+| when it is charged | on the `OrderPlaced` **push**, at-least-once, idempotent on `(source_type, source_id, counterparty)` — **not at order time** |
+| the reversal | ⚠ `ReverseOrder` **reads back what was charged** and never recomputes, *"a rate changed between placement and cancellation would make it disagree by design"* |
+| governance already built | actor on every edit · a **`reason` required** when the editor is not the creditor's own person · `liability_terms_log` · `LiabilityTermsHistoryList` |
+| what the order keeps | **nothing.** The fee exists only as a ledger row |
+
+⚠ **The reversal leg is the argument.** Liability already refuses to recompute a fee it once posted, for exactly
+the reason the charge leg should not compute one either: the rate can change underneath. Half of that principle
+is shipped.
+
+**The fork, and why it is not really three-sided:**
+
+| | |
+| --- | --- |
+| **A — the rate moves**, liability posts what it is handed | ✅ one owner, one number. The price of the warehouse's work is set by the warehouse, and liability goes back to owing and settling. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
+| **B — the rate stays**, `warehouse_service` only calculates | ⛔ `WarehouseFeeCalculate` becomes a proxy for another service's column, and `warehouse_service` owns nothing it can answer for |
+| **C — both hold a copy** | ⛔ this is what happens by DEFAULT if `fee_bp` is added while `handling_fee` stays. It is **#5 in the rollup happening a second time**: the screen quotes one number, the ledger charges the other, and nothing compares them |
+
+**Five steps, each deployable on its own, none of them changing a charge:**
+
+```mermaid
+flowchart TD
+  S1["1 — warehouse_service: terms table, the log, the history RPC, WarehouseFeeCalculate. Nothing charges yet"]
+  S2["2 — backfill: each liability_terms row becomes fee_bp 0, min_fee = max_fee = the flat fee. The same charge, exactly"]
+  S3["3 — orders gains warehouse_fee and the rate snapshot. Finalize calls Calculate and freezes. The event carries the amount"]
+  S4["4 — liability posts the amount from the event. chargeHandlingFee stops reading terms"]
+  S5["5 — drop liability_terms.handling_fee and its field on the Credit Terms screen"]
+  S1 --> S2 --> S3 --> S4 --> S5
+```
+
+**The charge only ever changes when a warehouse edits its own rate** — step 2 reproduces today's flat fee as a
+degenerate percent (`0%`, floor = cap), so every pair keeps paying what it pays until somebody decides otherwise.
+
+⚠ **Four things must travel with the rate or the move is a regression:** the **pair grain** and its default row ·
+the **actor + `reason`** on every edit · the **history** RPC · and *nothing configured = charge nothing*. They
+are all built in liability today, and none of them is in your field list.
+
 ### closed-means-refused
 
 An open/close grid nothing consults is decoration — that is its state today.
@@ -230,7 +276,9 @@ already ships.
 ### who-owns-the-rate-after-this
 `liability_terms.handling_fee` is live. Does it **move** to `warehouse_service` and get dropped there, or does
 `warehouse_service` only *calculate* while liability keeps storing?
-**→ Recommend the move**, with the flat→`min = max` migration so no pair's charge changes on the day.
+**→ Recommend the move** — [the five steps, the fork and what must travel with it](#the-rate-moves-in-five-steps-and-no-day-charges-differently).
+⚠ Doing nothing is not neutral: adding `fee_bp` while `handling_fee` stays **is** the two-copies option, chosen
+by accident.
 
 ### does-the-order-freeze-the-fee
 Does `orders.warehouse_fee` hold the amount the order was quoted, with liability posting **that** number rather
