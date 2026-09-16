@@ -62,6 +62,8 @@ when order created. its bring 4 things.
     - `warehouse_id`
     - `platform_type`
     - `platform_total`
+    - `receipt`
+    - `receipt_file`
 
 4. `order_draft_platform_items`
 
@@ -117,12 +119,28 @@ stateDiagram-v2
 
 state "Third party App" as app
 state "New Order Draft" as draft
-state "Customer Service" as cs
-state "List Order Draft" as felist
+state "List Order Draft Frontend" as felist
+state "Create Order Frontend" as createfe
+state "Avoid" as avoid
+state "New Order Created" as ord
+state "Draft Deleted" as deldraft
 
 app-->draft: create new order draft
-cs-->felist: Check new draft
-draft-->felist
+draft-->felist: showed in
+
+state csdecision <<choice>>
+    felist-->csdecision
+    
+    csdecision-->avoid: customer service still busy for other work
+    avoid-->felist: customer service check again if another work finished
+    csdecision-->createfe: customer service select draft to finalize
+
+draft-->createfe: seed form data in frontend
+state fork_state <<fork>>
+
+createfe-->fork_state
+fork_state-->deldraft: delete draft
+fork_state-->ord: finalized and create new order
 
 ```
 
