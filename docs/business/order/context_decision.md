@@ -13,6 +13,18 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
 | [the-order-has-eight-statuses](#the-order-has-eight-statuses) | the status set, and every move allowed between them |
 | [lost-is-final](#lost-is-final) | an order marked `lost` never moves again |
+| [the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs) | the buyer-paid figure is `platform_total` everywhere — the build's `marketplace_total` is renamed |
+| [superseded-the-warehouse-fee-is-a-percentage-of-our-total](#superseded-the-warehouse-fee-is-a-percentage-of-our-total) | ⛔ reversed — the basis became `sub_total` |
+| [the-warehouse-fee-is-a-percentage-of-the-goods](#the-warehouse-fee-is-a-percentage-of-the-goods) | the fee is a percent of `sub_total`, the goods alone — never the shipping, never `platform_total` |
+| [platform-is-the-word-for-the-outside-marketplace](#platform-is-the-word-for-the-outside-marketplace) | one vocabulary: `platform_type`, `platform_total` |
+| [an-order-records-no-shipping-cost](#an-order-records-no-shipping-cost) | shipping is the platform's money — the order never stores what it cost |
+| [the-cross-charge-lives-on-the-line](#the-cross-charge-lives-on-the-line) | each line carries its owner and its markup — there is no order-level cross cost |
+| [a-lines-money-is-frozen-at-finalize](#a-lines-money-is-frozen-at-finalize) | the money columns are written once and never recomputed |
+| [superseded-the-two-draft-line-tables-are-not-linked](#superseded-the-two-draft-line-tables-are-not-linked) | ⛔ reversed — there is only one line table now |
+| [a-draft-holds-only-the-platforms-lines](#a-draft-holds-only-the-platforms-lines) | a draft is the header plus what the platform said — nothing of ours |
+| [drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app) | a person never drafts — Customer Service creates the order directly |
+| [the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend) | the draft seeds the create-order form in the browser; there is no promote RPC |
+| [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
 
 ---
 
@@ -307,3 +319,426 @@ stateDiagram-v2
 **The spec.** Every move out of `lost` is refused. **The consequence, stated so it is not rediscovered:** a
 parcel found after being declared lost does **not** come back through its order — its goods re-enter stock by
 some other path, which no doc describes yet (clarify *Awaiting*).
+
+---
+
+## the-total-is-ours-the-platform-total-is-theirs
+
+> Owner (2026-09-16): **"platform_total win"** — asked as whether the buyer-paid figure keeps the build's
+> name `marketplace_total` or the doc's new `platform_total`. Written into §Different `total` and
+> `platform_total`.
+
+**The verdict.** Two figures, never mixed, and the buyer-paid one is **`platform_total`** in every doc,
+proto, column and screen.
+
+| | what it is | who computes it | what reads it |
+| --- | --- | --- | --- |
+| `total` | **our** price for the order, as the system calculates it | us | the **warehouse fee** basis is `sub_total`, not this ([the-warehouse-fee-is-a-percentage-of-the-goods](#the-warehouse-fee-is-a-percentage-of-the-goods)), margin |
+| `platform_total` | what the **storefront actually took** from the buyer, after its vouchers and subsidies | the marketplace | settlement's `initial_total` |
+
+```mermaid
+flowchart LR
+  B["the buyer paid"] --> PT["platform_total"]
+  PT --> IT["settlement initial_total"]
+  OP["our own price"] --> T["total"]
+  T --> WF["warehouse fee — a percent of it"]
+  PT -.->|"never added to margin or revenue"| T
+```
+
+**What changes.** The shipped column is `orders.marketplace_total`, so this is a rename, not a new field —
+and it stays a **fact, not an estimate**
+([marketplace-total-is-a-fact-not-an-estimate](../settlement/context_decision.md#marketplace-total-is-a-fact-not-an-estimate),
+whose own name now reads against the vocabulary it described).
+
+| where | roughly |
+| --- | --- |
+| `proto/` — `selling/v1/order.proto`, `settlement/v1/settlement.proto` | 5 sites, then regenerate |
+| `backend/` — the model, `order_place.go`, the settlement poster, tests | 25 |
+| `frontend/src/` — the order form, the detail panel, the settlement screens, both locale files | 35 |
+| `docs/` — settlement's context and decisions, the schema doc | 64 |
+| a migration renaming the column added by `00008_order_marketplace_total.sql` | 1 |
+
+⚠ **What it leaves open:** `marketplace_type` still says *marketplace*, so one doc now uses both words.
+Settlement's append-only decisions keep the old name in their text and are renamed by reference, not edited.
+
+---
+
+## superseded-the-warehouse-fee-is-a-percentage-of-our-total
+
+> ⛔ **REVERSED — NOT IN FORCE.** Superseded by [the-warehouse-fee-is-a-percentage-of-the-goods](#the-warehouse-fee-is-a-percentage-of-the-goods):
+> the owner made the basis `sub_total`, *"goods only"*, the same day. Kept because this file is append-only.
+> **Do not build from it.**
+
+> Owner (2026-09-16): **"yes"** to *"Is the warehouse fee a percentage of `total` (our price), not
+> `platform_total`?"*
+
+**The verdict.** `WarehouseFeeCalculate`'s `order_total` is **`orders.total`** — our own figure. The
+platform's discounting never changes what the warehouse is paid.
+
+```mermaid
+sequenceDiagram
+  participant O as order_service
+  participant W as warehouse_service
+  participant B as balance
+  O->>W: WarehouseFeeCalculate — orders.total, warehouse_id
+  W-->>O: fee_percent, max_fee, calculated_warehouse_fee
+  O->>O: freeze it as orders.warehouse_fee
+  O->>B: the AMOUNT, never the rate
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| basis | `orders.total` — never `platform_total`, which can be missing and would compute a fee of 0 |
+| rate | `fee_percent`, capped by `max_fee`, both from the warehouse's own config |
+| frozen | when the order calls, per [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records) |
+| stored | `orders.warehouse_fee`, the frozen copy |
+| balance | is told the amount and records it; it computes nothing |
+
+**Why it holds up.** The work of picking and packing is the same whether the marketplace discounted the
+sale or not, so the warehouse should not absorb a promotion it had no part in.
+
+⚠ **What it leaves open:** `total` includes **shipping cost**, so the warehouse earns a percentage of the
+courier's fee as well as of the goods. If that is not intended the basis is `subtotal`, not `total`.
+⚠ And the build still charges a **flat** `liability_terms.handling_fee`, which this supersedes —
+see [is-the-old-flat-rate-column-dropped](../warehouse/context_clarify.md#question).
+
+---
+
+## platform-total-is-required-at-finalize
+
+> Owner (2026-09-16): **"yes"** to *"Is `platform_total` required at finalize?"*
+
+**The verdict.** An order cannot be finalized without `platform_total`. It is the figure settlement opens
+the account on, so an order missing it can never be settled.
+
+```mermaid
+flowchart LR
+  F{"platform_total present?"}
+  F -->|"no"| R["finalize REFUSES — the person reads it off the storefront"]
+  F -->|"yes"| C["order created"]
+  C --> S["settlement opens on it as initial_total"]
+```
+
+**The spec.** Checked at finalize, on **both** doors — the typed order and the promoted draft. A draft may
+hold it empty while it is still being worked on; finalize is where it becomes required.
+
+⚠ **What must change in the build.** `openSettlement` today **returns early when the figure is 0**, treating
+0 as *"an order taken over the phone"* — silently, with no log line. With this decision that case cannot
+arise, so the early return becomes dead code and should be replaced by the finalize check. ⚠ And
+`OrderDraftPromote` passes no total at all, so **every promoted draft is currently a 0** — the draft must
+carry `platform_total` and finalize must copy it.
+
+---
+
+## the-warehouse-fee-is-a-percentage-of-the-goods
+
+> Owner (2026-09-16), in §Table That Must Have: *"`sub_total`, goods only, used for warehouse fee charge
+> calculation"* — reversing [superseded-the-warehouse-fee-is-a-percentage-of-our-total](#superseded-the-warehouse-fee-is-a-percentage-of-our-total)
+> the same day, in the direction I recommended.
+
+**The verdict.** The fee is a percentage of **`sub_total`** — the goods alone. Shipping is not in the basis,
+and neither is `platform_total`.
+
+```mermaid
+flowchart LR
+  ST["sub_total — the goods"] --> FEE["fee_percent, capped by max_fee"]
+  FEE --> WF["orders.warehouse_fee — frozen"]
+  SH["shipping — the courier's price"] -.->|"not in the basis"| FEE
+  PT["platform_total — what the buyer paid"] -.->|"not in the basis"| FEE
+```
+
+**Why it beats the alternative.** Shipping is a proxy for the **courier's** cost, not the warehouse's: the
+same box, same picking and same packing, priced 80% apart because one buyer lives further away or because a
+free-shipping promotion was running. Basing the fee on the goods asks the one question the warehouse can
+answer — *what were the goods worth?*
+
+**The spec.**
+
+| | |
+| --- | --- |
+| basis | `orders.sub_total` |
+| rate | `fee_percent`, capped by `max_fee`, from the warehouse's own config |
+| frozen | when the order calls, per [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records) |
+| stored | `orders.warehouse_fee` |
+| balance | is told the amount; it computes nothing |
+
+⚠ **It costs nothing today** — `warehouse_service` does not exist yet, so `WarehouseFeeCalculate`'s
+`order_total` payload field is renamed to the goods figure before anything is built against it.
+
+---
+
+## platform-is-the-word-for-the-outside-marketplace
+
+> Owner (2026-09-16): **"platform_total win"**, then `marketplace_type` → **`platform_type`** in
+> §Table That Must Have.
+
+**The verdict.** One vocabulary for the storefront outside our system: **platform**. `platform_type`,
+`platform_total`.
+
+| ours | theirs |
+| --- | --- |
+| `sub_total` · `total` · `warehouse_fee` | `platform_type` · `platform_total` |
+
+⚠ **What still says *marketplace*** and is now inconsistent: the shipped `orders.marketplace_total` column
+and `order.proto`, `shops.marketplace` and its enum, settlement's `context.md` and its append-only decisions
+(renamed by reference, never edited), and the frontend's `MarketplaceInfoForm` plus both locale files. The
+rename lands as one change per side, not gradually — a half-renamed vocabulary is worse than either name.
+
+---
+
+## an-order-records-no-shipping-cost
+
+> Owner (2026-09-16): **"no"** to *"Does an order record shipping cost?"* — asked because the field vanished
+> from §Table That Must Have while the journey still hands parcels to a shipping channel.
+
+**The verdict.** An order stores **no shipping cost**. The buyer pays the platform, the platform pays the
+courier, and none of that money passes through us — so there is nothing for the order to record.
+
+```mermaid
+flowchart LR
+  B["the buyer"] --> P["the platform — collects the shipping"]
+  P --> C["the courier"]
+  O["our order"] -.->|"never sees this money"| P
+  O --> G["goods_cost"]
+  O --> W["warehouse_fee"]
+  O --> T["total_cost"]
+```
+
+**What the order still records about shipping** — the facts, never the money: which **courier**
+(`shipping_code`), the **receipt** (`receipt`, `receipt_file`), and the draft's *"shipping info"*.
+
+**What changes in the build.** `orders.shipping_cost` is dropped, `total` stops being
+`subtotal + shipping_cost`, and **`margin = total − cogs − shipping_cost` no longer holds** — with shipping
+gone it becomes `platform_total − total_cost`. The order form's shipping-cost input and the detail panel's
+row go with it.
+
+⚠ **It does not touch inbound shipping.** `shipping_fee` and `cod_fee` on a restock or return are the
+warehouse's real outlay and stay exactly as the balance doc describes them — a different journey, in the
+opposite direction.
+
+---
+
+## the-cross-charge-lives-on-the-line
+
+> Owner (2026-09-16), in §Table That Must Have: a third table, `order_items`, carrying `owner_team_id`,
+> `price` (*"if cross, price before markup"*), `markup_price`, `markup_total` and `total`.
+
+**The verdict.** The cross/shared charge is a fact about a **line**, not about an order. One order may borrow
+from several teams, and each line names the team it is owed to.
+
+```mermaid
+flowchart TB
+  O["one order — team A"]
+  O --> L1["line 1 — A's own product: price = markup_price, markup_total = 0"]
+  O --> L2["line 2 — B's product: markup_total owed to B"]
+  O --> L3["line 3 — C's product: markup_total owed to C"]
+  L1 --> G["goods_cost = sum of line totals"]
+  L2 --> G
+  L3 --> G
+  G --> T["total_cost = goods_cost + warehouse_fee"]
+```
+
+**What it settles beyond the grain.** `goods_cost` is a **cost**, not a sale figure: a line's `price` is the
+figure *before* markup, so the sum of `markup_price × qty` is what the goods cost the selling team — own
+lines at their own cost, borrowed lines at the owner's cost plus that owner's markup. That is the same
+arithmetic the product doc states as `COGS = UnitPrice + fee`, now written per line.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `owner_team_id` | the team whose goods this line sold. Equal to the order's team on an own line |
+| `price` | the unit figure before markup |
+| `markup_price` | the unit figure after the owner's markup. On an own line, the same as `price` |
+| `markup_total` | `(markup_price − price) × qty` — **what is owed to `owner_team_id`** |
+| `total` | `markup_price × qty` — this line's cost |
+| the order | `goods_cost = Σ total` · `total_cost = goods_cost + warehouse_fee` |
+
+⚠ **Renamed the same day** (owner, 2026-09-16): `price` → **`unit_cost`**, `markup_price` → **`unit_cost_with_markup`**
+— the figures and the verdict are unchanged, and the names now match `goods_cost` and `total_cost` beside them,
+and the build's own `order_items.unit_cost`.
+
+**What it closes.** §Whats Charge In Order's `cross_product_cost` needs no order-level field: it is
+`Σ markup_total`, per owner. And the half-finished-order design's *"frozen owner per line"* now has a home —
+`owner_team_id` on the line rather than a `0` riding on an event.
+
+---
+
+## a-lines-money-is-frozen-at-finalize
+
+> Owner (2026-09-16), §Order Items Table: *"money in columns are frozen at finalize and never recomputed."*
+
+**The verdict.** Every money column on a line — and the order totals summed from them — is written **once**,
+at finalize, and never recalculated afterwards.
+
+```mermaid
+flowchart LR
+  F["finalize"] --> W["unit_cost, unit_cost_with_markup, total, markup_total"]
+  W --> O["goods_cost, warehouse_fee, total_cost"]
+  R["the owner raises its markup next month"] -.->|"never reaches an order already placed"| W
+  P["a product is repriced"] -.->|"never reaches it either"| W
+```
+
+**Why it matters more than it reads.** A markup, a fee percentage and a product's cost all change over time.
+Recomputing would rewrite what a team was charged for a sale that already happened, and two teams would then
+disagree about a debt neither of them changed. It is the same rule the ledger's reversal already follows —
+`ReverseOrder` reads back what was charged rather than deriving it, *"a rate changed between placement and
+cancellation would make it disagree by design"*.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| frozen | `unit_cost` · `unit_cost_with_markup` · `total` · `markup_total` · `goods_cost` · `warehouse_fee` · `total_cost` |
+| written | at finalize, in the order's own transaction |
+| never | recomputed on read, on a rate change, or on a repricing |
+| a correction | is a new fact — a reversal or an adjustment — never an edit of these columns |
+
+⚠ **What it makes sharper, not smaller.** If the picked quantity differs from the ordered one, these figures
+stay as written — so the difference can only be carried by a **new** fact, which is why the order still has to
+announce what actually shipped
+([the-order-announces-what-shipped-and-what-came-back](./context_clarify.md#the-order-announces-what-shipped-and-what-came-back)).
+
+---
+
+## superseded-the-two-draft-line-tables-are-not-linked
+
+> ⛔ **REVERSED — NOT IN FORCE.** Superseded by [a-draft-holds-only-the-platforms-lines](#a-draft-holds-only-the-platforms-lines)
+> the same day: `order_draft_items` was removed, so there are no longer two line tables to link. Kept because
+> this file is append-only. **Do not build from it.**
+
+> Asked as *"add a nullable `platform_item_id` to `order_draft_items`, so a mapped line names the platform
+> line it came from?"* — **Owner: "no need, we dont have that."** Against my recommendation.
+
+**The verdict.** A draft holds two line tables that **do not reference each other**.
+`order_draft_platform_items` is what the platform said; `order_draft_items` is what a person decided we will
+ship. They sit side by side and are read together by eye.
+
+```mermaid
+flowchart LR
+  P["order_draft_platform_items — platform_title, platform_price, qty"]
+  M["order_draft_items — product_id, qty"]
+  P -.->|"no join — a person reads one and writes the other"| M
+  PUSH["the scanner re-pushes"] --> P
+  CS["a person maps"] --> M
+```
+
+**Why it is defensible.** The relationship often is not one-to-one — a platform line can be a bundle of two
+of our products, and two lines can be one — so a per-line link would be a claim the data cannot always
+support. The split still buys the thing that matters: **the push owns one table and the person owns the
+other**, so a re-scrape can replace the platform's lines wholesale and never destroy someone's work.
+
+**What follows from it, recorded so it is not rediscovered as a bug:**
+
+| | |
+| --- | --- |
+| progress | a draft cannot say *"5 of 8 mapped"* — only that both tables have lines. Counts can match while the wrong products are mapped |
+| review | the reviewer compares the two lists **by eye**. That is the control, so the screen must show them side by side |
+| auto-mapping | nothing records *this platform SKU became that product*, so repeat products cannot arrive pre-mapped from the draft's own history |
+| bundles | a bundle is expressible precisely because no link is claimed |
+
+⚠ **The review screen carries the weight this design gives up.** With no link and no progress count, the only
+thing standing between a mis-scrape and a real order is a person reading two lists — so finalize must show
+them together, and quantities must be easy to compare.
+
+---
+
+## drafts-exist-only-for-the-third-party-app
+
+> Owner (2026-09-16), §Order Draft Behavior and What Used For 1–2: *"order draft is used **only by third
+> party app**, when manual, customer service just simple direct create order"* · *"order draft exists for
+> accomodate third party app to not create order directly. Its because third party app have incomplete data
+> to create a proper order."*
+
+**The verdict.** A draft is the **app's inbox**, nothing else. A person never drafts: Customer Service types
+an order and creates it.
+
+```mermaid
+flowchart LR
+  APP["third-party app — incomplete data"] --> D["order_drafts"]
+  D --> R["a person completes it in the browser"]
+  R --> O["orders"]
+  CS["Customer Service — complete data"] --> O
+```
+
+**Why the draft exists at all.** Not as a save-for-later: an app **cannot** produce a valid order, because it
+does not know our products, our warehouse or the rest. The draft is the shape that holds an incomplete scrape
+until a person finishes it — which is why *"nothing at draft"* is structural, and why a draft can never be
+what a hurried person uses to postpone typing an order properly.
+
+**What it closes.** The form's minted `form-…` external ids disappear with the person-drafting path.
+
+---
+
+## the-frontend-finalizes-a-draft-not-the-backend
+
+> Owner (2026-09-16), §Order Draft Behavior and What Used For 3–4: *"finalize order draft to order not doing
+> by backend. draft is fetched by frontend and seed manually in frontend"* · *"`order_draft_platform_items`
+> data is just showed in frontend as reference."*
+
+**The verdict.** There is **no promote RPC**. The browser fetches the draft, seeds the create-order form from
+it, a person completes it, and the ordinary create-order call runs. The platform's lines are shown beside the
+form as reference and are never submitted.
+
+```mermaid
+flowchart LR
+  D["GET the draft"] --> F["seed the create-order form"]
+  P["order_draft_platform_items"] -.->|"shown as reference only"| F
+  F --> H["a person edits and submits"]
+  H --> C["OrderCreate — one door, all the rules"]
+```
+
+**What it buys.** One door into `orders`, so the rules cannot differ between a typed order and a finalized
+draft — the reason the build gave for sharing a code path, now achieved by having only one path.
+
+⚠ **What it costs, recorded so it is not rediscovered.** The build deletes the draft **inside the order's
+transaction**, so *"the order exists and the draft is gone"* is one fact. Two separate calls cannot be atomic:
+if the create succeeds and the draft is not removed, the draft stays in the queue and can be finalized again.
+
+| | |
+| --- | --- |
+| the safety net that already exists | [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) — the second attempt carries the same ref and is refused |
+| what the net does not fix | a **stale draft** sitting in the queue, which a person will open and work on again |
+| ⚠ **→ Recommend** | the create-order request carries `order_draft_id`, and the backend removes the draft in the same transaction. The seeding stays in the browser; only the cleanup moves back |
+
+⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#the-two-draft-line-tables-are-not-linked)
+assumed the push owns the platform lines and a **person** owns ours. With finalize happening entirely in the
+browser, nobody saves a mapping back to the draft — so either the **app** writes `order_draft_items` too, or
+that table has no writer at all. Asked in the clarify.
+
+---
+
+## a-draft-holds-only-the-platforms-lines
+
+> Owner (2026-09-16): **"im remove `order_draft_items`, its no sense"** — asked as *"who writes
+> `order_draft_items` — the app, or nobody?"*
+
+**The verdict.** A draft is an `order_drafts` header plus `order_draft_platform_items`. **Nothing of ours is
+stored on a draft** — no product, no owner, no cost, no mapped line.
+
+```mermaid
+flowchart LR
+  APP["third-party app"] --> H["order_drafts — ref, shop, team, warehouse, platform_type, platform_total"]
+  APP --> P["order_draft_platform_items — what the platform said"]
+  H --> F["the browser seeds the create-order form"]
+  P -.->|"reference beside the form"| F
+  F --> O["orders + order_items — the first place OUR products exist"]
+```
+
+**Why it is right.** The table had **no writer**. With
+[the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend), mapping
+happens in the create-order form and goes straight to `orders`; nothing ever saved a mapping back to a draft.
+A table nobody writes is a table that reads as a promise the system does not keep.
+
+**What it completes.** *"Nothing at draft"* is now total rather than nearly true: a draft cannot know whose
+goods a line is, what they cost, or whether a limit is breached — because it holds no product at all. Every
+check therefore lands at create, which is the one door.
+
+⚠ **The cost, stated plainly:** mapping progress is **not saved**. A person who maps six lines of an
+eight-line scrape and closes the tab starts again — the form is browser state until it is submitted. That is
+acceptable while an order is minutes of work, and is the thing to revisit if drafts ever get large.
+
+⚠ **It also corrects the ownership note** in the superseded decision above: the app owns **everything** a
+draft contains. A person writes nothing to a draft — they read it, and write an order.

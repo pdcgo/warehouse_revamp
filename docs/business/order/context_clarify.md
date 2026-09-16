@@ -147,7 +147,7 @@ sequenceDiagram
 | **two-tables-one-ref** | `orders` and `order_drafts` both carry the ref *"for order uniqueness"*, and nothing says whether one blocks the other. A check across both refuses a finalize on the draft's own row | [one check, finalize excluded](#proposed--one-uniqueness-check-across-both-tables) |
 | **half-finished-orders-have-no-finder** | five after-commit steps end at a log line; the report the code relies on (#187) is unbuilt; a crash leaves no log at all; an unresolved owner is written as `0` | [stamps + a list + retry](#proposed--the-order-records-what-followed-it) |
 | **short-pick-and-return-are-silent** | only *placed* and *cancelled* are announced. A short pick leaves another team charged for units that never left; a return never reverses COGS | [two more events](#proposed--the-order-announces-what-shipped-and-what-came-back) |
-| **the-empty-ref-lives-on-in-the-build** | the doc says the ref *"cannot empty"*; the build says `''` is *"the ordinary state of an order taken over the phone"* and skips the settlement account when `marketplace_total = 0`. See [Contradiction](#the-build-still-treats-an-empty-ref-as-a-phone-order) | a `selling_service` migration + handler check when this is built |
+| **the-empty-ref-lives-on-in-the-build** | the doc says the ref *"cannot empty"*; the build says `''` is *"the ordinary state of an order taken over the phone"* and skips the settlement account when the platform total is 0 — both now forbidden by [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize). See [Contradiction](#the-build-still-treats-an-empty-ref-as-a-phone-order) | a `selling_service` migration + handler check when this is built |
 | **two-doors-one-rule-set** | the API exists to *"speed up record the orders"* — if the reserve, shared lock and debt threshold are checked on the form and not on the API, the API is the way around them | every rule enforced on finalize, never on a screen |
 | **one-warehouse-per-order** | §Order Anatomy names *a* warehouse, but a team's stock sits in several — an order may have no single warehouse holding every line | state it: **one order ships from one warehouse**, and whoever takes it splits it |
 | **review-cannot-fail** | `Create Draft → User Review Order → User Finalize` runs one way — a reviewer who spots a bad scan has nowhere to go | approve · edit-then-approve · discard with a reason |
@@ -165,7 +165,7 @@ sequenceDiagram
 | step | fails → | lost |
 | --- | --- | --- |
 | send `OrderPlaced` ([order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go)) | logged | order fee and product fee never charged |
-| `OpenSale` | logged — ⚠ **not even logged** when `marketplace_total = 0` | no settlement account |
+| `OpenSale` | logged — ⚠ **not even logged** when the total is 0, which [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize) now forbids | no settlement account |
 | resolve line owners | logged, owner written as `0` | product fee lost **for good** — `0` reads as *nobody to pay* |
 | send `OrderCancelled` ([order_cancel.go](../../../backend/services/selling_service/selling_v1/order_cancel.go)) | logged | ⛔ a cancelled order's fees stay charged, for good |
 | `CancelSale` | logged | the account still counts a sale that never happened |
@@ -180,9 +180,7 @@ commit and send logs nothing at all.** ⚠ **The same catalogue failure also ski
    **→ Yes** — [the design](#proposed--the-order-records-what-followed-it).
 2. **When line owners cannot be resolved:** A. save the order and **hold the event** until they resolve ·
    B. refuse the order · C. keep today's `0`. **→ A.**
-3. **Is `marketplace_total = 0` refused** at create, now that every order is a marketplace order?
-   **→ Yes** — today it silently opens no account. *(Settlement asks the same from its side.)*
-4. **Where is the retry?** **→ The order detail page**, one button per missing step.
+3. **Where is the retry?** **→ The order detail page**, one button per missing step.
 
 ### one-uniqueness-check-covers-drafts-and-orders
 *(was Q1 — the rule itself is decided: [an-order-is-unique-by-shop-and-marketplace-ref](./context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref))*
@@ -301,7 +299,7 @@ flowchart LR
 [00012_order_external_ref.sql](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)
 says *"'' = there is NO marketplace reference. That is the ordinary state of an order taken over the phone"*, the
 reversed [every-marketplace-order-carries-a-unique-platform-ref](../settlement/context_decision.md#every-marketplace-order-carries-a-unique-platform-ref)
-allowed `""` for a phone order, and `openSettlement` skips `marketplace_total = 0` for the same reason.
+allowed `""` for a phone order, and `openSettlement` skips a platform total of 0 for the same reason. ⚠ The column itself is renamed to `platform_total` ([the-total-is-ours-the-platform-total-is-theirs](./context_decision.md#the-total-is-ours-the-platform-total-is-theirs)).
 **Which is wrong:** the build — the doc is the owner's current statement. **→ Recommend** a `CHECK` + handler
 check when this context is built, and deciding
 [half-finished-orders-are-found-from-the-order](#half-finished-orders-are-found-from-the-order) item 3 in the same

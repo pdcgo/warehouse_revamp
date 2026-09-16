@@ -26,20 +26,57 @@ when order created. its bring 4 things.
     - `id`, primary key
     - `order_external_ref_id`, its for order uniqueness, its cannot empty
     - `shop_id`
+    - `team_id`
+    - `warehouse_id`
     - `status`
-    - `marketplace_type`
+    - `platform_type`
     - `warehouse_fee`
     - `receipt`
     - `receipt_file`
+    
+    - `goods_cost`, goods only, used for warehouse fee charge calculation
+    - `total_cost`, goods + warehouse fee
+    - `platform_total`, is total that outside platform given. Its used for post the settlement later.
 
+2. `order_items`,
 
-2. `order_drafts`,
+    field that must have:
+    - `id`, primary key
+    - `order_id`
+    - `product_id`
+    - `owner_team_id`, who team have the product 
+    - `is_product_owned`, false if product cross/shared
+    - `qty`
+    - `unit_cost`, price product, if cross, price before markup 
+    - `unit_cost_with_markup`, price product, if cross, price after markup
+    - `markup_total`, total - (unit_cost * qty)  
+    - `total`, unit_cost_with_markup * qty
+
+3. `order_drafts`,
 
     field that must have:
     - `id`, primary key
     - `order_external_ref_id`, its for order uniqueness, its cannot empty
     - `shop_id`
-    - `marketplace_type`
+    - `team_id`
+    - `warehouse_id`
+    - `platform_type`
+    - `platform_total`
+
+4. `order_draft_platform_items`
+
+    field that must have:
+    - `id`, primary key
+    - `order_draft_id`
+    - `platform_title`
+    - `platform_price`
+    - `qty`
+    - `total`
+
+
+### Order Items Table.
+1. money in columns are frozen at finalize and never recomputed.
+
 
 ### Order Status.
 1. Status That Existed.
@@ -70,7 +107,25 @@ when order created. its bring 4 things.
     completed-->return
     ```
 
-    
+## Order Draft Behavior and What Used For.
+1. order draft is used **only by third party app**, when manual, customer service just simple direct create order.
+2. order draft exists for accomodate third party app to not create order directly. Its because third party app have incomplete data to create a proper order.
+3. finalize order draft to order not doing by backend. draft is fetched by frontend and seed manually in frontend.
+4. `order_draft_platform_items` data is just showed in frontend as reference.
+```mermaid
+stateDiagram-v2
+
+state "Third party App" as app
+state "New Order Draft" as draft
+state "Customer Service" as cs
+state "List Order Draft" as felist
+
+app-->draft: create new order draft
+cs-->felist: Check new draft
+draft-->felist
+
+```
+
 
 ## How We Manage Order Uniqueness.
 1. Order uniqueness manage by code.
@@ -120,6 +175,8 @@ stateDiagram-v2
     drop_draft-->[*]
     
 ```
+2. Inside order creation. its have complex graph, so i separate to [this](./order_creation.md)
+
 
 ## Cross Product Feature.
 ### Preface
@@ -192,7 +249,18 @@ s2-->o
 
 ```
 
-    
+## Whats Charge In Order.
+1. `warehouse_fee`, Order that processed by warehouse team charge fee.
+2. `cross_product_cost`, when Order use product from other teams.
+
+how we charge that 2 item is managed by balance service that explained in [balance context](../balance/context.md)
+
+
+
+### How Fee Calculated.
+[defer]
+
+
 
 ## Complete Journey Of The Orders.
 ```mermaid
@@ -217,38 +285,6 @@ cancel-->|no|waccept["Warehouse Accept Order"]
 
 ```
 
-## How New Order Processed.
-
-1. How User Input The Order.
-    ```mermaid
-    flowchart TD
-    s(("start"))
-    s-->u("User Check not recorded order on their own selling platform marketplace")
-    u-->isdraft{"make draft first ?"}
-    isdraft-->|yes|draftmake["User Input Draft Order"]
-        draftmake-->rev("User Review Order")
-        rev-->final("finalize the order")
-        final-->e
-    isdraft-->|no|insertfinal["User Make and finalize Order"]
-        insertfinal-->e
-
-
-    e(("end"))
-
-    ```
-2. How Selling third parties record order
-    ```mermaid
-    flowchart TD
-    s(("Start"))
-    e(("End"))
-
-    s-->th("Third Parties App Scan Order")
-    th-->draft("Create Draft Order")
-    draft-->u("User Review Order")
-    u-->final("User Finalize the Order")
-    final-->e
-    
-    ```
 
 
 ## Stock Ownership When Order Return. 
