@@ -14,7 +14,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**133 open questions across 21 files.** The seven below are shown; **126 are not** — they are not
+**134 open questions across 22 files.** The seven below are shown; **127 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 ⚠ **+11 this round, from a BRAND-NEW context** (2026-09-16) — `business/warehouse/context.md`, four lines long,
@@ -1383,17 +1383,18 @@ shop's orders and the withdrawal is reconciled against them. ⚠ Its premise has
 nullable now (recorded under *Before this round*), so the NOT NULL no longer forbids a settlement home —
 the question is which home, not whether one exists.
 
-## Where the other 126 are
+## Where the other 127 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **133**, the whole set, not to 126. Previous rounds left
+*from* these files, so the column sums to **134**, the whole set, not to 127. Previous rounds left
 that ambiguous and the sums never reconciled with the header: the last one said 116 above and 113
 here while the rows added to **119**. Re-added this round, and 119 + warehouse's 14 = 133.
 
 | File | Open | |
 | --- | ---: | --- |
 | [business/warehouse/context_clarify.md](business/warehouse/context_clarify.md#question) | 14 | 🆕 **a new context, first pass** — three of its four asks are already built elsewhere: the location + both weekly grids are `team_service.warehouse_infos` (and the grids have **no reader**), the fee is `liability_terms.handling_fee`, **flat** and live. ▲ **+3 the same day**, from the `WarehouseFeeCalculate` payload the owner then added: money as `double` · no selling team in the request · one warehouse per call. See **#7** |
-| [business/order/context_clarify.md](business/order/context_clarify.md#question) | 16 | ▲ was 14 — rewritten after the owner's 2026-09-15 edits: six decisions recorded, −2 closed, +4 opened. ⚠ **Counted as `###` headings now** — its questions are named, not numbered |
+| [business/order/context_clarify.md](business/order/context_clarify.md#question) | 17 | ▲ +1 re-routed from shipment: an order cannot be created without a channel. ▲ was 14 — rewritten after the owner's 2026-09-15 edits: six decisions recorded, −2 closed, +4 opened. ⚠ **Counted as `###` headings now** — its questions are named, not numbered |
+| [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 0 | ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 10 | ▼ was 11 — Q2 became a pointer to order's half-finished-orders question. What stayed is a contradiction, not a question |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 8 | ▼ was 9 — `found` needs no handshake |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 10 | ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |

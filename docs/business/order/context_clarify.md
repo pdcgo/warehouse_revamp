@@ -254,6 +254,13 @@ do consult it before placing"* — so the pre-check does not read as a scope vio
 *(was Q10)* §Order Draft's *"Placement"* beside *"Stock"* reads as the rack — but *"frozen at placement"* elsewhere
 means the finalize moment. **→ Say "rack placement", or drop it.**
 
+### an-order-cannot-be-created-without-a-channel
+*(re-routed from [shipment](../shipment/context_clarify.md))* The third-party app converts the platform's
+courier text to our id ([the-app-converts-the-courier-to-a-channel-id](../shipment/context_decision.md#the-app-converts-the-courier-to-a-channel-id)).
+When it cannot — a courier we have no channel for — the draft's `shipment_channel_id` stays empty. May an order
+be created from that draft? **→ No.** The person picks the channel on the create form, or root adds it first —
+an order with no courier cannot be handed over.
+
 ---
 
 # Contradiction
