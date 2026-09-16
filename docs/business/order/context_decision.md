@@ -22,6 +22,13 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-lines-money-is-frozen-at-finalize](#a-lines-money-is-frozen-at-finalize) | the money columns are written once and never recomputed |
 | [superseded-the-two-draft-line-tables-are-not-linked](#superseded-the-two-draft-line-tables-are-not-linked) | ⛔ reversed — there is only one line table now |
 | [a-draft-holds-only-the-platforms-lines](#a-draft-holds-only-the-platforms-lines) | a draft is the header plus what the platform said — nothing of ours |
+| [superseded-finalizing-deletes-the-draft-from-the-frontend](#superseded-finalizing-deletes-the-draft-from-the-frontend) | ⛔ reversed — the create call deletes it now |
+| [create-order-takes-the-draft-id-and-deletes-it](#create-order-takes-the-draft-id-and-deletes-it) | `order_draft_id` is optional on create — on success the draft goes |
+| [an-address-is-plain-names](#an-address-is-plain-names) | no region codes — an order address is the text it will be shipped to |
+| [a-draft-carries-the-scraped-address](#a-draft-carries-the-scraped-address) | the draft mirrors the order's address table, so the buyer is never retyped |
+| [one-address-per-order-and-per-draft](#one-address-per-order-and-per-draft) | exactly one address row each — unique on the parent id |
+| [shipment-channel-is-an-id-into-shipment-service](#shipment-channel-is-an-id-into-shipment-service) | the order stores an opaque id, resolved by a future `shipment_service` |
+| [the-channel-name-is-not-frozen](#the-channel-name-is-not-frozen) | the order keeps only the id — the name is always resolved live |
 | [drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app) | a person never drafts — Customer Service creates the order directly |
 | [the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend) | the draft seeds the create-order form in the browser; there is no promote RPC |
 | [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
@@ -742,3 +749,260 @@ acceptable while an order is minutes of work, and is the thing to revisit if dra
 
 ⚠ **It also corrects the ownership note** in the superseded decision above: the app owns **everything** a
 draft contains. A person writes nothing to a draft — they read it, and write an order.
+
+---
+
+## superseded-finalizing-deletes-the-draft-from-the-frontend
+
+> ⛔ **REVERSED — NOT IN FORCE.** Superseded by [create-order-takes-the-draft-id-and-deletes-it](#create-order-takes-the-draft-id-and-deletes-it)
+> the same day: the create call now carries `order_draft_id` and removes the draft itself, so the browser no
+> longer makes two calls. Kept because this file is append-only. **Do not build from it.**
+
+> Owner (2026-09-16), §Order Draft Behavior diagram: a fork out of *"Create Order Frontend"* to both
+> *"Draft Deleted"* and *"New Order Created"* — answering *"what removes the draft?"*
+
+**The verdict.** The browser does both: it creates the order and deletes the draft. There is no backend
+promote, so the two are **separate calls**.
+
+```mermaid
+flowchart LR
+  F["the create-order screen, seeded from the draft"] --> C["OrderCreate"]
+  C --> D["OrderDraftDelete"]
+  D --> Q["the draft leaves the queue"]
+```
+
+⚠ **The fork draws them as one act; they are two, and the order between them decides which failure you get.**
+
+| sequence | if the second call fails |
+| --- | --- |
+| **create, then delete** | the order exists, the draft stays in the queue. Someone opens it again — and the duplicate order is refused by [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref). **Wasted work, nothing lost** |
+| ⛔ **delete, then create** | the draft is gone and **no order exists**. The scrape is lost, and nobody is told |
+
+**→ Recommend, in order of preference:**
+
+1. **`OrderCreate` takes `order_draft_id` and removes the draft in its own transaction.** One call, one fact,
+   nothing to sequence. The seeding stays in the browser — only the cleanup moves back.
+2. Failing that: **create first, delete second, never the reverse**, with the delete retried on failure.
+
+⚠ **And a re-scrape can resurrect a finalized draft.** The app's push is create-or-update on the reference,
+so a deleted draft reappears the next time the app reads that order. **→ A push whose reference already
+belongs to a live order should be refused**, which is the same check the uniqueness rule already defines.
+
+⚠ **Drafts nobody finalizes have no ending.** *"Avoid — customer service still busy"* loops back to the list,
+and nothing ages a draft out, so the queue only grows. Not a question for this decision; worth a rule of its
+own.
+
+---
+
+## create-order-takes-the-draft-id-and-deletes-it
+
+> Owner (2026-09-16), §Order Draft Behavior 5: *"create order optionally take `order_draft_id`, its used for
+> when create order succeed, draft order is deleted"* — and [order_creation.md](./order_creation.md) draws
+> `if success → Delete Draft Order`. As recommended.
+
+**The verdict.** `order_draft_id` is an **optional** field on create. A typed order omits it; an order
+finalized from a draft carries it, and a successful create removes that draft. The browser makes **one call**.
+
+```mermaid
+flowchart LR
+  D["the draft seeds the form in the browser"] --> C["OrderCreate — with order_draft_id"]
+  C -->|"success"| X["the draft is deleted"]
+  C -->|"refused"| K["the draft is still there, and can be retried"]
+  T["a typed order"] --> C2["OrderCreate — no draft id"]
+```
+
+**What it removes.** The ordering hazard the two-call version had: there is no sequence in which the draft can
+be deleted while the order fails, so a scrape can never be lost. A refused create leaves the draft exactly
+where it was.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the field | `order_draft_id`, optional. Absent = a typed order |
+| on success | the draft is deleted |
+| on refusal | nothing is deleted — the person fixes the form and submits again |
+| a draft id that does not exist, or belongs to another team | the create is refused, rather than silently ignoring it |
+
+⚠ **Still outside the transaction, as drawn.** [order_creation.md](./order_creation.md) puts the delete on the
+`if success` branch **after** the commit, so a failed delete still leaves a finalized draft in the queue —
+the benign failure, but an avoidable one. Drafts and orders are the same service and the same database, so
+**→ recommend the delete run inside the order's transaction**, which makes *"the order exists and the draft is
+gone"* one fact.
+
+⚠ **And a re-scrape can still resurrect it.** The app's push is create-or-update on the reference, so a
+deleted draft returns the next time the app reads that platform order. **→ A push whose reference already
+belongs to a live order should be refused** — the same check the uniqueness rule already defines.
+
+---
+
+## an-address-is-plain-names
+
+> Owner (2026-09-16): **"use plain names in addresses"** — asked as *"keep the region codes beside the
+> names?"*. **Against my recommendation.**
+
+**The verdict.** `order_addresses` stores **names only**: `provinsi_name`, `kabupaten_name`,
+`kecamatan_name`, `desa_name`, `postal_code`, `address_line`, plus `customer_name` and `customer_phone`. No
+`region_service` codes are kept on the order.
+
+```mermaid
+flowchart LR
+  P["region_service — 91.599 rows keyed by kode wilayah"] --> PICK["the person picks a place"]
+  PICK --> A["order_addresses — the NAMES only"]
+  PICK -.->|"the code is not kept"| A
+  A --> LABEL["what gets printed on the parcel"]
+```
+
+**Why it holds up.** An order's address is read by a **courier**, not by a query. We no longer price
+shipping at all ([an-order-records-no-shipping-cost](#an-order-records-no-shipping-cost)), so the one thing
+the codes were needed for — rate calculation by region — is not ours to do. What remains is a label that
+must still read correctly in five years, and a frozen name does that without `region_service` existing.
+
+**What it gives up, recorded so it is not rediscovered as a bug:**
+
+| | |
+| --- | --- |
+| grouping by region | *"how many orders to Cikarang Utara"* is unanswerable — the name repeats across the country, and nothing says which one this was |
+| re-validating an old address | the stored text cannot be matched back to the current region list once a name changes upstream |
+| the picker's own answer | `AddressPicker` selects a coded row and the code is discarded on write |
+
+**→ If region analytics are ever wanted**, this is the decision to revisit first — the cheapest fix is
+adding the four codes back at write time, not deriving them later from text.
+
+⚠ **The build stores codes today** — `provinsi_code`, `kabupaten_code`, `kecamatan_code`, `desa_code` on
+`orders` — so this is a column drop, and `kode_pos` becomes `postal_code` in the same move.
+
+---
+
+## a-draft-carries-the-scraped-address
+
+> Owner (2026-09-16): `order_draft_addresses` added, mirroring `order_addresses` field for field — asked as
+> *"should a draft hold the scraped address?"*. As recommended, and in a stronger shape than I proposed.
+
+**The verdict.** A draft carries the buyer: `customer_name`, `customer_phone`, the four region **names**,
+`postal_code` and `address_line` — the same columns an order's address has.
+
+```mermaid
+flowchart LR
+  APP["third-party app scrapes the platform"] --> DA["order_draft_addresses"]
+  DA --> F["seeds the create-order form"]
+  F --> OA["order_addresses — frozen on the order"]
+```
+
+**Why mirroring beats free text.** I had proposed one raw blob, on the grounds that a scrape cannot be
+trusted to split an address. Mirroring is better: whatever the app **can** split arrives in the right box and
+needs no re-reading, and whatever it cannot is simply left empty for the person to fill. A blob would have
+made every draft need the same manual work, including the ones the app got right.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| written by | the app, on push — like everything else on a draft ([a-draft-holds-only-the-platforms-lines](#a-draft-holds-only-the-platforms-lines)) |
+| completeness | **best effort.** Every field may be empty; a draft is defined by being incomplete |
+| what completes it | the person, in the create-order form — the draft itself is never corrected |
+| what is frozen | only `order_addresses`, written at create. A draft's copy is working material |
+
+⚠ **Where an unsplittable address should land:** `address_line`, holding whatever text the platform gave,
+so nothing is lost when the app cannot parse the region tiers.
+
+---
+
+## one-address-per-order-and-per-draft
+
+> Owner (2026-09-16): **"yes"** to *"one address row per order and per draft — unique on `order_id` /
+> `order_draft_id`?"*
+
+**The verdict.** `order_addresses.order_id` and `order_draft_addresses.order_draft_id` are **unique**. An
+order has exactly one address, and so does a draft.
+
+```mermaid
+erDiagram
+  orders ||--|| order_addresses : "exactly one"
+  order_drafts ||--|| order_draft_addresses : "exactly one"
+```
+
+**What it buys.** Nothing that reads an address has to choose between rows or define what "the current one"
+means — the join is total, and an order detail can read it as if it were columns.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the constraint | `UNIQUE (order_id)` · `UNIQUE (order_draft_id)` |
+| written | in the **same transaction** as its parent — an order without an address must not be reachable |
+| corrections | update the one row. There is no second address and no history of addresses |
+| a later billing address | would be a **new decision**, not a second row in this table |
+
+⚠ **The build's `customer_name` is required** (`orders_customer_present CHECK`). Splitting the table moves
+that rule: the address row must exist and carry a name, or the same guarantee is quietly lost.
+
+---
+
+## shipment-channel-is-an-id-into-shipment-service
+
+> Owner (2026-09-16): *"we later have shipment_service and have id mapped to shipment channel"* — asked as
+> *"`shipment_channel_id` or the courier code, as the build has it?"*
+
+**The verdict.** `orders.shipment_channel_id` and `order_drafts.shipment_channel_id` hold an **opaque id**
+owned by a `shipment_service` that does not exist yet. Not a code, not a name.
+
+```mermaid
+flowchart LR
+  O["orders.shipment_channel_id"] -->|"opaque id, no FK — HARD RULE 3"| S["shipment_service (planned)"]
+  S --> N["the channel's name, for a screen"]
+  D["order_drafts.shipment_channel_id"] --> S
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| type | an id, opaque to `order_service`, **no cross-service FK** |
+| who resolves it | `shipment_service`, by RPC, when a screen needs the name |
+| on a draft | the app sets it when it knows the channel; empty otherwise |
+
+⚠ **It replaces the build's `orders.shipping_code`** — an opaque courier code resolved against
+`shipping_service`'s `shippings` table. Two services cannot both own the courier catalogue, so when
+`shipment_service` arrives, `shipping_service`'s role in the order path ends.
+
+⚠ **This is the opposite habit from the address beside it.** [an-address-is-plain-names](#an-address-is-plain-names)
+freezes text so a past order renders alone; this stores a reference that must be resolved every time. So a
+renamed or retired channel changes what an old order appears to have shipped by — and a deleted one leaves a
+blank. **→ Recommend freezing the channel's NAME beside the id**, the way the receipt already freezes its
+filename. Open, not decided.
+
+---
+
+## the-channel-name-is-not-frozen
+
+> Owner (2026-09-16): **"no, we use id no channel name/code"** — closing the open half of
+> [shipment-channel-is-an-id-into-shipment-service](#shipment-channel-is-an-id-into-shipment-service).
+> **Against my recommendation.**
+
+**The verdict.** The order stores `shipment_channel_id` and **nothing else** about the channel. Every screen
+that shows a courier resolves the name from `shipment_service` at read time.
+
+```mermaid
+flowchart LR
+  O["orders.shipment_channel_id"] --> R["resolve at read time"]
+  R --> S["shipment_service"]
+  S --> N["the channel's CURRENT name"]
+```
+
+**Why it is coherent.** A courier is a **live counterparty**, not a historical fact the way an address is: if
+a channel is renamed, the current name is the useful one — it is what support, the tracking page and the
+courier themselves use. Freezing a superseded label would make an old order harder to act on, not easier.
+It also keeps one name in one place, so a correction reaches every order at once.
+
+**What it costs:**
+
+| | |
+| --- | --- |
+| a renamed channel | rewrites what **every past order** appears to have shipped by |
+| a **deleted** channel | leaves old orders pointing at nothing, with no text to fall back on |
+| rendering | an order detail cannot show a courier without calling `shipment_service` |
+
+**→ The mitigation belongs to `shipment_service`, not here: a channel is RETIRED, never deleted.** Orders
+reference it forever, so a hard delete breaks history that this decision has no fallback for. Worth writing
+into that context when it is designed.

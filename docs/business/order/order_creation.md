@@ -88,8 +88,10 @@ state srv {
 tx-->create_err
 state "Order Created Event" as createdevt
 state "Inventory Tx Cancel Compensate Event" as cominvevt
+state "Delete Draft Order" as draft
 
 create_err-->createdevt: if success
+create_err-->draft: if success
 create_err-->cominvevt: if error
 createdevt-->srv
 cominvevt-->srv

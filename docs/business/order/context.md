@@ -28,6 +28,7 @@ when order created. its bring 4 things.
     - `shop_id`
     - `team_id`
     - `warehouse_id`
+    - `shipment_channel_id`, see [this](../shipment/context.md)
     - `status`
     - `platform_type`
     - `warehouse_fee`
@@ -52,20 +53,36 @@ when order created. its bring 4 things.
     - `markup_total`, total - (unit_cost * qty)  
     - `total`, unit_cost_with_markup * qty
 
-3. `order_drafts`,
+3. `order_addresses`,
+
+    field that must have:
+    - `id`, primary key
+    - `order_id`
+    - `customer_name`
+    - `customer_phone`
+    - `provinsi_name`
+    - `kabupaten_name`
+    - `kecamatan_name`
+    - `desa_name`
+    - `postal_code`
+    - `address_line`
+    
+
+4. `order_drafts`,
 
     field that must have:
     - `id`, primary key
     - `order_external_ref_id`, its for order uniqueness, its cannot empty
     - `shop_id`
     - `team_id`
+    - `shipment_channel_id`
     - `warehouse_id`
     - `platform_type`
     - `platform_total`
     - `receipt`
     - `receipt_file`
 
-4. `order_draft_platform_items`
+5. `order_draft_platform_items`
 
     field that must have:
     - `id`, primary key
@@ -74,6 +91,20 @@ when order created. its bring 4 things.
     - `platform_price`
     - `qty`
     - `total`
+
+6. `order_draft_addresses`
+
+    field that must have:
+    - `id`, primary key
+    - `order_draft_id`
+    - `customer_name`
+    - `customer_phone`
+    - `provinsi_name`
+    - `kabupaten_name`
+    - `kecamatan_name`
+    - `desa_name`
+    - `postal_code`
+    - `address_line`
 
 
 ### Order Items Table.
@@ -114,6 +145,7 @@ when order created. its bring 4 things.
 2. order draft exists for accomodate third party app to not create order directly. Its because third party app have incomplete data to create a proper order.
 3. finalize order draft to order not doing by backend. draft is fetched by frontend and seed manually in frontend.
 4. `order_draft_platform_items` data is just showed in frontend as reference.
+5. create order optionally take `order_draft_id`, its used for when create order succeed, draft order is deleted
 ```mermaid
 stateDiagram-v2
 
