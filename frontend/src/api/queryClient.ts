@@ -132,6 +132,7 @@ export const key = {
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),
   shipping: (params?: Params) => global("shipping", params),
+  shipmentChannels: (params?: Params) => global("shipmentChannels", params),
   categories: (params?: Params) => global("categories", params),
 } as const;
 

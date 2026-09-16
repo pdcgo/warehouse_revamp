@@ -2101,5 +2101,41 @@
     "colReason": "Alasan",
     "usingDefault": "Memakai ketentuan bawaan",
     "noneSet": "Belum ada ketentuan — kredit tanpa batas, tanpa biaya, tanpa markup"
+  },
+  "shipmentChannels": {
+    "title": "Channel Pengiriman",
+    "newChannel": "Channel Baru",
+    "newTitle": "Channel Pengiriman Baru",
+    "editTitle": "Ubah {{name}}",
+    "code": "Kode",
+    "name": "Nama",
+    "desc": "Deskripsi",
+    "status": "Status",
+    "updated": "Diperbarui",
+    "actions": "Aksi",
+    "live": "Aktif",
+    "deleted": "Dihapus",
+    "showDeleted": "Tampilkan channel yang dihapus",
+    "searchPlaceholder": "Cari kode atau nama",
+    "empty": "Belum ada channel pengiriman.",
+    "codeHelpCreate": "Kunci huruf kecil yang dipetakan aplikasi pihak ketiga (mis. \"jne\"). Tidak bisa diubah.",
+    "codeHelpEdit": "Kode tidak bisa diubah.",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "edit": "Ubah",
+    "delete": "Hapus",
+    "restore": "Pulihkan",
+    "deleteTitle": "Hapus Channel Pengiriman",
+    "deleteConfirm": "Hapus \"{{name}}\"? Channel hilang dari pilihan, tetapi pesanan lama tetap menampilkannya. Bisa dipulihkan nanti.",
+    "createdToast": "Channel \"{{name}}\" dibuat",
+    "updatedToast": "Channel \"{{name}}\" diperbarui",
+    "deletedToast": "Channel \"{{name}}\" dihapus",
+    "restoredToast": "Channel \"{{name}}\" dipulihkan",
+    "failed": "Gagal menyimpan channel",
+    "select": {
+      "placeholder": "Pilih kurir",
+      "unavailable": "Kurir tidak tersedia",
+      "empty": "Kurir tidak ditemukan"
+    }
   }
 }

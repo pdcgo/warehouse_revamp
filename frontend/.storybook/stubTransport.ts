@@ -34,6 +34,8 @@ import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_p
 import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShippingService } from "../src/gen/warehouse/shipping/v1/shipping_pb";
+import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
@@ -69,6 +71,7 @@ const stubSourceType: Record<string, WireSourceType> = {
 import {
   categories,
   couriers,
+  shipmentChannels,
   dayKey,
   settlementReportDays,
   settlementReportGroups,
@@ -185,6 +188,24 @@ let termsTable: StubTerms[] = [...liabilityTerms];
 
 // The payments the stub serves — WRITEABLE, because rejecting one changes it. Reset per story.
 let paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+
+// The shipment channel table — WRITEABLE, because create, edit, delete and restore are the screen. The
+// rows carry real timestamps so the Updated column moves when a write lands. Reset per story.
+type StubChannel = (typeof shipmentChannels)[number] & { createdAt: ReturnType<typeof timestampFromDate>; updatedAt: ReturnType<typeof timestampFromDate> };
+const channelSeedDate = new Date("2026-09-01T09:00:00+07:00");
+const seedChannels = (): StubChannel[] =>
+  shipmentChannels.map((c) => ({ ...c, createdAt: timestampFromDate(channelSeedDate), updatedAt: timestampFromDate(channelSeedDate) }));
+let channelTable: StubChannel[] = seedChannels();
+
+export function resetShipmentChannels() {
+  channelTable = seedChannels();
+}
+
+function channelById(id: bigint): StubChannel {
+  const row = channelTable.find((c) => c.id === id);
+  if (!row) throw new ConnectError(`shipment channel ${id} not found`, Code.NotFound);
+  return row;
+}
 
 export function resetLiabilityTerms() {
   termsTable = [...liabilityTerms];
@@ -404,6 +425,61 @@ export const transport = createRouterTransport(({ service }) => {
     shippingList: (req) => ({
       data: req.includeInactive ? couriers : couriers.filter((c) => c.active),
     }),
+  });
+
+  // The shipment prototype's contract, served with the rules the server will own — so a story that
+  // passes here is asserting on the decisions, not on a permissive echo.
+  service(ShipmentChannelService, {
+    shipmentChannelList: (req) => {
+      const rows = channelTable
+        .filter((c) => req.filter?.includeDeleted || !c.isDeleted)
+        .filter((c) => match(req.filter?.q, c.code, c.name));
+
+      return pagedColumnar("channel", rows, req.page as PageReq);
+    },
+    // Deleted channels ARE returned (a-deleted-channel-still-resolves-by-id).
+    shipmentChannelByIds: (req) => byIds("channel", channelTable, req.filter?.ids ?? []),
+    shipmentChannelCreate: (req) => {
+      const existing = channelTable.find((c) => c.code === req.code);
+      if (existing) {
+        // a-deleted-code-is-restored-not-recreated — the message says which way out.
+        throw new ConnectError(
+          existing.isDeleted
+            ? `code "${req.code}" belongs to a deleted channel — restore it instead`
+            : `code "${req.code}" already exists`,
+          Code.AlreadyExists,
+        );
+      }
+
+      const now = timestampFromDate(new Date());
+      const row: StubChannel = {
+        id: channelTable.reduce((max, c) => (c.id > max ? c.id : max), 0n) + 1n,
+        code: req.code,
+        name: req.name,
+        desc: req.desc,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      channelTable = [...channelTable, row];
+
+      return { channel: row };
+    },
+    shipmentChannelUpdate: (req) => {
+      const row = channelById(req.channelId);
+      Object.assign(row, { name: req.name, desc: req.desc, updatedAt: timestampFromDate(new Date()) });
+      return { channel: row };
+    },
+    shipmentChannelDelete: (req) => {
+      const row = channelById(req.channelId);
+      Object.assign(row, { isDeleted: true, updatedAt: timestampFromDate(new Date()) });
+      return { channel: row };
+    },
+    shipmentChannelRestore: (req) => {
+      const row = channelById(req.channelId);
+      Object.assign(row, { isDeleted: false, updatedAt: timestampFromDate(new Date()) });
+      return { channel: row };
+    },
   });
 
   service(RegionService, {

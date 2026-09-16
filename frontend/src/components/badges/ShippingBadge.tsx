@@ -28,7 +28,7 @@ const COURIER_COLORS: Record<string, string> = {
 
 // An unknown code (a courier added after this map was written) is gray — never a crash, and never a
 // misleading borrowed colour.
-function courierColor(code: string): string {
+export function courierColor(code: string): string {
   return COURIER_COLORS[code] ?? "gray";
 }
 

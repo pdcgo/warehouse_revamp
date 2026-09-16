@@ -189,6 +189,19 @@ export const couriers = [
   { id: 84n, code: "pos", name: "POS Indonesia", active: false },
 ];
 
+// The SHIPMENT channel catalogue (docs/business/shipment) — the prototype that replaces `couriers`.
+//
+// The three the owner named, plus one DELETED channel, because every rule worth testing is about the
+// difference: the picker hides it, the management list hides it until asked, and a by-id lookup still
+// names it (a-deleted-channel-still-resolves-by-id). Ids are distinct from `couriers` so a story can
+// never pass by reading the old catalogue.
+export const shipmentChannels = [
+  { id: 91n, code: "jne", name: "JNE", desc: "Pickup daily at 15:00", isDeleted: false },
+  { id: 92n, code: "jnt", name: "J&T", desc: "", isDeleted: false },
+  { id: 93n, code: "sicepat", name: "SiCepat", desc: "Drop-off at the Cikarang hub", isDeleted: false },
+  { id: 94n, code: "pos", name: "POS Indonesia", desc: "No longer picks up here", isDeleted: true },
+];
+
 // ── The region TREE, for AddressPicker's four cascading level selects ────────────────────────────
 //
 // Codes follow the real Kepmendagri shape — a child's code is prefixed by its parent's — because

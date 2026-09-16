@@ -2111,5 +2111,41 @@
     "colReason": "Reason",
     "usingDefault": "Using the default terms",
     "noneSet": "No terms set — unlimited credit, no fee, no markup"
+  },
+  "shipmentChannels": {
+    "title": "Shipment Channels",
+    "newChannel": "New Channel",
+    "newTitle": "New Shipment Channel",
+    "editTitle": "Edit {{name}}",
+    "code": "Code",
+    "name": "Name",
+    "desc": "Description",
+    "status": "Status",
+    "updated": "Updated",
+    "actions": "Actions",
+    "live": "Live",
+    "deleted": "Deleted",
+    "showDeleted": "Show deleted channels",
+    "searchPlaceholder": "Search code or name",
+    "empty": "No shipment channels.",
+    "codeHelpCreate": "Lowercase key the third-party app maps onto (e.g. \"jne\"). It can never be changed.",
+    "codeHelpEdit": "The code can never be changed.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "restore": "Restore",
+    "deleteTitle": "Delete Shipment Channel",
+    "deleteConfirm": "Delete \"{{name}}\"? It disappears from pickers, but past orders keep showing it. You can restore it later.",
+    "createdToast": "Channel \"{{name}}\" created",
+    "updatedToast": "Channel \"{{name}}\" updated",
+    "deletedToast": "Channel \"{{name}}\" deleted",
+    "restoredToast": "Channel \"{{name}}\" restored",
+    "failed": "Could not save the channel",
+    "select": {
+      "placeholder": "Select a courier",
+      "unavailable": "Couriers unavailable",
+      "empty": "No couriers found"
+    }
   }
 }
