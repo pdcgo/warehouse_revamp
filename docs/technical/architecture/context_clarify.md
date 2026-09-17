@@ -32,6 +32,12 @@ mine.** Answered points are **deleted**, so this file is always the current open
 > ⚠ **The split argument survives the rename untouched** — a gate, a book and a policy are still in one box,
 > the box is just called something else now. That is [Critique 2](#critique) and it has not moved.
 
+> **Re-examined after the SHIPMENT context was decided and built (2026-09-17).** Every `shipping_service` proposal
+> here predated [docs/business/shipment](../../business/shipment/context.md) and is superseded: the service is
+> `shipment_service`, it owns the courier catalogue only, tracking and the handover are deferred, and an order
+> carries no shipping cost. Rewritten in place below; the one line of YOUR doc it contradicts is
+> [line 13 still describes the old shipping service](#line-13-still-describes-the-old-shipping-service).
+
 Siblings: [business_level](../../business/business_level_clarify.md) · [product_context](../../business/product/context_clarify.md) ·
 [order_context](../../business/order/context_clarify.md) · [inventory_context](../../business/inventory/context_clarify.md) ·
 [balance_context](../../business/balance/context_clarify.md) · [ledger_context](../../business/ledger/context_clarify.md) ·
@@ -115,12 +121,14 @@ buyer, no supplier payable, no cash account, no payment moment. I recommend the 
 `purchasing_log`. Split a `purchasing_service` out the day supplier payables or prepayments are described —
 not before. **A service for an undescribed flow is speculation with a migration attached.**
 
-#### shipping-owns-the-courier-and-the-parcel
-*"cover shipping fee"* (`business_level.md:20`) has been homeless for several rounds, and
-`business_level.md:56` ends the warehouse's job at *"taken by shipment channel"*. `shipping_service` owns
-the courier catalogue, the shipment record (awb, fee, status) and the in-transit leg. `order_service` owns
-the order's status — **the parcel and the order are two lifecycles that diverge exactly when the problem
-happens.**
+#### shipment-owns-the-courier-catalogue
+✅ **Decided in the shipment context, and built.** `shipment_service` owns `shipment_channels` — one row per
+courier ([a-channel-is-a-courier](../../business/shipment/context_decision.md#a-channel-is-a-courier)) — and nothing else yet. The parcel
+record and its in-transit leg are shipment's **but deferred**
+([tracking-is-deferred](../../business/shipment/context_decision.md#tracking-is-deferred),
+[the-handover-is-shipments-and-deferred](../../business/shipment/context_decision.md#the-handover-is-shipments-and-deferred)). What survives of
+the old argument: `order_service` owns the order's status, and **a parcel and an order are two lifecycles that
+diverge exactly when the problem happens** — that is the design question tracking will reopen.
 
 ### Capability → service — nothing homeless
 
@@ -150,10 +158,10 @@ oversight I routed around: four things the business plainly needs are in no requ
 | 19 | marketplace order info | `order_context.md:7` | `order_service` | the buyer reference support is asked about |
 | 20 | own vs cross line resolution | `order_context.md:16-19` | `order_service` | the line is where the two kinds differ |
 | 21 | warehouse accept, packing/picking | `order_context.md:102-103` | `order_service` | the task and its states — the **draw** is inventory's |
-| 22 | handover to courier | `order_context.md:104` | `order_service` then `shipping_service` | the status is the order's, the parcel becomes shipping's |
-| 23 | shipped / problem / completed | `order_context.md:106-111` | `shipping_service` | the outcome is the courier's, mirrored onto the order |
-| 24 | courier catalogue | ⓘ **nowhere** | `shipping_service` | bounded reference data with no other home |
-| 25 | shipping fee cover | `business_level.md:20` | `shipping_service` then `balance_service` | priced by shipping, charged as a pair delta |
+| 22 | handover to courier | `order_context.md:104` | `order_service` now, `shipment_service` later | [deferred](../../business/shipment/context_decision.md#the-handover-is-shipments-and-deferred) — until then the `shipped` status is the only record |
+| 23 | shipped / problem / completed | `order_context.md:106-111` | `order_service` | the order's statuses. Whether tracking may MOVE them waits with [tracking](../../business/shipment/context_decision.md#tracking-is-deferred) |
+| 24 | courier catalogue | `shipment/context.md` | `shipment_service` | ✅ built — [the decisions](../../business/shipment/context_decision.md) |
+| 25 | shipping fee cover | `business_level.md:20` | ⚠ **homeless again** | [an order records no shipping cost](../../business/order/context_decision.md#an-order-records-no-shipping-cost) and shipment prices nothing — see [Critique 4](#critique) |
 | 26 | warehouse order fee | `balance_context.md:7` | `order_service` then `balance_service` | caused per order, settled as a pair delta |
 | 27 | estimated revenue (statistic only) | `order_context.md:150` | `order_service` | explicitly not a ledger fact |
 | 28 | true revenue and `revenue_log` | `order_context.md:168`, `ledger_context.md:10` | `order_service` | your diagram draws Revenue Log **inside** the Sales/Order box |
@@ -170,7 +178,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | 39 | transparency accounting | `business_level.md:10` | `ledger_service` and `document_service` | a charge, its frozen amount, its actor, its evidence — a **claim**, not a screen |
 | 40 | evidence — receiving photos, receipts, proof | ⓘ **nowhere** | `document_service` | row 39 cannot be proven without it |
 | 41 | categories | ⓘ **nowhere** | `product_service` | a taxonomy has no life outside the catalogue |
-| 42 | regions / addresses | ⓘ **nowhere** | `shipping_service` | a region exists to route and price a parcel ([Q8](#question)) |
+| 42 | regions / addresses | ⓘ **nowhere** | `region_service` | an order address is plain names, so nothing routes by region yet ([Q8](#question)) |
 
 ### The ten services
 
@@ -183,7 +191,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | `order_service` | `order`, `order_item`, `order_draft`, `order_event`, estimated and true revenue, withdrawal, **`revenue_log`** | `OrderDraftCreate`, `OrderFinalize`, `OrderAccept`, `OrderPack`, `OrderHandover`, `OrderCancel`, `OrderList` | `RevenueLogged`, `OrderFinalized` | stock, layers, the markup value, the balance row. It **asks**, it does not compute |
 | `balance_service` | `team_balance` (mirrored pair rows), `debt_threshold`, `balance_movement` (append-only), `payment` | **`ApplyPairDelta`** (locks, gates, commits), `PaymentCreate`, `PaymentAccept`, `ThresholdSet`, `BalanceByPair` | `BalanceMoved` | the journal, COGS, any product or stock fact. **It knows amounts and counterparties, never what was sold** |
 | `expense_service` | `expense_record`, expense category, **`expense_log`** | `ExpenseCreate`, `ExpenseApprove`, `ExpenseList` | `ExpenseLogged` | the journal. It records that money was spent, not how it is posted |
-| `shipping_service` | `courier`, `shipment` (awb, fee, status), `region` | `ShippingList`, `ShipmentCreate`, `ShipmentStatusUpdate`, `RegionSearch` | `ShipmentStatusChanged` | the order. A parcel's problem is not an order's status — it **causes** one |
+| `shipment_service` | `shipment_channel` — built. Later: the parcel, the handover | `ShipmentChannelList`, `ShipmentChannelByIds`, `ShipmentChannelCreate`/`Update`/`Delete`/`Restore` — built | — | the order, and any money. A parcel's problem is not an order's status — it **causes** one |
 | `document_service` | `document` (blob metadata), the object store | `DocumentUpload`, `DocumentByRefs` | — | business meaning. It stores evidence and never interprets it |
 | `ledger_service` | `ledger_entry`, `ledger_line`, `account`, `trial_balance`, consumer offsets and dedupe | `TrialBalance`, `EntriesFor`, `FinancialStat`, **`ReconcileBalances`** | `LedgerEntryPosted` | **anything synchronous.** It cannot refuse, cannot gate, cannot sit in a finalize's critical path |
 
@@ -199,7 +207,7 @@ flowchart TB
     P["product_service"]
     I["inventory_service"]
     O["order_service"]
-    SH["shipping_service"]
+    SH["shipment_service — courier catalogue"]
   end
   subgraph "money that can say NO"
     B["balance_service — pair rows, threshold, payments"]
@@ -213,10 +221,9 @@ flowchart TB
   O -->|"resolve owner, markup, lock"| P
   O -->|"draw layers, freeze amounts"| I
   O -->|"gate and move the pair balance"| B
-  O -->|"hand the parcel over"| SH
+  O -.->|"names its courier by id"| SH
   I -->|"the reserve check needs the number"| P
   I -->|"reimbursement, receiving outlay"| B
-  SH -->|"shipping fee"| B
   O -.->|"revenue_log"| L
   I -.->|"inventory_log, purchasing_log"| L
   E -.->|"expense_log"| L
@@ -284,8 +291,8 @@ Stated as fact and as a proposal, never as a justification (HARD RULE 8b.5).
 | `category_service` | **absorb** into `product_service` | a taxonomy with no catalogue is an orphan tree |
 | `inventory_service` | **keep** — already the closest match | it already holds batches, levels, racks, restock, movements |
 | `selling_service` | **rename to `order_service`, minus `shop`** | `architecture_context.md:9` names the domain *order*, and the doc's noun should win over the folder's |
-| `shipping_service` | **keep, absorb `region_service`** | courier and destination are one bounded reference domain |
-| `region_service` | **absorb** into `shipping_service` | a region exists to route a parcel ([Q8](#question)) |
+| ~~`shipping_service`~~ → `shipment_service` | ✅ **REPLACED — it has already happened** | [the-old-catalogue-bridges-by-code](../../business/shipment/context_decision.md#the-old-catalogue-bridges-by-code). It did NOT absorb regions |
+| `region_service` | **keep, separate** | its only job is helping a person type an address ([Q8](#question)) |
 | `document_service` | **keep** | it is what makes "transparency accounting" provable |
 | `expense_service` | **keep** | `ledger_context.md:36` draws it as its own source box |
 | ~~`revenue_service`~~ | ✅ **REMOVED — it has already happened** | deleted with its statistics deferred ([decision](../../business/settlement/context_decision.md#revenue-service-is-removed-and-statistics-deferred)). Not absorbed into `order_service` as this table proposed, and not ported onto settlement either: `/revenue` and `/profit` went with it, `/statement` is warehouse-only, and `OrderPlacedEvent` keeps publishing so the statistics are re-buildable |
@@ -313,7 +320,7 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
 | **1** | **One business moment, five services, and no failure story.** A finalize now touches `order`, `product`, `inventory`, `balance` and — asynchronously — `ledger`. Two of them can refuse it, and the sequence above shows the draw must succeed *before* the gate can even be evaluated. Nothing in the requirement set says what the business wants when the middle fails: stock drawn for an order that was refused, or a balance moved for an order that never committed. This is the **most frequent transaction in the business**. | State the **business** answer, not the mechanism: *an order exists completely or not at all, and a partial one is visible to a person who can finish or void it.* Concretely I recommend **draw → gate → commit → release on failure**, with `ReleaseDraw` and a reversing `balance_movement` as the only two compensations. Whether that is a saga is an architecture question — **that it must be reversible is a business question, and it is yours.** |
 | **2** | **`architecture_context.md:10` still lists `debt threshold` inside the ledger, and the ledger can no longer refuse.** Left as written, the gate is either not built or built twice. | [gate-lives-in-balance-service](#gate-lives-in-balance-service) — and edit line 10 to drop `team balance` and `debt threshold` from the ledger's list. See [Contradiction](#the-gate-was-left-in-a-service-that-can-no-longer-refuse). |
 | **3** | **The reserve is a claim ON stock by a service that does not hold it.** `product_service` knows the threshold, `inventory_service` knows the quantity, and two teams drawing the last units at once is the normal case here. | [reserve-number-is-the-products-check-is-inventorys](#reserve-number-is-the-products-check-is-inventorys). Say which service refuses the line — today both could believe the other does. |
-| **4** | **Four capabilities the business obviously needs appear in NO requirement doc** — the courier catalogue, evidence/documents, categories, regions (rows ⓘ in [the map](#capability--service--nothing-homeless)). Three of them already exist as service directories, which means they were built without ever being described. | One line each in the context doc they belong to, or accept that they are undescribed infrastructure. My homes are recommended above — **the courier one is not optional: `business_level.md:20` promises to cover a shipping fee that nothing in the system can price.** |
+| **4** | **Four capabilities the business obviously needs appear in NO requirement doc** — the courier catalogue, evidence/documents, categories, regions (rows ⓘ in [the map](#capability--service--nothing-homeless)). Three of them already exist as service directories, which means they were built without ever being described. | One line each in the context doc they belong to, or accept that they are undescribed infrastructure. My homes are recommended above. ✅ The courier catalogue is now described ([shipment](../../business/shipment/context.md)). ⚠ **Still open: `business_level.md:20` promises to cover a shipping fee, and after [an-order-records-no-shipping-cost](../../business/order/context_decision.md#an-order-records-no-shipping-cost) nothing records one.** → Recommend: say in `business_level.md` whether "cover shipping fee" still stands, or strike it. |
 | **5** | **`balance_service` would be a FIFTH money source, and your ledger diagram has four.** A payment between teams *(balance_context.md:12)* is caused by none of Sales/Order, Purchasing, Inventory or Other Expense. | Either add a fifth box — **Balance/Settlement** — to `ledger_context.md`, or say a payment is an *Other Expense*. I recommend the **fifth box**: a payment between two teams is neither a cost nor a sale, and calling it an expense puts it in the P&L where it does not belong. |
 | **6** | **Nothing says which services may talk to which, and the answer is business-visible.** With ten services, "can team A still sell while the ledger is down" has an answer, and it should be a chosen one. | State it as an availability promise: **selling survives a ledger outage, and does not survive a balance outage** — the first only delays a report, the second removes a control. That one sentence justifies the whole solid/dotted split in [the map](#the-map). |
 | **7** | **`systems/` is still one empty heading** — the only rung of the ladder with nothing in it, now that `architectures/` has content. | The same rule stated precisely enough to implement — inputs, outputs, invariants, edge cases. **If that cannot be told from a context doc in one line, drop the layer.** |
@@ -345,8 +352,11 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
 7. **Where does a platform WITHDRAWAL live?** *(order_context.md:176)* It is a shop-level cash event, not a
    per-order one. **→ I recommend `order_service`, because the wallet is fed by that shop's orders and the
    withdrawal is reconciled against them. If a bank or cash account is ever modelled, it moves.**
-8. **Is `region` shipping's, or shared master data?**
-   **→ I recommend shipping's — every use of a region in the requirement set is a destination.**
+8. **Does `region_service` stay its own service?** My old answer — *"shipping's, a region is a destination"* —
+   is **withdrawn**: shipment was decided as the courier catalogue alone, and an order stores its address as
+   plain names ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)),
+   so no service routes or prices by region.
+   **→ I recommend keeping it separate while its only job is address typing; revisit when tracking or a fee needs a region.**
 9. **What does `systems/` hold?** ([Critique 7](#critique))
 10. **After the split, is the gate half called `balance_service` (your line 7) or `liability_service` (what
     shipped)?** Your list already contains **both halves of the split I recommend** — line 6
@@ -465,7 +475,7 @@ flowchart TB
 > **`settlement_service`**, **`balance_service`** and **`ledger_service`**.
 > `backend/services/` contains **twelve**, and **four of those eleven names are not among them**: it has
 > `selling_service`, `revenue_service`, `expense_service`, **`liability_service`**, plus
-> `category_service`, `document_service`, `region_service`, `shipping_service`.
+> `category_service`, `document_service`, `region_service`, `shipment_service` *(replaced `shipping_service`, 2026-09-16)*.
 >
 > ⚠ **`settlement_service` is the sharp one now.** It is in your list, it is approved as a design, and
 > after the liability rename **the name is free and the directory is empty** — the only service named in
@@ -502,6 +512,37 @@ flowchart LR
   ST --> BS2
   ST --> LS
   LD --> LS
+```
+
+## line 13 still describes the old shipping service
+
+> [context.md:13](./context.md) — *"9. `shipping_service`, courier catalogue, the parcel (awb/fee/status), region"*
+>
+> against the shipment decisions:
+> [shipment-channel-is-an-id-into-shipment-service](../../business/order/context_decision.md#shipment-channel-is-an-id-into-shipment-service) ·
+> [tracking-is-deferred](../../business/shipment/context_decision.md#tracking-is-deferred) ·
+> [an-order-records-no-shipping-cost](../../business/order/context_decision.md#an-order-records-no-shipping-cost)
+
+**Line 13 is the stale one** — the decisions came later, from you, and the code follows them.
+
+| line 13 says | decided / built |
+| --- | --- |
+| `shipping_service` | `shipment_service` |
+| the parcel (awb, status) | shipment's, **deferred** |
+| fee | no shipping cost is recorded anywhere |
+| region | not shipment's — `region_service` stands alone ([Q8](#question)) |
+
+**→ Recommend:** edit line 13 to *"9. `shipment_service`, the courier catalogue (shipment channels); later
+tracking and the handover"*. **What stops it recurring:** this list is the one table where every service
+appears together, so a context decision that names a service should be checked against it the same day.
+
+```mermaid
+flowchart LR
+  L13["context.md line 13 — shipping_service, parcel, fee, region"] -->|"renamed"| SS["shipment_service"]
+  L13 -->|"deferred"| TR["parcel and handover — later"]
+  L13 -->|"dropped"| FEE["fee — an order records no shipping cost"]
+  L13 -->|"not shipment's"| RG["region_service — stays separate"]
+  SS --> CAT["shipment_channels — built"]
 ```
 
 ---
