@@ -331,7 +331,7 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
 
 1. **Is a payment between teams a FIFTH source into the book, or an Other Expense?** ([Critique 5](#critique))
    **→ I recommend a fifth source — a payment is neither a cost nor a sale.**
-2. ➡ **MOVED — *how is a half-succeeded order found?* is now [order: half-finished-orders-are-found-from-the-order](../../business/order/context_clarify.md#half-finished-orders-are-found-from-the-order).**
+2. ➡ **MOVED — *how is a half-succeeded order found?* is now [order: a-lost-publish-is-not-tracked-on-the-order](../../business/order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order).**
    (owner, 2026-09-10: *"for ensure order half success or not, its order service responsibility"*.) RULE 7b —
    this doc cannot answer it: the order is what is half-done, and `order_service` owns the order.
    ⚠ **What stays HERE is the architecture half, and it is a CONTRADICTION rather than a question** —
@@ -429,7 +429,7 @@ a ranking. **A sequence diagram of a flow that is now built should be re-read th
 arguing from a premise the implementation has already settled.
 
 ⚠ **And the open half moved out.** *How a half-succeeded order is found* is
-[order: half-finished-orders-are-found-from-the-order](../../business/order/context_clarify.md#half-finished-orders-are-found-from-the-order) now (owner, 2026-09-10) — it is
+[order: a-lost-publish-is-not-tracked-on-the-order](../../business/order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order) now (owner, 2026-09-10) — it is
 `order_service`'s to answer, and it is about the POST-commit legs, which this diagram does not draw at
 all.
 

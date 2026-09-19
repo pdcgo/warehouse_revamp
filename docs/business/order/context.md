@@ -2,6 +2,7 @@
 
 ## General.
 1. for order settlement, its follow [this](../settlement/context.md).
+2. for order event related, see [this](./event_context.md)
 
 ## Whats Order Responsbility And Not.
 ### Responsbility.
@@ -364,17 +365,5 @@ ivcreate-->e
 ### What Is Product LinkMap
 1. its use for prevent duplicate create product when order return happened.
 2. its use for map product ownership when its return.
-
-
-
-
-### Responsbility
-1. Order draft is keep :
-    - marketplace info
-    - warehouse info
-    - shipping info 
-    - customer info
-    - external product info
-
 
 

@@ -14,7 +14,7 @@ are deleted, so this file is always the current open set; what was settled is in
 >
 > ⛔ **Found while checking the code this round:** the reconciliation report (#187) that six code comments
 > name as the safety net for half-succeeded orders **does not exist** — see
-> [half-finished-orders-are-found-from-the-order](#half-finished-orders-are-found-from-the-order).
+> [a-lost-publish-is-not-tracked-on-the-order](./context_decision.md#a-lost-publish-is-not-tracked-on-the-order).
 >
 > Questions are **named, not numbered** now, so closing one no longer renumbers the rest. Old numbers are
 > kept in each entry as *(was Qn)*.
@@ -27,6 +27,16 @@ are deleted, so this file is always the current open set; what was settled is in
 > [that clarify's](../warehouse/context_clarify.md#question), not this one's. `## How Order Enter Our System` also
 > gained a bare *"2. Inside order created."* — an empty heading, which per RULE 8b.11 reads as **not designed
 > yet**, not as a question.
+
+> ✅ **Pruned 2026-09-17 — six questions overtaken by the day's decisions:** draft pre-checks and SKU mapping
+> ([a-draft-holds-only-the-platforms-lines](./context_decision.md#a-draft-holds-only-the-platforms-lines) — a draft holds no product) · review can reject (the
+> doc's *Drop Draft* branch) · the synchronous take ([a-take-reduces-stock-and-placement](./context_decision.md#a-take-reduces-stock-and-placement),
+> [the-take-is-never-retried](./context_decision.md#the-take-is-never-retried)) · the cross line's cost
+> ([inventory-computes-the-markup](./context_decision.md#inventory-computes-the-markup)) · what *placement* means (the take's rack placement). Also
+> gone from Critique: *two doors* (there is one create) and *one warehouse per order* (§Cross Product Feature).
+
+> ✅ **Answered 2026-09-17 and deleted:** how a half-finished order is found — it is not tracked on the order
+> ([a-lost-publish-is-not-tracked-on-the-order](./context_decision.md#a-lost-publish-is-not-tracked-on-the-order)).
 
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
 [product_context](../product/context_clarify.md) · [balance_context](../balance/context_clarify.md) ·
@@ -90,37 +100,6 @@ flowchart TD
 | finalize | writes the order and deletes the draft **in one transaction** — the build already does this (`inTx`) |
 | the race | two writes in the same second both pass a code check. **→ A partial unique index on `orders` as a backstop**, `WHERE status <> 'cancel'` — or record that the race is accepted |
 
-### Proposed — the order records what followed it
-
-For [half-finished-orders-are-found-from-the-order](#half-finished-orders-are-found-from-the-order).
-
-```mermaid
-flowchart LR
-  C["order committed"] --> E3["resolve line owners"]
-  E3 --> E1["send OrderPlaced"]
-  E1 --> S1["placed_event_sent_at"]
-  E3 --> S3["order_items.owning_team_id"]
-  C --> E2["OpenSale"]
-  E2 --> S2["settlement_opened_at"]
-  X["order cancelled"] --> E4["send OrderCancelled"]
-  E4 --> S4["cancelled_event_sent_at"]
-  X --> E5["CancelSale"]
-  E5 --> S5["settlement_cancelled_at"]
-  S1 --> F["OrderIncompleteList — any step NULL, older than a few minutes"]
-  S2 --> F
-  S3 --> F
-  S4 --> F
-  S5 --> F
-```
-
-| | |
-| --- | --- |
-| a step's stamp | written only after the step succeeded. NULL = it did not happen — which also catches a **crash**, where no log line is ever written |
-| owners | `owning_team_id NULL` = not resolved, **never 0**. `OrderPlaced` is **held** until they resolve — its id is `order-placed:<id>`, so a first send carrying `0` would make the corrected re-send a duplicate the consumer drops |
-| false positive | the step succeeded, its stamp write did not → one wasted retry. Every retry is idempotent (derived event ids · settlement keyed on the order, the cancel on order + act date) |
-| repair | a **Retry** per missing step on the order detail page — extending [a-missing-account-is-fixed-by-hand](../settlement/context_decision.md#a-missing-account-is-fixed-by-hand) to all five steps |
-| list | `OrderIncompleteList`, paginated (HARD RULE 9) |
-
 ### Proposed — the order announces what shipped and what came back
 
 For [the-order-announces-what-shipped-and-what-came-back](#the-order-announces-what-shipped-and-what-came-back).
@@ -145,42 +124,13 @@ sequenceDiagram
 | --- | --- | --- |
 | **uniqueness-flow-never-denies** | §How We Manage Order Uniqueness fetches the existing order *"that not canceled"*, then asks *"Is Existing Order Cancel"* — always **no**, so every path reaches `Order Created` and `Deny` is unreachable. See [Contradiction](#the-uniqueness-flow-cannot-enforce-its-own-rule) | one question: *a draft, or an order not `cancel`, with this shop and ref?* — yes → deny |
 | **two-tables-one-ref** | `orders` and `order_drafts` both carry the ref *"for order uniqueness"*, and nothing says whether one blocks the other. A check across both refuses a finalize on the draft's own row | [one check, finalize excluded](#proposed--one-uniqueness-check-across-both-tables) |
-| **half-finished-orders-have-no-finder** | five after-commit steps end at a log line; the report the code relies on (#187) is unbuilt; a crash leaves no log at all; an unresolved owner is written as `0` | [stamps + a list + retry](#proposed--the-order-records-what-followed-it) |
 | **short-pick-and-return-are-silent** | only *placed* and *cancelled* are announced. A short pick leaves another team charged for units that never left; a return never reverses COGS | [two more events](#proposed--the-order-announces-what-shipped-and-what-came-back) |
 | **the-empty-ref-lives-on-in-the-build** | the doc says the ref *"cannot empty"*; the build says `''` is *"the ordinary state of an order taken over the phone"* and skips the settlement account when the platform total is 0 — both now forbidden by [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize). See [Contradiction](#the-build-still-treats-an-empty-ref-as-a-phone-order) | a `selling_service` migration + handler check when this is built |
-| **two-doors-one-rule-set** | the API exists to *"speed up record the orders"* — if the reserve, shared lock and debt threshold are checked on the form and not on the API, the API is the way around them | every rule enforced on finalize, never on a screen |
-| **one-warehouse-per-order** | §Order Anatomy names *a* warehouse, but a team's stock sits in several — an order may have no single warehouse holding every line | state it: **one order ships from one warehouse**, and whoever takes it splits it |
-| **review-cannot-fail** | `Create Draft → User Review Order → User Finalize` runs one way — a reviewer who spots a bad scan has nowhere to go | approve · edit-then-approve · discard with a reason |
 | **what-an-order-must-prove** | nothing lists what the business must be able to show about an order later: who took it, by which door, what shipped, who picked | frozen at finalize: shop, warehouse, lines, owners, cost, source. Recorded as it moves: picker, packer, handover time |
 
 ---
 
 ## Question
-
-### half-finished-orders-are-found-from-the-order
-*(was Q14 — routed here by [ensuring-an-order-is-whole-is-order-services-job](./context_decision.md#ensuring-an-order-is-whole-is-order-services-job))*
-
-**Five steps run after the order commits, and each failure is a log line and nothing else.**
-
-| step | fails → | lost |
-| --- | --- | --- |
-| send `OrderPlaced` ([order_place.go](../../../backend/services/selling_service/selling_v1/order_place.go)) | logged | order fee and product fee never charged |
-| `OpenSale` | logged — ⚠ **not even logged** when the total is 0, which [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize) now forbids | no settlement account |
-| resolve line owners | logged, owner written as `0` | product fee lost **for good** — `0` reads as *nobody to pay* |
-| send `OrderCancelled` ([order_cancel.go](../../../backend/services/selling_service/selling_v1/order_cancel.go)) | logged | ⛔ a cancelled order's fees stay charged, for good |
-| `CancelSale` | logged | the account still counts a sale that never happened |
-
-⛔ **The safety net is not built.** Six comments across `selling_service`, `liability_service` and
-`inventory_service`, and two protos, accept these gaps because *"the reconciliation report (#187) is built to
-find"* them. Issue #187 has been **open since 2026-07-21**, with no RPC and no table. ⚠ **A crash between
-commit and send logs nothing at all.** ⚠ **The same catalogue failure also skips the owners' credit check**
-([`orderCreditors`](../../../backend/services/selling_service/selling_v1/order_place.go)).
-
-1. **A timestamp per step on the order, plus a list of incomplete orders** — is that the finder?
-   **→ Yes** — [the design](#proposed--the-order-records-what-followed-it).
-2. **When line owners cannot be resolved:** A. save the order and **hold the event** until they resolve ·
-   B. refuse the order · C. keep today's `0`. **→ A.**
-3. **Where is the retry?** **→ The order detail page**, one button per missing step.
 
 ### one-uniqueness-check-covers-drafts-and-orders
 *(was Q1 — the rule itself is decided: [an-order-is-unique-by-shop-and-marketplace-ref](./context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref))*
@@ -220,39 +170,14 @@ order for a team other than its own? **→ All three, on both doors, and never a
 *(was Q5)* One order can borrow from B and C and be over its limit with only one of them. **→ All-or-nothing at
 finalize**, the refusal naming the line and the reason.
 
-### a-draft-runs-no-pre-checks
-*(was Q4)* **→ None at draft** — it has an external SKU, so no product, owner or cost to check against.
-Finalize re-checks and may refuse.
-
 ### who-may-cancel-a-pending-order
 *(was Q3's remainder)* `pending --> cancel` exists. Is that also how the **warehouse declines** an order it
 cannot fulfil, or only the seller's act? **→ Both may**, with a required reason, so a warehouse refusal is
 visible rather than a silent stall in `pending`.
 
-### review-can-reject-a-scanned-draft
-*(was Q8)* **→ approve · edit-then-approve · discard with a reason**, checking shop, warehouse, lines,
-quantities and each line's owner.
-
-### the-sku-mapping-is-remembered-per-shop
-*(was Q11)* A draft's external SKU is mapped to our product by hand. Is that answer kept for the next order?
-**→ Yes, per shop** — or the scan saves typing and review charges it back.
-
-### stock-is-taken-synchronously-and-may-fail-the-order
-*(was Q12)* §Whats Not names the cash and the debt, not stock — yet an order with no stock fails.
-**→ One line:** *"stock is not ours either, but an order may not exist without it — we take it synchronously
-and fail if we cannot."*
-
 ### the-order-consults-the-debt-it-does-not-manage
 *(was Q13)* The order reads the debt threshold before placing. **→ One line:** *"we do not manage the debt; we
 do consult it before placing"* — so the pre-check does not read as a scope violation.
-
-### the-cross-line-cogs-is-unit-price-plus-fee
-*(was Q7)* The bullets name the legs, not the amount. **→ Link** product `context.md` §Pricing Behavior 2
-(`COGS = UnitPrice + fee`) — the two docs already agree.
-
-### placement-means-rack-placement
-*(was Q10)* §Order Draft's *"Placement"* beside *"Stock"* reads as the rack — but *"frozen at placement"* elsewhere
-means the finalize moment. **→ Say "rack placement", or drop it.**
 
 ### an-order-cannot-be-created-without-a-channel
 *(re-routed from [shipment](../shipment/context_clarify.md))* The third-party app converts the platform's
@@ -309,7 +234,7 @@ reversed [every-marketplace-order-carries-a-unique-platform-ref](../settlement/c
 allowed `""` for a phone order, and `openSettlement` skips a platform total of 0 for the same reason. ⚠ The column itself is renamed to `platform_total` ([the-total-is-ours-the-platform-total-is-theirs](./context_decision.md#the-total-is-ours-the-platform-total-is-theirs)).
 **Which is wrong:** the build — the doc is the owner's current statement. **→ Recommend** a `CHECK` + handler
 check when this context is built, and deciding
-[half-finished-orders-are-found-from-the-order](#half-finished-orders-are-found-from-the-order) item 3 in the same
+[a-lost-publish-is-not-tracked-on-the-order](./context_decision.md#a-lost-publish-is-not-tracked-on-the-order) item 3 in the same
 pass, since it is the same assumption.
 
 ---

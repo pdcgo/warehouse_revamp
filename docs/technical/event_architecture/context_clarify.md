@@ -191,7 +191,7 @@ mine. Answered points are **deleted**, so this is always the current open set.
 > ⛔ against my recommendation: no outbox, the publish is assumed to succeed, and delivery is Pub/Sub's.
 > *The outbox* and *the commit-to-publish gap* sections are deleted. **Re-examined (RULE 11):** three sibling
 > clarifies recommended an outbox — stock critique 3, ledger critique 5, balance critique 4 — each now carries a
-> pointer · order's [half-finished-orders-are-found-from-the-order](../../business/order/context_clarify.md#half-finished-orders-are-found-from-the-order) event leg gets one too, its question unchanged · no guideline mentions an outbox.
+> pointer · order's [a-lost-publish-is-not-tracked-on-the-order](../../business/order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order) event leg gets one too, its question unchanged · no guideline mentions an outbox.
 > Your doc needs no line — it never proposed one.
 >
 > 🆕 **You renamed the field — line 46 now reads `string topic`**, recorded as

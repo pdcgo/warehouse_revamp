@@ -29,6 +29,14 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [one-address-per-order-and-per-draft](#one-address-per-order-and-per-draft) | exactly one address row each — unique on the parent id |
 | [shipment-channel-is-an-id-into-shipment-service](#shipment-channel-is-an-id-into-shipment-service) | the order stores an opaque id, resolved by a future `shipment_service` |
 | [the-channel-name-is-not-frozen](#the-channel-name-is-not-frozen) | the order keeps only the id — the name is always resolved live |
+| [inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled) | a cancel puts provisioned stock back by event, not by a call |
+| [a-take-reduces-stock-and-placement](#a-take-reduces-stock-and-placement) | create takes stock directly — shelves and counts are inventory's to design |
+| [rupiah-is-floating-point](#rupiah-is-floating-point) | every rupiah amount is `double`/`float`, system-wide |
+| [the-take-is-never-retried](#the-take-is-never-retried) | one call to inventory — any failure fails the create |
+| [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
+| [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
+| [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
+| [a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand) | `lost` triggers nothing — Customer Service adjusts the settlement account manually |
 | [drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app) | a person never drafts — Customer Service creates the order directly |
 | [the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend) | the draft seeds the create-order form in the browser; there is no promote RPC |
 | [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
@@ -563,6 +571,10 @@ arithmetic the product doc states as `COGS = UnitPrice + fee`, now written per l
 | `total` | `markup_price × qty` — this line's cost |
 | the order | `goods_cost = Σ total` · `total_cost = goods_cost + warehouse_fee` |
 
+⚠ **Corrected 2026-09-17:** the row above calling `markup_total` *"what is owed to `owner_team_id`"* was my error. The owning
+team is owed the whole line `total` — the goods **and** the markup — per
+[the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total). `markup_total` is what that team **earns**.
+
 ⚠ **Renamed the same day** (owner, 2026-09-16): `price` → **`unit_cost`**, `markup_price` → **`unit_cost_with_markup`**
 — the figures and the verdict are unchanged, and the names now match `goods_cost` and `total_cost` beside them,
 and the build's own `order_items.unit_cost`.
@@ -1006,3 +1018,267 @@ It also keeps one name in one place, so a correction reaches every order at once
 **→ The mitigation belongs to `shipment_service`, not here: a channel is RETIRED, never deleted.** Orders
 reference it forever, so a hard delete breaks history that this decision has no fallback for. Worth writing
 into that context when it is designed.
+
+---
+
+## inventory-returns-stock-on-order-cancelled
+
+> Owner (2026-09-17), [event_context.md](./event_context.md) §Order Cancel: `inventory_service` subscribes,
+> *"to canceling stock that provisioned"* — asked as *"on cancel, who puts the stock back?"*
+
+**The verdict.** Cancelling an order releases its stock through the **Order Cancel** event. Inventory is one of
+three subscribers, beside settlement and balance.
+
+```mermaid
+flowchart LR
+  C["order moves to cancel"] --> E["Order Cancel event"]
+  E --> S["settlement_service — initial_total_cancel"]
+  E --> B["balance_service — reverse warehouse_fee and product_fee"]
+  E --> I["inventory_service — release the provisioned stock"]
+```
+
+**What it changes in the build.** `order_cancel.go` returns stock with a **synchronous** `stock.Return` call
+today, and fails the cancel if that call fails. With a subscriber, the cancel commits on its own and the stock
+comes back when the event is consumed — so a cancelled order's goods are briefly still held.
+
+⚠ **What it makes load-bearing.** A lost Order Cancel publish now strands stock as well as leaving fees
+charged, which is why the publish needs its sent-at stamp
+([half-finished-orders-are-found-from-the-order](./context_clarify.md#half-finished-orders-are-found-from-the-order)).
+And inventory must release **idempotently**, keyed on the order — a redelivered cancel must not return the
+same units twice.
+
+---
+
+## a-take-reduces-stock-and-placement
+
+> Owner (2026-09-17): *"its reduce stock and placement, shelf and other its inventory service responsbility"*
+> — asked as *"does a take at create reduce the free-to-sell quantity, or the quantity physically on the
+> shelf?"*, after *"provision"* was corrected to a direct **take**.
+
+**The verdict.** Creating an order **takes stock directly**: the call to inventory reduces stock and placement
+at once. How that is represented inside inventory — shelves, racks, counts, what is free to sell versus
+physically present — is **inventory's** to design, not the order's.
+
+```mermaid
+flowchart LR
+  O["order created"] -->|"take — reduces stock and placement"| I["inventory_service"]
+  I --> X["shelves, racks, counts, available versus on-hand — inventory's own design"]
+  C["order cancelled"] -->|"Order Cancel event"| I
+```
+
+**The spec, from the order's side.**
+
+| | |
+| --- | --- |
+| when | at create, inside the create flow — not a hold, not a reservation |
+| reversed | by the Order Cancel event ([inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled)) |
+| not the order's to decide | which quantity a take lowers, and how a stock count treats units taken but not yet picked |
+
+⚠ **Re-routed, not dropped.** A stock count between create and pick can re-add a unit that was already taken,
+because the build keeps one `on_hand` per shelf. That is now asked in
+[inventory Q11](../inventory/context_clarify.md#question), where it can be answered.
+
+---
+
+## rupiah-is-floating-point
+
+> Owner (2026-09-17): **"all rupiah using double or float"** — asked as *"`int64` rupiah instead of
+> `double`?"* **Against my recommendation.**
+
+**The verdict.** Rupiah amounts are floating point — `double`/`float` — across the system, not whole-rupiah
+integers.
+
+```mermaid
+flowchart LR
+  P["percent fee and markup"] --> F["fractions of a rupiah"]
+  F --> D["carried as double"]
+  D --> R["summed into orders, fees and balances"]
+```
+
+**Why it is defensible.** Every charge here is a percentage — the warehouse fee, the owner's markup — and a
+percentage of a price produces fractions. A floating-point amount carries them without deciding a rounding
+rule at every step.
+
+**What it costs, recorded so it is not rediscovered as a bug:**
+
+| | example |
+| --- | --- |
+| equality fails | `0.1 + 0.2 != 0.3` — a check that a balance *equals* zero, or two totals *match*, can fail on correct data |
+| sums drift | adding thousands of lines accumulates error, so a report's total and the ledger's total can differ by a fraction |
+| deduplication | anything comparing amounts to recognise a repeat can miss one |
+
+**→ Mitigations, not decided:** round to whole rupiah at the moment a figure is **frozen** (finalize, posting)
+so drift cannot accumulate past that point · compare with a tolerance, never `==` · store as Postgres
+`numeric` so the database holds the exact value even when the wire is `double`.
+
+⚠ **It reverses the build everywhere.** `orders`, `liability_service` and `settlement_service` all store money
+as `BIGINT` whole rupiah, and `liability.proto` argues the opposite in a comment — *"a percentage that cannot
+be represented exactly is a fee that drifts"*. Recorded here because it was asked here; it is a system-wide
+change.
+
+---
+
+## the-take-is-never-retried
+
+> Owner (2026-09-17): **"for 2 dont allow retry"** — asked as *"is the order row inserted before the take, so
+> the take names a real order id and a retried call cannot take twice?"*
+
+**The verdict.** `order_service` calls inventory's take **once**. A refusal, an error or a timeout fails the
+create, and the person sees it. Nothing retries the call automatically.
+
+```mermaid
+flowchart TD
+  C["create order"] --> T["take stock — one call"]
+  T -->|"refused or error"| F["create fails, nothing taken"]
+  T -->|"timeout"| U{"did inventory commit?"}
+  U -->|"no"| F
+  U -->|"yes"| O["stock taken, no order"]
+  T -->|"success"| OK["order committed"]
+```
+
+**What it settles.** A take can never be doubled by the system retrying — so inventory does not need to be
+idempotent against a **retry**.
+
+⚠ **What it does not settle — the timeout that succeeded.** A call can time out *after* inventory committed.
+Not retrying means the order fails while the stock is already gone, and the compensation has to release a take
+whose response never arrived. **The take still needs a reference the order knows before it calls** — not to
+make a retry safe, but so the compensation can name what to return.
+
+⚠ **And a person can still resubmit.** A failed create leaves the form filled in, and pressing Create again
+is a second attempt. If the first attempt's take was orphaned, the goods are taken twice until the
+compensation lands — which is why the compensation must be reliable rather than best-effort.
+
+---
+
+## inventory-computes-the-markup
+
+> Owner (2026-09-17): *"3 its inventory context responsbility"* and *"3 no"* — asked as *"does inventory return
+> the owner and cost only, with the order applying the markup?"* Both answers labelled 3 read the same way.
+> **Against my recommendation.**
+
+**The verdict.** The take returns everything a line's money needs — owner, `unit_cost`,
+`unit_cost_with_markup`, `markup_total`, `total`. The order applies nothing; it freezes what inventory
+returned.
+
+```mermaid
+flowchart LR
+  O["order_service"] -->|"take — lines"| I["inventory_service"]
+  I -->|"reads the owner's markup rate"| P["the product's rate"]
+  I -->|"owner, cost, cost with markup, totals"| O
+  O --> F["frozen onto order_items as returned"]
+```
+
+**Why it holds up.** One service produces every figure of a line, from the same draw, in one answer — the
+order cannot combine a cost from one moment with a markup read at another.
+
+**What it costs:**
+
+| | |
+| --- | --- |
+| a dependency inside the take | inventory must read the owning team's markup rate while taking stock, so if that read fails, the take fails and so does the order |
+| which rate | the markup is stored twice today — `products.cross_markup_bps` and `liability_terms.product_markup_bp` — so inventory has to be told which one is the rate |
+
+---
+
+## the-product-fee-is-the-line-total
+
+> Owner (2026-09-17): **"product fee is using total"** — asked as *"is the product fee Σ `total` of the owner's
+> lines, or `markup_total`?"*. As recommended.
+
+**The verdict.** For each owning team, the product fee is the **sum of `total`** over that team's lines in the
+order — `unit_cost_with_markup × qty`. The lending team is paid for the goods it gave up **and** its markup.
+
+```mermaid
+flowchart LR
+  L["B's lines in A's order"] --> T["sum of total — goods plus markup"]
+  T --> F["product_fee — A owes B"]
+  L --> M["sum of markup_total"]
+  M --> E["what B earned — reporting only, never charged"]
+```
+
+**The example.**
+
+| B's line: 3 units, cost 60.000, markup 20% | amount |
+| --- | ---: |
+| `unit_cost × qty` — the goods | 180.000 |
+| `markup_total` — what B earns | 36.000 |
+| **`total` — the product fee A owes B** | **216.000** |
+
+**The spec.**
+
+| | |
+| --- | --- |
+| grain | **one fee per owning team per order** — two lines of B's goods are one debt |
+| own lines | never charged — `owner_team_id` equals the order's team |
+| posted by | balance, from the Order Created event, exactly as frozen |
+| reversed | on Order Cancel, by reading back what was posted |
+
+**What it corrects.** [the-cross-charge-lives-on-the-line](#the-cross-charge-lives-on-the-line) described
+`markup_total` as *"what is owed to `owner_team_id`"*. That was my wording, not the owner's, and it would have
+paid a lending team 36.000 for goods worth 216.000. A correction note sits in that entry.
+
+---
+
+## a-lost-publish-is-not-tracked-on-the-order
+
+> Owner (2026-09-17): **"for 1, no"** — asked as *"two sent-at stamps on the order, an incomplete-orders list
+> and a Retry button: is that the design?"* **Against my recommendation.**
+
+**The verdict.** The order records nothing about whether its events were published. There is no
+`created_event_sent_at` or `cancelled_event_sent_at`, no list of incomplete orders, and no retry button.
+
+```mermaid
+flowchart LR
+  C["order committed"] --> P["publish the event"]
+  P -->|"accepted"| OK["consumers act"]
+  P -->|"lost"| L["no row records it — only the service's own log"]
+```
+
+**Why it is coherent.** It is the same stance as
+[no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted):
+the broker is trusted to accept a publish, and a mechanism built for its rare failure is weight carried on
+every order for an event that almost never happens.
+
+**What it costs, recorded so it is not rediscovered as a bug:**
+
+| a lost publish of | leaves | noticed by |
+| --- | --- | --- |
+| Order Created | no warehouse fee, no product fee, no settlement account | a team noticing a missing charge, or a report that does not add up |
+| Order Cancel | fees still charged, the settlement sale still open, stock never returned | a team disputing a charge, or a stock count |
+| a crash between commit and publish | the same, **with no log line at all** | the same — later, by someone |
+
+⚠ **It leaves [ensuring-an-order-is-whole-is-order-services-job](#ensuring-an-order-is-whole-is-order-services-job)
+with a responsibility and no mechanism.** The order still owns being whole; this decision says the order does
+not check it. Recorded together so neither is read without the other.
+
+---
+
+## a-lost-parcel-is-settled-by-hand
+
+> Owner (2026-09-17): **"for 4, no action needed, settlement can adjust manually by cs"** — asked as *"a
+> parcel lost by the courier carries no money on our side — the platform's claim shows up in settlement?"*
+
+**The verdict.** Moving an order to `lost` sets off nothing in any other service. Whatever the platform pays or
+deducts for a lost parcel is entered **by hand** by Customer Service on the order's settlement account.
+
+```mermaid
+flowchart LR
+  L["order moves to lost"] --> N["no event consumer acts"]
+  P["the platform reimburses or refunds"] --> CS["Customer Service"]
+  CS -->|"a manual entry on the order detail page"| S["settlement account"]
+```
+
+**Why nothing else moves.**
+
+| | |
+| --- | --- |
+| stock | already taken at create — there is nothing to return |
+| balance | the warehouse's custody ended at handover, so no `lost_good` is owed between teams |
+| settlement | the platform's decision about the money arrives on its own schedule, and is recorded as it happens |
+
+**It rests on decisions settlement already made:** entries arrive by API or by hand
+([entries-arrive-by-api-or-by-hand](../settlement/context_decision.md#entries-arrive-by-api-or-by-hand)), from the
+order detail page ([order-detail-manages-the-ledger](../settlement/context_decision.md#order-detail-manages-the-ledger)),
+and an account that never fully settles is normal
+([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)). No change to
+settlement is needed.

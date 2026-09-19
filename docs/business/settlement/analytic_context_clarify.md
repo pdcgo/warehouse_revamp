@@ -1423,7 +1423,7 @@ each a deliberate act.
 | ✅ **a wrong genesis** | every day's value is off by the same amount — the one check that can see it, since the floor makes it otherwise unrepairable |
 | ✅ a replay that skipped a day | count disagrees on that day |
 | ✅ a double-fold | count is too HIGH |
-| ⛔ **a log row that was never written** | — the log and the report agree, and both are short. That is [order: half-finished-orders-are-found-from-the-order](../order/context_clarify.md#half-finished-orders-are-found-from-the-order)'s finder, not this |
+| ⛔ **a log row that was never written** | — the log and the report agree, and both are short. That is [order: a-lost-publish-is-not-tracked-on-the-order](../order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order)'s finder, not this |
 | ⚠ **a `system_adjustment` posted to repair a fold-only loss** | reports a difference **forever** — see [the note on system_adjustment](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other). Building this makes that problem visible, which is good, and makes answering it urgent, which is the point |
 
 ### Cost, and when it runs
