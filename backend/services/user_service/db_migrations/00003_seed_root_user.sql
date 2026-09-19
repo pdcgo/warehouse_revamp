@@ -9,7 +9,7 @@
 -- The password is deliberately EMPTY, which bcrypt can never match. The system therefore boots
 -- with a root account that CANNOT log in until someone sets its password:
 --
---     go run ./cmd/tool seed root --password <secret>
+--     go run ./tools/san seed root --password <secret>
 --
 -- A hardcoded default password in a migration would ship to production. This cannot.
 INSERT INTO users (id, username, email, name, password)

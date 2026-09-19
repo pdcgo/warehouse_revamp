@@ -1,0 +1,618 @@
+syntax = "proto3";
+
+package warehouse.product.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1";
+
+// ProductService owns `products`. A product belongs to exactly one team (a selling/warehouse team owns
+// its own catalogue), and every WRITE is team-scoped: `team_id` carries (use_scope), and the handler
+// only ever touches rows with that team_id — you cannot create, edit or delete another team's product
+// by passing its id.
+//
+// READS are not all so narrow, and deliberately: `team_id` on those means "the team you hold a role in"
+// and NOT "the team whose products you get back".
+//
+//   - ProductList     — this team's own catalogue. Narrow.
+//   - ProductDiscover — every team's catalogue, for SELLING roles: a selling team browses to find
+//                       things to sell (#106).
+//   - ProductByIds    — a KNOWN set of ids, across any team, for selling AND warehouse roles (#138).
+service ProductService {
+  rpc ProductCreate(ProductCreateRequest) returns (ProductCreateResponse);
+  rpc ProductList(ProductListRequest) returns (ProductListResponse);
+  // ProductDiscover lists products across ALL teams (open cross-team discovery, #106).
+  rpc ProductDiscover(ProductDiscoverRequest) returns (ProductDiscoverResponse);
+  // ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
+  rpc ProductByIds(ProductByIdsRequest) returns (ProductByIdsResponse);
+  rpc ProductDetail(ProductDetailRequest) returns (ProductDetailResponse);
+  rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
+  // ProductDelete ARCHIVES a product (`deleted = true`) — the row survives, and the UI calls it
+  // Archive for that reason. ProductRestore is the way back.
+  rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
+  // ProductRestore brings an archived product back into the catalogue. It can legitimately FAIL:
+  // archiving frees the SKU, so a re-used one blocks the return (see ProductRestoreRequest).
+  rpc ProductRestore(ProductRestoreRequest) returns (ProductRestoreResponse);
+}
+
+message Product {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string sku = 3;
+  string name = 4;
+  string description = 5;
+  bool deleted = 6;
+
+  // The product's category (a node in the global category taxonomy). Required on create/update —
+  // 0 only appears on rows created before categories existed.
+  uint64 category_id = 7;
+
+  // The COVER image, denormalised onto the product row so a list/card can render a picture without
+  // joining product_images. Mirrors the first entry of `images`; empty when the product has none.
+  string default_image_url = 8;
+  string default_image_thumbnail_url = 9;
+
+  // The full gallery (up to 5), ordered; the first is the cover. Populated by ProductDetail ONLY —
+  // ProductList leaves this empty and carries just default_image_url/_thumbnail_url (the
+  // denormalised cover) so a list never has to join product_images.
+  repeated ProductImage images = 10;
+
+  // CROSS markup — see the note above ProductCreateRequest.cross_markup_bps. Basis points:
+  // 1250 = 12.50%. 0 = no markup.
+  uint32 cross_markup_bps = 11;
+
+  // LOCKED — see ProductCreateRequest.cross_locked. true = ours only, no other team may order it.
+  bool cross_locked = 12;
+
+  // RESERVED — see ProductCreateRequest.reserved_stock. Units held back from selling; 0 = none.
+  uint32 reserved_stock = 13;
+}
+
+// ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
+// are produced by the two-phase document_service upload and stored verbatim on the product.
+message ProductImage {
+  string url = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2048
+  }];
+  string thumbnail_url = 2 [(buf.validate.field).string.max_len = 2048];
+}
+
+// ProductImages wraps the gallery for UPDATE: a message field has presence, so a nil wrapper means
+// "leave the images alone" while a present (even empty) wrapper means "replace with exactly these".
+message ProductImages {
+  repeated ProductImage items = 1 [(buf.validate.field).repeated.max_items = 5];
+}
+
+message ProductCreateRequest {
+  // Write: the team's managers. Team-level roles are legal here because team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string sku = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string description = 4 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Category is required — every new product is filed under one taxonomy node.
+  uint64 category_id = 5 [(buf.validate.field).uint64.gt = 0];
+
+  // Up to 5 catalogue images; the first is the cover. Optional (a product may have none yet).
+  repeated ProductImage images = 6 [(buf.validate.field).repeated.max_items = 5];
+
+  // ── CROSS ────────────────────────────────────────────────────────────────────────────────────
+  //
+  // "Cross" is another team using OUR product on THEIR order: they sell it through their own shop,
+  // the goods come out of our stock, and we charge them a MARKUP over our cost for it. The markup is
+  // therefore a property of the product being lent out, set by the team that owns it.
+  //
+  // In BASIS POINTS — 1/100 of a percent, so 1250 = 12.50%. Percent is the format a person types and
+  // reads, and the UI shows exactly that; the wire keeps it as an integer because this number
+  // multiplies money, and a float that rounds differently on two screens becomes an argument between
+  // two teams rather than a display bug.
+  //
+  // 0 = no markup: the other team pays what we paid. That is a real, chooseable answer, which is why
+  // it is not modelled as "unset".
+  uint32 cross_markup_bps = 7 [(buf.validate.field).uint32.lte = 100000];
+
+  // LOCKED — may another team put this product on ITS order?
+  //
+  // false (the default) = yes: it appears in ProductDiscover and another team can build an order
+  // around it, paying cross_markup_bps over our cost. That is how every product has behaved so far.
+  // true = ours only: it drops out of cross-team discovery entirely.
+  //
+  // The field is named for what it DOES to other teams, because that is the question its owner is
+  // answering — "can somebody else sell this?" — and a flag named for the permissive state would
+  // read as a double negative on every screen that shows it.
+  bool cross_locked = 8;
+
+  // ── RESERVED ─────────────────────────────────────────────────────────────────────────────────
+  //
+  // A HOLD-BACK BUFFER, not a quantity: how many units of this product are never offered for sale,
+  // so that `available = on_hand − reserved_stock`. It is the answer to "never sell the last N" —
+  // the margin that keeps a count that drifted, a unit that got damaged on the shelf, or two orders
+  // landing in the same second from turning into an oversell somebody has to apologise for.
+  //
+  // It belongs to the PRODUCT, not to a warehouse: it is a decision about the item ("this one is
+  // fragile / always miscounted / a display piece"), taken once by the person who owns the
+  // catalogue, and it holds wherever the thing is stocked. The physical per-warehouse quantities
+  // stay in inventory_service, which applies this buffer when it computes what is sellable.
+  //
+  // In UNITS, matching how stock is counted everywhere else — a percentage would round to fractions
+  // of a physical object. 0 = hold nothing back, which is the default and a real answer.
+  //
+  // The upper bound is a sanity rail, not a policy: a million units is far past any real buffer and
+  // still catches a quantity typed into the wrong field.
+  uint32 reserved_stock = 9 [(buf.validate.field).uint32.lte = 1000000];
+}
+
+message ProductCreateResponse {
+  Product product = 1;
+}
+
+// ── The shared product list shape (guideline "List View" — guidelines/service-guideline.md) ───────
+//
+// ProductList and ProductDiscover both answer "a page of products" and share this scaffolding: the
+// data-type slices a caller can ask for, the row slice, the sort selection, and the response item.
+
+// ProductListDataType selects which slices the response carries per product.
+enum ProductListDataType {
+  PRODUCT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  // GENERAL: the shared id+name slice (warehouse.common.v1.GeneralMapItem).
+  PRODUCT_LIST_DATA_TYPE_GENERAL = 1;
+  // PRODUCT: the full catalogue row a product list/card renders (ProductRowMapItem).
+  PRODUCT_LIST_DATA_TYPE_PRODUCT = 2;
+}
+
+// ProductRowSort is the sort selection paired with the PRODUCT (row) slice.
+enum ProductRowSort {
+  PRODUCT_ROW_SORT_UNSPECIFIED = 0;
+  PRODUCT_ROW_SORT_NAME = 1;
+  PRODUCT_ROW_SORT_SKU = 2;
+  // ID: newest-first is DESC on id (the legacy default).
+  PRODUCT_ROW_SORT_ID = 3;
+}
+
+// ProductStatus selects which half of the catalogue a list answers over: the live products, or the
+// archived ones. It is the ACTIVE / ARCHIVED tab on the product list.
+//
+// An archived product is not deleted — the row survives, its stock outlives it, and its past orders
+// still name it. What archiving does is take it out of circulation: out of the pickers, out of new
+// orders, out of restocks.
+enum ProductStatus {
+  // UNSPECIFIED means ACTIVE, and must keep meaning that. Every caller that already exists sends no
+  // status (the pickers, the order lines, the restock form), and an archived product must never
+  // appear in a list something is picked FROM — so the safe reading of "unset" is the live half.
+  PRODUCT_STATUS_UNSPECIFIED = 0;
+  PRODUCT_STATUS_ACTIVE = 1;
+  PRODUCT_STATUS_ARCHIVED = 2;
+}
+
+// ProductListFilter carries the NON-scope filters only (the scoped team_id stays top-level on the
+// request — see the scope note in warehouse/common/v1/list.proto).
+message ProductListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  // Which half of the catalogue to list. An enum rather than a bool: "discontinued" or "draft" is a
+  // plausible third tab, and a boolean cannot grow into one.
+  ProductStatus status = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
+message ProductListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    ProductRowSort product = 3;
+  }
+}
+
+// ProductRowItem is the PRODUCT slice — the fields a product list/card renders. Mirrors Product minus
+// the images gallery (a list carries only the denormalised cover, never the joined gallery).
+message ProductRowItem {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  string sku = 3;
+  string name = 4;
+  string description = 5;
+  uint64 category_id = 6;
+  string default_image_url = 7;
+  string default_image_thumbnail_url = 8;
+  bool deleted = 9;
+
+  // The CROSS markup another team pays over our cost when it sells this product (basis points,
+  // 1250 = 12.50%). On the row because it is a per-product decision the owner reviews across the
+  // whole catalogue at once — "what am I charging for what" is a list question, not a detail one.
+  uint32 cross_markup_bps = 10;
+
+  // Whether other teams may order this product. On the row because it is edited FROM the list — a
+  // switch per line — rather than by opening each product in turn.
+  bool cross_locked = 11;
+
+  // The hold-back buffer in units. On the row because a list is where "which products am I holding
+  // stock back on, and how much" is actually asked — one product at a time would never surface it.
+  uint32 reserved_stock = 12;
+}
+
+message ProductRowMapItem {
+  map<uint64, ProductRowItem> map_data = 1;
+}
+
+message ProductListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductRowMapItem product = 2;
+  }
+}
+
+message ProductListRequest {
+  // Read: anyone in the team, including staff and customer service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  ProductListFilter filter = 2;
+  ProductListFilterSort sort = 3;
+  repeated ProductListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message ProductListResponse {
+  // One entry per requested data type; each is a map keyed by product id. Resolve a product by looking
+  // its id up in each slice.
+  repeated ProductListResponseItem items = 1;
+  // The product ids in sorted order — the authoritative ordering of the page.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ProductDiscover lists products across ALL teams (open cross-team discovery, #106) so a selling team
+// can browse other teams' catalogues to order from. `team_id` is the CALLER's team — it authorizes the
+// request (use_scope: the caller must be a member with a listed role), but the results are NOT filtered
+// to it. Read-only; each Product carries its owning team_id.
+message ProductDiscoverRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Shares ProductListFilter with ProductList, but `status` is IGNORED here: discovery is always the
+  // live catalogue. Nobody browses another team's archive to find something to sell, and an archived
+  // product is precisely one its owner has taken out of circulation.
+  ProductListFilter filter = 2;
+  ProductListFilterSort sort = 3;
+  repeated ProductListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+
+  // Leave out the CALLER'S OWN products, so this answers "what can I sell that is somebody else's"
+  // rather than "everything sellable". Set by a picker that offers *My products* and *Other teams'
+  // products* as separate tabs, where the two overlapping would mean the same row appearing twice
+  // with no way to tell which tab it belonged to.
+  //
+  // Server-side, and it has to be: the result is PAGINATED, so dropping own-team rows in the client
+  // would narrow the loaded page while `total_items` went on counting them — a pager offering page 4
+  // of a list that ends at page 3.
+  //
+  // A field on the REQUEST rather than in ProductListFilter, because that filter is shared with
+  // ProductList, where "everyone except me" describes an empty set.
+  bool exclude_own_team = 6;
+
+  // Only products owned by THIS team. 0 = every team, which is the default.
+  //
+  // The lens for "I know whose product I want" — cross-team discovery returns every sellable product
+  // in the system, and by the time there are a dozen selling teams a search box alone means scrolling
+  // somebody else's catalogue to find the one you meant.
+  //
+  // Server-side for the same reason `exclude_own_team` is: the result is paginated, and a filter
+  // applied after the page has loaded narrows the rows while the count keeps describing the whole set.
+  //
+  // Set alongside `exclude_own_team` it simply intersects — naming your OWN team while excluding it
+  // returns nothing, which is the honest answer to a contradictory ask rather than an error.
+  uint64 owner_team_id = 7;
+
+  // ── The PRIORITY partition ──────────────────────────────────────────────────────────────────
+  //
+  // Two lists of owning teams, one keeping and one dropping. They exist as a PAIR because the
+  // picker's *Priority Product* and *Other Product* tabs are two halves of one partition: priority is
+  // a flag on the TEAM (see warehouse.team.v1.Team.priority_product), so the caller reads the
+  // priority team ids once and then asks for the two complementary slices.
+  //
+  //   Priority tab   owner_team_ids         = [the priority teams]
+  //   Other tab      exclude_owner_team_ids = [the priority teams]
+  //
+  // ⚠ IDS RATHER THAN A `priority` BOOLEAN ON THIS REQUEST, and that is not indirection for its own
+  // sake. product_service does not own `teams` and must not join to it (HARD RULE 3 — services stay
+  // independent), so it cannot answer "whose owner has the feature". Handed a list of team ids it can
+  // answer perfectly, and it never has to learn what the list means. The flag stays in exactly one
+  // place, and the two services keep their own schemas.
+  //
+  // ⚠ AN EMPTY LIST IS NO NARROWING, on both. A caller whose priority set is genuinely empty must
+  // render nothing itself rather than sending `owner_team_ids: []` — which would return the whole
+  // catalogue and read, on the Priority tab, as "everything is priority".
+  //
+  // Both intersect with `owner_team_id` and `exclude_own_team` rather than overriding them; a
+  // contradictory ask returns nothing, which is the honest answer.
+  repeated uint64 owner_team_ids = 8 [(buf.validate.field).repeated = {
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+
+  repeated uint64 exclude_owner_team_ids = 9 [(buf.validate.field).repeated = {
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message ProductDiscoverResponse {
+  repeated ProductListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ProductByIds resolves ids the caller ALREADY HOLDS into products, whoever owns them (#138).
+//
+// It exists because a warehouse physically holds other teams' goods: a selling team raises a restock
+// for its own product, and fulfilling it puts that product on the warehouse's shelf. So "what is on
+// rack A-01-3" starts from stock rows whose product ids belong to somebody else's catalogue, and a
+// screen that could only name the warehouse's OWN products would silently omit half the shelf.
+message ProductByIdsRequest {
+  // Read: selling roles AND warehouse roles. The warehouse ones are the point — a person standing at a
+  // shelf must be able to read the label on a box that is sitting on it, and Discover deliberately does
+  // not serve them (it is a selling team's "find things to sell", not a warehouse's "what is this?").
+  //
+  // This IS new exposure for warehouse roles: they could not read another team's product names before.
+  // The bound is that a by-ids lookup is not a browse — a caller must already know the id — and that
+  // what comes back is a catalogue label, not money.
+  // "only what it holds" is NOT enforced and cannot be here, because product_service does not know what
+  // any warehouse holds; enforcing it would mean moving this behind inventory_service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The team the CALLER holds a role in — not the team whose products come back. A warehouse asking
+  // about a selling team's product passes its own id, exactly as it does for every other scoped call.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  ProductByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Which slices to load per product. Empty defaults to the PRODUCT (row) slice.
+  repeated ProductByIdsDataType data_request = 3;
+}
+
+// ProductByIdsDataType selects which slices the by-ids response carries per product.
+enum ProductByIdsDataType {
+  PRODUCT_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  PRODUCT_BY_IDS_DATA_TYPE_GENERAL = 1;
+  PRODUCT_BY_IDS_DATA_TYPE_PRODUCT = 2;
+}
+
+// ProductByIdsFilter carries the NON-scope inputs (the ids to resolve). The scoped team_id stays
+// top-level on the request. It does not page: the caller supplies the set, so the response can never
+// exceed what was asked for, and max_items is what stops this becoming a bulk export.
+message ProductByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+message ProductByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductRowMapItem product = 2;
+  }
+}
+
+message ProductByIdsResponseList {
+  repeated ProductByIdsResponseItem items = 1;
+}
+
+message ProductByIdsResponse {
+  // Keyed by product id. An id that resolves to nothing is simply ABSENT rather than an error: a
+  // caller holding a stock row for a since-deleted product is asking a reasonable question, and
+  // failing the whole lookup would blank a rack over one dead id. Soft-deleted products ARE returned
+  // (stock outlives a catalogue entry); Product.deleted is on the wire so a caller that cares can tell.
+  map<uint64, ProductByIdsResponseList> items = 1;
+}
+
+message ProductUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it.
+  optional string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  optional string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  optional string description = 5 [(buf.validate.field).string = {max_len: 1000}];
+
+  // Category stays required: when present it must be a real node. Absent = leave alone.
+  optional uint64 category_id = 6 [(buf.validate.field).uint64.gt = 0];
+
+  // The gallery. A nil wrapper leaves images untouched; a present wrapper REPLACES the set with
+  // exactly its items (the edit page always sends the full desired set). The first is the cover.
+  ProductImages images = 7;
+
+  // The CROSS markup in basis points (1250 = 12.50%). Absent = leave alone; 0 = charge no markup.
+  // Optional rather than a plain uint32 precisely because those two are different instructions, and
+  // a bare 0 could not tell them apart.
+  optional uint32 cross_markup_bps = 8 [(buf.validate.field).uint32.lte = 100000];
+
+  // Absent = leave alone. Present = lock (true) or unlock (false) it for other teams. Optional so a
+  // form that does not show the switch cannot silently unlock everything it saves.
+  optional bool cross_locked = 9;
+
+  // The hold-back buffer in units (see ProductCreateRequest.reserved_stock). Absent = leave alone;
+  // 0 = hold nothing back. Optional for the same reason as the markup: "stop reserving" and "I am
+  // not touching this" are different instructions, and a bare 0 cannot tell them apart.
+  optional uint32 reserved_stock = 10 [(buf.validate.field).uint32.lte = 1000000];
+}
+
+message ProductUpdateResponse {
+  Product product = 1;
+}
+
+message ProductDetailRequest {
+  // Read: anyone in the team (same audience as ProductList).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDetailResponse {
+  Product product = 1;
+}
+
+message ProductDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDeleteResponse {}
+
+// ProductRestore puts an archived product back into the catalogue (`deleted = false`).
+//
+// It is a separate RPC rather than an `archived` flag on ProductUpdate because it can FAIL for a
+// reason no other update can: archiving frees the SKU (the uniqueness index is partial —
+// `(team_id, sku) WHERE deleted = FALSE`), so by the time somebody restores, another active product
+// may be holding it. The restore is then REFUSED with the conflicting product named, rather than
+// succeeding under a silently renamed SKU: a SKU is how a human finds a box on a shelf, and renaming
+// one behind their back is worse than making them choose.
+message ProductRestoreRequest {
+  // Write: the same managers who may archive. Team-level roles are legal — team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Optional NEW sku, which is how a caller resolves the collision above in one step: restore under
+  // a free SKU instead of the taken one. Absent = restore with the SKU it was archived under.
+  optional string sku = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+}
+
+message ProductRestoreResponse {
+  Product product = 1;
+}

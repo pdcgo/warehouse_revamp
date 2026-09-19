@@ -15,6 +15,7 @@ type User struct {
 	Email             string
 	PhoneNumber       string
 	IsSuspended       bool
+	AvatarURL         string
 	LastPasswordReset *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time

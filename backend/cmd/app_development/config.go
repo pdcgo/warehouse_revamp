@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_config"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 )
 
 type Config struct {
@@ -28,23 +29,37 @@ type Config struct {
 	// TokenTTL is how long a freshly-minted token lives.
 	TokenTTL time.Duration `env:"TOKEN_TTL" yaml:"token_ttl"`
 
+	// Twilio configures OTP delivery for the forgot-password flow. Empty (the dev default) means
+	// the OTP mock is used — see backend/pkgs/san_verification.
+	Twilio san_verification.TwilioConfiguration `yaml:"twilio"`
+
 	// InternalBaseURL is where services reach EACH OTHER over Connect.
 	//
 	// They share a binary today, but they still talk over RPC rather than through each other's
 	// database handles — that is the per-service independence rule, and honouring it now means
 	// splitting them out later changes this URL and nothing else.
 	InternalBaseURL string `env:"INTERNAL_BASE_URL" yaml:"internal_base_url"`
+
+	// Document storage (the LOCAL filesystem backend). DocumentStorageDir empty = a temp dir;
+	// DocumentBaseURL is the file endpoint clients PUT/GET through; DocumentTokenSecret signs
+	// upload tokens (dev default — production MUST override, and use a cloud backend).
+	DocumentStorageDir  string `env:"DOCUMENT_STORAGE_DIR" yaml:"document_storage_dir"`
+	DocumentBaseURL     string `env:"DOCUMENT_BASE_URL" yaml:"document_base_url"`
+	DocumentTokenSecret string `env:"DOCUMENT_TOKEN_SECRET" yaml:"document_token_secret"`
 }
 
 func NewConfig() (*Config, error) {
 	cfg := Config{
-		Addr:            ":8080",
+		Addr:            "localhost:8080",
 		AllowedOrigins:  []string{"http://localhost:5174"},
 		DatabaseURL:     "host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable",
 		RedisAddr:       "",
 		JWTSecret:       "dev-secret-do-not-use-in-production",
 		TokenTTL:        24 * time.Hour,
 		InternalBaseURL: "http://localhost:8080",
+
+		DocumentBaseURL:     "http://localhost:8080/local-storage",
+		DocumentTokenSecret: "dev-document-secret-do-not-use-in-production",
 	}
 
 	err := san_config.NewConfiguration(&cfg,

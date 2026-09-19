@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       # Development only — plain credentials on purpose. These match what
-      # `go run ./cmd/tool migrate` assumes for "Database Local", so a fresh checkout
+      # `go run ./tools/san migrate` assumes for "Database Local", so a fresh checkout
       # migrates with no configuration.
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password

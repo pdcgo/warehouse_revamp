@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package warehouse.marketplace.v1;
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1;marketplacev1";
+
+// Marketplace is the e-commerce platform a storefront lives on — a shared vocabulary, owned by no
+// single domain. A SELLING team's shop lives on one (#66), and a supplier can be reached through a
+// shop on one (#120), so both the selling and inventory domains reference this enum rather than
+// either owning it. Append-only; OTHER covers anything not yet listed.
+enum Marketplace {
+  MARKETPLACE_UNSPECIFIED = 0;
+  MARKETPLACE_SHOPEE = 1;
+  MARKETPLACE_TOKOPEDIA = 2;
+  MARKETPLACE_LAZADA = 3;
+  MARKETPLACE_TIKTOK = 4;
+  MARKETPLACE_BLIBLI = 5;
+  MARKETPLACE_BUKALAPAK = 6;
+  MARKETPLACE_OTHER = 7;
+}

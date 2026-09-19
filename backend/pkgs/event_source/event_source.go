@@ -1,9 +1,10 @@
 // Package event_source publishes and receives domain events over Google Cloud Pub/Sub.
 //
-// An event declares its own topic in the proto:
+// Every event is a VARIANT of the one warehouse.events.v1.Event envelope, and each variant declares
+// its own topic in the proto:
 //
-//	message OrderCreatedEvent {
-//	  option (warehouse.event_base.v1.event_config).event_topic = "order-created";
+//	message OrderPlaced {
+//	  option (event_config).topic = "order-placed";
 //	  ...
 //	}
 //
@@ -13,6 +14,7 @@ package event_source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -21,9 +23,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	event_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/event_base/v1"
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 )
 
 // defaultEmulatorHost is where `gcloud beta emulators pubsub` listens, and what
@@ -47,28 +50,60 @@ type PushRequest struct {
 	Subscription string      `json:"subscription"`
 }
 
-// TopicName reads the topic an event declared via (warehouse.event_base.v1.event_config).
+// TopicName reads the topic declared by the variant SET on this envelope.
 //
-// It returns an ERROR when the event declares no topic. (The original returned an empty
-// string, which sails on and fails much later inside the Pub/Sub client with a far less
-// obvious message — an event with no topic is a programming error, so say so here.)
-func TopicName(event proto.Message) (string, error) {
-	descriptor := event.ProtoReflect().Descriptor()
+// The option lives on the variant, never on Event — one variant, one topic
+// (one-event-one-topic-per-variant). So the envelope alone does not name a topic: the set variant
+// does, and unwrapping the oneof is how the sender finds it.
+//
+// It returns an ERROR when nothing is set or the variant declares no topic, rather than an empty
+// string that sails on and fails much later inside the Pub/Sub client with a far less obvious
+// message. An event with no topic is a programming error, so it is said here.
+//
+// A validated Event always has a variant (the-event-oneof-is-required), so the unset case is only
+// reachable by a caller that skipped validation.
+func TopicName(event *eventsv1.Event) (string, error) {
+	message := event.ProtoReflect()
 
+	oneof := message.Descriptor().Oneofs().ByName("message")
+	if oneof == nil {
+		return "", fmt.Errorf("event_source: %s has no message oneof", message.Descriptor().FullName())
+	}
+
+	field := message.WhichOneof(oneof)
+	if field == nil {
+		return "", errors.New("event_source: event has no variant set, so it names no topic")
+	}
+
+	return VariantTopic(message.Get(field).Message().Interface())
+}
+
+// VariantTopic reads the topic one VARIANT declares. TopicName is what callers want — this is
+// exported for the provisioning tool, which walks every variant to derive the set of topics to
+// create without holding an envelope.
+func VariantTopic(variant proto.Message) (string, error) {
+	return TopicOfDescriptor(variant.ProtoReflect().Descriptor())
+}
+
+// TopicOfDescriptor reads the topic straight off a message DESCRIPTOR, with no instance to hand.
+//
+// That is what lets the provisioning tool walk every variant of the envelope and derive the set of
+// topics to create, rather than being handed a list a caller could get wrong.
+func TopicOfDescriptor(descriptor protoreflect.MessageDescriptor) (string, error) {
 	opts, ok := descriptor.Options().(*descriptorpb.MessageOptions)
 	if !ok || opts == nil {
-		return "", fmt.Errorf("event_source: %s declares no event_topic", descriptor.FullName())
+		return "", fmt.Errorf("event_source: %s declares no topic", descriptor.FullName())
 	}
 
-	if !proto.HasExtension(opts, event_basev1.E_EventConfig) {
-		return "", fmt.Errorf("event_source: %s declares no event_topic", descriptor.FullName())
+	if !proto.HasExtension(opts, eventsv1.E_EventConfig) {
+		return "", fmt.Errorf("event_source: %s declares no topic", descriptor.FullName())
 	}
 
-	config, _ := proto.GetExtension(opts, event_basev1.E_EventConfig).(*event_basev1.MessageEventConfig)
+	config, _ := proto.GetExtension(opts, eventsv1.E_EventConfig).(*eventsv1.EventConfig)
 
-	topic := config.GetEventTopic()
+	topic := config.GetTopic()
 	if topic == "" {
-		return "", fmt.Errorf("event_source: %s has an empty event_topic", descriptor.FullName())
+		return "", fmt.Errorf("event_source: %s has an empty topic", descriptor.FullName())
 	}
 
 	return topic, nil
@@ -124,3 +159,7 @@ func NewPubsubClient(ctx context.Context, projectID string) (*pubsub.Client, err
 
 	return pubsub.NewClient(ctx, projectID)
 }
+
+// errCloneFailed cannot happen — proto.Clone of a *T returns a *T — but the type assertion has to be
+// checked, and a panic in a publisher is worse than an error.
+var errCloneFailed = errors.New("event_source: cloning the event failed")
