@@ -122,13 +122,13 @@ export function StatementSummary({
             <Text
               fontSize="2xl"
               fontWeight="bold"
-              color={!loading && profit < 0n ? "red.fg" : undefined}
+              color={!loading && profit < 0n ? "error.fg" : undefined}
               data-testid="statement-total-profit"
             >
               {money(profit)}
             </Text>
             {!loading && profit < 0n && (
-              <Text fontSize="xs" color="red.fg" data-testid="statement-loss">
+              <Text fontSize="xs" color="error.fg" data-testid="statement-loss">
                 {t("statement.loss")}
               </Text>
             )}
@@ -143,7 +143,7 @@ export function StatementSummary({
             <Text
               fontSize="xl"
               fontWeight="medium"
-              color={!loading && perBucket < 0n ? "red.fg" : undefined}
+              color={!loading && perBucket < 0n ? "error.fg" : undefined}
               data-testid="statement-per-day"
             >
               {money(perBucket)}

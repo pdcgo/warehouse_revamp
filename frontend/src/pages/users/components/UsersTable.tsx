@@ -175,7 +175,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
         </HStack>
 
         {error && (
-          <Text color="red.fg" data-testid="users-error">
+          <Text color="error.fg" data-testid="users-error">
             {error}
           </Text>
         )}
@@ -219,11 +219,11 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                     <Table.Cell>{user.email}</Table.Cell>
                     <Table.Cell>
                       {user.isSuspended ? (
-                        <Badge colorPalette="red" data-testid={`suspended-${user.username}`}>
+                        <Badge colorPalette="error" data-testid={`suspended-${user.username}`}>
                           {t("users.status.suspended")}
                         </Badge>
                       ) : (
-                        <Badge colorPalette="green">{t("users.status.active")}</Badge>
+                        <Badge colorPalette="success">{t("users.status.active")}</Badge>
                       )}
                     </Table.Cell>
 

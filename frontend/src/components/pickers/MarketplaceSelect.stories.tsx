@@ -4,7 +4,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { MarketplaceSelect, description, marketplaceLabel } from "./MarketplaceSelect";
+import { marketplaceLabel } from "../badges/MarketplaceBadge";
+import { MarketplaceSelect, description } from "./MarketplaceSelect";
 
 const meta = {
   title: "Components/Pickers/MarketplaceSelect",

@@ -479,7 +479,7 @@ export function OrderCreatePage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="order-create-error">
+        <Text color="error.fg" data-testid="order-create-error">
           {error}
         </Text>
       )}
@@ -533,6 +533,12 @@ export function OrderCreatePage() {
               the one control that governs the whole form below the fold. */}
           <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 1 }}>
             <Card.Root>
+              {/* Every card on the form names itself the same way — a bold title, a quieter line under
+                  it saying what the card decides (owner). */}
+              <Card.Header>
+                <Card.Title>{t("orders.sourceTitle")}</Card.Title>
+                <Card.Description>{t("orders.sourceHelp")}</Card.Description>
+              </Card.Header>
               <Card.Body>
                 <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
                   {/* The shop AND the marketplace's own order id, as one block — the storefront and
@@ -652,22 +658,24 @@ export function OrderCreatePage() {
                   lines scrolls past it — which is what a note is for: something remembered halfway
                   through typing the order, not something written in a fixed place at the end. */}
               <Card.Root>
+                {/* The card's title and subtitle, like every card on the form. The subtitle IS the old
+                    helper text — kept once, above the field, rather than repeated under it. */}
+                <Card.Header>
+                  <Card.Title>{t("orders.note")}</Card.Title>
+                  <Card.Description>{t("orders.noteHelp")}</Card.Description>
+                </Card.Header>
                 <Card.Body>
-                  <Stack gap="card">
-                    <Heading as="h3" size="sm">{t("orders.note")}</Heading>
-
-                    <Field.Root>
-                      <Textarea
-                        rows={3}
-                        maxLength={2000}
-                        value={note}
-                        placeholder={t("orders.notePlaceholder")}
-                        data-testid="order-create-note"
-                        onChange={(e) => setNote(e.target.value)}
-                      />
-                      <Field.HelperText>{t("orders.noteHelp")}</Field.HelperText>
-                    </Field.Root>
-                  </Stack>
+                  <Field.Root>
+                    <Textarea
+                      rows={3}
+                      maxLength={2000}
+                      value={note}
+                      placeholder={t("orders.notePlaceholder")}
+                      aria-label={t("orders.note")}
+                      data-testid="order-create-note"
+                      onChange={(e) => setNote(e.target.value)}
+                    />
+                  </Field.Root>
                 </Card.Body>
               </Card.Root>
 

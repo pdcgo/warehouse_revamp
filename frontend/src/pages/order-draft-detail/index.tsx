@@ -394,7 +394,7 @@ export function OrderDraftDetailPage() {
         <Button
           size="xs"
           variant="outline"
-          colorPalette="red"
+          colorPalette="error"
           data-testid="draft-delete"
           onClick={() => setConfirmDelete(true)}
         >
@@ -404,7 +404,7 @@ export function OrderDraftDetailPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="draft-error">
+        <Text color="error.fg" data-testid="draft-error">
           {error}
         </Text>
       )}
@@ -550,7 +550,7 @@ export function OrderDraftDetailPage() {
                                 ) : (
                                   <Text
                                     fontSize="xs"
-                                    color="orange.fg"
+                                    color="warning.fg"
                                     mt="1"
                                     data-testid={`draft-line-unmapped-${i}`}
                                   >

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
-import { ChakraProvider } from "@chakra-ui/react";
+import { Box, ChakraProvider } from "@chakra-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router-dom";
@@ -10,10 +10,17 @@ import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
 import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
-import { resetLiabilityPayments, resetLiabilityTerms, resetShipmentChannels } from "./stubTransport";
+import { resetLiabilityPayments, resetLiabilityTerms, resetShipmentChannels, stubUploads } from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
-import { system } from "../src/theme";
-import "../src/i18n/config";
+import { SYSTEM_FONT_STACK, system } from "../src/theme";
+import i18n from "../src/i18n/config";
+import type { Lang } from "../src/i18n/language";
+
+// The toolbar's Language, as the app's Lang. Anything but "id" is English — the default every story's
+// play() asserts against.
+function langOf(globals: Record<string, unknown>): Lang {
+  return globals.locale === "id" ? "id" : "en";
+}
 
 // The app shell, minus the app.
 //
@@ -28,11 +35,17 @@ import "../src/i18n/config";
 // re-render — which makes it worth stating rather than rediscovering.
 function StoryProviders({
   colorMode,
+  font,
+  lang,
   ownRouter,
+  pageGutter,
   children,
 }: {
   colorMode: "light" | "dark";
+  font: "lato" | "system";
+  lang: Lang;
   ownRouter: boolean;
+  pageGutter: boolean;
   children: ReactNode;
 }) {
   // A FRESH client per story. Sharing one would let a picker's options survive into the next story
@@ -56,6 +69,38 @@ function StoryProviders({
     document.documentElement.classList.toggle("dark", colorMode === "dark");
   }, [colorMode]);
 
+  // The toolbar's Language drives i18n with the same `changeLanguage` the app's own switcher calls
+  // (useLanguage, src/i18n/language.ts) — minus its localStorage write, so browsing in Indonesian
+  // leaves no preference behind. Switching re-renders the open story in place; a NEW story is set
+  // before it renders, in `beforeEach`.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    void i18n.changeLanguage(lang);
+  }, [lang]);
+
+  // ⚠ TEMPORARY — a before/after switch while the typeface is being decided; remove it once Lato is
+  // settled. "System" overrides the two font variables the theme emits with the old stack, inline on
+  // <html> so it beats the `:root` rule; "Lato" removes the override and the theme applies again.
+  useEffect(() => {
+    const root = document.documentElement.style;
+
+    if (font === "system") {
+      root.setProperty("--chakra-fonts-body", SYSTEM_FONT_STACK);
+      root.setProperty("--chakra-fonts-heading", SYSTEM_FONT_STACK);
+    } else {
+      root.removeProperty("--chakra-fonts-body");
+      root.removeProperty("--chakra-fonts-heading");
+    }
+  }, [font]);
+
+  // A PAGE gets the gutter the desktop shell gives it in the app (`p="page"` on DesktopLayout's
+  // <main>), so a page story reads the way the screen does. Everything else is `fullscreen` (see
+  // `parameters.layout`) — a shell fills the frame, and a component sits flush.
+  //
+  // It lives here, inside ChakraProvider, rather than in a decorator of its own: `p="page"` is a theme
+  // token, and resolving it must not depend on the order decorators happen to wrap in.
+  const content = pageGutter ? <Box p="page">{children}</Box> : children;
+
   return (
     <ChakraProvider value={system}>
       <QueryClientProvider client={queryClient}>
@@ -73,7 +118,7 @@ function StoryProviders({
             builds its own; this decorator then supplies NO router at all. Opt-in rather than
             default, for the same reason `signedIn` is: a data router means naming routes, and the
             ~40 stories that only render a Link should not have to. */}
-        {ownRouter ? children : <MemoryRouter>{children}</MemoryRouter>}
+        {ownRouter ? content : <MemoryRouter>{content}</MemoryRouter>}
         {/* Outside the router deliberately — a toast is chrome, it renders no Link, and keeping it
             out is what lets the branch above swap routers without moving it. */}
         <Toaster />
@@ -85,7 +130,11 @@ function StoryProviders({
 const withProviders: Decorator = (Story, context) => (
   <StoryProviders
     colorMode={context.globals.colorMode === "dark" ? "dark" : "light"}
+    font={context.globals.font === "system" ? "system" : "lato"}
+    lang={langOf(context.globals)}
     ownRouter={context.parameters.dataRouter === true}
+    // The live app's pages only — `Legacy/Pages/*` and `LegacyWarehouse/Pages/*` stay fullscreen.
+    pageGutter={context.title.startsWith("Pages/")}
   >
     <Story />
   </StoryProviders>
@@ -201,6 +250,8 @@ const preview: Preview = {
   ],
   initialGlobals: {
     colorMode: "light",
+    font: "lato",
+    locale: "en",
   },
   globalTypes: {
     colorMode: {
@@ -215,8 +266,44 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    // The UI language, for reviewing a screen in Bahasa Indonesia.
+    //
+    // ⚠ ENGLISH IS THE DEFAULT, AND THE TESTS DEPEND ON IT: every play() asserts English text, and
+    // `npm run test:stories` runs at the default. Browsing in Indonesian therefore shows those checks
+    // FAILING in the Interactions panel — expected, and nothing to fix. The ~10 keys `id.json` lacks
+    // fall back to English.
+    locale: {
+      description: "The app's UI language",
+      toolbar: {
+        title: "Language",
+        icon: "globe",
+        items: [
+          { value: "en", title: "English" },
+          { value: "id", title: "Bahasa Indonesia" },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    // ⚠ TEMPORARY — see the font effect in StoryProviders.
+    font: {
+      description: "The app typeface — Lato, or the system stack it replaced",
+      toolbar: {
+        title: "Font",
+        icon: "paragraph",
+        items: [
+          { value: "lato", title: "Lato" },
+          { value: "system", title: "System (before)" },
+        ],
+        dynamicTitle: true,
+      },
+    },
   },
-  async beforeEach() {
+  async beforeEach(context) {
+    // The language, set BEFORE the story renders. The Sidebar and MenuSheet stories carry the app's
+    // real language switcher, which persists its choice — without this, a story that clicks it would
+    // leave every later story in Indonesian.
+    localStorage.removeItem("warehouse.lang");
+    await i18n.changeLanguage(langOf(context.globals));
     // The courier catalogue is a MODULE-LEVEL session cache, not a query — it is loaded once and
     // shared by every ShippingBadge on a page (features/shipping/catalogue.ts). Module state
     // survives between stories in one browser tab, so without this a later story would render from
@@ -240,9 +327,14 @@ const preview: Preview = {
     // …and the payments table, which a story that REJECTS a claim writes to. Without this, whether a
     // pending payment still offers Confirm/Reject would depend on story order.
     resetLiabilityPayments();
+    // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
+    // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
+    stubUploads();
     stubClipboard();
   },
   parameters: {
+    // No frame padding by default — the `Pages/` gutter is added in StoryProviders instead.
+    layout: "fullscreen",
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     options: {
       // The sidebar groups mirror `src/components/<group>/` one-for-one, so "where does this live?"

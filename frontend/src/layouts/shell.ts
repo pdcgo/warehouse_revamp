@@ -50,10 +50,11 @@ export function usesGreyCanvas(pathname: string): boolean {
   return pathname.startsWith("/inventories/batches/");
 }
 
-// The grey canvas itself, as a Chakra `bg` value.
+// The grey canvas itself, as a Chakra `bg` value — a step of the palette's gray (theme.ts), one below
+// the white cards that sit on it.
 //
 // ⚠ THE LIGHT SIDE IS `base`, NOT `_light`. As an INLINE condition, `_light` composes to
 // `.css-x:root .css-x` — a selector that can never match — so the grey canvas was silently missing in
 // light mode and appeared only in dark. (`_light` in theme.ts is fine and stays: a semantic token is
 // emitted at `:root` scope, not nested under an element's own class.)
-export const GREY_CANVAS = { base: "#f6f7f9", _dark: "#0c0e12" };
+export const GREY_CANVAS = { base: "gray.100", _dark: "gray.950" };

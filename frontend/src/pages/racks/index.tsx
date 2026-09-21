@@ -109,7 +109,7 @@ export function RacksPage() {
       </HStack>
 
       {error && (
-        <Text color="red.fg" data-testid="racks-error">
+        <Text color="error.fg" data-testid="racks-error">
           {error}
         </Text>
       )}
@@ -164,7 +164,7 @@ export function RacksPage() {
                         <IconButton
                           size="xs"
                           variant="ghost"
-                          colorPalette="red"
+                          colorPalette="error"
                           aria-label="Delete"
                           data-testid={`delete-rack-${rack.code}`}
                         >

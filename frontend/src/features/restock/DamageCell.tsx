@@ -30,7 +30,7 @@ export function DamageCell({ quantity, reasons, testId }: DamageCellProps) {
   return (
     <Table.Cell textAlign="end" data-testid={testId}>
       <Stack gap="0" align="end">
-        <Text as="span" fontWeight="semibold" color="red.fg">
+        <Text as="span" fontWeight="semibold" color="error.fg">
           {quantity.toString()}
         </Text>
         {/* On the row rather than behind a hover — but CLAMPED, because a 200-char note must not make

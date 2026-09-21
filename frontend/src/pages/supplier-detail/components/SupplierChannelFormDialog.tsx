@@ -166,7 +166,7 @@ export function SupplierChannelFormDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="channel-form-error">
+                    <Text color="error.fg" data-testid="channel-form-error">
                       {error}
                     </Text>
                   )}

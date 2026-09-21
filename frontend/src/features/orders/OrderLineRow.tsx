@@ -101,11 +101,11 @@ export function OrderLineRow(props: OrderLineRowProps) {
       <Table.Cell textAlign="end">
         {stock.kind === "known" ? (
           <Stack gap="0" align="end">
-            <Text fontSize="sm" color={short ? "red.fg" : undefined} data-testid={`${idPrefix}-stock-${index}`}>
+            <Text fontSize="sm" color={short ? "error.fg" : undefined} data-testid={`${idPrefix}-stock-${index}`}>
               {stock.ready.toString()}
             </Text>
             {short && (
-              <Badge size="xs" colorPalette="red">
+              <Badge size="xs" colorPalette="error">
                 {t("orders.lineShortBadge", { wanted: stock.wanted.toString() })}
               </Badge>
             )}
@@ -125,7 +125,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
           w="16"
           textAlign="end"
           value={line.quantity}
-          borderColor={short ? "red.solid" : undefined}
+          borderColor={short ? "error.solid" : undefined}
           data-testid={`${idPrefix}-qty-${index}`}
           onChange={(e) => onPatch({ quantity: e.target.value })}
         />
@@ -141,7 +141,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
           ) : (
             // 0 is UNKNOWN, never free: a product received without a restock has no recorded cost, and
             // printing "Rp 0" would book it as costing nothing.
-            <Text fontSize="sm" color="orange.fg">
+            <Text fontSize="sm" color="warning.fg">
               {t("orders.hppUnknown")}
             </Text>
           ))}
@@ -156,7 +156,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
           type="button"
           size="xs"
           variant="ghost"
-          colorPalette="red"
+          colorPalette="error"
           aria-label={t("orders.removeLine")}
           data-testid={`${idPrefix}-remove-${index}`}
           onClick={onRemove}

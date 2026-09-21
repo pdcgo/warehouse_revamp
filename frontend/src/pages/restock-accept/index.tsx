@@ -458,7 +458,7 @@ export function RestockAcceptPage() {
     return (
       <Stack gap="section">
         {back}
-        <Text color="red.fg" data-testid="accept-error">
+        <Text color="error.fg" data-testid="accept-error">
           {error || t("restock.accept.notFound")}
         </Text>
       </Stack>
@@ -490,7 +490,7 @@ export function RestockAcceptPage() {
               {t("restock.accept.restockCount", { count: totalReceived.toString() })}
             </Text>
             {blockedLines > 0 && (
-              <Text fontSize="xs" color="orange.fg" data-testid="accept-progress">
+              <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
                 {t("restock.accept.notPlaced", { count: blockedLines })}
               </Text>
             )}
@@ -512,7 +512,7 @@ export function RestockAcceptPage() {
       </Box>
 
       {error && (
-        <Text color="red.fg" data-testid="accept-error">
+        <Text color="error.fg" data-testid="accept-error">
           {error}
         </Text>
       )}
@@ -816,7 +816,7 @@ export function RestockAcceptPage() {
                     </Text>
                     {delta && (
                       <Badge
-                        colorPalette={st.count < item.quantity ? "orange" : "green"}
+                        colorPalette={st.count < item.quantity ? "warning" : "success"}
                         data-testid={`accept-delta-${item.productId}`}
                       >
                         {delta}
@@ -865,11 +865,11 @@ export function RestockAcceptPage() {
                       </Text>
                       <Spacer />
                       {st.blocking > 0n ? (
-                        <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
+                        <Badge colorPalette="warning" data-testid={`accept-unbalanced-${item.productId}`}>
                           {t("restock.accept.toPlace", { count: st.blocking.toString() })}
                         </Badge>
                       ) : (
-                        <Badge colorPalette="green" data-testid={`accept-balanced-${item.productId}`}>
+                        <Badge colorPalette="success" data-testid={`accept-balanced-${item.productId}`}>
                           {t("restock.accept.pcs", { count: st.count.toString() })}
                         </Badge>
                       )}
@@ -920,7 +920,7 @@ export function RestockAcceptPage() {
                         <IconButton
                           size="xs"
                           variant="ghost"
-                          colorPalette="red"
+                          colorPalette="error"
                           flexShrink={0}
                           aria-label={t("restock.accept.removePlacement")}
                           disabled={st.rows.length === 1}
@@ -978,16 +978,16 @@ export function RestockAcceptPage() {
                 ) : (
                   <Box
                     borderWidth="1px"
-                    borderColor="orange.emphasized"
+                    borderColor="warning.emphasized"
                     borderRadius="md"
-                    bg="orange.subtle"
+                    bg="warning.subtle"
                     p="card"
                     h="full"
                   >
                     <Stack gap="card">
                       <Flex align="center" gap="2">
-                        <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
-                        <Text fontSize="sm" fontWeight="semibold" color="orange.fg">
+                        <Icon as={TriangleAlert} boxSize="4" color="warning.fg" />
+                        <Text fontSize="sm" fontWeight="semibold" color="warning.fg">
                           {t("restock.accept.problems")}
                         </Text>
                       </Flex>
@@ -1019,7 +1019,7 @@ export function RestockAcceptPage() {
                             <IconButton
                               size="xs"
                               variant="ghost"
-                              colorPalette="red"
+                              colorPalette="error"
                               flexShrink={0}
                               aria-label={t("restock.accept.removeProblem")}
                               onClick={() => removeProblem(st.key, row.key)}

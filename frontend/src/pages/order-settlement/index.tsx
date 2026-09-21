@@ -218,7 +218,7 @@ function ListRow({
         // The row refuses rather than printing one — see fixtures.noEstimate.
         <Table.Cell colSpan={4} data-testid="row-no-estimate">
           <Flex align="center" gap="2">
-            <Icon as={TriangleAlert} boxSize="4" color="orange.400" />
+            <Icon as={TriangleAlert} boxSize="4" color="warning.fg" />
             <Text fontSize="sm" color="fg.muted">
               {t("orderSettlement.rowNoEstimate")}
             </Text>

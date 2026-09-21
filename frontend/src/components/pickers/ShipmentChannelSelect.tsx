@@ -3,6 +3,7 @@ import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
 import { useShipmentChannelOptions } from "../../features/shipment/queries";
+import { ShipmentChannelBadge } from "../badges/ShipmentChannelBadge";
 
 export interface ShipmentChannelSelectProps {
   /** Selected channel ID — what orders.shipment_channel_id stores. 0n / undefined = none. */
@@ -22,7 +23,7 @@ export interface ShipmentChannelSelectProps {
 // reads the same catalogue (the-old-catalogue-bridges-by-code). The interaction rules are shared: opens on click, matches name OR code, clearing
 // emits "none", and the root remounts when the options land so a pre-set value shows its name.
 export const description =
-  "Searchable courier picker over live shipment channels — matches name or code, emits the channel id, and can be cleared back to none.";
+  "Searchable courier picker over live shipment channels — matches name or code, renders each option as its ShipmentChannelBadge (the courier's standard colour), emits the channel id, and can be cleared back to none.";
 
 export function ShipmentChannelSelect({ value, onChange, placeholder, disabled }: ShipmentChannelSelectProps) {
   const { t } = useTranslation();
@@ -99,7 +100,10 @@ export function ShipmentChannelSelect({ value, onChange, placeholder, disabled }
                     key={channel.id.toString()}
                     data-testid={`shipment-channel-option-${channel.code}`}
                   >
-                    {channel.name}
+                    {/* The BADGE, not the bare name — the courier looks the same here as on the order
+                        it ends up on. The row is passed along, so the badge needs no second lookup and
+                        keeps its treatment for a channel that has since been deleted. */}
+                    <ShipmentChannelBadge channelId={channel.id} channel={channel} />
                     <Combobox.ItemIndicator />
                   </Combobox.Item>
                 ))}

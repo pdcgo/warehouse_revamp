@@ -831,7 +831,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `pickers/` | 16 | choose a thing — every `*Select`, `ProductPicker`, `AddressPicker` |
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 5 | show a product / a team / a person the same way everywhere |
-| `badges/` | 4 | a status or a kind, in its ONE standard colour |
+| `badges/` | 6 | a status or a kind, in its ONE standard colour |
 | `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
 | `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 2 | a typed value, formatted or masked |
@@ -868,8 +868,15 @@ Two more UI rules:
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
   reversible — goes through a [`ConfirmDialog`](frontend/src/components/feedback/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.
-- **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
-  "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
+- **Titles AND actions are Title Case** (owner). A dialog title, a page or card title, a **button**, a
+  **menu item**: "Delete Product", "Reset Password for …", "New Category", "Add Line", "Sign Out",
+  "Post Count". This includes the `title` passed to `ConfirmDialog`. Small words stay lowercase unless
+  they open the label — `a, an, the, and, or, of, to, for, in, on, by, as, at, from, with`, and in
+  Indonesian `dan, atau, di, ke, dari, untuk, yang, pada` — so "Save as Draft", "Remove from Team".
+
+  **Sentence case everywhere else**, because none of it is a title: placeholders ("Select a category"),
+  `aria-label`s (they are spoken), toast titles and descriptions (sentences), field labels, column
+  headers, stat labels and helper text. Both catalogues follow the same split.
 - **A detail view is a PAGE, not a dialog.** "See the full record" — user detail, team detail,
   warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
@@ -929,14 +936,29 @@ the stories too, so a story asserts on the same values the stub served.
 | A controlled input needs real state | a story pinning `value` to a constant re-renders the field back after every keystroke, so typing tests nothing. `userEvent.type(el, "…", { delay: 40 })` too — at machine speed a controlled input drops characters |
 | Module-level caches survive between stories | the shipping catalogue and the color-mode/token storage are reset in `preview.tsx`'s `beforeEach` |
 
-[frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
-set. Two things are centralised there on purpose:
+[frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density, spacing and colour
+are set. Three things are centralised there on purpose:
 
 - **Control sizing** defaults to `sm` for button/input/textarea/select. Do **not** sprinkle
   `size="sm"` through the app — an explicit size on a control is an override, and should be
   rare (e.g. `size="xs"` on a table row action).
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
+- **The palette is seven TONES, each a Tailwind colour** (owner): main **rose** (`brand`), primary
+  **indigo** (`primary`), success **emerald**, warning **amber**, info **sky**, error **red**,
+  plain **gray**. Each tone is a `colorPalette` of its own name, defined once in theme.ts.
+
+  ⚠ **A status is written as its ROLE, never as a hue** — `colorPalette="success"`,
+  `color="warning.fg"`, not `"green"` / `"orange.fg"`. A hue name (`green`, `orange`, `purple`, …) is
+  only for **categorical** colour, where the colour tells things apart rather than saying good or bad:
+  a courier, a team type, an order's lifecycle step. Written as a hue, a status is a colour that a
+  palette change silently misses.
+- **Marketplaces carry their BRAND colour**, adapted per colour mode: `marketplace.<name>.bg` / `.fg` in
+  theme.ts, read only by `MarketplaceBadge`. A new marketplace gets its own pair there, not a hue.
+- **Team types carry their own colour too**: `teamType.<type>.badge` / `.avatar` / `.fg` in theme.ts,
+  read only by [`TeamTypeBadge`](frontend/src/components/badges/TeamTypeBadge.tsx) — which also exports
+  the avatar tint (`teamTypeAvatar`) and the name (`teamTypeLabel`). TeamItem, TeamSelect, TeamSwitcher,
+  TeamTypeSelect and the legacy badge all go through it; never re-type the mapping in a screen.
 
 **Icons come from [lucide-react](https://lucide.dev), rendered through Chakra's `<Icon>` wrapper.**
 Import the named icon, then wrap it: `import { Pencil } from "lucide-react"` →
@@ -947,8 +969,6 @@ icon obey Chakra's sizing/colour tokens, so **size is a `boxSize` token, not a r
 icons — they render differently on every platform. Keep the button's `aria-label` — the icon is
 decorative, the label is the name. Chakra's own `CloseButton` is a primitive, not an icon, and
 stays.
-
-The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
 
 Auth is deliberately **not wired** into the frontend shell: it is still being designed.
 

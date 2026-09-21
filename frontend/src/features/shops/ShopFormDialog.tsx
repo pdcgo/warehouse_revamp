@@ -23,7 +23,7 @@ import { useSaveShop } from "./queries";
 // travels in the message body (the backend's use_scope reads it there, never a header).
 //
 // Two modes, one form:
-//  - create — `shop` undefined; the dialog renders its own "New shop" trigger.
+//  - create — `shop` undefined; the dialog renders its own "New Shop" trigger.
 //  - edit — `shop` set; the dialog is controlled (open/onOpenChange), pre-filled, calls ShopUpdate.
 export function ShopFormDialog({
   shop,
@@ -137,7 +137,7 @@ export function ShopFormDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="shop-form-error">
+                    <Text color="error.fg" data-testid="shop-form-error">
                       {error}
                     </Text>
                   )}

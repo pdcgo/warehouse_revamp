@@ -262,7 +262,7 @@ export function OrdersPage() {
         <Tabs.Content value={tab}>
           <Stack gap="section">
             {error && (
-              <Text color="red.fg" data-testid="orders-error">
+              <Text color="error.fg" data-testid="orders-error">
                 {error}
               </Text>
             )}

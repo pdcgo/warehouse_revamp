@@ -35,11 +35,30 @@ export const InAField: Story = {
 
     return (
       <Field.Root w="64">
-        <Field.Label>Harga (Rupiah)</Field.Label>
+        {/* The label no longer has to say "Rupiah" — the addon does. */}
+        <Field.Label>Harga</Field.Label>
         <CurrencyInput {...args} value={value} onChange={setValue} />
         <Field.HelperText>Raw value: {value || "(empty)"}</Field.HelperText>
       </Field.Root>
     );
+  },
+};
+
+// ⚠ THE "Rp" IS BESIDE THE NUMBER, NEVER IN IT (owner). A money field has to say what it is, but a
+// prefix living in the VALUE is a character the caret has to be walked past and every parser has to
+// strip back off. The addon is drawn over the field instead, so what the caller holds is still digits.
+export const TheRpAddonIsNotPartOfTheValue: Story = {
+  args: { value: "20000" },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("currency-input-addon")).toHaveTextContent("Rp");
+
+    const input = canvas.getByLabelText("Price");
+    await expect(input).toHaveValue("20.000");
+
+    await userEvent.type(input, "5");
+    await expect(args.onChange).toHaveBeenLastCalledWith("200005");
   },
 };
 

@@ -1,40 +1,9 @@
 import { useState } from "react";
 import { Avatar, Box, CloseButton, Dialog, Flex, Icon, Input, Portal, Stack, Text } from "@chakra-ui/react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { TeamType } from "../gen/warehouse/team/v1/team_pb";
+import { teamTypeAvatar, teamTypeLabel } from "../components/badges/TeamTypeBadge";
 import { TeamItem } from "../components/entity/TeamItem";
 import { useTeam } from "../features/team/TeamContext";
-
-// Each team type carries a colour so the current scope's avatar fallback is recognisable at a glance.
-function typePalette(type: TeamType | undefined): string {
-  switch (type) {
-    case TeamType.WAREHOUSE:
-      return "blue";
-    case TeamType.SELLING:
-      return "green";
-    case TeamType.ADMIN:
-      return "purple";
-    case TeamType.ROOT:
-      return "brand";
-    default:
-      return "gray";
-  }
-}
-
-function typeLabel(type: TeamType | undefined): string {
-  switch (type) {
-    case TeamType.ROOT:
-      return "Root";
-    case TeamType.ADMIN:
-      return "Admin";
-    case TeamType.WAREHOUSE:
-      return "Warehouse";
-    case TeamType.SELLING:
-      return "Selling";
-    default:
-      return "";
-  }
-}
 
 // TeamSwitcher is the sidebar's current-team control: a card showing the active team (colour keyed
 // to its type) that opens a CENTERED dialog to search and switch teams. THE CURRENT TEAM IS THE
@@ -89,7 +58,9 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
           <Avatar.Root
             shape="rounded"
             size="sm"
-            colorPalette={typePalette(current?.teamType)}
+            // Tinted by team type from the ONE mapping (TeamTypeBadge) — this file used to keep its own
+            // copy, and it had already drifted: the root team was rose here and gray in the team list.
+            {...teamTypeAvatar(current?.teamType)}
             flexShrink={0}
           >
             <Avatar.Fallback name={name} />
@@ -103,7 +74,7 @@ export function TeamSwitcher({ collapsed }: { collapsed?: boolean }) {
                   {name}
                 </Text>
                 <Text fontSize="xs" color="fg.muted">
-                  {typeLabel(current?.teamType)}
+                  {current ? teamTypeLabel(current.teamType) : ""}
                 </Text>
               </Box>
               <Icon as={ChevronsUpDown} boxSize="4" color="fg.muted" flexShrink={0} />

@@ -101,7 +101,7 @@ export function EditTeamDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="edit-team-error">
+                    <Text color="error.fg" data-testid="edit-team-error">
                       {error}
                     </Text>
                   )}

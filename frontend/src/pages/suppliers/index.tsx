@@ -105,7 +105,7 @@ export function SuppliersPage() {
       </HStack>
 
       {error && (
-        <Text color="red.fg" data-testid="suppliers-error">
+        <Text color="error.fg" data-testid="suppliers-error">
           {error}
         </Text>
       )}
@@ -163,7 +163,7 @@ export function SuppliersPage() {
                           <IconButton
                             size="xs"
                             variant="ghost"
-                            colorPalette="red"
+                            colorPalette="error"
                             aria-label="Delete"
                             data-testid={`delete-${supplier.code}`}
                           >

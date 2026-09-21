@@ -62,11 +62,11 @@ export const MarketplaceTotalMatches: Story = {
 
     await userEvent.click(canvas.getByTestId("preview-tab-info"));
     await waitFor(async () => {
-      await expect(canvas.getByText(/Total order di marketplace/i)).toBeVisible();
+      await expect(canvas.getByText(/Marketplace order total/i)).toBeVisible();
     });
 
     // Order side: the same number, printed by the shipped InfoPanel from `order.marketplaceTotal`.
-    await expect(canvasElement).toHaveTextContent(/Total order di marketplace: Rp 120\.000/i);
+    await expect(canvasElement).toHaveTextContent(/Marketplace order total: Rp 120\.000/i);
   },
 };
 

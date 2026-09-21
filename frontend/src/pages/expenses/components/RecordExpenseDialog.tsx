@@ -199,7 +199,7 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
                   </Field.Root>
 
                   {error && (
-                    <Dialog.Description color="red.fg" data-testid="expense-form-error">
+                    <Dialog.Description color="error.fg" data-testid="expense-form-error">
                       {error}
                     </Dialog.Description>
                   )}

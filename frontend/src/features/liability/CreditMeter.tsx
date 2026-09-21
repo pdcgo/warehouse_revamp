@@ -57,7 +57,7 @@ export function CreditMeter({ limit, debt, testId }: CreditMeterProps) {
 
   if (state === "frozen") {
     return (
-      <Badge colorPalette="red" data-testid={testId}>
+      <Badge colorPalette="error" data-testid={testId}>
         {t("terms.limitFrozen")}
       </Badge>
     );
@@ -78,14 +78,14 @@ export function CreditMeter({ limit, debt, testId }: CreditMeterProps) {
       <Progress.Root
         value={Math.min(pct, 100)}
         size="xs"
-        colorPalette={over ? "red" : warning ? "orange" : "brand"}
+        colorPalette={over ? "error" : warning ? "warning" : "brand"}
       >
         <Progress.Track>
           <Progress.Range />
         </Progress.Track>
       </Progress.Root>
 
-      <Text fontSize="xs" color={over ? "red.fg" : warning ? "orange.fg" : "fg.subtle"}>
+      <Text fontSize="xs" color={over ? "error.fg" : warning ? "warning.fg" : "fg.subtle"}>
         {t("terms.usedOf", { used: formatRupiah(owed), limit: formatRupiah(cap) })}
         {" · "}
         <Text as="span" fontWeight={warning ? "medium" : undefined} data-testid={testId ? `${testId}-pct` : undefined}>
@@ -97,7 +97,7 @@ export function CreditMeter({ limit, debt, testId }: CreditMeterProps) {
           reading this in a hurry, and this is the one signal the design has left. */}
       {warning && (
         <Badge
-          colorPalette={over ? "red" : "orange"}
+          colorPalette={over ? "error" : "warning"}
           size="sm"
           data-testid={testId ? `${testId}-warn` : undefined}
         >

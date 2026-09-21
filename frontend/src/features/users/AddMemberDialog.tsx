@@ -45,7 +45,8 @@ export function AddMemberDialog({
   const busy = save.isPending;
 
   function add() {
-    if (userId === undefined || targetTeamId === undefined) {
+    // A cleared RoleSelect emits UNSPECIFIED — no role is not a membership the server will take.
+    if (userId === undefined || targetTeamId === undefined || role === Role.UNSPECIFIED) {
       return;
     }
 
@@ -93,7 +94,7 @@ export function AddMemberDialog({
             <Dialog.Body>
               <Stack gap="card">
                 {error && (
-                  <Text color="red.fg" data-testid="add-member-error">
+                  <Text color="error.fg" data-testid="add-member-error">
                     {error}
                   </Text>
                 )}
@@ -121,7 +122,7 @@ export function AddMemberDialog({
               <Button
                 colorPalette="brand"
                 loading={busy}
-                disabled={userId === undefined}
+                disabled={userId === undefined || role === Role.UNSPECIFIED}
                 onClick={add}
                 data-testid="submit-add-member"
               >

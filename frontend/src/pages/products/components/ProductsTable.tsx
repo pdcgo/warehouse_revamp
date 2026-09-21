@@ -257,7 +257,7 @@ export function ProductsTable({ mode, teamId, q, warehouseId, warehouseName }: P
     <RefreshOverlay busy={refreshing}>
       <Stack gap="section">
         {error && (
-          <Text color="red.fg" data-testid="products-error">
+          <Text color="error.fg" data-testid="products-error">
             {error}
           </Text>
         )}
@@ -402,7 +402,7 @@ export function ProductsTable({ mode, teamId, q, warehouseId, warehouseName }: P
                                 <IconButton
                                   size="xs"
                                   variant="ghost"
-                                  colorPalette="red"
+                                  colorPalette="error"
                                   aria-label={t("products.archiveDialog.confirmLabel")}
                                   data-testid={`delete-${product.sku}`}
                                 >

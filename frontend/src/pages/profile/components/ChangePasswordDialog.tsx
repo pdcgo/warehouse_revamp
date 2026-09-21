@@ -86,7 +86,7 @@ export function ChangePasswordDialog() {
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="password-error">
+                    <Text color="error.fg" data-testid="password-error">
                       {error}
                     </Text>
                   )}

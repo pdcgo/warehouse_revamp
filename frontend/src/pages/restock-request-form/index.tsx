@@ -432,7 +432,7 @@ export function RestockRequestFormPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-edit-load-error">
+        <Text color="error.fg" data-testid="restock-edit-load-error">
           {loadError.key ? t(loadError.key) : loadError.text}
         </Text>
       </Stack>
@@ -459,7 +459,7 @@ export function RestockRequestFormPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="restock-create-error">
+        <Text color="error.fg" data-testid="restock-create-error">
           {error}
         </Text>
       )}
@@ -586,7 +586,7 @@ export function RestockRequestFormPage() {
                                 type="button"
                                 size="xs"
                                 variant="ghost"
-                                colorPalette="red"
+                                colorPalette="error"
                                 mb="1"
                                 aria-label={t("restock.form.removeProduct")}
                                 data-testid={`restock-remove-${i}`}

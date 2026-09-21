@@ -5,7 +5,7 @@ import { isDirty } from "./filterDirty";
 
 // A pulsing dot marking that the button has something to do. Shared by both buttons below so the
 // "there are unsaved changes here" signal looks the same wherever it appears.
-function DirtyDot({ tone }: { tone: "brand" | "orange" }) {
+function DirtyDot({ tone }: { tone: "brand" | "warning" }) {
   return (
     <Float placement="top-end" offset="1">
       <Box position="relative" colorPalette={tone} data-testid="dirty-dot">
@@ -110,7 +110,7 @@ export function ResetFilterButton<K extends string = string>({
       data-dirty={modified ? "true" : "false"}
     >
       {label}
-      {modified && <DirtyDot tone="orange" />}
+      {modified && <DirtyDot tone="warning" />}
     </Button>
   );
 }

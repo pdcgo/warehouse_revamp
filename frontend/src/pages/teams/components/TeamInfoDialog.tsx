@@ -141,7 +141,7 @@ export function TeamInfoDialog({
                 ) : (
                   <Stack gap="card">
                     {shownError && (
-                      <Text color="red.fg" data-testid="team-info-error">
+                      <Text color="error.fg" data-testid="team-info-error">
                         {shownError}
                       </Text>
                     )}

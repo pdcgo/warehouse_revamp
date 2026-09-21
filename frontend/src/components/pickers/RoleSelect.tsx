@@ -69,12 +69,14 @@ export function RoleSelect({
     <Combobox.Root
       collection={collection}
       disabled={disabled}
-      value={value !== undefined ? [String(value)] : []}
+      // UNSPECIFIED is "no role" — what the parent holds after a clear — so it maps to an empty
+      // selection (it is never an offered option, see ALL_ROLES).
+      value={value !== undefined && value !== Role.UNSPECIFIED ? [String(value)] : []}
       onValueChange={(e) => {
+        // ⚠ CLEARING EMITS Role.UNSPECIFIED — it does not do nothing (ShippingSelect's #131 lesson).
+        // Swallowing the empty case left the parent holding a role the field no longer showed.
         const picked = e.value[0];
-        if (picked !== undefined) {
-          onChange?.(Number(picked) as Role);
-        }
+        onChange?.(picked !== undefined ? (Number(picked) as Role) : Role.UNSPECIFIED);
       }}
       onInputValueChange={(e) => setInput(e.inputValue)}
       data-testid="role-select"

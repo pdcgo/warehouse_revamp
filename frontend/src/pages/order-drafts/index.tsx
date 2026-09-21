@@ -166,7 +166,7 @@ export function OrderDraftsPage() {
         {selected.size > 0 && (
           <Button
             size="xs"
-            colorPalette="red"
+            colorPalette="error"
             data-testid="delete-selected-drafts"
             onClick={() => setConfirmOpen(true)}
           >
@@ -195,7 +195,7 @@ export function OrderDraftsPage() {
       </Text>
 
       {error && (
-        <Text color="red.fg" data-testid="order-drafts-error">
+        <Text color="error.fg" data-testid="order-drafts-error">
           {error}
         </Text>
       )}
@@ -264,7 +264,7 @@ export function OrderDraftsPage() {
 
                   <Table.Cell>
                     {d.unmappedItemCount > 0 ? (
-                      <Badge colorPalette="orange" data-testid={`draft-unmapped-${d.id}`}>
+                      <Badge colorPalette="warning" data-testid={`draft-unmapped-${d.id}`}>
                         {t("orderDrafts.unmappedOf", {
                           unmapped: d.unmappedItemCount,
                           total: d.itemCount,
@@ -280,7 +280,7 @@ export function OrderDraftsPage() {
                       a different amount of work from "three lines unmapped". */}
                   <Table.Cell>
                     {gaps.length === 0 ? (
-                      <Badge colorPalette="green" data-testid={`draft-ready-${d.id}`}>
+                      <Badge colorPalette="success" data-testid={`draft-ready-${d.id}`}>
                         {t("orderDrafts.ready")}
                       </Badge>
                     ) : (

@@ -120,7 +120,7 @@ export function AdminResetPasswordDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="admin-reset-error">
+                    <Text color="error.fg" data-testid="admin-reset-error">
                       {error}
                     </Text>
                   )}

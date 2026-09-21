@@ -134,7 +134,7 @@ export function TermsPanel({
             <Button
               size="xs"
               variant="ghost"
-              colorPalette="red"
+              colorPalette="error"
               data-testid="terms-delete"
               onClick={() => setConfirmDelete(true)}
             >

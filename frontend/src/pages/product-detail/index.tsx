@@ -207,7 +207,7 @@ export function ProductDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("products.backToProducts")}
         </Button>
-        <Text color="red.fg" data-testid="product-detail-error">
+        <Text color="error.fg" data-testid="product-detail-error">
           {error || t("products.detail.notFound")}
         </Text>
       </Stack>
@@ -291,7 +291,7 @@ export function ProductDetailPage() {
             <Button
               size="xs"
               variant="outline"
-              colorPalette="red"
+              colorPalette="error"
               data-testid="product-detail-archive"
               onClick={() => setArchiving(true)}
             >

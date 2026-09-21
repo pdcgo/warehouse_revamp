@@ -23,7 +23,7 @@ import { useSaveRack } from "../queries";
 // reads it there, never a header).
 //
 // Two modes, one form:
-//  - create — `rack` undefined; the dialog renders its own "New rack" trigger.
+//  - create — `rack` undefined; the dialog renders its own "New Rack" trigger.
 //  - edit — `rack` set; the dialog is controlled (open/onOpenChange), pre-filled, calls RackUpdate.
 //
 // RackUpdate's code/name/description are optional (absent = leave alone), but the form shows all
@@ -101,7 +101,7 @@ export function RackFormDialog({
           } else {
             toaster.create({ type: "success", title: t("racks.form.created", { code }) });
 
-            // Only after a CREATE: the trigger stays on screen, so the next "New rack" must open an
+            // Only after a CREATE: the trigger stays on screen, so the next "New Rack" must open an
             // empty form rather than the shelf that was just registered.
             setCode("");
             setName("");
@@ -152,7 +152,7 @@ export function RackFormDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="rack-form-error">
+                    <Text color="error.fg" data-testid="rack-form-error">
                       {error}
                     </Text>
                   )}

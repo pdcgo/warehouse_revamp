@@ -15,7 +15,7 @@ import { UsersTable } from "./components/UsersTable";
 //    get that single team-scoped table with no tabs.
 //
 // The Add member / New user buttons live in the page header (top-right), NOT inside the tabs (#58
-// review). "Add member" only makes sense for a team-scoped view, so it shows on the plain page and
+// review). "Add Member" only makes sense for a team-scoped view, so it shows on the plain page and
 // the "My Team User" tab, but not "All User". Neither signals the tables any more (#177): each write
 // invalidates the user cache itself, so BOTH tabs' lists refresh — the old `reload` counter only
 // ever reached the one that happened to be mounted.

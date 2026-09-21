@@ -108,7 +108,7 @@ export function OrderDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("orders.backToOrders")}
         </Button>
-        <Text color="red.fg" data-testid="order-detail-error">
+        <Text color="error.fg" data-testid="order-detail-error">
           {error || t("orders.orderNotFound")}
         </Text>
       </Stack>
@@ -153,7 +153,7 @@ export function OrderDetailPage() {
             confirmLabel={t("orders.cancelOrder")}
             onConfirm={cancelOrder}
             trigger={
-              <Button variant="outline" colorPalette="red" data-testid="order-cancel">
+              <Button variant="outline" colorPalette="error" data-testid="order-cancel">
                 <Icon as={Ban} boxSize="4" />
                 {t("orders.cancel")}
               </Button>

@@ -169,7 +169,7 @@ export function BatchDetailPage() {
     return (
       <Stack gap="section">
         <BackButton onClick={() => navigate("/inventories/batches")} label={t("batchDetail.back")} />
-        <Text color="red.fg" data-testid="batch-detail-error">
+        <Text color="error.fg" data-testid="batch-detail-error">
           {rpcError(query.error)}
         </Text>
       </Stack>
@@ -250,7 +250,7 @@ export function BatchDetailPage() {
               {t(batch.origin === BatchOrigin.RETURN ? "batchDetail.originReturn" : "batchDetail.originRestock")}
             </Badge>
             {batch.expiresOnUnix > 0n && isExpiringSoon(batch.expiresOnUnix) && (
-              <Badge colorPalette="orange" data-testid="batch-detail-expiring">
+              <Badge colorPalette="warning" data-testid="batch-detail-expiring">
                 {t("batchDetail.expiring", { date: formatDateUnix(batch.expiresOnUnix) })}
               </Badge>
             )}
@@ -304,14 +304,14 @@ export function BatchDetailPage() {
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("batchDetail.broken")}</Stat.Label>
-          <Stat.ValueText color={batch.broken > 0n ? "red.fg" : undefined} data-testid="batch-detail-broken">
+          <Stat.ValueText color={batch.broken > 0n ? "error.fg" : undefined} data-testid="batch-detail-broken">
             {batch.broken.toString()}
           </Stat.ValueText>
           <Stat.HelpText>{amount(batch.broken)}</Stat.HelpText>
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("batchDetail.lost")}</Stat.Label>
-          <Stat.ValueText color={batch.lost > 0n ? "red.fg" : undefined} data-testid="batch-detail-lost">
+          <Stat.ValueText color={batch.lost > 0n ? "error.fg" : undefined} data-testid="batch-detail-lost">
             {batch.lost.toString()}
           </Stat.ValueText>
           <Stat.HelpText>{amount(batch.lost)}</Stat.HelpText>
@@ -323,7 +323,7 @@ export function BatchDetailPage() {
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("batchDetail.ready")}</Stat.Label>
-          <Stat.ValueText color={batch.ready > 0n ? "green.fg" : undefined} data-testid="batch-detail-ready">
+          <Stat.ValueText color={batch.ready > 0n ? "success.fg" : undefined} data-testid="batch-detail-ready">
             {batch.ready.toString()}
           </Stat.ValueText>
           <Stat.HelpText>{cost(batch.readyValue)}</Stat.HelpText>
@@ -373,7 +373,7 @@ export function BatchDetailPage() {
                       <Table.Cell textAlign="end">{s.qty.toString()}</Table.Cell>
                       <Table.Cell>
                         {s.lastOpnameUnix > 0n ? (
-                          <Text color={isStaleOpname(s.lastOpnameUnix) ? "orange.fg" : undefined}>
+                          <Text color={isStaleOpname(s.lastOpnameUnix) ? "warning.fg" : undefined}>
                             {formatDateUnix(s.lastOpnameUnix)}
                           </Text>
                         ) : (

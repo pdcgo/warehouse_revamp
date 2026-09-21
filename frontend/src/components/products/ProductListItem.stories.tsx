@@ -68,7 +68,7 @@ export const NoStockFigureShowsNoBadge: Story = {
   },
 };
 
-// `ongoing` follows the OPPOSITE rule to `stock`: nothing on the way is the normal state of most
+// `ongoing` follows the OPPOSITE rule to `stock`: nothing ongoing is the normal state of most
 // products, so a badge saying so on every row would be noise. Shown only when > 0.
 export const OngoingOnlyWhenThereIsSome: Story = {
   args: { stock: 3n, ongoing: 12n },

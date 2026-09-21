@@ -2,8 +2,7 @@ import { useEffect, useMemo } from "react";
 import { HStack, Select, Span, createListCollection } from "@chakra-ui/react";
 import { useShopOptions } from "../../features/shops/queries";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { MarketplaceBadge } from "../badges/MarketplaceBadge";
-import { marketplaceLabel } from "./MarketplaceSelect";
+import { MarketplaceBadge, marketplaceLabel } from "../badges/MarketplaceBadge";
 
 export interface ShopSelectProps {
   /** The selling team whose shops to list — a shop is team-scoped, so this is required. */

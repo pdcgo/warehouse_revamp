@@ -124,7 +124,7 @@ export function DesktopLayout() {
               top="1"
               right="1"
               boxSize="2"
-              bg="orange.solid"
+              bg="warning.solid"
               rounded="full"
               borderWidth="1.5px"
               borderColor="bg.subtle"

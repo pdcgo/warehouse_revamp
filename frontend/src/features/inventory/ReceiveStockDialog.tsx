@@ -84,7 +84,7 @@ export function ReceiveStockDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="receive-error">
+                    <Text color="error.fg" data-testid="receive-error">
                       {error}
                     </Text>
                   )}

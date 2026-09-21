@@ -238,7 +238,7 @@ export function ProductEditPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="product-edit-error">
+        <Text color="error.fg" data-testid="product-edit-error">
           {error}
         </Text>
       )}

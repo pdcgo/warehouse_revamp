@@ -112,7 +112,7 @@ export function EditUserDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="edit-user-error">
+                    <Text color="error.fg" data-testid="edit-user-error">
                       {error}
                     </Text>
                   )}

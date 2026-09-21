@@ -157,7 +157,7 @@ export function AdjustStockDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="adjust-error">
+                    <Text color="error.fg" data-testid="adjust-error">
                       {error}
                     </Text>
                   )}
@@ -256,7 +256,7 @@ export function AdjustStockDialog({
                     >
                       <Text fontSize="sm" fontVariantNumeric="tabular-nums">
                         <b>{current.toString()}</b> → <b>{next.toString()}</b>{" "}
-                        <Text as="span" color={signedDelta < 0n ? "red.fg" : "green.fg"}>
+                        <Text as="span" color={signedDelta < 0n ? "error.fg" : "success.fg"}>
                           ({signedDelta > 0n ? "+" : ""}
                           {signedDelta.toString()})
                         </Text>

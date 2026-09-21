@@ -21,8 +21,24 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// `teamType` narrows the list SERVER-side (TeamList's filter). The order form's warehouse field is this
+// story — and while the Storybook stub ignored the filter, that field offered every selling team too, a
+// bug that existed only in the workbench and read as a real one to whoever reviewed the form.
 export const WarehousesOnly: Story = {
   args: { teamType: TeamType.WAREHOUSE },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+
+    const warehouse = teams.find((t) => t.type === TeamType.WAREHOUSE)!;
+    const option = await screen.findByTestId(`team-select-option-${warehouse.teamCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+
+    for (const selling of teams.filter((t) => t.type === TeamType.SELLING)) {
+      await expect(screen.queryByTestId(`team-select-option-${selling.teamCode}`)).toBeNull();
+    }
+  },
 };
 
 export const Disabled: Story = {
@@ -149,6 +165,41 @@ export const SelectedCardHidesWhileSearching: Story = {
     await userEvent.click(canvas.getByRole("combobox"));
 
     await waitFor(() => expect(canvas.queryByTestId("team-select-selected")).toBeNull());
+  },
+};
+
+// ⚠ CLEARING EMITS 0n — it does not do nothing (ShippingSelect's #131 lesson, repeated here). The ✕
+// empties the field; swallowing that left the form holding the old team, so it would still submit a
+// warehouse the field no longer showed.
+export const ClearingEmitsZero: Story = {
+  args: { value: teams[2]!.id },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await canvas.findByTestId("team-select-selected");
+    await userEvent.click(canvas.getByRole("button", { name: /clear/i }));
+
+    await expect(args.onChange).toHaveBeenCalledWith(0n);
+  },
+};
+
+// …and what that bug LOOKED like: the input emptied to its placeholder while the name-and-badge
+// overlay — drawn from the parent's value, which never heard about the clear — sat on top of it. With
+// the parent told, the overlay goes and only the placeholder is left.
+export const ClearingShowsOnlyThePlaceholder: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<bigint>(teams[2]!.id);
+
+    return <TeamSelect {...args} value={value} onChange={setValue} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await canvas.findByTestId("team-select-selected");
+    await userEvent.click(canvas.getByRole("button", { name: /clear/i }));
+
+    await waitFor(() => expect(canvas.queryByTestId("team-select-selected")).toBeNull());
+    await expect(canvas.getByRole("combobox")).toHaveValue("");
   },
 };
 

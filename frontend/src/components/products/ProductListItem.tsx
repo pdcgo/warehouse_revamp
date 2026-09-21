@@ -21,7 +21,7 @@ export interface ProductListItemProps {
   /** ONGOING stock — ordered on restocks the warehouse has not accepted yet (#209's word for it).
    *
    * Shown only when it is > 0, unlike `stock`. The two follow OPPOSITE rules on purpose: a ready
-   * count of 0 is the case most worth seeing ("out of stock"), while nothing on the way is simply
+   * count of 0 is the case most worth seeing ("out of stock"), while nothing ongoing is simply
    * the normal state of most products, and a badge saying so on every row is noise. */
   ongoing?: bigint;
   /** The owning team's name. Not on Product either — only `teamId` — so the caller resolves ids →
@@ -109,7 +109,7 @@ export function ProductListItem({
           is coming only qualifies it. Read the other way round, a big ongoing count reads as stock. */}
       {showStock && (
         <Badge
-          colorPalette={inStock ? "green" : "red"}
+          colorPalette={inStock ? "success" : "error"}
           flexShrink={0}
           data-testid={`product-list-item-stock-${product.id ?? ""}`}
         >
@@ -119,7 +119,7 @@ export function ProductListItem({
 
       {showOngoing && (
         <Badge
-          colorPalette="blue"
+          colorPalette="info"
           variant="subtle"
           flexShrink={0}
           data-testid={`product-list-item-ongoing-${product.id ?? ""}`}

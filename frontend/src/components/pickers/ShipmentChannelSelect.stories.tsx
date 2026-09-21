@@ -34,6 +34,17 @@ export const APresetIdShowsItsName: Story = {
   },
 };
 
+// The option is the courier's BADGE, the same one the order it lands on will show — not a line of text.
+export const OptionsCarryTheChannelBadge: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole("combobox"));
+
+    const option = await screen.findByTestId(`shipment-channel-option-${jne!.code}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(within(option).getByTestId(`shipment-channel-badge-${jne!.code}`)).toBeVisible();
+  },
+};
+
 // a-deleted-channel-still-resolves-by-id: the picker is for NEW work, so a deleted courier is not offered.
 export const DeletedChannelsAreNotOffered: Story = {
   play: async ({ canvasElement }) => {

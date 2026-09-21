@@ -233,7 +233,7 @@ export function TeamDetailCommon({
                           <IconButton
                             size="xs"
                             variant="ghost"
-                            colorPalette="red"
+                            colorPalette="error"
                             aria-label={`Remove ${user.username}`}
                             data-testid={`remove-member-${user.username}`}
                             onClick={() => setRemoving(user)}

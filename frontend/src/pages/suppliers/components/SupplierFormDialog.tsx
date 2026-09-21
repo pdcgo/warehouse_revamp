@@ -21,7 +21,7 @@ import { useSaveSupplier } from "../../../features/suppliers/queries";
 // travels in the message body (the backend's use_scope reads it there, never a header).
 //
 // Two modes, one form:
-//  - create — `supplier` undefined; the dialog renders its own "New supplier" trigger.
+//  - create — `supplier` undefined; the dialog renders its own "New Supplier" trigger.
 //  - edit — `supplier` set; the dialog is controlled (open/onOpenChange), pre-filled, calls
 //    SupplierUpdate.
 export function SupplierFormDialog({
@@ -102,7 +102,7 @@ export function SupplierFormDialog({
           } else {
             toaster.create({ type: "success", title: t("suppliers.form.created", { name }) });
 
-            // Only after a CREATE: the trigger stays on screen, so the next "New supplier" must open
+            // Only after a CREATE: the trigger stays on screen, so the next "New Supplier" must open
             // an empty form rather than the vendor that was just added.
             setCode("");
             setName("");
@@ -146,7 +146,7 @@ export function SupplierFormDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="supplier-form-error">
+                    <Text color="error.fg" data-testid="supplier-form-error">
                       {error}
                     </Text>
                   )}

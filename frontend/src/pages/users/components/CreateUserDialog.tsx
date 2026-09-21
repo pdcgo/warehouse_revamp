@@ -67,6 +67,11 @@ export function CreateUserDialog({
   function submit(event: FormEvent) {
     event.preventDefault();
 
+    // A cleared RoleSelect emits UNSPECIFIED — a user created with no role in the team is not a thing.
+    if (role === Role.UNSPECIFIED) {
+      return;
+    }
+
     // Username is lowercase alphanumeric only (#87) — the backend enforces the same rule.
     if (!/^[a-z0-9]+$/.test(username)) {
       setError(t("users.create.usernameError"));
@@ -124,7 +129,7 @@ export function CreateUserDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="create-user-error">
+                    <Text color="error.fg" data-testid="create-user-error">
                       {error}
                     </Text>
                   )}
@@ -171,7 +176,13 @@ export function CreateUserDialog({
                   <Button variant="outline">{t("users.cancel")}</Button>
                 </Dialog.ActionTrigger>
 
-                <Button type="submit" colorPalette="brand" loading={busy} data-testid="submit-create-user">
+                <Button
+                  type="submit"
+                  colorPalette="brand"
+                  loading={busy}
+                  disabled={role === Role.UNSPECIFIED}
+                  data-testid="submit-create-user"
+                >
                   {t("users.create.submit")}
                 </Button>
               </Dialog.Footer>

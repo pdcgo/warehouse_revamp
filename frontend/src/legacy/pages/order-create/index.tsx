@@ -137,7 +137,7 @@ export function OrderCreatePage({ onSubmit, busy }: OrderCreatePageProps) {
                   <IconButton
                     size="sm"
                     variant="ghost"
-                    colorPalette="red"
+                    colorPalette="error"
                     aria-label="Remove line"
                     data-testid={`order-remove-line-${line.key}`}
                     onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}

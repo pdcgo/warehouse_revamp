@@ -107,7 +107,7 @@ export function OrderLedgerPanel({
               borderWidth="1px"
               borderRadius="md"
               p="card"
-              borderColor="orange.400"
+              borderColor="warning.border"
               data-testid="no-estimate-notice"
             >
               <Text fontWeight="medium">{t("orderSettlement.noEstimateTitle")}</Text>

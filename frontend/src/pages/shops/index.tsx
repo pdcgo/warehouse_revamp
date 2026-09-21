@@ -102,7 +102,7 @@ export function ShopsPage() {
       </HStack>
 
       {error && (
-        <Text color="red.fg" data-testid="shops-error">
+        <Text color="error.fg" data-testid="shops-error">
           {error}
         </Text>
       )}
@@ -158,7 +158,7 @@ export function ShopsPage() {
                         <IconButton
                           size="xs"
                           variant="ghost"
-                          colorPalette="red"
+                          colorPalette="error"
                           aria-label="Delete"
                           data-testid={`delete-${shop.shopCode}`}
                         >

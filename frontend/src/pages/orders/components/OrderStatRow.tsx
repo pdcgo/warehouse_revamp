@@ -24,7 +24,7 @@ export function OrderStatRow({ stat }: { stat: OrderStatSummary }) {
         {/* Coloured only when there IS something waiting. A permanent orange zero trains people to
             stop seeing the colour, which is the one thing this tile cannot afford. */}
         <Stat.ValueText
-          color={stat.toConfirm > 0 ? "orange.fg" : undefined}
+          color={stat.toConfirm > 0 ? "warning.fg" : undefined}
           data-testid="orders-stat-to-confirm"
         >
           {stat.toConfirm}

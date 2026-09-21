@@ -164,7 +164,7 @@ export function MoveStockDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="move-error">
+                    <Text color="error.fg" data-testid="move-error">
                       {error}
                     </Text>
                   )}

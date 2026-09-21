@@ -66,7 +66,7 @@ export function UserDetailPage() {
       </Button>
 
       {error && (
-        <Text color="red.fg" data-testid="user-detail-error">
+        <Text color="error.fg" data-testid="user-detail-error">
           {error}
         </Text>
       )}

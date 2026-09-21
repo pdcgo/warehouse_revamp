@@ -33,6 +33,11 @@ export function OrderTotals(props: OrderTotalsProps) {
 
   return (
     <Card.Root>
+      {/* Titled like every card on the form — a bold name, a quieter line saying what it is for. */}
+      <Card.Header>
+        <Card.Title>{t("orders.totalsTitle")}</Card.Title>
+        <Card.Description>{t("orders.totalsHelp")}</Card.Description>
+      </Card.Header>
       <Card.Body>
         <Stack gap="card">
           <Flex align="center" gap="card">

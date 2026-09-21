@@ -73,7 +73,7 @@ export const ShowsProductsRegardlessOfStock: Story = {
 
 // ── The table (owner) ───────────────────────────────────────────────────────────────────────────
 
-// A TABLE, not a list of badges: product | on the way | ready stock. Buying is a comparison down a
+// A TABLE, not a list of badges: product | ongoing | ready. Buying is a comparison down a
 // column — "what is already coming" and "what is already here", across rows — and a badge riding on
 // a product name cannot be scanned that way.
 export const LaysTheStockOutAsColumns: Story = {
@@ -85,10 +85,10 @@ export const LaysTheStockOutAsColumns: Story = {
 
     const table = await screen.findByTestId("product-picker-list");
     await expect(within(table).getByText("Product")).toBeInTheDocument();
-    await expect(within(table).getByText("On the way")).toBeInTheDocument();
-    await expect(within(table).getByText("Ready stock")).toBeInTheDocument();
+    await expect(within(table).getByText("Ongoing")).toBeInTheDocument();
+    await expect(within(table).getByText("Ready")).toBeInTheDocument();
 
-    // Fixture product 72: three on the shelf, six already on the way.
+    // Fixture product 72: three on the shelf, six already ongoing.
     await waitFor(async () => {
       await expect(screen.getByTestId(`product-picker-ready-${products[1]!.id}`)).toHaveTextContent("3");
       await expect(screen.getByTestId(`product-picker-ongoing-${products[1]!.id}`)).toHaveTextContent("6");
@@ -96,7 +96,7 @@ export const LaysTheStockOutAsColumns: Story = {
   },
 };
 
-// ⚠ A TABLE PRINTS THE ZERO. The list layout hides an ongoing badge at 0 — nothing on the way is the
+// ⚠ A TABLE PRINTS THE ZERO. The list layout hides an ongoing badge at 0 — nothing ongoing is the
 // normal state of most products, and a badge saying so on every row is noise. A blank CELL is a
 // different claim: it reads as "we did not check". So 0 is printed and "—" is kept for unknown.
 export const ZeroIsPrintedRatherThanLeftBlank: Story = {
@@ -105,7 +105,7 @@ export const ZeroIsPrintedRatherThanLeftBlank: Story = {
 
     await userEvent.click(canvas.getByTestId("product-picker-trigger"));
 
-    // Fixture product 71 has nothing on the way — the cell says 0, not "—" and not empty.
+    // Fixture product 71 has nothing ongoing — the cell says 0, not "—" and not empty.
     await waitFor(async () =>
       await expect(screen.getByTestId(`product-picker-ongoing-${products[0]!.id}`)).toHaveTextContent("0"),
     );

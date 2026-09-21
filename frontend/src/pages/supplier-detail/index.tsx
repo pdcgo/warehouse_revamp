@@ -147,7 +147,7 @@ export function SupplierDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("supplierChannel.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="supplier-detail-error">
+        <Text color="error.fg" data-testid="supplier-detail-error">
           {error || t("supplierChannel.detail.notFound")}
         </Text>
       </Stack>
@@ -201,7 +201,7 @@ export function SupplierDetailPage() {
             </Flex>
 
             {channelsError && (
-              <Text color="red.fg" data-testid="channels-error">
+              <Text color="error.fg" data-testid="channels-error">
                 {channelsError}
               </Text>
             )}
@@ -281,7 +281,7 @@ export function SupplierDetailPage() {
                                   <IconButton
                                     size="xs"
                                     variant="ghost"
-                                    colorPalette="red"
+                                    colorPalette="error"
                                     aria-label="Delete"
                                     data-testid={`delete-channel-${ch.id}`}
                                   >

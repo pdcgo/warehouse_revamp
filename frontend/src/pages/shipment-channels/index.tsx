@@ -115,7 +115,7 @@ export function ShipmentChannelsPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="shipment-channels-error">
+        <Text color="error.fg" data-testid="shipment-channels-error">
           {error}
         </Text>
       )}
@@ -147,7 +147,7 @@ export function ShipmentChannelsPage() {
                     </Table.Cell>
                     <Table.Cell>
                       <Badge
-                        colorPalette={channel.isDeleted ? "gray" : "green"}
+                        colorPalette={channel.isDeleted ? "gray" : "success"}
                         data-testid={`shipment-channel-status-${channel.code}`}
                       >
                         {channel.isDeleted ? t("shipmentChannels.deleted") : t("shipmentChannels.live")}
@@ -163,7 +163,7 @@ export function ShipmentChannelsPage() {
                           <IconButton
                             size="xs"
                             variant="ghost"
-                            colorPalette="green"
+                            colorPalette="success"
                             aria-label={t("shipmentChannels.restore")}
                             data-testid={`restore-${channel.code}`}
                             loading={restoreChannel.isPending && restoreChannel.variables?.channelId === channel.id}
@@ -193,7 +193,7 @@ export function ShipmentChannelsPage() {
                                 <IconButton
                                   size="xs"
                                   variant="ghost"
-                                  colorPalette="red"
+                                  colorPalette="error"
                                   aria-label={t("shipmentChannels.delete")}
                                   data-testid={`delete-${channel.code}`}
                                 >

@@ -212,7 +212,7 @@ export function ReturnDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("returns.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="return-detail-error">
+        <Text color="error.fg" data-testid="return-detail-error">
           {t("returns.detail.notFound")}
         </Text>
       </Stack>
@@ -427,7 +427,7 @@ export function ReturnDetailPage() {
                       <>
                         <Table.Cell textAlign="end">
                           {line.sellable !== undefined && line.sellable > 0 ? (
-                            <Text as="span" color="green.fg" fontWeight="medium">
+                            <Text as="span" color="success.fg" fontWeight="medium">
                               {line.sellable}
                             </Text>
                           ) : (
@@ -436,7 +436,7 @@ export function ReturnDetailPage() {
                         </Table.Cell>
                         <Table.Cell textAlign="end">
                           {line.writtenOff !== undefined && line.writtenOff > 0 ? (
-                            <Text as="span" color="red.fg" fontWeight="medium">
+                            <Text as="span" color="error.fg" fontWeight="medium">
                               {line.writtenOff}
                             </Text>
                           ) : (
@@ -473,13 +473,13 @@ export function ReturnDetailPage() {
               </Text>
               {isReceived && (
                 <Flex gap="card" wrap="wrap" justify="end">
-                  <Text fontSize="sm" color="green.fg">
+                  <Text fontSize="sm" color="success.fg">
                     {t("returns.detail.sellableTotal")}:{" "}
                     <Text as="span" fontWeight="medium" data-testid="return-detail-sellable-total">
                       {sellableTotal}
                     </Text>
                   </Text>
-                  <Text fontSize="sm" color="red.fg">
+                  <Text fontSize="sm" color="error.fg">
                     {t("returns.detail.writtenOffTotal")}:{" "}
                     <Text as="span" fontWeight="medium" data-testid="return-detail-writtenoff-total">
                       {writtenOffTotal}

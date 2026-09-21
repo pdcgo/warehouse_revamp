@@ -17,7 +17,7 @@
 import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
 
 import { CategoryService } from "../src/gen/warehouse/category/v1/category_pb";
-import { DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
+import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
@@ -218,6 +218,69 @@ export function resetLiabilityPayments() {
   paymentsTable = liabilityPayments.map((p) => ({ ...p }));
 }
 
+// ── UPLOADS ──────────────────────────────────────────────────────────────────────────────────────
+//
+// document_service's two-phase upload — RequestUpload → PUT the bytes to a signed URL → ConfirmUpload
+// — end to end, IN-PROCESS. Every attachment in the app goes this way (an order's receipt, a product
+// image, a payment proof, a profile or team picture), and without it every one of them ended in a
+// toast reading "[unimplemented] … RequestUpload is not implemented".
+//
+// The middle step is a real `fetch` PUT, which a router transport never sees, so `stubUploads()` (run
+// per story from preview.tsx) wraps `window.fetch` for ONE made-up origin and lets everything else
+// through. The PUT's body becomes an object URL, so a public image (product, profile, team) comes back
+// showing the very picture that was picked, and a private one (receipt, proof) opens it.
+const STUB_UPLOAD_ORIGIN = "https://storybook-upload.invalid";
+
+interface PendingUpload {
+  teamId: bigint;
+  resourceType: DocumentResourceType;
+  filename: string;
+  mimeType: string;
+  sizeBytes: bigint;
+  // Set by the PUT; a confirm without one is an upload whose bytes never arrived.
+  objectUrl?: string;
+}
+
+const pendingUploads = new Map<string, PendingUpload>();
+// documentId → the object URL its bytes live at, for GetDownloadUrl.
+const uploadedDocs = new Map<string, string>();
+let uploadSeq = 0;
+
+// The resource types a real Document carries a PUBLIC url for (document.proto). A receipt or a proof is
+// private: it has no public url and is opened through GetDownloadUrl instead.
+const PUBLIC_DOCUMENTS = new Set([DocumentResourceType.PROFILE_PICTURE, DocumentResourceType.PRODUCT_IMAGE]);
+
+export function stubUploads() {
+  for (const url of [...uploadedDocs.values(), ...[...pendingUploads.values()].map((p) => p.objectUrl)]) {
+    if (url) URL.revokeObjectURL(url);
+  }
+  pendingUploads.clear();
+  uploadedDocs.clear();
+  uploadSeq = 0;
+
+  // Wrapped ONCE and kept: re-wrapping per story would nest a wrapper around a wrapper each time.
+  const w = window as unknown as { __storybookRealFetch?: typeof fetch };
+  if (w.__storybookRealFetch) return;
+
+  const real = window.fetch.bind(window);
+  w.__storybookRealFetch = real;
+
+  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.startsWith(STUB_UPLOAD_ORIGIN + "/")) {
+      return real(input, init);
+    }
+
+    const pending = pendingUploads.get(url.slice(STUB_UPLOAD_ORIGIN.length + 1));
+    if (!pending) {
+      return new Response(null, { status: 404, statusText: "Unknown upload token" });
+    }
+
+    pending.objectUrl = URL.createObjectURL(init?.body instanceof Blob ? init.body : new Blob([]));
+    return new Response(null, { status: 200 });
+  }) as typeof fetch;
+}
+
 // ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
 function byIds<C extends string, R extends Row>(slice: C, rows: R[], wanted: bigint[]) {
   const items: Record<string, { items: { d: { case: C; value: { mapData: Record<string, R> } } }[] }> = {};
@@ -326,6 +389,10 @@ export const transport = createRouterTransport(({ service }) => {
             // then narrows a ProductDiscover by the ids — so a stub that ignored the filter would
             // hand back every team and make the Priority tab indistinguishable from Other.
             (!req.filter?.priorityProductOnly || t.priorityProduct) &&
+            // THE TYPE FILTER, as team_service applies it (`type = ?` when set). A stub that ignored it
+            // handed the order form's WAREHOUSE picker every selling team too — a bug that existed only
+            // here, and so read as a real one to anybody reviewing the form in Storybook.
+            (!req.filter?.teamType || t.type === req.filter.teamType) &&
             match(req.filter?.q, t.name, t.teamCode),
         ),
       ),
@@ -861,11 +928,56 @@ export const transport = createRouterTransport(({ service }) => {
     },
   });
 
-  // Proof is uploaded by the PAYER and read by the CREDITOR (a-payment-must-carry-proof). The stub
-  // only needs the READ half: `useProofUpload` PUTs bytes to a signed URL, which no in-process fake
-  // can stand in for, so the upload path is exercised by e2e rather than here.
+  // UPLOADS — see `stubUploads()` above for the PUT in the middle. The e2e still exercise the real
+  // storage path; this only lets a story (and the person reviewing it) actually attach a file.
   service(DocumentService, {
-    getDownloadUrl: (req) => ({ url: `https://example.invalid/proof/${req.documentId}` }),
+    requestUpload: (req) => {
+      const token = `upload-${++uploadSeq}`;
+      pendingUploads.set(token, {
+        teamId: req.teamId,
+        resourceType: req.resourceType,
+        filename: req.filename,
+        mimeType: req.contentType,
+        sizeBytes: req.sizeBytes,
+      });
+
+      return {
+        uploadUrl: `${STUB_UPLOAD_ORIGIN}/${token}`,
+        method: "PUT",
+        headers: { "Content-Type": req.contentType },
+        uploadToken: token,
+        expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 15 * 60),
+      };
+    },
+    confirmUpload: (req) => {
+      const pending = pendingUploads.get(req.uploadToken);
+      if (!pending?.objectUrl) {
+        throw new ConnectError("upload not found, or its bytes were never PUT", Code.NotFound);
+      }
+      pendingUploads.delete(req.uploadToken);
+
+      const id = `stub-${req.uploadToken}`;
+      uploadedDocs.set(id, pending.objectUrl);
+      const publicUrl = PUBLIC_DOCUMENTS.has(pending.resourceType) ? pending.objectUrl : "";
+
+      return {
+        document: {
+          id,
+          teamId: pending.teamId,
+          resourceType: pending.resourceType,
+          filename: pending.filename,
+          mimeType: pending.mimeType,
+          sizeBytes: pending.sizeBytes,
+          publicUrl,
+          thumbnailUrl: publicUrl,
+        },
+      };
+    },
+    // A document uploaded in this story opens its own bytes; a fixture id (a proof the fixtures name)
+    // gets a placeholder, as before.
+    getDownloadUrl: (req) => ({
+      url: uploadedDocs.get(req.documentId) ?? `https://example.invalid/proof/${req.documentId}`,
+    }),
   });
 
   service(LiabilityTermsService, {

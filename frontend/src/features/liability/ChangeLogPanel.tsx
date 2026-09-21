@@ -19,7 +19,7 @@ function LimitText({ limit }: { limit: bigint | undefined }) {
   const { t } = useTranslation();
 
   if (limit === undefined) return <Text as="span" color="fg.subtle">{t("terms.limitUnlimited")}</Text>;
-  if (limit === 0n) return <Text as="span" color="red.fg">{t("terms.limitFrozen")}</Text>;
+  if (limit === 0n) return <Text as="span" color="error.fg">{t("terms.limitFrozen")}</Text>;
   return <Text as="span">{formatRupiah(limit)}</Text>;
 }
 

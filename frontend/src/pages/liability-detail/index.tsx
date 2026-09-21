@@ -123,14 +123,14 @@ function statusKey(status: LiabilityPaymentStatus): string {
 function statusPalette(status: LiabilityPaymentStatus): string {
   switch (status) {
     case LiabilityPaymentStatus.RECORDED:
-      return "orange";
+      return "warning";
     case LiabilityPaymentStatus.CONFIRMED:
-      return "green";
+      return "success";
     // ⚠ RED, and REVERSED stays grey. A refusal is an outcome the payer has to act on — re-send the
     // slip, or the money — while a reversal is a correction already made. Giving them one colour
     // would flatten "you must do something" into "something happened".
     case LiabilityPaymentStatus.REJECTED:
-      return "red";
+      return "error";
     default:
       return "gray";
   }
@@ -291,7 +291,7 @@ export function LiabilityDetailPage() {
                   <Text>{t(causeKey(e.sourceType), { id: e.sourceId.toString() })}</Text>
                   {/* A reversal is labelled, not left to be inferred from a sign. */}
                   {e.reversal && (
-                    <Badge colorPalette="orange" data-testid={`liability-detail-reversal-${e.id}`}>
+                    <Badge colorPalette="warning" data-testid={`liability-detail-reversal-${e.id}`}>
                       {t("liabilityDetail.reversal")}
                     </Badge>
                   )}
@@ -352,7 +352,7 @@ export function LiabilityDetailPage() {
                   {/* ⚠ THE REASON IS SHOWN ON BOTH SIDES, and to the payer above all: a refusal they
                       cannot read is a debt they cannot fix. */}
                   {p.reason !== "" && (
-                    <Text fontSize="xs" color="red.fg" data-testid={`liability-detail-reason-${p.id}`}>
+                    <Text fontSize="xs" color="error.fg" data-testid={`liability-detail-reason-${p.id}`}>
                       {p.reason}
                     </Text>
                   )}
@@ -369,7 +369,7 @@ export function LiabilityDetailPage() {
                     <>
                       <Button
                         size="xs"
-                        colorPalette="green"
+                        colorPalette="success"
                         data-testid={`liability-detail-confirm-${p.id}`}
                         onClick={() => setConfirmTarget(p)}
                       >
@@ -378,7 +378,7 @@ export function LiabilityDetailPage() {
                       <Button
                         size="xs"
                         variant="outline"
-                        colorPalette="red"
+                        colorPalette="error"
                         data-testid={`liability-detail-reject-${p.id}`}
                         onClick={() => setRejectTarget(p)}
                       >
@@ -436,12 +436,12 @@ export function LiabilityDetailPage() {
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("liabilityDetail.receivableLabel")}</Stat.Label>
-          <Stat.ValueText color="green.fg">{formatRupiah(receivable)}</Stat.ValueText>
+          <Stat.ValueText color="success.fg">{formatRupiah(receivable)}</Stat.ValueText>
           <Stat.HelpText>{t("liabilityDetail.receivableHint")}</Stat.HelpText>
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("liabilityDetail.payableLabel")}</Stat.Label>
-          <Stat.ValueText color="orange.fg">{formatRupiah(payable)}</Stat.ValueText>
+          <Stat.ValueText color="warning.fg">{formatRupiah(payable)}</Stat.ValueText>
           <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
         </Stat.Root>
       </SimpleGrid>
@@ -458,7 +458,7 @@ export function LiabilityDetailPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="liability-detail-error">
+        <Text color="error.fg" data-testid="liability-detail-error">
           {error}
         </Text>
       )}
@@ -780,7 +780,7 @@ function MakePaymentDialog({
                   </Field.Root>
 
                   {error && (
-                    <Dialog.Description color="red.fg" data-testid="record-error">
+                    <Dialog.Description color="error.fg" data-testid="record-error">
                       {error}
                     </Dialog.Description>
                   )}
