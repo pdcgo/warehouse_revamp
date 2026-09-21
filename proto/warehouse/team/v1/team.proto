@@ -3,6 +3,7 @@ syntax = "proto3";
 package warehouse.team.v1;
 
 import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/role_base/v1/role.proto";
 
@@ -25,6 +26,91 @@ service TeamService {
   rpc TeamByIds(TeamByIdsRequest) returns (TeamByIdsResponse);
 
   rpc TeamInfoUpdate(TeamInfoUpdateRequest) returns (TeamInfoUpdateResponse);
+
+  // WarehouseInfoDetail returns a warehouse's weekly hours (operating + receiving-orders).
+  // Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+  // receive its orders. Days with no stored row default to closed.
+  rpc WarehouseInfoDetail(WarehouseInfoDetailRequest) returns (WarehouseInfoDetailResponse);
+
+  // WarehouseInfoUpdate replaces a warehouse's weekly hours. Warehouse managers edit their own.
+  rpc WarehouseInfoUpdate(WarehouseInfoUpdateRequest) returns (WarehouseInfoUpdateResponse);
+}
+
+// Weekday is 1..7 Monday..Sunday. The UNSPECIFIED zero is required by proto3 and is never a
+// valid schedule row.
+enum Weekday {
+  WEEKDAY_UNSPECIFIED = 0;
+  WEEKDAY_MONDAY = 1;
+  WEEKDAY_TUESDAY = 2;
+  WEEKDAY_WEDNESDAY = 3;
+  WEEKDAY_THURSDAY = 4;
+  WEEKDAY_FRIDAY = 5;
+  WEEKDAY_SATURDAY = 6;
+  WEEKDAY_SUNDAY = 7;
+}
+
+// DayHours is one weekday's open/close. `open` false means closed that day (times ignored).
+// Times are "HH:MM" 24-hour local wall-clock, validated by the handler.
+message DayHours {
+  Weekday weekday = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  bool open = 2;
+  string open_time = 3 [(buf.validate.field).string.max_len = 5];
+  string close_time = 4 [(buf.validate.field).string.max_len = 5];
+}
+
+// WarehouseInfo is a warehouse team's operational data: its two weekly schedules and its location.
+message WarehouseInfo {
+  uint64 team_id = 1;
+
+  // When the warehouse is generally open.
+  repeated DayHours operating_hours = 2;
+
+  // When the warehouse can RECEIVE ORDERS — often narrower than operating hours.
+  repeated DayHours receiving_hours = 3;
+
+  // The warehouse's physical location / address (free text).
+  string location = 4;
+}
+
+message WarehouseInfoDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  uint64 team_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseInfoDetailResponse {
+  WarehouseInfo info = 1;
+}
+
+message WarehouseInfoUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // A full replacement of each schedule — the editor sends the whole weekly grid. At most one
+  // row per weekday per schedule; the handler rejects duplicates and bad times.
+  repeated DayHours operating_hours = 2 [(buf.validate.field).repeated.max_items = 7];
+  repeated DayHours receiving_hours = 3 [(buf.validate.field).repeated.max_items = 7];
+
+  // The warehouse address — a full replacement, sent by the editor alongside the schedules.
+  string location = 4 [(buf.validate.field).string.max_len = 500];
+}
+
+message WarehouseInfoUpdateResponse {
+  WarehouseInfo info = 1;
 }
 
 // THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
@@ -52,6 +138,14 @@ message TeamInfo {
   // service boundary. 0 = unset.
   uint64 return_warehouse_id = 6;
   uint64 return_user_id = 7;
+
+  // The warehouse this SELLING team ships from by default (#145). 0 = not configured.
+  //
+  // A convenience, not a rule: the order form pre-selects it and the person may still choose another,
+  // and the server keeps refusing an order that names no warehouse (#72). Applying it as a server-side
+  // fallback would quietly undo that refusal, which exists so a warehouse-less order cannot reach the
+  // database at all.
+  uint64 default_warehouse_id = 8;
 }
 
 message Team {
@@ -64,6 +158,23 @@ message Team {
 
   // Populated on TeamDetail only. TeamList and TeamByIds leave it unset.
   TeamInfo info = 7;
+
+  // A compact team picture (like a user avatar). Empty when the team has no picture. Set via
+  // TeamUpdate after a two-phase document upload; the app shows initials as a fallback.
+  string image_url = 8;
+
+  // THE PRIORITY-PRODUCT FEATURE (owner). Set by ROOT, and it applies to the team's WHOLE catalogue:
+  // every product this team owns is a priority product to everybody browsing.
+  //
+  // A flag on the TEAM rather than on the product, and deliberately not a per-viewer curation — so
+  // every selling team discovering products sees the same priority set. It is what backs the product
+  // picker's *Priority Product* tab.
+  //
+  // ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
+  // that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+  // team could grant itself the feature. How root sets it is not designed yet — the column and the
+  // read path land first.
+  bool priority_product = 9;
 }
 
 message TeamCreateRequest {
@@ -103,13 +214,15 @@ message TeamUpdateRequest {
       ROLE_ROOT,
       ROLE_ADMIN,
       ROLE_TEAM_OWNER,
-      ROLE_WAREHOUSE_OWNER
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
     ]
   };
 
   // use_scope is LOAD-BEARING: without it, the roles above are evaluated against team 1, and
-  // the two OWNER entries become dead letters — the policy would claim an owner may rename
-  // their team while the system silently required root/admin.
+  // the team/warehouse OWNER and ADMIN entries become dead letters — the policy would claim a
+  // team manager may edit their team while the system silently required root/admin.
   uint64 team_id = 1 [
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
@@ -121,6 +234,9 @@ message TeamUpdateRequest {
     max_len: 128
   }];
   optional string description = 3 [(buf.validate.field).string = {max_len: 300}];
+
+  // The compact team picture URL (see Team.image_url). Present & empty = clear it.
+  optional string image_url = 4 [(buf.validate.field).string.max_len = 1024];
 }
 
 message TeamUpdateResponse {
@@ -140,17 +256,86 @@ message TeamDeleteRequest {
 
 message TeamDeleteResponse {}
 
+// ── The guideline list shape for teams (guidelines/service-guideline.md) ──────────────────────────
+
+// TeamListDataType selects which slices the response carries per team.
+enum TeamListDataType {
+  TEAM_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_LIST_DATA_TYPE_GENERAL = 1;
+  // TEAM: the full team row a list/picker renders (never the `info`, which is TeamDetail-only).
+  TEAM_LIST_DATA_TYPE_TEAM = 2;
+}
+
+// TeamRowSort is the sort selection paired with the TEAM (row) slice.
+enum TeamRowSort {
+  TEAM_ROW_SORT_UNSPECIFIED = 0;
+  TEAM_ROW_SORT_NAME = 1;
+  TEAM_ROW_SORT_TEAM_CODE = 2;
+  TEAM_ROW_SORT_ID = 3;
+}
+
+// TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
+// so there is no team_id here at all.
+message TeamListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  TeamType team_type = 2;
+
+  // Only teams that carry the priority-product feature (see Team.priority_product). false = no
+  // narrowing, which is the default.
+  //
+  // This is how the product picker resolves its *Priority Product* tab: it asks team_service WHICH
+  // TEAMS are priority, then narrows a product query by those ids. product_service is never told
+  // what "priority" means — it filters by a list of team ids it was handed, which is what keeps the
+  // two services independent (HARD RULE 3) instead of joining `products` to `teams`.
+  bool priority_product_only = 3;
+}
+
+message TeamListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    TeamRowSort team = 3;
+  }
+}
+
 message TeamListRequest {
   option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
 
-  string q = 1 [(buf.validate.field).string.max_len = 100];
-  TeamType team_type = 2;
-  warehouse.common.v1.PageFilter page = 3 [(buf.validate.field).required = true];
+  TeamListFilter filter = 1;
+  TeamListFilterSort sort = 2;
+  repeated TeamListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+// TeamRowItem is the TEAM slice — the fields a list/picker renders (mirrors Team minus `info`).
+message TeamRowItem {
+  uint64 id = 1;
+  TeamType type = 2;
+  string name = 3;
+  string team_code = 4;
+  string description = 5;
+  bool deleted = 6;
+  string image_url = 7;
+  // See Team.priority_product. Carried on the row because the product picker reads the priority
+  // TEAM LIST and then narrows a product query by those ids — it never asks per product.
+  bool priority_product = 8;
+}
+
+message TeamRowMapItem {
+  map<uint64, TeamRowItem> map_data = 1;
+}
+
+message TeamListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    TeamRowMapItem team = 2;
+  }
 }
 
 message TeamListResponse {
-  repeated Team teams = 1;
-  warehouse.common.v1.PageInfo page_info = 2;
+  repeated TeamListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message TeamDetailRequest {
@@ -163,10 +348,16 @@ message TeamDetailResponse {
   Team team = 1;
 }
 
-message TeamByIdsRequest {
-  // Deliberately UNSCOPED: this is a cross-team bulk lookup. Scoping it would defeat it.
-  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+// TeamByIdsDataType selects which slices the by-ids response carries per team.
+enum TeamByIdsDataType {
+  TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_BY_IDS_DATA_TYPE_GENERAL = 1;
+  TEAM_BY_IDS_DATA_TYPE_TEAM = 2;
+}
 
+// TeamByIdsFilter carries the ids to resolve. Deliberately UNSCOPED (cross-team bulk lookup), so no
+// team_id.
+message TeamByIdsFilter {
   repeated uint64 ids = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 200
@@ -177,10 +368,30 @@ message TeamByIdsRequest {
   }];
 }
 
+message TeamByIdsRequest {
+  // Deliberately UNSCOPED: this is a cross-team bulk lookup. Scoping it would defeat it.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  TeamByIdsFilter filter = 1 [(buf.validate.field).required = true];
+  // Which slices to load per team. Empty defaults to the TEAM (row) slice.
+  repeated TeamByIdsDataType data_request = 2;
+}
+
+message TeamByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    TeamRowMapItem team = 2;
+  }
+}
+
+message TeamByIdsResponseList {
+  repeated TeamByIdsResponseItem items = 1;
+}
+
 message TeamByIdsResponse {
   // Keyed by team id. Unknown AND soft-deleted ids are OMITTED — check presence, do not index
   // blindly. The map is never nil, so ranging an empty result is safe.
-  map<uint64, Team> data = 1;
+  map<uint64, TeamByIdsResponseList> items = 1;
 }
 
 message TeamInfoUpdateRequest {
@@ -209,6 +420,7 @@ message TeamInfoUpdateRequest {
   optional string bank_account_number = 5 [(buf.validate.field).string.max_len = 60];
   optional uint64 return_warehouse_id = 6; // present & 0 = clear to NULL
   optional uint64 return_user_id = 7; // present & 0 = clear to NULL
+  optional uint64 default_warehouse_id = 8; // present & 0 = clear to NULL (#145)
 }
 
 message TeamInfoUpdateResponse {

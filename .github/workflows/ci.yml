@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 permissions:
@@ -13,12 +13,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 2 is for `buf breaking` below — the default shallow clone has no HEAD~1.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # ⚠ NODE AND THE FRONTEND DEPS COME BEFORE `buf generate`, and that ordering is load-bearing.
+      # The TypeScript plugin is `frontend/node_modules/@bufbuild/protoc-gen-es` — a LOCAL plugin,
+      # not a BSR one — so generation fails outright if the deps are not installed yet.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: install frontend deps (protoc-gen-es lives here)
+        working-directory: frontend
+        run: npm ci
 
       - uses: bufbuild/buf-setup-action@v1
         with:
@@ -29,8 +45,25 @@ jobs:
         working-directory: proto
         run: buf lint
 
+      # A rename is a WIRE change no other check can see: lint passes, the drift check passes
+      # (proto and generated code move together), and `go build` fails only until the Go is
+      # updated — which goes green while every message already published still carries the old
+      # name. Events are encoded as protojson, so the field NAME is the wire identity.
+      #
+      # ⚠ Two things this step needs, both easy to get wrong:
+      #   - it runs from the REPO ROOT, not `working-directory: proto` — `.git` resolves against
+      #     the working directory, and proto/.git does not exist.
+      #   - the checkout above must be `fetch-depth: 2`, or HEAD~1 is not in the clone.
+      #
+      # The baseline is HEAD~1, not main: work goes straight to dev and main lags, so a main
+      # baseline stays red for the whole gap between a change landing and a promotion. HEAD~1 is
+      # a per-commit tripwire — it trips on the commit that renames something and clears on the
+      # next, which is exactly the question being asked.
       # Drift check: regenerate and fail if the committed output differs. Generated code is
       # committed but never hand-edited — this proves it matches the .proto.
+      #
+      # No BSR token is needed: every plugin is `local:`, pinned by the root go.mod's `tool`
+      # directives and by frontend/package.json. See the header of proto/buf.gen.yaml.
       - name: buf generate (drift check)
         working-directory: proto
         run: buf generate
@@ -42,27 +75,34 @@ jobs:
             exit 1
           fi
 
+      # From the REPO ROOT, not backend/ — the module is rooted here, so `./...` covers the server
+      # and the top-level tools/ together. Running it from backend/ would silently skip tools/san.
       - name: go build + vet
-        working-directory: backend
         run: |
           go build ./...
           go vet ./...
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
       - name: frontend typecheck + build
         working-directory: frontend
         run: |
-          npm ci
           npx tsc --noEmit
           npm run build
 
+      #
+      # ⚠ PUSH ONLY. On a pull_request event the checkout is a MERGE commit whose HEAD~1 is the
+      # BASE branch — so HEAD~1 silently means "main" there, which is the baseline this step was
+      # written to avoid. It is red on every PR run for as long as main lags dev.
+      - name: buf breaking
+        if: github.event_name == 'push'
+        run: buf breaking proto --against '.git#ref=HEAD~1,subdir=proto'
+
   # Go tests + Playwright e2e against real Postgres and Redis.
+  #
+  # NOT on every push to dev: this job pulls Postgres, Redis and a Playwright browser, and dev is
+  # committed to constantly. The fast `build` job above is what runs per dev commit — main and
+  # pull requests still get the full suite.
   test:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     services:
@@ -92,7 +132,9 @@ jobs:
           --health-retries 10
 
     env:
-      TEST_DATABASE_URL: host=localhost port=5433 user=user password=password dbname=postgres sslmode=disable
+      # Tests use a SEPARATE database from dev. san_testdb creates warehouse_test on demand from
+      # the "postgres" maintenance DB the service container starts with; the e2e resets it itself.
+      TEST_DATABASE_URL: host=localhost port=5433 user=user password=password dbname=warehouse_test sslmode=disable
       REDIS_ADDR: localhost:6380
 
     steps:
@@ -100,11 +142,11 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
+      # Repo root — same reason as go build: tools/san has its own tests.
       - name: go test
-        working-directory: backend
         run: go test ./...
 
       - uses: actions/setup-node@v4
@@ -120,6 +162,21 @@ jobs:
       - name: install playwright browser
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      # Every mermaid diagram in docs/, disscuss/ and guidelines/ must PARSE (#152) — a broken one renders as an
+      # error box, and the markdown looks fine in the diff. It runs in this job rather than the
+      # typecheck job because it parses in a real browser, and this is where chromium is installed.
+      # Before the e2e, since it needs no database and fails in seconds.
+      - name: lint mermaid diagrams
+        working-directory: frontend
+        run: npm run lint:mermaid
+
+      # Every shared component's stories, run headlessly in the chromium installed above. This needs
+      # NO database and no servers — the Connect transport is stubbed in-process — so it goes before
+      # the e2e and fails in seconds when a component's behaviour changes.
+      - name: component stories
+        working-directory: frontend
+        run: npm run test:stories
 
       # Playwright's global-setup migrates + seeds the DB, and its webServer starts the Go API
       # and the Vite dev server. Go is on PATH from setup-go, so `go run ./cmd/...` works.

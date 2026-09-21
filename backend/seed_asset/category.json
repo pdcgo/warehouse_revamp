@@ -1,0 +1,233 @@
+{
+  "note": "Representative Shopee Indonesia product taxonomy (top-level categories with common subcategories) for development seeding. Names follow Shopee ID's public category guide. Two levels deep; the schema supports arbitrary nesting via `children`.",
+  "source": "https://seller.shopee.co.id/edu/category-guide/",
+  "categories": [
+    {
+      "name": "Pakaian Pria",
+      "children": [
+        { "name": "Atasan" },
+        { "name": "Celana" },
+        { "name": "Jaket" },
+        { "name": "Kaos" },
+        { "name": "Kemeja" },
+        { "name": "Pakaian Dalam" }
+      ]
+    },
+    {
+      "name": "Pakaian Wanita",
+      "children": [
+        { "name": "Atasan" },
+        { "name": "Bawahan" },
+        { "name": "Dress" },
+        { "name": "Jumpsuit & Playsuit" },
+        { "name": "Outerwear" },
+        { "name": "Pakaian Dalam" }
+      ]
+    },
+    {
+      "name": "Fashion Muslim",
+      "children": [
+        { "name": "Atasan Muslim" },
+        { "name": "Gamis" },
+        { "name": "Hijab" },
+        { "name": "Mukena" },
+        { "name": "Sarung & Peci" }
+      ]
+    },
+    {
+      "name": "Fashion Bayi & Anak",
+      "children": [
+        { "name": "Pakaian Bayi" },
+        { "name": "Pakaian Anak Laki-laki" },
+        { "name": "Pakaian Anak Perempuan" },
+        { "name": "Sepatu Anak" }
+      ]
+    },
+    {
+      "name": "Sepatu Pria",
+      "children": [
+        { "name": "Sepatu Sneakers" },
+        { "name": "Sepatu Formal" },
+        { "name": "Sepatu Sandal" },
+        { "name": "Sepatu Boots" }
+      ]
+    },
+    {
+      "name": "Sepatu Wanita",
+      "children": [
+        { "name": "Flat Shoes" },
+        { "name": "Heels" },
+        { "name": "Sepatu Sneakers" },
+        { "name": "Sandal & Slippers" }
+      ]
+    },
+    {
+      "name": "Tas Pria",
+      "children": [
+        { "name": "Tas Selempang" },
+        { "name": "Tas Ransel" },
+        { "name": "Dompet" }
+      ]
+    },
+    {
+      "name": "Tas Wanita",
+      "children": [
+        { "name": "Tas Selempang" },
+        { "name": "Tas Bahu" },
+        { "name": "Tas Ransel" },
+        { "name": "Dompet" }
+      ]
+    },
+    {
+      "name": "Aksesoris Fashion",
+      "children": [
+        { "name": "Ikat Pinggang" },
+        { "name": "Kacamata" },
+        { "name": "Topi" },
+        { "name": "Perhiasan" }
+      ]
+    },
+    {
+      "name": "Jam Tangan",
+      "children": [
+        { "name": "Jam Tangan Pria" },
+        { "name": "Jam Tangan Wanita" },
+        { "name": "Smartwatch" }
+      ]
+    },
+    {
+      "name": "Kecantikan",
+      "children": [
+        { "name": "Makeup Wajah" },
+        { "name": "Makeup Mata" },
+        { "name": "Makeup Bibir" },
+        { "name": "Perawatan Kulit" },
+        { "name": "Perawatan Rambut" },
+        { "name": "Parfum" }
+      ]
+    },
+    {
+      "name": "Kesehatan",
+      "children": [
+        { "name": "Suplemen" },
+        { "name": "Obat-obatan" },
+        { "name": "Alat Kesehatan" },
+        { "name": "Masker & Sanitasi" }
+      ]
+    },
+    {
+      "name": "Ibu & Bayi",
+      "children": [
+        { "name": "Popok & Perlengkapan Mandi" },
+        { "name": "Susu & Makanan Bayi" },
+        { "name": "Perlengkapan Menyusui" },
+        { "name": "Mainan Bayi" }
+      ]
+    },
+    {
+      "name": "Handphone & Aksesoris",
+      "children": [
+        { "name": "Handphone" },
+        { "name": "Casing & Pelindung" },
+        { "name": "Charger & Kabel" },
+        { "name": "Powerbank" },
+        { "name": "Earphone & Headset" }
+      ]
+    },
+    {
+      "name": "Komputer & Aksesoris",
+      "children": [
+        { "name": "Laptop" },
+        { "name": "PC & Komponen" },
+        { "name": "Monitor" },
+        { "name": "Keyboard & Mouse" },
+        { "name": "Penyimpanan Data" }
+      ]
+    },
+    {
+      "name": "Elektronik",
+      "children": [
+        { "name": "Televisi" },
+        { "name": "Audio" },
+        { "name": "Kamera Keamanan" },
+        { "name": "Peralatan Dapur Elektronik" }
+      ]
+    },
+    {
+      "name": "Perlengkapan Rumah",
+      "children": [
+        { "name": "Perabotan" },
+        { "name": "Dekorasi" },
+        { "name": "Dapur" },
+        { "name": "Kamar Mandi" },
+        { "name": "Alat Kebersihan" }
+      ]
+    },
+    {
+      "name": "Makanan & Minuman",
+      "children": [
+        { "name": "Makanan Ringan" },
+        { "name": "Minuman" },
+        { "name": "Bahan Pokok" },
+        { "name": "Makanan Beku" }
+      ]
+    },
+    {
+      "name": "Hobi & Koleksi",
+      "children": [
+        { "name": "Mainan" },
+        { "name": "Koleksi" },
+        { "name": "Alat Musik" },
+        { "name": "Perlengkapan Seni" }
+      ]
+    },
+    {
+      "name": "Olahraga & Outdoor",
+      "children": [
+        { "name": "Pakaian Olahraga" },
+        { "name": "Alat Fitness" },
+        { "name": "Sepeda" },
+        { "name": "Camping & Hiking" }
+      ]
+    },
+    {
+      "name": "Otomotif",
+      "children": [
+        { "name": "Aksesoris Mobil" },
+        { "name": "Aksesoris Motor" },
+        { "name": "Suku Cadang" },
+        { "name": "Oli & Cairan" }
+      ]
+    },
+    {
+      "name": "Buku & Alat Tulis",
+      "children": [
+        { "name": "Buku" },
+        { "name": "Alat Tulis" },
+        { "name": "Perlengkapan Kantor" }
+      ]
+    },
+    {
+      "name": "Perawatan Hewan",
+      "children": [
+        { "name": "Makanan Hewan" },
+        { "name": "Perlengkapan Hewan" },
+        { "name": "Perawatan & Kesehatan Hewan" }
+      ]
+    },
+    {
+      "name": "Voucher",
+      "children": [
+        { "name": "Pulsa & Paket Data" },
+        { "name": "Voucher Game" },
+        { "name": "Tagihan & Tiket" }
+      ]
+    },
+    {
+      "name": "Serba Serbi",
+      "children": [
+        { "name": "Lainnya" }
+      ]
+    }
+  ]
+}

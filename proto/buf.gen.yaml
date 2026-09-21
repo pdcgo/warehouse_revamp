@@ -2,15 +2,40 @@ version: v2
 
 clean: true
 
+# ⚠ RUN THIS FROM `proto/` — `cd proto && buf generate`.
+# Every plugin below is `local:` and two of them are addressed by a RELATIVE path, which buf
+# resolves against the CURRENT WORKING DIRECTORY. CI does the same (`working-directory: proto`).
+#
+# ---- why LOCAL and not `remote:` -------------------------------------------------------------
+# These were `remote:` BSR plugins, which need a Buf API token. Nobody's checkout has one by
+# default, and with `clean: true` above a failed run DELETES `backend/gen` and `frontend/src/gen`
+# before failing — so the documented command was destructive on a fresh machine.
+#
+# Local plugins remove the account entirely, and they are pinned where the pin cannot drift:
+#
+#   protoc-gen-go / protoc-gen-connect-go   `tool` directives in the ROOT go.mod
+#   protoc-gen-es                           a devDependency in frontend/package.json
+#
+# That is the point of the change. A plugin version and the runtime it generates against MUST
+# match — generating with protoc-gen-es 2.2.5 against @bufbuild/protobuf 2.12 dies with
+# "Cannot read properties of undefined (reading 'length')", which reads like a corrupt .proto and
+# is not. Here the generator IS the dependency: `go tool` builds the plugin from the module's own
+# google.golang.org/protobuf, and protoc-gen-es sits beside @bufbuild/protobuf at the same
+# version. Bump one and you have bumped the other.
+#
+# ⚠ Do NOT put these on PATH instead (`go install`) — a globally installed protoc-gen-go is
+# whatever some other project needed, and generating with it rewrites every file with a different
+# version stamp. That is exactly the drift CI's generated-drift check exists to catch.
+
 plugins:
   # ---- backend (Go) ----
   # No include_imports: the Go code for buf.validate comes from its published Go module
   # (buf.build/gen/go/...), which buf.build/go/protovalidate already depends on.
-  - remote: buf.build/protocolbuffers/go:v1.36.6
+  - local: ["go", "tool", "protoc-gen-go"]
     out: ../backend/gen
     opt: paths=source_relative
 
-  - remote: buf.build/connectrpc/go:v1.18.1
+  - local: ["go", "tool", "protoc-gen-connect-go"]
     out: ../backend/gen
     opt: paths=source_relative
 
@@ -22,7 +47,10 @@ plugins:
   #
   # protobuf-es v2 also emits the service descriptors, so connect-es v2 needs no separate
   # plugin: the client is createClient(TeamService, transport).
-  - remote: buf.build/bufbuild/es:v2.2.5
+  #
+  # ⚠ Needs `cd frontend && npm install` to have run — the plugin is a devDependency, so the
+  # path below does not exist on a checkout whose frontend deps were never installed.
+  - local: ["node", "../frontend/node_modules/@bufbuild/protoc-gen-es/bin/protoc-gen-es"]
     out: ../frontend/src/gen
     opt: target=ts
     include_imports: true

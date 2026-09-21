@@ -1,0 +1,97 @@
+package team_v1
+
+import (
+	"context"
+	"math"
+	"strings"
+
+	"connectrpc.com/connect"
+
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_service_models"
+)
+
+// TeamList implements [teamv1connect.TeamServiceHandler].
+func (s *Service) TeamList(
+	ctx context.Context,
+	req *connect.Request[teamv1.TeamListRequest],
+) (*connect.Response[teamv1.TeamListResponse], error) {
+	page := req.Msg.GetPage()
+
+	query := s.db.
+		WithContext(ctx).
+		Model(&team_service_models.Team{}).
+		Where("deleted = ?", false)
+
+	if q := strings.TrimSpace(req.Msg.GetFilter().GetQ()); q != "" {
+		pattern := "%" + escapeLike(q) + "%"
+		query = query.Where("name ILIKE ? OR team_code ILIKE ?", pattern, pattern)
+	}
+
+	if teamType := req.Msg.GetFilter().GetTeamType(); teamType != teamv1.TeamType_TEAM_TYPE_UNSPECIFIED {
+		text, err := teamTypeToText(teamType)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+
+		query = query.Where("type = ?", text)
+	}
+
+	// WHICH TEAMS CARRY THE PRIORITY-PRODUCT FEATURE. The product picker asks this once, then narrows
+	// a ProductDiscover by the ids that come back — which is how the *Priority Product* tab works
+	// without product_service ever joining to `teams` (HARD RULE 3).
+	//
+	// One-way: there is no "everything except priority" here, because nobody browses teams that way.
+	// The complement is taken on the PRODUCT side, by `exclude_owner_team_ids`, from the same id list.
+	if req.Msg.GetFilter().GetPriorityProductOnly() {
+		query = query.Where("priority_product = ?", true)
+	}
+
+	var total int64
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	var teams []team_service_models.Team
+
+	offset := int((page.GetPage() - 1) * page.GetLimit())
+
+	err = query.
+		Order(teamOrderClause(req.Msg.GetSort())).
+		Offset(offset).
+		Limit(int(page.GetLimit())).
+		Find(&teams).
+		Error
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	items, ids := teamListItems(teams, req.Msg.GetDataRequest())
+
+	return connect.NewResponse(&teamv1.TeamListResponse{
+		Items: items,
+		Ids:   ids,
+		PageInfo: &commonv1.PageInfo{
+			CurrentPage: page.GetPage(),
+			TotalPage:   totalPages(total, page.GetLimit()),
+			TotalItems:  uint64(total),
+		},
+	}), nil
+}
+
+// escapeLike neutralises the LIKE wildcards. Not an injection fix (the value is bound), but
+// without it a search for "%" matches everything and "_" matches any character.
+func escapeLike(q string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q)
+}
+
+func totalPages(total int64, limit uint32) uint32 {
+	if limit == 0 {
+		return 0
+	}
+
+	return uint32(math.Ceil(float64(total) / float64(limit)))
+}

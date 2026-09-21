@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package warehouse.shipment.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipment/v1;shipmentv1";
+
+// ShipmentChannelService owns `shipment_channels` — the catalogue of couriers a parcel leaves with.
+// The business design is docs/business/shipment/context_decision.md; every rule below names the
+// decision it comes from.
+//
+// Accepted at design_accept (the-prototype-is-accepted) and served by backend/services/shipment_service.
+// It REPLACED warehouse.shipping.v1; records still storing a courier CODE read this catalogue by code
+// until the order redesign (the-old-catalogue-bridges-by-code).
+//
+// Reads are PUBLIC (the-channel-list-needs-no-login, by-ids-is-public-too): the third-party app maps
+// platform courier text onto these ids (the-app-converts-the-courier-to-a-channel-id). Writes are
+// ROOT only (only-root-manages-channels), and unscoped — the catalogue belongs to no team.
+service ShipmentChannelService {
+  rpc ShipmentChannelList(ShipmentChannelListRequest) returns (ShipmentChannelListResponse);
+  rpc ShipmentChannelByIds(ShipmentChannelByIdsRequest) returns (ShipmentChannelByIdsResponse);
+  rpc ShipmentChannelCreate(ShipmentChannelCreateRequest) returns (ShipmentChannelCreateResponse);
+  rpc ShipmentChannelUpdate(ShipmentChannelUpdateRequest) returns (ShipmentChannelUpdateResponse);
+  rpc ShipmentChannelDelete(ShipmentChannelDeleteRequest) returns (ShipmentChannelDeleteResponse);
+  rpc ShipmentChannelRestore(ShipmentChannelRestoreRequest) returns (ShipmentChannelRestoreResponse);
+}
+
+// ShipmentChannel is one COURIER — `jne`, never `jne_reg` (a-channel-is-a-courier).
+message ShipmentChannel {
+  // What orders.shipment_channel_id holds — the only thing another service stores.
+  uint64 id = 1;
+  // Unique over ALL rows, deleted included, and never changes after create (a-code-never-changes).
+  string code = 2;
+  string name = 3;
+  string desc = 4;
+  // Soft delete (a-channel-is-soft-deleted). A deleted channel still resolves by id.
+  bool is_deleted = 5;
+  google.protobuf.Timestamp created_at = 6;
+  // Set on every edit, delete and restore (a-channel-records-updated-at).
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// ---------------------------------------------------------------------------- list
+
+message ShipmentChannelListRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  ShipmentChannelListFilter filter = 1;
+  ShipmentChannelListFilterSort sort = 2;
+  repeated ShipmentChannelListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message ShipmentChannelListFilter {
+  // Matches code or name.
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  // Default false = live channels only, which is what a picker and the third-party app ask for
+  // (a-deleted-channel-still-resolves-by-id). The management screen sets it, because root cannot
+  // restore a channel it cannot see.
+  bool include_deleted = 2;
+}
+
+enum ShipmentChannelListDataType {
+  SHIPMENT_CHANNEL_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SHIPMENT_CHANNEL_LIST_DATA_TYPE_GENERAL = 1;
+  SHIPMENT_CHANNEL_LIST_DATA_TYPE_CHANNEL = 2;
+}
+
+enum ShipmentChannelRowSort {
+  SHIPMENT_CHANNEL_ROW_SORT_UNSPECIFIED = 0;
+  SHIPMENT_CHANNEL_ROW_SORT_CODE = 1;
+  SHIPMENT_CHANNEL_ROW_SORT_NAME = 2;
+  SHIPMENT_CHANNEL_ROW_SORT_UPDATED_AT = 3;
+}
+
+message ShipmentChannelListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    ShipmentChannelRowSort channel = 3;
+  }
+}
+
+message ShipmentChannelRowMapItem {
+  map<uint64, ShipmentChannel> map_data = 1;
+}
+
+message ShipmentChannelListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ShipmentChannelRowMapItem channel = 2;
+  }
+}
+
+message ShipmentChannelListResponse {
+  repeated ShipmentChannelListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ---------------------------------------------------------------------------- by ids
+
+// Resolves ids a caller already holds — an order's shipment_channel_id. DELETED CHANNELS ARE
+// RETURNED, with is_deleted set, so an old order never shows a blank courier
+// (a-deleted-channel-still-resolves-by-id). An id that never existed is simply absent.
+message ShipmentChannelByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {allow_all: true};
+
+  ShipmentChannelByIdsFilter filter = 1 [(buf.validate.field).required = true];
+  // Empty defaults to the CHANNEL slice.
+  repeated ShipmentChannelByIdsDataType data_request = 2;
+}
+
+message ShipmentChannelByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum ShipmentChannelByIdsDataType {
+  SHIPMENT_CHANNEL_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  SHIPMENT_CHANNEL_BY_IDS_DATA_TYPE_GENERAL = 1;
+  SHIPMENT_CHANNEL_BY_IDS_DATA_TYPE_CHANNEL = 2;
+}
+
+message ShipmentChannelByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ShipmentChannelRowMapItem channel = 2;
+  }
+}
+
+message ShipmentChannelByIdsResponseList {
+  repeated ShipmentChannelByIdsResponseItem items = 1;
+}
+
+message ShipmentChannelByIdsResponse {
+  map<uint64, ShipmentChannelByIdsResponseList> items = 1;
+}
+
+// ---------------------------------------------------------------------------- writes
+
+message ShipmentChannelCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [ROLE_ROOT]
+  };
+
+  // Refused with ALREADY_EXISTS when ANY row holds this code — a deleted one included, whose answer
+  // is restore, not re-create (a-deleted-code-is-restored-not-recreated).
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 40
+    pattern: "^[a-z0-9_]+$"
+  }];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  string desc = 3 [(buf.validate.field).string.max_len = 500];
+}
+
+message ShipmentChannelCreateResponse {
+  ShipmentChannel channel = 1;
+}
+
+// Edits name and desc. There is no `code` field — it cannot be changed (a-code-never-changes).
+message ShipmentChannelUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [ROLE_ROOT]
+  };
+
+  uint64 channel_id = 1 [(buf.validate.field).uint64.gt = 0];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  string desc = 3 [(buf.validate.field).string.max_len = 500];
+}
+
+message ShipmentChannelUpdateResponse {
+  ShipmentChannel channel = 1;
+}
+
+// Sets is_deleted. The row stays (a-channel-is-soft-deleted).
+message ShipmentChannelDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [ROLE_ROOT]
+  };
+
+  uint64 channel_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShipmentChannelDeleteResponse {
+  ShipmentChannel channel = 1;
+}
+
+// Clears is_deleted — same id, same code (a-deleted-code-is-restored-not-recreated).
+message ShipmentChannelRestoreRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [ROLE_ROOT]
+  };
+
+  uint64 channel_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShipmentChannelRestoreResponse {
+  ShipmentChannel channel = 1;
+}

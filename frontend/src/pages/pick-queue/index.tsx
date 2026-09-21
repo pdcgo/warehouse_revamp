@@ -1,0 +1,194 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import {
+  Badge,
+  Flex,
+  Heading,
+  Icon,
+  Spacer,
+  Spinner,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+} from "@chakra-ui/react";
+import { PackageSearch } from "lucide-react";
+
+import { rpcError } from "../../api/clients";
+import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
+import { Pagination } from "../../components/chrome/Pagination";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { useTeam } from "../../features/team/TeamContext";
+import { usePickQueue } from "../../features/picking/queries";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The crew's day, in the order they work it: what has just come in, what is waiting, what is in hand,
+// what is boxed, what has gone. Each tab is a STATE OF THE BUILDING rather than a filter someone chose
+// — which is why "shipped" is last and not a tab anybody starts from.
+//
+// NEW is first AND the default (owner). Confirming is the warehouse's own first step, so a just-placed
+// order is work waiting on THIS building — it is the top of the crew's day, not somebody else's problem.
+//
+// ⚠ This is the bug the screen had: it opened on To Pick (CONFIRMED only) while every freshly placed
+// order sat at PLACED, which no tab matched. A warehouse that had just been sent an order opened its
+// Orders screen and found it empty, and the only way to see the order at all was the All tab.
+const STATUS_TABS = [
+  { value: "new", labelKey: "picking.tab.new", status: OrderStatus.PLACED },
+  { value: "topick", labelKey: "picking.tab.toPick", status: OrderStatus.CONFIRMED },
+  { value: "picking", labelKey: "picking.tab.picking", status: OrderStatus.PICKING },
+  { value: "packed", labelKey: "picking.tab.packed", status: OrderStatus.PACKED },
+  { value: "shipped", labelKey: "picking.tab.shipped", status: OrderStatus.SHIPPED },
+  { value: "all", labelKey: "picking.tab.all", status: OrderStatus.UNSPECIFIED },
+];
+
+// PickQueuePage — the orders waiting to be picked at THIS warehouse (#151).
+//
+// Scoped to the warehouse, not to a selling team: this is the crew's screen, and the crew holds a role
+// in the building rather than in the shops it ships for. OrderList matches either end of an order, so
+// passing the warehouse's team id is what asks the warehouse question.
+export function PickQueuePage() {
+  const { current } = useTeam();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const [tab, setTab] = useState("new");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Only a WAREHOUSE team has a pick queue. A selling team has orders but no shelves and nobody to walk
+  // to them, so the screen says so rather than showing an empty table that looks like a quiet day.
+  const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
+  const warehouseId = isWarehouse ? current?.teamId : undefined;
+
+  const activeTab = STATUS_TABS.find((i) => i.value === tab) ?? STATUS_TABS[0];
+  const status = activeTab.status;
+
+  const query = usePickQueue({ warehouseId, status, page, pageSize });
+
+  const orders = query.data?.orders ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending && warehouseId !== undefined;
+  // The rows on screen are the PREVIOUS tab's while this is true — `listQuery` keeps them rather than
+  // blanking the table (the app is always-fresh, so a tab switch always refetches). `isPending` is
+  // excluded on purpose: a genuine first load has nothing to keep, and shows the spinner above.
+  const refreshing = query.isFetching && !query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
+
+  function selectTab(value: string) {
+    setTab(value);
+    setPage(1);
+  }
+
+  if (!current) {
+    return (
+      <Stack gap="section">
+        <Heading size="md">{t("picking.title")}</Heading>
+        <Text color="fg.muted" data-testid="pick-queue-no-team">
+          {t("picking.selectTeam")}
+        </Text>
+      </Stack>
+    );
+  }
+
+  if (!isWarehouse) {
+    return (
+      <Stack gap="section">
+        <Heading size="md">{t("picking.title")}</Heading>
+        <Text color="fg.muted" data-testid="pick-queue-not-warehouse">
+          {t("picking.warehouseOnly")}
+        </Text>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="section">
+      <Flex align="center" gap="card">
+        <Heading size="md">{t("picking.title")}</Heading>
+        <Badge colorPalette="brand">{current.teamName}</Badge>
+        <Spacer />
+      </Flex>
+
+      <Tabs.Root value={tab} onValueChange={(e) => selectTab(e.value)}>
+        <Tabs.List>
+          {STATUS_TABS.map((item) => (
+            <Tabs.Trigger key={item.value} value={item.value} data-testid={`pick-tab-${item.value}`}>
+              {t(item.labelKey)}
+            </Tabs.Trigger>
+          ))}
+        </Tabs.List>
+
+        <Tabs.Content value={tab}>
+          <RefreshOverlay busy={refreshing}>
+            <Stack gap="card">
+              {error && (
+                <Text color="red.fg" data-testid="pick-queue-error">
+                  {error}
+                </Text>
+              )}
+
+              {loading ? (
+                <Spinner colorPalette="brand" />
+              ) : (
+                <Table.Root size="sm" data-testid="pick-queue-table">
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeader>{t("picking.table.order")}</Table.ColumnHeader>
+                      <Table.ColumnHeader>{t("picking.table.customer")}</Table.ColumnHeader>
+                      <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {orders.map((order) => (
+                      <Table.Row
+                        key={String(order.id)}
+                        cursor="pointer"
+                        onClick={() => navigate(`/warehouse-orders/${order.id}`)}
+                        data-testid={`pick-queue-row-${order.id}`}
+                      >
+                        <Table.Cell>#{String(order.id)}</Table.Cell>
+                        <Table.Cell>{order.customerName}</Table.Cell>
+                        <Table.Cell>
+                          <OrderStatusBadge status={order.status} />
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              )}
+
+              {!loading && orders.length === 0 && !error && (
+                <Flex align="center" gap="card" color="fg.muted" data-testid="pick-queue-empty">
+                  <Icon as={PackageSearch} boxSize="4" />
+                  <Text>
+                    {status === OrderStatus.UNSPECIFIED
+                      ? t("picking.empty")
+                      : t("picking.emptyFiltered", { status: t(activeTab.labelKey).toLowerCase() })}
+                  </Text>
+                </Flex>
+              )}
+
+              {!loading && (
+                <Pagination
+                  count={totalItems}
+                  pageSize={pageSize}
+                  page={page}
+                  onPageChange={setPage}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  onPageSizeChange={(n) => {
+                    setPageSize(n);
+                    setPage(1);
+                  }}
+                />
+              )}
+            </Stack>
+          </RefreshOverlay>
+        </Tabs.Content>
+      </Tabs.Root>
+    </Stack>
+  );
+}

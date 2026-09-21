@@ -1,0 +1,734 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  Field,
+  Flex,
+  Grid,
+  GridItem,
+  Heading,
+  Icon,
+  IconButton,
+  SimpleGrid,
+  Stack,
+  Text,
+  Textarea,
+} from "@chakra-ui/react";
+import { ArrowLeft, FileClock } from "lucide-react";
+import { rpcError, teamClient } from "../../api/clients";
+import { useTeam } from "../../features/team/TeamContext";
+import { useCreateOrder } from "../../features/orders/queries";
+import {
+  useOrderDraft,
+  usePushOrderDraft,
+  useUpdateOrderDraft,
+} from "../../features/orderDrafts/queries";
+import { useStockAvailability, useStockCosts } from "../../features/inventory/queries";
+import {
+  MarketplaceInfoForm,
+  emptyMarketplaceInfo,
+} from "../../components/orders/MarketplaceInfoForm";
+import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
+import { TeamSelect } from "../../components/teams/TeamSelect";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { OrderItemCard } from "../../components/orders/OrderItemCard";
+import { ProductListExternal } from "../../components/products/ProductListExternal";
+import type { ExternalProduct } from "../../components/products/ProductListExternal";
+import type { PickedProduct } from "../../components/products/ProductSelect";
+import { emptyAddress } from "../../components/customers/AddressPicker";
+import type { AddressValue } from "../../components/customers/AddressPicker";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { toaster } from "../../components/feedback/Toaster";
+import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
+import { OrderTotals } from "../../features/orders/OrderTotals";
+import { emptyReceipt, hasReceipt } from "../../components/orders/ReceiptUpload";
+import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
+import type { LineDraft } from "../../features/orders/lines";
+import {
+  canSubmit,
+  lineFor,
+  lineStock,
+  lineTotal,
+  toQty,
+  toRupiah,
+  unitCost,
+} from "../../features/orders/lines";
+
+// The address is OPTIONAL (#118) — exactly as the free text it replaces was: an order can be taken
+// before the address is known. An untouched picker sends NOTHING rather than a message full of empty
+// strings, so "no address" stays distinguishable from "an address of blanks".
+function addressTouched(a: AddressValue): boolean {
+  return Object.values(a).some((v) => v.trim() !== "");
+}
+
+// Where a draft saved from THIS FORM says it came from. Every other draft in the system was pushed
+// by a scraper naming itself, and the drafts list already filters on this — so a hand-written one
+// must be as identifiable as the rest rather than borrowing an app's name or leaving it blank.
+const DRAFT_SOURCE = "manual";
+
+// `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
+// number means NO DRAFT — the query is disabled at 0n and the card renders nothing, which is the right
+// answer for a mistyped link and for an absent parameter alike. `BigInt("x")` throws, so this cannot
+// be a bare cast.
+function parseDraftId(raw: string | null): bigint {
+  if (raw === null || !/^\d+$/.test(raw)) {
+    return 0n;
+  }
+
+  return BigInt(raw);
+}
+
+// OrderCreatePage is the selling-side "place an order" form (#90), a dedicated PAGE (like the product
+// editor) because it carries a dynamic list of lines.
+//
+// It is not merely a form: placing an order DRAWS ITS GOODS out of the chosen warehouse in the same
+// transaction that writes it, so this screen is where stock leaves the building. Two consequences run
+// through the whole page — the warehouse is required and visible, and every line shows what that
+// warehouse actually holds.
+export function OrderCreatePage() {
+  const { t } = useTranslation();
+  const { current } = useTeam();
+  const navigate = useNavigate();
+  const createOrder = useCreateOrder();
+  const pushDraft = usePushOrderDraft();
+  const updateDraft = useUpdateOrderDraft();
+
+  const teamId = current?.teamId;
+
+  // ── WHAT THE EXTENSION SENT ──────────────────────────────────────────────────────────────────────
+  //
+  // `/orders/new?draft=201` opens this form ALONGSIDE the draft a browser extension pushed in, so the
+  // person types the order while reading the marketplace's own words. Without the id the parameter is
+  // absent, the query never runs, and the form is exactly what it was — a hand-written order has no
+  // extension behind it and must not show a card claiming one.
+  //
+  // ⚠ IT IS READ-ONLY HERE, and nothing on it is copied into the form. The scraped text names no
+  // product of ours (`OrderDraftItem.product_id` is 0 until a person maps it), so there is nothing to
+  // prefill with — auto-picking a catalogue product by matching titles is exactly what the draft
+  // design refused, because a wrong guess is indistinguishable from a person's choice once it is in
+  // the form. Reading the lines and picking the products is the human act, and this card is the half
+  // being read from.
+  const [searchParams] = useSearchParams();
+  const externalDraftId = parseDraftId(searchParams.get("draft"));
+  const externalDraft = useOrderDraft({ teamId, draftId: externalDraftId });
+
+  const externalItems: ExternalProduct[] = useMemo(
+    () =>
+      (externalDraft.data?.items ?? []).map((item) => ({
+        id: item.id,
+        name: item.externalName,
+        price: item.unitPrice,
+        quantity: item.quantity,
+      })),
+    [externalDraft.data],
+  );
+
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [address, setAddress] = useState<AddressValue>(emptyAddress);
+  // The marketplace side of the order — WHICH storefront sold it, and what THAT storefront calls it.
+  // One piece of state because they are one fact: a shop with no reference cannot be looked up again,
+  // and a reference with no shop has nowhere to be looked up in.
+  const [marketplace, setMarketplace] = useState<MarketplaceInfoValue>(emptyMarketplaceInfo);
+  const shopId = marketplace.shopId;
+
+  // Which warehouse fulfils this order (#72). REQUIRED: from #69 the order takes its stock out of this
+  // warehouse the moment it is placed, so the form cannot submit without one.
+  //
+  // Pre-filled from the team's configured default (#145), which is not the same as guessing. A default
+  // the SYSTEM invents would move real goods out of the wrong building; a default the TEAM configured
+  // is the team stating where it ships from, and it stays visible and changeable on every order. The
+  // server also still refuses an order that names no warehouse, so nothing here can let one through.
+  const [warehouseId, setWarehouseId] = useState<bigint>(0n);
+  const [shippingCode, setShippingCode] = useState("");
+
+  // The shipping receipt — the courier's slip photographed, or the marketplace's PDF (owner). What
+  // is held here is a REFERENCE to a document already uploaded, never the file: the bytes went
+  // straight to storage the moment it was picked, so submitting the order writes three short strings.
+  const [receipt, setReceipt] = useState<ReceiptValue>(emptyReceipt);
+
+  // Whatever the person taking the order needs the next person to know (owner). Free text on purpose:
+  // "deliver after 5pm", "wrap the glass one", "second attempt, the first parcel came back" are
+  // instructions to a HUMAN, and no dropdown ever fits the case actually in front of them.
+  const [note, setNote] = useState("");
+
+  // Starts EMPTY, not with a blank line. Lines arrive by picking products, so a placeholder row with
+  // no product would be a row you cannot remove and cannot use — the same conclusion the restock form
+  // reached (#165). The Create button is what refuses an order with nothing on it.
+  const [lines, setLines] = useState<LineDraft[]>([]);
+
+  const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [error, setError] = useState("");
+
+  // The external reference this form's draft is filed under, minted ONCE per visit.
+  //
+  // OrderDraftPush is create-or-update on (team_id, source, external_id), so a stable id is what
+  // makes a second Save update the draft this page already made instead of leaving a trail of
+  // near-identical ones. A fresh id per visit is the other half: opening the form again is a
+  // different order, not an edit of the last one.
+  const draftRefRef = useRef(`form-${crypto.randomUUID()}`);
+  // The draft this page has already created, if Save has been pressed. Kept so the line MAPPING can
+  // be written to it — see saveDraft.
+  const draftIdRef = useRef(0n);
+
+  // A REF, not state, and this is load-bearing rather than a style choice. The save navigates in the
+  // same tick it records success, and a `setState` has not landed by then — so a state flag would still
+  // read false when the blocker below runs, and every successful order would be met with "discard
+  // this?". A ref is written and read synchronously, which is what the navigation needs.
+  const savedRef = useRef(false);
+
+  // Pre-fill the warehouse from the team's configured default (#145).
+  //
+  // Only ever fills an UNTOUCHED field: if the answer arrives after somebody has already picked one,
+  // it must not overwrite them. Reading `warehouseId` inside the updater rather than depending on it
+  // keeps this a one-shot fill instead of a rule that fights the person typing.
+  useEffect(() => {
+    if (teamId === undefined) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await teamClient.teamDetail({ teamId });
+        const preferred = res.team?.info?.defaultWarehouseId ?? 0n;
+
+        if (!cancelled && preferred !== 0n) {
+          setWarehouseId((chosen) => (chosen === 0n ? preferred : chosen));
+        }
+      } catch {
+        // No default is an ordinary state, not an error worth showing: the field is required and
+        // already visible, so the person simply picks one as they did before.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId]);
+
+  // What the chosen warehouse holds, for every product on the form. ONE batched read for all lines
+  // rather than one per line, and it re-reads when the warehouse changes — which is the point: the
+  // same order is placeable from one building and not from another, so the figures must follow the
+  // warehouse rather than describing whichever one was picked first.
+  const productIds = useMemo(() => lines.map((l) => l.productId), [lines]);
+
+  const stockQuery = useStockAvailability({ teamId, warehouseId, productIds });
+  const stock = stockQuery.data;
+
+  // The HPP each line is valued at (owner: "we use hpp price"). Its own read, so a cost failure never
+  // blanks the stock figures and vice versa.
+  const costsQuery = useStockCosts({ teamId, warehouseId, productIds });
+  const costs = costsQuery.data;
+
+  // The picker hands back the WHOLE ticked set, so this RECONCILES — it does not append (#165).
+  //
+  // A product that is still ticked keeps the line it already had, with the quantity and price typed
+  // into it. Rebuilding the list from the picked set would be shorter to write and would silently
+  // reset every number on screen the next time somebody opened the picker to add one more product.
+  function pickProducts(products: PickedProduct[]) {
+    setLines((prev) => {
+      const ticked = new Set(products.map((p) => p.id.toString()));
+      const kept = prev.filter((l) => ticked.has(l.productId.toString()));
+
+      const known = new Set(kept.map((l) => l.productId.toString()));
+      const added = products.filter((p) => !known.has(p.id.toString())).map(lineFor);
+
+      return [...kept, ...added];
+    });
+  }
+
+  function patchLine(productId: bigint, patch: Partial<LineDraft>) {
+    setLines((prev) => prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
+  }
+
+  // Dropping ONE product without opening the dialog. Unticking it in the picker does the same thing —
+  // they are the same edit, because the picker's ticks are derived from these lines rather than held
+  // separately.
+  function removeLine(productId: bigint) {
+    setLines((prev) => prev.filter((l) => l.productId !== productId));
+  }
+
+  const subtotal = useMemo(
+    () => lines.reduce((sum, l) => sum + lineTotal(l, costs), 0n),
+    [lines, costs],
+  );
+  // The shipping cost is no longer typed on this form (owner), so the total IS the subtotal. The
+  // order still carries a `shipping_cost` — it is simply 0 on everything placed from here, and the
+  // sum is written out rather than collapsed so the missing term is visible when it comes back.
+  const total = subtotal;
+
+  const canSave = canSubmit({ customerName, shopId, warehouseId, lines, stock });
+
+  // How many lines the chosen warehouse cannot fill. Summarised at the top as well as marked on each
+  // line: on a long order the failing line can be off screen, and "Create is disabled and I cannot see
+  // why" is the state this page must never be in.
+  const shortLines = lines.filter((l) => {
+    const s = lineStock(l, stock);
+    return s.kind === "known" && s.short;
+  }).length;
+
+  // Anything typed at all. Used only to decide whether leaving needs a confirmation — the warehouse is
+  // excluded on purpose, because it arrives PRE-FILLED and a page nobody has touched must not claim to
+  // have unsaved work.
+  const dirty =
+    customerName.trim() !== "" ||
+    customerPhone.trim() !== "" ||
+    shopId > 0n ||
+    marketplace.orderExternalRefId.trim() !== "" ||
+    shippingCode !== "" ||
+    note.trim() !== "" ||
+    hasReceipt(receipt) ||
+    addressTouched(address) ||
+    toRupiah(marketplace.marketplaceTotal) > 0n ||
+    lines.length > 0;
+
+  // A half-typed order is real work — several lines, an address, a customer on the phone — and a
+  // mis-aimed click on Back or a sidebar link threw all of it away silently. `useBlocker` stops the
+  // navigation, and the answer decides whether it proceeds; blocking only while `dirty` means the
+  // ordinary "opened it, changed my mind" path is untouched, and `savedRef` is what stops it firing on
+  // the one navigation that is the whole point of the form.
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !savedRef.current && dirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+
+    if (teamId === undefined || !canSave) {
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const res = await createOrder.mutateAsync({
+        teamId,
+        shopId,
+        warehouseId,
+        customerName,
+        customerPhone,
+        address: addressTouched(address) ? address : undefined,
+        shippingCode,
+        // Trimmed, so a note of nothing but whitespace is stored as no note at all — otherwise the
+        // detail page would render an empty note card for a field somebody tabbed through.
+        note: note.trim(),
+        // Sent only when one was actually attached: an empty reference and no reference say the same
+        // thing, and the shorter one cannot be mistaken for a document whose id got lost.
+        receipt: hasReceipt(receipt) ? receipt : undefined,
+        subtotal,
+        // 0 from this form — the field was removed from it (owner). Sent explicitly rather than
+        // omitted, so the request still states every term of the money it is placing.
+        shippingCost: 0n,
+        total,
+        marketplaceTotal: toRupiah(marketplace.marketplaceTotal),
+        // Trimmed, so a reference of nothing but whitespace is stored as none at all — the same
+        // treatment `note` gets, and for the same reason: "" and "   " must not be two states.
+        orderExternalRefId: marketplace.orderExternalRefId.trim(),
+        items: lines.map((l) => ({
+          id: 0n,
+          productId: l.productId,
+          sku: l.sku,
+          name: l.name,
+          quantity: toQty(l.quantity),
+          // The HPP the form displayed. The server still stamps its own `unit_cost` from the
+          // warehouse (#74) — this is what the ORDER is valued at, and the two are read from the
+          // same place so they agree.
+          unitPrice: unitCost(l, costs),
+        })),
+      });
+
+      // The invalidation rode with the write (#177) — this page navigates away, so the list it
+      // leaves behind has no other way to learn about the order just created.
+      toaster.create({ type: "success", title: t("orders.orderCreated") });
+
+      // Set BEFORE navigating, or the guard above asks whether to discard the order that was just
+      // successfully placed — which is exactly what happened the first time this shipped.
+      savedRef.current = true;
+
+      const id = res.order?.id;
+      void navigate(id ? `/orders/${id}` : "/orders");
+    } catch (err) {
+      setError(rpcError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // SAVE IT AS A DRAFT instead of placing it (owner) — the half-finished order goes to the drafts
+  // screen, nothing is validated beyond what a draft requires, and NO STOCK MOVES.
+  //
+  // That last part is the whole reason this button exists beside Create: placing an order draws its
+  // goods out of the warehouse in the same transaction (#69/#149). An order that is not ready — no
+  // warehouse chosen yet, waiting on the buyer to confirm an address — must have somewhere to live
+  // that does not touch the shelves.
+  //
+  // TWO CALLS, and the second is not an implementation detail:
+  //
+  //   1. PUSH writes the draft, but IGNORES `product_id` on every line. That rule protects the
+  //      scraper path — an app may not guess our catalogue ids — and it applies to us as well.
+  //   2. UPDATE carries the mapping, which is what OrderDraftUpdate is FOR: a person saying "this
+  //      line is that product". Picking from the catalogue on this form is exactly that act.
+  //
+  // If the mapping call fails, the draft still exists with its lines unmapped — half-saved is the
+  // normal state of a draft, so it is reported rather than rolled back.
+  async function saveDraft() {
+    if (teamId === undefined || !dirty) {
+      return;
+    }
+
+    setSavingDraft(true);
+    setError("");
+
+    try {
+      const pushed = await pushDraft.mutateAsync({
+        teamId,
+        source: DRAFT_SOURCE,
+        externalId: draftRefRef.current,
+        shopId,
+        warehouseId,
+        customerName,
+        customerPhone,
+        address: addressTouched(address) ? address : undefined,
+        shippingCode,
+        items: lines.map((l) => ({
+          id: 0n,
+          // The catalogue's own SKU and name stand in for what a scrape would have read off the
+          // marketplace. They are the evidence of what was ordered, and on a form-made draft the
+          // evidence is what the person picked.
+          externalSku: l.sku,
+          externalName: l.name,
+          productId: 0n,
+          quantity: toQty(l.quantity),
+          unitPrice: unitCost(l, costs),
+        })),
+      });
+
+      const draft = pushed.draft;
+
+      if (!draft) {
+        throw new Error("The draft was saved but not returned");
+      }
+
+      draftIdRef.current = draft.id;
+
+      // The mapping, line by line, matched back by POSITION — push returns the lines in the order
+      // they were sent, and neither side has anything better to key on: a form line has no draft id
+      // until this moment, and two lines of the same product would be indistinguishable by SKU.
+      if (draft.items.length > 0) {
+        await updateDraft.mutateAsync({
+          teamId,
+          draftId: draft.id,
+          items: {
+            lines: draft.items.map((item, i) => ({
+              id: item.id,
+              productId: lines[i]?.productId ?? 0n,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+          },
+        });
+      }
+
+      toaster.create({ type: "success", title: t("orders.draftSaved") });
+
+      savedRef.current = true;
+      void navigate(`/order-drafts/${draft.id}`);
+    } catch (err) {
+      setError(rpcError(err));
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
+  if (!current) {
+    return (
+      <Stack gap="section">
+        <Heading size="md">{t("orders.title")}</Heading>
+        <Text color="fg.muted" data-testid="order-create-no-team">
+          {t("orders.selectTeamCreate")}
+        </Text>
+      </Stack>
+    );
+  }
+
+  return (
+    // No `maxW`: the page fills the content area, the way the list pages do. It carried a cap from
+    // when it was ONE narrow column of stacked cards, where full width would have stretched a text
+    // field across a 27-inch monitor. A two-column grid has the opposite problem — the wider the
+    // window, the more room the lines get, which is the column that actually wants it.
+    <Stack gap="section" data-testid="order-create-page">
+      <Flex align="center" gap="card">
+        <IconButton
+          size="xs"
+          variant="ghost"
+          aria-label="Back"
+          data-testid="order-create-back"
+          onClick={() => navigate("/orders")}
+        >
+          <Icon as={ArrowLeft} boxSize="4" />
+        </IconButton>
+        <Heading size="md">{t("orders.newOrderTitle")}</Heading>
+      </Flex>
+
+      {error && (
+        <Text color="red.fg" data-testid="order-create-error">
+          {error}
+        </Text>
+      )}
+
+      {/* Full width, above both columns: a line the warehouse cannot fill is a fact about the whole
+          order, not about the column the line happens to sit in. */}
+      {shortLines > 0 && (
+        <Alert.Root status="error" data-testid="order-create-short">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{t("orders.shortTitle", { count: shortLines })}</Alert.Title>
+            <Alert.Description>{t("orders.shortHelp")}</Alert.Description>
+          </Alert.Content>
+        </Alert.Root>
+      )}
+
+      <form onSubmit={save} noValidate>
+        {/*
+          TWO COLUMNS on a wide screen, one on a narrow one.
+
+          The LEFT column is the order being written, in the order the work actually happens (owner):
+
+            1. WHICH SHOP, WHICH WAREHOUSE — two selects abreast. They frame everything below them,
+               and the warehouse decides what the stock figures on the lines even mean.
+            2. WHAT IS BEING SOLD — the lines. The subject of the order, and the part that grows.
+            3. WHERE IT GOES, and BESIDE IT the parcel and the person — the address on the left
+               (owner), the shipping receipt and the customer stacked on the right.
+
+          The RIGHT column is the NOTE and what it all comes to (owner) — the two things that
+          belong beside the order rather than inside it.
+
+          ⚠ DOM ORDER IS VISUAL ORDER IS TAB ORDER, because the columns are assigned by explicit
+          `gridColumn`/`gridRow` rather than by `order`. So keyboard tabbing follows what the eye
+          follows, and on a narrow screen the grid collapses to exactly that order with nothing to
+          re-specify.
+        */}
+        <Grid
+          templateColumns={{ base: "1fr", lg: "minmax(0, 2fr) minmax(0, 1fr)" }}
+          gap="section"
+          alignItems="start"
+        >
+          {/* ── WHICH SHOP, WHICH WAREHOUSE ───────────── left column, and it comes FIRST (owner) ──
+
+              Two selects, side by side, above the products — and the order is the design rather than
+              tidiness. Both answer "which order is this?" before anything is on it, and the WAREHOUSE
+              in particular has to be settled first: it is the building every line's stock figure is
+              measured against, so picking products before naming it means picking blind.
+
+              They were fields four and five inside "Customer & shop"; nothing about a shop or a
+              warehouse is customer information, and burying them under a name and a phone number put
+              the one control that governs the whole form below the fold. */}
+          <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 1 }}>
+            <Card.Root>
+              <Card.Body>
+                <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
+                  {/* The shop AND the marketplace's own order id, as one block — the storefront and
+                      its reference are the pair that says WHICH order this is. */}
+                  <MarketplaceInfoForm
+                    teamId={teamId ?? 0n}
+                    value={marketplace}
+                    onChange={setMarketplace}
+                    required
+                  />
+
+                  {/* Which warehouse ships it (#72) — and therefore which building's shelves every
+                      line below is measured against. Changing it re-reads all of them. */}
+                  <Field.Root required>
+                    <Field.Label>{t("orders.warehouse")}</Field.Label>
+                    <Box w="full" data-testid="order-warehouse">
+                      <TeamSelect
+                        teamType={TeamType.WAREHOUSE}
+                        value={warehouseId}
+                        onChange={setWarehouseId}
+                      />
+                    </Box>
+                    <Field.HelperText>{t("orders.warehouseHelp")}</Field.HelperText>
+                  </Field.Root>
+                </SimpleGrid>
+              </Card.Body>
+            </Card.Root>
+          </GridItem>
+
+          {/* ── WHAT IS BEING SOLD ────────────────────────── left column, right under the two above ── */}
+          <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 2 }}>
+            <Stack gap="section">
+              {/* ── WHAT THE EXTENSION SENT ── ABOVE the picker, and only when there is a draft ──
+
+                  ⚠ THE ORDER OF THESE TWO IS THE POINT (owner). This is the text being worked FROM
+                  and the picker below is the work — so the screen reads top to bottom: the
+                  marketplace's own words first, our catalogue second. Under the picker it would be a
+                  footnote to lines somebody had already chosen, which is the one position where it
+                  cannot help them choose.
+
+                  It is its own card rather than a panel inside the items card, because that card is
+                  OUR data: a scraped title sharing its border is a scraped title that looks endorsed.
+
+                  It renders NOTHING without `?draft=`, so a hand-written order is the form it always
+                  was — and the Stack collapses to a single child, leaving the grid untouched. */}
+              {externalItems.length > 0 && (
+                <ProductListExternal
+                  items={externalItems}
+                  source={externalDraft.data?.source}
+                  showTotal
+                />
+              )}
+
+              {/* The picker and the lines table, as one card — `OrderItemCard`. The page keeps the
+                  STATE (the lines, and the reconciliation a ticked set needs) because the page is
+                  what submits it; the card owns the arrangement the two facts are read in. */}
+              <OrderItemCard
+                teamId={teamId ?? 0n}
+                warehouseId={warehouseId}
+                lines={lines}
+                stock={stock}
+                costs={costs}
+                onPick={pickProducts}
+                onPatch={patchLine}
+                onRemove={removeLine}
+              />
+            </Stack>
+          </GridItem>
+
+          {/* ── WHO IT IS FOR, WHERE IT GOES, WHAT WAS HANDED OVER ───── ONE CARD (owner) ──
+
+                ┌ Customer ─────────┬ Address ──────────────┐
+                │  name, phone      │  four rungs + street  │
+                ├ Shipping receipt ─┤                       │
+                │  courier, code, slip                      │
+                └───────────────────┴───────────────────────┘
+
+              All three are one answer, given by one person in one breath, so they are one card and
+              the page no longer arranges them — `CustomerInfoForm` owns the grid. What this page still
+              owns is the STATE: the receipt is a reference to a document already uploaded, and the
+              courier is a code, and both are submitted with the order. */}
+          <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 3 }}>
+            <CustomerInfoForm
+              customerName={customerName}
+              onCustomerNameChange={setCustomerName}
+              customerPhone={customerPhone}
+              onCustomerPhoneChange={setCustomerPhone}
+              address={address}
+              onAddressChange={setAddress}
+              teamId={teamId ?? 0n}
+              receipt={receipt}
+              onReceiptChange={setReceipt}
+              shippingCode={shippingCode}
+              onShippingCodeChange={setShippingCode}
+            />
+          </GridItem>
+
+          {/* ── WHAT IT COMES TO, AND ANYTHING ELSE ──────────────── right column, and it STICKS ──
+              Adding a tenth line used to push the total and the Create button off the bottom of the
+              screen. Sticky keeps both in view while the lines column scrolls past — which is the
+              whole reason the money went in its own column rather than under the lines. */}
+          <GridItem
+            gridColumn={{ lg: 2 }}
+            // Spans every left-column row: a sticky item can only stick inside its own grid area, so
+            // a span that stopped short would let the total scroll away exactly when the form is at
+            // its longest.
+            gridRow={{ lg: "1 / span 3" }}
+            position={{ base: "static", lg: "sticky" }}
+            top="4"
+          >
+            <Stack gap="section">
+              {/* THE NOTE, in the right column (owner) — above the totals, and that order is the
+                  design. The Create button is the last thing in the totals card, and a field placed
+                  after a submit button is a field people do not fill in.
+
+                  It rides in the STICKY column, so the note stays reachable while a long list of
+                  lines scrolls past it — which is what a note is for: something remembered halfway
+                  through typing the order, not something written in a fixed place at the end. */}
+              <Card.Root>
+                <Card.Body>
+                  <Stack gap="card">
+                    <Heading as="h3" size="sm">{t("orders.note")}</Heading>
+
+                    <Field.Root>
+                      <Textarea
+                        rows={3}
+                        maxLength={2000}
+                        value={note}
+                        placeholder={t("orders.notePlaceholder")}
+                        data-testid="order-create-note"
+                        onChange={(e) => setNote(e.target.value)}
+                      />
+                      <Field.HelperText>{t("orders.noteHelp")}</Field.HelperText>
+                    </Field.Root>
+                  </Stack>
+                </Card.Body>
+              </Card.Root>
+
+              {/* THE TWO EXITS, SIDE BY SIDE (owner) — equal columns, draft on the left.
+
+                  They are alternatives, not a sequence, and a row says that where a stack did not:
+                  stacked, the draft read as a step on the way to Create rather than the other thing
+                  you can do with this work. Equal widths because neither is a sub-action of the
+                  other; the COLOUR is what marks which one this page is for. */}
+              <OrderTotals
+                subtotal={subtotal}
+                total={total}
+                action={
+                  <SimpleGrid columns={2} gap="2">
+                    {/* SAVE AS DRAFT asks for far less — a draft needs nothing but something typed —
+                        so it is enabled while Create is still refusing, which is the whole point: the
+                        work has somewhere to go before the order is placeable. */}
+                    <Button
+                      type="button"
+                      w="full"
+                      variant="outline"
+                      loading={savingDraft}
+                      disabled={!dirty || saving}
+                      data-testid="order-create-save-draft"
+                      onClick={() => void saveDraft()}
+                    >
+                      <Icon as={FileClock} boxSize="4" />
+                      {t("orders.saveAsDraft")}
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      w="full"
+                      colorPalette="brand"
+                      loading={saving}
+                      disabled={!canSave || savingDraft}
+                      data-testid="order-create-save"
+                    >
+                      {t("orders.createOrder")}
+                    </Button>
+                  </SimpleGrid>
+                }
+              />
+            </Stack>
+          </GridItem>
+        </Grid>
+      </form>
+
+      <ConfirmDialog
+        open={blocker.state === "blocked"}
+        title={t("orders.discardTitle")}
+        message={t("orders.discardMessage")}
+        confirmLabel={t("orders.discardConfirm")}
+        onConfirm={async () => blocker.proceed?.()}
+        // Closing the dialog ANY other way — Cancel, the X, the backdrop, Escape — means "stay", so
+        // the navigation is reset rather than left hanging. `reset` is only defined while the blocker
+        // is blocked, so the close that follows a confirmed proceed is a no-op rather than a fight.
+        onOpenChange={(open) => {
+          if (!open) blocker.reset?.();
+        }}
+      />
+    </Stack>
+  );
+}

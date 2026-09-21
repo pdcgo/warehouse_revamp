@@ -132,6 +132,15 @@ func (i *interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
+		// 5b. CARRY THE RESOLVED ROLE FORWARD, so a handler can tell on whose behalf it is acting
+		// without resolving membership a second time.
+		//
+		// ⚠ NOT FOR AUTHORIZATION — every decision below is made here. It exists so a write can record
+		// whether it was an OVERRIDE: ROLE_UNSPECIFIED means the caller holds no role in the scoped
+		// team and therefore got in by the root-team bypass at step 8, which is exactly what
+		// terms-are-team-scoped-root-is-global defines an override to be.
+		ctx = san_auth.WithCallerRole(ctx, access.Role)
+
 		// 6. SUSPENDED accounts are refused — whatever their roles say, and whatever token they
 		// still hold. A suspension that only bites at login is not a suspension: the account
 		// stays fully usable for the whole lifetime of a token it already has.
