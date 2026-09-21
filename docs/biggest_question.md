@@ -14,8 +14,27 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**137 open questions across 24 files.** The seven below are shown; **130 are not** — they are not
+**144 open questions across 24 files.** The seven below are shown; **137 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+⚠ **+7 this round, from a BRAND-NEW technical package** (2026-09-21) —
+[`technical/packages/excel_readers/context.md`](technical/packages/excel_readers/context.md), the settlement
+file parser, and its [clarify](technical/packages/excel_readers/context_clarify.md) is the first pass over it.
+**None of the seven enters the list above**, because none blocks a whole context — the package has no consumer
+waiting on it yet. ⛔ **But one of them is a second asking of a question already open in settlement**: its Q3
+routes to [settlement's `unique_id`](business/settlement/context_clarify.md#question), and the 25 sample
+workbooks now **disprove the `hash(date + order_ref_id)` best effort** that
+[settlement/context.md](business/settlement/context.md) proposes — Shopee emits byte-identical duplicate rows
+(`shopee_malaysia_base.xlsx` r69/r70), and TikTok settles one order twice across overlapping exports
+(`overlapping_earning.xlsx`). That makes **#3's shape sharper, not its rank**.
+
+⚠ **The header was right and the table was stale.** Recounted mechanically again this round: the pre-existing
+files sum to **137** across **23** files, which is exactly what the header already said — while the table below
+summed to 133 and listed a 24th file, `business/product/systems_clarify.md`, **that does not exist**. That row
+is deleted here. Two live counts also drifted: `technical/architecture` is **11**, not 10, and the warehouse
+row's link pointed at `business/warehouse/`, which is not where the file is
+(`business/teams/warehouse/`). No question opened or closed to produce any of that — it is arithmetic and link
+drift, and it is the third consecutive round in which this table, not the header, was the wrong part.
 
 ⚠ **+11 this round, from a BRAND-NEW context** (2026-09-16) — `business/warehouse/context.md`, four lines long,
 and its [clarify](business/warehouse/context_clarify.md) is the first pass over it. ⛔ **Three of the four things it
@@ -1406,21 +1425,22 @@ shop's orders and the withdrawal is reconciled against them. ⚠ Its premise has
 nullable now (recorded under *Before this round*), so the NOT NULL no longer forbids a settlement home —
 the question is which home, not whether one exists.
 
-## Where the other 125 are
+## Where the other 137 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **132**, the whole set, not to 125. Previous rounds left
-that ambiguous and the sums never reconciled with the header: the last one said 116 above and 113
-here while the rows added to **119**. Re-added this round, and 119 + warehouse's 14 = 133.
+*from* these files, so the column sums to **144**, the whole set, not to 137. Previous rounds left
+that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
+113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
+are recounted mechanically now — 137 across the pre-existing 23 files, plus excel_readers' 7.
 
 | File | Open | |
 | --- | ---: | --- |
-| [business/warehouse/context_clarify.md](business/warehouse/context_clarify.md#question) | 14 | 🆕 **a new context, first pass** — three of its four asks are already built elsewhere: the location + both weekly grids are `team_service.warehouse_infos` (and the grids have **no reader**), the fee is `liability_terms.handling_fee`, **flat** and live. ▲ **+3 the same day**, from the `WarehouseFeeCalculate` payload the owner then added: money as `double` · no selling team in the request · one warehouse per call. See **#7** |
+| [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 14 | 🆕 **a new context, first pass** — three of its four asks are already built elsewhere: the location + both weekly grids are `team_service.warehouse_infos` (and the grids have **no reader**), the fee is `liability_terms.handling_fee`, **flat** and live. ▲ **+3 the same day**, from the `WarehouseFeeCalculate` payload the owner then added: money as `double` · no selling team in the request · one warehouse per call. See **#7** |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-21)** what `return` means — it is a CLAIM, and the owner added a ninth status `return_completed` for the receipt · ▼ −1 the half-finished order is NOT tracked (owner, 2026-09-17) · ▼ −6 pruned 2026-09-17, overtaken by the day's decisions (draft pre-checks, SKU mapping, review reject, the synchronous take, the cross line's cost, what placement means) · ▲ +1 re-routed from shipment: an order cannot be created without a channel. ▲ was 14 — rewritten after the owner's 2026-09-15 edits: six decisions recorded, −2 closed, +4 opened. ⚠ **Counted as `###` headings now** — its questions are named, not numbered |
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 1 | ▼ was 5 — four answered 2026-09-17: a take reduces stock and placement (its shelf half re-routed to inventory Q11) · rupiah is `double` · the take is never retried · inventory computes the markup. Left: which team `team_id` is |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | ▲ **+13 (2026-09-21)**, ▼ **−10 decided the same day** — incl. ✅ the own-line branch FIXED in two passes (the first left a junk map write that read as a fix) and ✅ a ninth status `return_completed`, which superseded the eight-status decision (the map’s key · written once · never partial · a return may land in another warehouse · **the return warehouse is per TEAM** · **it is read when the return happens, not frozen on the order** — the last two both reversed my recommendations, and together they mean the whole configuration is a column that already ships and the order carries nothing about returns). ✅ **The whole return-warehouse cluster is now CLOSED** — five decisions, three of which reversed my recommendation, and what is left to build is an **editor** and a **reader** for a column that already ships. ⛔ The open successor is **who creates the return** — CS from an office or the receiving warehouse — which decides the screen and decided the last argument — incl. ⛔ **the return warehouse is a SECOND warehouse**: stock is keyed `(warehouse_id, product_id)`, so a unit taken from the fulfilling warehouse returns onto a DIFFERENT pile, and nothing moves it back, ▼ **−3 decided the same day** — the map’s key and its stale `to_product_id` · a map is written once · **a return is never partial** (which reversed my own recommendation and made the owner’s qty-less flow correct as drawn). ▲ +1 successor: a short-delivered parcel is now neither a return nor completed. — the owner added `## Order Return Flow.` and a second table, `product_return_maps`. ✅ Its diagram **parses**. ⛔ The own-product branch routes through the cross-product map and ends in `Clone Product`, so a team **duplicates its own catalogue** on every return · the map's uniqueness names `to_product_id`, **not a column** · the warehouse is read twice, two ways, in one picture · a clone needs a `product_code` nobody generates now that the code is composed · no line carries a returned **quantity**. ⛔ **And `team_return_configurations` already exists as `team_infos.return_warehouse_id`** in another service, unread and with no editor. **See #6** |
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 0 | ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
-| [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 10 | 🔄 2026-09-17: re-examined against the built shipment context — every `shipping_service` proposal rewritten, Q8 (region) reworded to *does region_service stay separate*, +1 Contradiction: its line 13 still describes the old shipping service. Count unchanged. ▼ was 11 — Q2 became a pointer to order's half-finished-orders question. What stayed is a contradiction, not a question |
+| [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 11 | ⚠ **counted 10 here last round and 11 mechanically** — the row said "count unchanged" while one had been added. 🔄 2026-09-17: re-examined against the built shipment context — every `shipping_service` proposal rewritten, Q8 (region) reworded to *does region_service stay separate*, +1 Contradiction: its line 13 still describes the old shipping service. Count unchanged. ▼ was 11 — Q2 became a pointer to order's half-finished-orders question. What stayed is a contradiction, not a question |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 8 | ▼ was 9 — `found` needs no handshake |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 11 | ▲ +1 re-routed from order_creation: a stock count between create and pick re-adds a taken unit · ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
@@ -1438,7 +1458,7 @@ here while the rows added to **119**. Re-added this round, and 119 + warehouse's
 | [technical/ledger/mutation_and_ledger_clarify.md](technical/ledger/mutation_and_ledger_clarify.md#question) | 3 | 🆕 counted for the first time |
 | [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 0 | ▼ was 1 — ✅ **every question closed**: Q6, Q14 and Q15 all decided part by part, on top of Q1–Q13. **Twenty-three decisions**, the newest being the required `oneof`, one decoder, breaking the old protos accepted, `identity` settled in four parts, and CI on `dev` with `buf breaking` — applied. ⛔ **What blocks the first event here is a contradiction, not a question** — the shipped library cannot publish the decided envelope, and `context.md` lags its own decisions. See **#6** |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
-| [business/product/systems_clarify.md](business/product/systems_clarify.md#question) | 1 | |
+| [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 7 | 🆕 **a new technical package, first pass** — the Shopee/TikTok settlement file reader, measured against all 25 sample workbooks rather than read off the spec. ⛔ **Two findings are load-bearing beyond this package**: TikTok's column set is **not fixed** (three layouts across 13 files — `Flat fee` and `Sales fee` vanish, `GMV Max ad fee` appears), and **neither platform gives a per-row unique key**, which contradicts settlement's `hash(date + order_ref_id)`. ▼ **The Shopee half of that closed the same day** — the owner added a `### Shopee Contract` with a `GenerateUniqueID` (md5 over six fields), and it survived testing: **0 collisions in 3788 rows** across 12 files, both duplicate-row pairs distinct, and **141/141 stable** across a re-save through another tool. What is left is TikTok, whose `Order/adjustment ID` repeats. ⚠ The new contract opened three of its own, all about that hash being taken over `json.Marshal` of a struct that will change — and it **corrected one of my recommendations into a recorded contradiction**: I proposed `int64` rupiah in a `technical/` doc against [rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point), which was decided system-wide in the *order* tree and had already rejected that same recommendation once. The other five are scope and typing: verbatim strings or an enum · is Tokopedia a *format* or a *column* · fixtures or real values (`wderror`, `x`) · what timezone is stored · does the package read only settlement reports. ⚠ Also non-design: **`examples/` is untracked and not gitignored**, and the workbooks carry real seller usernames and revenue into a PUBLIC repo |
 
 > **Counted from each file's Question section, at either heading level.** Previous rebuilds matched
 > `## Question` only, and five technical clarifies write theirs as `# Question` — so **17 open
