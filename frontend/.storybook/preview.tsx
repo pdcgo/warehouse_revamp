@@ -378,44 +378,12 @@ const preview: Preview = {
           // page is mounted inside it.
           "Layouts",
           "Pages",
-          // The adopted legacy UI (src/legacy/), kept as its OWN top-level section rather than
-          // merged into Components above. Two reasons: it is a staging area whose pieces are still
-          // being reconciled against the live design system, and a reviewer browsing for something
-          // to reuse needs to be able to tell instantly which of the two they are looking at. It
-          // sits last because the live design system is what a new screen should reach for first.
-          "Legacy",
-          [
-            "Components",
-            [
-              "Text",
-              "Cells",
-              "Display",
-              "Charts",
-              "Pickers",
-              "Date & Time",
-              "Badges",
-              "Inputs",
-              "Feedback",
-              // Same wildcard rule as above — an unlisted group lands silently at the bottom.
-              "*",
-            ],
-            "Layout",
-            "Pages",
-            "*",
-          ],
-          // The adopted WAREHOUSE-FLOOR UI (src/legacy_warehouse/) — a different app from the one
-          // above, and kept apart from it for the same reason `Legacy` is kept apart from
-          // `Components`: a reviewer must be able to tell at a glance whether they are looking at
-          // the selling-team screens or the screens somebody uses with a scanner in their hand.
-          // Scan leads its Components group because it is what the whole app is built around.
-          "LegacyWarehouse",
-          [
-            "Components",
-            ["Scan", "Badges", "Display", "*"],
-            "Layout",
-            "Pages",
-            "*",
-          ],
+          // ⚠ THE WORKBENCH IS THE LIVE APP ONLY (owner). `src/legacy/` and `src/legacy_warehouse/` —
+          // the two adopted UIs — used to carry ~185 story files of their own and had their own
+          // sections here. They are a staging area, not a design system: nobody reviewed them in the
+          // workbench, and their stories made up two thirds of the test suite. The screens are still
+          // routed and still compile; they simply have no stories any more, and a new one does not
+          // belong there either.
           "*",
         ],
       },
