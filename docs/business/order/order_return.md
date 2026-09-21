@@ -41,7 +41,7 @@ retconf-->iscross{"Is Product Shared/Cross"}
 subgraph "Iterate Over Order Item"
     
     iscross-->|no|setretconf["Set Team Return Configuration, `warehouse_id` from order."]
-        setretconf-->prodlink
+        setretconf-->itemlist
 
     iscross-->|yes|prodlink["Get Product Map"]
     prodlink-->ismapped{"is cross product mapped"}
@@ -61,6 +61,31 @@ invpay-->calinv["Call Inventory Service to Create Return Transaction"]
 calinv-->change["Change Order Status"]
 change-->e
 
+
+```
+
+## Who Change The Returns.
+```mermaid
+flowchart TD
+
+s(("Start"))
+e(("End"))
+
+
+s-->rethappen["Order Return Happen"]
+rethappen-->cs["Customer Service Notice First"]
+rethappen-->ware["Warehouse Person Receive Packet First"]
+
+cs-->retcreate["Order Change to Return by cs"]
+retcreate-->wait["Waiting Warehouse Person Accept"]
+wait-->accept["Warehouse Person Accepting Return"]
+
+ware-->search{"Warehouse Search Order"}
+search-->|order status already return|accept
+search-->|order status not return|force["Warehouse Force Order To Return"]
+force-->accept
+
+accept-->e
 
 ```
 

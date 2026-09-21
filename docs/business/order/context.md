@@ -122,6 +122,7 @@ when order created. its bring 4 things.
     - `problem`
     - `lost`
     - `return`
+    - `return_completed`
 
 2. Status Move.
     ```mermaid
@@ -139,6 +140,7 @@ when order created. its bring 4 things.
     shipped-->lost
     shipped-->return
     completed-->return
+    return-->return_completed
     ```
 
 ## Order Draft Behavior and What Used For.

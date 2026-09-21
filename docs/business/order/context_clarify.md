@@ -8,7 +8,7 @@ are deleted, so this file is always the current open set; what was settled is in
 > [the-order-follows-settlement-for-its-money](./context_decision.md#the-order-follows-settlement-for-its-money) ·
 > [an-order-is-unique-by-shop-and-marketplace-ref](./context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) ·
 > [drafts-keep-their-own-table](./context_decision.md#drafts-keep-their-own-table) ·
-> [the-order-has-eight-statuses](./context_decision.md#the-order-has-eight-statuses) ·
+> [superseded-the-order-has-eight-statuses](./context_decision.md#superseded-the-order-has-eight-statuses) ·
 > [lost-is-final](./context_decision.md#lost-is-final). That also closes the old *"there is no lifecycle"*, the
 > cancel gate, *"`problem` has no exits"*, the withdrawal double-count and the estimate-revenue contradiction.
 >
@@ -37,6 +37,14 @@ are deleted, so this file is always the current open set; what was settled is in
 
 > ✅ **Answered 2026-09-17 and deleted:** how a half-finished order is found — it is not tracked on the order
 > ([a-lost-publish-is-not-tracked-on-the-order](./context_decision.md#a-lost-publish-is-not-tracked-on-the-order)).
+
+> ✅ **Answered 2026-09-21 and deleted:** what `return` means — it is a **claim**, not a receipt. The owner added a
+> ninth status, `return_completed`, for the moment the warehouse person actually has the goods
+> ([the-accept-is-the-status-return-completed](./context_decision.md#the-accept-is-the-status-return-completed),
+> superseding [the eight-status decision](./context_decision.md#superseded-the-order-has-eight-statuses)).
+> 🔄 **It reverses my recommendation**, which was that `return` should mean *received*. ⚠ **It also makes
+> [the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses) worse**: §Complete Journey
+> now omits three statuses, not two.
 
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
 [product_context](../product/context_clarify.md) · [balance_context](../balance/context_clarify.md) ·
@@ -152,11 +160,6 @@ sale on the settlement account? **→ No.** The marketplace decides what a lost 
 settlement records exactly that — a residual balance is already normal
 ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)).
 
-### return-means-received-by-the-warehouse
-*(new)* `return` can mean *the buyer sent it back* (in transit) or *the warehouse received it* (stock exists
-again, and §Stock Ownership When Order Return's `Create Return` runs). **→ Received** — that is when stock and
-money move; the transit belongs on a return record, not an order status.
-
 ### the-journey-stops-setting-statuses
 *(new)* §Complete Journey still sets statuses by the old rules — see
 [Contradiction](#the-journey-still-sets-the-old-statuses). **→ Take the `set status …` boxes out of the journey**
@@ -196,7 +199,7 @@ an order with no courier cannot be handed over.
 | --- | --- |
 | `problem --> completed`, `problem --> lost`, `problem --> return` | `set status problem --> e` — a problem simply ends |
 | `processed --> cancel` | cancel only at `Is Cancel ?`, before `Warehouse Accept Order` |
-| `lost`, `return` exist | neither appears |
+| `lost`, `return`, `return_completed` exist | none of the three appears |
 
 **Which is wrong:** the journey — the status diagram is the newer statement and was revised deliberately.
 **→ Recommend** removing statuses from the journey entirely
