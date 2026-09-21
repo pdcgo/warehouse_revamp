@@ -14,8 +14,46 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**134 open questions across 22 files.** The seven below are shown; **127 are not** — they are not
+**140 open questions across 22 files.** The seven below are shown; **133 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+⚠ **A COUNTING correction, not new work** (2026-09-17). `business/stock_thoni/` — Toni's competing
+inventory proposal — had been in the tree for weeks and **never appeared in this file at all**. It is
+listed now. And `business/product/systems_clarify.md` was listed here with 1 while **the file does not
+exist**; removed.
+
+🔄 **The proposal was then REPLACED, in Indonesian** ([context.md](business/stock_thoni/context.md),
+2026-09-17) and **answered twice over the same day**. The English version is deleted, so the 8 questions
+its old clarify held went with it, and the [rewritten clarify](business/stock_thoni/context_clarify.md)
+carries **7**.
+
+✅ **Two answers landed, and one of them is a genuine convergence worth naming.** The doc now states when
+stock moves, and its rule — *stock decrements at `Order - pending`* — **agrees with**
+[order-created-is-finalize](business/order/context_decision.md#order-created-is-finalize), which had already
+closed *"when is stock committed?"* with ***"at finalize, which is creation"***. Two authors, two contexts,
+one rule, arrived at independently. Recorded as
+[stok-berkurang-saat-order-dibuat](business/stock_thoni/context_decision.md#stok-berkurang-saat-order-dibuat)
+and [stok-bertambah-saat-restock-completed](business/stock_thoni/context_decision.md#stok-bertambah-saat-restock-completed).
+
+⛔ **But the answer opened a costlier question than the ones it closed.** Stock is decremented when the
+order is *created* and never again when the goods *leave* — so *"sisa stok"* means **not-yet-sold**, and
+**no number in the model says what is physically on a shelf**. That is the number an opname counts: a
+stocktaker compares a physical count against a figure already reduced by every un-picked order, so **every
+open order reads as a shortfall** — and
+[in-custody-shortfall-is-the-warehouses](business/inventory/context_clarify.md#in-custody-shortfall-is-the-warehouses)
+makes a shortfall the **warehouse's money**. ⚠ It also answers, if decided, two long-open questions next
+door — inventory's *"Where can stock BE?"* and *"What does available mean?"*
+
+▼ **The order-status contradiction narrowed**: `cancel` and `return` are back, and those are the two that
+move stock. What remains is that `picking`/`packing` sit in the same column as the eight order statuses,
+while [order/context.md](business/order/context.md) already separates *"warehouse process"* status from
+order status — so the fix is two columns, not a shorter list.
+⚠ **Two docs still describe one context** (`inventory/context.md`, `stock_thoni/context.md`) despite
+[stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory) having
+decided there is no separate stock context.
+
+⚠ **The other 21 rows were NOT recounted this round** — they use the previous rebuild's method and may
+carry their own drift.
 
 ⚠ **+11 this round, from a BRAND-NEW context** (2026-09-16) — `business/warehouse/context.md`, four lines long,
 and its [clarify](business/warehouse/context_clarify.md) is the first pass over it. ⛔ **Three of the four things it
@@ -304,7 +342,7 @@ Q2, which is a pointer to order's half-finished-orders-are-found-from-the-order 
 >
 > 🆕 **event_architecture Q6 · 6f elaborated again** — *"whats mean one or two bag"*: the choice is now written as
 > literal output rather than a metaphor
-> ([here](technical/event_architecture/context_clarify.md#-the-meta-half--one-bag-or-two-spelled-out)). ONE map
+> ([here](technical/event_architecture/context_clarify.md#6f--which-values-ride-on-ctx)). ONE map
 > written to both `Event.metadata` and `Message.Attributes`, or TWO with different authors and no overlap. The
 > deciding cost: an attribute value caps at **1024 bytes** and the body's map caps at nothing, so under ONE map a
 > caller writing a long annotation loses the event to a broker error that does not name the key. What TWO gives
@@ -1383,12 +1421,16 @@ shop's orders and the withdrawal is reconciled against them. ⚠ Its premise has
 nullable now (recorded under *Before this round*), so the NOT NULL no longer forbids a settlement home —
 the question is which home, not whether one exists.
 
-## Where the other 127 are
+## Where the other 133 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **134**, the whole set, not to 127. Previous rounds left
-that ambiguous and the sums never reconciled with the header: the last one said 116 above and 113
-here while the rows added to **119**. Re-added this round, and 119 + warehouse's 14 = 133.
+*from* these files, so the column sums to **140**, the whole set, not to 133.
+
+⚠ **Two rows were wrong, in opposite directions, and both are fixed this round.**
+`business/stock_thoni/` had never been listed at all, and `business/product/systems_clarify.md` (**1**)
+was listed for a file that does not exist. The stock proposal was then rewritten in Indonesian, its
+English version deleted, and then answered — so it contributes **7**, not the 8 its old clarify held:
+134 − 1 + 7 = **140**.
 
 | File | Open | |
 | --- | ---: | --- |
@@ -1413,7 +1455,7 @@ here while the rows added to **119**. Re-added this round, and 119 + warehouse's
 | [technical/ledger/mutation_and_ledger_clarify.md](technical/ledger/mutation_and_ledger_clarify.md#question) | 3 | 🆕 counted for the first time |
 | [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 0 | ▼ was 1 — ✅ **every question closed**: Q6, Q14 and Q15 all decided part by part, on top of Q1–Q13. **Twenty-three decisions**, the newest being the required `oneof`, one decoder, breaking the old protos accepted, `identity` settled in four parts, and CI on `dev` with `buf breaking` — applied. ⛔ **What blocks the first event here is a contradiction, not a question** — the shipped library cannot publish the decided envelope, and `context.md` lags its own decisions. See **#6** |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
-| [business/product/systems_clarify.md](business/product/systems_clarify.md#question) | 1 | |
+| [business/stock_thoni/context_clarify.md](business/stock_thoni/context_clarify.md#question) | 7 | ⚠ **never counted until now**, 🔄 **rewritten in Indonesian**, then **answered** — ✅ 2 closed and recorded, 🆕 2 opened. ⛔ Stock is decremented at order creation and never when goods leave, so **nothing counts what is physically on a shelf** — which is what an opname measures, and a shortfall is the warehouse's money |
 
 > **Counted from each file's Question section, at either heading level.** Previous rebuilds matched
 > `## Question` only, and five technical clarifies write theirs as `# Question` — so **17 open
