@@ -70,6 +70,17 @@ type Story = StoryObj<typeof meta>;
 
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
+// THE SAME ORDER, ON A PHONE-SHAPED CANVAS (owner). What to look at: the header and its actions, the
+// tab strip (Info / Timeline / Settlement) at a width that cannot hold it in one row, and the item
+// table — the widest thing on the page, and the part a phone has no room for.
+//
+// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only, and the story runner has one
+// fixed viewport (MobileLayout.stories), so an assertion here would describe a width nothing renders
+// at. This is for looking. The shell around it is Layouts/Mobile/AppShell.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+};
+
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

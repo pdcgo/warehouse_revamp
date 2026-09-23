@@ -63,6 +63,17 @@ const SHIPPED_FROM_ELSEWHERE = OWN.find((o) => o.warehouseId !== teams[0]!.id)!;
 
 export const Default: Story = {};
 
+// THE SAME LIST, ON A PHONE-SHAPED CANVAS (owner). What to look at: the stat tiles stacking, the
+// filter strip wrapping rather than squeezing its pickers (FilterBar's rule), and the TABLE — a
+// row of columns written for a desktop, on a screen that cannot hold them.
+//
+// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only, and the story runner has one
+// fixed viewport (MobileLayout.stories), so an assertion here would describe a width nothing renders
+// at. This is for looking. The shell around it is Layouts/Mobile/AppShell.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+};
+
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
 // THE SCOPE IS THE TEAM, whichever warehouse the goods leave from. A selling team's list is every
