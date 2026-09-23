@@ -8,7 +8,6 @@ import {
   Flex,
   Heading,
   Icon,
-  Input,
   SimpleGrid,
   Spacer,
   Spinner,
@@ -30,6 +29,7 @@ import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePostOpname, useShelfContents } from "./queries";
 import type { CountRow } from "./queries";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // What the person typed, keyed by product id. `""` means NOT COUNTED — and that is the whole reason
 // this is a string map rather than a number map.
@@ -352,15 +352,12 @@ function CountTable({
                 <Table.Cell textAlign="end">{row.expected.toString()}</Table.Cell>
 
                 <Table.Cell textAlign="end">
-                  <Input
-                    type="number"
-                    min="0"
-                    w="24"
-                    textAlign="end"
+                  <QuantityInput
+                    min={0}
+                    width="24"
                     value={counts[id] ?? ""}
-                    placeholder="—"
-                    data-testid={`opname-count-${id}`}
-                    onChange={(e) => onCount(id, e.target.value)}
+                    testId={`opname-count-${id}`}
+                    onChange={(count) => onCount(id, count)}
                   />
                 </Table.Cell>
 

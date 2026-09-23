@@ -244,6 +244,10 @@ export const Interactive: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("order-line-1")).toBeInTheDocument());
     // The typed quantity survived the second pick.
-    await expect(canvas.getByTestId("order-line-qty-0")).toHaveValue(4);
+    //
+    // ⚠ A STRING, not 4. The quantity is `QuantityInput` now — a text input with a numeric mode —
+    // because the native number control drew the browser's own steppers and changed its value when
+    // somebody scrolled past it. A form draft holds what was TYPED, so "" stays a cleared box.
+    await expect(canvas.getByTestId("order-line-qty-0")).toHaveValue("4");
   },
 };

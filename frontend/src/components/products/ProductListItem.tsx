@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Avatar, Badge, HStack, Icon, Stack, Text } from "@chakra-ui/react";
+import { Avatar, Badge, Button, HStack, Icon, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Package } from "lucide-react";
 
@@ -32,6 +32,15 @@ export interface ProductListItemProps {
   /** Presentation size. "md" (default) is the compact list row; "lg" enlarges the image and title for
    * use as a detail-page header, where the product is the subject rather than one row among many. */
   size?: "md" | "lg";
+  /**
+   * Makes the COVER clickable — for opening the picture at a size somebody can actually read (owner).
+   *
+   * A list cover is ~32px: enough to say "a product is here", not enough to tell two similar packs
+   * apart, which is the decision being made while a line is being substituted. Omit it and the
+   * avatar is exactly what it always was — static, not focusable, not announced as a control — so
+   * every screen already using this component is untouched.
+   */
+  onImageClick?: () => void;
 }
 
 // ProductListItem is the shared way to show a product (#128): its cover image, name + SKU, the owning
@@ -39,7 +48,7 @@ export interface ProductListItemProps {
 // of these, so resolving stock or team names per item would be an N+1. The caller batches those and
 // passes them in. Everything that renders "a product in a list" should use this.
 export const description =
-  "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and optional stock badges: READY (on a shelf now, shown even at 0, because out-of-stock is the case worth seeing) and ONGOING (on an unaccepted restock, shown only when there is some).";
+  "The shared way to show a product — cover image (or a placeholder), name + SKU, the owning team, and optional stock badges: READY (on a shelf now, shown even at 0, because out-of-stock is the case worth seeing) and ONGOING (on an unaccepted restock, shown only when there is some). Pass `onImageClick` and the cover becomes a real button (focusable, labelled with the product's name) for opening the picture at a readable size; omit it and the avatar is static, as it is on every screen that does not need it.";
 
 export function ProductListItem({
   product,
@@ -48,6 +57,7 @@ export function ProductListItem({
   teamName,
   action,
   size = "md",
+  onImageClick,
 }: ProductListItemProps) {
   const { t } = useTranslation();
   const large = size === "lg";
@@ -78,14 +88,44 @@ export function ProductListItem({
   // truthiness test that would be a bug above is exactly right here.
   const showOngoing = ongoing !== undefined && ongoing > 0n;
 
+  // The cover itself, written once and rendered either bare or inside the button below.
+  const avatar = (
+    <Avatar.Root shape="rounded" size={large ? "2xl" : "md"} colorPalette="gray" flexShrink={0}>
+      <Avatar.Fallback>
+        <Icon as={Package} boxSize={large ? "6" : "4"} />
+      </Avatar.Fallback>
+      <Avatar.Image src={cover || undefined} alt={title} />
+    </Avatar.Root>
+  );
+
   return (
     <HStack gap="card" w="full" data-testid={`product-list-item-${product.id ?? ""}`}>
-      <Avatar.Root shape="rounded" size={large ? "2xl" : "md"} colorPalette="gray" flexShrink={0}>
-        <Avatar.Fallback>
-          <Icon as={Package} boxSize={large ? "6" : "4"} />
-        </Avatar.Fallback>
-        <Avatar.Image src={cover || undefined} alt={title} />
-      </Avatar.Root>
+      {/* ⚠ A REAL BUTTON WHEN IT IS CLICKABLE, AND NOTHING AT ALL WHEN IT IS NOT.
+          An `onClick` on a plain box is unreachable by keyboard and silent to a screen reader, so the
+          clickable form is a Chakra `Button` — stripped to nothing visually (`variant="plain"`, no
+          padding) but carrying the focus ring, the label and `type="button"`, which is what stops it
+          submitting the form it may be sitting inside.
+
+          With no handler the avatar is rendered bare, exactly as it always was: no extra element, no
+          focus stop in the middle of a long list. */}
+      {onImageClick ? (
+        <Button
+          type="button"
+          variant="plain"
+          p="0"
+          h="auto"
+          minW="auto"
+          flexShrink={0}
+          cursor="pointer"
+          aria-label={t("productListItem.viewImage", { name: title })}
+          data-testid={`product-list-item-image-${product.id ?? ""}`}
+          onClick={onImageClick}
+        >
+          {avatar}
+        </Button>
+      ) : (
+        avatar
+      )}
 
       <Stack gap="0.5" flex="1" minW="0">
         <Text fontWeight="medium" fontSize={large ? "lg" : undefined} lineClamp={1} textAlign="start">

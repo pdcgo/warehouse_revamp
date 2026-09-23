@@ -191,6 +191,27 @@ const customConfig = defineConfig({
     // Cast to any: Chakra's generic recipe types only type `colorPalette` in defaultVariants
     // (they can't infer per-recipe variant keys from a partial override). The runtime merge
     // into the base recipe is unaffected.
+    // ── A SCROLLING LIST KEEPS AWAY FROM ITS SCROLLBAR (owner) ────────────────────────────────────
+    //
+    // In a dialog — the product picker is the case that prompted it — the rows ran flush to the right
+    // edge, so the bar was drawn ON the list: a row's last column and the thumb share the same pixels,
+    // and the eye reads them as one smudged column.
+    //
+    // `scrollbarGutter: stable` is the other half, and it is what stops a JUMP: without it the list is
+    // one scrollbar wider while it fits on one page, and every row shifts sideways the moment a search
+    // narrows it to something that scrolls.
+    //
+    // A layerStyle rather than a prop each time: the next scrolling list in a dialog should be able to
+    // say `layerStyle="scrollList"` and inherit the decision instead of copying two numbers.
+    layerStyles: {
+      scrollList: {
+        value: {
+          overflowY: "auto",
+          pe: "2",
+          scrollbarGutter: "stable",
+        },
+      },
+    },
     recipes: {
       button: { defaultVariants: { size: "sm" } },
       // ── THE FIELD OUTLINE, ON HOVER AND FOCUS ───────────────────────────────────────────────────
@@ -260,7 +281,49 @@ const customConfig = defineConfig({
         defaultVariants: { size: "sm" },
         variants: { variant: { outline: { field: FIELD_OUTLINE } } },
       },
+      // ── THE DATE PICKER'S TRIGGER IS A FIELD, NOT A BUTTON (owner) ──────────────────────────────
+      //
+      // It is a <button> semantically — it opens a calendar — but it stands in a form row beside
+      // inputs and selects, holding a VALUE the way they do. Chakra's own trigger recipe is sized
+      // like a small button: 24px tall against a field's 36px, a 2px radius against 8px, and its text
+      // in the muted ink a placeholder uses. Three differences, and together they made the one
+      // control on the form that did not look like a control.
+      //
+      // ⚠ IT IS SET HERE, NOT ON THE COMPONENT. Density, spacing and colour live in this file
+      // (CLAUDE.md) — a height typed into DatePicker.tsx is a height the next control copies by eye.
+      datePicker: {
+        defaultVariants: { size: "sm" },
+        base: {
+          trigger: {
+            h: "9",
+            minH: "9",
+            px: "2.5",
+            borderRadius: "l2",
+            fontWeight: "normal",
+            justifyContent: "start",
+            gap: "2",
+            color: "fg",
+            ...FIELD_OUTLINE,
+          },
+        },
+      },
       status: { defaultVariants: { size: "sm" } },
+      // ── A TABLE ROW TAKES THE SURFACE IT SITS ON (owner) ────────────────────────────────────────
+      //
+      // Chakra paints rows with the BODY background. In light that is invisible — the page ground and
+      // a card are both near-white — but in dark the card is gray-900 and the ground is gray-950, so
+      // every row of an order's lines read as a hole punched in the card it sits in.
+      //
+      // Transparent is the fix that works in both places: on this form the row is the card's colour,
+      // on a list screen it is the page canvas's. Hover and selection are unaffected — they paint
+      // their own background on top of this one.
+      //
+      // ⚠ THE OVERRIDE HAS TO NAME THE VARIANT. Chakra sets `row: { bg: "bg" }` inside `variant.line`
+      // — the default one — and a variant beats `base`, so a base-level override here changed
+      // nothing at all and the rows stayed gray-950 in dark. Same trap as `nativeSelect` above.
+      table: {
+        variants: { variant: { line: { row: { bg: "transparent" } } } },
+      },
       // ── TYPE HIERARCHY (owner) ──────────────────────────────────────────────────────────────────
       //
       // Lato ships only 400 and 700 (no 500/600), so the levels are told apart by SIZE and COLOUR,
@@ -493,6 +556,63 @@ const customConfig = defineConfig({
     "html, body": {
       bg: "bg",
       color: "fg",
+    },
+    // ── TELL THE BROWSER WHICH MODE IT IS IN ────────────────────────────────────────────────────
+    //
+    // ⚠ NOTHING IN THIS APP EVER DECLARED `color-scheme` — not index.html, not Chakra's preset. So in
+    // dark mode the browser was never told the page was dark and kept painting its own widgets LIGHT
+    // over it: the scrollbar first, but also every control that is still native (the `<input
+    // type="time">` inside the date picker, autofill backgrounds, spell-check menus).
+    //
+    // This is the standards answer rather than paint over the top, and it has to come before the
+    // scrollbar rules below — where those are unsupported, this alone already gets it right.
+    //
+    // ⚠ WRITTEN AS TWO SELECTORS, NOT `_dark`. Chakra's dark condition compiles to `.dark &`, and the
+    // `dark` class is ON `html` itself — so `_dark` inside an `html` rule becomes `.dark html`, which
+    // matches nothing. The first version of this silently left `color-scheme: light` in dark mode,
+    // and the only symptom was a white scrollbar: exactly the bug it was written to fix.
+    html: { colorScheme: "light" },
+    "html.dark": { colorScheme: "dark" },
+    // ── THE SCROLLBAR (owner: transparent track, thumb that follows the mode) ────────────────────
+    //
+    // ⚠ BOTH SYNTAXES, because neither engine covers everyone. Firefox understands only
+    // `scrollbar-width`/`scrollbar-color`; Blink and WebKit need `::-webkit-scrollbar` for anything
+    // past that. On `*` so every scroll area is covered at once — the page, a dialog's list, a table
+    // that scrolls sideways on a phone, a combobox.
+    //
+    // The THUMB is `border.emphasized` (gray.300 light, gray.700 dark) straight from the semantic
+    // tokens: one definition, and it follows the mode with nothing to keep in sync.
+    //
+    // ⚠ macOS mostly ignores this — its overlay scrollbars are already transparent and fade out. The
+    // rule is for Windows and Linux Chrome, where the grey channel is actually drawn.
+    "*": {
+      scrollbarWidth: "thin",
+      scrollbarColor: "{colors.border.emphasized} transparent",
+    },
+    "*::-webkit-scrollbar": {
+      width: "10px",
+      height: "10px",
+    },
+    // Transparent, so it shows whatever surface it sits on rather than cutting a grey channel
+    // through a card.
+    "*::-webkit-scrollbar-track": {
+      bg: "transparent",
+    },
+    // THIN WITHOUT LOSING THE GRAB: the track stays 10px and the thumb is drawn inside a 2px
+    // transparent border, so it READS as a ~6px hairline while remaining a 10px target for a mouse.
+    "*::-webkit-scrollbar-thumb": {
+      bg: "border.emphasized",
+      borderRadius: "full",
+      border: "2px solid transparent",
+      backgroundClip: "content-box",
+    },
+    "*::-webkit-scrollbar-thumb:hover": {
+      bg: "fg.subtle",
+    },
+    // The little square where a vertical and a horizontal bar meet — left as the surface, or it is a
+    // grey notch in the corner of every scrolling table.
+    "*::-webkit-scrollbar-corner": {
+      bg: "transparent",
     },
     // THE FALLBACK FOCUS RING (owner). Chakra rings its own components, but a plain `<a>` — every
     // sidebar and menu-sheet link — falls through to the BROWSER's ring, which Chrome draws as a

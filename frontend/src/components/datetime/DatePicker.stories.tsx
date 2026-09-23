@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Field } from "@chakra-ui/react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { DatePicker, dateInputToUnix, description, unixToDateInput } from "./DatePicker";
 
@@ -18,6 +18,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** One day in the open calendar, by the date it carries. */
+function dayCell(content: HTMLElement, date: string): HTMLElement {
+  return content.querySelector<HTMLElement>(
+    `[data-part="table-cell-trigger"][data-value="${date}"]`,
+  )!;
+}
+
 export const Empty: Story = {};
 
 export const WithValue: Story = { args: { value: "2026-08-15" } };
@@ -30,8 +37,8 @@ export const Bounded: Story = {
 
 export const Disabled: Story = { args: { value: "2026-08-15", disabled: true } };
 
-// Like PasswordInput, it wraps a BARE Input and overlays the clear button rather than nesting an
-// InputGroup — so the surrounding Field's label/required/aria wiring survives.
+// The trigger is a BUTTON, and it says what is chosen in the app's own date format — so a date reads
+// the same here as in the table the record lands in.
 export const InsideAField: Story = {
   render: (args) => {
     const [value, setValue] = useState("2026-08-15");
@@ -48,7 +55,52 @@ export const InsideAField: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByLabelText(/^Arrival date/, { selector: "input" })).toBeInTheDocument();
+    const trigger = canvas.getByTestId("date");
+    await expect(trigger.tagName).toBe("BUTTON");
+    await expect(trigger).toHaveTextContent("2026");
+  },
+};
+
+// ⚠ THE CALENDAR IS THE POINT OF THE REWRITE: picking a day emits the `yyyy-mm-dd` string the whole
+// family passes around, so nothing downstream learns a calendar library. It also PORTALS, which is
+// why the day is looked for on `screen` rather than in the canvas.
+export const PickingADayEmitsTheIsoString: Story = {
+  args: { value: "2026-08-15", clearable: true },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("date"));
+
+    const content = await screen.findByTestId("date-content");
+    await waitFor(() => expect(content).toBeVisible());
+
+    // ⚠ BY `data-value`, NOT BY THE TEXT "20". A day cell's accessible name is the whole date
+    // ("Thursday, August 20, 2026") and its text is shared with the 20th of any month the calendar
+    // might be showing — the date it carries is the only unambiguous handle.
+    await userEvent.click(dayCell(content, "2026-08-20"));
+
+    await waitFor(() => expect(args.onChange).toHaveBeenCalledWith("2026-08-20"));
+  },
+};
+
+// ⚠ AND A TIME, WHEN ASKED FOR ONE. `withTime` is what `DateTimePicker` is: the value grows its
+// `Thh:mm` tail and the popover grows a time input — one calendar, two value shapes.
+export const WithTimeHoldsTheClockToo: Story = {
+  args: { value: "2026-08-15T09:30", withTime: true },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("date"));
+
+    const content = await screen.findByTestId("date-content");
+    await waitFor(() => expect(content).toBeVisible());
+
+    const time = within(content).getByTestId("date-time");
+    await expect(time).toHaveValue("09:30");
+
+    // The DAY changes, the clock it was already carrying does not.
+    await userEvent.click(dayCell(content, "2026-08-20"));
+    await waitFor(() => expect(args.onChange).toHaveBeenCalledWith("2026-08-20T09:30"));
   },
 };
 

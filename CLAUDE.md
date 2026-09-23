@@ -834,7 +834,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
 | `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
 | `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
-| `inputs/` | 2 | a typed value, formatted or masked |
+| `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 
 The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
 I find it?" have the same answer. A new component goes in the group it belongs to and its story's
@@ -858,6 +858,19 @@ request.** A control, a layout, a piece of chrome should be a Chakra component (
 colours, and a11y wiring, and skipping them is how an app drifts off its design system. For a rich
 picker (searchable, multi-level) prefer Chakra's composable `Select` over `NativeSelect`. If a
 native element is genuinely needed, get an explicit ask first.
+
+**Two controls are NEVER the native one** (owner):
+
+- **A date is [`DatePicker`](frontend/src/components/datetime/DatePicker.tsx)** — Chakra's DatePicker
+  with a **button trigger** showing the date in the app's format, a day → month → year calendar, and
+  `withTime` for a time row under it (`DateTimePicker` is that flag with its own name). A native
+  `<input type="date">` looks different in every browser, offers no month jump and has nowhere to put
+  a clock. ⚠ It emits `yyyy-mm-dd` (or `yyyy-mm-ddThh:mm`) from `value[0].toString()`, never Ark's
+  `valueAsString`, which is formatted for the LOCALE.
+- **A quantity is [`QuantityInput`](frontend/src/components/inputs/QuantityInput.tsx)** — Chakra's
+  NumberInput with a − and a + flanking the box. `<input type="number">` draws the browser's own 15px
+  spinners, **changes its value when somebody scrolls past it**, and accepts `1e3`. The value stays a
+  STRING, so a cleared box is empty rather than 0.
 
 Two more UI rules:
 
@@ -910,6 +923,10 @@ against a real Go server and a real Postgres, while a story pins ONE component w
 A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
 timeout in an order-flow spec.
 
+**Only `Pages/*` stories get the page gutter** (owner) — `p="page"` is applied by `preview.tsx` to
+those and to nothing else, so a page story is framed the way the app frames it while a component
+story stays flush against the canvas and can be judged on its own edges.
+
 **The API is stubbed at the TRANSPORT**, not per hook — [.storybook/stubTransport.ts](frontend/.storybook/stubTransport.ts)
 is a `createRouterTransport` fake that replaces `src/transport.ts` at build time
 ([stubTransportPlugin.ts](frontend/.storybook/stubTransportPlugin.ts)). That module has exactly ONE
@@ -953,6 +970,41 @@ are set. Three things are centralised there on purpose:
   only for **categorical** colour, where the colour tells things apart rather than saying good or bad:
   a courier, a team type, an order's lifecycle step. Written as a hue, a status is a colour that a
   palette change silently misses.
+- **The TYPE SCALE is four sizes and one weight** (owner). Lato ships no 500/600, so the levels are
+  told apart by SIZE and COLOUR with bold as the single strong weight: page title 22, card title 18,
+  section 15, **field label 13 bold in `fg.label` with a red `*` when required**, helper text 12
+  `fg.muted`. It is set on the `heading`, `card` and `field` recipes — ⚠ under `variants.size`, never
+  `sizes`, which Chakra v3 silently ignores.
+- **Fields react in the main tone, thinly** (owner): hover and focus change the BORDER to
+  `border.fieldHover` / `brand.focusRing`, with `focusVisibleRing: "none"` — Chakra's own ring plus a
+  border reads as a 2px double line. `FIELD_OUTLINE` is applied by NAME to every recipe that draws a
+  box (input, textarea, select trigger, combobox input, nativeSelect field, datePicker trigger);
+  `nativeSelect` copies `select`'s styles at import time, so overriding one does NOT reach the other.
+- **An option row is padded like the combobox's** (owner) — `OPTION_PY`, shared by select, combobox
+  and menu: comfortable on a desktop and **44px on a phone**, which is the thumb target the people
+  using this app at a shelf actually need.
+- **The scrollbar is the app's, in both modes** (owner): a transparent track and a thumb in
+  `border.emphasized`, written BOTH as `scrollbar-width`/`scrollbar-color` (Firefox) and
+  `::-webkit-scrollbar` (Blink/WebKit), on `*` so every scroll area is covered at once.
+
+  ⚠ **`color-scheme` is set on `html` and must stay set**, or the browser paints its own widgets LIGHT
+  over a dark page — the scrollbar and every still-native control (the date picker's time input,
+  autofill). It is written as two selectors (`html` and `html.dark`), because Chakra's `_dark`
+  compiles to `.dark &` and the class is ON `html`, so `_dark` there matches nothing.
+- **A scrolling list keeps away from its scrollbar** (owner) — `layerStyle="scrollList"`, which is
+  `overflowY: auto` + `pe: 2` + `scrollbar-gutter: stable`. In a dialog (the product picker is the
+  case that prompted it) rows ran flush to the right edge, so the bar was drawn ON the list and the
+  last column and the thumb shared the same pixels.
+
+  ⚠ **The gutter is the half that stops a JUMP**: without it a list is one scrollbar wider while it
+  fits on one page, and every row shifts sideways the moment a search narrows it to something that
+  scrolls. Say the layerStyle rather than copying the two numbers.
+
+  ⚠ **AND THE BAR RIDES THE PANEL'S EDGE** (owner). Inside a padded container the scroller is pulled
+  out through that padding and given the same amount back as its own — in a dialog body,
+  `me="-6" pe="6"`. The scrollbar then sits on the dialog's right edge while every row stays where
+  it was; left inside the padding it floats in the middle of the white margin, which is what reads
+  as unfinished.
 - **Marketplaces carry their BRAND colour**, adapted per colour mode: `marketplace.<name>.bg` / `.fg` in
   theme.ts, read only by `MarketplaceBadge`. A new marketplace gets its own pair there, not a hue.
 - **Team types carry their own colour too**: `teamType.<type>.badge` / `.avatar` / `.fg` in theme.ts,

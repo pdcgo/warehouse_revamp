@@ -155,7 +155,8 @@
     "confirm": "Confirm",
     "searchPlaceholder": "Search",
     "clearFilters": "Clear Filters",
-    "showingRange": "Showing {{from}}–{{to}} of {{total}}"
+    "showingRange": "Showing {{from}}–{{to}} of {{total}}",
+    "close": "Close"
   },
   "dateRange": {
     "all": "All dates",
@@ -180,10 +181,13 @@
     "total": "Products total"
   },
   "datePicker": {
-    "clear": "Clear date"
+    "clear": "Clear date",
+    "placeholder": "Choose a date",
+    "time": "Time"
   },
   "dateTimePicker": {
-    "clear": "Clear date and time"
+    "clear": "Clear date and time",
+    "placeholder": "Choose a date and time"
   },
   "dateTimeRange": {
     "all": "All times",
@@ -293,7 +297,8 @@
     "outOfStock": "Out of stock",
     "ongoing": "Ongoing {{n}}",
     "teamFallback": "Team #{{id}}",
-    "productFallback": "Product #{{id}}"
+    "productFallback": "Product #{{id}}",
+    "viewImage": "View the picture of {{name}}"
   },
   "productPicker": {
     "trigger": "Select Products",
@@ -1452,7 +1457,12 @@
       "help": "Matches from the start of a name. Picking a result fills in all four levels below.",
       "minChars": "Type at least {{min}} characters",
       "noResults": "No regions found"
-    }
+    },
+    "kecamatanSearch": "Find by district",
+    "kecamatanSearchPlaceholder": "Type a district name",
+    "kecamatanSearchHelp": "Pick the district for province → district, or one of its villages below it for the postcode as well.",
+    "kecamatanSearchMinChars": "Type at least {{min}} letters",
+    "kecamatanSearchNoResults": "No district by that name"
   },
   "catalog": {
     "name": "Name",
@@ -2134,5 +2144,197 @@
       "unavailable": "Couriers unavailable",
       "empty": "No couriers found"
     }
+  },
+  "orderForm": {
+    "tag": {
+      "dropped": "· not sent",
+      "sample": "· sample figures",
+      "derived": "· rule not settled",
+      "missing": "· not in the total"
+    },
+    "pendingTitle_one": "{{count}} part of this screen is not implemented yet",
+    "pendingTitle_other": "{{count}} parts of this screen are not implemented yet",
+    "pendingLead_one": "One of them works on screen only — what you type into it is not sent when an order is created: {{parts}}.",
+    "pendingLead_other": "These work on screen only — what you type into them is not sent when an order is created: {{parts}}.",
+    "pending": {
+      "bundle": {
+        "label": "Bundle grouping",
+        "reason": "A bundle places its products as ordinary lines; the grouping itself is not stored."
+      },
+      "returnMap": {
+        "label": "Return mapping",
+        "reason": "The product link map is not built."
+      },
+      "creditLimit": {
+        "label": "Debt limits",
+        "reason": "A team cannot read the limit another team set for it yet."
+      },
+      "profit": {
+        "label": "Estimated profit",
+        "reason": "The formula is not settled, and the sell price is stored as a note."
+      },
+      "shippingCost": {
+        "label": "Shipping cost",
+        "reason": "Nothing prices a shipment, so the field is off the screen and the total is short a term."
+      },
+      "warehouseFee": {
+        "label": "Warehouse fee",
+        "reason": "This screen does not read the warehouse's terms yet."
+      },
+      "invoice": {
+        "label": "Invoice",
+        "reason": "It needs each team's markup and the warehouse fee."
+      },
+      "orderDate": {
+        "label": "Order date",
+        "reason": "An order is dated when it was typed in, and has no field for when it was actually bought."
+      },
+      "deadline": {
+        "label": "Order deadline",
+        "reason": "The order has no field for it."
+      },
+      "buyerUsername": {
+        "label": "Buyer username",
+        "reason": "The order has no field for it."
+      },
+      "receiptCode": {
+        "label": "Tracking number",
+        "reason": "The order stores the courier and the receipt file, but not the number itself."
+      },
+      "receiptScan": {
+        "label": "Receipt file check",
+        "reason": "Nothing reads the uploaded file yet, so the autofill and the match check stand on a stand-in."
+      },
+      "refsDistinct": {
+        "label": "Order ID vs tracking number",
+        "reason": "The comparison runs here; the authoritative checker is not built."
+      },
+      "formatRules": {
+        "label": "Courier & marketplace formats",
+        "reason": "The patterns are provisional — they warn, they never refuse."
+      }
+    },
+    "source": {
+      "title": "Order Information",
+      "help": "Which storefront sold it, which warehouse ships it, and when it was bought.",
+      "orderDate": "Order date",
+      "orderDateHelp": "When the customer bought it — not when it was typed in.",
+      "sellPrice": "Sell price",
+      "sellPriceHelp": "What the customer paid on the marketplace. The margin below is measured against it.",
+      "looksLike": "This reference looks like",
+      "useIt": "Use {{name}}"
+    },
+    "bundles": {
+      "title": "Bundles",
+      "help": "A bundle puts its products on the order. Each slot can be filled with something else — what it may hold is the bundle's own rule times how many bundles were ordered.",
+      "slotCount_one": "{{count}} slot",
+      "slotCount_other": "{{count}} slots",
+      "empty": "No bundles on this order.",
+      "qty": "Bundles",
+      "remove": "Remove bundle",
+      "rule": "{{qty}} per bundle",
+      "substitute": "Substitute",
+      "search": "Search bundles",
+      "noMatch": "No bundle matches that"
+    },
+    "returnMap": {
+      "title": "Return Mapping",
+      "help": "A product ordered from another team is mapped to one of ours, so a return has somewhere to land. Answer it once and it comes back filled in next time.",
+      "empty": "Nothing on this order belongs to another team.",
+      "unmapped": "{{count}} not mapped",
+      "pick": "Search your products",
+      "undo": "Change",
+      "needs": "Needs mapping",
+      "remembered": "From last time",
+      "duplicate": "Duplicate Product",
+      "wouldDuplicate": "Would be duplicated"
+    },
+    "extra": {
+      "title": "Extra Details",
+      "help": "Optional, and neither is part of an order yet.",
+      "deadline": "Order deadline",
+      "deadlineHelp": "When the buyer needs it.",
+      "buyerUsername": "Buyer username",
+      "buyerUsernamePlaceholder": "Their name on the marketplace",
+      "buyerUsernameHelp": "Who bought it, as the storefront shows them."
+    },
+    "credit": {
+      "title": "Debt Limits",
+      "help": "One row per team this order would owe — the warehouse that ships it, and each team whose products are on it. An order is refused when the debt already stands at the limit.",
+      "empty": "Choose a warehouse to see what this order would owe.",
+      "after": "This order adds {{adds}} · {{after}} after it",
+      "wouldPass": "over the limit after this order",
+      "role": {
+        "warehouse": "Warehouse",
+        "owner": "Product owner"
+      }
+    },
+    "profit": {
+      "title": "Estimated Profit",
+      "help": "What is left of the sell price after the order's own cost. The floor is {{pct}}%.",
+      "sellPrice": "Sell price",
+      "orderTotal": "Order total",
+      "profit": "Profit",
+      "margin": "Margin",
+      "below": "Below {{pct}}%",
+      "noSellPrice": "No sell price yet — fill in what the storefront took, on the Order Information card."
+    },
+    "totals": {
+      "title": "Total & Invoice",
+      "help": "What the order is worth, and how much of it is owed to somebody else.",
+      "products": "Products",
+      "warehouseFee": "Warehouse fee",
+      "orderTotal": "Order total",
+      "invoiceTitle": "Invoice",
+      "invoiceEmpty": "Nothing owed — every product is this team's own.",
+      "invoiceTotal": "Invoice total",
+      "feeNote": "Flat fee for fulfilling this order.",
+      "markupNote": "{{base}} at cost · {{markup}}% markup",
+      "costUnknown": "This warehouse has no cost recorded for these goods, so nothing is billed yet.",
+      "blockedByMapping": "{{count}} of these products still have no return mapping — it is not saved with the order yet."
+    },
+    "markAria": "Not implemented, number {{n}}: {{label}}",
+    "rail": {
+      "collapse": "Compact",
+      "expand": "Details",
+      "title": "Order Summary"
+    },
+    "resi": {
+      "title": "Shipping Receipt",
+      "help": "The receipt file, and the two numbers printed on it.",
+      "trackingNumber": "Tracking number",
+      "noFile": "No receipt file attached yet",
+      "bothPrinted": "The order ID and the tracking number are both on the receipt file.",
+      "halfMissing": "The receipt file carries both numbers — one of the boxes above is still empty.",
+      "filledFromFile": "Filled in from the receipt file — check it against the paper.",
+      "dropHere": "or drop the file here",
+      "pdfNoPreview": "PDF — open it to read the numbers"
+    },
+    "checks": {
+      "blockedTitle": "This order cannot be placed yet",
+      "warnTitle": "Check before placing",
+      "blockedLead": "One of these has to be corrected first.",
+      "warnLead": "Nothing here stops the order — read them, then decide.",
+      "back": "Back to the Form",
+      "placeAnyway": "Place Anyway",
+      "refsIdentical": "The order ID and the tracking number are the same. They are two different references — an order carrying one of them twice cannot be found again from either side.",
+      "refsNearlyIdentical": "The order ID and the tracking number are nearly the same. One of them was probably pasted into both boxes.",
+      "scanBothOff": "Neither number matches the receipt file, which reads {{ref}} and {{code}}.",
+      "scanRefOff": "The order ID does not match the receipt file, which reads {{ref}}.",
+      "scanCodeOff": "The tracking number does not match the receipt file, which reads {{code}}.",
+      "trackingCourier": "The tracking number does not look like this courier's — it normally reads {{shape}}.",
+      "refMarketplace": "The order ID does not look like this marketplace's — it normally reads {{shape}}.",
+      "profitBelowFloor": "The estimated margin is {{pct}}%, under the {{floor}}% floor."
+    },
+    "pendingToggle": "Show the {{count}} parts",
+    "warehouse": {
+      "title": "Shipping from",
+      "governs": "Every stock figure and HPP below is this building's.",
+      "chooseFirst": "Choose the warehouse first — nothing below can be measured without it."
+    }
+  },
+  "quantityInput": {
+    "increase": "Increase",
+    "decrease": "Decrease"
   }
 }

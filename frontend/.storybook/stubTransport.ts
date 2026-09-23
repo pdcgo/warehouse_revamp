@@ -23,7 +23,7 @@ import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
 import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
-import { RegionService } from "../src/gen/warehouse/region/v1/region_pb";
+import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityPaymentService,
   LiabilityService,
@@ -549,6 +549,41 @@ export const transport = createRouterTransport(({ service }) => {
     regionSearchByKodePos: (req) => ({
       results: regions.filter((r) => r.kodePos.startsWith(req.kodePos)).slice(0, req.limit || 10),
     }),
+    // The name typeahead, narrowed to one level — "find the kecamatan called X".
+    //
+    // ⚠ A HIT STOPS AT ITS OWN LEVEL. The real service returns an ancestry filled from provinsi DOWN
+    // TO the hit and empty below it, so a kecamatan hit carries no desa and no kode pos — which is
+    // exactly the case AddressPicker's derivation exists for. A stub that helpfully returned the
+    // desa's postcode would make that code path untestable and the picker look like it worked.
+    regionSearch: (req) => {
+      const q = req.q.toLowerCase();
+      const level = req.level;
+
+      const matches = regions.filter((r) =>
+        level === RegionLevel.KECAMATAN
+          ? r.kecamatanName.toLowerCase().includes(q)
+          : level === RegionLevel.KABUPATEN
+            ? r.kabupatenName.toLowerCase().includes(q)
+            : level === RegionLevel.PROVINSI
+              ? r.provinsiName.toLowerCase().includes(q)
+              : r.desaName.toLowerCase().includes(q),
+      );
+
+      if (level !== RegionLevel.KECAMATAN) {
+        return { results: matches.slice(0, req.limit || 10) };
+      }
+
+      // One row per kecamatan: the fixtures hold an ancestry per DESA, and two desa of the same
+      // kecamatan would otherwise come back as two identical-looking hits.
+      const byKecamatan = new Map<string, (typeof regions)[number]>();
+      for (const r of matches) {
+        if (!byKecamatan.has(r.kecamatanCode)) {
+          byKecamatan.set(r.kecamatanCode, { ...r, desaCode: "", desaName: "", kodePos: "" });
+        }
+      }
+
+      return { results: [...byKecamatan.values()].slice(0, req.limit || 10) };
+    },
     // Hydration: a consumer may hold a saved address as CODES ONLY, and one resolve back-fills every
     // label. Matching on the DESA code is enough for the fixtures, which is the deepest level.
     regionResolve: (req) => ({

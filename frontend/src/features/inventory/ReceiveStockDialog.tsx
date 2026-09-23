@@ -15,6 +15,7 @@ import { rpcError } from "../../api/clients";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
 import { useReceiveStock } from "./queries";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // ReceiveStockDialog records incoming goods (a +quantity movement) for one product at a warehouse.
 export function ReceiveStockDialog({
@@ -95,12 +96,13 @@ export function ReceiveStockDialog({
 
                   <Field.Root required>
                     <Field.Label>{t("inventory.quantity")}</Field.Label>
-                    <Input
-                      type="number"
-                      min="1"
+                    <QuantityInput
+                      min={1}
+                      width="full"
+                      size="sm"
                       value={quantity}
-                      data-testid="receive-quantity"
-                      onChange={(e) => setQuantity(e.target.value)}
+                      testId="receive-quantity"
+                      onChange={setQuantity}
                     />
                   </Field.Root>
 

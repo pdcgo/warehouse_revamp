@@ -44,16 +44,20 @@ function isPdf(mimeType: string): boolean {
 //
 // ONE receipt, replaced rather than accumulated: an order ships once, and a list of receipts would
 // leave "which of these is the real one?" for somebody to answer later.
-export function ReceiptUpload({
+/**
+ * THE UPLOAD ITSELF, without any markup — so a second control can perform it.
+ *
+ * ⚠ IT EXISTS BECAUSE THERE ARE TWO WAYS IN NOW (owner): the button below, and DROPPING a file on
+ * the receipt preview. Both are the same three steps (RequestUpload → PUT → ConfirmUpload), the same
+ * size guard and the same error toast — and a second copy of that sequence is a copy that falls
+ * behind the first the day the flow changes.
+ */
+export function useReceiptUpload({
   teamId,
-  value,
   onChange,
-  disabled,
 }: {
   teamId: bigint;
-  value: ReceiptValue;
   onChange: (receipt: ReceiptValue) => void;
-  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -125,6 +129,25 @@ export function ReceiptUpload({
       setPickerKey((k) => k + 1);
     }
   }
+
+  return { upload, busy, pickerKey };
+}
+
+// ReceiptUpload attaches ONE shipping receipt to the order being written (owner) — the button half.
+// The preview beside it (see ShippingReceiptCard) is the other, and both share `useReceiptUpload`.
+export function ReceiptUpload({
+  teamId,
+  value,
+  onChange,
+  disabled,
+}: {
+  teamId: bigint;
+  value: ReceiptValue;
+  onChange: (receipt: ReceiptValue) => void;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { upload, busy, pickerKey } = useReceiptUpload({ teamId, onChange });
 
   return (
     <Stack gap="card" data-testid="order-receipt-upload">

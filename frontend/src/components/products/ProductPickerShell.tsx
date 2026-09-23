@@ -841,7 +841,17 @@ export function ProductPickerShell({
                       ref={rowsRef}
                       flex="1"
                       minH="0"
-                      overflow="auto"
+                      overflowX="auto"
+                      // The gap between the rows and the bar, and the reserved gutter that stops the
+                      // list shifting when a search narrows it — see `scrollList` in theme.ts.
+                      layerStyle="scrollList"
+                      // ⚠ THE BAR RIDES THE DIALOG'S EDGE (owner). The scroller is pulled OUT through
+                      // the dialog's 24px padding and given the same amount back as its own padding:
+                      // the scrollbar lands on the panel's right edge while every row stays exactly
+                      // where it was. Sitting inside the padding, the bar floated in the middle of
+                      // the white margin, which is what read as unfinished.
+                      me="-6"
+                      pe="6"
                       data-testid="product-picker-scroll"
                     >
                       {error && (

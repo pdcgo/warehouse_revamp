@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, Stack } from "@chakra-ui/react";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 
 import { products } from "../../../.storybook/fixtures";
 import { ProductListItem, description } from "./ProductListItem";
@@ -85,6 +85,37 @@ export const OngoingZeroIsHidden: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.queryByTestId(`product-list-item-ongoing-${product.id}`)).toBeNull();
+  },
+};
+
+// ⚠ THE COVER IS A CONTROL ONLY WHEN SOMEBODY CAN DO SOMETHING WITH IT.
+//
+// With `onImageClick` the avatar has to be a real button — reachable by keyboard and announced with
+// the product's name, because a picture labelled "image" tells a screen-reader user nothing about
+// WHICH product they are about to open. Without the prop there must be no button at all: a focusable
+// element that does nothing is a stop on every keyboard user's way through a long list.
+export const ClickableCoverIsARealButton: Story = {
+  args: { stock: 42n, onImageClick: () => {} },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const image = canvas.getByTestId(`product-list-item-image-${product.id}`);
+    await expect(image.tagName).toBe("BUTTON");
+    await expect(image).toHaveAccessibleName(new RegExp(product.name, "i"));
+
+    await userEvent.click(image);
+    await expect(image).toBeEnabled();
+  },
+};
+
+// The other half of the rule: the default row has no control on its cover.
+export const StaticCoverHasNoButton: Story = {
+  args: { stock: 42n },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByTestId(`product-list-item-image-${product.id}`)).toBeNull();
+    await expect(canvas.queryByRole("button")).toBeNull();
   },
 };
 

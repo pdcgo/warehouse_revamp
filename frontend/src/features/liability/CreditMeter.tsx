@@ -29,12 +29,50 @@ export function limitStateOf(limit: bigint | undefined): LimitState {
   return "capped";
 }
 
+/**
+ * HOW CLOSE TO THE CEILING — the same two comparisons the meter draws itself with, exported so a
+ * caller can mark a row without re-deriving them.
+ *
+ * ⚠ THE ARITHMETIC LIVES HERE ONCE. A screen that wanted its own warning marker used to have to
+ * re-type `debt * 10000 >= limit * WARN_AT * 10000`, and a second copy of a threshold is a threshold
+ * that drifts — the meter would warn at 80% while the row beside it warned at something else.
+ *
+ * Integer maths up to the comparison: these are rupiah in bigint, and `Number()` on a real balance is
+ * exactly where a money bug hides.
+ */
+export function creditWarning(limit: bigint | undefined, debt: bigint): {
+  near: boolean;
+  over: boolean;
+} {
+  if (limitStateOf(limit) !== "capped") {
+    // Unlimited has no ceiling to approach; frozen is not "near" anything — it is a refusal, and the
+    // meter already says so in words.
+    return { near: false, over: false };
+  }
+
+  const cap = limit!;
+  const owed = debt > 0n ? debt : 0n;
+
+  return {
+    near: owed * 10000n >= cap * BigInt(Math.round(WARN_AT * 10000)),
+    over: owed >= cap,
+  };
+}
+
 interface CreditMeterProps {
   /** undefined = unlimited, 0n = frozen, n = the ceiling. */
   limit: bigint | undefined;
   /** What this debtor owes the creditor right now. Never negative here — the caller flips the sign. */
   debt: bigint;
   testId?: string;
+  /**
+   * Drop the "Near limit" / "Over limit" badge, for a caller that marks the row ITSELF (owner) — e.g.
+   * a warning icon beside the creditor's name, where the name is what the eye scans.
+   *
+   * The BAR still changes colour, so the meter is never silent about it. Default false: everywhere
+   * that shows a meter on its own keeps the badge, which is the only signal it has.
+   */
+  hideWarningBadge?: boolean;
 }
 
 // CreditMeter shows how much of a debtor's credit is used, and warns at 80%.
@@ -43,7 +81,7 @@ interface CreditMeterProps {
 // percentage of zero is a division by zero — so those two states are words, not a meter. A bar that
 // renders "100%" for a frozen team and "0%" for an unlimited one would invert the meaning of the
 // screen at a glance.
-export function CreditMeter({ limit, debt, testId }: CreditMeterProps) {
+export function CreditMeter({ limit, debt, testId, hideWarningBadge }: CreditMeterProps) {
   const { t } = useTranslation();
   const state = limitStateOf(limit);
 
@@ -70,8 +108,9 @@ export function CreditMeter({ limit, debt, testId }: CreditMeterProps) {
   // enough to matter is exactly where a money bug hides. Only the RATIO becomes a float, and only
   // for the width of a bar.
   const pct = Number((owed * 10000n) / cap) / 100;
-  const warning = owed * 10000n >= cap * BigInt(Math.round(WARN_AT * 10000));
-  const over = owed >= cap;
+  // The two thresholds come from the exported helper, so the meter and any row marking itself beside
+  // it can never disagree about what "near" means.
+  const { near: warning, over } = creditWarning(limit, owed);
 
   return (
     <Stack gap="1" minW="36" data-testid={testId}>
@@ -95,7 +134,7 @@ export function CreditMeter({ limit, debt, testId }: CreditMeterProps) {
 
       {/* The warning is a BADGE and not only a colour: a colour ramp alone is invisible to anyone
           reading this in a hurry, and this is the one signal the design has left. */}
-      {warning && (
+      {warning && !hideWarningBadge && (
         <Badge
           colorPalette={over ? "error" : "warning"}
           size="sm"

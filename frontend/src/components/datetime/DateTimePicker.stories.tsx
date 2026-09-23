@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Field } from "@chakra-ui/react";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fireEvent, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   DateTimePicker,
@@ -80,5 +80,29 @@ export const UnitConversionIsLocalTime: Story = {
     // 0 is UNSET, not the epoch.
     await expect(unixToDateTimeInput(0n)).toBe("");
     await expect(dateTimeInputToUnix("")).toBe(0n);
+  },
+};
+
+// ⚠ THE CLOCK LIVES IN THE POPOVER NOW, under the calendar — not in a second native field beside it.
+// That is the whole difference between this component and `DatePicker`: one flag, one extra row, and
+// a value that grows its `Thh:mm` tail. Typing a time keeps the day that was already chosen.
+export const TheTimeRowIsUnderTheCalendar: Story = {
+  args: { value: "2026-08-15T09:30" },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("datetime"));
+
+    const content = await screen.findByTestId("datetime-content");
+    await waitFor(() => expect(content).toBeVisible());
+
+    const time = within(content).getByTestId("datetime-time");
+    await expect(time).toHaveValue("09:30");
+
+    // `fireEvent`, not `type`: the value is pinned by the story's args, so a controlled input would
+    // fight every keystroke and emit half-typed times on the way.
+    fireEvent.change(time, { target: { value: "14:05" } });
+
+    await waitFor(() => expect(args.onChange).toHaveBeenCalledWith("2026-08-15T14:05"));
   },
 };

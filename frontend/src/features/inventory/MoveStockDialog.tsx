@@ -19,6 +19,7 @@ import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
 import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
 import { useMoveStock, useProductBatches, useProductPlaces } from "./queries";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // placeToOneof turns RackSelect's plain string into the request's `place` oneof — the same encoding
 // AdjustStockDialog does, for the same reason: `""` (unanswered) has no representation in the
@@ -228,12 +229,13 @@ export function MoveStockDialog({
 
                   <Field.Root required>
                     <Field.Label>{t("inventory.quantity")}</Field.Label>
-                    <Input
-                      type="number"
-                      min="1"
+                    <QuantityInput
+                      min={1}
+                      width="full"
+                      size="sm"
                       value={quantity}
-                      data-testid="move-quantity"
-                      onChange={(e) => setQuantity(e.target.value)}
+                      testId="move-quantity"
+                      onChange={setQuantity}
                     />
                     <Field.HelperText>{t("inventory.moveQuantityHelper")}</Field.HelperText>
                   </Field.Root>
