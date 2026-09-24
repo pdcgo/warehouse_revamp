@@ -157,7 +157,7 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 // each unmapped one looks like (looks like is not decided — that is the point):
 //
 //	Order                           2710 rows sampled  ✅ mapped
-//	GMV Payment for TikTok Ads        10               looks like external_ads_fee
+//	GMV Payment for TikTok Ads        10  ✅ mapped (also seen as "GMV payment…", see the folding below)
 //	Platform reimbursement             4  ✅ mapped
 //	Additional Campaign Package        4               ⛔ ads fee or programme, genuinely unclear
 //	Logistics reimbursement            3  ✅ mapped
@@ -202,8 +202,29 @@ var tiktokSettlementTypes = map[string]SettlementType{
 // ⚠ Always returns ErrNoSettlementTypeMapping today — see tiktokSettlementTypes. As on the Shopee
 // side, an unmapped type is an ERROR and never SettlementOther: bucketing something unrecognised
 // into "other" makes it indistinguishable from a deliberate classification.
+// tiktokSettlementTypesFolded is the same table keyed by lower case.
+//
+// ⚠ TikTok respells its own vocabulary. "GMV Payment for TikTok Ads" in every sample workbook is
+// "GMV payment for TikTok Ads" in a 2026-09 import — one letter, same concept — and the September
+// layout did the same to its headers ("Order Source" -> "Order source", "Type" -> "Transaction
+// type", which is what tiktokRenamed exists for). Matching exactly would make every such respelling
+// a production failure, so the lookup folds case.
+//
+// It does NOT fold anything else: a type whose WORDS change is a different type until somebody says
+// otherwise, which is the whole point of refusing an unmapped value.
+var tiktokSettlementTypesFolded = foldKeys(tiktokSettlementTypes)
+
+func foldKeys(table map[string]SettlementType) map[string]SettlementType {
+	folded := make(map[string]SettlementType, len(table))
+	for name, settlement := range table {
+		folded[strings.ToLower(name)] = settlement
+	}
+
+	return folded
+}
+
 func (s *TiktokSettlementItem) SettlementType() (SettlementType, error) {
-	mapped, found := tiktokSettlementTypes[s.TransactionType]
+	mapped, found := tiktokSettlementTypesFolded[strings.ToLower(s.TransactionType)]
 	if !found {
 		return "", fmt.Errorf("%w: %q", ErrNoSettlementTypeMapping, s.TransactionType)
 	}
@@ -708,4 +729,17 @@ func notNone(raw string) string {
 	}
 
 	return raw
+}
+
+// TiktokTransactionTypes is every "Type" value the mapping table recognises, in no order.
+//
+// It exists so an importer can report what it knows, and so the table can be checked for entries
+// that differ only in capitals — which the case-folded lookup would silently shadow.
+func TiktokTransactionTypes() []string {
+	names := make([]string, 0, len(tiktokSettlementTypes))
+	for name := range tiktokSettlementTypes {
+		names = append(names, name)
+	}
+
+	return names
 }

@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [the-type-vocabulary-is-case-unstable](#the-type-vocabulary-is-case-unstable) | `GMV payment for TikTok Ads` → `external_ads_fee`, and the lookup now FOLDS CASE — TikTok respells its own vocabulary |
 | [additional-marketing-benefits-is-also-an-adjustment](#additional-marketing-benefits-is-also-an-adjustment) | The second `…marketing benefits package fee` → `marketplace_adjustment`, and neither is in any sample |
 | [the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold) | `Marketing benefits package fee` → `marketplace_adjustment`, which breaks the pattern I had just called a rule |
 | [reimbursements-get-their-own-types](#reimbursements-get-their-own-types) | `Platform reimbursement` → `platform_reimbursement` — the pattern is now 3 for 3, a SPECIFIC type over the generic bucket |
@@ -368,7 +369,7 @@ flowchart LR
 
 | `Type` | rows | probably |
 | --- | ---: | --- |
-| `GMV Payment for TikTok Ads` | 10 | `external_ads_fee` — the enum already names it, and so does the platform |
+| `GMV Payment for TikTok Ads` | 10 | ✅ `external_ads_fee` — see [the-type-vocabulary-is-case-unstable](#the-type-vocabulary-is-case-unstable) |
 | `Additional Campaign Package` | 4 | its own, e.g. `campaign_package` |
 | `Shipping insurance compensation` | 1 | its own, e.g. `insurance_compensation` |
 | `wderror` | 1 | ⛔ not a real value — 28 characters where every real id is 18 or 19, and no related order. Almost certainly a hand-edited fixture in `salah_tarik.xlsx` |
@@ -467,3 +468,39 @@ if err != nil {
 
 …then log `unmapped` once the file is done. Every unknown type in the file comes back in a single
 run, which is exactly the information needed to fill the table in one pass.
+
+## the-type-vocabulary-is-case-unstable
+
+> Owner (2026-09-24), from a real run — **`"GMV payment for TikTok Ads"` … use `external_ads_fee`**.
+
+**The verdict.** `GMV Payment for TikTok Ads` maps to `external_ads_fee` — the one case where the
+enum already named the thing the platform names.
+
+⚠ **But look at the capital letter.** Every sample workbook says `GMV **P**ayment for TikTok Ads`;
+the 2026-09 import says `GMV **p**ayment for TikTok Ads`. One letter, same concept. TikTok did the
+same thing to its *headers* in the September layout — `Order Source` → `Order source`, `Type` →
+`Transaction type` — which is what `tiktokRenamed` already exists to absorb.
+
+**So the lookup now folds case.** Matching exactly would turn every future respelling into a
+production failure, and this is the second demonstration in one layout that TikTok respells freely.
+
+```mermaid
+flowchart TB
+  S["samples: GMV Payment for TikTok Ads"] --> F["fold to lower case"]
+  R["2026-09 import: GMV payment for TikTok Ads"] --> F
+  F --> M["one table entry, external_ads_fee"]
+  W["a type whose WORDS change"] -.->|"still refused"| E["ErrNoSettlementTypeMapping"]
+```
+
+**What it does NOT fold.** Only capitalisation. A type whose *words* change is a different type
+until somebody says otherwise — that is the whole value of refusing an unmapped value, and folding
+more would give it away.
+
+**The guard that comes with it:** two table entries differing only in capitals would now silently
+shadow each other, so `TestTiktokSettlementTypeTableHasNoCaseCollisions` fails if one is ever added.
+`TiktokTransactionTypes()` exposes the recognised set, which also lets an importer report what it
+knows.
+
+**Two types left**, both sample-only: `Additional Campaign Package` (4 rows) and
+`Shipping insurance compensation` (1). Plus `wderror`, which is almost certainly a hand-edited
+fixture.

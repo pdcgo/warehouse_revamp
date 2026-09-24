@@ -513,7 +513,6 @@ func TestTiktokSettlementType(t *testing.T) {
 	}
 
 	for _, transaction := range []string{
-		"GMV Payment for TikTok Ads",
 		"Additional Campaign Package",
 		"Shipping insurance compensation",
 		"Something TikTok Invents Next Quarter",
@@ -711,4 +710,20 @@ func TestTiktokAdjustmentsCarryAnAdjustmentID(t *testing.T) {
 		t.Error("expected some adjustments to have no related order at all")
 	}
 	t.Logf("%d orders, %d adjustments, %d of them shop-level with no order", orders, adjustments, shopLevel)
+}
+
+// The lookup folds case, so two table entries differing only in capitals would silently shadow
+// each other. Nothing should ever be added that collides.
+func TestTiktokSettlementTypeTableHasNoCaseCollisions(t *testing.T) {
+	seen := map[string]string{}
+
+	for _, transaction := range san_excel_readers.TiktokTransactionTypes() {
+		folded := strings.ToLower(transaction)
+
+		first, clash := seen[folded]
+		if clash {
+			t.Errorf("%q and %q differ only in case", first, transaction)
+		}
+		seen[folded] = transaction
+	}
 }

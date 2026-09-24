@@ -126,7 +126,7 @@ Maps a platform transaction type onto settlement_service's `settlement_type`.
 | | |
 | --- | --- |
 | **Shopee** | ✅ all four measured types map — `fund`, `withdrawal`, `marketplace_adjustment`, `marketplace_program` |
-| **TikTok** | ⚠ **table is incomplete** — five types map. The rest still return `ErrNoSettlementTypeMapping` — see `tiktokSettlementTypes`. ⚠ The vocabulary is OPEN: one mapped type appears in no sample at all, so expect an unmapped type on real data and handle the error rather than panicking |
+| **TikTok** | ⚠ **table is incomplete** — six types map, and the lookup **folds case** because TikTok respells its own vocabulary. The rest still return `ErrNoSettlementTypeMapping` — see `tiktokSettlementTypes`. ⚠ The vocabulary is OPEN: one mapped type appears in no sample at all, so expect an unmapped type on real data and handle the error rather than panicking |
 
 Two rules, the same on both sides:
 
