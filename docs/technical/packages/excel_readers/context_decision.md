@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 
 ---
@@ -196,7 +197,7 @@ is decided (see [other-adjustment-is-a-marketplace-adjustment](#other-adjustment
 
 | `Type` | sampled | |
 | --- | ---: | --- |
-| `Order` | 2710 | looks like `fund` |
+| `Order` | 2710 | ✅ `fund` — see [order-is-fund](#order-is-fund) |
 | `GMV Payment for TikTok Ads` | 10 | looks like `external_ads_fee` |
 | `Platform reimbursement` | 4 | looks like `marketplace_adjustment` |
 | `Additional Campaign Package` | 4 | ⛔ ads fee or programme — genuinely unclear |
@@ -240,3 +241,35 @@ flowchart LR
 [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms).
 `TestTiktokSampleTransactionTypesAreAllKnown` walks every sample and fails on a type this package
 has never seen, so the *set* is guarded even while the mapping is incomplete.
+
+## order-is-fund
+
+> Owner (2026-09-24), from a real run — **`"Order"` … its `fund`**.
+
+**The verdict.** TikTok's `Order` maps to `fund`. It is **2710 of the 2734 sampled rows**, so this
+one decision takes the table from 1 row of coverage to 99.2%.
+
+| | rows | |
+| --- | ---: | --- |
+| mapped | 2711 | `Order` → `fund`, `Other adjustment` → `marketplace_adjustment` |
+| still refusing | 23 | six types, listed under [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) |
+
+**⚠ 53 of those orders settle ZERO** — `Amount`, `Revenue` and `TotalFees` all `0`, which is the
+shape of the item in the owner's own error line. They are sales refunded in full before paying out,
+and TikTok still exports a row for each. They classify as `fund` like any other order.
+
+```mermaid
+flowchart LR
+  O["Order row"] --> F["fund"]
+  F --> A{"Amount"}
+  A -->|"2657 rows"| M["real money"]
+  A -->|"53 rows"| Z["zero, fully refunded before payout"]
+  Z --> Q["does a zero-change settlement log entry get written?"]
+  Q -.->|"the READER cannot answer this"| S["settlement_service decides"]
+```
+
+**→ One question this raises for settlement, not for the reader:** is a settlement log entry with
+`change = 0` worth writing? The reader returns the row either way — dropping it here would be the
+reader deciding what the ledger contains. But a zero-change row moves no money and still consumes a
+`unique_id`, so it is worth being deliberate about rather than discovering later.
+`TestTiktokZeroSettlementIsStillAnOrder` pins that these classify rather than error.

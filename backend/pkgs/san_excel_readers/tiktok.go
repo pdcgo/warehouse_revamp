@@ -120,7 +120,7 @@ var ErrNotTiktokReport = fmt.Errorf("san_excel_readers: not a tiktok settlement 
 //
 // ⚠ Every field here is measured to be IDENTICAL when the same order appears in two different
 // exports (43 orders, 77 pairs, across the samples). That is what makes GenerateUniqueID safe
-// to re-run over overlapping downloads. The fee breakdown is deliberately NOT here: seven fee
+// to re-run over overlapping downloads. The fee breakdown is deliberately NOT here: 23 fee
 // columns come and go between exports, so hashing them would give one order two keys.
 type TiktokSettlementItem struct {
 	At                time.Time `json:"at"`                   // "Order settled time"
@@ -156,19 +156,20 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 // time and everything else returns ErrNoSettlementTypeMapping. The measured vocabulary, and what
 // each unmapped one looks like (looks like is not decided — that is the point):
 //
-//	Order                           2710 rows sampled   looks like fund
-//	GMV Payment for TikTok Ads        10                looks like external_ads_fee
-//	Platform reimbursement             4                looks like marketplace_adjustment
-//	Additional Campaign Package        4                ⛔ ads fee or programme, genuinely unclear
-//	Logistics reimbursement            3                looks like marketplace_adjustment
-//	Other adjustment                   1   ✅ mapped
-//	Shipping insurance compensation    1                looks like marketplace_adjustment
-//	wderror                            1                ⛔ probably a hand-edited fixture, not real
+//	Order                           2710 rows sampled  ✅ mapped
+//	GMV Payment for TikTok Ads        10               looks like external_ads_fee
+//	Platform reimbursement             4               looks like marketplace_adjustment
+//	Additional Campaign Package        4               ⛔ ads fee or programme, genuinely unclear
+//	Logistics reimbursement            3               looks like marketplace_adjustment
+//	Other adjustment                   1  ✅ mapped
+//	Shipping insurance compensation    1               looks like marketplace_adjustment
+//	wderror                            1               ⛔ probably a hand-edited fixture, not real
 //
 // ⚠ And a limit this table cannot reach past: unlike Shopee, TikTok puts affiliate and ads charges
 // in COLUMNS on the order row — Affiliate Commission, GMV Max ad fee and the rest — not in rows of
 // their own. A per-row settlement type cannot express those at all.
 var tiktokSettlementTypes = map[string]SettlementType{
+	"Order":            SettlementFund,                  // 2710 rows, 53 of them settling ZERO
 	"Other adjustment": SettlementMarketplaceAdjustment, // 1 row, cannot_open.xlsx
 }
 

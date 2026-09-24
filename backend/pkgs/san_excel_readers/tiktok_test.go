@@ -492,6 +492,7 @@ func contains(haystack []string, needle string) bool {
 // mapped stays mapped, and what is not still REFUSES rather than guessing at "other".
 func TestTiktokSettlementType(t *testing.T) {
 	mapped := map[string]san_excel_readers.SettlementType{
+		"Order":            "fund",
 		"Other adjustment": "marketplace_adjustment",
 	}
 
@@ -508,7 +509,6 @@ func TestTiktokSettlementType(t *testing.T) {
 	}
 
 	for _, transaction := range []string{
-		"Order",
 		"GMV Payment for TikTok Ads",
 		"Platform reimbursement",
 		"Additional Campaign Package",
@@ -622,5 +622,38 @@ func TestNewTiktokSettlementDocumentRejectsAnotherPlatform(t *testing.T) {
 	_, err = san_excel_readers.NewTiktokSettlementDocument(file)
 	if !errors.Is(err, san_excel_readers.ErrNotTiktokReport) {
 		t.Fatalf("err = %v, want ErrNotTiktokReport", err)
+	}
+}
+
+// An order that settled to ZERO is still a real row: 53 of the 2710 sampled "Order" rows have a
+// settlement amount, revenue and fees all of 0 — a sale fully refunded before it paid out. They
+// classify as fund like any other order, and it is the CALLER that decides whether a zero-change
+// settlement log entry is worth writing.
+func TestTiktokZeroSettlementIsStillAnOrder(t *testing.T) {
+	doc := openTiktokSample(t, "pay_deduction.xlsx")
+
+	items, err := doc.GetItems()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	zero := 0
+	for _, item := range items {
+		if item.Amount != 0 {
+			continue
+		}
+		zero++
+
+		got, err := item.SettlementType()
+		if err != nil {
+			t.Fatalf("a zero-amount order did not classify: %v", err)
+		}
+		if got != "fund" {
+			t.Errorf("SettlementType() = %q, want fund", got)
+		}
+	}
+
+	if zero == 0 {
+		t.Fatal("expected this sample to contain orders settling zero")
 	}
 }
