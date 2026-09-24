@@ -150,23 +150,37 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// SettlementType classifies the row for settlement_service.
+// tiktokSettlementTypes is the mapping table for "Type", and it is EMPTY.
 //
-// ⚠ NOT IMPLEMENTED — it panics. context.md carries a mapping table for Shopee and NONE for
-// TikTok, and the enum both would map onto is an empty heading in settlement/context.md.
-// Deciding that "Platform reimbursement" is a marketplace_adjustment is a business call, not a
-// parsing one, so the signature is reserved and the body waits for it.
+// ⚠ context.md carries a mapping table for Shopee and none for TikTok, so every row currently
+// returns ErrNoSettlementTypeMapping. That is the same refusal Shopee gives an unrecognised
+// value, applied to a vocabulary where nothing is recognised yet — not a different mechanism.
 //
-// The mapping to write once the enum exists, from the measured Type values:
+// The six measured values, waiting for a row each. Classifying them is a business call:
+// "Platform reimbursement" and "Logistics reimbursement" look like marketplace_adjustment,
+// "GMV Payment for TikTok Ads" like external_ads_fee, and "Additional Campaign Package" could be
+// either — which is exactly why this is the owner's table and not a guess here.
 //
-//	Order                           2707 rows
+//	Order                           2707 rows sampled
 //	GMV Payment for TikTok Ads        10
 //	Platform reimbursement             4
 //	Additional Campaign Package        4
 //	Logistics reimbursement            3
 //	Shipping insurance compensation    1
+var tiktokSettlementTypes = map[string]SettlementType{}
+
+// SettlementType classifies the row for settlement_service.
+//
+// ⚠ Always returns ErrNoSettlementTypeMapping today — see tiktokSettlementTypes. As on the Shopee
+// side, an unmapped type is an ERROR and never SettlementOther: bucketing something unrecognised
+// into "other" makes it indistinguishable from a deliberate classification.
 func (s *TiktokSettlementItem) SettlementType() (SettlementType, error) {
-	panic("san_excel_readers: SettlementType not implemented")
+	mapped, found := tiktokSettlementTypes[s.TransactionType]
+	if !found {
+		return "", fmt.Errorf("%w: %q", ErrNoSettlementTypeMapping, s.TransactionType)
+	}
+
+	return mapped, nil
 }
 
 // TiktokWithdrawalItem is one row of "Withdrawal records" — this is where TikTok money actually

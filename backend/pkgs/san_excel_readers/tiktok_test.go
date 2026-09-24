@@ -488,32 +488,25 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-// SettlementType is a reserved signature with no body yet: the enum it returns is an empty
-// heading in settlement/context.md, and TikTok has no mapping table at all. It panics, so this
-// pins that it panics DELIBERATELY rather than through some later accident — and it is the test
-// that must be rewritten, not deleted, when the mapping lands.
-func TestSettlementTypeIsNotImplemented(t *testing.T) {
-	// TikTok has no mapping table in context.md at all — Shopee's is implemented.
-	item := san_excel_readers.TiktokSettlementItem{TransactionType: "Order"}
-	assertPanics(t, func() { _, _ = item.SettlementType() })
-}
+// TikTok has no mapping table in context.md at all, so every row is unrecognised and every call
+// errors. That is the same refusal Shopee gives an unknown value, applied to a vocabulary where
+// nothing is known yet — it is the TABLE that is missing, not the mechanism.
+func TestTiktokSettlementTypeHasNoMappingYet(t *testing.T) {
+	for _, transaction := range []string{
+		"Order",
+		"GMV Payment for TikTok Ads",
+		"Platform reimbursement",
+		"Additional Campaign Package",
+		"Logistics reimbursement",
+		"Shipping insurance compensation",
+	} {
+		item := san_excel_readers.TiktokSettlementItem{TransactionType: transaction}
 
-func assertPanics(t *testing.T, call func()) {
-	t.Helper()
-
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatal("SettlementType returned instead of panicking — if it is implemented now, rewrite this test")
+		_, err := item.SettlementType()
+		if !errors.Is(err, san_excel_readers.ErrNoSettlementTypeMapping) {
+			t.Errorf("%q: err = %v, want ErrNoSettlementTypeMapping", transaction, err)
 		}
-
-		message, ok := recovered.(string)
-		if !ok || !strings.Contains(message, "not implemented") {
-			t.Fatalf("panicked with %v, want a \"not implemented\" message", recovered)
-		}
-	}()
-
-	call()
+	}
 }
 
 func TestTiktokUniqueIDEncodingIsPinned(t *testing.T) {

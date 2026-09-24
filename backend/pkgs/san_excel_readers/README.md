@@ -118,24 +118,34 @@ drifts between exports ─→  GetDetails() ─→  not hashed
 | **The balance chain has a hole** | One wallet's statement is split across separate downloads — cross-border/FLEXI transactions come as their own file. A file is a slice, not a statement. |
 | **The same order settles twice** | TikTok reverses: `+104444` on the 6th, `−131698` on the 8th, same id, both typed `Order`. Two real movements, two keys. |
 
+## Classifying a row — `SettlementType()`
+
+Maps a platform transaction type onto settlement_service's `settlement_type`.
+
+| | |
+| --- | --- |
+| **Shopee** | ✅ all four measured types map — `fund`, `withdrawal`, `marketplace_adjustment`, `marketplace_program` |
+| **TikTok** | ⛔ **no mapping table exists yet**, so every row returns `ErrNoSettlementTypeMapping` |
+
+Two rules, the same on both sides:
+
+**An unmapped type is an ERROR, never `other`.** `other` is a real settlement type, so returning it
+for something unrecognised makes a new platform behaviour indistinguishable from a deliberate
+classification — and it would import silently for months. The error surfaces it on the first file
+that carries it.
+
+**The sign is not part of the classification** — it rides on the amount. A Shopee withdrawal that
+FAILED is refunded by a second `Penarikan Dana` row with a *positive* amount, and both are
+`withdrawal`: the pair nets to zero because the changes do, not because the types differ. Same for
+the 34 sampled `Penghasilan dari Pesanan` rows that are negative.
+
+⚠ The table keys on the transaction-type COLUMN only, never on `Deskripsi`. One consequence:
+a sampled AMS commission deduction is typed `Penyesuaian`, so it lands in `marketplace_adjustment`,
+and **no Shopee row ever produces `external_ads_fee` or `affiliate_fee`**. See the clarify.
+
 ## Not implemented
 
-⚠ **`SettlementType()` PANICS** — on both items. It is a reserved signature with no body yet.
-
-```go
-func (s *ShopeeSettlementItem) SettlementType() (SettlementType, error) // panics
-func (s *TiktokSettlementItem) SettlementType() (SettlementType, error) // panics
-```
-
-The enum it returns is an empty heading in `settlement/context.md`, so there are no values to
-return. `context.md` maps three of Shopee's four transaction types and none of TikTok's.
-Classifying `Platform reimbursement` is a business decision, not a parsing one, so it waits.
-
-**Do not call it.** A panic crashes the calling process — that is the point, it is a placeholder,
-not a degraded mode. `TestSettlementTypeIsNotImplemented` pins that it panics deliberately, and is
-the test to rewrite rather than delete when the mapping lands.
-
-Also proposed but not decided, so not built: `Detect`/`Open` platform dispatch, `GetGaps` (balance
+The TikTok mapping table above is the one blocking gap. Also proposed but not decided, so not built: `Detect`/`Open` platform dispatch, `GetGaps` (balance
 chain breaks), `GetClaimedSummary`/`GetComputedSummary`, and recovering the Shopee order ref that
 hides in `Deskripsi`. See the clarify.
 

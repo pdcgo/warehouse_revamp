@@ -9,6 +9,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [jakarta-is-the-clock](#jakarta-is-the-clock) | Every Shopee timestamp is read at UTC+7, and that offset is part of the key |
 | [dash-is-not-a-reference](#dash-is-not-a-reference) | `No. Pesanan` of `"-"` becomes an empty `OrderRefID` |
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
+| [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 
 ---
@@ -161,3 +162,46 @@ flowchart LR
 | `Penarikan Dana` | `withdrawal` | 172 |
 | `Penyesuaian` | `marketplace_adjustment` | 60 |
 | `Program Ekspor Shopee FLEXI` | `marketplace_program` | 1 |
+
+## an-unmapped-type-is-an-error-on-both-platforms
+
+> Owner (2026-09-24): **"in tiktok make error unknown too"** — applying
+> [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone)'s refusal to the
+> TikTok side, which had been panicking.
+
+**The verdict.** `TiktokSettlementItem.SettlementType()` is the same lookup as Shopee's, against a
+table that is **empty**. Every row therefore returns `ErrNoSettlementTypeMapping` — not a panic, and
+not `other`.
+
+**What changed is the mechanism, not the outcome.** It returned an error before, then panicked as a
+deliberate placeholder, and now errors again — but for a different reason: it is no longer *unwritten*,
+it is *written against a table with no rows*. The difference matters, because the day `context.md`
+gains a TikTok table, the only edit is filling the map.
+
+```mermaid
+flowchart LR
+  T["Type, from the file"] --> L{"in the table?"}
+  L -->|"shopee, 4 of 4 mapped"| OK["a settlement_type"]
+  L -->|"tiktok, table is EMPTY"| E["ErrNoSettlementTypeMapping"]
+  L -->|"anything unrecognised"| E
+  E -.->|"never"| O["other"]
+```
+
+**Nothing in the package panics any more.** `SettlementType` was the only one.
+
+**The six TikTok values still waiting for a row each**, with what they look like — none of it decided:
+
+| `Type` | sampled | looks like |
+| --- | ---: | --- |
+| `Order` | 2707 | `fund` |
+| `GMV Payment for TikTok Ads` | 10 | `external_ads_fee` |
+| `Platform reimbursement` | 4 | `marketplace_adjustment` |
+| `Additional Campaign Package` | 4 | ⛔ ads fee or programme — genuinely unclear |
+| `Logistics reimbursement` | 3 | `marketplace_adjustment` |
+| `Shipping insurance compensation` | 1 | `marketplace_adjustment` |
+
+⚠ **TikTok's fee detail is not a transaction type.** Unlike Shopee, TikTok puts affiliate and ads
+charges in *columns* on the order row (`Affiliate Commission`, `Affiliate Shop Ads commission`,
+`GMV Max ad fee`, …), not in separate rows. So a per-row `settlement_type` cannot express them at
+all — whether those columns become their own settlement log entries is a **separate** question from
+this table, and a bigger one.
