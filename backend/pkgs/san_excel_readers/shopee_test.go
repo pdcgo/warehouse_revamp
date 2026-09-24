@@ -301,6 +301,7 @@ func TestShopeeSettlementType(t *testing.T) {
 		{san_excel_readers.ShopeeWithdrawal, "withdrawal"},
 		{san_excel_readers.ShopeeOrderIncome, "fund"},
 		{san_excel_readers.ShopeeAdjustment, "marketplace_adjustment"},
+		{san_excel_readers.ShopeeFlexiExport, "marketplace_program"},
 	}
 
 	for _, tc := range cases {
@@ -340,11 +341,11 @@ func TestShopeeSettlementTypeIgnoresTheSign(t *testing.T) {
 }
 
 // An unmapped type is an error, never "other" — bucketing a new platform behaviour into "other"
-// is how it gets imported silently for months. FLEXI is a real sampled row that hits this.
+// is how it gets imported silently for months.
 func TestShopeeSettlementTypeRefusesAnUnmappedType(t *testing.T) {
 	for _, transaction := range []san_excel_readers.ShopeeSettlementType{
-		san_excel_readers.ShopeeFlexiExport,
 		"Something Shopee Invents Next Quarter",
+		"",
 	} {
 		item := san_excel_readers.ShopeeSettlementItem{Type: transaction}
 
@@ -355,8 +356,8 @@ func TestShopeeSettlementTypeRefusesAnUnmappedType(t *testing.T) {
 	}
 }
 
-// Every transaction type in every sample either maps or is the one known gap, so this fails the
-// day a real export carries something the table has never seen.
+// Every transaction type in every sample maps — there is no gap left. This fails the day a real
+// export carries something the table has never seen.
 func TestShopeeSettlementTypeCoversTheSamples(t *testing.T) {
 	unmapped := map[san_excel_readers.ShopeeSettlementType]int{}
 
@@ -376,7 +377,6 @@ func TestShopeeSettlementTypeCoversTheSamples(t *testing.T) {
 		}
 	}
 
-	delete(unmapped, san_excel_readers.ShopeeFlexiExport) // the known, reported gap
 	if len(unmapped) != 0 {
 		t.Fatalf("transaction types with no mapping: %v", unmapped)
 	}

@@ -9,6 +9,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [jakarta-is-the-clock](#jakarta-is-the-clock) | Every Shopee timestamp is read at UTC+7, and that offset is part of the key |
 | [dash-is-not-a-reference](#dash-is-not-a-reference) | `No. Pesanan` of `"-"` becomes an empty `OrderRefID` |
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
+| [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 
 ---
 
@@ -101,7 +102,7 @@ flowchart LR
 | `Penghasilan dari Pesanan` | `fund` | 3555 |
 | `Penarikan Dana` | `withdrawal` | 172 |
 | `Penyesuaian` | `marketplace_adjustment` | 60 |
-| `Program Ekspor Shopee FLEXI` | ⛔ **errors** | 1 |
+| `Program Ekspor Shopee FLEXI` | ⛔ errored — superseded by [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | 1 |
 
 **Why an error and not `other`.** `other` is a real settlement type, so returning it for something
 unrecognised makes a new platform behaviour indistinguishable from a deliberate classification —
@@ -118,3 +119,45 @@ is a closed vocabulary the platform controls; `Deskripsi` is UI copy that change
 The cost is recorded as an open question — one sampled row is an AMS commission deduction typed
 `Penyesuaian`, so it lands in `marketplace_adjustment`, and **no Shopee row ever produces
 `external_ads_fee` or `affiliate_fee`.**
+
+## flexi-is-a-marketplace-program
+
+> Owner (2026-09-24): **"for `Program Ekspor Shopee FLEXI` its `marketplace_program`"** — against
+> my recommendation of `fund`.
+
+**The verdict.** `Program Ekspor Shopee FLEXI` maps to **`marketplace_program`**, a settlement type
+of its own, not to `fund`.
+
+⚠ **`marketplace_program` is a TENTH value.**
+[what is `settlement_type`](../../../business/settlement/context.md#what-is-settlement_type) lists
+nine and not this one. The constant exists in
+[settlement_type.go](../../../../backend/pkgs/san_excel_readers/settlement_type.go) and is marked as
+ahead of the doc — **the doc is yours to update** (HARD RULE 7b).
+
+**Why it is better than my `fund`.** I argued from the row: `Penghasilan untuk Pesanan Toko Ekspor
+Shopee FLEXI`, `Transaksi Masuk`, `+149626`, carrying an order ref — so, order income. That reads
+the row and misses the ledger. Programme income and ordinary sale income arrive on different terms
+and are worth separating *at the type*, because a type is what a report groups by. Folding it into
+`fund` would have made the FLEXI scheme invisible the moment it grew past one row.
+
+It also generalises: Shopee runs several such schemes, and a second one now has a home rather than
+forcing this argument again.
+
+```mermaid
+flowchart LR
+  R["Penghasilan untuk Pesanan Toko Ekspor Shopee FLEXI, plus 149626, has an order ref"] --> Q{"which type?"}
+  Q -->|"my read, from the ROW"| F["fund, it is order income"]
+  Q -->|"owner, from the LEDGER"| P["marketplace_program, it is a scheme"]
+  P --> W["a scheme stays visible as it grows"]
+  F --> X["folded in, invisible past one row"]
+```
+
+**The result: every transaction type in every sample now maps** — there is no remaining gap, and
+`TestShopeeSettlementTypeCoversTheSamples` asserts it with no exclusions.
+
+| `Tipe Transaksi` | `SettlementType` | sampled |
+| --- | --- | ---: |
+| `Penghasilan dari Pesanan` | `fund` | 3555 |
+| `Penarikan Dana` | `withdrawal` | 172 |
+| `Penyesuaian` | `marketplace_adjustment` | 60 |
+| `Program Ekspor Shopee FLEXI` | `marketplace_program` | 1 |

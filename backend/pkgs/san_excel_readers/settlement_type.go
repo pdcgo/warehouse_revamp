@@ -26,6 +26,13 @@ const (
 
 	// SettlementMarketplaceAdjustment is a correction the PLATFORM made.
 	SettlementMarketplaceAdjustment SettlementType = "marketplace_adjustment"
+	// SettlementMarketplaceProgram is earnings that reach the wallet through a named platform
+	// PROGRAMME rather than an ordinary sale — Shopee's FLEXI export scheme is the sampled case.
+	//
+	// ⚠ Owner-decided (2026-09-24) and NOT YET in
+	// docs/business/settlement/context.md#what-is-settlement_type, which lists nine values and
+	// not this one. The doc is the owner's to update; this constant is ahead of it.
+	SettlementMarketplaceProgram SettlementType = "marketplace_program"
 	// SettlementSystemAdjustment is a correction WE made, to repair our own report.
 	SettlementSystemAdjustment SettlementType = "system_adjustment"
 

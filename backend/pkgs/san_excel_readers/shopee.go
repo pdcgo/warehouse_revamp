@@ -95,10 +95,14 @@ func (s *ShopeeSettlementItem) GenerateUniqueID() (string, error) {
 // One consequence is recorded in the clarify — a single sampled row is an AMS commission
 // deduction typed "Penyesuaian", so it lands in marketplace_adjustment rather than
 // external_ads_fee, and no Shopee row ever produces external_ads_fee or affiliate_fee.
+//
+// Every transaction type in every sample is mapped. TestShopeeSettlementTypeCoversTheSamples
+// fails the day a real export carries one that is not.
 var shopeeSettlementTypes = map[ShopeeSettlementType]SettlementType{
 	ShopeeWithdrawal:  SettlementWithdrawal,            // 172 rows sampled
 	ShopeeOrderIncome: SettlementFund,                  // 3555
 	ShopeeAdjustment:  SettlementMarketplaceAdjustment, // 60
+	ShopeeFlexiExport: SettlementMarketplaceProgram,    // 1
 }
 
 // SettlementType classifies the row for settlement_service.
@@ -109,8 +113,9 @@ var shopeeSettlementTypes = map[ShopeeSettlementType]SettlementType{
 // The same holds for the 34 sampled "Penghasilan dari Pesanan" rows that are negative.
 //
 // An unmapped type is an ERROR, never SettlementOther. Bucketing something the platform has just
-// started doing into "other" is how a new behaviour gets imported silently for months.
-// "Program Ekspor Shopee FLEXI" is unmapped today and is exactly that case.
+// started doing into "other" is how a new behaviour gets imported silently for months — the error
+// surfaces it on the first file that carries it. Every type in every sample is mapped today, so
+// this path only fires on something genuinely new.
 func (s *ShopeeSettlementItem) SettlementType() (SettlementType, error) {
 	mapped, found := shopeeSettlementTypes[s.Type]
 	if !found {
