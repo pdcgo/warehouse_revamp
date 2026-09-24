@@ -50,11 +50,11 @@ TikTok row is an order decomposed into fees, and the money moving is on a *diffe
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **TikTok's column set is not fixed — 3 layouts in 13 files.** 61 cols (`niko_lape`), 63 (`salah_tarik`, `shipping_issurance`), 64 (`gmv_mlongo`, `isna_negative`). Columns *appear* — `GMV Max ad fee`, `Article 22 Income Tax withheld`, `Platform special service fee`, `Distance item fee from Horizon+ Program` — **and disappear**: `Flat fee` and `Sales fee` are in the 61- and 63-col files and gone from the 64-col one. A positional or fixed-struct mapping is broken on arrival. | Map by **header text**, never by index. And **carry unknown columns** into an `Extra` map rather than dropping them — silently dropping a new fee column is how `Total Fees` stops reconciling with nobody noticing. |
+| **1** | ✅ **Handled** (see [What I built](#what-i-built-for-tiktok)) — but the finding stands for the contract. **TikTok's column set is not fixed — 3 layouts in 13 files.** 61 cols (`niko_lape`), 63 (`salah_tarik`, `shipping_issurance`), 64 (`gmv_mlongo`, `isna_negative`). Columns *appear* — `GMV Max ad fee`, `Article 22 Income Tax withheld`, `Platform special service fee`, `Distance item fee from Horizon+ Program` — **and disappear**: `Flat fee` and `Sales fee` are in the 61- and 63-col files and gone from the 64-col one. A positional or fixed-struct mapping is broken on arrival. | Map by **header text**, never by index. And **carry unknown columns** into an `Extra` map rather than dropping them — silently dropping a new fee column is how `Total Fees` stops reconciling with nobody noticing. |
 | **2** | **Amounts are not always numbers.** 6 of 13 TikTok files — `gmv_mlongo`, `gmv_payment`, `isna_negative`, `overlapping_earning`, `pay_deduction`, `shipping_issurance` — store **every cell as a shared string**, with zero numeric cells in the sheet. And `awan_beban_return.xlsx` stores `"8400769.00"` as text while `awan_beban_return_simple.xlsx`, the same report re-saved through another spreadsheet tool, stores `-18923082` as `t="n"`. Both forms will arrive, from the same seller. | **Normalise to a number on the way in** — the cell's storage type is an accident of who last opened the file, and `GenerateUniqueID` is only stable because the value is parsed, never because it is passed through. ✅ **Built** — `parseAmount` reads the raw stored text and parses it, and `TestShopeeUniqueIDSurvivesAReSave` is the regression test. ⚠ **I had the second half of this wrong**: I recommended `int64` minor units, which contradicts a settled decision — see [Contradiction](#contradiction). `float64` is correct here. |
 | **3** | **`Order/adjustment ID` is 18 digits — it must never touch a float.** `581595973617353910` is about 5.8e17, well past float64's exact-integer range of 9.0e15. Anything that round-trips it through a number corrupts the last digits, and the corruption looks like a platform mismatch rather than a parser bug. | The ID is a **`string`** in the returned type, start to finish. Same for Shopee's `No. Pesanan`. |
 | **4** | **Rows are padded with blanks inside the used range.** `niko_lape.xlsx` has 219 `<row>` elements and **43** with data. `husen_campaign` 219 to 36. `salah_tarik` 220 to 59. A reader that trusts the sheet dimension emits about 180 empty records per file. | Stop at the first row whose key column is empty, or skip and count. Either way **report the number of skipped rows** — a silently-dropped row and a blank padding row are indistinguishable otherwise. |
-| **5** | ✅ **SOLVED FOR SHOPEE by your `GenerateUniqueID`** — I tested it, it holds (#15). What remains is the **TikTok** half: `overlapping_earning.xlsx` carries order `581000262229460562` twice — `+104444` settled 11/06, then `−131698` settled 11/08 — and `pivan_fund_invalid.xlsx` does the same, so the `Order/adjustment ID` alone is not a key there either. | TikTok's contract needs the same treatment as Shopee's: a `GenerateUniqueID` over a field set that includes something separating the two settlements of one order. `Order settled time` does it in both samples. [Q3](#question) is now only about TikTok. |
+| **5** | ✅ **SOLVED FOR SHOPEE by your `GenerateUniqueID`** — I tested it, it holds (#15). What remains is the **TikTok** half: `overlapping_earning.xlsx` carries order `581000262229460562` twice — `+104444` settled 11/06, then `−131698` settled 11/08 — and `pivan_fund_invalid.xlsx` does the same, so the `Order/adjustment ID` alone is not a key there either. | TikTok's contract needs the same treatment as Shopee's: a `GenerateUniqueID` over a field set that includes something separating the two settlements of one order. `Order settled time` does it in both samples. ✅ **Built and tested** — `ID + settled time + amount` is unique in all 13 samples and stable across the 43 cross-export orders. [Q3](#question) is now a confirmation, not a design question. |
 | **6** | **Shopee hides the order reference in free text.** On `Penyesuaian` rows `No. Pesanan` is literally `-`, while `Deskripsi` reads `Penyesuaian Saldo Penjual untuk biaya premi Pesanan yang Gagal Terkirim: 2512126PQE3802` — the order ref is inside the sentence. 60 such rows in the samples. Without it, those adjustments cannot be attached to an order and all 60 land on `shop_id` instead. | Extract it, but **as a separate, visibly fallible field** — `OrderRef` plus a `FromDescription bool`. Never overwrite `No. Pesanan` with a guess. A regex over a platform's UI copy *will* break, and the caller has to be able to see that it was a guess. |
 | **7** | **`NewShopeeSettlementDocument(r)` makes the caller already know the platform.** A person uploading a file knows the shop, not the workbook layout — and the layouts are trivially distinguishable by sheet count and by `A18` vs `A1`. Leaving detection to every caller means every caller writes it differently. | Add `Detect` and an `Open` that dispatches. Keep the per-platform constructors — they stay useful when the platform is already known. |
 | **8** | **`io.Reader` cannot be read twice, and xlsx needs random access.** A zip is read from its trailing central directory, so any reader buffers the whole file first. 830 rows by 63 cols is nothing, but the signature *is* the API and it fixes the memory behaviour for a file ten times that size. | Take **`io.ReaderAt` plus size**, which is what `zip.NewReader` actually wants, and return rows as an **iterator** (`iter.Seq2`, Go 1.25) rather than a slice. `NewX(io.Reader)` can stay as a convenience that buffers, clearly labelled. |
@@ -88,7 +88,8 @@ load-bearing, not a style choice, and it is worth a sentence in `context.md` say
 | **19** | **`GetItems([]*ShopeeSettlementItem, error)` does not compile** — it is missing its parameter list. ✅ Built as the corrected form. | `GetItems() ([]*ShopeeSettlementItem, error)`. Reporting rather than editing (HARD RULE 7b). |
 | **21** | ⛔ **`SettlementType()` cannot be written today — the enum it returns is EMPTY.** The new contract says *"what inside `SettlementType` its reference to [this](../../../business/settlement/context.md#what-is-settlement_type)"*, and that section in `settlement/context.md` is **a bare heading with no list** as of this edit — the eight values it used to carry were deleted in the same session. Per RULE 8b.11 an empty heading means *not designed yet*, so the reader has nothing to map onto. | **Refill `what is settlement_type` first**, then this is a half-hour of work. ⚠ Note the mapping table introduces **`withdrawal`**, which was *not* among the eight values that were there before — so this is a redesign of the enum, not a pointer to an existing one. |
 | **22** | ⛔ **The mapping table has no row for `Program Ekspor Shopee FLEXI`.** It maps three of the four measured `Tipe Transaksi` values. The fourth is real — 1 row in 3788, `shopee_malaysia.xlsx`, a cross-border FLEXI order — so `SettlementType()` returns an error for a file that is otherwise perfectly valid, and that file is one of your own samples. | Add the row. **→ Recommend `other`**, which the old enum had, rather than a new type — it is a genuine marketplace earning whose only peculiarity is the programme it came through. Until then, the built reader returns the raw `Tipe Transaksi` and classifies nothing. |
-| **23** | ⛔ **`TiktokSettlementItem` is written with Shopee's columns, and none of them exist in a TikTok workbook.** It names `"Tanggal Transaksi"`, `"Tipe Transaksi"`, `"Deskripsi"`, `"No. Pesanan"`, `"Jumlah"` and `"Saldo Akhir"`. A TikTok `Order details` sheet has `Order/adjustment ID`, `Type`, `Order created time`, `Order settled time`, `Total settlement amount` and **61–64 fee columns** — and **no running balance anywhere in the file**, on either sheet. `LastBalance` has nothing to read from. | It cannot be Shopee's struct renamed. The two platforms are different grains (see the top of this file). **→ Recommend TikTok's item be built from its own columns**, with the fee columns in a map so the 61/63/64-column drift (#1) does not break it, and the key over `ID + Order settled time + Total settlement amount` (#5). |
+| **23** | ⛔ **`TiktokSettlementItem` is written with Shopee's columns, and none of them exist in a TikTok workbook** — `"Tanggal Transaksi"`, `"Tipe Transaksi"`, `"Deskripsi"`, `"No. Pesanan"`, `"Jumlah"`, `"Saldo Akhir"`. TikTok's `Order details` has `Order/adjustment ID`, `Type`, `Order created time`, `Order settled time`, `Total settlement amount` and 61–64 fee columns — and **no running balance anywhere in the file**, so `LastBalance` has nothing to read. ⚠ **You said build it anyway, so I built the nearest thing that can exist** — see [What I built for TikTok](#what-i-built-for-tiktok) below. **That is a deviation from your doc and it is yours to accept or reject.** | The item must come from TikTok's own columns. It cannot be Shopee's struct renamed — they are different grains (see the top of this file). |
+| **24** | ⛔ **`Shopping center items` is the one column that is NOT stable across exports, and it would have silently doubled every re-import.** Comparing the 43 orders that appear in more than one sample export — 77 pairs — **exactly one column ever differs**: the SKU list, whose entries come back in a different ORDER (`…958086 * 1; …061062 * 1;` vs the reverse). Same items, same counts, different string. Under [hash-the-whole-struct](context_decision.md#hash-the-whole-struct) that is enough to give one order two keys. | Keep it off the item — done. It is readable through `GetDetails`. ⚠ **This is the argument for the whole design**: had the fee breakdown gone on the item, the 7 drifting fee columns would have done the same thing, 7 times over. |
 | **20** | **`ShopeeSettlementType` is declared with no values**, which leaves [Q1](#question) open in the code rather than settling it. A named string type is a good middle ground — it documents intent without making an unseen value a parse failure. | Declare the four measured constants (`Penghasilan dari Pesanan`, `Penarikan Dana`, `Penyesuaian`, `Program Ekspor Shopee FLEXI`) and a `Known()` helper, keeping unknown values *parseable*. The fourth appears once in 3788 rows, so the list is demonstrably not closed. |
 
 ✅ **Shopee's layout is genuinely stable** — header at row 18, the same 8 columns, in all 12 files
@@ -104,6 +105,43 @@ encoded by *which column the label sits in* (B is level 0, E is level 3), and it
 `Total settlement amount` equals the sum of that column in `Order details`. Parsing it costs almost
 nothing and turns "did we read the file correctly" into an assertion instead of a hope.
 **→ Recommend the document expose it.**
+
+---
+
+# What I built for TikTok
+
+⚠ **This is a DEVIATION from `### Tiktok Contract`, built because the struct as written cannot read
+a TikTok file (#23).** It is a proposal in code, not a decision — say the word and it changes.
+
+**The rule I followed:** under [hash-the-whole-struct](context_decision.md#hash-the-whole-struct) the
+item is its own key, so **only columns that are identical across two exports of the same order may be
+on it.** I measured that rather than assumed it — 43 orders appear in more than one sample export, 77
+pairs compared, and exactly one column differs (#24).
+
+```mermaid
+flowchart TB
+  F["Order details, 61 to 64 columns"] --> S{"stable across exports?"}
+  S -->|"yes, 10 columns"| I["TiktokSettlementItem, hashed, IS the key"]
+  S -->|"no, 7 fee columns drift"| D["GetDetails, every column by header text, NOT hashed"]
+  S -->|"no, SKU list reorders"| D
+  W["Withdrawal records"] --> WI["TiktokWithdrawalItem, where money actually moves"]
+  R["Reports sheet"] --> M["GetPeriod, GetTimezone, GetCurrency"]
+```
+
+| | |
+| --- | --- |
+| `TiktokSettlementItem` | `At` (settled), `CreatedAt`, `TransactionType`, `OrderRefID`, `RelatedOrderRefID`, `Currency`, `Amount`, `Revenue`, `TotalFees`, `Source` — all measured stable |
+| `GetDetails()` | every column of every row, by header text, keyed by unique id — the fee breakdown lives here so drift cannot touch a key |
+| `GetWithdrawals()` | the third sheet. **Not in your doc** — but `Order details` is what an order was *worth*, and this is where money *moves*, so a settlement reader without it is blind to withdrawals |
+| `GetDriftingColumns()` | which of the 7 unstable fee columns this export happens to carry |
+| `GetTimezone()` | TikTok **states** `UTC+7` on its Reports sheet, so it is read, not assumed — the one place TikTok is better specified than Shopee |
+
+**What I deliberately did not carry:** `Shopping center items` (unstable, #24) and `Bank account` from
+the withdrawal sheet (masked PII, and it would enter the hash).
+
+**Nine tests, green over all 13 samples** — including that one order settling twice keeps two distinct
+keys, that the same order in two exports keeps *one* key, and that `Flat fee` being **absent** from the
+64-column layout is expected rather than a parse failure.
 
 ---
 
@@ -223,13 +261,12 @@ backend/pkgs/san_excel_readers/
    and `tiktok` as a platform. If Tokopedia also exports its *own* settlement workbook, that is a third
    reader this doc does not scope. **→ I think it is only a column here and a Tokopedia-native export is
    a separate question** — confirm.
-3. **What is `unique_id` for a TIKTOK row?** ✅ The Shopee half is **closed** by your
-   `GenerateUniqueID` — 0 collisions in 3788 rows, stable across a re-save (#15). TikTok has no
-   equivalent yet, and its `Order/adjustment ID` is **not** unique: `overlapping_earning.xlsx` and
-   `pivan_fund_invalid.xlsx` each settle one order twice. **→ Recommend the same md5 shape over
-   `ID + Order settled time + Total settlement amount`**, which separates both observed pairs. Worth
-   telling [settlement](../../../business/settlement/context_clarify.md) that its
-   `hash(date + order_ref_id)` best effort is superseded on both sides.
+3. **Confirm the TikTok key.** ✅ Built: md5 over the ten stable columns, which is unique in all 13
+   samples and — the property that matters — gives the SAME key when an order appears in two
+   overlapping exports (43 such orders, all stable). It separates the settle-then-reverse pair in
+   `overlapping_earning.xlsx` and `pivan_fund_invalid.xlsx`. **→ Worth telling
+   [settlement](../../../business/settlement/context_clarify.md) that its `hash(date + order_ref_id)`
+   best effort is superseded on both platforms.**
 4. **Are `wderror` and `x` real platform values, or hand-edited fixtures?** `salah_tarik.xlsx` has one
    row with `Type = "wderror"` and one with `Order Source = "x"`. Both look typed in. If they are
    deliberate corruption fixtures, say so — they should then assert an *error path* rather than be

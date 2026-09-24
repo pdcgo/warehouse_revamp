@@ -11,7 +11,9 @@ its [clarify](../../technical/packages/excel_readers/context_clarify.md) and
 | --- | --- |
 | [backend/pkgs/san_excel_readers/shopee.go](../../../backend/pkgs/san_excel_readers/shopee.go) | ✅ built — `NewShopeeSettlementDocument(io.Reader)`, `GetShopUsername`, `GetPeriod`, `GetItems`, `ShopeeSettlementItem.GenerateUniqueID` |
 | [backend/pkgs/san_excel_readers/shopee_test.go](../../../backend/pkgs/san_excel_readers/shopee_test.go) | ✅ 7 tests, green over all 12 sample workbooks |
-| TikTok | ⛔ **nothing** — `### Tiktok Contract` in the owner's doc is still `...` |
+| [backend/pkgs/san_excel_readers/tiktok.go](../../../backend/pkgs/san_excel_readers/tiktok.go) | ✅ built — `NewTiktokSettlementDocument`, `GetItems`, `GetWithdrawals`, `GetDetails`, `GetDriftingColumns`, `GetPeriod`/`GetTimezone`/`GetCurrency` |
+| [backend/pkgs/san_excel_readers/tiktok_test.go](../../../backend/pkgs/san_excel_readers/tiktok_test.go) | ✅ 9 tests, green over all 13 sample workbooks |
+| [backend/pkgs/san_excel_readers/settlement_type.go](../../../backend/pkgs/san_excel_readers/settlement_type.go) | ⚠ type only — the enum has no values yet |
 | dependency | `github.com/xuri/excelize/v2 v2.11.0`, added to the root `go.mod` |
 
 `go build ./... && go vet ./... && go test ./...` is green from the repo root.
@@ -54,8 +56,10 @@ All 25 workbooks were parsed cell by cell. The five findings that shaped the cod
 
 ## What is NOT built, and why
 
-- **TikTok** — blocked on the contract, not on effort. Because of finding 1 it cannot take the same
-  fixed-struct shape Shopee did.
+- **`SettlementType()`** — the method exists on the TikTok item and always returns
+  `ErrNoSettlementTypeMapping`. `context.md` has a mapping table for Shopee and none for TikTok, and
+  the enum it maps onto is an empty heading in `settlement/context.md`. Guessing that
+  `Platform reimbursement` is a `marketplace_adjustment` is a business decision, so it was left.
 - **`GetGaps`, `GetClaimedSummary`, `GetComputedSummary`, `GetRecoveredOrderRefs`** — proposed in the
   clarify, never decided, so not written (HARD RULE 8).
 - **Platform detection (`Detect`/`Open`)** — proposed, not decided. `NewShopeeSettlementDocument`
@@ -70,3 +74,26 @@ deliberately, pending the owner's call to scrub or ignore (critique #10 in the c
 **Consequence:** the tests **skip** without it, the same way `san_testdb` skips with no database. They
 pass locally where the samples exist and skip in CI until that is settled — so a green CI is not
 evidence this package works.
+
+## ⚠ The TikTok item deviates from the owner's contract
+
+`### Tiktok Contract` in `context.md` describes a struct with **Shopee's** column names —
+`Tanggal Transaksi`, `No. Pesanan`, `Jumlah`, `Saldo Akhir`. None exists in a TikTok workbook, and
+TikTok has **no running balance on any sheet**, so it cannot be read as written. The owner was told
+this, said build it anyway, and what was built is the nearest implementable thing:
+
+**The rule that fixed the field set** — under
+[hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct)
+the item *is* its own key, so only columns that are **identical across two exports of the same order**
+may be on it. That was measured, not assumed: 43 orders appear in more than one sample export, 77
+pairs compared, and exactly **one** column ever differs — `Shopping center items`, whose SKU list comes
+back reordered. It is excluded, along with the 7 drifting fee columns.
+
+Everything unstable is reachable through `GetDetails()` (every column, by header text, keyed by unique
+id), which is not hashed. `GetWithdrawals()` is also an addition — the owner's doc does not mention the
+third sheet, but `Order details` is what an order was *worth* while `Withdrawal records` is where money
+*moves*, so a settlement reader without it cannot see withdrawals at all.
+
+**This is a proposal in code and is the owner's to reject** — it is recorded as #23/#24 and
+*What I built for TikTok* in
+[context_clarify.md](../../technical/packages/excel_readers/context_clarify.md).
