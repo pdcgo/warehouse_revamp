@@ -36,6 +36,12 @@ const (
 	//
 	// ⚠ Owner-decided (2026-09-24), the TWELFTH value and also not yet in the owner's enum.
 	SettlementPlatformReimbursement SettlementType = "platform_reimbursement"
+	// SettlementShipmentAdjustment is a correction that belongs to the SHIPMENT rather than to
+	// the order or the platform relationship — insurance compensation for a lost parcel is the
+	// sampled case.
+	//
+	// ⚠ Owner-decided (2026-09-24), the THIRTEENTH value and also not yet in the owner's enum.
+	SettlementShipmentAdjustment SettlementType = "shipment_adjustment"
 
 	// SettlementMarketplaceAdjustment is a correction the PLATFORM made.
 	SettlementMarketplaceAdjustment SettlementType = "marketplace_adjustment"

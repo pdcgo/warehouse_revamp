@@ -502,6 +502,7 @@ func TestTiktokSettlementType(t *testing.T) {
 		"Marketing benefits package fee":            "marketplace_adjustment",
 		"Additional marketing benefits package fee": "marketplace_adjustment",
 		"Platform commission adjustment":            "marketplace_adjustment",
+		"Shipping insurance compensation":           "shipment_adjustment",
 	}
 
 	for transaction, want := range mapped {
@@ -518,7 +519,6 @@ func TestTiktokSettlementType(t *testing.T) {
 
 	for _, transaction := range []string{
 		"Additional Campaign Package",
-		"Shipping insurance compensation",
 		"Something TikTok Invents Next Quarter",
 	} {
 		item := san_excel_readers.TiktokSettlementItem{TransactionType: transaction}
@@ -539,9 +539,8 @@ func TestTiktokSettlementType(t *testing.T) {
 func TestTiktokSampleTransactionTypesAreAccountedFor(t *testing.T) {
 	// Deliberately unmapped — each awaiting an owner decision, not an oversight.
 	parked := map[string]string{
-		"Additional Campaign Package":     "ads fee or programme, genuinely unclear",
-		"Shipping insurance compensation": "undecided",
-		"wderror":                         "almost certainly a hand-edited fixture in salah_tarik.xlsx",
+		"Additional Campaign Package": "ads fee or programme, genuinely unclear",
+		"wderror":                     "almost certainly a hand-edited fixture in salah_tarik.xlsx",
 	}
 
 	unaccounted := map[string]int{}

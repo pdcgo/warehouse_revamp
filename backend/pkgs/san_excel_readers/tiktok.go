@@ -162,10 +162,10 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 //	Additional Campaign Package        4               ⛔ ads fee or programme, genuinely unclear
 //	Logistics reimbursement            3  ✅ mapped
 //	Other adjustment                   1  ✅ mapped
-//	Shipping insurance compensation    1               looks like marketplace_adjustment
+//	Shipping insurance compensation    1  ✅ mapped
 //	wderror                            1               ⛔ probably a hand-edited fixture, not real
 //
-// ⚠ The samples UNDERSTATE the vocabulary, badly. THREE of the eight mapped types came from real
+// ⚠ The samples UNDERSTATE the vocabulary, badly. THREE of the nine mapped types came from real
 // imports and appear in no sample at all — both "…marketing benefits package fee" and "Platform
 // commission adjustment" — and a fourth turned up only as a respelling. The samples show 8 types;
 // real data has shown 11 and counting. This list is what has been SEEN, never what exists, so a
@@ -179,6 +179,7 @@ var tiktokSettlementTypes = map[string]SettlementType{
 	"Logistics reimbursement":                   SettlementLogisticReimbursement, // 3
 	"Platform reimbursement":                    SettlementPlatformReimbursement, // 4
 	"GMV Payment for TikTok Ads":                SettlementExternalAdsFee,        // 10, also seen as "GMV payment…"
+	"Shipping insurance compensation":           SettlementShipmentAdjustment,    // 1
 	"Other adjustment":                          SettlementMarketplaceAdjustment, // 1, cannot_open.xlsx
 	"Marketing benefits package fee":            SettlementMarketplaceAdjustment, // real data, in no sample
 	"Additional marketing benefits package fee": SettlementMarketplaceAdjustment, // real data, in no sample
