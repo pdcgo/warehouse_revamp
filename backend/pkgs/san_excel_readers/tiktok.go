@@ -177,6 +177,7 @@ var tiktokSettlementTypes = map[string]SettlementType{
 	"Order":                                     SettlementFund,                  // 2710 rows, 53 of them settling ZERO
 	"Logistics reimbursement":                   SettlementLogisticReimbursement, // 3
 	"Platform reimbursement":                    SettlementPlatformReimbursement, // 4
+	"GMV Payment for TikTok Ads":                SettlementExternalAdsFee,        // 10, also seen as "GMV payment…"
 	"Other adjustment":                          SettlementMarketplaceAdjustment, // 1, cannot_open.xlsx
 	"Marketing benefits package fee":            SettlementMarketplaceAdjustment, // real data, in no sample
 	"Additional marketing benefits package fee": SettlementMarketplaceAdjustment, // real data, in no sample

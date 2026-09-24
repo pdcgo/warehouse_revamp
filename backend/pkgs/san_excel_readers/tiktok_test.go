@@ -495,6 +495,8 @@ func TestTiktokSettlementType(t *testing.T) {
 		"Order":                                     "fund",
 		"Logistics reimbursement":                   "logistic_reimbursement",
 		"Platform reimbursement":                    "platform_reimbursement",
+		"GMV Payment for TikTok Ads":                "external_ads_fee",
+		"GMV payment for TikTok Ads":                "external_ads_fee", // TikTok respelled it
 		"Other adjustment":                          "marketplace_adjustment",
 		"Marketing benefits package fee":            "marketplace_adjustment",
 		"Additional marketing benefits package fee": "marketplace_adjustment",
@@ -526,18 +528,21 @@ func TestTiktokSettlementType(t *testing.T) {
 	}
 }
 
-// Every transaction type the samples actually contain, so a new export carrying one this package
-// has never seen shows up here rather than in production. Mapping them is the owner's call — this
-// only asserts the SET is known.
-func TestTiktokSampleTransactionTypesAreAllKnown(t *testing.T) {
-	known := map[string]bool{
-		"Order": true, "GMV Payment for TikTok Ads": true, "Platform reimbursement": true,
-		"Additional Campaign Package": true, "Logistics reimbursement": true,
-		"Other adjustment": true, "Shipping insurance compensation": true,
-		"wderror": true, // ⛔ probably a hand-edited fixture — see Q4 in the clarify
+// Every transaction type in the samples must EITHER map or be listed here as knowingly unmapped.
+//
+// ⚠ The "or" is the point. An earlier version only asserted the set was recognised, which let a
+// type sit in neither bucket: "GMV Payment for TikTok Ads" was decided, the edit adding it to the
+// table silently did not apply, and this test still passed because the type was on its
+// known-but-unmapped list. A type that is neither mapped nor deliberately parked now fails here.
+func TestTiktokSampleTransactionTypesAreAccountedFor(t *testing.T) {
+	// Deliberately unmapped — each awaiting an owner decision, not an oversight.
+	parked := map[string]string{
+		"Additional Campaign Package":     "ads fee or programme, genuinely unclear",
+		"Shipping insurance compensation": "undecided",
+		"wderror":                         "almost certainly a hand-edited fixture in salah_tarik.xlsx",
 	}
 
-	unexpected := map[string]int{}
+	unaccounted := map[string]int{}
 	for _, name := range tiktokSampleNames(t) {
 		doc := openTiktokSample(t, name)
 
@@ -547,14 +552,30 @@ func TestTiktokSampleTransactionTypesAreAllKnown(t *testing.T) {
 		}
 
 		for _, item := range items {
-			if !known[item.TransactionType] {
-				unexpected[item.TransactionType]++
+			_, err := item.SettlementType()
+			if err == nil {
+				continue // mapped
+			}
+
+			_, expected := parked[item.TransactionType]
+			if !expected {
+				unaccounted[item.TransactionType]++
 			}
 		}
 	}
 
-	if len(unexpected) != 0 {
-		t.Fatalf("transaction types this package has never seen: %v", unexpected)
+	if len(unaccounted) != 0 {
+		t.Fatalf("transaction types that are neither mapped nor knowingly parked: %v", unaccounted)
+	}
+
+	// And a parked type that has since been mapped should leave the list rather than linger.
+	for transaction, why := range parked {
+		item := san_excel_readers.TiktokSettlementItem{TransactionType: transaction}
+
+		_, err := item.SettlementType()
+		if err == nil {
+			t.Errorf("%q is mapped now — drop it from parked (%s)", transaction, why)
+		}
 	}
 }
 
