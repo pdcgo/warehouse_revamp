@@ -291,3 +291,93 @@ func TestNewShopeeSettlementDocumentRejectsAnotherPlatform(t *testing.T) {
 		t.Fatalf("err = %v, want ErrNotShopeeReport", err)
 	}
 }
+
+// The mapping table from context.md, keyed on "Tipe Transaksi" alone.
+func TestShopeeSettlementType(t *testing.T) {
+	cases := []struct {
+		transaction san_excel_readers.ShopeeSettlementType
+		want        san_excel_readers.SettlementType
+	}{
+		{san_excel_readers.ShopeeWithdrawal, "withdrawal"},
+		{san_excel_readers.ShopeeOrderIncome, "fund"},
+		{san_excel_readers.ShopeeAdjustment, "marketplace_adjustment"},
+	}
+
+	for _, tc := range cases {
+		t.Run(string(tc.transaction), func(t *testing.T) {
+			item := san_excel_readers.ShopeeSettlementItem{Type: tc.transaction}
+
+			got, err := item.SettlementType()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("SettlementType() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The sign is not part of the classification. A FAILED withdrawal is refunded by a second
+// "Penarikan Dana" row with a POSITIVE amount, and both are withdrawal — the pair nets to zero
+// because the changes do, not because the types differ.
+func TestShopeeSettlementTypeIgnoresTheSign(t *testing.T) {
+	out := san_excel_readers.ShopeeSettlementItem{Type: san_excel_readers.ShopeeWithdrawal, Amount: -5899085}
+	back := san_excel_readers.ShopeeSettlementItem{Type: san_excel_readers.ShopeeWithdrawal, Amount: 5899085}
+
+	outType, err := out.SettlementType()
+	if err != nil {
+		t.Fatal(err)
+	}
+	backType, err := back.SettlementType()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if outType != backType {
+		t.Fatalf("a withdrawal and its refund classified differently: %q vs %q", outType, backType)
+	}
+}
+
+// An unmapped type is an error, never "other" — bucketing a new platform behaviour into "other"
+// is how it gets imported silently for months. FLEXI is a real sampled row that hits this.
+func TestShopeeSettlementTypeRefusesAnUnmappedType(t *testing.T) {
+	for _, transaction := range []san_excel_readers.ShopeeSettlementType{
+		san_excel_readers.ShopeeFlexiExport,
+		"Something Shopee Invents Next Quarter",
+	} {
+		item := san_excel_readers.ShopeeSettlementItem{Type: transaction}
+
+		_, err := item.SettlementType()
+		if !errors.Is(err, san_excel_readers.ErrNoSettlementTypeMapping) {
+			t.Errorf("%q: err = %v, want ErrNoSettlementTypeMapping", transaction, err)
+		}
+	}
+}
+
+// Every transaction type in every sample either maps or is the one known gap, so this fails the
+// day a real export carries something the table has never seen.
+func TestShopeeSettlementTypeCoversTheSamples(t *testing.T) {
+	unmapped := map[san_excel_readers.ShopeeSettlementType]int{}
+
+	for _, name := range shopeeSampleNames(t) {
+		doc := openShopeeSample(t, name)
+
+		items, err := doc.GetItems()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, item := range items {
+			_, err := item.SettlementType()
+			if err != nil {
+				unmapped[item.Type]++
+			}
+		}
+	}
+
+	delete(unmapped, san_excel_readers.ShopeeFlexiExport) // the known, reported gap
+	if len(unmapped) != 0 {
+		t.Fatalf("transaction types with no mapping: %v", unmapped)
+	}
+}

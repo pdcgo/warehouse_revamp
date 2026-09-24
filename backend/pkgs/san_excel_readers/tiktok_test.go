@@ -493,15 +493,9 @@ func contains(haystack []string, needle string) bool {
 // pins that it panics DELIBERATELY rather than through some later accident — and it is the test
 // that must be rewritten, not deleted, when the mapping lands.
 func TestSettlementTypeIsNotImplemented(t *testing.T) {
-	t.Run("tiktok", func(t *testing.T) {
-		item := san_excel_readers.TiktokSettlementItem{TransactionType: "Order"}
-		assertPanics(t, func() { _, _ = item.SettlementType() })
-	})
-
-	t.Run("shopee", func(t *testing.T) {
-		item := san_excel_readers.ShopeeSettlementItem{Type: san_excel_readers.ShopeeWithdrawal}
-		assertPanics(t, func() { _, _ = item.SettlementType() })
-	})
+	// TikTok has no mapping table in context.md at all — Shopee's is implemented.
+	item := san_excel_readers.TiktokSettlementItem{TransactionType: "Order"}
+	assertPanics(t, func() { _, _ = item.SettlementType() })
 }
 
 func assertPanics(t *testing.T, call func()) {

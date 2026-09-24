@@ -8,6 +8,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [hash-the-whole-struct](#hash-the-whole-struct) | `GenerateUniqueID` is md5 over `json.Marshal(s)` — so the item carries its six fields and nothing else |
 | [jakarta-is-the-clock](#jakarta-is-the-clock) | Every Shopee timestamp is read at UTC+7, and that offset is part of the key |
 | [dash-is-not-a-reference](#dash-is-not-a-reference) | `No. Pesanan` of `"-"` becomes an empty `OrderRefID` |
+| [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 
 ---
 
@@ -75,3 +76,45 @@ withdrawals, which genuinely have no order.
 the sentence (`… Gagal Terkirim: 251125PMAEX4JH`). Recovering it would be a seventh field, which
 [hash-the-whole-struct](#hash-the-whole-struct) forbids on the item. It stays open as a *document*-level
 question in the clarify.
+
+## shopee-maps-on-tipe-transaksi-alone
+
+> Owner (2026-09-24): **"if type `Penarikan Dana`, make it `withdrawal`"**, then
+> **"else return error unknown"** — confirming the mapping table in `context.md` and how a value
+> outside it behaves.
+
+**The verdict.** `ShopeeSettlementItem.SettlementType()` is a lookup on **`Tipe Transaksi` alone**,
+and a value not in the table is an **error**, never `other`.
+
+```mermaid
+flowchart LR
+  T["Tipe Transaksi"] --> M{"in the table?"}
+  M -->|"Penarikan Dana"| W["withdrawal"]
+  M -->|"Penghasilan dari Pesanan"| F["fund"]
+  M -->|"Penyesuaian"| A["marketplace_adjustment"]
+  M -->|"anything else"| E["ErrNoSettlementTypeMapping"]
+  S["the sign of Jumlah"] -.->|"never consulted"| M
+```
+
+| `Tipe Transaksi` | `SettlementType` | sampled |
+| --- | --- | ---: |
+| `Penghasilan dari Pesanan` | `fund` | 3555 |
+| `Penarikan Dana` | `withdrawal` | 172 |
+| `Penyesuaian` | `marketplace_adjustment` | 60 |
+| `Program Ekspor Shopee FLEXI` | ⛔ **errors** | 1 |
+
+**Why an error and not `other`.** `other` is a real settlement type, so returning it for something
+unrecognised makes a new platform behaviour indistinguishable from a deliberate classification —
+and it would import silently for months. An error surfaces it on the first file that carries it.
+
+**The sign is not part of the classification.** It rides on `change`. A withdrawal that FAILED is
+refunded by a second `Penarikan Dana` row with a **positive** amount, and both are `withdrawal`:
+the pair nets to zero because the changes do, not because the types differ. The 34 sampled
+negative `Penghasilan dari Pesanan` rows work the same way. `TestShopeeSettlementTypeIgnoresTheSign`
+pins it.
+
+**Keying on the column, not the description**, is the other half of the decision. `Tipe Transaksi`
+is a closed vocabulary the platform controls; `Deskripsi` is UI copy that changes without notice.
+The cost is recorded as an open question — one sampled row is an AMS commission deduction typed
+`Penyesuaian`, so it lands in `marketplace_adjustment`, and **no Shopee row ever produces
+`external_ads_fee` or `affiliate_fee`.**

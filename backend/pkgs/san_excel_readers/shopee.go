@@ -88,23 +88,36 @@ func (s *ShopeeSettlementItem) GenerateUniqueID() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// shopeeSettlementTypes is the mapping table from context.md.
+//
+// It keys on "Tipe Transaksi" ALONE. That is a deliberate limit: the column is a closed
+// vocabulary the platform controls, whereas "Deskripsi" is UI copy that changes without notice.
+// One consequence is recorded in the clarify — a single sampled row is an AMS commission
+// deduction typed "Penyesuaian", so it lands in marketplace_adjustment rather than
+// external_ads_fee, and no Shopee row ever produces external_ads_fee or affiliate_fee.
+var shopeeSettlementTypes = map[ShopeeSettlementType]SettlementType{
+	ShopeeWithdrawal:  SettlementWithdrawal,            // 172 rows sampled
+	ShopeeOrderIncome: SettlementFund,                  // 3555
+	ShopeeAdjustment:  SettlementMarketplaceAdjustment, // 60
+}
+
 // SettlementType classifies the row for settlement_service.
 //
-// ⚠ NOT IMPLEMENTED — it panics. context.md gives the mapping for three of the four measured
-// "Tipe Transaksi" values, but the enum it maps ONTO is an empty heading in
-// settlement/context.md, so the target type has no members to return yet.
+// ⚠ The SIGN is not part of the classification — it rides on the amount. A withdrawal that
+// FAILED is refunded by a second row, also "Penarikan Dana", with a positive amount, and both
+// are withdrawal: the pair nets to zero because the changes do, not because the types differ.
+// The same holds for the 34 sampled "Penghasilan dari Pesanan" rows that are negative.
 //
-// The mapping written down, and the gap in it:
-//
-//	Penarikan Dana              -> withdrawal                172 rows
-//	Penghasilan dari Pesanan    -> fund                     3555
-//	Penyesuaian                 -> marketplace_adjustment     60
-//	Program Ekspor Shopee FLEXI -> NOT IN THE TABLE            1   (shopee_malaysia.xlsx)
-//
-// ⚠ Note "withdrawal" is not one of the values settlement/context.md used to list, so this is
-// a redesign of that enum rather than a lookup into it.
+// An unmapped type is an ERROR, never SettlementOther. Bucketing something the platform has just
+// started doing into "other" is how a new behaviour gets imported silently for months.
+// "Program Ekspor Shopee FLEXI" is unmapped today and is exactly that case.
 func (s *ShopeeSettlementItem) SettlementType() (SettlementType, error) {
-	panic("san_excel_readers: SettlementType not implemented")
+	mapped, found := shopeeSettlementTypes[s.Type]
+	if !found {
+		return "", fmt.Errorf("%w: %q", ErrNoSettlementTypeMapping, s.Type)
+	}
+
+	return mapped, nil
 }
 
 // ShopeeSettlementDocument is one downloaded "Transaction Report".

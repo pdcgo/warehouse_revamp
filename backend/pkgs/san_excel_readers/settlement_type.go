@@ -4,15 +4,33 @@ import "errors"
 
 // SettlementType is the classification a settlement row is imported as.
 //
-// ⚠ The set of values is NOT defined yet. context.md points at
-// docs/business/settlement/context.md#what-is-settlement_type, and that section is currently an
-// empty heading — the eight values it used to list were removed. So there are no constants here
-// on purpose: naming them would be inventing the enum rather than reading it.
-//
-// What IS written down is the Shopee mapping table in context.md, which names three of them —
-// withdrawal, fund, marketplace_adjustment. A reader returns those verbatim and refuses to guess
-// at anything else.
+// The values are settlement_service's, read from
+// docs/business/settlement/context.md#what-is-settlement_type. They are listed here so a reader
+// cannot invent one; a value that section does not carry does not belong in this file.
 type SettlementType string
+
+const (
+	// SettlementInitialTotal is the estimated marketplace total, written when an order is
+	// created. No file produces it — order_service does.
+	SettlementInitialTotal SettlementType = "initial_total"
+	// SettlementInitialTotalCancel reverses it when the order is cancelled.
+	SettlementInitialTotalCancel SettlementType = "initial_total_cancel"
+
+	// SettlementFund is real revenue. Not net: the platform keeps charging afterwards.
+	SettlementFund SettlementType = "fund"
+	// SettlementWithdrawal is money leaving the marketplace wallet for a bank account.
+	SettlementWithdrawal SettlementType = "withdrawal"
+
+	SettlementExternalAdsFee SettlementType = "external_ads_fee"
+	SettlementAffiliateFee   SettlementType = "affiliate_fee"
+
+	// SettlementMarketplaceAdjustment is a correction the PLATFORM made.
+	SettlementMarketplaceAdjustment SettlementType = "marketplace_adjustment"
+	// SettlementSystemAdjustment is a correction WE made, to repair our own report.
+	SettlementSystemAdjustment SettlementType = "system_adjustment"
+
+	SettlementOther SettlementType = "other"
+)
 
 // ErrNoSettlementTypeMapping is for when a row's platform transaction type has no row in the
 // mapping table: a gap in the contract, not a broken file — the file is fine and the caller can

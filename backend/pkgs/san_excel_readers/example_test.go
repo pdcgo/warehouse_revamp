@@ -88,8 +88,8 @@ func ExampleNewTiktokSettlementDocument() {
 	}
 }
 
-// The fee breakdown is NOT on the item, because seven fee columns come and go between exports
-// and the item is its own idempotency key. It is reachable by that key instead.
+// The fee breakdown is NOT on the item, because fee columns come and go between exports and the
+// item is its own idempotency key. It is reachable by that key instead.
 func ExampleTiktokSettlementDocument_getDetails() {
 	file, err := os.Open("tiktok.xlsx")
 	if err != nil {
@@ -128,8 +128,8 @@ func ExampleTiktokSettlementDocument_getDetails() {
 		fmt.Printf("%s commission %s\n", item.OrderRefID, commission)
 	}
 
-	// A column this export carries that not every export does. Non-empty is a reconciliation
-	// warning, not an error.
+	// The fee columns this export carries that not every export does — a caller comparing fees
+	// across exports cannot assume the other one has them. Informational, never an error.
 	drifting, err := doc.GetDriftingColumns()
 	if err != nil {
 		log.Fatal(err)
