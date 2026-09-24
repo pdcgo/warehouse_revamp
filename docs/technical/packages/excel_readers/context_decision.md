@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold) | `Marketing benefits package fee` → `marketplace_adjustment`, which breaks the pattern I had just called a rule |
 | [reimbursements-get-their-own-types](#reimbursements-get-their-own-types) | `Platform reimbursement` → `platform_reimbursement` — the pattern is now 3 for 3, a SPECIFIC type over the generic bucket |
 | [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) | TikTok `Logistics reimbursement` → `logistic_reimbursement`, an ELEVENTH settlement type |
 | [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
@@ -338,8 +339,12 @@ adjustment has a related order" and the test caught it on the first run.
 **The verdict.** A twelfth settlement type. Not `marketplace_adjustment`, which is again what I had
 guessed.
 
-**The pattern is now 3 for 3, so treat it as the rule rather than a run of coincidences.** Each time
-a platform names a concept, it gets a settlement type of its own; the generic bucket is for things
+⚠ **I then inferred a rule from this and it did not hold — see
+[the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold).** What stands is the
+individual decision above, not the generalisation that followed it.
+
+**The pattern was 3 for 3 at this point**, which is what made me state it as a rule: each time a
+platform names a concept, it gets a settlement type of its own, and the generic bucket is for things
 the platform itself did not name.
 
 | decided | I guessed | owner chose |
@@ -356,6 +361,8 @@ flowchart LR
   G --> H["only ever a residue"]
 ```
 
+⚠ **The rule below was WRONG — see [the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold).**
+
 **Three types are left**, and under this rule the answers are probably:
 
 | `Type` | rows | probably |
@@ -370,3 +377,41 @@ flowchart LR
 `marketplace_program`, `logistic_reimbursement` and `platform_reimbursement`. The doc lists nine and
 the code needs twelve. **The doc is yours to update** (HARD RULE 7b), and it is the one place
 the list can be authoritative.
+
+## the-rule-i-inferred-does-not-hold
+
+> Owner (2026-09-24), from a real run — **`"Marketing benefits package fee"` … its
+> `marketplace_adjustment`**.
+
+**The verdict.** It maps to the generic bucket. No new settlement type.
+
+**And that breaks the rule I stated one decision earlier.** In
+[reimbursements-get-their-own-types](#reimbursements-get-their-own-types) I wrote that a concept the
+platform *names* gets a type of its own, and that the generic bucket is for what the platform did
+not name. `Marketing benefits package fee` is as named as anything TikTok exports, and it goes in
+the bucket.
+
+```mermaid
+flowchart TB
+  R["my rule: platform NAMES it, so it gets its own type"] --> C["Marketing benefits package fee"]
+  C --> X["went to marketplace_adjustment instead"]
+  X --> W["the rule does not hold"]
+  W --> S["stop predicting, ask per type"]
+```
+
+**What was actually happening:** three decisions went one way and I generalised from three. Each of
+those was a judgement about that concept's weight in a report, and there is no property of the *file*
+that predicts it — the owner is the one who knows which distinctions the business needs to see. So:
+
+- ⛔ **I should not have offered the prediction table.** The three remaining entries in it are
+  guesses dressed as inference and should be read as nothing more.
+- ✅ **What stands** is each individual decision, which is why they are recorded one per entry.
+
+⚠ **The samples UNDERSTATE the vocabulary.** `Marketing benefits package fee` appears in **no sample
+workbook** — it came from a real import. So `tiktokSettlementTypes` is a list of what has been
+*seen*, never of what exists, and `TestTiktokSampleTransactionTypesAreAllKnown` guards only the
+fixtures. Expect more.
+
+**→ Recommend the caller stop panicking on an unmapped type.** The reader returns an error precisely
+so the importer can skip the row, record it, and finish — then report every unknown type in one go.
+Panicking means a single new type aborts a whole import, and the vocabulary is demonstrably open.

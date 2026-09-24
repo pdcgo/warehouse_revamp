@@ -492,10 +492,11 @@ func contains(haystack []string, needle string) bool {
 // mapped stays mapped, and what is not still REFUSES rather than guessing at "other".
 func TestTiktokSettlementType(t *testing.T) {
 	mapped := map[string]san_excel_readers.SettlementType{
-		"Order":                   "fund",
-		"Logistics reimbursement": "logistic_reimbursement",
-		"Platform reimbursement":  "platform_reimbursement",
-		"Other adjustment":        "marketplace_adjustment",
+		"Order":                          "fund",
+		"Logistics reimbursement":        "logistic_reimbursement",
+		"Platform reimbursement":         "platform_reimbursement",
+		"Other adjustment":               "marketplace_adjustment",
+		"Marketing benefits package fee": "marketplace_adjustment",
 	}
 
 	for transaction, want := range mapped {
