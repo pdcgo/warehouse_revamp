@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) | TikTok `Logistics reimbursement` → `logistic_reimbursement`, an ELEVENTH settlement type |
 | [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 
@@ -201,7 +202,7 @@ is decided (see [other-adjustment-is-a-marketplace-adjustment](#other-adjustment
 | `GMV Payment for TikTok Ads` | 10 | looks like `external_ads_fee` |
 | `Platform reimbursement` | 4 | looks like `marketplace_adjustment` |
 | `Additional Campaign Package` | 4 | ⛔ ads fee or programme — genuinely unclear |
-| `Logistics reimbursement` | 3 | looks like `marketplace_adjustment` |
+| `Logistics reimbursement` | 3 | ✅ `logistic_reimbursement` — see [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) |
 | `Other adjustment` | 1 | ✅ `marketplace_adjustment` |
 | `Shipping insurance compensation` | 1 | looks like `marketplace_adjustment` |
 | `wderror` | 1 | ⛔ probably a hand-edited fixture, not a real platform value |
@@ -273,3 +274,58 @@ flowchart LR
 reader deciding what the ledger contains. But a zero-change row moves no money and still consumes a
 `unique_id`, so it is worth being deliberate about rather than discovering later.
 `TestTiktokZeroSettlementIsStillAnOrder` pins that these classify rather than error.
+
+## logistics-reimbursement-is-its-own-type
+
+> Owner (2026-09-24), from a real run — **`"Logistics reimbursement"` … is `logistic_reimbursement`**.
+
+**The verdict.** A dedicated settlement type, not `marketplace_adjustment`, which is what I had
+guessed it "looks like".
+
+⚠ **`logistic_reimbursement` is an ELEVENTH value**, after
+[`marketplace_program`](#flexi-is-a-marketplace-program).
+[what is `settlement_type`](../../../business/settlement/context.md#what-is-settlement_type) lists
+nine — **the doc is yours to update** (HARD RULE 7b).
+
+⚠ **Spelled `logistic`, singular**, where the TikTok column says `Logistics reimbursement`. Kept
+verbatim as written. Worth one look before it is stored anywhere: an enum value is cheap to respell
+today and a migration afterwards.
+
+**The pattern this makes, and what it means for the four still open.** Two decisions in a row have
+minted a *specific* type where I had guessed the generic bucket — FLEXI over `fund`,
+this over `marketplace_adjustment`. So my remaining "looks like `marketplace_adjustment`" guesses
+are probably wrong in the same direction:
+
+| `Type` | rows | my guess | probably, given the pattern |
+| --- | ---: | --- | --- |
+| `GMV Payment for TikTok Ads` | 10 | `external_ads_fee` | likely right — the enum already has it |
+| `Platform reimbursement` | 4 | `marketplace_adjustment` | more likely its own `platform_reimbursement` |
+| `Additional Campaign Package` | 4 | ⛔ unclear | an ads/campaign charge — `external_ads_fee`, or its own |
+| `Shipping insurance compensation` | 1 | `marketplace_adjustment` | more likely its own, beside logistic |
+
+---
+
+## ⚠ Found while testing this: 15 of 23 TikTok adjustments have NO order
+
+Not a decision — a measurement, recorded because it lands on settlement's design.
+
+```mermaid
+flowchart TB
+  R["an Order details row"] --> T{"Type"}
+  T -->|"Order, 2710 rows"| O["18-digit ORDER id, equals Related order ID"]
+  T -->|"anything else, 23 rows"| A["19-digit ADJUSTMENT id, never equals it"]
+  A --> H{"Related order ID"}
+  H -->|"8 rows"| W["attaches to an order"]
+  H -->|"15 rows"| S["EMPTY — the platform charged the SHOP"]
+  S --> L["settlement_logs with order_id NULL, on shop_id"]
+```
+
+- Only a row typed `Order` carries an **order** id — 18 digits, always equal to `Related order ID`.
+- Every other type carries a 19-digit **adjustment** id that **never** equals it. A caller keying on
+  `OrderRefID` alone files every reimbursement against an order that does not exist.
+- **`RelatedOrderRefID` is empty on 15 of the 23** — the platform charged or paid the *shop*. That is
+  settlement's *"settlement that have not `order_id`… addressed to `shop_id`"* arriving from the
+  file, and it is the **common** case for adjustments, not an edge.
+
+`TestTiktokAdjustmentsCarryAnAdjustmentID` pins all three. ⚠ I had first written this as "every
+adjustment has a related order" and the test caught it on the first run.

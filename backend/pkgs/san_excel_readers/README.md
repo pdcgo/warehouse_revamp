@@ -116,6 +116,7 @@ drifts between exports ─→  GetDetails() ─→  not hashed
 | **`Jenis Transaksi` disagrees with the sign** | It is a *category*, not a direction. Take the sign from `Jumlah` alone. The reader does. |
 | **The file's own summary does not add up** | Shopee's `Total Saldo Keluar` is out by exactly twice the withdrawal whenever one fails. Never validate a parse against it. |
 | **The balance chain has a hole** | One wallet's statement is split across separate downloads — cross-border/FLEXI transactions come as their own file. A file is a slice, not a statement. |
+| **An adjustment has no order** | Only a row typed `Order` carries an ORDER id. Every other type carries a 19-digit ADJUSTMENT id and attaches through `RelatedOrderRefID` — which is **empty on 15 of 23 sampled adjustments**, because the platform charged the *shop*. Keying on `OrderRefID` files them against orders that do not exist. |
 | **The same order settles twice** | TikTok reverses: `+104444` on the 6th, `−131698` on the 8th, same id, both typed `Order`. Two real movements, two keys. |
 
 ## Classifying a row — `SettlementType()`
@@ -125,7 +126,7 @@ Maps a platform transaction type onto settlement_service's `settlement_type`.
 | | |
 | --- | --- |
 | **Shopee** | ✅ all four measured types map — `fund`, `withdrawal`, `marketplace_adjustment`, `marketplace_program` |
-| **TikTok** | ⚠ **table is incomplete** — `Order` → `fund` and `Other adjustment` → `marketplace_adjustment` cover 2711 of 2734 sampled rows. The other six types still return `ErrNoSettlementTypeMapping` |
+| **TikTok** | ⚠ **table is incomplete** — `Order`, `Logistics reimbursement` and `Other adjustment` cover 2714 of 2734 sampled rows. The other five types still return `ErrNoSettlementTypeMapping` |
 
 Two rules, the same on both sides:
 

@@ -24,6 +24,14 @@ const (
 	SettlementExternalAdsFee SettlementType = "external_ads_fee"
 	SettlementAffiliateFee   SettlementType = "affiliate_fee"
 
+	// SettlementLogisticReimbursement is the platform paying back a shipping cost.
+	//
+	// ⚠ Owner-decided (2026-09-24) and NOT YET in
+	// docs/business/settlement/context.md#what-is-settlement_type — the eleventh value, after
+	// SettlementMarketplaceProgram. ⚠ Spelled "logistic", singular, where the TikTok column says
+	// "Logistics reimbursement"; that is the owner's spelling, kept verbatim.
+	SettlementLogisticReimbursement SettlementType = "logistic_reimbursement"
+
 	// SettlementMarketplaceAdjustment is a correction the PLATFORM made.
 	SettlementMarketplaceAdjustment SettlementType = "marketplace_adjustment"
 	// SettlementMarketplaceProgram is earnings that reach the wallet through a named platform

@@ -160,7 +160,7 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 //	GMV Payment for TikTok Ads        10               looks like external_ads_fee
 //	Platform reimbursement             4               looks like marketplace_adjustment
 //	Additional Campaign Package        4               ⛔ ads fee or programme, genuinely unclear
-//	Logistics reimbursement            3               looks like marketplace_adjustment
+//	Logistics reimbursement            3  ✅ mapped
 //	Other adjustment                   1  ✅ mapped
 //	Shipping insurance compensation    1               looks like marketplace_adjustment
 //	wderror                            1               ⛔ probably a hand-edited fixture, not real
@@ -169,9 +169,25 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 // in COLUMNS on the order row — Affiliate Commission, GMV Max ad fee and the rest — not in rows of
 // their own. A per-row settlement type cannot express those at all.
 var tiktokSettlementTypes = map[string]SettlementType{
-	"Order":            SettlementFund,                  // 2710 rows, 53 of them settling ZERO
-	"Other adjustment": SettlementMarketplaceAdjustment, // 1 row, cannot_open.xlsx
+	"Order":                   SettlementFund,                  // 2710 rows, 53 of them settling ZERO
+	"Logistics reimbursement": SettlementLogisticReimbursement, // 3
+	"Other adjustment":        SettlementMarketplaceAdjustment, // 1, cannot_open.xlsx
 }
+
+// ⚠ Only a row typed "Order" carries an ORDER id. Measured across every sample:
+//
+//	Order            OrderRefID is 18 digits and ALWAYS equals RelatedOrderRefID
+//	everything else  OrderRefID is a 19-digit ADJUSTMENT id and NEVER equals it
+//
+// So an adjustment attaches to its order through RelatedOrderRefID, never through OrderRefID. A
+// caller that keys on OrderRefID alone files every reimbursement against an order that does not
+// exist.
+//
+// ⚠ And RelatedOrderRefID can be EMPTY on an adjustment — 15 of the 23 sampled ones, so it is the
+// COMMON case, not an edge. The platform charged or paid the SHOP,
+// not an order. That is settlement_service's "settlement that has not order_id ... addressed to
+// shop_id", arriving from the file rather than being a modelling choice.
+// TestTiktokAdjustmentsCarryAnAdjustmentID pins both halves.
 
 // SettlementType classifies the row for settlement_service.
 //

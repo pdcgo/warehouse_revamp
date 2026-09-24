@@ -492,8 +492,9 @@ func contains(haystack []string, needle string) bool {
 // mapped stays mapped, and what is not still REFUSES rather than guessing at "other".
 func TestTiktokSettlementType(t *testing.T) {
 	mapped := map[string]san_excel_readers.SettlementType{
-		"Order":            "fund",
-		"Other adjustment": "marketplace_adjustment",
+		"Order":                   "fund",
+		"Logistics reimbursement": "logistic_reimbursement",
+		"Other adjustment":        "marketplace_adjustment",
 	}
 
 	for transaction, want := range mapped {
@@ -512,7 +513,6 @@ func TestTiktokSettlementType(t *testing.T) {
 		"GMV Payment for TikTok Ads",
 		"Platform reimbursement",
 		"Additional Campaign Package",
-		"Logistics reimbursement",
 		"Shipping insurance compensation",
 		"Something TikTok Invents Next Quarter",
 	} {
@@ -656,4 +656,57 @@ func TestTiktokZeroSettlementIsStillAnOrder(t *testing.T) {
 	if zero == 0 {
 		t.Fatal("expected this sample to contain orders settling zero")
 	}
+}
+
+// Only an "Order" row carries an ORDER id. Everything else carries a 19-digit ADJUSTMENT id and
+// points at the order it adjusts through RelatedOrderRefID — so a caller that keys on OrderRefID
+// alone files every reimbursement against an order that does not exist.
+func TestTiktokAdjustmentsCarryAnAdjustmentID(t *testing.T) {
+	orders, adjustments, shopLevel := 0, 0, 0
+
+	for _, name := range tiktokSampleNames(t) {
+		doc := openTiktokSample(t, name)
+
+		items, err := doc.GetItems()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, item := range items {
+			if item.TransactionType == "wderror" {
+				continue // a hand-edited fixture, 28 characters and no related order
+			}
+
+			if item.TransactionType == "Order" {
+				orders++
+				if item.OrderRefID != item.RelatedOrderRefID {
+					t.Errorf("order %s: RelatedOrderRefID is %s, expected them equal",
+						item.OrderRefID, item.RelatedOrderRefID)
+				}
+				if len(item.OrderRefID) != 18 {
+					t.Errorf("order id %q is %d digits, expected 18", item.OrderRefID, len(item.OrderRefID))
+				}
+				continue
+			}
+
+			adjustments++
+			if item.OrderRefID == item.RelatedOrderRefID {
+				t.Errorf("%s %s: adjustment id equals the related order id",
+					item.TransactionType, item.OrderRefID)
+			}
+			if item.RelatedOrderRefID == "" {
+				// Not a failure: the platform charged or paid the SHOP, not an order. This is
+				// settlement_service's order_id-less case arriving from the file.
+				shopLevel++
+			}
+		}
+	}
+
+	if orders == 0 || adjustments == 0 {
+		t.Fatalf("orders=%d adjustments=%d, expected both", orders, adjustments)
+	}
+	if shopLevel == 0 {
+		t.Error("expected some adjustments to have no related order at all")
+	}
+	t.Logf("%d orders, %d adjustments, %d of them shop-level with no order", orders, adjustments, shopLevel)
 }
