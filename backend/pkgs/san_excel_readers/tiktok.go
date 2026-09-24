@@ -249,6 +249,38 @@ type TiktokWithdrawalItem struct {
 	Status      string    `json:"status"`       // "Transferred" in every sample
 }
 
+// tiktokWithdrawalTypes maps the "Withdrawal records" Type column.
+//
+// ⚠ ONLY "Withdrawal" is mapped, and the omission is the important part. An "Earnings" row is NOT
+// new money — it is the SAME settlements the "Order details" sheet already lists, totalled per day.
+// Measured across the samples: the Earnings total equals the Order details settlement total EXACTLY
+// in 9 of 14 files, and where it does, every single day matches too (28/28, 30/30, 27/27, 26/26).
+// Booking both sheets as fund would count the same revenue twice.
+//
+// So:
+//
+//	Withdrawal        ✅ withdrawal — real cash leaving the wallet, and in NO other sheet
+//	Earnings          ⛔ refused — the same money as Order details, per day
+//	GMV Pay Deduction ⛔ refused — undecided
+var tiktokWithdrawalTypes = map[string]SettlementType{
+	"Withdrawal": SettlementWithdrawal,
+}
+
+var tiktokWithdrawalTypesFolded = foldKeys(tiktokWithdrawalTypes)
+
+// SettlementType classifies a withdrawal row.
+//
+// An unmapped type is an ERROR, the same rule as everywhere else in this package — see
+// tiktokWithdrawalTypes for why "Earnings" is deliberately among them.
+func (w *TiktokWithdrawalItem) SettlementType() (SettlementType, error) {
+	mapped, found := tiktokWithdrawalTypesFolded[strings.ToLower(w.Type)]
+	if !found {
+		return "", fmt.Errorf("%w: %q", ErrNoSettlementTypeMapping, w.Type)
+	}
+
+	return mapped, nil
+}
+
 func (w *TiktokWithdrawalItem) GenerateUniqueID() (string, error) {
 	raw, err := json.Marshal(w)
 	if err != nil {

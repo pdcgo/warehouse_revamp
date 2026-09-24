@@ -3,6 +3,7 @@ package san_excel_readers_test
 import (
 	"bytes"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -748,4 +749,69 @@ func TestTiktokSettlementTypeTableHasNoCaseCollisions(t *testing.T) {
 		}
 		seen[folded] = transaction
 	}
+}
+
+// A "Withdrawal records" row is where TikTok money actually moves. Only the Withdrawal type is
+// mapped; see tiktokWithdrawalTypes for why Earnings deliberately is not.
+func TestTiktokWithdrawalSettlementType(t *testing.T) {
+	withdrawal := san_excel_readers.TiktokWithdrawalItem{Type: "Withdrawal"}
+
+	got, err := withdrawal.SettlementType()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "withdrawal" {
+		t.Errorf("SettlementType() = %q, want withdrawal", got)
+	}
+
+	for _, unmapped := range []string{"Earnings", "GMV Pay Deduction", "Something New"} {
+		item := san_excel_readers.TiktokWithdrawalItem{Type: unmapped}
+
+		_, err := item.SettlementType()
+		if !errors.Is(err, san_excel_readers.ErrNoSettlementTypeMapping) {
+			t.Errorf("%q: err = %v, want ErrNoSettlementTypeMapping", unmapped, err)
+		}
+	}
+}
+
+// ⚠ The reason Earnings must not be booked: it is the SAME money as the Order details sheet,
+// totalled per day. Where the two totals agree at all, they agree exactly — so a caller that books
+// both sheets as fund doubles its revenue.
+func TestTiktokEarningsDuplicateTheOrderSettlements(t *testing.T) {
+	exact := 0
+
+	for _, name := range tiktokSampleNames(t) {
+		doc := openTiktokSample(t, name)
+
+		items, err := doc.GetItems()
+		if err != nil {
+			t.Fatal(err)
+		}
+		withdrawals, err := doc.GetWithdrawals()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		orders := 0.0
+		for _, item := range items {
+			orders += item.Amount
+		}
+
+		earnings := 0.0
+		for _, w := range withdrawals {
+			if w.Type == "Earnings" {
+				earnings += w.Amount
+			}
+		}
+
+		if math.Abs(orders-earnings) < 1 {
+			exact++
+		}
+	}
+
+	if exact < 8 {
+		t.Fatalf("Earnings matched the order settlements exactly in only %d files — "+
+			"if that is no longer true, the double-counting warning needs re-checking", exact)
+	}
+	t.Logf("Earnings equals the order settlement total exactly in %d of the samples", exact)
 }

@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [earnings-is-not-new-money](#earnings-is-not-new-money) | `Withdrawal` → `withdrawal`, but `Earnings` is REFUSED — it is the same money as Order details, per day |
 | [the-type-vocabulary-is-case-unstable](#the-type-vocabulary-is-case-unstable) | `GMV payment for TikTok Ads` → `external_ads_fee`, and the lookup now FOLDS CASE — TikTok respells its own vocabulary |
 | [additional-marketing-benefits-is-also-an-adjustment](#additional-marketing-benefits-is-also-an-adjustment) | The second `…marketing benefits package fee` → `marketplace_adjustment`, and neither is in any sample |
 | [the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold) | `Marketing benefits package fee` → `marketplace_adjustment`, which breaks the pattern I had just called a rule |
@@ -504,3 +505,47 @@ knows.
 **Two types left**, both sample-only: `Additional Campaign Package` (4 rows) and
 `Shipping insurance compensation` (1). Plus `wderror`, which is almost certainly a hand-edited
 fixture.
+
+## earnings-is-not-new-money
+
+> Owner (2026-09-24), asking — *"is on tiktok sheet Withdrawal record is parsed? its contain
+> settlement type withdrawal"*.
+
+**Answered:** yes, `GetWithdrawals()` has always parsed it — but nothing classified it, and nothing
+reads it. `TiktokWithdrawalItem` had no `SettlementType()`, and
+[tools/report_withdrawal/main.go](../../../../tools/report_withdrawal/main.go) calls `GetItems()` on
+both branches and `GetWithdrawals()` on neither. So those rows reach nobody today.
+
+**`Withdrawal` → `withdrawal` is now mapped.** It is the only row type on that sheet that is real,
+new money: cash leaving the wallet for a bank account, and it appears in no other sheet.
+
+⛔ **`Earnings` is deliberately NOT mapped, and this is the finding that matters.** An `Earnings`
+row is the **same money** as the `Order details` settlements, totalled per day. Measured:
+
+| | |
+| --- | --- |
+| files where the `Earnings` total equals the `Order details` settlement total **exactly** | **10 of 14** |
+| where it does, days that also match exactly | **all of them** — 28/28, 30/30, 27/27, 26/26, 15/15 |
+
+```mermaid
+flowchart TB
+  O["Order details, one row per settled order"] --> M["the same money"]
+  W["Withdrawal records, Earnings rows, one per DAY"] --> M
+  M --> D["booking both as fund doubles the revenue"]
+  X["Withdrawal records, Withdrawal rows"] --> N["real cash out, in no other sheet"]
+```
+
+**→ So a caller must book `Order details` OR the `Earnings` rows, never both.** The reader refuses
+`Earnings` rather than choosing, because which side to trust is settlement's call — `Order details`
+carries per-order grain and the fee breakdown, `Earnings` carries only a daily total.
+**→ Recommend `Order details`**, for the grain.
+
+`TestTiktokEarningsDuplicateTheOrderSettlements` fails if that stops being true, so the warning
+cannot go stale silently.
+
+**`GMV Pay Deduction` is the third type on that sheet** and is unmapped — undecided.
+
+⚠ **Where the totals do NOT match, `Earnings` is LARGER** — `gmv_mlongo` 12,565,003 against
+3,318,704, `gmv_payment` 58,726,725 against 49,480,426, `pay_deduction` 31,900,860 against
+22,711,645. All three are the GMV/ads samples. Unexplained, and worth knowing before either side is
+trusted as authoritative.
