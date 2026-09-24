@@ -51,7 +51,7 @@ TikTok row is an order decomposed into fees, and the money moving is on a *diffe
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **TikTok's column set is not fixed — 3 layouts in 13 files.** 61 cols (`niko_lape`), 63 (`salah_tarik`, `shipping_issurance`), 64 (`gmv_mlongo`, `isna_negative`). Columns *appear* — `GMV Max ad fee`, `Article 22 Income Tax withheld`, `Platform special service fee`, `Distance item fee from Horizon+ Program` — **and disappear**: `Flat fee` and `Sales fee` are in the 61- and 63-col files and gone from the 64-col one. A positional or fixed-struct mapping is broken on arrival. | Map by **header text**, never by index. And **carry unknown columns** into an `Extra` map rather than dropping them — silently dropping a new fee column is how `Total Fees` stops reconciling with nobody noticing. |
-| **2** | **Amounts are not always numbers.** 6 of 13 TikTok files — `gmv_mlongo`, `gmv_payment`, `isna_negative`, `overlapping_earning`, `pay_deduction`, `shipping_issurance` — store **every cell as a shared string**, with zero numeric cells in the sheet. And `awan_beban_return.xlsx` stores `"8400769.00"` as text while `awan_beban_return_simple.xlsx`, the same report re-saved through another spreadsheet tool, stores `-18923082` as `t="n"`. Both forms will arrive, from the same seller. | **Normalise to a number on the way in** — the cell's storage type is an accident of who last opened the file, and `GenerateUniqueID` is only stable because the value is parsed, never because it is passed through (#15). ⚠ **I had the second half of this wrong**: I recommended `int64` minor units, which contradicts a settled decision — see [Contradiction](#contradiction). `float64` is correct here. |
+| **2** | **Amounts are not always numbers.** 6 of 13 TikTok files — `gmv_mlongo`, `gmv_payment`, `isna_negative`, `overlapping_earning`, `pay_deduction`, `shipping_issurance` — store **every cell as a shared string**, with zero numeric cells in the sheet. And `awan_beban_return.xlsx` stores `"8400769.00"` as text while `awan_beban_return_simple.xlsx`, the same report re-saved through another spreadsheet tool, stores `-18923082` as `t="n"`. Both forms will arrive, from the same seller. | **Normalise to a number on the way in** — the cell's storage type is an accident of who last opened the file, and `GenerateUniqueID` is only stable because the value is parsed, never because it is passed through. ✅ **Built** — `parseAmount` reads the raw stored text and parses it, and `TestShopeeUniqueIDSurvivesAReSave` is the regression test. ⚠ **I had the second half of this wrong**: I recommended `int64` minor units, which contradicts a settled decision — see [Contradiction](#contradiction). `float64` is correct here. |
 | **3** | **`Order/adjustment ID` is 18 digits — it must never touch a float.** `581595973617353910` is about 5.8e17, well past float64's exact-integer range of 9.0e15. Anything that round-trips it through a number corrupts the last digits, and the corruption looks like a platform mismatch rather than a parser bug. | The ID is a **`string`** in the returned type, start to finish. Same for Shopee's `No. Pesanan`. |
 | **4** | **Rows are padded with blanks inside the used range.** `niko_lape.xlsx` has 219 `<row>` elements and **43** with data. `husen_campaign` 219 to 36. `salah_tarik` 220 to 59. A reader that trusts the sheet dimension emits about 180 empty records per file. | Stop at the first row whose key column is empty, or skip and count. Either way **report the number of skipped rows** — a silently-dropped row and a blank padding row are indistinguishable otherwise. |
 | **5** | ✅ **SOLVED FOR SHOPEE by your `GenerateUniqueID`** — I tested it, it holds (#15). What remains is the **TikTok** half: `overlapping_earning.xlsx` carries order `581000262229460562` twice — `+104444` settled 11/06, then `−131698` settled 11/08 — and `pivan_fund_invalid.xlsx` does the same, so the `Order/adjustment ID` alone is not a key there either. | TikTok's contract needs the same treatment as Shopee's: a `GenerateUniqueID` over a field set that includes something separating the two settlements of one order. `Order settled time` does it in both samples. [Q3](#question) is now only about TikTok. |
@@ -62,7 +62,7 @@ TikTok row is an order decomposed into fees, and the money moving is on a *diffe
 | **10** | ⚠ **`examples/` is untracked and NOT gitignored — it will be committed to a PUBLIC repo.** The workbooks carry real seller usernames (`arunastyleootd`, `keyvara_outfit`, `seluna_co`, `zafa.wear`, `aloochic`, `mikioutfit`, `klipsa.outfit`, `stars_otd`, `auramodis`), real order IDs, real daily revenue and masked bank-account tails. | Decide before the first commit: scrub the identifying cells, or gitignore `examples/` and keep the fixtures out of the repo. This is not a design point — it is the public-repo rule in [CLAUDE.md](../../../../CLAUDE.md), and it bites once. |
 | **11** | **`examples/shipped_samples/` exists and is empty**, and the doc does not mention it. | Either say what it is for here, or delete it — an empty directory in a spec's example tree reads as unfinished scope. |
 
-| **12** | ⛔ **`Jenis Transaksi` is a CATEGORY, not the sign — and a failed withdrawal is TWO rows, not a flag.** In `awan_wdgagal.xlsx`, r107 is `Penarikan Dana · Transaksi Keluar · −5899085 · status **Gagal**` and r59, a day later, is `Penarikan Dana · Transaksi Keluar · **+5899085** · status **Transaksi Selesai**`. Same category, opposite signs. `luxy_wdgagal.xlsx` r75/r42 is the identical pair at 3977187. **And the `Saldo Akhir` chain includes both** — the chain check passes with zero breaks on those files — so *both movements are real*. A reader that derives the sign from the category books the reversal backwards, and a caller that "skips `Gagal` rows" keeps the reversal, drops the withdrawal, and inflates the wallet by the full amount. | Take the sign from **`Jumlah` only**. Keep `Jenis Transaksi` as an opaque `Category` string — my earlier name for it, `Direction`, was wrong and is corrected in the design below. Expose `Reversal bool` where the two disagree, and **book `Gagal` rows at face value** — the status is metadata on a real movement, not an instruction to ignore it. Re-asked as [Q7](#question). |
+| **12** | ⛔ **`Jenis Transaksi` is a CATEGORY, not the sign — and a failed withdrawal is TWO rows, not a flag.** In `awan_wdgagal.xlsx`, r107 is `Penarikan Dana · Transaksi Keluar · −5899085 · status **Gagal**` and r59, a day later, is `Penarikan Dana · Transaksi Keluar · **+5899085** · status **Transaksi Selesai**`. Same category, opposite signs. `luxy_wdgagal.xlsx` r75/r42 is the identical pair at 3977187. **And the `Saldo Akhir` chain includes both** — the chain check passes with zero breaks on those files — so *both movements are real*. A reader that derives the sign from the category books the reversal backwards, and a caller that "skips `Gagal` rows" keeps the reversal, drops the withdrawal, and inflates the wallet by the full amount. | Take the sign from **`Jumlah` only**. Keep `Jenis Transaksi` as an opaque `Category` string — my earlier name for it, `Direction`, was wrong and is corrected in the design below. ✅ **Built** — the sign comes from `Jumlah` alone. ⚠ A `Reversal` flag is no longer possible on the item ([hash-the-whole-struct](context_decision.md#hash-the-whole-struct)), so the caller derives it. **Book `Gagal` rows at face value** — the status is metadata on a real movement, not an instruction to ignore it. Re-asked as [Q7](#question). |
 | **13** | ⛔ **The summary block is WRONG whenever a withdrawal fails — Shopee's own arithmetic, not ours.** Totalled by category, `Total Saldo Masuk` matches the rows in all 12 files, but `Total Saldo Keluar` is out by **exactly twice the failed withdrawal** in both wdgagal files: `awan` −72492888 computed vs −84291058 claimed (2 × 5899085), `luxy` −22447100 vs −30401474 (2 × 3977187). The transaction *counts* are right; the money is not. Separately, `awan_beban_return_simple.xlsx` is a truncated re-save — 141 rows — that kept the original 1463-row header totals. | **Never validate rows against the summary.** Expose both and let the caller see them disagree: `Claimed()` is what the file asserts, `Computed()` is what the rows add up to. A reader that "checks" its parse against this block would reject two good files out of twelve. |
 | **14** | ⛔ **One wallet's statement is split across separate downloads, and the balance chain proves it.** `shopee_malaysia_base.xlsx` has exactly one break in `Saldo Akhir`: r21 leaves 3019934 but r22 opens at 2870308 — a hole of 149626. The missing row is in the *other* file: `shopee_malaysia.xlsx` r19, `Program Ekspor Shopee FLEXI · MY-251202B89P47GJ · 149626 · saldo 3019934`. The cross-border/FLEXI transactions are filtered out of the main export. | **A file is a slice, not a statement.** Do not assume one upload is complete. The chain break is a cheap, exact detector for it — recommend `Gaps()`, which costs one subtraction per row and tells settlement that an import is missing money *before* it reconciles. It found this one in 1 of 12 files with no false positives. |
 
@@ -84,11 +84,11 @@ load-bearing, not a style choice, and it is worth a sentence in `context.md` say
 
 | | Problem in the new contract | → Recommend |
 | --- | --- | --- |
-| **15** | ⛔ **`GenerateUniqueID` over `json.Marshal(s)` freezes the struct forever.** The hash is taken over *whatever fields the struct has that day*, so adding one — `Status`, a currency, anything in #17 — **changes every `unique_id` already stored**, and the next import re-inserts the entire history as new rows. The struct is one line of a future PR away from that, with no compile error and no test failure. | Hash an **explicit, ordered, versioned** string — `v1|At|Type|Description|OrderRefID|Amount|LastBalance` — not the struct. Adding a field then costs nothing, and changing the key becomes a deliberate `v2` with a migration, which is what it actually is. |
-| **16** | ⛔ **`time.Time` in the hash carries its timezone.** `json.Marshal` of a `time.Time` emits RFC3339 *with the offset*, so the same cell parsed as `+07:00` on one machine and UTC on another produces a different `unique_id` — and the file states no timezone anywhere (TikTok does, on its `Reports` sheet; Shopee does not). This promotes [Q5](#question) from a modelling preference to **a correctness property of the key**. | Fix the zone in the contract — `Asia/Jakarta` — and hash a fixed layout (`2006-01-02 15:04:05`) rather than the `time.Time`. A fabricated offset is invisible until two importers disagree. |
-| **17** | **`OrderRefID` takes `No. Pesanan` verbatim, and that cell is literally `"-"`.** 116 of 615 rows in `shopee_wd_tidak_cocok.xlsx`, 16 in `awan_beban_return.xlsx` — withdrawals and most adjustments. So `OrderRefID: "-"` reaches `settlement_logs` as an order reference. For 45 of those 116 the real ref is in `Deskripsi` (`… Gagal Terkirim: 251125PMAEX4JH`), and `Penyesuaian` *sometimes* does carry a real `No. Pesanan` — so neither cell can be trusted alone. | `"-"` becomes `""`. Keep the recovered ref in a **separate** field with a flag saying it was recovered, never written back over `OrderRefID`. ⚠ **Decide this before the first import runs** — normalising `"-"` to `""` changes the hash, so it is free today and a migration tomorrow. |
-| **18** | **`Status` is dropped from the item.** The balance still comes out right, because the signs carry it (#12) — but a failed withdrawal and its reversal become two unexplained opposite rows, and nothing downstream can ever say which was which. | Either add `Status` **now** (it is free before any `unique_id` exists — see #15), or say in the doc that it is deliberately out of scope. |
-| **19** | **`GetItems([]*ShopeeSettlementItem, error)` does not compile** — it is missing its parameter list. | `GetItems() ([]*ShopeeSettlementItem, error)`. Reporting rather than editing (HARD RULE 7b). |
+| **17** | **The order ref hidden in `Deskripsi` is still lost.** ✅ `"-"` now becomes `""` ([dash-is-not-a-reference](context_decision.md#dash-is-not-a-reference)) — but for 45 of the 116 reference-less rows in `shopee_wd_tidak_cocok.xlsx` the real order number is in the sentence (`… Gagal Terkirim: 251125PMAEX4JH`). Those adjustments still land on `shop_id` rather than the order. | It cannot be a field on the item — [hash-the-whole-struct](context_decision.md#hash-the-whole-struct) forbids a seventh. **→ Recommend a DOCUMENT-level lookup**, `GetRecoveredOrderRefs() map[string]string` keyed by unique id, so the guess travels beside the item without entering its key. |
+| **19** | **`GetItems([]*ShopeeSettlementItem, error)` does not compile** — it is missing its parameter list. ✅ Built as the corrected form. | `GetItems() ([]*ShopeeSettlementItem, error)`. Reporting rather than editing (HARD RULE 7b). |
+| **21** | ⛔ **`SettlementType()` cannot be written today — the enum it returns is EMPTY.** The new contract says *"what inside `SettlementType` its reference to [this](../../../business/settlement/context.md#what-is-settlement_type)"*, and that section in `settlement/context.md` is **a bare heading with no list** as of this edit — the eight values it used to carry were deleted in the same session. Per RULE 8b.11 an empty heading means *not designed yet*, so the reader has nothing to map onto. | **Refill `what is settlement_type` first**, then this is a half-hour of work. ⚠ Note the mapping table introduces **`withdrawal`**, which was *not* among the eight values that were there before — so this is a redesign of the enum, not a pointer to an existing one. |
+| **22** | ⛔ **The mapping table has no row for `Program Ekspor Shopee FLEXI`.** It maps three of the four measured `Tipe Transaksi` values. The fourth is real — 1 row in 3788, `shopee_malaysia.xlsx`, a cross-border FLEXI order — so `SettlementType()` returns an error for a file that is otherwise perfectly valid, and that file is one of your own samples. | Add the row. **→ Recommend `other`**, which the old enum had, rather than a new type — it is a genuine marketplace earning whose only peculiarity is the programme it came through. Until then, the built reader returns the raw `Tipe Transaksi` and classifies nothing. |
+| **23** | ⛔ **`TiktokSettlementItem` is written with Shopee's columns, and none of them exist in a TikTok workbook.** It names `"Tanggal Transaksi"`, `"Tipe Transaksi"`, `"Deskripsi"`, `"No. Pesanan"`, `"Jumlah"` and `"Saldo Akhir"`. A TikTok `Order details` sheet has `Order/adjustment ID`, `Type`, `Order created time`, `Order settled time`, `Total settlement amount` and **61–64 fee columns** — and **no running balance anywhere in the file**, on either sheet. `LastBalance` has nothing to read from. | It cannot be Shopee's struct renamed. The two platforms are different grains (see the top of this file). **→ Recommend TikTok's item be built from its own columns**, with the fee columns in a map so the 61/63/64-column drift (#1) does not break it, and the key over `ID + Order settled time + Total settlement amount` (#5). |
 | **20** | **`ShopeeSettlementType` is declared with no values**, which leaves [Q1](#question) open in the code rather than settling it. A named string type is a good middle ground — it documents intent without making an unseen value a parse failure. | Declare the four measured constants (`Penghasilan dari Pesanan`, `Penarikan Dana`, `Penyesuaian`, `Program Ekspor Shopee FLEXI`) and a `Known()` helper, keeping unknown values *parseable*. The fourth appears once in 3788 rows, so the list is demonstrably not closed. |
 
 ✅ **Shopee's layout is genuinely stable** — header at row 18, the same 8 columns, in all 12 files
@@ -111,6 +111,12 @@ nothing and turns "did we read the file correctly" into an assertion instead of 
 
 A proposal *for* your doc — not written into it.
 
+> ✅ **The Shopee half of this shipped** — [backend/pkgs/san_excel_readers/shopee.go](../../../../backend/pkgs/san_excel_readers/shopee.go),
+> built to your `### Shopee Contract` and the three decisions in
+> [context_decision.md](./context_decision.md). Seven tests pass over all 12 sample workbooks, and
+> the counts, the no-collision property and the re-save stability are all asserted rather than
+> claimed. What stays below is TikTok, plus the document-level additions that were never decided.
+
 ```go
 package san_excel_readers
 
@@ -125,37 +131,20 @@ type RowRef struct {
     Row   int // 1-based, as the spreadsheet shows it
 }
 
-// SHOPEE — your contract, kept as written, plus the fields the samples force.
-// Your six fields and GenerateUniqueID stand as they are (#15 tests them).
-
-type ShopeeSettlementItem struct {
-    At          time.Time            // A, fixed to Asia/Jakarta (#16)
-    Type        ShopeeSettlementType // B
-    Description string               // C
-    OrderRefID  string               // D, "" not "-" (#17)
-    Amount      float64              // F, signed — the decided money type
-    LastBalance float64              // H
-
-    // --- added, and each one earns its place ---
-    Status       string    // G, or say it is out of scope (#18)
-    Row          int       // 1-based, as the spreadsheet shows it — for error messages
-    RecoveredRef string    // the ref dug out of Description when OrderRefID is "" (#6)
-    RefFrom      RefSource // Column | Description | None
-    Reversal     bool      // "Transaksi Keluar" with a positive Amount (#12)
-}
-
-// ⚠ Anything added here AFTER the first import changes every stored unique_id (#15).
+// SHOPEE IS BUILT — backend/pkgs/san_excel_readers/shopee.go.
+// Your contract as written, plus GetPeriod. What is below is only what is STILL proposed.
 
 type ShopeeSettlementDocument interface {
-    GetShopUsername() (string, error) // B6
-    GetItems() ([]*ShopeeSettlementItem, error) // #19
+    // --- shipped ---
+    // GetShopUsername() (string, error)
+    // GetPeriod() (from, to time.Time, err error)
+    // GetItems() ([]*ShopeeSettlementItem, error)
 
-    // --- added ---
-    GetPeriod() (from, to civil.Date, err error) // B7 / B8
-    GetClaimedSummary() (ShopeeSummary, error)   // r12 / r13, what the file ASSERTS
-    GetComputedSummary() (ShopeeSummary, error)  // what the items add up to (#13)
-    GetGaps() ([]Gap, error)                     // breaks in the Saldo Akhir chain (#14)
-    GetSkipped() ([]SkippedRow, error)           // never silent (#4)
+    // --- still proposed, none of it touching the item or its key ---
+    GetClaimedSummary() (ShopeeSummary, error)  // r12 / r13, what the file ASSERTS
+    GetComputedSummary() (ShopeeSummary, error) // what the items add up to (#13)
+    GetGaps() ([]Gap, error)                    // breaks in the Saldo Akhir chain (#14)
+    GetRecoveredOrderRefs() (map[string]string, error) // by unique id (#17)
 }
 
 // Gap is a break in the Saldo Akhir chain: proof that rows are missing from THIS file.
@@ -245,23 +234,16 @@ backend/pkgs/san_excel_readers/
    row with `Type = "wderror"` and one with `Order Source = "x"`. Both look typed in. If they are
    deliberate corruption fixtures, say so — they should then assert an *error path* rather than be
    parsed. If a platform really emits them, Q1 is already settled as "strings".
-5. ⛔ **What timezone do we store? — now blocking, not cosmetic.** `GenerateUniqueID` hashes a
-   `time.Time`, and `json.Marshal` writes the offset into it (#16), so the zone is **part of the
-   idempotency key**. Shopee's file states no timezone; TikTok's `Reports` sheet says `UTC+7` and
-   gives dates only. **→ Recommend fixing `Asia/Jakarta` in the contract and hashing a fixed layout
-   string**, not the `time.Time`. Two importers disagreeing about the zone would duplicate every row,
-   silently.
-6. **Does this package read *only* settlement reports?** The name is `san_excel_readers` — plural,
+5. **Does this package read *only* settlement reports?** The name is `san_excel_readers` — plural,
    generic — but the contract is `…SettlementDocument`, and `examples/shipped_samples/` hints at a
    second report kind. **→ If shipping reports are coming the package name is right and the sub-scope
    belongs in the path (`shopee/settlement.go`). If not, name it `san_settlement_readers`.**
-7. **Confirm that a `Gagal` row is still booked.** I had this backwards and the data corrected it (#12):
-   both `Gagal` rows in the corpus are **failed withdrawals that already left the wallet**, each
-   reversed by a *separate* `Transaksi Selesai` row a day later, and the `Saldo Akhir` chain counts
-   both. **→ Recommend booking every row at face value and treating `Gagal` as metadata** — skipping
-   them is what corrupts the balance, by the full withdrawal amount. It is your call because it
-   decides whether `settlement_logs` carries failed movements at all; the reader returns them either
-   way.
+6. **Routed to [settlement](../../../business/settlement/context_clarify.md): is a `Gagal` row booked?**
+   The reader returns every row and carries no `Status`
+   ([hash-the-whole-struct](context_decision.md#hash-the-whole-struct)), so this is entirely settlement's
+   call now. The evidence it needs is #12: both `Gagal` rows in the corpus are failed withdrawals that
+   **already left the wallet**, each reversed by a separate row a day later, and the `Saldo Akhir` chain
+   counts both. **→ Recommend booking every row** — skipping the failures is what corrupts the balance.
 
 ---
 
