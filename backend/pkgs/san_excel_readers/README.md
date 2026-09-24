@@ -21,7 +21,7 @@ format.
 
 | | Shopee | TikTok |
 | --- | --- | --- |
-| a row is | **one movement** on the seller wallet | **one settled order**, split across 61–64 fee columns |
+| a row is | **one movement** on the seller wallet | **one settled order**, split across 61–76 columns, most of them fees |
 | sheets | 1 — `Transaction Report` | 4 — orders, a totals tree, withdrawals, a glossary |
 | where money moves | the same rows | a **separate sheet**, `Withdrawal records` |
 | running balance | ✅ `Saldo Akhir`, and it chains | ⛔ none, anywhere in the file |
@@ -96,7 +96,7 @@ the feature. Anything diagnostic belongs on the **document**, which is not hashe
 **2. Only columns that are stable across exports may be on an item.** This was measured, not
 assumed. Of the 43 orders that appear in more than one sample export (77 pairs), exactly one column
 ever differs — `Shopping center items`, whose SKU list comes back **reordered**. It is excluded. So
-are the seven fee columns that come and go between the 61/63/64-column layouts.
+are the 23 fee columns that come and go between the four layouts (61, 63, 64 and 76 columns).
 
 ```
 stable across exports  ─→  on the item  ─→  hashed  ─→  IS the key
@@ -109,7 +109,8 @@ drifts between exports ─→  GetDetails() ─→  not hashed
 
 | | |
 | --- | --- |
-| **A fee column is missing** | TikTok has three layouts in 13 samples. `Flat fee` and `Sales fee` are in the narrow ones and **gone** from the widest; `GMV Max ad fee` is the reverse. Use `GetDriftingColumns()` — absence is expected. |
+| **A fee column is missing** | TikTok has four layouts in 14 samples. `Flat fee` and `Sales fee` are in the narrow ones and **gone** from the two widest; `GMV Max ad fee` is the reverse. Use `GetDriftingColumns()` — absence is expected. |
+| **A header is spelled differently** | The 2026-09 layout renamed columns without changing them — `Type` → `Transaction type` on both sheets, `Order Source` → `Order source`, `Time period:` → `Time period`. Every column an item is read from is matched under every spelling in `tiktokRenamed`, and one the reader cannot find **fails the read, naming it**, rather than reading `""` or `0` into the key. A new spelling is one line in that table. |
 | **Row count ≪ sheet size** | TikTok pads its used range with blank rows — 176 of 219 in one sample. They are skipped. |
 | **A `Gagal` row still has money** | A failed Shopee withdrawal is **two** rows: the original (marked `Gagal`) *and* a reversal a day later (marked `Transaksi Selesai`), both `Transaksi Keluar`, opposite signs. **Both are in the balance chain, so book both.** Skipping the `Gagal` one inflates the wallet by the withdrawal amount. |
 | **`Jenis Transaksi` disagrees with the sign** | It is a *category*, not a direction. Take the sign from `Jumlah` alone. The reader does. |
@@ -119,10 +120,20 @@ drifts between exports ─→  GetDetails() ─→  not hashed
 
 ## Not implemented
 
-`SettlementType()` exists on the TikTok item and **always returns `ErrNoSettlementTypeMapping`**.
-`context.md` carries a mapping table for Shopee only, and the enum it maps onto is an empty heading
-in `settlement/context.md`. Classifying `Platform reimbursement` is a business decision, not a
-parsing one, so it was left rather than invented.
+⚠ **`SettlementType()` PANICS** — on both items. It is a reserved signature with no body yet.
+
+```go
+func (s *ShopeeSettlementItem) SettlementType() (SettlementType, error) // panics
+func (s *TiktokSettlementItem) SettlementType() (SettlementType, error) // panics
+```
+
+The enum it returns is an empty heading in `settlement/context.md`, so there are no values to
+return. `context.md` maps three of Shopee's four transaction types and none of TikTok's.
+Classifying `Platform reimbursement` is a business decision, not a parsing one, so it waits.
+
+**Do not call it.** A panic crashes the calling process — that is the point, it is a placeholder,
+not a degraded mode. `TestSettlementTypeIsNotImplemented` pins that it panics deliberately, and is
+the test to rewrite rather than delete when the mapping lands.
 
 Also proposed but not decided, so not built: `Detect`/`Open` platform dispatch, `GetGaps` (balance
 chain breaks), `GetClaimedSummary`/`GetComputedSummary`, and recovering the Shopee order ref that
@@ -134,7 +145,8 @@ hides in `Deskripsi`. See the clarify.
 go test ./backend/pkgs/san_excel_readers/
 ```
 
-⚠ They run against the **real sample workbooks** in `examples/settlement_samples/`, which are **not
-committed** — they carry real seller usernames and revenue, and this repository is public. Without
-them the tests **skip**, the way `san_testdb` skips with no database. A green CI is therefore not
-yet evidence this package works.
+⚠ They run against the **real sample workbooks** in `examples/settlement_samples/`. Those carry real
+seller usernames, order IDs and revenue, and this repository is public — whether they stay committed is
+still open (critique #10 in the clarify). A sample missing from a checkout **skips** its test, the way
+`san_testdb` skips with no database. `TestTiktokMissingColumnFailsInsteadOfReadingZero` builds its
+workbooks in memory, so the TikTok header spellings are tested either way.

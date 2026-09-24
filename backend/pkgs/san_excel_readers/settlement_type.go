@@ -14,7 +14,11 @@ import "errors"
 // at anything else.
 type SettlementType string
 
-// ErrNoSettlementTypeMapping is returned when a row's platform transaction type has no row in
-// the mapping table. It is a gap in the contract, not a broken file: the file is fine and the
-// caller can still read every other field.
+// ErrNoSettlementTypeMapping is for when a row's platform transaction type has no row in the
+// mapping table: a gap in the contract, not a broken file — the file is fine and the caller can
+// still read every other field.
+//
+// ⚠ Nothing returns it yet. SettlementType panics rather than classifying, so this is the shape
+// the gap will take once the mapping is written, kept here because there is already a known gap
+// to return it for: "Program Ekspor Shopee FLEXI" is in the samples and not in the table.
 var ErrNoSettlementTypeMapping = errors.New("san_excel_readers: no settlement type mapped for this transaction type")

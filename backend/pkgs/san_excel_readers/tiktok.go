@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -25,7 +26,8 @@ const (
 	tiktokSheetWithdrawals = "Withdrawal records"
 )
 
-// Order details columns. Only those present in EVERY sample layout are named here — see
+// Order details columns the item is read from. Every layout measured carries all of them, though
+// not always under these names — see tiktokRenamed. The columns that come and go entirely are
 // tiktokDriftingColumns.
 const (
 	tiktokColID         = "Order/adjustment ID"
@@ -63,20 +65,53 @@ const (
 	tiktokNone = "/"
 )
 
-// tiktokDriftingColumns are the fee columns that appear in some exports and not others: three
-// layouts across 13 samples, 61, 63 and 64 columns wide. Flat fee and Sales fee are in the
-// narrow ones and GONE from the widest; GMV Max ad fee is the other way round.
+// tiktokRenamed is every other header text TikTok has exported a column under.
+//
+// The September 2026 layout renamed headers without changing what the columns hold: "Type"
+// became "Transaction type" on both sheets that have one, two headers changed only their
+// capitals, and two Reports labels were respelled. Only the columns the reader relies on are
+// listed; every other column reaches GetDetails under whatever name the export gives it.
+var tiktokRenamed = map[string][]string{
+	tiktokColID:         {"Order/Adjustment ID"},
+	tiktokColType:       {"Transaction type"}, // tiktokColWithdrawalType is the same "Type"
+	tiktokColSource:     {"Order source"},
+	tiktokLabelPeriod:   {"Time period"},
+	tiktokLabelTimezone: {"Time zone"},
+}
+
+// tiktokDriftingColumns are the fee columns that appear in some exports and not others: four
+// layouts across 14 samples, 61, 63, 64 and 76 columns wide.
 //
 // They are listed so the drift is visible in code rather than a surprise. None of them is a
 // field on the item, and all of them are readable through GetDetails.
 var tiktokDriftingColumns = []string{
+	// In the 61- and 63-column layouts, GONE from the two widest.
 	"Flat fee",
 	"Sales fee",
+	// In every layout before September 2026, gone from it.
+	"Bonus cashback service fee",
+	"Voucher Xtra service fee",
+	// Only in the wider layouts.
 	"Distance item fee from Horizon+ Program",
 	"Distance shipping fee from Horizon+ Program",
 	"Article 22 Income Tax withheld",
 	"Platform special service fee",
 	"GMV Max ad fee",
+	// Only in the September 2026 layout.
+	"Credit card installment - Handling fee",
+	"Logistics service fee",
+	"Insurance reimbursement",
+	"Affiliate commission deposit",
+	"Affiliate commission refund",
+	"Growth Xtra Program service fee",
+	"Growth Xtra Program Super service fee",
+	"GMV Max coupon",
+	"GMV Max coupon sales tax",
+	"Managed service plan (Sales tax)",
+	"Managed service plan (Per order fee)",
+	"Failed delivery shipping fee",
+	"Buyer-fault return shipping fee",
+	"Insurance fee",
 }
 
 var ErrNotTiktokReport = fmt.Errorf("san_excel_readers: not a tiktok settlement report")
@@ -117,12 +152,21 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 
 // SettlementType classifies the row for settlement_service.
 //
-// ⚠ Always returns ErrNoSettlementTypeMapping today. context.md carries a mapping table for
-// Shopee and NONE for TikTok, and the enum it would map onto is an empty heading in
-// settlement/context.md. Guessing that "Platform reimbursement" is a marketplace_adjustment is
-// a business decision, not a parsing one, so it is left to the owner rather than invented here.
+// ⚠ NOT IMPLEMENTED — it panics. context.md carries a mapping table for Shopee and NONE for
+// TikTok, and the enum both would map onto is an empty heading in settlement/context.md.
+// Deciding that "Platform reimbursement" is a marketplace_adjustment is a business call, not a
+// parsing one, so the signature is reserved and the body waits for it.
+//
+// The mapping to write once the enum exists, from the measured Type values:
+//
+//	Order                           2707 rows
+//	GMV Payment for TikTok Ads        10
+//	Platform reimbursement             4
+//	Additional Campaign Package        4
+//	Logistics reimbursement            3
+//	Shipping insurance compensation    1
 func (s *TiktokSettlementItem) SettlementType() (SettlementType, error) {
-	return "", fmt.Errorf("%w: %q", ErrNoSettlementTypeMapping, s.TransactionType)
+	panic("san_excel_readers: SettlementType not implemented")
 }
 
 // TiktokWithdrawalItem is one row of "Withdrawal records" — this is where TikTok money actually
@@ -174,7 +218,8 @@ type TiktokSettlementDocument interface {
 	// GetDetails is every column of every order row, for the fee breakdown.
 	GetDetails() ([]*TiktokSettlementDetail, error)
 	// GetDriftingColumns is the fee columns THIS export happens to carry that are not in every
-	// export. Empty is normal; a non-empty result is a reconciliation warning, not an error.
+	// export — the ones a caller comparing fees across exports cannot assume the other export
+	// has. Informational, never an error: every layout measured carries some.
 	GetDriftingColumns() ([]string, error)
 }
 
@@ -234,9 +279,9 @@ func NewTiktokSettlementDocument(r io.Reader) (TiktokSettlementDocument, error) 
 	}
 
 	header := headerOf(orders[0])
-	_, found := header[tiktokColID]
-	if !found {
-		return nil, fmt.Errorf("%w: no %q column", ErrNotTiktokReport, tiktokColID)
+	columns, err := tiktokColumns(tiktokSheetOrders, header, tiktokOrderColumns)
+	if err != nil {
+		return nil, err
 	}
 
 	doc := &tiktokDocument{
@@ -266,7 +311,7 @@ func NewTiktokSettlementDocument(r io.Reader) (TiktokSettlementDocument, error) 
 		return nil, err
 	}
 
-	doc.items, doc.details, err = parseTiktokOrders(orders, header, zone)
+	doc.items, doc.details, err = parseTiktokOrders(orders, header, columns, zone)
 	if err != nil {
 		return nil, err
 	}
@@ -322,6 +367,70 @@ func headerOf(row []string) map[string]int {
 	return header
 }
 
+// The columns each item is read from. Every one is required.
+var (
+	tiktokOrderColumns = []string{
+		tiktokColID,
+		tiktokColType,
+		tiktokColCreatedAt,
+		tiktokColSettledAt,
+		tiktokColCurrency,
+		tiktokColSettlement,
+		tiktokColRevenue,
+		tiktokColFees,
+		tiktokColRelatedID,
+		tiktokColSource,
+	}
+	tiktokWithdrawalColumns = []string{
+		tiktokColWithdrawalType,
+		tiktokColReferenceID,
+		tiktokColRequestTime,
+		tiktokColAmount,
+		tiktokColStatus,
+		tiktokColSuccessTime,
+	}
+)
+
+// tiktokColumns finds where each named column sits in a sheet's header, under whichever of its
+// spellings this export uses, keyed by the name the reader knows it by.
+//
+// A column that cannot be found fails the whole read. Left alone it would read as "" or 0 on
+// every row, and those values are hashed — so a header TikTok renames would silently re-key the
+// export, and re-importing it would book every row twice.
+func tiktokColumns(sheet string, header map[string]int, names []string) (map[string]int, error) {
+	columns := map[string]int{}
+	for _, name := range names {
+		at, found := tiktokFind(header, name)
+		if !found {
+			quoted := []string{}
+			for _, spelling := range tiktokSpellings(name) {
+				quoted = append(quoted, strconv.Quote(spelling))
+			}
+			return nil, fmt.Errorf("%w: %q has no %s column", ErrNotTiktokReport, sheet, strings.Join(quoted, " or "))
+		}
+
+		columns[name] = at
+	}
+
+	return columns, nil
+}
+
+func tiktokFind(header map[string]int, name string) (int, bool) {
+	for _, spelling := range tiktokSpellings(name) {
+		at, found := header[spelling]
+		if found {
+			return at, true
+		}
+	}
+
+	return 0, false
+}
+
+// tiktokSpellings is every header text a column has been exported under, oldest first.
+func tiktokSpellings(name string) []string {
+	return append([]string{name}, tiktokRenamed[name]...)
+}
+
 // tiktokPeriod reads "2025/12/18-2025/12/24" out of the Reports sheet.
 func tiktokPeriod(reports [][]string) (time.Time, time.Time, error) {
 	raw := tiktokReportValue(reports, tiktokLabelPeriod)
@@ -350,6 +459,8 @@ func tiktokPeriod(reports [][]string) (time.Time, time.Time, error) {
 // tiktokReportValue finds a label anywhere in the Reports block and returns the last non-empty
 // cell on its row — the label's column encodes tree depth, so its position is not fixed.
 func tiktokReportValue(reports [][]string, label string) string {
+	spellings := tiktokSpellings(label)
+
 	for _, row := range reports {
 		labelled := false
 		value := ""
@@ -359,7 +470,7 @@ func tiktokReportValue(reports [][]string, label string) string {
 			if cell == "" {
 				continue
 			}
-			if cell == label {
+			if slices.Contains(spellings, cell) {
 				labelled = true
 				continue
 			}
@@ -395,7 +506,10 @@ func tiktokZone(stated string) (*time.Location, error) {
 	return time.FixedZone(strings.TrimSpace(stated), hours*60*60), nil
 }
 
-func parseTiktokOrders(rows [][]string, header map[string]int, zone *time.Location) ([]*TiktokSettlementItem, []*TiktokSettlementDetail, error) {
+// parseTiktokOrders reads each order row. The item comes from columns, the reader's own names
+// for them; the detail comes from header, verbatim, so it carries whatever this export calls
+// each column.
+func parseTiktokOrders(rows [][]string, header map[string]int, columns map[string]int, zone *time.Location) ([]*TiktokSettlementItem, []*TiktokSettlementDetail, error) {
 	items := []*TiktokSettlementItem{}
 	details := []*TiktokSettlementDetail{}
 
@@ -403,11 +517,11 @@ func parseTiktokOrders(rows [][]string, header map[string]int, zone *time.Locati
 		row := rows[i]
 
 		// TikTok pads its used range with blank rows — 176 of 219 in one sample.
-		if blankRow(row) || cell(row, header, tiktokColID) == "" {
+		if blankRow(row) || cell(row, columns, tiktokColID) == "" {
 			continue
 		}
 
-		item, err := parseTiktokOrder(row, header, zone)
+		item, err := parseTiktokOrder(row, columns, zone)
 		if err != nil {
 			return nil, nil, fmt.Errorf("san_excel_readers: row %d: %w", i+1, err)
 		}
@@ -432,28 +546,28 @@ func parseTiktokOrders(rows [][]string, header map[string]int, zone *time.Locati
 	return items, details, nil
 }
 
-func parseTiktokOrder(row []string, header map[string]int, zone *time.Location) (*TiktokSettlementItem, error) {
-	settledAt, err := tiktokDate(cell(row, header, tiktokColSettledAt), zone)
+func parseTiktokOrder(row []string, columns map[string]int, zone *time.Location) (*TiktokSettlementItem, error) {
+	settledAt, err := tiktokDate(cell(row, columns, tiktokColSettledAt), zone)
 	if err != nil {
 		return nil, fmt.Errorf("%q: %w", tiktokColSettledAt, err)
 	}
 
-	createdAt, err := tiktokDate(cell(row, header, tiktokColCreatedAt), zone)
+	createdAt, err := tiktokDate(cell(row, columns, tiktokColCreatedAt), zone)
 	if err != nil {
 		return nil, fmt.Errorf("%q: %w", tiktokColCreatedAt, err)
 	}
 
-	amount, err := parseAmount(cell(row, header, tiktokColSettlement))
+	amount, err := parseAmount(cell(row, columns, tiktokColSettlement))
 	if err != nil {
 		return nil, fmt.Errorf("%q: %w", tiktokColSettlement, err)
 	}
 
-	revenue, err := parseAmount(cell(row, header, tiktokColRevenue))
+	revenue, err := parseAmount(cell(row, columns, tiktokColRevenue))
 	if err != nil {
 		return nil, fmt.Errorf("%q: %w", tiktokColRevenue, err)
 	}
 
-	fees, err := parseAmount(cell(row, header, tiktokColFees))
+	fees, err := parseAmount(cell(row, columns, tiktokColFees))
 	if err != nil {
 		return nil, fmt.Errorf("%q: %w", tiktokColFees, err)
 	}
@@ -461,14 +575,14 @@ func parseTiktokOrder(row []string, header map[string]int, zone *time.Location) 
 	item := TiktokSettlementItem{
 		At:                settledAt,
 		CreatedAt:         createdAt,
-		TransactionType:   cell(row, header, tiktokColType),
-		OrderRefID:        cell(row, header, tiktokColID),
-		RelatedOrderRefID: notNone(cell(row, header, tiktokColRelatedID)),
-		Currency:          cell(row, header, tiktokColCurrency),
+		TransactionType:   cell(row, columns, tiktokColType),
+		OrderRefID:        cell(row, columns, tiktokColID),
+		RelatedOrderRefID: notNone(cell(row, columns, tiktokColRelatedID)),
+		Currency:          cell(row, columns, tiktokColCurrency),
 		Amount:            amount,
 		Revenue:           revenue,
 		TotalFees:         fees,
-		Source:            cell(row, header, tiktokColSource),
+		Source:            cell(row, columns, tiktokColSource),
 	}
 
 	return &item, nil
@@ -480,29 +594,30 @@ func parseTiktokWithdrawals(rows [][]string, zone *time.Location) ([]*TiktokWith
 		return withdrawals, nil
 	}
 
-	header := headerOf(rows[0])
-	_, found := header[tiktokColReferenceID]
-	if !found {
-		return withdrawals, nil
+	// A header the reader cannot place fails the read rather than reporting no withdrawals: an
+	// empty list is a claim that no money moved.
+	columns, err := tiktokColumns(tiktokSheetWithdrawals, headerOf(rows[0]), tiktokWithdrawalColumns)
+	if err != nil {
+		return nil, err
 	}
 
 	for i := 1; i < len(rows); i++ {
 		row := rows[i]
-		if blankRow(row) || cell(row, header, tiktokColReferenceID) == "" {
+		if blankRow(row) || cell(row, columns, tiktokColReferenceID) == "" {
 			continue
 		}
 
-		requestedAt, err := tiktokDate(cell(row, header, tiktokColRequestTime), zone)
+		requestedAt, err := tiktokDate(cell(row, columns, tiktokColRequestTime), zone)
 		if err != nil {
 			return nil, fmt.Errorf("san_excel_readers: withdrawal row %d: %q: %w", i+1, tiktokColRequestTime, err)
 		}
 
-		succeededAt, err := tiktokOptionalDate(cell(row, header, tiktokColSuccessTime), zone)
+		succeededAt, err := tiktokOptionalDate(cell(row, columns, tiktokColSuccessTime), zone)
 		if err != nil {
 			return nil, fmt.Errorf("san_excel_readers: withdrawal row %d: %q: %w", i+1, tiktokColSuccessTime, err)
 		}
 
-		amount, err := parseAmount(cell(row, header, tiktokColAmount))
+		amount, err := parseAmount(cell(row, columns, tiktokColAmount))
 		if err != nil {
 			return nil, fmt.Errorf("san_excel_readers: withdrawal row %d: %q: %w", i+1, tiktokColAmount, err)
 		}
@@ -510,10 +625,10 @@ func parseTiktokWithdrawals(rows [][]string, zone *time.Location) ([]*TiktokWith
 		withdrawal := TiktokWithdrawalItem{
 			At:          requestedAt,
 			SucceededAt: succeededAt,
-			Type:        cell(row, header, tiktokColWithdrawalType),
-			ReferenceID: cell(row, header, tiktokColReferenceID),
+			Type:        cell(row, columns, tiktokColWithdrawalType),
+			ReferenceID: cell(row, columns, tiktokColReferenceID),
 			Amount:      amount,
-			Status:      cell(row, header, tiktokColStatus),
+			Status:      cell(row, columns, tiktokColStatus),
 		}
 
 		withdrawals = append(withdrawals, &withdrawal)

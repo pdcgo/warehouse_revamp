@@ -88,6 +88,25 @@ func (s *ShopeeSettlementItem) GenerateUniqueID() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// SettlementType classifies the row for settlement_service.
+//
+// ⚠ NOT IMPLEMENTED — it panics. context.md gives the mapping for three of the four measured
+// "Tipe Transaksi" values, but the enum it maps ONTO is an empty heading in
+// settlement/context.md, so the target type has no members to return yet.
+//
+// The mapping written down, and the gap in it:
+//
+//	Penarikan Dana              -> withdrawal                172 rows
+//	Penghasilan dari Pesanan    -> fund                     3555
+//	Penyesuaian                 -> marketplace_adjustment     60
+//	Program Ekspor Shopee FLEXI -> NOT IN THE TABLE            1   (shopee_malaysia.xlsx)
+//
+// ⚠ Note "withdrawal" is not one of the values settlement/context.md used to list, so this is
+// a redesign of that enum rather than a lookup into it.
+func (s *ShopeeSettlementItem) SettlementType() (SettlementType, error) {
+	panic("san_excel_readers: SettlementType not implemented")
+}
+
 // ShopeeSettlementDocument is one downloaded "Transaction Report".
 //
 // ⚠ It is a SLICE of the wallet ledger, not provably the whole of it: Shopee filters some
