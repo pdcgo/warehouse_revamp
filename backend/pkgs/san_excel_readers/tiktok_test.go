@@ -500,6 +500,7 @@ func TestTiktokSettlementType(t *testing.T) {
 		"Other adjustment":                          "marketplace_adjustment",
 		"Marketing benefits package fee":            "marketplace_adjustment",
 		"Additional marketing benefits package fee": "marketplace_adjustment",
+		"Platform commission adjustment":            "marketplace_adjustment",
 	}
 
 	for transaction, want := range mapped {

@@ -165,10 +165,11 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 //	Shipping insurance compensation    1               looks like marketplace_adjustment
 //	wderror                            1               ⛔ probably a hand-edited fixture, not real
 //
-// ⚠ The samples UNDERSTATE the vocabulary. Two of the mapped types — both "…marketing benefits
-// package fee" — came from real imports and appear in no sample at all. This list is what has been
-// SEEN, never what exists, so a caller must handle ErrNoSettlementTypeMapping rather than assume
-// the table is complete.
+// ⚠ The samples UNDERSTATE the vocabulary, badly. THREE of the eight mapped types came from real
+// imports and appear in no sample at all — both "…marketing benefits package fee" and "Platform
+// commission adjustment" — and a fourth turned up only as a respelling. The samples show 8 types;
+// real data has shown 11 and counting. This list is what has been SEEN, never what exists, so a
+// caller MUST handle ErrNoSettlementTypeMapping rather than assume the table is complete.
 //
 // ⚠ And a limit this table cannot reach past: unlike Shopee, TikTok puts affiliate and ads charges
 // in COLUMNS on the order row — Affiliate Commission, GMV Max ad fee and the rest — not in rows of
@@ -181,6 +182,7 @@ var tiktokSettlementTypes = map[string]SettlementType{
 	"Other adjustment":                          SettlementMarketplaceAdjustment, // 1, cannot_open.xlsx
 	"Marketing benefits package fee":            SettlementMarketplaceAdjustment, // real data, in no sample
 	"Additional marketing benefits package fee": SettlementMarketplaceAdjustment, // real data, in no sample
+	"Platform commission adjustment":            SettlementMarketplaceAdjustment, // real data, in no sample
 }
 
 // ⚠ Only a row typed "Order" carries an ORDER id. Measured across every sample:
