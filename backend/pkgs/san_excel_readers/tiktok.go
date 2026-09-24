@@ -150,24 +150,27 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// tiktokSettlementTypes is the mapping table for "Type", and it is EMPTY.
+// tiktokSettlementTypes is the mapping table for the "Type" column.
 //
-// ⚠ context.md carries a mapping table for Shopee and none for TikTok, so every row currently
-// returns ErrNoSettlementTypeMapping. That is the same refusal Shopee gives an unrecognised
-// value, applied to a vocabulary where nothing is recognised yet — not a different mechanism.
+// ⚠ It is INCOMPLETE — context.md has no TikTok table, so rows are added one owner decision at a
+// time and everything else returns ErrNoSettlementTypeMapping. The measured vocabulary, and what
+// each unmapped one looks like (looks like is not decided — that is the point):
 //
-// The six measured values, waiting for a row each. Classifying them is a business call:
-// "Platform reimbursement" and "Logistics reimbursement" look like marketplace_adjustment,
-// "GMV Payment for TikTok Ads" like external_ads_fee, and "Additional Campaign Package" could be
-// either — which is exactly why this is the owner's table and not a guess here.
+//	Order                           2710 rows sampled   looks like fund
+//	GMV Payment for TikTok Ads        10                looks like external_ads_fee
+//	Platform reimbursement             4                looks like marketplace_adjustment
+//	Additional Campaign Package        4                ⛔ ads fee or programme, genuinely unclear
+//	Logistics reimbursement            3                looks like marketplace_adjustment
+//	Other adjustment                   1   ✅ mapped
+//	Shipping insurance compensation    1                looks like marketplace_adjustment
+//	wderror                            1                ⛔ probably a hand-edited fixture, not real
 //
-//	Order                           2707 rows sampled
-//	GMV Payment for TikTok Ads        10
-//	Platform reimbursement             4
-//	Additional Campaign Package        4
-//	Logistics reimbursement            3
-//	Shipping insurance compensation    1
-var tiktokSettlementTypes = map[string]SettlementType{}
+// ⚠ And a limit this table cannot reach past: unlike Shopee, TikTok puts affiliate and ads charges
+// in COLUMNS on the order row — Affiliate Commission, GMV Max ad fee and the rest — not in rows of
+// their own. A per-row settlement type cannot express those at all.
+var tiktokSettlementTypes = map[string]SettlementType{
+	"Other adjustment": SettlementMarketplaceAdjustment, // 1 row, cannot_open.xlsx
+}
 
 // SettlementType classifies the row for settlement_service.
 //

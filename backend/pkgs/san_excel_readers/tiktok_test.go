@@ -488,10 +488,25 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-// TikTok has no mapping table in context.md at all, so every row is unrecognised and every call
-// errors. That is the same refusal Shopee gives an unknown value, applied to a vocabulary where
-// nothing is known yet — it is the TABLE that is missing, not the mechanism.
-func TestTiktokSettlementTypeHasNoMappingYet(t *testing.T) {
+// The TikTok table is filled one owner decision at a time, so this pins both halves: what is
+// mapped stays mapped, and what is not still REFUSES rather than guessing at "other".
+func TestTiktokSettlementType(t *testing.T) {
+	mapped := map[string]san_excel_readers.SettlementType{
+		"Other adjustment": "marketplace_adjustment",
+	}
+
+	for transaction, want := range mapped {
+		item := san_excel_readers.TiktokSettlementItem{TransactionType: transaction}
+
+		got, err := item.SettlementType()
+		if err != nil {
+			t.Fatalf("%q: %v", transaction, err)
+		}
+		if got != want {
+			t.Errorf("%q: SettlementType() = %q, want %q", transaction, got, want)
+		}
+	}
+
 	for _, transaction := range []string{
 		"Order",
 		"GMV Payment for TikTok Ads",
@@ -499,6 +514,7 @@ func TestTiktokSettlementTypeHasNoMappingYet(t *testing.T) {
 		"Additional Campaign Package",
 		"Logistics reimbursement",
 		"Shipping insurance compensation",
+		"Something TikTok Invents Next Quarter",
 	} {
 		item := san_excel_readers.TiktokSettlementItem{TransactionType: transaction}
 
@@ -506,6 +522,38 @@ func TestTiktokSettlementTypeHasNoMappingYet(t *testing.T) {
 		if !errors.Is(err, san_excel_readers.ErrNoSettlementTypeMapping) {
 			t.Errorf("%q: err = %v, want ErrNoSettlementTypeMapping", transaction, err)
 		}
+	}
+}
+
+// Every transaction type the samples actually contain, so a new export carrying one this package
+// has never seen shows up here rather than in production. Mapping them is the owner's call — this
+// only asserts the SET is known.
+func TestTiktokSampleTransactionTypesAreAllKnown(t *testing.T) {
+	known := map[string]bool{
+		"Order": true, "GMV Payment for TikTok Ads": true, "Platform reimbursement": true,
+		"Additional Campaign Package": true, "Logistics reimbursement": true,
+		"Other adjustment": true, "Shipping insurance compensation": true,
+		"wderror": true, // ⛔ probably a hand-edited fixture — see Q4 in the clarify
+	}
+
+	unexpected := map[string]int{}
+	for _, name := range tiktokSampleNames(t) {
+		doc := openTiktokSample(t, name)
+
+		items, err := doc.GetItems()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, item := range items {
+			if !known[item.TransactionType] {
+				unexpected[item.TransactionType]++
+			}
+		}
+	}
+
+	if len(unexpected) != 0 {
+		t.Fatalf("transaction types this package has never seen: %v", unexpected)
 	}
 }
 

@@ -125,7 +125,7 @@ Maps a platform transaction type onto settlement_service's `settlement_type`.
 | | |
 | --- | --- |
 | **Shopee** | ✅ all four measured types map — `fund`, `withdrawal`, `marketplace_adjustment`, `marketplace_program` |
-| **TikTok** | ⛔ **no mapping table exists yet**, so every row returns `ErrNoSettlementTypeMapping` |
+| **TikTok** | ⚠ **table is incomplete** — only `Other adjustment` maps so far. Every other type returns `ErrNoSettlementTypeMapping` |
 
 Two rules, the same on both sides:
 

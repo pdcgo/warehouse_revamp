@@ -10,6 +10,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [dash-is-not-a-reference](#dash-is-not-a-reference) | `No. Pesanan` of `"-"` becomes an empty `OrderRefID` |
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
+| [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
 
 ---
@@ -189,19 +190,53 @@ flowchart LR
 
 **Nothing in the package panics any more.** `SettlementType` was the only one.
 
-**The six TikTok values still waiting for a row each**, with what they look like — none of it decided:
+**The TikTok vocabulary**, re-measured across every sample including the September 2026 one. One row
+is decided (see [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment));
+*looks like* is NOT decided.
 
-| `Type` | sampled | looks like |
+| `Type` | sampled | |
 | --- | ---: | --- |
-| `Order` | 2707 | `fund` |
-| `GMV Payment for TikTok Ads` | 10 | `external_ads_fee` |
-| `Platform reimbursement` | 4 | `marketplace_adjustment` |
+| `Order` | 2710 | looks like `fund` |
+| `GMV Payment for TikTok Ads` | 10 | looks like `external_ads_fee` |
+| `Platform reimbursement` | 4 | looks like `marketplace_adjustment` |
 | `Additional Campaign Package` | 4 | ⛔ ads fee or programme — genuinely unclear |
-| `Logistics reimbursement` | 3 | `marketplace_adjustment` |
-| `Shipping insurance compensation` | 1 | `marketplace_adjustment` |
+| `Logistics reimbursement` | 3 | looks like `marketplace_adjustment` |
+| `Other adjustment` | 1 | ✅ `marketplace_adjustment` |
+| `Shipping insurance compensation` | 1 | looks like `marketplace_adjustment` |
+| `wderror` | 1 | ⛔ probably a hand-edited fixture, not a real platform value |
 
 ⚠ **TikTok's fee detail is not a transaction type.** Unlike Shopee, TikTok puts affiliate and ads
 charges in *columns* on the order row (`Affiliate Commission`, `Affiliate Shop Ads commission`,
 `GMV Max ad fee`, …), not in separate rows. So a per-row `settlement_type` cannot express them at
 all — whether those columns become their own settlement log entries is a **separate** question from
 this table, and a bigger one.
+
+## other-adjustment-is-a-marketplace-adjustment
+
+> Owner (2026-09-24), hitting the refusal in a real run — *"no settlement type mapped for this
+> transaction type: `Other adjustment`"* — **"its `marketplace_adjustment`"**.
+
+**The verdict.** TikTok's `Other adjustment` maps to `marketplace_adjustment`.
+
+**The refusal working as intended.** This is the first time
+[an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms)
+actually fired, and it fired on a type **none of the original 13 samples contained** — `Other
+adjustment` appears once, in `cannot_open.xlsx`, the September 2026 export. Had the reader bucketed
+it into `other`, it would have imported as a deliberate classification and nobody would have
+looked.
+
+⚠ **Note the name trap:** the platform's `Other adjustment` is *not* settlement's `other`. It reads
+like a match and is not one.
+
+```mermaid
+flowchart LR
+  N["a type nobody had seen, Other adjustment, in a new export"] --> R["the reader refused"]
+  R --> O["the owner classified it"]
+  O --> T["one row added to the table"]
+  R -.->|"the alternative"| B["bucketed as other, imported silently"]
+```
+
+**The table is filled one decision at a time, and six are still open** — see the table under
+[an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms).
+`TestTiktokSampleTransactionTypesAreAllKnown` walks every sample and fails on a type this package
+has never seen, so the *set* is guarded even while the mapping is incomplete.
