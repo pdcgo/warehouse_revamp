@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [reimbursements-get-their-own-types](#reimbursements-get-their-own-types) | `Platform reimbursement` → `platform_reimbursement` — the pattern is now 3 for 3, a SPECIFIC type over the generic bucket |
 | [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) | TikTok `Logistics reimbursement` → `logistic_reimbursement`, an ELEVENTH settlement type |
 | [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
@@ -200,7 +201,7 @@ is decided (see [other-adjustment-is-a-marketplace-adjustment](#other-adjustment
 | --- | ---: | --- |
 | `Order` | 2710 | ✅ `fund` — see [order-is-fund](#order-is-fund) |
 | `GMV Payment for TikTok Ads` | 10 | looks like `external_ads_fee` |
-| `Platform reimbursement` | 4 | looks like `marketplace_adjustment` |
+| `Platform reimbursement` | 4 | ✅ `platform_reimbursement` — see [reimbursements-get-their-own-types](#reimbursements-get-their-own-types) |
 | `Additional Campaign Package` | 4 | ⛔ ads fee or programme — genuinely unclear |
 | `Logistics reimbursement` | 3 | ✅ `logistic_reimbursement` — see [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) |
 | `Other adjustment` | 1 | ✅ `marketplace_adjustment` |
@@ -329,3 +330,43 @@ flowchart TB
 
 `TestTiktokAdjustmentsCarryAnAdjustmentID` pins all three. ⚠ I had first written this as "every
 adjustment has a related order" and the test caught it on the first run.
+
+## reimbursements-get-their-own-types
+
+> Owner (2026-09-24), from a real run — **`"Platform reimbursement"` … its use `platform_reimbursement`**.
+
+**The verdict.** A twelfth settlement type. Not `marketplace_adjustment`, which is again what I had
+guessed.
+
+**The pattern is now 3 for 3, so treat it as the rule rather than a run of coincidences.** Each time
+a platform names a concept, it gets a settlement type of its own; the generic bucket is for things
+the platform itself did not name.
+
+| decided | I guessed | owner chose |
+| --- | --- | --- |
+| [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | `fund` | `marketplace_program` |
+| [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) | `marketplace_adjustment` | `logistic_reimbursement` |
+| this | `marketplace_adjustment` | `platform_reimbursement` |
+
+```mermaid
+flowchart LR
+  P["a type the platform NAMED"] --> S["its own settlement_type"]
+  U["something the platform did not name"] --> G["marketplace_adjustment, the generic bucket"]
+  S --> R["stays visible in a report as it grows"]
+  G --> H["only ever a residue"]
+```
+
+**Three types are left**, and under this rule the answers are probably:
+
+| `Type` | rows | probably |
+| --- | ---: | --- |
+| `GMV Payment for TikTok Ads` | 10 | `external_ads_fee` — the enum already names it, and so does the platform |
+| `Additional Campaign Package` | 4 | its own, e.g. `campaign_package` |
+| `Shipping insurance compensation` | 1 | its own, e.g. `insurance_compensation` |
+| `wderror` | 1 | ⛔ not a real value — 28 characters where every real id is 18 or 19, and no related order. Almost certainly a hand-edited fixture in `salah_tarik.xlsx` |
+
+⚠ **THREE settlement types now exist in code and not in
+[what is `settlement_type`](../../../business/settlement/context.md#what-is-settlement_type)** —
+`marketplace_program`, `logistic_reimbursement` and `platform_reimbursement`. The doc lists nine and
+the code needs twelve. **The doc is yours to update** (HARD RULE 7b), and it is the one place
+the list can be authoritative.

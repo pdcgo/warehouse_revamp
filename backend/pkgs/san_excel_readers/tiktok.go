@@ -158,7 +158,7 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 //
 //	Order                           2710 rows sampled  ✅ mapped
 //	GMV Payment for TikTok Ads        10               looks like external_ads_fee
-//	Platform reimbursement             4               looks like marketplace_adjustment
+//	Platform reimbursement             4  ✅ mapped
 //	Additional Campaign Package        4               ⛔ ads fee or programme, genuinely unclear
 //	Logistics reimbursement            3  ✅ mapped
 //	Other adjustment                   1  ✅ mapped
@@ -171,6 +171,7 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 var tiktokSettlementTypes = map[string]SettlementType{
 	"Order":                   SettlementFund,                  // 2710 rows, 53 of them settling ZERO
 	"Logistics reimbursement": SettlementLogisticReimbursement, // 3
+	"Platform reimbursement":  SettlementPlatformReimbursement, // 4
 	"Other adjustment":        SettlementMarketplaceAdjustment, // 1, cannot_open.xlsx
 }
 

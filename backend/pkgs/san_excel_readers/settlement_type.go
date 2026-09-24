@@ -31,6 +31,11 @@ const (
 	// SettlementMarketplaceProgram. ⚠ Spelled "logistic", singular, where the TikTok column says
 	// "Logistics reimbursement"; that is the owner's spelling, kept verbatim.
 	SettlementLogisticReimbursement SettlementType = "logistic_reimbursement"
+	// SettlementPlatformReimbursement is the platform paying back something that is not shipping
+	// — the sampled rows are compensation against a specific order.
+	//
+	// ⚠ Owner-decided (2026-09-24), the TWELFTH value and also not yet in the owner's enum.
+	SettlementPlatformReimbursement SettlementType = "platform_reimbursement"
 
 	// SettlementMarketplaceAdjustment is a correction the PLATFORM made.
 	SettlementMarketplaceAdjustment SettlementType = "marketplace_adjustment"

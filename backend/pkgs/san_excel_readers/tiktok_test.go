@@ -494,6 +494,7 @@ func TestTiktokSettlementType(t *testing.T) {
 	mapped := map[string]san_excel_readers.SettlementType{
 		"Order":                   "fund",
 		"Logistics reimbursement": "logistic_reimbursement",
+		"Platform reimbursement":  "platform_reimbursement",
 		"Other adjustment":        "marketplace_adjustment",
 	}
 
@@ -511,7 +512,6 @@ func TestTiktokSettlementType(t *testing.T) {
 
 	for _, transaction := range []string{
 		"GMV Payment for TikTok Ads",
-		"Platform reimbursement",
 		"Additional Campaign Package",
 		"Shipping insurance compensation",
 		"Something TikTok Invents Next Quarter",
