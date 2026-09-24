@@ -1,6 +1,7 @@
 package san_excel_readers_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -286,7 +287,7 @@ func TestNewShopeeSettlementDocumentRejectsAnotherPlatform(t *testing.T) {
 	defer file.Close()
 
 	_, err = san_excel_readers.NewShopeeSettlementDocument(file)
-	if err == nil {
-		t.Fatal("a tiktok export parsed as a shopee report")
+	if !errors.Is(err, san_excel_readers.ErrNotShopeeReport) {
+		t.Fatalf("err = %v, want ErrNotShopeeReport", err)
 	}
 }
