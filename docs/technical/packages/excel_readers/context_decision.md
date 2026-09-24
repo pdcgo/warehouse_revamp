@@ -11,6 +11,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [shopee-maps-on-tipe-transaksi-alone](#shopee-maps-on-tipe-transaksi-alone) | `SettlementType()` is a lookup on `Tipe Transaksi` only, and an unmapped value is an ERROR, never `other` |
 | [an-unmapped-type-is-an-error-on-both-platforms](#an-unmapped-type-is-an-error-on-both-platforms) | TikTok uses the same lookup against an EMPTY table — every row errors, nothing panics |
 | [other-adjustment-is-a-marketplace-adjustment](#other-adjustment-is-a-marketplace-adjustment) | TikTok `Other adjustment` → `marketplace_adjustment` — the first type the refusal actually caught |
+| [additional-marketing-benefits-is-also-an-adjustment](#additional-marketing-benefits-is-also-an-adjustment) | The second `…marketing benefits package fee` → `marketplace_adjustment`, and neither is in any sample |
 | [the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold) | `Marketing benefits package fee` → `marketplace_adjustment`, which breaks the pattern I had just called a rule |
 | [reimbursements-get-their-own-types](#reimbursements-get-their-own-types) | `Platform reimbursement` → `platform_reimbursement` — the pattern is now 3 for 3, a SPECIFIC type over the generic bucket |
 | [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) | TikTok `Logistics reimbursement` → `logistic_reimbursement`, an ELEVENTH settlement type |
@@ -415,3 +416,54 @@ fixtures. Expect more.
 **→ Recommend the caller stop panicking on an unmapped type.** The reader returns an error precisely
 so the importer can skip the row, record it, and finish — then report every unknown type in one go.
 Panicking means a single new type aborts a whole import, and the vocabulary is demonstrably open.
+
+## additional-marketing-benefits-is-also-an-adjustment
+
+> Owner (2026-09-24), from a real run — **`"Additional marketing benefits package fee"` … use
+> `marketplace_adjustment`**, confirmed on the follow-up.
+
+**The verdict.** The generic bucket again, like its sibling in
+[the-rule-i-inferred-does-not-hold](#the-rule-i-inferred-does-not-hold).
+
+**Two of the five TikTok types mapped to `marketplace_adjustment` are `…marketing benefits package
+fee` and neither is in any sample workbook.** Both are negative, both shop-level (no related order),
+both arrived from a real import minutes apart. That looks like a family the platform is actively
+adding to, which is worth knowing because the next one will not be in the samples either.
+
+```mermaid
+flowchart TB
+  S["the 14 sample workbooks"] --> K["8 transaction types"]
+  P["real imports, 2026-09"] --> N["Marketing benefits package fee"]
+  P --> N2["Additional marketing benefits package fee"]
+  N --> B["marketplace_adjustment"]
+  N2 --> B
+  K -.->|"neither type appears here"| N
+```
+
+**→ Recommend the importer stop panicking, now rather than after the next one.**
+[tools/report_withdrawal/main.go](../../../../tools/report_withdrawal/main.go) does this in both the
+Shopee and TikTok branches:
+
+```go
+settype, err := item.SettlementType()
+if err != nil {
+    logger.Error(err.Error(), "item", item)
+    panic(err)          // ← one unknown type aborts the whole import
+}
+```
+
+Collecting instead of aborting turns five round trips into one:
+
+```go
+settype, err := item.SettlementType()
+if err != nil {
+    if errors.Is(err, san_excel_readers.ErrNoSettlementTypeMapping) {
+        unmapped[item.TransactionType]++
+        continue        // skip the row, keep importing
+    }
+    panic(err)
+}
+```
+
+…then log `unmapped` once the file is done. Every unknown type in the file comes back in a single
+run, which is exactly the information needed to fill the table in one pass.
