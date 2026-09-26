@@ -503,6 +503,7 @@ func TestTiktokSettlementType(t *testing.T) {
 		"Additional marketing benefits package fee": "marketplace_adjustment",
 		"Platform commission adjustment":            "marketplace_adjustment",
 		"Deductions incurred by seller":             "marketplace_adjustment",
+		"Adjustment from settlement account":        "marketplace_adjustment",
 		"Shipping insurance compensation":           "shipment_adjustment",
 	}
 
