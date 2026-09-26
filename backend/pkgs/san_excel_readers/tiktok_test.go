@@ -505,9 +505,9 @@ func TestTiktokSettlementType(t *testing.T) {
 		"Deductions incurred by seller":             "marketplace_adjustment",
 		"Adjustment from settlement account":        "marketplace_adjustment",
 		// ⚠ FULLWIDTH parens, U+FF08/U+FF09 — escaped so a retype cannot pass unnoticed.
-		"Violation fee （settlement fee）": "marketplace_adjustment",
-		"Violation fee (settlement fee)":          "marketplace_adjustment",
-		"Shipping insurance compensation":           "shipment_adjustment",
+		"Violation fee （settlement fee）":  "marketplace_adjustment",
+		"Violation fee (settlement fee)":  "marketplace_adjustment",
+		"Shipping insurance compensation": "shipment_adjustment",
 	}
 
 	for transaction, want := range mapped {

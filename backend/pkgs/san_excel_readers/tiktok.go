@@ -165,12 +165,18 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 //	Shipping insurance compensation    1  ✅ mapped
 //	wderror                            1               ⛔ probably a hand-edited fixture, not real
 //
-// ⚠ The samples UNDERSTATE the vocabulary, badly. FIVE of the eleven mapped types came from real
+// ⚠ The samples UNDERSTATE the vocabulary, badly. SIX of the twelve mapped types came from real
 // imports and appear in no sample at all — both "…marketing benefits package fee", "Platform
-// commission adjustment", "Deductions incurred by seller" and "Adjustment from settlement
-// account" — and a sixth turned up only as a respelling. The samples show 8 types; real data has
-// shown 13 and counting, the newest at row 18107 of an import. This list is what has been SEEN, never what exists, so a
-// caller MUST handle ErrNoSettlementTypeMapping rather than assume the table is complete.
+// commission adjustment", "Deductions incurred by seller", "Adjustment from settlement account"
+// and "Violation fee" — and a seventh turned up only as a respelling. The samples show 8 types;
+// real data has shown 14 and counting, the newest at row 30271 of an import. This list is what
+// has been SEEN, never what exists, so a caller MUST handle ErrNoSettlementTypeMapping rather
+// than assume the table is complete.
+//
+// ⚠ And the spellings themselves are not stable, on two axes. CASE varies ("GMV Payment" /
+// "GMV payment") and the fold absorbs it. PUNCTUATION varies too — "Violation fee" arrives with
+// FULLWIDTH parentheses — and the fold does NOT absorb that, so each punctuation variant needs
+// its own entry.
 //
 // ⚠ And a limit this table cannot reach past: unlike Shopee, TikTok puts affiliate and ads charges
 // in COLUMNS on the order row — Affiliate Commission, GMV Max ad fee and the rest — not in rows of
