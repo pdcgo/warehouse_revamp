@@ -70,6 +70,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position) | the day-boundary position is what the number MEANS, the carry is how it is KEPT — reconciling the two decisions above, and closing the "two definitions" contradiction |
 | [a-past-date-position-is-a-real-screen](#a-past-date-position-is-a-real-screen) | `open_balance` / `close_balance` STAY — a screen reads a shop's position at a past date, so the cascade, the genesis seed, the floor and the reseed are all paid for |
 | [the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) | that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
+| [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ⚠ whether it counts toward the position is NOT settled |
 
 ---
 
@@ -3441,3 +3442,43 @@ no anchor, nothing to destroy at the beginning — and this is the survivor.
 ⚠ **What it does NOT do**: it prevents damage, it does not widen reach. Repairing something older than
 the window is still `system_adjustment` — with the class that cannot repair
 ([system-adjustment-is-a-ledger-type](#system-adjustment-is-a-ledger-type)), which stays open.
+
+---
+
+## withdrawal-is-a-settlement-type
+
+> `context.md` §what is `settlement_type` *(owner, 2026-09-24)* — `withdrawal` added to the list. The
+> same day, in the reader's thread: *"its contain settlement type withdrawal"*
+> ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)).
+
+**The verdict.** A platform withdrawal — the marketplace wallet paying our bank — is a **settlement row**
+of type `withdrawal`. It names no order, so it is **shop-addressed**
+([an-entry-names-an-order-or-a-shop](#an-entry-names-an-order-or-a-shop)). This answers the *where does it
+live* half of [context Q1](./context_clarify.md#question).
+
+```mermaid
+flowchart LR
+  S["Shopee — Penarikan Dana"] --> W["withdrawal, shop-addressed"]
+  T["TikTok — Withdrawal records, Withdrawal"] --> W
+  W --> L["settlement_logs"]
+  W -.->|"open — Q1"| P["does it count toward the position?"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| type | `withdrawal` — one of the five values the list gained on 2026-09-24 |
+| grain | the shop — `order_id` empty |
+| where it comes from | Shopee `Penarikan Dana` rows · TikTok `Withdrawal records` rows typed `Withdrawal` |
+| a failed withdrawal | ⛔ **not settled here** — whether its two rows are both booked is the importer's call, [importer Q6](./settlement_importer_clarify.md#question) |
+
+### What it does NOT settle
+
+⛔ **Whether it counts toward the position.** Summed into `Σ change`, it reverses
+[the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) — see
+[context Q1](./context_clarify.md#question) and its
+[Contradiction](./context_clarify.md#withdrawal-entered-the-log-and-the-position-is-defined-as-not-the-wallet).
+
+⚠ **It overtakes [architecture Q7](../../technical/architecture/context_clarify.md#question)**, which
+recommended `order_service` as the withdrawal's home.

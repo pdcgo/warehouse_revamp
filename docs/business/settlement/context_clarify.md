@@ -994,28 +994,28 @@ the cheapest moment it will ever be to choose.
 
 ## Question
 
-**Three open here**, and none is about the ledger's mechanics — those are all settled. 🆕 The third arrived by re-routing: the analytic doc was scoped to RECEIVING, so publishing lands here. ⚠ **Numbering was
+**Five open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
 compacted** when eight questions were answered or moved in one week; older references in this file's
 narrative point at the numbers they had then, and every answer lives in
 [context_decision.md](./context_decision.md).
 
-1. **Where does a platform WITHDRAWAL live?** Wallet to bank, naming no order — so it is none of
-   settlement's seven types, and [superseded-every-entry-names-an-order](./context_decision.md#superseded-every-entry-names-an-order)
-   made `order_id NOT NULL`, which forbids the obvious workaround. It needs a real home.
-   ⚠ **The same question is asked in [architecture Q7](../../technical/architecture/context_clarify.md#question)**,
-   which is the one this file is waiting on.
-   ✅ **It was briefly about to become blocking, and is not.**
-   [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
-   confirmed a screen showing *"a shop's position"*, and that phrase had two referents — under the
-   **wallet** reading a withdrawal is money leaving that wallet, so the screen could not have been built
-   without answering this.
-   [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet)
-   settled it as the **shortfall**, so **settlement is not waiting on this** — it stays open on its own
-   merits, at its own pace. ⚠ `fund`'s undecided destination (the wallet, or our bank) is unblocked the
-   same way, and equally unanswered.
-   **→ I recommend answering it once, in the architecture clarify, and having settlement follow** —
-   `order_service`, because the wallet is fed by that shop's orders and a withdrawal is reconciled
-   against them.
+1. ⛔ **`withdrawal` is a settlement type now — does it count toward the position?** 🔄 **Your
+   `context.md` edit (2026-09-24) answered where it lives** — recorded as
+   [withdrawal-is-a-settlement-type](./context_decision.md#withdrawal-is-a-settlement-type) — **and opened
+   what it does.** [settlement_importer_service](./settlement_importer_clarify.md) is its first writer, and
+   across the 26 sample workbooks withdrawals are **101% of `fund`** (−839,987,638 against +827,877,151).
+   Summed into `Σ change`, they cancel the `fund` they withdraw, and a shop's *hidden cost to date* reads as
+   nearly everything its buyers paid —
+   [Contradiction](#withdrawal-entered-the-log-and-the-position-is-defined-as-not-the-wallet).
+   **→ I recommend: record it, and keep it OUT of the position** — its own column, left out of `balance`,
+   `last_balance`, `open_balance`/`close_balance` and `received`. A withdrawal moves money between two of
+   our own pockets, so it is neither a shortfall nor a receipt. Reading it the other way — *the wallet is
+   in scope after all* — reverses
+   [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet),
+   and should be said as that.
+   ⛔ **Blocks the importer's first post** — 25 of the 26 samples carry a withdrawal.
+   ✅ [architecture Q7](../../technical/architecture/context_clarify.md#question) asked where it lives too,
+   and is answered by the same edit.
 
 2. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your worked example uses that
    type for a *reimbursement*, which is what I would call problem funding.
@@ -1387,7 +1387,9 @@ synchronous while a book may lag. Renaming settles the noun and leaves that argu
 
 ⚠ **`export_service` now has the same problem in advance.** Brief 3 names it, and
 `architecture/context.md` does not list it at all — so it is a service named in one doc and absent from
-the one that is supposed to name services.
+the one that is supposed to name services. 🔄 **And it has since gained a third name** —
+`settlement_importer_service` (2026-09-26), recorded where that doc is questioned:
+[the service has a third name](./settlement_importer_clarify.md#the-service-has-a-third-name-and-the-contract-still-carries-the-first).
 
 **→ RECOMMEND** `liability_service` everywhere, and add `export_service` to
 `architecture/context.md` when you come back to it. What stops this recurring is naming the property:
@@ -1436,6 +1438,79 @@ flowchart LR
   D2["architecture/context.md:9 — order_service"] --> N
   T["backend/services/selling_service — what shipped"] -.->|"the only dissenter"| N
   N --> R["rename the folder and warehouse.selling.v1, before the payout seam is written"]
+```
+
+## `withdrawal` entered the log, and the position is defined as not the wallet
+
+> `context.md` §what is `settlement_type` *(2026-09-24)* — *"`withdrawal`"*, a new value.
+>
+> [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet)
+> — *"the marketplace **wallet is out of scope entirely**"*, and the position is `Σ change` over every log
+> row of the shop.
+
+**A withdrawal is the wallet's movement and nothing else's.** The money already reached us, as `fund`, and
+is now moving on to our bank. Summed into the position, it is counted as money that never arrived.
+
+| the 26 sample workbooks | |
+| --- | ---: |
+| `fund` | +827,877,151 |
+| `withdrawal` | −839,987,638 |
+| withdrawn ÷ received | **101%** |
+
+**It breaks three shipped things at once:**
+
+| site | today | once withdrawals are in `Σ change` |
+| --- | --- | --- |
+| `hiddenCostToDate` in `features/settlement/measure.ts` — `−close_balance` | the platform's take | roughly every sale |
+| the audit identity `gap = −Σ change` ([the-measure-is-sales-received-and-gap](./context_decision.md#the-measure-is-sales-received-and-gap)) | holds | off by every withdrawal — `received` does not sum the new column |
+| `SettlementPost`'s running `balance` · `shop_settlements.last_balance` | the shortfall | the wallet, inverted |
+
+**→ RECOMMEND** [Q1](#question): record it, and exclude it from every position. **What stops it
+recurring**: a type joins the list with its answer to *"is this money arriving, leaving, or moving between
+our own pockets?"* — the position sums only the first two.
+
+```mermaid
+flowchart LR
+  F["fund +100 — the platform pays the wallet"] --> P["the position counts it — money that reached us"]
+  F --> W["the wallet"]
+  W --> B["withdrawal −100 — the wallet pays our bank"]
+  B -.->|"summed in"| X["the position un-counts it, as if it never arrived"]
+  B -->|"recommended"| C["its own column, outside the position"]
+```
+
+## the type list grew to thirteen and the contract still takes eight
+
+> `context.md` §what is `settlement_type` *(2026-09-24)* — thirteen values: the eight before, plus
+> `shipment_adjustment`, `withdrawal`, `logistic_reimbursement`, `platform_reimbursement`,
+> `marketplace_program`.
+
+**One cause, several sites.** The five were decided one at a time while mapping the platforms' files
+([excel_readers decisions](../../technical/packages/excel_readers/context_decision.md)), and the reader has
+carried them since. Your edit brought `context.md` level with the reader; nothing else followed.
+
+| site | values | whose |
+| --- | ---: | --- |
+| `context.md` §what is `settlement_type` | 13 | yours ✅ |
+| `san_excel_readers` `settlement_type.go` | 13 | built ✅ |
+| `settlement_logs.settlement_type` | text, no CHECK list | shipped ✅ absorbs them |
+| `settlement.proto` `SettlementType` — `defined_only` | 8 | shipped ⛔ `SettlementPost` refuses all five |
+| the daily report tables — one column per type | 8 | shipped ⛔ nowhere to fold them |
+| `analytic_context.md` §Field that tracked | 8 | yours ⛔ |
+
+**→ RECOMMEND** one change — the enum, its mapper, the fold's columns and §Field that tracked, together —
+before [the importer](./settlement_importer_clarify.md)'s first post, since every one of the five is a type
+it produces. `withdrawal` waits on [Q1](#question): its column is the one the position must not sum. **What
+stops it recurring** is what [the third source](#a-third-source-was-decided-on-2026-08-28-and-five-sites-still-say-two)
+already named — a type list is restated in several places, so a new value arrives with its list of sites.
+
+```mermaid
+flowchart LR
+  D["five types, decided while mapping the files"] --> R["the reader — 13"]
+  D --> C["context.md — 13, since 2026-09-24"]
+  D -.->|"not yet"| P["settlement.proto — 8, refuses the rest"]
+  D -.->|"not yet"| F["the fold and its tables — 8"]
+  D -.->|"not yet"| A["analytic_context.md — 8"]
+  P --> X["the importer can post none of the five"]
 ```
 
 ---
@@ -1524,8 +1599,9 @@ flowchart LR
 
 - **No currency, rounding or percentage rule.** Every money field here is whole rupiah `int64`, and
   platform fees are quoted as percentages — so the rounding is frozen at write and never revisited.
-- **`export_service` is named and nowhere described.** Brief 3 defers it, which is fine — but settlement's
-  write contract is the seam between them, which is why [Question 4](#question) cannot wait for it.
+- ➡ **`export_service` is described now** — as `settlement_importer_service`, in
+  [settlement_importer.md](./settlement_importer.md) (2026-09-26). Its questions live in
+  [settlement_importer_clarify.md](./settlement_importer_clarify.md).
 - **No `status` in the row shape.** With [a-residual-balance-is-normal](./context_decision.md#a-residual-balance-is-normal)
   I no longer think one is needed — but the list screen still has to sort and filter by *something*, and
   "drift from face value" is the only candidate. Worth confirming that is the intended reading.

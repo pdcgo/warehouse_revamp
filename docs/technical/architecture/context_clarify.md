@@ -165,7 +165,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | 26 | warehouse order fee | `balance_context.md:7` | `order_service` then `balance_service` | caused per order, settled as a pair delta |
 | 27 | estimated revenue (statistic only) | `order_context.md:150` | `order_service` | explicitly not a ledger fact |
 | 28 | true revenue and `revenue_log` | `order_context.md:168`, `ledger_context.md:10` | `order_service` | your diagram draws Revenue Log **inside** the Sales/Order box |
-| 29 | platform withdrawal | `order_context.md:176-177` | `order_service` | the wallet is fed by that shop's orders — reconciled against them ([Q7](#question)) |
+| 29 | platform withdrawal | `settlement/context.md` §what is `settlement_type` | `settlement_service` | 🔄 a shop-addressed settlement row — [withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type) (2026-09-24). My `order_service` placement is overtaken ([Q7](#question)) |
 | 30 | purchasing and `purchasing_log` | `ledger_context.md:18-24` | `inventory_service` | [purchasing-is-the-restock-document](#purchasing-is-the-restock-document) |
 | 31 | expenses — electricity, ads, payroll | `business_level.md:22`, `ledger_context.md:36-44` | `expense_service` | its own box in your ledger flow, its own recorder and approver |
 | 32 | payments between teams | `balance_context.md:12` | `balance_service` | it moves the pair balance and must be atomic with it |
@@ -349,9 +349,11 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
    design that makes every boundary above meaningless.**
 6. **Does a shop belong to `team_service` or to `order_service`?**
    **→ I recommend `team_service` — a shop exists before any order and outlives every one of them.**
-7. **Where does a platform WITHDRAWAL live?** *(order_context.md:176)* It is a shop-level cash event, not a
-   per-order one. **→ I recommend `order_service`, because the wallet is fed by that shop's orders and the
-   withdrawal is reconciled against them. If a bank or cash account is ever modelled, it moves.**
+7. ➡ **ANSWERED in settlement — a withdrawal is a settlement row**, type `withdrawal`, shop-addressed
+   ([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type),
+   from the owner's `settlement/context.md` edit of 2026-09-24). My `order_service` recommendation is
+   overtaken. What is still open — whether it counts toward settlement's position — is
+   [settlement Q1](../../business/settlement/context_clarify.md#question).
 8. **Does `region_service` stay its own service?** My old answer — *"shipping's, a region is a destination"* —
    is **withdrawn**: shipment was decided as the courier catalogue alone, and an order stores its address as
    plain names ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)),
