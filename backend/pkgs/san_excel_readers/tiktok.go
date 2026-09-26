@@ -165,10 +165,10 @@ func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
 //	Shipping insurance compensation    1  ✅ mapped
 //	wderror                            1               ⛔ probably a hand-edited fixture, not real
 //
-// ⚠ The samples UNDERSTATE the vocabulary, badly. THREE of the nine mapped types came from real
-// imports and appear in no sample at all — both "…marketing benefits package fee" and "Platform
-// commission adjustment" — and a fourth turned up only as a respelling. The samples show 8 types;
-// real data has shown 11 and counting. This list is what has been SEEN, never what exists, so a
+// ⚠ The samples UNDERSTATE the vocabulary, badly. FOUR of the ten mapped types came from real
+// imports and appear in no sample at all — both "…marketing benefits package fee", "Platform
+// commission adjustment" and "Deductions incurred by seller" — and a fifth turned up only as a
+// respelling. The samples show 8 types; real data has shown 12 and counting. This list is what has been SEEN, never what exists, so a
 // caller MUST handle ErrNoSettlementTypeMapping rather than assume the table is complete.
 //
 // ⚠ And a limit this table cannot reach past: unlike Shopee, TikTok puts affiliate and ads charges
@@ -184,6 +184,7 @@ var tiktokSettlementTypes = map[string]SettlementType{
 	"Marketing benefits package fee":            SettlementMarketplaceAdjustment, // real data, in no sample
 	"Additional marketing benefits package fee": SettlementMarketplaceAdjustment, // real data, in no sample
 	"Platform commission adjustment":            SettlementMarketplaceAdjustment, // real data, in no sample
+	"Deductions incurred by seller":             SettlementMarketplaceAdjustment, // real data, in no sample
 }
 
 // ⚠ Only a row typed "Order" carries an ORDER id. Measured across every sample:
