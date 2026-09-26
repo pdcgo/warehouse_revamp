@@ -187,6 +187,14 @@ var tiktokSettlementTypes = map[string]SettlementType{
 	"Platform commission adjustment":            SettlementMarketplaceAdjustment, // real data, in no sample
 	"Deductions incurred by seller":             SettlementMarketplaceAdjustment, // real data, in no sample
 	"Adjustment from settlement account":        SettlementMarketplaceAdjustment, // real data, in no sample
+
+	// ⚠ FULLWIDTH parentheses, U+FF08 and U+FF09, not ASCII "(" and ")". Written as escapes so
+	// the entry cannot be silently retyped with the wrong pair — they are indistinguishable in
+	// most editors at a glance. The ASCII spelling is mapped too, because a platform that
+	// respells "Type" -> "Transaction type" and "GMV Payment" -> "GMV payment" will eventually
+	// respell these as well, and the fold only covers case.
+	"Violation fee （settlement fee）": SettlementMarketplaceAdjustment, // real data, in no sample
+	"Violation fee (settlement fee)": SettlementMarketplaceAdjustment, // the ASCII variant, unseen so far
 }
 
 // ⚠ Only a row typed "Order" carries an ORDER id. Measured across every sample:
