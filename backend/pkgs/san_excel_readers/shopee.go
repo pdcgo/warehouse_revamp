@@ -33,9 +33,10 @@ var WIB = time.FixedZone("WIB", 7*60*60)
 
 // ShopeeSettlementType is the "Tipe Transaksi" column, verbatim.
 //
-// The constants below are the four values measured across the sample reports. They are
-// documentation, not a closed set: ShopeeFlexiExport appears exactly once in 3788 rows, so
-// an unseen value is expected and is parsed rather than rejected.
+// The constants below are what has been SEEN, not a closed set — four measured across the sample
+// reports plus ShopeeBalancePayment, which a real import turned up and no sample contains. Shopee
+// varies less than TikTok, but its vocabulary is open too: an unseen value is parsed rather than
+// rejected, and only SettlementType refuses it.
 type ShopeeSettlementType string
 
 const (
@@ -43,12 +44,17 @@ const (
 	ShopeeWithdrawal  ShopeeSettlementType = "Penarikan Dana"
 	ShopeeAdjustment  ShopeeSettlementType = "Penyesuaian"
 	ShopeeFlexiExport ShopeeSettlementType = "Program Ekspor Shopee FLEXI"
+	// ShopeeBalancePayment is the seller spending wallet balance rather than receiving it — the
+	// observed row is "Isi Ulang Saldo Iklan/Koin Penjual", topping up the ads balance.
+	//
+	// ⚠ Found in a real import, not in any sample workbook.
+	ShopeeBalancePayment ShopeeSettlementType = "Pembayaran dengan Saldo Penjual"
 )
 
 // Known reports whether the type is one this package has seen in a real report.
 func (t ShopeeSettlementType) Known() bool {
 	switch t {
-	case ShopeeOrderIncome, ShopeeWithdrawal, ShopeeAdjustment, ShopeeFlexiExport:
+	case ShopeeOrderIncome, ShopeeWithdrawal, ShopeeAdjustment, ShopeeFlexiExport, ShopeeBalancePayment:
 		return true
 	}
 	return false
@@ -103,6 +109,12 @@ var shopeeSettlementTypes = map[ShopeeSettlementType]SettlementType{
 	ShopeeOrderIncome: SettlementFund,                  // 3555
 	ShopeeAdjustment:  SettlementMarketplaceAdjustment, // 60
 	ShopeeFlexiExport: SettlementMarketplaceProgram,    // 1
+
+	// ⚠ From a real import, in no sample. Its Deskripsi is "Isi Ulang Saldo Iklan/Koin Penjual" —
+	// an ADS top-up — so external_ads_fee is arguably its home, and marketplace_adjustment is the
+	// owner's call. Worth knowing: no Shopee row produces external_ads_fee or affiliate_fee, and
+	// this is the only observed row that could.
+	ShopeeBalancePayment: SettlementMarketplaceAdjustment,
 }
 
 // SettlementType classifies the row for settlement_service.

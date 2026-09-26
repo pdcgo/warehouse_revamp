@@ -302,6 +302,7 @@ func TestShopeeSettlementType(t *testing.T) {
 		{san_excel_readers.ShopeeOrderIncome, "fund"},
 		{san_excel_readers.ShopeeAdjustment, "marketplace_adjustment"},
 		{san_excel_readers.ShopeeFlexiExport, "marketplace_program"},
+		{san_excel_readers.ShopeeBalancePayment, "marketplace_adjustment"},
 	}
 
 	for _, tc := range cases {
