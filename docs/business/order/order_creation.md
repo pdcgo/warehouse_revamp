@@ -28,7 +28,7 @@ state tx {
     state "Inventory Service" as inv
     state "Warehouse Service" as wh
 
-    [*]-->inv: call for provisioning stock & placement 
+    [*]-->inv: call for take stock & placement 
     inv-->sub: returning subtotal info.
     sub-->wh: call for get warehouse fee
     
@@ -96,4 +96,37 @@ create_err-->cominvevt: if error
 createdevt-->srv
 cominvevt-->srv
 
+```
+
+## How We Call Inventory Service to Take Stock.
+Propossed Contracts.
+```proto
+message ProductItem {
+    uint64 product_id
+    uint32 qty
+}
+
+message OrderTransactionCreateRequest {
+    uint64                  warehouse_id
+    repeated ProductItem    items
+}
+
+
+message TransactionItem {
+    uint64 product_id
+    uint64 team_id
+    uint32 qty
+    double unit_cost                // price product, if cross, price before markup
+    double unit_cost_with_markup    // price product, if cross, price after markup
+    double markup_total             // total - (unit_cost * qty)
+    double total                    // unit_cost_with_markup * qty
+}
+
+
+message OrderTransactionCreateResponse {
+    uint64                      transaction_id
+    uint64                      warehouse_id
+    double                      total
+    repeated TransactionItem    items
+}
 ```

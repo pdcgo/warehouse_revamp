@@ -189,6 +189,14 @@ Three phases currently have no bearer, and each of them is a real event that hap
     ⚠ Also: [technical/stock/design.md](../../technical/stock/design.md) still sits at `stock/` coordinates —
     move it to `technical/inventory/` when you are ready, so the three trees line up again.
 
+11. **Does a take lower the free-to-sell quantity or the quantity physically on the shelf?** ➡ Re-routed from
+    [order_creation](../order/order_creation_clarify.md) — the owner made shelves and counts inventory's
+    ([a-take-reduces-stock-and-placement](../order/context_decision.md#a-take-reduces-stock-and-placement)). An order takes stock at
+    create, but a picker lifts the unit later, and the build keeps **one** `on_hand` per shelf — so a stock
+    count in between finds the unit still on the rack and the recount adds it back, and it can be sold twice.
+    **→ I recommend two quantities: a take lowers AVAILABLE, and `on_hand` drops when the unit is picked**, so a
+    count corrects `on_hand` and can never undo a take.
+
 ---
 
 # Contradiction

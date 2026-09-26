@@ -1,9 +1,8 @@
 # Proposal Mekanisme Stok Gudang
 
-Dalam sistem gudang saya membaginya dalam 2 domain besar:
+Servis ini menangani segala pencatatan terkait Inventory / SKU. Servis ini akan diperlukan oleh servis yang lain antara lain:
+- Order service, berikut constraint terkait [`OrderCreation`](../order/order_creation.md)
 
-- SKU (atau dalam konteks proyek ini bisa juga disebut `inventory`), [Lihat](#sku--inventory)
-- Transaction, [Lihat](#transaction)
 
 ## SKU / Inventory
 
