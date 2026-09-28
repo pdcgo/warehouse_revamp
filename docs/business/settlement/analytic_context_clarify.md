@@ -1268,120 +1268,75 @@ different column in the code.
 
 ## Proposed Design — the reconcile
 
-> ⛔ **`folded_count` is DEFERRED** ([folded-count-is-deferred](./context_decision.md#folded-count-is-deferred),
-> owner 2026-09-10). Everything below about the **value** check stands and is the design. The
-> completeness column is not built, and my claim that *"neither substitutes"* was overstated — the value
-> check localises the failing day on its own. What is given up is the **compensating-error** case only
-> (two offsetting losses on one day), and that is permanent: `folded_count` cannot be backfilled.
-
-The concrete answer to [Q4](#question). Two mechanisms, and they answer different questions: one says
-*"this day is INCOMPLETE"*, the other says *"this chain is WRONG"*. Neither substitutes.
+The concrete answer to [Q4](#question). 🔄 **Rewritten 2026-09-28 against what you decided and what shipped**:
+the **value** check alone. `folded_count` is deferred
+([folded-count-is-deferred](./context_decision.md#folded-count-is-deferred)) and no genesis row exists
+([genesis-is-not-needed-when-the-log-starts-empty](./context_decision.md#genesis-is-not-needed-when-the-log-starts-empty)),
+so the completeness column, its `folded_through` predecessor and the genesis guard are gone from this
+section ([Contradiction](#two-decisions-of-2026-09-10-reached-the-reconciles-header-and-not-the-rest-of-it)).
 
 ```mermaid
-flowchart TB
-  L["settlement_logs — the truth, complete from day one"]
-  R["the daily report — a stored, incremented copy"]
-  L --> C1["COMPLETENESS: does the day hold every row the log has for it ?"]
-  R --> C1
-  L --> C2["VALUE: does close_balance equal the log's running sum ?"]
-  R --> C2
-  C1 --> W["a work list of days that disagree"]
-  C2 --> W
+flowchart LR
+  L["settlement_logs — the truth"] -->|"SettlementLogPosted"| F["the fold"]
+  F --> R["the daily rows — open and close, stored"]
+  L -->|"running sum of change, per day"| C{"the reconcile"}
+  R -->|"close_balance, per day"| C
+  C -->|"only the days that disagree"| W["a work list"]
+  W -->|"within 31 days"| P["AnalyticReplayCompute"]
+  W -->|"older"| X["no repair yet — the repair question"]
 ```
 
-### ⚠ I am revising `folded_through` — it does not work
+### The check, as one query per shop
 
-My earlier recommendation was a **`folded_through`** column holding the highest `settlement_log.id`
-folded into the row. **That is unreliable, and the reason is ordinary Postgres.** `id` comes from a
-`BIGSERIAL`, which assigns at INSERT and not at COMMIT — so a higher id can commit *before* a lower one.
-A watermark set to the max id then claims to have passed rows it never saw, and the gap is invisible.
-
-```mermaid
-flowchart TB
-  A["txn A takes id 100"] --> B["txn B takes id 101"]
-  B --> C["B commits first — folded, folded_through = 101"]
-  C --> D["A commits later with id 100"]
-  D --> E["a check for id > 101 never looks at 100"]
-  E --> F["the row claims completeness it does not have"]
-```
-
-**→ Use `folded_count` instead** — how many log rows have been folded into this day. It compares against
-`COUNT(*)` from the log, which is exact and has no ordering assumption at all. It is also **symmetric**:
-too few means a lost movement, too many means one was folded twice (a redelivery past the dedup).
-
-| | `folded_through` (withdrawn) | `folded_count` |
-| --- | --- | --- |
-| assumption | ids commit in order — **false** | none |
-| catches a lost row | ⚠ only if its id is above the mark | ✅ always |
-| catches a double-fold | ⛔ no | ✅ yes |
-| cost | one BIGINT | one BIGINT |
-
-⛔ **It must be in the migration that CREATES the tables.** Added later it cannot be backfilled — the
-number of rows already folded into a given day is not recoverable from anything, so every pre-existing
-day would carry a value that is either wrong or unknown.
-
-### The schema
-
-```
-shop_settlement_daily_reports.folded_count  BIGINT NOT NULL DEFAULT 0
-user_settlement_daily_reports.folded_count  BIGINT NOT NULL DEFAULT 0
-```
-
-The fold's own statement already touches the row — it costs one more `SET`:
-
-```sql
-ON CONFLICT (shop_id, team_id, day) DO UPDATE
-SET ...,
-    folded_count = d.folded_count + 1
-```
-
-⚠ **The genesis row's `folded_count` is 0**, and correctly so — no log rows were folded into a synthetic
-day. The reconcile must know to skip the completeness check there while still checking its VALUE, which
-is the check that would have caught
-[the genesis seed reading one state table when there are two](../settlement/context_clarify.md#-the-genesis-seed-reads-one-state-table-and-there-are-now-two).
-
-### The check, as one query per scope
-
-**The log is complete from day one**, so its running sum is the definition — including the prehistory
-that genesis compresses. That is what makes this able to validate genesis itself rather than trusting it.
+The log is complete from its first row, so its running sum **is** the definition —
+[the-carry-materialises-the-day-boundary-position](./context_decision.md#the-carry-materialises-the-day-boundary-position).
 
 ```sql
 WITH truth AS (
-    SELECT posted_on                                   AS day,
-           COUNT(*)                                    AS rows_in_log,
-           SUM(SUM(change)) OVER (ORDER BY posted_on)  AS running
+    SELECT posted_on                                  AS day,
+           SUM(SUM(change)) OVER (ORDER BY posted_on) AS running
     FROM settlement_logs
-    WHERE shop_id = @shop_id AND team_id = @team_id
+    WHERE shop_id = @shop_id AND team_id = @team_id AND posted_on <= @to
     GROUP BY posted_on
+), stored AS (
+    SELECT day, close_balance
+    FROM shop_settlement_daily_reports
+    WHERE shop_id = @shop_id AND team_id = @team_id AND day <= @to
 )
-SELECT COALESCE(d.day, t.day) AS day,
-       d.close_balance, t.running,
-       d.folded_count,  t.rows_in_log
-FROM shop_settlement_daily_reports d
-FULL JOIN truth t
-       ON t.day = d.day AND d.shop_id = @shop_id AND d.team_id = @team_id
-WHERE d.close_balance IS DISTINCT FROM t.running
-   OR (d.folded_count IS DISTINCT FROM t.rows_in_log AND d.day > @genesis_day)
+SELECT COALESCE(s.day, t.day) AS day, s.close_balance, t.running
+FROM stored s
+FULL JOIN truth t ON t.day = s.day
+WHERE s.close_balance IS DISTINCT FROM t.running
+  AND COALESCE(s.day, t.day) >= @from
 ORDER BY day;
 ```
 
 | | |
 | --- | --- |
-| `FULL JOIN` | a day in one and not the other is itself a finding — an inner join would hide exactly the missing-row case |
-| `IS DISTINCT FROM` | `NULL` compares correctly, so a missing side reports rather than silently passing |
-| the window sum | one pass over the scope's log, not one query per day |
-| the genesis guard | the seed row legitimately has no log rows behind it |
+| everything before `@from` | summed anyway — the running total starts at the log's first row, so a span in mid-year is checked against the true position, never against 0 |
+| each side scoped in its own CTE | ⚠ **corrects my earlier SQL**, which scoped the stored side inside the `FULL JOIN`'s `ON` — every other shop's rows then came back unmatched, as findings |
+| `FULL JOIN` | a day on one side only is itself a finding — a fold that never happened, or a row with nothing behind it |
+| `IS DISTINCT FROM` | a missing side reports instead of comparing as `NULL` |
+| quiet days | no row on either side, and every read falls back to the last row at or before the date ([built](../../../backend/services/settlement_service/settlement_v1/analytic_group_shared.go#L63)) — so checking the days with movement covers the rest |
+
+**→ Also compare the type columns, in the same pass** — `SUM(change) FILTER (WHERE settlement_type = …)`
+per column. The balance cannot see a movement filed under the wrong column, the breakdown is what the report
+exists to explain, and the column list is about to change for five new types.
+
+The **user grain** is the same check over `user_settlement_daily_reports`, attributing each log row the way
+the fold does — the order's creator, or the actor on a shop row. If [Q3](#question) drops the user carry, it
+shrinks to per-day sums.
 
 ### The RPC
 
-Governed shape, and deliberately **not** paginated — the span is the bound, capped at 366 days like every
-other period read, so the settlement reconcile cannot load part of a period and look complete.
+Governed shape, read-only, and deliberately **not** paginated — the span is the bound, capped at 366 days
+like every other period read, so it cannot load part of a period and look complete.
 
 ```proto
 message SettlementReconcileFilter {
   string from = 1;          // YYYY-MM-DD, required
   string to   = 2;          // YYYY-MM-DD, required
-  uint64 shop_id = 3;       // 0 = every shop in the team
+  uint64 shop_id = 3;       // required in v1 — a whole team is a long task, see Cost
 }
 
 message SettlementReconcileRequest {
@@ -1396,46 +1351,37 @@ message ReconcileFinding {
   int64  stored_close = 3;
   int64  log_close = 4;      // the truth
   int64  drift = 5;          // stored − log, signed, so the sign says which way
-  int64  stored_rows = 6;
-  int64  log_rows = 7;
 }
 
 message SettlementReconcileResponse {
-  repeated ReconcileFinding findings = 1;   // SPARSE — only days that disagree
+  repeated ReconcileFinding findings = 1;   // SPARSE — only the days that disagree
   uint64 days_checked = 2;                  // so "nothing found" is distinguishable from "nothing ran"
 }
 ```
 
-⛔ **SPARSE is the design, not an optimisation.** A reconcile that returns every day is a report nobody
-reads; one that returns only breaks is a work list. And `days_checked` is what stops an empty response
-meaning two different things.
-
-✅ **Read-only. It never repairs.** Same rule the performance and concurrency audits follow: the report
-is input to a decision. Repair is `AnalyticReplayCompute`, a day re-fold, or `AnalyticReseedGenesis` —
-each a deliberate act.
+⛔ **SPARSE is the design, not an optimisation** — a reconcile that returns every day is a report nobody
+reads; one that returns only the breaks is a work list. ✅ **It never repairs** — the result is input to a
+decision, like the performance and concurrency audits.
 
 ### What it catches, and what it cannot
 
 | | |
 | --- | --- |
-| ✅ a lost movement (the dead-letter path) | value AND count disagree |
-| ✅ a cascade that did not run | value disagrees from that day forward |
-| ✅ **a wrong genesis** | every day's value is off by the same amount — the one check that can see it, since the floor makes it otherwise unrepairable |
-| ✅ a replay that skipped a day | count disagrees on that day |
-| ✅ a double-fold | count is too HIGH |
-| ⛔ **a log row that was never written** | — the log and the report agree, and both are short. That is [order: a-lost-publish-is-not-tracked-on-the-order](../order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order)'s finder, not this |
-| ⚠ **a `system_adjustment` posted to repair a fold-only loss** | reports a difference **forever** — see [the note on system_adjustment](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other). Building this makes that problem visible, which is good, and makes answering it urgent, which is the point |
+| ✅ a movement never folded — rejected after its retries ([Q1](#question)), or a type the fold refuses | that day is short, and every later day with it |
+| ✅ a movement folded twice | that day is long, and every later day with it |
+| ✅ a cascade that did not run, or a replay that did not finish | the chain is wrong from that day on |
+| ⛔ a movement that never reached the log | log and report agree, and both are short — [the order-side finder](../order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order) |
+| ⛔ two errors that cancel out on one day | what [folded-count-is-deferred](./context_decision.md#folded-count-is-deferred) gave up |
+| ⚠ a `system_adjustment` posted to repair a fold-only loss | reports a difference for ever — [the note](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) |
 
 ### Cost, and when it runs
 
 | | |
 | --- | --- |
-| the fold | one extra `SET` on a row it already writes — immeasurable |
-| the reconcile | one window pass over a scope's log. On a shop-year that is thousands of rows, not millions |
-| when | **on demand**, not nightly, to start with. It is a diagnostic, and a nightly job that nobody reads is how a wrong number gets a green tick beside it |
-
-→ **Recommend both**, and `folded_count` **in the create-tables migration** — it is the only part with a
-deadline, because it cannot be backfilled.
+| the write path | untouched — no column, no table, nothing runs until someone asks |
+| one shop | one pass over that shop's log rows, found through `settlement_logs (shop_id, occurred_on)` — thousands a year, not millions |
+| a whole team | one pass per shop — a long task, so by the guideline a stream, which waits on [importer Q7](./settlement_importer_clarify.md#question). **Start per shop, unary** |
+| when | **on demand**, not nightly — a nightly job nobody reads is how a wrong number gets a green tick beside it |
 
 ---
 
@@ -1623,15 +1569,25 @@ built**.
    Keep them if the same screen exists per person.
    ([the working](#-the-carry-is-settled--what-survives-is-two-smaller-things))
 
-4. ⚠ **A reconcile pass is now load-bearing — is it in scope?** ⭐ **Now written as a buildable spec** — [the reconcile design](#proposed-design--the-reconcile-and-the-column-it-needs-in-the-first-migration). ⚠ **It revises my own earlier `folded_through` recommendation**: a max-id watermark is unreliable because `BIGSERIAL` assigns at INSERT and not at COMMIT, so a lower id can commit after a higher one and be skipped forever. **`folded_count` replaces it** — exact, no ordering assumption, and it catches a double-fold too. ⛔ **`folded_count` must be in the migration that CREATES the tables**: it cannot be backfilled, because how many rows were folded into a past day is not recoverable from anything.
+4. ⚠ **A reconcile pass is now load-bearing — is it in scope?** 🔄 **Re-examined 2026-09-28 against the
+   build.** The daily tables shipped (`dabc331`) with the position **stored** — `open_balance` /
+   `close_balance`, kept by increment and by the later-day cascade — and nothing checks it.
    [the-carry-materialises-the-day-boundary-position](./context_decision.md#the-carry-materialises-the-day-boundary-position)
-   named the bug class: the stored copy can drift from its own definition and **`close − open = change`
-   still holds on every row**, so no invariant on the table detects it. With a screen reading the number,
-   that is a wrong figure a person acts on.
-   **→ I recommend one RPC that checks a scope against the log it materialises** —
-   `close_balance(D) = Σ change WHERE posted_on <= D`, same service, no HARD RULE 3 problem — run on
-   demand rather than nightly to start with. It is the only check the eager write path cannot do itself.
-
+   named the bug class: the stored copy can drift from its own definition while **`close − open = change`
+   still holds on every row**, so no invariant on the table detects it. Two screens read it — the past-date
+   position, and *hidden cost to date*, which is `−close_balance`.
+   ⛔ **And one drift cause is now scheduled, not hypothetical.** The fold refuses a type it has no column
+   for ([analytic_fold.go:48](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L48))
+   — the event retries, then is rejected — and the importer is about to post five of them, `withdrawal`
+   first. If `SettlementPost` is widened a step ahead of the fold, every such row is missing from the report
+   and nothing says so.
+   **→ I recommend the value check, on demand** — [the reconcile design](#proposed-design--the-reconcile):
+   one read-only RPC per shop comparing each day's stored `close_balance` with the log's running sum, and
+   returning only the days that disagree. Same service, no HARD RULE 3 problem, no new column, nothing on
+   the write path. ⚠ It finds more than the replay can fix — 31 days
+   ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted));
+   older damage is
+   [the repair question](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other).
 
 5. ⚠ **Does the GRAIN go on the wire, or stay a client rollup?** 🆕 `TimeframeType {DAILY, MONTHLY,
    YEARLY}` puts it on the wire. **The app currently answers the other way**, and it already ships:
@@ -1913,6 +1869,43 @@ flowchart LR
 **→ Recommend** §Idempotency Layer say *"the event's id"*. **Built that way** — `settlement_event_logs.id`
 holds `settlement-log:<log_id>`. What stops it recurring: the event architecture now owns the dedup key,
 so a context doc names it by linking there rather than restating it.
+
+---
+
+## two decisions of 2026-09-10 reached the reconcile's header and not the rest of it
+
+> [folded-count-is-deferred](./context_decision.md#folded-count-is-deferred) — *"The daily tables ship
+> **without** `folded_count`. The reconcile keeps its **value** check only."*
+>
+> Q4, as it stood until 2026-09-28 — *"⛔ **`folded_count` must be in the migration that CREATES the
+> tables**"*.
+
+**The decision was right and my text was stale.** It — and, the same day,
+[genesis-is-not-needed-when-the-log-starts-empty](./context_decision.md#genesis-is-not-needed-when-the-log-starts-empty)
+— was applied to a note at the top of the reconcile design and nowhere else. Six sites, one cause:
+
+| site | still said |
+| --- | --- |
+| Q4 | `folded_count` has a deadline — and linked an anchor the renamed heading no longer has |
+| the design's closing line | *"Recommend both, and `folded_count` in the create-tables migration"* |
+| the SQL | a `folded_count` comparison and a `@genesis_day` guard |
+| the catch table | *"a wrong genesis"*, and two rows only a count can see |
+| the repair paths | `AnalyticReseedGenesis`, withdrawn in [Awaiting](#awaiting) |
+| the proto | `stored_rows` / `log_rows` |
+
+**→ Fixed** in [the design](#proposed-design--the-reconcile) and in [Q4](#question). **What stops it
+recurring**: a decision that trims a design is applied to the design's BODY and to its question — a note
+saying *"ignore what follows"* is a contradiction waiting for the reader who skips it.
+
+```mermaid
+flowchart LR
+  D["2026-09-10 — folded_count deferred, genesis withdrawn"] --> N["the design's opening note — updated"]
+  D -.->|"not updated"| Q["Q4 — a deadline for a column that will not exist"]
+  D -.->|"not updated"| S["the SQL, the catch table, the proto"]
+  N --> F["2026-09-28 — rewritten to the value check alone"]
+  Q --> F
+  S --> F
+```
 
 ---
 
