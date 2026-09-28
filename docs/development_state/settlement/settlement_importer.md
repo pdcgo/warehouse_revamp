@@ -65,4 +65,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
   the name, or the object is stored without an extension.
 - ⚠ **buf `STANDARD` wants a distinct response message per RPC** — `TiktokSettlementImportResponse` and
   `ShopeeSettlementImportResponse`, both carrying the same file row.
+- ⚠ **Widen the fold with `SettlementPost`, never after.** The fold refuses a type it has no column for, and
+  nothing checks the report against the log ([the-reconcile-check-is-not-built](../../business/settlement/context_decision.md#the-reconcile-check-is-not-built))
+  — a type accepted first is a row missing from the report, silently.
 - ⚠ **The owner's `tools/report_withdrawal/` is theirs** — read it for the corpus size, never edit it.

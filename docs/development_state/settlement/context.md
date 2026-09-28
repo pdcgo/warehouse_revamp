@@ -66,7 +66,7 @@ flowchart LR
 | | why |
 | --- | --- |
 | `export_service` | deferred by decision — `source_type = exporter` is honoured and nothing writes it |
-| the reconcile RPC | [analytic Q4](../../business/settlement/analytic_context_clarify.md#question) — not in the owner's doc |
+| the reconcile RPC | ✅ **declined** — [the-reconcile-check-is-not-built](../../business/settlement/context_decision.md#the-reconcile-check-is-not-built) (2026-09-28). Nothing checks the stored carry against the log, so widen the fold before `SettlementPost` accepts a new type |
 | a day re-fold from the log | [context clarify](../../business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) — open |
 | a screen reading a shop's OWN direct rows | shop-addressed rows fold into the report but no RPC lists them |
 | Jakarta time on the DSN | [decided, deferred](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time) — `posted_on` is the session's `CURRENT_DATE`, UTC today. Nothing in settlement converts, so the DSN fix carries it |

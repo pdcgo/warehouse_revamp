@@ -71,6 +71,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-past-date-position-is-a-real-screen](#a-past-date-position-is-a-real-screen) | `open_balance` / `close_balance` STAY — a screen reads a shop's position at a past date, so the cascade, the genesis seed, the floor and the reseed are all paid for |
 | [the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) | that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
 | [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ⚠ whether it counts toward the position is NOT settled |
+| [the-reconcile-check-is-not-built](#the-reconcile-check-is-not-built) | nothing compares the stored carry with the log — drift is found by a person, and the replay repairs 31 days. ⚠ makes *the fold before the enum* load-bearing |
 
 ---
 
@@ -3482,3 +3483,46 @@ flowchart LR
 
 ⚠ **It overtakes [architecture Q7](../../technical/architecture/context_clarify.md#question)**, which
 recommended `order_service` as the withdrawal's home.
+
+## the-reconcile-check-is-not-built
+
+> Owner, in chat (2026-09-28) — *"for q4, no need"*, on
+> [analytic Q4](./analytic_context_clarify.md#question): an on-demand, read-only RPC comparing each day's
+> stored `close_balance` with the log's running sum.
+
+**The verdict.** No reconcile check is built. Nothing compares the stored carry — `open_balance` /
+`close_balance` on the daily reports — with `settlement_logs`. The fold is trusted to keep it, the way
+[no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
+trusts the publish.
+
+```mermaid
+flowchart LR
+  L["settlement_logs — the truth"] -->|"SettlementLogPosted"| F["the fold"]
+  F --> R["daily reports — open and close, stored"]
+  R --> P["a person reads a figure"]
+  P -->|"it looks wrong"| X{"within 31 days?"}
+  X -->|"yes"| RP["AnalyticReplayCompute rebuilds it"]
+  X -->|"no"| N["no repair — the day re-fold question"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| built | nothing — no `SettlementReconcile` RPC, no column, no job |
+| how drift is found | by a person, when a figure disagrees with what they know — the platform's statement, a shop's own history |
+| how it is repaired | [AnalyticReplayCompute](#the-replay-seeks-the-broker), within [31 days](#the-replay-reaches-31-days-and-that-is-accepted). Older: [the day re-fold question](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), open |
+| ⚠ now load-bearing | **the fold learns a settlement type before `SettlementPost` accepts it** — the same commit, or the fold first. The fold refuses a type it has no column for ([analytic_fold.go:48](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L48)); widened the other way round, every such row is missing from the report and no check would say so. The five types of 2026-09-24 are the first test |
+
+### What it does NOT settle
+
+- **Your template's nightly line** — [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md)
+  `# Statistic Design.` 2, *"Statistic is streaming and reconcile every midnight + 1 hour"*. That is a
+  second PATH into the report, not a check, and whether it is drawn is
+  [analytic Q2](../analytic/context_clarify.md#question), still open. If that is no as well, the template's
+  line stops being true for settlement.
+- **The per-user carry** — [analytic Q3](./analytic_context_clarify.md#question), open, and live on the
+  shipped report.
+
+⚠ **Three arguments leaned on the check and were corrected** —
+[Contradiction](./context_clarify.md#declining-the-reconcile-removed-the-premise-of-three-arguments).

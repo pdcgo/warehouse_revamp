@@ -81,22 +81,21 @@ whether they were wrong *together*:
 flowchart TB
   S{"before the repair, do the log and the report AGREE ?"}
   S -->|"both equally wrong — a fact we never recorded"| A["plus X to each — both become right, and they still agree"]
-  A --> OK["works, and the reconcile still passes"]
+  A --> OK["works — the log and the report still agree"]
   S -->|"log RIGHT, report behind"| B["the log becomes overstated by X, the report becomes right"]
   B --> BAD["they now disagree by X, permanently"]
 ```
 
 ⛔ **The second column is what every known drift cause produces.** A dead-lettered event, a cascade that
-did not run, a genesis seeded wrong, a replay that skipped a day — in all four **the log already holds
-the truth and only the fold was lost**. Adding a log row there does not restore agreement, it destroys
-it: the reconcile (`close_balance(D) = Σ change`) then reports a difference forever, which is how a
-check gets switched off.
+did not run, a replay that skipped a day — in all three **the log already holds the truth and only the
+fold was lost**. Adding a log row there does not restore agreement, it destroys it: the log — what the
+Financial Ledger projects from — is then overstated by X, for good.
 
 | the damage | what actually repairs it |
 | --- | --- |
 | a fact was never recorded at all | ✅ `system_adjustment` — exactly what it is for |
 | a `SettlementPost` never landed | `SettlementPost`, idempotent on the key — not an adjustment |
-| ⛔ **the fold missed a row the log has** | ⛔ **nothing in the drawn flow** — the replay cannot reach it, and an adjustment breaks the reconcile |
+| ⛔ **the fold missed a row the log has** | ⛔ **nothing in the drawn flow** past 31 days — the replay cannot reach it, and an adjustment overstates the log |
 
 **→ Recommend a targeted DAY RE-FOLD from the log** for the third row — re-read one day's rows for one
 scope and rewrite that day. It reaches **any** date because the log has no retention limit, it needs no
@@ -1048,8 +1047,11 @@ narrative point at the numbers they had then, and every answer lives in
    on the other consumers rather than on the replay.
    ⚠ **Same precedent as `OrderPlacedEvent`** — [order_place.go:285](../../../backend/services/selling_service/selling_v1/order_place.go#L285) already
    publishes with *"a publish failure does NOT fail the order"*. That is the right trade here too, and it
-   is what makes the reconcile pass ([analytic Q5](./analytic_context_clarify.md#question)) necessary
-   rather than optional: a dropped publish is a movement the report never sees.
+   is what made the reconcile pass necessary rather than optional — and you declined it
+   ([the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built)). A dropped publish is a movement the report
+   never sees, and nothing now detects it: the same trust
+   [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
+   already places in the publish.
    🔨 **BUILT as recommended (2026-09-14)** — kept open only for your yes, because the answer is now in
    the code: re-posting the same `unique_id` republishes, which is the repair for a lost publish.
 
@@ -1499,7 +1501,7 @@ carried them since. Your edit brought `context.md` level with the reader; nothin
 
 **→ RECOMMEND** one change — the enum, its mapper, the fold's columns and §Field that tracked, together —
 before [the importer](./settlement_importer_clarify.md)'s first post, since every one of the five is a type
-it produces. `withdrawal` waits on [Q1](#question): its column is the one the position must not sum. **What
+it produces — ⚠ and since [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built), *together* is load-bearing: the fold refuses a type it has no column for, and nothing would notice the rows it drops, so never the enum before the fold. `withdrawal` waits on [Q1](#question): its column is the one the position must not sum. **What
 stops it recurring** is what [the third source](#a-third-source-was-decided-on-2026-08-28-and-five-sites-still-say-two)
 already named — a type list is restated in several places, so a new value arrives with its list of sites.
 
@@ -1511,6 +1513,36 @@ flowchart LR
   D -.->|"not yet"| F["the fold and its tables — 8"]
   D -.->|"not yet"| A["analytic_context.md — 8"]
   P --> X["the importer can post none of the five"]
+```
+
+---
+
+## declining the reconcile removed the premise of three arguments
+
+> [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built) — *"No
+> reconcile check is built."*
+>
+> [Q3](#question), as it stood — *"it is what makes the reconcile pass … necessary rather than optional"*.
+
+**The decision stands; the arguments had to move.** Each used the check as its safety net:
+
+| site | leaned on the check for | now rests on |
+| --- | --- | --- |
+| [Q3](#question) — who publishes | *"what makes the reconcile pass necessary"* — linked as analytic Q5; it was Q4 | [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted) — a dropped publish is a movement the report never sees, and that is accepted |
+| [the `system_adjustment` note](#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) | *"the reconcile then reports a difference forever"* | its real argument, unchanged: the adjustment leaves the LOG overstated. Its *"genesis seeded wrong"* cause went too — no genesis exists |
+| [biggest_question](../../biggest_question.md) #2 and #3 | the check as #2's answer · *"the credibility of the only drift detector"* in #3 | #2 reshaped to [analytic Q3](./analytic_context_clarify.md#question) · #3 unchanged in substance |
+
+**→ Fixed** at every site. **What stops it recurring**: when a safeguard is declined, grep for the arguments
+that assumed it — a trade justified by a net nobody builds reads as safe, and is not.
+
+```mermaid
+flowchart LR
+  D["the reconcile check — declined"] --> A["Q3 — the publish trade"]
+  D --> B["the system_adjustment note"]
+  D --> C["biggest_question 2 and 3"]
+  A --> T["rests on trusting the publish"]
+  B --> L["the log overstated — still true"]
+  C --> Q["2 becomes the per-user carry"]
 ```
 
 ---
