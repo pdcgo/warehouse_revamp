@@ -2,7 +2,7 @@
 
 **Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
-reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, and answered Q3 (a file with another shop's orders is refused); first
+reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) and Q11 (no dry run, for now); first
 pass 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
@@ -24,6 +24,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [every-stream-message-is-a-leveled-log-line](../../business/settlement/settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) | the stream sends `level` (`LogLevel`: INFO/WARN/ERROR) + `message`. ⚠ No `step`/`count` for the flow's progress — the Contradiction |
 | [the-shop-is-checked-before-the-file-is-stored](../../business/settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored) | before storing, ask `selling_service`'s ShopService: may the caller work on the shop (`shop_users`, #86), and is it the right shop (`ShopDetail`: in the team, not deleted, the RPC's marketplace — my reading) |
 | [a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused) | after extraction, one ref whose order is in another shop of the team fails the file — an `ERROR` line names that shop, nothing posted. Cannot see a file with no findable order |
+| [the-import-has-no-dry-run-for-now](../../business/settlement/settlement_importer_decision.md#the-import-has-no-dry-run-for-now) | no dry run for now — an import posts as it reads; the two checks are its only guard |
 
 ## What exists underneath it
 
@@ -35,14 +36,15 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
 | the access interceptor | ⛔ **refuses every streaming RPC** (`Unimplemented`, root included) — [interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57). No warehouse RPC has ever streamed; `san remote`'s `Exec` has its own interceptor · ✅ **decided**: authorize a server stream on its request ([a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)) — the first build task |
 | order lookup by platform ref | ⛔ none — `selling_service` has no RPC that takes a ref, and the ref's uniqueness is decided but not built. The column is `orders.order_external_ref_id` (selling `00012`): not unique, no index. It now names the row's person as well as its order |
-| shop access | ⚠ `shop_users` (#86) — written by `ShopUserAdd` / `ShopUserRemove`, read by nothing else. The importer's check would be its first enforcement ([Q12](../../business/settlement/settlement_importer_clarify.md#question)) · `ShopUserListFilter` has no `user_id`, so asking about one caller pages the list |
+| shop access | ⚠ `shop_users` (#86) — written by `ShopUserAdd` / `ShopUserRemove`, read by nothing else. The importer's check would be its first enforcement ([shop Q1](../../business/shop/context_clarify.md#question)) · `ShopUserListFilter` has no `user_id`, so asking about one caller pages the list |
 | `backend/services/settlement_importer_service/` | ⛔ does not exist |
 
 ## What blocks the first line of code
 
 | | |
 | --- | --- |
-| the job, the TikTok affiliate split, failed withdrawals, the same file twice, a dry run, who may work on a shop | [importer Q1 · Q5 · Q6 · Q9 · Q11 · Q12](../../business/settlement/settlement_importer_clarify.md#question) |
+| the job, the TikTok affiliate split, failed withdrawals, the same file twice | [importer Q1 · Q5 · Q6 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
+| who may work on a shop — the shop check cannot be built without it | [shop Q1](../../business/shop/context_clarify.md#question), re-routed from importer Q12 |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
 | ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
 | whether an import finishes after its watcher leaves | [importer Q8](../../business/settlement/settlement_importer_clarify.md#question) |

@@ -18,6 +18,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [every-stream-message-is-a-leveled-log-line](#every-stream-message-is-a-leveled-log-line) | every message an import streams is a log line with a level — `INFO`, `WARN` or `ERROR` — and its text |
 | [the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored) | before the file is stored, the importer asks ShopService whether the caller may work on the shop and whether it is the right shop |
 | [a-file-with-another-shops-orders-is-refused](#a-file-with-another-shops-orders-is-refused) | after extraction, a ref whose order is in ANOTHER shop of the team fails the whole file, before anything posts |
+| [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now) | no dry run — an import posts as it reads. Deferred, not refused |
 
 ## the-import-is-one-streamed-call
 
@@ -286,7 +287,7 @@ flowchart LR
 | gone from the design | `UploadedFileRevert` · the **Revert** action · the `reverted` status · `uploaded_file_lines.revision` · the `:r<n>` key suffix |
 | a wrong order row | reversed by hand, row by row, on the order's Settlement tab — its per-row Reverse is built |
 | a wrong shop row | ⚠ **no screen** — no RPC lists a shop's own rows yet ([state report](../../development_state/settlement/context.md)), so it is offset through the API or not at all |
-| what protects the ledger now | checking BEFORE the post — the shop guard ([importer Q3](./settlement_importer_clarify.md#question)) and a dry run ([importer Q11](./settlement_importer_clarify.md#question)) |
+| what protects the ledger now | checking BEFORE the post — the shop guard ([importer Q3](./settlement_importer_clarify.md#question)) and a dry run ([importer Q11](./settlement_importer_clarify.md#question)) · ✅ the file check decided — [a-file-with-another-shops-orders-is-refused](#a-file-with-another-shops-orders-is-refused) · ⚠ the dry run declined for now — [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now) |
 
 ### What it accepts
 
@@ -357,7 +358,7 @@ flowchart LR
 
 - ⛔ **The team scope** — with no `team_id`, only root and admin could call it ([critique 15](./settlement_importer_clarify.md#critique)).
 - ⛔ **The names** — two messages called `Payload` do not compile ([critique 16](./settlement_importer_clarify.md#critique)).
-- ⚠ **A size cap** ([critique 17](./settlement_importer_clarify.md#critique)) · **a dry-run flag** ([importer Q11](./settlement_importer_clarify.md#question)).
+- ⚠ **A size cap** ([critique 17](./settlement_importer_clarify.md#critique)) · **a dry-run flag** ([importer Q11](./settlement_importer_clarify.md#question)). ✅ The flag is declined for now — [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now).
 
 ## every-stream-message-is-a-leveled-log-line
 
@@ -423,7 +424,7 @@ sequenceDiagram
 | --- | --- |
 | the service | `ShopService`, in `selling_service` ([selling.proto](../../../proto/warehouse/selling/v1/selling.proto)) — shops live there |
 | the right shop | ⚠ my reading: `ShopDetail(team_id, shop_id)` answers it — the shop exists in the request's team, is not `deleted`, and its `marketplace` is the RPC's platform, so a TikTok file into a Shopee shop fails here |
-| the caller may work on it | shop access (#86): `shop_users`, one grant of one user to one shop. ⚠ **Nothing reads it today** except its own three RPCs, so this is its first enforcement — and who counts is [importer Q12](./settlement_importer_clarify.md#question) |
+| the caller may work on it | shop access (#86): `shop_users`, one grant of one user to one shop. ⚠ **Nothing reads it today** except its own three RPCs, so this is its first enforcement — and who counts is [importer Q12](./settlement_importer_clarify.md#question), ➡ re-routed to [shop Q1](../shop/context_clarify.md#question) |
 | when it fails | ⚠ my proposal: an `ERROR` line naming what failed, then the stream ends |
 | the order | before the upload — a refused request stores nothing |
 
@@ -433,7 +434,7 @@ sequenceDiagram
   right for the caller and the platform, not that the statement came from it — [importer Q3](./settlement_importer_clarify.md#question),
   after extraction.
 - **Who counts as a shop's user** — its listed users only, or the team's owner and admin too:
-  [importer Q12](./settlement_importer_clarify.md#question).
+  [importer Q12](./settlement_importer_clarify.md#question). ➡ Re-routed to [shop Q1](../shop/context_clarify.md#question) — the shop's own doc can answer it.
 - ⚠ A TikTok export also carries **Tokopedia** orders (`Order Source`), and `MARKETPLACE_TOKOPEDIA` is its own
   value — whether a TikTok file may go into a Tokopedia shop waits on
   [excel_readers Q2](../../technical/packages/excel_readers/context_clarify.md#question).
@@ -472,6 +473,31 @@ flowchart LR
 
 - ⚠ **A file with no findable order at all** — a brand-new shop, orders never entered, or another TEAM's
   statement, since the lookup sees only this team — cannot be checked, and posts on the person's word. With no
-  revert, a dry run is what would show it — *0 of 830 lines found an order* ([importer Q11](./settlement_importer_clarify.md#question)).
+  revert, a dry run is what would show it — *0 of 830 lines found an order* ([importer Q11](./settlement_importer_clarify.md#question)). ⚠ Declined for now — [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now).
 - ⚠ A Shopee file also names its seller (`Username (Penjual)`), but `Shop` stores no username and a TikTok file
   names nothing — so the orders stay the check that works for both.
+
+## the-import-has-no-dry-run-for-now
+
+> Chat *(owner, 2026-09-28)* — *"for q11 no need, its overkill for now"*, to
+> [importer Q11](./settlement_importer_clarify.md#question): may an import run dry first?
+
+**The verdict.** No dry run — **for now**. An import posts as it reads: there is no `dry_run` flag and no
+preview. It **declines my recommendation** as more than the first version needs — deferred, not refused, and
+adding it later changes nothing already built.
+
+```mermaid
+flowchart LR
+  U["the shop check — before the upload"] --> X["extract the file"]
+  X --> F["the file check — before the first post"]
+  F --> P["post, line by line — nothing previews it"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| what guards an import now | two checks, both decided: the shop before the upload ([the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored)) and the file's orders before the first post ([a-file-with-another-shops-orders-is-refused](#a-file-with-another-shops-orders-is-refused)) |
+| what nothing catches | a file with no findable order — a new shop, orders never entered, another team's statement — posts on the person's word, and stays ([an-upload-is-never-reverted](#an-upload-is-never-reverted)) |
+| what the person still sees | ⚠ my proposal: a line posted to the shop because its order is missing logs a `WARN`, though it posts — so the closing summary names every such line |
+| adding it later | one `bool dry_run` on the request, and the post skipped when it is set |

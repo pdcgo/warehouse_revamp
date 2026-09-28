@@ -4,16 +4,16 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-✅ **Q3 answered in chat, 2026-09-28** — *"for q3, yes"*: a file with another shop's orders is refused before
-anything posts — [a-file-with-another-shops-orders-is-refused](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused). It pairs with your shop check before the upload
-([the-shop-is-checked-before-the-file-is-stored](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)): that one proves the shop, this one proves the file. Earlier rounds today are
-recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
+✅ **Q11 answered in chat, 2026-09-28** — *"no need, its overkill for now"*: no dry run —
+[the-import-has-no-dry-run-for-now](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now). ➡ **Q12 moved** to your new [shop context](../shop/context.md): who may work on a shop is
+that doc's to answer, and it is now [shop Q1](../shop/context_clarify.md#question). Earlier rounds today are recorded in
+[settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | [a-file-with-another-shops-orders-is-refused](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused) — critique #3, *nothing names the shop*, goes with it |
-| ⚠ what it cannot see | a file with no findable order at all — a new shop, or another team's statement — still posts on the person's word. [Q11](#question)'s dry run is what would show it |
-| ✅ checked | no new contradiction |
+| ✅ recorded | [the-import-has-no-dry-run-for-now](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now) — deferred, not refused |
+| 🔄 what guards an import now | the two decided checks — the shop before the upload, the file's orders before the first post. A file with no findable order posts on the person's word |
+| ➡ re-routed | Q12 → [shop Q1](../shop/context_clarify.md#question) |
 
 ## What the service already owns
 
@@ -48,7 +48,7 @@ Measured against all 26 sample workbooks, not read off the spec.
 | # | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **RPCs before a person or a job** (HARD RULE 6). 🔄 The flow now starts at `Frontend` — still nobody holding a file. Nothing says who uploads, how often, or what they need back — and *what they need back* is most of this service: every TikTok sample holds rows that must NOT be posted, 5 of 14 hold a type nobody has mapped, and 25 of 26 hold a withdrawal the report cannot take yet. | Name the job — [Q1](#question). The design below is drawn from the likeliest answer. |
-| **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop guard ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)) and a dry run ([Q11](#question)). |
+| **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop check and the file check, both decided ([shop](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored), [file](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). A dry run is declined for now ([decided](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)). |
 | **4** | 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
 | **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. |
 | **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post on Reprocess once the mapping ships. |
@@ -79,13 +79,13 @@ And the commonest shop row, `withdrawal`, breaks the report's position the day i
 
 ## Recommendation
 
-**Decide the mapping, then dry-run, then import — in that order.** With no revert
-([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)), #2 makes every choice about a row permanent at its first post, so each question
-below costs a sentence now and a hand-posted correction per row later — and the only protection left is
-checking before the post ([Q3](#question), [Q11](#question)). ⛔ **And the interceptor change lands before
-the first handler** — decided ([a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)), not built: until it is, both imports answer
-`Unimplemented` to everyone. Give the service one name before a row carries the old one
-([Contradiction](#contradiction)).
+**Decide the mapping, then import — in that order.** With no revert and no dry run (both decided —
+[revert](./settlement_importer_decision.md#an-upload-is-never-reverted), [dry run](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)), #2 makes every choice about a row permanent at its first post, so
+each question below costs a sentence now and a hand-posted correction per row later. What guards an import is
+the two decided checks — the shop before the upload, the file's orders before the first post. ⛔ **And the
+interceptor change lands before the first handler** — decided ([a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)), not built: until it
+is, both imports answer `Unimplemented` to everyone. Give the service one name before a row carries the old
+one ([Contradiction](#contradiction)).
 
 ## Proposed Design
 
@@ -328,24 +328,11 @@ erDiagram
     The importer's share is what it does anyway: address the row to the order its ref finds. ⚠ The price:
     the rule lives in settlement, not in the importer your section names.
 
-11. **May an import run DRY first?** 🆕 Opened by [an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted) and
-    [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop): nothing an import posts can be undone, and a line whose order is not entered
-    YET goes to the shop for good. A dry run is the same call with `dry_run: true` — it reads the file, looks
-    every ref up and streams what WOULD happen to each line, but posts nothing and stores nothing.
-    **→ Recommend yes** — one flag on the request and the same code path with the post skipped: the cheap
-    half of what revert was for. The person sees *"37 lines found no order — they will post to the shop for
-    good"* while there is still time to enter those orders, and a wrong shop or an unmapped type before
-    anything is permanent. ⚠ It cannot say *already there* — only the post knows that.
+11. ✅ **Answered 2026-09-28 — no dry run, for now**, against my recommendation:
+    [the-import-has-no-dry-run-for-now](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now). Kept as a line so the numbers hold.
 
-12. **Who may work on a shop — its listed users only, or its team's owner and admin too?** 🆕 Opened by
-    [the-shop-is-checked-before-the-file-is-stored](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored): your flow checks *"is caller that access on shop"*. Shop access exists —
-    `shop_users`, one grant per user per shop (#86, `ShopUserAdd`) — but nothing reads it except its own
-    three RPCs: orders, settlement and every screen ignore it. The importer would be its first enforcement, so
-    what it means is set here.
-    **→ Recommend: the shop's listed users, plus the team's owner and admin** — and root and admin, who pass
-    every scope. A CS person imports only the shops they are granted, so the grant finally means something,
-    while the people who run the team never need a grant to act on it. The check is one lookup: add
-    `user_id` to `ShopUserListFilter`, so *"is this caller on this shop?"* reads one row instead of paging.
+12. ➡ **Re-routed 2026-09-28 to [shop Q1](../shop/context_clarify.md#question)** — who may work on a shop is the shop doc's to answer;
+    this one only asks. Kept as a line so the numbers hold.
 
 # Contradiction
 
