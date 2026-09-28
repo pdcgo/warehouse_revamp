@@ -1369,14 +1369,14 @@ doc** and the recommendation stays on the table.
 | **Q2** — a late and a live fold on one shop | `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
 | **Q3** — the carry on the USER table | ✅ **answered: kept** — [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept) |
 | **Q4** — the reconcile | ✅ **answered: not built** — [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built) |
-| **Q5** — grain on the wire | `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
+| **Q5** — grain on the wire | ✅ **answered** — [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
 | 🆕 TEAM grouping across teams | only when the scope is the ROOT team — the one scope ROOT and ADMIN hold. Any other scope reads its own team |
 | 🆕 the dedup key | the EVENT id, not the broker message id — see [Contradiction](#idempotency-layer-keys-on-the-message-id-and-the-event-architecture-keys-on-the-event-id) |
 | 🆕 the replay's reach | read from Pub/Sub as the larger of the TOPIC retention and, if acked messages are retained, the subscription's — see [Q6](#question) |
 
 ## Question
 
-**Four open** — Q1, Q3 and Q4 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**Three open** — Q1, Q3, Q4 and Q5 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1424,27 +1424,8 @@ built**.
    [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built). Kept as a line so Q5 and Q6 keep
    their numbers.
 
-5. ⚠ **Does the GRAIN go on the wire, or stay a client rollup?** 🆕 `TimeframeType {DAILY, MONTHLY,
-   YEARLY}` puts it on the wire. **The app currently answers the other way**, and it already ships:
-   `ExpenseDaily` / `LiabilityDaily` return a flat daily series and
-   [`daily-statement`](../../../frontend/src/pages/daily-statement/index.tsx) rolls it up with
-   `PeriodGrainPicker` + `bucketOf`. [`period.ts`](../../../frontend/src/lib/period.ts) states the
-   position outright: *"THE SERIES UNDERNEATH IS ALWAYS DAILY … a coarser grain is a ROLLUP the client
-   does"*.
-   ⚠ **Your version fixes a limitation that file admits to** — the 366-day cap means a yearly view
-   reaches one year — so this is a real trade, not a style point.
-   ⛔ **But whichever wins has to win for BOTH screens.** Settlement's series and the statement's are read
-   side by side; if one buckets in SQL (`date_trunc`, in the database's timezone) and the other in the
-   browser (`date.slice`), *"August"* is computed two ways and they disagree exactly where
-   [the timezone contradiction](#the-bucket-day-is-derived-twice-in-two-timezones-and-the-two-disagree-for-a-third-of-the-clock)
-   already bites.
-   **→ I recommend keeping the grain client-side** and leaving the multi-year limitation open, because it
-   is one rollup definition instead of two and touches no other service. **→ If it goes on the wire, do it
-   as a SPAN-UNLOCK** — grain widens the cap (366 days / 60 months / 20 years) rather than being a display
-   preference — and change all three Daily RPCs together.
-   ⚠ **Beside it, one confirmation**: `Team Grouped` crosses team scope, which only ROOT/ADMIN in team 1
-   can do. **→ Declare it an admin screen** — no new mechanism needed, and it is the cheapest of the three
-   options.
+5. ✅ **Answered 2026-09-28 — periods are grouped on the server**:
+   [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). Kept as a line so the numbers hold.
 
 6. **Is the TOPIC's retention an acceptable way to make the replay's seek work — instead of
    `retain_acked_messages` on the subscription?** 🆕 from the build.

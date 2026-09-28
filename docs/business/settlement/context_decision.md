@@ -74,6 +74,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-reconcile-check-is-not-built](#the-reconcile-check-is-not-built) | nothing compares the stored carry with the log — drift is found by a person, and the replay repairs 31 days. ⚠ makes *the fold before the enum* load-bearing |
 | [the-user-carry-is-kept](#the-user-carry-is-kept) | the per-user carry stays — both user tables as shipped. A person's hidden cost to date is a figure the report keeps |
 | [only-the-replay-holds-the-lock](#only-the-replay-holds-the-lock) | `process_event_lock` is service state — only the replay sets it, for seconds. A person pauses the fold by switching its subscription to pull |
+| [periods-are-grouped-on-the-server](#periods-are-grouped-on-the-server) | a period's grain — day, month, year — is grouped by the RPC, never by the browser. Every period read, not only settlement's |
 
 ---
 
@@ -3606,3 +3607,39 @@ flowchart LR
 - **Two shipped texts still say a developer holds it** — the table's migration comment (*"human-set"*) and
   the replay's error (*"a developer's maintenance"*). Build tasks, in the
   [state report](../../development_state/settlement/context.md).
+
+## periods-are-grouped-on-the-server
+
+> Owner, in chat (2026-09-28) — *"for q5, grouping happen in server"*, on
+> [analytic Q5](./analytic_context_clarify.md#question): does the grain go on the wire, or stay a rollup the
+> browser does?
+
+**The verdict.** A period's grain — day, month or year — is **grouped by the server**. The RPC takes the
+grain and returns one row per bucket; the browser never buckets days into months. It holds for **every**
+period read, not only settlement's: two screens read side by side must compute *"August"* the same way,
+and one place to compute it is how they do.
+
+```mermaid
+flowchart LR
+  G["the screen asks for a grain — day, month or year"] --> R["the RPC groups by it"]
+  R --> B["one row per bucket"]
+  B --> S["the screen draws the rows as they come"]
+  X["the browser bucketing days into months"] -.->|"retired"| S
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| where | in the RPC's query, over the stored day — never a prefix of a date string in the browser |
+| the span it unlocks | 366 days at `day`, 60 months at `month`, 20 years at `year` — as settlement already ships |
+| settlement | ✅ already so — `AnalyticTimeSearch` takes `AnalyticTimeframe` |
+| ⛔ still in the browser | `ExpenseDaily` and `LiabilityDaily` return days, and the daily statement groups them with `bucketOf` — whose header ([period.ts:85](../../../frontend/src/lib/period.ts#L85)) states the old rule. All three move to the same shape. Build tasks, in the [state report](../../development_state/settlement/context.md) |
+| resolved by the build | Q5's side point — *Team Grouped* crosses team scope only from the root team |
+
+### What it does NOT settle
+
+- **Whether the month is RIGHT — only that two screens agree on it.** `posted_on` is a UTC date until the
+  Jakarta connection fix lands
+  ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)).
+  Grouping on the server makes the screens agree; that fix makes them correct.
