@@ -17,6 +17,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-import-request-is-a-shop-and-its-file](#an-import-request-is-a-shop-and-its-file) | an import request is the shop and the file's bytes — the same two fields for both platforms |
 | [every-stream-message-is-a-leveled-log-line](#every-stream-message-is-a-leveled-log-line) | every message an import streams is a log line with a level — `INFO`, `WARN` or `ERROR` — and its text |
 | [the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored) | before the file is stored, the importer asks ShopService whether the caller may work on the shop and whether it is the right shop |
+| [a-file-with-another-shops-orders-is-refused](#a-file-with-another-shops-orders-is-refused) | after extraction, a ref whose order is in ANOTHER shop of the team fails the whole file, before anything posts |
 
 ## the-import-is-one-streamed-call
 
@@ -436,3 +437,41 @@ sequenceDiagram
 - ⚠ A TikTok export also carries **Tokopedia** orders (`Order Source`), and `MARKETPLACE_TOKOPEDIA` is its own
   value — whether a TikTok file may go into a Tokopedia shop waits on
   [excel_readers Q2](../../technical/packages/excel_readers/context_clarify.md#question).
+
+## a-file-with-another-shops-orders-is-refused
+
+> Chat *(owner, 2026-09-28)* — *"for q3, yes"*, to [importer Q3](./settlement_importer_clarify.md#question):
+> refuse a file whose orders belong to ANOTHER shop?
+
+**The verdict.** After the file is read, every ref is looked up across the request's **team** in one call. If
+any ref's order is found in the team but **not in the chosen shop**, the file **fails** before anything posts:
+an `ERROR` line names the shop those orders belong to, and the stream ends. An order belongs to exactly one
+shop, so a statement's orders say which shop it came from — this works for TikTok, whose file names no shop,
+and needs no new column on `Shop`. It pairs with [the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored): that check proves the shop, this one
+proves the file.
+
+```mermaid
+flowchart LR
+  E["the file, extracted"] --> L["one lookup — every ref, across the team"]
+  L --> C{"a ref whose order is in ANOTHER shop?"}
+  C -->|"yes, even one"| F["FAILED — an ERROR line names that shop, nothing posted"]
+  C -->|"no"| P["the loop posts — refs with no order go to the shop"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| when | after extraction, in the one bulk order lookup — before the first post |
+| the rule | a ref whose order is found in the team but not in the chosen shop. ⚠ My refinement: a ref the chosen shop also has counts as that shop's, so a ref two shops happen to share never fails a file by itself |
+| one is enough | a single ref in another shop fails the whole file — a statement belongs to one shop, so one stray order means the wrong file |
+| on failure | an `ERROR` line naming the shop the orders belong to · nothing posted · the stored file kept, and its row reads `failed` |
+| refs with no order | not evidence either way — they post to the shop ([an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop)) |
+
+### What it does NOT settle
+
+- ⚠ **A file with no findable order at all** — a brand-new shop, orders never entered, or another TEAM's
+  statement, since the lookup sees only this team — cannot be checked, and posts on the person's word. With no
+  revert, a dry run is what would show it — *0 of 830 lines found an order* ([importer Q11](./settlement_importer_clarify.md#question)).
+- ⚠ A Shopee file also names its seller (`Username (Penjual)`), but `Shop` stores no username and a TikTok file
+  names nothing — so the orders stay the check that works for both.
