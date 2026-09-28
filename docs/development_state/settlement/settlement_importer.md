@@ -1,7 +1,8 @@
 # Development state — settlement / settlement_importer
 
 **Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
-server streams, drew a `## Flow` and decided who an imported row names; first pass 2026-09-26. Waiting on the owner — nothing of the service is
+server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
+reader; first pass 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
 · decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md).
@@ -14,12 +15,13 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [the-file-is-named-by-its-content-hash](../../business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash) | the stored statement's filename is the sha256 of its bytes plus `.xlsx`, computed by the importer — the request carries no `filename`. sha256 (not md5) is my proposal, flagged as such |
 | [an-imported-row-names-its-orders-creator-else-the-uploader](../../business/settlement/settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator — as `actor_id`, and so in the per-user report; any other row names the uploader. Answered analytic Q7 — my user 0 declined. ⛔ Not buildable on today's contract — [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
 | [a-tiktok-row-finds-its-order-by-related-order-id](../../business/settlement/settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row is looked up by `Related order ID`, every row — equal to the row's own id on all 2,710 sampled `Order` rows, the adjusted order on 8 of 23 adjustments, empty (the shop) on 15 |
+| [the-excel-reader-reads-every-statement](../../business/settlement/settlement_importer_decision.md#the-excel-reader-reads-every-statement) | every statement is read by `san_excel_readers`; the skip list, the ref lookup, the key prefix and whole rupiah stay the importer's policy |
 
 ## What exists underneath it
 
 | | |
 | --- | --- |
-| readers | ✅ [backend/pkgs/san_excel_readers/](../../../backend/pkgs/san_excel_readers/) — Shopee + TikTok, `GenerateUniqueID`, `SettlementType()`. ⚠ its own state report ([excel_readers.md](../packages/excel_readers.md)) is stale on `SettlementType()` — both platforms are mapped now, owner decision by decision |
+| readers | ✅ [backend/pkgs/san_excel_readers/](../../../backend/pkgs/san_excel_readers/) — Shopee + TikTok, `GenerateUniqueID`, `SettlementType()`. ⚠ its own state report ([excel_readers.md](../packages/excel_readers.md)) is stale on `SettlementType()` — both platforms are mapped now, owner decision by decision · ⚠ its TikTok item is ten TikTok columns — a deviation from the reader doc's struct (Shopee's six), not yet accepted ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)) |
 | the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else |
 | file store | ✅ `document_service` — two-phase upload; it never touches bytes, so the importer is its CLIENT: `RequestUpload` → PUT → `ConfirmUpload`, under the uploader's forwarded token. No resource type for a statement yet |
 | long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
@@ -35,6 +37,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | ⛔ how a server stream is authorized — until then both imports answer `Unimplemented` | [importer Q7](../../business/settlement/settlement_importer_clarify.md#question) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream) |
 | whether an import finishes after its watcher leaves | [importer Q8](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ how a row comes to name the order's creator — `SettlementPost` takes its actor from the token | [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
+| ⛔ the TikTok key — the reader doc's struct is Shopee's, the built item is unaccepted, and a re-download in the 2026-09 layout is unmeasured. A key that moves after the first import posts every line twice | [critique 14](../../business/settlement/settlement_importer_clarify.md#critique) → [reader #23 and its questions](../../technical/packages/excel_readers/context_clarify.md#critique) |
 | `withdrawal` in `Σ change` would make every shop's position read as ~every sale | [settlement Q1](../../business/settlement/context_clarify.md#question) |
 | `SettlementPost` refuses all five types added on 2026-09-24 — proto enum, mapper, fold columns and the analytic doc still carry eight | [contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight) |
 

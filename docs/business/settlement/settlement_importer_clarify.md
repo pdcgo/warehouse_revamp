@@ -4,17 +4,15 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔄 **Re-examined again 2026-09-28** — the doc gained `## How We Decide actor_id / user_id`. The rounds
-before it made both imports streams, drew the `## Flow` and named the file by its hash — each recorded in
-[settlement_importer_decision.md](./settlement_importer_decision.md); what they opened is Q7–Q9 below.
+🔄 **Re-examined 2026-09-28, after `## General.` gained item 2** — *"for reading excel, we use Excel Reader"*.
+Earlier rounds today made both imports streams, drew the `## Flow`, named the file by its hash and decided
+who a row names — each recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | a row whose ref finds an order names that order's creator; any other row names the uploader — [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader). It answers [analytic Q7](./analytic_context_clarify.md#question): the uploader carries an imported shop-level row, and my user-0 recommendation there is declined |
-| 🆕 opened | [Q10](#question) — `SettlementPost` takes its actor from the caller's token, so no row can name the order's creator yet |
-| 🔄 sharpened | #4 — your section names the lookup, as a query per record · #5 and [Q2](#question) — it posts a ref that finds no order, under the uploader, where I recommend holding it |
-| ✅ checked | no new diagram. One new contradiction: [three recorded rows still give an imported row the uploader's login](#the-importer-names-the-orders-creator-and-three-recorded-rows-say-the-login-it-runs-under) |
-| ✅ decided, in chat | a TikTok row finds its order by `Related order ID`, on every row — [a-tiktok-row-finds-its-order-by-related-order-id](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id). On all 2,710 sampled `Order` rows it equals the row's own id, so no lookup finds a different order |
+| ✅ recorded | the Excel Reader package reads every statement — [the-excel-reader-reads-every-statement](./settlement_importer_decision.md#the-excel-reader-reads-every-statement). It is what this design already drew, so nothing here changes shape |
+| 🆕 critique | #14 — the reader's TikTok key is not settled, and it is this service's key. Both open items are the reader's, already asked there |
+| ✅ checked | the link resolves, the diagram is unchanged, no new question and no new contradiction |
 
 ## What the service already owns
 
@@ -29,7 +27,7 @@ The doc is short, but the service is not new. **Four decisions recorded while it
 | [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) | a person answers for every row — no machine identity. 🔄 Which person is now [yours](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, else the uploader |
 
 Three things it stands on are **built**: the readers
-([san_excel_readers](../../../backend/pkgs/san_excel_readers/)), the write (`SettlementPost`, idempotent on
+([san_excel_readers](../../../backend/pkgs/san_excel_readers/) — ✅ yours now, [the-excel-reader-reads-every-statement](./settlement_importer_decision.md#the-excel-reader-reads-every-statement)), the write (`SettlementPost`, idempotent on
 `unique_id`), and the file store (`document_service`, two-phase upload).
 
 ```mermaid
@@ -61,6 +59,7 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
 | **12** | 🆕 ⛔ **Neither import can be called today.** The access interceptor answers every streaming RPC `Unimplemented` — root included — before any policy is read ([interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57)). The guideline's long-task shape has never been mounted behind the ACL: the one stream in the repo, `san remote`'s `Exec`, has [its own interceptor](../../../tools/san/remote/auth.go#L109). These two would be the first. | Teach the interceptor **server** streams — [Q7](#question), and the [Contradiction](#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream). |
 | **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible (#9). |
+| **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and by #2 nothing removes a post. | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
 
 ```mermaid
 flowchart LR

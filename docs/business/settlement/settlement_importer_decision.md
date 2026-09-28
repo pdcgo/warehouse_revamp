@@ -10,6 +10,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-file-is-named-by-its-content-hash](#the-file-is-named-by-its-content-hash) | the stored statement's filename is the hash of its bytes, computed by the importer — the person's own filename is not sent |
 | [an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator; any other row names the uploader — one person, both the log's `actor_id` and the per-user report's `user_id` |
 | [a-tiktok-row-finds-its-order-by-related-order-id](#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row finds its order by `Related order ID`, on every row — never by `Order/adjustment ID`. Empty means the shop |
+| [the-excel-reader-reads-every-statement](#the-excel-reader-reads-every-statement) | the importer parses no workbook itself — the Excel Reader package reads every statement, and stays a function: what to skip, look up, key and round is the importer's |
 
 ## the-import-is-one-streamed-call
 
@@ -177,3 +178,38 @@ flowchart LR
 | on an adjustment | the order it adjusts — **8 of the 23** sampled. Its own `Order/adjustment ID` is an adjustment id, which names no order |
 | empty | shop-level — **15 of the 23**: addressed to the shop, and named for the uploader |
 | the reader | unchanged — both columns stay on the item, and which one to look up is the importer's call |
+
+## the-excel-reader-reads-every-statement
+
+> `settlement_importer.md` §General 2 *(owner, 2026-09-28)* — *"for reading excel, we use
+> [Excel Reader](../../technical/packages/excel_readers/context.md)"*.
+
+**The verdict.** The importer parses no workbook itself. Every statement is read by the Excel Reader
+package — [`san_excel_readers`](../../../backend/pkgs/san_excel_readers/), one reader per platform — and the
+importer works on the items it returns. The package stays a **function**: what to skip, which ref finds an
+order, the key's prefix and the whole-rupiah conversion are the importer's policy, never the reader's. It
+is what this design already drew, so nothing changes shape.
+
+```mermaid
+flowchart LR
+  F["the stored file"] --> R{"Excel Reader"}
+  R -->|"not this platform's file"| X["FAILED — nothing posted, the file kept"]
+  R --> I["items — GenerateUniqueID, SettlementType"]
+  I --> P["the importer's policy — skip, look up, key, whole rupiah"]
+  P --> S["SettlementPost"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| Shopee | `NewShopeeSettlementDocument` → `GetItems()`. `GetShopUsername()` names the seller account the file was exported for |
+| TikTok | `NewTiktokSettlementDocument` → `GetItems()` (`Order details`) and `GetWithdrawals()` (`Withdrawal records`). `GetCurrency()` is the IDR check ([critique 8](./settlement_importer_clarify.md#critique)) |
+| per item | `GenerateUniqueID()` — the base of the importer's key · `SettlementType()` |
+| the reader's refusals | `ErrNotShopeeReport` / `ErrNotTiktokReport` → the file FAILS, nothing posted · `ErrNoSettlementTypeMapping` → the line is HELD, or SKIPPED when the skip list names it ([critique 6](./settlement_importer_clarify.md#critique)). Never a panic: the vocabulary is open, and one new type must not end a file |
+| the importer's policy, not the reader's | the skip list · [a-tiktok-row-finds-its-order-by-related-order-id](#a-tiktok-row-finds-its-order-by-related-order-id) · the key's `<platform>:<sheet>:` prefix · `float64` → whole rupiah ([critique 8](./settlement_importer_clarify.md#critique)) |
+
+### What it does NOT settle
+
+- ⛔ **The TikTok key.** The reader's item IS its key, the reader doc's TikTok struct is Shopee's six columns,
+  and the built one is a deviation still waiting on your word — [critique 14](./settlement_importer_clarify.md#critique).
