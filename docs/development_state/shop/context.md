@@ -2,10 +2,12 @@
 
 **Pass:** business analysis — **second pass** (2026-09-28) on the owner's new
 [shop/context.md](../../business/shop/context.md): create, edit, delete, list. Questions:
-[context_clarify.md](../../business/shop/context_clarify.md). **One decision**, from the owner's own edit —
+[context_clarify.md](../../business/shop/context_clarify.md). **One owner decision**, from the owner's own edit —
 [access-is-given-per-user-per-shop](../../business/shop/context_decision.md#access-is-given-per-user-per-shop)
-(*"give access user to shop"*, the built `shop_users` model). The lifecycle is at *waiting for the owner*; no
-Storybook prototype until the questions come back.
+(*"give access user to shop"*, the built `shop_users` model). **Plus ten 🏗 as-built decisions** in the same
+[context_decision.md](../../business/shop/context_decision.md), recorded on the owner's instruction for a later
+review — what the code does today, each linked to the clarify question that would change it. They close no
+question. The lifecycle is at *waiting for the owner*; no Storybook prototype until the questions come back.
 
 ## What exists
 
