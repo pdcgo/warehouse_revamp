@@ -88,4 +88,4 @@ flowchart LR
 
 [context_clarify](../../business/settlement/context_clarify.md#question) — 5 (withdrawal home, `problem
 funding`, Q3–Q5 above) · [analytic_context_clarify](../../business/settlement/analytic_context_clarify.md#question)
-— 6 · [meta_context_clarify](../../business/settlement/meta_context_clarify.md#question) — 1.
+— 0, Q1–Q7 answered 2026-09-28 · [meta_context_clarify](../../business/settlement/meta_context_clarify.md#question) — 1.

@@ -1,7 +1,7 @@
 # Development state — settlement / settlement_importer
 
 **Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
-server streams and drew a `## Flow`; first pass 2026-09-26. Waiting on the owner — nothing of the service is
+server streams, drew a `## Flow` and decided who an imported row names; first pass 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
 · decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md).
@@ -12,26 +12,28 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | --- | --- |
 | [the-import-is-one-streamed-call](../../business/settlement/settlement_importer_decision.md#the-import-is-one-streamed-call) | one server stream per file: the file rides IN the request, is stored in `document_service` first, then extracted and posted record by record — `message` + `step` + `count` on the stream. No queue. Overtook the first clarify's async recommendation |
 | [the-file-is-named-by-its-content-hash](../../business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash) | the stored statement's filename is the sha256 of its bytes plus `.xlsx`, computed by the importer — the request carries no `filename`. sha256 (not md5) is my proposal, flagged as such |
+| [an-imported-row-names-its-orders-creator-else-the-uploader](../../business/settlement/settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator — as `actor_id`, and so in the per-user report; any other row names the uploader. Answered analytic Q7 — my user 0 declined. ⛔ Not buildable on today's contract — [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
 
 ## What exists underneath it
 
 | | |
 | --- | --- |
 | readers | ✅ [backend/pkgs/san_excel_readers/](../../../backend/pkgs/san_excel_readers/) — Shopee + TikTok, `GenerateUniqueID`, `SettlementType()`. ⚠ its own state report ([excel_readers.md](../packages/excel_readers.md)) is stale on `SettlementType()` — both platforms are mapped now, owner decision by decision |
-| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms |
+| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else |
 | file store | ✅ `document_service` — two-phase upload; it never touches bytes, so the importer is its CLIENT: `RequestUpload` → PUT → `ConfirmUpload`, under the uploader's forwarded token. No resource type for a statement yet |
 | long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
 | the access interceptor | ⛔ **refuses every streaming RPC** (`Unimplemented`, root included) — [interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57). No warehouse RPC has ever streamed; `san remote`'s `Exec` has its own interceptor |
-| order lookup by platform ref | ⛔ none — `selling_service` has no RPC that takes a ref, and the ref's uniqueness is decided but not built |
+| order lookup by platform ref | ⛔ none — `selling_service` has no RPC that takes a ref, and the ref's uniqueness is decided but not built. The column is `orders.order_external_ref_id` (selling `00012`): not unique, no index. It now names the row's person as well as its order |
 | `backend/services/settlement_importer_service/` | ⛔ does not exist |
 
 ## What blocks the first line of code
 
 | | |
 | --- | --- |
-| the job, the tray, revert, the shop guard, the TikTok affiliate split, failed withdrawals, the same file twice | [importer Q1–Q6 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
+| the job, post or hold a ref that finds no order, revert, the shop guard, the TikTok affiliate split, failed withdrawals, the same file twice | [importer Q1–Q6 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ how a server stream is authorized — until then both imports answer `Unimplemented` | [importer Q7](../../business/settlement/settlement_importer_clarify.md#question) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream) |
 | whether an import finishes after its watcher leaves | [importer Q8](../../business/settlement/settlement_importer_clarify.md#question) |
+| ⛔ how a row comes to name the order's creator — `SettlementPost` takes its actor from the token | [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
 | `withdrawal` in `Σ change` would make every shop's position read as ~every sale | [settlement Q1](../../business/settlement/context_clarify.md#question) |
 | `SettlementPost` refuses all five types added on 2026-09-24 — proto enum, mapper, fold columns and the analytic doc still carry eight | [contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight) |
 
@@ -56,6 +58,9 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 - ⚠ **The reader returns `ErrNoSettlementTypeMapping` for rows that must be SKIPPED** (`Earnings`,
   `GMV Pay Deduction`) exactly as for a type never seen. The skip list belongs in the importer.
 - ⚠ **A revert counter must be per LINE, never per file** — overlapping downloads share lines.
+- ⚠ **A TikTok row carries TWO refs.** `Order/adjustment ID` is the order's only on an `Order` row — on an
+  adjustment it is the adjustment's own id, and the order is `Related order ID`. Look up the first on every row
+  and every adjustment finds nothing: it names the uploader and lands on the shop, for good.
 - ⚠ **A server stream's scope cannot ride in `ctx` the way a unary call's does** — the interceptor calls
   `next` before `Receive` has decoded the request. Verified in connect-go v1.19.0 (`NewServerStreamHandler`
   receives INSIDE the wrapped function). The handler reads `team_id` off its own request.

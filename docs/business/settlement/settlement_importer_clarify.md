@@ -4,15 +4,16 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔄 **Re-examined 2026-09-28** — both imports now `return (stream response)`, and the doc gained a `## Flow`.
+🔄 **Re-examined again 2026-09-28** — the doc gained `## How We Decide actor_id / user_id`. The rounds
+before it made both imports streams, drew the `## Flow` and named the file by its hash — each recorded in
+[settlement_importer_decision.md](./settlement_importer_decision.md); what they opened is Q7–Q9 below.
 
 | | |
 | --- | --- |
-| ✅ answered | my *queue it and return at once* — you chose one streamed call, the guideline's long-task shape: [the-import-is-one-streamed-call](./settlement_importer_decision.md#the-import-is-one-streamed-call) |
-| 🆕 opened | ⛔ **the access interceptor refuses every streaming RPC**, so neither import can be called (#12, [Q7](#question), [Contradiction](#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream)) · the stream is the import's only watcher (#9, [Q8](#question)) · the flow writes nothing `UploadedFileList` could read (#13) |
-| 🔄 sharpened | #2 — your flow draws the freeze · #4 — it draws no order lookup · #7 — two outcomes drawn, five measured |
-| ✅ checked | the new diagram parses. One new contradiction (above); the service-name one stands, unchanged |
-| ✅ decided, in chat | the stored file is named by its content hash — [the-file-is-named-by-its-content-hash](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash). It opens [Q9](#question): the name alone dedupes nothing |
+| ✅ recorded | a row whose ref finds an order names that order's creator; any other row names the uploader — [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader). It answers [analytic Q7](./analytic_context_clarify.md#question): the uploader carries an imported shop-level row, and my user-0 recommendation there is declined |
+| 🆕 opened | [Q10](#question) — `SettlementPost` takes its actor from the caller's token, so no row can name the order's creator yet |
+| 🔄 sharpened | #4 — your section names the lookup, as a query per record · #5 and [Q2](#question) — it posts a ref that finds no order, under the uploader, where I recommend holding it |
+| ✅ checked | no new diagram. One new contradiction: [three recorded rows still give an imported row the uploader's login](#the-importer-names-the-orders-creator-and-three-recorded-rows-say-the-login-it-runs-under) |
 
 ## What the service already owns
 
@@ -24,7 +25,7 @@ The doc is short, but the service is not new. **Four decisions recorded while it
 | [importing-is-not-settlements-job](./context_decision.md#importing-is-not-settlements-job) | the stored file, the per-platform parser, the **unmatched tray**, the import screens |
 | [settlement-keys-on-our-order-id](./context_decision.md#settlement-keys-on-our-order-id) | turning the platform's order ref into our `order_id` — and every way that fails |
 | [the-recipe-is-the-callers-problem](./context_decision.md#the-recipe-is-the-callers-problem) | the `unique_id` recipe |
-| [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) | it posts **as the person who uploaded** — no machine identity |
+| [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) | a person answers for every row — no machine identity. 🔄 Which person is now [yours](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, else the uploader |
 
 Three things it stands on are **built**: the readers
 ([san_excel_readers](../../../backend/pkgs/san_excel_readers/)), the write (`SettlementPost`, idempotent on
@@ -36,7 +37,7 @@ flowchart LR
   I --> D["document_service — the file, kept"]
   I --> R["san_excel_readers — rows, keys, types"]
   I --> O["selling_service — platform ref to order_id"]
-  I -->|"SettlementPost, as the uploader"| S["settlement_service — the ledger"]
+  I -->|"SettlementPost — as the order's creator, else the uploader"| S["settlement_service — the ledger"]
   I --> T["the tray — lines it could not post"]
 ```
 
@@ -49,8 +50,8 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **1** | **RPCs before a person or a job** (HARD RULE 6). 🔄 The flow now starts at `Frontend` — still nobody holding a file. Nothing says who uploads, how often, or what they need back — and *what they need back* is most of this service: every TikTok sample holds rows that must NOT be posted, 5 of 14 hold a type nobody has mapped, and 25 of 26 hold a withdrawal the report cannot take yet. | Name the job — [Q1](#question). The design below is drawn from the likeliest answer. |
 | **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | Build **revert** before the first real import — [Q4](#question). |
 | **3** | ⛔ **Nothing names the shop.** A TikTok export carries no shop identity anywhere in the file. A Shopee export names a `Username (Penjual)` that our `Shop` does not store. By #2, a file imported into the wrong shop stays there. | **The file names its shop through its orders** — [Q3](#question). |
-| **4** | 🔄 **The flow draws no order lookup.** *"extract to settlement record"* goes straight to settlement, so as drawn every record posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Add `selling_service` to the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id`. Build the uniqueness rule first. A file is up to ~1,500 refs — one call, never one per record. |
-| **5** | **An unmatched line posted to the shop never reaches its order** — by #2, its key is then held by the shop account. | Hold it in the tray. **Reprocessing the stored file is the retry**: the keys make it safe, so a line posts the day its order exists — [Q2](#question). |
+| **4** | 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
+| **5** | **An unmatched line posted to the shop never reaches its order** — by #2, its key is then held by the shop account. 🔄 Your new section posts it, under the uploader. | Hold it in the tray. **Reprocessing the stored file is the retry**: the keys make it safe, so a line posts the day its order exists — [Q2](#question). |
 | **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. |
 | **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (no such order · a type nobody mapped · a fractional amount) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([Q3](#question)). Held records post on Reprocess once the mapping ships. |
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
@@ -88,7 +89,7 @@ the old one ([Contradiction](#contradiction)).
 
 | | |
 | --- | --- |
-| who | the selling team, **CS and up** — exactly [the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up), since every row posts under their login |
+| who | the selling team, **CS and up** — exactly [the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up), since every row is posted under their token |
 | when | after downloading one shop's statement from the platform — **daily** keeps the report's days honest (#10) |
 | what they get back | records **posted** · **already there** · **held**, each with its reason · **skipped** |
 
@@ -122,7 +123,7 @@ sequenceDiagram
         alt ADDED — skipped, or held with a reason
             import->>import: no post
         else ready
-            import->>+settle: SettlementPost, as the uploader
+            import->>+settle: SettlementPost — as the order's creator, else the uploader
             settle-->>-import: created, already there, or refused
         end
         import-->>fe: message log, then step, count and the row
@@ -141,7 +142,7 @@ flowchart TD
   R --> L{"each record — a step on the stream"}
   L -->|"Earnings, GMV Pay Deduction"| SK["SKIPPED — already in Order details"]
   L -->|"unmapped type, fractional amount, no such order"| H["HELD — with the reason"]
-  L -->|"ok"| W["SettlementPost, as the uploader"]
+  L -->|"ok"| W["SettlementPost — as the order's creator, else the uploader"]
   W -->|"created"| PO["POSTED"]
   W -->|"already exists"| EX["ALREADY THERE"]
   W -->|"refused"| H
@@ -157,6 +158,7 @@ flowchart TD
 | `change` | `Jumlah` | `Total settlement amount` | `Amount` |
 | `occurred_on` | `Tanggal Transaksi`, WIB | `Order settled time` | `Request time` |
 | `note` | `Deskripsi` | `Type` | `Reference ID` |
+| `actor_id` 🆕 — not a field yet, [Q10](#question) | the order's creator, when `No. Pesanan` finds it · else the uploader | the order's creator, when the `order_id` ref finds it · else the uploader | the uploader |
 | `created_by_user_id` | from the order lookup | from the order lookup | — |
 | every row | `team_id` and `shop_id` from the upload · `source_type` see [Contradiction](#contradiction) | | |
 
@@ -223,7 +225,7 @@ erDiagram
     int rows_existing
     int rows_held
     int rows_skipped
-    bigint created_by "the uploader, and the actor on every row"
+    bigint created_by "the uploader — the actor on a row whose ref finds no order"
     timestamptz created_at
     timestamptz updated_at "moves with the tallies, so a stale running row reads interrupted"
     timestamptz finished_at
@@ -248,15 +250,19 @@ erDiagram
 
 1. **Who uploads, and how often?** It sets the role policy, and decides whether the daily report stays
    readable (#10).
-   **→ Recommend CS and up** — the settlement write set, which it has to be, since each row posts as them
+   **→ Recommend CS and up** — the settlement write set, which it has to be, since each row is posted under their token
    — **and daily.**
 
-2. **Should every marketplace order already be in our system?** It decides what a line held as *no such
-   order* MEANS. If yes, each one is an order somebody failed to enter: a work queue, and the tray is a
-   screen people clear. If no, most will never match and the tray only grows.
-   **→ Recommend yes** — it is `context.md`'s own first problem, *"we record that twice"*, and the tray
+2. **A ref that finds no order — post it to the shop, or hold it for its order?** 🔄 Your new section gives
+   such a row the uploader, so as written it POSTS — shop-addressed, and by #2 for good: enter the order a
+   week later and a re-import answers *already there*, the order's own account never sees its `fund`, and
+   the per-user report credits the uploader instead of the order's creator. Held, it waits for its order.
+   Which is right turns on whether every marketplace order should already be in our system — if yes, a miss
+   is an order somebody failed to enter; if no, most never match and a tray only grows.
+   **→ Recommend hold** — it is `context.md`'s own first problem, *"we record that twice"*, and the tray
    becomes the check that the two records agree. It clears by entering the order and pressing Reprocess —
-   no attaching by hand in v1.
+   no attaching by hand in v1. Your uploader fallback still covers every row with NO ref: a fee, an ad
+   charge, a withdrawal.
 
 3. **Refuse a file whose orders belong to ANOTHER shop?**
    **→ Recommend yes** — resolve every ref across the team, and fail the file before anything posts if one
@@ -327,6 +333,22 @@ erDiagram
    they already went into — a statement belongs to one shop, so that is always a mistake, and it is caught
    even for a file whose orders cannot be matched (Q3's gap). ⚠ A copy re-saved through a spreadsheet tool
    is new bytes, so it is a new upload — and its lines answer *already there*.
+
+10. **How does a row come to name the order's creator?** 🆕 Opened by
+    [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader).
+    `SettlementPost` takes its actor from the caller's token and has no field for anyone else
+    ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)), so as
+    the contract stands every imported row names the uploader. Two ways out: **(a)** the request gains
+    `actor_id`, filled by the importer from its lookup — and then anyone in the write set can post a row
+    naming anyone in the team as answerable, by hand or by script; **(b)** settlement names it — an
+    `exporter` row addressed to an order takes the creator already stamped on that order's account
+    ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)),
+    and any other row keeps the caller.
+    **→ Recommend (b)** — no new field and nothing to forge, and the log then names the person the per-user
+    report already credits an order row to
+    ([analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72)).
+    The importer's share is what it does anyway: address the row to the order its ref finds. ⚠ The price:
+    the rule lives in settlement, not in the importer your section names.
 
 # Contradiction
 
@@ -400,4 +422,42 @@ flowchart LR
   I --> X{"the access interceptor"}
   X -->|"today"| U["Unimplemented — for everyone, root included"]
   X -->|"recommended"| A["the one request, read through Receive — policy and scope checked, then the handler"]
+```
+
+## the importer names the order's creator, and three recorded rows say the login it runs under
+
+> `settlement_importer.md` §How We Decide `actor_id` / `user_id` — *"query in order by
+> `order_external_ref_id`, if not found use user id that carry on identity"*
+>
+> [every-entry-names-its-actor](./context_decision.md#every-entry-names-its-actor) — *"An exporter run
+> therefore posts under the login it runs as"*
+
+| site | says | whose |
+| --- | --- | --- |
+| `settlement_importer.md` §How We Decide | the order's creator, else the uploader | yours — the newest |
+| [every-entry-names-its-actor](./context_decision.md#every-entry-names-its-actor) · [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) | `exporter` → *"the person whose login the exporter runs under"* — one row, written in two decisions | recorded — ✅ annotated |
+| [a-shop-addressed-row-is-attributed-to-its-actor](./context_decision.md#a-shop-addressed-row-is-attributed-to-its-actor) | *"`fund`, posted by the exporter"* → *"an operations person"* | recorded — ✅ annotated |
+| [post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39) | `ActorID: actorFrom(ctx)` — always the caller | shipped — [Q10](#question) |
+| this file | *"as the uploader"* on the flow, the sequence, the outcome chart and the data | mine — ✅ fixed |
+
+**Which is wrong: the recorded rows.** They applied the PIC to an exporter row as *whoever runs it*; your
+section applies it as *whoever answers for the order* — which is what
+[actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic)'s own verdict says: *"not merely
+whichever session happened to write the row"*.
+
+**→ Recommend** nothing more in the docs — the rows are annotated, and the code follows [Q10](#question).
+**What stops it recurring:** the per-source table of who an actor is was written **twice**, word for word,
+in two decisions — so this change had to be made twice. A later decision about an actor links to
+[actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) instead of re-tabling it.
+
+```mermaid
+flowchart LR
+  N["settlement_importer.md — the order's creator, else the uploader"] --> A["every-entry-names-its-actor"]
+  N --> B["actor-id-is-the-pic"]
+  N --> C["a-shop-addressed-row-is-attributed-to-its-actor"]
+  N --> D["post_entry.go — the actor is the token, always"]
+  A --> OK["annotated in place — the PIC verdict holds"]
+  B --> OK
+  C --> OK
+  D --> Q["Q10 — how the log names the creator"]
 ```

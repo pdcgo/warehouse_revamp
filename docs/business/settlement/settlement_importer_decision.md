@@ -8,6 +8,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | --- | --- |
 | [the-import-is-one-streamed-call](#the-import-is-one-streamed-call) | one server-streaming call per file — the file goes IN the call, is stored, read and posted record by record while the stream reports progress. No queue |
 | [the-file-is-named-by-its-content-hash](#the-file-is-named-by-its-content-hash) | the stored statement's filename is the hash of its bytes, computed by the importer — the person's own filename is not sent |
+| [an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator; any other row names the uploader — one person, both the log's `actor_id` and the per-user report's `user_id` |
 
 ## the-import-is-one-streamed-call
 
@@ -95,3 +96,54 @@ flowchart LR
   pair — `awan_beban_return` and its `_simple` copy — hashes differently. A TikTok export also stamps its own
   `modified` time into the file, so re-downloading a period is new bytes too. What stops those from
   double-posting is the line keys, not the name.
+
+## an-imported-row-names-its-orders-creator-else-the-uploader
+
+> `settlement_importer.md` §How We Decide `actor_id` / `user_id` in Settlement importer *(owner, 2026-09-28)* —
+> *"if settlement record have ref id, query in order by `order_external_ref_id`, if not found use user id
+> that carry on identity."*
+
+**The verdict.** Every imported row names one person, chosen row by row. A row whose ref finds an order
+names **that order's creator**. A row with no ref, or a ref that finds no order, names **the uploader** —
+the identity on the import's token. That person is both the log's `actor_id` and the per-user report's
+`user_id`.
+
+It answers [analytic Q7](./analytic_context_clarify.md#question): **the uploader carries an imported
+shop-level row** — a fee, an ad charge, a withdrawal — in the per-user report, and with
+[the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept), for good. My recommendation there,
+user 0, is declined — so the per-user list ranks whoever uploads by the shop-level money they bring in.
+
+```mermaid
+flowchart TD
+  R["an imported record"] --> Q{"does it carry an order ref?"}
+  Q -->|"no — a fee, an ad, a withdrawal"| U["the uploader — the identity on the import's token"]
+  Q -->|"yes"| L["selling_service — the order by order_external_ref_id"]
+  L -->|"found"| C["that order's creator"]
+  L -->|"not found"| U
+  C --> P["one person — actor_id on the log, user_id in the per-user report"]
+  U --> P
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the ref | Shopee: `No. Pesanan`. TikTok: `Order/adjustment ID` on an `Order` row, `Related order ID` on any other — an adjustment's own ID names no order. ⚠ My reading: the doc says *ref id*, and a TikTok row carries two |
+| the lookup | `selling_service`'s, over RPC — `orders` is its table (HARD RULE 3). One call per file, never one per record ([critique 4](./settlement_importer_clarify.md#critique)). ⚠ `order_external_ref_id` is not unique yet: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) is decided and not built |
+| the order's creator | `orders.created_by_user_id` — the person settlement stamps on the order's account when it opens ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)) |
+| the uploader | the identity on the import's token. It stays on the importer's own row, `uploaded_files.created_by`, whoever each line names — so who brought a file in is never lost |
+| the per-user report | **unchanged** — the fold already credits an order row to its creator and a shop row to its actor ([analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72)). What moves is the LOG: an imported order row's `actor_id` is its creator, not the uploader |
+
+⚠ **It amends three recorded rows** that gave an exporter row *"the person whose login the exporter runs
+under"* — in [every-entry-names-its-actor](./context_decision.md#every-entry-names-its-actor),
+[actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) and
+[a-shop-addressed-row-is-attributed-to-its-actor](./context_decision.md#a-shop-addressed-row-is-attributed-to-its-actor).
+Each is annotated where it stands. The PIC verdict itself holds, and this is it applied: *"the human
+answerable for it, not merely whichever session happened to write the row"*.
+
+### What it does NOT settle
+
+- ⛔ **How the log comes to name the creator.** `SettlementPost` takes its actor from the caller's token and
+  has no field for anyone else — [importer Q10](./settlement_importer_clarify.md#question).
+- **Whether a ref that finds no order posts at all.** Posted, it lands on the shop for good; held, it waits
+  for its order — [importer Q2](./settlement_importer_clarify.md#question).

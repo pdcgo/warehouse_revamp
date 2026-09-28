@@ -550,12 +550,12 @@ including on rows written over the API.
 
 This matches the rule `order_drafts` already set: *"There is no machine identity in this system and this
 feature does not invent one, so every draft has a human accountable on it."* An exporter run therefore
-posts under the login it runs as, and `actor_id` is never a system sentinel.
+posts under the login it runs as, and `actor_id` is never a system sentinel. ⚠ **Amended** by [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): an imported row whose ref finds its order names that order's creator.
 
 | `source_type` | `actor_id` is |
 | --- | --- |
 | `manual` | the person who filled the form |
-| `exporter` | the person whose login the exporter runs under |
+| `exporter` | the person whose login the exporter runs under · ⚠ **Amended** by [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order |
 | `initial_total` | ⚠ nobody typed it — see [Question 3](./context_clarify.md#question) |
 
 ⚠ **`initial_total` is the one row no human causes.** It fires on order creation, so the honest
@@ -641,7 +641,7 @@ merely whichever session happened to write the row.
 | `source_type` | the PIC is |
 | --- | --- |
 | `manual` | the person who filled the form |
-| `exporter` | the person whose login the exporter runs under — no machine identity, matching the rule `order_drafts` already set |
+| `exporter` | the person whose login the exporter runs under — no machine identity, matching the rule `order_drafts` already set · ⚠ **Amended** by [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order |
 | `initial_total` | ⚠ nobody filled a form. The order's own PIC is the only honest candidate |
 
 ⚠ **`initial_total` still needs a rule.** It fires on order creation, so the person accountable is
@@ -3187,7 +3187,7 @@ because it splits the measure:
 | row | its actor is | |
 | --- | --- | --- |
 | `initial_total` | the order's PIC | ✅ the salesperson |
-| `fund`, posted by the exporter | the person whose login the exporter runs under | ⛔ an operations person |
+| `fund`, posted by the exporter | the person whose login the exporter runs under · ⚠ since [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader), the order's creator when its ref finds the order | ⛔ an operations person — still so for a row posted by hand |
 
 [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) is
 `initial_total + fund`, so the two halves would land on **two different people** — a CS person's book
@@ -3563,7 +3563,7 @@ flowchart LR
 
 - **Who carries an imported shop-level row.** A shop-level row is credited to whoever posted it, the
   importer posts as the person who uploads, and with this decision that person carries it for life —
-  [analytic Q7](./analytic_context_clarify.md#question).
+  [analytic Q7](./analytic_context_clarify.md#question). ✅ **Answered** — [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the uploader, when the row's ref finds no order.
 
 ## only-the-replay-holds-the-lock
 
