@@ -75,6 +75,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-user-carry-is-kept](#the-user-carry-is-kept) | the per-user carry stays — both user tables as shipped. A person's hidden cost to date is a figure the report keeps |
 | [only-the-replay-holds-the-lock](#only-the-replay-holds-the-lock) | `process_event_lock` is service state — only the replay sets it, for seconds. A person pauses the fold by switching its subscription to pull |
 | [periods-are-grouped-on-the-server](#periods-are-grouped-on-the-server) | a period's grain — day, month, year — is grouped by the RPC, never by the browser. Every period read, not only settlement's |
+| [the-fold-locks-shop-then-user](#the-fold-locks-shop-then-user) | every fold takes a transaction-scoped advisory lock on its shop, then its person — two events on one shop fold one after the other |
 
 ---
 
@@ -3643,3 +3644,41 @@ flowchart LR
   Jakarta connection fix lands
   ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)).
   Grouping on the server makes the screens agree; that fix makes them correct.
+
+## the-fold-locks-shop-then-user
+
+> Owner, in chat (2026-09-28) — *"for q2 yes"*, to [analytic Q2](./analytic_context_clarify.md#question) as
+> last put: keep the per-shop and per-person lock, shop first, as built.
+
+**The verdict.** Every fold takes two transaction-scoped advisory locks before it writes: the **shop's**, then
+the **person's**. Two events for one shop — or one person — fold one after the other, so a late event and a
+live one can no longer interleave the previous-close lookup and the later-day shift. Different shops still
+fold in parallel. It **supersedes my first recommendation** — lock the shop's state row `FOR UPDATE` —
+because that row does not exist before a shop's first event, and a missing row locks nothing.
+
+```mermaid
+sequenceDiagram
+    participant A as late event, day 05
+    participant L as the shop's lock
+    participant B as live event, day 07
+    A->>L: take it
+    B->>L: take it — waits
+    A->>A: add to day 05, shift every later day
+    A->>L: commit — released
+    L-->>B: granted
+    B->>B: day 07 opens from the committed close
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the locks | `pg_advisory_xact_lock(hashtextextended(key, 0))` — `settlement-shop:<team>:<shop>`, then `settlement-user:<team>:<user>` ([analytic_fold.go:107](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L107)) |
+| the order | shop, then person, in every fold — two folds can only wait on each other one way, so they never deadlock |
+| the lifetime | the transaction — released at commit or rollback, so no crash can leave one behind |
+| one transaction | the claim, the day row, the later-day shift and the state row. *Latest* is the newest day, not the event's |
+| the proof | [analytic_fold_race_test.go](../../../backend/services/settlement_service/settlement_v1/analytic_fold_race_test.go) — eight days for one shop at once, in reverse, keep the carry true · one event delivered eight times folds once. ⚠ Not re-run on 2026-09-28: the local Postgres was down |
+
+### What it does NOT settle
+
+- **`analytic_context.md` §Flow draws no lock.** The doc is yours; one line in §Flow would say it.

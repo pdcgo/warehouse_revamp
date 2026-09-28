@@ -1366,7 +1366,7 @@ doc** and the recommendation stays on the table.
 | open question | what the code does |
 | --- | --- |
 | **Q1** — the lock and the DLQ | ✅ **answered** — [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
-| **Q2** — a late and a live fold on one shop | `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
+| **Q2** — a late and a live fold on one shop | ✅ **answered** — [the-fold-locks-shop-then-user](./context_decision.md#the-fold-locks-shop-then-user). `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
 | **Q3** — the carry on the USER table | ✅ **answered: kept** — [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept) |
 | **Q4** — the reconcile | ✅ **answered: not built** — [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built) |
 | **Q5** — grain on the wire | ✅ **answered** — [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
@@ -1376,7 +1376,7 @@ doc** and the recommendation stays on the table.
 
 ## Question
 
-**Three open** — Q1, Q3, Q4 and Q5 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**Two open** — Q1 to Q5 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1393,29 +1393,8 @@ built**.
 1. ✅ **Answered 2026-09-28 — only the replay holds the lock**:
    [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). Kept as a line so the numbers hold.
 
-2. ⛔ **Does the fold take one lock per shop — or does a late event and a live one lose an update?**
-   ⬇ **Shrunk hard this round.** ✅ `user_settlement_reports` is renamed, ✅ the state tables carry
-   `close_balance` alone, and ✅ that makes *"latest from daily reports"* precisely defined — so the
-   ambiguity is gone. ⛔ **And I retract my replay claim**: traced against the one-column table, the
-   derived writer **self-heals** — a shop with rows in the deleted range gets those same events
-   redelivered, and each re-fold re-derives its state row. A dormant shop had nothing deleted. **The
-   state tables do not need naming in the replay's delete.**
-   ⛔ **What is left is a real lost update**, and it is exactly the *"event can be late"* case
-   `### We Must Aware Of this` names. Two folds on one shop: a late event posting to day 05 and a live one
-   creating day 07. The live fold's `prev` lookup cannot see the uncommitted late fold, and the late
-   fold's `UPDATE … WHERE day > 05` cannot see the not-yet-inserted day 07. **Both commit, day 07 is
-   understated, and `close − open = change` still holds** — so nothing detects it, and the state row
-   copies the wrong close.
-   ⭐ **→ I recommend an ORDERING change, not a lock table: take the state row `FOR UPDATE` at the top of
-   the fold's transaction.** One row per shop, so every fold for that shop serialises on it, and the race
-   disappears for the daily tables too — the state table stops inheriting a race and starts **preventing**
-   one, at the cost of a lock the transaction was going to take at step 4 anyway.
-   ⚠ **Two conditions the doc should state either way**: step 4 runs in the **same transaction** as
-   statements 1–2, and *"latest"* means `ORDER BY day DESC LIMIT 1` — not the row for `@day`, which a late
-   event makes a different thing.
-   ⚠ This is what the `audit-sql` pass is for, and it cannot use `san_testdb.DB(t)` — two goroutines in
-   one transaction never block on each other.
-   ([the working](#-balance-state-reports--now-coherent-and-one-real-finding-is-left))
+2. ✅ **Answered 2026-09-28 — the fold locks the shop, then the person**:
+   [the-fold-locks-shop-then-user](./context_decision.md#the-fold-locks-shop-then-user). Kept as a line so the numbers hold.
 
 3. ✅ **Answered 2026-09-28 — the user carry is kept**:
    [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept). Kept as a line so the numbers below hold.
