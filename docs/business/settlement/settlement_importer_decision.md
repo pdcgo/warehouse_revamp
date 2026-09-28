@@ -11,6 +11,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator; any other row names the uploader — one person, both the log's `actor_id` and the per-user report's `user_id` |
 | [a-tiktok-row-finds-its-order-by-related-order-id](#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row finds its order by `Related order ID`, on every row — never by `Order/adjustment ID`. Empty means the shop |
 | [the-excel-reader-reads-every-statement](#the-excel-reader-reads-every-statement) | the importer parses no workbook itself — the Excel Reader package reads every statement, and stays a function: what to skip, look up, key and round is the importer's |
+| [a-server-stream-is-authorized-on-its-request](#a-server-stream-is-authorized-on-its-request) | the access interceptor checks a SERVER stream's one request exactly as it checks a unary call. Client and bidi streams stay refused. Not built yet |
+| [an-upload-is-never-reverted](#an-upload-is-never-reverted) | no file-level revert — what an import posts stays posted, and a wrong row is corrected by hand, row by row |
+| [an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop) | a ref that finds no order posts to the shop, under the uploader — it is not held |
 
 ## the-import-is-one-streamed-call
 
@@ -58,7 +61,7 @@ sequenceDiagram
 ### What it does NOT settle
 
 - ⛔ **How a stream is authorized** — the access interceptor refuses every streaming RPC today:
-  [importer Q7](./settlement_importer_clarify.md#question).
+  [importer Q7](./settlement_importer_clarify.md#question). ✅ **Answered** — [a-server-stream-is-authorized-on-its-request](#a-server-stream-is-authorized-on-its-request).
 - **Whether the import finishes when nobody is watching** — [importer Q8](./settlement_importer_clarify.md#question).
 - **A record that cannot post** — the flow draws two outcomes, the samples produce five:
   [critique 7](./settlement_importer_clarify.md#critique).
@@ -148,7 +151,7 @@ answerable for it, not merely whichever session happened to write the row"*.
 - ⛔ **How the log comes to name the creator.** `SettlementPost` takes its actor from the caller's token and
   has no field for anyone else — [importer Q10](./settlement_importer_clarify.md#question).
 - **Whether a ref that finds no order posts at all.** Posted, it lands on the shop for good; held, it waits
-  for its order — [importer Q2](./settlement_importer_clarify.md#question).
+  for its order — [importer Q2](./settlement_importer_clarify.md#question). ✅ **Answered** — [an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop): it posts.
 
 ## a-tiktok-row-finds-its-order-by-related-order-id
 
@@ -213,3 +216,108 @@ flowchart LR
 
 - ⛔ **The TikTok key.** The reader's item IS its key, the reader doc's TikTok struct is Shopee's six columns,
   and the built one is a deviation still waiting on your word — [critique 14](./settlement_importer_clarify.md#critique).
+
+## a-server-stream-is-authorized-on-its-request
+
+> Chat *(owner, 2026-09-28)* — *"for q 7 yes"*, to [importer Q7](./settlement_importer_clarify.md#question):
+> may the access interceptor authorize a SERVER stream?
+
+**The verdict.** The access interceptor authorizes a **server stream** on its one request: when that request
+is read, the same policy and team-scope check a unary call gets runs on it, before the handler's body does
+anything. **Client and bidi streams stay refused** — they carry many messages, and "the request" means
+nothing there. Both imports become callable once it is built.
+
+```mermaid
+sequenceDiagram
+    participant c as caller
+    participant i as access interceptor
+    participant h as import handler
+    c->>i: a server stream, carrying one request
+    i->>i: wrap the connection's Receive
+    Note over i,h: connect-go reads the request before the handler body runs
+    i->>i: policy and team scope, checked on that request
+    alt allowed
+        i->>h: the request
+        h-->>c: message, step, count, then close
+    else denied
+        i-->>c: denied, and the handler never runs
+    end
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| which streams | **server** streams only. Client and bidi streams stay `Unimplemented` |
+| where | the access interceptor ([interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57)) wraps the stream's connection, and its first `Receive` runs the check a unary call gets — policy, then team scope — unchanged |
+| the scope in `ctx` | not available: `next` is called before `Receive` decodes the request, so a stream handler reads `team_id` off its own request |
+| the proof | one test — a non-member calling a mounted server stream is refused before the handler runs, and a member streams |
+| in the same commit | `CLAUDE.md` §Rules that are easy to get wrong, [docs/faq/contract.md:82](../../faq/contract.md#L82) and [docs/faq/workflow.md:204](../../faq/workflow.md#L204) — *server streams are authorized on their request, client and bidi streams are refused* — and the comment at [tools/san/remote/auth.go:34](../../../tools/san/remote/auth.go#L34) |
+| ⛔ state | **not built** — the interceptor still refuses, so both imports answer `Unimplemented` until this lands |
+
+## an-upload-is-never-reverted
+
+> Chat *(owner, 2026-09-28)* — *"for q4, no, revert cost is hard"*, to
+> [importer Q4](./settlement_importer_clarify.md#question): may an upload be reverted?
+
+**The verdict.** There is **no file-level revert**. What an import posts stays posted — no
+`UploadedFileRevert`, no `reverted` status, no revision suffix on a key. A wrong row is corrected the way
+every settlement row is: a new row, by hand ([a-correction-is-a-new-row](./context_decision.md#a-correction-is-a-new-row)).
+It **declines my recommendation**: a compensating row per row, a revision per line and a status to track
+them cost more than they are worth to you.
+
+```mermaid
+flowchart LR
+  P["an import posts a row"] --> K["its key is taken, for good"]
+  K --> A["the same line again answers already there"]
+  K --> W{"was the row wrong?"}
+  W -->|"an order row"| O["reversed by hand, on the order's Settlement tab"]
+  W -->|"a shop row"| N["no screen lists it — only the API"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| gone from the design | `UploadedFileRevert` · the **Revert** action · the `reverted` status · `uploaded_file_lines.revision` · the `:r<n>` key suffix |
+| a wrong order row | reversed by hand, row by row, on the order's Settlement tab — its per-row Reverse is built |
+| a wrong shop row | ⚠ **no screen** — no RPC lists a shop's own rows yet ([state report](../../development_state/settlement/context.md)), so it is offset through the API or not at all |
+| what protects the ledger now | checking BEFORE the post — the shop guard ([importer Q3](./settlement_importer_clarify.md#question)) and a dry run ([importer Q11](./settlement_importer_clarify.md#question)) |
+
+### What it accepts
+
+- **A mistake at the first import stays** unless someone offsets it by hand, row by row: a wrong mapping, a
+  file in the wrong shop, a line posted to the shop before its order existed ([an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop)), a
+  TikTok key that moves ([importer critique 14](./settlement_importer_clarify.md#critique)).
+
+## an-unmatched-ref-posts-to-the-shop
+
+> Chat *(owner, 2026-09-28)* — *"for 3. post it to shop"*, to [importer Q2](./settlement_importer_clarify.md#question)
+> as last put: a ref that finds no order — post it to the shop, or hold it for its order?
+
+**The verdict.** A line whose ref finds **no order** is **posted to the shop** (`order_id = 0`), under the
+uploader ([an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader)). It is not held, so the shop's report carries every line of the file from
+the day it is imported. It **declines my recommendation** to hold the line until its order exists.
+
+```mermaid
+flowchart LR
+  L["a line with a ref"] --> Q{"its order exists?"}
+  Q -->|"yes"| O["posted to the order, under its creator"]
+  Q -->|"no"| S["posted to the shop, under the uploader"]
+  S --> F["for good — the order, entered later, never receives it"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the row | `order_id = 0`, the file's `shop_id`, the uploader as actor, the line's own key |
+| the importer's own record | outcome `posted`, reason `no_order` — so a file's page can say how many lines went to the shop for want of an order |
+| the order, entered later | never receives the line: posting it under the order is refused, because the shop's account already holds its key ([post_entry.go:338](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L338)), and nothing reverts ([an-upload-is-never-reverted](#an-upload-is-never-reverted)) |
+| held now | only what cannot post at all — a type nobody mapped, a fractional amount, a refusal from settlement |
+
+### What it accepts
+
+- **An order entered after its statement was imported stays short for good.** Its Settlement tab shows the
+  sale with nothing received, and the per-user report shows its creator short by that amount and the
+  uploader ahead by it.

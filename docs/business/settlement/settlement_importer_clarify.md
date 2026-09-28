@@ -4,15 +4,16 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔄 **Re-examined 2026-09-28, after `## General.` gained item 2** — *"for reading excel, we use Excel Reader"*.
-Earlier rounds today made both imports streams, drew the `## Flow`, named the file by its hash and decided
-who a row names — each recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
+🔄 **Updated 2026-09-28 — three answers in chat**: Q7 yes, Q4 no, Q2 post. Earlier rounds today made both
+imports streams, drew the `## Flow`, named the file by its hash, decided who a row names and named the
+reader — each recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | the Excel Reader package reads every statement — [the-excel-reader-reads-every-statement](./settlement_importer_decision.md#the-excel-reader-reads-every-statement). It is what this design already drew, so nothing here changes shape |
-| 🆕 critique | #14 — the reader's TikTok key is not settled, and it is this service's key. Both open items are the reader's, already asked there |
-| ✅ checked | the link resolves, the diagram is unchanged, no new question and no new contradiction |
+| ✅ decided | a server stream is authorized on its one request — [a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request). A build task now |
+| ✅ decided, against my recommendation | no revert — [an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted) · a ref that finds no order posts to the shop — [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop). Revert, its status and the per-line revision are gone from the design below, and *no such order* is no longer a reason to hold |
+| 🆕 opened | [Q11](#question) — with nothing undoable, may an import run DRY first? |
+| 🔄 sharpened | #2 — the freeze is accepted now, so the protection moves before the post · [Q3](#question) — a wrong-shop file can no longer be undone |
 
 ## What the service already owns
 
@@ -21,7 +22,7 @@ The doc is short, but the service is not new. **Four decisions recorded while it
 
 | decision | hands this service |
 | --- | --- |
-| [importing-is-not-settlements-job](./context_decision.md#importing-is-not-settlements-job) | the stored file, the per-platform parser, the **unmatched tray**, the import screens |
+| [importing-is-not-settlements-job](./context_decision.md#importing-is-not-settlements-job) | the stored file, the per-platform parser, the **unmatched tray**, the import screens. 🔄 The tray now holds only what cannot post — a ref with no order posts to the shop ([decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) |
 | [settlement-keys-on-our-order-id](./context_decision.md#settlement-keys-on-our-order-id) | turning the platform's order ref into our `order_id` — and every way that fails |
 | [the-recipe-is-the-callers-problem](./context_decision.md#the-recipe-is-the-callers-problem) | the `unique_id` recipe |
 | [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) | a person answers for every row — no machine identity. 🔄 Which person is now [yours](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, else the uploader |
@@ -47,19 +48,17 @@ Measured against all 26 sample workbooks, not read off the spec.
 | # | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **RPCs before a person or a job** (HARD RULE 6). 🔄 The flow now starts at `Frontend` — still nobody holding a file. Nothing says who uploads, how often, or what they need back — and *what they need back* is most of this service: every TikTok sample holds rows that must NOT be posted, 5 of 14 hold a type nobody has mapped, and 25 of 26 hold a withdrawal the report cannot take yet. | Name the job — [Q1](#question). The design below is drawn from the likeliest answer. |
-| **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | Build **revert** before the first real import — [Q4](#question). |
-| **3** | ⛔ **Nothing names the shop.** A TikTok export carries no shop identity anywhere in the file. A Shopee export names a `Username (Penjual)` that our `Shop` does not store. By #2, a file imported into the wrong shop stays there. | **The file names its shop through its orders** — [Q3](#question). |
+| **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop guard ([Q3](#question)) and a dry run ([Q11](#question)). |
+| **3** | ⛔ **Nothing names the shop.** A TikTok export carries no shop identity anywhere in the file. A Shopee export names a `Username (Penjual)` that our `Shop` does not store. By #2, a file imported into the wrong shop stays there — and with no revert, nothing moves it. | **The file names its shop through its orders** — [Q3](#question). |
 | **4** | 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
-| **5** | **An unmatched line posted to the shop never reaches its order** — by #2, its key is then held by the shop account. 🔄 Your new section posts it, under the uploader. | Hold it in the tray. **Reprocessing the stored file is the retry**: the keys make it safe, so a line posts the day its order exists — [Q2](#question). |
 | **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. |
-| **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (no such order · a type nobody mapped · a fractional amount) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([Q3](#question)). Held records post on Reprocess once the mapping ships. |
+| **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([Q3](#question)). Held records post on Reprocess once the mapping ships. |
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
 | **9** | 🆕 **The stream is the import's only watcher.** The flow ends at *"close stream"* and has no branch for a stream that closes FIRST — a tab closed, a phone asleep, a deploy. If the import dies with its request, the file is half-posted and the list shows it *running* for ever. | **Finish whether or not anyone watches** — [Q8](#question). |
 | **10** | **A late upload lands on its upload day.** Reports bucket on `posted_on` ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)), which settlement stamps — a month uploaded on the 1st is a month of `fund` on the 1st. | Keep the decision: a past window stays final. Upload **often**, and let the list show each file's own date range so the lag is visible. |
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
-| **12** | 🆕 ⛔ **Neither import can be called today.** The access interceptor answers every streaming RPC `Unimplemented` — root included — before any policy is read ([interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57)). The guideline's long-task shape has never been mounted behind the ACL: the one stream in the repo, `san remote`'s `Exec`, has [its own interceptor](../../../tools/san/remote/auth.go#L109). These two would be the first. | Teach the interceptor **server** streams — [Q7](#question), and the [Contradiction](#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream). |
 | **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible (#9). |
-| **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and by #2 nothing removes a post. | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
+| **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
 
 ```mermaid
 flowchart LR
@@ -77,11 +76,13 @@ And the commonest shop row, `withdrawal`, breaks the report's position the day i
 
 ## Recommendation
 
-**Decide the mapping, build revert, then import — in that order.** #2 turns every choice about a row into
-a permanent one at its first post, so each question below costs a sentence now and a reversal per row
-later. ⛔ **And the interceptor goes before the first handler** (#12): until it learns server streams, the
-import answers `Unimplemented` to everyone, root included. Give the service one name before a row carries
-the old one ([Contradiction](#contradiction)).
+**Decide the mapping, then dry-run, then import — in that order.** With no revert
+([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)), #2 makes every choice about a row permanent at its first post, so each question
+below costs a sentence now and a hand-posted correction per row later — and the only protection left is
+checking before the post ([Q3](#question), [Q11](#question)). ⛔ **And the interceptor change lands before
+the first handler** — decided ([a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)), not built: until it is, both imports answer
+`Unimplemented` to everyone. Give the service one name before a row carries the old one
+([Contradiction](#contradiction)).
 
 ## Proposed Design
 
@@ -91,7 +92,7 @@ the old one ([Contradiction](#contradiction)).
 | --- | --- |
 | who | the selling team, **CS and up** — exactly [the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up), since every row is posted under their token |
 | when | after downloading one shop's statement from the platform — **daily** keeps the report's days honest (#10) |
-| what they get back | records **posted** · **already there** · **held**, each with its reason · **skipped** |
+| what they get back | records **posted** — to the order, or to the shop when its order is missing · **already there** · **held**, each with its reason · **skipped** |
 
 ### The flow — yours, with what it needs added
 
@@ -141,19 +142,19 @@ flowchart TD
   R -->|"a ref belongs to another shop"| F
   R --> L{"each record — a step on the stream"}
   L -->|"Earnings, GMV Pay Deduction"| SK["SKIPPED — already in Order details"]
-  L -->|"unmapped type, fractional amount, no such order"| H["HELD — with the reason"]
-  L -->|"ok"| W["SettlementPost — as the order's creator, else the uploader"]
+  L -->|"unmapped type, fractional amount"| H["HELD — with the reason"]
+  L -->|"ok — no such order goes to the shop"| W["SettlementPost — as the order's creator, else the uploader"]
   W -->|"created"| PO["POSTED"]
   W -->|"already exists"| EX["ALREADY THERE"]
   W -->|"refused"| H
-  H -.->|"Reprocess, once the order or the mapping exists"| R
+  H -.->|"Reprocess, once the mapping exists"| R
 ```
 
 ### What a line becomes
 
 | `SettlementPost` | Shopee row | TikTok `Order details` row | TikTok `Withdrawal records` row |
 | --- | --- | --- | --- |
-| `order_id` | `No. Pesanan`, resolved · empty → the shop | ✅ `Related order ID`, resolved ([decided](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id)) · empty → the shop | the shop |
+| `order_id` | `No. Pesanan`, resolved · empty or no such order → the shop | ✅ `Related order ID`, resolved ([decided](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id)) · empty or no such order → the shop ([decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) | the shop |
 | `settlement_type` | `SettlementType()` | `SettlementType()` | `withdrawal` · `Earnings`, `GMV Pay Deduction` skipped |
 | `change` | `Jumlah` | `Total settlement amount` | `Amount` |
 | `occurred_on` | `Tanggal Transaksi`, WIB | `Order settled time` | `Request time` |
@@ -162,10 +163,8 @@ flowchart TD
 | `created_by_user_id` | from the order lookup | from the order lookup | — |
 | every row | `team_id` and `shop_id` from the upload · `source_type` see [Contradiction](#contradiction) | | |
 
-**The key** — `unique_id = <platform>:<sheet>:<GenerateUniqueID()>`, plus `:r<n>` once that line has been
-reverted *n* times. The prefix tells a ledger reader which import wrote a row; the suffix lets a reverted
-line go back in. ⚠ **The count is kept per LINE, never per file** — overlapping downloads share lines, so a
-per-file counter would re-post a line another upload still holds.
+**The key** — `unique_id = <platform>:<sheet>:<GenerateUniqueID()>`. The prefix tells a ledger reader which
+import wrote a row. 🔄 No revision suffix any more: nothing is reverted ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)).
 
 ### What the stream carries
 
@@ -186,7 +185,7 @@ Your three messages, plus the row they describe:
 | route | what the person does there |
 | --- | --- |
 | `/settlement/imports` | **the list** (`UploadedFileList`) — one row per file: shop, platform, the file's own date range, uploaded by and when, status, the four tallies. **Import File** opens a dialog: pick the shop, pick the file. The platform is read off `Shop.marketplace`, so the dialog calls the right RPC without asking. 🔄 **Then the dialog shows the stream** — the bar, the tallies, the log — and ends on what did not post. Closing it early is safe ([Q8](#question)): the row carries on |
-| `/settlement/imports/:id` | **one file** — the tallies, the held and skipped lines with their reasons, **Reprocess**, **Revert** (behind a `ConfirmDialog`), download the original |
+| `/settlement/imports/:id` | **one file** — the tallies, the held and skipped lines with their reasons, the lines posted to the shop because their order was missing, **Reprocess**, download the original. 🔄 No **Revert** ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) |
 
 The recorded decisions also named `/settlement/unmatched`, a tray across all files. **→ Not in v1** — the
 per-file view covers it until held lines start outliving their files.
@@ -197,9 +196,8 @@ per-file view covers it until held lines start outliving their files.
 | --- | --- | --- |
 | `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — 🔄 streaming | **in:** `team_id` (scope), `shop_id`, `content` — the file, ≤ 10 MB: the largest sample is 246 KB, and nothing caps a request today (connect-go's default is *any size*). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `message`, `step`, `count`, `file`. ⚠ Your signature names the request `response` — I read it as the request |
 | `UploadedFileList` | yours | the guideline List shape, paged (RULE 9) — filter by shop, platform, status |
-| `UploadedFileLineList` | 🆕 | one file's held and skipped lines, paged |
+| `UploadedFileLineList` | 🆕 | one file's lines that did not reach an order — held, skipped, or posted to the shop — paged |
 | `UploadedFileReprocess` | 🆕 | re-run a stored file under the same keys — only what was held can post. **Streams**, same shape: it is the same long task |
-| `UploadedFileRevert` | 🆕 | one reversal per row **this** file created, then the file reads `reverted`. Streams too |
 | `document_service` | 🆕 one enum value | `DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT`, private — a statement lists every order and what the shop took |
 
 Two platform RPCs rather than one is right: the two readers return different items, and the shop already
@@ -219,7 +217,7 @@ erDiagram
     text content_sha256 "the file's name in document_service, and unique per team (Q9)"
     date period_from "the file's own range"
     date period_to
-    text status "running, done, failed, reverted"
+    text status "running, done, failed"
     int rows_total "the stream's count"
     int rows_posted
     int rows_existing
@@ -234,15 +232,14 @@ erDiagram
     bigint id PK
     bigint uploaded_file_id FK
     text base_key "platform, sheet and the reader's hash"
-    int revision "how many times this line was reverted"
     text order_ref "as the file wrote it"
     bigint order_id "0 when shop-addressed or unresolved"
     text settlement_type "empty when unmapped"
     bigint change
     date occurred_on
     text outcome "posted, existing, held, skipped"
-    text reason "no_order, unmapped_type, fractional, refused, mirrors_order_details"
-    bigint settlement_log_id "what a revert reverses"
+    text reason "unmapped_type, fractional, refused, mirrors_order_details — or no_order on a line posted to the shop"
+    bigint settlement_log_id "the row it posted"
   }
 ```
 
@@ -253,27 +250,18 @@ erDiagram
    **→ Recommend CS and up** — the settlement write set, which it has to be, since each row is posted under their token
    — **and daily.**
 
-2. **A ref that finds no order — post it to the shop, or hold it for its order?** 🔄 Your new section gives
-   such a row the uploader, so as written it POSTS — shop-addressed, and by #2 for good: enter the order a
-   week later and a re-import answers *already there*, the order's own account never sees its `fund`, and
-   the per-user report credits the uploader instead of the order's creator. Held, it waits for its order.
-   Which is right turns on whether every marketplace order should already be in our system — if yes, a miss
-   is an order somebody failed to enter; if no, most never match and a tray only grows.
-   **→ Recommend hold** — it is `context.md`'s own first problem, *"we record that twice"*, and the tray
-   becomes the check that the two records agree. It clears by entering the order and pressing Reprocess —
-   no attaching by hand in v1. Your uploader fallback still covers every row with NO ref: a fee, an ad
-   charge, a withdrawal.
+2. ✅ **Answered 2026-09-28 — a ref that finds no order posts to the shop**, against my recommendation:
+   [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop). Kept as a line so the numbers hold.
 
 3. **Refuse a file whose orders belong to ANOTHER shop?**
    **→ Recommend yes** — resolve every ref across the team, and fail the file before anything posts if one
    lands outside the chosen shop. An order belongs to exactly one shop, so a shop's orders are its
    fingerprint: it works for TikTok, which names no shop, and needs no new column on `Shop`. ⚠ A file with
-   no matchable order at all — a new shop — cannot be checked, and posts on the person's word.
+   no matchable order at all — a new shop — cannot be checked, and posts on the person's word. 🔄 With no revert
+   ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)), this guard and [Q11](#question) are the only protection a wrong shop has.
 
-4. **May an upload be REVERTED?** Without it, #2 makes a wrong type, grain or shop permanent.
-   **→ Recommend yes** — one compensating row per row that upload created, never the *already there* ones
-   (another upload owns those), and each reverted line moves to its next revision so it can go back in.
-   **Team owner and team admin only**, behind a `ConfirmDialog`.
+4. ✅ **Answered 2026-09-28 — no revert**, against my recommendation:
+   [an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted). Kept as a line so the numbers hold.
 
 5. **Does TikTok's affiliate commission get its own `affiliate_fee` row?** It is a column inside `Total
    settlement amount` — in `shipping_issurance.xlsx`, −2,440,317 against +116,445,834 of `fund` (2.1%),
@@ -294,21 +282,8 @@ erDiagram
    **→ Recommend booking both** — the pair nets to zero because the amounts do, and skipping the failure
    is what makes a balance disagree with the platform's.
 
-7. **May the access interceptor authorize a SERVER stream?** 🆕 It refuses every stream on the premise
-   that it *"cannot read the request body"*
-   ([interceptor.go:33](../../../backend/services/user_service/access_interceptors/interceptor.go#L33)). For a
-   server stream that is not so: connect-go reads its one request through `conn.Receive` **inside** the
-   function the interceptor wraps
-   ([handler.go, v1.19.0](https://github.com/connectrpc/connect-go/blob/v1.19.0/handler.go#L192-L211)) — so a
-   wrapped `Receive` sees the message before the handler's body runs, and the unary path's policy-and-scope
-   check applies unchanged. The comment's own fallback — authorize inside each handler — puts the ACL in
-   every long task's code, which is what *"every guarded handler must get the interceptor"* exists to
-   prevent.
-   **→ Recommend yes, server streams only.** Client and bidi streams stay refused: they carry many
-   messages, and "the request" means nothing there. One test proves it — a non-member calling a stream is
-   denied before the handler runs. ⚠ What the interceptor cannot do the same way is put the message's scope
-   in the handler's `ctx` (`next` is called before `Receive` runs), so a stream handler reads `team_id` off
-   its own request. A build detail, not a reason to refuse.
+7. ✅ **Answered 2026-09-28 — a server stream is authorized on its request**:
+   [a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request). A build task now. Kept as a line so the numbers hold.
 
 8. **Does the import finish after the person stops watching?** 🆕 A tab closed, a phone asleep, a dropped
    connection — the stream closes first.
@@ -327,8 +302,8 @@ erDiagram
    unique on `documents.filename` — so one file uploaded twice is two stored copies and two rows in the
    list. It is not rare: it is exactly what Q8's recovery does.
    **→ Recommend: the first one, re-run.** Unique on `(team_id, content_sha256)`, looked up **before** the
-   upload. A hit stores nothing and re-runs that upload under the same keys — only what was held can post,
-   and a reverted file goes back in at its next revision. A repeat upload and the detail page's
+   upload. A hit stores nothing and re-runs that upload under the same keys — only what was held can post.
+   A repeat upload and the detail page's
    **Reprocess** become one operation. **The same bytes under another shop are refused**, naming the shop
    they already went into — a statement belongs to one shop, so that is always a mistake, and it is caught
    even for a file whose orders cannot be matched (Q3's gap). ⚠ A copy re-saved through a spreadsheet tool
@@ -349,6 +324,15 @@ erDiagram
     ([analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72)).
     The importer's share is what it does anyway: address the row to the order its ref finds. ⚠ The price:
     the rule lives in settlement, not in the importer your section names.
+
+11. **May an import run DRY first?** 🆕 Opened by [an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted) and
+    [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop): nothing an import posts can be undone, and a line whose order is not entered
+    YET goes to the shop for good. A dry run is the same call with `dry_run: true` — it reads the file, looks
+    every ref up and streams what WOULD happen to each line, but posts nothing and stores nothing.
+    **→ Recommend yes** — one flag on the request and the same code path with the post skipped: the cheap
+    half of what revert was for. The person sees *"37 lines found no order — they will post to the shop for
+    good"* while there is still time to enter those orders, and a wrong shop or an unmapped type before
+    anything is permanent. ⚠ It cannot say *already there* — only the post knows that.
 
 # Contradiction
 
@@ -388,6 +372,8 @@ flowchart LR
 ```
 
 ## the long-task guideline streams, and the interceptor refuses every stream
+
+✅ **Decided 2026-09-28** — [a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request). The sites below change in the commit that builds it; until then they describe the code truthfully.
 
 > [code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md#implementation-for-long-running-task-rpc)
 > §Long Running Task 1 — *"rpc shape usualy use stream response like `rpc LongTask(...) returns (stream
