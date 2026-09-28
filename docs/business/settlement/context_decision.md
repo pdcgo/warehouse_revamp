@@ -72,6 +72,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) | that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
 | [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ⚠ whether it counts toward the position is NOT settled |
 | [the-reconcile-check-is-not-built](#the-reconcile-check-is-not-built) | nothing compares the stored carry with the log — drift is found by a person, and the replay repairs 31 days. ⚠ makes *the fold before the enum* load-bearing |
+| [the-user-carry-is-kept](#the-user-carry-is-kept) | the per-user carry stays — both user tables as shipped. A person's hidden cost to date is a figure the report keeps |
 
 ---
 
@@ -3522,7 +3523,40 @@ flowchart LR
   [analytic Q2](../analytic/context_clarify.md#question), still open. If that is no as well, the template's
   line stops being true for settlement.
 - **The per-user carry** — [analytic Q3](./analytic_context_clarify.md#question), open, and live on the
-  shipped report.
+  shipped report. ✅ **Answered** — [the-user-carry-is-kept](#the-user-carry-is-kept).
 
 ⚠ **Three arguments leaned on the check and were corrected** —
 [Contradiction](./context_clarify.md#declining-the-reconcile-removed-the-premise-of-three-arguments).
+
+## the-user-carry-is-kept
+
+> Owner, in chat (2026-09-28) — *"for q3, no, its not drop"*, on
+> [analytic Q3](./analytic_context_clarify.md#question): drop `open_balance` / `close_balance` from the
+> user grain, because a person's running total only grows with tenure.
+
+**The verdict.** The per-user carry stays, as `analytic_context.md` §Daily Reports 2 and §Balance State
+Reports 2 draw it: `user_settlement_daily_reports` keeps `open_balance` / `close_balance`, and
+`user_settlement_reports` keeps each person's latest `close_balance`. A person's hidden cost to date is a
+figure the report keeps.
+
+```mermaid
+flowchart LR
+  L["settlement_logs"] --> F["the fold"]
+  F --> D["user_settlement_daily_reports — movements, open and close"]
+  D --> S["user_settlement_reports — the latest close, per person"]
+  S --> V["the per-user list — hidden cost to date"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| tables | unchanged — both user tables as shipped in `00005` |
+| the fold | keeps the per-user cascade — a late event shifts that person's later days, as it does a shop's |
+| the per-user list | unchanged — ranked by `close_balance`, the largest hidden cost first |
+
+### What it does NOT settle
+
+- **Who carries an imported shop-level row.** A shop-level row is credited to whoever posted it, the
+  importer posts as the person who uploads, and with this decision that person carries it for life —
+  [analytic Q7](./analytic_context_clarify.md#question).

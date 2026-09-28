@@ -1367,7 +1367,7 @@ doc** and the recommendation stays on the table.
 | --- | --- |
 | **Q1** — the lock and the DLQ | `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
 | **Q2** — a late and a live fold on one shop | `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
-| **Q3** — the carry on the USER table | kept, as the doc lists it |
+| **Q3** — the carry on the USER table | ✅ **answered: kept** — [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept) |
 | **Q4** — the reconcile | ✅ **answered: not built** — [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built) |
 | **Q5** — grain on the wire | `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
 | 🆕 TEAM grouping across teams | only when the scope is the ROOT team — the one scope ROOT and ADMIN hold. Any other scope reads its own team |
@@ -1376,7 +1376,7 @@ doc** and the recommendation stays on the table.
 
 ## Question
 
-**Five open** — Q4 answered 2026-09-28, kept as a one-line pointer. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**Five open** — Q3 and Q4 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1438,17 +1438,8 @@ built**.
    one transaction never block on each other.
    ([the working](#-balance-state-reports--now-coherent-and-one-real-finding-is-left))
 
-3. ⚠ **Does the past-date position screen exist per USER as well as per shop?** The answer that settled
-   the carry was about a **shop**. On `user_settlement_daily_reports` the same two columns mean something
-   different: *one CS person's lifetime running total of hidden platform cost*, which only ever grows —
-   so **the newest CS always looks best and the longest-serving always looks worst**, regardless of
-   performance.
-   **→ I recommend dropping `open_balance` / `close_balance` from the USER table only**, keeping its
-   movement columns. A window's `gap` and `take_rate` compare people fairly. ⚠ It also halves the
-   cascade, and the user table is the busier of the two — one CS touches many shops, so a backdated event
-   walks more rows there than on any single shop.
-   Keep them if the same screen exists per person.
-   ([the working](#-the-carry-is-settled--what-survives-is-two-smaller-things))
+3. ✅ **Answered 2026-09-28 — the user carry is kept**:
+   [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept). Kept as a line so the numbers below hold.
 
 4. ✅ **Answered 2026-09-28 — no reconcile check is built**:
    [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built). Kept as a line so Q5 and Q6 keep
@@ -1500,6 +1491,20 @@ built**.
    The replay reads the window from Pub/Sub, so if a topic is ever made without retention the replay
    shortens or refuses instead of deleting days it cannot rebuild. ⚠ If yes, the decision's *"must be
    TRUE"* line is the one to amend.
+
+7. 🆕 **Who carries an imported shop-level row in the per-user report?** A shop-level row is credited to
+   the identity that posted it
+   ([a-shop-addressed-row-is-attributed-to-its-actor](./context_decision.md#a-shop-addressed-row-is-attributed-to-its-actor)),
+   and the importer posts as the person who uploads
+   ([actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic)). So whoever uploads a shop's
+   statements carries every shop-level movement in them — fees, adjustments, and withdrawals if they count
+   (101% of `fund` across the samples) — and, with [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept), carries it
+   for life. The per-user list, ranked by `close_balance`, puts that person first for the job, not the work.
+   **→ I recommend: in the per-user report only, an IMPORTED shop-level row goes to user 0** — the row the
+   fold already keeps for *not recorded*, so user totals still sum to shop totals. The log still names the
+   uploader, so [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) holds; no column is added;
+   and a shop-level row a person posts **by hand** stays theirs. The fold tells the two apart by
+   `source_type`.
 
 ⚠ **The order seam is no longer open here** — it was answered in full
 ([the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) ·
