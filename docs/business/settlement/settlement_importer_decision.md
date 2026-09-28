@@ -16,6 +16,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop) | a ref that finds no order posts to the shop, under the uploader — it is not held |
 | [an-import-request-is-a-shop-and-its-file](#an-import-request-is-a-shop-and-its-file) | an import request is the shop and the file's bytes — the same two fields for both platforms |
 | [every-stream-message-is-a-leveled-log-line](#every-stream-message-is-a-leveled-log-line) | every message an import streams is a log line with a level — `INFO`, `WARN` or `ERROR` — and its text |
+| [the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored) | before the file is stored, the importer asks ShopService whether the caller may work on the shop and whether it is the right shop |
 
 ## the-import-is-one-streamed-call
 
@@ -387,3 +388,51 @@ flowchart LR
 
 - ⚠ **The progress your flow sends.** §Flow sends a count and a step, and this response carries neither —
   [Contradiction](./settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them).
+
+## the-shop-is-checked-before-the-file-is-stored
+
+> `settlement_importer.md` §Flow *(owner, 2026-09-28)* — a *"Validation File Flow"* block, first in the flow:
+> *"check shop: is caller that access on shop, is shop correct"*, sent to the Shop Service, then *"Send Message
+> Log"* — and only then the upload. The separate `## How We Validate File` it grew from is gone.
+
+**The verdict.** Before the file is stored, the importer asks `selling_service`'s **ShopService** two things
+about the shop the request names: may **this caller** work on it, and is it the **right shop**. Only then is
+the file uploaded, read and posted.
+
+```mermaid
+sequenceDiagram
+    participant fe as Frontend
+    participant import as Importer
+    participant shop as ShopService
+    participant doc as Document Service
+    fe->>import: the import request
+    import->>shop: the shop, under the caller's token
+    shop-->>import: the shop, and whether the caller may work on it
+    alt the caller may, and it is the right shop
+        import->>doc: store the file
+        import-->>fe: message log, then the import runs
+    else refused
+        import-->>fe: an ERROR line, the stream ends, nothing stored
+    end
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the service | `ShopService`, in `selling_service` ([selling.proto](../../../proto/warehouse/selling/v1/selling.proto)) — shops live there |
+| the right shop | ⚠ my reading: `ShopDetail(team_id, shop_id)` answers it — the shop exists in the request's team, is not `deleted`, and its `marketplace` is the RPC's platform, so a TikTok file into a Shopee shop fails here |
+| the caller may work on it | shop access (#86): `shop_users`, one grant of one user to one shop. ⚠ **Nothing reads it today** except its own three RPCs, so this is its first enforcement — and who counts is [importer Q12](./settlement_importer_clarify.md#question) |
+| when it fails | ⚠ my proposal: an `ERROR` line naming what failed, then the stream ends |
+| the order | before the upload — a refused request stores nothing |
+
+### What it does NOT settle
+
+- **Whether the FILE belongs to the shop.** The check runs before the file is read, so it proves the shop is
+  right for the caller and the platform, not that the statement came from it — [importer Q3](./settlement_importer_clarify.md#question),
+  after extraction.
+- **Who counts as a shop's user** — its listed users only, or the team's owner and admin too:
+  [importer Q12](./settlement_importer_clarify.md#question).
+- ⚠ A TikTok export also carries **Tokopedia** orders (`Order Source`), and `MARKETPLACE_TOKOPEDIA` is its own
+  value — whether a TikTok file may go into a Tokopedia shop waits on
+  [excel_readers Q2](../../technical/packages/excel_readers/context_clarify.md#question).

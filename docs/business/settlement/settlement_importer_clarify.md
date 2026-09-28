@@ -4,18 +4,18 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔄 **Re-examined 2026-09-28 — the doc gained `## Rpc Detail.`**: both requests and the stream's response.
-§Rpc That Must Have now reads `(request)`; §General reads as it did. Earlier rounds today are recorded in
+🔄 **Re-examined 2026-09-28 — §Flow gained a *"Validation File Flow"***: before the file is stored, the
+importer asks the Shop Service whether the caller may work on the shop and whether it is the right shop. Your
+separate `## How We Validate File` became this block. Earlier rounds today are recorded in
 [settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | the request is the shop and the file — [an-import-request-is-a-shop-and-its-file](./settlement_importer_decision.md#an-import-request-is-a-shop-and-its-file) · every stream message is a leveled log line — [every-stream-message-is-a-leveled-log-line](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) |
-| ✅ fixed by you | `TiktokSettlementImport(request)` — my note that the signature named the request `response` is gone |
-| 🆕 critique | ⛔ #15 — the request has no `team_id`, so only root and admin could call it · ⛔ #16 — two `Payload`s and two `Response`s do not compile · ⚠ #17 — nothing caps `file_content` |
-| 🆕 contradiction | [§Flow sends a step and a count, and the response has nowhere to put them](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
-| ✅ checked | no question opens or closes. `LogLevel` is lint-clean as written |
-| ⏳ in progress | §How We Validate File appeared while I wrote this — `### Shopee.` and an empty diagram. Read as *not designed yet*; it looks set to answer [Q3](#question), a file from another shop. Re-examined once it is drawn |
+| ✅ recorded | [the-shop-is-checked-before-the-file-is-stored](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored) |
+| 🆕 opened | [Q12](#question) — who may work on a shop: its listed users only, or its team's owner and admin too? Shop access (#86) is stored, and nothing enforces it yet |
+| 🔄 sharpened | [Q3](#question) — your check proves the SHOP is right; whether the FILE came from it is still Q3, after extraction |
+| 🆕 critique | #18 — the flow draws only the check's success |
+| ✅ checked | the new diagram parses. "Shop Service" is `selling_service`'s `ShopService` — the name is right |
 
 ## What the service already owns
 
@@ -64,6 +64,7 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **15** | 🆕 ⛔ **The request has no team.** §Rpc Detail's `Payload` is `shop_id` and `file_content`. This service's callers are CS and up — team-level roles — and a team-level role on a message with no `use_scope` field is a dead letter: it is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong). As written, only root and admin could import, and [the decided stream check](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) has no scope to read. | Add `uint64 team_id = 1` with `use_scope` and `gt = 0` — exactly as `SettlementPostRequest` carries it ([settlement.proto:245](../../../proto/warehouse/settlement/v1/settlement.proto#L245)). |
 | **16** | 🆕 ⛔ **Both requests are `Payload`, and both streams send `Response`.** Two messages with one name in one package do not compile, and buf's STANDARD lint — used with no exceptions ([buf.yaml](../../../proto/buf.yaml)) — wants each RPC's own `…Request` and `…Response`. | `TiktokSettlementImportRequest` · `ShopeeSettlementImportRequest` · `TiktokSettlementImportResponse` · `ShopeeSettlementImportResponse` — the same fields under four names. `LogLevel` is one enum they share. |
 | **17** | 🆕 ⚠ **Nothing caps `file_content`.** connect-go reads a request of any size by default, and the backend sets no limit. The largest sample is 246 KB. | `(buf.validate.field).bytes.max_len` of 10 MB, and the same limit on the handler's read. |
+| **18** | 🆕 **The flow draws only the check's success.** *"check shop … return check"*, then *"Send Message Log"* — a caller who may not work on the shop, or a Shopee shop given a TikTok file, has no branch. | Draw it: an `ERROR` line naming what failed, then the stream ends — before the upload, so nothing is stored. |
 
 ```mermaid
 flowchart LR
@@ -115,6 +116,8 @@ sequenceDiagram
         participant settle as Settlement Service
     end
     fe->>+import: TiktokSettlementImport — team, shop, the file
+    import->>+sell: yours — ShopService, may the caller work on this shop, and is it the right one
+    sell-->>-import: yes, or the stream ends on an ERROR line
     import->>import: sha256 of the bytes — the file's name
     Note over import: Q9 — a hash this team already imported re-runs that upload instead
     import->>+doc: RequestUpload named by the hash, PUT, ConfirmUpload — as the uploader
@@ -259,7 +262,9 @@ erDiagram
 2. ✅ **Answered 2026-09-28 — a ref that finds no order posts to the shop**, against my recommendation:
    [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop). Kept as a line so the numbers hold.
 
-3. **Refuse a file whose orders belong to ANOTHER shop?**
+3. **Refuse a file whose orders belong to ANOTHER shop?** 🔄 Your new validation block checks the SHOP before
+   the file is read — that the caller may work on it, and that it fits the platform. Whether the FILE came from
+   it needs the file's refs, which come after extraction: this is that second check.
    **→ Recommend yes** — resolve every ref across the team, and fail the file before anything posts if one
    lands outside the chosen shop. An order belongs to exactly one shop, so a shop's orders are its
    fingerprint: it works for TikTok, which names no shop, and needs no new column on `Shop`. ⚠ A file with
@@ -339,6 +344,16 @@ erDiagram
     half of what revert was for. The person sees *"37 lines found no order — they will post to the shop for
     good"* while there is still time to enter those orders, and a wrong shop or an unmapped type before
     anything is permanent. ⚠ It cannot say *already there* — only the post knows that.
+
+12. **Who may work on a shop — its listed users only, or its team's owner and admin too?** 🆕 Opened by
+    [the-shop-is-checked-before-the-file-is-stored](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored): your flow checks *"is caller that access on shop"*. Shop access exists —
+    `shop_users`, one grant per user per shop (#86, `ShopUserAdd`) — but nothing reads it except its own
+    three RPCs: orders, settlement and every screen ignore it. The importer would be its first enforcement, so
+    what it means is set here.
+    **→ Recommend: the shop's listed users, plus the team's owner and admin** — and root and admin, who pass
+    every scope. A CS person imports only the shops they are granted, so the grant finally means something,
+    while the people who run the team never need a grant to act on it. The check is one lookup: add
+    `user_id` to `ShopUserListFilter`, so *"is this caller on this shop?"* reads one row instead of paging.
 
 # Contradiction
 
