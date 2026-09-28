@@ -12,6 +12,7 @@ settled is in [settlement_importer_decision.md](./settlement_importer_decision.m
 | 🆕 opened | ⛔ **the access interceptor refuses every streaming RPC**, so neither import can be called (#12, [Q7](#question), [Contradiction](#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream)) · the stream is the import's only watcher (#9, [Q8](#question)) · the flow writes nothing `UploadedFileList` could read (#13) |
 | 🔄 sharpened | #2 — your flow draws the freeze · #4 — it draws no order lookup · #7 — two outcomes drawn, five measured |
 | ✅ checked | the new diagram parses. One new contradiction (above); the service-name one stands, unchanged |
+| ✅ decided, in chat | the stored file is named by its content hash — [the-file-is-named-by-its-content-hash](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash). It opens [Q9](#question): the name alone dedupes nothing |
 
 ## What the service already owns
 
@@ -94,7 +95,8 @@ the old one ([Contradiction](#contradiction)).
 ### The flow — yours, with what it needs added
 
 `ADDED` marks what your flow does not draw yet: the order lookup (#4), the file's own row (#13), and the
-records that do not post (#7).
+records that do not post (#7). The hash step is yours:
+[the-file-is-named-by-its-content-hash](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash).
 
 ```mermaid
 sequenceDiagram
@@ -106,7 +108,9 @@ sequenceDiagram
         participant settle as Settlement Service
     end
     fe->>+import: TiktokSettlementImport — team, shop, the file
-    import->>+doc: RequestUpload, PUT, ConfirmUpload — as the uploader
+    import->>import: sha256 of the bytes — the file's name
+    Note over import: Q9 — a hash this team already imported re-runs that upload instead
+    import->>+doc: RequestUpload named by the hash, PUT, ConfirmUpload — as the uploader
     doc-->>-import: document_id
     import->>import: ADDED — its own row, running
     import-->>fe: message log
@@ -189,7 +193,7 @@ per-file view covers it until held lines start outliving their files.
 
 | RPC | | |
 | --- | --- | --- |
-| `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — 🔄 streaming | **in:** `team_id` (scope), `shop_id`, `filename`, `content` — the file, ≤ 10 MB: the largest sample is 246 KB, and nothing caps a request today (connect-go's default is *any size*) · **out, per message:** `message`, `step`, `count`, `file`. ⚠ Your signature names the request `response` — I read it as the request |
+| `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — 🔄 streaming | **in:** `team_id` (scope), `shop_id`, `content` — the file, ≤ 10 MB: the largest sample is 246 KB, and nothing caps a request today (connect-go's default is *any size*). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `message`, `step`, `count`, `file`. ⚠ Your signature names the request `response` — I read it as the request |
 | `UploadedFileList` | yours | the guideline List shape, paged (RULE 9) — filter by shop, platform, status |
 | `UploadedFileLineList` | 🆕 | one file's held and skipped lines, paged |
 | `UploadedFileReprocess` | 🆕 | re-run a stored file under the same keys — only what was held can post. **Streams**, same shape: it is the same long task |
@@ -210,7 +214,7 @@ erDiagram
     bigint shop_id
     text platform "shopee or tiktok"
     text document_id "document_service"
-    text content_sha256 "the same file again is named, not refused"
+    text content_sha256 "the file's name in document_service, and unique per team (Q9)"
     date period_from "the file's own range"
     date period_to
     text status "running, done, failed, reverted"
@@ -306,9 +310,23 @@ erDiagram
    a window onto the import, not its lifeline — a half-posted file is the worst outcome on offer: the
    report is wrong and nothing says so. A server killed mid-file (a deploy) leaves a row whose tallies stop
    moving, and the list shows it **interrupted** — derived when listed from `updated_at`, no sweeper.
-   Recovery is the keys: import the same file again and every posted record answers *already there*.
+   Recovery is the keys: import the same file again and every posted record answers *already there* — by
+   Q9, into the same row rather than a second one.
    ⚠ The price is that closing the tab does not cancel. With the shop guard (Q3) a wrong file fails before
    anything posts — and nobody has asked for a Cancel.
+
+9. **The same bytes a second time — a second upload, or the first one re-run?** 🆕 Opened by
+   [the-file-is-named-by-its-content-hash](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash).
+   The name alone dedupes nothing: `document_service` keys every object by a fresh uuid, and nothing is
+   unique on `documents.filename` — so one file uploaded twice is two stored copies and two rows in the
+   list. It is not rare: it is exactly what Q8's recovery does.
+   **→ Recommend: the first one, re-run.** Unique on `(team_id, content_sha256)`, looked up **before** the
+   upload. A hit stores nothing and re-runs that upload under the same keys — only what was held can post,
+   and a reverted file goes back in at its next revision. A repeat upload and the detail page's
+   **Reprocess** become one operation. **The same bytes under another shop are refused**, naming the shop
+   they already went into — a statement belongs to one shop, so that is always a mistake, and it is caught
+   even for a file whose orders cannot be matched (Q3's gap). ⚠ A copy re-saved through a spreadsheet tool
+   is new bytes, so it is a new upload — and its lines answer *already there*.
 
 # Contradiction
 

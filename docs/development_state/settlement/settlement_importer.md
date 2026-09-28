@@ -11,6 +11,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | | |
 | --- | --- |
 | [the-import-is-one-streamed-call](../../business/settlement/settlement_importer_decision.md#the-import-is-one-streamed-call) | one server stream per file: the file rides IN the request, is stored in `document_service` first, then extracted and posted record by record — `message` + `step` + `count` on the stream. No queue. Overtook the first clarify's async recommendation |
+| [the-file-is-named-by-its-content-hash](../../business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash) | the stored statement's filename is the sha256 of its bytes plus `.xlsx`, computed by the importer — the request carries no `filename`. sha256 (not md5) is my proposal, flagged as such |
 
 ## What exists underneath it
 
@@ -28,7 +29,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 
 | | |
 | --- | --- |
-| the job, the tray, revert, the shop guard, the TikTok affiliate split, failed withdrawals | [importer Q1–Q6](../../business/settlement/settlement_importer_clarify.md#question) |
+| the job, the tray, revert, the shop guard, the TikTok affiliate split, failed withdrawals, the same file twice | [importer Q1–Q6 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ how a server stream is authorized — until then both imports answer `Unimplemented` | [importer Q7](../../business/settlement/settlement_importer_clarify.md#question) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-long-task-guideline-streams-and-the-interceptor-refuses-every-stream) |
 | whether an import finishes after its watcher leaves | [importer Q8](../../business/settlement/settlement_importer_clarify.md#question) |
 | `withdrawal` in `Σ change` would make every shop's position read as ~every sale | [settlement Q1](../../business/settlement/context_clarify.md#question) |
@@ -40,6 +41,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | --- | --- |
 | largest file | Shopee 1,463 rows / 19 days · TikTok 830 + 41 withdrawals / 26 days |
 | largest file, in bytes | **246 KB** (`tiktok/shipping_issurance.xlsx`); Shopee's largest is 89 KB. The file now rides in the request, and **nothing caps a request**: connect-go defaults to *any size* and the backend sets no `WithReadMaxBytes` |
+| identical bytes | **0** of the 26 samples share a sha256. The re-saved pair (`awan_beban_return` / `_simple`) differs, and TikTok stamps its `modified` time into `docProps/core.xml` (Shopee's carries none) — so the hash catches the SAME download uploaded twice, never the same period downloaded twice |
 | fractional amounts | 0, all IDR — `float64` → `int64` is lossless on every sample |
 | withdrawals vs `fund` | −839,987,638 against +827,877,151 — **101%**. In 25 of 26 files |
 | TikTok `Earnings` | equals every `Order details` row summed, in 10 of 14 files |
@@ -57,6 +59,10 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 - ⚠ **A server stream's scope cannot ride in `ctx` the way a unary call's does** — the interceptor calls
   `next` before `Receive` has decoded the request. Verified in connect-go v1.19.0 (`NewServerStreamHandler`
   receives INSIDE the wrapped function). The handler reads `team_id` off its own request.
+- ⚠ **Naming a file by its hash dedupes NOTHING by itself** — `document_service` keys each object by a fresh
+  uuid plus the name's extension ([tokens.go:83](../../../backend/services/document_service/document_v1/tokens.go#L83)),
+  and `documents.filename` is not unique. Dedupe is the importer's lookup before upload (Q9). Keep `.xlsx` on
+  the name, or the object is stored without an extension.
 - ⚠ **buf `STANDARD` wants a distinct response message per RPC** — `TiktokSettlementImportResponse` and
   `ShopeeSettlementImportResponse`, both carrying the same file row.
 - ⚠ **The owner's `tools/report_withdrawal/` is theirs** — read it for the corpus size, never edit it.

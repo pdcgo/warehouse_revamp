@@ -7,6 +7,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | decision | what it decided |
 | --- | --- |
 | [the-import-is-one-streamed-call](#the-import-is-one-streamed-call) | one server-streaming call per file — the file goes IN the call, is stored, read and posted record by record while the stream reports progress. No queue |
+| [the-file-is-named-by-its-content-hash](#the-file-is-named-by-its-content-hash) | the stored statement's filename is the hash of its bytes, computed by the importer — the person's own filename is not sent |
 
 ## the-import-is-one-streamed-call
 
@@ -58,3 +59,39 @@ sequenceDiagram
 - **Whether the import finishes when nobody is watching** — [importer Q8](./settlement_importer_clarify.md#question).
 - **A record that cannot post** — the flow draws two outcomes, the samples produce five:
   [critique 7](./settlement_importer_clarify.md#critique).
+
+## the-file-is-named-by-its-content-hash
+
+> Chat *(owner, 2026-09-28)* — *"make filename as content hash"*.
+
+**The verdict.** The statement the importer stores in `document_service` is named by the **hash of its
+bytes**, not by whatever the person's file happened to be called. The importer computes it over the bytes it
+received; the client sends neither the name nor the hash.
+
+```mermaid
+flowchart LR
+  B["the bytes, as received"] --> H["sha256 — 64 hex characters"]
+  H --> N["the filename — the hash, plus .xlsx"]
+  N --> R["RequestUpload"]
+  H --> U["uploaded_files.content_sha256 — the same value"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the name | the hash plus `.xlsx`. ⚠ **The extension stays**: `document_service` builds the storage key from the document's uuid and the filename's extension ([tokens.go:83](../../../backend/services/document_service/document_v1/tokens.go#L83)), so a bare hash would store the file with none |
+| which hash | **sha256** — ⚠ *content hash* did not say which, so this part is my proposal. Not md5, the row keys' hash: once the hash is an identity ([importer Q9](./settlement_importer_clarify.md#question)), two different files must never share one, and sha256 costs the same. 64 characters, inside the 255 `RequestUpload` allows |
+| computed by | the importer, over the bytes it received — never a value the client sends |
+| the request | carries **no `filename`** — there is nothing left for it to say |
+| the person's own name for the file | not kept. The list tells files apart by shop and date range, which the platform's generated names do not |
+
+### What it does NOT settle
+
+- **What the same bytes do a second time.** The name alone dedupes nothing: `document_service` keys every
+  object by a fresh uuid and nothing is unique on `documents.filename`, so one file uploaded twice is two
+  stored copies with one name — [importer Q9](./settlement_importer_clarify.md#question).
+- ⚠ **The hash names BYTES, not a report.** Measured: 0 of the 26 samples share bytes, and the one re-saved
+  pair — `awan_beban_return` and its `_simple` copy — hashes differently. A TikTok export also stamps its own
+  `modified` time into the file, so re-downloading a period is new bytes too. What stops those from
+  double-posting is the line keys, not the name.
