@@ -9,6 +9,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-import-is-one-streamed-call](#the-import-is-one-streamed-call) | one server-streaming call per file — the file goes IN the call, is stored, read and posted record by record while the stream reports progress. No queue |
 | [the-file-is-named-by-its-content-hash](#the-file-is-named-by-its-content-hash) | the stored statement's filename is the hash of its bytes, computed by the importer — the person's own filename is not sent |
 | [an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator; any other row names the uploader — one person, both the log's `actor_id` and the per-user report's `user_id` |
+| [a-tiktok-row-finds-its-order-by-related-order-id](#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row finds its order by `Related order ID`, on every row — never by `Order/adjustment ID`. Empty means the shop |
 
 ## the-import-is-one-streamed-call
 
@@ -128,7 +129,7 @@ flowchart TD
 
 | | |
 | --- | --- |
-| the ref | Shopee: `No. Pesanan`. TikTok: `Order/adjustment ID` on an `Order` row, `Related order ID` on any other — an adjustment's own ID names no order. ⚠ My reading: the doc says *ref id*, and a TikTok row carries two |
+| the ref | Shopee: `No. Pesanan`. TikTok: `Order/adjustment ID` on an `Order` row, `Related order ID` on any other — an adjustment's own ID names no order. ⚠ My reading: the doc says *ref id*, and a TikTok row carries two · ✅ **Settled** by [a-tiktok-row-finds-its-order-by-related-order-id](#a-tiktok-row-finds-its-order-by-related-order-id): `Related order ID` on every row — the same order, by one rule |
 | the lookup | `selling_service`'s, over RPC — `orders` is its table (HARD RULE 3). One call per file, never one per record ([critique 4](./settlement_importer_clarify.md#critique)). ⚠ `order_external_ref_id` is not unique yet: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) is decided and not built |
 | the order's creator | `orders.created_by_user_id` — the person settlement stamps on the order's account when it opens ([the-creator-is-stamped-on-the-state-row](./context_decision.md#the-creator-is-stamped-on-the-state-row)) |
 | the uploader | the identity on the import's token. It stays on the importer's own row, `uploaded_files.created_by`, whoever each line names — so who brought a file in is never lost |
@@ -147,3 +148,32 @@ answerable for it, not merely whichever session happened to write the row"*.
   has no field for anyone else — [importer Q10](./settlement_importer_clarify.md#question).
 - **Whether a ref that finds no order posts at all.** Posted, it lands on the shop for good; held, it waits
   for its order — [importer Q2](./settlement_importer_clarify.md#question).
+
+## a-tiktok-row-finds-its-order-by-related-order-id
+
+> Chat *(owner, 2026-09-28)* — *"tiktok use Related order ID"* — which of a TikTok row's two refs finds its
+> order.
+
+**The verdict.** A TikTok `Order details` row finds its order by **`Related order ID`**, on every row —
+never by `Order/adjustment ID`. That one lookup addresses the row (`order_id`) and names its person
+([an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader)). Empty means the row belongs to the shop. It settles the part of that decision's spec
+I had flagged as my reading, and finds the same order on every sampled row — by one rule instead of two.
+
+```mermaid
+flowchart LR
+  O["an Order row"] -->|"Related order ID is its own id"| F["find the order"]
+  A["an adjustment"] -->|"Related order ID is the order it adjusts"| F
+  S["a shop-level charge"] -->|"Related order ID is empty"| SH["the shop, under the uploader"]
+  F -->|"found"| C["order_id, and the order's creator"]
+  F -->|"not found"| Q["importer Q2 — post or hold"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the column | `Related order ID` — `RelatedOrderRefID` on the reader's item |
+| on an `Order` row | equal to the row's own id on **all 2,710** sampled — asserted by [TestTiktokAdjustmentsCarryAnAdjustmentID](../../../backend/pkgs/san_excel_readers/tiktok_test.go#L692) |
+| on an adjustment | the order it adjusts — **8 of the 23** sampled. Its own `Order/adjustment ID` is an adjustment id, which names no order |
+| empty | shop-level — **15 of the 23**: addressed to the shop, and named for the uploader |
+| the reader | unchanged — both columns stay on the item, and which one to look up is the importer's call |

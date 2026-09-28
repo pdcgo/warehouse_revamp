@@ -13,6 +13,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [the-import-is-one-streamed-call](../../business/settlement/settlement_importer_decision.md#the-import-is-one-streamed-call) | one server stream per file: the file rides IN the request, is stored in `document_service` first, then extracted and posted record by record — `message` + `step` + `count` on the stream. No queue. Overtook the first clarify's async recommendation |
 | [the-file-is-named-by-its-content-hash](../../business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash) | the stored statement's filename is the sha256 of its bytes plus `.xlsx`, computed by the importer — the request carries no `filename`. sha256 (not md5) is my proposal, flagged as such |
 | [an-imported-row-names-its-orders-creator-else-the-uploader](../../business/settlement/settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator — as `actor_id`, and so in the per-user report; any other row names the uploader. Answered analytic Q7 — my user 0 declined. ⛔ Not buildable on today's contract — [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
+| [a-tiktok-row-finds-its-order-by-related-order-id](../../business/settlement/settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row is looked up by `Related order ID`, every row — equal to the row's own id on all 2,710 sampled `Order` rows, the adjusted order on 8 of 23 adjustments, empty (the shop) on 15 |
 
 ## What exists underneath it
 
@@ -58,9 +59,9 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 - ⚠ **The reader returns `ErrNoSettlementTypeMapping` for rows that must be SKIPPED** (`Earnings`,
   `GMV Pay Deduction`) exactly as for a type never seen. The skip list belongs in the importer.
 - ⚠ **A revert counter must be per LINE, never per file** — overlapping downloads share lines.
-- ⚠ **A TikTok row carries TWO refs.** `Order/adjustment ID` is the order's only on an `Order` row — on an
-  adjustment it is the adjustment's own id, and the order is `Related order ID`. Look up the first on every row
-  and every adjustment finds nothing: it names the uploader and lands on the shop, for good.
+- ⚠ **Look a TikTok row up by `Related order ID` — decided, on every row.** `Order/adjustment ID` is the order's
+  only on an `Order` row; on an adjustment it is the adjustment's own id. Look THAT up and every adjustment finds
+  nothing: it names the uploader and lands on the shop, for good.
 - ⚠ **A server stream's scope cannot ride in `ctx` the way a unary call's does** — the interceptor calls
   `next` before `Receive` has decoded the request. Verified in connect-go v1.19.0 (`NewServerStreamHandler`
   receives INSIDE the wrapped function). The handler reads `team_id` off its own request.

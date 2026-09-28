@@ -14,6 +14,7 @@ before it made both imports streams, drew the `## Flow` and named the file by it
 | 🆕 opened | [Q10](#question) — `SettlementPost` takes its actor from the caller's token, so no row can name the order's creator yet |
 | 🔄 sharpened | #4 — your section names the lookup, as a query per record · #5 and [Q2](#question) — it posts a ref that finds no order, under the uploader, where I recommend holding it |
 | ✅ checked | no new diagram. One new contradiction: [three recorded rows still give an imported row the uploader's login](#the-importer-names-the-orders-creator-and-three-recorded-rows-say-the-login-it-runs-under) |
+| ✅ decided, in chat | a TikTok row finds its order by `Related order ID`, on every row — [a-tiktok-row-finds-its-order-by-related-order-id](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id). On all 2,710 sampled `Order` rows it equals the row's own id, so no lookup finds a different order |
 
 ## What the service already owns
 
@@ -153,12 +154,12 @@ flowchart TD
 
 | `SettlementPost` | Shopee row | TikTok `Order details` row | TikTok `Withdrawal records` row |
 | --- | --- | --- | --- |
-| `order_id` | `No. Pesanan`, resolved · empty → the shop | `Order`: its own id · otherwise `Related order ID` · empty → the shop | the shop |
+| `order_id` | `No. Pesanan`, resolved · empty → the shop | ✅ `Related order ID`, resolved ([decided](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id)) · empty → the shop | the shop |
 | `settlement_type` | `SettlementType()` | `SettlementType()` | `withdrawal` · `Earnings`, `GMV Pay Deduction` skipped |
 | `change` | `Jumlah` | `Total settlement amount` | `Amount` |
 | `occurred_on` | `Tanggal Transaksi`, WIB | `Order settled time` | `Request time` |
 | `note` | `Deskripsi` | `Type` | `Reference ID` |
-| `actor_id` 🆕 — not a field yet, [Q10](#question) | the order's creator, when `No. Pesanan` finds it · else the uploader | the order's creator, when the `order_id` ref finds it · else the uploader | the uploader |
+| `actor_id` 🆕 — not a field yet, [Q10](#question) | the order's creator, when `No. Pesanan` finds it · else the uploader | the order's creator, when `Related order ID` finds it · else the uploader | the uploader |
 | `created_by_user_id` | from the order lookup | from the order lookup | — |
 | every row | `team_id` and `shop_id` from the upload · `source_type` see [Contradiction](#contradiction) | | |
 
