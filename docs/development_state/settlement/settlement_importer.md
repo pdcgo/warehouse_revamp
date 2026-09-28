@@ -2,7 +2,7 @@
 
 **Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
-reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop); first pass 2026-09-26. Waiting on the owner — nothing of the service is
+reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs; first pass 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
 · decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md).
@@ -19,6 +19,8 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) | the interceptor checks a server stream's one request like a unary call; client and bidi stay refused. ⛔ Not built — the first build task, with its test and the CLAUDE.md + FAQ rewrite in the same commit |
 | [an-upload-is-never-reverted](../../business/settlement/settlement_importer_decision.md#an-upload-is-never-reverted) | no file-level revert: no `UploadedFileRevert`, no `reverted` status, no revision suffix. A wrong order row is reversed by hand on its Settlement tab; a wrong shop row has no screen |
 | [an-unmatched-ref-posts-to-the-shop](../../business/settlement/settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop) | a ref that finds no order posts to the shop under the uploader — never held. The order, entered later, never receives it |
+| [an-import-request-is-a-shop-and-its-file](../../business/settlement/settlement_importer_decision.md#an-import-request-is-a-shop-and-its-file) | the request is `shop_id` + `file_content` (bytes), the same for both platforms. ⛔ No `team_id` as written — critique 15 |
+| [every-stream-message-is-a-leveled-log-line](../../business/settlement/settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) | the stream sends `level` (`LogLevel`: INFO/WARN/ERROR) + `message`. ⚠ No `step`/`count` for the flow's progress — the Contradiction |
 
 ## What exists underneath it
 
@@ -38,6 +40,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | --- | --- |
 | the job, the shop guard, the TikTok affiliate split, failed withdrawals, the same file twice, a dry run | [importer Q1 · Q3 · Q5 · Q6 · Q9 · Q11](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
+| ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
 | whether an import finishes after its watcher leaves | [importer Q8](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ how a row comes to name the order's creator — `SettlementPost` takes its actor from the token | [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ the TikTok key — the reader doc's struct is Shopee's, the built item is unaccepted, and a re-download in the 2026-09 layout is unmeasured. A key that moves after the first import posts every line twice | [critique 14](../../business/settlement/settlement_importer_clarify.md#critique) → [reader #23 and its questions](../../technical/packages/excel_readers/context_clarify.md#critique) |
@@ -66,6 +69,8 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
   `GMV Pay Deduction`) exactly as for a type never seen. The skip list belongs in the importer.
 - ⚠ **Nothing an import posts can be undone** — no revert, by decision. A line posted to the shop because its
   order was missing never reaches that order: posting it again under the order is `errUniqueIDTaken`.
+- ⚠ **The guideline's slog binding is an `io.Writer`** — it hands the stream formatted text, so `level` stays
+  empty. Bind a `slog.Handler` to fill it.
 - ⚠ **Look a TikTok row up by `Related order ID` — decided, on every row.** `Order/adjustment ID` is the order's
   only on an `Order` row; on an adjustment it is the adjustment's own id. Look THAT up and every adjustment finds
   nothing: it names the uploader and lands on the shop, for good.

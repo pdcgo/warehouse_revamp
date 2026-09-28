@@ -4,16 +4,18 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔄 **Updated 2026-09-28 — three answers in chat**: Q7 yes, Q4 no, Q2 post. Earlier rounds today made both
-imports streams, drew the `## Flow`, named the file by its hash, decided who a row names and named the
-reader — each recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
+🔄 **Re-examined 2026-09-28 — the doc gained `## Rpc Detail.`**: both requests and the stream's response.
+§Rpc That Must Have now reads `(request)`; §General reads as it did. Earlier rounds today are recorded in
+[settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ decided | a server stream is authorized on its one request — [a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request). A build task now |
-| ✅ decided, against my recommendation | no revert — [an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted) · a ref that finds no order posts to the shop — [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop). Revert, its status and the per-line revision are gone from the design below, and *no such order* is no longer a reason to hold |
-| 🆕 opened | [Q11](#question) — with nothing undoable, may an import run DRY first? |
-| 🔄 sharpened | #2 — the freeze is accepted now, so the protection moves before the post · [Q3](#question) — a wrong-shop file can no longer be undone |
+| ✅ recorded | the request is the shop and the file — [an-import-request-is-a-shop-and-its-file](./settlement_importer_decision.md#an-import-request-is-a-shop-and-its-file) · every stream message is a leveled log line — [every-stream-message-is-a-leveled-log-line](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) |
+| ✅ fixed by you | `TiktokSettlementImport(request)` — my note that the signature named the request `response` is gone |
+| 🆕 critique | ⛔ #15 — the request has no `team_id`, so only root and admin could call it · ⛔ #16 — two `Payload`s and two `Response`s do not compile · ⚠ #17 — nothing caps `file_content` |
+| 🆕 contradiction | [§Flow sends a step and a count, and the response has nowhere to put them](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
+| ✅ checked | no question opens or closes. `LogLevel` is lint-clean as written |
+| ⏳ in progress | §How We Validate File appeared while I wrote this — `### Shopee.` and an empty diagram. Read as *not designed yet*; it looks set to answer [Q3](#question), a file from another shop. Re-examined once it is drawn |
 
 ## What the service already owns
 
@@ -59,6 +61,9 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
 | **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible (#9). |
 | **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
+| **15** | 🆕 ⛔ **The request has no team.** §Rpc Detail's `Payload` is `shop_id` and `file_content`. This service's callers are CS and up — team-level roles — and a team-level role on a message with no `use_scope` field is a dead letter: it is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong). As written, only root and admin could import, and [the decided stream check](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) has no scope to read. | Add `uint64 team_id = 1` with `use_scope` and `gt = 0` — exactly as `SettlementPostRequest` carries it ([settlement.proto:245](../../../proto/warehouse/settlement/v1/settlement.proto#L245)). |
+| **16** | 🆕 ⛔ **Both requests are `Payload`, and both streams send `Response`.** Two messages with one name in one package do not compile, and buf's STANDARD lint — used with no exceptions ([buf.yaml](../../../proto/buf.yaml)) — wants each RPC's own `…Request` and `…Response`. | `TiktokSettlementImportRequest` · `ShopeeSettlementImportRequest` · `TiktokSettlementImportResponse` · `ShopeeSettlementImportResponse` — the same fields under four names. `LogLevel` is one enum they share. |
+| **17** | 🆕 ⚠ **Nothing caps `file_content`.** connect-go reads a request of any size by default, and the backend sets no limit. The largest sample is 246 KB. | `(buf.validate.field).bytes.max_len` of 10 MB, and the same limit on the handler's read. |
 
 ```mermaid
 flowchart LR
@@ -168,10 +173,11 @@ import wrote a row. 🔄 No revision suffix any more: nothing is reverted ([deci
 
 ### What the stream carries
 
-Your three messages, plus the row they describe:
+Your `level` and `message`, the two numbers your flow sends, and the row they describe:
 
 | field | sent | the screen draws |
 | --- | --- | --- |
+| `level` ✅ [yours](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) | with every message — `INFO`, `WARN`, `ERROR` | the line's colour. The `WARN` and `ERROR` lines are what the closing summary lists |
 | `message` | every important step — the guideline's slog line, your *"Send Message Log"* | a log under the bar, folded by default |
 | `count` | once, after extraction — *"send count record"* | the end of the bar |
 | `step` | after every record | the bar |
@@ -194,7 +200,7 @@ per-file view covers it until held lines start outliving their files.
 
 | RPC | | |
 | --- | --- | --- |
-| `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — 🔄 streaming | **in:** `team_id` (scope), `shop_id`, `content` — the file, ≤ 10 MB: the largest sample is 246 KB, and nothing caps a request today (connect-go's default is *any size*). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `message`, `step`, `count`, `file`. ⚠ Your signature names the request `response` — I read it as the request |
+| `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — streaming, 🔄 detailed in §Rpc Detail | **in:** ⛔ `team_id` (the scope — missing, #15), `shop_id`, `file_content` — the file, ≤ 10 MB (#17). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `level` and `message` ([yours](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line)), plus `step`, `count` and `file` ([Contradiction](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them)) · ⛔ one request and one response name per RPC (#16) |
 | `UploadedFileList` | yours | the guideline List shape, paged (RULE 9) — filter by shop, platform, status |
 | `UploadedFileLineList` | 🆕 | one file's lines that did not reach an order — held, skipped, or posted to the shop — paged |
 | `UploadedFileReprocess` | 🆕 | re-run a stored file under the same keys — only what was held can post. **Streams**, same shape: it is the same long task |
@@ -446,4 +452,30 @@ flowchart LR
   B --> OK
   C --> OK
   D --> Q["Q10 — how the log names the creator"]
+```
+
+## the flow sends a step and a count, and the response has nowhere to put them
+
+> `settlement_importer.md` §Flow — *"send count record for frontend progress render"* · *"send step and
+> count record for frontend progress render"*
+>
+> §Rpc Detail 3 — `message Response { LogLevel level  string message }`
+
+| site | says | whose |
+| --- | --- | --- |
+| §Flow, twice | the stream carries a count, then a step and a count after every record | yours |
+| §Rpc Detail 3 | a response is a level and a line of text | yours — the newest |
+
+**Which is wrong: §Rpc Detail, by omission.** The flow's progress bar needs two numbers. With only
+`message`, the screen would read them out of log text — which breaks the first time a message is reworded.
+
+**→ Recommend** adding `uint32 step` and `uint32 count` to the response — the guideline allows *"any defined
+field"* beside `message` — and the file's own row (#13), so the tallies ride along. **What stops it
+recurring:** a number the screen has to parse out of text is a field nobody declared.
+
+```mermaid
+flowchart LR
+  F["§Flow — a step and a count, for the progress bar"] --> R{"§Rpc Detail — the response"}
+  R -->|"as written: level and message only"| P["the bar parses numbers out of log text"]
+  R -->|"recommended: plus step, count, file"| B["the bar reads fields"]
 ```

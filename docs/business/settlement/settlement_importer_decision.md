@@ -14,6 +14,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-server-stream-is-authorized-on-its-request](#a-server-stream-is-authorized-on-its-request) | the access interceptor checks a SERVER stream's one request exactly as it checks a unary call. Client and bidi streams stay refused. Not built yet |
 | [an-upload-is-never-reverted](#an-upload-is-never-reverted) | no file-level revert — what an import posts stays posted, and a wrong row is corrected by hand, row by row |
 | [an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop) | a ref that finds no order posts to the shop, under the uploader — it is not held |
+| [an-import-request-is-a-shop-and-its-file](#an-import-request-is-a-shop-and-its-file) | an import request is the shop and the file's bytes — the same two fields for both platforms |
+| [every-stream-message-is-a-leveled-log-line](#every-stream-message-is-a-leveled-log-line) | every message an import streams is a log line with a level — `INFO`, `WARN` or `ERROR` — and its text |
 
 ## the-import-is-one-streamed-call
 
@@ -321,3 +323,67 @@ flowchart LR
 - **An order entered after its statement was imported stays short for good.** Its Settlement tab shows the
   sale with nothing received, and the per-user report shows its creator short by that amount and the
   uploader ahead by it.
+
+## an-import-request-is-a-shop-and-its-file
+
+> `settlement_importer.md` §Rpc Detail 1–2 *(owner, 2026-09-28)* — for TikTok and for Shopee,
+> `message Payload { uint64 shop_id  bytes file_content }` — and §Rpc That Must Have, now
+> `(request) return (stream response)`.
+
+**The verdict.** An import request is **the shop and the file's bytes** — the same two fields for both
+platforms. The file rides in the call, as [the-import-is-one-streamed-call](#the-import-is-one-streamed-call)
+already had it, and nothing else describes it: no filename
+([the-file-is-named-by-its-content-hash](#the-file-is-named-by-its-content-hash)), and no platform — the RPC
+says which.
+
+```mermaid
+flowchart LR
+  S["shop_id — the shop the person picked"] --> Q["the import request"]
+  F["file_content — the statement's bytes"] --> Q
+  Q --> I["TiktokSettlementImport or ShopeeSettlementImport"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| `shop_id` | the shop the person picked. ⚠ The file does not confirm it — [importer Q3](./settlement_importer_clarify.md#question) is the check |
+| `file_content` | the workbook's bytes, as uploaded — stored first, then read ([the-import-is-one-streamed-call](#the-import-is-one-streamed-call)) |
+| both platforms | the same two fields |
+
+### What it does NOT settle
+
+- ⛔ **The team scope** — with no `team_id`, only root and admin could call it ([critique 15](./settlement_importer_clarify.md#critique)).
+- ⛔ **The names** — two messages called `Payload` do not compile ([critique 16](./settlement_importer_clarify.md#critique)).
+- ⚠ **A size cap** ([critique 17](./settlement_importer_clarify.md#critique)) · **a dry-run flag** ([importer Q11](./settlement_importer_clarify.md#question)).
+
+## every-stream-message-is-a-leveled-log-line
+
+> `settlement_importer.md` §Rpc Detail 3 *(owner, 2026-09-28)* —
+> `enum LogLevel { UNSPECIFIED, INFO, WARN, ERROR }` and `message Response { LogLevel level  string message }`.
+
+**The verdict.** Every message an import streams is **a log line with a level** — `INFO`, `WARN` or
+`ERROR` — and its text. It meets the guideline's one must-have, `string message`, and adds what the
+guideline's text-only line lacks: how serious the line is, so the screen can colour it and count what went
+wrong without reading it.
+
+```mermaid
+flowchart LR
+  L["the importer logs a step"] --> V{"its level"}
+  V -->|"INFO"| I["progress, a line posted or already there"]
+  V -->|"WARN"| W["a line that did not post — held, skipped, refused"]
+  V -->|"ERROR"| E["the file failed — the stream ends"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the enum | `LOG_LEVEL_UNSPECIFIED = 0`, then `INFO`, `WARN`, `ERROR` — lint-clean as written |
+| which level | ⚠ my proposal: **INFO** for progress and for a line posted or already there · **WARN** for a line that did not post · **ERROR** for the file failing — the last message before the stream ends |
+| the binding | the guideline binds slog to the stream through an `io.Writer` ([code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md#implementation-for-long-running-task-rpc)), which hands over formatted text — the level is inside it, not a field. To fill `level`, bind a `slog.Handler`: it receives each record's level beside its message |
+
+### What it does NOT settle
+
+- ⚠ **The progress your flow sends.** §Flow sends a count and a step, and this response carries neither —
+  [Contradiction](./settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them).
