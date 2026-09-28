@@ -67,6 +67,7 @@ flowchart LR
 | --- | --- |
 | `export_service` | deferred by decision — `source_type = exporter` is honoured and nothing writes it |
 | the reconcile RPC | ✅ **declined** — [the-reconcile-check-is-not-built](../../business/settlement/context_decision.md#the-reconcile-check-is-not-built) (2026-09-28). Nothing checks the stored carry against the log, so widen the fold before `SettlementPost` accepts a new type |
+| what [only-the-replay-holds-the-lock](../../business/settlement/context_decision.md#only-the-replay-holds-the-lock) leaves in the code | the replay's error still names *a developer's maintenance* ([analytic_replay_compute.go:45](../../../backend/services/settlement_service/settlement_v1/analytic_replay_compute.go#L45)) and the table's migration comment says *human-set*. No `san` command pauses the fold by switching its subscription to pull. The lease for a lock the replay died holding is [meta Q2](../../business/settlement/meta_context_clarify.md#question) — open |
 | a day re-fold from the log | [context clarify](../../business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) — open |
 | a screen reading a shop's OWN direct rows | shop-addressed rows fold into the report but no RPC lists them |
 | Jakarta time on the DSN | [decided, deferred](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time) — `posted_on` is the session's `CURRENT_DATE`, UTC today. Nothing in settlement converts, so the DSN fix carries it |

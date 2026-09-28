@@ -73,6 +73,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ⚠ whether it counts toward the position is NOT settled |
 | [the-reconcile-check-is-not-built](#the-reconcile-check-is-not-built) | nothing compares the stored carry with the log — drift is found by a person, and the replay repairs 31 days. ⚠ makes *the fold before the enum* load-bearing |
 | [the-user-carry-is-kept](#the-user-carry-is-kept) | the per-user carry stays — both user tables as shipped. A person's hidden cost to date is a figure the report keeps |
+| [only-the-replay-holds-the-lock](#only-the-replay-holds-the-lock) | `process_event_lock` is service state — only the replay sets it, for seconds. A person pauses the fold by switching its subscription to pull |
 
 ---
 
@@ -3560,3 +3561,48 @@ flowchart LR
 - **Who carries an imported shop-level row.** A shop-level row is credited to whoever posted it, the
   importer posts as the person who uploads, and with this decision that person carries it for life —
   [analytic Q7](./analytic_context_clarify.md#question).
+
+## only-the-replay-holds-the-lock
+
+> Owner, in chat (2026-09-28) — *"yes"*, to [analytic Q1](./analytic_context_clarify.md#question) as last
+> put: *"should only the replay ever hold the processing lock?"* — with its recommendation: only the replay
+> sets it, for seconds; a person who needs the fold paused switches the subscription to pull.
+
+**The verdict.** `process_event_lock` is **service state**, not a switch. Only `AnalyticReplayCompute` sets
+it — across its delete and its seek call, seconds — and nothing else does. A person who needs the fold
+paused stops **delivery** instead of refusing it: the subscription goes from push to pull, events wait
+without spending their delivery attempts, and switching back resumes the fold.
+
+⛔ **It reverses** `meta_context.md`'s *"Used when Developer need maintain the event processing"*
+([Contradiction](./meta_context_clarify.md#the-lock-was-drawn-as-a-developers-switch-and-is-now-the-replays-alone))
+**and my own recommendation** in [meta Q1](./meta_context_clarify.md#question) that the table is
+configuration.
+
+```mermaid
+flowchart LR
+  subgraph "the replay — the only holder"
+    A["take the lock"] --> B["delete three tables on one line"] --> C["seek"] --> D["release — seconds later"]
+  end
+  subgraph "a person pausing the fold"
+    E["switch the subscription to pull"] --> F["events wait, retries unspent"] --> G["switch back to push — the fold resumes"]
+  end
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| who sets it | `AnalyticReplayCompute` only, by compare-and-set — built, and nothing else writes it |
+| how long | the replay's delete and seek call — seconds |
+| `AnalyticMaintenanceRun` | takes no lock — built |
+| a person's pause | subscription push → pull, and back. Nothing is refused, so nothing is dead-lettered |
+| the retry budget it protects | 5 delivery attempts, backoff 10 s → 600 s ([setup.go](../../../backend/pkgs/event_source/setup.go#L100)) |
+| resolved by the build | the two side points Q1 carried — the event carries the row ([context Q3](./context_clarify.md#question)), and each subscription has its own push route |
+
+### What it does NOT settle
+
+- ⛔ **What releases a lock the replay died holding** — a deploy mid-replay leaves it on, and every event is
+  then dead-lettered — [meta Q2](./meta_context_clarify.md#question).
+- **Two shipped texts still say a developer holds it** — the table's migration comment (*"human-set"*) and
+  the replay's error (*"a developer's maintenance"*). Build tasks, in the
+  [state report](../../development_state/settlement/context.md).

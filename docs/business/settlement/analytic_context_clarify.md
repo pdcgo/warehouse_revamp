@@ -1365,7 +1365,7 @@ doc** and the recommendation stays on the table.
 
 | open question | what the code does |
 | --- | --- |
-| **Q1** — the lock and the DLQ | `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
+| **Q1** — the lock and the DLQ | ✅ **answered** — [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
 | **Q2** — a late and a live fold on one shop | `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
 | **Q3** — the carry on the USER table | ✅ **answered: kept** — [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept) |
 | **Q4** — the reconcile | ✅ **answered: not built** — [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built) |
@@ -1376,7 +1376,7 @@ doc** and the recommendation stays on the table.
 
 ## Question
 
-**Five open** — Q3 and Q4 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**Four open** — Q1, Q3 and Q4 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1390,29 +1390,8 @@ three tables, one predicate, one transaction, `settlement_event_logs` gaining a 
 two earlier recommendations of mine: the generation counter and the handler-side range filter are **not
 built**.
 
-1. ⛔ **Does the lock's 500 lose messages to the dead-letter topic — and does `AnalyticMaintenanceRun`
-   need the lock at all?** ⬆ **The receiving question that replaced the publishing one.** ✅ *"Who sends
-   it"* is out of scope here and re-routed to [context_clarify.md](./context_clarify.md#question).
-   ⛔ **The webhook returns 500 while locked, Pub/Sub treats any non-2xx as a NACK, and a dead-letter
-   policy is mandatory** ([`push.go`](../../../backend/pkgs/event_source/push.go) — *"a permanently
-   malformed message is redelivered FOREVER"*, and CLAUDE.md requires the DLQ). So a lock window longer
-   than `maxDeliveryAttempts` × backoff turns a **healthy** message into a dead-lettered one: it is never
-   folded, the daily tables silently miss that movement, and **no invariant can see it** — `close − open
-   = change` holds on every row that does exist.
-   **→ I recommend `AnalyticMaintenanceRun` NOT take the lock.** It deletes dedup rows *older than
-   retention* while a live fold *inserts a new* one — **they cannot conflict**, so the long-running job
-   never needs to block the webhook. That leaves the lock held only by the replay's delete: one short
-   transaction, where NACK-and-retry is exactly right.
-   ⚠ **And whatever the window is, `maxDeliveryAttempts` × backoff must exceed it** — the third
-   subscription setting that is load-bearing and invisible from the code, after `retain_acked_messages`
-   and `message_retention`.
-   ⚠ **Two smaller receiving gaps beside it**: `sub_id` in `/event/[sub_id]/push` **selects nothing** —
-   `NewMuxPushHandler` takes one handler and never reads the path, so either it routes (undesigned) or it
-   is decoration; and the payload contract is still owed here even though the sender is not — the fold
-   needs **the `settlement_logs` row id and nothing else**, since everything else is readable in-process,
-   and `### Events.`'s four-field list is a **fat** event, which is the one shape that makes a replay fold
-   stale values.
-   ([the working](#-the-receiver-side-once-publishing-is-out-of-scope))
+1. ✅ **Answered 2026-09-28 — only the replay holds the lock**:
+   [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). Kept as a line so the numbers hold.
 
 2. ⛔ **Does the fold take one lock per shop — or does a late event and a live one lose an update?**
    ⬇ **Shrunk hard this round.** ✅ `user_settlement_reports` is renamed, ✅ the state tables carry
