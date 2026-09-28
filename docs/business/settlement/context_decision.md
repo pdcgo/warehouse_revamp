@@ -62,7 +62,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [superseded-genesis-is-seeded-from-the-state-table](#superseded-genesis-is-seeded-from-the-state-table) | the migration writes a day-zero row per scope from `SUM(order_settlements.last_balance)`, so no live shop opens at a false `0` |
 | [a-replay-deletes-its-range-first](#a-replay-deletes-its-range-first) | `AnalyticReplayCompute` clears `day >= @start_date` and rebuilds — it never folds on top of what is there |
 | [the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row) | `order_settlements.created_by_user_id`, written once when the account opens — so genesis and replay can both attribute |
-| [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) | the rebuild redelivers through the same webhook, not a second re-fold path — ⚠ which requires generation-scoped dedup, `retain_acked_messages`, and accepts a retention ceiling |
+| [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) | the rebuild redelivers through the same webhook, not a second re-fold path — ⚠ which requires generation-scoped dedup, `retain_acked_messages`, and accepts a retention ceiling · ⚠ `retain_acked_messages` superseded by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) |
 | [the-order-commits-without-settlement](#the-order-commits-without-settlement) | a failed `SettlementPost` never fails the order — a missing account is repairable, a lost order is not |
 | [the-creator-is-read-from-the-token-at-placement](#the-creator-is-read-from-the-token-at-placement) | `orders.created_by_user_id` comes from `san_auth.GetIdentity(ctx)` at `OrderPlace` — never client-supplied |
 | [a-missing-account-is-fixed-by-hand](#a-missing-account-is-fixed-by-hand) | a person repairs it on the order detail page — no flag, no repair command, no reconcile job |
@@ -76,6 +76,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [only-the-replay-holds-the-lock](#only-the-replay-holds-the-lock) | `process_event_lock` is service state — only the replay sets it, for seconds. A person pauses the fold by switching its subscription to pull |
 | [periods-are-grouped-on-the-server](#periods-are-grouped-on-the-server) | a period's grain — day, month, year — is grouped by the RPC, never by the browser. Every period read, not only settlement's |
 | [the-fold-locks-shop-then-user](#the-fold-locks-shop-then-user) | every fold takes a transaction-scoped advisory lock on its shop, then its person — two events on one shop fold one after the other |
+| [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) | the replay's seek is carried by the topic's 31-day retention; subscriptions keep no acknowledged messages. ⚠ supersedes one requirement of the-replay-seeks-the-broker |
 
 ---
 
@@ -2616,7 +2617,7 @@ Four things must be built or configured, or the replay deletes its range and reb
 | | why | → what to do |
 | --- | --- | --- |
 | **1 · the dedup must be generation-scoped** | `settlement_event_logs.id` **is** the broker's message id, and a seek redelivers the **same** ids — so every replayed message reads as *already processed* and is ACKed without computing | **`(id, run_id)` as the key**, with the current run id in `settlement_service_metadata`, bumped by each replay. A replay is then a new generation that legitimately re-reads, and ordinary redelivery inside a generation is still dropped. ⚠ The cheaper alternative — deleting dedup rows in the range — keys on `created_at` (when *received*), which is not the axis the seek uses, so it leaks |
-| **2 · `retain_acked_messages` must be TRUE on the subscription** | it defaults to **false**, and a seek backwards over already-acknowledged messages then delivers **nothing**. The replay becomes a pure delete, silently | set it, and state it in the doc — it is a subscription property, invisible from the code |
+| **2 · `retain_acked_messages` must be TRUE on the subscription** | it defaults to **false**, and a seek backwards over already-acknowledged messages then delivers **nothing**. The replay becomes a pure delete, silently | set it, and state it in the doc — it is a subscription property, invisible from the code. ⚠ **SUPERSEDED** by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay): the topic's 31-day retention carries the seek, and subscriptions keep no acknowledged messages |
 | **3 · the lock must not reject the replay's own traffic** | redelivered messages arrive at the webhook, which checks `process_event_lock` first — held by the replay itself. Each one 500s, NACKs and burns a delivery attempt toward the dead-letter policy | **the replay must not take the maintenance lock.** With deltas and generation-scoped dedup it does not need one: a live event during a rebuild is folded once and deduped on redelivery. `process_event_lock` stays what it is — a developer's switch |
 | **4 · the RPC cannot know when the rebuild finished** | a seek is asynchronous; the messages arrive over the following minutes | either the RPC returns *"started"* and completion is observed elsewhere, or it waits on the subscription backlog. **It must not report success on a trigger** |
 
@@ -2913,7 +2914,7 @@ flowchart TB
 | the `prev` lookup | ✅ stays |
 | the genesis seed | ✅ stays — without it every absolute figure is offset by the pre-launch position |
 | the replay floor · `AnalyticReseedGenesis` | ✅ **promoted from prudent to mandatory** ([Q1](./analytic_context_clarify.md#question), was Q2) — a destroyed anchor is now a wrong number in front of a person, not just a wrong row |
-| `retain_acked_messages` · 31-day retention | ✅ load-bearing for the same reason |
+| `retain_acked_messages` · 31-day retention | ✅ load-bearing for the same reason · ⚠ the first half superseded by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) — the 31 days are the topic's |
 
 ### What it BINDS — three requirements the screen creates
 
@@ -3068,7 +3069,7 @@ part of what it was asked and calls it done.
 | **`genesis_day`** | `settlement_service_metadata` — written by a migration, read by the RPC, and nothing links them otherwise |
 | **`message_retention`** | ⚠ the same shape: the ceiling's value lives on the SUBSCRIPTION and is assumed by the RPC. It belongs beside `genesis_day`, or the guard drifts from the thing it guards |
 | **`AnalyticReseedGenesis`** | a separate, deliberate operation — `SUM(change) WHERE posted_on <= D0`. With the floor in place nothing else can ever repair a wrong genesis figure, and it must never be reachable by a `start_date` typo |
-| **the four subscription properties** | `retain_acked_messages = true`, retention at its 31-day maximum, dedup cut on `day` (not `created_at`), and the replay not taking the maintenance lock — all from [the-replay-seeks-the-broker](#the-replay-seeks-the-broker), all invisible from the code, all discovered during an incident if wrong |
+| **the four subscription properties** | `retain_acked_messages = true`, retention at its 31-day maximum, dedup cut on `day` (not `created_at`), and the replay not taking the maintenance lock — all from [the-replay-seeks-the-broker](#the-replay-seeks-the-broker), all invisible from the code, all discovered during an incident if wrong. ⚠ The first is superseded by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) — the topic's retention carries the seek |
 
 ### ✅ What it DE-ESCALATES
 
@@ -3433,7 +3434,7 @@ a read cannot drift from it.
 
 | | |
 | --- | --- |
-| the source | the subscription's `message_retention_duration`, from the Pub/Sub admin API |
+| the source | the subscription's `message_retention_duration`, from the Pub/Sub admin API. ⚠ **Amended** by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay): the topic's retention as the subscription reports it — or the subscription's own, if it keeps acknowledged messages and that is longer. A subscription alone tops out at 7 days; the 31 are the topic's |
 | when read | at startup, cached — it is a configuration value, not a per-request fact. ⚠ A process that has run since before a retention change holds a stale bound until restart, which errs toward refusing |
 | the error | a **named** one carrying the window (*"the replay can reach back to 2026-08-10"*), never a bare `invalid_argument` — an operator reaching for this mid-incident needs to be told the limit, not that their input is malformed |
 | ⛔ **it replaces a literal, it does not add one** | if the admin API is unavailable, refuse rather than fall back to a default. A guard that guesses is not a guard |
@@ -3682,3 +3683,35 @@ sequenceDiagram
 ### What it does NOT settle
 
 - **`analytic_context.md` §Flow draws no lock.** The doc is yours; one line in §Flow would say it.
+
+## topic-retention-carries-the-replay
+
+> Owner, in chat (2026-09-28) — *"for q6 yes"*, to [analytic Q6](./analytic_context_clarify.md#question):
+> is the topic's retention an acceptable way to make the replay's seek work, instead of
+> `retain_acked_messages` on the subscription?
+
+**The verdict.** The replay's seek is carried by the **topic's** retention — every topic keeps 31 days,
+Pub/Sub's maximum — and subscriptions keep **no** acknowledged messages. A subscription can seek to any time
+inside its topic's retention, acknowledged or not, so the replay reaches 31 days instead of the 7 a
+subscription can hold, for no storage the topic is not already paying for.
+
+⚠ **It supersedes one requirement of [the-replay-seeks-the-broker](#the-replay-seeks-the-broker)** —
+*"`retain_acked_messages` must be TRUE"* — and amends the source line of
+[the-replay-is-bounded-by-the-subscription-retention](#the-replay-is-bounded-by-the-subscription-retention).
+Both are annotated where they stand; neither verdict reverses.
+
+```mermaid
+flowchart LR
+  S["the replay seeks to a time"] --> T{"inside the topic's retention?"}
+  T -->|"yes — up to 31 days"| R["redelivered, acknowledged or not"]
+  T -->|"no"| X["refused, with the window named — nothing deleted"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the topics | 31 days of retention, set by `san pubsub ensure` ([setup.go:38](../../../backend/pkgs/event_source/setup.go#L38)) |
+| the subscriptions | keep no acknowledged messages — nothing to set |
+| the replay's reach | read from Pub/Sub: the topic's retention as the subscription reports it, or the subscription's own if it keeps acknowledged messages and that is longer ([replay.go:40](../../../backend/pkgs/event_source/replay.go#L40)) |
+| a topic made without retention | the replay shortens or refuses — it never deletes a day it cannot rebuild |

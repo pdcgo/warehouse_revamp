@@ -1372,11 +1372,11 @@ doc** and the recommendation stays on the table.
 | **Q5** — grain on the wire | ✅ **answered** — [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
 | 🆕 TEAM grouping across teams | only when the scope is the ROOT team — the one scope ROOT and ADMIN hold. Any other scope reads its own team |
 | 🆕 the dedup key | the EVENT id, not the broker message id — see [Contradiction](#idempotency-layer-keys-on-the-message-id-and-the-event-architecture-keys-on-the-event-id) |
-| 🆕 the replay's reach | read from Pub/Sub as the larger of the TOPIC retention and, if acked messages are retained, the subscription's — see [Q6](#question) |
+| 🆕 the replay's reach | ✅ **answered** — [topic-retention-carries-the-replay](./context_decision.md#topic-retention-carries-the-replay). Read from Pub/Sub as the larger of the TOPIC retention and, if acked messages are retained, the subscription's |
 
 ## Question
 
-**Two open** — Q1 to Q5 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is new. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**One open** — Q1 to Q6 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 is the one left. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
@@ -1406,30 +1406,8 @@ built**.
 5. ✅ **Answered 2026-09-28 — periods are grouped on the server**:
    [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). Kept as a line so the numbers hold.
 
-6. **Is the TOPIC's retention an acceptable way to make the replay's seek work — instead of
-   `retain_acked_messages` on the subscription?** 🆕 from the build.
-   [the-replay-seeks-the-broker](./context_decision.md#the-replay-seeks-the-broker) says
-   `retain_acked_messages` *must be TRUE*, because a seek backwards over acknowledged messages otherwise
-   delivers nothing. ✅ **That is true of the subscription alone** — but Pub/Sub also lets a subscription
-   seek to any time within its **topic's** retention, acked or not, and `san pubsub ensure` already sets
-   every topic to the 31-day maximum.
-   ```mermaid
-   flowchart LR
-     S["seek to a time"] --> T{"topic retention covers it?"}
-     T -->|"yes — 31 days, set by san pubsub ensure"| R["redelivered, acked or not"]
-     T -->|"no"| A{"subscription retains acked?"}
-     A -->|"yes — 7 days at most"| R
-     A -->|"no"| X["nothing redelivered — the replay refuses"]
-   ```
-   | | `retain_acked_messages` on the subscription | topic retention (built) |
-   | --- | --- | --- |
-   | reach | **7 days** — the subscription maximum | **31 days** |
-   | extra storage | every acked message, per subscription | already paid — the topic retains anyway |
-   | what the replay reads | the subscription's retention | the larger of the two, from `GetSubscription` |
-   **→ I recommend topic retention** — it reaches four times further and costs nothing already not paid.
-   The replay reads the window from Pub/Sub, so if a topic is ever made without retention the replay
-   shortens or refuses instead of deleting days it cannot rebuild. ⚠ If yes, the decision's *"must be
-   TRUE"* line is the one to amend.
+6. ✅ **Answered 2026-09-28 — topic retention carries the replay**:
+   [topic-retention-carries-the-replay](./context_decision.md#topic-retention-carries-the-replay). Kept as a line so the numbers hold.
 
 7. 🆕 **Who carries an imported shop-level row in the per-user report?** A shop-level row is credited to
    the identity that posted it
