@@ -253,6 +253,14 @@ erDiagram
     bigint financial_account_id
     timestamptz updated_at
   }
+  held_withdrawals {
+    bigint settlement_log_id PK "NEW, Q1, held until its shop names an account, then posted and removed"
+    bigint shop_id
+    bigint team_id
+    numeric amount
+    date occurred_on
+    timestamptz received_at
+  }
 ```
 
 | unique | why |
@@ -285,12 +293,30 @@ balance — a person picking *which account paid* is recording a fact, and the b
    successful one, shop-addressed
    ([withdrawal-is-a-settlement-type](../settlement/context_decision.md#withdrawal-is-a-settlement-type),
    [only-a-successful-withdrawal-is-recorded](../settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)),
-   so only the listener is new.
-   **→ Recommend: each shop names the account it withdraws into — one per shop — and the row posts there. And
-   rename it `marketplace_withdrawal`:** settlement's `fund` is a different moment of the same money (the platform
-   paying the wallet), and two *funds* invite reading one as the other.
-   ⚠ A shop that names no account yet: its withdrawals are held, and post when one is named — refused, they would
-   dead-letter.
+   so only the listener is new. Two halves are left.
+
+   **Where it lands.** A withdrawal row names a shop, never a bank: the marketplace pays whichever bank the seller
+   registered with it, and nothing here knows which of the team's accounts that is.
+
+   | | **A — each shop names its account** | B — one account per team | C — a person places each |
+   | --- | --- | --- | --- |
+   | set up | once per shop, on its page: *Withdraws into — BCA Operasional* | once per team — *where we are paid* ([Q9](#question)) | nothing |
+   | two shops, two banks | right | wrong — both land in one account, and the next reconcile finds the gap in both | right |
+   | work per withdrawal | none | none | someone places every one |
+   | a shop's bank changes | edit the shop — later withdrawals follow, earlier rows stay where they posted | — | — |
+
+   **The name.**
+
+   | | reads as | trouble |
+   | --- | --- | --- |
+   | `revenue_fund` — yours | revenue arriving | the revenue was counted when settlement's `fund` arrived — the same money read as revenue twice, and `fund` already names that other moment |
+   | `withdrawal` | settlement's own word | on a bank account's page, *withdrawal* means money leaving the bank — backwards |
+   | **`marketplace_withdrawal`** | money withdrawn from a marketplace, arriving here | — |
+
+   **→ Recommend A, and `marketplace_withdrawal`.** Nothing is built, so the rename is free today; after the build
+   it is a migration. ⚠ A shop that names no account yet: its withdrawals are **held** — shown on the shop and on the
+   accounts page as *N withdrawals with no account* — and post the moment one is named. Refused, they would
+   dead-letter, and the money would be recorded nowhere.
 
 2. 🔄 **Which account paid a restock, how much, and when?** *(line 70)*
    ✅ It comes only from the broker — [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand).
