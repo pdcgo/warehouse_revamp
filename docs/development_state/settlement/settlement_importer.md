@@ -2,7 +2,7 @@
 
 **Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
-reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) and Q11 (no dry run, for now); first
+reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) and Q6 (only a successful withdrawal is recorded); first
 pass 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
@@ -25,6 +25,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [the-shop-is-checked-before-the-file-is-stored](../../business/settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored) | before storing, ask `selling_service`'s ShopService: may the caller work on the shop (`shop_users`, #86), and is it the right shop (`ShopDetail`: in the team, not deleted, the RPC's marketplace — my reading) |
 | [a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused) | after extraction, one ref whose order is in another shop of the team fails the file — an `ERROR` line names that shop, nothing posted. Cannot see a file with no findable order |
 | [the-import-has-no-dry-run-for-now](../../business/settlement/settlement_importer_decision.md#the-import-has-no-dry-run-for-now) | no dry run for now — an import posts as it reads; the two checks are its only guard |
+| [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) | only a successful withdrawal is recorded — a Shopee `Gagal` debit AND its refund are skipped, a TikTok row only when `Transferred`. ⛔ Needs the Shopee status on the document |
 
 ## What exists underneath it
 
@@ -43,7 +44,8 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 
 | | |
 | --- | --- |
-| the job, the TikTok affiliate split, failed withdrawals, the same file twice | [importer Q1 · Q5 · Q6 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
+| the job, the TikTok affiliate split, the same file twice | [importer Q1 · Q5 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
+| ⛔ the Shopee reader reads no `Status` — needed to skip a failed withdrawal. Add it on the document, never the item | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) |
 | who may work on a shop — the shop check cannot be built without it | [shop Q1](../../business/shop/context_clarify.md#question), re-routed from importer Q12 |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
 | ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
@@ -62,6 +64,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | identical bytes | **0** of the 26 samples share a sha256. The re-saved pair (`awan_beban_return` / `_simple`) differs, and TikTok stamps its `modified` time into `docProps/core.xml` (Shopee's carries none) — so the hash catches the SAME download uploaded twice, never the same period downloaded twice |
 | fractional amounts | 0, all IDR — `float64` → `int64` is lossless on every sample |
 | withdrawals vs `fund` | −839,987,638 against +827,877,151 — **101%**. In 25 of 26 files |
+| withdrawal statuses | Shopee: `Transaksi Selesai` 170 — 168 debits and 2 refunds, each described *Pengembalian Dana untuk Penarikan Gagal* — and `Gagal` 2. Every other Shopee row is `Transaksi Selesai`. TikTok: `Transferred` in every sample |
 | TikTok `Earnings` | equals every `Order details` row summed, in 10 of 14 files |
 | TikTok `GMV Pay Deduction` | equals the `GMV Payment for TikTok Ads` rows **to the rupiah** in all 3 files that carry it — which explains 3 of the 4 files where `Earnings` does not match. The 4th, `cannot_open.xlsx` (the 2026-09 layout), is off by its one `Other adjustment` |
 | unmapped TikTok types | 5 of 14 files carry one |

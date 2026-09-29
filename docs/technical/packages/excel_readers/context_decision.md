@@ -48,7 +48,7 @@ flowchart TB
 - Anything diagnostic lives on `ShopeeSettlementDocument` instead — the document is never hashed.
 - ⚠ **A golden test pins the digest** of known fixture rows. Adding a field then fails a test loudly
   instead of re-importing history silently, which was the whole risk behind the rejected alternative.
-- `Status` is therefore **not carried**. A failed withdrawal and its reversal are two rows with
+- `Status` is therefore **not carried**. ⚠ **Amended** by [only-a-successful-withdrawal-is-recorded](../../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) *(2026-09-29)*: a failed withdrawal is now skipped, so the status is needed — carried on the DOCUMENT, never the item, so no key moves. A failed withdrawal and its reversal are two rows with
   opposite signs and no label saying which is which — accepted, and the balance is still correct
   because the sign carries it.
 

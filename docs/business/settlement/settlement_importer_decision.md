@@ -19,6 +19,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored) | before the file is stored, the importer asks ShopService whether the caller may work on the shop and whether it is the right shop |
 | [a-file-with-another-shops-orders-is-refused](#a-file-with-another-shops-orders-is-refused) | after extraction, a ref whose order is in ANOTHER shop of the team fails the whole file, before anything posts |
 | [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now) | no dry run — an import posts as it reads. Deferred, not refused |
+| [only-a-successful-withdrawal-is-recorded](#only-a-successful-withdrawal-is-recorded) | only a withdrawal that succeeded is recorded — a failed one, and the refund that returns it, are skipped |
 
 ## the-import-is-one-streamed-call
 
@@ -501,3 +502,37 @@ flowchart LR
 | what nothing catches | a file with no findable order — a new shop, orders never entered, another team's statement — posts on the person's word, and stays ([an-upload-is-never-reverted](#an-upload-is-never-reverted)) |
 | what the person still sees | ⚠ my proposal: a line posted to the shop because its order is missing logs a `WARN`, though it posts — so the closing summary names every such line |
 | adding it later | one `bool dry_run` on the request, and the post skipped when it is set |
+
+## only-a-successful-withdrawal-is-recorded
+
+> Chat *(owner, 2026-09-29)* — *"dont record failed withdrawal, only success"*, to
+> [importer Q6](./settlement_importer_clarify.md#question): is a FAILED withdrawal booked?
+
+**The verdict.** Only a withdrawal that **succeeded** is recorded — money that actually left for the bank. A
+failed one is not, and neither is the refund that returns it. It **declines my recommendation** to book both
+rows at face value: the ledger's withdrawals now equal the money that reached the bank.
+
+```mermaid
+flowchart LR
+  W["a Penarikan Dana row"] --> S{"its status, and which way the money moves"}
+  S -->|"Transaksi Selesai, money out"| R["RECORDED — a withdrawal"]
+  S -->|"Gagal"| K["SKIPPED — the failed debit"]
+  S -->|"money back in — Pengembalian Dana untuk Penarikan Gagal"| K2["SKIPPED — its refund"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| Shopee — recorded | a `Penarikan Dana` row with status `Transaksi Selesai` and money going out — 168 in the samples |
+| Shopee — skipped | ⚠ my reading of *"only success"*: the `Gagal` debit **and** its refund — money coming back, described *"Pengembalian Dana untuk Penarikan Gagal"*, itself marked `Transaksi Selesai`. 2 pairs in the samples: `awan_wdgagal` at 5,899,085 and `luxy_wdgagal` at 3,977,187 |
+| ⚠ the trap | skipping only `Gagal` keeps the refund — completed, +5.9M — and drops the debit: the shop reads 5.9M richer, for good |
+| TikTok | recorded only when `Status` is `Transferred` — every sample is. Any other status is skipped |
+| a skipped row | outcome `skipped`, reason `failed_withdrawal`, a `WARN` on the stream — so the file's page lists them |
+| a status never seen | skipped too — a withdrawal still processing, say. Re-imported once it completes, it posts then: skipping writes nothing |
+| ⛔ the build | the Shopee reader reads no `Status` column. It has to come from the DOCUMENT, beside the item and outside the hash ([hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct)), so no key moves — [Contradiction](./settlement_importer_clarify.md#the-reader-leaves-the-status-out-and-the-importer-now-needs-it) |
+
+### What it accepts
+
+- **For a day, the ledger and Shopee's own balance differ.** Shopee shows the failed withdrawal leave and come
+  back; the ledger never moves. By the refund's day they agree again.

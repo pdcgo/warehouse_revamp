@@ -4,16 +4,14 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-✅ **Q11 answered in chat, 2026-09-28** — *"no need, its overkill for now"*: no dry run —
-[the-import-has-no-dry-run-for-now](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now). ➡ **Q12 moved** to your new [shop context](../shop/context.md): who may work on a shop is
-that doc's to answer, and it is now [shop Q1](../shop/context_clarify.md#question). Earlier rounds today are recorded in
-[settlement_importer_decision.md](./settlement_importer_decision.md).
+✅ **Q6 answered in chat, 2026-09-29** — *"dont record failed withdrawal, only success"*:
+[only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded). Earlier rounds are recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | [the-import-has-no-dry-run-for-now](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now) — deferred, not refused |
-| 🔄 what guards an import now | the two decided checks — the shop before the upload, the file's orders before the first post. A file with no findable order posts on the person's word |
-| ➡ re-routed | Q12 → [shop Q1](../shop/context_clarify.md#question) |
+| ✅ recorded | only a successful withdrawal is recorded — a failed one **and its refund** are skipped. ⚠ Skipping only the failed row would keep the refund, which Shopee marks *completed* |
+| ⛔ what it needs | the Shopee reader reads no `Status` column — it has to come from the document, outside the hash ([Contradiction](#the-reader-leaves-the-status-out-and-the-importer-now-needs-it)) |
+| ✅ measured | Shopee: 170 withdrawal rows completed — 168 debits and 2 refunds — and 2 `Gagal`. TikTok: `Transferred` in every sample |
 
 ## What the service already owns
 
@@ -50,7 +48,7 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **1** | **RPCs before a person or a job** (HARD RULE 6). 🔄 The flow now starts at `Frontend` — still nobody holding a file. Nothing says who uploads, how often, or what they need back — and *what they need back* is most of this service: every TikTok sample holds rows that must NOT be posted, 5 of 14 hold a type nobody has mapped, and 25 of 26 hold a withdrawal the report cannot take yet. | Name the job — [Q1](#question). The design below is drawn from the likeliest answer. |
 | **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop check and the file check, both decided ([shop](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored), [file](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). A dry run is declined for now ([decided](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)). |
 | **4** | 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
-| **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. |
+| **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. ✅ A failed withdrawal and its refund join it ([decided](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)). |
 | **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post on Reprocess once the mapping ships. |
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
 | **9** | 🆕 **The stream is the import's only watcher.** The flow ends at *"close stream"* and has no branch for a stream that closes FIRST — a tab closed, a phone asleep, a deploy. If the import dies with its request, the file is half-posted and the list shows it *running* for ever. | **Finish whether or not anyone watches** — [Q8](#question). |
@@ -147,7 +145,7 @@ flowchart TD
   P --> R["resolve every order ref — one bulk call"]
   R -->|"a ref belongs to another shop"| F
   R --> L{"each record — a step on the stream"}
-  L -->|"Earnings, GMV Pay Deduction"| SK["SKIPPED — already in Order details"]
+  L -->|"Earnings, GMV Pay Deduction, a failed withdrawal and its refund"| SK["SKIPPED — with the reason"]
   L -->|"unmapped type, fractional amount"| H["HELD — with the reason"]
   L -->|"ok — no such order goes to the shop"| W["SettlementPost — as the order's creator, else the uploader"]
   W -->|"created"| PO["POSTED"]
@@ -161,7 +159,7 @@ flowchart TD
 | `SettlementPost` | Shopee row | TikTok `Order details` row | TikTok `Withdrawal records` row |
 | --- | --- | --- | --- |
 | `order_id` | `No. Pesanan`, resolved · empty or no such order → the shop | ✅ `Related order ID`, resolved ([decided](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id)) · empty or no such order → the shop ([decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) | the shop |
-| `settlement_type` | `SettlementType()` | `SettlementType()` | `withdrawal` · `Earnings`, `GMV Pay Deduction` skipped |
+| `settlement_type` | `SettlementType()` — a `Gagal` withdrawal and its refund skipped | `SettlementType()` | `withdrawal` when `Transferred` · `Earnings`, `GMV Pay Deduction` and any other status skipped |
 | `change` | `Jumlah` | `Total settlement amount` | `Amount` |
 | `occurred_on` | `Tanggal Transaksi`, WIB | `Order settled time` | `Request time` |
 | `note` | `Deskripsi` | `Type` | `Reference ID` |
@@ -245,7 +243,7 @@ erDiagram
     bigint change
     date occurred_on
     text outcome "posted, existing, held, skipped"
-    text reason "unmapped_type, fractional, refused, mirrors_order_details — or no_order on a line posted to the shop"
+    text reason "unmapped_type, fractional, refused, mirrors_order_details, failed_withdrawal — or no_order on a line posted to the shop"
     bigint settlement_log_id "the row it posted"
   }
 ```
@@ -277,13 +275,8 @@ erDiagram
    [shopee-maps-on-tipe-transaksi-alone](../../technical/packages/excel_readers/context_decision.md#shopee-maps-on-tipe-transaksi-alone)
    ignores `Deskripsi` — so the two platforms will still differ.
 
-6. **Is a FAILED withdrawal booked?** ➡ Re-routed here from
-   [excel_readers Q6](../../technical/packages/excel_readers/context_clarify.md#question), which sent it to
-   settlement before this service existed — it never landed in any settlement file. A failed Shopee
-   withdrawal is two rows: the debit marked `Gagal`, and its refund a day later. Both are in the platform's
-   `Saldo Akhir` chain.
-   **→ Recommend booking both** — the pair nets to zero because the amounts do, and skipping the failure
-   is what makes a balance disagree with the platform's.
+6. ✅ **Answered 2026-09-29 — only a successful withdrawal is recorded**, against my recommendation:
+   [only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded). Kept as a line so the numbers hold.
 
 7. ✅ **Answered 2026-09-28 — a server stream is authorized on its request**:
    [a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request). A build task now. Kept as a line so the numbers hold.
@@ -472,4 +465,34 @@ flowchart LR
   F["§Flow — a step and a count, for the progress bar"] --> R{"§Rpc Detail — the response"}
   R -->|"as written: level and message only"| P["the bar parses numbers out of log text"]
   R -->|"recommended: plus step, count, file"| B["the bar reads fields"]
+```
+
+## the reader leaves the status out, and the importer now needs it
+
+> [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) — *"`Status` is therefore **not carried**. A failed withdrawal and its
+> reversal are two rows … accepted, and the balance is still correct because the sign carries it."*
+>
+> [only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) — *"dont record failed withdrawal, only success"*
+
+| site | says | whose |
+| --- | --- | --- |
+| the reader's `hash-the-whole-struct` | no status — booking both rows keeps the balance right | recorded — ✅ annotated |
+| the reader's clarify, critique 12 and Q6 | *"Book `Gagal` rows at face value"* | the reader's pass — overtaken, left to it |
+| [shopee.go](../../../backend/pkgs/san_excel_readers/shopee.go) | reads no `Status` column | built |
+| `only-a-successful-withdrawal-is-recorded` | skip a failed withdrawal and its refund | yours — the newest |
+
+**Which is wrong: neither, once the status moves to the document.** The reader left the status out because
+booking both rows needed no label; skipping them needs one. Its own rule allows it — *"anything diagnostic
+lives on `ShopeeSettlementDocument` instead — the document is never hashed"* — so the item, and every key,
+stay as they are.
+
+**→ Recommend** a per-row status on the Shopee document, beside the item and outside the hash. **What stops it
+recurring:** a reader decision that drops a column because nobody needs it should name who did not need it —
+here it was the booking rule, and the booking rule changed.
+
+```mermaid
+flowchart LR
+  B["book both rows — no status needed"] -->|"2026-09-24"| N["the reader leaves Status out"]
+  O["only success is recorded — 2026-09-29"] --> S["the status is needed"]
+  S --> D["on the document, outside the hash — no key moves"]
 ```
