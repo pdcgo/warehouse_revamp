@@ -156,7 +156,10 @@
     "searchPlaceholder": "Cari",
     "clearFilters": "Hapus Filter",
     "showingRange": "Menampilkan {{from}}–{{to}} dari {{total}}",
-    "close": "Tutup"
+    "close": "Tutup",
+    "copy": "Salin",
+    "copied": "Tersalin",
+    "copyFailed": "Gagal menyalin — pilih teksnya dan salin manual"
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -765,7 +768,139 @@
         "days_other": "Telat {{count}} hari"
       }
     },
-    "orderIdColumn": "ID Order"
+    "orderIdColumn": "ID Order",
+    "orderTitleLabel": "Pesanan"
+  },
+  "orderDetail": {
+    "nav": {
+      "label": "Bagian pesanan ini",
+      "info": "Info",
+      "notes": "Catatan",
+      "items": "Item",
+      "timeline": "Timeline",
+      "shipping": "Pengiriman",
+      "recipient": "Penerima",
+      "withdrawal": "Withdrawal"
+    },
+    "info": {
+      "title": "Info order",
+      "createdAt": "Dicatat",
+      "returnReceipt": "Resi retur",
+      "warehouseRef": "Gudang #{{id}}"
+    },
+    "notes": {
+      "title": "Catatan",
+      "placeholder": "Tulis catatan…",
+      "add": "Tambah Catatan",
+      "save": "Simpan",
+      "cancel": "Batal",
+      "edit": "Ubah catatan",
+      "system": "Sistem",
+      "you": "Anda",
+      "empty": "Belum ada catatan untuk pesanan ini."
+    },
+    "items": {
+      "title": "Item order",
+      "empty": "Pesanan ini tidak punya baris.",
+      "unitCost": "Harga beli",
+      "costMissing": "Ada baris tanpa catatan HPP, jadi perincian di bawah belum bisa dihitung untuk pesanan ini."
+    },
+    "money": {
+      "productTotal": "Total produk",
+      "fees": "Biaya lain (gudang)",
+      "systemTotal": "Total sistem",
+      "marketplaceTotal": "Total MP",
+      "margin": "Margin (estimasi)",
+      "marginHelp": "Total MP dikurangi total sistem, sebagai persentase dari total MP — angka yang sama dengan di daftar pesanan. Estimasi: biaya gudangnya masih angka contoh, dan potongan marketplace di luar harga baru masuk berminggu-minggu kemudian lewat settlement."
+    },
+    "timeline": {
+      "title": "Timeline",
+      "empty": "Belum ada perubahan status yang tercatat."
+    },
+    "shipping": {
+      "title": "Pengiriman",
+      "deadline": "Batas kirim",
+      "noTracking": "Belum ada jejak pengiriman. Kebanyakan pesanan memang tidak punya — belum ada yang membaca balik dari kurir.",
+      "outbound": "Pengiriman order",
+      "return": "Pengiriman retur",
+      "noReturn": "Tidak ada retur untuk pesanan ini.",
+      "trail": "Jejak pengiriman"
+    },
+    "recipient": {
+      "title": "Penerima"
+    },
+    "withdrawal": {
+      "title": "Withdrawal dan penyesuaian",
+      "empty": "Belum ada pencairan untuk pesanan ini.",
+      "withdrawnAt": "Tgl WD",
+      "importedAt": "Tgl impor",
+      "source": "Sumber",
+      "amount": "Nilai",
+      "foreign": "Negara lain",
+      "description": "Deskripsi",
+      "question": "Semua baris di sini karangan. Withdrawal adalah perpindahan saldo ke rekening yang tidak menyebut pesanan mana pun, sementara tiap entri settlement wajib menyebut satu — jadi keduanya bukan catatan yang sama, dan rumah data bagian ini masih terbuka.",
+      "total": "Total WD",
+      "adjustments": "Penyesuaian",
+      "net": "Bersih diterima",
+      "ofMp": "Dari total MP"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "Delapan status",
+        "reason": "Kontraknya masih memakai enam status lama, jadi Selesai, Bermasalah, Hilang dan Retur tidak akan pernah muncul — di sini maupun di timeline."
+      },
+      "notes": {
+        "label": "Catatan",
+        "reason": "Pesanan hanya menyimpan SATU catatan, ditulis saat dibuat — tanpa daftar, tanpa penulis, tanpa tipe sistem atau pengguna, dan tidak bisa diubah. Catatan yang ditambah atau diubah di sini hilang saat dimuat ulang."
+      },
+      "productImage": {
+        "label": "Gambar produk",
+        "reason": "Baris pesanan menyimpan SKU dan nama, tapi tidak gambarnya. Gambarnya bukan tidak ada di sistem, hanya tidak ada di pesan ini — perbaikannya satu pembacaan produk sekaligus, bukan kolom baru."
+      },
+      "externalName": {
+        "label": "Judul produk marketplace",
+        "reason": "Draft menyimpan judul produk dari marketplace — bukti untuk mengecek pemetaan produk — tapi baris pesanan tidak punya kolomnya, jadi saat draft dipromosikan judul itu hilang. Judul yang tampil karangan."
+      },
+      "totalFee": {
+        "label": "Biaya gudang di total sistem",
+        "reason": "Belum ada yang menyimpan biaya per pesanan: tercatat sebagai liabilitas dengan kunci pesanan, sementara daftarnya hanya bisa ditanya per pihak. Total produknya nyata, biayanya angka contoh."
+      },
+      "deadline": {
+        "label": "Deadline kirim",
+        "reason": "Belum ada yang menyimpannya — tidak di pesanan, tidak di channel pengiriman. Badge-nya karangan."
+      },
+      "receiptCode": {
+        "label": "Nomor resi",
+        "reason": "Pesanan menyimpan kurir dan FILE resinya, tapi bukan nomor yang tercetak di slip. Nomor yang tampil itu karangan."
+      },
+      "shippingTracking": {
+        "label": "Jejak pengiriman",
+        "reason": "Posisi paket, kapan dipindai, beratnya dan ongkirnya sama sekali belum dimodelkan. Pemilik memang memperkirakan bagian ini kosong di kebanyakan pesanan."
+      },
+      "returnShipment": {
+        "label": "Pengiriman retur",
+        "reason": "Paket retur berjalan dengan kurir, resi dan jejaknya sendiri, dan semuanya belum ada: catatan retur sendiri pun belum ada. Hanya tampil di satu pesanan, dan karangan."
+      },
+      "withdrawal": {
+        "label": "Withdrawal dan penyesuaian",
+        "reason": "Seluruh bagian ini karangan dan rumahnya belum diputuskan: withdrawal tidak menyebut pesanan, sementara tiap entri settlement wajib menyebut satu — jadi keduanya bukan catatan yang sama."
+      },
+      "lifecycle": {
+        "label": "Aksi setelah dikirim",
+        "reason": "Kontraknya baru menulis batal dan kirim, jadi Retur Barang, Selesaikan Order, Jadikan Lost dan Selesaikan Sengketa belum punya yang dipanggil."
+      }
+    },
+    "stepper": {
+      "branchedFrom": "keluar dari alur di {{stage}}"
+    },
+    "tiles": {
+      "items": "Item",
+      "pieces_one": "{{count}} pcs",
+      "pieces_other": "{{count}} pcs"
+    },
+    "bar": {
+      "loss": "Rugi"
+    }
   },
   "orderDrafts": {
     "title": "Draf Pesanan",

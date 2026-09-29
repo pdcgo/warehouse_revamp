@@ -1,6 +1,6 @@
 # Decisions — order `design.md`
 
-> ⚠ **EVERY DECISION BELOW IS ABOUT THE SELLING TEAM'S ORDER LIST.** The warehouse reads `/orders`
+> ⚠ **EVERY DECISION BELOW IS ABOUT THE SELLING TEAM'S ORDER LIST AND ORDER DETAIL.** The warehouse reads `/orders`
 > from the other end and keeps the screen it had — see
 > [the-two-ends-are-two-screens](#the-two-ends-are-two-screens). Nothing here has been applied to it,
 > and the owner has not designed it yet.
@@ -19,6 +19,9 @@
 | [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) | four urgency bands, and an overdue order tints its whole row |
 | [the-preview-became-the-order-list](#the-preview-became-the-order-list) | a seller's `/orders` IS this screen now — the preview page is gone |
 | [the-two-ends-are-two-screens](#the-two-ends-are-two-screens) | the warehouse keeps its old list — almost nothing on the seller's row is a fact a picker acts on |
+| [the-order-detail-is-one-page-of-sections](#the-order-detail-is-one-page-of-sections) | the detail is one page of sections with a scrolling left nav — not three tabs |
+| [the-order-detail-lines-are-priced-at-harga-beli](#the-order-detail-lines-are-priced-at-harga-beli) | the item table shows what we PAID, so the perincian adds up to the list's figures |
+| [the-detail-margin-is-mp-minus-system](#the-detail-margin-is-mp-minus-system) | margin = total MP − total sistem, the list's formula read from the detail |
 
 ---
 
@@ -500,3 +503,73 @@ the seller's screen, which is where the Tim column lives.
 
 ⚠ **THE WAREHOUSE'S SCREEN IS NOT DESIGNED YET, only preserved.** It still carries the old stat row and
 the old three columns; nothing on this page has been asked of it.
+
+## the-order-detail-is-one-page-of-sections
+
+> Owner, in chat (2026-09-29): *"oke detail aku setujui"* — approving the preview
+> `Pages/Order/OrderDetailNextPage` after a round of changes.
+
+The order detail is **one page of sections**, not the built page's three tabs, with a left navigation
+that scrolls to each. The question it answers — *what happened with this order* — is usually answered by
+two sections at once, and tabs put exactly those pairs on opposite sides of a click.
+
+```mermaid
+flowchart TB
+  H["sticky header — order no. copyable, stage badge, deadline, per-status actions as buttons"]
+  S["stepper — the journey, or a branch off it"]
+  T["four tiles — Total MP, Total sistem, Margin tinted, Item — each copyable"]
+  I["Info order — resi and marketplace id first, then team, marketplace, created, warehouse"]
+  subgraph wide["at xl and up"]
+    M["main — Item order with perincian and bar, Timeline, Pengiriman, Withdrawal"]
+    D["side — Catatan, Penerima"]
+  end
+  H --> S --> T --> I --> wide
+```
+
+| part | the spec |
+| --- | --- |
+| **header** (sticky, one line) | `Pesanan #id` with the number copyable · stage badge · deadline badge · the list's per-status actions as **buttons**, folding into `⋯` only past three (never a `⋯` of one; destructive ones fold first) |
+| **navigation** | left column on a desktop, chips inside the sticky block on a phone; short labels (`Withdrawal`), the card keeps its full title; the same icon on the card and the nav item; click scrolls the section just below the header; scrolling lights the section being read — in two columns, the main column only |
+| **stepper** (not sticky) | Menunggu → Diproses → Dikirim → Selesai; an off-journey status is a branch in its own hue, cancel from Menunggu, the rest from Dikirim |
+| **tiles** | Total MP · Total sistem · Margin (success/error by sign) · Item; each copies a plain number (`245000`, not `Rp 245.000`) |
+| **Info order** | full width; the resi (courier + number) and the marketplace order id first and a size larger, both copyable; a return resi only when a return exists |
+| **Catatan** | its own section: a list, newest first, of `system` and `user` notes; user notes editable, system notes never; `Order.note` is the first user note |
+| **Item order** | per line: the marketplace's own title (as on the draft) above our product — image, name, SKU — then team, **harga beli**, qty, line total |
+| **perincian** | full-width panel: total produk + biaya = total sistem, total MP, margin — and a bar across harga MP split into produk · biaya · margin (a loss draws as a red overflow; no bar without both facts) |
+| **Timeline** | status changes on a dotted rail, newest first — the same rail as the courier trail |
+| **Pengiriman** | two legs of one shape, side by side: order (courier · resi · deadline · trail) and return (only when there is one) |
+| **Penerima** | name, address, and the phone as a copy button |
+| **Withdrawal** | the owner's columns, invented rows — its home is still open (see the clarify file) |
+| **WD summary** | under the withdrawal table: total WD · penyesuaian · bersih diterima · % of total MP — the per-order figures the old system reported, summed from the rows |
+| **build marks** | every ⚠ sits BESIDE the label or title it belongs to, as on the order form and the list — never pushed to a card's far edge, where the withdrawal table's mark read as belonging to nothing. `EveryDeclaredGapIsMarkedOnScreen` fails if a declared gap has no badge on screen |
+
+⚠ **Still a preview.** It is not routed; `/orders/:id` opens `pages/order-detail` until it is applied, the
+way the order list was. Every invented figure keeps its ⚠ mark.
+
+## the-order-detail-lines-are-priced-at-harga-beli
+
+> Settled by approving the preview, which prices the lines at harga beli; was open as *is the order
+> detail's "harga" what we PAID or what we CHARGED?*
+
+The item table's price column is **what we paid** (`OrderItem.unit_cost`), and the perincian under it
+sums those. That is what makes the detail's percentage the SAME as the list's: the list's margin is
+`harga MP − (cogs + biaya)`, so the detail's total sistem has to be `cogs + biaya`.
+
+```mermaid
+flowchart LR
+  L["line: harga beli x qty"] --> P["total produk"]
+  P --> S["total sistem = total produk + biaya"]
+  B["biaya gudang"] --> S
+  S --> M["margin = total MP − total sistem"]
+  MP["total MP"] --> M
+```
+
+## the-detail-margin-is-mp-minus-system
+
+> Settled by approving the preview; was open as *the subtraction is written the other way up — which is
+> it?* The owner had written *"total sistem dikurangi lagi dengan total mp"*.
+
+**`margin = total MP − total sistem`**, as a share of total MP — the list's formula
+([the-margin-is-mp-minus-total-beli](#the-margin-is-mp-minus-total-beli)) read from the other end. The
+written order was word order: taken literally it negates the margin and every healthy order reads as a
+loss.

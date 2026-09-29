@@ -308,7 +308,7 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 // WE quoted and the marketplace figure is what the buyer paid the platform after its own vouchers and
 // subsidies. A fixture where they matched would make every settlement screen look right by accident.
 export const orders = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 150_400n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdAtUnix: daysAgo(1) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdAtUnix: daysAgo(1) },
   { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdAtUnix: daysAgo(2) },
   { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdAtUnix: daysAgo(3) },
   { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdAtUnix: daysAgo(4) },
@@ -356,11 +356,13 @@ export const orderDetailExtras: Record<
   // opens its account from the marketplace figure, never from ours, so a fixture where the two were
   // equal would hide the one number that matters and make every liability screen look right by
   // accident.
+  // ⚠ IT NO LONGER RESTATES THE MONEY. `marketplace_total` and `cogs` are on the ROW, and repeating
+  // them here — nor the marketplace reference — is how the same order came to read 150.400 on the
+  // list and 148.000 on its own detail, under two different marketplace ids.
+  // The list reads `order.cogs` while the detail SUMS THE LINES, and `order.proto` says those are the
+  // same number ("the lines it was computed from are frozen too").
   "101": {
-    marketplaceTotal: 245_000n,
-    cogs: 148_000n,
     note: "Titip bubble wrap tambahan, barang pecah belah.",
-    orderExternalRefId: "MEL-250101-0001",
     items: [
       { id: 1n, productId: 301n, sku: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitPrice: 75_000n, unitCost: 48_000n },
       { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitPrice: 75_000n, unitCost: 46_000n },
@@ -440,7 +442,11 @@ export function orderDetailFor(id: bigint) {
         name: "Kaos Polos Hitam — M",
         quantity: 1,
         unitPrice: row.subtotal,
-        unitCost: (row.subtotal * 6n) / 10n,
+        // ⚠ THE ROW'S OWN `cogs`, not an invented 60%. The detail page SUMS its lines while the list
+        // reads `order.cogs`, and `order.proto` says those are one number — so a made-up line cost made
+        // the same order read Rp 310.700 on the list and Rp 291.500 on its detail, and gave a cancelled
+        // order the list calls unpriced a cost on its detail. `0` stays unknown, as on the row.
+        unitCost: row.cogs ?? 0n,
       },
     ],
     events: extra.events ?? [{ id: 1n, kind: 1, actorUserId: 61n, atUnix: row.createdAtUnix }],

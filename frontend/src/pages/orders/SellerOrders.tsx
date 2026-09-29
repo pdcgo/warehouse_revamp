@@ -35,10 +35,10 @@ import {
   orderStage,
   stageCanFilterTheList,
   stageOfStatus,
-} from "./stages";
-import type { ProcessedStep } from "./stages";
+} from "../../features/orders/stages";
+import type { ProcessedStep } from "../../features/orders/stages";
 import { DRAFTS_TAB, StageTabs } from "./components/StageTabs";
-import { StageBadge } from "./components/StageBadge";
+import { StageBadge } from "../../features/orders/StageBadge";
 import {
   CreatedCell,
   DateCell,

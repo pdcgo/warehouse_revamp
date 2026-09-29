@@ -156,7 +156,10 @@
     "searchPlaceholder": "Search",
     "clearFilters": "Clear Filters",
     "showingRange": "Showing {{from}}–{{to}} of {{total}}",
-    "close": "Close"
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Could not copy — select the text and copy it by hand"
   },
   "dateRange": {
     "all": "All dates",
@@ -768,7 +771,139 @@
         "days_other": "{{count}}d late"
       }
     },
-    "orderIdColumn": "Order ID"
+    "orderIdColumn": "Order ID",
+    "orderTitleLabel": "Order"
+  },
+  "orderDetail": {
+    "nav": {
+      "label": "Sections of this order",
+      "info": "Info",
+      "notes": "Notes",
+      "items": "Items",
+      "timeline": "Timeline",
+      "shipping": "Shipping",
+      "recipient": "Recipient",
+      "withdrawal": "Withdrawal"
+    },
+    "info": {
+      "title": "Order info",
+      "createdAt": "Written down",
+      "returnReceipt": "Return receipt no.",
+      "warehouseRef": "Warehouse #{{id}}"
+    },
+    "notes": {
+      "title": "Notes",
+      "placeholder": "Write a note…",
+      "add": "Add Note",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit note",
+      "system": "System",
+      "you": "You",
+      "empty": "No notes on this order."
+    },
+    "items": {
+      "title": "Items",
+      "empty": "This order has no lines.",
+      "unitCost": "Cost price",
+      "costMissing": "A line has no recorded cost, so the figures below cannot be taken over this order."
+    },
+    "money": {
+      "productTotal": "Product total",
+      "fees": "Other costs (warehouse)",
+      "systemTotal": "System total",
+      "marketplaceTotal": "Marketplace total",
+      "margin": "Margin (estimated)",
+      "marginHelp": "Marketplace total minus system total, as a share of the marketplace total — the same figure the order list shows. Estimated: the warehouse fee is a sample, and what the platform deducts beyond the price only lands weeks later on the settlement ledger."
+    },
+    "timeline": {
+      "title": "Timeline",
+      "empty": "No status change has been recorded."
+    },
+    "shipping": {
+      "title": "Shipping",
+      "deadline": "Ship by",
+      "noTracking": "No tracking trail recorded. Most orders have none — nothing reads the courier back yet.",
+      "outbound": "Order shipment",
+      "return": "Return shipment",
+      "noReturn": "No return on this order.",
+      "trail": "Tracking trail"
+    },
+    "recipient": {
+      "title": "Recipient"
+    },
+    "withdrawal": {
+      "title": "Withdrawal and adjustments",
+      "empty": "Nothing has been withdrawn against this order yet.",
+      "withdrawnAt": "Withdrawn",
+      "importedAt": "Imported",
+      "source": "Source",
+      "amount": "Amount",
+      "foreign": "Foreign",
+      "description": "Description",
+      "question": "Every row here is invented. A withdrawal is a wallet-to-bank movement that names no order, while every settlement entry is required to name one — so these two are not the same record, and where this section's data lives is still open.",
+      "total": "Total withdrawn",
+      "adjustments": "Adjustments",
+      "net": "Net received",
+      "ofMp": "Of marketplace total"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "The eight statuses",
+        "reason": "The contract still carries the old six, so Completed, Problem, Lost and Return can never appear — here or on the timeline."
+      },
+      "notes": {
+        "label": "Notes",
+        "reason": "An order stores ONE note, written when it is created — no list, no author, no system or user type, and no way to edit it. Notes added or edited here disappear on reload."
+      },
+      "productImage": {
+        "label": "Product picture",
+        "reason": "An order line carries sku and name but no cover. The picture is not missing from the system, only from this message — the fix is a batched product lookup, not a new field."
+      },
+      "externalName": {
+        "label": "Marketplace product title",
+        "reason": "The order draft keeps the title the marketplace gave each product — the evidence a mapping is checked against — but an order line has no field for it, so promoting a draft throws it away. The titles shown are invented."
+      },
+      "totalFee": {
+        "label": "Warehouse fee in the system total",
+        "reason": "Nothing carries the fee per order: it is a liability entry keyed by order, and the liability list can only be asked by counterparty. The product total is real, the fee is a sample."
+      },
+      "deadline": {
+        "label": "Ship-by deadline",
+        "reason": "Nothing carries one — not the order, not the shipment channel. The badge is invented."
+      },
+      "receiptCode": {
+        "label": "Tracking number",
+        "reason": "The order stores the courier and the receipt FILE, but not the number printed on the slip. The one shown is invented."
+      },
+      "shippingTracking": {
+        "label": "Tracking trail",
+        "reason": "Where the parcel is, when it was scanned, what it weighed and what the postage cost are not modelled at all. The owner expects this section to be empty most of the time."
+      },
+      "returnShipment": {
+        "label": "Return shipment",
+        "reason": "A returned parcel travels under its own courier, tracking number and trail, and none of that exists: there is no return record at all yet. Shown for one order only, invented."
+      },
+      "withdrawal": {
+        "label": "Withdrawal and adjustments",
+        "reason": "The whole section is invented and its home is undecided: a withdrawal names no order while every settlement entry must name one, so the two are not the same record."
+      },
+      "lifecycle": {
+        "label": "Actions after shipping",
+        "reason": "The contract writes only cancel and ship, so Return Goods, Complete Order, Mark as Lost and Resolve Dispute have nothing to call."
+      }
+    },
+    "stepper": {
+      "branchedFrom": "left the journey at {{stage}}"
+    },
+    "tiles": {
+      "items": "Items",
+      "pieces_one": "{{count}} pc",
+      "pieces_other": "{{count}} pcs"
+    },
+    "bar": {
+      "loss": "Loss"
+    }
   },
   "orderDrafts": {
     "title": "Drafts",

@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ORDERS_LIST_PENDING } from "../pending";
-import { PROCESSED_STEPS } from "../stages";
-import type { ProcessedStep } from "../stages";
+import { PROCESSED_STEPS } from "../../../features/orders/stages";
+import type { ProcessedStep } from "../../../features/orders/stages";
 
 // NARROWING `processed` TO ONE OF ITS FOUR STEPS (owner).
 //

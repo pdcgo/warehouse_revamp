@@ -40,6 +40,10 @@ interface ShopItem {
 // "shopee" narrows to that storefront's shops without touching the marketplace prop.
 export const description = "Searchable marketplace-shop picker for a selling team (Chakra Combobox over ShopList) — type to filter by shop name or marketplace. Emits a shop id, and 0n when cleared. Each option carries the shop's name and its standard-coloured MarketplaceBadge. Optionally narrowed to one marketplace — and a filter that excludes the current value clears it.";
 
+// One empty list for every render, so "nothing loaded yet" is the SAME value each time — a fresh `[]`
+// is a new identity, and any memo or effect keyed on it would re-run on every render.
+const NO_SHOPS: NonNullable<ReturnType<typeof useShopOptions>["data"]> = [];
+
 export function ShopSelect({
   teamId,
   value,
@@ -56,14 +60,28 @@ export function ShopSelect({
   // See src/shops/queries.ts for the full note.
   const query = useShopOptions({ teamId });
 
-  const all = query.data ?? [];
+  // ⚠ A STABLE EMPTY LIST, not a fresh `[]` — see the loop note on `shops` below.
+  const all = query.data ?? NO_SHOPS;
   const error = query.isError;
 
   // NARROWED TO ONE STOREFRONT when the caller asked for it. Filtered here rather than by the RPC: a
   // team runs a handful of shops and they are already loaded, so a second request would buy nothing
   // and cost a spinner on every change of the filter.
   const filtering = marketplace !== undefined && marketplace !== Marketplace.UNSPECIFIED;
-  const shops = filtering ? all.filter((shop) => shop.marketplace === marketplace) : all;
+  //
+  // ⚠ MEMOISED, AND THAT IS LOAD-BEARING — without it this component FROZE THE TAB. `.filter()` returns
+  // a new array on every render, so `items` below was recomputed every render, the fill effect saw a
+  // "new" list and called `set()`, the collection's state changed, the component re-rendered, and
+  // `.filter()` produced another new array: an infinite loop.
+  //
+  // It only happened WITH a marketplace filter. Unfiltered, `shops` is `query.data` itself — a stable
+  // reference from the cache — so the order list's shop filter never tripped it, while the order
+  // form's MarketplaceInfoForm (which always narrows to the chosen storefront) hung the browser
+  // outright. That is also why it hid for so long: the screen most people opened was fine.
+  const shops = useMemo(
+    () => (filtering ? all.filter((shop) => shop.marketplace === marketplace) : all),
+    [all, filtering, marketplace],
+  );
 
   // A VALUE OUTSIDE THE LIST IS CLEARED, and this is the whole reason the filter is a prop rather
   // than something the caller does around this component.

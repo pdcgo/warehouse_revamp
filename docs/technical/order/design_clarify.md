@@ -395,3 +395,45 @@ flowchart TD
    one do not deserve the same amber. That needs a lead time on `ShipmentChannel`, which it has no
    field for either.
    ⚠ And the deadline itself has no field anywhere — see the `deadline` mark on the column.
+
+10. **Is "withdrawal & penyesuaian" the settlement ledger?** The owner: *"mungkin sekarang jadi
+    settlement itu, jadi aku masih bingung di sini"*. They differ on the one thing that decides where a
+    row lives:
+
+    | | names an order? | what moves |
+    | --- | --- | --- |
+    | settlement entry | **required** | what the platform paid or deducted for THIS sale |
+    | withdrawal | **never** | a wallet → bank transfer for the whole shop |
+
+    **→ Recommend the section shows SETTLEMENT**, renamed, and withdrawals stay a shop-level screen.
+    Every column the owner listed — two dates, a source, a signed amount, a foreign leg, a description
+    — is a settlement entry's shape already; the one that does not fit is the word "withdrawal", and
+    that is because a withdrawal is not about one order. The preview shows invented rows in the
+    owner's columns so the shape can be argued with.
+    ⚠ This is the same fork as Q2 above (where a wallet → bank withdrawal lives), seen from the order.
+
+11. **Does promoting a draft keep the marketplace's product title?** `OrderDraftItem` carries
+    `external_name` + `external_sku` — *"never overwritten … the evidence of what the buyer actually
+    ordered"* — and `OrderItem` has neither, so promote throws the evidence away at the moment the goods
+    start being picked against the mapping. The detail preview shows it per line (invented).
+    **→ Recommend** both fields on `OrderItem`, copied verbatim at promote and empty on a typed order.
+
+12. **What is a return shipment?** A parcel can travel twice (owner: *"resi bisa 2 dan jejak pengiriman
+    juga bisa 2, dari order dan return"*), each leg with its own courier, number and trail. Today there is
+    no return record at all — no status, no number, no trail. The preview shows two legs, the return one
+    invented for order 108.
+    **→ Recommend** one shipment-leg shape used twice (`direction: outbound | return`), rather than a
+    second set of `return_*` columns on the order — a third leg (a re-send after a lost parcel) then costs
+    nothing.
+
+13. **Who may edit a user note, and can one be deleted?** Notes are now a list with two kinds (owner:
+    *"catatan … bisa lebih dari 1 dan … ada tipenya, dari sistem dan dari user"*), and user notes are
+    editable. The preview lets anyone edit any user note and offers no delete.
+    **→ Recommend** only the note's AUTHOR may edit it, every edit keeps the earlier text (an "edited"
+    marker with the original one click away), and **no delete** — a note is an instruction somebody may
+    already have acted on, so removing it removes the reason for what they did.
+    ⚠ And are system notes the same stream as the status timeline? **→ Recommend no**: the timeline is
+    status changes only; a system note is anything else the app wants a person to know (a remap, a label
+    printed, a return received). Merging them buries the status history in chatter.
+    ⚠ Contract: `Order.note` is one string; this needs an `order_notes` table (`kind`, `author_user_id`,
+    `text`, `created_at`, `edited_at`) and create/update RPCs.

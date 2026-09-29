@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ORDERS_LIST_PENDING } from "../pending";
-import { ALL_STAGE, ORDER_STAGES, stageIsOnTheWire } from "../stages";
+import { ALL_STAGE, ORDER_STAGES, stageIsOnTheWire } from "../../../features/orders/stages";
 
 /** The value the DRAFTS tab carries — not a stage: a draft is a different record in a different table. */
 export const DRAFTS_TAB = "drafts";
