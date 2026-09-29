@@ -1,60 +1,56 @@
 # Development state — shop
 
-**Pass:** business analysis — **second pass** (2026-09-28) on the owner's new
-[shop/context.md](../../business/shop/context.md): create, edit, delete, list. Questions:
-[context_clarify.md](../../business/shop/context_clarify.md). **Five owner decisions.** 🆕 Q1 answered in chat
-(2026-09-29) — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager):
-a write on a shop needs a grant or the team's owner/admin role, reads stay team-wide, every current CS is granted
-on rollout. The other four came from the owner's own edits —
-[access-is-given-per-user-per-shop](../../business/shop/context_decision.md#access-is-given-per-user-per-shop)
-(*"give access user to shop"*, the built `shop_users` model), widened on 2026-09-29 by
-[the-shop-manages-its-access-list](../../business/shop/context_decision.md#the-shop-manages-its-access-list)
-(*"manage access user to shop"* — give, take away, list) · and the same day, from two new sections,
-[a-shop-has-one-primary-cs](../../business/shop/context_decision.md#a-shop-has-one-primary-cs) (NOT built) and
-[one-call-answers-the-shop-and-the-access](../../business/shop/context_decision.md#one-call-answers-the-shop-and-the-access)
-(`ShopAccessCheck` for the importer — NOT built, and as written it has no `team_id`). **Plus ten 🏗 as-built decisions** in the same
-[context_decision.md](../../business/shop/context_decision.md), recorded on the owner's instruction for a later
-review — what the code does today, each linked to the clarify question that would change it. They close no
-question. The lifecycle is at *waiting for the owner*; no Storybook prototype until the questions come back.
+**Pass:** business analysis on the owner's [shop/context.md](../../business/shop/context.md) — create, edit, delete,
+list, manage access, a primary CS, and `ShopAccessCheck` for the importer. Questions:
+[context_clarify.md](../../business/shop/context_clarify.md). Decisions:
+[context_decision.md](../../business/shop/context_decision.md) — **seven owner decisions** and **ten 🏗 as-built
+records** (one now superseded). The lifecycle is at *waiting for the owner* on Q3–Q6; no Storybook prototype yet.
 
-## What exists
+## Decided
+
+| decision | what it means for the build |
+| --- | --- |
+| [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) *(Q2)* | shops, shop access and `ShopAccessCheck` leave `selling_service` for a new `shop_service` · `orders.shop_id` loses its FK · supersedes the as-built `superseded-shops-live-in-selling-service` |
+| [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager) *(Q1)* | a grant, or the team's owner/admin role, gates `OrderCreate`, `OrderDraftPush`, `OrderDraftPromote` and both imports · reads stay team-wide · every current CS granted every shop of their team in the SAME release |
+| [the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant) *(Q7)* | one flagged grant per shop · the first grant becomes it · Make primary moves it |
+| [one-call-answers-the-shop-and-the-access](../../business/shop/context_decision.md#one-call-answers-the-shop-and-the-access) · [a-shop-has-one-primary-cs](../../business/shop/context_decision.md#a-shop-has-one-primary-cs) · [the-shop-manages-its-access-list](../../business/shop/context_decision.md#the-shop-manages-its-access-list) · [access-is-given-per-user-per-shop](../../business/shop/context_decision.md#access-is-given-per-user-per-shop) | from the owner's own edits |
+
+## What exists — all still inside `selling_service`
 
 | | |
 | --- | --- |
-| proto | `ShopService` in [selling.proto](../../../proto/warehouse/selling/v1/selling.proto) — `ShopCreate`, `ShopList`, `ShopDetail`, `ShopUpdate`, `ShopDelete` (soft), and shop access: `ShopUserList`, `ShopUserAdd`, `ShopUserRemove` |
-| service | inside `backend/services/selling_service/` — `shops` and `shop_users` are its tables · `orders.shop_id` is a real FK to `shops` |
+| RPCs | `ShopCreate` · `ShopList` · `ShopDetail` · `ShopUpdate` · `ShopDelete` (soft) · `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` — and, from f6dab3b (2026-09-29, the importer session): `ShopAccessCheck` (team-scoped, `is_have_access`), `ShopUserSetPrimary`, `OrderByExternalRefs` |
+| tables | `shops` · `shop_users` (+ `is_primary`, migration 00014, backfilled from each shop's earliest grant) · `orders.shop_id` is a real FK to `shops` |
+| callers | settlement and the importer each own an interface for the shop, adapted at the composition root with a Connect client — so the move to `shop_service` changes those adapters only |
 | frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` |
-
-## What the build gets wrong today — found in this pass, not fixed
-
-| | where |
-| --- | --- |
-| a deleted shop is readable NOWHERE — `ShopList` and `ShopDetail` filter `deleted = false`, so the settlement report's by-shop ranking prints `#<id>` and the orders filter cannot pick it | `selling_v1/shop_list.go:25`, `shop_detail.go:24`, `pages/settlement-report/index.tsx:116` |
-| `shop_users` is written and read by nothing else — no RPC or screen enforces a grant. ✅ Now DECIDED to gate every write: a build item (below) | `selling_v1/shop_user_*.go` |
-| `ShopUpdate` lets the marketplace change on a shop with history | `selling_v1/shop_update.go`, `ShopFormDialog` |
-| `ShopCreate` does not check the team is a SELLING team | `selling_v1/shop_create.go` |
-| ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row, then checks the team — the first team to post claims the shop, and its real owner gets `errWrongTeam` after | `settlement_v1/post_entry.go:282-309` |
-| `expense_service` stores any `shop_id` unvalidated | `expense_v1/expense_create.go:30` |
-| a grant outlives its holder leaving the team, and `ShopUserAdd` accepts a user outside the team — nothing in `selling_service` hears of a membership change | `selling_v1/shop_user_add.go` |
 
 ## Decided, not built
 
 | | |
 | --- | --- |
-| the write gate — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager) | `ShopAccessCheck` (with `team_id`, critique 10) computing the rule · a call to it in `OrderCreate`, `OrderDraftPush`, `OrderDraftPromote` and both imports — today all three order RPCs take any CS on any shop · the order form's `ShopSelect` offers only writable shops · **the rollout backfill in the SAME release**: every current CS granted every shop of their team, or CS lose order-taking on day one. Which service hosts it waits on Q2 |
+| **the move** | `backend/services/shop_service/` (HARD RULE 2) · proto `warehouse.shop.v1` (my spec) · ⚠ how existing rows move — which migration creates the tables, the copy, when `selling_service` drops its copy — is **not designed**: no `docs/technical/shop/` exists |
+| **the write gate** | the three order RPCs and both imports call `ShopAccessCheck` · `ShopSelect` on the order form offers only writable shops · **the rollout backfill in the same release** |
+
+## What the build gets wrong today — found, not fixed
+
+| | where |
+| --- | --- |
+| a deleted shop is readable NOWHERE — `ShopList`, `ShopDetail` and `ShopAccessCheck` all answer as if it never existed, so a closed shop's last statements cannot be imported (Q3) | `selling_v1/shop_list.go`, `shop_detail.go`, `shop_access_check.go` |
+| `ShopUpdate` lets the marketplace change on a shop with history (Q4) | `selling_v1/shop_update.go`, `ShopFormDialog` |
+| `ShopCreate` does not check the team is a SELLING team (critique 4) | `selling_v1/shop_create.go` |
+| ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row — the first team to post claims the shop (critique 6) | `settlement_v1/post_entry.go:282-309` |
+| `expense_service` stores any `shop_id` unvalidated (critique 6) | `expense_v1/expense_create.go:30` |
+| a grant outlives its holder leaving the team, and `ShopUserAdd` accepts a user outside it (Q6) | `selling_v1/shop_user_add.go` |
 
 ## Open
 
 | | |
 | --- | --- |
-| is the shop its own service | [shop Q2](../../business/shop/context_clarify.md#question) — recommended now: its own `shop_service`. Absorbs architecture Q6 |
-| close, not delete | [shop Q3](../../business/shop/context_clarify.md#question) — ripples into the importer's shop check |
-| marketplace and team fixed at creation | [shop Q4](../../business/shop/context_clarify.md#question) |
-| the shop's own name on the platform | [shop Q5](../../business/shop/context_clarify.md#question) |
-| who can hold a grant — the team's members only, ended by leaving | [shop Q6](../../business/shop/context_clarify.md#question) — opened 2026-09-29 by *manage* access |
-| the primary CS — its rules, and what the importer does with `primary_user_id` | [shop Q7](../../business/shop/context_clarify.md#question) — the importer doc's §How We Decide `user_id` is empty while the owner rewrites it |
-| `ShopAccessCheck`'s contract — `team_id`, buf's message names, `Shop` not `ShopDetail` | [shop critique 10](../../business/shop/context_clarify.md#critique) — a build item once Q2 is answered (✅ Q1 is) |
+| close, not delete | [shop Q3](../../business/shop/context_clarify.md#question) — ⛔ before the importer ships: the built check refuses a deleted shop |
+| marketplace and team fixed at creation | [shop Q4](../../business/shop/context_clarify.md#question) — cheapest during the move |
+| the shop's own name on the platform | [shop Q5](../../business/shop/context_clarify.md#question) — cheapest during the move |
+| who can hold a grant — members only, ended by leaving | [shop Q6](../../business/shop/context_clarify.md#question) — real access now that grants gate writes |
 
-**Next agent:** when the owner answers, record each in `shop/context_decision.md` (named, RULE 12), delete the
-answered question, rebuild `docs/biggest_question.md`. Q2 decides where every build item above lands, so it
-goes first.
+**Next agent:** when the owner answers, record it in `shop/context_decision.md` (named, RULE 12), delete the answered
+question, rebuild `docs/biggest_question.md`. Another session (the importer's) builds shop code — check `git log`
+and message it before changing shop files it touches.

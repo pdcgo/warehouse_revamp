@@ -13,7 +13,7 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | decision | what it decided | from | under review |
 | --- | --- | --- | --- |
 | [access-is-given-per-user-per-shop](#access-is-given-per-user-per-shop) | giving a user access to a shop is the shop's own job — one user, one shop, one grant | owner | ✅ who needs one: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
-| [shops-live-in-selling-service](#shops-live-in-selling-service) | `ShopService` is one of three proto services one `selling_service` serves, and `shops`, `shop_users` are its tables | as built | [Q2](./context_clarify.md#question) |
+| [superseded-shops-live-in-selling-service](#superseded-shops-live-in-selling-service) | `ShopService` is one of three proto services one `selling_service` serves, and `shops`, `shop_users` are its tables | as built | ⛔ superseded by [the-shop-gets-its-own-service](#the-shop-gets-its-own-service) |
 | [every-shop-call-is-scoped-to-its-team](#every-shop-call-is-scoped-to-its-team) | every request names its team and every query is held to it — another team's shop reads as not found | as built | [critique 4](./context_clarify.md#critique) — the team's type |
 | [managers-write-shops-and-cs-reads-them](#managers-write-shops-and-cs-reads-them) | owner and admin create, edit, delete and grant · customer service only reads | as built | — |
 | [a-shop-is-a-name-a-code-and-a-marketplace](#a-shop-is-a-name-a-code-and-a-marketplace) | the record — a code unique among the team's live shops, a marketplace required | as built | [Q5](./context_clarify.md#question) — no platform name |
@@ -28,6 +28,7 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) | `ShopAccessCheck` — one call gives the importer the shop, its primary CS, and whether a user has access | owner | [critique 10](./context_clarify.md#critique) — its contract · ✅ what access means: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
 | [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) | writing on a shop — an order, a draft, an import — needs a grant for it, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout | owner | [Q6](./context_clarify.md#question) — a grant outliving its holder is now real access |
 | [the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant) | the primary CS is one of the shop's granted users, flagged — the first grant becomes it, the owner or admin moves it with Make primary, removing that grant leaves none | owner | [Q6](./context_clarify.md#question) — a primary who left the team |
+| [the-shop-gets-its-own-service](#the-shop-gets-its-own-service) | shops and shop access leave `selling_service` for `shop_service` — every other service calls it, and it calls only `user_service` | owner | ⚠ moving the shops that exist — a technical item |
 
 ## access-is-given-per-user-per-shop
 
@@ -63,7 +64,10 @@ flowchart LR
   [Q1](./context_clarify.md#question).
 - **What a grant gates** — the import alone, or every write on the shop: [Q1](./context_clarify.md#question).
 
-## shops-live-in-selling-service
+## superseded-shops-live-in-selling-service
+
+> ⛔ **SUPERSEDED (2026-09-29) by [the-shop-gets-its-own-service](#the-shop-gets-its-own-service).** It stays what
+> the code does until the move is built.
 
 > 🏗 As built — [selling.proto:17](../../../proto/warehouse/selling/v1/selling.proto#L17),
 > [register.go](../../../backend/services/selling_service/register.go) (#66). Recorded 2026-09-28 for review.
@@ -596,3 +600,57 @@ stateDiagram-v2
 ### What it does NOT settle
 
 - **A primary who leaves the team** keeps the flag — nothing ends a grant then ([Q6](./context_clarify.md#question)).
+
+## the-shop-gets-its-own-service
+
+> Chat *(owner, 2026-09-29)* — *"for q2, yes"*, to [Q2](./context_clarify.md#question) as recommended: the shop is its
+> own `shop_service`, not a piece of `selling_service`. It also answers
+> [architecture Q6](../../technical/architecture/context_clarify.md#question), which asked `team_service` or
+> `order_service`, and it reverses the as-built
+> [superseded-shops-live-in-selling-service](#superseded-shops-live-in-selling-service).
+
+**The verdict.** Shops leave `selling_service` for a service of their own, **`shop_service`**: the shops, who may work
+on each, and the one call every other service asks. Orders, settlement, expense and the importer call it; it calls
+none of them. That is what stops settlement's call to the shop from being a cycle — `selling_service` calls settlement
+on every placed order, and settlement asks the shop for a shop row's primary CS
+([settlement-asks-the-shop-for-its-primary-cs](../settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)).
+
+```mermaid
+flowchart LR
+  subgraph "before — shops inside selling_service"
+    S1["selling_service — shops and orders"] -->|"OpenSale"| T1["settlement_service"]
+    T1 -.->|"ShopAccessCheck — a cycle"| S1
+  end
+  subgraph "after — shop_service"
+    SH["shop_service — shops, shop_users, ShopAccessCheck"]
+    S2["selling_service — orders"] --> SH
+    T2["settlement_service"] --> SH
+    E2["expense_service"] --> SH
+    I2["settlement_importer_service"] --> SH
+    S2 -->|"OpenSale"| T2
+  end
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the service | `backend/services/shop_service/` — its own `shop_service_models/`, `db_migrations/`, a `register.go` and a Wire provider (HARD RULE 2) |
+| it owns | `shops` · `shop_users`, with their migrations. `selling_service` keeps orders and drafts |
+| its RPCs | the eight `ShopService` has today · `ShopAccessCheck` ([one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access)) · `ShopUserSetPrimary` ([the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant)) |
+| its contract | ⚠ my spec: `proto/warehouse/shop/v1/`, package `warehouse.shop.v1` — the directory names the domain. A breaking move for the one client that calls it today, the frontend's `shopClient` |
+| `orders.shop_id` | loses its foreign key — an opaque id, checked on write through `ShopAccessCheck`, as `warehouse_id` already is |
+| who calls it | `selling_service` on an order or a draft · `settlement_service` for a shop row · `expense_service` before it stores a shop · the importer before it stores a file ([a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager)) |
+| what it calls | `user_service` only — a user's role in the team, for `ShopAccessCheck` |
+| not moved | the `Marketplace` enum — it stays in `warehouse.marketplace.v1`, shared with supplier channels |
+| already built, and moving | f6dab3b, inside `selling_service` an hour before this answer: `ShopAccessCheck` · `ShopUserSetPrimary` · `shop_users.is_primary` (its migration 00014, backfilled from each shop's earliest grant) · `Shop.primary_user_id` · the role reader. The contract moves as it is |
+| the callers | settlement and the importer each own an interface for the shop, answered by an adapter at the composition root — so the move changes those adapters, not the services |
+
+### What it does NOT settle
+
+- ⚠ **Moving the shops that exist** — which migration creates the tables, how the rows move, and when
+  `selling_service` drops its copy. A technical design item: nothing in `docs/technical/` covers the shop yet.
+- **What the new service does differently** — close not delete ([Q3](./context_clarify.md#question)), fields fixed at
+  creation ([Q4](./context_clarify.md#question)), the platform name ([Q5](./context_clarify.md#question)), grants that
+  end with membership ([Q6](./context_clarify.md#question)). The move is the cheapest moment for all four: every shop
+  RPC is rewritten anyway.

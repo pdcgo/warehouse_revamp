@@ -420,6 +420,11 @@ flowchart LR
 > *"check shop: is caller that access on shop, is shop correct"*, sent to the Shop Service, then *"Send Message
 > Log"* — and only then the upload. The separate `## How We Validate File` it grew from is gone.
 
+> 🔄 *(2026-09-29)* `ShopService` moves to its own `shop_service` —
+> [the-shop-gets-its-own-service](../shop/context_decision.md#the-shop-gets-its-own-service). Read *`selling_service`*
+> below as *`shop_service`*. The call is `ShopAccessCheck`, and who may import is
+> [a-write-needs-a-grant-or-a-manager](../shop/context_decision.md#a-write-needs-a-grant-or-a-manager).
+
 **The verdict.** Before the file is stored, the importer asks `selling_service`'s **ShopService** two things
 about the shop the request names: may **this caller** work on it, and is it the **right shop**. Only then is
 the file uploaded, read and posted.
