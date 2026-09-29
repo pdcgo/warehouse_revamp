@@ -545,7 +545,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -575,7 +575,9 @@ erDiagram
   a generated thumbnail. `order_receipt` (an order's courier slip or the marketplace's PDF) is
   **private** like `general` — it names a buyer and an address, so it is read through a short-lived
   signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
-  transfer slip names an account number.
+  transfer slip names an account number. And `settlement_statement` (`00006`) — the .xlsx the settlement
+  importer stores under the hash of its bytes before it reads it: it lists every order and what the
+  platform took.
 
 - **`document_shares`** — the ONE way a document is readable outside the team that owns it
   ([a-payment-must-carry-proof](business/balance/context_decision.md#a-payment-must-carry-proof)).

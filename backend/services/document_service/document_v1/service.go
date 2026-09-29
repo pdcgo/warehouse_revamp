@@ -55,6 +55,8 @@ const (
 	// transfer slip names an account number — and the ONE type routinely read by a team that does not
 	// own it, through a share.
 	resourcePaymentProof = "payment_proof"
+	// A marketplace settlement statement, stored by the settlement importer. Private.
+	resourceSettlementStatement = "settlement_statement"
 )
 
 func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
@@ -69,6 +71,8 @@ func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 		return resourceOrderReceipt, nil
 	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF:
 		return resourcePaymentProof, nil
+	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT:
+		return resourceSettlementStatement, nil
 	default:
 		return "", fmt.Errorf("unknown resource type %v", t)
 	}
@@ -86,6 +90,8 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT
 	case resourcePaymentProof:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF
+	case resourceSettlementStatement:
+		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT
 	default:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_UNSPECIFIED
 	}

@@ -48,6 +48,14 @@ enum DocumentResourceType {
   // CREDITOR is the person who has to look at it, which is what `ShareDocument` exists for. Private
   // for an obvious reason: a transfer slip names an account number.
   DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF = 5;
+
+  // PRIVATE: a marketplace settlement statement — the .xlsx a platform exports and the settlement importer
+  // stores before it reads it (the-import-is-one-streamed-call). Named by the hash of its bytes
+  // (the-file-is-named-by-its-content-hash).
+  //
+  // Private because a statement lists every order and what the platform took from each — the shop's
+  // books, read through a signed URL by somebody who belongs to the team.
+  DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT = 6;
 }
 
 message Document {
