@@ -3,7 +3,7 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **nine owner decisions**. The lifecycle
+[context_decision.md](../../business/financial_account/context_decision.md) — **ten owner decisions**. The lifecycle
 is at *waiting for the owner* on Q1–Q3 and Q8–Q10 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
@@ -19,6 +19,7 @@ is at *waiting for the owner* on Q1–Q3 and Q8–Q10 — no Storybook prototype
 | [capital-joins-the-types](../../business/financial_account/context_decision.md#capital-joins-the-types) *(Q4, the fourth)* | the owner's money in or out, one signed type · ⚠ two rows sharing a `group_id` when it moves between teams — my spec |
 | [adjustment-is-for-reconciling-only](../../business/financial_account/context_decision.md#adjustment-is-for-reconciling-only) *(Q4)* | no RPC takes an adjustment amount — `Reconcile` takes the bank's figure and posts the difference · ⚠ a note on a non-zero difference and a `reconciled_at` stamp are my spec |
 | [the-log-says-balance-after](../../business/financial_account/context_decision.md#the-log-says-balance-after) *(critique 5)* | the log's column is `balance_after` = the previous row's + this row's `change` |
+| [restock-is-never-typed-by-hand](../../business/financial_account/context_decision.md#restock-is-never-typed-by-hand) *(Q10, for restock)* | no hand RPC takes a `restock` · it comes only from a restock event inventory does not publish yet — until then a restock's payment shows only through a reconcile |
 
 ## What exists
 
@@ -47,7 +48,8 @@ written.
 
 ## Open
 
-Q1–Q3 and Q8–Q10 in the clarify. **Q10 first** — it decides every form — then **Q8**, which screens show a balance.
+Q1–Q3 and Q8–Q10 in the clarify. **Q10 first** — now only `expense`, `revenue_fund` and `team_payment`: are they
+broker-only like `restock` — then **Q8**, which screens show a balance.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be

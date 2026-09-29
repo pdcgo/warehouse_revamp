@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat | Q10, for `restock` — never typed by hand: [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand) · Q10 narrows to `expense`, `revenue_fund`, `team_payment` |
 | ✅ answered in chat | Q4's last half — an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 | ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ⚠ the log still has no account column, so the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) stands — and no cause (critique 1), no date (critique 7) |
 | ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) |
@@ -73,9 +74,10 @@ flowchart LR
 
 **[the-act-posts-the-entry](#the-act-posts-the-entry)** — a row is posted by the act that moved the money, once,
 naming it. ✅ **How** it gets here is now yours: from the broker
-([a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker)). What is
-left is **which way each type takes** — [Q10](#question): the hand path types only what no other service knows — an
-opening balance, a transfer, capital, a reconcile — and every other type comes from the broker, never both.
+([a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker)), and ✅
+`restock` never comes by hand ([restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand)).
+What is left is **the other broker types** — [Q10](#question): the hand path types only what no other service knows —
+an opening balance, a transfer, capital, a reconcile — and every other type comes from the broker, never both.
 
 Typed by hand **and** heard from the broker, one payment is two rows — the restock's event posts 1.200.000, someone
 types 1.250.000, and neither knows the other exists.
@@ -104,7 +106,7 @@ catches what it moved as an `adjustment` — which is honest: it was not recorde
 | --- | --- | --- | --- |
 | `opening_balance` ✅ | in | by hand — creating the account | once |
 | `marketplace_withdrawal` — your `revenue_fund` | in | broker — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
-| `restock` | out · in, for a refund | broker — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
+| `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
 | `expense` | out | broker — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
 | `transfer` ✅ | out of one, into another | by hand — two legs, one act | when typed |
 | `team_payment` ✅ | out of the payer, into the creditor | broker — 🆕 a payment event | the creditor confirms · a reversal reverses both |
@@ -289,6 +291,8 @@ see a balance, so it shows none.
    dead-letter.
 
 2. 🔄 **Which account paid a restock, how much, and when?** *(line 70)*
+   ✅ It comes only from the broker — [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand).
+   What inventory publishes is what this asks.
    **→ Recommend: the restock names the account it was paid from**, replacing `payment_type`, whose kind the
    account already carries. Inventory publishes the change — goods plus shipping when the restock is created, the
    difference on an edit, a refund when a cancel says the money came back. The warehouse's cost lines — the
@@ -335,24 +339,16 @@ see a balance, so it shows none.
    fields took any number, so one bank can sit in two teams today — the copy takes it once, and lists the rest for a
    person to settle.
 
-10. 🆕 **Which way does each type come in — and may one come both ways?** *(lines 76–78)*
-    One restock paid from ShopeePay: inventory publishes it and the account posts `restock −1.200.000`, and someone
-    also types `restock −1.200.000`. ShopeePay shows −2.400.000 for one payment, the typed row names no restock, and
-    the next reconcile hides the copy as an `adjustment` — so *money we failed to record* now also means *money we
-    recorded twice*.
-
-    | | **A — one way per type** | B — both ways, matched by cause | C — both ways, free |
-    | --- | --- | --- | --- |
-    | a double count | impossible | stopped only if the typed row names its restock or expense — then the first to arrive wins, even with a wrong amount | nothing stops it |
-    | the hand screens | four fixed acts — New account, Transfer, Capital, Reconcile — none takes a type | any type, but the person picks the act it belongs to | any type, any amount |
-    | a type whose event does not exist yet | its money waits for a reconcile | typed by hand; the event, once it ships, skips what was typed | typed by hand — and twice from the day its event ships, unless everyone stops typing it that day |
-    | what a reconcile's `adjustment` absorbs | only money nobody recorded | the same | every copy typed beside an event, too |
-
-    **→ Recommend A**, by one test — *does another service already record this act?* Yes: it comes from the broker.
-    No: it is typed by hand ([the table](#the-act-posts-the-entry)). **By hand**: `opening_balance`, `transfer`,
-    `capital`, and `adjustment` as a reconcile. **From the broker**: `revenue_fund` ([Q1](#question) would rename it
-    `marketplace_withdrawal`), `restock`, `expense`, `team_payment`. It holds by structure, not discipline: no RPC
-    takes a `change_type` from a person, and each listener posts only its own type.
+10. 🔄 **Narrowed — are `expense`, `revenue_fund` and `team_payment` never typed by hand either?** *(lines 76–78)*
+    ✅ `restock` is never typed by hand —
+    [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), with the double count
+    that is its reason. The hand side needs no answer: an opening balance, a transfer, capital and a reconcile are
+    known to no other service, so only a person can type them.
+    **→ Recommend yes, all three — for restock's reason.** Each is already recorded by its own service: an expense by
+    `expense_service`, `revenue_fund` by settlement's withdrawal row, a team payment by liability's confirm. Typed
+    here too, one payment is two rows, and nothing tells which is the copy. ⚠ The cost is restock's too: until a
+    service publishes, its money reaches the account only through a reconcile — except `revenue_fund`, whose event
+    (`SettlementLogPosted`) already exists.
 
 # Contradiction
 
@@ -394,6 +390,6 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
-- 🔄 **The two ways in are named; which type takes which is not** — [Q10](#question), and
-  [the-act-posts-the-entry](#the-act-posts-the-entry) is my proposal for it.
+- 🔄 **The two ways in are named, and `restock`'s is decided; `expense`, `revenue_fund` and `team_payment` are not** —
+  [Q10](#question), and [the-act-posts-the-entry](#the-act-posts-the-entry) is my proposal for them.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.

@@ -15,6 +15,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | [Q8](./context_clarify.md#question) — who types it |
 | [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) | an `adjustment` is only ever the difference a reconcile finds — the manager types the figure the bank shows, never an amount | owner | [Q8](./context_clarify.md#question) — who reconciles |
 | [the-log-says-balance-after](#the-log-says-balance-after) | a log row's running balance is `balance_after` — the balance once its change is applied | owner | — |
+| [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes · [Q10](./context_clarify.md#question) — the other broker types |
 
 ## the-accounts-are-one-ledger
 
@@ -295,3 +296,34 @@ flowchart LR
 | the rule | `balance_after` = the previous row's `balance_after` + this row's `change` |
 | the first row | the `opening_balance` row — its `balance_after` is the money the account opened with |
 | ⚠ still missing | the account the row belongs to — without it, *previous row* runs across every account of the team ([Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains)) |
+
+## restock-is-never-typed-by-hand
+
+> Chat *(owner, 2026-09-29)* — *"restock cant create by hand"*, after reading [Q10](./context_clarify.md#question):
+> which way does each type come in, and may one come both ways? It answers Q10 for `restock` — as its recommendation,
+> option A, puts it.
+
+**The verdict.** A `restock` row *(line 70)* comes **only from the broker** — inventory records the restock, and the
+account hears it. No hand screen offers `restock`, and no RPC takes one from a person.
+
+**Why.** Typed here as well, one payment is two rows, and nothing tells which is the copy:
+
+```mermaid
+sequenceDiagram
+  participant I as inventory
+  participant FA as financial_account_service
+  participant P as a person
+  I->>FA: a restock paid from ShopeePay — restock −1.200.000
+  P->>FA: the same payment, typed by hand — restock −1.200.000
+  Note over FA: −2.400.000 for one payment, and the typed row names no restock
+  FA->>FA: the next reconcile absorbs the copy as an adjustment
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the way in | the broker only — a restock event from inventory, naming the account that paid ([Q2](./context_clarify.md#question)) |
+| the hand screens | offer no `restock` — the four hand acts are New account, Transfer, Capital, Reconcile |
+| a refund | the same way — inventory publishes it when a cancel says the money came back ([Q2](./context_clarify.md#question)) |
+| until inventory publishes | ⚠ nothing does today. Until the event exists, a restock's payment reaches the account only through a reconcile — as an `adjustment`, money not yet recorded ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
