@@ -4,15 +4,18 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-✅ **Q8 answered in chat, 2026-09-29** — *"no need cancel/rollback"*: an import finishes whether or not anyone
-watches — [an-import-finishes-whether-anyone-watches](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches). Earlier rounds are recorded in
+✅ **Q9 answered, 2026-09-29** — your flow now opens the loop with *"row generate `GenerateUniqueID`"*, and in chat:
+*"every row `GenerateUniqueID` so when its exist, dont post it"*. Duplicates are caught row by row, never file by
+file — [the-row-key-is-the-only-dedupe](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe). Earlier rounds are recorded in
 [settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | closing the tab ends the stream, never the import — no Cancel, no rollback. Critique #9 goes with it |
-| ⚠ my reading | *"no need cancel/rollback"* as **yes**: an import that nothing cancels keeps going on its own |
-| ✅ checked | no new contradiction. The streamed-call decision's *"the stream closing is the import finishing"* is annotated: a client that leaves closes only its own end |
+| ✅ recorded | the same file twice is a second upload, and its lines answer *already there*. My recommendation — the first upload re-run — declined |
+| ⚠ my reading | *"dont post it"* as settlement's own check: the post writes nothing when the key exists. No lookup before it |
+| ✅ measured | 193 lines appear in two or more samples, and none changes key — a re-saved copy and overlapping downloads |
+| ⛔ found | settlement's key check compares only the order: a shop row's key held by another shop — or another team — answers *already exists* with that shop's row. Measured — [settlement critique 7](./context_clarify.md#critique) |
+| ✅ checked | your diagram parses. No contradiction — your flow now draws what the decision says |
 
 ## What the service already owns
 
@@ -47,15 +50,15 @@ Measured against all 26 sample workbooks, not read off the spec.
 | # | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **RPCs before a person or a job** (HARD RULE 6). 🔄 The flow now starts at `Frontend` — still nobody holding a file. Nothing says who uploads, how often, or what they need back — and *what they need back* is most of this service: every TikTok sample holds rows that must NOT be posted, 5 of 14 hold a type nobody has mapped, and 25 of 26 hold a withdrawal the report cannot take yet. | Name the job — [Q1](#question). The design below is drawn from the likeliest answer. |
-| **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another account is refused (`errUniqueIDTaken`). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop check and the file check, both decided ([shop](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored), [file](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). A dry run is declined for now ([decided](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)). |
+| **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another order is refused (`errUniqueIDTaken`) — ⛔ but not one held by another shop ([settlement critique 7](./context_clarify.md#critique)). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop check and the file check, both decided ([shop](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored), [file](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). A dry run is declined for now ([decided](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)). |
 | **4** | 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
 | **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. ✅ A failed withdrawal and its refund join it ([decided](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)). |
-| **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post on Reprocess once the mapping ships. |
+| **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post when the same file is uploaded again, once the mapping ships ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). |
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
 | **10** | **A late upload lands on its upload day.** Reports bucket on `posted_on` ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)), which settlement stamps — a month uploaded on the 1st is a month of `fund` on the 1st. | Keep the decision: a past window stays final. Upload **often**, and let the list show each file's own date range so the lag is visible. |
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
 | **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible ([decided](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). |
-| **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
+| **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. 🔄 And the row key is now the ONLY dedupe ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
 | **15** | 🆕 ⛔ **The request has no team.** §Rpc Detail's `Payload` is `shop_id` and `file_content`. This service's callers are CS and up — team-level roles — and a team-level role on a message with no `use_scope` field is a dead letter: it is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong). As written, only root and admin could import, and [the decided stream check](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) has no scope to read. | Add `uint64 team_id = 1` with `use_scope` and `gt = 0` — exactly as `SettlementPostRequest` carries it ([settlement.proto:245](../../../proto/warehouse/settlement/v1/settlement.proto#L245)). |
 | **16** | 🆕 ⛔ **Both requests are `Payload`, and both streams send `Response`.** Two messages with one name in one package do not compile, and buf's STANDARD lint — used with no exceptions ([buf.yaml](../../../proto/buf.yaml)) — wants each RPC's own `…Request` and `…Response`. | `TiktokSettlementImportRequest` · `ShopeeSettlementImportRequest` · `TiktokSettlementImportResponse` · `ShopeeSettlementImportResponse` — the same fields under four names. `LogLevel` is one enum they share. |
 | **17** | 🆕 ⚠ **Nothing caps `file_content`.** connect-go reads a request of any size by default, and the backend sets no limit. The largest sample is 246 KB. | `(buf.validate.field).bytes.max_len` of 10 MB, and the same limit on the handler's read. |
@@ -114,7 +117,7 @@ sequenceDiagram
     import->>+sell: yours — ShopService, may the caller work on this shop, and is it the right one
     sell-->>-import: yes, or the stream ends on an ERROR line
     import->>import: sha256 of the bytes — the file's name
-    Note over import: Q9 — a hash this team already imported re-runs that upload instead
+    Note over import: decided — nothing looks the hash up, the same file again is a second upload
     import->>+doc: RequestUpload named by the hash, PUT, ConfirmUpload — as the uploader
     doc-->>-import: document_id
     import->>import: ADDED — its own row, running
@@ -125,6 +128,7 @@ sequenceDiagram
     Note over import: a ref whose order is in ANOTHER shop fails the file here — decided
     import-->>fe: count
     loop every record
+        import->>import: yours — the row's GenerateUniqueID, its key
         alt ADDED — skipped, or held with a reason
             import->>import: no post
         else ready
@@ -151,7 +155,7 @@ flowchart TD
   W -->|"created"| PO["POSTED"]
   W -->|"already exists"| EX["ALREADY THERE"]
   W -->|"refused"| H
-  H -.->|"Reprocess, once the mapping exists"| R
+  H -.->|"the same file again, once the mapping exists"| R
 ```
 
 ### What a line becomes
@@ -168,7 +172,7 @@ flowchart TD
 | every row | `team_id` and `shop_id` from the upload · `source_type` see [Contradiction](#contradiction) | | |
 
 **The key** — `unique_id = <platform>:<sheet>:<GenerateUniqueID()>`. The prefix tells a ledger reader which
-import wrote a row. 🔄 No revision suffix any more: nothing is reverted ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)).
+import wrote a row. 🔄 No revision suffix any more: nothing is reverted ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)). ✅ And it is the only dedupe — a row whose key exists is not posted again ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)).
 
 ### What the stream carries
 
@@ -190,7 +194,7 @@ Your `level` and `message`, the two numbers your flow sends, and the row they de
 | route | what the person does there |
 | --- | --- |
 | `/settlement/imports` | **the list** (`UploadedFileList`) — one row per file: shop, platform, the file's own date range, uploaded by and when, status, the four tallies. **Import File** opens a dialog: pick the shop, pick the file. The platform is read off `Shop.marketplace`, so the dialog calls the right RPC without asking. 🔄 **Then the dialog shows the stream** — the bar, the tallies, the log — and ends on what did not post. Closing it early is safe ([decided](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)): the row carries on |
-| `/settlement/imports/:id` | **one file** — the tallies, the held and skipped lines with their reasons, the lines posted to the shop because their order was missing, **Reprocess**, download the original. 🔄 No **Revert** ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) |
+| `/settlement/imports/:id` | **one file** — the tallies, the held and skipped lines with their reasons, the lines posted to the shop because their order was missing, download the original. 🔄 No **Revert** ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)), and no **Reprocess** — uploading the file again is the retry ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)) |
 
 The recorded decisions also named `/settlement/unmatched`, a tray across all files. **→ Not in v1** — the
 per-file view covers it until held lines start outliving their files.
@@ -202,7 +206,7 @@ per-file view covers it until held lines start outliving their files.
 | `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — streaming, 🔄 detailed in §Rpc Detail | **in:** ⛔ `team_id` (the scope — missing, #15), `shop_id`, `file_content` — the file, ≤ 10 MB (#17). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `level` and `message` ([yours](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line)), plus `step`, `count` and `file` ([Contradiction](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them)) · ⛔ one request and one response name per RPC (#16) |
 | `UploadedFileList` | yours | the guideline List shape, paged (RULE 9) — filter by shop, platform, status |
 | `UploadedFileLineList` | 🆕 | one file's lines that did not reach an order — held, skipped, or posted to the shop — paged |
-| `UploadedFileReprocess` | 🆕 | re-run a stored file under the same keys — only what was held can post. **Streams**, same shape: it is the same long task |
+| `UploadedFileReprocess` | 🔄 not in v1 | uploading the same file again is the retry — held lines post once their mapping exists ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)) |
 | `document_service` | 🆕 one enum value | `DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT`, private — a statement lists every order and what the shop took |
 
 Two platform RPCs rather than one is right: the two readers return different items, and the shop already
@@ -219,7 +223,7 @@ erDiagram
     bigint shop_id
     text platform "shopee or tiktok"
     text document_id "document_service"
-    text content_sha256 "the file's name in document_service, and unique per team (Q9)"
+    text content_sha256 "the file's name in document_service — not unique, the same file twice is two rows"
     date period_from "the file's own range"
     date period_to
     text status "running, done, failed"
@@ -284,18 +288,8 @@ erDiagram
 8. ✅ **Answered 2026-09-29 — an import finishes whether anyone watches**:
    [an-import-finishes-whether-anyone-watches](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches). Kept as a line so the numbers hold.
 
-9. **The same bytes a second time — a second upload, or the first one re-run?** 🆕 Opened by
-   [the-file-is-named-by-its-content-hash](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash).
-   The name alone dedupes nothing: `document_service` keys every object by a fresh uuid, and nothing is
-   unique on `documents.filename` — so one file uploaded twice is two stored copies and two rows in the
-   list. It is not rare: it is exactly what Q8's recovery does.
-   **→ Recommend: the first one, re-run.** Unique on `(team_id, content_sha256)`, looked up **before** the
-   upload. A hit stores nothing and re-runs that upload under the same keys — only what was held can post.
-   A repeat upload and the detail page's
-   **Reprocess** become one operation. **The same bytes under another shop are refused**, naming the shop
-   they already went into — a statement belongs to one shop, so that is always a mistake, and it is caught
-   even for a file whose orders cannot be matched (Q3's gap). ⚠ A copy re-saved through a spreadsheet tool
-   is new bytes, so it is a new upload — and its lines answer *already there*.
+9. ✅ **Answered 2026-09-29 — the row key is the only dedupe**, against my recommendation:
+   [the-row-key-is-the-only-dedupe](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe). Kept as a line so the numbers hold.
 
 10. **How does a row come to name the order's creator?** 🆕 Opened by
     [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader).

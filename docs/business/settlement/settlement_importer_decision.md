@@ -21,6 +21,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now) | no dry run — an import posts as it reads. Deferred, not refused |
 | [only-a-successful-withdrawal-is-recorded](#only-a-successful-withdrawal-is-recorded) | only a withdrawal that succeeded is recorded — a failed one, and the refund that returns it, are skipped |
 | [an-import-finishes-whether-anyone-watches](#an-import-finishes-whether-anyone-watches) | an import finishes whether or not anyone watches — closing the tab ends the stream, never the import. No Cancel, no rollback |
+| [the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe) | duplicates are caught row by row, never file by file — a row whose key is already in the ledger is not posted again, and the same file twice is a second upload |
 
 ## the-import-is-one-streamed-call
 
@@ -94,7 +95,7 @@ flowchart LR
 | | |
 | --- | --- |
 | the name | the hash plus `.xlsx`. ⚠ **The extension stays**: `document_service` builds the storage key from the document's uuid and the filename's extension ([tokens.go:83](../../../backend/services/document_service/document_v1/tokens.go#L83)), so a bare hash would store the file with none |
-| which hash | **sha256** — ⚠ *content hash* did not say which, so this part is my proposal. Not md5, the row keys' hash: once the hash is an identity ([importer Q9](./settlement_importer_clarify.md#question)), two different files must never share one, and sha256 costs the same. 64 characters, inside the 255 `RequestUpload` allows |
+| which hash | **sha256** — ⚠ *content hash* did not say which, so this part is my proposal. Not md5, the row keys' hash: once the hash is an identity ([importer Q9](./settlement_importer_clarify.md#question)), two different files must never share one, and sha256 costs the same. ⚠ **Amended** by [the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe): the hash never became an identity — sha256 stays, at the same cost. 64 characters, inside the 255 `RequestUpload` allows |
 | computed by | the importer, over the bytes it received — never a value the client sends |
 | the request | carries **no `filename`** — there is nothing left for it to say |
 | the person's own name for the file | not kept. The list tells files apart by shop and date range, which the platform's generated names do not |
@@ -103,7 +104,8 @@ flowchart LR
 
 - **What the same bytes do a second time.** The name alone dedupes nothing: `document_service` keys every
   object by a fresh uuid and nothing is unique on `documents.filename`, so one file uploaded twice is two
-  stored copies with one name — [importer Q9](./settlement_importer_clarify.md#question).
+  stored copies with one name — [importer Q9](./settlement_importer_clarify.md#question). ✅ **Answered** — and that stands: the row
+  keys dedupe, never the file ([the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe)).
 - ⚠ **The hash names BYTES, not a report.** Measured: 0 of the 26 samples share bytes, and the one re-saved
   pair — `awan_beban_return` and its `_simple` copy — hashes differently. A TikTok export also stamps its own
   `modified` time into the file, so re-downloading a period is new bytes too. What stops those from
@@ -569,8 +571,62 @@ sequenceDiagram
 | the stream | a window: once nobody listens, a failed send is noted once in the server log and the import carries on. Its log lines still reach the server log |
 | no Cancel | nothing stops an import once it starts — the two checks refuse a wrong shop or a wrong file before anything posts |
 | a server stopped mid-file | the file is half-posted, its row's `updated_at` stops moving, and the list shows it **interrupted** — ⚠ my proposal: *running* with no update for two minutes, worked out when listed, no sweeper |
-| recovery | upload the same file again — every posted line answers *already there*, the rest post. Whether that re-runs the same row is [importer Q9](./settlement_importer_clarify.md#question) |
+| recovery | upload the same file again — every posted line answers *already there*, the rest post. Whether that re-runs the same row is [importer Q9](./settlement_importer_clarify.md#question) — ✅ **answered**: it does not, the same file again is a second row ([the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe)) |
 
 ### What it accepts
 
 - **Closing the tab does not stop an import.** A file that passes both checks posts in full.
+
+## the-row-key-is-the-only-dedupe
+
+> `settlement_importer.md` §Flow *(owner, 2026-09-29)* — the loop now opens *"row generate `GenerateUniqueID`"*,
+> before *"post to settlement service"*. And in chat, to [importer Q9](./settlement_importer_clarify.md#question) — the
+> same bytes a second time, a second upload or the first one re-run? — *"every row `GenerateUniqueID` so when its
+> exist, dont post it"*.
+
+**The verdict.** Duplicates are caught **row by row, never file by file**. Every row is keyed by the reader's
+`GenerateUniqueID()`, and a row whose key is already in the ledger is **not posted again**. Nothing checks the
+file itself: the same bytes a second time are a **second upload** — stored again, with their own row in the list,
+and their lines answer *already there*. It **declines my recommendation** — the first upload re-run, the hash
+unique per team — as unneeded: the row key already stops every double post.
+
+```mermaid
+flowchart LR
+  F["an upload — a new file, or the same one again"] --> X["extract with san_excel_readers"]
+  X --> K["each row — its GenerateUniqueID"]
+  K --> P["SettlementPost under that key"]
+  P -->|"a key the ledger has not seen"| N["POSTED"]
+  P -->|"a key already in the ledger"| E["ALREADY THERE — nothing written"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the key | the row's `GenerateUniqueID()` — the reader's hash of the row's own fields ([hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct)). ⚠ Written `<platform>:<sheet>:<hash>` — the prefix is my proposal, from the clarify's key recipe |
+| *"when its exist, dont post it"* | ⚠ my reading: settlement's own check, which already does it. `SettlementPost` finds the key, writes nothing and answers `created: false` — your flow's *"already exists"*. No lookup before the post: it would be a second call per row for the same answer |
+| the same file twice | a second upload — stored again, a second row in the list. Every line answers *already there*, except a line held the first time whose type has been mapped since: that one posts now |
+| an interrupted file | upload it again — a new row finishes the job. The first stays *interrupted*, with the same `content_sha256` |
+| the file's hash | its name in `document_service`, never a key — nothing is unique on it and nothing looks it up |
+| two people, one file, one moment | both run, and each line is written once: settlement locks the account before it looks for the key ([post_entry.go:225](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L225)), so the later post answers *already there* |
+| measured | a line keeps its key from file to file: **193 lines appear in two or more samples, and 0 change key** — 141 Shopee lines in a re-saved copy (`awan_beban_return` / `_simple`), 43 TikTok orders and 9 TikTok withdrawals in three overlapping downloads (`niko_*`) |
+
+### What it leans on
+
+- ⛔ **Settlement refusing a key that another SHOP holds — and today it does not.** Its key check compares only
+  the order ([post_entry.go:338](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L338)), as
+  [the-idempotency-key-is-global](./context_decision.md#the-idempotency-key-is-global) specifies. Measured
+  2026-09-29: a shop row's key posted to shop 30, then to shop 31 — and to a shop in another TEAM — answered
+  *already exists* both times and returned shop 30's row. So a statement posted into the wrong shop, with no order
+  to find, reads *already there* line by line in the right one, and nothing says where the money went —
+  [settlement critique 7](./context_clarify.md#critique).
+- ⚠ **The key staying put.** It is now the only thing between a re-download and a double post, so a TikTok period
+  re-downloaded in the 2026-09 layout ([critique 14](./settlement_importer_clarify.md#critique)) matters more.
+
+### What it accepts
+
+- **One file uploaded twice is two rows in the list**, the second reading *already there* throughout.
+- **An interrupted row stays interrupted** after the file is uploaded again — the row that finished it carries the
+  same hash.
+- **Uploading the same file again is the retry** — for an interrupted import, and for held lines once their
+  mapping exists. A Reprocess button would be a convenience, not a need.

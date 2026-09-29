@@ -2,8 +2,8 @@
 
 **Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
-reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) Q6 (only a successful withdrawal is recorded) and Q8 (an import finishes whether anyone watches); first
-pass 2026-09-26. Waiting on the owner — nothing of the service is
+reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) Q6 (only a successful withdrawal is recorded), Q8 (an import finishes whether anyone watches) and Q9 (the row key is the
+only dedupe); first pass 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
 · decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md).
@@ -27,13 +27,14 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [the-import-has-no-dry-run-for-now](../../business/settlement/settlement_importer_decision.md#the-import-has-no-dry-run-for-now) | no dry run for now — an import posts as it reads; the two checks are its only guard |
 | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) | only a successful withdrawal is recorded — a Shopee `Gagal` debit AND its refund are skipped, a TikTok row only when `Transferred`. ⛔ Needs the Shopee status on the document |
 | [an-import-finishes-whether-anyone-watches](../../business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches) | the import is detached from the request — a closed tab ends the stream only. No Cancel, no rollback. A server stopped mid-file leaves the row *interrupted*; the same file again completes it |
+| [the-row-key-is-the-only-dedupe](../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe) | duplicates are caught by each row's `GenerateUniqueID`, in settlement's own check — nothing is unique on the file. The same file twice is a second row whose lines answer *already there*. ⛔ Leans on settlement refusing a key another SHOP holds — it does not today |
 
 ## What exists underneath it
 
 | | |
 | --- | --- |
 | readers | ✅ [backend/pkgs/san_excel_readers/](../../../backend/pkgs/san_excel_readers/) — Shopee + TikTok, `GenerateUniqueID`, `SettlementType()`. ⚠ its own state report ([excel_readers.md](../packages/excel_readers.md)) is stale on `SettlementType()` — both platforms are mapped now, owner decision by decision · ⚠ its TikTok item is ten TikTok columns — a deviation from the reader doc's struct (Shopee's six), not yet accepted ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)) |
-| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else |
+| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else · ⛔ a key another SHOP holds comes back as the caller's own *already exists* ([settlement critique 7](../../business/settlement/context_clarify.md#critique)) |
 | file store | ✅ `document_service` — two-phase upload; it never touches bytes, so the importer is its CLIENT: `RequestUpload` → PUT → `ConfirmUpload`, under the uploader's forwarded token. No resource type for a statement yet |
 | long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
 | the access interceptor | ⛔ **refuses every streaming RPC** (`Unimplemented`, root included) — [interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57). No warehouse RPC has ever streamed; `san remote`'s `Exec` has its own interceptor · ✅ **decided**: authorize a server stream on its request ([a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)) — the first build task |
@@ -45,7 +46,8 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 
 | | |
 | --- | --- |
-| the job, the TikTok affiliate split, the same file twice | [importer Q1 · Q5 · Q9](../../business/settlement/settlement_importer_clarify.md#question) |
+| the job, the TikTok affiliate split | [importer Q1 · Q5](../../business/settlement/settlement_importer_clarify.md#question) |
+| ⛔ settlement returns a shop row's key held by ANOTHER shop — or team — as *already exists*, with that shop's row (measured). With the row key the only dedupe, a statement in the wrong shop reads *already there* in the right one | [settlement critique 7](../../business/settlement/context_clarify.md#critique) |
 | ⛔ the Shopee reader reads no `Status` — needed to skip a failed withdrawal. Add it on the document, never the item | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) |
 | who may work on a shop — the shop check cannot be built without it | [shop Q1](../../business/shop/context_clarify.md#question), re-routed from importer Q12 |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
@@ -62,6 +64,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | largest file | Shopee 1,463 rows / 19 days · TikTok 830 + 41 withdrawals / 26 days |
 | largest file, in bytes | **246 KB** (`tiktok/shipping_issurance.xlsx`); Shopee's largest is 89 KB. The file now rides in the request, and **nothing caps a request**: connect-go defaults to *any size* and the backend sets no `WithReadMaxBytes` |
 | identical bytes | **0** of the 26 samples share a sha256. The re-saved pair (`awan_beban_return` / `_simple`) differs, and TikTok stamps its `modified` time into `docProps/core.xml` (Shopee's carries none) — so the hash catches the SAME download uploaded twice, never the same period downloaded twice |
+| keys across files | **193** lines appear in two or more samples — 141 Shopee (the re-saved `awan_beban_return` pair), 43 TikTok orders and 9 withdrawals (the three `niko_*` downloads) — and **0** change key |
 | fractional amounts | 0, all IDR — `float64` → `int64` is lossless on every sample |
 | withdrawals vs `fund` | −839,987,638 against +827,877,151 — **101%**. In 25 of 26 files |
 | withdrawal statuses | Shopee: `Transaksi Selesai` 170 — 168 debits and 2 refunds, each described *Pengembalian Dana untuk Penarikan Gagal* — and `Gagal` 2. Every other Shopee row is `Transaksi Selesai`. TikTok: `Transferred` in every sample |
@@ -73,7 +76,8 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 ## Traps for the pass that builds it
 
 - ⚠ **A re-import cannot correct anything.** A repeat key returns the STORED row (`created: false`); a key on
-  another account is `errUniqueIDTaken`. Changing a mapping after the first import changes nothing in the ledger.
+  another ORDER is `errUniqueIDTaken` — ⛔ a key on another SHOP comes back as *already exists* today
+  ([settlement critique 7](../../business/settlement/context_clarify.md#critique)). Changing a mapping after the first import changes nothing in the ledger.
 - ⚠ **The reader returns `ErrNoSettlementTypeMapping` for rows that must be SKIPPED** (`Earnings`,
   `GMV Pay Deduction`) exactly as for a type never seen. The skip list belongs in the importer.
 - ⚠ **Nothing an import posts can be undone** — no revert, by decision. A line posted to the shop because its
@@ -91,7 +95,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
   receives INSIDE the wrapped function). The handler reads `team_id` off its own request.
 - ⚠ **Naming a file by its hash dedupes NOTHING by itself** — `document_service` keys each object by a fresh
   uuid plus the name's extension ([tokens.go:83](../../../backend/services/document_service/document_v1/tokens.go#L83)),
-  and `documents.filename` is not unique. Dedupe is the importer's lookup before upload (Q9). Keep `.xlsx` on
+  and `documents.filename` is not unique. Nothing dedupes a file, by decision — the row keys do ([the-row-key-is-the-only-dedupe](../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). Keep `.xlsx` on
   the name, or the object is stored without an extension.
 - ⚠ **buf `STANDARD` wants a distinct response message per RPC** — `TiktokSettlementImportResponse` and
   `ShopeeSettlementImportResponse`, both carrying the same file row.
