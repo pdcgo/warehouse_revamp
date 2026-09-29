@@ -3152,7 +3152,8 @@ not have been.
 [the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row). ⚠ **Contradicted for an IMPORTED
 shop row** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) *(owner, 2026-09-29)*: the shop's primary CS —
 [recorded](./settlement_importer_clarify.md#an-imported-shop-row-goes-to-the-shops-primary-cs-and-a-shop-row-goes-to-whoever-posted-it), and how it gets there is
-[importer Q13](./settlement_importer_clarify.md#question).
+[importer Q13](./settlement_importer_clarify.md#question) — ✅ **decided**: [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). A shop row
+posted by hand keeps its actor.
 
 ```mermaid
 flowchart LR

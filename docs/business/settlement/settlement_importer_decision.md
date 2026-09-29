@@ -23,6 +23,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-import-finishes-whether-anyone-watches](#an-import-finishes-whether-anyone-watches) | an import finishes whether or not anyone watches — closing the tab ends the stream, never the import. No Cancel, no rollback |
 | [the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe) | duplicates are caught row by row, never file by file — a row whose key is already in the ledger is not posted again, and the same file twice is a second upload |
 | [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs) | a row's `user_id` is its order's creator when its ref finds the order, else the shop's primary CS from `ShopAccessCheck` — decided row by row |
+| [settlement-asks-the-shop-for-its-primary-cs](#settlement-asks-the-shop-for-its-primary-cs) | an imported shop row counts for the shop's primary CS, which settlement asks the shop service for and writes on the row — the importer passes no person |
 
 ## the-import-is-one-streamed-call
 
@@ -664,10 +665,10 @@ flowchart TD
 | | |
 | --- | --- |
 | a row whose ref finds its order | its creator — the person stamped on the order's settlement account when the order was placed. ✅ **The per-user report already does this** ([analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72)): nothing to build |
-| any other row | the shop's primary CS — `primary_user_id`, asked once per file by the shop check the importer already makes ([the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored)) |
+| any other row | the shop's primary CS — `primary_user_id`, asked once per file by the shop check the importer already makes ([the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored)) · 🔄 **Amended** by [settlement-asks-the-shop-for-its-primary-cs](#settlement-asks-the-shop-for-its-primary-cs): settlement asks for it on each imported shop row — the importer's own ask stays its check |
 | which primary | the one at import time — not the one when the money moved |
 | the log's `actor_id` | ⚠ my reading: **whoever posted — the uploader**, from the token, on every row. The section named `actor_id` / `user_id` and now names `user_id` only. So an order's Settlement page says *by* the uploader, and the report counts the row for the person your flow names |
-| ⛔ getting a shop row to its primary CS | the fold counts a shop row for its ACTOR — the uploader — and nothing carries the primary to it: [importer Q13](./settlement_importer_clarify.md#question) |
+| ⛔ getting a shop row to its primary CS | the fold counts a shop row for its ACTOR — the uploader — and nothing carries the primary to it: [importer Q13](./settlement_importer_clarify.md#question) — ✅ **decided**: [settlement-asks-the-shop-for-its-primary-cs](#settlement-asks-the-shop-for-its-primary-cs) |
 | ⛔ a shop with no primary CS | the flow always ends on a person, and a shop can have none: [importer Q14](./settlement_importer_clarify.md#question) |
 
 ### What it replaces
@@ -686,3 +687,48 @@ flowchart TD
 - **One person carries a shop's shop-level money for good** — every fee, ad charge and withdrawal an import brings
   in goes to the primary CS of the day ([the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept)).
 - **Two names on one row** — the Settlement page's *by* is who posted it, and the report counts it for whose it is.
+
+## settlement-asks-the-shop-for-its-primary-cs
+
+> Chat *(owner, 2026-09-29)* — *"im prefer b"*, to [importer Q13](./settlement_importer_clarify.md#question): how does
+> an imported shop row reach the shop's primary CS — (a) the importer passes the person on the post, or (b) settlement
+> asks the shop service itself?
+
+**The verdict.** **Settlement asks the shop.** When an imported row lands on a shop — no order — settlement asks
+`selling_service` for the shop's primary CS and writes that person on the row as its **`user_id`**. The per-user
+report counts the row for them. The importer passes no person. It **declines my recommendation** (a): nothing a
+caller sends can name the person, at the price of a call to the shop service for every such row.
+
+```mermaid
+sequenceDiagram
+    participant import as Importer
+    participant settle as Settlement
+    participant shop as ShopService
+    import->>settle: SettlementPost — a shop row, source exporter
+    settle->>shop: ShopAccessCheck — this shop
+    shop-->>settle: primary_user_id
+    settle->>settle: the row — user_id is the primary CS, the actor is the uploader
+    settle-->>import: created
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| which rows | an **imported** row with **no order** — `source_type` `exporter`, the importer's source (its rename is the [Contradiction](./settlement_importer_clarify.md#the-service-has-a-third-name-and-the-contract-still-carries-the-first)). A shop row posted by hand keeps its actor ([a-shop-addressed-row-is-attributed-to-its-actor](./context_decision.md#a-shop-addressed-row-is-attributed-to-its-actor)); an order row keeps its stamped creator |
+| the call | ⚠ my proposal: `ShopAccessCheck` — the shop call that already returns `primary_user_id` ([one-call-answers-the-shop-and-the-access](../shop/context_decision.md#one-call-answers-the-shop-and-the-access)) — under the caller's token, with the request's `team_id`. No second shop RPC |
+| when | ⚠ my proposal: **before** the ledger transaction — never while the shop's account row is locked ([post_entry.go:295](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L295)), or every post on that shop waits on the network |
+| written | 🆕 `settlement_logs.user_id` — the person a row counts for, written once. 0 on every other row, meaning its actor |
+| carried | `SettlementLogPosted` gains `user_id`, built from the row like every other field ([events.go:66](../../../backend/services/settlement_service/settlement_v1/events.go#L66)). The replay re-reads the events, so the person is written on the row — never asked again later |
+| counted | the fold: an order row → its stamped creator · a shop row → `user_id` when set, else its actor ([analytic_fold.go:75](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L75)) |
+| the shop service fails | ⚠ my proposal: the post is **refused** — never a quiet fallback to the actor, which would count the row for the wrong person for good. The importer holds the line with its reason, and the same file again posts it |
+| no primary CS | 0 from the shop — never counted for user 0. Refuse, or count for the uploader, is [importer Q14](./settlement_importer_clarify.md#question) |
+
+### What it costs
+
+- ⛔ **Settlement's first call into another service.** Today it depends on its database, its event sender and the
+  replay broker, nothing else ([service.go:50](../../../backend/services/settlement_service/settlement_v1/service.go#L50)). A `ShopService` client joins its Wire set, and
+  [rpc.md](../../services/settlement_service/rpc.md) gains the flow in the commit that builds it (HARD RULE 3).
+- **A call per imported shop row** — the whole file when no order is found, ~1,500 on the largest Shopee sample.
+  The performance audit measures it once built.
+- **Imports lean on the shop service line by line** — down mid-file, the rest of the file's shop lines are held.

@@ -458,7 +458,7 @@ flowchart LR
 | users per shop | many — the built `shop_users`, one row per user |
 | primary per shop | one — 🆕 not built |
 | shown | as a badge |
-| read by | the importer, as `primary_user_id` — [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) |
+| read by | the importer, as `primary_user_id` — [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) · 🔄 and settlement, to count an imported shop row ([settlement-asks-the-shop-for-its-primary-cs](../settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) |
 
 ### What it does NOT settle — [Q7](./context_clarify.md#question)
 
@@ -498,7 +498,7 @@ sequenceDiagram
 | name | `ShopAccessCheck` |
 | in | `shop_id` · `user_id` |
 | out | the shop · `primary_user_id` · `is_have_access` |
-| called by | the settlement importer, before it stores a file |
+| called by | the settlement importer, before it stores a file · 🔄 and settlement, for the primary CS of every imported shop row ([settlement-asks-the-shop-for-its-primary-cs](../settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) |
 
 ### What it does NOT settle
 

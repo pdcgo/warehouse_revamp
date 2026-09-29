@@ -4,18 +4,16 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔄 **Your doc changed, 2026-09-29** — §How We Decide `actor_id` / `user_id` became §How We Decide `user_id` in
-Settlement importer in Every Rows: a row goes to its order's creator, else to the shop's primary CS from
-`ShopAccessCheck` — [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). And §Flow 1 names `ShopAccessCheck` as
-the shop check. Earlier rounds are recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
+✅ **Q13 answered in chat, 2026-09-29** — *"im prefer b"*: settlement asks the shop for the primary CS and writes it
+on the row — [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). Earlier rounds are recorded in
+[settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | the new rule, superseding the uploader fallback — [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader) keeps the record. The shop check is annotated: it is `ShopAccessCheck` |
-| ⚠ my reading | the section now names `user_id` only, so the log's `actor_id` stays whoever posted — the uploader. That closes **Q10** |
-| 🆕 opened | **Q13** — nothing carries the primary CS to the report. **Q14** — a shop with no primary CS |
-| ⛔ contradiction | your 2026-09-10 answer gives every shop row to its actor — [recorded](#an-imported-shop-row-goes-to-the-shops-primary-cs-and-a-shop-row-goes-to-whoever-posted-it). It replaces the old actor contradiction, which your new section settles |
-| ✅ checked | your diagram parses. `ShopAccessCheck`'s shape — no `team_id`, the message names — is the shop doc's: [shop critique 10](../shop/context_clarify.md#critique) |
+| ✅ recorded | an imported shop row counts for the shop's primary CS, asked by settlement — the importer passes no person. My recommendation (a) declined |
+| ⚠ my proposals | the call is `ShopAccessCheck`, made before the ledger transaction · a failed call refuses the post — never a fallback to the actor |
+| ✅ contradiction | the primary CS vs *"a shop row counts for its actor"* — decided as scoped: imported rows to the primary, rows posted by hand to their actor. Kept until the fold is built |
+| ⛔ it costs | settlement's first call into another service — a `ShopService` client, and a call per imported shop row |
 
 ## What the service already owns
 
@@ -133,6 +131,8 @@ sequenceDiagram
             import->>import: no post
         else ready
             import->>+settle: SettlementPost — counted for the order's creator, else the shop's primary CS
+            settle->>+sell: decided — a shop row only, the shop's primary CS
+            sell-->>-settle: primary_user_id
             settle-->>-import: created, already there, or refused
         end
         import-->>fe: message log, then step, count and the row
@@ -168,7 +168,7 @@ flowchart TD
 | `occurred_on` | `Tanggal Transaksi`, WIB | `Order settled time` | `Request time` |
 | `note` | `Deskripsi` | `Type` | `Reference ID` |
 | `actor_id` | the uploader, from the token — ⚠ my reading ([decided](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs)) | the uploader | the uploader |
-| `user_id` — the report's, not a field, [Q13](#question) | the order's creator when `No. Pesanan` finds it — the report already does · else the shop's primary CS | the order's creator when `Related order ID` finds it · else the shop's primary CS | the shop's primary CS |
+| `user_id` — written by settlement on a shop row ([decided](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) | the order's creator when `No. Pesanan` finds it — the report already does · else the shop's primary CS | the order's creator when `Related order ID` finds it · else the shop's primary CS | the shop's primary CS |
 | `created_by_user_id` | from the order lookup | from the order lookup | — |
 | every row | `team_id` and `shop_id` from the upload · `source_type` see [Contradiction](#contradiction) | | |
 
@@ -303,16 +303,8 @@ erDiagram
 12. ➡ **Re-routed 2026-09-28 to [shop Q1](../shop/context_clarify.md#question)** — who may work on a shop is the shop doc's to answer;
     this one only asks. Kept as a line so the numbers hold.
 
-13. **How does an imported shop row reach the shop's primary CS?** 🆕 Opened by
-    [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). The per-user report counts a shop row for its actor
-    ([analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72)) — the uploader, from the token. Nothing carries the primary CS to it.
-    **(a)** `SettlementPost` gains `user_id`, taken on a shop row only: the importer fills it with
-    `ShopAccessCheck`'s `primary_user_id`, and the fold counts a shop row for it when set, else for its actor.
-    The actor stays the uploader, so who posted is never lost — but anyone who may post can count a shop row for
-    anyone in the team. **(b)** settlement asks the shop itself, on every shop row it posts: nothing to misuse, but
-    every shop post then waits on `selling_service`, and a shop row posted by hand needs a rule to keep its actor.
-    **→ Recommend (a)** — your flow already puts the choice in the importer, the importer already has the answer
-    from its shop check, and a wrong count is visible: the actor beside it says who posted.
+13. ✅ **Answered 2026-09-29 — settlement asks the shop**, against my recommendation:
+    [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). Kept as a line so the numbers hold.
 
 14. **A shop with no primary CS — refuse the import, or count its rows for the uploader?** 🆕 Opened by
     [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). Your flow always ends on a person, but a shop can lose
@@ -322,6 +314,8 @@ erDiagram
     **→ Recommend refuse**, at the shop check, before the file is stored — an `ERROR` line: *"this shop has no
     primary CS — choose one first"*. A silent fallback to the uploader would bring back the rule you just replaced,
     for some shops only. ⚠ Moot if shop Q7 makes a primary mandatory.
+    🔄 With settlement asking now ([decided](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)), the answer is its rule too —
+    refuse the row, or count it for the uploader. The importer refusing the file at its check only stops it earlier.
 
 # Contradiction
 
@@ -401,6 +395,10 @@ flowchart LR
 
 ## an imported shop row goes to the shop's primary CS, and a shop row goes to whoever posted it
 
+✅ **Decided 2026-09-29** — [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs): an imported shop row goes to the
+primary CS, which settlement asks the shop for, and a shop row posted by hand stays with its actor. The fold still
+counts by actor until it is built.
+
 > `settlement_importer.md` §How We Decide `user_id` *(2026-09-29)* — no order ref, or no such order → *"use
 > primary_user_id from rpc `ShopAccessCheck`"*
 >
@@ -411,7 +409,7 @@ flowchart LR
 | --- | --- | --- |
 | `settlement_importer.md` §How We Decide `user_id` | an imported row with no order → the shop's primary CS | yours — the newest |
 | `a-shop-addressed-row-is-attributed-to-its-actor` | every shop row → its actor, the token | yours, 2026-09-10 — recorded, ✅ annotated |
-| [analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72) | a shop row → its actor | shipped — [Q13](#question) |
+| [analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72) | a shop row → its actor | shipped — changes when [the decision](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) is built |
 | [every-entry-names-its-actor](./context_decision.md#every-entry-names-its-actor) · [actor-id-is-the-pic](./context_decision.md#actor-id-is-the-pic) | an exporter row's actor → the login it runs under | recorded — ✅ right again, by my reading: your section now names `user_id` only. This settles the old actor contradiction |
 
 **Which is wrong: neither — they answer two kinds of shop row.** On 2026-09-10 a shop row was a person's own entry,
@@ -419,7 +417,7 @@ and whoever posted it answered for it. An imported shop row is posted by whoever
 gives it to the person who answers for the shop.
 
 **→ Recommend** scoping them: a shop row posted by hand stays with its actor, and an imported one goes to the shop's
-primary CS, carried as [Q13](#question) decides. **What stops it recurring:** a rule about the per-user report says
+primary CS, carried as [decided](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). **What stops it recurring:** a rule about the per-user report says
 which rows it covers — *"a shop row"* was written when only one kind existed.
 
 ```mermaid
@@ -427,7 +425,7 @@ flowchart LR
   H["a shop row posted by hand"] --> A["its actor — 2026-09-10"]
   I["an imported shop row — a fee, a withdrawal, a ref with no order"] --> P["the shop's primary CS — your new section"]
   A --> R["user_settlement_daily_reports"]
-  P -->|"Q13 — how it gets there"| R
+  P -->|"settlement asks the shop — decided"| R
 ```
 
 ## the flow sends a step and a count, and the response has nowhere to put them
