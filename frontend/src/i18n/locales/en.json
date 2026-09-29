@@ -978,7 +978,12 @@
       "empty": "No users have access yet.",
       "removeTitle": "Remove Access",
       "removeConfirm": "Remove {{label}}'s access to this shop?",
-      "remove": "Remove"
+      "remove": "Remove",
+      "primaryBadge": "Primary CS",
+      "makePrimaryLabel": "Make {{label}} the primary CS",
+      "primaryChanged": "Primary CS changed",
+      "makePrimaryFailed": "Could not change the primary CS",
+      "noPrimary": "No primary CS — this shop cannot import its statements until one of its users is made primary."
     },
     "detail": {
       "invalidId": "Invalid shop id.",
@@ -989,7 +994,8 @@
       "edit": "Edit",
       "code": "Code",
       "description": "Description"
-    }
+    },
+    "noPrimary": "No primary CS"
   },
   "racks": {
     "title": "Racks",

@@ -134,7 +134,12 @@ export function ShopDetailPage() {
 
       <Card.Root>
         <Card.Body>
-          <ShopUsersSection teamId={current.teamId} shopId={shop.id} />
+          <ShopUsersSection
+            teamId={current.teamId}
+            shopId={shop.id}
+            primaryUserId={shop.primaryUserId}
+            onChanged={() => void query.refetch()}
+          />
         </Card.Body>
       </Card.Root>
 

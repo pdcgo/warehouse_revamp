@@ -973,7 +973,12 @@
       "empty": "Belum ada pengguna yang memiliki akses.",
       "removeTitle": "Hapus Akses",
       "removeConfirm": "Hapus akses {{label}} ke toko ini?",
-      "remove": "Hapus"
+      "remove": "Hapus",
+      "primaryBadge": "CS utama",
+      "makePrimaryLabel": "Jadikan {{label}} CS utama",
+      "primaryChanged": "CS utama diganti",
+      "makePrimaryFailed": "Gagal mengganti CS utama",
+      "noPrimary": "Belum ada CS utama — toko ini tidak bisa mengimpor laporannya sampai salah satu penggunanya dijadikan utama."
     },
     "detail": {
       "invalidId": "ID toko tidak valid.",
@@ -984,7 +989,8 @@
       "edit": "Ubah",
       "code": "Kode",
       "description": "Deskripsi"
-    }
+    },
+    "noPrimary": "Belum ada CS utama"
   },
   "racks": {
     "title": "Rak",
