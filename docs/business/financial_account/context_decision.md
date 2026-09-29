@@ -12,7 +12,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
 | [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
 | [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q10](./context_clarify.md#question) — which way each comes in |
-| [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | [Q4](./context_clarify.md#question) — `adjustment` for reconciling only · [Q8](./context_clarify.md#question) — who types it |
+| [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | [Q8](./context_clarify.md#question) — who types it |
+| [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) | an `adjustment` is only ever the difference a reconcile finds — the manager types the figure the bank shows, never an amount | owner | [Q8](./context_clarify.md#question) — who reconciles |
+| [the-log-says-balance-after](#the-log-says-balance-after) | a log row's running balance is `balance_after` — the balance once its change is applied | owner | — |
 
 ## the-accounts-are-one-ledger
 
@@ -235,3 +237,61 @@ flowchart LR
 | between teams | two rows, one per team, sharing a `group_id` — out of one, into the other |
 | the way in | by hand — no other service sees the owner's own money ([Q10](./context_clarify.md#question)) |
 | who types it | [Q8](./context_clarify.md#question) |
+
+## adjustment-is-for-reconciling-only
+
+> Chat *(owner, 2026-09-29)* — *"yes, adjsutment for reconcil only"*, to [Q4](./context_clarify.md#question) as
+> recommended: is `adjustment` for reconciling only, calculated from the figure the bank app shows and never an amount
+> someone chose?
+
+**The verdict.** An `adjustment` *(line 68)* is **only** the difference a reconcile finds. The manager types what the
+bank app shows — or what the cash box counts — and the difference between that and the account's balance posts as
+the adjustment. Nobody types an adjustment's amount or its sign, and no other movement is ever recorded as one: each
+has a type of its own ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types),
+[capital-joins-the-types](#capital-joins-the-types)).
+
+```mermaid
+sequenceDiagram
+  participant M as manager
+  participant S as financial_account_service
+  M->>S: Reconcile BCA — the app shows 12.345.000
+  S->>S: difference = 12.345.000 − balance
+  alt the difference is not zero
+    S->>S: post one adjustment, the difference
+  end
+  S-->>M: the balance now matches the bank
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| what an adjustment means | *money we did not record* — the one total worth reading every week |
+| what the manager types | the figure the bank shows or the box counts, and the date of it — never the difference |
+| a zero difference | posts nothing |
+| ⚠ my spec — a note | required on a non-zero difference: it is the one row that can hide missing cash |
+| ⚠ my spec — last checked | the account stamps `reconciled_at`, and shows how long ago it was checked |
+| who reconciles | [Q8](./context_clarify.md#question) |
+| the way in | by hand — only a person looking at the bank app knows the figure ([Q10](./context_clarify.md#question)) |
+
+## the-log-says-balance-after
+
+> `context.md` §Table that Named `financial_account_logs` *(owner, 2026-09-29)* — `last_balance` renamed
+> `balance_after` *(line 59)*, as [critique 5](./context_clarify.md#critique) recommended.
+
+**The verdict.** A log row's running balance is **`balance_after`** — the account's balance once this row's `change`
+is applied — the ledger template's own word. *Last* could be read as before the change or after it; *after* cannot.
+
+```mermaid
+flowchart LR
+  P["the previous row's balance_after — 500.000"] --> R["this row — change −120.000"]
+  R --> A["this row's balance_after — 380.000"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the rule | `balance_after` = the previous row's `balance_after` + this row's `change` |
+| the first row | the `opening_balance` row — its `balance_after` is the money the account opened with |
+| ⚠ still missing | the account the row belongs to — without it, *previous row* runs across every account of the team ([Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains)) |

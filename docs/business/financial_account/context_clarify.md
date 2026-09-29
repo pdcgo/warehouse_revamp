@@ -7,7 +7,9 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) · [Q4](#question) narrows to its last half: is `adjustment` for reconciling only |
+| ✅ answered in chat | Q4's last half — an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
+| ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ⚠ the log still has no account column, so the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) stands — and no cause (critique 1), no date (critique 7) |
+| ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) |
 | ✅ answered in chat | Q5, Q6, Q7 — each as recommended: [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) · [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) · [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused) |
 | ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 22 still reads *"its unique"* — yours to carry into the doc |
 | ⚠ ripple of Q6 | [Q9](#question) — `team_infos` can hold one bank number in two teams today, and a copy into accounts takes it once |
@@ -20,7 +22,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Seven questions open, eight critiques, one contradiction.**
+already touch a bank without naming one. **Six questions open, six critiques, one contradiction.**
 
 ## What already moves money
 
@@ -30,7 +32,7 @@ already touch a bank without naming one. **Seven questions open, eight critiques
 | *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | [Q2](#question) |
 | `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | [Q3](#question) |
 | `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
-| — | `liability_payments` — one team paying another, recorded then confirmed; the money moves *"by bank outside this system"* | ❌ nothing published | [Q4](#question) |
+| — | `liability_payments` — one team paying another, recorded then confirmed; the money moves *"by bank outside this system"* | ❌ nothing published | ✅ [a type](./context_decision.md#opening-transfer-and-team-payment-join-the-types) |
 | *Cash* | nothing — the courier's ask is a `restock_cost_lines` row the warehouse pays at the door, from no account | ❌ | [Q2](#question) |
 
 ✅ **Two boundaries already hold, and your doc keeps both.** The team balance is *"not a wallet — no cash, no bank
@@ -62,8 +64,8 @@ flowchart LR
 | **2** | **`type` and `account_type` can disagree** *(lines 19–20)*. The provider decides the kind — `bca` is a bank, `shopeepay` a wallet — and `cash` sits in both lists. Two columns that must agree, and nothing making them: a `bank_account` whose provider is `shopeepay`. | The person picks the **provider**; the server derives the kind from one fixed table. Rename `account_type` → `provider` — *type* and *account type* read as the same word. A new bank (Mandiri, BRI, SeaBank) is an append to the list, never free text: the provider is what will pick a bank-statement reader later, as the marketplace picks the settlement reader. |
 | **3** | **An account has no name and no holder.** A team with two BCA accounts tells them apart by ten digits in every picker. And the holder — *atas nama* — is what a payer checks before transferring; `team_infos.bank_owner_name` exists for exactly that. | `name` — required, unique in the team (*BCA Operasional*, *Kas Gudang*) — and `holder_name`. |
 | **4** | **An account opens with no row.** One registered with Rp 50.000.000 already in it either starts at 0 — wrong on day one — or sets `balance` with no log row, which the ledger your line 13 names forbids: *"cannot change the `State` without log recorded"*. | Creating an account posts its first row, `opening_balance`. |
-| **5** | **`last_balance` reads both ways** *(line 59)*. On a log row, *last* can mean before this change or after it. | `balance_after`, the template's word — then `balance_after = previous + change` reads straight off the row. |
-| **6** | **`adjustment` is the only type for anything off the list — so it will mean everything.** A ShopeePay top-up, cash drawn at an ATM, a fee paid to the warehouse: each lands as an adjustment, and the one total that should say *money we failed to record* says nothing. | `adjustment` means reconciling only — ✅ every other movement has a type of its own now — and it is **derived, never typed**: the manager types what the bank app shows, and the difference posts ([Reconcile](#reconcile), [Q4](#question)). |
+| **5** | ✅ **Adopted** — `last_balance` is `balance_after` now: [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after). Kept as a line so the numbers hold. | — |
+| **6** | ✅ **Decided** — every movement has a type of its own, and an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). Kept as a line so the numbers hold. | — |
 | **7** | **The date the money moved is not kept.** `created_at` is when someone typed it. Yesterday's transfer typed this morning files under today, while the bank statement lists yesterday — the two never line up. | `occurred_at`. A broker row already has it — every event carries when its fact happened — so only a hand row needs a date picked, defaulting to today. The running balance still follows entry order. |
 | **8** | **An archived account can hold money.** Nothing says what `archived` *(line 48)* stops, or whether an account holding Rp 3.000.000 may be archived — its money then drops out of the team's total, or sits in a total nobody can spend. | Archive only at zero — transfer or reconcile first. An archived account takes no row **by hand**, stays readable everywhere, and can be restored. 🆕 A row **from the broker** still posts — refused, it would dead-letter — so the pickers stop offering an archived account, and a row that lands anyway shows as money to move out. |
 
@@ -83,8 +85,7 @@ types 1.250.000, and neither knows the other exists.
 **4.** expense · **5.** team payment — each of these needs its own event first. Until a type is wired, a reconcile
 catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-**Answer first:** [Q10](#question) decides every form — [Q4](#question) is now one detail of it, the reconcile —
-and [Q8](#question) decides which screens show a balance at all.
+**Answer first:** [Q10](#question) decides every form, and [Q8](#question) which screens show a balance at all.
 
 ## Proposed Design
 
@@ -108,7 +109,7 @@ and [Q8](#question) decides which screens show a balance at all.
 | `transfer` ✅ | out of one, into another | by hand — two legs, one act | when typed |
 | `team_payment` ✅ | out of the payer, into the creditor | broker — 🆕 a payment event | the creditor confirms · a reversal reverses both |
 | `capital` ✅ | in or out | by hand — the business owner's own money | when typed |
-| `adjustment` | in or out | by hand — a reconcile; the difference, never typed | [Reconcile](#reconcile) |
+| `adjustment` ✅ | in or out | by hand — a reconcile; the difference, never typed | [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 
 ```mermaid
 flowchart LR
@@ -159,7 +160,8 @@ stateDiagram-v2
 
 ### Reconcile
 
-The manager types what the bank app shows — or what the cash box counts — and the difference posts. Nobody types an
+✅ Decided — [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). The
+manager types what the bank app shows — or what the cash box counts — and the difference posts. Nobody types an
 adjustment's sign.
 
 ```mermaid
@@ -193,7 +195,7 @@ sequenceDiagram
 | `FinancialAccountUpdate` | managers | name, holder, description, *where we are paid* ([Q9](#question)) — provider and number are fixed: another number is another account |
 | `FinancialAccountArchive` · `FinancialAccountRestore` | managers | archive refused unless the balance is zero |
 | `FinancialAccountTransfer` | managers | from, to, amount, date, note → two legs sharing a `group_id` |
-| `FinancialAccountCapital` | managers | in or out, amount, date, note ([Q4](#question)) |
+| `FinancialAccountCapital` | managers | in or out, amount, date, note ([capital-joins-the-types](./context_decision.md#capital-joins-the-types)) |
 | `FinancialAccountReconcile` | managers | the figure the bank shows, the date, a note → [Reconcile](#reconcile) |
 | `FinancialAccountLogList` | managers | one account's rows, newest first, paginated, by type and date |
 | `FinancialAccountShopSet` | managers | the account a shop withdraws into ([Q1](#question)) |
@@ -239,7 +241,7 @@ erDiagram
     boolean reversal "NEW"
     bigint group_id "NEW, both legs of one transfer or payment"
     numeric change
-    numeric balance_after "your last_balance"
+    numeric balance_after "yours, was last_balance"
     date occurred_at "NEW, the day the money moved"
     text description
     bigint actor_id
@@ -267,7 +269,7 @@ erDiagram
 | `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row links to its cause · Transfer · Reconcile |
 | the restock form | *Paid from* — `FinancialAccountSelect` replaces `PaymentTypeSelect` ([Q2](#question)) |
 | the expense form | *Paid from*, optional ([Q3](#question)) |
-| a team payment | *Paid from* on record · *Received into* on confirm ([Q4](#question)) |
+| a team payment | *Paid from* on record · *Received into* on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) |
 | the shop detail | *Withdraws into* ([Q1](#question)) |
 | the team detail | *Where we are paid* replaces the three bank fields ([Q9](#question)) |
 
@@ -300,14 +302,11 @@ see a balance, so it shows none.
    name none: `STOCK_LOSS` (goods written off, no cash moved) and an ads charge the platform took from the seller
    balance (that is a settlement row). ⚠ Expense publishes nothing today — the event is new.
 
-4. 🔄 **Narrowed again — is `adjustment` for reconciling only?** *(line 68)*
-   ✅ All four types it asked for are in your list —
-   [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)
-   and [capital-joins-the-types](./context_decision.md#capital-joins-the-types).
-   **→ Recommend yes — and derived, never typed.** The manager types what the bank app shows, or what the cash box
-   counts, and the difference posts ([Reconcile](#reconcile)). With every other movement a type of its own, an
-   `adjustment` can only mean *money we did not record* — the one total worth reading every week, and the one row
-   that can hide missing cash, so it never carries an amount somebody chose.
+4. ✅ **Answered 2026-09-29 — all four types joined, and an adjustment is only a reconcile's difference**, as
+   recommended: [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) ·
+   [capital-joins-the-types](./context_decision.md#capital-joins-the-types) ·
+   [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). Kept as a line so
+   the numbers hold.
 
 5. ✅ **Answered 2026-09-29 — `shopeepay` is the team's e-wallet**, never the Shopee seller balance, as recommended:
    [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with). Kept as
@@ -364,7 +363,7 @@ see a balance, so it shows none.
 
 The template gives a ledger **one** scope, shared by its state and its log — *"scope is use smallest grain to track
 ledger balance"* ([mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) §Scope). Here the state's
-grain is the account and the log's is the team, so `last_balance` is a running total of every account the team
+grain is the account and the log's is the team, so `balance_after` is a running total of every account the team
 holds — a number no bank shows — and one account's history cannot be read back out of it.
 
 **Which is wrong:** lines 54–62 — the log is missing its scope. Line 13 is right, and it is what makes the gap
@@ -378,7 +377,7 @@ flowchart TB
   L13["line 13 — the two tables are one ledger"] --> T["the template — one scope for the state and its log"]
   S["line 24 — a balance per account"] --> T
   G["lines 54 to 62 — a log row per team, no account"] --> T
-  T --> X["last_balance runs across every account the team holds"]
+  T --> X["balance_after runs across every account the team holds"]
   X --> Y["no bank statement matches it, and one account's history cannot be read"]
   F["financial_account_id on every log row"] -.->|"fixes"| X
 ```
