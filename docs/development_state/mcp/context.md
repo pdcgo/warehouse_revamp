@@ -3,7 +3,7 @@
 **Pass:** business analysis of the owner's [mcp/context.md](../../business/mcp/context.md) — a local MCP app shipped
 to users, so their own AI agent can read and analyze their data through the RPC API. Questions:
 [context_clarify.md](../../business/mcp/context_clarify.md) — **6 open** (Q2–Q7). Decisions:
-[context_decision.md](../../business/mcp/context_decision.md) — **one**. The lifecycle is at *waiting for the owner*;
+[context_decision.md](../../business/mcp/context_decision.md) — **two**. The lifecycle is at *waiting for the owner*;
 no Storybook prototype, no proto, no code.
 
 ## Decided
@@ -11,6 +11,7 @@ no Storybook prototype, no proto, no code.
 | decision | what it means for the build |
 | --- | --- |
 | [an-agent-only-reads-for-now](../../business/mcp/context_decision.md#an-agent-only-reads-for-now) *(Q1)* | an agent runs **no write**, destructive or not · the **server** refuses it — the access interceptor, before the handler, on an agent's credential · a read is an RPC declared `idempotency_level = NO_SIDE_EFFECTS` (my spec — no proto carries it yet) · tools listed with `readOnlyHint: true` · rules out the session token as the agent's credential |
+| [the-mcp-uses-the-official-go-sdk](../../business/mcp/context_decision.md#the-mcp-uses-the-official-go-sdk) *(owner's §General 3)* | every MCP piece on `modelcontextprotocol/go-sdk`, the version `go.mod` pins (v1.7.0, shared with `san remote`) · `auth.RequireBearerToken` fits an agent key · it issues no token, so an OAuth login is ours to build · ⚠ its localhost guard 403s a loopback request with a public `Host` — a same-host proxy in front of `/mcp` meets it |
 
 ## What exists
 
@@ -27,7 +28,7 @@ no Storybook prototype, no proto, no code.
 | | |
 | --- | --- |
 | offered to agents | a read is callable with an agent key only if its request also carries a new `(warehouse.agent.v1.tool)` option; boot fails on the option over a non-read (Q6) |
-| where the tools live | server-side `/mcp`, each tool call a real Connect call through the access interceptor; the shipped app a thin bridge (Q2) |
+| where the tools live | option B: MCP crosses to a server-side `/mcp`, each tool call a real Connect call through the access interceptor; the shipped app a thin bridge (Q2a) · C, no app, for web agents once they are asked for (Q2b) |
 | the credential | `agent_keys` in `user_service` — hashed, named, one team, expiring, revocable, `last_used_at`; never the root bypass (Q3, Q4) |
 | who | team owner and admin; CS and packer only if the owner allows (Q5) |
 | first tools | the 11 existing aggregate RPCs + a product search + an order by marketplace ref; a per-key rate limit (Q6) |
@@ -36,5 +37,6 @@ no Storybook prototype, no proto, no code.
 
 ## Pick up here
 
-Wait for the owner on **Q2** — where the tools live, and which agents the users use. Do not start a prototype before
-it: it decides whether the first screen is a key page (desktop bridge) or an OAuth consent page (web agents).
+Wait for the owner on **Q2** — 2a, which protocol crosses to us (A: our RPC API, the tools in the shipped app · B:
+MCP to our `/mcp`, a thin app), and 2b, which agents the users use. Do not start a prototype before it: it decides
+whether the first screen is a key page (desktop bridge) or an OAuth consent page (web agents).

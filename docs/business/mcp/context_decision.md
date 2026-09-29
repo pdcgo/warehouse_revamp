@@ -7,6 +7,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | decision | what it decided | from | under review |
 | --- | --- | --- | --- |
 | [an-agent-only-reads-for-now](#an-agent-only-reads-for-now) | an AI agent reads and never writes — the server refuses any write made with an agent's credential | owner | [Q3](./context_clarify.md#question) — the credential · [Q6](./context_clarify.md#question) — which reads |
+| [the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk) | every MCP piece is built on the protocol's official Go SDK, whichever side it runs on | owner | [Q2](./context_clarify.md#question) — which side that is |
 
 ## an-agent-only-reads-for-now
 
@@ -46,3 +47,32 @@ flowchart TD
 - **Whose data** — one team per credential, and the root bypass: [Q4](./context_clarify.md#question).
 - ⚠ **Reading is not harmless.** This limits what an agent can *do*, not what it can *send*: every row it reads goes
   to its provider. That is still [Q5](./context_clarify.md#question) and [Q7](./context_clarify.md#question).
+
+## the-mcp-uses-the-official-go-sdk
+
+> `context.md` §General 3 *(owner, 2026-09-29)* — *"we use `https://github.com/modelcontextprotocol/go-sdk`"*.
+
+**The verdict.** Every MCP piece of this context is built on the protocol's official Go SDK, whichever side it runs
+on. It is already a dependency: [go.mod](../../../go.mod) pins it at v1.7.0 for `san remote mcp`.
+
+```mermaid
+flowchart LR
+  SDK["modelcontextprotocol/go-sdk v1.7.0"] -->|"StdioTransport"| A["an MCP server inside a local app"]
+  SDK -->|"StreamableClientTransport"| B["a thin app forwarding to our server"]
+  SDK -->|"NewStreamableHTTPHandler, auth.RequireBearerToken"| C["/mcp on our server, checking the key"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the module | `github.com/modelcontextprotocol/go-sdk`, one version for the whole repo — the one `go.mod` pins. An upgrade for `san remote` is an upgrade for this, and the reverse |
+| what it gives | both transports — stdio for a program on the user's machine, Streamable HTTP for an endpoint on ours — and the client side a thin app forwards with. **It builds every option in [Q2](./context_clarify.md#question), so it does not answer Q2** |
+| auth | `auth.RequireBearerToken` checks a bearer on `/mcp` — enough for an agent key ([Q3](./context_clarify.md#question)). **It issues no token**: its OAuth code is for clients and for checking a token, so a login for web agents is a server of ours |
+| ⚠ its localhost guard | a request arriving on a loopback address with a non-loopback `Host` is refused with 403 — what `san remote` met behind a tunnel ([san.md](../../tools/san.md#putting-a-tunnel-in-front)). A proxy on the same host in front of `/mcp` would meet it too; `DisableLocalhostProtection` is the switch |
+| shared with `san remote` | the library only — never code, never tools ([Contradiction](./context_clarify.md#contradiction)) |
+
+### What it does NOT settle
+
+- **Which protocol crosses to us, and so where the tools live** — [Q2](./context_clarify.md#question). The SDK builds
+  every option alike.

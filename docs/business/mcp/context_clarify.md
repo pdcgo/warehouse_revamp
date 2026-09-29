@@ -11,13 +11,15 @@ reach are still open.**
 | | |
 | --- | --- |
 | ✅ answered (2026-09-29) | [Q1](#question) — the agent only reads, for now, and the server refuses any write: [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now). ⚠ It rules out the session token as the agent's credential — that token carries every write ([Q3](#question)) |
+| ✅ your edit (2026-09-29) | §General 3 — the official Go SDK: recorded as [the-mcp-uses-the-official-go-sdk](./context_decision.md#the-mcp-uses-the-official-go-sdk). It builds every option in Q2, so Q2 stays open |
+| 🔄 reworded (2026-09-29) | [Q2](#question) — you asked whether it is about protocol: it is. Now 2a, which protocol crosses to us, and 2b, which agents — with [the options drawn](#which-protocol-crosses-to-us) |
 
 ## What already exists
 
 | | |
 | --- | --- |
 | a business MCP | **nothing** — no code, no proto, no screen |
-| `san remote mcp` | a **developer** tool: it serves the repo checkout — a shell and its files — to a coding agent ([level.md](../../technical/development/level.md)). ⚠ It shares only the protocol and the SDK (`modelcontextprotocol/go-sdk`, in [go.mod](../../../go.mod)) with this, and is never a base for what users get |
+| `san remote mcp` | a **developer** tool: it serves the repo checkout — a shell and its files — to a coding agent ([level.md](../../technical/development/level.md)). ⚠ It shares only the protocol and the SDK (`modelcontextprotocol/go-sdk`, in [go.mod](../../../go.mod) — now [the-mcp-uses-the-official-go-sdk](./context_decision.md#the-mcp-uses-the-official-go-sdk)) with this, and is never a base for what users get |
 | the only credential | the session token — a JWT naming the person, **24h**, renewed by `CheckAccess` up to 7 days after it lapses. **Nothing revokes one token**: logout only drops the role cache ([logout.go](../../../backend/services/user_service/user_v1/logout.go)), and a password reset only stops the *renewal* ([check_access.go](../../../backend/services/user_service/user_v1/check_access.go)). Suspending the whole account is the one immediate stop |
 | the ACL | in the proto, per request message, roles read per request. ⚠ Root and admin of team 1 pass **every** scope check ([interceptor.go:255](../../../backend/services/user_service/access_interceptors/interceptor.go#L255)) · ⚠ nothing marks an RPC as a read: a policy names roles only, and `idempotency_level` is in no proto |
 | the RPC surface | 164 RPCs in 25 services, about 70 of them reads. **11 already aggregate**: `OrderStat` · `OrderActivityStat` · `ProductStockSummary` · `OwnerStockStat` · `RestockInboundStat` · `ExpenseDaily` · `LiabilityDaily` · `LiabilityPositionList` · settlement's `AnalyticTimeSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric` |
@@ -28,7 +30,7 @@ reach are still open.**
 | # | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | ✅ **Decided — [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now).** An agent runs no write, and the server refuses one — not the tool list. Was: what the agent may do was not said, and an agent that writes acts on text a stranger typed. | Build it: mark each offered read `NO_SIDE_EFFECTS`, and have the interceptor refuse an agent's credential on anything else. |
-| **2** | **"A local app shipped to users" is a premise, and it decides everything built.** A shipped binary is a client we cannot redeploy: every proto change must keep old copies working, every machine must update, and it is built per OS. And it reaches **desktop agents only** — claude.ai in a browser, ChatGPT and every phone app add an MCP server by URL, never a local program. | **The tools live on the server** — `/mcp` beside the RPC API, deployed with it. The local app, if kept, is a thin bridge that holds the key and forwards, so no tool in it can go stale. [Q2](#question) |
+| **2** | **"A local app shipped to users" is a premise, and it decides everything built.** A shipped binary is a client we cannot redeploy: every proto change must keep old copies working, every machine must update, and it is built per OS. And it reaches **desktop agents only** — claude.ai in a browser, ChatGPT and every phone app add an MCP server by URL, never a local program. | **The tools live on the server** — `/mcp` beside the RPC API, deployed with it. The local app, if kept, is a thin bridge that holds the key and forwards, so no tool in it can go stale — [option B](#which-protocol-crosses-to-us). [Q2](#question) |
 | **3** | **"Connect their account" has no mechanism.** The only credential is the session token: an agent holding one dies within a day or a week, cannot be revoked alone, and carries every write the person may make — which [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) now rules out. A password typed into an agent's config is a password in plain text on disk. | An **agent key** — made by the person on a screen, shown once, named, read-only, bound to one team, expiring, revoked on its own without touching the person's sessions. [Q3](#question) |
 | **4** | **Whose data is not said.** One person holds roles in several teams ([user/context.md](../user/context.md) §General), so a key that *is* the person reads all of them — and lets an agent join them. ⛔ Worse, root and admin of team 1 pass every scope check: a root's key hands **every team's** orders and money to a third-party AI. | A key reads **one team**, fixed when it is made, and **the root bypass never applies to a key**. [Q4](#question) |
 | **5** | **Who may send a team's data out is not said.** The data is the team's, not the person's: a CS connecting a personal agent sends the team's sales, costs and buyers to that agent's provider. Read-only does not help here — it limits what an agent can do, not what it sends. | The team's **owner and admin** may connect an agent; CS and packer only if the owner allows it for the team. [Q5](#question) |
@@ -38,10 +40,10 @@ reach are still open.**
 
 ## Recommendation
 
-✅ **Q1 is decided** — the agent only reads. Next, **Q2** — where the tools live, and which agents your users use:
-every screen and the credential's shape follow from it. My pick: **tools on the server, a thin local app for
-desktop agents now** — and web or phone agents, which need an OAuth login on our side, only once your users ask for
-them.
+✅ **Q1 is decided** — the agent only reads. Next, **Q2** — which protocol crosses from the user's machine to us, and
+which agents your users use: every screen and the credential's shape follow from it. My pick: **[B](#which-protocol-crosses-to-us)
+— MCP to our `/mcp`, with a thin local app for desktop agents now** — and web or phone agents, which need an OAuth
+login on our side, only once your users ask for them.
 
 ## Proposed Design
 
@@ -67,6 +69,32 @@ flowchart LR
   L -->|"HTTPS + the agent key"| M
   W["a web or phone agent — later"] -.->|"HTTPS + an OAuth login"| M
 ```
+
+### Which protocol crosses to us
+
+[Q2](#question). MCP is the same protocol in every option. What changes is where it ends, and so where the tools
+live:
+
+```mermaid
+flowchart LR
+  subgraph A["A — your picture, the tools in the app"]
+    a1["agent"] -->|"MCP, stdio"| a2["app, the tools"]
+    a2 -->|"our RPC API"| a3["our server"]
+  end
+  subgraph B["B — my pick, a thin app"]
+    b1["agent"] -->|"MCP, stdio"| b2["app, forwards"]
+    b2 -->|"MCP over HTTPS"| b3["our server, /mcp and the tools"]
+  end
+  subgraph C["C — no app"]
+    c1["agent"] -->|"MCP over HTTPS"| c3["our server, /mcp and the tools"]
+  end
+```
+
+| | the wire to us carries | the tools live | reaches |
+| --- | --- | --- | --- |
+| **A** | our RPC API — the app calls our RPCs | in the app you ship | desktop agents |
+| **B** | MCP — the app only forwards | on our server, at `/mcp` | desktop agents |
+| **C** | MCP, straight from the agent | on our server, at `/mcp` | desktop agents that send a header · web and phone agents, with an OAuth login |
 
 ### A tool call
 
@@ -181,12 +209,17 @@ sequenceDiagram
    [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now). Kept as a line so the numbers
    hold.
 
-2. **Where do the tools live — in the app you ship, or on the server? And which agents do your users use?**
-   Critique 2.
-   **→ Recommend on the server**, at `/mcp` beside the API and deployed with it — the shipped app a thin bridge that
-   holds the key and forwards. It keeps what you drew, a local app for desktop agents, and loses the version skew.
-   ⚠ **Which agents decides the rest**: if your sellers use ChatGPT or claude.ai in a browser or on a phone, no local
-   app reaches them — they need `/mcp` directly, behind an OAuth login on our side, the most work in this design.
+2. **Which protocol crosses from the user's machine to us — and which agents do your users use?** Critique 2.
+   🔄 *Reworded 2026-09-29 — you asked whether this is about protocol. It is:* MCP is the same in every option, and
+   what differs is which protocol reaches our server — [A, B or C](#which-protocol-crosses-to-us).
+   **2a — A or B? → Recommend B.** Under A every installed copy speaks our proto contract, so a breaking RPC change
+   breaks every user who has not updated — the web app never feels that, because it ships with the server. Under B
+   the app speaks only MCP, a small versioned protocol, and the tool list comes live from `/mcp`: a new tool reaches
+   everyone with no update. [the-mcp-uses-the-official-go-sdk](./context_decision.md#the-mcp-uses-the-official-go-sdk)
+   builds either.
+   **2b — which agents do your users use?** Claude Desktop, Claude Code or Cursor only → B is enough. ChatGPT or
+   claude.ai in a browser or on a phone → C as well, behind an OAuth login server of our own — the SDK has none — the
+   most work in this design. B's server side *is* C's, so B is the first half of C, not a detour.
 
 3. **How does a person connect an agent?** Critique 3.
    **→ Recommend an agent key** made on `/profile` — shown once, named, bound to one team, expiring (90 days by
@@ -213,7 +246,8 @@ sequenceDiagram
 
 # Contradiction
 
-**None found — re-examined after [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now).**
+**None found — re-examined after [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now)
+and your §General 3.** The SDK you named is the one `san remote` already uses, and it builds every option in Q2.
 No doc in the requirement set has an AI agent write anything, and every tool proposed here is already a read. Your
 doc is two points and a picture, and nothing else says anything about an MCP for users. ⚠ **One naming hazard instead**: [level.md](../../technical/development/level.md) §Development MCP
 Tools is also *"the MCP"* — a developer's shell and files. **→ Recommend** the two share nothing but the SDK: no
