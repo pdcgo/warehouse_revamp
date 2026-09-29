@@ -14,8 +14,17 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**138 open questions across 26 files.** The seven below are shown; **131 are not** — they are not
+**145 open questions across 27 files.** The seven below are shown; **138 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+⚠ **+7 this round, from a BRAND-NEW context** (2026-09-29) — [`business/mcp/context.md`](business/mcp/context.md):
+a local MCP app shipped to users, through which their own AI agent reads and analyzes their data over the RPC API.
+Its [clarify](business/mcp/context_clarify.md) is the first pass. **None of the seven enters the list above** —
+nothing is built and nothing waits on it. ⛔ **But two should be answered before a line of it is written**: may the
+agent act, or only read ([Q1](business/mcp/context_clarify.md#question)) — it acts on text a buyer typed — and does
+a key carry the root bypass ([Q4](business/mcp/context_clarify.md#question)), which would hand every team's orders
+and money to a third-party AI. ⚠ Found on the way: nothing revokes a single session token — logout drops only the
+role cache, a password reset stops only the renewal — so an agent needs a credential of its own.
 
 ✅ **−1 this round — shop Q2 answered** (2026-09-29, *"for q2, yes"*): the shop is its own `shop_service`
 ([the-shop-gets-its-own-service](business/shop/context_decision.md#the-shop-gets-its-own-service)), so settlement's
@@ -1629,13 +1638,13 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 131 are
+## Where the other 138 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **138**, the whole set, not to 131. Previous rounds left
+*from* these files, so the column sums to **145**, the whole set, not to 138. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 139 last round, −1 (shop Q2 answered): **138** across 26
+are counted as a DELTA this round, not recounted — 138 last round, +7 (a new mcp context): **145** across 27
 files, and the column below sums to it.
 
 | File | Open | |
@@ -1666,6 +1675,7 @@ files, and the column below sums to it.
 | [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 0 | ▼ was 1 — ✅ **every question closed**: Q6, Q14 and Q15 all decided part by part, on top of Q1–Q13. **Twenty-three decisions**, the newest being the required `oneof`, one decoder, breaking the old protos accepted, `identity` settled in four parts, and CI on `dev` with `buf breaking` — applied. ⛔ **What blocks the first event here is a contradiction, not a question** — the shipped library cannot publish the decided envelope, and `context.md` lags its own decisions. See **#6** |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
 | [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 6 | 🆕 **a new technical package, first pass** — the Shopee/TikTok settlement file reader, measured against all 25 sample workbooks rather than read off the spec. ⛔ **Two findings are load-bearing beyond this package**: TikTok's column set is **not fixed** (three layouts across 13 files — `Flat fee` and `Sales fee` vanish, `GMV Max ad fee` appears), and **neither platform gives a per-row unique key**, which contradicts settlement's `hash(date + order_ref_id)`. ▼ **The Shopee half of that closed the same day** — the owner added a `### Shopee Contract` with a `GenerateUniqueID` (md5 over six fields), and it survived testing: **0 collisions in 3788 rows** across 12 files, both duplicate-row pairs distinct, and **141/141 stable** across a re-save through another tool. What is left is TikTok, whose `Order/adjustment ID` repeats. ⚠ The new contract opened three of its own, all about that hash being taken over `json.Marshal` of a struct that will change — and it **corrected one of my recommendations into a recorded contradiction**: I proposed `int64` rupiah in a `technical/` doc against [rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point), which was decided system-wide in the *order* tree and had already rejected that same recommendation once. The other five are scope and typing: verbatim strings or an enum · is Tokopedia a *format* or a *column* · fixtures or real values (`wderror`, `x`) · what timezone is stored · does the package read only settlement reports. ⚠ Also non-design: **`examples/` is untracked and not gitignored**, and the workbooks carry real seller usernames and revenue into a PUBLIC repo. ▼ **−1 and SHIPPED (2026-09-24)** — three decisions recorded ([hash-the-whole-struct](technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) · [jakarta-is-the-clock](technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock) · [dash-is-not-a-reference](technical/packages/excel_readers/context_decision.md#dash-is-not-a-reference)), and `backend/pkgs/san_excel_readers/shopee.go` is built and green over all 12 sample workbooks. The timezone question closed by being decided. ⛔ **The remaining six are TikTok-shaped or unresolvable at item level**: the item is capped at six fields forever, so the recovered order ref and the reversal flag have nowhere to live but the document |
+| [business/mcp/context_clarify.md](business/mcp/context_clarify.md#question) | 7 | 🆕 **a new context, first pass (2026-09-29)** — a local MCP app shipped to users, so their own AI agent reads and analyzes their data through the RPC API. Nothing is built and nothing waits on it, so none of the seven enters the list above. ⛔ Two belong before the first line of code: may the agent act or only read (Q1) — it acts on text a buyer typed — and does a key carry the root bypass (Q4), which would hand every team's data to a third-party AI. The other five: where the tools live and which agents must be reached · how an account connects · who may send a team's data out · which data first · whether a buyer's name, phone and address may leave |
 
 > **Counted from each file's Question section, at either heading level.** Previous rebuilds matched
 > `## Question` only, and five technical clarifies write theirs as `# Question` — so **17 open
