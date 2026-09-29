@@ -3,7 +3,7 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **twelve owner decisions**. The
+[context_decision.md](../../business/financial_account/context_decision.md) — **thirteen owner decisions**. The
 lifecycle is at *waiting for the owner* on Q1–Q3 and Q9 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
@@ -20,7 +20,8 @@ lifecycle is at *waiting for the owner* on Q1–Q3 and Q9 — no Storybook proto
 | [adjustment-is-for-reconciling-only](../../business/financial_account/context_decision.md#adjustment-is-for-reconciling-only) *(Q4)* | no RPC takes an adjustment amount — `Reconcile` takes the bank's figure and posts the difference · ⚠ a note on a non-zero difference and a `reconciled_at` stamp are my spec |
 | [the-log-says-balance-after](../../business/financial_account/context_decision.md#the-log-says-balance-after) *(critique 5)* | the log's column is `balance_after` = the previous row's + this row's `change` |
 | [restock-is-never-typed-by-hand](../../business/financial_account/context_decision.md#restock-is-never-typed-by-hand) *(Q10, for restock)* | no hand RPC takes a `restock` · it comes only from a restock event inventory does not publish yet — until then a restock's payment shows only through a reconcile |
-| [one-way-in-per-type](../../business/financial_account/context_decision.md#one-way-in-per-type) *(Q10)* | the hand RPCs are Create, Transfer, Capital, Reconcile, and none takes a `change_type` · a listener each for `revenue_fund` (settlement — exists), `restock`, `expense`, `team_payment` (their events are new) |
+| [one-way-in-per-type](../../business/financial_account/context_decision.md#one-way-in-per-type) *(Q10)* | the hand RPCs are Create, Transfer, Capital, Reconcile, and none takes a `change_type` · a listener each for `withdrawal` (settlement — exists), `restock`, `expense`, `team_payment` (their events are new) |
+| [revenue-stays-in-settlement](../../business/financial_account/context_decision.md#revenue-stays-in-settlement) *(Q1, the name)* | the type is `withdrawal` (was `revenue_fund`) · the listener posts only settlement's `withdrawal` rows, sign turned · ⚠ the label *+ Withdrawal from <the shop>* is my spec |
 | [seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) *(Q8)* | `FinancialAccountList`, `FinancialAccountOverview` and `FinancialAccountLogList` open to every member of the team · Create, Update, Archive, Restore, Transfer, Capital, Reconcile, ShopSet to admin and up — `TEAM_ADMIN`/`TEAM_OWNER`, `WAREHOUSE_ADMIN`/`WAREHOUSE_OWNER`, `ADMIN`/`ROOT` (⚠ my reading of *admin up*) · balances stay on their own RPC so narrowing *for now* later is one policy line |
 
 ## What exists
@@ -32,7 +33,7 @@ Nothing of this context. What it overlaps is already built elsewhere:
 | a team's one bank — type, holder, number | `team_service` · `team_infos` · the team detail's *contact & bank* · `TeamInfoUpdate` | — | Q9 — it becomes one of the team's accounts, marked *where we are paid* |
 | how a restock was paid — `shopee_pay` / `bank_account` | `inventory_service` · `restock_requests.payment_type` · `PaymentTypeSelect` | ❌ | Q2 — *which* account, replacing the kind |
 | expenses | `expense_service` · `expense_records` — names no account | ❌ | Q3 — an optional *paid from* |
-| withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | Q1 — each posts `marketplace_withdrawal` into its shop's account |
+| withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | Q1 — each posts a `withdrawal` into its shop's account |
 | team payments | `liability_service` · `liability_payments` | ❌ | ✅ `team_payment` is a type — posts both legs at confirm, from a new payment event |
 
 ## Proposed, not decided

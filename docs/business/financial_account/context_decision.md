@@ -17,6 +17,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [the-log-says-balance-after](#the-log-says-balance-after) | a log row's running balance is `balance_after` — the balance once its change is applied | owner | — |
 | [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes |
 | [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | [Q1](./context_clarify.md#question), [Q3](./context_clarify.md#question) — which account a withdrawal and an expense name |
+| [revenue-stays-in-settlement](#revenue-stays-in-settlement) | revenue is settlement's — a financial account records the marketplace's money only when it is withdrawn, as `withdrawal` (was `revenue_fund`) | owner | [Q1](./context_clarify.md#question) — where a withdrawal lands |
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 
 ## the-accounts-are-one-ledger
@@ -432,3 +433,40 @@ flowchart LR
 
 Who reconciles ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) and who types `capital`
 ([capital-joins-the-types](#capital-joins-the-types)): admin and up.
+
+## revenue-stays-in-settlement
+
+> `context.md` §What is `change_type` *(owner, 2026-09-29)* — `revenue_fund` became `withdrawal` *(line 69)*, and in
+> chat: *"revenue fund stay in settlement, we record in financial account when only withdrawal happen"*. The naming
+> half of [Q1](./context_clarify.md#question) — **against my recommendation** of `marketplace_withdrawal`.
+
+**The verdict.** Revenue is **settlement's**: the platform paying the wallet — `fund`, every fee — is recorded there
+and nowhere here. A financial account records the marketplace's money **only when it is withdrawn** — the moment it
+reaches the bank — as a `withdrawal`, the same word settlement uses for the same act.
+
+```mermaid
+flowchart LR
+  F["settlement — fund and fees, the platform paying the wallet"] -->|"stays in settlement"| REV["the revenue"]
+  W["settlement — withdrawal, the wallet paying our bank"] -->|"the one act both record"| A["a financial account — withdrawal, money arriving"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the type | `withdrawal` — was `revenue_fund` |
+| what it records | a successful withdrawal row from settlement, heard from the broker ([one-way-in-per-type](#one-way-in-per-type)) |
+| what it never records | `fund`, a fee, an adjustment — settlement's revenue |
+| the sign | settlement's row is negative, money leaving the wallet · here it is positive, money arriving |
+| ⚠ my spec — the label | an account's page shows the row as *+ Withdrawal from <the shop>* — the sign and the shop carry the direction |
+| where it lands | still open — [Q1](./context_clarify.md#question) |
+
+### What the name costs — recorded, not re-argued
+
+One word for one act in both services is the reason to keep it. The cost: on a bank account's page, *withdrawal*
+alone means money **leaving** the bank, and this row is money **arriving** — which is what the label above is for.
+
+### The older entries
+
+[one-way-in-per-type](#one-way-in-per-type) and [capital-joins-the-types](#capital-joins-the-types) say
+`revenue_fund` — read it as `withdrawal`.

@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ your list | `revenue_fund` is `withdrawal` — revenue stays in settlement: [revenue-stays-in-settlement](./context_decision.md#revenue-stays-in-settlement) · the name against my recommendation · [Q1](#question) narrows to where a withdrawal lands |
 | ✅ answered in chat | Q8 — for now the whole team sees, and admin and up move the money: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) · the seeing half against my recommendation |
 | ✅ answered in chat | Q10 — every type has one way in: [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then [one-way-in-per-type](./context_decision.md#one-way-in-per-type) · 🔄 [Q1](#question) and [Q3](#question) narrow with it, to which account a withdrawal and an expense name |
 | ✅ answered in chat | Q4's last half — an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
@@ -33,7 +34,7 @@ already touch a bank without naming one. **Four questions open, six critiques, o
 | a team's *Bank Account* | `team_infos.bank_type` · `bank_owner_name` · `bank_account_number` — **one** bank per team, on the team detail, so other teams know where to pay | — | [Q9](#question) |
 | *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | [Q2](#question) |
 | `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | [Q3](#question) |
-| `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
+| `withdrawal` — was `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
 | — | `liability_payments` — one team paying another, recorded then confirmed; the money moves *"by bank outside this system"* | ❌ nothing published | ✅ [a type](./context_decision.md#opening-transfer-and-team-payment-join-the-types) |
 | *Cash* | nothing — the courier's ask is a `restock_cost_lines` row the warehouse pays at the door, from no account | ❌ | [Q2](#question) |
 
@@ -47,7 +48,7 @@ Where the money physically goes — three moves have no type, and one has no acc
 
 ```mermaid
 flowchart LR
-  MW["marketplace wallet, out of scope"] -->|"withdrawal — revenue_fund"| SB["selling team — BCA"]
+  MW["marketplace wallet, out of scope"] -->|"withdrawal"| SB["selling team — BCA"]
   SB -->|"top-up — NO TYPE"| SP["selling team — ShopeePay"]
   SP -->|"restock"| SUP["supplier"]
   SB -->|"restock"| SUP
@@ -103,7 +104,7 @@ another service, and follow the build order.
 | `change_type` | moves | way in | when |
 | --- | --- | --- | --- |
 | `opening_balance` ✅ | in | ✅ by hand only — creating the account | once |
-| `marketplace_withdrawal` — your `revenue_fund` | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
+| `withdrawal` ✅ | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
 | `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
 | `expense` | out | ✅ broker only — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
 | `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
@@ -131,7 +132,7 @@ flowchart LR
   X --> B
   P --> B
   B --> C
-  C -->|"marketplace_withdrawal, restock, expense, team_payment"| L
+  C -->|"withdrawal, restock, expense, team_payment"| L
   M -->|"opening_balance, transfer, capital, reconcile"| L
   L -->|"the balance moves only with a row"| A
 ```
@@ -206,7 +207,7 @@ sequenceDiagram
 
 | topic | exists | posts |
 | --- | --- | --- |
-| `settlement-log-posted` | ✅ | a `withdrawal` row → `marketplace_withdrawal` into its shop's account, the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
+| `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account, the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
 | a restock topic | 🆕 inventory publishes | `restock` — the account that paid, and the change |
 | an expense topic | 🆕 expense publishes | `expense` — only when the expense names an account |
 | a payment topic | 🆕 liability publishes | `team_payment` — both legs on confirm, reversed on a reversal |
@@ -287,16 +288,12 @@ balance — a person picking *which account paid* is recording a fact, and the b
 
 ## Question
 
-1. 🔄 **Narrowed — which account does a withdrawal land in, and is `revenue_fund` renamed?** *(line 69)*
+1. 🔄 **Narrowed again — which account does a withdrawal land in?** *(line 69)*
    ✅ It is settlement's withdrawal row, heard from the broker —
-   [one-way-in-per-type](./context_decision.md#one-way-in-per-type). `SettlementLogPosted` already carries every
-   successful one, shop-addressed
-   ([withdrawal-is-a-settlement-type](../settlement/context_decision.md#withdrawal-is-a-settlement-type),
-   [only-a-successful-withdrawal-is-recorded](../settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)),
-   so only the listener is new. Two halves are left.
-
-   **Where it lands.** A withdrawal row names a shop, never a bank: the marketplace pays whichever bank the seller
-   registered with it, and nothing here knows which of the team's accounts that is.
+   [one-way-in-per-type](./context_decision.md#one-way-in-per-type) — recorded as `withdrawal`, revenue staying in
+   settlement: [revenue-stays-in-settlement](./context_decision.md#revenue-stays-in-settlement).
+   A withdrawal row names a shop, never a bank: the marketplace pays whichever bank the seller registered with it, and
+   nothing here knows which of the team's accounts that is.
 
    | | **A — each shop names its account** | B — one account per team | C — a person places each |
    | --- | --- | --- | --- |
@@ -305,16 +302,7 @@ balance — a person picking *which account paid* is recording a fact, and the b
    | work per withdrawal | none | none | someone places every one |
    | a shop's bank changes | edit the shop — later withdrawals follow, earlier rows stay where they posted | — | — |
 
-   **The name.**
-
-   | | reads as | trouble |
-   | --- | --- | --- |
-   | `revenue_fund` — yours | revenue arriving | the revenue was counted when settlement's `fund` arrived — the same money read as revenue twice, and `fund` already names that other moment |
-   | `withdrawal` | settlement's own word | on a bank account's page, *withdrawal* means money leaving the bank — backwards |
-   | **`marketplace_withdrawal`** | money withdrawn from a marketplace, arriving here | — |
-
-   **→ Recommend A, and `marketplace_withdrawal`.** Nothing is built, so the rename is free today; after the build
-   it is a migration. ⚠ A shop that names no account yet: its withdrawals are **held** — shown on the shop and on the
+   **→ Recommend A.** ⚠ A shop that names no account yet: its withdrawals are **held** — shown on the shop and on the
    accounts page as *N withdrawals with no account* — and post the moment one is named. Refused, they would
    dead-letter, and the money would be recorded nowhere.
 
