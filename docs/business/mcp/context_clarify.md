@@ -5,14 +5,16 @@ is mine.** An answered point is deleted; what you settle goes in `context_decisi
 
 🆕 **First pass, 2026-09-29.** ✅ Your diagram parses (`npm run lint:mermaid`, 576 clean). The doc says two things:
 a local MCP app is shipped to users, and through it their own AI agent reads our RPC API to analyze their data.
-What the agent may do is now decided; **how the account connects, whose data it reads, and which agents it has to
-reach are still open.**
+What the agent may do, where the tools live and which agents it serves are decided — ⛔ **and the last two conflict**:
+ChatGPT cannot reach a local app ([Q8](#question)). How the account connects and whose data it reads are still open.
 
 | | |
 | --- | --- |
 | ✅ answered (2026-09-29) | [Q1](#question) — the agent only reads, for now, and the server refuses any write: [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now). ⚠ It rules out the session token as the agent's credential — that token carries every write ([Q3](#question)) |
 | ✅ your edit (2026-09-29) | §General 3 — the official Go SDK: recorded as [the-mcp-uses-the-official-go-sdk](./context_decision.md#the-mcp-uses-the-official-go-sdk). It builds every option in Q2, so Q2 stays open |
 | 🔄 reworded (2026-09-29) | [Q2](#question) — you asked whether it is about protocol: it is. Now 2a, which protocol crosses to us, and 2b, which agents — with [the options drawn](#which-protocol-crosses-to-us) |
+| ✅ answered (2026-09-29) | [Q2](#question) — 2a **A**, against my recommendation: [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app) · 2b **ChatGPT and Claude**, for now: [chatgpt-and-claude-are-the-agents-for-now](./context_decision.md#chatgpt-and-claude-are-the-agents-for-now) |
+| ⛔ 🆕 +1 (2026-09-29) | [Q8](#question) — the two answers conflict: ChatGPT connects only to a public URL, so it cannot reach the shipped app ([Contradiction](#the-shipped-app-cannot-reach-chatgpt)) |
 
 ## What already exists
 
@@ -30,7 +32,7 @@ reach are still open.**
 | # | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | ✅ **Decided — [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now).** An agent runs no write, and the server refuses one — not the tool list. Was: what the agent may do was not said, and an agent that writes acts on text a stranger typed. | Build it: mark each offered read `NO_SIDE_EFFECTS`, and have the interceptor refuse an agent's credential on anything else. |
-| **2** | **"A local app shipped to users" is a premise, and it decides everything built.** A shipped binary is a client we cannot redeploy: every proto change must keep old copies working, every machine must update, and it is built per OS. And it reaches **desktop agents only** — claude.ai in a browser, ChatGPT and every phone app add an MCP server by URL, never a local program. | **The tools live on the server** — `/mcp` beside the RPC API, deployed with it. The local app, if kept, is a thin bridge that holds the key and forwards, so no tool in it can go stale — [option B](#which-protocol-crosses-to-us). [Q2](#question) |
+| **2** | ✅ **Decided — [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app)**, against my recommendation: the tools live in the app you ship, and it calls our RPC API. ⛔ **It cannot reach ChatGPT**, which [chatgpt-and-claude-are-the-agents-for-now](./context_decision.md#chatgpt-and-claude-are-the-agents-for-now) names — ChatGPT connects only to a public URL. Was: a shipped binary is a client we cannot redeploy, and it reaches desktop agents only. | [Q8](#question) — **C**: our server hosts the MCP, behind an OAuth login. |
 | **3** | **"Connect their account" has no mechanism.** The only credential is the session token: an agent holding one dies within a day or a week, cannot be revoked alone, and carries every write the person may make — which [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) now rules out. A password typed into an agent's config is a password in plain text on disk. | An **agent key** — made by the person on a screen, shown once, named, read-only, bound to one team, expiring, revoked on its own without touching the person's sessions. [Q3](#question) |
 | **4** | **Whose data is not said.** One person holds roles in several teams ([user/context.md](../user/context.md) §General), so a key that *is* the person reads all of them — and lets an agent join them. ⛔ Worse, root and admin of team 1 pass every scope check: a root's key hands **every team's** orders and money to a third-party AI. | A key reads **one team**, fixed when it is made, and **the root bypass never applies to a key**. [Q4](#question) |
 | **5** | **Who may send a team's data out is not said.** The data is the team's, not the person's: a CS connecting a personal agent sends the team's sales, costs and buyers to that agent's provider. Read-only does not help here — it limits what an agent can do, not what it sends. | The team's **owner and admin** may connect an agent; CS and packer only if the owner allows it for the team. [Q5](#question) |
@@ -40,10 +42,10 @@ reach are still open.**
 
 ## Recommendation
 
-✅ **Q1 is decided** — the agent only reads. Next, **Q2** — which protocol crosses from the user's machine to us, and
-which agents your users use: every screen and the credential's shape follow from it. My pick: **[B](#which-protocol-crosses-to-us)
-— MCP to our `/mcp`, with a thin local app for desktop agents now** — and web or phone agents, which need an OAuth
-login on our side, only once your users ask for them.
+✅ **Q1 and Q2 are decided.** ⛔ **Settle Q8 first** — your two Q2 answers conflict, and nothing of the MCP can be
+built until one gives way. My pick: **[C](#reaching-chatgpt)** — our server hosts the MCP behind an OAuth login,
+which reaches ChatGPT and every Claude surface with nothing installed. Then Q3 and Q4: the credential, and whose
+data it reads.
 
 ## Proposed Design
 
@@ -58,22 +60,25 @@ login on our side, only once your users ask for them.
 
 ### The picture
 
+As decided — [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app) — and
+what it leaves out ([Q8](#question)):
+
 ```mermaid
 flowchart LR
-  subgraph S["warehouse system"]
-    M["/mcp — the tool list"] --> I["access interceptor — the one a screen passes"]
-    I --> H["the existing RPC handlers"]
+  subgraph S["warehouse system — Connect RPC only"]
+    I["access interceptor — the one a screen passes"] --> H["the existing RPC handlers"]
   end
-  P["the person"] <-->|"asks, reads the answer"| A["their AI agent, on a desktop"]
-  A -->|"MCP, on the same machine"| L["local app — a thin bridge"]
-  L -->|"HTTPS + the agent key"| M
-  W["a web or phone agent — later"] -.->|"HTTPS + an OAuth login"| M
+  P["the person"] <-->|"asks, reads the answer"| A["Claude Desktop"]
+  A -->|"MCP, stdio"| L["the shipped app — the tools"]
+  L -->|"our RPC API, HTTPS + the agent key"| I
+  G["ChatGPT, and Claude in a browser or on a phone"] -.->|"a public URL only — cannot reach it, Q8"| L
 ```
 
 ### Which protocol crosses to us
 
-[Q2](#question). MCP is the same protocol in every option. What changes is where it ends, and so where the tools
-live:
+[Q2](#question) — ✅ **A**, [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app),
+against my B. ⛔ But ChatGPT reaches only a public URL — [Q8](#question). MCP is the same protocol in every option.
+What changes is where it ends, and so where the tools live:
 
 ```mermaid
 flowchart LR
@@ -96,22 +101,48 @@ flowchart LR
 | **B** | MCP — the app only forwards | on our server, at `/mcp` | desktop agents |
 | **C** | MCP, straight from the agent | on our server, at `/mcp` | desktop agents that send a header · web and phone agents, with an OAuth login |
 
+### Reaching ChatGPT
+
+[Q8](#question). ChatGPT, and Claude in a browser or on a phone, reach an MCP server only at a public HTTPS URL,
+logged in with OAuth or with nothing ([chatgpt-and-claude-are-the-agents-for-now](./context_decision.md#chatgpt-and-claude-are-the-agents-for-now)).
+So whichever way out, **an MCP server has to sit on the internet** — the options differ in whose it is:
+
+| | what it is | what it costs |
+| --- | --- | --- |
+| **C** — my pick | our server hosts the MCP at a public URL, behind an OAuth login that mints the agent's credential. ChatGPT and every Claude surface connect by URL; nothing is installed | an OAuth login server of ours — the SDK issues no token · the tools move to the server, reversing A |
+| **A + a tunnel per user** | the shipped app also serves MCP over HTTP, and a tunnel publishes it — `san remote mcp`'s shape | every user runs the app and a tunnel, and keeps the machine on · the machine becomes an internet server · ChatGPT takes OAuth or nothing, so the app needs a login of its own or a key in its URL |
+| **A, without ChatGPT for now** | Claude Desktop only | ChatGPT users get nothing — and neither does Claude in a browser or on a phone |
+| **A and C** | the app for Claude Desktop, the server for everyone else | the tools built twice, and the OAuth login anyway |
+
+```mermaid
+flowchart LR
+  CG["ChatGPT"] -->|"HTTPS + OAuth"| M["our MCP endpoint — the tools"]
+  CL["Claude — web, Desktop, phone"] -->|"HTTPS + OAuth"| M
+  M --> I["access interceptor"]
+  I --> H["the RPC handlers"]
+  CG -.->|"once, in the browser"| O["our login — the person picks the team, and the credential is minted"]
+```
+
+⚠ **A cheaper start for C**: ChatGPT's *No Authentication*, with the key in the URL path — what `san remote` does. The
+URL is then stored at OpenAI and lands in every log it passes, which [san.md](../../tools/san.md#connecting-a-client)
+calls genuinely weaker, acceptable there only because that token dies with the run.
+
 ### A tool call
+
+As decided — the tools in the shipped app:
 
 ```mermaid
 sequenceDiagram
-  participant A as AI agent
-  participant L as local app
-  participant M as /mcp on the API
+  participant A as Claude Desktop
+  participant L as the shipped app, the tools
   participant I as access interceptor
   participant H as RPC handler
   A->>L: call OrderStat, last 7 days
-  L->>M: the same call, the agent key as Bearer
-  M->>I: a real Connect call to our own API, carrying the key
-  Note over I: key live, its team is the request's team, the RPC is marked for agents, the person still holds a role there
+  L->>I: a Connect call to our API over HTTPS, the agent key as Bearer
+  Note over I: key live, its team is the request's team, the RPC is a read and offered to agents, the person still holds a role there
   I->>H: passes exactly as a screen's call does
-  H-->>M: the rows
-  M-->>A: the rows, buyer name, phone and address cleared
+  H-->>L: the rows, buyer name, phone and address cleared
+  L-->>A: the rows
 ```
 
 Each tool call **is** an RPC call, through the same interceptor — so an agent can never see more than the person
@@ -139,8 +170,8 @@ message OrderStatRequest {
 | not `NO_SIDE_EFFECTS` → an agent key is **refused** | ✅ [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) — a write is refused by the server, not left off a list |
 | no `tool` option → an agent key is **refused** | forgetting it fails closed |
 | `tool` on an RPC that is not `NO_SIDE_EFFECTS` → **the server refuses to boot** | read-only is checked by the machine, not remembered by a reviewer |
-| `/mcp` lists exactly the marked RPCs, each request message as its tool's input | listing and permission are one declaration, and a tool's input cannot drift from its RPC because it *is* the request |
-| `customer_name`, `customer_phone` and the address carry a field option that `/mcp` clears | the field says it is personal, so no tool has to remember ([Q7](#question)) |
+| the app lists exactly the marked RPCs, each request message as its tool's input — read from the descriptors compiled into it | listing and permission are one declaration, and a tool's input cannot drift from its RPC because it *is* the request |
+| `customer_name`, `customer_phone` and the address carry a field option, and our server clears them for an agent's credential | the field says it is personal, so no tool has to remember — and the clearing happens on our side, not in an app on a machine we do not control ([Q7](#question)) |
 
 ### The first tools
 
@@ -209,17 +240,10 @@ sequenceDiagram
    [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now). Kept as a line so the numbers
    hold.
 
-2. **Which protocol crosses from the user's machine to us — and which agents do your users use?** Critique 2.
-   🔄 *Reworded 2026-09-29 — you asked whether this is about protocol. It is:* MCP is the same in every option, and
-   what differs is which protocol reaches our server — [A, B or C](#which-protocol-crosses-to-us).
-   **2a — A or B? → Recommend B.** Under A every installed copy speaks our proto contract, so a breaking RPC change
-   breaks every user who has not updated — the web app never feels that, because it ships with the server. Under B
-   the app speaks only MCP, a small versioned protocol, and the tool list comes live from `/mcp`: a new tool reaches
-   everyone with no update. [the-mcp-uses-the-official-go-sdk](./context_decision.md#the-mcp-uses-the-official-go-sdk)
-   builds either.
-   **2b — which agents do your users use?** Claude Desktop, Claude Code or Cursor only → B is enough. ChatGPT or
-   claude.ai in a browser or on a phone → C as well, behind an OAuth login server of our own — the SDK has none — the
-   most work in this design. B's server side *is* C's, so B is the first half of C, not a detour.
+2. ✅ **Answered 2026-09-29** — 2a **A**, against my recommendation:
+   [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app) · 2b **ChatGPT and
+   Claude**, for now: [chatgpt-and-claude-are-the-agents-for-now](./context_decision.md#chatgpt-and-claude-are-the-agents-for-now).
+   ⛔ The two conflict — [Q8](#question). Kept as a line so the numbers hold.
 
 3. **How does a person connect an agent?** Critique 3.
    **→ Recommend an agent key** made on `/profile` — shown once, named, bound to one team, expiring (90 days by
@@ -244,11 +268,43 @@ sequenceDiagram
    **→ Recommend no** — cleared by a field option before anything leaves. ⚠ The price: an agent cannot find *"the
    order of the buyer named Budi"* — only by the marketplace ref.
 
+8. **ChatGPT cannot reach the shipped app — which gives way?** 🆕 *(2026-09-29)* Your two Q2 answers conflict —
+   [the shipped app cannot reach ChatGPT](#the-shipped-app-cannot-reach-chatgpt). Four ways out,
+   [compared](#reaching-chatgpt).
+   **→ Recommend C** — our server hosts the MCP at a public URL, behind an OAuth login. ChatGPT needs an MCP server on
+   the internet, behind OAuth, whichever way you go: the only choice is whether it runs once, on our server, or once
+   per user, on their machine. And once ours exists, Claude Desktop takes the same URL as a connector, so the shipped
+   app serves nobody C does not. ⚠ The price: the OAuth login, the most work in this design — and §General 1's local
+   app goes, reversing [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app).
+
 # Contradiction
 
-**None found — re-examined after [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now)
-and your §General 3.** The SDK you named is the one `san remote` already uses, and it builds every option in Q2.
-No doc in the requirement set has an AI agent write anything, and every tool proposed here is already a read. Your
-doc is two points and a picture, and nothing else says anything about an MCP for users. ⚠ **One naming hazard instead**: [level.md](../../technical/development/level.md) §Development MCP
-Tools is also *"the MCP"* — a developer's shell and files. **→ Recommend** the two share nothing but the SDK: no
-user's tool goes into `tools/san/remote`, and nothing of `san remote` is ever shipped.
+**One found — your two Q2 answers.** Re-examined after [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now),
+your §General 3 and both Q2 answers; nothing else conflicts, and no doc in the requirement set has an AI agent write
+anything. ⚠ **A naming hazard besides**: [level.md](../../technical/development/level.md) §Development MCP Tools is
+also *"the MCP"* — a developer's shell and files. **→ Recommend** the two share nothing but the SDK: no user's tool
+goes into `tools/san/remote`, and nothing of `san remote` is ever shipped.
+
+## the shipped app cannot reach ChatGPT
+
+**The example.** *"for 2a, we use A"* — [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app)
+— puts the tools in a program on the user's machine, spoken to over stdio. *"for 2b for now we use chatgpt and
+claude"* — [chatgpt-and-claude-are-the-agents-for-now](./context_decision.md#chatgpt-and-claude-are-the-agents-for-now)
+— names ChatGPT, which connects only to a public HTTPS URL, logged in with OAuth or with nothing: it cannot start a
+local program, and cannot reach one on the user's machine. Claude reaches the app from Claude Desktop only — not in a
+browser, not on a phone.
+
+**Which one I think is wrong: A.** The agents are a fact about your users; where the tools live is ours to choose.
+
+**→ Recommend** [C](#reaching-chatgpt), in [Q8](#question). What stops it recurring: weigh where the tools live
+against the agents they must reach — the agents first.
+
+```mermaid
+flowchart LR
+  subgraph U["the user's machine"]
+    CD["Claude Desktop"] -->|"stdio ✅"| APP["the shipped app — the tools"]
+  end
+  APP -->|"our RPC API"| API["our server"]
+  CG["ChatGPT — any surface"] -.->|"✖ a public URL only"| APP
+  CW["Claude — browser, phone"] -.->|"✖ a public URL only"| APP
+```

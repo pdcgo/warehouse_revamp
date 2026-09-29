@@ -7,7 +7,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | decision | what it decided | from | under review |
 | --- | --- | --- | --- |
 | [an-agent-only-reads-for-now](#an-agent-only-reads-for-now) | an AI agent reads and never writes — the server refuses any write made with an agent's credential | owner | [Q3](./context_clarify.md#question) — the credential · [Q6](./context_clarify.md#question) — which reads |
-| [the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk) | every MCP piece is built on the protocol's official Go SDK, whichever side it runs on | owner | [Q2](./context_clarify.md#question) — which side that is |
+| [the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk) | every MCP piece is built on the protocol's official Go SDK, whichever side it runs on | owner | ✅ the app's side — [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) · [Q8](./context_clarify.md#question) may add the server's |
+| [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) | the tools live in the app shipped to users, which calls our RPC API — our server serves no MCP | owner | ⛔ [Q8](./context_clarify.md#question) — it cannot reach ChatGPT |
+| [chatgpt-and-claude-are-the-agents-for-now](#chatgpt-and-claude-are-the-agents-for-now) | the agents to serve, for now, are ChatGPT and Claude | owner | ⛔ [Q8](./context_clarify.md#question) — ChatGPT cannot reach the shipped app |
 
 ## an-agent-only-reads-for-now
 
@@ -52,6 +54,10 @@ flowchart TD
 
 > `context.md` §General 3 *(owner, 2026-09-29)* — *"we use `https://github.com/modelcontextprotocol/go-sdk`"*.
 
+> 🔄 *(2026-09-29, later)* [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) put the tools in
+> the shipped app: the piece used is `StdioTransport`, and there is no `/mcp` for `auth.RequireBearerToken` to guard —
+> our access interceptor checks the credential. [Q8](./context_clarify.md#question) may bring `/mcp` back.
+
 **The verdict.** Every MCP piece of this context is built on the protocol's official Go SDK, whichever side it runs
 on. It is already a dependency: [go.mod](../../../go.mod) pins it at v1.7.0 for `san remote mcp`.
 
@@ -76,3 +82,64 @@ flowchart LR
 
 - **Which protocol crosses to us, and so where the tools live** — [Q2](./context_clarify.md#question). The SDK builds
   every option alike.
+
+## the-tools-live-in-the-shipped-app
+
+> Chat *(owner, 2026-09-29)* — *"for 2a, we use A"*, to [Q2](./context_clarify.md#question) — against my
+> recommendation, B. ⛔ It conflicts with [chatgpt-and-claude-are-the-agents-for-now](#chatgpt-and-claude-are-the-agents-for-now),
+> decided in the same message — [Q8](./context_clarify.md#question).
+
+**The verdict.** The MCP's tools live in the app shipped to users. It runs on the user's machine, speaks MCP to the
+agent over stdio, and calls our RPC API directly — the way the web app does. Our server serves **no** MCP endpoint:
+it stays Connect RPC only.
+
+```mermaid
+flowchart LR
+  AG["the agent, on the same machine"] -->|"MCP, stdio"| APP["the shipped app — the tools"]
+  APP -->|"our RPC API, HTTPS + the agent's credential"| I["access interceptor"]
+  I --> H["the RPC handlers"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the app | a Go program on [the-mcp-uses-the-official-go-sdk](#the-mcp-uses-the-official-go-sdk) — `StdioTransport` — started by the agent |
+| its calls | Connect RPCs over HTTPS, the agent's credential ([Q3](./context_clarify.md#question)) as the bearer — through the same interceptor as a screen's call, so [an-agent-only-reads-for-now](#an-agent-only-reads-for-now) holds unchanged |
+| its tools | compiled in — the RPCs offered to agents ([Q6](./context_clarify.md#question)), read from the descriptors linked into the binary |
+| our server | no `/mcp`, and no MCP dependency |
+| ⚠ what it accepts | every installed copy speaks our proto contract: a breaking RPC change breaks every user who has not updated · a new tool reaches a user only in a new app · a build per OS |
+| ⚠ what it reaches | an agent that starts a local program — Claude Desktop, Claude Code. **Not ChatGPT, and not Claude in a browser or on a phone** |
+
+### What it does NOT settle
+
+- ⛔ **ChatGPT** — it cannot reach the app: [Q8](./context_clarify.md#question).
+- **How an old copy learns it is old** — whether the server refuses an outdated app, and how the user gets the new one.
+- **How the app reaches a user** — a download, or a Claude Desktop extension.
+
+## chatgpt-and-claude-are-the-agents-for-now
+
+> Chat *(owner, 2026-09-29)* — *"for 2b for now we use chatgpt and claude"*, to [Q2](./context_clarify.md#question).
+> ⛔ It conflicts with [the-tools-live-in-the-shipped-app](#the-tools-live-in-the-shipped-app) — [Q8](./context_clarify.md#question).
+
+**The verdict.** For now, the agents the MCP has to serve are **ChatGPT** and **Claude**. Checked against both
+vendors' docs (2026-09-29), they reach an MCP server in different ways:
+
+```mermaid
+flowchart LR
+  CG["ChatGPT — web, desktop, phone"] -->|"a public HTTPS URL, OAuth or none"| R["a remote MCP server"]
+  CL["Claude — web, Desktop, phone"] -->|"a public HTTPS URL, called from Anthropic, OAuth"| R
+  CD["Claude Desktop, Claude Code"] -->|"a local program, stdio"| L["a local MCP app"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| ChatGPT | a remote server only — SSE or streaming HTTP at a public HTTPS URL, logged in with OAuth or with nothing. No stdio, and nowhere to paste a key ([OpenAI — developer mode](https://developers.openai.com/api/docs/guides/developer-mode)) |
+| Claude | a *custom connector* on every surface — a public URL called from Anthropic's cloud, even from Claude Desktop, logged in with OAuth ([Claude — custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)) · Claude Desktop and Claude Code can also start a local program over stdio |
+| *for now* | another agent later is a new decision |
+
+### What it does NOT settle
+
+- ⛔ **How ChatGPT is reached** — the shipped app cannot be: [Q8](./context_clarify.md#question).
