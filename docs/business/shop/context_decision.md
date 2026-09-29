@@ -24,6 +24,8 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [an-order-needs-a-live-shop-of-its-team](#an-order-needs-a-live-shop-of-its-team) | an order is placed only on a live shop of its own team, checked before any stock moves | as built | — |
 | [other-services-keep-a-shop-id-unchecked](#other-services-keep-a-shop-id-unchecked) | expense and settlement store a shop id without asking the shop | as built | ⛔ [critique 6](./context_clarify.md#critique) |
 | [the-shop-manages-its-access-list](#the-shop-manages-its-access-list) | managing a shop's access — give it, take it away, see who has it — is the shop's own job | owner | [Q1](./context_clarify.md#question) — who needs one · [Q6](./context_clarify.md#question) — who can hold one |
+| [a-shop-has-one-primary-cs](#a-shop-has-one-primary-cs) | a shop has many users and, among them, one primary customer service, shown as a badge | owner | [Q7](./context_clarify.md#question) — its rules, and what reads it |
+| [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) | `ShopAccessCheck` — one call gives the importer the shop, its primary CS, and whether a user has access | owner | [critique 10](./context_clarify.md#critique) — its contract · [Q1](./context_clarify.md#question) — what access means |
 
 ## access-is-given-per-user-per-shop
 
@@ -431,3 +433,75 @@ flowchart LR
   about who must be on it.
 - **Who can hold one** — a grant can name someone outside the team, and outlives its holder leaving:
   [Q6](./context_clarify.md#question).
+
+## a-shop-has-one-primary-cs
+
+> `context.md` §Manage User Access In Shop *(owner, 2026-09-29)* — *"shop can have multiple user"* · *"shop have one
+> primary customer service. Like Badge in Frontend."*
+
+**The verdict.** A shop has **many users**, and among them **one primary customer service**, shown as a badge
+wherever the shop's people are shown. The many users are built (`shop_users`); the primary is new — nothing in the
+build marks one grant above the others.
+
+```mermaid
+flowchart LR
+  S["a shop"] --> U1["a user"]
+  S --> U2["a user"]
+  S --> P["a user — the PRIMARY customer service"]
+  P --> B["a badge in the frontend"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| users per shop | many — the built `shop_users`, one row per user |
+| primary per shop | one — 🆕 not built |
+| shown | as a badge |
+| read by | the importer, as `primary_user_id` — [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) |
+
+### What it does NOT settle — [Q7](./context_clarify.md#question)
+
+- Must a shop always have one — and who may be one: only the shop's own users, only the CS role?
+- What happens when the primary is removed from the shop, or leaves the team.
+- What the importer does with it.
+
+## one-call-answers-the-shop-and-the-access
+
+> `context.md` §Rpc That Must Exist that Used by Settlement Importer Service *(owner, 2026-09-29)* —
+> `ShopAccessCheck`: in `shop_id`, `user_id` · out `ShopDetail shop`, `primary_user_id`, `is_have_access`.
+
+**The verdict.** The shop gives the importer **one call** for everything its shop check needs: the shop itself — so
+the importer can tell it is the right one — its primary CS, and whether a given user has access. It is the call
+behind the importer's *"check shop: is caller that access on shop, is shop correct"*
+([the-shop-is-checked-before-the-file-is-stored](../settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)),
+which had read it as `ShopDetail`.
+
+```mermaid
+sequenceDiagram
+  participant I as Importer
+  participant S as Shop Service
+  I->>S: ShopAccessCheck — shop_id, user_id
+  S-->>I: the shop, primary_user_id, is_have_access
+  alt no access, or not the right shop
+    I-->>I: an ERROR line, the stream ends, nothing stored
+  else access, and the right shop
+    I-->>I: store the file, then import
+  end
+```
+
+### The spec — as written
+
+| | |
+| --- | --- |
+| name | `ShopAccessCheck` |
+| in | `shop_id` · `user_id` |
+| out | the shop · `primary_user_id` · `is_have_access` |
+| called by | the settlement importer, before it stores a file |
+
+### What it does NOT settle
+
+- **Who has access** — what `is_have_access` computes is [Q1](./context_clarify.md#question).
+- **What `primary_user_id` is for** — [Q7](./context_clarify.md#question).
+- **The contract's shape** — no team to scope it, message names buf refuses, and a `ShopDetail` message that does
+  not exist: [critique 10](./context_clarify.md#critique).

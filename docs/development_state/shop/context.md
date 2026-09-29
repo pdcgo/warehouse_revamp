@@ -2,11 +2,14 @@
 
 **Pass:** business analysis — **second pass** (2026-09-28) on the owner's new
 [shop/context.md](../../business/shop/context.md): create, edit, delete, list. Questions:
-[context_clarify.md](../../business/shop/context_clarify.md). **Two owner decisions**, from the owner's own edits —
+[context_clarify.md](../../business/shop/context_clarify.md). **Four owner decisions**, from the owner's own edits —
 [access-is-given-per-user-per-shop](../../business/shop/context_decision.md#access-is-given-per-user-per-shop)
 (*"give access user to shop"*, the built `shop_users` model), widened on 2026-09-29 by
 [the-shop-manages-its-access-list](../../business/shop/context_decision.md#the-shop-manages-its-access-list)
-(*"manage access user to shop"* — give, take away, list). **Plus ten 🏗 as-built decisions** in the same
+(*"manage access user to shop"* — give, take away, list) · and the same day, from two new sections,
+[a-shop-has-one-primary-cs](../../business/shop/context_decision.md#a-shop-has-one-primary-cs) (NOT built) and
+[one-call-answers-the-shop-and-the-access](../../business/shop/context_decision.md#one-call-answers-the-shop-and-the-access)
+(`ShopAccessCheck` for the importer — NOT built, and as written it has no `team_id`). **Plus ten 🏗 as-built decisions** in the same
 [context_decision.md](../../business/shop/context_decision.md), recorded on the owner's instruction for a later
 review — what the code does today, each linked to the clarify question that would change it. They close no
 question. The lifecycle is at *waiting for the owner*; no Storybook prototype until the questions come back.
@@ -41,6 +44,8 @@ question. The lifecycle is at *waiting for the owner*; no Storybook prototype un
 | marketplace and team fixed at creation | [shop Q4](../../business/shop/context_clarify.md#question) |
 | the shop's own name on the platform | [shop Q5](../../business/shop/context_clarify.md#question) |
 | who can hold a grant — the team's members only, ended by leaving | [shop Q6](../../business/shop/context_clarify.md#question) — opened 2026-09-29 by *manage* access |
+| the primary CS — its rules, and what the importer does with `primary_user_id` | [shop Q7](../../business/shop/context_clarify.md#question) — the importer doc's §How We Decide `user_id` is empty while the owner rewrites it |
+| `ShopAccessCheck`'s contract — `team_id`, buf's message names, `Shop` not `ShopDetail` | [shop critique 10](../../business/shop/context_clarify.md#critique) — a build item once Q1 and Q2 are answered |
 
 **Next agent:** when the owner answers, record each in `shop/context_decision.md` (named, RULE 12), delete the
 answered question, rebuild `docs/biggest_question.md`. Q2 decides where every build item above lands, so it
