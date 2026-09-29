@@ -346,13 +346,13 @@ see a balance, so it shows none.
     | a double count | impossible | stopped only if the typed row names its restock or expense — then the first to arrive wins, even with a wrong amount | nothing stops it |
     | the hand screens | four fixed acts — New account, Transfer, Capital, Reconcile — none takes a type | any type, but the person picks the act it belongs to | any type, any amount |
     | a type whose event does not exist yet | its money waits for a reconcile | typed by hand; the event, once it ships, skips what was typed | typed by hand — and twice from the day its event ships, unless everyone stops typing it that day |
-    | `adjustment` means | money we did not record | the same | anything |
+    | what a reconcile's `adjustment` absorbs | only money nobody recorded | the same | every copy typed beside an event, too |
 
     **→ Recommend A**, by one test — *does another service already record this act?* Yes: it comes from the broker.
     No: it is typed by hand ([the table](#the-act-posts-the-entry)). **By hand**: `opening_balance`, `transfer`,
-    `capital`, and `adjustment` as a reconcile. **From the broker**: `marketplace_withdrawal`, `restock`, `expense`,
-    `team_payment`. It holds by structure, not discipline: no RPC takes a `change_type` from a person, and each
-    listener posts only its own type.
+    `capital`, and `adjustment` as a reconcile. **From the broker**: `revenue_fund` ([Q1](#question) would rename it
+    `marketplace_withdrawal`), `restock`, `expense`, `team_payment`. It holds by structure, not discipline: no RPC
+    takes a `change_type` from a person, and each listener posts only its own type.
 
 # Contradiction
 
