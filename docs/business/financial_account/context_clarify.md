@@ -308,13 +308,22 @@ balance — a person picking *which account paid* is recording a fact, and the b
 
 2. 🔄 **Which account paid a restock, how much, and when?** *(line 70)*
    ✅ It comes only from the broker — [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand).
-   What inventory publishes is what this asks.
-   **→ Recommend: the restock names the account it was paid from**, replacing `payment_type`, whose kind the
-   account already carries. Inventory publishes the change — goods plus shipping when the restock is created, the
-   difference on an edit, a refund when a cancel says the money came back. The warehouse's cost lines — the
-   courier's ask at the door — name an account too, usually its cash box. It also supplies what
+   What inventory publishes is what this asks — seven parts, one recommendation each:
+
+   | | **→ Recommend** | instead | why not |
+   | --- | --- | --- | --- |
+   | which account | the restock's *Paid from* — an account picker, replacing `payment_type` | keep `payment_type` beside it | two fields that must agree — a `bank_account` payment made from a ShopeePay account |
+   | how much | goods plus shipping, from the restock's own lines | a separate *amount paid* | a second number that can disagree with the lines — and the lines are what the stock's unit cost is built from, so a voucher belongs in them |
+   | when | when the restock names its account — at create if it is paid, later if not; *not paid yet* stays selectable | when the warehouse accepts | the money left days before the goods arrived — the account would disagree with the bank until then |
+   | an edit | posts the difference | post the whole again | a second full row — the payment counted twice |
+   | a cancel | asks *did the money come back?* — yes posts a refund into the account that paid | refund on every cancel | a supplier that keeps the money would show a refund that never came |
+   | the courier's ask | the warehouse's cost line names the account it paid from — usually its cash box | nothing | the cash box drifts by every tip paid at the door |
+   | restocks already made | keep their `payment_type`; nothing posts back | back-post them | a guess about which account paid months ago — and each account's opening balance already holds the past |
+
+   The account must be the restock team's own, and active. It also supplies what
    [purchasing-is-the-restock-document](../../technical/architecture/context_clarify.md#purchasing-is-the-restock-document)
-   found missing: a cash account and a payment moment. ⚠ Inventory publishes nothing today — the event is new.
+   found missing: a cash account and a payment moment. ⚠ Inventory publishes nothing today — the event is new, and it
+   carries the change, never the restock's total.
 
 3. 🔄 **Narrowed — does an expense name the account it was paid from?** *(line 67)*
    ✅ It is typed in `expense_service`, never here — [one-way-in-per-type](./context_decision.md#one-way-in-per-type).
