@@ -148,6 +148,28 @@ type ShopeeSettlementDocument interface {
 	GetPeriod() (from time.Time, to time.Time, err error)
 	// GetItems is every transaction row, in the order the file lists them (newest first).
 	GetItems() ([]*ShopeeSettlementItem, error)
+	// GetDetails is every row's diagnostic cells — its Status among them — one per item, in the order
+	// of GetItems. NEVER hashed: a column read here cannot move a key (hash-the-whole-struct).
+	GetDetails() ([]*ShopeeSettlementDetail, error)
+}
+
+// ShopeeSettlementDetail is one "Rincian Transaksi" row beyond its item: what a caller needs to DECIDE
+// about the row, but must not become part of its identity.
+//
+// It exists for the importer's rule that only a successful withdrawal is recorded
+// (only-a-successful-withdrawal-is-recorded) — a Gagal debit and the refund returning it are both
+// "Penarikan Dana", told apart only by their Status and direction. Keeping them off the item is what
+// keeps every key that has already been generated exactly where it was.
+type ShopeeSettlementDetail struct {
+	// The item's GenerateUniqueID — the detail belongs to it.
+	UniqueID string
+	// "Status", verbatim — "Transaksi Selesai", "Gagal", or a value not seen yet.
+	Status string
+	// "Jenis Transaksi", verbatim — "Transaksi Masuk" or "Transaksi Keluar". The amount's sign says the
+	// same thing; this is the file's own word for it.
+	Direction string
+	// Every column of the row, by header text.
+	Columns map[string]string
 }
 
 // Column and label text, as Shopee writes it.
@@ -163,6 +185,10 @@ const (
 	shopeeColAmount      = "Jumlah"
 	shopeeColBalance     = "Saldo Akhir"
 
+	// Read onto the DETAIL, never the item — see ShopeeSettlementDetail.
+	shopeeColStatus    = "Status"
+	shopeeColDirection = "Jenis Transaksi"
+
 	shopeeTimeLayout = "2006-01-02 15:04:05"
 	shopeeDateLayout = "2006-01-02"
 
@@ -176,6 +202,7 @@ type shopeeDocument struct {
 	from     time.Time
 	to       time.Time
 	items    []*ShopeeSettlementItem
+	details  []*ShopeeSettlementDetail
 }
 
 func (d *shopeeDocument) GetShopUsername() (string, error) {
@@ -188,6 +215,10 @@ func (d *shopeeDocument) GetPeriod() (time.Time, time.Time, error) {
 
 func (d *shopeeDocument) GetItems() ([]*ShopeeSettlementItem, error) {
 	return d.items, nil
+}
+
+func (d *shopeeDocument) GetDetails() ([]*ShopeeSettlementDetail, error) {
+	return d.details, nil
 }
 
 // NewShopeeSettlementDocument reads a Shopee "Transaction Report" export.
@@ -232,7 +263,7 @@ func NewShopeeSettlementDocument(r io.Reader) (ShopeeSettlementDocument, error) 
 		return nil, err
 	}
 
-	doc.items, err = parseShopeeItems(rows, header, headerAt)
+	doc.items, doc.details, err = parseShopeeItems(rows, header, headerAt)
 	if err != nil {
 		return nil, err
 	}
@@ -289,15 +320,20 @@ func optionalDate(preamble [][]string, label string) (time.Time, error) {
 	return at, nil
 }
 
-func parseShopeeItems(rows [][]string, header map[string]int, headerAt int) ([]*ShopeeSettlementItem, error) {
+func parseShopeeItems(
+	rows [][]string,
+	header map[string]int,
+	headerAt int,
+) ([]*ShopeeSettlementItem, []*ShopeeSettlementDetail, error) {
 	for _, required := range []string{shopeeColType, shopeeColDescription, shopeeColOrderRef, shopeeColAmount, shopeeColBalance} {
 		_, found := header[required]
 		if !found {
-			return nil, fmt.Errorf("%w: no %q column", ErrNotShopeeReport, required)
+			return nil, nil, fmt.Errorf("%w: no %q column", ErrNotShopeeReport, required)
 		}
 	}
 
 	items := []*ShopeeSettlementItem{}
+	details := []*ShopeeSettlementDetail{}
 	for i := headerAt + 1; i < len(rows); i++ {
 		row := rows[i]
 
@@ -310,13 +346,39 @@ func parseShopeeItems(rows [][]string, header map[string]int, headerAt int) ([]*
 		item, err := parseShopeeItem(row, header)
 		if err != nil {
 			// Rows are 1-based in the spreadsheet the person is looking at.
-			return nil, fmt.Errorf("san_excel_readers: row %d: %w", i+1, err)
+			return nil, nil, fmt.Errorf("san_excel_readers: row %d: %w", i+1, err)
+		}
+
+		detail, err := shopeeDetail(item, row, header)
+		if err != nil {
+			return nil, nil, fmt.Errorf("san_excel_readers: row %d: %w", i+1, err)
 		}
 
 		items = append(items, item)
+		details = append(details, detail)
 	}
 
-	return items, nil
+	return items, details, nil
+}
+
+// shopeeDetail reads a row's diagnostic cells, tied to its item's key.
+func shopeeDetail(item *ShopeeSettlementItem, row []string, header map[string]int) (*ShopeeSettlementDetail, error) {
+	uniqueID, err := item.GenerateUniqueID()
+	if err != nil {
+		return nil, err
+	}
+
+	columns := make(map[string]string, len(header))
+	for name := range header {
+		columns[name] = cell(row, header, name)
+	}
+
+	return &ShopeeSettlementDetail{
+		UniqueID:  uniqueID,
+		Status:    cell(row, header, shopeeColStatus),
+		Direction: cell(row, header, shopeeColDirection),
+		Columns:   columns,
+	}, nil
 }
 
 func blankRow(row []string) bool {

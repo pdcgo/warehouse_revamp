@@ -382,3 +382,68 @@ func TestShopeeSettlementTypeCoversTheSamples(t *testing.T) {
 		t.Fatalf("transaction types with no mapping: %v", unmapped)
 	}
 }
+
+// Every item has its detail, in the same order and under the same key — the importer reads a row's
+// Status off it (only-a-successful-withdrawal-is-recorded) without the Status ever reaching the hash.
+func TestShopeeDetailsFollowTheItems(t *testing.T) {
+	for _, name := range shopeeSampleNames(t) {
+		doc := openShopeeSample(t, name)
+
+		items, _ := doc.GetItems()
+		details, _ := doc.GetDetails()
+
+		if len(details) != len(items) {
+			t.Fatalf("%s: %d details for %d items", name, len(details), len(items))
+		}
+
+		for i, item := range items {
+			key, err := item.GenerateUniqueID()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if details[i].UniqueID != key {
+				t.Fatalf("%s row %d: detail key %s, item key %s", name, i, details[i].UniqueID, key)
+			}
+
+			if details[i].Status == "" || details[i].Direction == "" {
+				t.Fatalf("%s row %d: no Status or Jenis Transaksi read", name, i)
+			}
+		}
+	}
+}
+
+// Both failed-withdrawal samples carry exactly one Gagal debit, and its refund — money coming back,
+// itself "Transaksi Selesai" — is a positive Penarikan Dana a caller can tell apart by its sign.
+func TestShopeeAFailedWithdrawalIsReadableOffTheDetail(t *testing.T) {
+	for _, name := range []string{"awan_wdgagal.xlsx", "luxy_wdgagal.xlsx"} {
+		doc := openShopeeSample(t, name)
+
+		items, _ := doc.GetItems()
+		details, _ := doc.GetDetails()
+
+		failed, refunds := 0, 0
+
+		for i, item := range items {
+			if item.Type != san_excel_readers.ShopeeWithdrawal {
+				continue
+			}
+
+			if details[i].Status == "Gagal" {
+				failed++
+			}
+
+			if item.Amount > 0 {
+				refunds++
+
+				if details[i].Status != "Transaksi Selesai" {
+					t.Errorf("%s: the refund reads %q", name, details[i].Status)
+				}
+			}
+		}
+
+		if failed != 1 || refunds != 1 {
+			t.Fatalf("%s: %d Gagal withdrawals and %d refunds, want 1 and 1", name, failed, refunds)
+		}
+	}
+}

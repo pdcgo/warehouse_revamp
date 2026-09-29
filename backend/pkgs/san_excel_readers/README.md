@@ -47,7 +47,13 @@ if err != nil {
 username, _ := doc.GetShopUsername()     // "Username (Penjual)"
 from, to, _ := doc.GetPeriod()           // "Dari" / "Ke"
 items, err := doc.GetItems()             // newest first, as the file lists them
+details, _ := doc.GetDetails()           // one per item, same order: Status, Jenis Transaksi, every column
 ```
+
+A row's **`Status`** (`Transaksi Selesai`, `Gagal`) is on its **detail**, never its item — the item IS the key
+([hash-the-whole-struct](../../../docs/technical/packages/excel_readers/context_decision.md#hash-the-whole-struct)),
+so a column read for a decision must not move it. The settlement importer skips a failed withdrawal and
+its refund by it.
 
 ```go
 type ShopeeSettlementItem struct {
