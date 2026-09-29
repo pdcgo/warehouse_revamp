@@ -1523,3 +1523,74 @@ erDiagram
 - **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the
   marketplace's reference; the names and the cost live in `selling_service`, and a service does not
   read another's tables. The screens supply all four from where they already are.
+
+---
+
+## settlement_importer_service
+
+`backend/services/settlement_importer_service/db_migrations/`
+
+A platform statement, uploaded as a file and posted to the settlement ledger line by line
+([settlement_importer.md](business/settlement/settlement_importer.md)). **It owns no ledger** — the rows it
+posts are `settlement_logs` rows, written by `SettlementPost` under the uploader's token. These two tables
+say what an upload DID: the import screen pages over the first, one file's page over the second.
+
+```mermaid
+erDiagram
+  uploaded_files ||--o{ uploaded_file_lines : "one per line read, ON DELETE CASCADE"
+  uploaded_files {
+    bigserial id PK
+    bigint team_id "the scope — opaque, no FK"
+    bigint shop_id "the shop picked — opaque selling_service id"
+    text platform "shopee or tiktok — the shop's marketplace picks it"
+    text document_id "document_service's stored bytes — opaque, no FK"
+    text content_sha256 "the stored file's name. NOT unique — the same file twice is two rows"
+    date period_from "the statement's own range, NULL until read"
+    date period_to
+    text status "running, done or failed — INTERRUPTED is worked out when read, never stored"
+    text failure "why a failed file failed — its ERROR line"
+    int rows_total "the stream's count"
+    int rows_posted
+    int rows_existing "already in the ledger — the row key's own dedupe"
+    int rows_held
+    int rows_skipped
+    int rows_posted_to_shop "of rows_posted, whose ref found no order"
+    bigint created_by_user_id "the uploader — the actor on every row it posts"
+    bigint primary_user_id "the shop's primary CS when the file was checked"
+    timestamptz created_at
+    timestamptz updated_at "moves after every line — a running row that stops moving reads interrupted"
+    timestamptz finished_at
+  }
+  uploaded_file_lines {
+    bigserial id PK
+    bigint uploaded_file_id FK "uploaded_files"
+    int line_no "the order read — the stream's step"
+    text sheet "Rincian Transaksi, Order details or Withdrawal records"
+    text unique_id "the ledger key — platform, sheet and the reader's hash"
+    text order_ref "as the file wrote it"
+    text platform_type
+    text description
+    text settlement_type "settlement's text — empty when unmapped"
+    bigint change "whole rupiah"
+    date occurred_on
+    bigint order_id "0 means the shop"
+    text outcome "posted, existing, held or skipped"
+    text reason "no_order, unmapped_type, fractional_amount, refused, repeats_order_details, failed_withdrawal"
+    text detail "a refusal's message, a fraction as written, a withdrawal's status"
+    bigint settlement_log_id "the ledger row it posted or found — 0 when held or skipped"
+    timestamptz created_at
+  }
+```
+
+| | |
+| --- | --- |
+| **nothing unique but the ids** | duplicates are caught row by row, by the ledger's key — never file by file ([the-row-key-is-the-only-dedupe](business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). The same file twice is a second row whose lines read `existing` |
+| **INTERRUPTED is derived** | a `running` row whose `updated_at` is over two minutes old — the server stopped mid-file ([an-import-finishes-whether-anyone-watches](business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). The list filters it in SQL on the same line; nothing sweeps it |
+| **every line is kept** | not only the ones worth a look — the file page's three views (held · skipped · posted to the shop) are filters over all of them |
+| **no FK across services** | `team_id`, `shop_id`, `order_id`, `document_id`, `settlement_log_id` are other services' ids, kept as given |
+
+| index | answers |
+| --- | --- |
+| `uploaded_files_team_created_idx` (team_id, created_at DESC, id DESC) | the import screen — a team's uploads, newest first |
+| `uploaded_files_team_shop_created_idx` (team_id, shop_id, created_at DESC, id DESC) | the same, one shop's |
+| `uploaded_file_lines_file_outcome_idx` (uploaded_file_id, outcome, line_no) | one file's page — its lines by outcome, in the file's order |

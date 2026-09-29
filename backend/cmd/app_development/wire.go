@@ -7,14 +7,15 @@ import (
 	"github.com/google/wire"
 
 	category_v1 "github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
-	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
+	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
+	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
-	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
-	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	settlement_importer_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
+	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	shipment_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
@@ -68,6 +69,16 @@ func InitializeApp() (*App, error) {
 		NewSettlementPoster,
 		// The subscription settlement's replay seeks — see replay_broker.go.
 		NewReplayBroker,
+		// The settlement importer, and its four services as clients under the uploader's token — see
+		// settlement_importer_deps.go.
+		settlement_importer_v1.NewService,
+		NewOrderClient,
+		NewDocumentClient,
+		NewSettlementWriteClient,
+		NewImporterShopChecker,
+		NewImporterOrderFinder,
+		NewImporterStatementStore,
+		NewImporterLedger,
 		// Joins inventory to liability (#184) — see liability_poster.go.
 		NewLiabilityPoster,
 		NewCreditChecker,
