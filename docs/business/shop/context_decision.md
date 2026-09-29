@@ -12,7 +12,7 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 
 | decision | what it decided | from | under review |
 | --- | --- | --- | --- |
-| [access-is-given-per-user-per-shop](#access-is-given-per-user-per-shop) | giving a user access to a shop is the shop's own job — one user, one shop, one grant | owner | [Q1](./context_clarify.md#question) — who needs one |
+| [access-is-given-per-user-per-shop](#access-is-given-per-user-per-shop) | giving a user access to a shop is the shop's own job — one user, one shop, one grant | owner | ✅ who needs one: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
 | [shops-live-in-selling-service](#shops-live-in-selling-service) | `ShopService` is one of three proto services one `selling_service` serves, and `shops`, `shop_users` are its tables | as built | [Q2](./context_clarify.md#question) |
 | [every-shop-call-is-scoped-to-its-team](#every-shop-call-is-scoped-to-its-team) | every request names its team and every query is held to it — another team's shop reads as not found | as built | [critique 4](./context_clarify.md#critique) — the team's type |
 | [managers-write-shops-and-cs-reads-them](#managers-write-shops-and-cs-reads-them) | owner and admin create, edit, delete and grant · customer service only reads | as built | — |
@@ -20,12 +20,13 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [every-shop-field-stays-editable](#every-shop-field-stays-editable) | an edit writes only the fields it sends — the marketplace included | as built | [Q4](./context_clarify.md#question) |
 | [delete-is-soft-and-frees-the-code](#delete-is-soft-and-frees-the-code) | delete flags the row, frees its code, and hides the shop from every read | as built | [Q3](./context_clarify.md#question) |
 | [the-shop-list-is-paged-and-searched](#the-shop-list-is-paged-and-searched) | a team's live shops, newest first, a page at a time, searched by name or code | as built | [critique 8](./context_clarify.md#critique) |
-| [a-grant-is-idempotent-and-listed-as-ids](#a-grant-is-idempotent-and-listed-as-ids) | adding or removing a grant twice changes nothing · the list returns user ids | as built | [Q1](./context_clarify.md#question) |
-| [an-order-needs-a-live-shop-of-its-team](#an-order-needs-a-live-shop-of-its-team) | an order is placed only on a live shop of its own team, checked before any stock moves | as built | — |
+| [a-grant-is-idempotent-and-listed-as-ids](#a-grant-is-idempotent-and-listed-as-ids) | adding or removing a grant twice changes nothing · the list returns user ids | as built | 🔄 a grant now gates writes — [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) · [Q6](./context_clarify.md#question) |
+| [an-order-needs-a-live-shop-of-its-team](#an-order-needs-a-live-shop-of-its-team) | an order is placed only on a live shop of its own team, checked before any stock moves | as built | 🔄 gains a grant check — [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
 | [other-services-keep-a-shop-id-unchecked](#other-services-keep-a-shop-id-unchecked) | expense and settlement store a shop id without asking the shop | as built | ⛔ [critique 6](./context_clarify.md#critique) |
-| [the-shop-manages-its-access-list](#the-shop-manages-its-access-list) | managing a shop's access — give it, take it away, see who has it — is the shop's own job | owner | [Q1](./context_clarify.md#question) — who needs one · [Q6](./context_clarify.md#question) — who can hold one |
+| [the-shop-manages-its-access-list](#the-shop-manages-its-access-list) | managing a shop's access — give it, take it away, see who has it — is the shop's own job | owner | ✅ who needs one: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) · [Q6](./context_clarify.md#question) — who can hold one |
 | [a-shop-has-one-primary-cs](#a-shop-has-one-primary-cs) | a shop has many users and, among them, one primary customer service, shown as a badge | owner | [Q7](./context_clarify.md#question) — its rules, and what reads it |
-| [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) | `ShopAccessCheck` — one call gives the importer the shop, its primary CS, and whether a user has access | owner | [critique 10](./context_clarify.md#critique) — its contract · [Q1](./context_clarify.md#question) — what access means |
+| [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) | `ShopAccessCheck` — one call gives the importer the shop, its primary CS, and whether a user has access | owner | [critique 10](./context_clarify.md#critique) — its contract · ✅ what access means: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
+| [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) | writing on a shop — an order, a draft, an import — needs a grant for it, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout | owner | [Q6](./context_clarify.md#question) — a grant outliving its holder is now real access |
 
 ## access-is-given-per-user-per-shop
 
@@ -506,3 +507,50 @@ sequenceDiagram
 - **What `primary_user_id` is for** — [Q7](./context_clarify.md#question).
 - **The contract's shape** — no team to scope it, message names buf refuses, and a `ShopDetail` message that does
   not exist: [critique 10](./context_clarify.md#critique).
+
+## a-write-needs-a-grant-or-a-manager
+
+> Chat *(owner, 2026-09-29)* — *"yes"*, to [Q1](./context_clarify.md#question) as recommended, all four parts: who has
+> access is the shop's granted users plus the team's owner and admin · access gates every write on the shop — an
+> order, a draft pushed or promoted, an import · reads stay team-wide · every current CS is granted every shop of
+> their team when it ships. Re-routed from [importer Q12](../settlement/settlement_importer_clarify.md#question).
+
+**The verdict.** To **write** on a shop, a person must be **granted that shop, or run the team** — its owner or
+admin; root and admin pass everywhere. **Reading** stays team-wide: everyone in the team still sees every shop's
+orders and reports. The grant stops being a label and becomes the gate — and it is the rule `is_have_access`
+computes ([one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access)).
+
+```mermaid
+flowchart TD
+  W["a write on shop S of team T — an order, a draft, an import"] --> R{"root or admin"}
+  R -->|"yes"| Y["allowed"]
+  R -->|"no"| M{"owner or admin of T"}
+  M -->|"yes"| Y
+  M -->|"no"| G{"granted S"}
+  G -->|"yes"| Y
+  G -->|"no"| N["refused — no access to shop S"]
+  RD["a read — lists, details, reports"] --> A["anyone in T, as today"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| who may write | root · admin · the team's owner · the team's admin · anyone granted the shop |
+| the gated writes | `OrderCreate` · `OrderDraftPush` · `OrderDraftPromote` · the Shopee and TikTok imports — each asks `ShopAccessCheck` before it writes. Today all three order RPCs take any CS of the team, on any shop |
+| refused | ⚠ my spec: `PermissionDenied`, naming the shop · an import answers with an `ERROR` line, and stores nothing |
+| reads | not gated — `ShopList`, `OrderList`, details and reports, as today |
+| the order form's shop picker | offers only the shops the person may write on · a filter still offers every shop |
+| managing grants | unchanged — the owner and admin ([the-shop-manages-its-access-list](#the-shop-manages-its-access-list)) |
+| the rollout | in the release that turns the gate on, every current CS is granted every shop of their team — nobody loses order-taking on day one, and the owner trims afterwards |
+| the check's cost | one grant lookup, plus the user's role in the team from `user_service`, which already caches roles |
+
+### What it does NOT settle
+
+- **Which service runs the check** — [Q2](./context_clarify.md#question).
+- **Who can hold a grant** — one still outlives its holder leaving the team, and now that is real access for someone
+  who rejoins: [Q6](./context_clarify.md#question).
+- **A closed shop** — whether an import still passes on one: [Q3](./context_clarify.md#question).
+- ⚠ **An app that pushes drafts** writes too — its login needs a grant, or a manager role.
+- ⚠ **Other writes that name a shop** — a hand-posted settlement row, an expense — were not in the question. They stay
+  gated by the team role alone unless you extend this.

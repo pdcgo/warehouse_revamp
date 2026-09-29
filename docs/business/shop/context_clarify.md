@@ -10,7 +10,8 @@ other services may ask it.**
 
 | | |
 | --- | --- |
-| ✅ your edits | §Responsbility gained *"give access user to shop"* (2026-09-28), then made it *"manage access user to shop"* (2026-09-29) — recorded as [access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop) and [the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list). Who needs a grant, and what it gates, is still [Q1](#question) |
+| ✅ answered (2026-09-29) | [Q1](#question) — a write needs a grant for the shop, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout: [a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager) |
+| ✅ your edits | §Responsbility gained *"give access user to shop"* (2026-09-28), then made it *"manage access user to shop"* (2026-09-29) — recorded as [access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop) and [the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list) |
 | 🆕 +1 (2026-09-29) | [Q6](#question) — *manage* includes seeing who has access, and the list keeps people who left the team |
 | ✅ your sections (2026-09-29) | §Manage User Access In Shop and §Rpc That Must Exist — recorded as [a-shop-has-one-primary-cs](./context_decision.md#a-shop-has-one-primary-cs) and [one-call-answers-the-shop-and-the-access](./context_decision.md#one-call-answers-the-shop-and-the-access) |
 | 🆕 +1 | [Q7](#question) — the primary CS: its rules, and what the importer does with `primary_user_id` · ⛔ [critique 10](#critique) — `ShopAccessCheck` as written has no team, so a CS cannot call it |
@@ -57,7 +58,7 @@ flowchart LR
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **Shop access is in the doc now — and still enforced nowhere.** ✅ *"manage access user to shop"* ([the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list)). But `shop_users` is read only by its own three RPCs: orders, settlement and every screen ignore it. Your `ShopAccessCheck` ([one-call-answers-the-shop-and-the-access](./context_decision.md#one-call-answers-the-shop-and-the-access)) will be its first reader — `is_have_access` is exactly Q1's answer. | Settle who needs a grant and what it gates — [Q1](#question). |
+| **1** | ✅ **Decided — [a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager).** A grant, or the team's owner or admin role, now gates every write on a shop. Until it is built, `shop_users` is still read only by its own three RPCs. | Build it: `ShopAccessCheck` ([critique 10](#critique)), the check in `OrderCreate`, `OrderDraftPush`, `OrderDraftPromote` and both imports, and the rollout grants. |
 | **2** | **The title says *Shop Service*, and there is no shop service.** Shops are one proto service inside `selling_service`. | Say which — [Q2](#question). |
 | **3** | 🔄 **Delete hides a shop from everything that still points at it.** `ShopList` and `ShopDetail` both filter out `deleted`, so nothing can read a deleted shop: the settlement report's by-shop ranking names its row `#7`, and the orders filter cannot pick it. And a shop is paid **after** it stops selling — its last orders settle and its balance is withdrawn later — while the importer's check, as specified, refuses a deleted shop. | **Close, not delete** — [Q3](#question). |
 | **4** | ***"for Selling Team"* is not enforced.** `ShopCreate` writes into any team it is given. The menu hides `/shops` from a warehouse team; the RPC does not. | `ShopCreate` refuses a team whose type is not SELLING — one lookup. |
@@ -71,9 +72,9 @@ flowchart LR
 ## Recommendation
 
 **Answer Q2 first.** The closed state (Q3), the platform name (Q5), the primary CS (Q7) and `ShopAccessCheck`
-(critique 10) all land in whichever service holds the shop, and settlement's fix is a call to it. **Then Q1 and Q3,
-before `ShopAccessCheck` is built** — `is_have_access` is Q1's answer, and a check that refuses a deleted shop strands
-a closed shop's last payout.
+(critique 10) all land in whichever service holds the shop, and settlement's fix is a call to it. **Then Q3, before
+`ShopAccessCheck` is built** — ✅ Q1 is decided ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)),
+and a check that refuses a deleted shop strands a closed shop's last payout.
 
 ## Proposed Design
 
@@ -121,20 +122,10 @@ stateDiagram-v2
 Not on the shop, by decision: a return warehouse — one per team
 ([the-return-warehouse-is-per-team](../order/context_decision.md#the-return-warehouse-is-per-team)).
 
-### Who may work on a shop — Q1
+### Who may work on a shop — ✅ decided
 
-What your `ShopAccessCheck` computes as `is_have_access`, if Q1 is answered as recommended:
-
-```mermaid
-flowchart TD
-  C["a caller, on shop S of team T"] --> R{"root or admin"}
-  R -->|"yes"| Y["may"]
-  R -->|"no"| O{"owner or admin of T"}
-  O -->|"yes"| Y
-  O -->|"no"| G{"granted S in shop_users"}
-  G -->|"yes"| Y
-  G -->|"no"| N["may not — its writes refused, its pickers skip S"]
-```
+[a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager) — the rule, its
+diagram and its spec, the rollout grants included. It is what `ShopAccessCheck` computes as `is_have_access`.
 
 ### Where it lives — Q2
 
@@ -164,7 +155,7 @@ flowchart LR
 | `ShopDelete` | built | becomes `ShopClose`, beside a new `ShopReopen` (Q3) |
 | `ShopList` | built | filters `status`, `marketplace`, `user_id` (critique 8) |
 | `ShopDetail` | built | reads a closed shop too |
-| `ShopAccessCheck` 🆕 yours | for other services | `ShopAccessCheckRequest` — `team_id`, `shop_id`, `user_id` · `ShopAccessCheckResponse` — `Shop` (closed included, with its status — Q3), `primary_user_id` (Q7), `has_access` (Q1) · another team's shop → `NotFound` (critique 10) · called by the importer, orders, settlement and expense (critique 6) |
+| `ShopAccessCheck` 🆕 yours | for other services | `ShopAccessCheckRequest` — `team_id`, `shop_id`, `user_id` · `ShopAccessCheckResponse` — `Shop` (closed included, with its status — Q3), `primary_user_id` (Q7), `has_access` ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)) · another team's shop → `NotFound` (critique 10) · called by the importer, orders, settlement and expense (critique 6) |
 | `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` | built | `ShopUserAdd` refuses a user outside the team, and leaving the team ends the grant (Q6) · the list marks the primary (Q7) |
 | `ShopUserSetPrimary` 🆕 | owner, admin | moves the primary to another of the shop's users (Q7) |
 
@@ -201,27 +192,14 @@ erDiagram
 | --- | --- |
 | `/shops` | a status filter, open by default · the primary CS as a badge on each row · **Close** in the row menu, through a `ConfirmDialog` · **Reopen** on a closed row |
 | `/shops/:id` | the platform name · the marketplace read-only · a *closed* banner with Reopen · the users section marks the primary with a badge, and offers **Make primary** in each user's row menu |
-| every shop picker | open shops only — and only the caller's, once Q1 lands |
+| a form that writes — the order form | open shops only, and only those the person may write on ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)) |
 | every report and filter | closed shops too, marked closed |
 
 ## Question
 
-1. **Who may work on a shop — its listed users only, or its team's owner and admin too?** ➡ Re-routed from
-   [importer Q12](../settlement/settlement_importer_clarify.md#question), where the importer's flow asks *"is caller
-   that access on shop"* — this doc owns the answer. Shop access exists — `shop_users`, one grant per user per
-   shop (`ShopUserAdd`) — but nothing reads it except its own three RPCs, so the importer would be its first
-   enforcement, and what it means is set here. ✅ That access is the shop's to manage — give it, take it away,
-   see who has it — is now in your doc
-   ([the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list)) — who needs a
-   grant is not.
-   **→ Recommend: the shop's listed users, plus the team's owner and admin** — and root and admin, who pass
-   every scope. A CS person works only on the shops they are granted, so the grant finally means something,
-   while the people who run the team never need a grant to act on it. 🔄 Your `ShopAccessCheck` is where it runs:
-   `is_have_access` is this rule — one grant lookup, plus the user's role in the team, which `user_service`
-   already caches.
-   🆕 ⚠ **And a grant gates every write on the shop, not only the import** — an order and a draft too, or a CS
-   person barred from importing a shop's statement can still sell through it. Reads stay team-wide: a report
-   is the team's.
+1. ✅ **Answered 2026-09-29 — a write needs a grant or a manager role**, as recommended, all four parts:
+   [a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager). Kept as a line
+   so the numbers hold.
 
 2. **Is the shop its own service, or does `ShopService` stay inside `selling_service`?** Your doc is titled
    *Shop Service Context*, in a context of its own. ➡ It also answers
@@ -233,6 +211,9 @@ erDiagram
    importer need the same answer and nothing from orders. Not `team_service`, architecture Q6's old answer:
    your warehouse doc gives a warehouse team's own facts a service of their own, and a shop is the selling
    team's.
+   ⛔ **No longer hypothetical** — settlement now asks the shop for a shop row's primary CS, by decision
+   ([settlement-asks-the-shop-for-its-primary-cs](../settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)).
+   With shops inside `selling_service`, the two services call each other from the first import.
    ⚠ **The price**: `shops` and `shop_users` move with their migrations · `orders.shop_id` loses its foreign key
    and becomes an opaque id checked on write, as `warehouse_id` already is · placing an order gains one call.
    It is cheapest now — two tables, eight RPCs, four callers. What breaks that I have not listed?
@@ -264,8 +245,9 @@ erDiagram
    **→ Recommend no.** `ShopUserAdd` refuses a user who is not a member of the shop's team, and leaving the team
    ends every shop grant the person held — so a shop's access list is always people who can work there. A stale
    grant opens nothing today, since the interceptor refuses a non-member first. What it breaks is the list you now
-   manage, which shows people who left — and, once Q1 makes a grant mean something, a person who rejoins gets
-   their old shops back without anyone granting them.
+   manage, which shows people who left — and ⛔ now that a grant gates writes
+   ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)), a person who
+   rejoins gets their old shops back without anyone granting them. That is real access, not only a wrong list.
    ⚠ The price: the shop has to hear when a membership ends — one event from `user_service`, or a membership
    check when the list is read.
 
@@ -275,7 +257,8 @@ erDiagram
    primary can never be someone without access. The first user granted becomes the primary; the owner or admin
    can move it to another of the shop's users. Removing the primary's grant — or their leaving the team, Q6 —
    leaves the shop with none, shown as a warning badge until another is chosen. Any of the shop's users may be
-   primary, not only the CS role: in a small team the owner is often the CS.
+   primary, not only the CS role: in a small team the owner is often the CS — and takes a grant to be primary,
+   since an owner needs none to write ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)).
    ⚠ **And say what the importer does with `primary_user_id`.** The likely use is attribution — a row with no
    order names the shop's primary CS rather than the uploader — and your importer doc's §How We Decide `user_id`
    is empty right now. If so, it changes
@@ -287,6 +270,6 @@ erDiagram
 
 # Contradiction
 
-**None in your doc** — re-examined after both 2026-09-29 edits. 🔄 One in mine, corrected: the first pass's critique 3 said a deleted shop *stays
+**None in your doc** — re-examined after both 2026-09-29 edits and the Q1 answer. 🔄 One in mine, corrected: the first pass's critique 3 said a deleted shop *stays
 readable*, and recommended that it take no new import. `ShopList` and `ShopDetail` both filter a deleted shop
 out, and a closed shop still has money coming — see [Q3](#question).

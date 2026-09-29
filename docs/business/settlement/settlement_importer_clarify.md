@@ -293,7 +293,9 @@ erDiagram
     [the-import-has-no-dry-run-for-now](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now). Kept as a line so the numbers hold.
 
 12. ➡ **Re-routed 2026-09-28 to [shop Q1](../shop/context_clarify.md#question)** — who may work on a shop is the shop doc's to answer;
-    this one only asks. Kept as a line so the numbers hold.
+    this one only asks. Kept as a line so the numbers hold. ✅ **Answered there 2026-09-29** —
+    [a-write-needs-a-grant-or-a-manager](../shop/context_decision.md#a-write-needs-a-grant-or-a-manager): an import
+    needs a grant for the shop, or the team's owner or admin role.
 
 13. ✅ **Answered 2026-09-29 — settlement asks the shop**, against my recommendation:
     [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). Kept as a line so the numbers hold.
