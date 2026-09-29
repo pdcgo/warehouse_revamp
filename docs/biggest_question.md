@@ -14,8 +14,17 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**154 open questions across 28 files.** The seven below are shown; **147 are not** — they are not
+**151 open questions across 28 files.** The seven below are shown; **144 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+✅ **−3 this round — financial_account Q5, Q6 and Q7 answered in chat** (2026-09-29, *"for q5, yes, for q6, yes,
+for q7 yes"*), each as recommended: `shopeepay` is the team's e-wallet, never the Shopee seller balance
+([shopeepay-is-the-wallet-a-team-pays-with](business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with))
+· a real account is recorded once across all teams, a cash box exempt
+([a-real-account-is-recorded-once](business/financial_account/context_decision.md#a-real-account-is-recorded-once)) — which
+closes the cash-number contradiction, and ripples into [Q9](business/financial_account/context_clarify.md#question): one
+bank typed into two teams' `team_infos` can be copied only once · below zero is warned, never refused
+([below-zero-is-warned-never-refused](business/financial_account/context_decision.md#below-zero-is-warned-never-refused)).
 
 ▲ **+1 this round — the owner edited financial_account** (2026-09-29): line 13 makes the two tables one ledger
 ([the-accounts-are-one-ledger](business/financial_account/context_decision.md#the-accounts-are-one-ledger)), and
@@ -1662,13 +1671,13 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 147 are
+## Where the other 144 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **154**, the whole set, not to 147. Previous rounds left
+*from* these files, so the column sums to **151**, the whole set, not to 144. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 153 last round, +1 (financial_account Q10, from the owner's edit): **154** across 28
+are counted as a DELTA this round, not recounted — 154 last round, −3 (financial_account Q5, Q6, Q7 answered): **151** across 28
 files, and the column below sums to it.
 
 | File | Open | |
@@ -1700,7 +1709,7 @@ files, and the column below sums to it.
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
 | [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 6 | 🆕 **a new technical package, first pass** — the Shopee/TikTok settlement file reader, measured against all 25 sample workbooks rather than read off the spec. ⛔ **Two findings are load-bearing beyond this package**: TikTok's column set is **not fixed** (three layouts across 13 files — `Flat fee` and `Sales fee` vanish, `GMV Max ad fee` appears), and **neither platform gives a per-row unique key**, which contradicts settlement's `hash(date + order_ref_id)`. ▼ **The Shopee half of that closed the same day** — the owner added a `### Shopee Contract` with a `GenerateUniqueID` (md5 over six fields), and it survived testing: **0 collisions in 3788 rows** across 12 files, both duplicate-row pairs distinct, and **141/141 stable** across a re-save through another tool. What is left is TikTok, whose `Order/adjustment ID` repeats. ⚠ The new contract opened three of its own, all about that hash being taken over `json.Marshal` of a struct that will change — and it **corrected one of my recommendations into a recorded contradiction**: I proposed `int64` rupiah in a `technical/` doc against [rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point), which was decided system-wide in the *order* tree and had already rejected that same recommendation once. The other five are scope and typing: verbatim strings or an enum · is Tokopedia a *format* or a *column* · fixtures or real values (`wderror`, `x`) · what timezone is stored · does the package read only settlement reports. ⚠ Also non-design: **`examples/` is untracked and not gitignored**, and the workbooks carry real seller usernames and revenue into a PUBLIC repo. ▼ **−1 and SHIPPED (2026-09-24)** — three decisions recorded ([hash-the-whole-struct](technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) · [jakarta-is-the-clock](technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock) · [dash-is-not-a-reference](technical/packages/excel_readers/context_decision.md#dash-is-not-a-reference)), and `backend/pkgs/san_excel_readers/shopee.go` is built and green over all 12 sample workbooks. The timezone question closed by being decided. ⛔ **The remaining six are TikTok-shaped or unresolvable at item level**: the item is capped at six fields forever, so the recovered order ref and the reversal flag have nowhere to live but the document |
 | [business/mcp/context_clarify.md](business/mcp/context_clarify.md#question) | 6 | ▼ **−1 (2026-09-29)** Q1 answered — the agent only reads, for now, and the server refuses any write ([an-agent-only-reads-for-now](business/mcp/context_decision.md#an-agent-only-reads-for-now)); it rules out the session token as the agent's credential. Before that: 🆕 **a new context, first pass (2026-09-29)** — a local MCP app shipped to users, so their own AI agent reads and analyzes their data through the RPC API. Nothing is built and nothing waits on it, so none of the seven enters the list above. ⛔ Two belong before the first line of code: may the agent act or only read (Q1) — it acts on text a buyer typed — and does a key carry the root bypass (Q4), which would hand every team's data to a third-party AI. The other five: where the tools live and which agents must be reached · how an account connects · who may send a team's data out · which data first · whether a buyer's name, phone and address may leave |
-| [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 10 | ▲ **+1 (2026-09-29, the owner's first edit)** Q10 — which way each type comes in; two decisions recorded (one ledger · by hand or from the broker), and the log's missing account is now a contradiction. Before that: 🆕 **a new context, first pass (2026-09-29)** — a team's bank, ShopeePay and cash accounts, each with a balance and a log. Nothing is built and nothing waits on it, so none of the nine enters the list above. ⛔ The log names neither its account nor its cause (critique 1), `adjustment` is the only type for anything off the list, and `account_number` is unique while a cash box has none (a contradiction). Four questions reach built services: the restock's payment picker (Q2), the expense form (Q3), team payments (Q4), the team record's bank fields (Q9). **Q4 and Q8 first** — which forms exist, and which screens show a balance |
+| [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 7 | ▼ **−3 (2026-09-29)** Q5, Q6, Q7 answered as recommended — the team's e-wallet · a real account recorded once (closes the cash-number contradiction; ⚠ ripples into Q9) · below zero warned, never refused. Before that: ▲ **+1 (2026-09-29, the owner's first edit)** Q10 — which way each type comes in; two decisions recorded (one ledger · by hand or from the broker), and the log's missing account is now a contradiction. Before that: 🆕 **a new context, first pass (2026-09-29)** — a team's bank, ShopeePay and cash accounts, each with a balance and a log. Nothing is built and nothing waits on it, so none of the nine enters the list above. ⛔ The log names neither its account nor its cause (critique 1), `adjustment` is the only type for anything off the list, and `account_number` is unique while a cash box has none (a contradiction). Four questions reach built services: the restock's payment picker (Q2), the expense form (Q3), team payments (Q4), the team record's bank fields (Q9). **Q4 and Q8 first** — which forms exist, and which screens show a balance |
 
 > **Counted from each file's Question section, at either heading level.** Previous rebuilds matched
 > `## Question` only, and five technical clarifies write theirs as `# Question` — so **17 open

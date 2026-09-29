@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after the owner's first
 edit. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **two owner decisions**. The lifecycle
-is at *waiting for the owner* on Q1–Q10 — no Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **five owner decisions**. The lifecycle
+is at *waiting for the owner* on Q1–Q4 and Q8–Q10 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
 
@@ -12,6 +12,9 @@ is at *waiting for the owner* on Q1–Q10 — no Storybook prototype, no technic
 | --- | --- |
 | [the-accounts-are-one-ledger](../../business/financial_account/context_decision.md#the-accounts-are-one-ledger) | `financial_accounts` is the state, `financial_account_logs` the log — no balance moves without a log row, in the same transaction |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
+| [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
+| [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(account_type, account_number)` where a number exists, across all teams, archived included · a cash box exempt · ⚠ the `team_infos` copy (Q9) must list colliding numbers, never drop them |
+| [below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused) *(Q7)* | no balance check on any write path · a warning on the list and the account page while below zero |
 
 ## What exists
 
@@ -38,7 +41,7 @@ with the ledger line 13 names. Do not build from it as written.
 
 ## Open
 
-Q1–Q10 in the clarify. **Q10 and Q4 first** — together they decide every form — then **Q8**, which screens show a
+Q1–Q4 and Q8–Q10 in the clarify. **Q10 and Q4 first** — together they decide every form — then **Q8**, which screens show a
 balance.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete

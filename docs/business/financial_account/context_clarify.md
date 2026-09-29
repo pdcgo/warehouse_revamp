@@ -3,10 +3,13 @@
 What I read out of [context.md](./context.md), and what has to be settled beside it. **That doc is yours — this
 one is mine.** An answered point is deleted; what you settled is in [context_decision.md](./context_decision.md).
 
-🔄 **Second pass, 2026-09-29 — after your edit.**
+🔄 **Re-examined twice on 2026-09-29 — newest first.**
 
 | | |
 | --- | --- |
+| ✅ answered in chat | Q5, Q6, Q7 — each as recommended: [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) · [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) · [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused) |
+| ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 22 still reads *"its unique"* — yours to carry into the doc |
+| ⚠ ripple of Q6 | [Q9](#question) — `team_infos` can hold one bank number in two teams today, and a copy into accounts takes it once |
 | ✅ your line 13 | the two tables are one ledger — [the-accounts-are-one-ledger](./context_decision.md#the-accounts-are-one-ledger) |
 | ✅ your §How we Update The Ledger | a row comes by hand or from the broker — [a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker) |
 | 🆕 +1 | [Q10](#question) — which way each type comes in, and whether one may come both ways |
@@ -16,7 +19,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Ten questions, eight critiques, two contradictions.**
+already touch a bank without naming one. **Seven questions open, eight critiques, one contradiction.**
 
 ## What already moves money
 
@@ -185,7 +188,7 @@ sequenceDiagram
 | `FinancialAccountList` | every member who names an account on a form | guideline List · `GENERAL` — name, provider, number, holder, status · **no balance** · paginated (HARD RULE 9) — the picker asks a large first page |
 | `FinancialAccountOverview` | managers — [Q8](#question) | guideline Overview · `BALANCE` — balance and last checked, per account · a total per kind |
 | `FinancialAccountByIds` | anyone reading a row that names an account | guideline ByIds · `GENERAL` — a restock names *which* account paid, never what is left in it |
-| `FinancialAccountCreate` | managers | name, provider, number, holder, description, opening balance → posts `opening_balance` |
+| `FinancialAccountCreate` | managers | name, provider, number, holder, description, opening balance → posts `opening_balance` · refused when the number is already registered ([a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once)) |
 | `FinancialAccountUpdate` | managers | name, holder, description, *where we are paid* ([Q9](#question)) — provider and number are fixed: another number is another account |
 | `FinancialAccountArchive` · `FinancialAccountRestore` | managers | archive refused unless the balance is zero |
 | `FinancialAccountTransfer` | managers | from, to, amount, date, note → two legs sharing a `group_id` |
@@ -251,7 +254,7 @@ erDiagram
 | unique | why |
 | --- | --- |
 | `(team_id, name)` | a picker never shows two of the same |
-| `(provider, account_number)` where a number exists — across all teams | one real account, one row ([Q6](#question), [Contradiction](#contradiction)) |
+| `(provider, account_number)` where a number exists — across all teams | ✅ one real account, one row — [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) |
 | `(financial_account_id, change_type, source_id, reversal)` where `source_id <> 0` | one cause posts once |
 | `(team_id)` where `pay_to` | one place a team is paid ([Q9](#question)) |
 
@@ -259,8 +262,8 @@ erDiagram
 
 | where | what |
 | --- | --- |
-| `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a total per kind: bank, wallet, cash · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) |
-| `/financial-accounts/:id` 🆕 | the balance and its rows, newest first, paginated — each row links to its cause · Transfer · Reconcile |
+| `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) |
+| `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row links to its cause · Transfer · Reconcile |
 | the restock form | *Paid from* — `FinancialAccountSelect` replaces `PaymentTypeSelect` ([Q2](#question)) |
 | the expense form | *Paid from*, optional ([Q3](#question)) |
 | a team payment | *Paid from* on record · *Received into* on confirm ([Q4](#question)) |
@@ -306,23 +309,17 @@ see a balance, so it shows none.
    `capital` — the business owner's own money, put in or taken out.
    Then `adjustment` only ever means *money we did not record* — worth reading every week.
 
-5. **Is `shopeepay` the e-wallet a team pays suppliers with — not the Shopee seller balance?** *(lines 8, 42)*
-   **→ Recommend yes.** It is what `restock_requests.payment_type` already calls `shopee_pay`. The seller balance
-   stays out of scope — *"we dont care about shop wallet"*
-   ([superseded-the-position-is-the-shortfall-not-the-wallet](../settlement/context_decision.md#superseded-the-position-is-the-shortfall-not-the-wallet)).
-   ⚠ If it **is** the seller balance, every settlement row — `fund`, every fee — posts here, and that decision reopens.
+5. ✅ **Answered 2026-09-29 — `shopeepay` is the team's e-wallet**, never the Shopee seller balance, as recommended:
+   [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with). Kept as
+   a line so the numbers hold.
 
-6. **Is a real account recorded once, across all teams?** *(line 22)* — see [Contradiction](#contradiction).
-   **→ Recommend yes — unique per provider and number, across all teams.** Registered in two teams, one BCA account
-   is two balances of the same money: neither matches the bank, and the business-wide total counts it twice. If two
-   teams really share one account, it is one team's account, and the other's money in it is owed between them — a
-   team-balance question, not a second copy of the account.
+6. ✅ **Answered 2026-09-29 — a real account is recorded once**, across all teams, a cash box exempt, as recommended:
+   [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once). Kept as a line so the
+   numbers hold.
 
-7. **May an account go below zero?**
-   **→ Recommend: never refused, always shown.** The money already left; a refusal only stops the record of it.
-   Below zero means an inflow was never recorded — the account carries a warning until a reconcile or the missing row
-   fixes it. 🆕 And the broker path cannot refuse at all, so a refusal could only ever bind a hand row — a rule that
-   would depend on which way the money came.
+7. ✅ **Answered 2026-09-29 — below zero is warned, never refused**, as recommended:
+   [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused). Kept as a line so
+   the numbers hold.
 
 8. **Who sees a balance, and who moves one?**
    **→ Recommend the team's managers** — owner and admin of the role family matching the team's type
@@ -335,6 +332,9 @@ see a balance, so it shows none.
    **→ Recommend yes.** A team marks one account *where we are paid*; a payer sees its name, number and holder —
    never its balance — on the payment form. `team_infos`' three bank fields retire, each copied into an account
    first. Otherwise one bank is typed in two places, and the day one is edited a payer is sent to the other.
+   ⚠ **Ripple of [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once):** those
+   fields took any number, so one bank can sit in two teams today — the copy takes it once, and lists the rest for a
+   person to settle.
 
 10. 🆕 **Which way does each type come in — and may one come both ways?** *(lines 72–74)*
     **→ Recommend one way per type, fixed.** **By hand** — `opening_balance`, `transfer`, `capital`, and
@@ -371,28 +371,10 @@ flowchart TB
   F["financial_account_id on every log row"] -.->|"fixes"| X
 ```
 
-## account_number is unique, and a cash box has none
-
-> line 22 — *"`account_number`, its unique"* · lines 33 and 38 — `cash` is a `type` and an `account_type`.
-
-A cash box has no number. Stored as `''`, the unique rule lets **one** cash account exist in the whole system — the
-second team to open a box is refused. Stored as `NULL`, the rule says nothing about cash at all.
-
-**Which is wrong:** line 22 — it names a rule without its scope. Cash is right to be an account: the warehouse's box
-is the one that pays the courier.
-
-**→ Recommend:** unique per `(provider, account_number)`, among accounts that have a number, across all teams
-([Q6](#question)). What stops it recurring: say per kind what the number **is** — a bank's is the account number, a
-wallet's is its phone number, cash has none.
-
-```mermaid
-flowchart TB
-  U["line 22 — account_number is unique"] --> E["a cash box stores an empty number"]
-  C["lines 33 and 38 — cash is an account"] --> E
-  E --> ONE["one cash account allowed in the whole system"]
-  ONE --> X["the second team to open a cash box is refused"]
-  S["unique per provider and number, among accounts with one"] -.->|"fixes"| X
-```
+✅ **Closed — *account_number is unique, and a cash box has none*** (line 22 against lines 33 and 38): the rule now
+has its scope, [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) — unique per
+provider and number across all teams, a cash box exempt. ⚠ Line 22 still reads only *"its unique"* — yours to carry
+into the doc.
 
 ⚠ **One in another of yours:** `technical/architecture/context.md` §Microservice lists no financial account
 service — reported in [its clarify](../../technical/architecture/context_clarify.md).

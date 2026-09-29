@@ -8,6 +8,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | --- | --- | --- | --- |
 | [the-accounts-are-one-ledger](#the-accounts-are-one-ledger) | `financial_accounts` is the ledger's state and `financial_account_logs` its log — the ledger template applies | owner | ⛔ the log has no account, so its grain is not the state's — [Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains) |
 | [a-row-comes-by-hand-or-from-the-broker](#a-row-comes-by-hand-or-from-the-broker) | two ways in: a person types a row, or the service hears an event another service published | owner | [Q10](./context_clarify.md#question) — which type takes which way |
+| [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | [Q2](./context_clarify.md#question), [Q4](./context_clarify.md#question) — what moves it |
+| [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
+| [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
 
 ## the-accounts-are-one-ledger
 
@@ -74,3 +77,92 @@ flowchart LR
 - **Which way each type comes in**, and whether one may come both ways — [Q10](./context_clarify.md#question).
 - **Who types a row by hand** — [Q8](./context_clarify.md#question).
 - **What each new event carries** — the account, and the change rather than a level — a technical item, per publisher.
+
+## shopeepay-is-the-wallet-a-team-pays-with
+
+> Chat *(owner, 2026-09-29)* — *"for q5, yes"*, to [Q5](./context_clarify.md#question) as recommended: is `shopeepay`
+> the e-wallet a team pays suppliers with — not the Shopee seller balance?
+
+**The verdict.** `shopeepay` *(lines 8, 42)* is the **e-wallet a team pays with** — the same thing a restock's
+`payment_type` already calls `shopee_pay`. The Shopee **seller** balance is not an account here: it stays out of
+scope, as settlement decided
+([superseded-the-position-is-the-shortfall-not-the-wallet](../settlement/context_decision.md#superseded-the-position-is-the-shortfall-not-the-wallet)),
+so no settlement `fund` or fee row ever posts to an account.
+
+```mermaid
+flowchart LR
+  SB["the Shopee seller balance — out of scope, settlement's position"] -->|"a withdrawal"| BANK["a bank account — an account here"]
+  BANK -->|"a top-up"| SPAY["ShopeePay — the team's e-wallet, an account here"]
+  SPAY -->|"pays"| SUP["a supplier — a restock"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the account | `type` `wallet` · `account_type` `shopeepay` |
+| its number | the wallet's phone number |
+| what moves it | a restock paid from it ([Q2](./context_clarify.md#question)) · a top-up from the bank ([Q4](./context_clarify.md#question)) — both still open |
+| what never does | a settlement row — `fund`, a fee, an adjustment. That is the seller balance, and settlement's position already counts it |
+| a withdrawal | the seller balance paying out — it lands in whichever account its shop names ([Q1](./context_clarify.md#question)) |
+
+## a-real-account-is-recorded-once
+
+> Chat *(owner, 2026-09-29)* — *"for q6, yes"*, to [Q6](./context_clarify.md#question) as recommended: is a real
+> account recorded once, across all teams?
+
+**The verdict.** One real account is **one row, in one team**. A provider and its number — `account_type` and
+`account_number` — are unique across all teams; a cash box has no number and is exempt. If two teams really share one
+bank account, it is one team's account, and what the other keeps in it is owed between them — a team-balance
+question, not a second copy of the account.
+
+```mermaid
+flowchart TB
+  A["team A registers BCA 1234567890"] --> R["one row — team A's"]
+  B["team B registers BCA 1234567890"] -->|"refused — already registered"| R
+  C1["team A's cash box — no number"] --> OK["as many as each team needs"]
+  C2["team B's cash box — no number"] --> OK
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| unique | `(account_type, account_number)` where a number exists — across all teams, archived accounts included |
+| cash | exempt — it has no number, and is told apart by its name ([critique 3](./context_clarify.md#critique)) |
+| a second registration | refused. ⚠ my spec: the message says the account is already registered, and names no team |
+| an archived account | keeps its number — restored, never registered again |
+| a shared real account | one team's account. The other's money in it is owed between them — the team balance, not a second row |
+| the contradiction it closes | *account_number is unique, and a cash box has none* — the rule now has its scope. ⚠ Line 22 still reads *"its unique"* — yours to carry into the doc |
+
+### ⚠ The ripple
+
+[Q9](./context_clarify.md#question) proposes copying each team's `team_infos` bank into an account. Those fields took
+any number, so one bank can be typed in two teams today — and under this rule a copy takes it **once**. The rest must
+be listed for a person to settle, never silently dropped.
+
+## below-zero-is-warned-never-refused
+
+> Chat *(owner, 2026-09-29)* — *"for q7 yes"*, to [Q7](./context_clarify.md#question) as recommended: may an account
+> go below zero?
+
+**The verdict.** Yes. A row that takes an account below zero **posts**, whichever way it came in, and the account
+shows a **warning** while it stays below zero. Nothing refuses it: the money already left, and a refusal would only
+stop the record of it — on the broker path, it would dead-letter and be recorded nowhere.
+
+```mermaid
+stateDiagram-v2
+  [*] --> zero_or_more
+  zero_or_more --> below_zero: a row takes it under zero — posted, never refused
+  below_zero --> zero_or_more: the missing inflow arrives, or a reconcile
+  below_zero: below zero — a warning on the account
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| a row that goes below zero | posts — by hand or from the broker |
+| what below zero means | an inflow was never recorded: nobody spends from an empty wallet or box |
+| the warning | on the account list and on the account's page, for as long as the balance is below zero |
+| what clears it | the missing row arriving, or a reconcile |
