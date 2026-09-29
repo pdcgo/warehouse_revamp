@@ -1011,7 +1011,8 @@ review as work lands, so branch-switching just gets in the way.
 
 CI (`.github/workflows/ci.yml`) runs on push-to-`main` and every PR: buf lint + generated-drift
 check, `go build/vet/test`, frontend build, and Playwright e2e against Postgres + Redis service
-containers.
+containers and the Pub/Sub emulator (started with `docker compose`, its topics made by `san pubsub
+ensure` — without it every publish waits out a 60 s ack timeout, past Playwright's test timeout).
 
 ## graphify
 

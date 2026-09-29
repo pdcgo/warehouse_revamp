@@ -143,10 +143,12 @@ second time will be slightly different. That drift is the actual cost.
 - [Permission denied calling an RPC](troubleshooting.md#permission-denied-calling-an-rpc)
 - [Something cached is stale after I changed a role/permission](troubleshooting.md#something-cached-is-stale-after-i-changed-a-rolepermission)
 - [A Pub/Sub message keeps being redelivered forever](troubleshooting.md#a-pubsub-message-keeps-being-redelivered-forever)
+- [An import, or placing an order, hangs for about a minute](troubleshooting.md#an-import-or-placing-an-order-hangs-for-about-a-minute)
 - [My MCP endpoint answers 403 to everything, but only through the tunnel](troubleshooting.md#my-mcp-endpoint-answers-403-to-everything-but-only-through-the-tunnel)
 - [My MCP client re-initializes on every call and loses its state](troubleshooting.md#my-mcp-client-re-initializes-on-every-call-and-loses-its-state)
 - [My MCP client connects but every tool call comes back unauthorized](troubleshooting.md#my-mcp-client-connects-but-every-tool-call-comes-back-unauthorized)
 - [`GetDownloadUrl` says NotFound for a document I know exists](troubleshooting.md#getdownloadurl-says-notfound-for-a-document-i-know-exists)
+- [Why is my settlement import refused?](troubleshooting.md#why-is-my-settlement-import-refused)
 
 ---
 

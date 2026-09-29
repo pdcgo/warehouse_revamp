@@ -178,6 +178,16 @@ jobs:
         working-directory: frontend
         run: npm run test:stories
 
+      # The e2e's API publishes through the Pub/Sub EMULATOR, and a publish waits up to 60 s for the
+      # broker's ack before it logs the failure and moves on. With no broker, every order placed and
+      # every statement row imported waits out that minute — past Playwright's 60 s test timeout.
+      # The topics exist only once `san pubsub ensure` has run: nothing else creates them.
+      - name: start the pubsub emulator
+        run: |
+          docker compose --profile pubsub up -d pubsub
+          for i in $(seq 1 60); do curl -sf http://localhost:8085/ > /dev/null && break; sleep 2; done
+          go run ./tools/san pubsub ensure --project warehouse-dev --emulator
+
       # Playwright's global-setup migrates + seeds the DB, and its webServer starts the Go API
       # and the Vite dev server. Go is on PATH from setup-go, so `go run ./cmd/...` works.
       - name: e2e
