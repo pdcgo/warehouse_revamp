@@ -326,11 +326,32 @@ see a balance, so it shows none.
    the numbers hold.
 
 8. **Who sees a balance, and who moves one?**
-   **→ Recommend the team's managers** — owner and admin of the role family matching the team's type
-   ([warehouse-roles-count-as-their-own-team](../balance/context_decision.md#warehouse-roles-count-as-their-own-team))
-   — plus root and admin: they see balances, open and archive accounts, and type every hand row — a transfer,
-   capital, a reconcile. No finance role, as with expenses. Anyone who raises an act naming an account — a CS raising
-   a restock — picks it by **name**, from a list with no balance in it.
+   Five things a person does with an account:
+
+   | act | who needs it | for example |
+   | --- | --- | --- |
+   | see a balance, and an account's rows | whoever answers for the team's money | *how much is left in ShopeePay for this week's restocks?* |
+   | open, archive, restore an account | the same | a new BCA account for the team |
+   | type a hand row — transfer, capital, reconcile | the same | a ShopeePay top-up · counting the cash box |
+   | name an account on another form, **by name** | whoever does that act | a CS raising a restock · warehouse staff paying the courier at the door |
+   | see where another team is paid — name, number, holder | any team paying it | the payment form ([Q9](#question)) |
+
+   | | **A — the managers** | B — the owner only | C — the whole team |
+   | --- | --- | --- | --- |
+   | sees balances and moves money | owner and admin of the team's role family, plus root and admin | the team's owner, plus root and admin | every member — CS and warehouse staff too |
+   | a ShopeePay top-up on a busy day | any manager | waits for the owner | anyone |
+   | who could hide missing cash with a reconcile | a manager — and the adjustment names them | the owner alone | anyone |
+   | agrees with | team payments — the same six roles record and confirm them today | — | — |
+
+   **→ Recommend A.** Whoever answers for the team's money sees it and moves it — owner and admin of the role family
+   matching the team's type
+   ([warehouse-roles-count-as-their-own-team](../balance/context_decision.md#warehouse-roles-count-as-their-own-team)),
+   plus root and admin, who read every team's accounts. No finance role, as with expenses. What keeps a manager
+   honest is the record, not a narrower role: every row names who typed it, and a reconcile's adjustment is the one
+   total worth reading every week ([adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only)).
+   Everyone else who acts — a CS raising a restock, warehouse staff paying the courier — picks an account by
+   **name**, from a list with **no balance in it at all**: `FinancialAccountList` carries none, and balances come only
+   from `FinancialAccountOverview`, which only the managers may call. It holds by structure, not by a hidden column.
 
 9. **Is the bank on the team record one of the team's financial accounts?**
    **→ Recommend yes.** A team marks one account *where we are paid*; a payer sees its name, number and holder —
