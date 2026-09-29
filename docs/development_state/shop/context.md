@@ -2,9 +2,11 @@
 
 **Pass:** business analysis — **second pass** (2026-09-28) on the owner's new
 [shop/context.md](../../business/shop/context.md): create, edit, delete, list. Questions:
-[context_clarify.md](../../business/shop/context_clarify.md). **One owner decision**, from the owner's own edit —
+[context_clarify.md](../../business/shop/context_clarify.md). **Two owner decisions**, from the owner's own edits —
 [access-is-given-per-user-per-shop](../../business/shop/context_decision.md#access-is-given-per-user-per-shop)
-(*"give access user to shop"*, the built `shop_users` model). **Plus ten 🏗 as-built decisions** in the same
+(*"give access user to shop"*, the built `shop_users` model), widened on 2026-09-29 by
+[the-shop-manages-its-access-list](../../business/shop/context_decision.md#the-shop-manages-its-access-list)
+(*"manage access user to shop"* — give, take away, list). **Plus ten 🏗 as-built decisions** in the same
 [context_decision.md](../../business/shop/context_decision.md), recorded on the owner's instruction for a later
 review — what the code does today, each linked to the clarify question that would change it. They close no
 question. The lifecycle is at *waiting for the owner*; no Storybook prototype until the questions come back.
@@ -27,6 +29,7 @@ question. The lifecycle is at *waiting for the owner*; no Storybook prototype un
 | `ShopCreate` does not check the team is a SELLING team | `selling_v1/shop_create.go` |
 | ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row, then checks the team — the first team to post claims the shop, and its real owner gets `errWrongTeam` after | `settlement_v1/post_entry.go:282-309` |
 | `expense_service` stores any `shop_id` unvalidated | `expense_v1/expense_create.go:30` |
+| a grant outlives its holder leaving the team, and `ShopUserAdd` accepts a user outside the team — nothing in `selling_service` hears of a membership change | `selling_v1/shop_user_add.go` |
 
 ## Open
 
@@ -37,6 +40,7 @@ question. The lifecycle is at *waiting for the owner*; no Storybook prototype un
 | close, not delete | [shop Q3](../../business/shop/context_clarify.md#question) — ripples into the importer's shop check |
 | marketplace and team fixed at creation | [shop Q4](../../business/shop/context_clarify.md#question) |
 | the shop's own name on the platform | [shop Q5](../../business/shop/context_clarify.md#question) |
+| who can hold a grant — the team's members only, ended by leaving | [shop Q6](../../business/shop/context_clarify.md#question) — opened 2026-09-29 by *manage* access |
 
 **Next agent:** when the owner answers, record each in `shop/context_decision.md` (named, RULE 12), delete the
 answered question, rebuild `docs/biggest_question.md`. Q2 decides where every build item above lands, so it

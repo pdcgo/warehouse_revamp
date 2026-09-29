@@ -23,12 +23,16 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [a-grant-is-idempotent-and-listed-as-ids](#a-grant-is-idempotent-and-listed-as-ids) | adding or removing a grant twice changes nothing · the list returns user ids | as built | [Q1](./context_clarify.md#question) |
 | [an-order-needs-a-live-shop-of-its-team](#an-order-needs-a-live-shop-of-its-team) | an order is placed only on a live shop of its own team, checked before any stock moves | as built | — |
 | [other-services-keep-a-shop-id-unchecked](#other-services-keep-a-shop-id-unchecked) | expense and settlement store a shop id without asking the shop | as built | ⛔ [critique 6](./context_clarify.md#critique) |
+| [the-shop-manages-its-access-list](#the-shop-manages-its-access-list) | managing a shop's access — give it, take it away, see who has it — is the shop's own job | owner | [Q1](./context_clarify.md#question) — who needs one · [Q6](./context_clarify.md#question) — who can hold one |
 
 ## access-is-given-per-user-per-shop
 
 > `context.md` §Responsbility 1 *(owner, 2026-09-28)* — *"give access user to shop"*, added beside create, edit,
 > delete and list. It answers the first half of [critique 1](./context_clarify.md#critique): shop access was
 > built, and missing from the doc.
+
+> 🔄 *(2026-09-29)* The line now reads *"manage access user to shop"* — widened by
+> [the-shop-manages-its-access-list](#the-shop-manages-its-access-list). This verdict still holds.
 
 **The verdict.** Access to a shop is **given to a user, one shop at a time**, and giving it is the shop's own job —
 the same one that creates and closes the shop. It is the model already built: `shop_users`, one row per user per
@@ -392,3 +396,38 @@ flowchart LR
 
 ⛔ **Under review** — [critique 6](./context_clarify.md#critique): one team can claim another team's shop account by
 posting to it first.
+
+## the-shop-manages-its-access-list
+
+> `context.md` §Responsbility 1 *(owner, 2026-09-29)* — *"manage access user to shop"*, in place of *"give access
+> user to shop"*.
+
+**The verdict.** The shop's job is not only to **give** a user access but to **manage** it: give it, take it away, and
+show who has it. All three are the shop's own, and all three are built
+([a-grant-is-idempotent-and-listed-as-ids](#a-grant-is-idempotent-and-listed-as-ids)). It widens
+[access-is-given-per-user-per-shop](#access-is-given-per-user-per-shop), and reverses nothing.
+
+```mermaid
+flowchart LR
+  M["the team's owner or admin"] --> A["give — ShopUserAdd"]
+  M --> R["take away — ShopUserRemove"]
+  M --> L["see who has it — ShopUserList"]
+  A --> G["shop_users — one user, one shop"]
+  R --> G
+  L --> G
+```
+
+### The spec
+
+| manage | RPC | as built |
+| --- | --- | --- |
+| give | `ShopUserAdd` | idempotent — granting twice is one grant |
+| take away | `ShopUserRemove` | idempotent — removing a missing grant succeeds |
+| see who has it | `ShopUserList` | user ids, newest grant first, paged — the screen resolves the names |
+
+### What it does NOT settle
+
+- **Who needs a grant, and what a grant gates** — [Q1](./context_clarify.md#question). Managing the list says nothing
+  about who must be on it.
+- **Who can hold one** — a grant can name someone outside the team, and outlives its holder leaving:
+  [Q6](./context_clarify.md#question).

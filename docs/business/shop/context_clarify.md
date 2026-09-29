@@ -10,7 +10,8 @@ other services may ask it.**
 
 | | |
 | --- | --- |
-| ✅ your edit | §Responsbility gained *"give access user to shop"* — recorded as [access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop). Who needs a grant, and what it gates, is still [Q1](#question) |
+| ✅ your edits | §Responsbility gained *"give access user to shop"* (2026-09-28), then made it *"manage access user to shop"* (2026-09-29) — recorded as [access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop) and [the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list). Who needs a grant, and what it gates, is still [Q1](#question) |
+| 🆕 +1 (2026-09-29) | [Q6](#question) — *manage* includes seeing who has access, and the list keeps people who left the team |
 | 🔄 revised | [Q2](#question) — I now recommend its **own** `shop_service`. Settlement has to ask about shops, and selling already calls settlement |
 | 🔄 corrected | critique 3 said a deleted shop *stays readable* — nothing can read it, and a closed shop still has payouts coming |
 | 🆕 +3 | [Q3](#question) close, not delete · [Q4](#question) marketplace and team fixed · [Q5](#question) the shop's own name on the platform |
@@ -29,7 +30,7 @@ screens, and `ShopSelect`:
 | delete | `ShopDelete` — soft: `deleted` is set, the code is freed, and the shop **disappears from every read** |
 | list | `ShopList` — open shops only, searched by name or code |
 | — | `ShopDetail` — one open shop |
-| give access user to shop | **shop access** — `ShopUserList` · `ShopUserAdd` · `ShopUserRemove`, one grant of one user to one shop |
+| manage access user to shop | **shop access** — `ShopUserList` · `ShopUserAdd` · `ShopUserRemove`, one grant of one user to one shop |
 
 Who reads a shop today — a dotted line is a `shop_id` taken on trust, with nothing asked:
 
@@ -50,7 +51,7 @@ flowchart LR
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **Shop access is in the doc now — and still enforced nowhere.** ✅ *"give access user to shop"* ([access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop)). But `shop_users` is read only by its own three RPCs: orders, settlement and every screen ignore it. The importer's shop check ([the-shop-is-checked-before-the-file-is-stored](../settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)) will be its first reader. | Settle who needs a grant and what it gates — [Q1](#question). |
+| **1** | **Shop access is in the doc now — and still enforced nowhere.** ✅ *"manage access user to shop"* ([the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list)). But `shop_users` is read only by its own three RPCs: orders, settlement and every screen ignore it. The importer's shop check ([the-shop-is-checked-before-the-file-is-stored](../settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)) will be its first reader. | Settle who needs a grant and what it gates — [Q1](#question). |
 | **2** | **The title says *Shop Service*, and there is no shop service.** Shops are one proto service inside `selling_service`. | Say which — [Q2](#question). |
 | **3** | 🔄 **Delete hides a shop from everything that still points at it.** `ShopList` and `ShopDetail` both filter out `deleted`, so nothing can read a deleted shop: the settlement report's by-shop ranking names its row `#7`, and the orders filter cannot pick it. And a shop is paid **after** it stops selling — its last orders settle and its balance is withdrawn later — while the importer's check, as specified, refuses a deleted shop. | **Close, not delete** — [Q3](#question). |
 | **4** | ***"for Selling Team"* is not enforced.** `ShopCreate` writes into any team it is given. The menu hides `/shops` from a warehouse team; the RPC does not. | `ShopCreate` refuses a team whose type is not SELLING — one lookup. |
@@ -58,6 +59,7 @@ flowchart LR
 | **6** | ⛔ **Other services take a `shop_id` on trust, and settlement lets a team claim another's shop.** A row with no order opens its shop's account under the **caller's** team, and the team is checked only after ([post_entry.go:282](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L282)). Team A posts one such row naming team B's shop before B has posted any: the account is A's, and every such post B makes to its own shop answers `errWrongTeam` from then on. `expense_service` stores any `shop_id` it is given. Neither has anything to ask — the doc names no RPC for other services, as [warehouse's](../teams/warehouse/context.md) does. | Add `## Rpc That Must Exist for other service use`: **`ShopByIds`** — team, marketplace and status per shop, closed ones included. Settlement asks it before opening a shop's account, expense before storing a shop. |
 | **7** | **A shop does not record who it is on the platform.** Only `shop_code` is unique, and only within a team — one Shopee storefront can be registered twice, in one team or two, and its orders and settlements split between the copies. A Shopee statement names its seller, `Username (Penjual)`, and there is nothing to match it to ([what the file check cannot see](../settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). | Record it — [Q5](#question). |
 | **8** | **One list, two questions.** The order form's picker needs the open shops this person may work on; a report's filter needs every shop that ever had a row. `ShopList` has one fixed answer — every open shop. | Filters `status` (open · closed · all), `marketplace` and `user_id`, so each screen asks its own question. |
+| **9** | 🆕 **A managed list has to be true — and this one keeps people who left.** *Manage* includes seeing who has access ([the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list)). But nothing ends a grant when its holder leaves the team — `shop_users` is `selling_service`'s, and nothing there hears of a membership change — and `ShopUserAdd` never checks that the user is in the team at all. A shop's access list drifts into people who no longer work there. | A grant is held only by a member of the shop's team, and leaving the team ends it — [Q6](#question). |
 
 ## Recommendation
 
@@ -151,7 +153,7 @@ flowchart LR
 | `ShopList` | built | filters `status`, `marketplace`, `user_id` (critique 8) |
 | `ShopDetail` | built | reads a closed shop too |
 | `ShopByIds` 🆕 | for other services | ids → team, marketplace, status — closed included (critique 6) |
-| `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` | built | `user_id` on the list's filter, so *"is this caller on this shop?"* is one row (Q1) |
+| `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` | built | `user_id` on the list's filter, so *"is this caller on this shop?"* is one row (Q1) · `ShopUserAdd` refuses a user outside the team, and leaving the team ends the grant (Q6) |
 
 ### The data
 
@@ -194,9 +196,10 @@ erDiagram
    [importer Q12](../settlement/settlement_importer_clarify.md#question), where the importer's flow asks *"is caller
    that access on shop"* — this doc owns the answer. Shop access exists — `shop_users`, one grant per user per
    shop (`ShopUserAdd`) — but nothing reads it except its own three RPCs, so the importer would be its first
-   enforcement, and what it means is set here. ✅ That the grant is the shop's to give is now in your doc
-   ([access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop)) — who needs
-   one is not.
+   enforcement, and what it means is set here. ✅ That access is the shop's to manage — give it, take it away,
+   see who has it — is now in your doc
+   ([the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list)) — who needs a
+   grant is not.
    **→ Recommend: the shop's listed users, plus the team's owner and admin** — and root and admin, who pass
    every scope. A CS person works only on the shops they are granted, so the grant finally means something,
    while the people who run the team never need a grant to act on it. The check is one lookup: add `user_id`
@@ -241,8 +244,17 @@ erDiagram
    ⚠ A TikTok statement names no shop, so it gains nothing there — and uniqueness across teams tells a team
    that a storefront is already registered elsewhere.
 
+6. **May a grant outlive its holder's place in the team?** 🆕 *(2026-09-29)* Critique 9 — opened by *manage*.
+   **→ Recommend no.** `ShopUserAdd` refuses a user who is not a member of the shop's team, and leaving the team
+   ends every shop grant the person held — so a shop's access list is always people who can work there. A stale
+   grant opens nothing today, since the interceptor refuses a non-member first. What it breaks is the list you now
+   manage, which shows people who left — and, once Q1 makes a grant mean something, a person who rejoins gets
+   their old shops back without anyone granting them.
+   ⚠ The price: the shop has to hear when a membership ends — one event from `user_service`, or a membership
+   check when the list is read.
+
 # Contradiction
 
-**None in your doc.** 🔄 One in mine, corrected: the first pass's critique 3 said a deleted shop *stays
+**None in your doc** — re-examined after the 2026-09-29 edit. 🔄 One in mine, corrected: the first pass's critique 3 said a deleted shop *stays
 readable*, and recommended that it take no new import. `ShopList` and `ShopDetail` both filter a deleted shop
 out, and a closed shop still has money coming — see [Q3](#question).
