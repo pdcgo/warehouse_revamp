@@ -10,9 +10,9 @@
 // "same picture = same place" holds, and a card's icon cannot quietly differ from the one beside its name
 // in the nav.
 import type { LucideIcon } from "lucide-react";
-import { FileText, History, MapPin, Package, StickyNote, Truck, Wallet } from "lucide-react";
+import { FileText, History, Landmark, MapPin, Package, StickyNote, Truck, Wallet } from "lucide-react";
 
-export type SectionKey = "info" | "notes" | "items" | "timeline" | "shipping" | "recipient" | "withdrawal";
+export type SectionKey = "info" | "notes" | "items" | "timeline" | "shipping" | "recipient" | "settlement" | "withdrawal";
 
 // ⚠ `navKey` IS A SHORT LABEL, `titleKey` THE CARD'S FULL ONE. "Withdrawal dan penyesuaian" is right
 // above a card and too long in a 13rem column, where it wrapped onto two lines and made that one item
@@ -24,6 +24,7 @@ export const SECTIONS: { key: SectionKey; titleKey: string; navKey: string; icon
   { key: "timeline", titleKey: "orderDetail.timeline.title", navKey: "orderDetail.nav.timeline", icon: History },
   { key: "shipping", titleKey: "orderDetail.shipping.title", navKey: "orderDetail.nav.shipping", icon: Truck },
   { key: "recipient", titleKey: "orderDetail.recipient.title", navKey: "orderDetail.nav.recipient", icon: MapPin },
+  { key: "settlement", titleKey: "orderDetail.settlement.title", navKey: "orderDetail.nav.settlement", icon: Landmark },
   { key: "withdrawal", titleKey: "orderDetail.withdrawal.title", navKey: "orderDetail.nav.withdrawal", icon: Wallet },
 ];
 

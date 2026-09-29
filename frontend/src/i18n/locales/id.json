@@ -780,7 +780,8 @@
       "timeline": "Timeline",
       "shipping": "Pengiriman",
       "recipient": "Penerima",
-      "withdrawal": "Withdrawal"
+      "withdrawal": "Withdrawal",
+      "settlement": "Settlement"
     },
     "info": {
       "title": "Info order",
@@ -900,6 +901,9 @@
     },
     "bar": {
       "loss": "Rugi"
+    },
+    "settlement": {
+      "title": "Settlement"
     }
   },
   "orderDrafts": {

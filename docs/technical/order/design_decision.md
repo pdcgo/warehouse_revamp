@@ -22,6 +22,7 @@
 | [the-order-detail-is-one-page-of-sections](#the-order-detail-is-one-page-of-sections) | the detail is one page of sections with a scrolling left nav — not three tabs |
 | [the-order-detail-lines-are-priced-at-harga-beli](#the-order-detail-lines-are-priced-at-harga-beli) | the item table shows what we PAID, so the perincian adds up to the list's figures |
 | [the-detail-margin-is-mp-minus-system](#the-detail-margin-is-mp-minus-system) | margin = total MP − total sistem, the list's formula read from the detail |
+| [the-detail-preview-became-the-order-detail](#the-detail-preview-became-the-order-detail) | a seller's `/orders/:id` IS the approved page now — and it keeps the two wired features the preview lacked |
 
 ---
 
@@ -573,3 +574,33 @@ flowchart LR
 ([the-margin-is-mp-minus-total-beli](#the-margin-is-mp-minus-total-beli)) read from the other end. The
 written order was word order: taken literally it negates the margin and every healthy order reads as a
 loss.
+
+## the-detail-preview-became-the-order-detail
+
+> Owner, in chat (2026-09-29): *"oh iya, terapkan dulu"* — apply the approved detail, as the list was
+> applied in [the-preview-became-the-order-list](#the-preview-became-the-order-list).
+
+`/orders/:orderId` opens the approved page of sections for every team that is not a warehouse. The
+preview story is gone; its review stories now live in the page's own story file.
+
+```mermaid
+flowchart LR
+  R["/orders/:orderId"] --> Q{"current team type"}
+  Q -->|WAREHOUSE| W["WarehouseOrderDetail — the old tabbed page, untouched"]
+  Q -->|"SELLING, root, admin"| N["SellerOrderDetail — the approved page of sections"]
+  N --> K1["+ Settlement section — the real ledger, before Withdrawal"]
+  N --> K2["+ receipt document in Info — the uploaded slip, opened by signed URL"]
+  N --> K3["+ full address in Recipient — street and kode pos"]
+```
+
+| | what | why |
+| --- | --- | --- |
+| warehouse | keeps the old tabbed detail | same argument as [the-two-ends-are-two-screens](#the-two-ends-are-two-screens): the seller page shows harga beli and margin, which a building fulfilling many sellers has no business reading |
+| settlement | carried over as a SECTION, placed before Withdrawal | it is wired (reads `OrderSettlement`, posts entries); the preview had only the invented withdrawal table, so applying it bare would have removed a working feature. Whether *withdrawal & penyesuaian* IS this ledger stays open in [design_clarify.md](design_clarify.md) — now with both on screen |
+| receipt document | carried over as a fact of Info | the uploaded PDF is real; only the resi CODE is sampled |
+| address | full, never clamped | the preview's one-line region summary dropped the street — the one part a parcel cannot go without |
+| not found / bad id | back button + message, as before | a dead end on a mistyped URL |
+
+⚠ **The e2e now reads the seller page from the root seat**: the Pending stage (`data-stage="pending"`)
+instead of the word "Placed", `order-action-cancel` instead of `order-cancel`, the `tile-mp` tile
+instead of the old total line. The warehouse fulfilment test still reads the old page, tabs and all.

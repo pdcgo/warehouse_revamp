@@ -415,17 +415,17 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("order-create-save")).toBeEnabled();
   await page.getByTestId("order-create-save").click();
 
-  // Success lands on the read-only detail for the new order.
+  // Success lands on the read-only detail for the new order — the SELLER's page of sections, since
+  // root is not a warehouse (`the-two-ends-are-two-screens`).
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
   await expect(page).toHaveURL(/\/orders\/\d+$/);
   await expect(page.getByTestId("order-detail-page")).toContainText(CUSTOMER);
-  await expect(page.getByTestId(`order-item-${SKU}`)).toBeVisible();
-  await expect(page.getByTestId("order-detail-total")).toContainText("Rp 0");
-  // The marketplace note survived onto the order, beside the total and not inside it.
-  await expect(page.getByTestId("order-detail-marketplace-total")).toContainText("Rp 58.000");
+  await expect(page.getByTestId("section-items")).toContainText(SKU);
+  // The marketplace figure survived onto the order, as its own tile beside ours and not inside it.
+  await expect(page.getByTestId("tile-mp")).toContainText("Rp 58.000");
   // …and so did the storefront's own id for it, verbatim — the whole point of the field is that the
   // number a buyer quotes is readable on the order they are asking about.
-  await expect(page.getByTestId("order-detail-external-ref")).toHaveText(MARKETPLACE_REF);
+  await expect(page.getByTestId("order-reference-mp")).toContainText(MARKETPLACE_REF);
 
   // The receipt travelled with the order: the detail names the file and offers to open it. The
   // document itself is PRIVATE, so there is no URL on the page to assert — the button fetches a
@@ -442,15 +442,13 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(address).toContainText(KODE_POS);
 
   // THE ORDER OPENED ITS OWN SETTLEMENT ACCOUNT (settlement #order-service-calls-settlement). Nobody
-  // typed anything on the Settlement tab — placing an order with a marketplace total is what posts its
-  // `initial_total`, after the commit, in-process. The tab reading the sale back is the whole seam,
-  // proven against the real server and database rather than a fake poster.
-  await page.getByTestId("order-detail-tab-settlement").click();
+  // typed anything in the Settlement section — placing an order with a marketplace total is what posts
+  // its `initial_total`, after the commit, in-process. The section reading the sale back is the whole
+  // seam, proven against the real server and database rather than a fake poster.
   await expect(page.getByTestId("order-ledger-panel")).toBeVisible();
   await expect(page.getByTestId("settlement-absent")).toHaveCount(0);
   await expect(page.getByTestId("settlement-summary")).toContainText("Rp 58.000");
   await expect(page.getByTestId("ledger-table").locator('[data-testid^="entry-"]')).toHaveCount(1);
-  await page.getByTestId("order-detail-tab-info").click();
 
   // And it now shows in the list.
   await page.getByTestId("order-detail-back").click();
@@ -545,16 +543,17 @@ test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", 
   await placeOrderViaForm(page, `${CUSTOMER} lifecycle`);
   const detail = page.getByTestId("order-detail-page");
 
-  // A fresh order is PLACED, and waiting on the warehouse rather than on this seat.
-  await expect(detail).toContainText("Placed");
-  await expect(page.getByTestId("order-cancel")).toBeVisible();
-  await expect(page.getByTestId("order-confirm")).toHaveCount(0);
+  // A fresh order is PLACED — the owner's "Pending" stage — and waiting on the warehouse rather than
+  // on this seat.
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
+  await expect(page.getByTestId("order-action-cancel")).toBeVisible();
+  await expect(page.getByTestId("order-action-confirm")).toHaveCount(0);
 
   // Cancel goes through the confirm dialog (destructive) -> CANCELLED, a terminal state with no actions.
-  await page.getByTestId("order-cancel").click();
+  await page.getByTestId("order-action-cancel").click();
   await page.getByTestId("confirm-action").click();
   await expect(detail).toContainText("Cancelled");
-  await expect(page.getByTestId("order-cancel")).toBeHidden();
+  await expect(page.getByTestId("order-action-cancel")).toBeHidden();
 });
 
 // The header and the status tabs above the list.
@@ -698,7 +697,7 @@ test("Fulfilment: the warehouse takes an order from placed through to shipped (#
 
   // Placed from the SELLING seat and left there — PLACED, untouched, waiting on the warehouse.
   await placeOrderViaForm(page, `${CUSTOMER} picking`);
-  await expect(page.getByTestId("order-detail-page")).toContainText("Placed");
+  await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
 
   await switchToWarehouse(page);
 
@@ -1211,7 +1210,7 @@ test.skip("Revenue: cancelling an order stops it counting, but the row stays vis
 
   // Cancel it — the goods are still in the building, so this is allowed (#150).
   await page.goto(`/orders/${orderId}`);
-  await page.getByTestId("order-cancel").click();
+  await page.getByTestId("order-action-cancel").click();
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId("order-detail-page")).toContainText("Cancelled");
 
