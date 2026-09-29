@@ -3,7 +3,7 @@
 // Concurrency audit for SettlementPost (the audit-sql skill).
 //
 // WHY THIS RPC. It is a read-modify-write on money with THREE writers who genuinely collide: the
-// exporter loading a statement, a person on the order page, and `order_service` on create or cancel.
+// importer loading a statement, a person on the order page, and `order_service` on create or cancel.
 // Every one of them retries, and the account is one row they all update.
 //
 // Two distinct bugs are possible here and this file proves both are absent:
@@ -190,13 +190,16 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 // before it, two concurrent posts on one shop both read the same `last_balance` and the second silently
 // erased the first. This is the test that says the row is doing its job.
 //
-// It matters more here than it looks: shop-addressed rows are written by the EXPORTER parsing a
+// It matters more here than it looks: shop-addressed rows are written by the IMPORTER parsing a
 // statement, which posts many rows for one shop in a burst — the worst possible arrival pattern for a
 // read-modify-write.
 func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	// An imported shop row asks the shop for its primary CS first, and a settlement with no shop to ask
+	// refuses every one — which left this test proving nothing from 9f20652 until the audit caught it.
+	svc := settlement_v1.NewService(db, nil, nil, &raceShopPrimary{user: shopPrimaryCS})
 	ctx := context.Background()
 
 	const posters = 8

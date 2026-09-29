@@ -99,10 +99,14 @@ sequenceDiagram
     SH-->>S: primary_user_id
     S->>DB: the transaction — the row carries user_id, the actor stays the uploader
     S-->>I: created, or already there
-  else no primary CS
-    S-->>I: FailedPrecondition — nothing written, the line is held
-  else the shop is not the team's, or cannot answer
-    S-->>I: NotFound or Unavailable — nothing written, the line is held
+  else no primary CS, not the team's shop, or no answer
+    SH-->>S: 0, NotFound or an error — HELD, not returned yet
+    S->>DB: the transaction — the key looked up under the account's lock
+    alt the key is stored — a retry
+      S-->>I: already there — its user_id was settled when it was first written
+    else a new row
+      S-->>I: FailedPrecondition, NotFound or Unavailable — nothing written, the line is held
+    end
   end
 ```
 
@@ -111,9 +115,9 @@ sequenceDiagram
 | which rows ask | an imported shop row only — an order row counts for its stamped creator, and a shop row posted by hand for its actor |
 | when | ⚠ **before** the transaction — never while the shop's account row is locked `FOR UPDATE`, or every post on the shop waits on the network |
 | how | `ShopPrimary`, an interface settlement owns; the composition root answers it with a Connect client to `ShopAccessCheck` that forwards the caller's token (`san_auth.ForwardBearer`). A client, not the handler in-process: the shop lives in `selling_service`, which calls settlement on every placed order, so holding it would be a cycle — and the shop moving to its own service (the-shop-gets-its-own-service) changes only the adapter |
-| a failed ask | the post is **refused** — never a quiet fallback to the actor, which would count the row for the wrong person for good |
+| a failed ask | a NEW row is **refused**, with the ask's reason — never a quiet fallback to the actor, which would count the row for the wrong person for good. ⚠ The failure is **held** until the transaction's idempotency check, so a RETRY of a stored row is answered from the ledger whatever the shop says: the retry this RPC absorbs, and the re-post that republishes a lost event, never depend on the shop being up |
 | carried | `user_id` is on `SettlementLogPosted`, and the fold counts a shop row for it when set — a replay folds the person the row was written with, never asking again |
-| the cost | one call per imported shop row — a whole Shopee file when no order is found. The performance audit measures it |
+| the cost | one call per imported shop row — a whole Shopee file when no order is found, and a retry asks too. [The performance audit](../../../audits/services/settlement_service/performances/SettlementPost.md) finds it heavy by the N+1 rule. A cache per `(team, shop)` is its open question |
 
 ### The live-sale rules — read under the account's lock
 

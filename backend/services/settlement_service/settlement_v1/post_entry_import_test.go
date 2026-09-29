@@ -150,6 +150,39 @@ func TestSettlementPost_RefusesAnImportedShopRowWhenTheShopCannotAnswer(t *testi
 	assertNoLog(t, db)
 }
 
+// A retry of an imported shop row ALREADY WRITTEN is answered from the ledger, whatever the shop says now:
+// its person was settled when it was first written. Refusing it broke the retry SettlementPost exists to
+// absorb, and the re-post that republishes a lost event — the performance audit found that.
+func TestSettlementPost_ARetryOfAStoredImportedShopRowNeedsNoAnswerFromTheShop(t *testing.T) {
+	db := san_testdb.DB(t)
+	row := importedShopRow("shopee:rincian_transaksi:retry",
+		settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL, -5_000)
+
+	first, err := postShop(t, settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS)), row)
+	if err != nil {
+		t.Fatalf("first post: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		shops *stubPrimary
+	}{
+		{"the shop service is down", &stubPrimary{err: errors.New("connection refused")}},
+		{"the shop is not the team's", &stubPrimary{err: connect.NewError(connect.CodeNotFound, errors.New("shop not found"))}},
+		{"its primary was removed", primaryIs(0)},
+	} {
+		got, err := postShop(t, settlement_v1.NewService(db, nil, nil, tc.shops), row)
+		if err != nil {
+			t.Fatalf("%s: the retry was refused: %v", tc.name, err)
+		}
+
+		if got.Created || got.Entry.ID != first.Entry.ID || got.Entry.UserID != shopPrimaryCS {
+			t.Fatalf("%s: created=%v id=%d user=%d, want the stored row %d, counted for %d",
+				tc.name, got.Created, got.Entry.ID, got.Entry.UserID, first.Entry.ID, shopPrimaryCS)
+		}
+	}
+}
+
 // withdrawal names no order (#withdrawal-is-a-settlement-type).
 func TestSettlementPost_RefusesAWithdrawalOnAnOrder(t *testing.T) {
 	db := san_testdb.DB(t)
