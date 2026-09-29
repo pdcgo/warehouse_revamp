@@ -59,6 +59,10 @@ func InitializeApp() (*App, error) {
 		inventory_v1.NewService,
 		liability_v1.NewService,
 		settlement_v1.NewService,
+		// Who an imported shop row counts for — the shop's primary CS, asked over Connect under the
+		// caller's token. See shop_primary.go.
+		NewShopClient,
+		NewShopPrimary,
 		// Joins selling to settlement — an order opens and cancels its marketplace account. See
 		// settlement_poster.go.
 		NewSettlementPoster,

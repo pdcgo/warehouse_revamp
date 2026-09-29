@@ -21,7 +21,16 @@ const (
 	typeOther              = "other"
 	typeSystemAdjustment   = "system_adjustment"
 
-	sourceExporter = "exporter"
+	// The five of 2026-09-24 — the importer produces all of them.
+	typeWithdrawal            = "withdrawal"
+	typeShipmentAdjustment    = "shipment_adjustment"
+	typeLogisticReimbursement = "logistic_reimbursement"
+	typePlatformReimbursement = "platform_reimbursement"
+	typeMarketplaceProgram    = "marketplace_program"
+
+	// ⚠ Was "exporter" (#the-source-is-named-importer) — 00006 rewrote the rows a test or a local run
+	// had left behind, so no stored row carries the old spelling.
+	sourceImporter = "importer"
 	sourceManual   = "manual"
 	sourceOrder    = "order"
 )
@@ -35,12 +44,17 @@ var settlementTypeText = map[settlementv1.SettlementType]string{
 	settlementv1.SettlementType_SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT: typeMarketplaceAdjust,
 	settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER:                  typeOther,
 	settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT:      typeSystemAdjustment,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_WITHDRAWAL:             typeWithdrawal,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_SHIPMENT_ADJUSTMENT:    typeShipmentAdjustment,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_LOGISTIC_REIMBURSEMENT: typeLogisticReimbursement,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT: typePlatformReimbursement,
+	settlementv1.SettlementType_SETTLEMENT_TYPE_MARKETPLACE_PROGRAM:    typeMarketplaceProgram,
 }
 
 var settlementTypeEnum = reverseOf(settlementTypeText)
 
 var sourceTypeText = map[settlementv1.SourceType]string{
-	settlementv1.SourceType_SOURCE_TYPE_EXPORTER: sourceExporter,
+	settlementv1.SourceType_SOURCE_TYPE_IMPORTER: sourceImporter,
 	settlementv1.SourceType_SOURCE_TYPE_MANUAL:   sourceManual,
 	settlementv1.SourceType_SOURCE_TYPE_ORDER:    sourceOrder,
 }
@@ -82,6 +96,7 @@ func entryToProto(
 		PostedOn:       log.PostedOn.Format(dateLayout),
 		Note:           log.Note,
 		ActorName:      actorName,
+		UserId:         log.UserID,
 	}
 
 	if log.ReversesID != nil {

@@ -36,6 +36,10 @@ type Service struct {
 
 	// What AnalyticReplayCompute seeks and reads the retention of.
 	broker ReplayBroker
+
+	// Who an imported shop row counts for — the shop's primary CS, asked of the shop before the write
+	// (#settlement-asks-the-shop-for-its-primary-cs). Settlement's one call into another service.
+	shops ShopPrimary
 }
 
 // compile-time proof Service serves every proto service. One implementation behind four, exactly as
@@ -47,7 +51,7 @@ var (
 	_ settlementv1connect.SettlementAnalyticMaintenanceServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroker) *Service {
+func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroker, shops ShopPrimary) *Service {
 	// A nil sender would panic on the first post. EmptySender still VALIDATES the event, so a malformed
 	// one is caught with no broker in sight — the right default for tests and a local run.
 	if events == nil {
@@ -59,7 +63,12 @@ func NewService(db *gorm.DB, events event_source.EventSender, broker ReplayBroke
 		broker = noReplayBroker{}
 	}
 
-	return &Service{db: db, events: events, broker: broker}
+	// With no shop to ask, an imported shop row is REFUSED rather than counted for the wrong person.
+	if shops == nil {
+		shops = noShopPrimary{}
+	}
+
+	return &Service{db: db, events: events, broker: broker, shops: shops}
 }
 
 const dateLayout = "2006-01-02"

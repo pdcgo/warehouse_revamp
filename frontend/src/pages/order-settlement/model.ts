@@ -43,17 +43,24 @@ export type SettlementType =
   | "external_ads_fee"
   | "affiliate_fee"
   | "marketplace_adjustment"
-  | "other";
+  | "other"
+  // The five of 2026-09-24 — the importer posts them; a withdrawal names no order, so it never shows
+  // on this ledger, and is here so a type the wire sends is never silently read as `other`.
+  | "withdrawal"
+  | "shipment_adjustment"
+  | "logistic_reimbursement"
+  | "platform_reimbursement"
+  | "marketplace_program";
 
 /**
  * How the row arrived (§Shapes 3, widened by `the-third-source-is-order`). THREE write paths, and the
  * row records which.
  *
- * ⚠ `order` is separate from `exporter` even though both are machines. It is what makes "only
+ * ⚠ `order` is separate from `importer` even though both are machines. It is what makes "only
  * order_service may post a cancel" a check the write API can make, and it keeps `manualEntries()` —
  * the design's only review surface — meaning what it says.
  */
-export type SourceType = "exporter" | "manual" | "order";
+export type SourceType = "importer" | "manual" | "order";
 
 /**
  * Who is looking at the form. DECIDED — `the-write-set-is-cs-and-up`.

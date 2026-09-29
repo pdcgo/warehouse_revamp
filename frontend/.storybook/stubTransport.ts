@@ -72,7 +72,7 @@ const stubSettlementType: Record<string, WireSettlementType> = {
 };
 
 const stubSourceType: Record<string, WireSourceType> = {
-  exporter: WireSourceType.EXPORTER,
+  importer: WireSourceType.IMPORTER,
   manual: WireSourceType.MANUAL,
   order: WireSourceType.ORDER,
 };
@@ -1369,7 +1369,7 @@ function reportBook(teamId: bigint): ReportDay[] {
 }
 
 const changeOf = (d: ReportDay) =>
-  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment;
+  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment + d.withdrawal;
 
 const sumOf = (rows: ReportDay[], pick: (d: ReportDay) => bigint) =>
   rows.reduce((total, d) => total + pick(d), 0n);
@@ -1388,6 +1388,11 @@ function reportMetric(movements: ReportDay[], upToEnd: ReportDay[]) {
     affiliateFee: 0n,
     marketplaceAdjustment: sumOf(movements, (d) => d.marketplaceAdjustment),
     systemAdjustment: 0n,
+    withdrawal: sumOf(movements, (d) => d.withdrawal),
+    shipmentAdjustment: 0n,
+    logisticReimbursement: 0n,
+    platformReimbursement: 0n,
+    marketplaceProgram: 0n,
     change,
     openBalance: close - change,
     closeBalance: close,

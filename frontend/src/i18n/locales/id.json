@@ -1939,12 +1939,14 @@
     "salesHint": "Yang dibayar pembeli, setelah pembatalan",
     "received": "Diterima",
     "receivedHint": "Yang dipindahkan marketplace, termasuk biaya yang tercatat",
+    "withdrawn": "Ditarik",
+    "withdrawnHint": "Dipindahkan dari dompet marketplace ke bank — bukan bagian dari yang diterima",
     "gap": "Selisih",
     "gapHint": "Dari penjualan periode ini, tidak pernah sampai",
     "takeRate": "Potongan",
     "takeRateValue": "{{rate}}% dari penjualan",
-    "hiddenCost": "Biaya tersembunyi s.d. kini",
-    "hiddenCostHint": "Semua yang tidak pernah diterima hingga akhir periode — tidak akan ditagih siapa pun",
+    "positionToDate": "Posisi s.d. kini",
+    "positionToDateHint": "Yang dibayar pembeli, dikurangi semua yang dipindahkan platform — termasuk penarikan",
     "overTime": "Dari waktu ke waktu",
     "ranking": "Siapa yang menanggung",
     "byShop": "Per toko",
@@ -1957,9 +1959,10 @@
       "user": "Orang",
       "sales": "Terjual",
       "received": "Diterima",
+      "withdrawn": "Ditarik",
       "gap": "Selisih",
       "takeRate": "Potongan",
-      "hiddenCost": "Biaya tersembunyi s.d. kini"
+      "positionToDate": "Posisi s.d. kini"
     }
   },
   "orderSettlement": {
@@ -2013,7 +2016,13 @@
       "external_ads_fee": "Biaya iklan",
       "affiliate_fee": "Biaya afiliasi",
       "marketplace_adjustment": "Penyesuaian",
-      "other": "Lainnya"
+      "other": "Lainnya",
+      "initial_total_cancel": "Estimasi dibatalkan",
+      "withdrawal": "Penarikan",
+      "shipment_adjustment": "Penyesuaian pengiriman",
+      "logistic_reimbursement": "Penggantian ongkir",
+      "platform_reimbursement": "Penggantian platform",
+      "marketplace_program": "Program platform"
     },
     "addDialogTitle": "Tambah Entri Settlement",
     "addDialogConfirm": "Buat entri",
@@ -2229,7 +2238,12 @@
       "marketplace_adjustment": "Penyesuaian",
       "other": "Lainnya",
       "initial_total_cancel": "Estimasi dibatalkan",
-      "system_adjustment": "Penyesuaian sistem"
+      "system_adjustment": "Penyesuaian sistem",
+      "withdrawal": "Penarikan",
+      "shipment_adjustment": "Penyesuaian pengiriman",
+      "logistic_reimbursement": "Penggantian ongkir",
+      "platform_reimbursement": "Penggantian platform",
+      "marketplace_program": "Program platform"
     }
   }
 }

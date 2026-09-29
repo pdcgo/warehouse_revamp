@@ -1949,12 +1949,14 @@
     "salesHint": "What buyers paid, cancels netted",
     "received": "Received",
     "receivedHint": "What the marketplace moved, named fees included",
+    "withdrawn": "Withdrawn",
+    "withdrawnHint": "Moved from the marketplace wallet to the bank — not part of what was received",
     "gap": "Gap",
     "gapHint": "Of this window's sales, never reached us",
     "takeRate": "Take rate",
     "takeRateValue": "{{rate}}% of sales",
-    "hiddenCost": "Hidden cost to date",
-    "hiddenCostHint": "Everything never received, up to the window's end — nobody will collect it",
+    "positionToDate": "Position to date",
+    "positionToDateHint": "What buyers paid, less everything the platform moved — withdrawals included",
     "overTime": "Over time",
     "ranking": "Who carries it",
     "byShop": "By shop",
@@ -1967,9 +1969,10 @@
       "user": "Person",
       "sales": "Sold for",
       "received": "Received",
+      "withdrawn": "Withdrawn",
       "gap": "Gap",
       "takeRate": "Take rate",
-      "hiddenCost": "Hidden cost to date"
+      "positionToDate": "Position to date"
     }
   },
   "orderSettlement": {
@@ -2023,7 +2026,13 @@
       "external_ads_fee": "Ads fee",
       "affiliate_fee": "Affiliate fee",
       "marketplace_adjustment": "Adjustment",
-      "other": "Other"
+      "other": "Other",
+      "initial_total_cancel": "Estimate cancelled",
+      "withdrawal": "Withdrawal",
+      "shipment_adjustment": "Shipment adjustment",
+      "logistic_reimbursement": "Shipping reimbursed",
+      "platform_reimbursement": "Platform reimbursed",
+      "marketplace_program": "Platform programme"
     },
     "addDialogTitle": "Add Settlement Entry",
     "addDialogConfirm": "Post entry",
@@ -2239,7 +2248,12 @@
       "marketplace_adjustment": "Adjustment",
       "other": "Other",
       "initial_total_cancel": "Estimate cancelled",
-      "system_adjustment": "System adjustment"
+      "system_adjustment": "System adjustment",
+      "withdrawal": "Withdrawal",
+      "shipment_adjustment": "Shipment adjustment",
+      "logistic_reimbursement": "Shipping reimbursed",
+      "platform_reimbursement": "Platform reimbursed",
+      "marketplace_program": "Platform programme"
     }
   }
 }

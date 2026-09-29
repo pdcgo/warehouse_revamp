@@ -1334,8 +1334,9 @@ erDiagram
     bigint shop_id "denormalised, frozen"
     bigint team_id "denormalised, frozen"
     bigint actor_id "the human accountable, even on machine rows"
-    text source_type "exporter, manual or order"
-    text settlement_type "one of eight"
+    bigint user_id "who the per-user report counts it for, when not the actor — an imported shop row's primary CS (00006). 0 otherwise"
+    text source_type "importer, manual or order"
+    text settlement_type "one of thirteen"
     bigint change "signed. POSITIVE IS MONEY TOWARD US"
     bigint balance "running, after this row"
     text unique_id "caller-generated. UNIQUE across the whole log"
@@ -1441,7 +1442,8 @@ erDiagram
     bigint shop_id
     bigint team_id
     bigint initial_total "one column per settlement_type, the log's sign"
-    bigint fund "and six more tracked movements"
+    bigint fund "and eleven more tracked movements"
+    bigint withdrawal "one of the five of 00006 — counts in the position like every column"
     bigint change "the day's net movement"
     bigint open_balance "STORED carry — the position before the day"
     bigint close_balance "the position after it"
@@ -1451,7 +1453,7 @@ erDiagram
   user_settlement_daily_reports {
     bigserial id PK
     date day "UNIQUE with user_id and team_id"
-    bigint user_id "the ORDER creator, or the actor of a shop row. 0 = not recorded"
+    bigint user_id "the ORDER creator; for a shop row its written user_id, else its actor. 0 = not recorded"
     bigint team_id
     bigint change "same tracked columns as the shop grain"
     bigint open_balance
@@ -1490,7 +1492,9 @@ erDiagram
 
 | | |
 | --- | --- |
-| **the tracked columns** | `initial_total`, `initial_total_cancel`, `other`, `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `system_adjustment` — the settlement_type TEXT is the column name — plus `change` |
+| **the tracked columns** | `initial_total`, `initial_total_cancel`, `other`, `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `system_adjustment`, and since `00006` `withdrawal`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program` — the settlement_type TEXT is the column name — plus `change`. ⚠ **Widened WITH `SettlementPost`, never after**: the fold refuses a type it has no column for |
+| **`withdrawal` is in the position** | summed into `change` and the carry like every column ([withdrawal-counts-in-the-position](business/settlement/context_decision.md#withdrawal-counts-in-the-position)) — so `close_balance` is the shortfall PLUS what was withdrawn, and the report calls it *Position to date* |
+| **who a shop row counts for** | the user grain folds an order row for its creator, and a shop row for its `settlement_logs.user_id` when set — an imported shop row's primary CS, carried on the event — else for its actor ([settlement-asks-the-shop-for-its-primary-cs](business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) |
 | **the carry** | `open(D) = Σ change before D`, `close(D) = Σ change up to D` ([the-carry-materialises-the-day-boundary-position](business/settlement/context_decision.md#the-carry-materialises-the-day-boundary-position)). Maintained by increment: a late event shifts every later day |
 | **a quiet day has NO row** | a position read falls back to the last row at or before the date |
 | **the dedup and the fold share ONE transaction** | a failure rolls the claim back with the compute, so the redelivery is really reprocessed |
@@ -1510,6 +1514,10 @@ erDiagram
   [an-entry-names-an-order-or-a-shop](business/settlement/context_decision.md#an-entry-names-an-order-or-a-shop)
   made it nullable (`00003`), which is what gives a platform **withdrawal** or a `system_adjustment` a
   shop-addressed home.
+- **The shop's primary CS as a table.** An imported shop row's `user_id` is ASKED of the shop
+  (`ShopAccessCheck`) before the write and kept on the row — settlement stores the answer, never the shop.
+  The `00006` migration also rewrote any `source_type` `exporter` to `importer`
+  ([the-source-is-named-importer](business/settlement/settlement_importer_decision.md#the-source-is-named-importer)).
 - **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the
   marketplace's reference; the names and the cost live in `selling_service`, and a service does not
   read another's tables. The screens supply all four from where they already are.

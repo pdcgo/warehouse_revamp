@@ -14,7 +14,15 @@ type SettlementMetricColumns struct {
 	MarketplaceAdjustment int64
 	SystemAdjustment      int64
 
-	// The day's net movement — the sum of the eight above.
+	// The five of 2026-09-24 (00006). Withdrawal counts in the position like every column
+	// (#withdrawal-counts-in-the-position).
+	Withdrawal            int64
+	ShipmentAdjustment    int64
+	LogisticReimbursement int64
+	PlatformReimbursement int64
+	MarketplaceProgram    int64
+
+	// The day's net movement — the sum of every column above.
 	Change int64
 
 	// The position at the day's start and end — stored, carried by the fold's increment.

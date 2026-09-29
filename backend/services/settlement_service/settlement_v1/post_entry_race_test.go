@@ -44,7 +44,7 @@ var settlementTables = []string{
 func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	const posters = 8
@@ -58,7 +58,7 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 			OrderID:        order,
 			UniqueID:       fmt.Sprintf("racer-%d", i),
 			SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
-			SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+			SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 			Change:         each,
 			OccurredOn:     "2026-08-28",
 		})
@@ -112,7 +112,7 @@ func TestRace_SettlementPost_DoesNotLoseAnUpdate(t *testing.T) {
 func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	const retries = 8
@@ -196,7 +196,7 @@ func TestRace_SettlementPost_AbsorbsConcurrentRetries(t *testing.T) {
 func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 	h := san_race.New(t, settlementTables...)
 	db := h.DB()
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 	ctx := context.Background()
 
 	const posters = 8
@@ -209,7 +209,7 @@ func TestRace_SettlementPost_ShopGrainDoesNotLoseAnUpdate(t *testing.T) {
 			// No OrderID — this is the shop grain.
 			UniqueID:       fmt.Sprintf("shop-racer-%d", i),
 			SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER,
-			SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+			SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 			Change:         each,
 			OccurredOn:     "2026-08-28",
 		})

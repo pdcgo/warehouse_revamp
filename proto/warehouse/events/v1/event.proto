@@ -148,6 +148,11 @@ message SettlementLogPosted {
 
   uint64 reverses_id = 14;
   string note = 15;
+
+  // WHO THE PER-USER REPORT COUNTS A SHOP ROW FOR — the shop's primary CS on an IMPORTED shop row, written
+  // on the row by settlement (#settlement-asks-the-shop-for-its-primary-cs). 0 = the row's actor counts it.
+  // Carried, never re-asked: a replay folds the person the row was written with.
+  uint64 user_id = 16;
 }
 
 // OrderPlaced announces that an order was placed and COMMITTED (#153).

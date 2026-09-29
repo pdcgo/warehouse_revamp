@@ -27,6 +27,12 @@ type SettlementLog struct {
 	// machine rows.
 	ActorID uint64
 
+	// WHO THE PER-USER REPORT COUNTS THE ROW FOR, when that is not the actor — the shop's primary CS on
+	// an IMPORTED SHOP ROW, asked of the shop before the write and kept on the row
+	// (#settlement-asks-the-shop-for-its-primary-cs). 0 on every other row: an order row counts for its
+	// creator, a hand-posted shop row for its actor.
+	UserID uint64
+
 	// The enums as text (see mapper.go), matching `orders.status` and `liability_logs`.
 	SourceType     string
 	SettlementType string

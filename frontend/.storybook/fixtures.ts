@@ -631,10 +631,12 @@ export const liabilityPayments = [
 //
 //   5 days ago   a sale of 300.000                                      shortfall −300.000
 //   3 days ago   250.000 arrives, a 15.000 ads fee is charged           shortfall  −65.000
-//   1 day ago    a 120.000 sale is placed AND cancelled, +5.000 claim   shortfall  −60.000
+//   2 days ago   200.000 is withdrawn to the bank                       position  −265.000
+//   1 day ago    a 120.000 sale is placed AND cancelled, +5.000 claim   position  −260.000
 //
 // So over the default 30 days: sold 300.000, received 240.000, a gap of 60.000 — a 20% take rate —
-// and 60.000 of hidden cost to date, because nothing older than the window exists.
+// 200.000 withdrawn, and a position to date of 260.000: the gap PLUS the withdrawal, which counts in it
+// (#withdrawal-counts-in-the-position) and is never part of what was received.
 export const settlementReportDays: {
   teamId: bigint;
   ago: number;
@@ -643,10 +645,12 @@ export const settlementReportDays: {
   fund: bigint;
   externalAdsFee: bigint;
   marketplaceAdjustment: bigint;
+  withdrawal: bigint;
 }[] = [
-  { teamId: 12n, ago: 5, initialTotal: -300_000n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n },
-  { teamId: 12n, ago: 3, initialTotal: 0n, initialTotalCancel: 0n, fund: 250_000n, externalAdsFee: -15_000n, marketplaceAdjustment: 0n },
-  { teamId: 12n, ago: 1, initialTotal: -120_000n, initialTotalCancel: 120_000n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 5_000n },
+  { teamId: 12n, ago: 5, initialTotal: -300_000n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n, withdrawal: 0n },
+  { teamId: 12n, ago: 3, initialTotal: 0n, initialTotalCancel: 0n, fund: 250_000n, externalAdsFee: -15_000n, marketplaceAdjustment: 0n, withdrawal: 0n },
+  { teamId: 12n, ago: 2, initialTotal: 0n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n, withdrawal: -200_000n },
+  { teamId: 12n, ago: 1, initialTotal: -120_000n, initialTotalCancel: 120_000n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 5_000n, withdrawal: 0n },
 ];
 
 // The same book split by SHOP and by PERSON. Each split sums to the team: 300.000 sold, 240.000

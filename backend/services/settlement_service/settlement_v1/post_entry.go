@@ -216,9 +216,25 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		return out, errAdjustmentIsShopWide
 	}
 
+	if typeText == typeWithdrawal && in.OrderID != 0 {
+		return out, errWithdrawalIsShopWide
+	}
+
 	occurred, err := parseDate(in.OccurredOn)
 	if err != nil {
 		return out, err
+	}
+
+	// WHO AN IMPORTED SHOP ROW COUNTS FOR — the shop's primary CS, asked here, before the transaction
+	// (#settlement-asks-the-shop-for-its-primary-cs). An order row counts for its creator and a shop row
+	// posted by hand for its actor, so only this row asks.
+	var userID uint64
+
+	if sourceText == sourceImporter && in.OrderID == 0 {
+		userID, err = s.importedShopRowUser(ctx, in)
+		if err != nil {
+			return out, err
+		}
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -407,6 +423,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			ShopID:         in.ShopID,
 			TeamID:         in.TeamID,
 			ActorID:        in.ActorID,
+			UserID:         userID,
 			SourceType:     sourceText,
 			SettlementType: typeText,
 			Change:         in.Change,
