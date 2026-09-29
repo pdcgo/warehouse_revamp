@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ your list | `opening_balance`, `transfer`, `team_payment` joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [Q4](#question) narrows to `capital`, and whether `adjustment` is for reconciling only |
 | ✅ answered in chat | Q5, Q6, Q7 — each as recommended: [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) · [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) · [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused) |
 | ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 22 still reads *"its unique"* — yours to carry into the doc |
 | ⚠ ripple of Q6 | [Q9](#question) — `team_infos` can hold one bank number in two teams today, and a copy into accounts takes it once |
@@ -100,12 +101,12 @@ screens show a balance at all.
 
 | `change_type` | moves | way in | when |
 | --- | --- | --- | --- |
-| `opening_balance` 🆕 | in | by hand — creating the account | once |
+| `opening_balance` ✅ | in | by hand — creating the account | once |
 | `marketplace_withdrawal` — your `revenue_fund` | in | broker — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
 | `restock` | out · in, for a refund | broker — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
 | `expense` | out | broker — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
-| `transfer` 🆕 | out of one, into another | by hand — two legs, one act | [Q4](#question) |
-| `team_payment` 🆕 | out of the payer, into the creditor | broker — 🆕 a payment event | the creditor confirms · a reversal reverses both — [Q4](#question) |
+| `transfer` ✅ | out of one, into another | by hand — two legs, one act | when typed |
+| `team_payment` ✅ | out of the payer, into the creditor | broker — 🆕 a payment event | the creditor confirms · a reversal reverses both |
 | `capital` 🆕 | in or out | by hand — the business owner's own money | [Q4](#question) |
 | `adjustment` | in or out | by hand — a reconcile; the difference, never typed | [Reconcile](#reconcile) |
 
@@ -299,14 +300,18 @@ see a balance, so it shows none.
    name none: `STOCK_LOSS` (goods written off, no cash moved) and an ads charge the platform took from the seller
    balance (that is a settlement row). ⚠ Expense publishes nothing today — the event is new.
 
-4. **What else moves money — and is `adjustment` for reconciling only?** *(lines 66–70)*
-   **→ Recommend four more types, and yes.**
-   `opening_balance` — an account's first row.
-   `transfer` — between the team's own accounts: a ShopeePay top-up, cash drawn from the bank. Two legs, one act.
-   `team_payment` — out of the payer's account and into the creditor's **when the creditor confirms** — the moment
-   the team balance moves, so the two never disagree about what has been paid. Until then the payer's account shows
-   it *awaiting confirmation*. 🔄 Liability publishes the confirm — an event that is new.
-   `capital` — the business owner's own money, put in or taken out.
+4. 🔄 **Narrowed — is there a `capital` type, and is `adjustment` for reconciling only?** *(lines 66–73)*
+   ✅ `opening_balance`, `transfer` and `team_payment` are in your list —
+   [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types).
+   **→ Recommend yes, and yes.** `capital` is the business owner's own money, put in or taken out:
+
+   | | example | why no other type fits |
+   | --- | --- | --- |
+   | in | a new team's first Rp 20.000.000 (*setoran modal*) · a team that ran short, topped up | not `revenue_fund` — nothing was sold, and the team's profit would include money it was given |
+   | out | profit taken out (*prive*) | not `expense` — nothing was bought, and the profit would shrink by money that was profit |
+   | between teams | Rp 10.000.000 moved from team A to team B, paying no debt | not `team_payment` — it would lower a debt that does not exist · not `transfer` — a transfer stays inside one team |
+
+   Rare, but large: it is the difference between a team that **earned** Rp 20.000.000 and one that was **given** it.
    Then `adjustment` only ever means *money we did not record* — worth reading every week.
 
 5. ✅ **Answered 2026-09-29 — `shopeepay` is the team's e-wallet**, never the Shopee seller balance, as recommended:
@@ -336,12 +341,24 @@ see a balance, so it shows none.
    fields took any number, so one bank can sit in two teams today — the copy takes it once, and lists the rest for a
    person to settle.
 
-10. 🆕 **Which way does each type come in — and may one come both ways?** *(lines 72–74)*
-    **→ Recommend one way per type, fixed.** **By hand** — `opening_balance`, `transfer`, `capital`, and
-    `adjustment` as a reconcile: no other service knows them. **From the broker** — `marketplace_withdrawal`,
-    `restock`, `expense`, `team_payment`: the act already happened in another service. The hand form never offers a
-    broker type — typed here and heard from the broker, one payment posts twice, and nothing can tell which row is
-    the copy.
+10. 🆕 **Which way does each type come in — and may one come both ways?** *(lines 75–77)*
+    One restock paid from ShopeePay: inventory publishes it and the account posts `restock −1.200.000`, and someone
+    also types `restock −1.200.000`. ShopeePay shows −2.400.000 for one payment, the typed row names no restock, and
+    the next reconcile hides the copy as an `adjustment` — so *money we failed to record* now also means *money we
+    recorded twice*.
+
+    | | **A — one way per type** | B — both ways, matched by cause | C — both ways, free |
+    | --- | --- | --- | --- |
+    | a double count | impossible | stopped only if the typed row names its restock or expense — then the first to arrive wins, even with a wrong amount | nothing stops it |
+    | the hand screens | four fixed acts — New account, Transfer, Capital, Reconcile — none takes a type | any type, but the person picks the act it belongs to | any type, any amount |
+    | a type whose event does not exist yet | its money waits for a reconcile | typed by hand; the event, once it ships, skips what was typed | typed by hand — and twice from the day its event ships, unless everyone stops typing it that day |
+    | `adjustment` means | money we did not record | the same | anything |
+
+    **→ Recommend A**, by one test — *does another service already record this act?* Yes: it comes from the broker.
+    No: it is typed by hand ([the table](#the-act-posts-the-entry)). **By hand**: `opening_balance`, `transfer`,
+    `capital`, and `adjustment` as a reconcile. **From the broker**: `marketplace_withdrawal`, `restock`, `expense`,
+    `team_payment`. It holds by structure, not discipline: no RPC takes a `change_type` from a person, and each
+    listener posts only its own type.
 
 # Contradiction
 

@@ -11,6 +11,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | [Q2](./context_clarify.md#question), [Q4](./context_clarify.md#question) — what moves it |
 | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
 | [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
+| [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q4](./context_clarify.md#question) — `capital`, and `adjustment` for reconciling only · [Q10](./context_clarify.md#question) — which way each comes in |
 
 ## the-accounts-are-one-ledger
 
@@ -166,3 +167,35 @@ stateDiagram-v2
 | what below zero means | an inflow was never recorded: nobody spends from an empty wallet or box |
 | the warning | on the account list and on the account's page, for as long as the balance is below zero |
 | what clears it | the missing row arriving, or a reconcile |
+
+## opening-transfer-and-team-payment-join-the-types
+
+> `context.md` §What is `change_type` *(owner, 2026-09-29)* — `opening_balance`, `transfer` and `team_payment` added
+> to the list *(lines 71–73)*: three of the four [Q4](./context_clarify.md#question) recommended. The fourth,
+> `capital`, is not in it — asked about in chat the same minute: *"what is `capital` used for"*.
+
+**The verdict.** Three more ways money moves are types of their own, so none of them has to be typed as an
+`adjustment`.
+
+```mermaid
+flowchart LR
+  NEW["a new account"] -->|"opening_balance"| FIRST["its first row"]
+  BCA["BCA"] -->|"transfer, out"| ACT["one act, two rows"]
+  ACT -->|"transfer, in"| SP["ShopeePay"]
+  PAYER["the payer team's account"] -->|"team_payment, out"| CONF{"the creditor confirms"}
+  CONF -->|"team_payment, in"| CRED["the creditor team's account"]
+```
+
+### The spec
+
+| type | what it is | ⚠ my spec, from Q4's recommendation — yours to correct |
+| --- | --- | --- |
+| `opening_balance` | an account's first row | posted when the account is created, with the money it already holds ([critique 4](./context_clarify.md#critique)) |
+| `transfer` | money between two of the team's own accounts — a ShopeePay top-up, cash drawn from the bank | two rows in one act, out of one account and into the other · inside one team |
+| `team_payment` | one team paying another what it owes | out of the payer's account and into the creditor's **when the creditor confirms** — the moment the team balance moves, so the two never disagree about what has been paid |
+
+### What it does NOT settle
+
+- **`capital`**, and whether `adjustment` is for reconciling only — [Q4](./context_clarify.md#question).
+- **Which way each comes in** — [Q10](./context_clarify.md#question) recommends by hand for `opening_balance` and
+  `transfer`, and from the broker for `team_payment`: liability records the payment, and publishes nothing yet.

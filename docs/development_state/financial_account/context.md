@@ -3,7 +3,7 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after the owner's first
 edit. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **five owner decisions**. The lifecycle
+[context_decision.md](../../business/financial_account/context_decision.md) — **six owner decisions**. The lifecycle
 is at *waiting for the owner* on Q1–Q4 and Q8–Q10 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
@@ -15,6 +15,7 @@ is at *waiting for the owner* on Q1–Q4 and Q8–Q10 — no Storybook prototype
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(account_type, account_number)` where a number exists, across all teams, archived included · a cash box exempt · ⚠ the `team_infos` copy (Q9) must list colliding numbers, never drop them |
 | [below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused) *(Q7)* | no balance check on any write path · a warning on the list and the account page while below zero |
+| [opening-transfer-and-team-payment-join-the-types](../../business/financial_account/context_decision.md#opening-transfer-and-team-payment-join-the-types) *(Q4, three of four)* | three more `change_type` values · ⚠ their posting rules — the opening row at create, two legs per transfer, a team payment at confirm — are my spec, marked so in the decision |
 
 ## What exists
 
@@ -26,7 +27,7 @@ Nothing of this context. What it overlaps is already built elsewhere:
 | how a restock was paid — `shopee_pay` / `bank_account` | `inventory_service` · `restock_requests.payment_type` · `PaymentTypeSelect` | ❌ | Q2 — *which* account, replacing the kind |
 | expenses | `expense_service` · `expense_records` — names no account | ❌ | Q3 — an optional *paid from* |
 | withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | Q1 — each posts `marketplace_withdrawal` into its shop's account |
-| team payments | `liability_service` · `liability_payments` | ❌ | Q4 — `team_payment` posts both legs at confirm |
+| team payments | `liability_service` · `liability_payments` | ❌ | ✅ `team_payment` is a type — posts both legs at confirm, from a new payment event |
 
 ## Proposed, not decided
 
