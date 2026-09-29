@@ -10,7 +10,12 @@ import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
 import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
-import { resetLiabilityPayments, resetLiabilityTerms, resetShipmentChannels } from "./stubTransport";
+import {
+  resetLiabilityPayments,
+  resetLiabilityTerms,
+  resetSettlementImports,
+  resetShipmentChannels,
+} from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { system } from "../src/theme";
 import "../src/i18n/config";
@@ -240,6 +245,9 @@ const preview: Preview = {
     // …and the payments table, which a story that REJECTS a claim writes to. Without this, whether a
     // pending payment still offers Confirm/Reject would depend on story order.
     resetLiabilityPayments();
+    // …and the imported-files table, which every story that runs an import adds a row to — and its
+    // scenario flags (no primary CS, a wrong-shop file), which one story sets for itself alone.
+    resetSettlementImports();
     stubClipboard();
   },
   parameters: {

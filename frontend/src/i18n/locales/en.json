@@ -29,7 +29,8 @@
     "more": "More",
     "liability": "Liability",
     "settlement": "Settlement",
-    "settlementReport": "Settlement Report"
+    "settlementReport": "Settlement Report",
+    "settlementImports": "Settlement Imports"
   },
   "menu": {
     "theme": "Theme",
@@ -2129,6 +2130,116 @@
       "placeholder": "Select a courier",
       "unavailable": "Couriers unavailable",
       "empty": "No couriers found"
+    }
+  },
+  "settlementImports": {
+    "title": "Settlement Imports",
+    "subtitle": "Each shop's platform statement, uploaded daily and posted to the settlement ledger row by row.",
+    "importFile": "Import File",
+    "empty": "No statement has been imported yet.",
+    "interruptedHint": "The server stopped mid-file. Upload the same file again to finish it — rows already posted are kept.",
+    "filter": {
+      "allShops": "All shops",
+      "clearShop": "Clear shop filter",
+      "allStatuses": "All statuses"
+    },
+    "col": {
+      "shop": "Shop",
+      "period": "Statement period",
+      "uploaded": "Uploaded",
+      "status": "Status"
+    },
+    "status": {
+      "unknown": "Unknown",
+      "running": "Running",
+      "interrupted": "Interrupted",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "tally": {
+      "posted": "Posted",
+      "postedToShop_one": "{{count}} to the shop — no order found",
+      "postedToShop_other": "{{count}} to the shop — no order found",
+      "existing": "Already there",
+      "held": "Held",
+      "skipped": "Skipped"
+    },
+    "dialog": {
+      "title": "Import Settlement File",
+      "shop": "Shop",
+      "file": "Statement file",
+      "pickFile": "Choose .xlsx file",
+      "replaceFile": "Choose another file",
+      "fileHelp": "The statement exactly as the platform exports it. Import every day, so each day's money lands on its own day.",
+      "notXlsx": "Choose the .xlsx file the platform exported.",
+      "tooLarge": "The file is larger than 10 MB.",
+      "unsupported": "Only Shopee and TikTok statements can be imported for now.",
+      "cancel": "Cancel",
+      "start": "Start import",
+      "reading": "Reading the file…",
+      "progress": "{{step}} of {{count}} rows",
+      "keepsGoing": "You can close this window — the import keeps going, and the list shows where it got to.",
+      "failed": "The file was not imported",
+      "allPosted": "Every row went in.",
+      "notPosted_one": "{{count}} line needs a look:",
+      "notPosted_other": "{{count}} lines need a look:",
+      "moreOnPage_one": "…and {{count}} more on the file's page.",
+      "moreOnPage_other": "…and {{count}} more on the file's page.",
+      "showLog_one": "Show log ({{count}} line)",
+      "showLog_other": "Show log ({{count}} lines)",
+      "hideLog": "Hide log",
+      "openFile": "Open the file",
+      "close": "Close",
+      "closeRunning": "Close — keep importing"
+    },
+    "detail": {
+      "notFound": "This file is not in your team's imports.",
+      "period": "Statement {{from}} – {{to}}",
+      "periodUnread": "The statement's period is not read yet",
+      "uploadedBy": "Uploaded by {{name}}, {{at}}",
+      "download": "Download original",
+      "failed": "The whole file was refused — nothing was posted",
+      "view": {
+        "held_one": "Held ({{count}})",
+        "held_other": "Held ({{count}})",
+        "skipped_one": "Skipped ({{count}})",
+        "skipped_other": "Skipped ({{count}})",
+        "toShop_one": "Posted to the shop ({{count}})",
+        "toShop_other": "Posted to the shop ({{count}})"
+      },
+      "heldNote": "These rows could not post. Once the reason is fixed, upload the same file again — only these rows go in.",
+      "skippedNote": "These rows are not recorded, by design — they repeat money another row already carries, or a withdrawal that did not go through.",
+      "toShopNote": "These rows name an order that was not found, so they went to the shop. An order entered later does not receive them.",
+      "noLines": "No rows here."
+    },
+    "line": {
+      "date": "Date",
+      "orderRef": "Order ref",
+      "platformType": "On the statement",
+      "becomes": "Recorded as",
+      "amount": "Amount",
+      "reason": "Why",
+      "unmapped": "Not mapped"
+    },
+    "reason": {
+      "unspecified": "—",
+      "noOrder": "No order with this ref",
+      "unmappedType": "A type nobody has mapped yet",
+      "fractionalAmount": "A fraction of a rupiah — never rounded",
+      "refused": "Refused by settlement",
+      "repeatsOrderDetails": "Repeats the order rows",
+      "failedWithdrawal": "A withdrawal that did not succeed"
+    },
+    "type": {
+      "unspecified": "—",
+      "initial_total": "Estimate",
+      "fund": "Payout",
+      "external_ads_fee": "Ads fee",
+      "affiliate_fee": "Affiliate fee",
+      "marketplace_adjustment": "Adjustment",
+      "other": "Other",
+      "initial_total_cancel": "Estimate cancelled",
+      "system_adjustment": "System adjustment"
     }
   }
 }

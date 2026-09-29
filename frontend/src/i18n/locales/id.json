@@ -29,7 +29,8 @@
     "more": "Lainnya",
     "liability": "Kewajiban",
     "settlement": "Penyelesaian",
-    "settlementReport": "Laporan Penyelesaian"
+    "settlementReport": "Laporan Penyelesaian",
+    "settlementImports": "Impor Penyelesaian"
   },
   "menu": {
     "theme": "Tema",
@@ -2119,6 +2120,116 @@
       "placeholder": "Pilih kurir",
       "unavailable": "Kurir tidak tersedia",
       "empty": "Kurir tidak ditemukan"
+    }
+  },
+  "settlementImports": {
+    "title": "Impor Penyelesaian",
+    "subtitle": "Laporan platform tiap toko, diunggah setiap hari dan dicatat ke buku penyelesaian baris demi baris.",
+    "importFile": "Impor File",
+    "empty": "Belum ada laporan yang diimpor.",
+    "interruptedHint": "Server berhenti di tengah file. Unggah file yang sama lagi untuk menyelesaikannya — baris yang sudah tercatat tetap ada.",
+    "filter": {
+      "allShops": "Semua toko",
+      "clearShop": "Hapus filter toko",
+      "allStatuses": "Semua status"
+    },
+    "col": {
+      "shop": "Toko",
+      "period": "Periode laporan",
+      "uploaded": "Diunggah",
+      "status": "Status"
+    },
+    "status": {
+      "unknown": "Tidak diketahui",
+      "running": "Berjalan",
+      "interrupted": "Terputus",
+      "done": "Selesai",
+      "failed": "Gagal"
+    },
+    "tally": {
+      "posted": "Tercatat",
+      "postedToShop_one": "{{count}} ke toko — pesanan tidak ditemukan",
+      "postedToShop_other": "{{count}} ke toko — pesanan tidak ditemukan",
+      "existing": "Sudah ada",
+      "held": "Ditahan",
+      "skipped": "Dilewati"
+    },
+    "dialog": {
+      "title": "Impor File Penyelesaian",
+      "shop": "Toko",
+      "file": "File laporan",
+      "pickFile": "Pilih file .xlsx",
+      "replaceFile": "Pilih file lain",
+      "fileHelp": "Laporan persis seperti yang diekspor platform. Impor setiap hari, agar uang tiap hari tercatat di harinya sendiri.",
+      "notXlsx": "Pilih file .xlsx yang diekspor platform.",
+      "tooLarge": "File lebih besar dari 10 MB.",
+      "unsupported": "Untuk saat ini hanya laporan Shopee dan TikTok yang bisa diimpor.",
+      "cancel": "Batal",
+      "start": "Mulai impor",
+      "reading": "Membaca file…",
+      "progress": "{{step}} dari {{count}} baris",
+      "keepsGoing": "Jendela ini boleh ditutup — impor tetap berjalan, dan daftar menunjukkan progresnya.",
+      "failed": "File tidak diimpor",
+      "allPosted": "Semua baris tercatat.",
+      "notPosted_one": "{{count}} baris perlu dicek:",
+      "notPosted_other": "{{count}} baris perlu dicek:",
+      "moreOnPage_one": "…dan {{count}} lagi di halaman file.",
+      "moreOnPage_other": "…dan {{count}} lagi di halaman file.",
+      "showLog_one": "Lihat log ({{count}} baris)",
+      "showLog_other": "Lihat log ({{count}} baris)",
+      "hideLog": "Sembunyikan log",
+      "openFile": "Buka file",
+      "close": "Tutup",
+      "closeRunning": "Tutup — impor tetap jalan"
+    },
+    "detail": {
+      "notFound": "File ini tidak ada di impor tim Anda.",
+      "period": "Laporan {{from}} – {{to}}",
+      "periodUnread": "Periode laporan belum terbaca",
+      "uploadedBy": "Diunggah oleh {{name}}, {{at}}",
+      "download": "Unduh file asli",
+      "failed": "Seluruh file ditolak — tidak ada yang tercatat",
+      "view": {
+        "held_one": "Ditahan ({{count}})",
+        "held_other": "Ditahan ({{count}})",
+        "skipped_one": "Dilewati ({{count}})",
+        "skipped_other": "Dilewati ({{count}})",
+        "toShop_one": "Tercatat ke toko ({{count}})",
+        "toShop_other": "Tercatat ke toko ({{count}})"
+      },
+      "heldNote": "Baris ini tidak bisa tercatat. Setelah penyebabnya diperbaiki, unggah file yang sama lagi — hanya baris ini yang masuk.",
+      "skippedNote": "Baris ini sengaja tidak dicatat — mengulang uang yang sudah dibawa baris lain, atau penarikan yang tidak berhasil.",
+      "toShopNote": "Baris ini menyebut pesanan yang tidak ditemukan, jadi tercatat ke toko. Pesanan yang dibuat kemudian tidak menerimanya.",
+      "noLines": "Tidak ada baris di sini."
+    },
+    "line": {
+      "date": "Tanggal",
+      "orderRef": "Ref pesanan",
+      "platformType": "Di laporan",
+      "becomes": "Dicatat sebagai",
+      "amount": "Jumlah",
+      "reason": "Alasan",
+      "unmapped": "Belum dipetakan"
+    },
+    "reason": {
+      "unspecified": "—",
+      "noOrder": "Tidak ada pesanan dengan ref ini",
+      "unmappedType": "Tipe yang belum dipetakan",
+      "fractionalAmount": "Pecahan rupiah — tidak dibulatkan",
+      "refused": "Ditolak oleh penyelesaian",
+      "repeatsOrderDetails": "Mengulang baris pesanan",
+      "failedWithdrawal": "Penarikan yang tidak berhasil"
+    },
+    "type": {
+      "unspecified": "—",
+      "initial_total": "Estimasi",
+      "fund": "Pencairan",
+      "external_ads_fee": "Biaya iklan",
+      "affiliate_fee": "Biaya afiliasi",
+      "marketplace_adjustment": "Penyesuaian",
+      "other": "Lainnya",
+      "initial_total_cancel": "Estimasi dibatalkan",
+      "system_adjustment": "Penyesuaian sistem"
     }
   }
 }

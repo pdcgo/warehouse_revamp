@@ -128,6 +128,9 @@ export const key = {
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),
   liability: (teamId: bigint | undefined, params?: Params) => scope("liability", teamId, params),
   settlement: (teamId: bigint | undefined, params?: Params) => scope("settlement", teamId, params),
+  // Its OWN prefix, not a filter on `settlement`: an import finishing refreshes the file list, and
+  // must not refetch every ledger screen the team has open.
+  settlementImports: (teamId: bigint | undefined, params?: Params) => scope("settlementImports", teamId, params),
 
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),

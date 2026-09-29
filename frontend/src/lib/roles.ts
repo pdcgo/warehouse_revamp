@@ -79,6 +79,26 @@ export function isTeamManager(role: Role | undefined): boolean {
   }
 }
 
+// canImportSettlement mirrors the policy on both settlement imports and their file list — the
+// settlement write set, CS and up, since every imported row posts under the uploader's token
+// (cs-and-up-import-daily).
+//
+// ⚠ THIS IS UX ONLY. Hiding the menu entry hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canImportSettlement(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMIN:
+    case Role.TEAM_OWNER:
+    case Role.TEAM_ADMIN:
+    case Role.TEAM_CUSTOMER_SERVICE:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMIN;

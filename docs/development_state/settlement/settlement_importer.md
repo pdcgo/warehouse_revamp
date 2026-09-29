@@ -1,15 +1,36 @@
 # Development state — settlement / settlement_importer
 
-**Pass:** business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
+**Pass:** 🔨 **`implementation_analysis`** (2026-09-29) — the Storybook prototype is built and ⛔ **waits on the owner's
+design_accept**. Before it, business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
 reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) Q6 (only a successful withdrawal is recorded), Q8 (an import finishes whether anyone watches) and Q9 (the row key is the
 only dedupe), then re-decided who a row counts for — the order's creator, else the shop's primary CS — and named
 `ShopAccessCheck` as the shop check, then answered Q13 (settlement asks the shop for the primary CS), then Q1 (CS and up, daily), Q5 (the affiliate
 commission as its own row) and Q14 (a shop with no primary CS cannot import) — ✅ no question left here; first pass
-2026-09-26. Waiting on the owner — nothing of the service is
-built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
+2026-09-26. Nothing of the backend is built — the gate blocks it. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
 · decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md).
+
+## The prototype — `implementation_analysis` (2026-09-29)
+
+⛔ **It waits on the owner's design_accept** ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)):
+`cd frontend && npm run storybook` → **Pages / Settlement / Imports** · **Pages / Settlement / ImportDetail**. The
+contract is accepted with the screens ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)),
+so a contract change after the gate is a new pass.
+
+| | |
+| --- | --- |
+| pages | `/settlement/imports` — [pages/settlement-imports/](../../../frontend/src/pages/settlement-imports/): the list (shop and status filters, paged, a running row refreshes every 5 s) and `ImportFileDialog` (the shop picks the platform, .xlsx ≤ 10 MB, the stream: bar, tallies, log, what did not post, open the file) · `/settlement/imports/:fileId` — [pages/settlement-import-detail/](../../../frontend/src/pages/settlement-import-detail/): the tally, the held · skipped · posted-to-the-shop rows, download the original |
+| shared in the domain | [features/settlementImport/](../../../frontend/src/features/settlementImport/) — `queries.ts`, `adapt.ts`, `useImportStream.ts` (the stream folded into state; closing detaches, never cancels), `FileTally`, `UploadedFileStatusBadge` |
+| reused | `ShopSelect`, `MarketplaceBadge`, `Pagination`, `RefreshOverlay`, `useActors`, `useShopOptions`, `documentClient.getDownloadUrl` |
+| the contract | [settlement_importer.proto](../../../proto/warehouse/settlement_importer/v1/settlement_importer.proto) — `SettlementImporterService`: the two streamed imports, `UploadedFileList`, `UploadedFileByIds`, `UploadedFileLineList`. Generated for Go and TS; nothing serves it |
+| the menu | **Settlement Imports**, a selling team's CS and up — `canImportSettlement` in [roles.ts](../../../frontend/src/lib/roles.ts) mirrors the policy |
+| the stub | [stubTransport.ts](../../../frontend/.storybook/stubTransport.ts) plays the importer's rules — the shop check before storing, no primary CS, a wrong-shop file refused after storing, twelve streamed rows (one held, one to the shop, one skipped, TikTok's affiliate row), and an import that finishes after its stream is dropped. Switches: [settlementImportScenario.ts](../../../frontend/.storybook/settlementImportScenario.ts) |
+| tested | 24 new stories, a `play()` per decision; the whole story suite passes (1,465); typecheck and build green |
+| ⚠ my proposals in it | the 5 s refresh while running · the .xlsx and 10 MB checks before sending · the refusal line names the shop · `UploadedFileByIds` and `UploadedFileLineList`, beyond the doc's three RPCs |
+| ⚠ a gap it shows | a line's `settlement_type` is settlement's enum, which still has eight values — a withdrawal line cannot be named until the five new types reach the contract ([contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)) |
+
+After accept: `backend_analysis`, in the order the blockers below allow.
 
 ## What is decided
 
@@ -47,17 +68,16 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
 | the access interceptor | ⛔ **refuses every streaming RPC** (`Unimplemented`, root included) — [interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57). No warehouse RPC has ever streamed; `san remote`'s `Exec` has its own interceptor · ✅ **decided**: authorize a server stream on its request ([a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)) — the first build task |
 | order lookup by platform ref | ⛔ none — `selling_service` has no RPC that takes a ref, and the ref's uniqueness is decided but not built. The column is `orders.order_external_ref_id` (selling `00012`): not unique, no index. It now names the row's person as well as its order |
-| shop access | ⚠ `shop_users` (#86) — written by `ShopUserAdd` / `ShopUserRemove`, read by nothing else. The importer's check would be its first enforcement ([shop Q1](../../business/shop/context_clarify.md#question)) · `ShopUserListFilter` has no `user_id`, so asking about one caller pages the list · ⛔ `ShopAccessCheck` and the primary CS are not built, and the RPC as written has no `team_id` ([shop critique 10](../../business/shop/context_clarify.md#critique)) |
+| shop access | ⚠ `shop_users` (#86) — written by `ShopUserAdd` / `ShopUserRemove`, read by nothing else. The importer's check would be its first enforcement — ✅ who counts is decided: a grant, or the team's owner or admin ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)) · `ShopUserListFilter` has no `user_id`, so asking about one caller pages the list · ⛔ `ShopAccessCheck` and the primary CS are not built, and the RPC as written has no `team_id` ([shop critique 10](../../business/shop/context_clarify.md#critique)) |
 | `backend/services/settlement_importer_service/` | ⛔ does not exist |
 
-## What blocks the first line of code
+## What blocks the backend — after design_accept
 
 | | |
 | --- | --- |
 | ⛔ the Shopee reader reads no `Status` — needed to skip a failed withdrawal. Add it on the document, never the item | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) |
-| who may work on a shop — the shop check cannot be built without it | [shop Q1](../../business/shop/context_clarify.md#question), re-routed from importer Q12 |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
-| ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
+| ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap — ✅ the prototype's contract fixes all four; design_accept settles them | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
 | ⛔ settlement asking the shop — decided, not built: a `ShopService` client in settlement's Wire set, `settlement_logs.user_id`, the event's field, the fold's line, and the flow in `docs/services/settlement_service/rpc.md` | [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) |
 | ⛔ `ShopAccessCheck` and a shop's primary CS — neither built; the RPC as written has no `team_id` | [shop critique 10](../../business/shop/context_clarify.md#critique) · [shop Q7](../../business/shop/context_clarify.md#question) |
 | ⛔ the TikTok key — the reader doc's struct is Shopee's, the built item is unaccepted, and a re-download in the 2026-09 layout is unmeasured. A key that moves after the first import posts every line twice | [critique 14](../../business/settlement/settlement_importer_clarify.md#critique) → [reader #23 and its questions](../../technical/packages/excel_readers/context_clarify.md#critique) |
@@ -97,6 +117,9 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 - ⚠ **The commission is on the DETAIL, never the item.** `TiktokSettlementItem` carries no fee column — they drift
   between layouts, so they live on `GetDetails()`, by header text. And **refuse a file with no `Affiliate …` column**:
   posting its `fund` whole lets a later download add the commission a second time under a new key.
+- ⚠ **The stub is the acceptance spec, not the server.** `.storybook/stubTransport.ts` plays each rule the prototype
+  shows — the shop check before storing, a wrong-shop file refused after storing, an import that finishes after its
+  stream is dropped. The handlers must do the same, and the stories say what "the same" is.
 - ⚠ **Detach the work, never the identity.** `context.WithoutCancel(ctx)` keeps the uploader's identity and
   token for every settlement and selling call and drops only the cancellation. A fresh `context.Background()`
   would post with nobody's identity.

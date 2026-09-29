@@ -66,6 +66,13 @@ const SettlementListRoute = lazy(() =>
 const SettlementReportPage = lazy(() =>
   import("./pages/settlement-report").then((m) => ({ default: m.SettlementReportPage })),
 );
+// The platform statements that feed that ledger — the file list, and one file's page.
+const SettlementImportsPage = lazy(() =>
+  import("./pages/settlement-imports").then((m) => ({ default: m.SettlementImportsPage })),
+);
+const SettlementImportDetailPage = lazy(() =>
+  import("./pages/settlement-import-detail").then((m) => ({ default: m.SettlementImportDetailPage })),
+);
 const LiabilityDetailPage = lazy(() =>
   import("./pages/liability-detail").then((m) => ({ default: m.LiabilityDetailPage })),
 );
@@ -279,6 +286,8 @@ export const router = createBrowserRouter([
       // per order), the route for what the screen is to the person opening it.
       { path: "settlement", element: <SettlementListRoute /> },
       { path: "settlement/report", element: <SettlementReportPage /> },
+      { path: "settlement/imports", element: <SettlementImportsPage /> },
+      { path: "settlement/imports/:fileId", element: <SettlementImportDetailPage /> },
       // ⚠ BEFORE the :counterpartyId route. React Router ranks a static segment above a dynamic
       // one so the order is not load-bearing today — but reading it in this order is, because
       // "terms" would otherwise look like a counterparty id to anyone scanning the file.

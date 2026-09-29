@@ -1,9 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import { canManageUsers, isTeamManager } from "../lib/roles";
+import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
 
 export interface MenuItem {
   to: string;
@@ -142,6 +142,13 @@ const SETTLEMENT_REPORT: MenuItem = {
   to: "/settlement/report",
   label: "nav.settlementReport",
   icon: TrendingDown,
+};
+// The platform statements that FEED that ledger. A wider audience than the two above: CS and up import
+// (cs-and-up-import-daily), so a CS who never opens the ledger still finds the screen they upload on.
+const SETTLEMENT_IMPORTS: MenuItem = {
+  to: "/settlement/imports",
+  label: "nav.settlementImports",
+  icon: FileUp,
 };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
@@ -305,6 +312,10 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   if (teamType === TeamType.SELLING && isTeamManager(role)) {
     menu.push(SETTLEMENT);
     menu.push(SETTLEMENT_REPORT);
+  }
+
+  if (teamType === TeamType.SELLING && canImportSettlement(role)) {
+    menu.push(SETTLEMENT_IMPORTS);
   }
 
   // Inventories sub-menu — restock, racks, batches, opname — for a WAREHOUSE (#95). A selling team

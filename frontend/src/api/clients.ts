@@ -25,6 +25,7 @@ import {
   SettlementService,
   SettlementWriteService,
 } from "../gen/warehouse/settlement/v1/settlement_pb";
+import { SettlementImporterService } from "../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
@@ -64,6 +65,8 @@ export const settlementWriteClient = createClient(SettlementWriteService, transp
 // The REPORTS folded from that ledger. Its maintenance service (replay, prune) is a developer's tool
 // with a [ROOT, ADMIN] policy and no screen, so it has no client here.
 export const settlementAnalyticClient = createClient(SettlementAnalyticService, transport);
+// The platform statements that FEED that ledger — a file in, rows posted, the import streamed.
+export const settlementImporterClient = createClient(SettlementImporterService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {

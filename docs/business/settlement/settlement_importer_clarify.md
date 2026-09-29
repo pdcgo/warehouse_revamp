@@ -4,18 +4,23 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-✅ **Q1, Q5 and Q14 answered in chat, 2026-09-29**, each as recommended — CS and up import daily
-([cs-and-up-import-daily](./settlement_importer_decision.md#cs-and-up-import-daily)), TikTok's affiliate commission posts as its own row
-([tiktok-affiliate-commission-posts-as-affiliate-fee](./settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee)), and a shop with no primary CS cannot import
-([a-shop-with-no-primary-cs-cannot-import](./settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)). **✅ No question is open in this file.** Earlier rounds are recorded in
-[settlement_importer_decision.md](./settlement_importer_decision.md).
+🔨 **Next phase, 2026-09-29 — `implementation_analysis`.** No question is open here, so the prototype is built: both
+screens and the contract, in Storybook against a stub — `cd frontend && npm run storybook` → **Pages / Settlement /
+Imports** and **Pages / Settlement / ImportDetail**. ⛔ **It waits on your design_accept**
+([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)): nothing of the backend is built
+until you accept, and the contract is accepted with the screens
+([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
+The last round — Q1, Q5 and Q14 — is recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-| | |
+| accepting it accepts | |
 | --- | --- |
-| ✅ recorded | three decisions. Critiques 1 and 10 go with Q1 |
-| ✅ measured | the commission is two columns in every TikTok layout — −2,236,212 and −204,105 on the largest file, the −2,440,317 Q5 quoted — and only ever on an `Order` row |
-| ⚠ my proposals | the commission is every `Affiliate …` column · a TikTok file with none is refused, or a later download would take the commission twice · the refusal line names the shop · settlement refuses a shop row with no primary too |
-| ✅ checked | no new contradiction. What still blocks the build is outside this file — [shop Q1](../shop/context_clarify.md#question), [shop Q7](../shop/context_clarify.md#question), [settlement Q1](./context_clarify.md#question), [reader #23](../../technical/packages/excel_readers/context_clarify.md#critique) — and inside it: critiques 15–17 and the [Contradiction](#contradiction) |
+| the list | `/settlement/imports` — one row per upload: shop, the statement's own range, who and when, status, the four tallies. Filter by shop and status. A running row refreshes itself; an interrupted one says to upload the same file again |
+| the dialog | **Import File** — pick the shop (its marketplace picks the import, and only Shopee and TikTok can), pick the .xlsx, start. It streams: the bar, the tallies, the log, and at the end what did not post. Closing it keeps the import going — there is no Cancel |
+| one file's page | `/settlement/imports/:fileId` — the tally, then the rows worth a look: **held** (the same file again posts them), **skipped**, **posted to the shop**. Download the original. No Revert, no Reprocess |
+| the contract | [settlement_importer.proto](../../../proto/warehouse/settlement_importer/v1/settlement_importer.proto) — your three RPCs, plus `UploadedFileByIds` and `UploadedFileLineList`, the file page's reads. It departs from §Rpc Detail exactly where critiques 15–17 and the step/count [Contradiction](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) say: a scoped `team_id`, one request and one response name per RPC, a 10 MB cap, and `step` · `count` · `file` beside your `level` and `message`. Accepting it closes those four |
+| the menu | **Settlement Imports**, for a selling team's CS and up |
+| ⚠ my proposals in it | the list refreshes every 5 s while a file runs · the dialog refuses a non-.xlsx or a file over 10 MB before sending · the refusal line names the shop |
+| ✅ checked | [shop Q1](../shop/context_clarify.md#question) is answered — [a-write-needs-a-grant-or-a-manager](../shop/context_decision.md#a-write-needs-a-grant-or-a-manager): an import needs a grant for the shop, or the team's owner or admin role |
 
 ## What the service already owns
 
