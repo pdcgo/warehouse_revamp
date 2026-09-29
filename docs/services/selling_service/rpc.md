@@ -474,7 +474,7 @@ sequenceDiagram
     participant S as ShopService
     participant DB as shops, shop_users
     M->>S: ShopUserAdd, or ShopUserSetPrimary
-    S->>DB: the shop's row FOR UPDATE — every change to its primary runs one at a time
+    S->>DB: the shop's row FOR UPDATE — Add and Make primary run one at a time, a removal takes no such lock
     alt ShopUserAdd
         S->>DB: insert the grant, nothing if it exists
         opt it was inserted, and the shop has no primary
@@ -483,12 +483,21 @@ sequenceDiagram
     else ShopUserSetPrimary
         S->>DB: the user's grant — FailedPrecondition when there is none
         S->>DB: clear the old flag, then set the new one — two statements, in that order
+        opt the set matched nothing — the grant was removed meanwhile
+            S->>DB: roll back — the old primary keeps its flag, FailedPrecondition
+        end
     end
 ```
 
 ⚠ **Clear, then set.** The partial unique index is checked row by row, so one `UPDATE` flipping both flags
 could meet the new one before the old one is gone. And **the shop's row is locked first**: without it, two
 grants landing on a shop with none would both find no primary and both be flagged.
+
+⚠ **The set must land.** `ShopUserRemove` takes no shop lock, so a grant can go between Make primary's check and
+its set. The set then matches nothing, and the whole change is refused and rolled back rather than answering with a
+primary nobody holds. The concurrency audit found this
+([ShopUserSetPrimary](../../../audits/services/selling_service/concurrency/ShopUserSetPrimary.md)), and its
+lock-level alternatives are still open there.
 
 ## A statement's refs, resolved — `OrderByExternalRefs`
 

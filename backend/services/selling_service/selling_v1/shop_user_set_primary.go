@@ -66,13 +66,20 @@ func (s *Service) ShopUserSetPrimary(
 			return err
 		}
 
-		err = tx.
+		// ⚠ THE SET MUST LAND. ShopUserRemove never takes the shop's row, so the grant read above can be
+		// deleted before this runs — the UPDATE then waits on the removal, and matches nothing once it
+		// commits. Failing here rolls the CLEAR back too, so the old primary keeps its flag: the answer a
+		// removal that came first would have given. Replying OK would name a primary nobody holds.
+		set := tx.
 			Model(&selling_service_models.ShopUser{}).
 			Where("id = ?", grant.ID).
-			Update("is_primary", true).
-			Error
-		if err != nil {
-			return err
+			Update("is_primary", true)
+		if set.Error != nil {
+			return set.Error
+		}
+
+		if set.RowsAffected == 0 {
+			return errNotGranted
 		}
 
 		err = tx.Where("id = ?", shopID).First(&shop).Error
