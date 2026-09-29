@@ -3,7 +3,8 @@
 **Pass:** ✅ **implemented** (2026-09-29) — design_accept passed
 ([the-prototype-and-its-contract-are-accepted](../../business/settlement/settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)),
 the owner answered what it waited on outside its doc the same day (settlement Q1, shop Q7, reader #23, the source
-rename), and the whole of it is built, tested end to end and audited. Before it: the Storybook prototype
+rename), and the whole of it is built, tested end to end and audited — and the owner accepted the screens as built
+([the-screens-as-built-are-accepted](../../business/settlement/settlement_importer_decision.md#the-screens-as-built-are-accepted)). Before it: the Storybook prototype
 (`implementation_analysis`), and business analysis from 2026-09-26. Source:
 [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner) · questions:
 [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md) — none open ·

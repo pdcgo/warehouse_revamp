@@ -29,6 +29,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-shop-with-no-primary-cs-cannot-import](#a-shop-with-no-primary-cs-cannot-import) | a shop with no primary CS cannot import — the shop check refuses the file with *"choose a primary CS first"* |
 | [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted) | ✅ design_accept passed — the two pages, the dialog, the menu and the five-RPC contract are what the backend builds against |
 | [the-source-is-named-importer](#the-source-is-named-importer) | an imported row's `source_type` is `importer` — renamed from `exporter` before the first import writes one |
+| [the-screens-as-built-are-accepted](#the-screens-as-built-are-accepted) | ✅ the frontend as built is accepted — the import screens on the real API, the shop's primary CS, and the report's Withdrawn and Position to date |
 
 ## the-import-is-one-streamed-call
 
@@ -916,3 +917,30 @@ flowchart LR
 | the stored text | `exporter` → `importer` — in the mapper ([mapper.go](../../../backend/services/settlement_service/settlement_v1/mapper.go)), and a settlement migration rewrites any `exporter` row a test or a local run left behind |
 | the sites | the proto, the mapper, settlement's tests, the Storybook fixtures, the frontend's source label |
 | the record | the eight append-only decisions that say `export_service` stay as they are |
+
+## the-screens-as-built-are-accepted
+
+> Chat *(owner, 2026-09-29)* — *"Accept as built"*, to: the import screens are the prototype you reviewed, now on the
+> real API, and two parts are new since that review — the shop pages' primary CS, and the report's Withdrawn and
+> Position to date columns. Have you reviewed the frontend as built?
+
+**The verdict.** The owner accepted the frontend **as built**. That covers the importer's screens on the real API,
+and the two parts built after [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted)
+to carry the decisions it depends on. No screen of this pass is waiting on a review.
+
+```mermaid
+flowchart LR
+  P["the prototype — accepted before the build"] --> W["wired to the real API"]
+  S["the shop's primary CS — badge, Make primary, No primary CS"] --> A{"accept as built, 2026-09-29"}
+  R["the report — Withdrawn, Position to date"] --> A
+  W --> A
+  A --> D["the importer's screens are done"]
+```
+
+### The spec — what was accepted
+
+| | |
+| --- | --- |
+| the import screens | `/settlement/imports`, **Import File**, `/settlement/imports/:fileId` — the accepted prototype on the real API (f163139, c9c1861) · e2e `settlement_imports.spec.ts` |
+| the shop's primary CS | the **Primary CS** badge on its grant, **★ Make primary** on every other granted user for an owner or admin, a *No primary CS* warning on the shop's page and a badge on `/shops` ([the-primary-cs-is-a-flag-on-a-grant](../shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant), c9c1861) · e2e `shops.spec.ts` |
+| the report | **Withdrawn** as its own column and total, and the headline **Position to date** ([the-report-headline-is-position-to-date](./context_decision.md#the-report-headline-is-position-to-date), 9f20652) · Storybook **Pages / Settlement / Report** |

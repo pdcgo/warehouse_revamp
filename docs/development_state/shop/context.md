@@ -22,7 +22,7 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 | RPCs | `ShopCreate` · `ShopList` · `ShopDetail` · `ShopUpdate` · `ShopDelete` (soft) · `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` — and, from f6dab3b (2026-09-29, the importer session): `ShopAccessCheck` (team-scoped, `is_have_access`), `ShopUserSetPrimary`, `OrderByExternalRefs` |
 | tables | `shops` · `shop_users` (+ `is_primary`, migration 00014, backfilled from each shop's earliest grant) · `orders.shop_id` is a real FK to `shops` |
 | callers | settlement and the importer each own an interface for the shop, adapted at the composition root with a Connect client — so the move to `shop_service` changes those adapters only |
-| frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` · from c9c1861 (2026-09-29): the **Primary CS** badge, **Make primary** on every other granted user, a *No primary CS* warning on the shop page and a badge on `/shops` — covered by `e2e/shops.spec.ts` |
+| frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` · from c9c1861 (2026-09-29): the **Primary CS** badge, **Make primary** on every other granted user, a *No primary CS* warning on the shop page and a badge on `/shops` — covered by `e2e/shops.spec.ts`, and accepted as built by the owner ([the-screens-as-built-are-accepted](../../business/settlement/settlement_importer_decision.md#the-screens-as-built-are-accepted)) |
 
 ## Decided, not built
 
