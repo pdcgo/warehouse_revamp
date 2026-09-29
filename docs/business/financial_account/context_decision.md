@@ -11,7 +11,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | [Q2](./context_clarify.md#question), [Q4](./context_clarify.md#question) — what moves it |
 | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
 | [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
-| [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q4](./context_clarify.md#question) — `capital`, and `adjustment` for reconciling only · [Q10](./context_clarify.md#question) — which way each comes in |
+| [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q10](./context_clarify.md#question) — which way each comes in |
+| [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | [Q4](./context_clarify.md#question) — `adjustment` for reconciling only · [Q8](./context_clarify.md#question) — who types it |
 
 ## the-accounts-are-one-ledger
 
@@ -199,3 +200,38 @@ flowchart LR
 - **`capital`**, and whether `adjustment` is for reconciling only — [Q4](./context_clarify.md#question).
 - **Which way each comes in** — [Q10](./context_clarify.md#question) recommends by hand for `opening_balance` and
   `transfer`, and from the broker for `team_payment`: liability records the payment, and publishes nothing yet.
+
+🔄 *(2026-09-29, later the same day)* `capital` joined the list too — [capital-joins-the-types](#capital-joins-the-types).
+
+## capital-joins-the-types
+
+> `context.md` §What is `change_type` *(owner, 2026-09-29)* — `capital` added to the list *(line 74)*, after asking in
+> chat *"what is `capital` used for"* and reading the answer. The fourth of the four types
+> [Q4](./context_clarify.md#question) recommended.
+
+**The verdict.** The business owner's own money, put into a team or taken out of it, is a type of its own:
+`capital`. It is never read as revenue, an expense or an adjustment — it is what separates a team that **earned**
+Rp 20.000.000 from one that was **given** it.
+
+```mermaid
+flowchart LR
+  OWNER["the business owner"] -->|"capital in — setoran modal"| A["team A's account"]
+  A -->|"capital out — prive"| OWNER
+  A -->|"capital out — no debt paid"| MOVE["one act by the owner"]
+  MOVE -->|"capital in"| B["team B's account"]
+```
+
+### The spec
+
+| | example | why no other type fits |
+| --- | --- | --- |
+| in | a new team's first Rp 20.000.000 (*setoran modal*) · a team that ran short, topped up | not `revenue_fund` — nothing was sold, and the team's profit would include money it was given |
+| out | profit taken out (*prive*) | not `expense` — nothing was bought, and the profit would shrink by money that was profit |
+| between teams | Rp 10.000.000 moved from team A to team B, paying no debt | not `team_payment` — it would lower a debt that does not exist · not `transfer` — a transfer stays inside one team |
+
+| | ⚠ my spec, from Q4's recommendation — yours to correct |
+| --- | --- |
+| the sign | one type, signed — in is positive, out is negative |
+| between teams | two rows, one per team, sharing a `group_id` — out of one, into the other |
+| the way in | by hand — no other service sees the owner's own money ([Q10](./context_clarify.md#question)) |
+| who types it | [Q8](./context_clarify.md#question) |

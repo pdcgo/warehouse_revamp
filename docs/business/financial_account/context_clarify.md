@@ -7,7 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| ✅ your list | `opening_balance`, `transfer`, `team_payment` joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [Q4](#question) narrows to `capital`, and whether `adjustment` is for reconciling only |
+| ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) · [Q4](#question) narrows to its last half: is `adjustment` for reconciling only |
 | ✅ answered in chat | Q5, Q6, Q7 — each as recommended: [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) · [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) · [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused) |
 | ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 22 still reads *"its unique"* — yours to carry into the doc |
 | ⚠ ripple of Q6 | [Q9](#question) — `team_infos` can hold one bank number in two teams today, and a copy into accounts takes it once |
@@ -63,7 +63,7 @@ flowchart LR
 | **3** | **An account has no name and no holder.** A team with two BCA accounts tells them apart by ten digits in every picker. And the holder — *atas nama* — is what a payer checks before transferring; `team_infos.bank_owner_name` exists for exactly that. | `name` — required, unique in the team (*BCA Operasional*, *Kas Gudang*) — and `holder_name`. |
 | **4** | **An account opens with no row.** One registered with Rp 50.000.000 already in it either starts at 0 — wrong on day one — or sets `balance` with no log row, which the ledger your line 13 names forbids: *"cannot change the `State` without log recorded"*. | Creating an account posts its first row, `opening_balance`. |
 | **5** | **`last_balance` reads both ways** *(line 59)*. On a log row, *last* can mean before this change or after it. | `balance_after`, the template's word — then `balance_after = previous + change` reads straight off the row. |
-| **6** | **`adjustment` is the only type for anything off the list — so it will mean everything.** A ShopeePay top-up, cash drawn at an ATM, a fee paid to the warehouse: each lands as an adjustment, and the one total that should say *money we failed to record* says nothing. | `adjustment` means reconciling only — [Q4](#question) gives the rest a type — and it is **derived, never typed**: the manager types what the bank app shows, and the difference posts ([Reconcile](#reconcile)). |
+| **6** | **`adjustment` is the only type for anything off the list — so it will mean everything.** A ShopeePay top-up, cash drawn at an ATM, a fee paid to the warehouse: each lands as an adjustment, and the one total that should say *money we failed to record* says nothing. | `adjustment` means reconciling only — ✅ every other movement has a type of its own now — and it is **derived, never typed**: the manager types what the bank app shows, and the difference posts ([Reconcile](#reconcile), [Q4](#question)). |
 | **7** | **The date the money moved is not kept.** `created_at` is when someone typed it. Yesterday's transfer typed this morning files under today, while the bank statement lists yesterday — the two never line up. | `occurred_at`. A broker row already has it — every event carries when its fact happened — so only a hand row needs a date picked, defaulting to today. The running balance still follows entry order. |
 | **8** | **An archived account can hold money.** Nothing says what `archived` *(line 48)* stops, or whether an account holding Rp 3.000.000 may be archived — its money then drops out of the team's total, or sits in a total nobody can spend. | Archive only at zero — transfer or reconcile first. An archived account takes no row **by hand**, stays readable everywhere, and can be restored. 🆕 A row **from the broker** still posts — refused, it would dead-letter — so the pickers stop offering an archived account, and a row that lands anyway shows as money to move out. |
 
@@ -83,8 +83,8 @@ types 1.250.000, and neither knows the other exists.
 **4.** expense · **5.** team payment — each of these needs its own event first. Until a type is wired, a reconcile
 catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-**Answer first:** [Q10](#question) and [Q4](#question) together decide every form; [Q8](#question) decides which
-screens show a balance at all.
+**Answer first:** [Q10](#question) decides every form — [Q4](#question) is now one detail of it, the reconcile —
+and [Q8](#question) decides which screens show a balance at all.
 
 ## Proposed Design
 
@@ -107,7 +107,7 @@ screens show a balance at all.
 | `expense` | out | broker — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
 | `transfer` ✅ | out of one, into another | by hand — two legs, one act | when typed |
 | `team_payment` ✅ | out of the payer, into the creditor | broker — 🆕 a payment event | the creditor confirms · a reversal reverses both |
-| `capital` 🆕 | in or out | by hand — the business owner's own money | [Q4](#question) |
+| `capital` ✅ | in or out | by hand — the business owner's own money | when typed |
 | `adjustment` | in or out | by hand — a reconcile; the difference, never typed | [Reconcile](#reconcile) |
 
 ```mermaid
@@ -300,19 +300,14 @@ see a balance, so it shows none.
    name none: `STOCK_LOSS` (goods written off, no cash moved) and an ads charge the platform took from the seller
    balance (that is a settlement row). ⚠ Expense publishes nothing today — the event is new.
 
-4. 🔄 **Narrowed — is there a `capital` type, and is `adjustment` for reconciling only?** *(lines 66–73)*
-   ✅ `opening_balance`, `transfer` and `team_payment` are in your list —
-   [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types).
-   **→ Recommend yes, and yes.** `capital` is the business owner's own money, put in or taken out:
-
-   | | example | why no other type fits |
-   | --- | --- | --- |
-   | in | a new team's first Rp 20.000.000 (*setoran modal*) · a team that ran short, topped up | not `revenue_fund` — nothing was sold, and the team's profit would include money it was given |
-   | out | profit taken out (*prive*) | not `expense` — nothing was bought, and the profit would shrink by money that was profit |
-   | between teams | Rp 10.000.000 moved from team A to team B, paying no debt | not `team_payment` — it would lower a debt that does not exist · not `transfer` — a transfer stays inside one team |
-
-   Rare, but large: it is the difference between a team that **earned** Rp 20.000.000 and one that was **given** it.
-   Then `adjustment` only ever means *money we did not record* — worth reading every week.
+4. 🔄 **Narrowed again — is `adjustment` for reconciling only?** *(line 68)*
+   ✅ All four types it asked for are in your list —
+   [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)
+   and [capital-joins-the-types](./context_decision.md#capital-joins-the-types).
+   **→ Recommend yes — and derived, never typed.** The manager types what the bank app shows, or what the cash box
+   counts, and the difference posts ([Reconcile](#reconcile)). With every other movement a type of its own, an
+   `adjustment` can only mean *money we did not record* — the one total worth reading every week, and the one row
+   that can hide missing cash, so it never carries an amount somebody chose.
 
 5. ✅ **Answered 2026-09-29 — `shopeepay` is the team's e-wallet**, never the Shopee seller balance, as recommended:
    [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with). Kept as
@@ -341,7 +336,7 @@ see a balance, so it shows none.
    fields took any number, so one bank can sit in two teams today — the copy takes it once, and lists the rest for a
    person to settle.
 
-10. 🆕 **Which way does each type come in — and may one come both ways?** *(lines 75–77)*
+10. 🆕 **Which way does each type come in — and may one come both ways?** *(lines 76–78)*
     One restock paid from ShopeePay: inventory publishes it and the account posts `restock −1.200.000`, and someone
     also types `restock −1.200.000`. ShopeePay shows −2.400.000 for one payment, the typed row names no restock, and
     the next reconcile hides the copy as an `adjustment` — so *money we failed to record* now also means *money we

@@ -3,7 +3,7 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after the owner's first
 edit. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **six owner decisions**. The lifecycle
+[context_decision.md](../../business/financial_account/context_decision.md) — **seven owner decisions**. The lifecycle
 is at *waiting for the owner* on Q1–Q4 and Q8–Q10 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
@@ -16,6 +16,7 @@ is at *waiting for the owner* on Q1–Q4 and Q8–Q10 — no Storybook prototype
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(account_type, account_number)` where a number exists, across all teams, archived included · a cash box exempt · ⚠ the `team_infos` copy (Q9) must list colliding numbers, never drop them |
 | [below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused) *(Q7)* | no balance check on any write path · a warning on the list and the account page while below zero |
 | [opening-transfer-and-team-payment-join-the-types](../../business/financial_account/context_decision.md#opening-transfer-and-team-payment-join-the-types) *(Q4, three of four)* | three more `change_type` values · ⚠ their posting rules — the opening row at create, two legs per transfer, a team payment at confirm — are my spec, marked so in the decision |
+| [capital-joins-the-types](../../business/financial_account/context_decision.md#capital-joins-the-types) *(Q4, the fourth)* | the owner's money in or out, one signed type · ⚠ two rows sharing a `group_id` when it moves between teams — my spec |
 
 ## What exists
 
@@ -42,10 +43,10 @@ with the ledger line 13 names. Do not build from it as written.
 
 ## Open
 
-Q1–Q4 and Q8–Q10 in the clarify. **Q10 and Q4 first** — together they decide every form — then **Q8**, which screens show a
-balance.
+Q1–Q4 and Q8–Q10 in the clarify. **Q10 first** — it decides every form, and Q4 is now one detail of it (the
+reconcile) — then **Q8**, which screens show a balance.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be
-`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype before Q10, Q4 and
-Q8 are answered.
+`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype before Q10 and Q8
+are answered.
