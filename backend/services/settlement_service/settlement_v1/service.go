@@ -105,13 +105,14 @@ var (
 	)
 
 	// `unique_id` is unique across the WHOLE log, not per order (#00002). So a key that already
-	// belongs to a DIFFERENT order is a caller whose recipe does not identify what it is recording —
-	// and it must be told, because the alternative is worse than an error: the idempotency check
-	// would return that other order's entry as "already written", and the caller would read a
-	// success carrying a row it has never seen.
+	// belongs to a DIFFERENT account — another order, or another shop's row — is a caller whose
+	// recipe does not identify what it is recording, and it must be told, because the alternative is
+	// worse than an error: the idempotency check would return that other account's entry as "already
+	// written", and the caller would read a success carrying a row it has never seen
+	// (#a-key-held-by-another-account-is-refused).
 	errUniqueIDTaken = connect.NewError(
 		connect.CodeInvalidArgument,
-		errors.New("unique_id already names an entry on another order"),
+		errors.New("unique_id already names an entry on another account"),
 	)
 
 	// THE GRAIN IS DECIDED BY THE TYPE (#an-entry-names-an-order-or-a-shop). Both directions are

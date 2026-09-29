@@ -60,8 +60,10 @@ sequenceDiagram
   S->>S: account's team and shop match? else refuse
   S->>+DB: SELECT settlement_logs WHERE unique_id
   DB-->>-S: found or not
-  alt already written
+  alt already written, on this account
     S-->>C: the existing row, created = false
+  else already written, on another account — another order, or another shop's row
+    S-->>C: InvalidArgument — refused, nothing written
   else new
     S->>S: live-sale rules — see below
     S->>+DB: INSERT settlement_logs — posted_on from the column default

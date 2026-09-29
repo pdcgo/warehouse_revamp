@@ -159,6 +159,91 @@ func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 	}
 }
 
+// ⚠ A KEY HELD BY ANOTHER SHOP IS A COLLISION, NOT A RETRY (#a-key-held-by-another-account-is-refused).
+//
+// Two shop rows both read as order 0, so comparing the order alone once let this through: the second
+// post came back `created: false` carrying the FIRST shop's row, and nothing was written for its own.
+// A statement imported into the right shop, after it had gone into the wrong one, read "already there"
+// on every line while the money sat in the other shop.
+func TestSettlementPost_RefusesAKeyHeldByAnotherShop(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil)
+
+	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
+	if err != nil {
+		t.Fatalf("first post: %v", err)
+	}
+
+	in := shopOther("shop-30-withdrawal", -20_000)
+	in.ShopID = shop + 1
+
+	_, err = postShop(t, svc, in)
+	if err == nil {
+		t.Fatal("another shop's key was returned as this shop's own write")
+	}
+
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+
+	// Refused means NOTHING of the second shop is written — not a row, and not the account the post
+	// opened on its way to the check.
+	var rows int64
+
+	err = db.
+		Model(&settlement_service_models.SettlementLog{}).
+		Where("shop_id = ?", shop+1).
+		Count(&rows).
+		Error
+	if err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+
+	if rows != 0 {
+		t.Errorf("%d rows written for the refused shop, want 0", rows)
+	}
+
+	var accounts int64
+
+	err = db.
+		Model(&settlement_service_models.ShopSettlement{}).
+		Where("shop_id = ?", shop+1).
+		Count(&accounts).
+		Error
+	if err != nil {
+		t.Fatalf("count accounts: %v", err)
+	}
+
+	if accounts != 0 {
+		t.Errorf("the refused post left an account for its shop behind")
+	}
+}
+
+// And across teams: the same key posted to a shop of ANOTHER team must not hand that team this team's
+// row — its amount, its note, its dates.
+func TestSettlementPost_RefusesAKeyHeldByAnotherTeamsShop(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil)
+
+	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
+	if err != nil {
+		t.Fatalf("first post: %v", err)
+	}
+
+	in := shopOther("shop-30-withdrawal", -20_000)
+	in.TeamID = team + 1
+	in.ShopID = 40
+
+	result, err := postShop(t, svc, in)
+	if err == nil {
+		t.Fatalf("another team was handed this team's row %d", result.Entry.ID)
+	}
+
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+}
+
 // ⚠ THE GRAIN IS DECIDED BY THE TYPE, not by the caller. A sale belongs to an order: with no order
 // there is no account to open, and the row would never reach the detail panel that explains it.
 func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {

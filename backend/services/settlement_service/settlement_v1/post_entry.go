@@ -335,7 +335,13 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		// row from an account it never wrote to, labelled as its own successful (idempotent) write.
 		// Compared across the GRAIN too: an order row and a shop row are different accounts even when
 		// they share a shop.
-		if existing.ID != 0 && derefOrder(existing.OrderID) != in.OrderID {
+		//
+		// ⚠ AND ACROSS SHOPS (#a-key-held-by-another-account-is-refused). Two shop rows both read as
+		// order 0, so comparing the order alone let a shop row's key held by ANOTHER shop — or another
+		// team's shop — come back as this caller's own "already written", with nothing written for it.
+		// A shop belongs to one team, so comparing the shop covers the team.
+		if existing.ID != 0 &&
+			(derefOrder(existing.OrderID) != in.OrderID || existing.ShopID != in.ShopID) {
 			return errUniqueIDTaken
 		}
 

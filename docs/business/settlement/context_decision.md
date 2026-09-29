@@ -77,6 +77,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [periods-are-grouped-on-the-server](#periods-are-grouped-on-the-server) | a period's grain — day, month, year — is grouped by the RPC, never by the browser. Every period read, not only settlement's |
 | [the-fold-locks-shop-then-user](#the-fold-locks-shop-then-user) | every fold takes a transaction-scoped advisory lock on its shop, then its person — two events on one shop fold one after the other |
 | [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) | the replay's seek is carried by the topic's 31-day retention; subscriptions keep no acknowledged messages. ⚠ supersedes one requirement of the-replay-seeks-the-broker |
+| [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused) | a `unique_id` already written on ANOTHER account — another order, or another shop's row in any team — is refused; only a key on the caller's own account is a retry |
 
 ---
 
@@ -3127,7 +3128,7 @@ dangerous one because a retried cancel on a fresh key **credits the account twic
 | the index | `CREATE UNIQUE INDEX settlement_logs_unique_idx ON settlement_logs (unique_id)` |
 | ⚠ **strictly stronger** | a key that was legal on two different orders is now a collision. Intended: every recipe already embeds the order id or the platform reference (`hash(date + order_ref_id)`, and `hash(order_id + act_date + "cancel")`), so all of them are globally unique in practice. A recipe that was not is a caller bug this index surfaces instead of hiding |
 | the handler's lookup | `WHERE unique_id = ?`, no longer `order_id = ? AND unique_id = ?` |
-| ⛔ **a hit on ANOTHER order is refused, not returned** | `errUniqueIDTaken`. Without it the idempotency check would hand the caller a row from an account it never wrote to, **labelled as its own successful write** — worse than an error, because it reads as success |
+| ⛔ **a hit on ANOTHER order is refused, not returned** | ⚠ **Amended** by [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused): another ACCOUNT — another shop's row, in this team or another, is refused too. `errUniqueIDTaken`. Without it the idempotency check would hand the caller a row from an account it never wrote to, **labelled as its own successful write** — worse than an error, because it reads as success |
 | if the migration fails | that is the finding, not an obstacle: two rows already share a key across orders, and one writer's recipe does not identify what it records |
 
 ### ✅ What it closes
@@ -3719,3 +3720,38 @@ flowchart LR
 | the subscriptions | keep no acknowledged messages — nothing to set |
 | the replay's reach | read from Pub/Sub: the topic's retention as the subscription reports it, or the subscription's own if it keeps acknowledged messages and that is longer ([replay.go:40](../../../backend/pkgs/event_source/replay.go#L40)) |
 | a topic made without retention | the replay shortens or refuses — it never deletes a day it cannot rebuild |
+
+## a-key-held-by-another-account-is-refused
+
+> Chat *(owner, 2026-09-29)* — *"fix it for me"*, to [critique 7](./context_clarify.md#critique): a shop row's key
+> already held by ANOTHER shop came back as the caller's own *"already exists"*.
+
+**The verdict.** A `unique_id` already written on **another account** is **refused** — another order, as before, and
+now **another shop's row** too, in this team or any other. Only a key on the caller's own account is a retry. It
+widens [the-idempotency-key-is-global](#the-idempotency-key-is-global), whose spec said *"another order"* while its own
+reason — *"a row from an account it never wrote to"* — already covered the shop.
+
+```mermaid
+flowchart TD
+  K["a post, with a key already in the log"] --> Q{"the existing row's account"}
+  Q -->|"this order, or this shop's own row"| R["a retry — the stored row, created false"]
+  Q -->|"another order"| X["refused — InvalidArgument, nothing written"]
+  Q -->|"another shop's row — this team or another"| X
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the check | the existing row's order **and** shop against the post's ([post_entry.go:338](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L338)). A shop belongs to one team, so the shop covers the team |
+| the error | `InvalidArgument` — *"unique_id already names an entry on another account"*, which is how [rpc.md](../../services/settlement_service/rpc.md#errors) already documented it |
+| nothing written | the refused post rolls back whole — no row, and no account opened for the caller's shop |
+| measured before | 2026-09-29: a shop row's key posted to shop 30, then to shop 31 and to a shop in another team, answered *already exists* with shop 30's row both times |
+| tests | `TestSettlementPost_RefusesAKeyHeldByAnotherShop` and `…AnotherTeamsShop` — both fail on the old check. The concurrency tests pass unchanged: no new query, no new lock |
+
+### What it changes
+
+- **An import into the wrong shop shows.** A statement already posted into another shop reads *refused* line by line
+  in the right one, instead of *already there* — the case
+  [the-row-key-is-the-only-dedupe](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe) leaned on.
+- **Another team can no longer read a row by posting its key.**

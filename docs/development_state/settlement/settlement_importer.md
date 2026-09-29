@@ -42,7 +42,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | | |
 | --- | --- |
 | readers | ✅ [backend/pkgs/san_excel_readers/](../../../backend/pkgs/san_excel_readers/) — Shopee + TikTok, `GenerateUniqueID`, `SettlementType()`. ⚠ its own state report ([excel_readers.md](../packages/excel_readers.md)) is stale on `SettlementType()` — both platforms are mapped now, owner decision by decision · ⚠ its TikTok item is ten TikTok columns — a deviation from the reader doc's struct (Shopee's six), not yet accepted ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)) |
-| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else · ⛔ a key another SHOP holds comes back as the caller's own *already exists* ([settlement critique 7](../../business/settlement/context_clarify.md#critique)) |
+| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else · ✅ a key another shop holds is refused, since 2026-09-29 ([a-key-held-by-another-account-is-refused](../../business/settlement/context_decision.md#a-key-held-by-another-account-is-refused)) |
 | file store | ✅ `document_service` — two-phase upload; it never touches bytes, so the importer is its CLIENT: `RequestUpload` → PUT → `ConfirmUpload`, under the uploader's forwarded token. No resource type for a statement yet |
 | long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
 | the access interceptor | ⛔ **refuses every streaming RPC** (`Unimplemented`, root included) — [interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57). No warehouse RPC has ever streamed; `san remote`'s `Exec` has its own interceptor · ✅ **decided**: authorize a server stream on its request ([a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)) — the first build task |
@@ -54,7 +54,6 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 
 | | |
 | --- | --- |
-| ⛔ settlement returns a shop row's key held by ANOTHER shop — or team — as *already exists*, with that shop's row (measured). With the row key the only dedupe, a statement in the wrong shop reads *already there* in the right one | [settlement critique 7](../../business/settlement/context_clarify.md#critique) |
 | ⛔ the Shopee reader reads no `Status` — needed to skip a failed withdrawal. Add it on the document, never the item | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) |
 | who may work on a shop — the shop check cannot be built without it | [shop Q1](../../business/shop/context_clarify.md#question), re-routed from importer Q12 |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
@@ -84,8 +83,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 ## Traps for the pass that builds it
 
 - ⚠ **A re-import cannot correct anything.** A repeat key returns the STORED row (`created: false`); a key on
-  another ORDER is `errUniqueIDTaken` — ⛔ a key on another SHOP comes back as *already exists* today
-  ([settlement critique 7](../../business/settlement/context_clarify.md#critique)). Changing a mapping after the first import changes nothing in the ledger.
+  another account — another order, or another shop's row — is `errUniqueIDTaken` ([a-key-held-by-another-account-is-refused](../../business/settlement/context_decision.md#a-key-held-by-another-account-is-refused)). Changing a mapping after the first import changes nothing in the ledger.
 - ⚠ **The reader returns `ErrNoSettlementTypeMapping` for rows that must be SKIPPED** (`Earnings`,
   `GMV Pay Deduction`) exactly as for a type never seen. The skip list belongs in the importer.
 - ⚠ **Nothing an import posts can be undone** — no revert, by decision. A line posted to the shop because its

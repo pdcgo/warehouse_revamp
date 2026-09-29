@@ -630,7 +630,8 @@ flowchart LR
   2026-09-29: a shop row's key posted to shop 30, then to shop 31 — and to a shop in another TEAM — answered
   *already exists* both times and returned shop 30's row. So a statement posted into the wrong shop, with no order
   to find, reads *already there* line by line in the right one, and nothing says where the money went —
-  [settlement critique 7](./context_clarify.md#critique).
+  [settlement critique 7](./context_clarify.md#critique). ✅ **Fixed 2026-09-29** — [a-key-held-by-another-account-is-refused](./context_decision.md#a-key-held-by-another-account-is-refused):
+  refused now, so such a line reads *refused*, never *already there*.
 - ⚠ **The key staying put.** It is now the only thing between a re-download and a double post, so a TikTok period
   re-downloaded in the 2026-09 layout ([critique 14](./settlement_importer_clarify.md#critique)) matters more.
 
