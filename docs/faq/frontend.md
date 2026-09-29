@@ -328,3 +328,29 @@ persentase = margin ÷ harga MP
 So the MP date is shown whenever there is a reference, and the MP amount only when there is an
 amount. Fixture 108 is deliberately the second case, so the distinction is exercised. See
 [every-date-gets-its-own-column](../technical/order/design_decision.md#every-date-gets-its-own-column).
+
+---
+
+## How do I see a screen without the ⚠ "not implemented yet" marks?
+
+**Storybook's toolbar — *Pending marks* → Hidden.** It hides both the ⚠ badges and the folded strip
+at the top, so a layout can be reviewed without the scaffolding on it.
+
+| | |
+| --- | --- |
+| where | the toolbar, beside Color mode and Language |
+| default | **Shown**, and `npm run test:stories` runs at the default |
+| in the app | **nowhere, on purpose** — see below |
+
+⚠ **There is no switch in the app, and there should not be.** A mark says a number on the screen is
+invented or a value typed into a control is thrown away. Somebody using the warehouse must not be able
+to turn that off; the audience for the switch is whoever is reviewing the design.
+
+⚠ **Default ON is load-bearing.** `PendingMarksContext` defaults to `true`, so a screen with no
+provider above it — which is every screen in the real app — shows its marks. Backwards, they would
+vanish everywhere and nobody would notice, because a missing warning looks exactly like nothing being
+wrong.
+
+Browsing with them hidden shows any story that asserts on a mark FAILING in the Interactions panel.
+That is expected, the same way browsing in Indonesian is. The mechanism is
+[features/pending/PendingMarks.tsx](../../frontend/src/features/pending/PendingMarks.tsx).

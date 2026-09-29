@@ -1,5 +1,10 @@
 # Decisions — order `design.md`
 
+> ⚠ **EVERY DECISION BELOW IS ABOUT THE SELLING TEAM'S ORDER LIST.** The warehouse reads `/orders`
+> from the other end and keeps the screen it had — see
+> [the-two-ends-are-two-screens](#the-two-ends-are-two-screens). Nothing here has been applied to it,
+> and the owner has not designed it yet.
+
 | decision | what it settles |
 | --- | --- |
 | [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim) | every status keeps the hue it had, collisions included |
@@ -12,7 +17,8 @@
 | [harga-beli-team-and-gudang-are-on-the-row](#harga-beli-team-and-gudang-are-on-the-row) | all three earn a place, none of them a column of its own |
 | [the-action-menu-is-a-table-keyed-by-status](#the-action-menu-is-a-table-keyed-by-status) | what you can do to an order, per state, in one place |
 | [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) | four urgency bands, and an overdue order tints its whole row |
-| [the-preview-became-the-order-list](#the-preview-became-the-order-list) | `/orders` IS this screen now — the preview page is gone |
+| [the-preview-became-the-order-list](#the-preview-became-the-order-list) | a seller's `/orders` IS this screen now — the preview page is gone |
+| [the-two-ends-are-two-screens](#the-two-ends-are-two-screens) | the warehouse keeps its old list — almost nothing on the seller's row is a fact a picker acts on |
 
 ---
 
@@ -421,14 +427,16 @@ change.
 > Owner, in chat (2026-09-29): *"sudah bisa diterapkan ke order list aslinya"*.
 
 The screen was built as `pages/orders-next/`, reachable only from Storybook, so it could be argued over
-without touching the running app. It is now **`pages/orders/`**, on the `/orders` route, and the preview
-directory is deleted.
+without touching the running app. It is now **`pages/orders/SellerOrders.tsx`**, on the `/orders` route
+for a selling team, and the preview directory is deleted.
+
+⚠ **A WAREHOUSE STILL GETS THE OLD LIST** — see [the-two-ends-are-two-screens](#the-two-ends-are-two-screens).
 
 | | |
 | --- | --- |
-| moved | `index.tsx` · `components/*` · `pending.ts` · `stages.ts` · `rowActions.ts` · the three mocks |
-| deleted | the old `orders/index.tsx` and its `OrderStatRow` — the summary strip replaced it |
-| kept | both story files, and **every rule in them** |
+| moved | the page as `SellerOrders.tsx` · `components/*` · `pending.ts` · `stages.ts` · `rowActions.ts` · the three mocks |
+| kept | the old page as `WarehouseOrders.tsx`, with its `OrderStatRow` — untouched |
+| new | `index.tsx`, a picker: team type chooses which |
 
 ⚠ **THE OLD SCREEN'S TESTS CAME ACROSS, NOT ITS CODE.** Twenty-five `play()` rules already described
 what an order list must do — a warehouse sees another team's order, a tab narrows the table but never
@@ -443,13 +451,52 @@ rewritten. Eight failed on the move and each failure named a real change:
 | `orders-clear-filters` | the shared FilterBar's own `orders-filters-clear` |
 | clicking the customer's name to open a row | Penerima is off the row — it clicks the date cell |
 
-⚠ **AND ONE FAILURE WAS NOT A RENAME.** *"The status tab narrows to one stage of the crew's work"* asserted
-that choosing Diproses hides the pending orders. It does not, and cannot: the owner folded four steps
-into one status while `OrderListFilter.status` takes exactly one enum value. The story is now two —
-`AStatusTabNarrowsTheQueue` for a tab backed by one value, and `DiprosesCountsButOnlyAStepCanNarrow`
-for the fold, **pinning the gap as a test** so the day a single `PROCESSED` value lands the assertion
-fails and the step filter's reason for existing is re-read.
+⚠ **AND ONE FAILURE WAS NOT A RENAME.** *"The status tab narrows to one stage of the crew's work"*
+asserted that choosing Diproses hides the pending orders. It does not, and cannot: the owner folded four
+steps into one status while `OrderListFilter.status` takes exactly one enum value. That became
+`DiprosesCountsButOnlyAStepCanNarrow` — **the `statusSet` mark written as an assertion**, so the day a
+single `PROCESSED` value lands it fails and the step filter's reason for existing is re-read.
+
+⚠ It was written on the warehouse's stories and MOVED to the seller's when the warehouse list reverted.
+Worth saying plainly: restoring a file quietly takes its tests with it, and this one was the only thing
+holding that gap down.
 
 ⚠ **THE PENDING MARKS CAME WITH IT.** Fourteen entries in `pages/orders/pending.ts`, on a screen people
 now actually use — which is the point: the marks exist so a live screen can say what it cannot do yet
 rather than quietly lying about it.
+
+## the-two-ends-are-two-screens
+
+> Owner, in chat (2026-09-29): *"warehouse order list page kembalikan, aku belum mau menyentuh itu,
+> konteksnya beda soalnya"*.
+
+`/orders` is read from both ends (#151) and was one screen with a few columns swapped. It is now two,
+chosen by team type in `pages/orders/index.tsx`.
+
+```mermaid
+flowchart LR
+  R["/orders"] --> P{"team type"}
+  P -->|WAREHOUSE| W["WarehouseOrders — the old list, untouched"]
+  P -->|SELLING, ROOT, ADMIN| S["SellerOrders — rebuilt around the money"]
+```
+
+**And the context really is different**, which is why this is a split and not a flag:
+
+| the seller's row | the warehouse's job |
+| --- | --- |
+| ID Order · Tgl MP · Total MP · Beli · Margin | what to pick, from which shelf, by when |
+| what a shop is owed and what it earned | what a crew is holding |
+
+⚠ **A WAREHOUSE SHOWING ANOTHER TEAM'S MARGIN IS SHOWING IT SOMEBODY ELSE'S BUSINESS.** The list already
+spans sellers — a building sees orders from every team that ships through it — so the money columns are
+not merely unhelpful there, they are a disclosure.
+
+⚠ **IT IS A JS BRANCH, NOT CSS.** Same rule as the app shell (`layouts/Layout.tsx`): rendering both and
+hiding one would mount two tables, two sets of queries and two of every `data-testid` the e2e reach for.
+
+⚠ **THE TEAM TYPE, NOT A ROLE.** Who you are inside a team does not change which list this is — a
+warehouse admin and a warehouse picker both read the building's queue. Root and admin fall through to
+the seller's screen, which is where the Tim column lives.
+
+⚠ **THE WAREHOUSE'S SCREEN IS NOT DESIGNED YET, only preserved.** It still carries the old stat row and
+the old three columns; nothing on this page has been asked of it.

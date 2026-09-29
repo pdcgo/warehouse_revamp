@@ -4,6 +4,7 @@ import { TriangleAlert } from "lucide-react";
 
 import type { PendingList } from "./registry";
 import { pendingNumber } from "./registry";
+import { usePendingMarks } from "./PendingMarks";
 
 // THE MARK ON A CARD THAT IS AHEAD OF THE SYSTEM — an icon and a NUMBER, and nothing else (owner).
 //
@@ -24,8 +25,16 @@ export function NotImplemented<Id extends string>({
   id: Id;
 }) {
   const { t } = useTranslation();
+  const show = usePendingMarks();
 
   const n = pendingNumber(list, id);
+
+  // ⚠ NOTHING AT ALL, not a hidden or zero-width one. The mark sits inside a header's `Flex`, so an
+  // invisible placeholder would still hold its gap and the column would stay wider than its content
+  // — which is exactly the layout question somebody turns the marks off to look at.
+  if (!show) {
+    return null;
+  }
   const label = t(`${list.ns}.pending.${id}.label`);
 
   return (

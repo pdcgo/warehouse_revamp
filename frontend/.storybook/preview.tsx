@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router-dom";
 
+import { PendingMarksProvider } from "../src/features/pending/PendingMarks";
 import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
@@ -39,6 +40,7 @@ function StoryProviders({
   lang,
   ownRouter,
   pageGutter,
+  pendingMarks,
   children,
 }: {
   colorMode: "light" | "dark";
@@ -46,6 +48,7 @@ function StoryProviders({
   lang: Lang;
   ownRouter: boolean;
   pageGutter: boolean;
+  pendingMarks: boolean;
   children: ReactNode;
 }) {
   // A FRESH client per story. Sharing one would let a picker's options survive into the next story
@@ -99,7 +102,11 @@ function StoryProviders({
   //
   // It lives here, inside ChakraProvider, rather than in a decorator of its own: `p="page"` is a theme
   // token, and resolving it must not depend on the order decorators happen to wrap in.
-  const content = pageGutter ? <Box p="page">{children}</Box> : children;
+  // ⚠ INSIDE THE GUTTER, so turning the marks off changes what is drawn and nothing about where.
+  // Wrapping outside would leave the page's padding keyed to a subtree that may now render nothing.
+  const marked = <PendingMarksProvider show={pendingMarks}>{children}</PendingMarksProvider>;
+
+  const content = pageGutter ? <Box p="page">{marked}</Box> : marked;
 
   return (
     <ChakraProvider value={system}>
@@ -133,6 +140,8 @@ const withProviders: Decorator = (Story, context) => (
     font={context.globals.font === "system" ? "system" : "lato"}
     lang={langOf(context.globals)}
     ownRouter={context.parameters.dataRouter === true}
+    // Default ON, and the default is the one that matters — see `features/pending/PendingMarks`.
+    pendingMarks={context.globals.pendingMarks !== "off"}
     // The live app's pages only — `Legacy/Pages/*` and `LegacyWarehouse/Pages/*` stay fullscreen.
     pageGutter={context.title.startsWith("Pages/")}
   >
@@ -252,6 +261,7 @@ const preview: Preview = {
     colorMode: "light",
     font: "lato",
     locale: "en",
+    pendingMarks: "on",
   },
   globalTypes: {
     colorMode: {
@@ -280,6 +290,28 @@ const preview: Preview = {
         items: [
           { value: "en", title: "English" },
           { value: "id", title: "Bahasa Indonesia" },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    // THE BUILD-STATUS MARKS — the ⚠ badges and the folded strip above them (owner, 2026-09-29).
+    //
+    // ⚠ THIS IS THE ONLY PLACE THEY CAN BE TURNED OFF, and deliberately: the marks tell somebody that a
+    // figure on their screen is invented, so a person using the warehouse must never be able to switch
+    // that off. The audience for the switch is the person REVIEWING a layout, and a row of triangles is
+    // the loudest thing on a table while being no part of the design.
+    //
+    // ⚠ SHOWN IS THE DEFAULT AND THE TESTS RUN AT IT. `npm run test:stories` asserts on marks in
+    // several screens; browsing with them hidden shows those checks failing in the Interactions panel,
+    // the same way browsing in Indonesian does.
+    pendingMarks: {
+      description: "The ⚠ marks for what a screen cannot do yet",
+      toolbar: {
+        title: "Pending marks",
+        icon: "alert",
+        items: [
+          { value: "on", title: "Shown" },
+          { value: "off", title: "Hidden" },
         ],
         dynamicTitle: true,
       },

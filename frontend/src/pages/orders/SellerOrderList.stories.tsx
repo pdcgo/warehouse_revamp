@@ -204,6 +204,35 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
   },
 };
 
+// ⚠ …AND "DIPROSES" CANNOT NARROW AT ALL, WHICH IS WHY THE STEP FILTER EXISTS. The owner folded four
+// warehouse steps into one status and `OrderListFilter.status` takes exactly one enum value — so the
+// tab can COUNT its three (confirmed, picking, packed) and cannot narrow to them. Picking a step does
+// what the tab cannot.
+//
+// ⚠ THIS TEST IS PINNED TO A GAP, ON PURPOSE. It is the `statusSet` mark written as an assertion, so
+// the day the enum gains a single `PROCESSED` value this fails and somebody re-reads the step filter's
+// reason for existing.
+export const DiprosesCountsButOnlyAStepCanNarrow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const packed = OWN.find((o) => o.status === OrderStatus.PACKED)!;
+    const placed = OWN.find((o) => o.status === OrderStatus.PLACED)!;
+
+    await userEvent.click(canvas.getByTestId("orders-tab-processed"));
+
+    // The tab alone leaves the table as it was — the pending order is still listed.
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument());
+    await expect(canvas.getByTestId(`order-row-${placed.id}`)).toBeInTheDocument();
+
+    // One step IS one enum value, so it narrows.
+    await userEvent.click(canvas.getByTestId("processed-step-filter-packed"));
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument();
+  },
+};
+
 // The date window is what an old order is hidden by. The quick ranges are RELATIVE and live, so this
 // asserts against the clock the story runs on rather than a date typed into a fixture.
 export const TheDateWindowHidesTheOldOrder: Story = {

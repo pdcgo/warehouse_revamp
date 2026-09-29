@@ -911,6 +911,13 @@ figures), `derived` (real figures, unsettled rule), `missing` (not on screen at 
 short because of it). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
 `<ns>.pending.<id>.label|reason`.
 
+**The marks can be switched off — in STORYBOOK ONLY** (owner, 2026-09-29). The toolbar's *Pending
+marks* global hides the badges and the strip together, so a layout is reviewable without the
+scaffolding on it. `PendingMarksContext` defaults to **`true`**, so a screen with no provider — every
+screen in the real app — shows them. ⚠ **Never add a switch for this to a page.** A mark says a figure
+is invented or a typed value is thrown away; the person using the warehouse must not be able to turn
+that off, and the audience for the switch is whoever is reviewing the design.
+
 Two more UI rules:
 
 - **Many row actions → an overflow `Menu`.** When a table row has several actions (roughly three

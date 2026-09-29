@@ -4,6 +4,7 @@ import { ChevronDown, TriangleAlert } from "lucide-react";
 
 import type { PendingList } from "./registry";
 import { droppedParts } from "./registry";
+import { usePendingMarks } from "./PendingMarks";
 
 // WHAT THIS SCREEN CANNOT DO, SAID ONCE, AT THE TOP — and FOLDED AWAY until somebody asks (owner).
 //
@@ -18,7 +19,14 @@ import { droppedParts } from "./registry";
 // that says eleven while the screen carries fourteen, and the reader cannot tell which is right.
 export function NotImplementedSummary<Id extends string>({ list }: { list: PendingList<Id> }) {
   const { t } = useTranslation();
+  const show = usePendingMarks();
   const dropped = droppedParts(list);
+
+  // Turned off, the strip is gone rather than collapsed — see `PendingMarks`. It is the whole top of
+  // the screen, so leaving an empty band would answer the question it was turned off to ask.
+  if (!show) {
+    return null;
+  }
 
   return (
     <Collapsible.Root defaultOpen={false}>
