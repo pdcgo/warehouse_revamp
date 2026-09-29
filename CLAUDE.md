@@ -683,9 +683,11 @@ The generic primitives (JWT, reading the proto options, descriptor validation) a
   applied to all of them — mounting it per-handler is how policies end up as decoration.
 - **`ValidateDescriptors()` runs at startup** and refuses to boot on a `use_scope` tag that is
   non-uint, nested, or duplicated. Each of those is silent at runtime otherwise.
-- Streaming RPCs are **refused**, not degraded: a streaming interceptor cannot read the request
-  body, so it cannot read the scope. Authorize per-message inside the handler if one is ever
-  needed.
+- **Server streams are authorized on their request; client and bidi streams are refused.** A server
+  stream's token is checked from its headers before the handler runs, and its one request is checked
+  — policy, then scope — as connect-go reads it, before the handler's body sees it. ⚠ Its ctx carries
+  the identity and bearer, **not** the scope: a stream handler reads `team_id` off its own request.
+  Client and bidi streams carry many messages and no one request, so they stay `Unimplemented`.
 - The role lookup uses **`.Find()`, never `.First()`** — `First` returns `ErrRecordNotFound` for
   a non-member, and every request resolves the root team, where almost nobody is a member.
 

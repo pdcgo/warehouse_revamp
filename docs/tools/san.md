@@ -520,11 +520,11 @@ sequenceDiagram
 so there is no identity to carry and no role to look up — and minting a fake user would put a shell
 behind the credential the login screen also accepts.
 
-It is also what makes streaming work at all. The
-[access interceptor](../../backend/services/user_service/access_interceptors/) **refuses every
-streaming RPC**, because it reads its team scope from the request **body**, which has not arrived
-when an interceptor runs. A bearer token is a **header** — it is there before the first message — so
-`remote`'s own interceptor guards unary and streaming calls alike.
+It also guards streams the warehouse interceptor cannot. The
+[access interceptor](../../backend/services/user_service/access_interceptors/) reads its team scope
+from the request **body**, so it authorizes a server stream on its one request and **refuses client
+and bidi streams**, which carry many. A bearer token is a **header** — it is there before the first
+message — so `remote`'s own interceptor guards unary and every kind of stream alike.
 
 ### Persistence and rotation
 
