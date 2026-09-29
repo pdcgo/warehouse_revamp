@@ -20,6 +20,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-file-with-another-shops-orders-is-refused](#a-file-with-another-shops-orders-is-refused) | after extraction, a ref whose order is in ANOTHER shop of the team fails the whole file, before anything posts |
 | [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now) | no dry run — an import posts as it reads. Deferred, not refused |
 | [only-a-successful-withdrawal-is-recorded](#only-a-successful-withdrawal-is-recorded) | only a withdrawal that succeeded is recorded — a failed one, and the refund that returns it, are skipped |
+| [an-import-finishes-whether-anyone-watches](#an-import-finishes-whether-anyone-watches) | an import finishes whether or not anyone watches — closing the tab ends the stream, never the import. No Cancel, no rollback |
 
 ## the-import-is-one-streamed-call
 
@@ -32,7 +33,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 [the code guideline](../../../guidelines/code-implementation-guideline.md#implementation-for-long-running-task-rpc).
 The file travels in the request. The importer stores it in `document_service` first, extracts the records,
 and posts them one by one, streaming a log line and the progress after each. The stream closing is the
-import finishing. It **overtakes** the clarify's recommendation to queue the file and return at once.
+import finishing. ⚠ **Amended** by [an-import-finishes-whether-anyone-watches](#an-import-finishes-whether-anyone-watches): the server closes it when the import finishes — a client that leaves early closes only its own end. It **overtakes** the clarify's recommendation to queue the file and return at once.
 
 ```mermaid
 sequenceDiagram
@@ -68,7 +69,7 @@ sequenceDiagram
 
 - ⛔ **How a stream is authorized** — the access interceptor refuses every streaming RPC today:
   [importer Q7](./settlement_importer_clarify.md#question). ✅ **Answered** — [a-server-stream-is-authorized-on-its-request](#a-server-stream-is-authorized-on-its-request).
-- **Whether the import finishes when nobody is watching** — [importer Q8](./settlement_importer_clarify.md#question).
+- **Whether the import finishes when nobody is watching** — [importer Q8](./settlement_importer_clarify.md#question). ✅ **Answered** — [an-import-finishes-whether-anyone-watches](#an-import-finishes-whether-anyone-watches).
 - **A record that cannot post** — the flow draws two outcomes, the samples produce five:
   [critique 7](./settlement_importer_clarify.md#critique).
 
@@ -536,3 +537,40 @@ flowchart LR
 
 - **For a day, the ledger and Shopee's own balance differ.** Shopee shows the failed withdrawal leave and come
   back; the ledger never moves. By the refund's day they agree again.
+
+## an-import-finishes-whether-anyone-watches
+
+> Chat *(owner, 2026-09-29)* — *"no need cancel/rollback"*, to [importer Q8](./settlement_importer_clarify.md#question):
+> does an import keep going after the person stops watching? Read as **yes** — nothing cancels an import, and
+> nothing rolls it back.
+
+**The verdict.** An import **finishes whether or not anyone is watching**. A closed tab, a sleeping phone or a
+dropped connection ends the stream — the window onto the import — never the import itself. There is **no
+Cancel**, and no rollback ([an-upload-is-never-reverted](#an-upload-is-never-reverted)).
+
+```mermaid
+sequenceDiagram
+    participant fe as Frontend
+    participant import as Importer
+    participant settle as Settlement
+    fe->>import: the import
+    import->>settle: lines 1 to 400
+    fe--ximport: the tab closes
+    Note over import: the work is detached from the request, so it carries on
+    import->>settle: lines 401 to 830
+    import->>import: its row reads done
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the work | detached from the request with `context.WithoutCancel` — it keeps the uploader's identity for every call, and drops only the cancellation |
+| the stream | a window: once nobody listens, a failed send is noted once in the server log and the import carries on. Its log lines still reach the server log |
+| no Cancel | nothing stops an import once it starts — the two checks refuse a wrong shop or a wrong file before anything posts |
+| a server stopped mid-file | the file is half-posted, its row's `updated_at` stops moving, and the list shows it **interrupted** — ⚠ my proposal: *running* with no update for two minutes, worked out when listed, no sweeper |
+| recovery | upload the same file again — every posted line answers *already there*, the rest post. Whether that re-runs the same row is [importer Q9](./settlement_importer_clarify.md#question) |
+
+### What it accepts
+
+- **Closing the tab does not stop an import.** A file that passes both checks posts in full.

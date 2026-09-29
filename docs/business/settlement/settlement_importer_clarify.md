@@ -4,14 +4,15 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-✅ **Q6 answered in chat, 2026-09-29** — *"dont record failed withdrawal, only success"*:
-[only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded). Earlier rounds are recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
+✅ **Q8 answered in chat, 2026-09-29** — *"no need cancel/rollback"*: an import finishes whether or not anyone
+watches — [an-import-finishes-whether-anyone-watches](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches). Earlier rounds are recorded in
+[settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | only a successful withdrawal is recorded — a failed one **and its refund** are skipped. ⚠ Skipping only the failed row would keep the refund, which Shopee marks *completed* |
-| ⛔ what it needs | the Shopee reader reads no `Status` column — it has to come from the document, outside the hash ([Contradiction](#the-reader-leaves-the-status-out-and-the-importer-now-needs-it)) |
-| ✅ measured | Shopee: 170 withdrawal rows completed — 168 debits and 2 refunds — and 2 `Gagal`. TikTok: `Transferred` in every sample |
+| ✅ recorded | closing the tab ends the stream, never the import — no Cancel, no rollback. Critique #9 goes with it |
+| ⚠ my reading | *"no need cancel/rollback"* as **yes**: an import that nothing cancels keeps going on its own |
+| ✅ checked | no new contradiction. The streamed-call decision's *"the stream closing is the import finishing"* is annotated: a client that leaves closes only its own end |
 
 ## What the service already owns
 
@@ -51,10 +52,9 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. ✅ A failed withdrawal and its refund join it ([decided](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)). |
 | **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post on Reprocess once the mapping ships. |
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
-| **9** | 🆕 **The stream is the import's only watcher.** The flow ends at *"close stream"* and has no branch for a stream that closes FIRST — a tab closed, a phone asleep, a deploy. If the import dies with its request, the file is half-posted and the list shows it *running* for ever. | **Finish whether or not anyone watches** — [Q8](#question). |
 | **10** | **A late upload lands on its upload day.** Reports bucket on `posted_on` ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)), which settlement stamps — a month uploaded on the 1st is a month of `fund` on the 1st. | Keep the decision: a past window stays final. Upload **often**, and let the list show each file's own date range so the lag is visible. |
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
-| **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible (#9). |
+| **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible ([decided](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). |
 | **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
 | **15** | 🆕 ⛔ **The request has no team.** §Rpc Detail's `Payload` is `shop_id` and `file_content`. This service's callers are CS and up — team-level roles — and a team-level role on a message with no `use_scope` field is a dead letter: it is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong). As written, only root and admin could import, and [the decided stream check](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) has no scope to read. | Add `uint64 team_id = 1` with `use_scope` and `gt = 0` — exactly as `SettlementPostRequest` carries it ([settlement.proto:245](../../../proto/warehouse/settlement/v1/settlement.proto#L245)). |
 | **16** | 🆕 ⛔ **Both requests are `Payload`, and both streams send `Response`.** Two messages with one name in one package do not compile, and buf's STANDARD lint — used with no exceptions ([buf.yaml](../../../proto/buf.yaml)) — wants each RPC's own `…Request` and `…Response`. | `TiktokSettlementImportRequest` · `ShopeeSettlementImportRequest` · `TiktokSettlementImportResponse` · `ShopeeSettlementImportResponse` — the same fields under four names. `LogLevel` is one enum they share. |
@@ -189,7 +189,7 @@ Your `level` and `message`, the two numbers your flow sends, and the row they de
 
 | route | what the person does there |
 | --- | --- |
-| `/settlement/imports` | **the list** (`UploadedFileList`) — one row per file: shop, platform, the file's own date range, uploaded by and when, status, the four tallies. **Import File** opens a dialog: pick the shop, pick the file. The platform is read off `Shop.marketplace`, so the dialog calls the right RPC without asking. 🔄 **Then the dialog shows the stream** — the bar, the tallies, the log — and ends on what did not post. Closing it early is safe ([Q8](#question)): the row carries on |
+| `/settlement/imports` | **the list** (`UploadedFileList`) — one row per file: shop, platform, the file's own date range, uploaded by and when, status, the four tallies. **Import File** opens a dialog: pick the shop, pick the file. The platform is read off `Shop.marketplace`, so the dialog calls the right RPC without asking. 🔄 **Then the dialog shows the stream** — the bar, the tallies, the log — and ends on what did not post. Closing it early is safe ([decided](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)): the row carries on |
 | `/settlement/imports/:id` | **one file** — the tallies, the held and skipped lines with their reasons, the lines posted to the shop because their order was missing, **Reprocess**, download the original. 🔄 No **Revert** ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) |
 
 The recorded decisions also named `/settlement/unmatched`, a tray across all files. **→ Not in v1** — the
@@ -281,16 +281,8 @@ erDiagram
 7. ✅ **Answered 2026-09-28 — a server stream is authorized on its request**:
    [a-server-stream-is-authorized-on-its-request](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request). A build task now. Kept as a line so the numbers hold.
 
-8. **Does the import finish after the person stops watching?** 🆕 A tab closed, a phone asleep, a dropped
-   connection — the stream closes first.
-   **→ Recommend yes.** Run the posts detached from the request (`context.WithoutCancel`), so the stream is
-   a window onto the import, not its lifeline — a half-posted file is the worst outcome on offer: the
-   report is wrong and nothing says so. A server killed mid-file (a deploy) leaves a row whose tallies stop
-   moving, and the list shows it **interrupted** — derived when listed from `updated_at`, no sweeper.
-   Recovery is the keys: import the same file again and every posted record answers *already there* — by
-   Q9, into the same row rather than a second one.
-   ⚠ The price is that closing the tab does not cancel. With the shop guard (Q3) a wrong file fails before
-   anything posts — and nobody has asked for a Cancel.
+8. ✅ **Answered 2026-09-29 — an import finishes whether anyone watches**:
+   [an-import-finishes-whether-anyone-watches](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches). Kept as a line so the numbers hold.
 
 9. **The same bytes a second time — a second upload, or the first one re-run?** 🆕 Opened by
    [the-file-is-named-by-its-content-hash](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash).
