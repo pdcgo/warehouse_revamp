@@ -4,7 +4,8 @@
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
 reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) Q6 (only a successful withdrawal is recorded), Q8 (an import finishes whether anyone watches) and Q9 (the row key is the
 only dedupe), then re-decided who a row counts for — the order's creator, else the shop's primary CS — and named
-`ShopAccessCheck` as the shop check, then answered Q13 (settlement asks the shop for the primary CS); first pass
+`ShopAccessCheck` as the shop check, then answered Q13 (settlement asks the shop for the primary CS), then Q1 (CS and up, daily), Q5 (the affiliate
+commission as its own row) and Q14 (a shop with no primary CS cannot import) — ✅ no question left here; first pass
 2026-09-26. Waiting on the owner — nothing of the service is
 built. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
 and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
@@ -30,8 +31,11 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) | only a successful withdrawal is recorded — a Shopee `Gagal` debit AND its refund are skipped, a TikTok row only when `Transferred`. ⛔ Needs the Shopee status on the document |
 | [an-import-finishes-whether-anyone-watches](../../business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches) | the import is detached from the request — a closed tab ends the stream only. No Cancel, no rollback. A server stopped mid-file leaves the row *interrupted*; the same file again completes it |
 | [the-row-key-is-the-only-dedupe](../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe) | duplicates are caught by each row's `GenerateUniqueID`, in settlement's own check — nothing is unique on the file. The same file twice is a second row whose lines answer *already there*. ⛔ Leans on settlement refusing a key another SHOP holds — it does not today |
-| [user-id-is-the-orders-creator-else-the-shops-primary-cs](../../business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) | a row's `user_id` — who the per-user report counts it for — is its order's creator when its ref finds the order (the fold already does this), else the shop's primary CS from `ShopAccessCheck`. ⚠ My reading: the actor stays whoever posted. ✅ Settlement carries the primary ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) · ⛔ a shop can have none (Q14) |
+| [user-id-is-the-orders-creator-else-the-shops-primary-cs](../../business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) | a row's `user_id` — who the per-user report counts it for — is its order's creator when its ref finds the order (the fold already does this), else the shop's primary CS from `ShopAccessCheck`. ⚠ My reading: the actor stays whoever posted. ✅ Settlement carries the primary ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) · ✅ a shop with none cannot import ([a-shop-with-no-primary-cs-cannot-import](../../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)) |
 | [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) | an imported shop row counts for the shop's primary CS: settlement asks `ShopAccessCheck` before its transaction (my proposal), writes `settlement_logs.user_id`, the event carries it and the fold reads it. A shop row posted by hand keeps its actor. A failed call refuses the post (my proposal) |
+| [cs-and-up-import-daily](../../business/settlement/settlement_importer_decision.md#cs-and-up-import-daily) | `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, TEAM_CUSTOMER_SERVICE]` on both imports and `UploadedFileList`, uploading daily. ⛔ Needs the request's `team_id` (critique 15) to work for anyone but root and admin |
+| [tiktok-affiliate-commission-posts-as-affiliate-fee](../../business/settlement/settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee) | a TikTok `Order` row with a commission posts `fund` before it plus `affiliate_fee` (key `…:affiliate_fee`); the commission is the sum of the detail's `Affiliate …` columns (my proposal); a file with none is refused (my proposal) |
+| [a-shop-with-no-primary-cs-cannot-import](../../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import) | `primary_user_id` 0 at the shop check → `ERROR` *"choose a primary CS first"*, nothing stored. Settlement refuses such a shop row too (my reading) |
 
 ## What exists underneath it
 
@@ -50,13 +54,11 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 
 | | |
 | --- | --- |
-| the job, the TikTok affiliate split | [importer Q1 · Q5](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ settlement returns a shop row's key held by ANOTHER shop — or team — as *already exists*, with that shop's row (measured). With the row key the only dedupe, a statement in the wrong shop reads *already there* in the right one | [settlement critique 7](../../business/settlement/context_clarify.md#critique) |
 | ⛔ the Shopee reader reads no `Status` — needed to skip a failed withdrawal. Add it on the document, never the item | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) |
 | who may work on a shop — the shop check cannot be built without it | [shop Q1](../../business/shop/context_clarify.md#question), re-routed from importer Q12 |
 | ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
 | ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
-| ⛔ a shop with no primary CS — refuse, or count for the uploader | [importer Q14](../../business/settlement/settlement_importer_clarify.md#question) |
 | ⛔ settlement asking the shop — decided, not built: a `ShopService` client in settlement's Wire set, `settlement_logs.user_id`, the event's field, the fold's line, and the flow in `docs/services/settlement_service/rpc.md` | [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) |
 | ⛔ `ShopAccessCheck` and a shop's primary CS — neither built; the RPC as written has no `team_id` | [shop critique 10](../../business/shop/context_clarify.md#critique) · [shop Q7](../../business/shop/context_clarify.md#question) |
 | ⛔ the TikTok key — the reader doc's struct is Shopee's, the built item is unaccepted, and a re-download in the 2026-09 layout is unmeasured. A key that moves after the first import posts every line twice | [critique 14](../../business/settlement/settlement_importer_clarify.md#critique) → [reader #23 and its questions](../../technical/packages/excel_readers/context_clarify.md#critique) |
@@ -77,7 +79,7 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 | TikTok `Earnings` | equals every `Order details` row summed, in 10 of 14 files |
 | TikTok `GMV Pay Deduction` | equals the `GMV Payment for TikTok Ads` rows **to the rupiah** in all 3 files that carry it — which explains 3 of the 4 files where `Earnings` does not match. The 4th, `cannot_open.xlsx` (the 2026-09 layout), is off by its one `Other adjustment` |
 | unmapped TikTok types | 5 of 14 files carry one |
-| TikTok affiliate commission | a column inside `Total settlement amount` — −2,440,317 against +116,445,834 of `fund` in `shipping_issurance.xlsx` |
+| TikTok affiliate commission | inside `Total settlement amount`, in two columns — `Affiliate Commission` and `Affiliate Shop Ads commission` — on `Order` rows only, in every layout. `Affiliate partner commission` and `Affiliate Partner shop ads commission` are 0 in every sample; the 2026-09 layout adds `deposit` and `refund`, 0 in its one file. `shipping_issurance.xlsx`: −2,236,212 + −204,105 = −2,440,317 against +116,445,834 of `fund` |
 
 ## Traps for the pass that builds it
 
@@ -94,6 +96,9 @@ and a flow) · questions: [settlement_importer_clarify.md](../../business/settle
 - ⚠ **Never ask the shop while the account is locked.** `SettlementPost` takes the shop's account row FOR UPDATE
   ([post_entry.go:295](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L295)) — a call to
   `selling_service` inside that transaction makes every post on the shop wait on the network. Ask first, then open it.
+- ⚠ **The commission is on the DETAIL, never the item.** `TiktokSettlementItem` carries no fee column — they drift
+  between layouts, so they live on `GetDetails()`, by header text. And **refuse a file with no `Affiliate …` column**:
+  posting its `fund` whole lets a later download add the commission a second time under a new key.
 - ⚠ **Detach the work, never the identity.** `context.WithoutCancel(ctx)` keeps the uploader's identity and
   token for every settlement and selling call and drops only the cancellation. A fresh `context.Background()`
   would post with nobody's identity.

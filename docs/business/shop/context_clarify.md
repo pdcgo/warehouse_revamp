@@ -282,7 +282,8 @@ erDiagram
    [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](../settlement/settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader),
    and the importer doc is where that gets answered. ✅ **Answered there, 2026-09-29** — a row with no order is counted
    for the shop's primary CS: [user-id-is-the-orders-creator-else-the-shops-primary-cs](../settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). So this question's
-   *must a shop always have one* now also decides [importer Q14](../settlement/settlement_importer_clarify.md#question).
+   *must a shop always have one* matters more now: a shop with none cannot import
+   ([a-shop-with-no-primary-cs-cannot-import](../settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)).
 
 # Contradiction
 

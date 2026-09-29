@@ -4,16 +4,18 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-✅ **Q13 answered in chat, 2026-09-29** — *"im prefer b"*: settlement asks the shop for the primary CS and writes it
-on the row — [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). Earlier rounds are recorded in
+✅ **Q1, Q5 and Q14 answered in chat, 2026-09-29**, each as recommended — CS and up import daily
+([cs-and-up-import-daily](./settlement_importer_decision.md#cs-and-up-import-daily)), TikTok's affiliate commission posts as its own row
+([tiktok-affiliate-commission-posts-as-affiliate-fee](./settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee)), and a shop with no primary CS cannot import
+([a-shop-with-no-primary-cs-cannot-import](./settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)). **✅ No question is open in this file.** Earlier rounds are recorded in
 [settlement_importer_decision.md](./settlement_importer_decision.md).
 
 | | |
 | --- | --- |
-| ✅ recorded | an imported shop row counts for the shop's primary CS, asked by settlement — the importer passes no person. My recommendation (a) declined |
-| ⚠ my proposals | the call is `ShopAccessCheck`, made before the ledger transaction · a failed call refuses the post — never a fallback to the actor |
-| ✅ contradiction | the primary CS vs *"a shop row counts for its actor"* — decided as scoped: imported rows to the primary, rows posted by hand to their actor. Kept until the fold is built |
-| ⛔ it costs | settlement's first call into another service — a `ShopService` client, and a call per imported shop row |
+| ✅ recorded | three decisions. Critiques 1 and 10 go with Q1 |
+| ✅ measured | the commission is two columns in every TikTok layout — −2,236,212 and −204,105 on the largest file, the −2,440,317 Q5 quoted — and only ever on an `Order` row |
+| ⚠ my proposals | the commission is every `Affiliate …` column · a TikTok file with none is refused, or a later download would take the commission twice · the refusal line names the shop · settlement refuses a shop row with no primary too |
+| ✅ checked | no new contradiction. What still blocks the build is outside this file — [shop Q1](../shop/context_clarify.md#question), [shop Q7](../shop/context_clarify.md#question), [settlement Q1](./context_clarify.md#question), [reader #23](../../technical/packages/excel_readers/context_clarify.md#critique) — and inside it: critiques 15–17 and the [Contradiction](#contradiction) |
 
 ## What the service already owns
 
@@ -47,13 +49,11 @@ Measured against all 26 sample workbooks, not read off the spec.
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **RPCs before a person or a job** (HARD RULE 6). 🔄 The flow now starts at `Frontend` — still nobody holding a file. Nothing says who uploads, how often, or what they need back — and *what they need back* is most of this service: every TikTok sample holds rows that must NOT be posted, 5 of 14 hold a type nobody has mapped, and 25 of 26 hold a withdrawal the report cannot take yet. | Name the job — [Q1](#question). The design below is drawn from the likeliest answer. |
 | **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another order is refused (`errUniqueIDTaken`) — ⛔ but not one held by another shop ([settlement critique 7](./context_clarify.md#critique)). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop check and the file check, both decided ([shop](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored), [file](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). A dry run is declined for now ([decided](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)). |
 | **4** | 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
 | **6** | **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. ✅ A failed withdrawal and its refund join it ([decided](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)). |
 | **7** | 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post when the same file is uploaded again, once the mapping ships ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). |
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
-| **10** | **A late upload lands on its upload day.** Reports bucket on `posted_on` ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)), which settlement stamps — a month uploaded on the 1st is a month of `fund` on the 1st. | Keep the decision: a past window stays final. Upload **often**, and let the list show each file's own date range so the lag is visible. |
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
 | **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible ([decided](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). |
 | **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. 🔄 And the row key is now the ONLY dedupe ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
@@ -92,8 +92,8 @@ one ([Contradiction](#contradiction)).
 
 | | |
 | --- | --- |
-| who | the selling team, **CS and up** — exactly [the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up), since every row is posted under their token |
-| when | after downloading one shop's statement from the platform — **daily** keeps the report's days honest (#10) |
+| who | ✅ the selling team, **CS and up** ([decided](./settlement_importer_decision.md#cs-and-up-import-daily)) — the settlement write set, since every row is posted under their token |
+| when | ✅ **daily** ([decided](./settlement_importer_decision.md#cs-and-up-import-daily)), after downloading one shop's statement from the platform |
 | what they get back | records **posted** — to the order, or to the shop when its order is missing · **already there** · **held**, each with its reason · **skipped** |
 
 ### The flow — yours, with what it needs added
@@ -163,8 +163,8 @@ flowchart TD
 | `SettlementPost` | Shopee row | TikTok `Order details` row | TikTok `Withdrawal records` row |
 | --- | --- | --- | --- |
 | `order_id` | `No. Pesanan`, resolved · empty or no such order → the shop | ✅ `Related order ID`, resolved ([decided](./settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id)) · empty or no such order → the shop ([decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) | the shop |
-| `settlement_type` | `SettlementType()` — a `Gagal` withdrawal and its refund skipped | `SettlementType()` | `withdrawal` when `Transferred` · `Earnings`, `GMV Pay Deduction` and any other status skipped |
-| `change` | `Jumlah` | `Total settlement amount` | `Amount` |
+| `settlement_type` | `SettlementType()` — a `Gagal` withdrawal and its refund skipped | `SettlementType()` · ✅ and an `affiliate_fee` row for the commission ([decided](./settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee)) | `withdrawal` when `Transferred` · `Earnings`, `GMV Pay Deduction` and any other status skipped |
+| `change` | `Jumlah` | `Total settlement amount`, less the commission — which goes on the `affiliate_fee` row | `Amount` |
 | `occurred_on` | `Tanggal Transaksi`, WIB | `Order settled time` | `Request time` |
 | `note` | `Deskripsi` | `Type` | `Reference ID` |
 | `actor_id` | the uploader, from the token — ⚠ my reading ([decided](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs)) | the uploader | the uploader |
@@ -173,7 +173,7 @@ flowchart TD
 | every row | `team_id` and `shop_id` from the upload · `source_type` see [Contradiction](#contradiction) | | |
 
 **The key** — `unique_id = <platform>:<sheet>:<GenerateUniqueID()>`. The prefix tells a ledger reader which
-import wrote a row. 🔄 No revision suffix any more: nothing is reverted ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)). ✅ And it is the only dedupe — a row whose key exists is not posted again ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)).
+import wrote a row. 🔄 No revision suffix any more: nothing is reverted ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)). ✅ And it is the only dedupe — a row whose key exists is not posted again ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). A TikTok `affiliate_fee` row is its order row's key plus `:affiliate_fee` ([decided](./settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee)).
 
 ### What the stream carries
 
@@ -204,7 +204,7 @@ per-file view covers it until held lines start outliving their files.
 
 | RPC | | |
 | --- | --- | --- |
-| `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — streaming, 🔄 detailed in §Rpc Detail | **in:** ⛔ `team_id` (the scope — missing, #15), `shop_id`, `file_content` — the file, ≤ 10 MB (#17). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `level` and `message` ([yours](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line)), plus `step`, `count` and `file` ([Contradiction](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them)) · ⛔ one request and one response name per RPC (#16) |
+| `ShopeeSettlementImport` · `TiktokSettlementImport` | yours — streaming, 🔄 detailed in §Rpc Detail | **in:** ⛔ `team_id` (the scope — missing, #15), `shop_id`, `file_content` — the file, ≤ 10 MB (#17). No `filename` — the name is the content hash ([decided](./settlement_importer_decision.md#the-file-is-named-by-its-content-hash)) · **out, per message:** `level` and `message` ([yours](./settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line)), plus `step`, `count` and `file` ([Contradiction](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them)) · ⛔ one request and one response name per RPC (#16) · **policy:** CS and up ([decided](./settlement_importer_decision.md#cs-and-up-import-daily)) |
 | `UploadedFileList` | yours | the guideline List shape, paged (RULE 9) — filter by shop, platform, status |
 | `UploadedFileLineList` | 🆕 | one file's lines that did not reach an order — held, skipped, or posted to the shop — paged |
 | `UploadedFileReprocess` | 🔄 not in v1 | uploading the same file again is the retry — held lines post once their mapping exists ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)) |
@@ -256,10 +256,10 @@ erDiagram
 
 ## Question
 
-1. **Who uploads, and how often?** It sets the role policy, and decides whether the daily report stays
-   readable (#10).
-   **→ Recommend CS and up** — the settlement write set, which it has to be, since each row is posted under their token
-   — **and daily.**
+**✅ None open** — every question is answered or re-routed, and stays as a one-line pointer so the numbers hold.
+
+1. ✅ **Answered 2026-09-29 — CS and up import daily**:
+   [cs-and-up-import-daily](./settlement_importer_decision.md#cs-and-up-import-daily). Kept as a line so the numbers hold.
 
 2. ✅ **Answered 2026-09-28 — a ref that finds no order posts to the shop**, against my recommendation:
    [an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop). Kept as a line so the numbers hold.
@@ -270,16 +270,8 @@ erDiagram
 4. ✅ **Answered 2026-09-28 — no revert**, against my recommendation:
    [an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted). Kept as a line so the numbers hold.
 
-5. **Does TikTok's affiliate commission get its own `affiliate_fee` row?** It is a column inside `Total
-   settlement amount` — in `shipping_issurance.xlsx`, −2,440,317 against +116,445,834 of `fund` (2.1%),
-   all of it inside `fund` — so no import ever produces `affiliate_fee`. `gap` is the same either way; only
-   the breakdown that [explains it](./context_decision.md#the-measure-is-sales-received-and-gap) changes.
-   But by #2 it is decided at the first import.
-   **→ Recommend split** — `fund` before the commission, `affiliate_fee` for it, second key
-   `…:affiliate_fee`. The type exists to explain the gap, and TikTok is the only source that itemises it.
-   ⚠ Shopee's affiliate charges still land in `marketplace_adjustment`, because
-   [shopee-maps-on-tipe-transaksi-alone](../../technical/packages/excel_readers/context_decision.md#shopee-maps-on-tipe-transaksi-alone)
-   ignores `Deskripsi` — so the two platforms will still differ.
+5. ✅ **Answered 2026-09-29 — the affiliate commission posts as its own row**:
+   [tiktok-affiliate-commission-posts-as-affiliate-fee](./settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee). Kept as a line so the numbers hold.
 
 6. ✅ **Answered 2026-09-29 — only a successful withdrawal is recorded**, against my recommendation:
    [only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded). Kept as a line so the numbers hold.
@@ -306,16 +298,8 @@ erDiagram
 13. ✅ **Answered 2026-09-29 — settlement asks the shop**, against my recommendation:
     [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). Kept as a line so the numbers hold.
 
-14. **A shop with no primary CS — refuse the import, or count its rows for the uploader?** 🆕 Opened by
-    [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). Your flow always ends on a person, but a shop can lose
-    its primary — the grant removed, or the person leaving the team ([shop Q7](../shop/context_clarify.md#question)
-    recommends *at most one*). Then `primary_user_id` is 0: user 0, the attribution you declined for
-    [analytic Q7](./analytic_context_clarify.md#question).
-    **→ Recommend refuse**, at the shop check, before the file is stored — an `ERROR` line: *"this shop has no
-    primary CS — choose one first"*. A silent fallback to the uploader would bring back the rule you just replaced,
-    for some shops only. ⚠ Moot if shop Q7 makes a primary mandatory.
-    🔄 With settlement asking now ([decided](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)), the answer is its rule too —
-    refuse the row, or count it for the uploader. The importer refusing the file at its check only stops it earlier.
+14. ✅ **Answered 2026-09-29 — a shop with no primary CS cannot import**:
+    [a-shop-with-no-primary-cs-cannot-import](./settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import). Kept as a line so the numbers hold.
 
 # Contradiction
 

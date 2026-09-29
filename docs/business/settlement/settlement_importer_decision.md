@@ -24,6 +24,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe) | duplicates are caught row by row, never file by file — a row whose key is already in the ledger is not posted again, and the same file twice is a second upload |
 | [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs) | a row's `user_id` is its order's creator when its ref finds the order, else the shop's primary CS from `ShopAccessCheck` — decided row by row |
 | [settlement-asks-the-shop-for-its-primary-cs](#settlement-asks-the-shop-for-its-primary-cs) | an imported shop row counts for the shop's primary CS, which settlement asks the shop service for and writes on the row — the importer passes no person |
+| [cs-and-up-import-daily](#cs-and-up-import-daily) | the selling team's CS and up import — the settlement write set — and they import daily |
+| [tiktok-affiliate-commission-posts-as-affiliate-fee](#tiktok-affiliate-commission-posts-as-affiliate-fee) | a TikTok order's affiliate commission posts as its own `affiliate_fee` row, beside a `fund` that carries the payout before it |
+| [a-shop-with-no-primary-cs-cannot-import](#a-shop-with-no-primary-cs-cannot-import) | a shop with no primary CS cannot import — the shop check refuses the file with *"choose a primary CS first"* |
 
 ## the-import-is-one-streamed-call
 
@@ -669,7 +672,7 @@ flowchart TD
 | which primary | the one at import time — not the one when the money moved |
 | the log's `actor_id` | ⚠ my reading: **whoever posted — the uploader**, from the token, on every row. The section named `actor_id` / `user_id` and now names `user_id` only. So an order's Settlement page says *by* the uploader, and the report counts the row for the person your flow names |
 | ⛔ getting a shop row to its primary CS | the fold counts a shop row for its ACTOR — the uploader — and nothing carries the primary to it: [importer Q13](./settlement_importer_clarify.md#question) — ✅ **decided**: [settlement-asks-the-shop-for-its-primary-cs](#settlement-asks-the-shop-for-its-primary-cs) |
-| ⛔ a shop with no primary CS | the flow always ends on a person, and a shop can have none: [importer Q14](./settlement_importer_clarify.md#question) |
+| ⛔ a shop with no primary CS | the flow always ends on a person, and a shop can have none: [importer Q14](./settlement_importer_clarify.md#question) — ✅ **decided**: [a-shop-with-no-primary-cs-cannot-import](#a-shop-with-no-primary-cs-cannot-import) |
 
 ### What it replaces
 
@@ -722,7 +725,7 @@ sequenceDiagram
 | carried | `SettlementLogPosted` gains `user_id`, built from the row like every other field ([events.go:66](../../../backend/services/settlement_service/settlement_v1/events.go#L66)). The replay re-reads the events, so the person is written on the row — never asked again later |
 | counted | the fold: an order row → its stamped creator · a shop row → `user_id` when set, else its actor ([analytic_fold.go:75](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L75)) |
 | the shop service fails | ⚠ my proposal: the post is **refused** — never a quiet fallback to the actor, which would count the row for the wrong person for good. The importer holds the line with its reason, and the same file again posts it |
-| no primary CS | 0 from the shop — never counted for user 0. Refuse, or count for the uploader, is [importer Q14](./settlement_importer_clarify.md#question) |
+| no primary CS | 0 from the shop — never counted for user 0. Refuse, or count for the uploader, is [importer Q14](./settlement_importer_clarify.md#question) — ✅ **refuse**: [a-shop-with-no-primary-cs-cannot-import](#a-shop-with-no-primary-cs-cannot-import) |
 
 ### What it costs
 
@@ -732,3 +735,100 @@ sequenceDiagram
 - **A call per imported shop row** — the whole file when no order is found, ~1,500 on the largest Shopee sample.
   The performance audit measures it once built.
 - **Imports lean on the shop service line by line** — down mid-file, the rest of the file's shop lines are held.
+
+## cs-and-up-import-daily
+
+> Chat *(owner, 2026-09-29)* — *"for q1, yes cs and up and daily"*, to [importer Q1](./settlement_importer_clarify.md#question):
+> who uploads, and how often?
+
+**The verdict.** The selling team's **CS and up** import — the same people who may post to settlement — and they
+import **daily**: each shop's statement, downloaded from the platform and uploaded that day. It is my recommendation.
+
+```mermaid
+flowchart LR
+  P["CS, team admin, team owner — and root, admin"] --> D["every day, for each shop — download its statement"]
+  D --> U["upload it — one import"]
+  U --> L["the ledger — a day's rows land on their own day"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the policy | `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, TEAM_CUSTOMER_SERVICE]` on both import requests and `UploadedFileList` — the settlement write set ([the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up)), since every row posts under the uploader's token |
+| ⛔ the scope | team-level roles need a `use_scope` field, and §Rpc Detail's request has none — as written, only root and admin could import ([critique 15](./settlement_importer_clarify.md#critique)) |
+| which shops | a role lets a person import for the team; which of its shops is the shop check's ([shop Q1](../shop/context_clarify.md#question)) |
+| daily | ⚠ my reading: a working rhythm, not a rule the system enforces — nothing refuses a second upload in a day or chases a missed one. Overlapping statements are safe ([the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe)) |
+| why daily | the report puts a row on the day it is posted ([posted-on-buckets-the-report](./context_decision.md#posted-on-buckets-the-report)) — uploaded daily, a day's money lands on its own day, give or take the platform's lag |
+| a missed day | the list shows each file's own date range, so a gap is visible — ⚠ my proposal, from the clarify's screens |
+
+### What it closes
+
+- [Critique 1](./settlement_importer_clarify.md#critique) — the service had RPCs before a person or a job. Now it has both.
+- [Critique 10](./settlement_importer_clarify.md#critique) — a late upload lands on its upload day. Daily keeps that lag to a day.
+
+## tiktok-affiliate-commission-posts-as-affiliate-fee
+
+> Chat *(owner, 2026-09-29)* — *"for q5 yes Split it out as its own affiliate_fee"*, to
+> [importer Q5](./settlement_importer_clarify.md#question): does TikTok's affiliate commission get its own row?
+
+**The verdict.** A TikTok order's **affiliate commission** posts as its **own `affiliate_fee` row**, beside the
+order's `fund`. The `fund` row carries the payout **before** the commission, so the two together still equal
+TikTok's `Total settlement amount`: the gap is unchanged, and its breakdown now shows the commission. It is my
+recommendation.
+
+```mermaid
+flowchart LR
+  R["a TikTok Order row — Total settlement amount 97,000"] --> F["fund — 100,000, the payout before the commission"]
+  R --> A["affiliate_fee — minus 3,000, its key plus :affiliate_fee"]
+  F --> S["together 97,000 — TikTok's own figure"]
+  A --> S
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the commission | the sum of the row's `Affiliate …` columns, read off the reader's `TiktokSettlementDetail` — the item carries no fee, and the split is the importer's policy ([the-excel-reader-reads-every-statement](#the-excel-reader-reads-every-statement)). ⚠ My proposal: every column whose header starts `Affiliate`, so a new one in the family is counted |
+| measured | every TikTok layout carries four. `Affiliate Commission` and `Affiliate Shop Ads commission` hold money; `Affiliate partner commission` and `Affiliate Partner shop ads commission` are 0 in every sample. The 2026-09 layout adds `Affiliate commission deposit` and `… refund`, 0 in its one small file — unmeasured. On `shipping_issurance.xlsx`: −2,236,212 + −204,105 = **−2,440,317** |
+| which rows | `Order` rows — the only ones carrying a commission, in 14 of 14 files. A row whose commission is 0 posts its `fund` alone |
+| the two rows | `fund` = `Total settlement amount` − the commission · `affiliate_fee` = the commission, negative. Both address the same order, and both count for its creator |
+| the keys | `fund` keeps the row's key; `affiliate_fee` is the same key plus `:affiliate_fee` |
+| ⛔ a file with no affiliate column | ⚠ my proposal: **refused** at extraction. Posted whole, its `fund` would carry the commission already — and a later download that has the column would add an `affiliate_fee` beside it, under a key that is new. The commission, taken twice |
+| the type | `affiliate_fee` is one of settlement's original eight — `SettlementPost` takes it and the report has its column today |
+
+### What it accepts
+
+- **The platforms differ.** Shopee's affiliate charges stay inside `marketplace_adjustment`, because its mapping reads
+  `Tipe Transaksi` alone ([shopee-maps-on-tipe-transaksi-alone](../../technical/packages/excel_readers/context_decision.md#shopee-maps-on-tipe-transaksi-alone)).
+- **A commissioned order posts two rows**, so a file's posted count is more than its line count.
+
+## a-shop-with-no-primary-cs-cannot-import
+
+> Chat *(owner, 2026-09-29)* — *"for q14, Refuse at the shop check with 'choose a primary CS first'"*, to
+> [importer Q14](./settlement_importer_clarify.md#question): a shop with no primary CS — refuse, or count its rows for
+> the uploader?
+
+**The verdict.** A shop with **no primary CS cannot import**. The shop check refuses the file before it is stored —
+an `ERROR` line, *"choose a primary CS first"* — and the stream ends. Nothing posts, and no row is ever counted for
+nobody. It is my recommendation.
+
+```mermaid
+flowchart LR
+  I["the import request"] --> C["ShopAccessCheck — the shop check"]
+  C -->|"primary_user_id is 0"| X["ERROR — choose a primary CS first, the stream ends, nothing stored"]
+  C -->|"a primary, and the caller has access"| S["store the file, then import"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| where | the shop check, before the file is stored ([the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored)) — `ShopAccessCheck` answers `primary_user_id` 0 |
+| the line | `ERROR` — *"choose a primary CS first"*, your words. ⚠ My proposal: the shop's name in front, so a person importing several shops knows which |
+| settlement's half | ⚠ my reading: the same rule. A shop row whose shop answers no primary is **refused**, never counted for the uploader ([settlement-asks-the-shop-for-its-primary-cs](#settlement-asks-the-shop-for-its-primary-cs)). It catches a primary removed mid-import: the line is held, and the same file again posts it |
+| who fixes it | whoever may choose a shop's primary — [shop Q7](../shop/context_clarify.md#question) |
+
+### What it accepts
+
+- **A shop that loses its primary stops importing** until someone picks another — which is what makes the gap visible.
