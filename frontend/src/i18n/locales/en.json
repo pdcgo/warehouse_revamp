@@ -469,10 +469,133 @@
     "archive": "Archive"
   },
   "orders": {
+    "recipient": "Recipient",
+    "placed": "Placed",
+    "placedBy": "by {{name}}",
+    "placedMp": "MP {{at}}",
+    "team": "Team",
+    "actions": "Actions",
+    "viewDetail": "View Detail",
+    "step": {
+      "all": "All steps",
+      "confirm": "To confirm",
+      "picking": "Picking",
+      "packed": "Packed",
+      "handover": "Handed over"
+    },
+    "stage": {
+      "pending": "Pending",
+      "processed": "Processed",
+      "shipped": "Shipped",
+      "completed": "Completed",
+      "problem": "Problem",
+      "lost": "Lost",
+      "return": "Return",
+      "cancel": "Cancelled"
+    },
+    "summary": {
+      "tx": "Tx",
+      "cardLine": "{{count}} tx",
+      "notOnTheWire": "not in the contract yet",
+      "items": "Items",
+      "upt": "UPT",
+      "value": "Transaction value",
+      "atv": "ATV",
+      "spend": "Purchase value",
+      "margin": "Gross margin",
+      "total": "Total",
+      "costNone_one": "This order is missing a cost or a marketplace figure, so there is no margin to show.",
+      "costNone_other": "None of these {{total}} orders has both a cost and a marketplace figure, so there is no margin to show.",
+      "marginUnknown_one": "{{count}} of {{total}} orders is missing a cost or a marketplace figure — the margin above is taken over the rest.",
+      "marginUnknown_other": "{{count}} of {{total}} orders are missing a cost or a marketplace figure — the margin above is taken over the rest."
+    },
+    "warehouseAll": "All warehouses",
+    "creatorAll": "Anyone",
+    "export": {
+      "action": "Export"
+    },
+    "import": {
+      "action": "Import",
+      "title": "Import Orders",
+      "chooseMarketplace": "Every storefront exports a different sheet, so start by saying which one this file came from.",
+      "chooseFile": "The file {{marketplace}} exported — CSV or Excel.",
+      "updatesTitle": "What this file changes",
+      "updatesStatus": "Each order it names is moved to the status the marketplace reports.",
+      "updatesWithdrawal": "The payout the marketplace released is recorded against the order.",
+      "noFile": "No file chosen",
+      "dropHere": "Drop the file here, or click to choose one",
+      "back": "Another Marketplace",
+      "submit": "Import"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "The status set",
+        "reason": "The contract still carries the old six statuses, so completed, problem, lost and return can never be anything but 0, and Processed counts but cannot narrow the table."
+      },
+      "summaryCost": {
+        "label": "Purchase value and margin",
+        "reason": "The per-status census sums the order total and nothing else, so the goods’ value, the cost and the count of orders with no cost are sample figures."
+      },
+      "summaryItems": {
+        "label": "Item count and UPT",
+        "reason": "The list returns no order lines and nothing counts them server-side, so both are sample figures."
+      },
+      "export": {
+        "label": "Export",
+        "reason": "Nothing builds a file yet — which columns, and whether it is this page or every row the filters match, is still open."
+      },
+      "import": {
+        "label": "Import",
+        "reason": "The file is named on screen and goes no further: no upload, no parser, and each marketplace needs its own."
+      },
+      "warehouseFilter": {
+        "label": "Warehouse filter",
+        "reason": "The list filter has no warehouse field, so picking one leaves the table as it was."
+      },
+      "creator": {
+        "label": "Who created the order",
+        "reason": "An order records no creator at all — the filter narrows nothing, and the name under each date is invented."
+      },
+      "mpDate": {
+        "label": "Marketplace order date",
+        "reason": "An order stores only when WE wrote it down; the date the buyer ordered on the storefront has no field, so the second line under the date is invented."
+      },
+      "stageDate": {
+        "label": "Status change date",
+        "reason": "The order event already has the right shape (kind + when), but events are only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
+      },
+      "receiptCode": {
+        "label": "Tracking number",
+        "reason": "The order stores the courier and the receipt FILE, but not the number printed on the slip — the one shown is invented and will not be found by any courier."
+      },
+      "deadline": {
+        "label": "Ship-by deadline",
+        "reason": "Nothing carries one: the order has no deadline, the shipment channel has no lead time, and an order event records what happened rather than what is due. Every badge in the column is invented, and its colour bands are a guess."
+      },
+      "totalFee": {
+        "label": "Warehouse fee in the total",
+        "reason": "The total is the goods plus what fulfilling them costs, and nothing carries that fee per order: it is a liability entry keyed by order, and the liability list can only be asked by counterparty. The goods are real, the fee is a sample."
+      },
+      "lifecycle": {
+        "label": "Actions after shipping",
+        "reason": "The contract writes only cancel and ship, so Return Goods, Complete Order, Mark as Lost and Resolve Dispute have nothing to call — the same half of the lifecycle whose four status tabs read 0."
+      },
+      "marketplaceFilter": {
+        "label": "Marketplace filter",
+        "reason": "Not on the list filter either — it would mean every shop on that marketplace."
+      },
+      "withdrawal": {
+        "label": "Withdrawal value",
+        "reason": "A wallet-to-bank withdrawal is a shop-level cash event naming no order, so nothing in the system has a home for it yet — not even settlement, where every entry must name one."
+      }
+    },
     "title": "Orders",
     "selectTeamView": "Select a team to view its orders.",
     "customer": "Customer",
     "total": "Total",
+    "cost": "Cost",
+    "margin": "Margin",
+    "totalMp": "MP {{amount}}",
     "shipping": "Shipping",
     "subtotal": "Subtotal",
     "phone": "Phone",
@@ -609,7 +732,43 @@
       "awaitingPick": "Waiting for the warehouse",
       "awaitingPack": "Being picked",
       "awaitingShip": "Waiting for the courier"
-    }
+    },
+    "orderShipped": "Order marked as shipped",
+    "rowAction": {
+      "cancel": "Cancel Order",
+      "editReceipt": "Edit Tracking Number",
+      "ship": "Mark as Shipped",
+      "returnGoods": "Return Goods",
+      "complete": "Complete Order",
+      "markLost": "Mark as Lost",
+      "editWithdrawal": "Edit Withdrawal",
+      "resolveDispute": "Resolve Dispute"
+    },
+    "rowActionConfirm": {
+      "cancel": "Cancel order #{{id}}? This cannot be undone.",
+      "ship": "Mark order #{{id}} as shipped? The parcel has left the warehouse.",
+      "returnGoods": "Return the goods on order #{{id}}? The stock comes back to the shelf.",
+      "markLost": "Mark order #{{id}} as lost? It is written off and the goods do not come back."
+    },
+    "receiptColumn": "Tracking no.",
+    "placedMpColumn": "MP date",
+    "stageDateColumn": "{{status}} on",
+    "totalMpColumn": "MP total",
+    "deadline": {
+      "left": {
+        "hours_one": "{{count}}h left",
+        "hours_other": "{{count}}h left",
+        "days_one": "{{count}}d left",
+        "days_other": "{{count}}d left"
+      },
+      "late": {
+        "hours_one": "{{count}}h late",
+        "hours_other": "{{count}}h late",
+        "days_one": "{{count}}d late",
+        "days_other": "{{count}}d late"
+      }
+    },
+    "orderIdColumn": "Order ID"
   },
   "orderDrafts": {
     "title": "Drafts",
@@ -2145,17 +2304,21 @@
       "empty": "No couriers found"
     }
   },
-  "orderForm": {
+  "pending": {
+    "title_one": "{{count}} part of this screen is not implemented yet",
+    "title_other": "{{count}} parts of this screen are not implemented yet",
+    "lead_one": "One of them works on screen only — what you type into it is not sent: {{parts}}.",
+    "lead_other": "These work on screen only — what you type into them is not sent: {{parts}}.",
+    "toggle": "Show the {{count}} parts",
+    "markAria": "Not implemented, number {{n}}: {{label}}",
     "tag": {
       "dropped": "· not sent",
       "sample": "· sample figures",
       "derived": "· rule not settled",
       "missing": "· not in the total"
-    },
-    "pendingTitle_one": "{{count}} part of this screen is not implemented yet",
-    "pendingTitle_other": "{{count}} parts of this screen are not implemented yet",
-    "pendingLead_one": "One of them works on screen only — what you type into it is not sent when an order is created: {{parts}}.",
-    "pendingLead_other": "These work on screen only — what you type into them is not sent when an order is created: {{parts}}.",
+    }
+  },
+  "orderForm": {
     "pending": {
       "bundle": {
         "label": "Bundle grouping",
@@ -2293,7 +2456,6 @@
       "costUnknown": "This warehouse has no cost recorded for these goods, so nothing is billed yet.",
       "blockedByMapping": "{{count}} of these products still have no return mapping — it is not saved with the order yet."
     },
-    "markAria": "Not implemented, number {{n}}: {{label}}",
     "rail": {
       "collapse": "Compact",
       "expand": "Details",
@@ -2326,7 +2488,6 @@
       "refMarketplace": "The order ID does not look like this marketplace's — it normally reads {{shape}}.",
       "profitBelowFloor": "The estimated margin is {{pct}}%, under the {{floor}}% floor."
     },
-    "pendingToggle": "Show the {{count}} parts",
     "warehouse": {
       "title": "Shipping from",
       "governs": "Every stock figure and HPP below is this building's.",

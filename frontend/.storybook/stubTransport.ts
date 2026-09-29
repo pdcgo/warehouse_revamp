@@ -75,7 +75,9 @@ import {
   settlementReportGroups,
   expenseDays,
   orderDetailFor,
+  orderDraftDetailFor,
   orderDrafts,
+  pickLocationsFor,
   orders,
   productCosts,
   products,
@@ -342,6 +344,14 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
+}
+
+// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
+function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
+  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
+  if (!order) throw new ConnectError("order not found", Code.NotFound);
+
+  return order;
 }
 
 // ── The daily statement, from three services at once ────────────────────────────────────────────
@@ -751,6 +761,14 @@ export const transport = createRouterTransport(({ service }) => {
         ]),
       ),
     }),
+
+    // The shelves an order's goods were drawn from, keyed by the ref selling_service recorded the draw
+    // under (`order:<id>`). A ref this stub does not recognise answers EMPTY, as the server would —
+    // "nothing was drawn" is a real answer, not an error.
+    stockPickLocations: (req) => {
+      const match = /^order:(\d+)$/.exec(req.ref);
+      return { locations: match ? pickLocationsFor(BigInt(match[1]!)) : [] };
+    },
   });
 
   service(OrderService, {
@@ -793,6 +811,17 @@ export const transport = createRouterTransport(({ service }) => {
 
       return { order };
     },
+
+    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
+    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
+    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    //
+    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
+    // selling team pressing these would be refused by the policy long before the handler.
+    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
+    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
 
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
@@ -857,6 +886,28 @@ export const transport = createRouterTransport(({ service }) => {
       },
     }),
     orderDraftUpdate: (req) => ({ draft: { id: req.draftId } }),
+
+    // ONE side, like the list: a draft another team typed is NotFound, never "forbidden".
+    orderDraftDetail: (req) => {
+      const draft = orderDraftDetailFor(req.draftId);
+      if (!draft || draft.teamId !== req.teamId) {
+        throw new ConnectError("draft not found", Code.NotFound);
+      }
+
+      return { draft };
+    },
+
+    // Counts only the ids that are this team's — an id that is not the caller's is SKIPPED, not a
+    // failure (order_draft.proto), so `deleted` can be smaller than what was asked. Stateless, like the
+    // fulfilment steps: the list keeps its rows, and the story asserts on the toast.
+    orderDraftDelete: (req) => ({
+      deleted: req.draftIds.filter((id) => orderDrafts.some((d) => d.id === id && d.teamId === req.teamId))
+        .length,
+    }),
+
+    // The draft becomes an order with a new id — the page navigates there, which is what a story
+    // asserts on.
+    orderDraftPromote: () => ({ order: { id: 902n } }),
   });
 
   service(LiabilityService, {

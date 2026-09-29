@@ -1,3 +1,5 @@
+import type { PendingList, PendingPart } from "../../features/pending/registry";
+
 // WHAT THIS SCREEN CANNOT DO YET — in ONE list.
 //
 // This screen is deliberately ahead of the system: bundles have no contract, the
@@ -31,27 +33,9 @@ export type PendingId =
   | "deadline"
   | "buyerUsername";
 
-/**
- * HOW a part is unfinished — four ways, and they cost the reader different things:
- *
- *   dropped → the control works and the value is THROWN AWAY. Somebody types a deadline, presses
- *             the button, and it is gone. That is the lie the summary strip exists to prevent.
- *   sample  → a read-only panel standing on invented numbers, because the read that would fill it
- *             does not exist. Nothing is lost; what is on screen is simply not true.
- *   derived → computed here and now from real figures, but by a RULE that is not settled yet. The
- *             arithmetic is honest and the question is whether it is the right arithmetic.
- *   missing → NOT ON THE SCREEN AT ALL, and the total is short because of it. There is no control to
- *             mark, which is exactly why it needs an entry: an absent term is invisible, and the
- *             number it is absent from looks complete.
- */
-export type PendingKind = "dropped" | "sample" | "derived" | "missing";
-
-export interface PendingPart {
-  id: PendingId;
-  kind: PendingKind;
-}
-
-export const PENDING: PendingPart[] = [
+// The four KINDS and the numbering live in `features/pending` — this file is only this screen's
+// list, because "what is missing" is a fact about this screen and nothing else.
+const PARTS: PendingPart<PendingId>[] = [
   // ⚠ THE PRODUCTS ARE ORDERED, THE GROUPING IS NOT. A bundle puts ordinary lines on the order and
   // they are submitted like any other (see `allLines` on the page); what has nowhere to live is the
   // fact that they arrived together, so that is what this entry is about.
@@ -88,23 +72,5 @@ export const PENDING: PendingPart[] = [
   { id: "buyerUsername", kind: "dropped" },
 ];
 
-/** The ones whose typed value is thrown away — what the summary strip warns about by name. */
-export const PENDING_DROPPED = PENDING.filter((p) => p.kind === "dropped");
-
-export function pendingPart(id: PendingId): PendingPart {
-  // Non-null by construction: `PendingId` is the union of the ids in the array above, so a new id
-  // cannot be referenced without being added here first.
-  return PENDING.find((p) => p.id === id)!;
-}
-
-/**
- * THE NUMBER ON THE BADGE, and the number in the list at the top — one derivation, so they cannot
- * drift apart (owner).
- *
- * It is the part's POSITION in `PENDING`, which makes the array's order the screen's numbering.
- * Reordering it renumbers both halves at once; hard-coding a number on each entry would let a badge
- * say 7 while the list's seventh row was something else.
- */
-export function pendingNumber(id: PendingId): number {
-  return PENDING.findIndex((p) => p.id === id) + 1;
-}
+/** What the badges and the summary on this screen read. `ns` is where its copy lives. */
+export const ORDER_FORM_PENDING: PendingList<PendingId> = { ns: "orderForm", parts: PARTS };

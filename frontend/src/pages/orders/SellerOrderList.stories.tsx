@@ -159,21 +159,25 @@ export const SearchingByCustomerNarrowsTheTable: Story = {
 // ⚠ THE FILTER BAR NARROWS THE WHOLE SCREEN — THE STAT INCLUDED. A header computed without the
 // filters would sit above a table describing a smaller set: "To confirm 2" over one visible row,
 // with nothing on screen explaining the gap.
-export const TheStatFollowsTheFilterBar: Story = {
+export const TheSummaryFollowsTheFilterBar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // `pending` is the owner's name for what the contract still calls PLACED.
     const placed = OWN.filter((o) => o.status === OrderStatus.PLACED);
     await waitFor(() =>
-      expect(canvas.getByTestId("orders-stat-to-confirm")).toHaveTextContent(String(placed.length)),
+      expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent(
+        `${placed.length} tx`,
+      ),
     );
 
     await userEvent.type(canvas.getByTestId("orders-search"), placed[0]!.customerName, { delay: 40 });
 
     // One buyer searched for, so one order left to confirm.
-    await waitFor(() => expect(canvas.getByTestId("orders-stat-to-confirm")).toHaveTextContent("1"), {
-      timeout: 3000,
-    });
+    await waitFor(
+      () => expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent("1 tx"),
+      { timeout: 3000 },
+    );
   },
 };
 
@@ -184,7 +188,7 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const before = canvas.getByTestId("orders-tab-count-placed");
+    const before = canvas.getByTestId("orders-tab-count-pending");
     await waitFor(() => expect(before).not.toHaveTextContent("0"));
     const count = before.textContent;
 
@@ -196,7 +200,7 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
 
     // The Placed tab still says how many are waiting, from the tab you are standing on.
-    await expect(canvas.getByTestId("orders-tab-count-placed")).toHaveTextContent(count!);
+    await expect(canvas.getByTestId("orders-tab-count-pending")).toHaveTextContent(count!);
   },
 };
 
@@ -228,14 +232,14 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.queryByTestId("orders-clear-filters")).toBeNull();
+    await expect(canvas.queryByTestId("orders-filters-clear")).toBeNull();
 
     await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
-    await waitFor(() => expect(canvas.getByTestId("orders-clear-filters")).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId("orders-filters-clear")).toBeInTheDocument());
 
-    await userEvent.click(canvas.getByTestId("orders-clear-filters"));
+    await userEvent.click(canvas.getByTestId("orders-filters-clear"));
 
-    await waitFor(() => expect(canvas.queryByTestId("orders-clear-filters")).toBeNull());
+    await waitFor(() => expect(canvas.queryByTestId("orders-filters-clear")).toBeNull());
     for (const o of OWN) {
       await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
     }
@@ -258,15 +262,33 @@ export const AnEmptySearchSaysNothingMatchedRatherThanNoOrders: Story = {
 
 // THE WHOLE ROW OPENS THE ORDER, as every other list in the app does. The click target used to be
 // the `#id` text alone — a few characters wide — so a row that looked clickable everywhere else did
-// nothing when you clicked the customer or the total.
+// nothing when you clicked the shop or the total.
+//
+// ⚠ IT CLICKS THE DATE, WHICH IS THE POINT: a cell with nothing interactive in it, far from the two
+// copy buttons and the kebab. Those three stop the click on purpose (copying a number must not also
+// navigate), and a story that clicked one of them would pass while the rest of the row was dead.
 export const ClickingAnywhereOnARowOpensTheOrder: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     const row = await canvas.findByTestId(`order-row-${OWN[0]!.id}`);
-    await userEvent.click(within(row).getByText(OWN[0]!.customerName));
+    await userEvent.click(within(row).getByTestId("order-placed-at"));
 
     await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+  },
+};
+
+// …and the two COPY buttons do NOT open it. Carrying a tracking number to a courier's site is the
+// commonest thing anybody does on this screen, and doing it must not also leave the page — the copy
+// would succeed and nobody would see it happen.
+export const CopyingAReferenceDoesNotOpenTheOrder: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const row = await canvas.findByTestId(`order-row-${OWN[0]!.id}`);
+    await userEvent.click(within(row).getByTestId("order-receipt"));
+
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
   },
 };
 

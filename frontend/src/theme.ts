@@ -435,6 +435,25 @@ const customConfig = defineConfig({
         }),
         info: rolePalette("sky"),
         error: rolePalette("red"),
+        // ── THE SAME FOUR RAMPS UNDER THEIR OWN HUE NAMES ────────────────────────────────────────
+        //
+        // ⚠ SO THAT A STATUS CAN OBEY THE HUE RULE AT ALL. "A status is written as its ROLE, never as
+        // a hue" has a twin above it: a hue is right for CATEGORICAL colour, and an order's lifecycle
+        // step is named there as an example. But amber, sky, indigo and rose were reachable only
+        // through `warning`, `info`, `primary` and `brand` — so colouring a status in amber meant
+        // writing `warning`, and the day the warning tone moved, a status nobody thought was a
+        // warning would have moved with it.
+        //
+        // Same ramps, no new colours. `colorPalette="amber"` is now a statement about the HUE and
+        // `colorPalette="warning"` a statement about the ROLE, and they can no longer be confused.
+        amber: rolePalette("amber", {
+          // White on amber fails contrast — the same fix `warning` carries, for the same ramp.
+          solid: shade("amber", 500, 500),
+          contrast: shade("amber", 950, 950),
+        }),
+        sky: rolePalette("sky"),
+        indigo: rolePalette("indigo"),
+        rose: rolePalette("rose"),
         // THE DEFAULT FOCUS RING (owner). Chakra draws every ring in `colorPalette.focusRing`, and the
         // app's root palette is `gray` — so a tab, a menu item and a checkbox all focused in grey while
         // the brand sat unused. Overriding gray's ring paints them in the main tone instead; a control

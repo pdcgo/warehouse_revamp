@@ -2,7 +2,8 @@ import { Badge, Card, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { formatRupiah } from "../../../lib/money";
-import { NotImplemented } from "./NotImplemented";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { ORDER_FORM_PENDING } from "../pending";
 
 /** The floor the owner set: an order under this much margin gets a red warning on the form. */
 export const MINIMUM_MARGIN_PCT = 35;
@@ -44,7 +45,7 @@ export function ProfitEstimatePanel({ sellPrice, orderTotal, compact }: ProfitEs
       <Card.Header pb={compact ? "0" : undefined}>
         <Flex align="center" gap="2" wrap="wrap">
           <Card.Title>{t("orderForm.profit.title")}</Card.Title>
-          <NotImplemented id="profit" />
+          <NotImplemented list={ORDER_FORM_PENDING} id="profit" />
         </Flex>
         {!compact && (
           <Card.Description>{t("orderForm.profit.help", { pct: MINIMUM_MARGIN_PCT })}</Card.Description>

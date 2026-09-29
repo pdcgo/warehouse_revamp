@@ -24,7 +24,8 @@ import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketpl
 import { checkRefAgainstMarketplace, checkTrackingAgainstCourier } from "../checks";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
-import { NotImplemented } from "./NotImplemented";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { ORDER_FORM_PENDING } from "../pending";
 
 // THE RECEIPT FILE COMES FIRST, AND THE TWO NUMBERS IT CARRIES SIT BESIDE IT (owner).
 //
@@ -229,7 +230,7 @@ export function ShippingReceiptCard({
               <Field.Label>
                 <Flex align="center" gap="2" wrap="wrap">
                   {t("orderForm.resi.trackingNumber")}
-                  <NotImplemented id="receiptCode" />
+                  <NotImplemented list={ORDER_FORM_PENDING} id="receiptCode" />
                 </Flex>
               </Field.Label>
               {/* RAW. What is typed is what is stored: it is pasted into the courier's tracking box,
@@ -261,7 +262,7 @@ export function ShippingReceiptCard({
                 a second look. */}
             {filledFromFile && (
               <Flex align="center" gap="2">
-                <NotImplemented id="receiptScan" />
+                <NotImplemented list={ORDER_FORM_PENDING} id="receiptScan" />
                 <Text fontSize="xs" color="fg.muted" data-testid="order-create-scan-filled">
                   {t("orderForm.resi.filledFromFile")}
                 </Text>

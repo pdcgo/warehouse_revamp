@@ -2,7 +2,8 @@ import { Card, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { formatRupiah } from "../../../lib/money";
-import { NotImplemented } from "./NotImplemented";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { ORDER_FORM_PENDING } from "../pending";
 
 // WHAT THE ORDER COMES TO, AND WHAT WE OWE FOR IT — two totals, one card, and they are not the same
 // number.
@@ -62,9 +63,9 @@ export function TotalsInvoicePanel({
           {/* THREE MARKS, THREE NUMBERS — the missing shipping term, the fee that is a sample, and
               the invoice that needs liability's markup. They sit on the title because two of them
               have no row of their own to sit on. */}
-          <NotImplemented id="shippingCost" />
-          <NotImplemented id="warehouseFee" />
-          <NotImplemented id="invoice" />
+          <NotImplemented list={ORDER_FORM_PENDING} id="shippingCost" />
+          <NotImplemented list={ORDER_FORM_PENDING} id="warehouseFee" />
+          <NotImplemented list={ORDER_FORM_PENDING} id="invoice" />
         </Flex>
         {!compact && <Card.Description>{t("orderForm.totals.help")}</Card.Description>}
       </Card.Header>

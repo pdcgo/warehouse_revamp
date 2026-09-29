@@ -830,7 +830,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | --- | --- | --- |
 | `pickers/` | 16 | choose a thing — every `*Select`, `ProductPicker`, `AddressPicker` |
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
-| `entity/` | 5 | show a product / a team / a person the same way everywhere |
+| `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
 | `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
 | `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
@@ -839,6 +839,11 @@ to see what exists; `graphify query "what shared components exist for <the thing
 The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
 I find it?" have the same answer. A new component goes in the group it belongs to and its story's
 `title` is `Components/<Group>/<Name>` — if neither is obvious, the component is probably two things.
+
+**A `features/<domain>/` component stories as `Features/<Domain>/<Name>`**, by the same mirror. It is
+not design-system furniture — it knows a domain — so it does not belong under `Components/`, and a
+domain component shared by several pages is exactly the thing that needs a story most: nothing else
+pins its rules. `Features/Orders/OrderSummary` is the first.
 
 This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
 The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
@@ -871,6 +876,40 @@ native element is genuinely needed, get an explicit ask first.
   NumberInput with a − and a + flanking the box. `<input type="number">` draws the browser's own 15px
   spinners, **changes its value when somebody scrolls past it**, and accepts `1e3`. The value stays a
   STRING, so a cleared box is empty rather than 0.
+
+**A picker over data that GROWS is a SEARCH SELECT** (owner). Chakra's `Combobox` — a field you type
+into — not a `Select` you scroll. The exception is a set that is **static AND small**: it stays a plain
+list, because searching seven options you can already see in full is a keystroke tax.
+
+| | | |
+| --- | --- | --- |
+| **search select** | the set grows with the business | `TeamSelect` (warehouses, sellers), `UserSelect`, `ShopSelect`, `ProductSelect`, `SupplierSelect` |
+| **plain list** | static and small, changed by a code edit | `MarketplaceSelect`, `RoleSelect`, `TeamTypeSelect`, `ExpenseKindSelect`, `PaymentTypeSelect` |
+
+- **"Few TODAY" is not the test — "bounded FOREVER" is.** A team runs four shops now and there is no
+  ceiling on that, so `ShopSelect` searches; a marketplace enum only grows when the company enters a
+  new country, so it does not. Getting this wrong is silent until the data arrives, and by then the
+  screen is one somebody scrolls.
+- **Where the search RUNS depends on the size, not on the control.** A bounded-ish list loads whole and
+  filters in the field (`ShopSelect`, `TeamSelect`); an unbounded one searches the server, debounced,
+  with a minimum term (`UserSelect`, `ProductSelect`). Both are the same control to the person using it.
+- ⚠ **A combobox whose collection fills in LATE renders BLANK when it was prefilled.** Zag derives the
+  input's text at machine init and thereafter only when `value` changes — so a value already set while
+  the list is still in flight resolves against an empty collection and never recovers. Both search
+  selects fix it the same way: `key={filled ? "ready" : "loading"}` on the Root, remounting once when
+  the list lands. Copy that with the list, not the day it breaks.
+- **Clearing emits the "none" sentinel** (`0n`, or `undefined`) — never nothing. #131 again: a field
+  that empties while the parent still holds the old id filters on a shop the screen no longer shows.
+
+**A screen built AHEAD of its backend says so, on itself** — [features/pending/](frontend/src/features/pending/),
+not a comment and not a sentence typed into each card. The screen declares a `PendingList` (`{ns, parts}`,
+one `pending.ts` per page); `<NotImplementedSummary list>` renders the folded strip at the top and
+`<NotImplemented list id>` the ⚠ + NUMBER on the control it belongs to. **The number is the position
+in the list**, so a badge and its row cannot drift, and removing an entry removes both. Four kinds,
+and they cost the reader different things: `dropped` (typed and thrown away), `sample` (invented
+figures), `derived` (real figures, unsettled rule), `missing` (not on screen at all, and a total is
+short because of it). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
+`<ns>.pending.<id>.label|reason`.
 
 Two more UI rules:
 

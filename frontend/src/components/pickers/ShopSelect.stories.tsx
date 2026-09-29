@@ -116,7 +116,7 @@ export const UnfilteredNeverClearsTheValue: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveTextContent(shops[0]!.name));
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue(shops[0]!.name));
     await expect(args.onChange).not.toHaveBeenCalled();
   },
 };
@@ -129,7 +129,7 @@ export const NoShopsOnThatMarketplace: Story = {
     const canvas = within(canvasElement);
 
     await waitFor(() =>
-      expect(canvas.getByTestId("shop-select")).toHaveTextContent("No Bukalapak shops"),
+      expect(canvas.getByTestId("shop-select")).toHaveAttribute("placeholder", "No Bukalapak shops"),
     );
   },
 };
@@ -148,6 +148,6 @@ export const Interactive: Story = {
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
-    await expect(canvas.getByTestId("shop-select")).toHaveTextContent(shops[2]!.name);
+    await expect(canvas.getByTestId("shop-select")).toHaveValue(shops[2]!.name);
   },
 };

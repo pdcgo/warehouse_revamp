@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 
 import { DatePicker } from "../../../components/datetime/DatePicker";
 import { todayDateInput } from "../../../lib/datetime";
-import { NotImplemented } from "./NotImplemented";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { ORDER_FORM_PENDING } from "../pending";
 
 // THE TWO OPTIONAL FACTS THAT HAVE NOWHERE TO GO YET.
 //
@@ -43,7 +44,7 @@ export function ExtraInfoCard({
             <Field.Label>
               <Flex align="center" gap="2" wrap="wrap">
                 {t("orderForm.extra.deadline")}
-                <NotImplemented id="deadline" />
+                <NotImplemented list={ORDER_FORM_PENDING} id="deadline" />
               </Flex>
             </Field.Label>
             {/* Clearable: an optional date that cannot be unset is a date somebody is stuck with.
@@ -67,7 +68,7 @@ export function ExtraInfoCard({
             <Field.Label>
               <Flex align="center" gap="2" wrap="wrap">
                 {t("orderForm.extra.buyerUsername")}
-                <NotImplemented id="buyerUsername" />
+                <NotImplemented list={ORDER_FORM_PENDING} id="buyerUsername" />
               </Flex>
             </Field.Label>
             <Input

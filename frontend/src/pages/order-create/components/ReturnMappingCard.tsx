@@ -7,7 +7,8 @@ import { ProductListItem } from "../../../components/products/ProductListItem";
 import { ProductSelect } from "../../../components/products/ProductSelect";
 import type { PickedProduct } from "../../../components/products/ProductSelect";
 import { mockProductImage } from "../mockImages";
-import { NotImplemented } from "./NotImplemented";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { ORDER_FORM_PENDING } from "../pending";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 
@@ -67,7 +68,7 @@ export function ReturnMappingCard({ teamId, lines, mapping, onMap }: ReturnMappi
       <Card.Header>
         <Flex align="center" gap="2" wrap="wrap">
           <Card.Title>{t("orderForm.returnMap.title")}</Card.Title>
-          <NotImplemented id="returnMap" />
+          <NotImplemented list={ORDER_FORM_PENDING} id="returnMap" />
           {/* The count is the card's whole job on a long order: how many still need an answer. */}
           {unmapped > 0 && (
             <Badge colorPalette="warning" size="sm" data-testid="return-map-unmapped">

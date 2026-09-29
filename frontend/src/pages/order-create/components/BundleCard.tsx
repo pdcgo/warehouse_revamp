@@ -28,7 +28,8 @@ import { slotCap, slotFilled } from "../bundles";
 import type { BundleTemplate } from "../mockData";
 import { BUNDLES } from "../mockData";
 import { coverFor } from "../mockImages";
-import { NotImplemented } from "./NotImplemented";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { ORDER_FORM_PENDING } from "../pending";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 
@@ -83,7 +84,7 @@ export function BundleCard({
             <Stack gap="0.5" minW="0">
               <Flex align="center" gap="2" wrap="wrap">
                 <Card.Title>{t("orderForm.bundles.title")}</Card.Title>
-                <NotImplemented id="bundle" />
+                <NotImplemented list={ORDER_FORM_PENDING} id="bundle" />
               </Flex>
               <Card.Description>{t("orderForm.bundles.help")}</Card.Description>
             </Stack>

@@ -12,6 +12,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) | no two live orders share `(shop_id, order_external_ref_id)` · the ref is never empty · checked in code |
 | [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
 | [the-order-has-eight-statuses](#the-order-has-eight-statuses) | the status set, and every move allowed between them |
+| [the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses) | the order carries the milestone, the record that owns the work carries its steps |
 | [lost-is-final](#lost-is-final) | an order marked `lost` never moves again |
 | [the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs) | the buyer-paid figure is `platform_total` everywhere — the build's `marketplace_total` is renamed |
 | [superseded-the-warehouse-fee-is-a-percentage-of-our-total](#superseded-the-warehouse-fee-is-a-percentage-of-our-total) | ⛔ reversed — the basis became `sub_total` |
@@ -334,6 +335,55 @@ stateDiagram-v2
 **The spec.** Every move out of `lost` is refused. **The consequence, stated so it is not rediscovered:** a
 parcel found after being declared lost does **not** come back through its order — its goods re-enter stock by
 some other path, which no doc describes yet (clarify *Awaiting*).
+
+---
+
+## the-warehouse-steps-are-not-order-statuses
+
+> Asked (2026-09-24), while building the order list's tabs: `processed` folds `confirm · picking ·
+> packed`, and the proto carries all three today — *"kru gudang kehilangan langkahnya, itu memang
+> maunya?"*
+> **Owner: yes — the warehouse's steps are not order statuses.**
+
+**The verdict.** The ORDER carries the milestone. The record that owns the work carries its steps.
+
+```mermaid
+flowchart TB
+  O["ORDER — what a seller and a buyer read"]
+  O --> O1["pending"]
+  O --> O2["processed"]
+  O --> O3["shipped"]
+  O --> O4["completed"]
+  W["THE RECORD THAT OWNS THE WORK"]
+  W --> W1["warehouse task — picking, packed"]
+  W --> W2["shipment — handed over, in transit, arrived"]
+  W --> W3["return — being processed, received"]
+```
+
+**The spec.** `processed` is one status covering **four** steps of work — `confirm · picking · packed ·
+sudah diserahkan`. The last one is **HANDED OVER**, not "ready to hand over": the parcel has already
+changed hands, and `shipped` begins when it starts MOVING. So the handover is the warehouse's last
+step rather than the shipment's first. The build sees only three of the four — `OrderStatus` ends at
+`PACKED` and has no value for the handover.
+
+The four are a way to NARROW the pile, not a set of figures to read (owner, 2026-09-24): the order
+list offers them as a filter under the `processed` tab. A per-step count line was built and taken
+out — what a seller does with these is pick one.
+
+**Why this is the same rule twice already recorded.**
+[return-means-received-by-the-warehouse](./context_clarify.md#return-means-received-by-the-warehouse)
+put a return's transit on a return record rather than on the order, and shipment tracking was
+deferred to the shipment. Picking and packed are the third instance, so the set of eight
+([the-order-has-eight-statuses](#the-order-has-eight-statuses)) is not a simplification for its own
+sake — it is one boundary applied consistently.
+
+⚠ **The old system had already reached the same place by hand.** Its eleven statuses sat under a
+"diproses gudang" umbrella tab that hid exactly those four — somebody had found the leaves too
+granular to browse by and built a control to fold them. This makes that permanent.
+
+⚠ **What it does NOT settle:** where the warehouse's own QUEUE lives. Filtering by the four on the
+order list lets a seller find *which* orders are still being packed; it does not give the crew a
+screen to work from, and no doc describes that screen or that record yet.
 
 ---
 

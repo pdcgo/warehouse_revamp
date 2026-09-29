@@ -87,6 +87,35 @@ Four more UI rules that come up in review constantly:
 
 ---
 
+## Should a picker be a search select or a plain dropdown?
+
+**Search select if the set GROWS; a plain list only if it is static AND small.**
+
+| | |
+| --- | --- |
+| **search select** (Chakra `Combobox`) | `TeamSelect`, `UserSelect`, `ShopSelect`, `ProductSelect`, `SupplierSelect` |
+| **plain list** (Chakra `Select`) | `MarketplaceSelect`, `RoleSelect`, `TeamTypeSelect`, `ExpenseKindSelect` |
+
+"Few today" is not the test — **bounded forever** is. A team runs four shops now with no ceiling on
+that, so `ShopSelect` searches; the marketplace enum only changes when the company enters a new
+country, so it stays a list. Getting it wrong is silent until the data arrives.
+
+Where the search *runs* follows the size, not the control: a bounded-ish list loads whole and filters
+in the field (`ShopSelect`, `TeamSelect`), an unbounded one searches the server, debounced
+(`UserSelect`, `ProductSelect`).
+
+⚠ Two traps both search selects already solve — copy them with the component:
+
+- a combobox whose collection fills in **late** renders **blank** when it was prefilled (Zag derives
+  the input text at init and on `value` change only) → `key={filled ? "ready" : "loading"}` on the
+  Root, remounting once when the list lands;
+- **clearing emits the "none" sentinel** (`0n` / `undefined`), never nothing — otherwise the field
+  empties while the parent still filters on the old id.
+
+Authority: [CLAUDE.md](../../CLAUDE.md) → *The design system*.
+
+---
+
 ## Where do sizes, spacing and colours come from?
 
 [`frontend/src/theme.ts`](../../frontend/src/theme.ts), and only there.
@@ -248,3 +277,54 @@ database and its own ports, so it can run beside your dev servers.
 
 ⚠ `reuseExistingServer: true` means a **stray** server left on :8081/:5175 gets conscripted by the
 run rather than ignored — if results look impossible, check nothing old is still listening there.
+
+---
+
+## Why doesn't the total on an order row equal `Order.total`?
+
+**Because the row shows TWO totals and `Order.total` is neither of them.**
+
+| | |
+| --- | --- |
+| `Order.total` (the contract) | `subtotal + shipping_cost` — our quote plus postage, frozen at creation |
+| **total beli** (the Beli column) | `cogs` + the warehouse's fee — what the order COST us |
+| **total MP** (its own column) | `marketplace_total` — what the buyer paid the platform |
+
+The owner's definition is *"total dari beli … subtotal produk + biaya, dan total dari mp"*, and the
+ongkir is **the warehouse's to set, not the seller's** — which is also why the create screen has no
+shipping field. See
+[the-row-shows-total-beli-and-total-mp](../technical/order/design_decision.md#the-row-shows-total-beli-and-total-mp)
+and
+[the-ongkir-is-the-warehouses-to-set](../technical/order/design_decision.md#the-ongkir-is-the-warehouses-to-set).
+
+## How is the margin on an order computed?
+
+```
+margin     = harga MP − total beli
+persentase = margin ÷ harga MP
+```
+
+**Against the MARKETPLACE's price, never our own.** See
+[the-margin-is-mp-minus-total-beli](../technical/order/design_decision.md#the-margin-is-mp-minus-total-beli).
+
+- **One implementation** — `features/orders/margin.ts`, read by both the summary strip and the table
+  row, so the card and the rows beneath it cannot disagree.
+- ⚠ **It is NOT the proto's margin.** `order.proto` says `margin = total − cogs − shipping_cost`,
+  which measures our quote against our cost and never looks at what the platform paid.
+- ⚠ **It needs TWO facts, so it has two ways to be unknown**: a `cogs` of 0 is unknown (not free) and
+  a `marketplace_total` of 0 is not recorded (not a sale of nothing). Either one missing and the whole
+  cell shows an em-dash. The strip counts those orders in its `margin_unknown` note — counting only
+  the missing COST once left it claiming 30% more margin than the rows summed to.
+
+## Why does one order show a marketplace date but no marketplace total?
+
+**Two different absences, and the row keeps them apart.**
+
+| field | empty means |
+| --- | --- |
+| `order_external_ref_id` | the order **never came from a storefront** — somebody took it over the phone |
+| `marketplace_total` = 0 | it did come from a storefront and **nobody wrote down what the storefront took** (`order.proto`: *0 = not recorded, not "sold for nothing"*) |
+
+So the MP date is shown whenever there is a reference, and the MP amount only when there is an
+amount. Fixture 108 is deliberately the second case, so the distinction is exercised. See
+[every-date-gets-its-own-column](../technical/order/design_decision.md#every-date-gets-its-own-column).

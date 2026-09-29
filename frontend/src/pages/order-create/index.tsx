@@ -50,8 +50,9 @@ import { BUNDLES, forgetLink, mockTerms, rememberLink, rememberedLink } from "./
 import { BundleCard } from "./components/BundleCard";
 import { CreditLimitPanel } from "./components/CreditLimitPanel";
 import type { CreditRole, CreditRow } from "./components/CreditLimitPanel";
-import { NotImplemented } from "./components/NotImplemented";
-import { NotImplementedSummary } from "./components/NotImplementedSummary";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { ORDER_FORM_PENDING } from "./pending";
 import { NoteAndSubmitCard } from "./components/NoteAndSubmitCard";
 import { ProfitEstimatePanel } from "./components/ProfitEstimatePanel";
 import { ReturnMappingCard } from "./components/ReturnMappingCard";
@@ -915,7 +916,7 @@ export function OrderCreatePage() {
           {/* WHAT THIS SCREEN CANNOT DO, BEFORE ANYTHING ELSE. It is read once, at the top, and
               repeated as a badge on each card that is affected — so somebody who scrolled straight to
               a card still learns it there. */}
-          <NotImplementedSummary />
+          <NotImplementedSummary list={ORDER_FORM_PENDING} />
 
           {/* ⚠ THE WAREHOUSE LEADS THE FORM, AND IT IS NOT A CARD (owner). Every figure below is
               measured against this building — see WarehouseBand for why it sits above the flow rather
@@ -1037,7 +1038,7 @@ export function OrderCreatePage() {
                       <Field.Label>
                         <Flex align="center" gap="2" wrap="wrap">
                           {t("orderForm.source.orderDate")}
-                          <NotImplemented id="orderDate" />
+                          <NotImplemented list={ORDER_FORM_PENDING} id="orderDate" />
                         </Flex>
                       </Field.Label>
                       {/* WITH THE CLOCK (owner). A marketplace stamps an order to the minute, and

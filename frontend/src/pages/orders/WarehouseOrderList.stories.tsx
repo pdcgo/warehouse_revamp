@@ -112,7 +112,7 @@ export const TheShopFilterIsNotOfferedToAWarehouse: Story = {
 
 // The counts are computed over the SAME two-sided set the table shows, so the crew's queue adds up:
 // what is waiting to be accepted, and what the building is already holding.
-export const TheStatCountsBothSellingTeamsWork: Story = {
+export const TheSummaryCountsBothSellingTeamsWork: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -124,27 +124,60 @@ export const TheStatCountsBothSellingTeamsWork: Story = {
     // 3, not 2: one of them is Kenanga's. A selling-team-only read would say 2 here and the crew
     // would be one order short with nothing telling them so.
     await waitFor(() =>
-      expect(canvas.getByTestId("orders-stat-to-confirm")).toHaveTextContent(String(placed.length)),
+      expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent(
+        `${placed.length} tx`,
+      ),
     );
-    await expect(canvas.getByTestId("orders-stat-in-warehouse")).toHaveTextContent(
-      String(held.length),
+
+    // `processed` is the owner's one name for the crew's four steps — confirm, picking, packed and
+    // handover — so it sums the three enum values the contract still has for them.
+    await expect(canvas.getByTestId("order-summary-row-processed")).toHaveTextContent(
+      `${held.length} tx`,
     );
   },
 };
 
-// The status tabs ARE the crew's steps — placed → confirmed → picking → packed → shipped — so this
-// strip is the pick queue read one stage at a time.
-export const TheStatusTabNarrowsToOneStageOfTheCrewsWork: Story = {
+// A tab backed by ONE enum value narrows the table, which is the ordinary case.
+export const AStatusTabNarrowsTheQueue: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const shipped = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.SHIPPED)!;
+    const placed = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PLACED)!;
+
+    await userEvent.click(canvas.getByTestId("orders-tab-shipped"));
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${shipped.id}`)).toBeInTheDocument());
+    await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
+  },
+};
+
+// ⚠ …AND "DIPROSES" CANNOT, WHICH IS WHY THE STEP FILTER EXISTS. The owner folded the crew's four
+// steps into one status, and `OrderListFilter.status` takes exactly one enum value — so the tab can
+// COUNT its three (confirmed, picking, packed) and cannot narrow to them. Picking a step does what
+// the tab cannot.
+//
+// ⚠ THIS TEST IS PINNED TO A GAP, ON PURPOSE. It is the `statusSet` mark written as an assertion, so
+// the day the enum gains a single `PROCESSED` value this fails and somebody deletes the step filter's
+// reason for existing along with it.
+export const DiprosesCountsButOnlyAStepCanNarrow: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     const packed = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PACKED)!;
     const placed = SHIPPING_FROM_HERE.find((o) => o.status === OrderStatus.PLACED)!;
 
-    await userEvent.click(canvas.getByTestId("orders-tab-packed"));
+    await userEvent.click(canvas.getByTestId("orders-tab-processed"));
 
+    // The tab alone leaves the table as it was — the pending order is still listed.
     await waitFor(() => expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument());
-    await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
+    await expect(canvas.getByTestId(`order-row-${placed.id}`)).toBeInTheDocument();
+
+    // One step IS one enum value, so it narrows.
+    await userEvent.click(canvas.getByTestId("processed-step-filter-packed"));
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument();
   },
 };
 
@@ -156,7 +189,7 @@ export const AnEmptyStatusNamesTheStatus: Story = {
     const canvas = within(canvasElement);
 
     // Nothing shipping from here is cancelled — 107 is Melati's, and it is.
-    await userEvent.click(canvas.getByTestId("orders-tab-cancelled"));
+    await userEvent.click(canvas.getByTestId("orders-tab-cancel"));
 
     const empty = await canvas.findByTestId("orders-empty");
     await expect(empty).toHaveTextContent(/cancelled/i);
@@ -205,8 +238,10 @@ export const ARowOpensTheOrderTheCrewHasToPick: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // The date cell: nothing interactive in it, and far from the copy buttons and the kebab, all
+    // three of which stop the click deliberately.
     const row = await canvas.findByTestId(`order-row-${ANOTHER_TEAMS.id}`);
-    await userEvent.click(within(row).getByText(ANOTHER_TEAMS.customerName));
+    await userEvent.click(within(row).getByTestId("order-placed-at"));
 
     await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
   },

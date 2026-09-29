@@ -466,10 +466,133 @@
     "archive": "Arsipkan"
   },
   "orders": {
+    "recipient": "Penerima",
+    "placed": "Dipesan",
+    "placedBy": "oleh {{name}}",
+    "placedMp": "MP {{at}}",
+    "team": "Tim",
+    "actions": "Aksi",
+    "viewDetail": "Lihat Detail",
+    "step": {
+      "all": "Semua langkah",
+      "confirm": "Perlu konfirmasi",
+      "picking": "Diambil",
+      "packed": "Dikemas",
+      "handover": "Sudah diserahkan"
+    },
+    "stage": {
+      "pending": "Menunggu",
+      "processed": "Diproses",
+      "shipped": "Dikirim",
+      "completed": "Selesai",
+      "problem": "Bermasalah",
+      "lost": "Hilang",
+      "return": "Retur",
+      "cancel": "Batal"
+    },
+    "summary": {
+      "tx": "Tx",
+      "cardLine": "{{count}} tx",
+      "notOnTheWire": "belum ada di kontrak",
+      "items": "Item",
+      "upt": "UPT",
+      "value": "Nilai transaksi",
+      "atv": "ATV",
+      "spend": "Nilai belanja",
+      "margin": "Margin kotor",
+      "total": "Total",
+      "costNone_one": "Pesanan ini belum punya HPP atau harga MP-nya, jadi belum ada margin yang bisa ditampilkan.",
+      "costNone_other": "Tidak satu pun dari {{total}} pesanan ini punya HPP sekaligus harga MP, jadi belum ada margin yang bisa ditampilkan.",
+      "marginUnknown_one": "{{count}} dari {{total}} pesanan belum punya HPP atau harga MP-nya — margin di atas dihitung dari sisanya.",
+      "marginUnknown_other": "{{count}} dari {{total}} pesanan belum punya HPP atau harga MP-nya — margin di atas dihitung dari sisanya."
+    },
+    "warehouseAll": "Semua gudang",
+    "creatorAll": "Siapa saja",
+    "export": {
+      "action": "Ekspor"
+    },
+    "import": {
+      "action": "Impor",
+      "title": "Impor Pesanan",
+      "chooseMarketplace": "Tiap marketplace mengekspor file yang berbeda, jadi tentukan dulu file ini berasal dari mana.",
+      "chooseFile": "File hasil ekspor {{marketplace}} — CSV atau Excel.",
+      "updatesTitle": "Yang diubah file ini",
+      "updatesStatus": "Setiap pesanan di dalamnya dipindah ke status yang dilaporkan marketplace.",
+      "updatesWithdrawal": "Nilai pencairan dari marketplace dicatat pada pesanan tersebut.",
+      "noFile": "Belum ada file",
+      "dropHere": "Letakkan file di sini, atau klik untuk memilih",
+      "back": "Ganti Marketplace",
+      "submit": "Impor"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "Kumpulan status",
+        "reason": "Kontraknya masih memakai enam status lama, jadi Selesai, Bermasalah, Hilang dan Retur selamanya 0, dan Diproses bisa dihitung tapi belum bisa menyaring tabelnya."
+      },
+      "summaryCost": {
+        "label": "Nilai belanja dan margin",
+        "reason": "Sensus per status baru menjumlahkan total pesanan saja, jadi nilai barang, HPP, dan jumlah pesanan tanpa HPP semuanya angka contoh."
+      },
+      "summaryItems": {
+        "label": "Jumlah item dan UPT",
+        "reason": "Daftar pesanan tidak mengembalikan barisnya dan belum ada yang menghitung di server, jadi keduanya angka contoh."
+      },
+      "export": {
+        "label": "Ekspor",
+        "reason": "Belum ada yang membuat file — kolomnya apa saja, dan apakah sehalaman ini atau semua baris hasil filter, masih terbuka."
+      },
+      "import": {
+        "label": "Impor",
+        "reason": "File hanya ditampilkan namanya: belum diunggah, belum diurai, dan tiap marketplace butuh pengurai sendiri."
+      },
+      "warehouseFilter": {
+        "label": "Filter gudang",
+        "reason": "Filter daftar pesanan belum punya kolom gudang, jadi memilih gudang tidak mengubah tabelnya."
+      },
+      "creator": {
+        "label": "Pembuat pesanan",
+        "reason": "Pesanan sama sekali belum menyimpan siapa pembuatnya — filternya tidak menyaring apa pun, dan nama di bawah tanggal itu karangan."
+      },
+      "mpDate": {
+        "label": "Tanggal order marketplace",
+        "reason": "Pesanan hanya menyimpan kapan KITA mencatatnya; tanggal pembeli memesan di marketplace belum punya kolom, jadi baris kedua di bawah tanggal itu karangan."
+      },
+      "stageDate": {
+        "label": "Tanggal perubahan status",
+        "reason": "Log status sudah punya bentuk yang tepat (jenis + kapan), tapi baru dikirim bersama detail pesanan — daftar ini belum bisa membaca kapan sebuah pesanan masuk ke status yang sedang difilter."
+      },
+      "receiptCode": {
+        "label": "Nomor resi",
+        "reason": "Pesanan menyimpan kurir dan FILE resinya, tapi bukan nomor yang tercetak di slip — nomor yang tampil itu karangan dan tidak akan ditemukan kurir mana pun."
+      },
+      "deadline": {
+        "label": "Deadline kirim",
+        "reason": "Belum ada yang menyimpannya: pesanan tidak punya deadline, channel pengiriman tidak punya lead time, dan log status mencatat yang sudah terjadi bukan yang jatuh tempo. Semua badge di kolom ini karangan, dan batas warnanya masih perkiraan."
+      },
+      "totalFee": {
+        "label": "Biaya gudang di dalam total",
+        "reason": "Total di sini adalah harga barang ditambah biaya mengerjakannya, dan biaya itu belum bisa dibaca per pesanan: tercatat sebagai liabilitas dengan kunci pesanan, sementara daftarnya hanya bisa ditanya per pihak. Harga barangnya nyata, biayanya angka contoh."
+      },
+      "lifecycle": {
+        "label": "Aksi setelah dikirim",
+        "reason": "Kontraknya baru menulis batal dan kirim, jadi Retur Barang, Selesaikan Order, Jadikan Lost dan Selesaikan Sengketa belum punya yang dipanggil — separuh siklus yang sama dengan empat tab status yang selalu 0."
+      },
+      "marketplaceFilter": {
+        "label": "Filter marketplace",
+        "reason": "Belum ada di filter daftar juga — artinya semua toko di marketplace tersebut."
+      },
+      "withdrawal": {
+        "label": "Nilai pencairan",
+        "reason": "Tarik saldo wallet ke rekening adalah kejadian kas tingkat toko yang tidak menyebut pesanan mana pun, jadi belum ada tempatnya — settlement pun menolak karena setiap entry wajib menyebut pesanan."
+      }
+    },
     "title": "Pesanan",
     "selectTeamView": "Pilih tim untuk melihat pesanannya.",
     "customer": "Pelanggan",
     "total": "Total",
+    "cost": "Beli",
+    "margin": "Margin",
+    "totalMp": "MP {{amount}}",
     "shipping": "Pengiriman",
     "subtotal": "Subtotal",
     "phone": "Telepon",
@@ -606,7 +729,43 @@
       "awaitingPick": "Menunggu gudang",
       "awaitingPack": "Sedang diambil",
       "awaitingShip": "Menunggu kurir"
-    }
+    },
+    "orderShipped": "Pesanan ditandai dikirim",
+    "rowAction": {
+      "cancel": "Batalkan Order",
+      "editReceipt": "Edit Resi",
+      "ship": "Jadikan Dikirim",
+      "returnGoods": "Retur Barang",
+      "complete": "Selesaikan Order",
+      "markLost": "Jadikan Lost",
+      "editWithdrawal": "Edit Withdrawal",
+      "resolveDispute": "Selesaikan Sengketa"
+    },
+    "rowActionConfirm": {
+      "cancel": "Batalkan pesanan #{{id}}? Tindakan ini tidak bisa dibatalkan.",
+      "ship": "Jadikan pesanan #{{id}} dikirim? Paketnya sudah keluar dari gudang.",
+      "returnGoods": "Retur barang pesanan #{{id}}? Stoknya kembali ke rak.",
+      "markLost": "Jadikan pesanan #{{id}} lost? Pesanan dihapusbukukan dan barangnya tidak kembali."
+    },
+    "receiptColumn": "Resi",
+    "placedMpColumn": "Tgl MP",
+    "stageDateColumn": "Tgl {{status}}",
+    "totalMpColumn": "Total MP",
+    "deadline": {
+      "left": {
+        "hours_one": "{{count}} jam lagi",
+        "hours_other": "{{count}} jam lagi",
+        "days_one": "{{count}} hari lagi",
+        "days_other": "{{count}} hari lagi"
+      },
+      "late": {
+        "hours_one": "Telat {{count}} jam",
+        "hours_other": "Telat {{count}} jam",
+        "days_one": "Telat {{count}} hari",
+        "days_other": "Telat {{count}} hari"
+      }
+    },
+    "orderIdColumn": "ID Order"
   },
   "orderDrafts": {
     "title": "Draf Pesanan",
@@ -2135,17 +2294,21 @@
       "empty": "Kurir tidak ditemukan"
     }
   },
-  "orderForm": {
+  "pending": {
+    "title_one": "{{count}} bagian layar ini belum diimplementasi",
+    "title_other": "{{count}} bagian layar ini belum diimplementasi",
+    "lead_one": "Bagian ini hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
+    "lead_other": "Bagian berikut hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
+    "toggle": "Lihat {{count}} bagiannya",
+    "markAria": "Belum diimplementasi, nomor {{n}}: {{label}}",
     "tag": {
       "dropped": "· tidak terkirim",
       "sample": "· angka contoh",
       "derived": "· rumus belum final",
       "missing": "· tidak masuk total"
-    },
-    "pendingTitle_one": "{{count}} bagian layar ini belum diimplementasi",
-    "pendingTitle_other": "{{count}} bagian layar ini belum diimplementasi",
-    "pendingLead_one": "Bagian ini hanya berfungsi di layar — isinya tidak ikut terkirim saat pesanan dibuat: {{parts}}.",
-    "pendingLead_other": "Bagian berikut hanya berfungsi di layar — isinya tidak ikut terkirim saat pesanan dibuat: {{parts}}.",
+    }
+  },
+  "orderForm": {
     "pending": {
       "bundle": {
         "label": "Grup bundel",
@@ -2283,7 +2446,6 @@
       "costUnknown": "Gudang ini belum punya catatan modal untuk barang tersebut, jadi belum ada yang ditagihkan.",
       "blockedByMapping": "{{count}} produk belum punya pemetaan retur — belum ikut tersimpan bersama pesanan."
     },
-    "markAria": "Belum diimplementasi, nomor {{n}}: {{label}}",
     "rail": {
       "collapse": "Ringkas",
       "expand": "Rinci",
@@ -2316,7 +2478,6 @@
       "refMarketplace": "Order ID tidak seperti milik marketplace ini — biasanya berbentuk {{shape}}.",
       "profitBelowFloor": "Estimasi margin {{pct}}%, di bawah batas {{floor}}%."
     },
-    "pendingToggle": "Lihat {{count}} bagiannya",
     "warehouse": {
       "title": "Dikirim dari",
       "governs": "Semua angka stok dan HPP di bawah ini milik gudang tersebut.",
