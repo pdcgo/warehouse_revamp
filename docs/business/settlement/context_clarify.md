@@ -230,7 +230,7 @@ flowchart TB
 **→ Recommend naming them apart in the doc** — the log column is the shop's **own direct movements**, the
 report column is the shop's **whole position**. ⚠ This is the trap already recorded here as
 [one concept, three service names](#one-concept-three-service-names-and-each-is-written-down-as-authoritative),
-and [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet)
+and [superseded-the-position-is-the-shortfall-not-the-wallet](./context_decision.md#superseded-the-position-is-the-shortfall-not-the-wallet)
 already warned that **the bare word "balance"** is the one term that had named two different shop-level
 numbers. It now names two again.
 
@@ -993,28 +993,16 @@ the cheapest moment it will ever be to choose.
 
 ## Question
 
-**Five open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
+**Four open here**, and none is about the ledger's mechanics — those are all settled. ⚠ **Numbering was
 compacted** when eight questions were answered or moved in one week; older references in this file's
 narrative point at the numbers they had then, and every answer lives in
 [context_decision.md](./context_decision.md).
 
-1. ⛔ **`withdrawal` is a settlement type now — does it count toward the position?** 🔄 **Your
-   `context.md` edit (2026-09-24) answered where it lives** — recorded as
-   [withdrawal-is-a-settlement-type](./context_decision.md#withdrawal-is-a-settlement-type) — **and opened
-   what it does.** [settlement_importer_service](./settlement_importer_clarify.md) is its first writer, and
-   across the 26 sample workbooks withdrawals are **101% of `fund`** (−839,987,638 against +827,877,151).
-   Summed into `Σ change`, they cancel the `fund` they withdraw, and a shop's *hidden cost to date* reads as
-   nearly everything its buyers paid —
-   [Contradiction](#withdrawal-entered-the-log-and-the-position-is-defined-as-not-the-wallet).
-   **→ I recommend: record it, and keep it OUT of the position** — its own column, left out of `balance`,
-   `last_balance`, `open_balance`/`close_balance` and `received`. A withdrawal moves money between two of
-   our own pockets, so it is neither a shortfall nor a receipt. Reading it the other way — *the wallet is
-   in scope after all* — reverses
-   [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet),
-   and should be said as that.
-   ⛔ **Blocks the importer's first post** — 25 of the 26 samples carry a withdrawal.
-   ✅ [architecture Q7](../../technical/architecture/context_clarify.md#question) asked where it lives too,
-   and is answered by the same edit.
+1. ✅ **Answered 2026-09-29 — a withdrawal counts in the position**, against my recommendation:
+   [withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position) — and the report calls
+   the figure *Position to date*, with *Withdrawn* beside *Received*
+   ([the-report-headline-is-position-to-date](./context_decision.md#the-report-headline-is-position-to-date)). Kept as
+   a line so the numbers hold.
 
 2. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your worked example uses that
    type for a *reimbursement*, which is what I would call problem funding.
@@ -1444,9 +1432,15 @@ flowchart LR
 
 ## `withdrawal` entered the log, and the position is defined as not the wallet
 
+✅ **Decided 2026-09-29** — [withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position): it counts,
+against my recommendation, and the screen names the figure *Position to date*
+([the-report-headline-is-position-to-date](./context_decision.md#the-report-headline-is-position-to-date)). The three sites
+below change with it: the running balance and `last_balance` include it by design, `received` leaves it out, and the
+headline is relabelled.
+
 > `context.md` §what is `settlement_type` *(2026-09-24)* — *"`withdrawal`"*, a new value.
 >
-> [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet)
+> [superseded-the-position-is-the-shortfall-not-the-wallet](./context_decision.md#superseded-the-position-is-the-shortfall-not-the-wallet)
 > — *"the marketplace **wallet is out of scope entirely**"*, and the position is `Σ change` over every log
 > row of the shop.
 
@@ -1481,6 +1475,9 @@ flowchart LR
 ```
 
 ## the type list grew to thirteen and the contract still takes eight
+
+🔨 **Being built 2026-09-29, together** — the enum, the mapper, the fold's columns and `SettlementMetric`, for the
+importer. ⚠ `analytic_context.md` §Field that tracked is yours, and still lists eight.
 
 > `context.md` §what is `settlement_type` *(2026-09-24)* — thirteen values: the eight before, plus
 > `shipment_adjustment`, `withdrawal`, `logistic_reimbursement`, `platform_reimbursement`,

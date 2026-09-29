@@ -4,23 +4,14 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🔨 **Next phase, 2026-09-29 — `implementation_analysis`.** No question is open here, so the prototype is built: both
-screens and the contract, in Storybook against a stub — `cd frontend && npm run storybook` → **Pages / Settlement /
-Imports** and **Pages / Settlement / ImportDetail**. ⛔ **It waits on your design_accept**
-([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)): nothing of the backend is built
-until you accept, and the contract is accepted with the screens
-([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
-The last round — Q1, Q5 and Q14 — is recorded in [settlement_importer_decision.md](./settlement_importer_decision.md).
-
-| accepting it accepts | |
-| --- | --- |
-| the list | `/settlement/imports` — one row per upload: shop, the statement's own range, who and when, status, the four tallies. Filter by shop and status. A running row refreshes itself; an interrupted one says to upload the same file again |
-| the dialog | **Import File** — pick the shop (its marketplace picks the import, and only Shopee and TikTok can), pick the .xlsx, start. It streams: the bar, the tallies, the log, and at the end what did not post. Closing it keeps the import going — there is no Cancel |
-| one file's page | `/settlement/imports/:fileId` — the tally, then the rows worth a look: **held** (the same file again posts them), **skipped**, **posted to the shop**. Download the original. No Revert, no Reprocess |
-| the contract | [settlement_importer.proto](../../../proto/warehouse/settlement_importer/v1/settlement_importer.proto) — your three RPCs, plus `UploadedFileByIds` and `UploadedFileLineList`, the file page's reads. It departs from §Rpc Detail exactly where critiques 15–17 and the step/count [Contradiction](#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) say: a scoped `team_id`, one request and one response name per RPC, a 10 MB cap, and `step` · `count` · `file` beside your `level` and `message`. Accepting it closes those four |
-| the menu | **Settlement Imports**, for a selling team's CS and up |
-| ⚠ my proposals in it | the list refreshes every 5 s while a file runs · the dialog refuses a non-.xlsx or a file over 10 MB before sending · the refusal line names the shop |
-| ✅ checked | [shop Q1](../shop/context_clarify.md#question) is answered — [a-write-needs-a-grant-or-a-manager](../shop/context_decision.md#a-write-needs-a-grant-or-a-manager): an import needs a grant for the shop, or the team's owner or admin role |
+✅ **Accepted 2026-09-29 — design_accept passed** ([the-prototype-and-its-contract-are-accepted](./settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)).
+🔨 **Now being built**, in the order the blockers allow — the interceptor, the shop's `ShopAccessCheck` and primary CS,
+the order lookup by ref, settlement's five types and its ask of the shop, then the importer. The same day the owner
+answered everything this service waited on outside this doc: a withdrawal counts in the position
+([withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position)), the primary CS is a flag
+on a grant ([the-primary-cs-is-a-flag-on-a-grant](../shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)), the
+built TikTok item is the key ([the-built-tiktok-item-is-the-contract](../../technical/packages/excel_readers/context_decision.md#the-built-tiktok-item-is-the-contract)),
+and imported rows are `importer` ([the-source-is-named-importer](./settlement_importer_decision.md#the-source-is-named-importer)).
 
 ## What the service already owns
 
@@ -61,10 +52,7 @@ Measured against all 26 sample workbooks, not read off the spec.
 | **8** | **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
 | **11** | **[auto_import.md](./auto_import.md) sits beside this doc as an empty heading** — *"Auto Import Feature."* | If it is this service, drop one of the two. If it is something else — the platforms pulled on a schedule, with no file — say so, because nothing here covers it. |
 | **13** | 🆕 **The flow writes nothing `UploadedFileList` could read.** The file goes to `document_service` and the records to settlement; the list's own row is never drawn. | The importer writes **its own row** the moment the upload succeeds — *running* — and moves its tallies as it goes. It is what the list pages over, what the stream sends as progress, and what makes an interrupted import visible ([decided](./settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). |
-| **14** | 🆕 **The reader's TikTok key is not settled — and it is this service's key.** Under [hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) the item's fields ARE its `unique_id`. Your reader doc's `### Tiktok Contract` is Shopee's six columns — none of which a TikTok file has, and no `Related order ID`. The built item is ten TikTok columns, a deviation still waiting on your word ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)). And whether a period re-downloaded in TikTok's 2026-09 layout keeps its keys is unmeasured ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). A key that moves after the first import posts every line again — and with no revert ([decided](./settlement_importer_decision.md#an-upload-is-never-reverted)) nothing removes a post. 🔄 And the row key is now the ONLY dedupe ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). | **Accept the built item as the TikTok contract** — *"tiktok use Related order ID"* already leans on it — and measure one re-download before the first TikTok import. Both belong to the reader's doc: this service only waits on them. |
-| **15** | 🆕 ⛔ **The request has no team.** §Rpc Detail's `Payload` is `shop_id` and `file_content`. This service's callers are CS and up — team-level roles — and a team-level role on a message with no `use_scope` field is a dead letter: it is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong). As written, only root and admin could import, and [the decided stream check](./settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) has no scope to read. | Add `uint64 team_id = 1` with `use_scope` and `gt = 0` — exactly as `SettlementPostRequest` carries it ([settlement.proto:245](../../../proto/warehouse/settlement/v1/settlement.proto#L245)). |
-| **16** | 🆕 ⛔ **Both requests are `Payload`, and both streams send `Response`.** Two messages with one name in one package do not compile, and buf's STANDARD lint — used with no exceptions ([buf.yaml](../../../proto/buf.yaml)) — wants each RPC's own `…Request` and `…Response`. | `TiktokSettlementImportRequest` · `ShopeeSettlementImportRequest` · `TiktokSettlementImportResponse` · `ShopeeSettlementImportResponse` — the same fields under four names. `LogLevel` is one enum they share. |
-| **17** | 🆕 ⚠ **Nothing caps `file_content`.** connect-go reads a request of any size by default, and the backend sets no limit. The largest sample is 246 KB. | `(buf.validate.field).bytes.max_len` of 10 MB, and the same limit on the handler's read. |
+| **14** | ✅ **Accepted 2026-09-29 — the built item is the TikTok contract** ([the-built-tiktok-item-is-the-contract](../../technical/packages/excel_readers/context_decision.md#the-built-tiktok-item-is-the-contract)). What stays open is the reader's: whether a period re-downloaded in the 2026-09 layout keeps its keys ([the reader's questions](../../technical/packages/excel_readers/context_clarify.md#question)). The row key is the only dedupe ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)), so a key that moves posts the line again. | **Measure one re-download before the first TikTok import** — the reader's question, not this service's. |
 | **18** | 🆕 **The flow draws only the check's success.** *"check shop … return check"*, then *"Send Message Log"* — a caller who may not work on the shop, or a Shopee shop given a TikTok file, has no branch. | Draw it: an `ERROR` line naming what failed, then the stream ends — before the upload, so nothing is stored. |
 
 ```mermaid
@@ -75,11 +63,11 @@ flowchart LR
   D --> E["the ledger keeps the old type, and nothing says so"]
 ```
 
-⛔ **Blocked outside this doc.** All five types settlement gained on 2026-09-24 are types this service
-produces, and `SettlementPost` refuses every one of them —
-[the type list grew to thirteen and the contract still takes eight](./context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight).
-And the commonest shop row, `withdrawal`, breaks the report's position the day it posts —
-[settlement Q1](./context_clarify.md#question).
+✅ **Unblocked 2026-09-29.** All five types settlement gained on 2026-09-24 are types this service produces, and
+`SettlementPost` refused every one — 🔨 they join the contract in this build
+([the type list grew to thirteen](./context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)).
+And `withdrawal` counts in the position, by your answer to settlement Q1
+([withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position)).
 
 ## Recommendation
 
@@ -312,6 +300,9 @@ erDiagram
 
 ## the service has a third name, and the contract still carries the first
 
+✅ **Decided 2026-09-29** — [the-source-is-named-importer](./settlement_importer_decision.md#the-source-is-named-importer): the rows say
+`importer`. The eight append-only decisions that say `export_service` stay as the record.
+
 > `settlement_importer.md` §General 1 — *"we have service that named `settlement_importer_service`"*
 >
 > `context.md` §General Brief 3 — *"its `export_service` responsbility"*
@@ -420,6 +411,9 @@ flowchart LR
 ```
 
 ## the flow sends a step and a count, and the response has nowhere to put them
+
+✅ **Decided 2026-09-29** — accepted with the contract ([the-prototype-and-its-contract-are-accepted](./settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)):
+the response carries `step`, `count` and `file`.
 
 > `settlement_importer.md` §Flow — *"send count record for frontend progress render"* · *"send step and
 > count record for frontend progress render"*

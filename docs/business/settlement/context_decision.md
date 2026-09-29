@@ -15,7 +15,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [importing-is-not-settlements-job](#importing-is-not-settlements-job) | file import, matching and the unmatched tray belong to `export_service` — settlement is a ledger with a write API |
 | [a-residual-balance-is-normal](#a-residual-balance-is-normal) | the balance does NOT reach zero, and that is expected — it is a VARIANCE, not a receivable |
 | [settlement-ignores-our-order-status](#settlement-ignores-our-order-status) | nothing is gated on `OrderStatus`; a row can post anytime |
-| [entries-arrive-by-api-or-by-hand](#entries-arrive-by-api-or-by-hand) | two write paths — the exporter's API and a person on the order detail page — and `source_type` records which |
+| [entries-arrive-by-api-or-by-hand](#entries-arrive-by-api-or-by-hand) | two write paths — the exporter's API and a person on the order detail page — and `source_type` records which. 🔄 the exporter's source is `importer` now — [the-source-is-named-importer](./settlement_importer_decision.md#the-source-is-named-importer) |
 | [every-entry-names-its-actor](#every-entry-names-its-actor) | `actor_id` on every row: a human is accountable for every entry, including API ones |
 | [a-correction-is-a-new-row](#a-correction-is-a-new-row) | append-only — no edit, no delete. A mistake is offset by a further row |
 | [initial-total-is-an-estimate-and-fund-is-what-we-actually-got](#initial-total-is-an-estimate-and-fund-is-what-we-actually-got) | the two core types are an ESTIMATE and a REALISATION. ⚠ its "`fund` is net" reading is **narrowed** by [fund-is-not-the-final-figure](#fund-is-not-the-final-figure) |
@@ -27,7 +27,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-state-holds-initial-total-and-last-balance](#the-state-holds-initial-total-and-last-balance) | `order_settlements` holds `order_id`, `initial_total`, `last_balance` |
 | [the-recipe-is-the-callers-problem](#the-recipe-is-the-callers-problem) | how a `unique_id` is derived is OUTSIDE settlement — it enforces uniqueness and nothing more |
 | [no-role-policy-yet](#no-role-policy-yet) | role design deferred. ⚠ **ANSWERED** by [the-write-set-is-cs-and-up](#the-write-set-is-cs-and-up) — the policy is no longer deferred |
-| [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) | the unexplained gap is hidden platform cost the platform never itemises — it stays in the balance, and the balance IS that measure |
+| [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) | the unexplained gap is hidden platform cost the platform never itemises — it stays in the balance, and the balance IS that measure. ⚠ **Amended** by [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date): withdrawals are in the balance too, so the screen stops calling it hidden cost |
 | [marketplace-total-is-a-fact-not-an-estimate](#marketplace-total-is-a-fact-not-an-estimate) | `marketplace_total` is what the buyer actually paid. The ESTIMATE is the expectation that it will all reach us — so the balance is literally the platform's take |
 | [order-detail-manages-the-ledger](#order-detail-manages-the-ledger) | the order page MANAGES settlement — read, add, reverse — as a third tab. ⚠ widens the verbs, not the guarantees: append-only stands |
 | [the-write-set-is-cs-and-up](#the-write-set-is-cs-and-up) | `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, TEAM_CUSTOMER_SERVICE]` scoped on `team_id` — answers [no-role-policy-yet](#no-role-policy-yet)s liveness ⚠ |
@@ -69,8 +69,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-replay-cuts-three-tables-on-one-line](#the-replay-cuts-three-tables-on-one-line) | `settlement_event_logs` gains `day`, and a replay deletes from all three tables under `day >= @start_date` in one transaction |
 | [the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position) | the day-boundary position is what the number MEANS, the carry is how it is KEPT — reconciling the two decisions above, and closing the "two definitions" contradiction |
 | [a-past-date-position-is-a-real-screen](#a-past-date-position-is-a-real-screen) | `open_balance` / `close_balance` STAY — a screen reads a shop's position at a past date, so the cascade, the genesis seed, the floor and the reseed are all paid for |
-| [the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) | that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
-| [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ⚠ whether it counts toward the position is NOT settled |
+| [superseded-the-position-is-the-shortfall-not-the-wallet](#superseded-the-position-is-the-shortfall-not-the-wallet) | ⛔ **superseded in part** by [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) — was: that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
+| [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ✅ it counts toward the position — [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) |
 | [the-reconcile-check-is-not-built](#the-reconcile-check-is-not-built) | nothing compares the stored carry with the log — drift is found by a person, and the replay repairs 31 days. ⚠ makes *the fold before the enum* load-bearing |
 | [the-user-carry-is-kept](#the-user-carry-is-kept) | the per-user carry stays — both user tables as shipped. A person's hidden cost to date is a figure the report keeps |
 | [only-the-replay-holds-the-lock](#only-the-replay-holds-the-lock) | `process_event_lock` is service state — only the replay sets it, for seconds. A person pauses the fold by switching its subscription to pull |
@@ -78,6 +78,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-fold-locks-shop-then-user](#the-fold-locks-shop-then-user) | every fold takes a transaction-scoped advisory lock on its shop, then its person — two events on one shop fold one after the other |
 | [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) | the replay's seek is carried by the topic's 31-day retention; subscriptions keep no acknowledged messages. ⚠ supersedes one requirement of the-replay-seeks-the-broker |
 | [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused) | a `unique_id` already written on ANOTHER account — another order, or another shop's row in any team — is refused; only a key on the caller's own account is a retry |
+| [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) | a `withdrawal` counts in `Σ change` like every type — the running balance, `last_balance` and the report's carry include it, in a column of its own; `received` does not. ⛔ supersedes in part the shortfall position |
+| [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date) | the report's running figure is **Position to date**, and **Withdrawn** stands beside Received — *hidden cost* no longer names it |
 
 ---
 
@@ -2974,7 +2976,13 @@ query the eager path cannot check itself with.
 
 ---
 
-## the-position-is-the-shortfall-not-the-wallet
+## superseded-the-position-is-the-shortfall-not-the-wallet
+
+> ⛔ **SUPERSEDED IN PART (2026-09-29) by [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position).** The owner
+> counted a withdrawal in the position — *"Count it in the position"* — so the position is no longer the shortfall
+> alone: it is the shortfall **plus** every withdrawal, and the screen calls it *Position to date*
+> ([the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date)). The wallet itself is still not
+> tracked. Kept as the record, per the header.
 
 > Owner, in chat (2026-09-07) — *"we dont care about shop wallet, `shop_settlement_daily_reports` is
 > enough"*, answering [analytic Q1](./analytic_context_clarify.md#question): which of two numbers the
@@ -3486,8 +3494,9 @@ flowchart LR
 
 ### What it does NOT settle
 
+✅ **Decided 2026-09-29 — it counts** ([withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position)). Was:
 ⛔ **Whether it counts toward the position.** Summed into `Σ change`, it reverses
-[the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) — see
+[superseded-the-position-is-the-shortfall-not-the-wallet](#superseded-the-position-is-the-shortfall-not-the-wallet) — see
 [context Q1](./context_clarify.md#question) and its
 [Contradiction](./context_clarify.md#withdrawal-entered-the-log-and-the-position-is-defined-as-not-the-wallet).
 
@@ -3755,3 +3764,76 @@ flowchart TD
   in the right one, instead of *already there* — the case
   [the-row-key-is-the-only-dedupe](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe) leaned on.
 - **Another team can no longer read a row by posting its key.**
+
+## withdrawal-counts-in-the-position
+
+> Chat *(owner, 2026-09-29)* — *"Count it in the position"*, to [context Q1](./context_clarify.md#question): an
+> imported withdrawal — the platform wallet paying our bank — does it count toward a shop's position?
+
+**The verdict.** A `withdrawal` row counts in the position **like every other type**. Its `change` — negative, money
+leaving the wallet — is summed into the row's running `balance`, the shop account's `last_balance`, and the report's
+`change`, `open_balance` and `close_balance`. It gets its own report column, as every type does. It **declines my
+recommendation** to keep it out, and it **supersedes in part**
+[superseded-the-position-is-the-shortfall-not-the-wallet](#superseded-the-position-is-the-shortfall-not-the-wallet):
+the position is no longer the shortfall alone.
+
+```mermaid
+flowchart LR
+  S["initial_total −120 — the sale"] --> P["the position — Σ change over every row"]
+  F["fund +100 — the platform pays the wallet"] --> P
+  W["withdrawal −100 — the wallet pays our bank"] --> P
+  P --> R["−120 — what buyers paid, less everything the platform moved"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the ledger | nothing special-cased — `balance = previous + change` for a withdrawal as for any row ([post_entry.go](../../../backend/services/settlement_service/settlement_v1/post_entry.go)) |
+| the type | `SETTLEMENT_TYPE_WITHDRAWAL` joins the contract with the other four of 2026-09-24 ([Contradiction](./context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)) — shop-addressed ([withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type)) |
+| the report | a `withdrawal` column on both daily tables and on `SettlementMetric`, summed into `change` and the carry like every column |
+| `received` | **not** summed into it — `received` is what the platform moved toward us, and a withdrawal is our own money moving on. So `gap = sales − received` stays the platform's take |
+| what reads differently | `−close_balance` is no longer the hidden cost — it is the gap **plus** everything withdrawn. The screen names it by [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date) |
+
+### What it accepts
+
+- **The position reads as roughly every sale** once withdrawals post — withdrawals are 101% of `fund` across the 26
+  samples. The identity `gap = −Σ change` holds only with the withdrawn added back.
+- Only a successful withdrawal is recorded
+  ([only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)),
+  so what counts is money that reached the bank.
+
+## the-report-headline-is-position-to-date
+
+> Chat *(owner, 2026-09-29)* — *"Rename + Withdrawn column"*, asked after
+> [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position): the report's *Hidden cost to date* would
+> read as roughly every sale from the first imported withdrawal.
+
+**The verdict.** The report's running figure is labelled **Position to date** — what buyers paid, less everything the
+platform moved, withdrawals included — and **Withdrawn** stands as its own figure beside *Received*. The window's
+**Gap** still shows the platform's take. It is my recommendation.
+
+```mermaid
+flowchart LR
+  M["SettlementMetric — one column per type"] --> S["Sales"]
+  M --> R["Received — every movement but the sale and withdrawals"]
+  M --> W["Withdrawn — the window's withdrawals"]
+  S --> G["Gap — sales minus received, the take"]
+  R --> G
+  M --> P["Position to date — minus close_balance"]
+```
+
+### The spec
+
+| figure | is |
+| --- | --- |
+| Sales | `−(initial_total + initial_total_cancel)` — unchanged |
+| Received | every other type but `withdrawal` — `fund`, the fees, the adjustments, the reimbursements, `marketplace_program`, `other`, `system_adjustment` |
+| Withdrawn 🆕 | `−withdrawal` — positive: money that went to the bank in the window |
+| Gap · take rate | `sales − received` — unchanged |
+| Position to date 🔄 | `−close_balance`, relabelled — was *Hidden cost to date*. Its hint: *what buyers paid, less everything the platform moved — withdrawals included* |
+
+⚠ **It amends the label half of [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance)** — the
+unitemised take is still in the balance, but the balance is no longer only that, so the screen stops calling it so.
+[the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) stands: its three figures are
+unchanged, and Withdrawn joins them.

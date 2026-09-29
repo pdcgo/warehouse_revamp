@@ -1380,7 +1380,7 @@ doc** and the recommendation stays on the table.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
-settled** — [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet):
+settled** — [superseded-the-position-is-the-shortfall-not-the-wallet](./context_decision.md#superseded-the-position-is-the-shortfall-not-the-wallet):
 the cumulative shortfall, never the marketplace wallet, which is out of scope entirely. That closed a
 question that was upstream of the carry decision itself, and it **de-escalated the withdrawal gap** —
 settlement is no longer waiting on [context Q1](./context_clarify.md#question) /

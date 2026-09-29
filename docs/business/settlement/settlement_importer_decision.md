@@ -27,6 +27,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [cs-and-up-import-daily](#cs-and-up-import-daily) | the selling team's CS and up import — the settlement write set — and they import daily |
 | [tiktok-affiliate-commission-posts-as-affiliate-fee](#tiktok-affiliate-commission-posts-as-affiliate-fee) | a TikTok order's affiliate commission posts as its own `affiliate_fee` row, beside a `fund` that carries the payout before it |
 | [a-shop-with-no-primary-cs-cannot-import](#a-shop-with-no-primary-cs-cannot-import) | a shop with no primary CS cannot import — the shop check refuses the file with *"choose a primary CS first"* |
+| [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted) | ✅ design_accept passed — the two pages, the dialog, the menu and the five-RPC contract are what the backend builds against |
+| [the-source-is-named-importer](#the-source-is-named-importer) | an imported row's `source_type` is `importer` — renamed from `exporter` before the first import writes one |
 
 ## the-import-is-one-streamed-call
 
@@ -234,7 +236,9 @@ flowchart LR
 
 ### What it does NOT settle
 
-- ⛔ **The TikTok key.** The reader's item IS its key, the reader doc's TikTok struct is Shopee's six columns,
+- ✅ **Accepted 2026-09-29 — the built item is the TikTok contract**
+  ([the-built-tiktok-item-is-the-contract](../../technical/packages/excel_readers/context_decision.md#the-built-tiktok-item-is-the-contract)). Was:
+  ⛔ **The TikTok key.** The reader's item IS its key, the reader doc's TikTok struct is Shopee's six columns,
   and the built one is a deviation still waiting on your word — [critique 14](./settlement_importer_clarify.md#critique).
 
 ## a-server-stream-is-authorized-on-its-request
@@ -371,6 +375,8 @@ flowchart LR
 
 ### What it does NOT settle
 
+- ✅ **Closed by [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted)** — the scope, the
+  names and the cap below ship in the accepted contract. Was:
 - ⛔ **The team scope** — with no `team_id`, only root and admin could call it ([critique 15](./settlement_importer_clarify.md#critique)).
 - ⛔ **The names** — two messages called `Payload` do not compile ([critique 16](./settlement_importer_clarify.md#critique)).
 - ⚠ **A size cap** ([critique 17](./settlement_importer_clarify.md#critique)) · **a dry-run flag** ([importer Q11](./settlement_importer_clarify.md#question)). ✅ The flag is declined for now — [the-import-has-no-dry-run-for-now](#the-import-has-no-dry-run-for-now).
@@ -403,6 +409,8 @@ flowchart LR
 
 ### What it does NOT settle
 
+- ✅ **Closed by [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted)** — the response
+  carries `step`, `count` and `file`. Was:
 - ⚠ **The progress your flow sends.** §Flow sends a count and a step, and this response carries neither —
   [Contradiction](./settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them).
 
@@ -833,3 +841,72 @@ flowchart LR
 ### What it accepts
 
 - **A shop that loses its primary stops importing** until someone picks another — which is what makes the gap visible.
+
+## the-prototype-and-its-contract-are-accepted
+
+> Chat *(owner, 2026-09-29)* — *"i have review the frontend, make it fully implemented"*, after the Storybook
+> prototype — **Pages / Settlement / Imports** and **ImportDetail** — and its contract were put up for design_accept.
+
+**The verdict.** The owner reviewed the prototype and **accepted it**: the `design_accept` gate
+([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)) is passed. The two pages, the
+dialog, the menu and the contract they carry
+([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)) are
+what `backend_analysis` and the build work from — and *"fully implemented"* is the build's bar.
+
+```mermaid
+flowchart LR
+  P["the prototype — two pages, the dialog, the menu"] --> A{"design_accept"}
+  C["the contract — five RPCs"] --> A
+  A -->|"accept, 2026-09-29"| B["backend_analysis"]
+  B --> I["the interceptor, the shop, orders, settlement — then the importer"]
+  I --> T["tests, then the audits, then the state report"]
+```
+
+### The spec — what was accepted
+
+| | |
+| --- | --- |
+| the list | `/settlement/imports` — one row per upload: shop, the statement's own range, who and when, status, the four tallies · shop and status filters, paged · a running row refreshes every 5 s |
+| the dialog | **Import File** — the shop picks the platform, an .xlsx up to 10 MB, then the stream: bar, tallies, log, and what did not post. Closing it keeps the import going |
+| one file's page | `/settlement/imports/:fileId` — the tally, then the held · skipped · posted-to-the-shop rows, and the original to download |
+| the menu | **Settlement Imports**, for a selling team's CS and up |
+| the contract | [settlement_importer.proto](../../../proto/warehouse/settlement_importer/v1/settlement_importer.proto) — `TiktokSettlementImport` and `ShopeeSettlementImport` (server streams) · `UploadedFileList` · `UploadedFileByIds` · `UploadedFileLineList` |
+| where it departs from §Rpc Detail | a scoped `team_id` ([critique 15](./settlement_importer_clarify.md#critique)) · one request and one response name per RPC (critique 16) · a 10 MB cap (critique 17) · `step`, `count` and `file` beside `level` and `message` (the step-and-count Contradiction). **All four close here** |
+| my proposals in it | the 5 s refresh while a file runs · the .xlsx and 10 MB checks before sending · the refusal line names the shop — accepted with the screens |
+
+### What it leaves to the build
+
+- **The stub is the acceptance spec.** Every rule a story plays against
+  [stubTransport.ts](../../../frontend/.storybook/stubTransport.ts) — the shop check before storing, a wrong-shop file
+  refused after storing, an import that finishes after its stream is dropped — the server plays the same.
+- ⚠ Your §Rpc Detail still reads `Payload` and `Response`, with no `team_id` — yours to update when you next edit it.
+  What ships is the contract above.
+
+## the-source-is-named-importer
+
+> Chat *(owner, 2026-09-29)* — *"Rename to importer"*, to the
+> [Contradiction](./settlement_importer_clarify.md#the-service-has-a-third-name-and-the-contract-still-carries-the-first):
+> imported rows are stored with `source_type` `exporter`, the service's old name — rename it before the first import
+> writes one?
+
+**The verdict.** A row the importer posts is `source_type` **`importer`** — the name of the service that writes it.
+`exporter`, left from when the service was `export_service`, leaves the contract and the stored text. It is my
+recommendation, and it lands before the first import, while nothing but tests and a local run has written the old
+value.
+
+```mermaid
+flowchart LR
+  E["exporter — SOURCE_TYPE_EXPORTER"] -->|"renamed 2026-09-29"| I["importer — SOURCE_TYPE_IMPORTER"]
+  I --> R["every row settlement_importer_service posts"]
+  M["manual — a person on the order page"] --> K["unchanged"]
+  O["order — order_service's sale and cancel"] --> K
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the enum | `SOURCE_TYPE_EXPORTER = 1` → `SOURCE_TYPE_IMPORTER = 1` — the number stays, so a stored binary reads the same. The JSON name changes, which is free while nothing sends it |
+| the stored text | `exporter` → `importer` — in the mapper ([mapper.go](../../../backend/services/settlement_service/settlement_v1/mapper.go)), and a settlement migration rewrites any `exporter` row a test or a local run left behind |
+| the sites | the proto, the mapper, settlement's tests, the Storybook fixtures, the frontend's source label |
+| the record | the eight append-only decisions that say `export_service` stay as they are |

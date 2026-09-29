@@ -19,6 +19,7 @@ What the owner decided about [context.md](./context.md), recorded before it was 
 | [logistics-reimbursement-is-its-own-type](#logistics-reimbursement-is-its-own-type) | TikTok `Logistics reimbursement` → `logistic_reimbursement`, an ELEVENTH settlement type |
 | [order-is-fund](#order-is-fund) | TikTok `Order` → `fund`, including the 53 sampled orders that settle ZERO |
 | [flexi-is-a-marketplace-program](#flexi-is-a-marketplace-program) | FLEXI export income is `marketplace_program` — a TENTH settlement type, not yet in the owner's enum |
+| [the-built-tiktok-item-is-the-contract](#the-built-tiktok-item-is-the-contract) | the TikTok items as built ARE the TikTok contract — the doc's Shopee-shaped struct is superseded, and every TikTok key hashes their fields |
 
 ---
 
@@ -549,3 +550,41 @@ cannot go stale silently.
 3,318,704, `gmv_payment` 58,726,725 against 49,480,426, `pay_deduction` 31,900,860 against
 22,711,645. All three are the GMV/ads samples. Unexplained, and worth knowing before either side is
 trusted as authoritative.
+
+---
+
+## the-built-tiktok-item-is-the-contract
+
+> Chat *(owner, 2026-09-29)* — *"Accept the built item"*, to [critique 23](./context_clarify.md#critique): the doc's
+> `### Tiktok Contract` is written with Shopee's columns, none of which a TikTok workbook has, and the reader was built
+> from TikTok's own.
+
+**The verdict.** The TikTok items **as built** are the TikTok contract — `TiktokSettlementItem`, ten columns TikTok's
+`Order details` actually carries, and `TiktokWithdrawalItem` for `Withdrawal records`. Under
+[hash-the-whole-struct](#hash-the-whole-struct) their fields ARE every TikTok row's key, so from the importer's first
+TikTok post they are frozen. The doc's Shopee-shaped `### Tiktok Contract` is superseded by the build — yours to
+rewrite. Asked from the importer, whose key it is
+([the-row-key-is-the-only-dedupe](../../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)).
+
+```mermaid
+flowchart LR
+  O["Order details, 61 to 76 columns"] --> I["TiktokSettlementItem — ten stable columns, hashed"]
+  O --> D["GetDetails — every column by header text, never hashed"]
+  W["Withdrawal records"] --> WI["TiktokWithdrawalItem — hashed"]
+  I --> K["the importer's key — tiktok, the sheet, the hash"]
+  WI --> K
+```
+
+### The spec
+
+| item | its fields — the hash |
+| --- | --- |
+| `TiktokSettlementItem` | `At` (settled) · `CreatedAt` · `TransactionType` · `OrderRefID` · `RelatedOrderRefID` · `Currency` · `Amount` · `Revenue` · `TotalFees` · `Source` |
+| `TiktokWithdrawalItem` | `At` (requested) · `SucceededAt` · `Type` · `ReferenceID` · `Amount` · `Status` |
+| never hashed | every fee column and `Shopping center items` (critique 24) — read through `GetDetails()` |
+| frozen from | the first TikTok import — a field added, dropped or respelled afterwards re-keys every row, and the importer posts it again |
+
+### What it does NOT settle
+
+- **Whether keys survive the 2026-09 layout** — an adjustment's `Type` may follow its respelled Reports label, and no
+  period has been downloaded in both layouts to check: [the reader's questions](./context_clarify.md#question).

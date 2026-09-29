@@ -10,6 +10,7 @@ other services may ask it.**
 
 | | |
 | --- | --- |
+| ✅ answered (2026-09-29, later) | [Q7](#question) — the primary CS is a flag on one of the shop's grants: the first grant becomes it, the owner or admin moves it, removing that grant leaves none — [the-primary-cs-is-a-flag-on-a-grant](./context_decision.md#the-primary-cs-is-a-flag-on-a-grant) · 🔨 `ShopAccessCheck` is being built as [critique 10](#critique) recommends |
 | ✅ answered (2026-09-29) | [Q1](#question) — a write needs a grant for the shop, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout: [a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager) |
 | ✅ your edits | §Responsbility gained *"give access user to shop"* (2026-09-28), then made it *"manage access user to shop"* (2026-09-29) — recorded as [access-is-given-per-user-per-shop](./context_decision.md#access-is-given-per-user-per-shop) and [the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list) |
 | 🆕 +1 (2026-09-29) | [Q6](#question) — *manage* includes seeing who has access, and the list keeps people who left the team |
@@ -67,7 +68,7 @@ flowchart LR
 | **7** | **A shop does not record who it is on the platform.** Only `shop_code` is unique, and only within a team — one Shopee storefront can be registered twice, in one team or two, and its orders and settlements split between the copies. A Shopee statement names its seller, `Username (Penjual)`, and there is nothing to match it to ([what the file check cannot see](../settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). | Record it — [Q5](#question). |
 | **8** | **One list, two questions.** The order form's picker needs the open shops this person may work on; a report's filter needs every shop that ever had a row. `ShopList` has one fixed answer — every open shop. | Filters `status` (open · closed · all), `marketplace` and `user_id`, so each screen asks its own question. |
 | **9** | 🆕 **A managed list has to be true — and this one keeps people who left.** *Manage* includes seeing who has access ([the-shop-manages-its-access-list](./context_decision.md#the-shop-manages-its-access-list)). But nothing ends a grant when its holder leaves the team — `shop_users` is `selling_service`'s, and nothing there hears of a membership change — and `ShopUserAdd` never checks that the user is in the team at all. A shop's access list drifts into people who no longer work there. | A grant is held only by a member of the shop's team, and leaving the team ends it — [Q6](#question). |
-| **10** | 🆕 ⛔ **`ShopAccessCheck` as written cannot be called by the person it is for, and does not compile.** **No `team_id`**: the importer calls it under the uploader's token — a CS — and a team-level role on a request with no `use_scope` field is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong), so only root and admin could call it. **`Payload` · `Response`**: buf's STANDARD lint, used with no exceptions ([buf.yaml](../../../proto/buf.yaml)), wants `ShopAccessCheckRequest` · `ShopAccessCheckResponse`. **`ShopDetail shop`**: there is no `ShopDetail` message — the shop is `Shop`. | `ShopAccessCheckRequest` — `team_id` (`use_scope`, `gt 0`), `shop_id`, `user_id` · `ShopAccessCheckResponse` — `Shop shop`, `primary_user_id`, `bool has_access` · another team's shop answers `NotFound`. See [the contract](#the-contract). |
+| **10** | 🔨 **Being built 2026-09-29 as recommended**, for the importer — `team_id` scoped, the buf names, `Shop shop`, and your field name `is_have_access` kept. ⚠ Your §Rpc still reads `Payload` · `Response` · `ShopDetail` — yours to update. Was: 🆕 ⛔ **`ShopAccessCheck` as written cannot be called by the person it is for, and does not compile.** **No `team_id`**: the importer calls it under the uploader's token — a CS — and a team-level role on a request with no `use_scope` field is checked against the root team ([CLAUDE.md](../../../CLAUDE.md) §Rules that are easy to get wrong), so only root and admin could call it. **`Payload` · `Response`**: buf's STANDARD lint, used with no exceptions ([buf.yaml](../../../proto/buf.yaml)), wants `ShopAccessCheckRequest` · `ShopAccessCheckResponse`. **`ShopDetail shop`**: there is no `ShopDetail` message — the shop is `Shop`. | `ShopAccessCheckRequest` — `team_id` (`use_scope`, `gt 0`), `shop_id`, `user_id` · `ShopAccessCheckResponse` — `Shop shop`, `primary_user_id`, `bool has_access` · another team's shop answers `NotFound`. See [the contract](#the-contract). |
 
 ## Recommendation
 
@@ -251,22 +252,9 @@ erDiagram
    ⚠ The price: the shop has to hear when a membership ends — one event from `user_service`, or a membership
    check when the list is read.
 
-7. **What is the primary CS — must a shop always have one, who may be one, and what reads it?** 🆕 *(2026-09-29)*
-   [a-shop-has-one-primary-cs](./context_decision.md#a-shop-has-one-primary-cs).
-   **→ Recommend: at most one, and always one of the shop's own users** — a flag on that user's grant, so the
-   primary can never be someone without access. The first user granted becomes the primary; the owner or admin
-   can move it to another of the shop's users. Removing the primary's grant — or their leaving the team, Q6 —
-   leaves the shop with none, shown as a warning badge until another is chosen. Any of the shop's users may be
-   primary, not only the CS role: in a small team the owner is often the CS — and takes a grant to be primary,
-   since an owner needs none to write ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)).
-   ⚠ **And say what the importer does with `primary_user_id`.** The likely use is attribution — a row with no
-   order names the shop's primary CS rather than the uploader — and your importer doc's §How We Decide `user_id`
-   is empty right now. If so, it changes
-   [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](../settlement/settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader),
-   and the importer doc is where that gets answered. ✅ **Answered there, 2026-09-29** — a row with no order is counted
-   for the shop's primary CS: [user-id-is-the-orders-creator-else-the-shops-primary-cs](../settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). So this question's
-   *must a shop always have one* matters more now: a shop with none cannot import
-   ([a-shop-with-no-primary-cs-cannot-import](../settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)).
+7. ✅ **Answered 2026-09-29 — the primary CS is a flag on a grant**, as recommended:
+   [the-primary-cs-is-a-flag-on-a-grant](./context_decision.md#the-primary-cs-is-a-flag-on-a-grant). Kept as a line so
+   the numbers hold.
 
 # Contradiction
 

@@ -1,7 +1,9 @@
 # Development state — settlement / settlement_importer
 
-**Pass:** 🔨 **`implementation_analysis`** (2026-09-29) — the Storybook prototype is built and ⛔ **waits on the owner's
-design_accept**. Before it, business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
+**Pass:** 🔨 **`implementation`** (2026-09-29) — ✅ **design_accept passed**
+([the-prototype-and-its-contract-are-accepted](../../business/settlement/settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)),
+and the owner answered settlement Q1, shop Q7, reader #23 and the source rename the same day. The build is under way.
+Before it, the Storybook prototype (`implementation_analysis`), and before that, business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
 server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
 reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) Q6 (only a successful withdrawal is recorded), Q8 (an import finishes whether anyone watches) and Q9 (the row key is the
 only dedupe), then re-decided who a row counts for — the order's creator, else the shop's primary CS — and named

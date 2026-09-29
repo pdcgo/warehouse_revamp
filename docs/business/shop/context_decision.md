@@ -24,9 +24,10 @@ Where a [clarify](./context_clarify.md) question proposes to change one, the tab
 | [an-order-needs-a-live-shop-of-its-team](#an-order-needs-a-live-shop-of-its-team) | an order is placed only on a live shop of its own team, checked before any stock moves | as built | 🔄 gains a grant check — [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
 | [other-services-keep-a-shop-id-unchecked](#other-services-keep-a-shop-id-unchecked) | expense and settlement store a shop id without asking the shop | as built | ⛔ [critique 6](./context_clarify.md#critique) |
 | [the-shop-manages-its-access-list](#the-shop-manages-its-access-list) | managing a shop's access — give it, take it away, see who has it — is the shop's own job | owner | ✅ who needs one: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) · [Q6](./context_clarify.md#question) — who can hold one |
-| [a-shop-has-one-primary-cs](#a-shop-has-one-primary-cs) | a shop has many users and, among them, one primary customer service, shown as a badge | owner | [Q7](./context_clarify.md#question) — its rules, and what reads it |
+| [a-shop-has-one-primary-cs](#a-shop-has-one-primary-cs) | a shop has many users and, among them, one primary customer service, shown as a badge | owner | ✅ its rules: [the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant) |
 | [one-call-answers-the-shop-and-the-access](#one-call-answers-the-shop-and-the-access) | `ShopAccessCheck` — one call gives the importer the shop, its primary CS, and whether a user has access | owner | [critique 10](./context_clarify.md#critique) — its contract · ✅ what access means: [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) |
 | [a-write-needs-a-grant-or-a-manager](#a-write-needs-a-grant-or-a-manager) | writing on a shop — an order, a draft, an import — needs a grant for it, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout | owner | [Q6](./context_clarify.md#question) — a grant outliving its holder is now real access |
+| [the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant) | the primary CS is one of the shop's granted users, flagged — the first grant becomes it, the owner or admin moves it with Make primary, removing that grant leaves none | owner | [Q6](./context_clarify.md#question) — a primary who left the team |
 
 ## access-is-given-per-user-per-shop
 
@@ -463,6 +464,9 @@ flowchart LR
 
 ### What it does NOT settle — [Q7](./context_clarify.md#question)
 
+✅ **Answered 2026-09-29** — [the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant): at most one, one of the
+shop's granted users, the first grant becomes it. What the list below asked is kept as the record.
+
 - Must a shop always have one — and who may be one: only the shop's own users, only the CS role?
 - What happens when the primary is removed from the shop, or leaves the team.
 - What the importer does with it. ✅ **Answered in the importer doc** (2026-09-29): a row with no order is counted for
@@ -504,7 +508,9 @@ sequenceDiagram
 ### What it does NOT settle
 
 - **Who has access** — what `is_have_access` computes is [Q1](./context_clarify.md#question).
-- **What `primary_user_id` is for** — [Q7](./context_clarify.md#question).
+- **What `primary_user_id` is for** — [Q7](./context_clarify.md#question). ✅ Answered —
+  [the-primary-cs-is-a-flag-on-a-grant](#the-primary-cs-is-a-flag-on-a-grant).
+- 🔨 **Built 2026-09-29 as [critique 10](./context_clarify.md#critique) recommends**, keeping your name `is_have_access`. Was:
 - **The contract's shape** — no team to scope it, message names buf refuses, and a `ShopDetail` message that does
   not exist: [critique 10](./context_clarify.md#critique).
 
@@ -554,3 +560,39 @@ flowchart TD
 - ⚠ **An app that pushes drafts** writes too — its login needs a grant, or a manager role.
 - ⚠ **Other writes that name a shop** — a hand-posted settlement row, an expense — were not in the question. They stay
   gated by the team role alone unless you extend this.
+
+## the-primary-cs-is-a-flag-on-a-grant
+
+> Chat *(owner, 2026-09-29)* — *"Flag on a grant, auto"*, to [Q7](./context_clarify.md#question): how does a shop get
+> its primary CS? Without one it cannot import
+> ([a-shop-with-no-primary-cs-cannot-import](../settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)).
+
+**The verdict.** A shop's primary CS is **one of its granted users, flagged** — never someone without a grant. The
+**first user granted** becomes it; the team's **owner or admin** moves it to another of the shop's users with **Make
+primary**; **removing** the primary's grant leaves the shop with **none**, shown as a warning until another is chosen.
+Any granted user may be primary, not only the CS role. It is my recommendation, and it answers
+[a-shop-has-one-primary-cs](#a-shop-has-one-primary-cs)'s open rules.
+
+```mermaid
+stateDiagram-v2
+  [*] --> none: a shop with no grants
+  none --> flagged: ShopUserAdd — the grant that finds no primary
+  flagged --> flagged: ShopUserSetPrimary — another granted user
+  flagged --> none: ShopUserRemove — the primary's own grant
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| stored | `shop_users.is_primary` — boolean, false by default · at most one per shop, by a partial unique index on `shop_id WHERE is_primary` |
+| becomes primary | `ShopUserAdd` flags the new grant when the shop has no primary — ⚠ my reading of *first*: a shop left with none takes its next grant the same way · the owner or admin, with **Make primary** — 🆕 `ShopUserSetPrimary`, whose user must already hold a grant |
+| none | the primary's grant removed (`ShopUserRemove`) — the flag goes with the row, and nothing picks a successor |
+| on the wire | `Shop.primary_user_id` — 0 means none · `ShopAccessCheckResponse.primary_user_id` |
+| the screens | `/shops/:id` — a **Primary CS** badge on that user's row, **Make primary** in every other row's menu, a warning when there is none · `/shops` — a warning badge on a shop with none |
+| existing shops | the migration flags each shop's earliest grant, so a shop already granted has a primary on day one |
+| who may be one | any granted user — not only the CS role |
+
+### What it does NOT settle
+
+- **A primary who leaves the team** keeps the flag — nothing ends a grant then ([Q6](./context_clarify.md#question)).
