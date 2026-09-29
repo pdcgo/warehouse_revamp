@@ -50,6 +50,11 @@ func (s *Service) ShopList(
 		return nil, dbError(err)
 	}
 
+	err = loadPrimaries(s.db.WithContext(ctx), shops)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	items, ids := shopListItems(shops, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&sellingv1.ShopListResponse{

@@ -74,5 +74,12 @@ func (s *Service) ShopUpdate(
 		return nil, dbError(err)
 	}
 
-	return connect.NewResponse(&sellingv1.ShopUpdateResponse{Shop: toProto(&shop)}), nil
+	shops := []selling_service_models.Shop{shop}
+
+	err = loadPrimaries(s.db.WithContext(ctx), shops)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	return connect.NewResponse(&sellingv1.ShopUpdateResponse{Shop: toProto(&shops[0])}), nil
 }

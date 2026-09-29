@@ -259,6 +259,7 @@ erDiagram
         bigserial   id         PK
         bigint      shop_id    FK "-> shops(id), ON DELETE CASCADE"
         bigint      user_id    "opaque user_service id, no FK"
+        boolean     is_primary "the shop's primary CS, at most one per shop, partial unique (00014)"
         timestamptz created_at
     }
 
@@ -285,7 +286,7 @@ erDiagram
         bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
         bigint      total              "subtotal + shipping_cost"
         bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
-        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none (a phone order). NOT unique — uniqueness is still open"
+        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — its rule is checked in code, not built yet"
         text        note                "free text for the people handling the order; nothing reads it, '' = none"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
@@ -371,6 +372,17 @@ erDiagram
   through the shop's team (the request carries the team_id, and the handler verifies the shop
   belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
   the grants when a shop is hard-deleted.
+  - **`is_primary`** (`00014`) — the shop's **primary CS**
+    ([the-primary-cs-is-a-flag-on-a-grant](business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)):
+    a flag on ONE grant, so a primary is never someone without access, and removing the grant removes the
+    flag. `UNIQUE (shop_id) WHERE is_primary` holds it to one; every change to it takes the shop's row
+    `FOR UPDATE` first. The migration flagged each shop's earliest grant. It is read onto
+    `Shop.primary_user_id` and by `ShopAccessCheck` — a shop with none cannot import a statement.
+- **`orders_team_external_ref_idx`** (`00014`) — `(team_id, order_external_ref_id) WHERE
+  order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
+  statement's refs to orders in one query. **Not unique** —
+  [an-order-is-unique-by-shop-and-marketplace-ref](business/order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref)
+  excludes cancelled orders, which a plain unique index cannot say, and is checked in code (not built yet).
 - **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
   read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
   claim that something happened at a moment, and a mutable history is not a history.

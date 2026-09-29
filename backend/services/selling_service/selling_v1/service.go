@@ -13,6 +13,7 @@ import (
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1/sellingv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
@@ -38,6 +39,10 @@ type Service struct {
 	// (settlement #order-service-calls-settlement). An interface this service owns, so selling_service
 	// never imports settlement_service — see settlement_poster.go.
 	settlement SettlementPoster
+	// A user's role in a team — what ShopAccessCheck needs to tell a manager, who writes on any shop,
+	// from everyone else, who needs a grant (a-write-needs-a-grant-or-a-manager). An interface this
+	// service owns, so selling_service never imports user_service — see role_reader.go.
+	roles RoleReader
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -55,6 +60,7 @@ func NewService(
 	catalog ProductCatalog,
 	credit CreditChecker,
 	settlement SettlementPoster,
+	roles RoleReader,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -75,6 +81,12 @@ func NewService(
 		settlement = noSettlement{}
 	}
 
+	// With no role reader nobody is a manager, so only a grant opens a shop — the direction that fails
+	// closed. The composition root wires the real one.
+	if roles == nil {
+		roles = noRoles{}
+	}
+
 	return &Service{
 		db:         db,
 		stock:      stock,
@@ -82,6 +94,7 @@ func NewService(
 		catalog:    catalog,
 		credit:     credit,
 		settlement: settlement,
+		roles:      roles,
 	}
 }
 
@@ -118,6 +131,55 @@ func shopExists(tx *gorm.DB, teamID, shopID uint64) (bool, error) {
 		Error
 
 	return count > 0, err
+}
+
+// lockShop is shopExists taking the shop's row FOR UPDATE — what serialises every change to the shop's
+// primary CS, so two grants landing on a shop with none cannot both become it.
+func lockShop(tx *gorm.DB, teamID, shopID uint64) (bool, error) {
+	var shops []selling_service_models.Shop
+
+	err := tx.
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Select("id").
+		Where("id = ? AND team_id = ? AND deleted = ?", shopID, teamID, false).
+		Find(&shops).
+		Error
+
+	return len(shops) > 0, err
+}
+
+// loadPrimaries fills each shop's PrimaryUserID from its flagged grant — one query for the page.
+func loadPrimaries(tx *gorm.DB, shops []selling_service_models.Shop) error {
+	if len(shops) == 0 {
+		return nil
+	}
+
+	ids := make([]uint64, 0, len(shops))
+	for i := range shops {
+		ids = append(ids, shops[i].ID)
+	}
+
+	var primaries []selling_service_models.ShopUser
+
+	err := tx.
+		Select("shop_id", "user_id").
+		Where("shop_id IN ? AND is_primary", ids).
+		Find(&primaries).
+		Error
+	if err != nil {
+		return err
+	}
+
+	byShop := make(map[uint64]uint64, len(primaries))
+	for _, p := range primaries {
+		byShop[p.ShopID] = p.UserID
+	}
+
+	for i := range shops {
+		shops[i].PrimaryUserID = byShop[shops[i].ID]
+	}
+
+	return nil
 }
 
 func withUpdatedAt(updates map[string]any) map[string]any {

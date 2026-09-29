@@ -428,3 +428,73 @@ check falls out of `placeOrder`'s existing shop lookup.
 **This is where the `OrderPlaced` event fires, and the only place a draft ever reaches a consumer.** Pushing
 and editing publish nothing at all — there is a test asserting exactly that, because "a draft must
 never publish" is the kind of rule that is only ever violated by accident.
+
+## The shop, asked by other services — `ShopAccessCheck`
+
+One call answers the shop, its primary CS and whether a user may **write** on it
+([one-call-answers-the-shop-and-the-access](../../business/shop/context_decision.md#one-call-answers-the-shop-and-the-access)).
+The settlement importer asks it before storing a statement; settlement asks it for an imported shop row's
+primary CS ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)).
+Both call it over Connect, forwarding the caller's own token.
+
+```mermaid
+sequenceDiagram
+    participant C as caller — the importer, or settlement
+    participant S as ShopAccessCheck
+    participant DB as shops, shop_users
+    participant R as user_service's role resolver
+    C->>S: team_id, shop_id, user_id — under the caller's token
+    S->>DB: a live shop of this team?
+    alt none — another team's, or deleted
+        S-->>C: NotFound
+    else found
+        S->>DB: the primary grant, and the user's own grant — one read
+        opt the user holds no grant
+            S->>R: the user's role in the team, and in the root team — cached
+        end
+        S-->>C: the shop, primary_user_id, is_have_access
+    end
+```
+
+| | |
+| --- | --- |
+| `is_have_access` | granted the shop, or the team's owner or admin, or root or admin ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). A grant answers it without asking for a role |
+| `primary_user_id` | the grant flagged `is_primary` — 0 = none |
+| the roles | `RoleReader`, an interface selling owns; the composition root answers it with the access interceptor's resolver, so it is the same cached lookup every request pays for |
+| a deleted shop | `NotFound`, like every shop read — its last statements cannot be imported ([shop Q3](../../business/shop/context_clarify.md#question)) |
+
+## The primary CS — `ShopUserAdd` and `ShopUserSetPrimary`
+
+[the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant):
+a new grant on a shop with no primary becomes it; **Make primary** moves it; removing its grant leaves none.
+
+```mermaid
+sequenceDiagram
+    participant M as owner or admin
+    participant S as ShopService
+    participant DB as shops, shop_users
+    M->>S: ShopUserAdd, or ShopUserSetPrimary
+    S->>DB: the shop's row FOR UPDATE — every change to its primary runs one at a time
+    alt ShopUserAdd
+        S->>DB: insert the grant, nothing if it exists
+        opt it was inserted, and the shop has no primary
+            S->>DB: flag it
+        end
+    else ShopUserSetPrimary
+        S->>DB: the user's grant — FailedPrecondition when there is none
+        S->>DB: clear the old flag, then set the new one — two statements, in that order
+    end
+```
+
+⚠ **Clear, then set.** The partial unique index is checked row by row, so one `UPDATE` flipping both flags
+could meet the new one before the old one is gone. And **the shop's row is locked first**: without it, two
+grants landing on a shop with none would both find no primary and both be flagged.
+
+## A statement's refs, resolved — `OrderByExternalRefs`
+
+The settlement importer turns every marketplace ref in a statement into our order in **one call per file**:
+`(team_id, refs[])` → every order of the team carrying each ref — its shop, its creator and its status,
+cancelled orders and other shops' included. A ref nothing carries is absent. The importer decides which
+counts: the order in its own shop — live first — and a ref found only in another shop fails the file
+([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)).
+It reads `orders_team_external_ref_idx` (`00014`); up to 2,000 refs a call.

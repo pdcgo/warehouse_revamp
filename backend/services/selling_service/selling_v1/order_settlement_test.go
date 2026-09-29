@@ -40,7 +40,7 @@ func (f *fakeSettlement) CancelSale(_ context.Context, cancel selling_v1.SaleCan
 func newServiceWithSettlement(t *testing.T, db *gorm.DB, settlement selling_v1.SettlementPoster) *selling_v1.Service {
 	t.Helper()
 
-	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, settlement)
+	return selling_v1.NewService(db, &fakePicker{}, nil, &fakeCatalog{}, &fakeCredit{}, settlement, nil)
 }
 
 func sellerCtx(id uint64) context.Context {

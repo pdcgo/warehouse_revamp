@@ -17,8 +17,13 @@ type Shop struct {
 
 	Description string
 	Deleted     bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+
+	// The shop's primary CS, read from shop_users — never a column of shops, because the flag lives on
+	// the grant (the-primary-cs-is-a-flag-on-a-grant). Filled by selling_v1's loadPrimaries; 0 = none.
+	PrimaryUserID uint64 `gorm:"-"`
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (Shop) TableName() string {

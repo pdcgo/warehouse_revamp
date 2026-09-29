@@ -15,5 +15,7 @@ func toProto(s *selling_service_models.Shop) *sellingv1.Shop {
 		Marketplace: san_marketplace.FromText(s.Marketplace),
 		Description: s.Description,
 		Deleted:     s.Deleted,
+
+		PrimaryUserId: s.PrimaryUserID,
 	}
 }

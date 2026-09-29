@@ -51,6 +51,12 @@ const (
 	// ShopServiceShopUserRemoveProcedure is the fully-qualified name of the ShopService's
 	// ShopUserRemove RPC.
 	ShopServiceShopUserRemoveProcedure = "/warehouse.selling.v1.ShopService/ShopUserRemove"
+	// ShopServiceShopUserSetPrimaryProcedure is the fully-qualified name of the ShopService's
+	// ShopUserSetPrimary RPC.
+	ShopServiceShopUserSetPrimaryProcedure = "/warehouse.selling.v1.ShopService/ShopUserSetPrimary"
+	// ShopServiceShopAccessCheckProcedure is the fully-qualified name of the ShopService's
+	// ShopAccessCheck RPC.
+	ShopServiceShopAccessCheckProcedure = "/warehouse.selling.v1.ShopService/ShopAccessCheck"
 )
 
 // ShopServiceClient is a client for the warehouse.selling.v1.ShopService service.
@@ -64,6 +70,13 @@ type ShopServiceClient interface {
 	ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error)
 	ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error)
 	ShopUserRemove(context.Context, *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error)
+	// Make primary — moves the shop's primary CS to another of its granted users
+	// (the-primary-cs-is-a-flag-on-a-grant).
+	ShopUserSetPrimary(context.Context, *connect.Request[v1.ShopUserSetPrimaryRequest]) (*connect.Response[v1.ShopUserSetPrimaryResponse], error)
+	// For other services — the shop, its primary CS, and whether a user may WRITE on it, in one answer
+	// (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
+	// settlement asks it for an imported shop row's primary CS.
+	ShopAccessCheck(context.Context, *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error)
 }
 
 // NewShopServiceClient constructs a client for the warehouse.selling.v1.ShopService service. By
@@ -125,19 +138,33 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(shopServiceMethods.ByName("ShopUserRemove")),
 			connect.WithClientOptions(opts...),
 		),
+		shopUserSetPrimary: connect.NewClient[v1.ShopUserSetPrimaryRequest, v1.ShopUserSetPrimaryResponse](
+			httpClient,
+			baseURL+ShopServiceShopUserSetPrimaryProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopUserSetPrimary")),
+			connect.WithClientOptions(opts...),
+		),
+		shopAccessCheck: connect.NewClient[v1.ShopAccessCheckRequest, v1.ShopAccessCheckResponse](
+			httpClient,
+			baseURL+ShopServiceShopAccessCheckProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // shopServiceClient implements ShopServiceClient.
 type shopServiceClient struct {
-	shopCreate     *connect.Client[v1.ShopCreateRequest, v1.ShopCreateResponse]
-	shopList       *connect.Client[v1.ShopListRequest, v1.ShopListResponse]
-	shopDetail     *connect.Client[v1.ShopDetailRequest, v1.ShopDetailResponse]
-	shopUpdate     *connect.Client[v1.ShopUpdateRequest, v1.ShopUpdateResponse]
-	shopDelete     *connect.Client[v1.ShopDeleteRequest, v1.ShopDeleteResponse]
-	shopUserList   *connect.Client[v1.ShopUserListRequest, v1.ShopUserListResponse]
-	shopUserAdd    *connect.Client[v1.ShopUserAddRequest, v1.ShopUserAddResponse]
-	shopUserRemove *connect.Client[v1.ShopUserRemoveRequest, v1.ShopUserRemoveResponse]
+	shopCreate         *connect.Client[v1.ShopCreateRequest, v1.ShopCreateResponse]
+	shopList           *connect.Client[v1.ShopListRequest, v1.ShopListResponse]
+	shopDetail         *connect.Client[v1.ShopDetailRequest, v1.ShopDetailResponse]
+	shopUpdate         *connect.Client[v1.ShopUpdateRequest, v1.ShopUpdateResponse]
+	shopDelete         *connect.Client[v1.ShopDeleteRequest, v1.ShopDeleteResponse]
+	shopUserList       *connect.Client[v1.ShopUserListRequest, v1.ShopUserListResponse]
+	shopUserAdd        *connect.Client[v1.ShopUserAddRequest, v1.ShopUserAddResponse]
+	shopUserRemove     *connect.Client[v1.ShopUserRemoveRequest, v1.ShopUserRemoveResponse]
+	shopUserSetPrimary *connect.Client[v1.ShopUserSetPrimaryRequest, v1.ShopUserSetPrimaryResponse]
+	shopAccessCheck    *connect.Client[v1.ShopAccessCheckRequest, v1.ShopAccessCheckResponse]
 }
 
 // ShopCreate calls warehouse.selling.v1.ShopService.ShopCreate.
@@ -180,6 +207,16 @@ func (c *shopServiceClient) ShopUserRemove(ctx context.Context, req *connect.Req
 	return c.shopUserRemove.CallUnary(ctx, req)
 }
 
+// ShopUserSetPrimary calls warehouse.selling.v1.ShopService.ShopUserSetPrimary.
+func (c *shopServiceClient) ShopUserSetPrimary(ctx context.Context, req *connect.Request[v1.ShopUserSetPrimaryRequest]) (*connect.Response[v1.ShopUserSetPrimaryResponse], error) {
+	return c.shopUserSetPrimary.CallUnary(ctx, req)
+}
+
+// ShopAccessCheck calls warehouse.selling.v1.ShopService.ShopAccessCheck.
+func (c *shopServiceClient) ShopAccessCheck(ctx context.Context, req *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error) {
+	return c.shopAccessCheck.CallUnary(ctx, req)
+}
+
 // ShopServiceHandler is an implementation of the warehouse.selling.v1.ShopService service.
 type ShopServiceHandler interface {
 	ShopCreate(context.Context, *connect.Request[v1.ShopCreateRequest]) (*connect.Response[v1.ShopCreateResponse], error)
@@ -191,6 +228,13 @@ type ShopServiceHandler interface {
 	ShopUserList(context.Context, *connect.Request[v1.ShopUserListRequest]) (*connect.Response[v1.ShopUserListResponse], error)
 	ShopUserAdd(context.Context, *connect.Request[v1.ShopUserAddRequest]) (*connect.Response[v1.ShopUserAddResponse], error)
 	ShopUserRemove(context.Context, *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error)
+	// Make primary — moves the shop's primary CS to another of its granted users
+	// (the-primary-cs-is-a-flag-on-a-grant).
+	ShopUserSetPrimary(context.Context, *connect.Request[v1.ShopUserSetPrimaryRequest]) (*connect.Response[v1.ShopUserSetPrimaryResponse], error)
+	// For other services — the shop, its primary CS, and whether a user may WRITE on it, in one answer
+	// (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
+	// settlement asks it for an imported shop row's primary CS.
+	ShopAccessCheck(context.Context, *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error)
 }
 
 // NewShopServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -248,6 +292,18 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(shopServiceMethods.ByName("ShopUserRemove")),
 		connect.WithHandlerOptions(opts...),
 	)
+	shopServiceShopUserSetPrimaryHandler := connect.NewUnaryHandler(
+		ShopServiceShopUserSetPrimaryProcedure,
+		svc.ShopUserSetPrimary,
+		connect.WithSchema(shopServiceMethods.ByName("ShopUserSetPrimary")),
+		connect.WithHandlerOptions(opts...),
+	)
+	shopServiceShopAccessCheckHandler := connect.NewUnaryHandler(
+		ShopServiceShopAccessCheckProcedure,
+		svc.ShopAccessCheck,
+		connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.ShopService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ShopServiceShopCreateProcedure:
@@ -266,6 +322,10 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 			shopServiceShopUserAddHandler.ServeHTTP(w, r)
 		case ShopServiceShopUserRemoveProcedure:
 			shopServiceShopUserRemoveHandler.ServeHTTP(w, r)
+		case ShopServiceShopUserSetPrimaryProcedure:
+			shopServiceShopUserSetPrimaryHandler.ServeHTTP(w, r)
+		case ShopServiceShopAccessCheckProcedure:
+			shopServiceShopAccessCheckHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -305,4 +365,12 @@ func (UnimplementedShopServiceHandler) ShopUserAdd(context.Context, *connect.Req
 
 func (UnimplementedShopServiceHandler) ShopUserRemove(context.Context, *connect.Request[v1.ShopUserRemoveRequest]) (*connect.Response[v1.ShopUserRemoveResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopUserRemove is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopUserSetPrimary(context.Context, *connect.Request[v1.ShopUserSetPrimaryRequest]) (*connect.Response[v1.ShopUserSetPrimaryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopUserSetPrimary is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopAccessCheck(context.Context, *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopAccessCheck is not implemented"))
 }

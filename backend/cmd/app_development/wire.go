@@ -45,6 +45,8 @@ func InitializeApp() (*App, error) {
 		shipment_v1.NewService,
 		product_v1.NewService,
 		selling_v1.NewService,
+		// Whether a user runs a team, for ShopAccessCheck — see role_reader.go.
+		NewRoleReader,
 		// Joins selling to inventory (#149/#70) — see stock_picker.go.
 		NewStockPicker,
 		NewProductCatalog,

@@ -6,9 +6,14 @@ import "time"
 // an OPAQUE user_service id (no FK across the service boundary). Schema owned by goose; GORM only
 // reads/writes rows.
 type ShopUser struct {
-	ID        uint64 `gorm:"primaryKey"`
-	ShopID    uint64
-	UserID    uint64
+	ID     uint64 `gorm:"primaryKey"`
+	ShopID uint64
+	UserID uint64
+
+	// The shop's primary CS — at most one grant per shop carries it, by a partial unique index
+	// (the-primary-cs-is-a-flag-on-a-grant). Removing the grant removes the flag with it.
+	IsPrimary bool
+
 	CreatedAt time.Time
 }
 
