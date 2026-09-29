@@ -1,7 +1,10 @@
 # Development state — settlement
 
 **Pass:** `implementation` + `technical_test`, **COMPLETE** (2026-09-14). Backend `dabc331`; the report
-screen and docs in the commit after it.
+screen and docs in the commit after it. 🔨 **Widened 2026-09-29 for the settlement importer** (9f20652): the five types,
+source `importer`, an imported shop row counted for the shop's primary CS, and the report's *Position to date* — see
+[below](#what-the-importer-changed-2026-09-29) and the importer's own
+[state report](./settlement_importer.md).
 
 **Settlement is BUILT END TO END.** The ledger, the order seam, the event, the fold, the reports, the
 maintenance RPCs, the report screen.
@@ -9,9 +12,9 @@ maintenance RPCs, the report screen.
 | | |
 | --- | --- |
 | proto | `settlement.proto` — **4 services, 8 RPCs** · `event.proto` — `SettlementLogPosted` (variant 300, topic `settlement-log-posted`) |
-| schema | settlement `00001–00005`: `settlement_logs`, `order_settlements` (+`created_by_user_id`), `shop_settlements`, `settlement_event_logs`, `shop_/user_settlement_daily_reports`, `shop_/user_settlement_reports`, `settlement_service_metadata` · selling `00013`: `orders.created_by_user_id` |
+| schema | settlement `00001–00006` (00006: the five report columns, `settlement_logs.user_id`, `exporter` → `importer`): `settlement_logs`, `order_settlements` (+`created_by_user_id`), `shop_settlements`, `settlement_event_logs`, `shop_/user_settlement_daily_reports`, `shop_/user_settlement_reports`, `settlement_service_metadata` · selling `00013`: `orders.created_by_user_id` |
 | service | `backend/services/settlement_service/` — mounted, plus the push route `/event/settlement-fold/push` |
-| wiring | `cmd/app_development/settlement_poster.go` (selling → settlement) · `replay_broker.go` (the replay's subscription) |
+| wiring | `cmd/app_development/settlement_poster.go` (selling → settlement) · `replay_broker.go` (the replay's subscription) · `shop_primary.go` (settlement → the shop's `ShopAccessCheck`, a Connect client forwarding the caller's token) |
 | provisioning | `san pubsub ensure` declares `settlement-fold` on `settlement-log-posted` |
 | frontend | `/settlement` (list, now with a Report button), the order page's Settlement tab, **`/settlement/report`** (`pages/settlement-report/`), nav entry, `features/settlement/{analytics,measure}.ts` |
 | docs | [rpc.md](../../services/settlement_service/rpc.md) · [database-schema.md](../../database-schema.md#settlement_service) · [san.md](../../tools/san.md#pubsub-ensure) |
@@ -52,6 +55,16 @@ flowchart LR
 | [the-measure-is-sales-received-and-gap](../../business/settlement/context_decision.md#the-measure-is-sales-received-and-gap) · [posted-on-buckets-the-report](../../business/settlement/context_decision.md#posted-on-buckets-the-report) | the RPCs return the eight movements + position; `features/settlement/measure.ts` derives sales / received / gap / take rate |
 | [a-key-held-by-another-account-is-refused](../../business/settlement/context_decision.md#a-key-held-by-another-account-is-refused) | `post_entry.go` — the key check compares the shop as well as the order; `errUniqueIDTaken` says *another account* |
 
+## What the importer changed (2026-09-29)
+
+| decision | where it lives |
+| --- | --- |
+| the five types of 2026-09-24 ([the Contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight), built) | `SettlementType` 9–13, `mapper.go`, `trackedColumns` + 00006's columns, `SettlementMetric` 12–16, `AnalyticMetricSort` 12–16 — widened together, never the enum before the fold. A withdrawal naming an order is refused (`errWithdrawalIsShopWide`) |
+| [withdrawal-counts-in-the-position](../../business/settlement/context_decision.md#withdrawal-counts-in-the-position) | nothing special-cased — a withdrawal's `change` sums into `balance`, `last_balance` and the carry like every type |
+| [the-report-headline-is-position-to-date](../../business/settlement/context_decision.md#the-report-headline-is-position-to-date) | `features/settlement/measure.ts` — `received` leaves withdrawals out, `withdrawn`, `positionToDate`; `ReportSummary`, `SeriesTable` |
+| [the-source-is-named-importer](../../business/settlement/settlement_importer_decision.md#the-source-is-named-importer) | `SOURCE_TYPE_IMPORTER = 1` (the number kept), text `importer`, 00006 rewrote stored `exporter` |
+| [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) | `shop_primary.go` — `ShopPrimary`, asked in `postEntry` BEFORE the transaction for source `importer` + no order. A failed ask or no primary is HELD until the idempotency check: a stored row is answered, and a new one refused (760b8e2) · `settlement_logs.user_id` · `SettlementLogPosted.user_id` · the fold counts a shop row for it when set |
+
 ## Choices the decisions left open — built as recommended, asked for a yes
 
 | | |
@@ -65,8 +78,6 @@ flowchart LR
 
 | | why |
 | --- | --- |
-| `export_service` | deferred by decision — `source_type = exporter` is honoured and nothing writes it |
-| counting an imported shop row for the shop's primary CS | decided — [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). Settlement's first call into another service: a `ShopService` client, `settlement_logs.user_id`, the event's field, the fold's line. Ask before the transaction, never under the account lock |
 | the reconcile RPC | ✅ **declined** — [the-reconcile-check-is-not-built](../../business/settlement/context_decision.md#the-reconcile-check-is-not-built) (2026-09-28). Nothing checks the stored carry against the log, so widen the fold before `SettlementPost` accepts a new type |
 | what [only-the-replay-holds-the-lock](../../business/settlement/context_decision.md#only-the-replay-holds-the-lock) leaves in the code | the replay's error still names *a developer's maintenance* ([analytic_replay_compute.go:45](../../../backend/services/settlement_service/settlement_v1/analytic_replay_compute.go#L45)) and the table's migration comment says *human-set*. No `san` command pauses the fold by switching its subscription to pull. The lease for a lock the replay died holding is [meta Q2](../../business/settlement/meta_context_clarify.md#question) — open |
 | what [periods-are-grouped-on-the-server](../../business/settlement/context_decision.md#periods-are-grouped-on-the-server) leaves in OTHER services | `ExpenseDaily` and `LiabilityDaily` still return days, and the daily statement groups them in the browser ([period.ts:85](../../../frontend/src/lib/period.ts#L85), [queries.ts:170](../../../frontend/src/pages/daily-statement/queries.ts#L170)). Both RPCs take a grain with settlement's span unlock, the page draws buckets as they come, and the header comment stating the old rule goes |
@@ -84,10 +95,11 @@ flowchart LR
 | **GORM does not scan into an embedded struct of UNEXPORTED type** | every figure came back 0 with no error. Scan targets embed `settlement_service_models.SettlementMetricColumns` |
 | **`gofmt -w` on a directory rewrote ~50 untouched CRLF files** | restore them with `git checkout --`; format only the files you wrote |
 | **`git commit -- <paths>` rejects untracked files** | `git add` exactly those paths first — the owner keeps staged renames of their own docs in the index |
+| **no Pub/Sub emulator → every post waits 60 s** | `event_source` waits up to `publishTimeout` for the broker's ack; with the emulator down a `SettlementPost` returns after a minute, so an import crawls. Run `docker compose --profile pubsub up -d` + `san pubsub ensure`. CI starts one since f1854cd, unverified until the next PR runs it |
 | **a `time.Time` bound against a `DATE` column** | compares as timestamptz, so the boundary moves with the session zone. Every day in the fold and reports is bound as a string and `CAST(… AS date)` |
 
 ## Open questions
 
-[context_clarify](../../business/settlement/context_clarify.md#question) — 5 (withdrawal home, `problem
-funding`, Q3–Q5 above) · [analytic_context_clarify](../../business/settlement/analytic_context_clarify.md#question)
+[context_clarify](../../business/settlement/context_clarify.md#question) — 4 (`problem funding`, Q3–Q5 above;
+Q1, the withdrawal, answered 2026-09-29) · [analytic_context_clarify](../../business/settlement/analytic_context_clarify.md#question)
 — 0, Q1–Q7 answered 2026-09-28 · [meta_context_clarify](../../business/settlement/meta_context_clarify.md#question) — 1.

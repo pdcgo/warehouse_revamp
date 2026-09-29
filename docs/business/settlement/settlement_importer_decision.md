@@ -277,7 +277,7 @@ sequenceDiagram
 | the scope in `ctx` | not available: `next` is called before `Receive` decodes the request, so a stream handler reads `team_id` off its own request |
 | the proof | one test — a non-member calling a mounted server stream is refused before the handler runs, and a member streams |
 | in the same commit | `CLAUDE.md` §Rules that are easy to get wrong, [docs/faq/contract.md:82](../../faq/contract.md#L82) and [docs/faq/workflow.md:204](../../faq/workflow.md#L204) — *server streams are authorized on their request, client and bidi streams are refused* — and the comment at [tools/san/remote/auth.go:34](../../../tools/san/remote/auth.go#L34) |
-| ⛔ state | **not built** — the interceptor still refuses, so both imports answer `Unimplemented` until this lands |
+| ✅ state | **built 2026-09-29** (19c9a95) — a server stream's token is checked from its headers before the handler runs, and its one request through `Receive`, before the handler body; client and bidi streams stay refused. Was: not built |
 
 ## an-upload-is-never-reverted
 
@@ -557,7 +557,7 @@ flowchart LR
 | TikTok | recorded only when `Status` is `Transferred` — every sample is. Any other status is skipped |
 | a skipped row | outcome `skipped`, reason `failed_withdrawal`, a `WARN` on the stream — so the file's page lists them |
 | a status never seen | skipped too — a withdrawal still processing, say. Re-imported once it completes, it posts then: skipping writes nothing |
-| ⛔ the build | the Shopee reader reads no `Status` column. It has to come from the DOCUMENT, beside the item and outside the hash ([hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct)), so no key moves — [Contradiction](./settlement_importer_clarify.md#the-reader-leaves-the-status-out-and-the-importer-now-needs-it) |
+| ✅ the build | **built 2026-09-29** (5039c93) — `ShopeeSettlementDocument.GetDetails()` carries each row's `Status` and `Jenis Transaksi`, outside the hash, and the importer posts a `Penarikan Dana` only when it completed and money left. Was: the Shopee reader reads no `Status` column. It has to come from the DOCUMENT, beside the item and outside the hash ([hash-the-whole-struct](../../technical/packages/excel_readers/context_decision.md#hash-the-whole-struct)), so no key moves — [Contradiction](./settlement_importer_clarify.md#the-reader-leaves-the-status-out-and-the-importer-now-needs-it) |
 
 ### What it accepts
 
@@ -743,6 +743,7 @@ sequenceDiagram
 
 ### What it costs
 
+- ✅ **Built 2026-09-29** (9f20652) — `ShopPrimary`, an interface settlement owns, answered at the composition root by a Connect client to `ShopAccessCheck`. Was:
 - ⛔ **Settlement's first call into another service.** Today it depends on its database, its event sender and the
   replay broker, nothing else ([service.go:50](../../../backend/services/settlement_service/settlement_v1/service.go#L50)). A `ShopService` client joins its Wire set, and
   [rpc.md](../../services/settlement_service/rpc.md) gains the flow in the commit that builds it (HARD RULE 3).

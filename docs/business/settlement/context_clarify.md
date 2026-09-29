@@ -1476,8 +1476,8 @@ flowchart LR
 
 ## the type list grew to thirteen and the contract still takes eight
 
-🔨 **Being built 2026-09-29, together** — the enum, the mapper, the fold's columns and `SettlementMetric`, for the
-importer. ⚠ `analytic_context.md` §Field that tracked is yours, and still lists eight.
+✅ **Built 2026-09-29, together** (9f20652) — the enum, the mapper, the fold's columns (00006) and `SettlementMetric`, for
+the importer. ⚠ `analytic_context.md` §Field that tracked is yours, and still lists eight.
 
 > `context.md` §what is `settlement_type` *(2026-09-24)* — thirteen values: the eight before, plus
 > `shipment_adjustment`, `withdrawal`, `logistic_reimbursement`, `platform_reimbursement`,

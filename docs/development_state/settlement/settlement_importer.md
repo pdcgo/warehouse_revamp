@@ -1,145 +1,140 @@
 # Development state — settlement / settlement_importer
 
-**Pass:** 🔨 **`implementation`** (2026-09-29) — ✅ **design_accept passed**
+**Pass:** ✅ **implemented** (2026-09-29) — design_accept passed
 ([the-prototype-and-its-contract-are-accepted](../../business/settlement/settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)),
-and the owner answered settlement Q1, shop Q7, reader #23 and the source rename the same day. The build is under way.
-Before it, the Storybook prototype (`implementation_analysis`), and before that, business analysis — **clarify re-examined** (2026-09-28) after the owner made both imports
-server streams, drew a `## Flow`, decided who an imported row names and named the Excel Reader as its
-reader, then answered Q7 (yes), Q4 (no revert) and Q2 (post to the shop), then detailed both RPCs drew a shop check before the upload, answered Q3 (a file with another shop's orders is refused) Q11 (no dry run, for now) Q6 (only a successful withdrawal is recorded), Q8 (an import finishes whether anyone watches) and Q9 (the row key is the
-only dedupe), then re-decided who a row counts for — the order's creator, else the shop's primary CS — and named
-`ShopAccessCheck` as the shop check, then answered Q13 (settlement asks the shop for the primary CS), then Q1 (CS and up, daily), Q5 (the affiliate
-commission as its own row) and Q14 (a shop with no primary CS cannot import) — ✅ no question left here; first pass
-2026-09-26. Nothing of the backend is built — the gate blocks it. Source: [settlement_importer.md](../../business/settlement/settlement_importer.md) (owner: three RPCs
-and a flow) · questions: [settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md)
-· decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md).
+the owner answered what it waited on outside its doc the same day (settlement Q1, shop Q7, reader #23, the source
+rename), and the whole of it is built, tested end to end and audited. Before it: the Storybook prototype
+(`implementation_analysis`), and business analysis from 2026-09-26. Source:
+[settlement_importer.md](../../business/settlement/settlement_importer.md) (owner) · questions:
+[settlement_importer_clarify.md](../../business/settlement/settlement_importer_clarify.md) — none open ·
+decided: [settlement_importer_decision.md](../../business/settlement/settlement_importer_decision.md) ·
+flows: [rpc.md](../../services/settlement_importer_service/rpc.md).
 
-## The prototype — `implementation_analysis` (2026-09-29)
+## What exists — built 2026-09-29, in commit order
 
-⛔ **It waits on the owner's design_accept** ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)):
-`cd frontend && npm run storybook` → **Pages / Settlement / Imports** · **Pages / Settlement / ImportDetail**. The
-contract is accepted with the screens ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)),
-so a contract change after the gate is a new pass.
+| | commit | |
+| --- | --- | --- |
+| the decisions | 816a758 | design_accept, [withdrawal-counts-in-the-position](../../business/settlement/context_decision.md#withdrawal-counts-in-the-position), [the-report-headline-is-position-to-date](../../business/settlement/context_decision.md#the-report-headline-is-position-to-date), [the-primary-cs-is-a-flag-on-a-grant](../../business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant), [the-built-tiktok-item-is-the-contract](../../technical/packages/excel_readers/context_decision.md#the-built-tiktok-item-is-the-contract), [the-source-is-named-importer](../../business/settlement/settlement_importer_decision.md#the-source-is-named-importer) |
+| server streams authorized | 19c9a95 | the access interceptor checks a server stream's token from its headers before the handler, and its one request in `Receive` before the handler body; client and bidi streams stay refused. `CLAUDE.md`, both FAQ answers, `san.md` rewritten with it |
+| the shop | f6dab3b | `ShopAccessCheck` (team-scoped, `is_have_access` = a grant or a manager role, via `RoleReader`) · `shop_users.is_primary` (00014, one per shop, backfilled from each shop's earliest grant) · `ShopUserSetPrimary` · `Shop.primary_user_id` · the first grant becomes primary |
+| orders | f6dab3b | `OrderByExternalRefs` — up to 2,000 refs a call, every match answered, on `orders_team_external_ref_idx` |
+| settlement | 9f20652 | the five types of 2026-09-24 in the enum, mapper, fold columns (00006) and `SettlementMetric` · `SOURCE_TYPE_IMPORTER` (00006 rewrote `exporter`) · an imported shop row asks the shop for its primary CS BEFORE the transaction (`ShopPrimary`) and writes `settlement_logs.user_id`, carried on the event and read by the fold · the report's *Position to date* and *Withdrawn* |
+| the reader | 5039c93 | `ShopeeSettlementDocument.GetDetails()` — each row's `Status` and `Jenis Transaksi`, outside the hash |
+| documents | 5204843 | `DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT`, private |
+| **the service** | f163139 | [backend/services/settlement_importer_service/](../../../backend/services/settlement_importer_service/) — `uploaded_files`, `uploaded_file_lines` (00001) · the two streamed imports and the three reads · mounted, with its four dependencies as Connect clients forwarding the uploader's token ([settlement_importer_deps.go](../../../backend/cmd/app_development/settlement_importer_deps.go)) · the dev server lets running imports finish before it stops |
+| the screens | b8265c7 + c9c1861 | the list and the Import File dialog (`/settlement/imports`), one file's page (`/settlement/imports/:fileId`) — built in the prototype against the real client, so they needed nothing new · the shop's Primary CS badge, Make primary and the *No primary CS* warnings |
+| the dev database | — | migrated 2026-09-29: selling 00014, settlement 00006, document 00006, settlement_importer 00001 |
+
+```sh
+go test ./backend/services/settlement_importer_service/... ./backend/services/selling_service/... ./backend/services/settlement_service/... ./backend/services/user_service/access_interceptors/ ./backend/pkgs/san_excel_readers/ ./backend/pkgs/san_auth/
+cd frontend && npx playwright test e2e/settlement_imports.spec.ts e2e/shops.spec.ts   # needs the Pub/Sub emulator — see the traps
+cd frontend && npx vitest run --project=storybook src/pages/settlement-imports src/pages/settlement-import-detail src/pages/settlement-report
+```
+
+## How one import runs
+
+```mermaid
+flowchart LR
+  R["the request — team, shop, the file"] --> C{"ShopAccessCheck"}
+  C -->|"not the team's, no access, another platform, no primary"| X["one ERROR line — nothing stored"]
+  C --> D["stored as sha256.xlsx"]
+  D --> U["uploaded_files — running"]
+  U --> T["DETACHED — read, one lookup, the file check"]
+  T -->|"another shop's orders, or not a statement"| F["FAILED — nothing posted"]
+  T --> L["every line — skipped, held, or SettlementPost"]
+  L --> Z["done — the four tallies"]
+```
+
+Each line becomes POSTED (to its order, or to the shop when its ref finds none), EXISTING, HELD (unmapped type, a
+fraction, a refusal from settlement) or SKIPPED (a failed withdrawal and its refund; TikTok's Earnings and GMV Pay
+Deduction). The details are in [rpc.md](../../services/settlement_importer_service/rpc.md).
+
+## What is decided — and where it lives
+
+| decision | in the code |
+| --- | --- |
+| [the-import-is-one-streamed-call](../../business/settlement/settlement_importer_decision.md#the-import-is-one-streamed-call) · [every-stream-message-is-a-leveled-log-line](../../business/settlement/settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) | `import_run.go` · `stream_log.go` — the guideline's slog binding as a `slog.Handler`, so `level` is a field; `step` · `count` · `file` are attributes |
+| [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) | `access_interceptors/interceptor.go` — `authenticate` (headers) and `gate.authorize` (the body), shared with unary calls |
+| [the-shop-is-checked-before-the-file-is-stored](../../business/settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored) · [a-shop-with-no-primary-cs-cannot-import](../../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import) | `checkShop` — four refusals, one ERROR line each |
+| [the-file-is-named-by-its-content-hash](../../business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash) · [the-row-key-is-the-only-dedupe](../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe) | `<sha256>.xlsx`, nothing unique on the file · keys `<platform>:<sheet>:<GenerateUniqueID>` |
+| [a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused) | `foreignShop` — a ref found ONLY in other shops; the shop holding the most such refs is named |
+| [an-unmatched-ref-posts-to-the-shop](../../business/settlement/settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop) · [user-id-is-the-orders-creator-else-the-shops-primary-cs](../../business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) · [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) | `postLine` passes the order's creator when found; settlement's `importedShopRowUser` asks for the primary |
+| [a-tiktok-row-finds-its-order-by-related-order-id](../../business/settlement/settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id) · [tiktok-affiliate-commission-posts-as-affiliate-fee](../../business/settlement/settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee) | `readTiktok` — `RelatedOrderRefID`; the `Affiliate…` columns as their own row, a held fund holds its commission |
+| [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) | `readShopee` — completed AND outgoing; `readTiktok` — `Transferred` |
+| [an-import-finishes-whether-anyone-watches](../../business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches) · [an-upload-is-never-reverted](../../business/settlement/settlement_importer_decision.md#an-upload-is-never-reverted) · [the-import-has-no-dry-run-for-now](../../business/settlement/settlement_importer_decision.md#the-import-has-no-dry-run-for-now) | `context.WithoutCancel` + `streamSink.detach` · INTERRUPTED derived from a stale `updated_at` · no revert, no dry run, no Cancel anywhere |
+| [cs-and-up-import-daily](../../business/settlement/settlement_importer_decision.md#cs-and-up-import-daily) | the proto's policy on all five requests · `canImportSettlement` for the menu |
+
+## ⚠ My readings, built — the owner may overturn each cheaply
 
 | | |
 | --- | --- |
-| pages | `/settlement/imports` — [pages/settlement-imports/](../../../frontend/src/pages/settlement-imports/): the list (shop and status filters, paged, a running row refreshes every 5 s) and `ImportFileDialog` (the shop picks the platform, .xlsx ≤ 10 MB, the stream: bar, tallies, log, what did not post, open the file) · `/settlement/imports/:fileId` — [pages/settlement-import-detail/](../../../frontend/src/pages/settlement-import-detail/): the tally, the held · skipped · posted-to-the-shop rows, download the original |
-| shared in the domain | [features/settlementImport/](../../../frontend/src/features/settlementImport/) — `queries.ts`, `adapt.ts`, `useImportStream.ts` (the stream folded into state; closing detaches, never cancels), `FileTally`, `UploadedFileStatusBadge` |
-| reused | `ShopSelect`, `MarketplaceBadge`, `Pagination`, `RefreshOverlay`, `useActors`, `useShopOptions`, `documentClient.getDownloadUrl` |
-| the contract | [settlement_importer.proto](../../../proto/warehouse/settlement_importer/v1/settlement_importer.proto) — `SettlementImporterService`: the two streamed imports, `UploadedFileList`, `UploadedFileByIds`, `UploadedFileLineList`. Generated for Go and TS; nothing serves it |
-| the menu | **Settlement Imports**, a selling team's CS and up — `canImportSettlement` in [roles.ts](../../../frontend/src/lib/roles.ts) mirrors the policy |
-| the stub | [stubTransport.ts](../../../frontend/.storybook/stubTransport.ts) plays the importer's rules — the shop check before storing, no primary CS, a wrong-shop file refused after storing, twelve streamed rows (one held, one to the shop, one skipped, TikTok's affiliate row), and an import that finishes after its stream is dropped. Switches: [settlementImportScenario.ts](../../../frontend/.storybook/settlementImportScenario.ts) |
-| tested | 24 new stories, a `play()` per decision; the whole story suite passes (1,465); typecheck and build green |
-| ⚠ my proposals in it | the 5 s refresh while running · the .xlsx and 10 MB checks before sending · the refusal line names the shop · `UploadedFileByIds` and `UploadedFileLineList`, beyond the doc's three RPCs |
-| ⚠ a gap it shows | a line's `settlement_type` is settlement's enum, which still has eight values — a withdrawal line cannot be named until the five new types reach the contract ([contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)) |
+| a skipped Earnings / GMV Pay Deduction line is INFO, a failed withdrawal WARN | the accepted prototype showed routine skips outside the closing summary; the withdrawal decision says WARN |
+| the order a ref finds, among several in the shop | a live order before a cancelled one, then the newest — the uniqueness rule is not built, so duplicates can exist |
+| a new grant on a shop left with NO primary becomes it | the recorded reading of *first* — re-adding an existing grant changes nothing |
+| `ShopAccessCheck` keeps the owner's field name `is_have_access` | critique 10 had suggested `has_access` |
+| the handler's read cap is 15 MB | the browser sends JSON: 10 MB of file is ~13.4 MB of base64. The file itself is held to 10 MB |
+| a DB failure mid-import leaves the row running | it reads interrupted after two minutes, and the same file again finishes it |
 
-After accept: `backend_analysis`, in the order the blockers below allow.
+## ⛔ What is NOT built — and whose it is
 
-## What is decided
+| | owner |
+| --- | --- |
+| **the order uniqueness rule** — [an-order-is-unique-by-shop-and-marketplace-ref](../../business/order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref): a ref required on every order, no two live orders sharing it | the order context — its drafts-vs-orders and same-second questions are open there |
+| **the write gate on the order RPCs** and the rollout grants — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager) | the shop context — only the imports are gated |
+| **the move to `shop_service`** — [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) | the shop context — only `NewShopClient` and the adapters in `cmd/app_development` change |
+| **a closed shop's statements** — a deleted shop answers `NotFound`, so it cannot import | [shop Q3](../../business/shop/context_clarify.md#question) |
+| **whether a TikTok period re-downloaded in the 2026-09 layout keeps its keys** | the reader — [its questions](../../technical/packages/excel_readers/context_clarify.md#question) |
+| `auto_import.md` — an empty heading beside the doc | [critique 11](../../business/settlement/settlement_importer_clarify.md#critique) |
+| a screen listing a shop's OWN rows — so a wrong imported shop row has no screen to offset it from | settlement |
+
+## Measured
 
 | | |
 | --- | --- |
-| [the-import-is-one-streamed-call](../../business/settlement/settlement_importer_decision.md#the-import-is-one-streamed-call) | one server stream per file: the file rides IN the request, is stored in `document_service` first, then extracted and posted record by record — `message` + `step` + `count` on the stream. No queue. Overtook the first clarify's async recommendation |
-| [the-file-is-named-by-its-content-hash](../../business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash) | the stored statement's filename is the sha256 of its bytes plus `.xlsx`, computed by the importer — the request carries no `filename`. sha256 (not md5) is my proposal, flagged as such |
-| [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](../../business/settlement/settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader) | ⛔ **superseded in part** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](../../business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). Was: a row whose ref finds an order names that order's creator — as `actor_id`, and so in the per-user report; any other row names the uploader. Answered analytic Q7 — my user 0 declined. ⛔ Not buildable on today's contract — [importer Q10](../../business/settlement/settlement_importer_clarify.md#question) |
-| [a-tiktok-row-finds-its-order-by-related-order-id](../../business/settlement/settlement_importer_decision.md#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row is looked up by `Related order ID`, every row — equal to the row's own id on all 2,710 sampled `Order` rows, the adjusted order on 8 of 23 adjustments, empty (the shop) on 15 |
-| [the-excel-reader-reads-every-statement](../../business/settlement/settlement_importer_decision.md#the-excel-reader-reads-every-statement) | every statement is read by `san_excel_readers`; the skip list, the ref lookup, the key prefix and whole rupiah stay the importer's policy |
-| [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) | the interceptor checks a server stream's one request like a unary call; client and bidi stay refused. ⛔ Not built — the first build task, with its test and the CLAUDE.md + FAQ rewrite in the same commit |
-| [an-upload-is-never-reverted](../../business/settlement/settlement_importer_decision.md#an-upload-is-never-reverted) | no file-level revert: no `UploadedFileRevert`, no `reverted` status, no revision suffix. A wrong order row is reversed by hand on its Settlement tab; a wrong shop row has no screen |
-| [an-unmatched-ref-posts-to-the-shop](../../business/settlement/settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop) | a ref that finds no order posts to the shop under the uploader — never held · 🔄 counted for the shop's primary CS ([user-id-is-the-orders-creator-else-the-shops-primary-cs](../../business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs)). The order, entered later, never receives it |
-| [an-import-request-is-a-shop-and-its-file](../../business/settlement/settlement_importer_decision.md#an-import-request-is-a-shop-and-its-file) | the request is `shop_id` + `file_content` (bytes), the same for both platforms. ⛔ No `team_id` as written — critique 15 |
-| [every-stream-message-is-a-leveled-log-line](../../business/settlement/settlement_importer_decision.md#every-stream-message-is-a-leveled-log-line) | the stream sends `level` (`LogLevel`: INFO/WARN/ERROR) + `message`. ⚠ No `step`/`count` for the flow's progress — the Contradiction |
-| [the-shop-is-checked-before-the-file-is-stored](../../business/settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored) | before storing, ask `selling_service`'s ShopService: may the caller work on the shop (`shop_users`, #86), and is it the right shop (`ShopDetail`: in the team, not deleted, the RPC's marketplace — my reading) · 🔄 the call is `ShopAccessCheck` (owner, 2026-09-29), which also returns the shop's primary CS |
-| [a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused) | after extraction, one ref whose order is in another shop of the team fails the file — an `ERROR` line names that shop, nothing posted. Cannot see a file with no findable order |
-| [the-import-has-no-dry-run-for-now](../../business/settlement/settlement_importer_decision.md#the-import-has-no-dry-run-for-now) | no dry run for now — an import posts as it reads; the two checks are its only guard |
-| [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) | only a successful withdrawal is recorded — a Shopee `Gagal` debit AND its refund are skipped, a TikTok row only when `Transferred`. ⛔ Needs the Shopee status on the document |
-| [an-import-finishes-whether-anyone-watches](../../business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches) | the import is detached from the request — a closed tab ends the stream only. No Cancel, no rollback. A server stopped mid-file leaves the row *interrupted*; the same file again completes it |
-| [the-row-key-is-the-only-dedupe](../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe) | duplicates are caught by each row's `GenerateUniqueID`, in settlement's own check — nothing is unique on the file. The same file twice is a second row whose lines answer *already there*. ⛔ Leans on settlement refusing a key another SHOP holds — it does not today |
-| [user-id-is-the-orders-creator-else-the-shops-primary-cs](../../business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) | a row's `user_id` — who the per-user report counts it for — is its order's creator when its ref finds the order (the fold already does this), else the shop's primary CS from `ShopAccessCheck`. ⚠ My reading: the actor stays whoever posted. ✅ Settlement carries the primary ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) · ✅ a shop with none cannot import ([a-shop-with-no-primary-cs-cannot-import](../../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)) |
-| [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) | an imported shop row counts for the shop's primary CS: settlement asks `ShopAccessCheck` before its transaction (my proposal), writes `settlement_logs.user_id`, the event carries it and the fold reads it. A shop row posted by hand keeps its actor. A failed call refuses the post (my proposal) |
-| [cs-and-up-import-daily](../../business/settlement/settlement_importer_decision.md#cs-and-up-import-daily) | `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, TEAM_CUSTOMER_SERVICE]` on both imports and `UploadedFileList`, uploading daily. ⛔ Needs the request's `team_id` (critique 15) to work for anyone but root and admin |
-| [tiktok-affiliate-commission-posts-as-affiliate-fee](../../business/settlement/settlement_importer_decision.md#tiktok-affiliate-commission-posts-as-affiliate-fee) | a TikTok `Order` row with a commission posts `fund` before it plus `affiliate_fee` (key `…:affiliate_fee`); the commission is the sum of the detail's `Affiliate …` columns (my proposal); a file with none is refused (my proposal) |
-| [a-shop-with-no-primary-cs-cannot-import](../../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import) | `primary_user_id` 0 at the shop check → `ERROR` *"choose a primary CS first"*, nothing stored. Settlement refuses such a shop row too (my reading) |
+| every real sample | all 26 workbooks import to DONE through the streamed handler (`TestImport_EverySampleStatementImports`, skipped where `examples/` is absent) — the failed-withdrawal samples skip exactly their two rows each, 5 TikTok files hold one unmapped type each |
+| end to end | `e2e/settlement_imports.spec.ts` — 4 pass in ~30 s against the real server: refused with no primary CS, 5 of 5 rows (3 posted, 2 to the shop, 1 held, 1 skipped), the file's page, the same file again all *already there* |
+| largest file | Shopee 1,463 rows / 19 days · TikTok 830 + 41 withdrawals / 26 days · 246 KB in bytes |
+| keys across files | 193 lines appear in two or more samples, and 0 change key |
+| withdrawals vs `fund` | −839,987,638 against +827,877,151 — 101% — now IN the position, by decision |
 
-## What exists underneath it
+## Audited (2026-09-29)
 
-| | |
-| --- | --- |
-| readers | ✅ [backend/pkgs/san_excel_readers/](../../../backend/pkgs/san_excel_readers/) — Shopee + TikTok, `GenerateUniqueID`, `SettlementType()`. ⚠ its own state report ([excel_readers.md](../packages/excel_readers.md)) is stale on `SettlementType()` — both platforms are mapped now, owner decision by decision · ⚠ its TikTok item is ten TikTok columns — a deviation from the reader doc's struct (Shopee's six), not yet accepted ([reader #23](../../technical/packages/excel_readers/context_clarify.md#critique)) |
-| the write | ✅ `SettlementPost` — one row per call, idempotent on a GLOBAL `unique_id`, `source_type = exporter`, 1.8 ms · ⚠ the actor is ALWAYS the caller's token — `actorFrom(ctx)` ([post_entry.go:39](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L39)); no field names anyone else · ✅ a key another shop holds is refused, since 2026-09-29 ([a-key-held-by-another-account-is-refused](../../business/settlement/context_decision.md#a-key-held-by-another-account-is-refused)) |
-| file store | ✅ `document_service` — two-phase upload; it never touches bytes, so the importer is its CLIENT: `RequestUpload` → PUT → `ConfirmUpload`, under the uploader's forwarded token. No resource type for a statement yet |
-| long-task shape | ✅ [guidelines/code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md) — `returns (stream …)`, `string message` required, slog bound to the stream |
-| the access interceptor | ⛔ **refuses every streaming RPC** (`Unimplemented`, root included) — [interceptor.go:57](../../../backend/services/user_service/access_interceptors/interceptor.go#L57). No warehouse RPC has ever streamed; `san remote`'s `Exec` has its own interceptor · ✅ **decided**: authorize a server stream on its request ([a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)) — the first build task |
-| order lookup by platform ref | ⛔ none — `selling_service` has no RPC that takes a ref, and the ref's uniqueness is decided but not built. The column is `orders.order_external_ref_id` (selling `00012`): not unique, no index. It now names the row's person as well as its order |
-| shop access | ⚠ `shop_users` (#86) — written by `ShopUserAdd` / `ShopUserRemove`, read by nothing else. The importer's check would be its first enforcement — ✅ who counts is decided: a grant, or the team's owner or admin ([a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)) · `ShopUserListFilter` has no `user_id`, so asking about one caller pages the list · ⛔ `ShopAccessCheck` and the primary CS are not built, and the RPC as written has no `team_id` ([shop critique 10](../../business/shop/context_clarify.md#critique)) |
-| `backend/services/settlement_importer_service/` | ⛔ does not exist |
+Every RPC this pass wrote or widened, audited for performance and every write for concurrency. The reports live in
+`audits/` and hold the numbers.
 
-## What blocks the backend — after design_accept
+| service | performance | concurrency | fixed by this pass | open — the owner's |
+| --- | --- | --- | --- | --- |
+| settlement_importer | 🔴 both imports, by design: 2 statements and 2 commits a line, 4.98 s of the importer's own SQL for 1,500 rows ([Shopee](../../../audits/services/settlement_importer_service/performances/ShopeeSettlementImport.md), [TikTok](../../../audits/services/settlement_importer_service/performances/TiktokSettlementImport.md)) · the three reads ✅ ≤ 3 ms | ✅ safe — 8 uploads of one file, every key once ([lock-order](../../../audits/services/settlement_importer_service/concurrency/lock-order.md)) | — | the line-write shape (one statement a line, 2.9×) · what INTERRUPTED means, since no internal call has a timeout |
+| settlement — the imported shop row | 🔴 N+1: one `ShopAccessCheck` a row, 1,500 on the largest file ([report](../../../audits/services/settlement_service/performances/SettlementPost.md)) | 🟡 one key racing on two shops answers `internal`, not `invalid_argument` ([report](../../../audits/services/settlement_service/concurrency/SettlementPost.md)) | ✅ a retry of a stored row no longer needs the shop (760b8e2) · ✅ the shop-grain race test, red since 9f20652, repaired | a cache per `(team, shop)` · map the cross-account 23505 to `errUniqueIDTaken` |
+| selling — the shop, the refs | ✅ `ShopAccessCheck`, `ShopUserAdd`, `ShopUserSetPrimary` · 🟡 `OrderByExternalRefs` at its 2,000 cap, ~1,900 rows, and 45 of its 50 ms a host stall, not the query ([report](../../../audits/services/selling_service/performances/OrderByExternalRefs.md)) | 🟡 Make primary racing a removal replied OK and left no primary ([report](../../../audits/services/selling_service/concurrency/ShopUserSetPrimary.md)) | ✅ the set must land or roll back (a96a491) | lock the grant at the check, or Remove takes the shop lock · `FOR NO KEY UPDATE` in `lockShop`, which today holds back every order on the shop ([the-lock-no-grep-finds](../../../audits/services/selling_service/concurrency/lock-order.md#the-lock-no-grep-finds)) · `OrderDraftPromote` may place a draft twice — seen, not raced |
 
-| | |
-| --- | --- |
-| ⛔ the Shopee reader reads no `Status` — needed to skip a failed withdrawal. Add it on the document, never the item | [only-a-successful-withdrawal-is-recorded](../../business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded) |
-| ⛔ the interceptor change — decided, not built: until it lands both imports answer `Unimplemented` | [a-server-stream-is-authorized-on-its-request](../../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request) |
-| ⛔ §Rpc Detail as written — no `team_id` (only root and admin could call it), two messages named `Payload` (does not compile), no `step`/`count` for the flow's progress, no size cap — ✅ the prototype's contract fixes all four; design_accept settles them | [critiques 15–17](../../business/settlement/settlement_importer_clarify.md#critique) · [Contradiction](../../business/settlement/settlement_importer_clarify.md#the-flow-sends-a-step-and-a-count-and-the-response-has-nowhere-to-put-them) |
-| ⛔ settlement asking the shop — decided, not built: a `ShopService` client in settlement's Wire set, `settlement_logs.user_id`, the event's field, the fold's line, and the flow in `docs/services/settlement_service/rpc.md` | [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) |
-| ⛔ `ShopAccessCheck` and a shop's primary CS — neither built; the RPC as written has no `team_id` | [shop critique 10](../../business/shop/context_clarify.md#critique) · [shop Q7](../../business/shop/context_clarify.md#question) |
-| ⛔ the TikTok key — the reader doc's struct is Shopee's, the built item is unaccepted, and a re-download in the 2026-09 layout is unmeasured. A key that moves after the first import posts every line twice | [critique 14](../../business/settlement/settlement_importer_clarify.md#critique) → [reader #23 and its questions](../../technical/packages/excel_readers/context_clarify.md#critique) |
-| `withdrawal` in `Σ change` would make every shop's position read as ~every sale | [settlement Q1](../../business/settlement/context_clarify.md#question) |
-| `SettlementPost` refuses all five types added on 2026-09-24 — proto enum, mapper, fold columns and the analytic doc still carry eight | [contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight) |
+## ⚠ Traps for whoever touches it next
 
-## Measured — over all 26 sample workbooks, so nobody re-measures
-
-| | |
-| --- | --- |
-| largest file | Shopee 1,463 rows / 19 days · TikTok 830 + 41 withdrawals / 26 days |
-| largest file, in bytes | **246 KB** (`tiktok/shipping_issurance.xlsx`); Shopee's largest is 89 KB. The file now rides in the request, and **nothing caps a request**: connect-go defaults to *any size* and the backend sets no `WithReadMaxBytes` |
-| identical bytes | **0** of the 26 samples share a sha256. The re-saved pair (`awan_beban_return` / `_simple`) differs, and TikTok stamps its `modified` time into `docProps/core.xml` (Shopee's carries none) — so the hash catches the SAME download uploaded twice, never the same period downloaded twice |
-| keys across files | **193** lines appear in two or more samples — 141 Shopee (the re-saved `awan_beban_return` pair), 43 TikTok orders and 9 withdrawals (the three `niko_*` downloads) — and **0** change key |
-| fractional amounts | 0, all IDR — `float64` → `int64` is lossless on every sample |
-| withdrawals vs `fund` | −839,987,638 against +827,877,151 — **101%**. In 25 of 26 files |
-| withdrawal statuses | Shopee: `Transaksi Selesai` 170 — 168 debits and 2 refunds, each described *Pengembalian Dana untuk Penarikan Gagal* — and `Gagal` 2. Every other Shopee row is `Transaksi Selesai`. TikTok: `Transferred` in every sample |
-| TikTok `Earnings` | equals every `Order details` row summed, in 10 of 14 files |
-| TikTok `GMV Pay Deduction` | equals the `GMV Payment for TikTok Ads` rows **to the rupiah** in all 3 files that carry it — which explains 3 of the 4 files where `Earnings` does not match. The 4th, `cannot_open.xlsx` (the 2026-09 layout), is off by its one `Other adjustment` |
-| unmapped TikTok types | 5 of 14 files carry one |
-| TikTok affiliate commission | inside `Total settlement amount`, in two columns — `Affiliate Commission` and `Affiliate Shop Ads commission` — on `Order` rows only, in every layout. `Affiliate partner commission` and `Affiliate Partner shop ads commission` are 0 in every sample; the 2026-09 layout adds `deposit` and `refund`, 0 in its one file. `shipping_issurance.xlsx`: −2,236,212 + −204,105 = −2,440,317 against +116,445,834 of `fund` |
-
-## Traps for the pass that builds it
-
-- ⚠ **A re-import cannot correct anything.** A repeat key returns the STORED row (`created: false`); a key on
-  another account — another order, or another shop's row — is `errUniqueIDTaken` ([a-key-held-by-another-account-is-refused](../../business/settlement/context_decision.md#a-key-held-by-another-account-is-refused)). Changing a mapping after the first import changes nothing in the ledger.
-- ⚠ **The reader returns `ErrNoSettlementTypeMapping` for rows that must be SKIPPED** (`Earnings`,
-  `GMV Pay Deduction`) exactly as for a type never seen. The skip list belongs in the importer.
-- ⚠ **Nothing an import posts can be undone** — no revert, by decision. A line posted to the shop because its
-  order was missing never reaches that order: posting it again under the order is `errUniqueIDTaken`.
-- ⚠ **Two people per imported row — never collapse them.** `actor_id` is who posted (the token); `user_id` is who
-  the per-user report counts the row for. An order row's user is already the stamped creator; a shop row's is
-  written by settlement from the shop's primary CS ([settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)). Never write the primary CS into `actor_id`.
-- ⚠ **Never ask the shop while the account is locked.** `SettlementPost` takes the shop's account row FOR UPDATE
-  ([post_entry.go:295](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L295)) — a call to
-  `selling_service` inside that transaction makes every post on the shop wait on the network. Ask first, then open it.
-- ⚠ **The commission is on the DETAIL, never the item.** `TiktokSettlementItem` carries no fee column — they drift
-  between layouts, so they live on `GetDetails()`, by header text. And **refuse a file with no `Affiliate …` column**:
-  posting its `fund` whole lets a later download add the commission a second time under a new key.
-- ⚠ **The stub is the acceptance spec, not the server.** `.storybook/stubTransport.ts` plays each rule the prototype
-  shows — the shop check before storing, a wrong-shop file refused after storing, an import that finishes after its
-  stream is dropped. The handlers must do the same, and the stories say what "the same" is.
-- ⚠ **Detach the work, never the identity.** `context.WithoutCancel(ctx)` keeps the uploader's identity and
-  token for every settlement and selling call and drops only the cancellation. A fresh `context.Background()`
-  would post with nobody's identity.
-- ⚠ **The guideline's slog binding is an `io.Writer`** — it hands the stream formatted text, so `level` stays
-  empty. Bind a `slog.Handler` to fill it.
-- ⚠ **Look a TikTok row up by `Related order ID` — decided, on every row.** `Order/adjustment ID` is the order's
-  only on an `Order` row; on an adjustment it is the adjustment's own id. Look THAT up and every adjustment finds
-  nothing: it lands on the shop, counted for its primary CS instead of the order's creator, for good.
-- ⚠ **A server stream's scope cannot ride in `ctx` the way a unary call's does** — the interceptor calls
-  `next` before `Receive` has decoded the request. Verified in connect-go v1.19.0 (`NewServerStreamHandler`
-  receives INSIDE the wrapped function). The handler reads `team_id` off its own request.
-- ⚠ **Naming a file by its hash dedupes NOTHING by itself** — `document_service` keys each object by a fresh
-  uuid plus the name's extension ([tokens.go:83](../../../backend/services/document_service/document_v1/tokens.go#L83)),
-  and `documents.filename` is not unique. Nothing dedupes a file, by decision — the row keys do ([the-row-key-is-the-only-dedupe](../../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). Keep `.xlsx` on
-  the name, or the object is stored without an extension.
-- ⚠ **buf `STANDARD` wants a distinct response message per RPC** — `TiktokSettlementImportResponse` and
-  `ShopeeSettlementImportResponse`, both carrying the same file row.
-- ⚠ **Widen the fold with `SettlementPost`, never after.** The fold refuses a type it has no column for, and
-  nothing checks the report against the log ([the-reconcile-check-is-not-built](../../business/settlement/context_decision.md#the-reconcile-check-is-not-built))
-  — a type accepted first is a row missing from the report, silently.
-- ⚠ **The owner's `tools/report_withdrawal/` is theirs** — read it for the corpus size, never edit it.
+- ⚠ **No Pub/Sub emulator means every `SettlementPost` waits 60 s.** `event_source` waits up to `publishTimeout` for the
+  broker's ack, so an import with the emulator down crawls a minute a line. `docker compose --profile pubsub up -d` and
+  `go run ./tools/san pubsub ensure --project warehouse-dev --emulator` before running the e2e or importing in dev. The
+  same wait hits order placement. **CI had no emulator either** — since f1854cd its test job starts one and runs
+  `san pubsub ensure` before the e2e, unverified until the next PR runs it.
+- ⚠ **The detached import shares `san_testdb.DB(t)`'s one transaction in tests.** Read the database only after the
+  stream has ended or `Service.Wait()` returned — never while an import goroutine may still be writing.
+- ⚠ **Nothing may write to a stream after its handler returns.** `streamSink.detach` is called before the handler
+  returns and every send takes the same lock; keep it that way.
+- ⚠ **A stream handler's ctx has the identity and bearer, not the scope** — read `team_id` off the request.
+- ⚠ **The importer is a CLIENT of four services under the uploader's token.** A new call it makes goes through an
+  interface it owns and an adapter at the composition root — never an import of another service's package (the shop
+  lives in selling, which calls settlement: a Go-level cycle waiting to happen).
+- ⚠ **Never ask the shop while the account is locked** — settlement asks before its transaction; keep it there.
+- ⚠ **A failed ask is HELD, not returned** (`postEntry`'s `askErr`): a retry of a stored row is answered from the
+  ledger whatever the shop says, and only a NEW row is refused. Returning it early broke the retry for a day.
+- ⚠ **Make primary's set must land** — `ShopUserRemove` takes no shop lock, and the `RowsAffected` check is all that
+  stops a racing removal from leaving the shop with no primary.
+- ⚠ **The `raceaudit` and `perfaudit` tests are outside CI.** A shop-grain race test stayed red for a day
+  unnoticed. After touching a write path, run `go test -tags raceaudit ./backend/services/<service>/...`.
+  `TestInterleave_ImportedShopRow_AKeyCollidingAcrossShopsAnswersInternal` fails **by design** until the owner
+  answers the 23505 mapping.
+- ⚠ **Two people per imported row** — `actor_id` is the uploader, `user_id` the primary CS on a shop row. Never write
+  one into the other.
+- ⚠ **The commission is on the DETAIL, never the item**, and a file with no `Affiliate…` column is refused.
+- ⚠ **Look a TikTok row up by `Related order ID`**, never `Order/adjustment ID`.
+- ⚠ **A re-import cannot correct anything** — a repeat key returns the stored row, a key on another account is refused.
+- ⚠ **The owner's `tools/report_withdrawal/` is theirs** — read it, never edit it.

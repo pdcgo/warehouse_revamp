@@ -22,14 +22,14 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 | RPCs | `ShopCreate` · `ShopList` · `ShopDetail` · `ShopUpdate` · `ShopDelete` (soft) · `ShopUserList` · `ShopUserAdd` · `ShopUserRemove` — and, from f6dab3b (2026-09-29, the importer session): `ShopAccessCheck` (team-scoped, `is_have_access`), `ShopUserSetPrimary`, `OrderByExternalRefs` |
 | tables | `shops` · `shop_users` (+ `is_primary`, migration 00014, backfilled from each shop's earliest grant) · `orders.shop_id` is a real FK to `shops` |
 | callers | settlement and the importer each own an interface for the shop, adapted at the composition root with a Connect client — so the move to `shop_service` changes those adapters only |
-| frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` |
+| frontend | `pages/shops`, `pages/shop-detail` (+ `ShopUsersSection`), `features/shops/ShopFormDialog`, `components/pickers/ShopSelect` · from c9c1861 (2026-09-29): the **Primary CS** badge, **Make primary** on every other granted user, a *No primary CS* warning on the shop page and a badge on `/shops` — covered by `e2e/shops.spec.ts` |
 
 ## Decided, not built
 
 | | |
 | --- | --- |
 | **the move** | `backend/services/shop_service/` (HARD RULE 2) · proto `warehouse.shop.v1` (my spec) · ⚠ how existing rows move — which migration creates the tables, the copy, when `selling_service` drops its copy — is **not designed**: no `docs/technical/shop/` exists |
-| **the write gate** | the three order RPCs and both imports call `ShopAccessCheck` · `ShopSelect` on the order form offers only writable shops · **the rollout backfill in the same release** |
+| **the write gate** | 🔨 half built — both imports call `ShopAccessCheck` and refuse without a grant or a manager role (f163139) · ⛔ the three order RPCs do not yet · `ShopSelect` on the order form still offers every shop · **the rollout backfill in the same release** as the order gate |
 
 ## What the build gets wrong today — found, not fixed
 
@@ -38,7 +38,9 @@ records** (one now superseded). The lifecycle is at *waiting for the owner* on Q
 | a deleted shop is readable NOWHERE — `ShopList`, `ShopDetail` and `ShopAccessCheck` all answer as if it never existed, so a closed shop's last statements cannot be imported (Q3) | `selling_v1/shop_list.go`, `shop_detail.go`, `shop_access_check.go` |
 | `ShopUpdate` lets the marketplace change on a shop with history (Q4) | `selling_v1/shop_update.go`, `ShopFormDialog` |
 | `ShopCreate` does not check the team is a SELLING team (critique 4) | `selling_v1/shop_create.go` |
-| ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row — the first team to post claims the shop (critique 6) | `settlement_v1/post_entry.go:282-309` |
+| ⛔ `SettlementPost` opens a shop-addressed account under the CALLER's team on the first row — the first team to post claims the shop (critique 6) | `settlement_v1/post_entry.go:300-332` |
+| `lockShop` takes `FOR UPDATE`, which the orders FK's `KEY SHARE` conflicts with — a grant change waits for every order being placed on the shop, and they wait for it. `FOR NO KEY UPDATE` is proved to fix it ([the-lock-no-grep-finds](../../../audits/services/selling_service/concurrency/lock-order.md#the-lock-no-grep-finds)) | `selling_v1/service.go` `lockShop` |
+| `ShopUserRemove` takes no shop lock, so Make primary's grant check can go stale. The set-must-land check (a96a491) keeps the answer true; the lock-level fix is open ([ShopUserSetPrimary](../../../audits/services/selling_service/concurrency/ShopUserSetPrimary.md)) | `selling_v1/shop_user_remove.go` |
 | `expense_service` stores any `shop_id` unvalidated (critique 6) | `expense_v1/expense_create.go:30` |
 | a grant outlives its holder leaving the team, and `ShopUserAdd` accepts a user outside it (Q6) | `selling_v1/shop_user_add.go` |
 
