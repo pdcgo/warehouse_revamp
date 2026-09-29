@@ -15,7 +15,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | [Q8](./context_clarify.md#question) — who types it |
 | [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) | an `adjustment` is only ever the difference a reconcile finds — the manager types the figure the bank shows, never an amount | owner | [Q8](./context_clarify.md#question) — who reconciles |
 | [the-log-says-balance-after](#the-log-says-balance-after) | a log row's running balance is `balance_after` — the balance once its change is applied | owner | — |
-| [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes · [Q10](./context_clarify.md#question) — the other broker types |
+| [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes |
+| [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | [Q1](./context_clarify.md#question), [Q3](./context_clarify.md#question) — which account a withdrawal and an expense name |
 
 ## the-accounts-are-one-ledger
 
@@ -327,3 +328,58 @@ sequenceDiagram
 | the hand screens | offer no `restock` — the four hand acts are New account, Transfer, Capital, Reconcile |
 | a refund | the same way — inventory publishes it when a cancel says the money came back ([Q2](./context_clarify.md#question)) |
 | until inventory publishes | ⚠ nothing does today. Until the event exists, a restock's payment reaches the account only through a reconcile — as an `adjustment`, money not yet recorded ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
+
+## one-way-in-per-type
+
+> Chat *(owner, 2026-09-29)* — *"yes"*, to [Q10](./context_clarify.md#question) as narrowed and recommended: are
+> `expense`, `revenue_fund` and `team_payment` never typed by hand either — each already recorded by its own service,
+> an expense by `expense_service`, `revenue_fund` by settlement's withdrawal row, a team payment by liability's confirm?
+> With [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand), it answers Q10 whole.
+
+**The verdict.** Every type has **exactly one way in**. A type another service already records comes **only from the
+broker**; a type no other service knows is **only typed by hand**. No type comes both ways — so one payment can never
+be two rows.
+
+```mermaid
+flowchart LR
+  L["financial_account_logs"]
+  subgraph "from the broker only — another service records the act"
+    S["settlement — a withdrawal row"]
+    I["inventory — a restock"]
+    E["expense_service — an expense"]
+    P["liability — a confirmed payment"]
+  end
+  subgraph "by hand only — no other service knows"
+    M["a manager, on the account screens"]
+  end
+  S -->|"revenue_fund"| L
+  I -->|"restock"| L
+  E -->|"expense"| L
+  P -->|"team_payment"| L
+  M -->|"opening_balance, transfer, capital, a reconcile"| L
+```
+
+### The spec
+
+| type | way in | recorded first by |
+| --- | --- | --- |
+| `revenue_fund` | broker only | settlement — a successful withdrawal row. ✅ `SettlementLogPosted` publishes it today |
+| `restock` | broker only | inventory — [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) · 🆕 its event |
+| `expense` | broker only | `expense_service` · 🆕 its event |
+| `team_payment` | broker only | liability — the creditor's confirm · 🆕 its event |
+| `opening_balance` | by hand only | creating the account |
+| `transfer` | by hand only | the account screens |
+| `capital` | by hand only | the account screens |
+| `adjustment` | by hand only | a reconcile — [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) |
+
+| | |
+| --- | --- |
+| how it holds | by structure: no RPC takes a `change_type` from a person, and each listener posts only its own type |
+| until a publisher exists | its money reaches the account only through a reconcile — `revenue_fund`'s event exists; `restock`, `expense` and `team_payment` wait for theirs |
+
+### What it narrows
+
+- 🔄 [Q1](./context_clarify.md#question) — that `revenue_fund` is settlement's withdrawal row, heard from the broker,
+  is settled here. Left: which account each shop's withdrawal lands in, and the rename.
+- 🔄 [Q3](./context_clarify.md#question) — that an expense is typed in `expense_service`, never here, is settled here.
+  Left: whether it names the account it was paid from, and which expenses name none.

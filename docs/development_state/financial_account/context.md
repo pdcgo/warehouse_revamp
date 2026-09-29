@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **ten owner decisions**. The lifecycle
-is at *waiting for the owner* on Q1–Q3 and Q8–Q10 — no Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **eleven owner decisions**. The
+lifecycle is at *waiting for the owner* on Q1–Q3, Q8 and Q9 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
 
@@ -20,6 +20,7 @@ is at *waiting for the owner* on Q1–Q3 and Q8–Q10 — no Storybook prototype
 | [adjustment-is-for-reconciling-only](../../business/financial_account/context_decision.md#adjustment-is-for-reconciling-only) *(Q4)* | no RPC takes an adjustment amount — `Reconcile` takes the bank's figure and posts the difference · ⚠ a note on a non-zero difference and a `reconciled_at` stamp are my spec |
 | [the-log-says-balance-after](../../business/financial_account/context_decision.md#the-log-says-balance-after) *(critique 5)* | the log's column is `balance_after` = the previous row's + this row's `change` |
 | [restock-is-never-typed-by-hand](../../business/financial_account/context_decision.md#restock-is-never-typed-by-hand) *(Q10, for restock)* | no hand RPC takes a `restock` · it comes only from a restock event inventory does not publish yet — until then a restock's payment shows only through a reconcile |
+| [one-way-in-per-type](../../business/financial_account/context_decision.md#one-way-in-per-type) *(Q10)* | the hand RPCs are Create, Transfer, Capital, Reconcile, and none takes a `change_type` · a listener each for `revenue_fund` (settlement — exists), `restock`, `expense`, `team_payment` (their events are new) |
 
 ## What exists
 
@@ -35,10 +36,9 @@ Nothing of this context. What it overlaps is already built elsewhere:
 
 ## Proposed, not decided
 
-[the-act-posts-the-entry](../../business/financial_account/context_clarify.md#the-act-posts-the-entry) — one way in
-per type: by hand only opening, transfer, capital, reconcile; everything else from the broker (Q10). Build order:
-accounts and the hand path → withdrawal (its event already exists) → restock → expense → team payment, each of the
-last three needing a new event variant first.
+Build order: accounts and the hand path → withdrawal (its event already exists) → restock → expense → team payment,
+each of the last three needing a new event variant first. Every row names its cause — `source_id` and `reversal`
+(critique 1).
 
 ⛔ The owner's log table has no account column — now a recorded
 [contradiction](../../business/financial_account/context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains)
@@ -48,10 +48,10 @@ written.
 
 ## Open
 
-Q1–Q3 and Q8–Q10 in the clarify. **Q10 first** — now only `expense`, `revenue_fund` and `team_payment`: are they
-broker-only like `restock` — then **Q8**, which screens show a balance.
+Q1–Q3, Q8 and Q9 in the clarify. **Q8 first** — which screens show a balance, the last thing the prototype waits
+on — then Q1–Q3 in the build order, Q9 last.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be
-`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype before Q10 and Q8
-are answered.
+`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype before Q8 is
+answered.

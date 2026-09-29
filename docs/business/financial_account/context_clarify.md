@@ -3,11 +3,11 @@
 What I read out of [context.md](./context.md), and what has to be settled beside it. **That doc is yours — this
 one is mine.** An answered point is deleted; what you settled is in [context_decision.md](./context_decision.md).
 
-🔄 **Re-examined twice on 2026-09-29 — newest first.**
+🔄 **Re-examined through 2026-09-29 — newest first.**
 
 | | |
 | --- | --- |
-| ✅ answered in chat | Q10, for `restock` — never typed by hand: [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand) · Q10 narrows to `expense`, `revenue_fund`, `team_payment` |
+| ✅ answered in chat | Q10 — every type has one way in: [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then [one-way-in-per-type](./context_decision.md#one-way-in-per-type) · 🔄 [Q1](#question) and [Q3](#question) narrow with it, to which account a withdrawal and an expense name |
 | ✅ answered in chat | Q4's last half — an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 | ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ⚠ the log still has no account column, so the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) stands — and no cause (critique 1), no date (critique 7) |
 | ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) |
@@ -23,7 +23,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Six questions open, six critiques, one contradiction.**
+already touch a bank without naming one. **Five questions open, six critiques, one contradiction.**
 
 ## What already moves money
 
@@ -72,22 +72,18 @@ flowchart LR
 
 ## Recommendation
 
-**[the-act-posts-the-entry](#the-act-posts-the-entry)** — a row is posted by the act that moved the money, once,
-naming it. ✅ **How** it gets here is now yours: from the broker
-([a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker)), and ✅
-`restock` never comes by hand ([restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand)).
-What is left is **the other broker types** — [Q10](#question): the hand path types only what no other service knows —
-an opening balance, a transfer, capital, a reconcile — and every other type comes from the broker, never both.
+✅ **[the-act-posts-the-entry](#the-act-posts-the-entry) is decided** — how a row gets here
+([a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker)) and which
+way each type takes ([one-way-in-per-type](./context_decision.md#one-way-in-per-type)). What is left of it is small:
+every row **names its cause** — `source_id` and `reversal` ([critique 1](#critique)) — and each publisher carries the
+account it names ([Q1](#question)–[Q3](#question)).
 
-Typed by hand **and** heard from the broker, one payment is two rows — the restock's event posts 1.200.000, someone
-types 1.250.000, and neither knows the other exists.
+🔄 **Build order**, settlement already publishing: **1.** accounts and the hand path · **2.** withdrawal — only the
+listener is new · **3.** restock · **4.** expense · **5.** team payment — each of these needs its own event first.
+Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-🔄 **Build order**, reordered because settlement already publishes: **1.** accounts and the hand path ·
-**2.** withdrawal — `SettlementLogPosted` already carries it, so only the listener is new · **3.** restock ·
-**4.** expense · **5.** team payment — each of these needs its own event first. Until a type is wired, a reconcile
-catches what it moved as an `adjustment` — which is honest: it was not recorded.
-
-**Answer first:** [Q10](#question) decides every form, and [Q8](#question) which screens show a balance at all.
+**Answer first:** [Q8](#question) — which screens show a balance — is the last thing the Storybook prototype waits
+on. Then Q1–Q3, one form each in another service, in the build order; [Q9](#question) last.
 
 ## Proposed Design
 
@@ -104,14 +100,14 @@ catches what it moved as an `adjustment` — which is honest: it was not recorde
 
 | `change_type` | moves | way in | when |
 | --- | --- | --- | --- |
-| `opening_balance` ✅ | in | by hand — creating the account | once |
-| `marketplace_withdrawal` — your `revenue_fund` | in | broker — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
+| `opening_balance` ✅ | in | ✅ by hand only — creating the account | once |
+| `marketplace_withdrawal` — your `revenue_fund` | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
 | `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
-| `expense` | out | broker — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
-| `transfer` ✅ | out of one, into another | by hand — two legs, one act | when typed |
-| `team_payment` ✅ | out of the payer, into the creditor | broker — 🆕 a payment event | the creditor confirms · a reversal reverses both |
-| `capital` ✅ | in or out | by hand — the business owner's own money | when typed |
-| `adjustment` ✅ | in or out | by hand — a reconcile; the difference, never typed | [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
+| `expense` | out | ✅ broker only — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
+| `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
+| `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — 🆕 a payment event | the creditor confirms · a reversal reverses both |
+| `capital` ✅ | in or out | ✅ by hand only — the business owner's own money | when typed |
+| `adjustment` ✅ | in or out | ✅ by hand only — a reconcile; the difference, never typed | [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 
 ```mermaid
 flowchart LR
@@ -138,7 +134,8 @@ flowchart LR
   L -->|"the balance moves only with a row"| A
 ```
 
-✅ The two ways in are yours. Each new event should carry the **change**, never a level — a restock's edit
+✅ The two ways in, and which type takes which, are yours —
+[one-way-in-per-type](./context_decision.md#one-way-in-per-type). Each new event should carry the **change**, never a level — a restock's edit
 publishes the difference, not its new total — so events that arrive out of order still sum right. And every row
 names its cause, so the Financial Ledger ([ledger/context.md](../ledger/context.md)) can pair it with the cause's own
 log instead of counting one payment twice.
@@ -280,13 +277,16 @@ see a balance, so it shows none.
 
 ## Question
 
-1. 🔄 **Is `revenue_fund` a marketplace withdrawal reaching the bank — and does it come from the broker?** *(line 69)*
-   **→ Recommend yes, and yes.** `SettlementLogPosted` already carries every successful withdrawal as a
-   shop-addressed row ([withdrawal-is-a-settlement-type](../settlement/context_decision.md#withdrawal-is-a-settlement-type),
+1. 🔄 **Narrowed — which account does a withdrawal land in, and is `revenue_fund` renamed?** *(line 69)*
+   ✅ It is settlement's withdrawal row, heard from the broker —
+   [one-way-in-per-type](./context_decision.md#one-way-in-per-type). `SettlementLogPosted` already carries every
+   successful one, shop-addressed
+   ([withdrawal-is-a-settlement-type](../settlement/context_decision.md#withdrawal-is-a-settlement-type),
    [only-a-successful-withdrawal-is-recorded](../settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)),
-   so only the listener is new. Each shop names the account it withdraws into — one per shop — and the row posts
-   there. Rename it `marketplace_withdrawal` — settlement's `fund` is a different moment of the same money (the
-   platform paying the wallet), and two *funds* invite reading one as the other.
+   so only the listener is new.
+   **→ Recommend: each shop names the account it withdraws into — one per shop — and the row posts there. And
+   rename it `marketplace_withdrawal`:** settlement's `fund` is a different moment of the same money (the platform
+   paying the wallet), and two *funds* invite reading one as the other.
    ⚠ A shop that names no account yet: its withdrawals are held, and post when one is named — refused, they would
    dead-letter.
 
@@ -300,8 +300,9 @@ see a balance, so it shows none.
    [purchasing-is-the-restock-document](../../technical/architecture/context_clarify.md#purchasing-is-the-restock-document)
    found missing: a cash account and a payment moment. ⚠ Inventory publishes nothing today — the event is new.
 
-3. 🔄 **Where is an expense typed — here, or in `expense_service`?** *(line 67)*
-   **→ Recommend `expense_service`, once, with an optional *paid from* account.** It publishes the expense and the
+3. 🔄 **Narrowed — does an expense name the account it was paid from?** *(line 67)*
+   ✅ It is typed in `expense_service`, never here — [one-way-in-per-type](./context_decision.md#one-way-in-per-type).
+   **→ Recommend yes, optionally: a *paid from* account on the expense form.** Expense publishes the expense and the
    account hears it; a void publishes the reversal. An expense naming no account moves none — and two kinds must
    name none: `STOCK_LOSS` (goods written off, no cash moved) and an ads charge the platform took from the seller
    balance (that is a settlement row). ⚠ Expense publishes nothing today — the event is new.
@@ -339,16 +340,9 @@ see a balance, so it shows none.
    fields took any number, so one bank can sit in two teams today — the copy takes it once, and lists the rest for a
    person to settle.
 
-10. 🔄 **Narrowed — are `expense`, `revenue_fund` and `team_payment` never typed by hand either?** *(lines 76–78)*
-    ✅ `restock` is never typed by hand —
-    [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), with the double count
-    that is its reason. The hand side needs no answer: an opening balance, a transfer, capital and a reconcile are
-    known to no other service, so only a person can type them.
-    **→ Recommend yes, all three — for restock's reason.** Each is already recorded by its own service: an expense by
-    `expense_service`, `revenue_fund` by settlement's withdrawal row, a team payment by liability's confirm. Typed
-    here too, one payment is two rows, and nothing tells which is the copy. ⚠ The cost is restock's too: until a
-    service publishes, its money reaches the account only through a reconcile — except `revenue_fund`, whose event
-    (`SettlementLogPosted`) already exists.
+10. ✅ **Answered 2026-09-29 — every type has one way in**, as recommended:
+    [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then
+    [one-way-in-per-type](./context_decision.md#one-way-in-per-type). Kept as a line so the numbers hold.
 
 # Contradiction
 
@@ -390,6 +384,4 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
-- 🔄 **The two ways in are named, and `restock`'s is decided; `expense`, `revenue_fund` and `team_payment` are not** —
-  [Q10](#question), and [the-act-posts-the-entry](#the-act-posts-the-entry) is my proposal for them.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
