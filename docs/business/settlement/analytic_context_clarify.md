@@ -1410,7 +1410,8 @@ built**.
    [topic-retention-carries-the-replay](./context_decision.md#topic-retention-carries-the-replay). Kept as a line so the numbers hold.
 
 7. ✅ **Answered 2026-09-28 — the uploader carries it, by your importer doc**:
-   [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader). My user-0 recommendation is declined. Kept as a line so the numbers hold.
+   [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader). My user-0 recommendation is declined. ⚠ **Superseded 2026-09-29** — the shop's
+   primary CS carries it now: [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). Kept as a line so the numbers hold.
 
 ⚠ **The order seam is no longer open here** — it was answered in full
 ([the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) ·

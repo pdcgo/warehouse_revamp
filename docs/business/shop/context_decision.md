@@ -464,7 +464,8 @@ flowchart LR
 
 - Must a shop always have one — and who may be one: only the shop's own users, only the CS role?
 - What happens when the primary is removed from the shop, or leaves the team.
-- What the importer does with it.
+- What the importer does with it. ✅ **Answered in the importer doc** (2026-09-29): a row with no order is counted for
+  the shop's primary CS — [user-id-is-the-orders-creator-else-the-shops-primary-cs](../settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs).
 
 ## one-call-answers-the-shop-and-the-access
 

@@ -8,7 +8,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | --- | --- |
 | [the-import-is-one-streamed-call](#the-import-is-one-streamed-call) | one server-streaming call per file — the file goes IN the call, is stored, read and posted record by record while the stream reports progress. No queue |
 | [the-file-is-named-by-its-content-hash](#the-file-is-named-by-its-content-hash) | the stored statement's filename is the hash of its bytes, computed by the importer — the person's own filename is not sent |
-| [an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader) | a row whose ref finds an order names that order's creator; any other row names the uploader — one person, both the log's `actor_id` and the per-user report's `user_id` |
+| [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](#superseded-an-imported-row-names-its-orders-creator-else-the-uploader) | ⛔ **superseded in part** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs) — a row whose ref finds an order named that order's creator, any other row the uploader, as both `actor_id` and `user_id` |
 | [a-tiktok-row-finds-its-order-by-related-order-id](#a-tiktok-row-finds-its-order-by-related-order-id) | a TikTok row finds its order by `Related order ID`, on every row — never by `Order/adjustment ID`. Empty means the shop |
 | [the-excel-reader-reads-every-statement](#the-excel-reader-reads-every-statement) | the importer parses no workbook itself — the Excel Reader package reads every statement, and stays a function: what to skip, look up, key and round is the importer's |
 | [a-server-stream-is-authorized-on-its-request](#a-server-stream-is-authorized-on-its-request) | the access interceptor checks a SERVER stream's one request exactly as it checks a unary call. Client and bidi streams stay refused. Not built yet |
@@ -22,6 +22,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [only-a-successful-withdrawal-is-recorded](#only-a-successful-withdrawal-is-recorded) | only a withdrawal that succeeded is recorded — a failed one, and the refund that returns it, are skipped |
 | [an-import-finishes-whether-anyone-watches](#an-import-finishes-whether-anyone-watches) | an import finishes whether or not anyone watches — closing the tab ends the stream, never the import. No Cancel, no rollback |
 | [the-row-key-is-the-only-dedupe](#the-row-key-is-the-only-dedupe) | duplicates are caught row by row, never file by file — a row whose key is already in the ledger is not posted again, and the same file twice is a second upload |
+| [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs) | a row's `user_id` is its order's creator when its ref finds the order, else the shop's primary CS from `ShopAccessCheck` — decided row by row |
 
 ## the-import-is-one-streamed-call
 
@@ -111,7 +112,13 @@ flowchart LR
   `modified` time into the file, so re-downloading a period is new bytes too. What stops those from
   double-posting is the line keys, not the name.
 
-## an-imported-row-names-its-orders-creator-else-the-uploader
+## superseded-an-imported-row-names-its-orders-creator-else-the-uploader
+
+> ⛔ **SUPERSEDED IN PART (2026-09-29) by [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs).**
+> The owner replaced the section below with one that decides `user_id` only: a row with no order now goes to the
+> shop's primary CS, not the uploader — and, by my reading, the log's actor stays whoever posted, so
+> [importer Q10](./settlement_importer_clarify.md#question) closes. The order's creator for a row whose ref finds its
+> order still stands. Kept as the record, per the header.
 
 > `settlement_importer.md` §How We Decide `actor_id` / `user_id` in Settlement importer *(owner, 2026-09-28)* —
 > *"if settlement record have ref id, query in order by `order_external_ref_id`, if not found use user id
@@ -169,7 +176,7 @@ answerable for it, not merely whichever session happened to write the row"*.
 
 **The verdict.** A TikTok `Order details` row finds its order by **`Related order ID`**, on every row —
 never by `Order/adjustment ID`. That one lookup addresses the row (`order_id`) and names its person
-([an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader)). Empty means the row belongs to the shop. It settles the part of that decision's spec
+([superseded-an-imported-row-names-its-orders-creator-else-the-uploader](#superseded-an-imported-row-names-its-orders-creator-else-the-uploader) · 🔄 now [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs)). Empty means the row belongs to the shop. It settles the part of that decision's spec
 I had flagged as my reading, and finds the same order on every sampled row — by one rule instead of two.
 
 ```mermaid
@@ -305,7 +312,7 @@ flowchart LR
 > as last put: a ref that finds no order — post it to the shop, or hold it for its order?
 
 **The verdict.** A line whose ref finds **no order** is **posted to the shop** (`order_id = 0`), under the
-uploader ([an-imported-row-names-its-orders-creator-else-the-uploader](#an-imported-row-names-its-orders-creator-else-the-uploader)). It is not held, so the shop's report carries every line of the file from
+uploader ([superseded-an-imported-row-names-its-orders-creator-else-the-uploader](#superseded-an-imported-row-names-its-orders-creator-else-the-uploader) — ⚠ **amended** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs): the uploader stays its actor, and the report counts it for the shop's primary CS). It is not held, so the shop's report carries every line of the file from
 the day it is imported. It **declines my recommendation** to hold the line until its order exists.
 
 ```mermaid
@@ -329,7 +336,7 @@ flowchart LR
 
 - **An order entered after its statement was imported stays short for good.** Its Settlement tab shows the
   sale with nothing received, and the per-user report shows its creator short by that amount and the
-  uploader ahead by it.
+  uploader ahead by it. ⚠ **Amended** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](#user-id-is-the-orders-creator-else-the-shops-primary-cs): the shop's primary CS ahead by it, not the uploader.
 
 ## an-import-request-is-a-shop-and-its-file
 
@@ -426,9 +433,9 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| the service | `ShopService`, in `selling_service` ([selling.proto](../../../proto/warehouse/selling/v1/selling.proto)) — shops live there |
-| the right shop | ⚠ my reading: `ShopDetail(team_id, shop_id)` answers it — the shop exists in the request's team, is not `deleted`, and its `marketplace` is the RPC's platform, so a TikTok file into a Shopee shop fails here |
-| the caller may work on it | shop access (#86): `shop_users`, one grant of one user to one shop. ⚠ **Nothing reads it today** except its own three RPCs, so this is its first enforcement — and who counts is [importer Q12](./settlement_importer_clarify.md#question), ➡ re-routed to [shop Q1](../shop/context_clarify.md#question) |
+| the service | `ShopService`, in `selling_service` ([selling.proto](../../../proto/warehouse/selling/v1/selling.proto)) — shops live there · ⚠ **Amended** by §Flow 1 *(owner, 2026-09-29)*: the call is **`ShopAccessCheck`** — the shop, its primary CS and the caller's access in one answer ([one-call-answers-the-shop-and-the-access](../shop/context_decision.md#one-call-answers-the-shop-and-the-access)) |
+| the right shop | ⚠ my reading: `ShopDetail(team_id, shop_id)` answers it — the shop exists in the request's team, is not `deleted`, and its `marketplace` is the RPC's platform, so a TikTok file into a Shopee shop fails here · 🔄 read off `ShopAccessCheck`'s `shop` now |
+| the caller may work on it | shop access (#86): `shop_users`, one grant of one user to one shop. ⚠ **Nothing reads it today** except its own three RPCs, so this is its first enforcement — and who counts is [importer Q12](./settlement_importer_clarify.md#question), ➡ re-routed to [shop Q1](../shop/context_clarify.md#question) · 🔄 `ShopAccessCheck`'s `is_have_access` now |
 | when it fails | ⚠ my proposal: an `ERROR` line naming what failed, then the stream ends |
 | the order | before the upload — a refused request stores nothing |
 
@@ -630,3 +637,52 @@ flowchart LR
   same hash.
 - **Uploading the same file again is the retry** — for an interrupted import, and for held lines once their
   mapping exists. A Reprocess button would be a convenience, not a need.
+
+## user-id-is-the-orders-creator-else-the-shops-primary-cs
+
+> `settlement_importer.md` §How We Decide `user_id` in Settlement importer in Every Rows *(owner, 2026-09-29)* — a
+> flowchart per row: an order ref whose order exists → *"use user_id from order"*; no ref, or no such order →
+> *"use primary_user_id from rpc `ShopAccessCheck`"*. It replaces §How We Decide `actor_id` / `user_id`.
+
+**The verdict.** Every imported row's **`user_id`** — the person the per-user report counts it for — is decided row
+by row. A row whose ref finds its order: **that order's creator**. A row with no ref, or a ref that finds no order:
+**the shop's primary CS**, the `primary_user_id` that `ShopAccessCheck` returns
+([one-call-answers-the-shop-and-the-access](../shop/context_decision.md#one-call-answers-the-shop-and-the-access)). It **supersedes**
+the uploader as the fallback ([superseded-an-imported-row-names-its-orders-creator-else-the-uploader](#superseded-an-imported-row-names-its-orders-creator-else-the-uploader)).
+
+```mermaid
+flowchart TD
+  R["an imported row"] --> Q{"does it carry an order ref?"}
+  Q -->|"yes"| L["its order, looked up in selling_service"]
+  L -->|"found"| C["user_id — that order's creator"]
+  L -->|"not found"| P["user_id — the shop's primary CS, from ShopAccessCheck"]
+  Q -->|"no — a fee, an ad, a withdrawal"| P
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| a row whose ref finds its order | its creator — the person stamped on the order's settlement account when the order was placed. ✅ **The per-user report already does this** ([analytic_fold.go:72](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L72)): nothing to build |
+| any other row | the shop's primary CS — `primary_user_id`, asked once per file by the shop check the importer already makes ([the-shop-is-checked-before-the-file-is-stored](#the-shop-is-checked-before-the-file-is-stored)) |
+| which primary | the one at import time — not the one when the money moved |
+| the log's `actor_id` | ⚠ my reading: **whoever posted — the uploader**, from the token, on every row. The section named `actor_id` / `user_id` and now names `user_id` only. So an order's Settlement page says *by* the uploader, and the report counts the row for the person your flow names |
+| ⛔ getting a shop row to its primary CS | the fold counts a shop row for its ACTOR — the uploader — and nothing carries the primary to it: [importer Q13](./settlement_importer_clarify.md#question) |
+| ⛔ a shop with no primary CS | the flow always ends on a person, and a shop can have none: [importer Q14](./settlement_importer_clarify.md#question) |
+
+### What it replaces
+
+- **The uploader as the fallback** — and with it the answer to [analytic Q7](./analytic_context_clarify.md#question):
+  an imported shop-level row — a fee, an ad charge, a withdrawal — is carried by the shop's primary CS, not by
+  whoever uploads. The per-user list no longer ranks the uploader by the shop's money.
+- **[Importer Q10](./settlement_importer_clarify.md#question)** — how the log names the order's creator. By my reading
+  it no longer has to: the actor stays whoever posted.
+- ⚠ It **conflicts** with your 2026-09-10 answer that a shop row counts for its actor —
+  [a-shop-addressed-row-is-attributed-to-its-actor](./context_decision.md#a-shop-addressed-row-is-attributed-to-its-actor).
+  Recorded as a [Contradiction](./settlement_importer_clarify.md#an-imported-shop-row-goes-to-the-shops-primary-cs-and-a-shop-row-goes-to-whoever-posted-it).
+
+### What it accepts
+
+- **One person carries a shop's shop-level money for good** — every fee, ad charge and withdrawal an import brings
+  in goes to the primary CS of the day ([the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept)).
+- **Two names on one row** — the Settlement page's *by* is who posted it, and the report counts it for whose it is.

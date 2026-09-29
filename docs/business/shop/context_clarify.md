@@ -279,8 +279,10 @@ erDiagram
    ⚠ **And say what the importer does with `primary_user_id`.** The likely use is attribution — a row with no
    order names the shop's primary CS rather than the uploader — and your importer doc's §How We Decide `user_id`
    is empty right now. If so, it changes
-   [an-imported-row-names-its-orders-creator-else-the-uploader](../settlement/settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader),
-   and the importer doc is where that gets answered.
+   [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](../settlement/settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader),
+   and the importer doc is where that gets answered. ✅ **Answered there, 2026-09-29** — a row with no order is counted
+   for the shop's primary CS: [user-id-is-the-orders-creator-else-the-shops-primary-cs](../settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). So this question's
+   *must a shop always have one* now also decides [importer Q14](../settlement/settlement_importer_clarify.md#question).
 
 # Contradiction
 

@@ -550,12 +550,12 @@ including on rows written over the API.
 
 This matches the rule `order_drafts` already set: *"There is no machine identity in this system and this
 feature does not invent one, so every draft has a human accountable on it."* An exporter run therefore
-posts under the login it runs as, and `actor_id` is never a system sentinel. ⚠ **Amended** by [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): an imported row whose ref finds its order names that order's creator.
+posts under the login it runs as, and `actor_id` is never a system sentinel. ⚠ **Amended** by [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): an imported row whose ref finds its order names that order's creator. ✅ **Restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs): the actor is whoever posted again — ⚠ my reading — and who the report counts a row for is that decision's.
 
 | `source_type` | `actor_id` is |
 | --- | --- |
 | `manual` | the person who filled the form |
-| `exporter` | the person whose login the exporter runs under · ⚠ **Amended** by [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order |
+| `exporter` | the person whose login the exporter runs under · ⚠ **Amended** by [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order · ✅ **restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) — ⚠ my reading |
 | `initial_total` | ⚠ nobody typed it — see [Question 3](./context_clarify.md#question) |
 
 ⚠ **`initial_total` is the one row no human causes.** It fires on order creation, so the honest
@@ -641,7 +641,7 @@ merely whichever session happened to write the row.
 | `source_type` | the PIC is |
 | --- | --- |
 | `manual` | the person who filled the form |
-| `exporter` | the person whose login the exporter runs under — no machine identity, matching the rule `order_drafts` already set · ⚠ **Amended** by [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order |
+| `exporter` | the person whose login the exporter runs under — no machine identity, matching the rule `order_drafts` already set · ⚠ **Amended** by [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order · ✅ **restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) — ⚠ my reading |
 | `initial_total` | ⚠ nobody filled a form. The order's own PIC is the only honest candidate |
 
 ⚠ **`initial_total` still needs a rule.** It fires on order creation, so the person accountable is
@@ -3149,7 +3149,10 @@ not have been.
 
 **The verdict.** A shop-addressed row is attributed in `user_settlement_daily_reports` to its
 **`actor_id`** — the identity on the token that posted it. Order-addressed rows keep
-[the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row).
+[the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row). ⚠ **Contradicted for an IMPORTED
+shop row** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) *(owner, 2026-09-29)*: the shop's primary CS —
+[recorded](./settlement_importer_clarify.md#an-imported-shop-row-goes-to-the-shops-primary-cs-and-a-shop-row-goes-to-whoever-posted-it), and how it gets there is
+[importer Q13](./settlement_importer_clarify.md#question).
 
 ```mermaid
 flowchart LR
@@ -3187,7 +3190,7 @@ because it splits the measure:
 | row | its actor is | |
 | --- | --- | --- |
 | `initial_total` | the order's PIC | ✅ the salesperson |
-| `fund`, posted by the exporter | the person whose login the exporter runs under · ⚠ since [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader), the order's creator when its ref finds the order | ⛔ an operations person — still so for a row posted by hand |
+| `fund`, posted by the exporter | the person whose login the exporter runs under · ⚠ since [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader), the order's creator when its ref finds the order · ✅ **restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) — ⚠ my reading | ⛔ an operations person — still so for a row posted by hand |
 
 [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) is
 `initial_total + fund`, so the two halves would land on **two different people** — a CS person's book
@@ -3563,7 +3566,7 @@ flowchart LR
 
 - **Who carries an imported shop-level row.** A shop-level row is credited to whoever posted it, the
   importer posts as the person who uploads, and with this decision that person carries it for life —
-  [analytic Q7](./analytic_context_clarify.md#question). ✅ **Answered** — [an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#an-imported-row-names-its-orders-creator-else-the-uploader): the uploader, when the row's ref finds no order.
+  [analytic Q7](./analytic_context_clarify.md#question). ✅ **Answered** — [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): the uploader, when the row's ref finds no order. ⚠ **Superseded** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs): the shop's primary CS.
 
 ## only-the-replay-holds-the-lock
 
