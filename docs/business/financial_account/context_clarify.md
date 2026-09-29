@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat | Q8 — for now the whole team sees, and admin and up move the money: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) · the seeing half against my recommendation |
 | ✅ answered in chat | Q10 — every type has one way in: [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then [one-way-in-per-type](./context_decision.md#one-way-in-per-type) · 🔄 [Q1](#question) and [Q3](#question) narrow with it, to which account a withdrawal and an expense name |
 | ✅ answered in chat | Q4's last half — an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 | ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ⚠ the log still has no account column, so the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) stands — and no cause (critique 1), no date (critique 7) |
@@ -23,7 +24,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Five questions open, six critiques, one contradiction.**
+already touch a bank without naming one. **Four questions open, six critiques, one contradiction.**
 
 ## What already moves money
 
@@ -82,8 +83,9 @@ account it names ([Q1](#question)–[Q3](#question)).
 listener is new · **3.** restock · **4.** expense · **5.** team payment — each of these needs its own event first.
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-**Answer first:** [Q8](#question) — which screens show a balance — is the last thing the Storybook prototype waits
-on. Then Q1–Q3, one form each in another service, in the build order; [Q9](#question) last.
+**Answer first:** the log's missing account ([Contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains))
+— it is the last thing the account screens' contract waits on. Q1–Q3 and [Q9](#question) each change a form in
+another service, and follow the build order.
 
 ## Proposed Design
 
@@ -187,17 +189,17 @@ sequenceDiagram
 
 | RPC | who | |
 | --- | --- | --- |
-| `FinancialAccountList` | every member who names an account on a form | guideline List · `GENERAL` — name, provider, number, holder, status · **no balance** · paginated (HARD RULE 9) — the picker asks a large first page |
-| `FinancialAccountOverview` | managers — [Q8](#question) | guideline Overview · `BALANCE` — balance and last checked, per account · a total per kind |
+| `FinancialAccountList` | every member of the team | guideline List · `GENERAL` — name, provider, number, holder, status · **no balance** · paginated (HARD RULE 9) — the picker asks a large first page |
+| `FinancialAccountOverview` | every member of the team — [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) | guideline Overview · `BALANCE` — balance and last checked, per account · a total per kind |
 | `FinancialAccountByIds` | anyone reading a row that names an account | guideline ByIds · `GENERAL` — a restock names *which* account paid, never what is left in it |
-| `FinancialAccountCreate` | managers | name, provider, number, holder, description, opening balance → posts `opening_balance` · refused when the number is already registered ([a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once)) |
-| `FinancialAccountUpdate` | managers | name, holder, description, *where we are paid* ([Q9](#question)) — provider and number are fixed: another number is another account |
-| `FinancialAccountArchive` · `FinancialAccountRestore` | managers | archive refused unless the balance is zero |
-| `FinancialAccountTransfer` | managers | from, to, amount, date, note → two legs sharing a `group_id` |
-| `FinancialAccountCapital` | managers | in or out, amount, date, note ([capital-joins-the-types](./context_decision.md#capital-joins-the-types)) |
-| `FinancialAccountReconcile` | managers | the figure the bank shows, the date, a note → [Reconcile](#reconcile) |
-| `FinancialAccountLogList` | managers | one account's rows, newest first, paginated, by type and date |
-| `FinancialAccountShopSet` | managers | the account a shop withdraws into ([Q1](#question)) |
+| `FinancialAccountCreate` | admin and up | name, provider, number, holder, description, opening balance → posts `opening_balance` · refused when the number is already registered ([a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once)) |
+| `FinancialAccountUpdate` | admin and up | name, holder, description, *where we are paid* ([Q9](#question)) — provider and number are fixed: another number is another account |
+| `FinancialAccountArchive` · `FinancialAccountRestore` | admin and up | archive refused unless the balance is zero |
+| `FinancialAccountTransfer` | admin and up | from, to, amount, date, note → two legs sharing a `group_id` |
+| `FinancialAccountCapital` | admin and up | in or out, amount, date, note ([capital-joins-the-types](./context_decision.md#capital-joins-the-types)) |
+| `FinancialAccountReconcile` | admin and up | the figure the bank shows, the date, a note → [Reconcile](#reconcile) |
+| `FinancialAccountLogList` | every member of the team | one account's rows, newest first, paginated, by type and date |
+| `FinancialAccountShopSet` | admin and up | the account a shop withdraws into ([Q1](#question)) |
 | `FinancialAccountPayee` | any team paying another — [Q9](#question) | the account a team is paid into — name, number, holder, never its balance |
 
 🔄 No RPC for other services to write with — they publish, and the account listens:
@@ -272,8 +274,8 @@ erDiagram
 | the shop detail | *Withdraws into* ([Q1](#question)) |
 | the team detail | *Where we are paid* replaces the three bank fields ([Q9](#question)) |
 
-`FinancialAccountSelect` is one picker in `components/pickers/`, with its story. It is shown to people who may not
-see a balance, so it shows none.
+`FinancialAccountSelect` is one picker in `components/pickers/`, with its story. It names the account and shows no
+balance — a person picking *which account paid* is recording a fact, and the balance is on the accounts page.
 
 ## Question
 
@@ -325,33 +327,9 @@ see a balance, so it shows none.
    [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused). Kept as a line so
    the numbers hold.
 
-8. **Who sees a balance, and who moves one?**
-   Five things a person does with an account:
-
-   | act | who needs it | for example |
-   | --- | --- | --- |
-   | see a balance, and an account's rows | whoever answers for the team's money | *how much is left in ShopeePay for this week's restocks?* |
-   | open, archive, restore an account | the same | a new BCA account for the team |
-   | type a hand row — transfer, capital, reconcile | the same | a ShopeePay top-up · counting the cash box |
-   | name an account on another form, **by name** | whoever does that act | a CS raising a restock · warehouse staff paying the courier at the door |
-   | see where another team is paid — name, number, holder | any team paying it | the payment form ([Q9](#question)) |
-
-   | | **A — the managers** | B — the owner only | C — the whole team |
-   | --- | --- | --- | --- |
-   | sees balances and moves money | owner and admin of the team's role family, plus root and admin | the team's owner, plus root and admin | every member — CS and warehouse staff too |
-   | a ShopeePay top-up on a busy day | any manager | waits for the owner | anyone |
-   | who could hide missing cash with a reconcile | a manager — and the adjustment names them | the owner alone | anyone |
-   | agrees with | team payments — the same six roles record and confirm them today | — | — |
-
-   **→ Recommend A.** Whoever answers for the team's money sees it and moves it — owner and admin of the role family
-   matching the team's type
-   ([warehouse-roles-count-as-their-own-team](../balance/context_decision.md#warehouse-roles-count-as-their-own-team)),
-   plus root and admin, who read every team's accounts. No finance role, as with expenses. What keeps a manager
-   honest is the record, not a narrower role: every row names who typed it, and a reconcile's adjustment is the one
-   total worth reading every week ([adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only)).
-   Everyone else who acts — a CS raising a restock, warehouse staff paying the courier — picks an account by
-   **name**, from a list with **no balance in it at all**: `FinancialAccountList` carries none, and balances come only
-   from `FinancialAccountOverview`, which only the managers may call. It holds by structure, not by a hidden column.
+8. ✅ **Answered 2026-09-29 — for now the whole team sees, and admin and up move the money**, the seeing half
+   against my recommendation: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up).
+   Kept as a line so the numbers hold.
 
 9. **Is the bank on the team record one of the team's financial accounts?**
    **→ Recommend yes.** A team marks one account *where we are paid*; a payer sees its name, number and holder —
@@ -406,3 +384,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
+- 🆕 **§Financial Analytical Reports Design *(line 84)* is started** — a heading and *Smallest Grain Reports*, no content
+  yet. Read when it has some.

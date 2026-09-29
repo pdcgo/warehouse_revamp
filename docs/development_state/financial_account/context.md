@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **eleven owner decisions**. The
-lifecycle is at *waiting for the owner* on Q1–Q3, Q8 and Q9 — no Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **twelve owner decisions**. The
+lifecycle is at *waiting for the owner* on Q1–Q3 and Q9 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
 
@@ -21,6 +21,7 @@ lifecycle is at *waiting for the owner* on Q1–Q3, Q8 and Q9 — no Storybook p
 | [the-log-says-balance-after](../../business/financial_account/context_decision.md#the-log-says-balance-after) *(critique 5)* | the log's column is `balance_after` = the previous row's + this row's `change` |
 | [restock-is-never-typed-by-hand](../../business/financial_account/context_decision.md#restock-is-never-typed-by-hand) *(Q10, for restock)* | no hand RPC takes a `restock` · it comes only from a restock event inventory does not publish yet — until then a restock's payment shows only through a reconcile |
 | [one-way-in-per-type](../../business/financial_account/context_decision.md#one-way-in-per-type) *(Q10)* | the hand RPCs are Create, Transfer, Capital, Reconcile, and none takes a `change_type` · a listener each for `revenue_fund` (settlement — exists), `restock`, `expense`, `team_payment` (their events are new) |
+| [seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) *(Q8)* | `FinancialAccountList`, `FinancialAccountOverview` and `FinancialAccountLogList` open to every member of the team · Create, Update, Archive, Restore, Transfer, Capital, Reconcile, ShopSet to admin and up — `TEAM_ADMIN`/`TEAM_OWNER`, `WAREHOUSE_ADMIN`/`WAREHOUSE_OWNER`, `ADMIN`/`ROOT` (⚠ my reading of *admin up*) · balances stay on their own RPC so narrowing *for now* later is one policy line |
 
 ## What exists
 
@@ -48,10 +49,11 @@ written.
 
 ## Open
 
-Q1–Q3, Q8 and Q9 in the clarify. **Q8 first** — which screens show a balance, the last thing the prototype waits
-on — then Q1–Q3 in the build order, Q9 last.
+Q1–Q3 and Q9 in the clarify — each changes a form in another service, and follows the build order. The account
+screens' own contract waits only on the log's missing account (the contradiction).
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be
-`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype before Q8 is
-answered.
+`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype until the
+owner's log carries its account — building the contract on my proposed column first would settle the contradiction
+unasked (HARD RULE 8).

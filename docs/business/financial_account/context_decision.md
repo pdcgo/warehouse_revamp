@@ -12,11 +12,12 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
 | [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
 | [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q10](./context_clarify.md#question) — which way each comes in |
-| [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | [Q8](./context_clarify.md#question) — who types it |
-| [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) | an `adjustment` is only ever the difference a reconcile finds — the manager types the figure the bank shows, never an amount | owner | [Q8](./context_clarify.md#question) — who reconciles |
+| [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | ✅ who types it: [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) |
+| [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) | an `adjustment` is only ever the difference a reconcile finds — the manager types the figure the bank shows, never an amount | owner | ✅ who reconciles: [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) |
 | [the-log-says-balance-after](#the-log-says-balance-after) | a log row's running balance is `balance_after` — the balance once its change is applied | owner | — |
 | [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes |
 | [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | [Q1](./context_clarify.md#question), [Q3](./context_clarify.md#question) — which account a withdrawal and an expense name |
+| [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 
 ## the-accounts-are-one-ledger
 
@@ -383,3 +384,51 @@ flowchart LR
   is settled here. Left: which account each shop's withdrawal lands in, and the rename.
 - 🔄 [Q3](./context_clarify.md#question) — that an expense is typed in `expense_service`, never here, is settled here.
   Left: whether it names the account it was paid from, and which expenses name none.
+
+## seeing-is-team-wide-moving-is-admin-and-up
+
+> Chat *(owner, 2026-09-29)* — *"for q8, for now all user in team can see that, and admin up can move the money"*, to
+> [Q8](./context_clarify.md#question): who sees a balance, and who moves one? **Seeing is against my
+> recommendation** (option A — only the managers see); **moving is as recommended**.
+
+**The verdict.** For now, **every member of a team sees its accounts** — their balances and their rows. **Admin and
+up move the money**: they open, archive and restore accounts, and type every hand row.
+
+```mermaid
+flowchart LR
+  subgraph "every member of the team"
+    CS["a CS · warehouse staff"]
+    AU["admin and up"]
+  end
+  CS -->|"sees"| V["the accounts — balances and rows"]
+  AU -->|"sees"| V
+  AU -->|"opens, archives · transfer, capital, reconcile"| MV["the money moves"]
+```
+
+### The spec
+
+| act | who |
+| --- | --- |
+| see the accounts, their balances and their rows | every member of the team · root and admin, every team's |
+| open, archive, restore an account | admin and up |
+| a transfer · capital · a reconcile | admin and up |
+| name an account on another service's form | that form's own roles — ⚠ my reading: a CS raising a restock names the account that paid. That records a payment, heard from the broker; it moves nothing by hand |
+| see where another team is paid | [Q9](./context_clarify.md#question) |
+
+| *admin and up* — ⚠ my reading of *"admin up"*, yours to correct | roles |
+| --- | --- |
+| a selling team | `ROLE_TEAM_ADMIN`, `ROLE_TEAM_OWNER` |
+| a warehouse team | `ROLE_WAREHOUSE_ADMIN`, `ROLE_WAREHOUSE_OWNER` |
+| the root team, over every team | `ROLE_ADMIN`, `ROLE_ROOT` |
+| — | the same six roles that record and confirm team payments today. If *admin* meant the root team alone, only head office would move a team's money — say so, and this is renamed |
+
+### What seeing team-wide costs — recorded, not re-argued
+
+- Every CS and every warehouse staff member sees how much the team holds, and each `capital` move the owner makes.
+- ✅ **"For now" stays cheap to change.** Balances still come from their own RPC — `FinancialAccountOverview` — so
+  narrowing who sees them later is one line in the proto, that request's policy, not a rework.
+
+### What else it answers
+
+Who reconciles ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) and who types `capital`
+([capital-joins-the-types](#capital-joins-the-types)): admin and up.
