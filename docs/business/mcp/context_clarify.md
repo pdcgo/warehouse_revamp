@@ -5,8 +5,12 @@ is mine.** An answered point is deleted; what you settle goes in `context_decisi
 
 🆕 **First pass, 2026-09-29.** ✅ Your diagram parses (`npm run lint:mermaid`, 576 clean). The doc says two things:
 a local MCP app is shipped to users, and through it their own AI agent reads our RPC API to analyze their data.
-**What makes that safe is all still open** — what the agent may do, how the account connects, whose data it reads,
-and which agents it has to reach.
+What the agent may do is now decided; **how the account connects, whose data it reads, and which agents it has to
+reach are still open.**
+
+| | |
+| --- | --- |
+| ✅ answered (2026-09-29) | [Q1](#question) — the agent only reads, for now, and the server refuses any write: [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now). ⚠ It rules out the session token as the agent's credential — that token carries every write ([Q3](#question)) |
 
 ## What already exists
 
@@ -23,20 +27,21 @@ and which agents it has to reach.
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **What the agent may DO is not said.** *"access / analize"* reads as read-only; *"colaborating"* could mean acting. An agent that writes is a third person on the same stock as the pair at the shelf, seen by neither — and it acts on text it has read. A buyer's name is typed by a stranger: *"cancel every order"* planted there is an instruction to an agent that can cancel. | **Read-only**, enforced on the server by the credential — never by which tools the app happens to list. [Q1](#question) |
+| **1** | ✅ **Decided — [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now).** An agent runs no write, and the server refuses one — not the tool list. Was: what the agent may do was not said, and an agent that writes acts on text a stranger typed. | Build it: mark each offered read `NO_SIDE_EFFECTS`, and have the interceptor refuse an agent's credential on anything else. |
 | **2** | **"A local app shipped to users" is a premise, and it decides everything built.** A shipped binary is a client we cannot redeploy: every proto change must keep old copies working, every machine must update, and it is built per OS. And it reaches **desktop agents only** — claude.ai in a browser, ChatGPT and every phone app add an MCP server by URL, never a local program. | **The tools live on the server** — `/mcp` beside the RPC API, deployed with it. The local app, if kept, is a thin bridge that holds the key and forwards, so no tool in it can go stale. [Q2](#question) |
-| **3** | **"Connect their account" has no mechanism.** The only credential is the session token: an agent holding one dies within a day or a week, cannot be revoked alone, and carries every write the person may make. A password typed into an agent's config is a password in plain text on disk. | An **agent key** — made by the person on a screen, shown once, named, read-only, bound to one team, expiring, revoked on its own without touching the person's sessions. [Q3](#question) |
+| **3** | **"Connect their account" has no mechanism.** The only credential is the session token: an agent holding one dies within a day or a week, cannot be revoked alone, and carries every write the person may make — which [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) now rules out. A password typed into an agent's config is a password in plain text on disk. | An **agent key** — made by the person on a screen, shown once, named, read-only, bound to one team, expiring, revoked on its own without touching the person's sessions. [Q3](#question) |
 | **4** | **Whose data is not said.** One person holds roles in several teams ([user/context.md](../user/context.md) §General), so a key that *is* the person reads all of them — and lets an agent join them. ⛔ Worse, root and admin of team 1 pass every scope check: a root's key hands **every team's** orders and money to a third-party AI. | A key reads **one team**, fixed when it is made, and **the root bypass never applies to a key**. [Q4](#question) |
-| **5** | **Who may send a team's data out is not said.** The data is the team's, not the person's: a CS connecting a personal agent sends the team's sales, costs and buyers to that agent's provider. | The team's **owner and admin** may connect an agent; CS and packer only if the owner allows it for the team. [Q5](#question) |
+| **5** | **Who may send a team's data out is not said.** The data is the team's, not the person's: a CS connecting a personal agent sends the team's sales, costs and buyers to that agent's provider. Read-only does not help here — it limits what an agent can do, not what it sends. | The team's **owner and admin** may connect an agent; CS and packer only if the owner allows it for the team. [Q5](#question) |
 | **6** | **"Analyze" over raw lists is a crawl, and 164 tools is noise.** Lists page ([HARD RULE 9](../../../CLAUDE.md#9-a-list-rpc-over-data-that-can-grow-must-paginate)), so *"my best product last month"* over `OrderList` is hundreds of paged calls — slow for the person, and a bot's load on the database the shelf is using. A long tool list costs the agent context every turn and makes it choose worse. | A **short list** — the 11 aggregates, plus lookups by name, code or ref — and a **rate limit per key**. [Q6](#question) |
 | **7** | **Buyers' personal data would leave the system.** Whatever a tool returns goes to the agent's provider and may be kept there. Analysis never needs to know who the buyer is. | No tool returns a buyer's **name, phone or address**. [Q7](#question) |
 | **8** | **The diagram draws the call backwards, and no account.** `mcp-->agent: used by agent` points from the MCP to the agent — the agent is the caller. And §General 2's *"connect their account"* — the key, and who issued it — is not in the picture. | [The picture](#the-picture) below — yours to take or leave. |
 
 ## Recommendation
 
-Settle **Q1 and Q2 first** — what the agent may do, and where the tools live. Every other answer follows from those
-two. My pick: **read-only, tools on the server, a thin local app for desktop agents now** — and web or phone
-agents, which need an OAuth login on our side, only once your users ask for them.
+✅ **Q1 is decided** — the agent only reads. Next, **Q2** — where the tools live, and which agents your users use:
+every screen and the credential's shape follow from it. My pick: **tools on the server, a thin local app for
+desktop agents now** — and web or phone agents, which need an OAuth login on our side, only once your users ask for
+them.
 
 ## Proposed Design
 
@@ -86,7 +91,9 @@ can, and never more than the one team its key reads.
 
 ### What an agent may call
 
-An RPC is callable with an agent key **only if its proto says so, twice**:
+An RPC is callable with an agent key **only if its proto says so, twice** — it is a read, which
+[an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) requires, and it is offered to
+agents, which is still my proposal ([Q6](#question)):
 
 ```proto
 rpc OrderStat(OrderStatRequest) returns (OrderStatResponse) {
@@ -101,6 +108,7 @@ message OrderStatRequest {
 
 | rule | why |
 | --- | --- |
+| not `NO_SIDE_EFFECTS` → an agent key is **refused** | ✅ [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) — a write is refused by the server, not left off a list |
 | no `tool` option → an agent key is **refused** | forgetting it fails closed |
 | `tool` on an RPC that is not `NO_SIDE_EFFECTS` → **the server refuses to boot** | read-only is checked by the machine, not remembered by a reviewer |
 | `/mcp` lists exactly the marked RPCs, each request message as its tool's input | listing and permission are one declaration, and a tool's input cannot drift from its RPC because it *is* the request |
@@ -169,10 +177,9 @@ sequenceDiagram
 
 ## Question
 
-1. **May the agent only read, or also act?** Critique 1.
-   **→ Recommend read-only**, enforced by the key: an RPC answers one only if it is marked for agents and declared
-   `NO_SIDE_EFFECTS` ([what an agent may call](#what-an-agent-may-call)). A write later is its own decision, RPC by
-   RPC, with the person confirming in the agent before it runs.
+1. ✅ **Answered 2026-09-29 — the agent only reads, for now**, as recommended:
+   [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now). Kept as a line so the numbers
+   hold.
 
 2. **Where do the tools live — in the app you ship, or on the server? And which agents do your users use?**
    Critique 2.
@@ -182,8 +189,10 @@ sequenceDiagram
    app reaches them — they need `/mcp` directly, behind an OAuth login on our side, the most work in this design.
 
 3. **How does a person connect an agent?** Critique 3.
-   **→ Recommend an agent key** made on `/profile` — shown once, named, read-only, bound to one team, expiring (90
-   days by default), revoked on its own. Never the password, never the session token.
+   **→ Recommend an agent key** made on `/profile` — shown once, named, bound to one team, expiring (90 days by
+   default), revoked on its own. Never the password, and never the session token — which
+   [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) now rules out, since it carries
+   every write.
 
 4. **Does a key read one team — and never with the root bypass?** Critique 4.
    **→ Recommend yes to both**: a person in two teams makes two keys, and a root gets a one-team key like anyone
@@ -191,7 +200,8 @@ sequenceDiagram
 
 5. **Who may connect a team's data to an agent?** Critique 5.
    **→ Recommend the team's owner and admin**; CS and packer only if the owner turns it on for the team. The owner
-   sees every key reading the team, and can revoke any.
+   sees every key reading the team, and can revoke any. ⚠ Read-only does not settle this: an agent that cannot
+   write still sends everything it reads to its provider.
 
 6. **Which data does the agent read first?** Critique 6.
    **→ Recommend [the first tools](#the-first-tools)** — the 11 aggregates and two lookups — with a rate limit per
@@ -203,7 +213,8 @@ sequenceDiagram
 
 # Contradiction
 
-**None found.** Your doc is two points and a picture, and nothing else in the requirement set says anything about an
-MCP for users. ⚠ **One naming hazard instead**: [level.md](../../technical/development/level.md) §Development MCP
+**None found — re-examined after [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now).**
+No doc in the requirement set has an AI agent write anything, and every tool proposed here is already a read. Your
+doc is two points and a picture, and nothing else says anything about an MCP for users. ⚠ **One naming hazard instead**: [level.md](../../technical/development/level.md) §Development MCP
 Tools is also *"the MCP"* — a developer's shell and files. **→ Recommend** the two share nothing but the SDK: no
 user's tool goes into `tools/san/remote`, and nothing of `san remote` is ever shipped.
