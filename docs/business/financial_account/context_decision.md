@@ -30,6 +30,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [an-account-is-archived-only-at-zero](#an-account-is-archived-only-at-zero) | an account is archived only when its balance is zero — move the money out or reconcile first | owner | — |
 | [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart) | `type` and `provider` are picked apart — nothing derives one from the other, and a pair that disagrees saves | owner, against my recommendation | — |
 | [the-description-names-the-cause](#the-description-names-the-cause) | a log row's cause is its `description` — no `source_id`, no `reversal` | owner, against my recommendation | — |
+| [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) | a team payment posts only on the creditor's acceptance — the balance service's event carries the from and to account ids | owner | [Q14](./context_clarify.md#question) — a reversed acceptance |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -1000,3 +1001,40 @@ flowchart LR
 *Why did BCA drop 2.000.000?* is answered by reading the text, never by opening the restock — a row cannot link to
 its cause, and a report cannot join one. The gain: the log keeps the owner's field list, and nothing about it
 depends on another service's ids.
+
+## a-team-payment-posts-on-accept
+
+> In chat *(owner, 2026-09-30)* — *"financial account only listen event accept payment from balance service, and
+> balance service must send event to/from financial account id"*. Settles when a `team_payment` posts
+> ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) had it as my
+> spec) and what the event carries.
+
+**The verdict.** A team payment reaches the financial accounts **only when the creditor accepts it**. The balance
+service — `liability_service` in the build — publishes the acceptance carrying the **from** account, the payer's, and
+the **to** account, the creditor's; the listener posts one `team_payment` row on each.
+
+```mermaid
+sequenceDiagram
+  participant A as Team A — the payer
+  participant L as balance service
+  participant F as financial accounts
+  participant B as Team B — the creditor
+  A->>L: record — proof, from BCA A
+  B->>L: accept — to BCA B
+  L-->>F: payment accepted — from BCA A, to BCA B, amount
+  F->>F: team_payment −amount on BCA A
+  F->>F: team_payment +amount on BCA B
+  Note over L,F: record and reject publish nothing to this service
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| heard | the acceptance only — a recorded or rejected payment moves no account |
+| the event carries | `from_account_id` — the payer's · `to_account_id` — the creditor's · the amount · when it was accepted |
+| the balance service holds | both ids on the payment — new in `liability_service` · ⚠ my reading: *from* picked by the payer when recording, *to* fixed by the creditor when accepting |
+| the rows | two `team_payment` rows in one transaction — out of *from*, into *to* · ⚠ my spec: sharing a `group_id` |
+| ⚠ my spec — `occurred_at` | when the creditor accepted |
+| a redelivered event | posts once — its `event_id` claimed ([one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types)) |
+| an accepted payment later reversed | not heard — open: [Q14](./context_clarify.md#question) |
