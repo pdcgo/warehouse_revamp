@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| 🔄 elaborated | [Q9](#question) — one payment end to end, and who names the payee · which account may be it · a change while a payment waits · archiving it |
 | ✅ answered in chat | critique 2 — `type` and `provider` are picked apart: [type-and-provider-are-picked-apart](./context_decision.md#type-and-provider-are-picked-apart) · critique 1 — the cause is the `description`: [the-description-names-the-cause](./context_decision.md#the-description-names-the-cause) · both against my recommendation · **no critique left** |
 | ✅ answered in chat, and your line 105 | critique 4 — an account opens with an `opening_balance` log row: [an-account-opens-with-a-log-row](./context_decision.md#an-account-opens-with-a-log-row) · critique 8 — archived only at zero: [an-account-is-archived-only-at-zero](./context_decision.md#an-account-is-archived-only-at-zero) · ⚠ line 105 repeats `opening_balance` — [reported](#contradiction) |
 | ✅ your lines 43, 46–47, 90 | `account_type` is `provider`: [provider-replaces-account-type](./context_decision.md#provider-replaces-account-type) — critique 2 narrows to deriving `type` · `name` and `holder_name`: [an-account-has-a-name-and-a-holder](./context_decision.md#an-account-has-a-name-and-a-holder) — critique 3 adopted · `occurred_at`: [the-log-keeps-the-day-the-money-moved](./context_decision.md#the-log-keeps-the-day-the-money-moved) — critique 7 adopted · no new contradiction · lines below 45 moved down 2, below 89 down 3 |
@@ -360,16 +361,34 @@ balance — a person picking *which account paid* is recording a fact, and the b
    | who sees it | anyone signed in, as the team detail was — its name, number and holder, **never its balance** | only teams it has a debt with | a payer finds out where to pay before the debt is on screen |
    | where it shows | the team detail's *Where we are paid* · the payment form's *Pay to* · *Received into* pre-filled on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) | the team detail only | the payer copies a number from another screen — the step that sends money to a stale one |
 
-   A team with no payee account can still record a payment — the form says *this team has not named where it is
-   paid*.
+   One payment, end to end — Team A owes Team B:
 
    ```mermaid
-   flowchart LR
-     FA["financial_accounts — BCA 123"] --> PA["payee_accounts — the team's one"]
-     PA --> TD["team detail — Where we are paid"]
-     PA --> PF["payment form — Pay to"]
-     PA --> CF["confirm — Received into, pre-filled"]
+   sequenceDiagram
+     participant A as Team A — the payer
+     participant L as balance — payment
+     participant F as financial accounts
+     participant B as Team B — the creditor
+     A->>F: FinancialAccountPayee(B)
+     F-->>A: Pay to — BCA 123, a.n. PT B — no balance
+     A->>A: transfers by bank, outside the system
+     A->>L: record — proof, Paid from BCA A, paid to BCA 123
+     B->>L: confirm — Received into pre-filled BCA 123
+     L-->>F: payment event
+     F->>F: team_payment — out of BCA A, into BCA 123
    ```
+
+   And four cases the walk-through does not show, one recommendation each:
+
+   | case | **→ Recommend** | why |
+   | --- | --- | --- |
+   | who names it | admin and up, `FinancialAccountPayeeSet` ([seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up)) | the same people who open and archive accounts |
+   | which account may be it | the team's own, active, `bank_account` or `wallet` — never `cash`, never `unknown` | nobody can transfer into a cash box, and an `unknown` account has no number to show |
+   | it changes while a payment waits | the payment keeps the account it was **shown** — *paid to BCA 123* — and confirm pre-fills that one, not today's | the money went where the payer was told; a new payee is for the next payment |
+   | its account is archived | refused while it is the payee — name another first ([an-account-is-archived-only-at-zero](./context_decision.md#an-account-is-archived-only-at-zero) already needs it at zero) | a team would otherwise go quietly unpayable |
+   | no payee named yet | the payment can still be recorded — the form says *this team has not named where it is paid* | the debt is real either way; the payer asks the creditor |
+
+   ⚠ *Paid to* on a payment is a new field in `liability_service` — the one change this asks of another service.
 
 10. ✅ **Answered 2026-09-29 — every type has one way in**, as recommended:
     [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then
