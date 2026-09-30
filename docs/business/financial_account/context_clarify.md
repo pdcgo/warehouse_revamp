@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| 🔄 elaborated | [Q9](#question) — five parts: is it an account · where *where we are paid* lives · who sees it · where it shows · what happens to the three fields |
 | ✅ your line 19 | `shop_id` is unique — a shop names one account: [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) · ⛔ the [shop-key contradiction](#a-table-that-must-decide-one-account-allows-several) closes, as recommended · *Smallest Grain Reports* removed from line 110's section |
 | ✅ answered in chat, and your line 93 | Q13 — settlement's ads and the accounts are independent, nothing syncs: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) · `ads_expense` joins the types: [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) · lines below 92 moved down 1 |
 | 🔄 elaborated | Q13 — my *Marketplace balance* choice withdrawn: it counted a withheld ad in settlement and in expense, which [withheld-is-not-spent](../settlement/context_clarify.md#withheld-is-not-spent) rules out · now: a withheld ad is never an expense |
@@ -345,14 +346,38 @@ balance — a person picking *which account paid* is recording a fact, and the b
    against my recommendation: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up).
    Kept as a line so the numbers hold.
 
-9. **Is the bank on the team record one of the team's financial accounts?**
-   **→ Recommend yes** — in the shape of your two new tables: a `payee_accounts` row, one per team. A team marks one
-   account *where we are paid*; a payer sees its name, number and holder —
-   never its balance — on the payment form. `team_infos`' three bank fields retire, each copied into an account
-   first. Otherwise one bank is typed in two places, and the day one is edited a payer is sent to the other.
-   ⚠ **Ripple of [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once):** those
-   fields took any number, so one bank can sit in two teams today — the copy takes it once, and lists the rest for a
-   person to settle.
+9. 🔄 **Is the bank on the team record one of the team's financial accounts?**
+   Today `team_infos` holds **one** bank per team — `bank_type` (free text), `bank_owner_name`,
+   `bank_account_number` — edited in *contact & bank*, and shown by `TeamDetail` to anyone signed in, so another
+   team knows where to pay. The same bank is about to be typed again as a financial account. Five parts, one
+   recommendation each:
+
+   | | **→ Recommend** | instead | why not |
+   | --- | --- | --- | --- |
+   | is it an account | **yes** — the bank a team is paid into is one of its financial accounts | keep both | one bank typed twice — the day one is edited, a payer transfers to the other number |
+   | which one is *where we are paid* | a `payee_accounts` row, one per team — the shape of your `shop_accounts` | a `payee_account_id` on `team_infos` | team_service holding an id into another service's table, and a team detail that needs both services to show one number |
+   | who sees it | anyone signed in, as `TeamDetail` today — its name, number and holder, **never its balance** | only teams it has a debt with | a payer finds out where to pay before the debt is on screen · the number is already this open today |
+   | where it shows | the team detail's *Where we are paid* · the payment form's *Pay to* · *Received into* pre-filled on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) | the team detail only | the payer copies a number from another screen — the step that sends money to a stale one |
+   | the three fields | copied into an account once, then retired: `account_type` read from the free text — *BCA*, *bank bca* → `bca`, anything else `unknown` · the holder kept · the balance **not set** until an admin types it, which posts `opening_balance` | copied at zero | a balance of 0 that is not true, on day one |
+
+   ⚠ **Ripple of [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once):** those fields took any number, so one bank can sit in two teams today — the copy takes it
+   once, and lists the rest for a person to settle. A team with no payee account can still record a payment — the
+   form says *this team has not named where it is paid*.
+
+   ```mermaid
+   flowchart LR
+     subgraph "today — one bank, typed twice"
+       TI["team_infos — BCA 123"] --> TD["team detail — contact and bank"]
+       FA1["financial_accounts — BCA 123"]
+       TI -.-|"the same bank"| FA1
+     end
+     subgraph "proposed — typed once"
+       FA2["financial_accounts — BCA 123"] --> PA["payee_accounts — the team's one"]
+       PA --> TD2["team detail — Where we are paid"]
+       PA --> PF["payment form — Pay to"]
+       PA --> CF["confirm — Received into, pre-filled"]
+     end
+   ```
 
 10. ✅ **Answered 2026-09-29 — every type has one way in**, as recommended:
     [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then
