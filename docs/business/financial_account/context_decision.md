@@ -26,6 +26,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [provider-replaces-account-type](#provider-replaces-account-type) | the column naming who holds the money is `provider` (was `account_type`) · `type` stays beside it | owner | [critique 2](./context_clarify.md#critique) — is `type` derived from it |
 | [an-account-has-a-name-and-a-holder](#an-account-has-a-name-and-a-holder) | every account has a `name` and a `holder_name` (*atas nama*) | owner | — |
 | [the-log-keeps-the-day-the-money-moved](#the-log-keeps-the-day-the-money-moved) | every log row keeps `occurred_at`, when the money moved, beside `created_at` | owner | — |
+| [an-account-opens-with-a-log-row](#an-account-opens-with-a-log-row) | an account created by hand opens with an `opening_balance` log row — its balance is never set without one | owner | — |
+| [an-account-is-archived-only-at-zero](#an-account-is-archived-only-at-zero) | an account is archived only when its balance is zero — move the money out or reconcile first | owner | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -888,3 +890,53 @@ flowchart LR
 | ⚠ my spec — its type | `timestamptz`, as its `_at` name says; a hand row picks a day |
 | ⚠ my spec — `balance_after` | still runs in entry order, so a late row never rewrites the rows after it |
 | a reconcile | lines rows up with the statement by `occurred_at` |
+
+## an-account-opens-with-a-log-row
+
+> In chat *(owner, 2026-09-30)* — *"for crit4, yes but its recorded as log"* · `opening_balance` listed again at
+> line 105. [Critique 4](./context_clarify.md#critique) as recommended.
+
+**The verdict.** An account created by hand opens with its first **log row**, `opening_balance` — the money already in
+it on the day it is registered. Its balance is never set without that row.
+
+```mermaid
+flowchart LR
+  C["create BCA Operasional — Rp 50.000.000 already in it"] --> L["log — opening_balance +50.000.000, balance_after 50.000.000"]
+  L --> S["financial_accounts — balance 50.000.000"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| when | `FinancialAccountCreate` — in the same transaction that inserts the account |
+| the row | `change_type` `opening_balance` · `change` = the amount typed · `balance_after` = the same · `occurred_at` = the day it was counted |
+| ⚠ my spec — at zero | still posts, a row of 0 — every account made by hand starts its log with who opened it and when |
+| an `unknown` account | none — the broker makes it, and its first row is the withdrawal ([a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one)) |
+| ⚠ my spec — a filled-in `unknown` account | none — it already has rows ([an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in)) |
+| ⚠ my spec — a wrong opening figure | corrected by a reconcile, never by editing the row ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
+
+## an-account-is-archived-only-at-zero
+
+> In chat *(owner, 2026-09-30)* — *"for critique 8, yes, allow archiving when balance zero"*.
+> [Critique 8](./context_clarify.md#critique) as recommended.
+
+**The verdict.** An account can be archived only when its balance is **zero**. The money is moved out — a transfer —
+or found missing — a reconcile — first, so nothing a team holds drops out of its total.
+
+```mermaid
+stateDiagram-v2
+  [*] --> active: create — opening_balance
+  active --> archived: archive — balance is zero
+  archived --> active: restore
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| archive | refused unless `balance` is 0 — the screen says *move the money out first* and offers Transfer and Reconcile |
+| who | admin and up ([seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up)) |
+| ⚠ my spec — while archived | no row by hand · readable everywhere · restorable |
+| ⚠ my spec — a row from the broker | still posts — refused, it would dead-letter · the pickers stop offering an archived account, and a row that lands anyway shows it as money to move out |
+| an `unknown` account | its move-in archives it at zero ([an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in)) |
