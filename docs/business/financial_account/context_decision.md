@@ -23,11 +23,13 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-shop-has-one-account](#a-shop-has-one-account) | a shop names one account — `shop_id` is unique in `shop_accounts` · an account may take many shops | owner | — |
 | [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) | `team_infos` holds no bank — its three bank columns are dropped, not copied, and a team's bank lives only as a financial account | owner | [Q9](./context_clarify.md#question) — where a team is paid |
 | [every-log-row-names-its-account](#every-log-row-names-its-account) | every log row carries `account_id` — the state and the log share one scope, the account | owner | — |
-| [provider-replaces-account-type](#provider-replaces-account-type) | the column naming who holds the money is `provider` (was `account_type`) · `type` stays beside it | owner | [critique 2](./context_clarify.md#critique) — is `type` derived from it |
+| [provider-replaces-account-type](#provider-replaces-account-type) | the column naming who holds the money is `provider` (was `account_type`) · `type` stays beside it | owner | ✅ `type` is picked apart: [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart) |
 | [an-account-has-a-name-and-a-holder](#an-account-has-a-name-and-a-holder) | every account has a `name` and a `holder_name` (*atas nama*) | owner | — |
 | [the-log-keeps-the-day-the-money-moved](#the-log-keeps-the-day-the-money-moved) | every log row keeps `occurred_at`, when the money moved, beside `created_at` | owner | — |
 | [an-account-opens-with-a-log-row](#an-account-opens-with-a-log-row) | an account created by hand opens with an `opening_balance` log row — its balance is never set without one | owner | — |
 | [an-account-is-archived-only-at-zero](#an-account-is-archived-only-at-zero) | an account is archived only when its balance is zero — move the money out or reconcile first | owner | — |
+| [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart) | `type` and `provider` are picked apart — nothing derives one from the other, and a pair that disagrees saves | owner, against my recommendation | — |
+| [the-description-names-the-cause](#the-description-names-the-cause) | a log row's cause is its `description` — no `source_id`, no `reversal` | owner, against my recommendation | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -940,3 +942,61 @@ stateDiagram-v2
 | ⚠ my spec — while archived | no row by hand · readable everywhere · restorable |
 | ⚠ my spec — a row from the broker | still posts — refused, it would dead-letter · the pickers stop offering an archived account, and a row that lands anyway shows it as money to move out |
 | an `unknown` account | its move-in archives it at zero ([an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in)) |
+
+## type-and-provider-are-picked-apart
+
+> In chat *(owner, 2026-09-30)* — *"for 2, its okay for that"*, and asked which: *"Leave as is"*. The second half of
+> [critique 2](./context_clarify.md#critique) — **against my recommendation** of deriving `type` from `provider`.
+
+**The verdict.** `type` and `provider` are **two fields, picked apart**. Nothing derives one from the other, and
+nothing refuses a pair that disagrees.
+
+```mermaid
+flowchart LR
+  F["the account form"] --> P["provider — picked"]
+  F --> T["type — picked"]
+  P -.-|"no rule between them"| T
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| `provider` | picked from its list ([provider-replaces-account-type](#provider-replaces-account-type)) |
+| `type` | picked from its list — never filled in from the provider |
+| a pair that disagrees | allowed — `bank_account` with `shopeepay` saves |
+
+### What it costs — recorded, not re-argued
+
+The totals per kind — bank, wallet, cash — read `type`. An account whose type was mis-picked counts its money under
+the wrong kind, and nothing points at it. The gain: a provider that is both, or neither, never waits for a table to
+be changed.
+
+## the-description-names-the-cause
+
+> In chat *(owner, 2026-09-30)* — *"for 1, description is enough"*. [Critique 1](./context_clarify.md#critique) —
+> **against my recommendation** of `source_id` and `reversal`.
+
+**The verdict.** A log row says why the balance moved in its **`description`**, and nothing else. There is no
+`source_id` pointing at the restock, expense, withdrawal or payment behind it, and no `reversal` flag.
+
+```mermaid
+flowchart LR
+  E["a restock paid from BCA"] --> L["BCA's log row — restock −2.000.000"]
+  L --> D["description — Restock R-1042, from Supplier A"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the cause | `description` — text written by whoever posts the row |
+| ⚠ my spec — a broker row | the listener writes it from the event — *Restock R-1042*, *Withdrawal from <the shop>*, *Expense E-88* — so every one reads alike |
+| a correction | an ordinary row, its `description` saying what it undoes |
+| a redelivered event | still posts once — the listener claims its `event_id` beside the write ([one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types)), which needs no column on the row |
+
+### What it costs — recorded, not re-argued
+
+*Why did BCA drop 2.000.000?* is answered by reading the text, never by opening the restock — a row cannot link to
+its cause, and a report cannot join one. The gain: the log keeps the owner's field list, and nothing about it
+depends on another service's ids.

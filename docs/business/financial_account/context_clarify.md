@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat | critique 2 — `type` and `provider` are picked apart: [type-and-provider-are-picked-apart](./context_decision.md#type-and-provider-are-picked-apart) · critique 1 — the cause is the `description`: [the-description-names-the-cause](./context_decision.md#the-description-names-the-cause) · both against my recommendation · **no critique left** |
 | ✅ answered in chat, and your line 105 | critique 4 — an account opens with an `opening_balance` log row: [an-account-opens-with-a-log-row](./context_decision.md#an-account-opens-with-a-log-row) · critique 8 — archived only at zero: [an-account-is-archived-only-at-zero](./context_decision.md#an-account-is-archived-only-at-zero) · ⚠ line 105 repeats `opening_balance` — [reported](#contradiction) |
 | ✅ your lines 43, 46–47, 90 | `account_type` is `provider`: [provider-replaces-account-type](./context_decision.md#provider-replaces-account-type) — critique 2 narrows to deriving `type` · `name` and `holder_name`: [an-account-has-a-name-and-a-holder](./context_decision.md#an-account-has-a-name-and-a-holder) — critique 3 adopted · `occurred_at`: [the-log-keeps-the-day-the-money-moved](./context_decision.md#the-log-keeps-the-day-the-money-moved) — critique 7 adopted · no new contradiction · lines below 45 moved down 2, below 89 down 3 |
 | ✅ your line 82 | the log carries `account_id`: [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account) · ⛔ the [log contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) closes, as recommended — **none left** · lines below 81 moved down 1 |
@@ -36,7 +37,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **One question open, two critiques, no contradiction.**
+already touch a bank without naming one. **One question open, no critique, no contradiction.**
 
 ## What already moves money
 
@@ -74,8 +75,8 @@ flowchart LR
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | 🔄 **A log row names no cause.** `description` *(line 88)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. ✅ Its **account** is there now — [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
-| **2** | 🔄 **Half adopted** — `account_type` is `provider` now: [provider-replaces-account-type](./context_decision.md#provider-replaces-account-type). Left: **`type` and `provider` can still disagree** *(lines 42–43)* — nothing stops a `bank_account` whose provider is `shopeepay`, and `cash` and `unknown` sit in both lists *(lines 58–59, 64, 69)*. | The person picks the **provider**; the server derives `type` from one fixed table — `bca` → `bank_account`, `shopeepay` → `wallet`, `cash` → `cash`, `unknown` → `unknown`. A new bank is an append to the list, never free text: the provider is what will pick a bank-statement reader later. |
+| **1** | ✅ **Decided, against my recommendation** — the cause is the `description`, no `source_id`: [the-description-names-the-cause](./context_decision.md#the-description-names-the-cause). Kept as a line so the numbers hold. | — |
+| **2** | ✅ **Decided** — `provider` adopted, and `type` is picked apart from it, against my recommendation: [type-and-provider-are-picked-apart](./context_decision.md#type-and-provider-are-picked-apart). Kept as a line so the numbers hold. | — |
 | **3** | ✅ **Adopted** — `name` and `holder_name`: [an-account-has-a-name-and-a-holder](./context_decision.md#an-account-has-a-name-and-a-holder). Kept as a line so the numbers hold. | — |
 | **4** | ✅ **Adopted** — the opening balance is a log row: [an-account-opens-with-a-log-row](./context_decision.md#an-account-opens-with-a-log-row). Kept as a line so the numbers hold. | — |
 | **5** | ✅ **Adopted** — `last_balance` is `balance_after` now: [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after). Kept as a line so the numbers hold. | — |
@@ -88,7 +89,7 @@ flowchart LR
 ✅ **[the-act-posts-the-entry](#the-act-posts-the-entry) is decided** — how a row gets here
 ([a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker)) and which
 way each type takes ([one-way-in-per-type](./context_decision.md#one-way-in-per-type)). What is left of it is small:
-every row **names its cause** — `source_id` and `reversal` ([critique 1](#critique)) — and each publisher carries the
+a row's cause is its `description` ([the-description-names-the-cause](./context_decision.md#the-description-names-the-cause)), and each publisher carries the
 account it names — required: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid), [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid).
 
 🔄 **Build order**, settlement already publishing: **1.** accounts and the hand path · **2.** withdrawal — only the
@@ -96,8 +97,7 @@ listener is new · **3.** restock · **4.** expense · **5.** team payment — e
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 ✅ **Nothing in your doc blocks the account screens now** — the log names its account. Left: [Q9](#question), which
-shapes only the payee screens · the log's last gap, its cause ([critique 1](#critique)) · and whether `type` is derived
-from `provider` ([critique 2](#critique)).
+shapes only the payee screens.
 
 ## Proposed Design
 
@@ -151,9 +151,9 @@ flowchart LR
 
 ✅ The two ways in, and which type takes which, are yours —
 [one-way-in-per-type](./context_decision.md#one-way-in-per-type). Each new event should carry the **change**, never a level — a restock's edit
-publishes the difference, not its new total — so events that arrive out of order still sum right. And every row
-names its cause, so the Financial Ledger ([ledger/context.md](../ledger/context.md)) can pair it with the cause's own
-log instead of counting one payment twice.
+publishes the difference, not its new total — so events that arrive out of order still sum right. A row's cause is
+its `description` ([the-description-names-the-cause](./context_decision.md#the-description-names-the-cause)), and a redelivered event still posts once — the listener claims its `event_id`
+([one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types)).
 
 ### An account's life
 
@@ -243,7 +243,7 @@ erDiagram
     bigint team_id
     text name "yours, unique in the team is my spec"
     text provider "yours: bca, bni, jago, shopeepay, cash, unknown"
-    text type "wallet, bank_account, cash or unknown, derived from provider"
+    text type "yours: wallet, bank_account, cash, unknown, picked apart from provider"
     text account_number "a bank number or a wallet phone, none for cash or unknown"
     text holder_name "yours, atas nama"
     text description
@@ -258,8 +258,6 @@ erDiagram
     bigint account_id "yours, the scope"
     bigint team_id
     text change_type
-    bigint source_id "NEW, the row that caused it, 0 when typed here"
-    boolean reversal "NEW"
     bigint group_id "NEW, both legs of one transfer or payment"
     numeric change
     numeric balance_after "yours, was last_balance"
@@ -294,7 +292,7 @@ erDiagram
 | --- | --- |
 | `(team_id, name)` | a picker never shows two of the same |
 | `(provider, account_number)` where a number exists — across all teams | ✅ one real account, one row — [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) |
-| `(account_id, change_type, source_id, reversal)` where `source_id <> 0` | one cause posts once |
+| — a broker row | posts once by its `event_id`, claimed beside the write ([one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types)) — no key on the row |
 | `shop_accounts (shop_id)` | ✅ yours — one account per shop, [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) |
 | `operational_accounts (account_id)` | yours — an account is marked once |
 | `payee_accounts (team_id)` | one place a team is paid ([Q9](#question)) |
@@ -304,7 +302,7 @@ erDiagram
 | where | what |
 | --- | --- |
 | `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash, unknown · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) · an `unknown` account warned *bank not named*, with **Which account is this?** ([an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in)) |
-| `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row links to its cause · Transfer · Reconcile |
+| `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row shows its description · Transfer · Reconcile |
 | the restock form | *Paid from* — `FinancialAccountSelect` over the team's operational accounts, replacing `PaymentTypeSelect` — **required** ([a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid)) · no operational account: the form cannot be sent |
 | the expense form | *Paid from*, **required** ([an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid)) · on `ADS`, *taken from the seller balance? It is already in settlement* ([settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent)) |
 | a team payment | *Paid from* on record · *Received into* on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) |
