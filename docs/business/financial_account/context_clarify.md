@@ -3,10 +3,11 @@
 What I read out of [context.md](./context.md), and what has to be settled beside it. **That doc is yours — this
 one is mine.** An answered point is deleted; what you settled is in [context_decision.md](./context_decision.md).
 
-🔄 **Re-examined through 2026-09-29 — newest first.**
+🔄 **Re-examined through 2026-09-30 — newest first.**
 
 | | |
 | --- | --- |
+| ✅ answered in chat, and your lines 57, 67 | Q11 — a shop with no row gets an account typed `unknown`: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) · against my recommendation, and better than it · 🆕 [Q12](#question) — how an unknown account becomes the real one · ⛔ it sharpens the [shop key](#a-table-that-must-decide-one-account-allows-several) · lines below 56 moved down 1–2 |
 | ✅ your two new tables | `shop_accounts` — [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into) (Q1, as recommended) · `operational_accounts` — [operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations) (Q2's *which account*) · 🆕 [Q11](#question) — a shop with no row · ⛔ both keys allow several accounts where they must decide one — [Contradiction](#a-table-that-must-decide-one-account-allows-several) |
 | ✅ your list | `revenue_fund` is `withdrawal` — revenue stays in settlement: [revenue-stays-in-settlement](./context_decision.md#revenue-stays-in-settlement) · the name against my recommendation · [Q1](#question) narrows to where a withdrawal lands |
 | ✅ answered in chat | Q8 — for now the whole team sees, and admin and up move the money: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) · the seeing half against my recommendation |
@@ -15,7 +16,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 | ✅ your log section | `last_balance` is `balance_after`, as critique 5 recommended — [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after) · ⚠ the log still has no account column, so the [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) stands — and no cause (critique 1), no date (critique 7) |
 | ✅ your list | `opening_balance`, `transfer`, `team_payment`, then `capital`, joined `change_type` — [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) · [capital-joins-the-types](./context_decision.md#capital-joins-the-types) |
 | ✅ answered in chat | Q5, Q6, Q7 — each as recommended: [shopeepay-is-the-wallet-a-team-pays-with](./context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) · [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) · [below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused) |
-| ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 22 still reads *"its unique"* — yours to carry into the doc |
+| ✅ closed with Q6 | the contradiction *account_number is unique, and a cash box has none* — the rule has its scope now. ⚠ Line 45 still reads *"its unique"* — yours to carry into the doc |
 | ⚠ ripple of Q6 | [Q9](#question) — `team_infos` can hold one bank number in two teams today, and a copy into accounts takes it once |
 | ✅ your line 13 | the two tables are one ledger — [the-accounts-are-one-ledger](./context_decision.md#the-accounts-are-one-ledger) |
 | ✅ your §How we Update The Ledger | a row comes by hand or from the broker — [a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker) |
@@ -64,14 +65,14 @@ flowchart LR
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | 🔄 **A log row names no cause.** `description` *(line 83)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. Its missing **account** is now a [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
-| **2** | **`type` and `account_type` can disagree** *(lines 42–43)*. The provider decides the kind — `bca` is a bank, `shopeepay` a wallet — and `cash` sits in both lists. Two columns that must agree, and nothing making them: a `bank_account` whose provider is `shopeepay`. | The person picks the **provider**; the server derives the kind from one fixed table. Rename `account_type` → `provider` — *type* and *account type* read as the same word. A new bank (Mandiri, BRI, SeaBank) is an append to the list, never free text: the provider is what will pick a bank-statement reader later, as the marketplace picks the settlement reader. |
+| **1** | 🔄 **A log row names no cause.** `description` *(line 85)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. Its missing **account** is now a [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
+| **2** | **`type` and `account_type` can disagree** *(lines 42–43)*. The provider decides the kind — `bca` is a bank, `shopeepay` a wallet — and `cash` sits in both lists. Two columns that must agree, and nothing making them: a `bank_account` whose provider is `shopeepay`. 🆕 `unknown` now sits in both lists too *(lines 57, 67)*. | The person picks the **provider**; the server derives the kind from one fixed table — `unknown` gives `unknown`, as `cash` gives `cash`. Rename `account_type` → `provider` — *type* and *account type* read as the same word. A new bank (Mandiri, BRI, SeaBank) is an append to the list, never free text: the provider is what will pick a bank-statement reader later, as the marketplace picks the settlement reader. |
 | **3** | **An account has no name and no holder.** A team with two BCA accounts tells them apart by ten digits in every picker. And the holder — *atas nama* — is what a payer checks before transferring; `team_infos.bank_owner_name` exists for exactly that. | `name` — required, unique in the team (*BCA Operasional*, *Kas Gudang*) — and `holder_name`. |
 | **4** | **An account opens with no row.** One registered with Rp 50.000.000 already in it either starts at 0 — wrong on day one — or sets `balance` with no log row, which the ledger your line 13 names forbids: *"cannot change the `State` without log recorded"*. | Creating an account posts its first row, `opening_balance`. |
 | **5** | ✅ **Adopted** — `last_balance` is `balance_after` now: [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after). Kept as a line so the numbers hold. | — |
 | **6** | ✅ **Decided** — every movement has a type of its own, and an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). Kept as a line so the numbers hold. | — |
 | **7** | **The date the money moved is not kept.** `created_at` is when someone typed it. Yesterday's transfer typed this morning files under today, while the bank statement lists yesterday — the two never line up. | `occurred_at`. A broker row already has it — every event carries when its fact happened — so only a hand row needs a date picked, defaulting to today. The running balance still follows entry order. |
-| **8** | **An archived account can hold money.** Nothing says what `archived` *(line 71)* stops, or whether an account holding Rp 3.000.000 may be archived — its money then drops out of the team's total, or sits in a total nobody can spend. | Archive only at zero — transfer or reconcile first. An archived account takes no row **by hand**, stays readable everywhere, and can be restored. 🆕 A row **from the broker** still posts — refused, it would dead-letter — so the pickers stop offering an archived account, and a row that lands anyway shows as money to move out. |
+| **8** | **An archived account can hold money.** Nothing says what `archived` *(line 73)* stops, or whether an account holding Rp 3.000.000 may be archived — its money then drops out of the team's total, or sits in a total nobody can spend. | Archive only at zero — transfer or reconcile first. An archived account takes no row **by hand**, stays readable everywhere, and can be restored. 🆕 A row **from the broker** still posts — refused, it would dead-letter — so the pickers stop offering an archived account, and a row that lands anyway shows as money to move out. |
 
 ## Recommendation
 
@@ -86,7 +87,7 @@ listener is new · **3.** restock · **4.** expense · **5.** team payment — e
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 **Answer first:** the two [contradictions](#contradiction) — the log's missing account and the shop key. Both are edits
-in your doc, and the account screens' contract waits on them. Then [Q11](#question), [Q2](#question), [Q3](#question) and
+in your doc, and the account screens' contract waits on them. Then [Q12](#question), [Q2](#question), [Q3](#question) and
 [Q9](#question).
 
 ## Proposed Design
@@ -105,7 +106,7 @@ in your doc, and the account screens' contract waits on them. Then [Q11](#questi
 | `change_type` | moves | way in | when |
 | --- | --- | --- | --- |
 | `opening_balance` ✅ | in | ✅ by hand only — creating the account | once |
-| `withdrawal` ✅ | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account | [Q1](#question) |
+| `withdrawal` ✅ | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account — ✅ an `unknown` one made for it when the shop has none | [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into) · [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) |
 | `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
 | `expense` | out | ✅ broker only — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
 | `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
@@ -161,6 +162,9 @@ stateDiagram-v2
 | pickers | ✅ | ❌ |
 | its rows, and the causes they link to | ✅ | ✅ |
 
+🆕 An `unknown` account ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one))
+is `active` — `unknown` is a type, not a status — and stops being unknown only as [Q12](#question) settles.
+
 ### Reconcile
 
 ✅ Decided — [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). The
@@ -196,6 +200,7 @@ sequenceDiagram
 | `FinancialAccountByIds` | anyone reading a row that names an account | guideline ByIds · `GENERAL` — a restock names *which* account paid, never what is left in it |
 | `FinancialAccountCreate` | admin and up | name, provider, number, holder, description, opening balance → posts `opening_balance` · refused when the number is already registered ([a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once)) |
 | `FinancialAccountUpdate` | admin and up | name, holder, description — provider and number are fixed: another number is another account |
+| `FinancialAccountIdentify` 🆕 | admin and up | an `unknown` account → filled in as a new real one, or moved into one already registered ([Q12](#question)) |
 | `FinancialAccountArchive` · `FinancialAccountRestore` | admin and up | archive refused unless the balance is zero |
 | `FinancialAccountTransfer` | admin and up | from, to, amount, date, note → two legs sharing a `group_id` |
 | `FinancialAccountCapital` | admin and up | in or out, amount, date, note ([capital-joins-the-types](./context_decision.md#capital-joins-the-types)) |
@@ -210,7 +215,7 @@ sequenceDiagram
 
 | topic | exists | posts |
 | --- | --- | --- |
-| `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account, the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
+| `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account — a shop with none gets an `unknown` one first — the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
 | a restock topic | 🆕 inventory publishes | `restock` — the account that paid, and the change |
 | an expense topic | 🆕 expense publishes | `expense` — only when the expense names an account |
 | a payment topic | 🆕 liability publishes | `team_payment` — both legs on confirm, reversed on a reversal |
@@ -227,9 +232,9 @@ erDiagram
     bigint id PK
     bigint team_id
     text name "NEW, unique in the team"
-    text provider "your account_type: bca, bni, jago, shopeepay, cash"
-    text type "wallet, bank_account or cash, derived from provider"
-    text account_number "a bank number or a wallet phone, none for cash"
+    text provider "your account_type: bca, bni, jago, shopeepay, cash, unknown"
+    text type "wallet, bank_account, cash or unknown, derived from provider"
+    text account_number "a bank number or a wallet phone, none for cash or unknown"
     text holder_name "NEW, atas nama"
     text description
     text status "active or archived"
@@ -273,14 +278,6 @@ erDiagram
     bigint account_id
     timestamptz updated_at
   }
-  held_withdrawals {
-    bigint settlement_log_id PK "NEW, Q11, held until its shop names an account, then posted and removed"
-    bigint shop_id
-    bigint team_id
-    numeric amount
-    date occurred_on
-    timestamptz received_at
-  }
 ```
 
 | unique | why |
@@ -296,12 +293,12 @@ erDiagram
 
 | where | what |
 | --- | --- |
-| `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) |
+| `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash, unknown · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) · an `unknown` account warned *bank not named*, with **Which account is this?** ([Q12](#question)) |
 | `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row links to its cause · Transfer · Reconcile |
 | the restock form | *Paid from* — `FinancialAccountSelect` over the team's operational accounts, replacing `PaymentTypeSelect` ([Q2](#question)) |
 | the expense form | *Paid from*, optional ([Q3](#question)) |
 | a team payment | *Paid from* on record · *Received into* on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) |
-| the shop detail | *Withdraws into* — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) |
+| the shop detail | *Withdraws into* — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) · *Unknown — not named yet* after a withdrawal found none ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one)) |
 | `/financial-accounts` | mark an account *operational* ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) |
 | the team detail | *Where we are paid* replaces the three bank fields ([Q9](#question)) |
 
@@ -312,10 +309,10 @@ balance — a person picking *which account paid* is recording a fact, and the b
 
 1. ✅ **Answered 2026-09-30 — each shop names the account it withdraws into**, as recommended: [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into), revenue
    staying in settlement: [revenue-stays-in-settlement](./context_decision.md#revenue-stays-in-settlement). ⛔ Its key
-   allows a shop two accounts — [Contradiction](#a-table-that-must-decide-one-account-allows-several) · a shop with no row is [Q11](#question). Kept as a line so
+   allows a shop two accounts — [Contradiction](#a-table-that-must-decide-one-account-allows-several) · a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one). Kept as a line so
    the numbers hold.
 
-2. 🔄 **Which account paid a restock, how much, and when?** *(line 93)*
+2. 🔄 **Which account paid a restock, how much, and when?** *(line 95)*
    ✅ It comes only from the broker — [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand).
    What inventory publishes is what this asks — seven parts, one recommendation each:
 
@@ -334,7 +331,7 @@ balance — a person picking *which account paid* is recording a fact, and the b
    found missing: a cash account and a payment moment. ⚠ Inventory publishes nothing today — the event is new, and it
    carries the change, never the restock's total.
 
-3. 🔄 **Narrowed — does an expense name the account it was paid from?** *(line 90)*
+3. 🔄 **Narrowed — does an expense name the account it was paid from?** *(line 92)*
    ✅ It is typed in `expense_service`, never here — [one-way-in-per-type](./context_decision.md#one-way-in-per-type).
    **→ Recommend yes, optionally: a *paid from* account on the expense form.** Expense publishes the expense and the
    account hears it; a void publishes the reversal. An expense naming no account moves none — and two kinds must
@@ -377,24 +374,43 @@ balance — a person picking *which account paid* is recording a fact, and the b
     [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then
     [one-way-in-per-type](./context_decision.md#one-way-in-per-type). Kept as a line so the numbers hold.
 
-11. 🆕 **What happens to a withdrawal from a shop with no `shop_accounts` row?** *(lines 15–24)*
-    **→ Recommend: it is held** — shown on the shop and on the accounts page as *N withdrawals with no account* — and
-    posts the moment the shop names one. Refused, it would dead-letter and the money would be recorded nowhere;
-    posted to a guess, the next reconcile would find it in the wrong account.
+11. ✅ **Answered 2026-09-30 — a shop with no row gets an account typed `unknown`**, against my recommendation of
+    holding the withdrawal, and better than it:
+    [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one).
+    Kept as a line so the numbers hold.
+
+12. 🆕 **How does an `unknown` account become the real one?** *(lines 57, 67)*
+    **→ Recommend one action — *Which account is this?* — with two outcomes**, chosen by whether the real account is
+    already registered:
+
+    | the real account | **→ Recommend** | instead | why not |
+    | --- | --- | --- | --- |
+    | not registered yet | **fill it in** — provider, number, holder and name, set once on the unknown account · its rows stay | register it new, then transfer | the new account gets one row summing every withdrawal, dated the day it was fixed — the bank statement lists each on its own day |
+    | already registered | **move it in** — its balance transfers into the real one, the shop's row re-points, the unknown account archives at zero, in one act | fill it in | the same bank registered twice — [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) refuses it |
+
+    Either way later withdrawals follow the shop's row. Filling in is the one exception to *provider and number are
+    fixed* — from `unknown` only, once.
+
+    ```mermaid
+    flowchart LR
+      U["Unknown — shop 7, Rp 4.200.000"] --> Q{"is the real bank registered?"}
+      Q -->|"no"| F["fill it in — it becomes BCA 123, its rows stay"]
+      Q -->|"yes, BCA 123"| M["transfer into BCA 123, re-point shop 7, archive the unknown"]
+    ```
 
 # Contradiction
 
 ## one ledger, and its state and its log have different grains
 
 > line 13 — *"for the ledger, we have `financial_accounts` and `financial_account_logs`"* · line 47 — `balance` on
-> each **account** row · lines 77–85 — the log carries `team_id` and **no account**.
+> each **account** row · lines 79–87 — the log carries `team_id` and **no account**.
 
 The template gives a ledger **one** scope, shared by its state and its log — *"scope is use smallest grain to track
 ledger balance"* ([mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) §Scope). Here the state's
 grain is the account and the log's is the team, so `balance_after` is a running total of every account the team
 holds — a number no bank shows — and one account's history cannot be read back out of it.
 
-**Which is wrong:** lines 77–85 — the log is missing its scope. Line 13 is right, and it is what makes the gap
+**Which is wrong:** lines 79–87 — the log is missing its scope. Line 13 is right, and it is what makes the gap
 visible. 🆕 And your two new tables both carry `account_id` — the log, the one table that must, still does not.
 
 **→ Recommend:** `account_id` on every log row — the name your new tables already use; `team_id` stays as a copy.
@@ -405,7 +421,7 @@ the id.
 flowchart TB
   L13["line 13 — the two tables are one ledger"] --> T["the template — one scope for the state and its log"]
   S["line 47 — a balance per account"] --> T
-  G["lines 77 to 85 — a log row per team, no account"] --> T
+  G["lines 79 to 87 — a log row per team, no account"] --> T
   T --> X["balance_after runs across every account the team holds"]
   X --> Y["no bank statement matches it, and one account's history cannot be read"]
   F["account_id on every log row"] -.->|"fixes"| X
@@ -422,6 +438,9 @@ a withdrawal that names no bank — nothing can say which of the two it went to.
 pays a restock — the table alone cannot say which.
 
 **Which is wrong:** the shop's key *(line 19)*. A statement never names the bank, so a second row can only be a guess.
+🆕 [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) makes
+it sharper: two withdrawals from one new shop arriving in the same second would each create an `unknown` account, and
+the composite key lets both rows in — `shop_id` alone refuses the second, and it posts into the first.
 The operational key *(line 30)* is right — ShopeePay and BCA both paying restocks is ordinary — because the restock
 itself can say which one paid ([Q2](#question)).
 
@@ -439,7 +458,7 @@ flowchart TB
   RQ -->|"the restock says which paid, Q2"| OK["decided"]
 ```
 
-✅ **Closed — *account_number is unique, and a cash box has none*** (line 45 against lines 56 and 61): the rule now
+✅ **Closed — *account_number is unique, and a cash box has none*** (line 45 against lines 56 and 62): the rule now
 has its scope, [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) — unique per
 provider and number across all teams, a cash box exempt. ⚠ Line 45 still reads only *"its unique"* — yours to carry
 into the doc.
@@ -452,5 +471,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
-- 🆕 **§Financial Analytical Reports Design *(line 107)* is started** — a heading and *Smallest Grain Reports*, no content
+- 🆕 **§Financial Analytical Reports Design *(line 109)* is started** — a heading and *Smallest Grain Reports*, no content
   yet. Read when it has some.

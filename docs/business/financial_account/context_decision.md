@@ -18,8 +18,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes |
 | [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | [Q1](./context_clarify.md#question), [Q3](./context_clarify.md#question) — which account a withdrawal and an expense name |
 | [revenue-stays-in-settlement](#revenue-stays-in-settlement) | revenue is settlement's — a financial account records the marketplace's money only when it is withdrawn, as `withdrawal` (was `revenue_fund`) | owner | [Q1](./context_clarify.md#question) — where a withdrawal lands |
-| [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ⛔ its key allows a shop two accounts — [Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) · [Q11](./context_clarify.md#question) — a shop with no row |
+| [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ⛔ its key allows a shop two accounts — [Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) · ✅ a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) |
 | [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | [Q2](./context_clarify.md#question) — which one paid a given restock |
+| [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | [Q12](./context_clarify.md#question) — how it becomes the real account · ⛔ one per shop needs the [shop key](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) fixed |
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 
 ## the-accounts-are-one-ledger
@@ -521,3 +522,44 @@ flowchart LR
 | what it decides | which accounts pay for operations. ⚠ The doc says *like* restock — my reading: also the courier's ask at the door, and an expense ([Q3](./context_clarify.md#question)) |
 | several per team | allowed by the key — a team paying restocks from ShopeePay and from BCA marks both. Which one paid a given restock: [Q2](./context_clarify.md#question) |
 | ⚠ my spec — the account | the team's own, and active |
+
+## a-shop-with-no-account-gets-an-unknown-one
+
+> In chat *(owner, 2026-09-30)* — *"for q11 we create account that have type and account type unknown and connect to
+> shop_accounts"* · `context.md` gains `unknown` in `type` *(line 57)* and `account_type` *(line 67)*.
+> [Q11](./context_clarify.md#question) — **against my recommendation** of holding the withdrawal.
+
+**The verdict.** A withdrawal from a shop with no `shop_accounts` row is **never held and never refused**. The service
+creates an account whose `type` and `account_type` are both `unknown`, connects it to the shop in `shop_accounts`, and
+posts the withdrawal into it — the money is recorded the moment it arrives, in an account that says *we do not know
+which bank yet*.
+
+```mermaid
+flowchart LR
+  W["settlement — a withdrawal from shop 7"] --> Q{"shop 7 in shop_accounts?"}
+  Q -->|"yes"| A["its account — + withdrawal"]
+  Q -->|"no"| C["create an account — type unknown, account_type unknown"]
+  C --> SA["shop_accounts — shop 7 to it"]
+  SA --> U["the unknown account — + withdrawal"]
+  U -.->|"once the team knows the bank — Q12"| R["the real account"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| when | a withdrawal arrives from a shop with no `shop_accounts` row |
+| what is created | a `financial_accounts` row — `type` `unknown`, `account_type` `unknown`, no number, `active` — and the shop's `shop_accounts` row pointing at it · then the withdrawal posts into it, in the same transaction |
+| its number | none — so [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) does not reach it, as for a cash box |
+| ⚠ my spec — one per shop | made on the shop's first withdrawal and reused by every later one until it is identified. ⛔ Safe only when `shop_id` alone is unique — two withdrawals from one shop in the same second would each make one, and the composite key lets both in ([Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several)) |
+| ⚠ my spec — its name | *Unknown — <the shop>*, so the list says whose money it is |
+| ⚠ my spec — its first row | the withdrawal itself — it opens at zero, and `opening_balance` stays by hand only ([one-way-in-per-type](#one-way-in-per-type)) |
+| ⚠ my spec — what it can do | listed and counted in the team's total, warned *bank not named* · transfer out ✅ · never offered as operational, payee or *Paid from* · no reconcile — there is no statement to read |
+| how it becomes the real account | open — [Q12](./context_clarify.md#question) |
+
+### Why this beats what I recommended — recorded, not re-argued
+
+I recommended holding the withdrawal until the shop named an account. This is better: no side table, the money counts
+in the team's total from the day it arrived, and every withdrawal keeps its own row and date. The cost: the real bank
+reconciles short by what the unknown account holds until it is identified — which is the right signal, and it points
+at the missing name.

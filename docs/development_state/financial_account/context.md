@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **fifteen owner decisions**. The
-lifecycle is at *waiting for the owner* on Q2, Q3, Q9 and Q11 — no Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **sixteen owner decisions**. The
+lifecycle is at *waiting for the owner* on Q2, Q3, Q9 and Q12 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
 
@@ -23,6 +23,7 @@ lifecycle is at *waiting for the owner* on Q2, Q3, Q9 and Q11 — no Storybook p
 | [one-way-in-per-type](../../business/financial_account/context_decision.md#one-way-in-per-type) *(Q10)* | the hand RPCs are Create, Transfer, Capital, Reconcile, and none takes a `change_type` · a listener each for `withdrawal` (settlement — exists), `restock`, `expense`, `team_payment` (their events are new) |
 | [revenue-stays-in-settlement](../../business/financial_account/context_decision.md#revenue-stays-in-settlement) *(Q1, the name)* | the type is `withdrawal` (was `revenue_fund`) · the listener posts only settlement's `withdrawal` rows, sign turned · ⚠ the label *+ Withdrawal from <the shop>* is my spec |
 | [a-shop-names-the-account-it-withdraws-into](../../business/financial_account/context_decision.md#a-shop-names-the-account-it-withdraws-into) *(Q1)* | the owner's `shop_accounts` — the withdrawal listener looks the shop up there · ⛔ its key `(shop_id, account_id)` allows two per shop, reported as a contradiction |
+| [a-shop-with-no-account-gets-an-unknown-one](../../business/financial_account/context_decision.md#a-shop-with-no-account-gets-an-unknown-one) *(Q11, against my recommendation)* | the withdrawal listener, finding no `shop_accounts` row, creates an account with `type` and `account_type` `unknown`, connects it to the shop and posts there — nothing is held · ⚠ one per shop, its name, no opening row, what it may do are my spec · ⛔ one per shop needs `shop_id` unique · how it becomes real is Q12 |
 | [operational-accounts-pay-for-operations](../../business/financial_account/context_decision.md#operational-accounts-pay-for-operations) *(Q2, which account)* | the owner's `operational_accounts` — the restock's *Paid from* picks among them |
 | [seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) *(Q8)* | `FinancialAccountList`, `FinancialAccountOverview` and `FinancialAccountLogList` open to every member of the team · Create, Update, Archive, Restore, Transfer, Capital, Reconcile, ShopSet to admin and up — `TEAM_ADMIN`/`TEAM_OWNER`, `WAREHOUSE_ADMIN`/`WAREHOUSE_OWNER`, `ADMIN`/`ROOT` (⚠ my reading of *admin up*) · balances stay on their own RPC so narrowing *for now* later is one policy line |
 
@@ -35,7 +36,7 @@ Nothing of this context. What it overlaps is already built elsewhere:
 | a team's one bank — type, holder, number | `team_service` · `team_infos` · the team detail's *contact & bank* · `TeamInfoUpdate` | — | Q9 — it becomes one of the team's accounts, marked *where we are paid* |
 | how a restock was paid — `shopee_pay` / `bank_account` | `inventory_service` · `restock_requests.payment_type` · `PaymentTypeSelect` | ❌ | Q2 — which operational account paid, replacing the kind |
 | expenses | `expense_service` · `expense_records` — names no account | ❌ | Q3 — an optional *paid from* |
-| withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | ✅ each posts a `withdrawal` into the account in `shop_accounts` |
+| withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | ✅ each posts a `withdrawal` into the account in `shop_accounts` — an `unknown` one made when the shop has none |
 | team payments | `liability_service` · `liability_payments` | ❌ | ✅ `team_payment` is a type — posts both legs at confirm, from a new payment event |
 
 ## Proposed, not decided
@@ -52,7 +53,7 @@ written.
 
 ## Open
 
-Q2, Q3, Q9 and Q11 in the clarify. The account screens' own contract waits on two contradictions — both edits in the
+Q2, Q3, Q9 and Q12 in the clarify. The account screens' own contract waits on two contradictions — both edits in the
 owner's doc: the log's missing `account_id`, and `shop_accounts`' key allowing two accounts per shop.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
