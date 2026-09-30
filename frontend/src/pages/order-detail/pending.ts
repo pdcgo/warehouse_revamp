@@ -6,7 +6,7 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // This is a PREVIEW of the screen the owner specified: seven sections down one page, rather than the
 // three tabs the built detail page has. Most of what the sections need is real — the order, its lines,
 // its events, its address. What is missing clusters in three places: the money below the lines, the
-// tracking on the shipment, and the whole withdrawal section.
+// tracking on the shipment, and the withdrawal import the settlement ledger still waits on.
 //
 // The list shrinks by one entry each time something behind it lands. See `features/pending` for the
 // four kinds and for why the badge's number is the position in this array.

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Badge,
-  Box,
   Button,
   Card,
   Field,
@@ -12,79 +11,100 @@ import {
   Grid,
   GridItem,
   Heading,
-  HStack,
   Icon,
   IconButton,
   SimpleGrid,
   Spacer,
   Spinner,
   Stack,
-  Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, Trash2, TriangleAlert } from "lucide-react";
+
 import { rpcError } from "../../api/clients";
-import { emptyAddress } from "../../components/customers/AddressPicker";
-import type { AddressValue } from "../../components/customers/AddressPicker";
-import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
-import { CurrencyInput } from "../../components/inputs/CurrencyInput";
-import { ProductSelect } from "../../components/products/ProductSelect";
-import type { PickedProduct } from "../../components/products/ProductSelect";
-import { ShippingSelect } from "../../components/pickers/ShippingSelect";
-import { ShopSelect } from "../../components/pickers/ShopSelect";
-import { TeamSelect } from "../../components/teams/TeamSelect";
-import { toaster } from "../../components/feedback/Toaster";
-import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
-import { OrderLineRow } from "../../features/orders/OrderLineRow";
-import { OrderTotals } from "../../features/orders/OrderTotals";
-import { lineStock, toQty, toRupiah } from "../../features/orders/lines";
-import type { LineDraft } from "../../features/orders/lines";
-import { useStockAvailability } from "../../features/inventory/queries";
-import { draftGaps } from "../../features/orderDrafts/draftReadiness";
 import {
   useDeleteOrderDrafts,
   useOrderDraft,
   usePromoteOrderDraft,
   useUpdateOrderDraft,
 } from "../../features/orderDrafts/queries";
+import { useStockAvailability, useStockCosts } from "../../features/inventory/queries";
+import { useProductsByIds } from "../../features/products/queries";
+import { useTeams } from "../../features/teams/queries";
+import { MarketplaceInfoForm, emptyMarketplaceInfo } from "../../components/orders/MarketplaceInfoForm";
+import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
+import { emptyReceipt } from "../../components/orders/ReceiptUpload";
+import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
+import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
+import { emptyAddress } from "../../components/customers/AddressPicker";
+import type { AddressValue } from "../../components/customers/AddressPicker";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { toaster } from "../../components/feedback/Toaster";
+import { DatePicker } from "../../components/datetime/DatePicker";
+import { todayDateInput } from "../../lib/datetime";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { lineTotal, toRupiah } from "../../features/orders/lines";
+import { mockTerms } from "../../features/orders/form/mockData";
+import { creditRows, invoiceRows } from "../../features/orders/form/money";
+import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
+import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
+import { ReturnMappingCard } from "../../features/orders/form/ReturnMappingCard";
+import type { CrossLine, MappedProduct } from "../../features/orders/form/ReturnMappingCard";
+import { ExtraInfoCard } from "../../features/orders/form/ExtraInfoCard";
+import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
+import { ProfitEstimatePanel } from "../../features/orders/form/ProfitEstimatePanel";
+import { TotalsInvoicePanel } from "../../features/orders/form/TotalsInvoicePanel";
+import { NoteAndSubmitCard } from "../../features/orders/form/NoteAndSubmitCard";
+import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
+import type { CheckFinding } from "../../features/orders/form/checks";
+import { runOrderChecks } from "../../features/orders/form/checks";
+import { ORDER_FORM_PENDING } from "../../features/orders/form/pending";
+import { ORDER_DRAFT_PENDING } from "./pending";
+import type { DraftRow } from "./rows";
+import {
+  emptyRow,
+  rowLines,
+  rowMapped,
+  rowMpTotal,
+  rowSavedProduct,
+  rowSavedQuantity,
+  rowShort,
+  rowsFromDraft,
+  sameStoredRows,
+} from "./rows";
+import { DraftRowsCard } from "./components/DraftRowsCard";
 
-// One line as this screen holds it.
+// A DRAFT, IN THE ORDER FORM'S CLOTHES (`the-draft-page-wears-the-order-form`) — `/order-drafts/:id`.
 //
-// ⚠ KEYED BY ROW (`id`), not by product — the opposite of the order form, and the difference is the
-// job rather than an inconsistency. A draft line is one thing the scraper READ: it exists before any
-// product is named (`productId` 0), two lines may map to the same product, and re-mapping must not
-// destroy the row or the scraped text pinned to it.
+// The draft keeps its own page (`the-draft-keeps-its-own-page`), and that page now reads like the order
+// create form: the warehouse band on top, the receipt card, the order information, the items, the
+// return mapping, the customer, the extras — and the money rail on the right, with Save and Promote
+// where Save as Draft and Create are.
 //
-// The scraped text rides along READ-ONLY: it is the evidence of what the buyer ordered, and it stays
-// on screen next to the mapping so a wrong mapping is visible.
-interface DraftLine {
-  id: bigint;
-  externalSku: string;
-  externalName: string;
-  productId: bigint;
-  /** The mapped product's label, filled in when somebody picks one. A line loaded from the server has
-   * only an id — the catalogue read that would resolve it is not worth a request per line, and the
-   * scraped text above already says what the line is. */
-  sku: string;
-  name: string;
-  quantity: string;
-  unitPrice: string;
-}
+// What differs is only what a draft IS:
+//
+//   • each item is a scraped ROW, mapped to a product, a bundle or a split
+//     (`a-draft-row-maps-to-a-product-a-bundle-or-a-split`);
+//   • the price per row is what the platform charged (the draft's own), so the sell price is their
+//     sum and the profit estimate is REAL rather than typed;
+//   • Save keeps anything, in any state; Promote is refused until the order could be placed, and runs
+//     the form's own checks first;
+//   • what a draft cannot store is on screen with a ⚠, as everywhere else (`draftKeeps`).
+//
+// Approved as a preview and routed in place of the built page (`the-draft-preview-became-the-draft-page`).
 
-// What the shared row needs. The identity (`id`) stays here — the row is deliberately identity-free,
-// because the form keys by product and this screen keys by row.
-function rowLine(line: DraftLine): LineDraft {
-  return {
-    productId: line.productId,
-    sku: line.sku,
-    name: line.name,
-    imageUrl: "",
-    thumbnailUrl: "",
-    quantity: line.quantity,
-  };
+interface Baseline {
+  shopId: bigint;
+  warehouseId: bigint;
+  customerName: string;
+  customerPhone: string;
+  address: AddressValue;
+  shippingCode: string;
+  rows: DraftRow[];
 }
 
 function addressOf(draft: OrderDraft): AddressValue {
@@ -105,59 +125,10 @@ function addressOf(draft: OrderDraft): AddressValue {
   };
 }
 
-function linesOf(draft: OrderDraft): DraftLine[] {
-  return draft.items.map((item) => ({
-    id: item.id,
-    externalSku: item.externalSku,
-    externalName: item.externalName,
-    productId: item.productId,
-    sku: "",
-    name: "",
-    quantity: String(item.quantity),
-    unitPrice: item.unitPrice.toString(),
-  }));
+function parseId(raw: string | undefined): bigint {
+  return raw && /^\d+$/.test(raw) ? BigInt(raw) : 0n;
 }
 
-function sameLines(a: DraftLine[], b: DraftLine[]): boolean {
-  if (a.length !== b.length) return false;
-
-  return a.every((line, i) => {
-    const other = b[i];
-
-    return (
-      line.id === other.id &&
-      line.productId === other.productId &&
-      line.quantity === other.quantity &&
-      line.unitPrice === other.unitPrice
-    );
-  });
-}
-
-// OrderDraftDetailPage is where scraped text becomes a real product (#196) — a PAGE, not a dialog,
-// because it is a record somebody works through rather than a focused action.
-//
-// It is BUILT FROM THE ORDER FORM'S PARTS (owner): the same lines table, the same customer card, the
-// same money card, the same two-column layout with the total pinned. The two screens compose the same
-// thing, and the pieces they share are shared rather than re-typed — a draft of twelve lines used to
-// push Promote off the bottom of a single narrow column, which is the exact problem the form's sticky
-// column was built to fix.
-//
-// What stays DIFFERENT is only what the job differs about:
-//
-//   • the SCRAPED TEXT above each mapping — the form has none, because a product picked from the
-//     catalogue is its own evidence;
-//   • a ProductSelect PER LINE rather than the form's multi-tick picker — a picker hands back a set,
-//     and a set cannot say which scraped line a tick belongs to;
-//   • the PRICE IS TYPED (owner) — a draft's money is what the marketplace charged, not the HPP the
-//     form reads off the warehouse;
-//   • the catalogue is NOT narrowed to what this warehouse stocks (owner) — a scrape may legitimately
-//     name a product that is out of stock, and refusing to MAP it is not the same as refusing to
-//     promote it.
-//
-// ⚠ IT SAVES ONLY WHAT CHANGED, and that is not an optimisation. `OrderDraftUpdate` marks every
-// field it receives as TOUCHED, and a touched field is one the pushing app may never write again.
-// Sending the whole form on every save would freeze the entire draft against the app the first time
-// anybody pressed Save — the blanks-only merge would stop meaning anything.
 export function OrderDraftDetailPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
@@ -165,152 +136,202 @@ export function OrderDraftDetailPage() {
   const params = useParams();
 
   const teamId = current?.teamId;
-  const draftId = BigInt(params.draftId ?? "0");
+  const draftId = parseId(params.draftId);
 
   const query = useOrderDraft({ teamId, draftId });
   const update = useUpdateOrderDraft();
   const promote = usePromoteOrderDraft();
   const remove = useDeleteOrderDrafts();
-
   const draft = query.data ?? null;
 
-  const [shopId, setShopId] = useState<bigint>(0n);
-  const [warehouseId, setWarehouseId] = useState<bigint>(0n);
+  // ── What a draft stores ──
+  const [marketplace, setMarketplace] = useState<MarketplaceInfoValue>(emptyMarketplaceInfo);
+  const shopId = marketplace.shopId;
+  const [warehouseId, setWarehouseId] = useState(0n);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [address, setAddress] = useState<AddressValue>(emptyAddress);
   const [shippingCode, setShippingCode] = useState("");
-  const [shippingCost, setShippingCost] = useState("0");
-  const [lines, setLines] = useState<DraftLine[]>([]);
+  const [rows, setRows] = useState<DraftRow[]>([]);
+  const [baseline, setBaseline] = useState<Baseline | null>(null);
 
+  // ── What it does not (on screen, ⚠ draftKeeps) ──
+  const [receipt, setReceipt] = useState<ReceiptValue>(emptyReceipt);
+  const [receiptCode, setReceiptCode] = useState("");
+  const [orderDate, setOrderDate] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [buyerUsername, setBuyerUsername] = useState("");
+  const [note, setNote] = useState("");
+  // THE SELL PRICE, AS TYPED — `null` while nobody has typed one, and then it FOLLOWS the rows' platform
+  // prices. Typing takes it over (owner: *"sell price masih mungkin untuk diganti"*), and an EMPTY box
+  // is 0, not "follow the rows again" — otherwise backspacing a figure away would snap it back mid-edit.
+  // Following the rows again is its own button. ⚠ Not stored: a draft has no sell price (`sellPrice`).
+  const [sellPriceTyped, setSellPriceTyped] = useState<string | null>(null);
+  const [mapping, setMapping] = useState<Map<string, MappedProduct>>(new Map());
+
+  const [compact, setCompact] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const [error, setError] = useState("");
+  const [gate, setGate] = useState<CheckFinding[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [added, setAdded] = useState(0);
 
-  // The loaded draft is the BASELINE every save is diffed against. Re-seeding on each fetch is what
-  // makes a save idempotent: after it lands, the refetched draft becomes the new baseline and the
-  // form is clean again.
+  // SEED from the draft — and again after a save, from what the server now holds. The loaded draft is
+  // the baseline every save is diffed against. What a draft cannot store is left alone.
+  function seed(from: OrderDraft) {
+
+    const next: Baseline = {
+      shopId: from.shopId,
+      warehouseId: from.warehouseId,
+      customerName: from.customerName,
+      customerPhone: from.customerPhone,
+      address: addressOf(from),
+      shippingCode: from.shippingCode,
+      rows: rowsFromDraft(from),
+    };
+
+    setMarketplace((prev) => ({ ...prev, shopId: next.shopId }));
+    setWarehouseId(next.warehouseId);
+    setCustomerName(next.customerName);
+    setCustomerPhone(next.customerPhone);
+    setAddress(next.address);
+    setShippingCode(next.shippingCode);
+    setRows(next.rows);
+    setBaseline(next);
+  }
+
+  // Once per draft — a save's refetch must not wipe what the draft cannot store out from under the person.
+  const seededFor = useRef("");
+
   useEffect(() => {
-    if (!draft) return;
+    if (!draft || seededFor.current === draft.id.toString()) return;
 
-    setShopId(draft.shopId);
-    setWarehouseId(draft.warehouseId);
-    setCustomerName(draft.customerName);
-    setCustomerPhone(draft.customerPhone);
-    setAddress(addressOf(draft));
-    setShippingCode(draft.shippingCode);
-    setShippingCost(draft.shippingCost.toString());
-    setLines(linesOf(draft));
+    seededFor.current = draft.id.toString();
+    seed(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
-  const baselineLines = useMemo(() => (draft ? linesOf(draft) : []), [draft]);
+  // ── Every product the rows put on the order ──
+  const allLines = useMemo(() => rows.flatMap(rowLines), [rows]);
+  const productIds = useMemo(() => allLines.map((l) => l.productId), [allLines]);
+  const stock = useStockAvailability({ teamId, warehouseId, productIds }).data;
+  const costs = useStockCosts({ teamId, warehouseId, productIds }).data;
 
-  // WHAT THE CHOSEN WAREHOUSE HOLDS, for every mapped line — the same batched read the order form
-  // makes, and it exists here for the same reason: Promote runs `placeOrder`, so this draft is one
-  // button away from taking these goods off a shelf. Unmapped lines carry product 0 and are filtered
-  // out by the hook, so a half-mapped draft still gets figures for the half that is done.
-  const productIds = useMemo(() => lines.map((l) => l.productId), [lines]);
-  const stockQuery = useStockAvailability({ teamId, warehouseId, productIds });
-  const stock = stockQuery.data;
-
-  function patchLine(id: bigint, patch: Partial<DraftLine>) {
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-  }
-
-  function pickProduct(id: bigint, p: PickedProduct) {
-    patchLine(id, { productId: p.id, sku: p.sku, name: p.name });
-  }
-
-  function removeLine(id: bigint) {
-    setLines((prev) => prev.filter((l) => l.id !== id));
-  }
-
-  const subtotal = useMemo(
-    () => lines.reduce((sum, l) => sum + BigInt(toQty(l.quantity)) * toRupiah(l.unitPrice), 0n),
-    [lines],
+  // Names for mapped rows (a draft names a product by id only), and owners for the invoice.
+  const mappedIds = useMemo(
+    () => [...productIds, ...rows.map((r) => r.product?.productId ?? 0n)],
+    [productIds, rows],
+  );
+  const owners = useProductsByIds({ teamId, productIds: mappedIds }).data;
+  const namedRows = useMemo(
+    () =>
+      rows.map((row) => {
+        const p = row.product;
+        if (!p || p.name || p.productId <= 0n) return row;
+        const found = owners?.get(p.productId.toString());
+        return found ? { ...row, product: { ...p, sku: found.sku, name: found.name } } : row;
+      }),
+    [rows, owners],
   );
 
-  // How many mapped lines the warehouse cannot fill. Summarised at the top as well as marked on each
-  // row: on a long draft the failing line can be off screen, and "Promote is disabled and I cannot
-  // see why" is the state this page must never be in.
-  const shortLines = lines.filter((l) => {
-    const s = lineStock(rowLine(l), stock);
-    return s.kind === "known" && s.short;
-  }).length;
+  const teamsQuery = useTeams({ page: 1, pageSize: 200, reference: true });
+  const teamName = (id: bigint) =>
+    teamsQuery.data?.teams.find((team) => team.id === id)?.name ?? `#${id.toString()}`;
 
-  const dirty = useMemo(() => {
-    if (!draft) return false;
+  // ── The money — the sell price is the rows' platform prices, so the profit is real ──
+  const rowsSellPrice = rows.reduce((sum, row) => sum + rowMpTotal(row), 0n);
+  const sellPriceInput = sellPriceTyped ?? (rowsSellPrice > 0n ? rowsSellPrice.toString() : "");
+  // 0 when the app read no prices and nobody typed one — the profit then reads no sell price at all.
+  const sellPrice = toRupiah(sellPriceInput);
+  const productsTotal = allLines.reduce((sum, l) => sum + lineTotal(l, costs), 0n);
+  const warehouseFee = warehouseId > 0n ? mockTerms(warehouseId).handlingFee : 0n;
+  const orderTotal = productsTotal + warehouseFee;
+  const invoice = invoiceRows({ lines: allLines, owners, costs, teamId, warehouseId, warehouseFee, teamName });
+  const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
+  const credit = creditRows({ invoice, warehouseId, warehouseFee, teamName });
 
-    return (
-      shopId !== draft.shopId ||
-      warehouseId !== draft.warehouseId ||
-      customerName !== draft.customerName ||
-      customerPhone !== draft.customerPhone ||
-      JSON.stringify(address) !== JSON.stringify(addressOf(draft)) ||
-      shippingCode !== draft.shippingCode ||
-      shippingCost !== draft.shippingCost.toString() ||
-      !sameLines(lines, baselineLines)
-    );
-  }, [
-    draft,
-    shopId,
-    warehouseId,
-    customerName,
-    customerPhone,
-    address,
-    shippingCode,
-    shippingCost,
-    lines,
-    baselineLines,
-  ]);
+  // ── Return mapping: goods belonging to another team ──
+  const crossLines: CrossLine[] = useMemo(() => {
+    const seen = new Map<string, CrossLine>();
+    for (const line of allLines) {
+      const ownerTeamId = owners?.get(line.productId.toString())?.teamId ?? 0n;
+      if (ownerTeamId === 0n || ownerTeamId === teamId) continue;
+      seen.set(line.productId.toString(), {
+        productId: line.productId,
+        sku: line.sku,
+        name: line.name,
+        ownerTeamId,
+        ownerName: teamName(ownerTeamId),
+      });
+    }
+    return [...seen.values()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allLines, owners, teamId, teamsQuery.data]);
+  const unmappedReturns = crossLines.filter((l) => !mapping.has(l.productId.toString())).length;
 
-  // Readiness is computed from what is ON SCREEN, not from what was last saved — otherwise mapping
-  // the final line would leave Promote disabled until somebody pressed Save and noticed.
-  const pending: OrderDraft | null = draft
-    ? ({
-        ...draft,
-        shopId,
-        warehouseId,
-        customerName,
-        itemCount: lines.length,
-        unmappedItemCount: lines.filter((l) => l.productId === 0n).length,
-      } as OrderDraft)
-    : null;
+  // ── Save: anything, in any state — only what changed ──
+  const changed =
+    baseline !== null &&
+    (shopId !== baseline.shopId ||
+      warehouseId !== baseline.warehouseId ||
+      customerName !== baseline.customerName ||
+      customerPhone !== baseline.customerPhone ||
+      JSON.stringify(address) !== JSON.stringify(baseline.address) ||
+      shippingCode !== baseline.shippingCode ||
+      !sameStoredRows(rows, baseline.rows));
 
-  const gaps = pending ? draftGaps(pending, { shortLines }) : [];
-  const ready = gaps.length === 0;
+  // ── Promote: refused until the order could be placed ──
+  const shortRows = rows.filter((row) => rowShort(row, stock)).length;
+  const reasons: string[] = [];
+  if (shopId <= 0n) reasons.push(t("orderDrafts.missingShop"));
+  if (warehouseId <= 0n) reasons.push(t("orderDrafts.missingWarehouse"));
+  if (customerName.trim() === "") reasons.push(t("orderDrafts.missingCustomer"));
+  if (rows.length === 0) reasons.push(t("orderDrafts.missingLines"));
+  if (rows.some((row) => !rowMapped(row))) reasons.push(t("orderDraftForm.gaps.unmapped"));
+  if (rows.some((row) => row.mode !== "product")) reasons.push(t("orderDraftForm.gaps.notStorable"));
+  if (shortRows > 0) reasons.push(t("orderDrafts.missingStock"));
+  if (changed) reasons.push(t("orderDraftForm.gaps.saveFirst"));
+  const canPromote = reasons.length === 0;
 
   async function save() {
-    if (!teamId || !draft) return;
+    if (!teamId || !draft || !baseline) return;
 
     setSaving(true);
     setError("");
 
     try {
-      // ONLY THE CHANGED FIELDS. Each one included here becomes untouchable by the app.
-      await update.mutateAsync({
+      // ONLY THE CHANGED FIELDS — each one sent becomes a field the app may never write again.
+      const res = await update.mutateAsync({
         teamId,
         draftId: draft.id,
-        shopId: shopId !== draft.shopId ? shopId : undefined,
-        warehouseId: warehouseId !== draft.warehouseId ? warehouseId : undefined,
-        customerName: customerName !== draft.customerName ? customerName : undefined,
-        customerPhone: customerPhone !== draft.customerPhone ? customerPhone : undefined,
-        address:
-          JSON.stringify(address) !== JSON.stringify(addressOf(draft)) ? address : undefined,
-        shippingCode: shippingCode !== draft.shippingCode ? shippingCode : undefined,
-        shippingCost:
-          shippingCost !== draft.shippingCost.toString() ? toRupiah(shippingCost) : undefined,
-        items: sameLines(lines, baselineLines)
+        shopId: shopId !== baseline.shopId ? shopId : undefined,
+        warehouseId: warehouseId !== baseline.warehouseId ? warehouseId : undefined,
+        customerName: customerName !== baseline.customerName ? customerName : undefined,
+        customerPhone: customerPhone !== baseline.customerPhone ? customerPhone : undefined,
+        address: JSON.stringify(address) !== JSON.stringify(baseline.address) ? address : undefined,
+        shippingCode: shippingCode !== baseline.shippingCode ? shippingCode : undefined,
+        items: sameStoredRows(rows, baseline.rows)
           ? undefined
           : {
-              lines: lines.map((l) => ({
-                id: l.id,
-                productId: l.productId,
-                quantity: toQty(l.quantity),
-                unitPrice: toRupiah(l.unitPrice),
+              lines: rows.map((row) => ({
+                id: row.itemId,
+                // A bundle or a split saves UNMAPPED (`rowBundle`, `rowSplit`).
+                productId: rowSavedProduct(row),
+                // The mapping's count; the price stays what the app read (information, not edited).
+                quantity: rowSavedQuantity(row),
+                unitPrice: toRupiah(row.mpPrice),
               })),
             },
       });
+
+      // A bundle or split row survives the save on screen: re-seed only what the draft stores, and keep
+      // those rows' mapping where the server returned them unmapped.
+      if (res.draft) {
+        const kept = new Map(rows.filter((r) => r.mode !== "product").map((r) => [r.itemId.toString(), r]));
+        seed(res.draft);
+        setRows((fresh) => fresh.map((r) => kept.get(r.itemId.toString()) ?? r));
+      }
 
       toaster.create({ type: "success", title: t("orderDrafts.saved") });
     } catch (err) {
@@ -320,31 +341,49 @@ export function OrderDraftDetailPage() {
     }
   }
 
+  // PROMOTE runs the form's own checks first — an error stops it, a warning can be overruled.
+  function tryPromote() {
+    if (!canPromote) return;
+
+    const findings = runOrderChecks({
+      orderRefId: marketplace.orderExternalRefId,
+      trackingCode: receiptCode,
+      shippingCode,
+      marketplace: marketplace.marketplace,
+      scan: null,
+      sellPrice,
+      orderTotal,
+    });
+
+    if (findings.length > 0) {
+      setGate(findings);
+      return;
+    }
+
+    void doPromote();
+  }
+
   async function doPromote() {
     if (!teamId || !draft) return;
 
-    setSaving(true);
+    setGate([]);
+    setPromoting(true);
     setError("");
 
     try {
       const res = await promote.mutateAsync({ teamId, draftId: draft.id });
-
       toaster.create({ type: "success", title: t("orderDrafts.promoted") });
-
       const id = res.order?.id;
       void navigate(id ? `/orders/${id}` : "/orders");
     } catch (err) {
-      // The draft survives a refused promote — a product deleted underneath it, a shop that is gone.
-      // The message names WHICH reference died, so it is shown rather than reduced to "failed".
       setError(rpcError(err));
     } finally {
-      setSaving(false);
+      setPromoting(false);
     }
   }
 
   async function doDelete() {
     if (!teamId || !draft) return;
-
     await remove.mutateAsync({ teamId, draftIds: [draft.id] });
     void navigate("/order-drafts");
   }
@@ -358,7 +397,7 @@ export function OrderDraftDetailPage() {
     );
   }
 
-  if (query.isPending) {
+  if (draftId > 0n && query.isPending) {
     return <Spinner colorPalette="brand" />;
   }
 
@@ -373,12 +412,12 @@ export function OrderDraftDetailPage() {
     );
   }
 
+  const cardTeamId = teamId ?? 0n;
+
   return (
-    // No `maxW`: the page fills the content area, as the order form does. A cap made sense while this
-    // was one narrow column of stacked cards; a two-column grid has the opposite problem, because the
-    // wider the window the more room the lines get — and the lines are the column that wants it.
     <Stack gap="section" data-testid="draft-detail-page">
-      <Flex align="center" gap="card">
+      {/* THE HEADER — the draft's reference, the app that pushed it, and the way out. */}
+      <Flex align="center" gap="card" wrap="wrap">
         <IconButton
           size="xs"
           variant="ghost"
@@ -399,7 +438,7 @@ export function OrderDraftDetailPage() {
           onClick={() => setConfirmDelete(true)}
         >
           <Icon as={Trash2} boxSize="4" />
-          {t("orderDrafts.deleteConfirm")}
+          {t("orderDrafts.deleteOneTitle")}
         </Button>
       </Flex>
 
@@ -409,190 +448,137 @@ export function OrderDraftDetailPage() {
         </Text>
       )}
 
-      {/* Full width, above both columns: a line the warehouse cannot fill is a fact about the whole
-          draft, not about the column the line happens to sit in. */}
-      {shortLines > 0 && (
+      {shortRows > 0 && (
         <Alert.Root status="error" data-testid="draft-short">
           <Alert.Indicator />
           <Alert.Content>
-            <Alert.Title>{t("orders.shortTitle", { count: shortLines })}</Alert.Title>
-            <Alert.Description>{t("orderDrafts.shortHelp")}</Alert.Description>
+            <Alert.Title>{t("orders.shortTitle", { count: shortRows })}</Alert.Title>
+            <Alert.Description>{t("orders.shortHelp")}</Alert.Description>
           </Alert.Content>
         </Alert.Root>
       )}
 
-      {/*
-        THE ORDER FORM'S LAYOUT, because this screen composes the same thing. Two columns on a wide
-        screen, one on a narrow one, and the columns are assigned by explicit `gridColumn`/`gridRow`
-        so DOM order is visual order is tab order.
-      */}
-      <Grid
-        templateColumns={{ base: "1fr", lg: "minmax(0, 2fr) minmax(0, 1fr)" }}
-        gap="section"
-        alignItems="start"
-      >
-        {/* ── WHICH SHOP, WHICH WAREHOUSE ─────────────────────────────── first, as on the form ──
-            Both frame everything below them, and the warehouse decides what the stock figures on the
-            lines even mean. A scrape almost never knows either, so on a draft these are usually the
-            two fields somebody is here to fill in. */}
-        <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 1 }}>
-          <Card.Root>
-            <Card.Body>
-              <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
-                <Field.Root required>
-                  <Field.Label>{t("orders.shop")}</Field.Label>
-                  <ShopSelect teamId={teamId ?? 0n} value={shopId} onChange={setShopId} />
-                </Field.Root>
+      <NotImplementedSummary list={ORDER_DRAFT_PENDING} />
 
-                <Field.Root required>
-                  <Field.Label>{t("orders.warehouse")}</Field.Label>
-                  <Box w="full" data-testid="draft-warehouse">
-                    <TeamSelect
-                      teamType={TeamType.WAREHOUSE}
-                      value={warehouseId}
-                      onChange={setWarehouseId}
-                    />
-                  </Box>
-                  <Field.HelperText>{t("orders.warehouseHelp")}</Field.HelperText>
-                </Field.Root>
-              </SimpleGrid>
-            </Card.Body>
-          </Card.Root>
-        </GridItem>
+      <WarehouseBand value={warehouseId} onChange={setWarehouseId} />
 
-        {/* ── THE MAPPING ────────────────────────────────────────────────────── the real work ── */}
-        <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 2 }}>
-          <Card.Root>
-            <Card.Body>
-              <Stack gap="card">
-                <Heading as="h3" size="sm">{t("orderDrafts.mapLines")}</Heading>
-                <Text fontSize="sm" color="fg.muted">
-                  {t("orderDrafts.mapLinesHelp")}
-                </Text>
-
-                {lines.length === 0 && (
-                  <Text color="fg.muted" data-testid="draft-no-lines">
-                    {t("orderDrafts.missingLines")}
-                  </Text>
-                )}
-
-                {/* THE SAME TABLE THE ORDER FORM USES. It scrolls inside its own box: six columns on
-                    a phone would otherwise push the whole page sideways. */}
-                {lines.length > 0 && (
-                  <Box overflowX="auto">
-                    <Table.Root size="sm" data-testid="draft-lines-table">
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.ColumnHeader>{t("orders.product")}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="end">{t("orders.inStock")}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="end">{t("orders.unitPrice")}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="end">{t("orders.lineTotal")}</Table.ColumnHeader>
-                          <Table.ColumnHeader />
-                        </Table.Row>
-                      </Table.Header>
-
-                      <Table.Body>
-                        {lines.map((line, i) => (
-                          <OrderLineRow
-                            key={line.id.toString()}
-                            idPrefix="draft-line"
-                            index={i}
-                            line={rowLine(line)}
-                            stock={lineStock(rowLine(line), stock)}
-                            total={BigInt(toQty(line.quantity)) * toRupiah(line.unitPrice)}
-                            // NO THUMBNAIL. A draft line names a product by id and nothing more, so
-                            // the cover would be the same grey placeholder on every row — and its
-                            // indent pushes the mapping control out of line with the scraped text
-                            // directly above it, which is the one comparison this screen exists for.
-                            cover={false}
-                            // THE SCRAPED TEXT, ABOVE THE MAPPING AND NEVER REPLACED BY IT. It is the
-                            // evidence of what the buyer actually ordered — the only thing anybody can
-                            // check a mapping against, and the reason a wrong one is visible at all.
-                            evidence={
-                              <Stack gap="0.5" mb="2">
-                                <HStack gap="2">
-                                  <Badge size="xs" colorPalette="gray">
-                                    {t("orderDrafts.scraped")}
-                                  </Badge>
-                                  {line.externalSku && (
-                                    <Text fontSize="xs" color="fg.muted">
-                                      {line.externalSku}
-                                    </Text>
-                                  )}
-                                </HStack>
-                                <Text fontSize="sm" data-testid={`draft-line-scraped-${i}`}>
-                                  {line.externalName || t("orderDrafts.noScrapedName")}
-                                </Text>
-                              </Stack>
-                            }
-                            // A SELECT PER LINE, not the form's multi-tick picker: a picker hands back
-                            // a ticked SET, and a set cannot say which scraped line a tick belongs to.
-                            // The catalogue is NOT narrowed to what this warehouse stocks (owner) — a
-                            // scrape may name a product that is out of stock, and that is a reason to
-                            // refuse the PROMOTE, not the mapping.
-                            product={
-                              <Box flex="1" minW="52">
-                                <ProductSelect
-                                  teamId={teamId ?? 0n}
-                                  value={line.productId}
-                                  onChange={(p) => pickProduct(line.id, p)}
-                                />
-                                {line.productId > 0n ? (
-                                  <Text
-                                    fontSize="xs"
-                                    color="fg.muted"
-                                    mt="1"
-                                    data-testid={`draft-line-mapped-${i}`}
-                                  >
-                                    {line.name ? `${line.sku} — ${line.name}` : t("orderDrafts.mapped")}
-                                  </Text>
-                                ) : (
-                                  <Text
-                                    fontSize="xs"
-                                    color="warning.fg"
-                                    mt="1"
-                                    data-testid={`draft-line-unmapped-${i}`}
-                                  >
-                                    {t("orderDrafts.notMappedYet")}
-                                  </Text>
-                                )}
-                              </Box>
-                            }
-                            // TYPED, unlike the form's read-only HPP (owner). A draft's money is what
-                            // the marketplace charged the buyer — a fact the scrape read and a person
-                            // corrects, not something the warehouse can be asked for.
-                            price={
-                              <CurrencyInput
-                                size="xs"
-                                w="28"
-                                textAlign="end"
-                                value={line.unitPrice}
-                                data-testid={`draft-line-price-${i}`}
-                                onChange={(v) => patchLine(line.id, { unitPrice: v })}
-                              />
-                            }
-                            onPatch={(patch) => patchLine(line.id, patch)}
-                            // A buyer who cancelled one line of three must be able to say so, or the
-                            // draft stays unpromotable forever over a line nobody wants.
-                            onRemove={() => removeLine(line.id)}
-                          />
-                        ))}
-                      </Table.Body>
-                    </Table.Root>
-                  </Box>
-                )}
-              </Stack>
-            </Card.Body>
-          </Card.Root>
-        </GridItem>
-
-        {/* ── WHO IT IS FOR, AND HOW IT TRAVELS ─────────────── stacked, as on the form ──
-            The customer and the address are ONE two-column card (owner), the same one the create form
-            mounts. What the form puts under it is a shipping RECEIPT; a draft has none — nothing has
-            been handed to a courier yet — so only the courier itself follows. */}
-        <GridItem gridColumn={{ lg: 1 }} gridRow={{ lg: 3 }}>
+      <Grid templateColumns={{ base: "minmax(0, 1fr)", lg: "minmax(0, 2fr) minmax(0, 1fr)" }} gap="section" alignItems="start">
+        <GridItem minW="0">
           <Stack gap="section">
+            <ShippingReceiptCard
+              teamId={cardTeamId}
+              receipt={receipt}
+              onReceiptChange={setReceipt}
+              orderRefId={marketplace.orderExternalRefId}
+              onOrderRefIdChange={(orderExternalRefId) => setMarketplace({ ...marketplace, orderExternalRefId })}
+              trackingCode={receiptCode}
+              onTrackingCodeChange={setReceiptCode}
+              shippingCode={shippingCode}
+              onShippingCodeChange={setShippingCode}
+              marketplace={marketplace.marketplace}
+              filledFromFile={false}
+            />
+
+            {/* ORDER INFORMATION — as on the create form, with the sell price DERIVED: it is the sum of
+                what the platform charged per row, so it is read here rather than typed twice. */}
+            <Card.Root>
+              <Card.Header>
+                <Card.Title>{t("orderForm.source.title")}</Card.Title>
+                <Card.Description>{t("orderForm.source.help")}</Card.Description>
+              </Card.Header>
+              <Card.Body>
+                <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
+                  <Stack gap="card">
+                    <MarketplaceInfoForm
+                      teamId={cardTeamId}
+                      value={marketplace}
+                      onChange={setMarketplace}
+                      required
+                      hideTotal
+                      hideOrderRef
+                    />
+                    <Field.Root>
+                      <Field.Label>
+                        <Flex align="center" gap="2" wrap="wrap">
+                          {t("orderForm.source.sellPrice")}
+                          <NotImplemented list={ORDER_DRAFT_PENDING} id="sellPrice" />
+                        </Flex>
+                      </Field.Label>
+                      <CurrencyInput
+                        value={sellPriceInput}
+                        data-testid="draft-sell-price"
+                        onChange={(value) => setSellPriceTyped(value)}
+                      />
+                      <Field.HelperText>
+                        {sellPriceTyped === null ? (
+                          t("orderDraftForm.sellPriceHelp")
+                        ) : (
+                          <Flex align="center" gap="2" wrap="wrap">
+                            {t("orderDraftForm.sellPriceTyped")}
+                            <Button
+                              type="button"
+                              size="2xs"
+                              variant="ghost"
+                              colorPalette="primary"
+                              data-testid="draft-sell-price-reset"
+                              onClick={() => setSellPriceTyped(null)}
+                            >
+                              {t("orderDraftForm.sellPriceReset")}
+                            </Button>
+                          </Flex>
+                        )}
+                      </Field.HelperText>
+                    </Field.Root>
+                  </Stack>
+                  <Field.Root>
+                    <Field.Label>
+                      <Flex align="center" gap="2" wrap="wrap">
+                        {t("orderForm.source.orderDate")}
+                        <NotImplemented list={ORDER_FORM_PENDING} id="orderDate" />
+                      </Flex>
+                    </Field.Label>
+                    <DatePicker
+                      value={orderDate}
+                      onChange={setOrderDate}
+                      withTime
+                      clearable
+                      max={todayDateInput()}
+                      testId="draft-order-date"
+                    />
+                    <Field.HelperText>{t("orderForm.source.orderDateHelp")}</Field.HelperText>
+                  </Field.Root>
+                </SimpleGrid>
+              </Card.Body>
+            </Card.Root>
+
+            <DraftRowsCard
+              teamId={cardTeamId}
+              warehouseId={warehouseId}
+              rows={namedRows}
+              stock={stock}
+              costs={costs}
+              onPatch={(key, patch) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))}
+              onRemove={(key) => setRows((prev) => prev.filter((r) => r.key !== key))}
+              onAdd={() => {
+                setRows((prev) => [...prev, emptyRow(`new-${added + 1}`)]);
+                setAdded((n) => n + 1);
+              }}
+            />
+
+            <ReturnMappingCard
+              teamId={cardTeamId}
+              lines={crossLines}
+              mapping={mapping}
+              onMap={(productId, mapped) =>
+                setMapping((prev) => {
+                  const next = new Map(prev);
+                  if (mapped) next.set(productId.toString(), mapped);
+                  else next.delete(productId.toString());
+                  return next;
+                })
+              }
+            />
+
             <CustomerInfoForm
               idPrefix="draft"
               customerName={customerName}
@@ -601,110 +587,86 @@ export function OrderDraftDetailPage() {
               onCustomerPhoneChange={setCustomerPhone}
               address={address}
               onAddressChange={setAddress}
+              teamId={cardTeamId}
+              addressKecamatanSearch
             />
 
-            {/* THE COURIER, ON ITS OWN — it left the customer card (owner), and a draft has no
-                shipping-receipt card to take it: nothing has been handed over yet, so there is no
-                tracking number and no slip to sit beside.
-
-                It still has to be here. A scraped draft arrives carrying the marketplace's chosen
-                courier, the field is editable before promotion, and the save sends it — a card that
-                simply stopped rendering it would silently drop a value the screen still writes.
-
-                A narrow card for one narrow control: full width, a lone combobox would stretch to the
-                width of the lines table above it and read as a search bar. */}
-            <Card.Root maxW={{ md: "sm" }}>
-              <Card.Body>
-                <Stack gap="card">
-                  <Heading as="h3" size="sm">{t("orders.shipping")}</Heading>
-                  <Field.Root>
-                    <ShippingSelect value={shippingCode} onChange={setShippingCode} />
-                  </Field.Root>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
+            <ExtraInfoCard
+              deadline={deadline}
+              onDeadlineChange={setDeadline}
+              buyerUsername={buyerUsername}
+              onBuyerUsernameChange={setBuyerUsername}
+            />
           </Stack>
         </GridItem>
 
-        {/* ── WHAT IT COMES TO, AND THE TWO EXITS ──────────────── right column, and it STICKS ──
-            A draft of a dozen lines used to push Promote off the bottom of the page. Sticky keeps the
-            total and both buttons in view while the lines scroll past. */}
-        <GridItem
-          gridColumn={{ lg: 2 }}
-          gridRow={{ lg: "1 / span 3" }}
-          position={{ base: "static", lg: "sticky" }}
-          top="4"
-        >
-          <OrderTotals
-            idPrefix="draft"
-            subtotal={subtotal}
-            total={subtotal + toRupiah(shippingCost)}
-            // A DRAFT HAS A SHIPPING COST and the order form does not: the scrape read what the
-            // marketplace charged for delivery, and promote carries that figure onto the order.
-            shipping={
-              <Field.Root>
-                <Field.Label>{t("orders.shippingCost")}</Field.Label>
-                <CurrencyInput
-                  w="40"
-                  value={shippingCost}
-                  data-testid="draft-shipping-cost"
-                  onChange={setShippingCost}
-                />
-              </Field.Root>
-            }
-            action={
-              <Stack gap="card">
-                {/* WHY Promote is disabled, beside the button rather than behind a click. The
-                    alternative is a person pressing it and reading a rejection to learn what they
-                    already could have seen. */}
-                {!ready && (
-                  <HStack gap="1" wrap="wrap" data-testid="draft-gaps">
-                    <Text fontSize="sm" color="fg.muted">
-                      {t("orderDrafts.remaining")}:
-                    </Text>
-                    {gaps.map((gap) => (
-                      <Badge key={gap.key} colorPalette="gray">
-                        {t(gap.key)}
-                      </Badge>
+        {/* THE MONEY — the create form's rail, and it sticks. */}
+        <GridItem position={{ base: "static", lg: "sticky" }} top="4" minW="0">
+          <Stack gap={compact ? "card" : "section"}>
+            <Flex justify="space-between" align="center" gap="2">
+              <Text fontSize="sm" fontWeight="bold" color="fg.muted">
+                {t("orderForm.rail.title")}
+              </Text>
+              <Button type="button" size="xs" variant="outline" onClick={() => setCompact((on) => !on)}>
+                <Icon as={compact ? ChevronsUpDown : ChevronsDownUp} boxSize="4" />
+                {t(compact ? "orderForm.rail.expand" : "orderForm.rail.collapse")}
+              </Button>
+            </Flex>
+
+            <CreditLimitPanel rows={credit} compact={compact} />
+            <ProfitEstimatePanel sellPrice={sellPrice} orderTotal={orderTotal} compact={compact} />
+            <TotalsInvoicePanel
+              productsTotal={productsTotal}
+              warehouseFee={warehouseFee}
+              orderTotal={orderTotal}
+              invoice={invoice}
+              invoiceTotal={invoiceTotal}
+              compact={compact}
+            />
+
+            <NoteAndSubmitCard
+              note={note}
+              onNoteChange={setNote}
+              noteMark={<NotImplemented list={ORDER_DRAFT_PENDING} id="draftKeeps" />}
+              unmappedReturns={unmappedReturns}
+              compact={compact}
+              saving={promoting}
+              savingDraft={saving}
+              canSave={canPromote}
+              canDraft={changed}
+              onSaveDraft={() => void save()}
+              variant={{
+                saveLabel: t("orderDrafts.save"),
+                saveTestId: "draft-save",
+                submitLabel: t("orderDrafts.promote"),
+                submitTestId: "draft-promote",
+                onSubmit: tryPromote,
+              }}
+              footer={
+                reasons.length > 0 ? (
+                  <Stack gap="1" data-testid="draft-gaps">
+                    {reasons.map((reason) => (
+                      <Flex key={reason} gap="2" align="start">
+                        <Icon as={TriangleAlert} boxSize="3.5" color="warning.fg" mt="0.5" />
+                        <Text fontSize="xs" color="warning.fg">
+                          {reason}
+                        </Text>
+                      </Flex>
                     ))}
-                  </HStack>
-                )}
-
-                {/* THE TWO EXITS, SIDE BY SIDE, as on the order form — equal columns, the
-                    non-committing one on the left. */}
-                <SimpleGrid columns={2} gap="2">
-                  <Button
-                    type="button"
-                    w="full"
-                    variant="outline"
-                    loading={saving}
-                    disabled={!dirty}
-                    data-testid="draft-save"
-                    onClick={() => void save()}
-                  >
-                    {t("orderDrafts.save")}
-                  </Button>
-
-                  {/* Promote refuses an unsaved edit rather than silently saving first: it destroys
-                      the draft, and a button that quietly does two things is the wrong one to be
-                      surprised by. */}
-                  <Button
-                    type="button"
-                    w="full"
-                    colorPalette="brand"
-                    loading={saving}
-                    disabled={!ready || dirty}
-                    data-testid="draft-promote"
-                    onClick={() => void doPromote()}
-                  >
-                    {dirty ? t("orderDrafts.saveFirst") : t("orderDrafts.promote")}
-                  </Button>
-                </SimpleGrid>
-              </Stack>
-            }
-          />
+                  </Stack>
+                ) : undefined
+              }
+            />
+          </Stack>
         </GridItem>
       </Grid>
+
+      <OrderChecksDialog
+        findings={gate}
+        placing={promoting}
+        onClose={() => setGate([])}
+        onPlaceAnyway={() => void doPromote()}
+      />
 
       <ConfirmDialog
         open={confirmDelete}

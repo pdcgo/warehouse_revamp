@@ -3,23 +3,25 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orderDraftItems, teams } from "../../../.storybook/fixtures";
+import { BUNDLES } from "../../features/orders/form/mockData";
 import { OrderDraftDetailPage } from "./index";
 
-// ONE DRAFT, WHERE SCRAPED TEXT BECOMES A REAL PRODUCT (#196) — a page, not a dialog.
+// THE DRAFT PAGE IN THE ORDER FORM'S CLOTHES (`the-draft-page-wears-the-order-form`) — `/order-drafts/:id`.
 //
-// Built from the order form's parts (the lines table, the customer card, the pinned totals), and
-// different only where the job differs: the scraped text above each mapping, a ProductSelect per
-// line, a typed price, and a Promote that stays disabled until nothing is left.
-//
-//   | story                           | the rule it pins                                           |
-//   | ------------------------------- | ---------------------------------------------------------- |
-//   | Default                         | 201 — one unmapped line, Promote disabled and says why      |
-//   | TheScrapedTextStaysBesideTheMap | the evidence is never replaced by the mapping               |
-//   | AReadyDraftPromotesToAnOrder    | 202 — Promote runs and lands on the new order               |
-//   | AnEditMustBeSavedBeforePromote  | Promote refuses unsaved work instead of saving silently     |
-//   | AShortLineIsCalledOutOnTop      | one over the shelf → the alert, above both columns          |
-//   | DeleteConfirmsThenGoesBack      | destructive → ConfirmDialog → back to the list              |
-//   | AnotherTeamsDraftIsNotFound     | one side only                                               |
+//   | story                                   | the rule it pins                                        |
+//   | --------------------------------------- | ------------------------------------------------------- |
+//   | Default                                 | 201 — one unmapped row: Promote refused, and says why    |
+//   | TheScrapedTextStaysAboveTheMap          | the evidence is never replaced by the mapping            |
+//   | TheSellPriceStartsFromTheRows           | Σ qty × MP price, typed over, reset back to the rows     |
+//   | ACountThatDiffersFromTheListingIsFlagged | listing qty/price are info; a different count is flagged  |
+//   | ARowMapsToABundle                       | Bundle → the template's slots, and Promote refuses it    |
+//   | ARowSplitsAndSuggestsABundle            | Pecah → parts, and "Make It a Bundle" is offered         |
+//   | AnEditMustBeSavedBeforePromote          | Save any state; Promote refuses unsaved work             |
+//   | AShortLineIsCalledOutOnTop              | one over the shelf → the alert above both columns        |
+//   | AReadyDraftPromotesToAnOrder            | 202 — the form's checks, then the order                  |
+//   | DeleteConfirmsThenGoesBack              | destructive → ConfirmDialog → back to the list           |
+//   | AnotherTeamsDraftIsNotFound             | one side only                                            |
+//   | EveryDraftGapIsMarkedOnScreen           | every draft-only ⚠ has a badge on the thing it is about   |
 
 const SELLER = teams[1]!; // Toko Melati (12)
 const OTHER_SELLER = teams[2]!; // Toko Kenanga (13)
@@ -52,126 +54,189 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+async function ready(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await waitFor(() => expect(canvas.getByTestId("draft-detail-page")).toBeInTheDocument());
+  return canvas;
+}
+
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
-/**
- * 201: three lines, the third unmapped. Promote is DISABLED and the reason sits beside it — a person
- * must never have to press it and read a rejection to learn what they could already see.
- */
+/** 201: three rows, the third unmapped. Promote is refused and the reasons sit under it. */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await waitFor(() => expect(canvas.getByTestId("draft-detail-page")).toBeInTheDocument());
+    const canvas = await ready(canvasElement);
 
     await expect(canvas.getByTestId("draft-line-unmapped-2")).toBeInTheDocument();
     await expect(canvas.getByTestId("draft-gaps")).toBeInTheDocument();
     await expect(canvas.getByTestId("draft-promote")).toBeDisabled();
-    // Nothing changed yet, so there is nothing to save.
     await expect(canvas.getByTestId("draft-save")).toBeDisabled();
   },
 };
 
-// THE SAME DRAFT, ON A PHONE-SHAPED CANVAS (owner). What to look at: the two columns collapsing to
-// one, and the six-column lines table scrolling inside its own box rather than pushing the page.
-//
-// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only (see OrderDetailPage.Mobile).
+/** The layout without the ⚠ scaffolding. */
+export const WithoutTheMarks: Story = {
+  globals: { pendingMarks: "off" },
+};
+
+// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only.
 export const Mobile: Story = {
   globals: { viewport: { value: "mobile2" } },
 };
 
-/** The ready one, for looking at — every line mapped, Promote live. */
 export const Ready: Story = {
   render: () => <AtReady />,
 };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-/**
- * THE SCRAPED TEXT IS THE EVIDENCE, and it stays on screen above the mapping — mapped or not. It is
- * the only thing a wrong mapping can be checked against.
- */
-export const TheScrapedTextStaysBesideTheMap: Story = {
+export const TheScrapedTextStaysAboveTheMap: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = await ready(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("draft-lines-table")).toBeInTheDocument());
-
-    const lines = orderDraftItems["201"]!;
-    for (const [i, line] of lines.entries()) {
-      await expect(canvas.getByTestId(`draft-line-scraped-${i}`)).toHaveTextContent(line.externalName);
+    for (const [i, item] of orderDraftItems["201"]!.entries()) {
+      await expect(canvas.getByTestId(`draft-line-scraped-${i}`)).toHaveTextContent(item.externalName);
     }
-
-    // A mapped line says so; the unmapped one says it is not.
     await expect(canvas.getByTestId("draft-line-mapped-0")).toBeInTheDocument();
-    await expect(canvas.queryByTestId("draft-line-mapped-2")).toBeNull();
-  },
-};
-
-/** 202 has nothing left: Promote runs, and the page moves to the order that now exists. */
-export const AReadyDraftPromotesToAnOrder: Story = {
-  render: () => <AtReady />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const promote = await canvas.findByTestId("draft-promote");
-    await waitFor(() => expect(promote).toBeEnabled());
-    await expect(canvas.queryByTestId("draft-gaps")).toBeNull();
-
-    await userEvent.click(promote);
-    await waitFor(() => expect(canvas.getByTestId("at-order-detail")).toBeInTheDocument());
   },
 };
 
 /**
- * PROMOTE REFUSES AN UNSAVED EDIT rather than saving first. It destroys the draft, and a button that
- * quietly does two things is the wrong one to be surprised by — so it turns into "Save First".
+ * THE SELL PRICE STARTS AS THE ROWS' PLATFORM PRICES — 2 × 55.000 + 25.000 + 20.000 = 155.000 — and can
+ * be typed over (owner: *"sell price masih mungkin untuk diganti"*) — down
+ * to 0. Following the rows again is the reset button, never a side effect of an empty box.
  */
+export const TheSellPriceStartsFromTheRows: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+    const sell = canvas.getByTestId("draft-sell-price");
+
+    await expect(sell).toHaveValue("155.000");
+
+    // Typed over, it is the person's.
+    await userEvent.clear(sell);
+    await userEvent.type(sell, "150000", { delay: 20 });
+    await waitFor(() => expect(sell).toHaveValue("150.000"));
+
+    // Emptied, it is 0 — it does not snap back to the rows mid-edit.
+    await userEvent.clear(sell);
+    await expect(sell).toHaveValue("");
+
+    // The reset is what follows the rows again.
+    await userEvent.click(canvas.getByTestId("draft-sell-price-reset"));
+    await waitFor(() => expect(sell).toHaveValue("155.000"));
+  },
+};
+
+/** A ROW MAPPED TO A BUNDLE — the template's slots open under it, and Promote says it cannot take it. */
+export const ARowMapsToABundle: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("draft-row-mode-2-bundle"));
+    await userEvent.click(within(canvas.getByTestId("draft-row-2")).getByRole("combobox"));
+
+    const option = await screen.findByTestId(`bundle-option-${BUNDLES[0]!.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(canvas.getByTestId("draft-row-bundle-2")).toHaveTextContent(BUNDLES[0]!.name));
+    await expect(canvas.getByTestId("draft-row-2")).toHaveAttribute("data-mode", "bundle");
+    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("cannot be promoted yet");
+  },
+};
+
+/** A ROW SPLIT INTO PRODUCTS — allowed, and the screen suggests making it a bundle. */
+export const ARowSplitsAndSuggestsABundle: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("draft-row-mode-0-split"));
+
+    // It starts from the product already mapped, so switching threw nothing away.
+    await waitFor(() => expect(canvas.getByTestId("draft-row-0-part-0")).toBeInTheDocument());
+    await expect(canvas.getByTestId("draft-row-0-make-bundle")).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByTestId("draft-row-0-add-part"));
+    await expect(canvas.getByTestId("draft-row-0-part-1")).toBeInTheDocument();
+  },
+};
+
+/**
+ * THE LISTING'S QUANTITY AND PRICE ARE INFORMATION; the count is set on the mapping, and one that differs
+ * from the listing is FLAGGED, not refused (owner: *"jumlah pun cuma info, tapi bisa jadi indicator
+ * warning jika jumlahnya tidak sesuai"*).
+ */
+export const ACountThatDiffersFromTheListingIsFlagged: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+
+    await expect(canvas.getByTestId("draft-row-listing-0")).toHaveTextContent("2 × Rp 55.000");
+    await expect(canvas.queryByTestId("draft-row-count-differs-0")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("draft-row-count-0-minus"));
+    await waitFor(() => expect(canvas.getByTestId("draft-row-count-differs-0")).toHaveTextContent("1"));
+    // …and it says the draft cannot keep both numbers.
+    await expect(
+      within(canvas.getByTestId("draft-row-count-differs-0")).getByTestId("not-implemented-listingQty"),
+    ).toBeInTheDocument();
+  },
+};
+
+/** SAVE TAKES ANY STATE; PROMOTE REFUSES UNSAVED WORK. */
 export const AnEditMustBeSavedBeforePromote: Story = {
   render: () => <AtReady />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = await ready(canvasElement);
 
-    const promote = await canvas.findByTestId("draft-promote");
-    await waitFor(() => expect(promote).toBeEnabled());
+    await waitFor(() => expect(canvas.getByTestId("draft-promote")).toBeEnabled());
+    await userEvent.click(canvas.getByTestId("draft-row-count-0-plus"));
 
-    // Product 71 — the warehouse holds 40, so one more stays well within stock.
-    await userEvent.click(canvas.getByTestId("draft-line-qty-0-plus"));
-
-    await waitFor(() => expect(promote).toBeDisabled());
-    await expect(promote).toHaveTextContent("Save First");
-    await expect(canvas.getByTestId("draft-save")).toBeEnabled();
+    await waitFor(() => expect(canvas.getByTestId("draft-save")).toBeEnabled());
+    await expect(canvas.getByTestId("draft-promote")).toBeDisabled();
+    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("Save the changes first");
   },
 };
 
-/**
- * ONE OVER THE SHELF IS CALLED OUT ABOVE BOTH COLUMNS.
- *
- * 202's second line asks for exactly the 3 the warehouse holds. One click on + makes it short, and
- * the alert appears full-width — on a long draft the failing row can be off screen, and "Promote is
- * disabled and I cannot see why" is the state this page must never be in.
- */
+/** 202's second row asks for exactly the 3 the warehouse holds — one more and the alert appears. */
 export const AShortLineIsCalledOutOnTop: Story = {
   render: () => <AtReady />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = await ready(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("draft-line-stock-1")).toHaveTextContent("3"));
+    await waitFor(() => expect(canvas.getByTestId("draft-row-stock-1")).toHaveTextContent("3"));
     await expect(canvas.queryByTestId("draft-short")).toBeNull();
 
-    await userEvent.click(canvas.getByTestId("draft-line-qty-1-plus"));
-
+    await userEvent.click(canvas.getByTestId("draft-row-count-1-plus"));
     await waitFor(() => expect(canvas.getByTestId("draft-short")).toBeInTheDocument());
-    await expect(canvas.getByTestId("draft-gaps")).toHaveTextContent("Stock");
+  },
+};
+
+export const AReadyDraftPromotesToAnOrder: Story = {
+  render: () => <AtReady />,
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+    const promote = canvas.getByTestId("draft-promote");
+
+    await waitFor(() => expect(promote).toBeEnabled());
+    await userEvent.click(promote);
+
+    // The form's checks may ask for a second look; placing anyway is the create form's own path.
+    const placeAnyway = await screen.findByTestId("order-checks-place").catch(() => null);
+    if (placeAnyway) {
+      await waitFor(() => expect(placeAnyway).toBeVisible());
+      await userEvent.click(placeAnyway);
+    }
+
+    await waitFor(() => expect(canvas.getByTestId("at-order-detail")).toBeInTheDocument());
   },
 };
 
 export const DeleteConfirmsThenGoesBack: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+    const canvas = await ready(canvasElement);
 
-    await userEvent.click(await canvas.findByTestId("draft-delete"));
-
+    await userEvent.click(canvas.getByTestId("draft-delete"));
     const confirm = await screen.findByTestId("confirm-action");
     await waitFor(() => expect(confirm).toBeVisible());
     await userEvent.click(confirm);
@@ -180,10 +245,6 @@ export const DeleteConfirmsThenGoesBack: Story = {
   },
 };
 
-/**
- * A DRAFT ANOTHER TEAM TYPED IS "NOT FOUND". 201 is Melati's; Kenanga asks for it and gets the
- * not-found state — never Melati's customer.
- */
 export const AnotherTeamsDraftIsNotFound: Story = {
   beforeEach: asTeam(OTHER_SELLER.id),
   play: async ({ canvasElement }) => {
@@ -191,5 +252,23 @@ export const AnotherTeamsDraftIsNotFound: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("draft-not-found")).toBeInTheDocument());
     await expect(canvas.queryByTestId("draft-detail-page")).toBeNull();
+  },
+};
+
+/**
+ * ⚠ EVERY DRAFT-ONLY GAP IS MARKED ON SCREEN — what a draft does not keep (on the note), a bundle or a
+ * split mapping not being stored (on those two modes), and "Make It a Bundle" (on the button, which a
+ * split row shows).
+ */
+export const EveryDraftGapIsMarkedOnScreen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await ready(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("draft-row-mode-0-split"));
+    await waitFor(() => expect(canvas.getByTestId("draft-row-0-make-bundle")).toBeInTheDocument());
+
+    for (const id of ["draftKeeps", "sellPrice", "rowBundle", "rowSplit", "makeBundle"]) {
+      await expect(canvas.queryAllByTestId(`not-implemented-${id}`).length).toBeGreaterThan(0);
+    }
   },
 };

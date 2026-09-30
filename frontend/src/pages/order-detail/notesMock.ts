@@ -1,5 +1,5 @@
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
-import { mockCreator } from "../orders/rowMock";
+import { mockCreator } from "../../features/orders/rowMock";
 
 // AN ORDER'S NOTES — several, and of two kinds (owner: *"catatan harusnya bisa diedit, catatan bisa
 // lebih dari 1 dan catatan itu ada tipenya, dari sistem dan dari user"*).

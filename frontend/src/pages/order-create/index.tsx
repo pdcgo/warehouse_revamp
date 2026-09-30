@@ -44,28 +44,29 @@ import { DatePicker } from "../../components/datetime/DatePicker";
 import { todayDateInput } from "../../lib/datetime";
 import { useProductsByIds } from "../../features/products/queries";
 import { useTeams } from "../../features/teams/queries";
-import type { BundleDraft } from "./bundles";
-import { bundleFor, bundleLines, fillFor } from "./bundles";
-import { BUNDLES, forgetLink, mockTerms, rememberLink, rememberedLink } from "./mockData";
-import { BundleCard } from "./components/BundleCard";
-import { CreditLimitPanel } from "./components/CreditLimitPanel";
-import type { CreditRole, CreditRow } from "./components/CreditLimitPanel";
+import type { BundleDraft } from "../../features/orders/form/bundles";
+import { bundleFor, bundleLines, fillFor } from "../../features/orders/form/bundles";
+import { BUNDLES, forgetLink, mockTerms, rememberLink, rememberedLink } from "../../features/orders/form/mockData";
+import { BundleCard } from "../../features/orders/form/BundleCard";
+import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
+import type { CreditRow } from "../../features/orders/form/CreditLimitPanel";
+import { creditRows, invoiceRows } from "../../features/orders/form/money";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { ORDER_FORM_PENDING } from "./pending";
-import { NoteAndSubmitCard } from "./components/NoteAndSubmitCard";
-import { ProfitEstimatePanel } from "./components/ProfitEstimatePanel";
-import { ReturnMappingCard } from "./components/ReturnMappingCard";
-import type { CrossLine, MappedProduct } from "./components/ReturnMappingCard";
-import { ShippingReceiptCard } from "./components/ShippingReceiptCard";
-import { WarehouseBand } from "./components/WarehouseBand";
-import { OrderChecksDialog } from "./components/OrderChecksDialog";
-import type { CheckFinding, ReceiptScan } from "./checks";
-import { applyScan, runOrderChecks, scanReceipt, suggestMarketplace } from "./checks";
+import { ORDER_FORM_PENDING } from "../../features/orders/form/pending";
+import { NoteAndSubmitCard } from "../../features/orders/form/NoteAndSubmitCard";
+import { ProfitEstimatePanel } from "../../features/orders/form/ProfitEstimatePanel";
+import { ReturnMappingCard } from "../../features/orders/form/ReturnMappingCard";
+import type { CrossLine, MappedProduct } from "../../features/orders/form/ReturnMappingCard";
+import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
+import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
+import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
+import type { CheckFinding, ReceiptScan } from "../../features/orders/form/checks";
+import { applyScan, runOrderChecks, scanReceipt, suggestMarketplace } from "../../features/orders/form/checks";
 import { MarketplaceBadge, marketplaceLabel } from "../../components/badges/MarketplaceBadge";
-import { ExtraInfoCard } from "./components/ExtraInfoCard";
-import { TotalsInvoicePanel } from "./components/TotalsInvoicePanel";
-import type { InvoiceRow } from "./components/TotalsInvoicePanel";
+import { ExtraInfoCard } from "../../features/orders/form/ExtraInfoCard";
+import { TotalsInvoicePanel } from "../../features/orders/form/TotalsInvoicePanel";
+import type { InvoiceRow } from "../../features/orders/form/TotalsInvoicePanel";
 import { toaster } from "../../components/feedback/Toaster";
 import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
 import { emptyReceipt, hasReceipt } from "../../components/orders/ReceiptUpload";
@@ -496,48 +497,11 @@ export function OrderCreatePage() {
 
   // WHAT WE OWE, per creditor. The goods of each owning team at HPP, then their markup on top — the
   // same shape `liability` posts, so the preview and the recorded debt cannot disagree.
-  const invoice: InvoiceRow[] = useMemo(() => {
-    const base = new Map<string, bigint>();
-
-    for (const line of allLines) {
-      const ownerTeamId = owners?.get(line.productId.toString())?.teamId ?? 0n;
-      if (ownerTeamId === 0n || ownerTeamId === teamId) continue;
-
-      const key = ownerTeamId.toString();
-      base.set(key, (base.get(key) ?? 0n) + lineTotal(line, costs));
-    }
-
-    const rows: InvoiceRow[] = [...base.entries()].map(([key, amount]) => {
-      const ownerTeamId = BigInt(key);
-      const markupBp = mockTerms(ownerTeamId).markupBp;
-
-      return {
-        teamId: ownerTeamId,
-        name: teamName(ownerTeamId),
-        base: amount,
-        markupBp,
-        // Integer maths: basis points over the cost, rounded down by the division.
-        owed: (amount * (10_000n + markupBp)) / 10_000n,
-        kind: "product",
-      };
-    });
-
-    // The warehouse's flat fee is a debt like any other — it is charged at order creation, so it
-    // belongs on the invoice the moment the order is previewed.
-    if (warehouseId > 0n && warehouseFee > 0n) {
-      rows.push({
-        teamId: warehouseId,
-        name: teamName(warehouseId),
-        base: 0n,
-        markupBp: 0n,
-        owed: warehouseFee,
-        kind: "fee",
-      });
-    }
-
-    return rows;
+  const invoice: InvoiceRow[] = useMemo(
+    () => invoiceRows({ lines: allLines, owners, costs, teamId, warehouseId, warehouseFee, teamName }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allLines, owners, costs, teamId, teamNames, warehouseId, warehouseFee]);
+    [allLines, owners, costs, teamId, teamNames, warehouseId, warehouseFee],
+  );
 
   const invoiceTotal = invoice.reduce((sum, row) => sum + row.owed, 0n);
 
@@ -548,40 +512,11 @@ export function OrderCreatePage() {
   // moment a building sells its own goods), and then the fee and the goods are two debts to ONE
   // creditor with ONE limit. Listing them separately would show an order as comfortable against a
   // ceiling that the two halves together cross.
-  const creditRows: CreditRow[] = useMemo(() => {
-    const byTeam = new Map<string, CreditRow>();
-
-    function owe(id: bigint, role: CreditRole, amount: bigint) {
-      const key = id.toString();
-      const row = byTeam.get(key);
-
-      if (row) {
-        row.adds += amount;
-        if (!row.roles.includes(role)) row.roles.push(role);
-        return;
-      }
-
-      const terms = mockTerms(id);
-      byTeam.set(key, {
-        teamId: id,
-        name: teamName(id),
-        roles: [role],
-        debt: terms.debt,
-        limit: terms.creditLimit,
-        adds: amount,
-      });
-    }
-
-    // The warehouse first — it is the creditor every order has, so it heads the list whether or not
-    // any goods on the order are somebody else's.
-    if (warehouseId > 0n) owe(warehouseId, "warehouse", warehouseFee);
-    for (const row of invoice) {
-      if (row.kind === "product") owe(row.teamId, "owner", row.owed);
-    }
-
-    return [...byTeam.values()];
+  const creditRowsList: CreditRow[] = useMemo(
+    () => creditRows({ invoice, warehouseId, warehouseFee, teamName }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoice, warehouseId, warehouseFee, teamNames]);
+    [invoice, warehouseId, warehouseFee, teamNames],
+  );
 
   // ── The return mapping, and what it remembers ─────────────────────────────────────────────────
 
@@ -928,8 +863,11 @@ export function OrderCreatePage() {
               at. */}
           <WarehouseBand value={warehouseId} onChange={setWarehouseId} />
 
+      {/* ⚠ `minmax(0, 1fr)` ON A PHONE TOO, not `1fr`. A track's minimum is `auto` — its widest child —
+          so a wide lines table pushed the whole column past a 390px screen instead of scrolling inside
+          its own box. */}
       <Grid
-        templateColumns={{ base: "1fr", lg: "minmax(0, 2fr) minmax(0, 1fr)" }}
+        templateColumns={{ base: "minmax(0, 1fr)", lg: "minmax(0, 2fr) minmax(0, 1fr)" }}
         gap="section"
         alignItems="start"
         style={{ marginTop: 16 }}
@@ -1172,7 +1110,7 @@ export function OrderCreatePage() {
               </Button>
             </Flex>
 
-            <CreditLimitPanel rows={creditRows} compact={compact} />
+            <CreditLimitPanel rows={creditRowsList} compact={compact} />
             <ProfitEstimatePanel sellPrice={sellPrice} orderTotal={orderTotal} compact={compact} />
             <TotalsInvoicePanel
               productsTotal={productsTotal}

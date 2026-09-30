@@ -37,7 +37,7 @@ import {
   stageOfStatus,
 } from "../../features/orders/stages";
 import type { ProcessedStep } from "../../features/orders/stages";
-import { DRAFTS_TAB, StageTabs } from "./components/StageTabs";
+import { DRAFTS_TAB, StageTabs } from "../../features/orders/StageTabs";
 import { StageBadge } from "../../features/orders/StageBadge";
 import {
   CreatedCell,
@@ -48,8 +48,8 @@ import {
   OrderRefCell,
   ReceiptCell,
   SpendCell,
-} from "./components/OrderRowCells";
-import { deadlineUrgency, hoursFromNow, mockDeadline } from "./deadlineMock";
+} from "../../features/orders/OrderRowCells";
+import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
 import { OrderRowActions } from "./components/OrderRowActions";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeams } from "../../features/teams/queries";
@@ -85,7 +85,7 @@ import {
   mockReceiptCode,
   mockStageOffset,
   mockWarehouseFee,
-} from "./rowMock";
+} from "../../features/orders/rowMock";
 import { ImportOrdersDialog } from "./components/ImportOrdersDialog";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -219,13 +219,16 @@ export function SellerOrdersPage() {
   // ⚠ The three unwired pickers COUNT here, even though they narrow nothing. Clear is "put this bar
   // back to where it started", and a picker left holding a warehouse after Clear would be a control
   // the button visibly skipped.
-  const filtered =
-    search.trim() !== "" ||
-    shopId > 0n ||
-    warehouseId > 0n ||
-    creatorId !== undefined ||
-    marketplace !== Marketplace.UNSPECIFIED ||
-    !isAllDates(range);
+  // How many controls are narrowing the list — the number on the phone's Filter button.
+  const filterCount = [
+    search.trim() !== "",
+    shopId > 0n,
+    warehouseId > 0n,
+    creatorId !== undefined,
+    marketplace !== Marketplace.UNSPECIFIED,
+    !isAllDates(range),
+  ].filter(Boolean).length;
+  const filtered = filterCount > 0;
 
   // `stat` survives for the TAB BADGES alone — the counts on the triggers, which every order screen
   // feeds the same way.
@@ -424,6 +427,7 @@ export function SellerOrdersPage() {
           at which "wrap, never squeeze" stops being a detail. */}
       <FilterBar
         active={filtered}
+        count={filterCount}
         testId="orders-filters"
         onClear={() =>
           refilter(() => {
@@ -447,12 +451,14 @@ export function SellerOrdersPage() {
             with the company, so it is typed into rather than scrolled. */}
         <FilterField w="15rem" testId="orders-warehouse-filter">
           <Flex align="center" gap="1">
-            <TeamSelect
-              teamType={TeamType.WAREHOUSE}
-              value={warehouseId > 0n ? warehouseId : undefined}
-              placeholder={t("orders.warehouseAll")}
-              onChange={(id) => refilter(() => setWarehouseId(id))}
-            />
+            <Box flex="1" minW="0">
+              <TeamSelect
+                teamType={TeamType.WAREHOUSE}
+                value={warehouseId > 0n ? warehouseId : undefined}
+                placeholder={t("orders.warehouseAll")}
+                onChange={(id) => refilter(() => setWarehouseId(id))}
+              />
+            </Box>
             <NotImplemented list={ORDERS_LIST_PENDING} id="warehouseFilter" />
           </Flex>
         </FilterField>
@@ -461,12 +467,14 @@ export function SellerOrdersPage() {
             could have created one of its orders. */}
         <FilterField w="15rem" testId="orders-creator-filter">
           <Flex align="center" gap="1">
-            <UserSelect
-              teamId={teamId}
-              value={creatorId}
-              placeholder={t("orders.creatorAll")}
-              onChange={(id) => refilter(() => setCreatorId(id))}
-            />
+            <Box flex="1" minW="0">
+              <UserSelect
+                teamId={teamId}
+                value={creatorId}
+                placeholder={t("orders.creatorAll")}
+                onChange={(id) => refilter(() => setCreatorId(id))}
+              />
+            </Box>
             <NotImplemented list={ORDERS_LIST_PENDING} id="creator" />
           </Flex>
         </FilterField>
@@ -476,11 +484,13 @@ export function SellerOrdersPage() {
             can see in full is a keystroke tax. */}
         <FilterField w="15rem" testId="orders-marketplace-filter">
           <Flex align="center" gap="1">
-            <MarketplaceSelect
-              value={marketplace}
-              placeholder={t("orders.marketplaceAll")}
-              onChange={(m) => refilter(() => setMarketplace(m))}
-            />
+            <Box flex="1" minW="0">
+              <MarketplaceSelect
+                value={marketplace}
+                placeholder={t("orders.marketplaceAll")}
+                onChange={(m) => refilter(() => setMarketplace(m))}
+              />
+            </Box>
             <NotImplemented list={ORDERS_LIST_PENDING} id="marketplaceFilter" />
           </Flex>
         </FilterField>
@@ -515,6 +525,7 @@ export function SellerOrdersPage() {
         value={tab}
         count={tabCount}
         draftCount={draftCount}
+        mark={<NotImplemented list={ORDERS_LIST_PENDING} id="statusSet" />}
         onSelect={(value) => {
           if (value === DRAFTS_TAB) {
             void navigate("/order-drafts");

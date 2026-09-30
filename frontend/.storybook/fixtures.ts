@@ -459,8 +459,8 @@ export function orderDetailFor(id: bigint) {
 // warehouse never types one. It is what the Drafts tab's badge counts, so the two versions of the
 // list differ there too — a number for Melati, a zero for Gudang Pusat.
 export const orderDrafts = [
-  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", shippingCode: "jne", shippingCost: 15_000n, itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1) },
-  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", shippingCode: "sicepat", shippingCost: 12_000n, itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(2) },
+  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", shippingCode: "jne", shippingCost: 15_000n, itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1) },
+  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", shippingCode: "sicepat", shippingCost: 12_000n, itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1) },
 ];
 
 // ── What a draft DETAIL read adds — its lines ───────────────────────────────────────────────────

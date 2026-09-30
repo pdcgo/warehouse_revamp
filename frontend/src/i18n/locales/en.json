@@ -159,7 +159,9 @@
     "close": "Close",
     "copy": "Copy",
     "copied": "Copied",
-    "copyFailed": "Could not copy — select the text and copy it by hand"
+    "copyFailed": "Could not copy — select the text and copy it by hand",
+    "filters": "Filters",
+    "done": "Done"
   },
   "dateRange": {
     "all": "All dates",
@@ -783,7 +785,6 @@
       "timeline": "Timeline",
       "shipping": "Shipping",
       "recipient": "Recipient",
-      "withdrawal": "Withdrawal",
       "settlement": "Settlement"
     },
     "info": {
@@ -833,21 +834,6 @@
     "recipient": {
       "title": "Recipient"
     },
-    "withdrawal": {
-      "title": "Withdrawal and adjustments",
-      "empty": "Nothing has been withdrawn against this order yet.",
-      "withdrawnAt": "Withdrawn",
-      "importedAt": "Imported",
-      "source": "Source",
-      "amount": "Amount",
-      "foreign": "Foreign",
-      "description": "Description",
-      "question": "Every row here is invented. A withdrawal is a wallet-to-bank movement that names no order, while every settlement entry is required to name one — so these two are not the same record, and where this section's data lives is still open.",
-      "total": "Total withdrawn",
-      "adjustments": "Adjustments",
-      "net": "Net received",
-      "ofMp": "Of marketplace total"
-    },
     "pending": {
       "statusSet": {
         "label": "The eight statuses",
@@ -886,8 +872,8 @@
         "reason": "A returned parcel travels under its own courier, tracking number and trail, and none of that exists: there is no return record at all yet. Shown for one order only, invented."
       },
       "withdrawal": {
-        "label": "Withdrawal and adjustments",
-        "reason": "The whole section is invented and its home is undecided: a withdrawal names no order while every settlement entry must name one, so the two are not the same record."
+        "label": "Withdrawals into the settlement ledger",
+        "reason": "Nothing imports the marketplace's withdrawals yet, so a payout only appears in the ledger when somebody posts it by hand, and Edit Withdrawal has no RPC."
       },
       "lifecycle": {
         "label": "Actions after shipping",
@@ -949,7 +935,32 @@
     "promote": "Promote to Order",
     "promoted": "Order created from the draft",
     "deleteOneTitle": "Delete Order Draft",
-    "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again."
+    "deleteOneMessage": "Delete draft {{ref}}? This cannot be undone, and the app that pushed it may push it again.",
+    "updated": "Updated",
+    "pending": {
+      "statusSet": {
+        "label": "The status set",
+        "reason": "The strip carries the owner's eight stages, but the contract still has the old six statuses, so completed, problem, lost and return can never be anything but 0."
+      },
+      "readyCount": {
+        "label": "Ready count",
+        "reason": "Counted over the drafts on this page only. The whole set needs a draft aggregate on the server, which does not exist yet."
+      }
+    },
+    "created": "Created",
+    "summary": {
+      "total": "Drafts",
+      "oldest": "Oldest",
+      "readyValue": "{{ready}} of {{total}}",
+      "age": {
+        "hours_one": "{{count}} hour",
+        "hours_other": "{{count}} hours",
+        "days_one": "{{count}} day",
+        "days_other": "{{count}} days"
+      },
+      "ready": "Ready",
+      "onThisPage": "on this page"
+    }
   },
   "restock": {
     "title": "Restock Requests",
@@ -2514,6 +2525,30 @@
       "formatRules": {
         "label": "Courier & marketplace formats",
         "reason": "The patterns are provisional — they warn, they never refuse."
+      },
+      "draftKeeps": {
+        "label": "What a draft keeps",
+        "reason": "A draft stores the shop, the warehouse, the customer, the courier and the rows. The receipt, the references, the tracking number, the note, the dates and the buyer's username are not kept."
+      },
+      "rowBundle": {
+        "label": "A row mapped to a bundle",
+        "reason": "A draft line holds one product, so a bundle mapping is shown and counted but saved unmapped, and it blocks Promote."
+      },
+      "rowSplit": {
+        "label": "A row split into several products",
+        "reason": "A draft line holds one product, so a split is shown and counted but saved unmapped, and it blocks Promote."
+      },
+      "makeBundle": {
+        "label": "Make it a bundle",
+        "reason": "Bundle templates are still a sample, so there is nowhere to save a new one."
+      },
+      "sellPrice": {
+        "label": "The sell price",
+        "reason": "A draft has no sell price. It starts as the sum of the rows' marketplace prices and can be typed over, but a typed one is not kept."
+      },
+      "listingQty": {
+        "label": "The listing's quantity",
+        "reason": "A draft line holds one quantity, so a count that differs from the listing replaces it on save — the listing's own number and this warning are gone when the draft is opened again."
       }
     },
     "source": {
@@ -2636,5 +2671,36 @@
   "quantityInput": {
     "increase": "Increase",
     "decrease": "Decrease"
+  },
+  "orderDraftForm": {
+    "items": {
+      "help": "What the app read off the marketplace, one listing per row — map each to a product, a bundle, or several products.",
+      "added": "Added here",
+      "addedHelp": "A row the app did not read — nothing scraped to compare against.",
+      "mapAs": "Map as",
+      "mode": {
+        "product": "Product",
+        "bundle": "Bundle",
+        "split": "Split"
+      },
+      "changeBundle": "Change Bundle",
+      "splitHelp": "Each product at a quantity per listing unit — the row's quantity multiplies it.",
+      "perUnit": "Per unit",
+      "addPart": "Add Product",
+      "makeBundle": "Make It a Bundle",
+      "stockLine": "In stock {{stock}} · HPP {{hpp}}",
+      "listing": "Listing: {{qty}} × {{price}}",
+      "rowHpp": "HPP {{hpp}}",
+      "bundleCount": "Bundles",
+      "countDiffers": "Sending {{count}}, the listing says {{listing}}"
+    },
+    "sellPriceHelp": "The sum of the marketplace price on every row — what the buyer paid, and what the profit is measured against.",
+    "gaps": {
+      "unmapped": "A row is not mapped yet",
+      "notStorable": "A bundle or split row cannot be promoted yet",
+      "saveFirst": "Save the changes first"
+    },
+    "sellPriceTyped": "Typed over the rows' prices.",
+    "sellPriceReset": "Use the Rows' Prices"
   }
 }

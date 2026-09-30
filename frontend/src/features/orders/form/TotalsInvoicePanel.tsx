@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { formatRupiah } from "../../../lib/money";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "../pending";
+import { ORDER_FORM_PENDING } from "./pending";
 
 // WHAT THE ORDER COMES TO, AND WHAT WE OWE FOR IT — two totals, one card, and they are not the same
 // number.

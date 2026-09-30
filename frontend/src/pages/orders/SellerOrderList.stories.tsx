@@ -34,6 +34,26 @@ const Routed = routedPage(
   "/orders",
 );
 
+/**
+ * WHERE THE FILTER CONTROLS ARE. On a phone every control but the search lives in a bottom sheet behind
+ * the Filter button (`FilterBar`, rule 4) — and the story runner's canvas IS phone-width — so open it
+ * when it is there and hand back its scope. On a desktop canvas the controls are inline.
+ */
+async function filterControls(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const open = canvas.queryByTestId("orders-filters-open");
+
+  if (!open) {
+    return canvas;
+  }
+
+  await userEvent.click(open);
+  const sheet = await screen.findByTestId("orders-filters-sheet");
+  await waitFor(() => expect(sheet).toBeVisible());
+
+  return within(sheet);
+}
+
 const meta = {
   title: "Pages/Order/SellerOrderListPage",
   component: OrdersPage,
@@ -121,10 +141,11 @@ export const TheShopFilterIsOfferedAndNarrowsTheTable: Story = {
     const onThatShop = OWN.filter((o) => o.shopId === shop.id);
     const elsewhere = OWN.find((o) => o.shopId !== shop.id)!;
 
-    // ShopSelect renders INLINE (it has to work inside modal Dialogs), so its options are in the
-    // canvas rather than a portal.
-    await userEvent.click(canvas.getByTestId("shop-select"));
-    const option = await canvas.findByTestId(`shop-select-option-${shop.id}`);
+    // ShopSelect renders INLINE (it has to work inside modal Dialogs), so its options are beside it —
+    // in the canvas on a desktop, in the filter sheet on a phone.
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("shop-select"));
+    const option = await controls.findByTestId(`shop-select-option-${shop.id}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
@@ -244,7 +265,8 @@ export const TheDateWindowHidesTheOldOrder: Story = {
 
     await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument());
 
-    await userEvent.click(canvas.getByTestId("orders-date"));
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("orders-date"));
     const last30 = await screen.findByTestId("orders-date-quick-30");
     await waitFor(() => expect(last30).toBeVisible());
     await userEvent.click(last30);
@@ -264,11 +286,14 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
     await expect(canvas.queryByTestId("orders-filters-clear")).toBeNull();
 
     await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
-    await waitFor(() => expect(canvas.getByTestId("orders-filters-clear")).toBeInTheDocument());
 
-    await userEvent.click(canvas.getByTestId("orders-filters-clear"));
+    // On a phone Clear is in the sheet's footer, beside Done.
+    const controls = await filterControls(canvasElement);
+    await waitFor(() => expect(controls.getByTestId("orders-filters-clear")).toBeInTheDocument());
 
-    await waitFor(() => expect(canvas.queryByTestId("orders-filters-clear")).toBeNull());
+    await userEvent.click(controls.getByTestId("orders-filters-clear"));
+
+    await waitFor(() => expect(controls.queryByTestId("orders-filters-clear")).toBeNull());
     for (const o of OWN) {
       await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
     }
@@ -335,5 +360,31 @@ export const TheDraftsTabCountsAndLeaves: Story = {
 
     await userEvent.click(canvas.getByTestId("orders-tab-drafts"));
     await waitFor(() => expect(screen.getByTestId("at-order-drafts")).toBeInTheDocument());
+  },
+};
+
+/**
+ * ⚠ ON A PHONE THE FILTERS ARE A SHEET (owner: *"bentuk filter di order list cukup berantakan pada
+ * tampilan mobile"*). The search stays in the row; the pickers are behind the Filter button, which counts
+ * what is narrowing the list. Six ragged rows of controls were ~280px of the screen before the tabs.
+ */
+export const OnAPhoneTheFiltersAreASheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("orders-search")).toBeVisible();
+    await expect(canvas.queryByTestId("shop-select")).toBeNull();
+    await expect(canvas.queryByTestId("orders-filters-count")).toBeNull();
+
+    await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
+    await waitFor(() => expect(canvas.getByTestId("orders-filters-count")).toHaveTextContent("1"));
+
+    const controls = await filterControls(canvasElement);
+    await expect(controls.getByTestId("shop-select")).toBeVisible();
+    await expect(controls.getByTestId("orders-date")).toBeVisible();
+
+    await userEvent.click(controls.getByTestId("orders-filters-done"));
+    await waitFor(() => expect(screen.queryByTestId("orders-filters-sheet")).toBeNull());
   },
 };

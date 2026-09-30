@@ -23,13 +23,13 @@ import type { PickedProduct } from "../../../components/products/ProductSelect";
 import type { Availability, Costs } from "../../../features/orders/lines";
 import { lineTotal } from "../../../features/orders/lines";
 import { formatRupiah } from "../../../lib/money";
-import type { BundleDraft, SlotDraft } from "../bundles";
-import { slotCap, slotFilled } from "../bundles";
-import type { BundleTemplate } from "../mockData";
-import { BUNDLES } from "../mockData";
-import { coverFor } from "../mockImages";
+import type { BundleDraft, SlotDraft } from "./bundles";
+import { slotCap, slotFilled } from "./bundles";
+import type { BundleTemplate } from "./mockData";
+import { BUNDLES } from "./mockData";
+import { coverFor } from "./mockImages";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "../pending";
+import { ORDER_FORM_PENDING } from "./pending";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 
@@ -190,7 +190,8 @@ export function BundleCard({
 // ⚠ THE FILTERING IS LOCAL because the list is local. A real catalogue reads `BundleList(q, page)`
 // (HARD RULE 9: it grows), and this control then searches server-side exactly as ProductSelect does —
 // the markup below does not change, only where `collection` comes from.
-function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
+// Exported for the draft page, where picking a bundle MAPS a scraped row rather than adding a bundle.
+export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
 
@@ -273,7 +274,8 @@ function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (id: stri
 
 // ── One slot ────────────────────────────────────────────────────────────────────────────────────
 
-function SlotBox({
+// Exported for the draft page's bundle-mapped rows — one slot, the same box as here.
+export function SlotBox({
   teamId,
   warehouseId,
   bundle,

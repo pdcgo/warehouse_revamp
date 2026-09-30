@@ -62,6 +62,13 @@ export interface OrderLedgerPanelProps {
   onReverse?: (entry: SettlementEntry) => void;
   /** Today, as `yyyy-mm-dd`. Passed in so a story is deterministic. */
   today?: string;
+  /**
+   * No card of its own — for a host that already frames it. The order detail's Settlement section is
+   * a card with its own title, and a second card with a second title inside it read as two panels
+   * (owner: *"settlement di sini ada 2 card, tidak enak dilihat"*). Bare, the title goes and Add Entry
+   * moves to the foot, beside the append-only notice it belongs with.
+   */
+  bare?: boolean;
 }
 
 export function OrderLedgerPanel({
@@ -71,6 +78,7 @@ export function OrderLedgerPanel({
   onAddEntry,
   onReverse,
   today = new Date().toISOString().slice(0, 10),
+  bare = false,
 }: OrderLedgerPanelProps) {
   const { t } = useTranslation();
   const [reversing, setReversing] = useState<SettlementEntry | null>(null);
@@ -85,84 +93,100 @@ export function OrderLedgerPanel({
   const hidden = hiddenCost(settlement);
   const named = namedAdjustments(settlement);
 
-  return (
-    <Card.Root data-testid="order-ledger-panel">
-      <Card.Header>
-        <Flex align="center" gap="3">
-          <Heading size="sm">{t("orderSettlement.panelTitle")}</Heading>
-          <Spacer />
-          {canPost && (
-            <Button size="xs" variant="outline" onClick={() => setAdding(true)} data-testid="add-entry">
-              <Icon as={Plus} boxSize="4" />
-              {t("orderSettlement.addEntry")}
-            </Button>
-          )}
-        </Flex>
-      </Card.Header>
+  const addButton = canPost ? (
+    <Button
+      size="xs"
+      variant="outline"
+      onClick={() => setAdding(true)}
+      data-testid="add-entry"
+    >
+      <Icon as={Plus} boxSize="4" />
+      {t("orderSettlement.addEntry")}
+    </Button>
+  ) : null;
 
-      <Card.Body>
-        <Stack gap="section">
-          {unknownEstimate ? (
-            <Box
-              borderWidth="1px"
-              borderRadius="md"
-              p="card"
-              borderColor="warning.border"
-              data-testid="no-estimate-notice"
-            >
-              <Text fontWeight="medium">{t("orderSettlement.noEstimateTitle")}</Text>
-              <Text fontSize="sm" color="fg.muted">
-                {t("orderSettlement.noEstimateBody")}
-              </Text>
-            </Box>
-          ) : (
-            <SettlementSummary
-              estimate={settlement.initialTotal}
-              received={netReceived(settlement)}
-              lost={lost}
-              hidden={hidden}
-              named={named}
-              margin={trueMargin(settlement)}
-            />
-          )}
-
-          <Box overflowX="auto">
-            <Table.Root size="sm" data-testid="ledger-table">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>{t("orderSettlement.col.when")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("orderSettlement.col.type")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("orderSettlement.col.detail")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
-                    {t("orderSettlement.col.change")}
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">
-                    {t("orderSettlement.col.balance")}
-                  </Table.ColumnHeader>
-                  <Table.ColumnHeader />
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {settlement.entries.map((entry) => (
-                  <LedgerRow
-                    key={entry.id}
-                    entry={entry}
-                    reversed={isReversed(settlement, entry)}
-                    canPost={canPost}
-                    onReverse={() => setReversing(entry)}
-                  />
-                ))}
-              </Table.Body>
-            </Table.Root>
-          </Box>
-
-          {/* The rule is enforced in the API; a form that does not SAY so invites "just delete it". */}
-          <Text fontSize="xs" color="fg.muted" data-testid="append-only-notice">
-            {t("orderSettlement.appendOnlyNotice")}
+  const body = (
+    <Stack gap="section">
+      {unknownEstimate ? (
+        <Box
+          borderWidth="1px"
+          borderRadius="md"
+          p="card"
+          borderColor="warning.border"
+          data-testid="no-estimate-notice"
+        >
+          <Text fontWeight="medium">
+            {t("orderSettlement.noEstimateTitle")}
           </Text>
-        </Stack>
-      </Card.Body>
+          <Text fontSize="sm" color="fg.muted">
+            {t("orderSettlement.noEstimateBody")}
+          </Text>
+        </Box>
+      ) : (
+        <SettlementSummary
+          estimate={settlement.initialTotal}
+          received={netReceived(settlement)}
+          lost={lost}
+          hidden={hidden}
+          named={named}
+          margin={trueMargin(settlement)}
+        />
+      )}
 
+      <Box overflowX="auto">
+        <Table.Root size="sm" data-testid="ledger-table">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeader>
+                {t("orderSettlement.col.when")}
+              </Table.ColumnHeader>
+              <Table.ColumnHeader>
+                {t("orderSettlement.col.type")}
+              </Table.ColumnHeader>
+              <Table.ColumnHeader>
+                {t("orderSettlement.col.detail")}
+              </Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">
+                {t("orderSettlement.col.change")}
+              </Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="end">
+                {t("orderSettlement.col.balance")}
+              </Table.ColumnHeader>
+              <Table.ColumnHeader />
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {settlement.entries.map((entry) => (
+              <LedgerRow
+                key={entry.id}
+                entry={entry}
+                reversed={isReversed(settlement, entry)}
+                canPost={canPost}
+                onReverse={() => setReversing(entry)}
+              />
+            ))}
+          </Table.Body>
+        </Table.Root>
+      </Box>
+
+      {/* The rule is enforced in the API; a form that does not SAY so invites "just delete it". */}
+      <Flex gap="3" align="center" wrap="wrap">
+        <Text
+          fontSize="xs"
+          color="fg.muted"
+          flex="1"
+          minW="12rem"
+          data-testid="append-only-notice"
+        >
+          {t("orderSettlement.appendOnlyNotice")}
+        </Text>
+        {bare && addButton}
+      </Flex>
+    </Stack>
+  );
+
+  const dialogs = (
+    <>
       <AddEntryDialog
         open={adding}
         onOpenChange={setAdding}
@@ -188,6 +212,31 @@ export function OrderLedgerPanel({
           setReversing(null);
         }}
       />
+    </>
+  );
+
+  if (bare) {
+    return (
+      <Box data-testid="order-ledger-panel">
+        {body}
+        {dialogs}
+      </Box>
+    );
+  }
+
+  return (
+    <Card.Root data-testid="order-ledger-panel">
+      <Card.Header>
+        <Flex align="center" gap="3">
+          <Heading size="sm">{t("orderSettlement.panelTitle")}</Heading>
+          <Spacer />
+          {addButton}
+        </Flex>
+      </Card.Header>
+
+      <Card.Body>{body}</Card.Body>
+
+      {dialogs}
     </Card.Root>
   );
 }
@@ -216,14 +265,19 @@ function SettlementSummary({
 
   return (
     <Flex gap="card" wrap="wrap" data-testid="settlement-summary">
-      <Figure label={t("orderSettlement.estimate")} value={formatRupiah(estimate)} />
+      <Figure
+        label={t("orderSettlement.estimate")}
+        value={formatRupiah(estimate)}
+      />
       <Figure
         label={t("orderSettlement.received")}
         value={formatRupiah(received)}
         testId="received"
       />
       <Figure
-        label={lost >= 0n ? t("orderSettlement.lost") : t("orderSettlement.gained")}
+        label={
+          lost >= 0n ? t("orderSettlement.lost") : t("orderSettlement.gained")
+        }
         value={formatRupiah(lost >= 0n ? lost : -lost)}
         // Green when the order came out AHEAD. A red-only design renders a gain as a smaller loss,
         // which is wrong in the one direction nobody double-checks.
@@ -234,7 +288,11 @@ function SettlementSummary({
           named: formatRupiah(named),
         })}
       />
-      <Figure label={t("orderSettlement.trueMargin")} value={formatRupiah(margin)} testId="margin" />
+      <Figure
+        label={t("orderSettlement.trueMargin")}
+        value={formatRupiah(margin)}
+        testId="margin"
+      />
     </Flex>
   );
 }
@@ -303,7 +361,9 @@ function LedgerRow({
 
       <Table.Cell whiteSpace="nowrap">
         <Flex align="center" gap="2">
-          <Text fontSize="sm">{t(`orderSettlement.type.${entry.settlementType}`)}</Text>
+          <Text fontSize="sm">
+            {t(`orderSettlement.type.${entry.settlementType}`)}
+          </Text>
           {/* Visibility IS the control — nothing detects a wrong amount, so who typed it must show. */}
           {entry.sourceType === "manual" && (
             <Badge size="sm" colorPalette="purple" data-testid="manual-badge">
@@ -324,7 +384,9 @@ function LedgerRow({
         <Text
           fontSize="sm"
           fontWeight="medium"
-          color={dir === "in" ? "fg.success" : dir === "out" ? "fg.error" : undefined}
+          color={
+            dir === "in" ? "fg.success" : dir === "out" ? "fg.error" : undefined
+          }
         >
           {entry.change >= 0n ? "+" : "−"}
           {formatRupiah(entry.change >= 0n ? entry.change : -entry.change)}
@@ -342,7 +404,11 @@ function LedgerRow({
         {canPost && !reversed && !entry.reversesId && (
           <Menu.Root>
             <Menu.Trigger asChild>
-              <Button size="xs" variant="ghost" aria-label={t("orderSettlement.rowActions")}>
+              <Button
+                size="xs"
+                variant="ghost"
+                aria-label={t("orderSettlement.rowActions")}
+              >
                 <Icon as={MoreHorizontal} boxSize="4" />
               </Button>
             </Menu.Trigger>

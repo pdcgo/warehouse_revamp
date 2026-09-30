@@ -2,8 +2,8 @@ import { Button, CloseButton, Dialog, Flex, Icon, Portal, Stack, Text } from "@c
 import { useTranslation } from "react-i18next";
 import { CircleAlert, TriangleAlert } from "lucide-react";
 
-import type { CheckFinding } from "../checks";
-import { hasBlocking } from "../checks";
+import type { CheckFinding } from "./checks";
+import { hasBlocking } from "./checks";
 
 // WHAT THE ORDER'S CHECKS FOUND, BEFORE IT IS PLACED (owner).
 //

@@ -3,21 +3,21 @@ import { Badge, Icon, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Clock } from "lucide-react";
 
-import { ShopItem } from "../../../components/entity/ShopItem";
-import { TeamItem } from "../../../components/entity/TeamItem";
-import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
-import type { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
-import { formatUnixDateTime } from "../../../lib/datetime";
-import { formatRupiah } from "../../../lib/money";
+import { ShopItem } from "../../components/entity/ShopItem";
+import { TeamItem } from "../../components/entity/TeamItem";
+import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { formatUnixDateTime } from "../../lib/datetime";
+import { formatRupiah } from "../../lib/money";
 import {
   formatMarginPct,
   orderMargin,
   orderMarginPct,
   orderSpend,
-} from "../../../features/orders/margin";
-import type { Urgency } from "../deadlineMock";
-import { deadlineUrgency, hoursFromNow } from "../deadlineMock";
-import { CopyText } from "./CopyText";
+} from "./margin";
+import type { Urgency } from "./deadlineMock";
+import { deadlineUrgency, hoursFromNow } from "./deadlineMock";
+import { CopyText } from "../../components/chrome/CopyText";
 
 // THE CELLS THE ORDER TABLE HAS NO SHARED COMPONENT FOR.
 //

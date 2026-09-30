@@ -81,11 +81,14 @@ test("Order drafts: a pushed draft appears, saying exactly what it still needs (
   await expect(row).toBeVisible();
 
   // The scrape could not know our shop, our warehouse, or which product the title refers to — so the
-  // screen names each of those rather than a bare "not ready". Somebody scanning forty drafts is
-  // deciding which to open next, and "needs a warehouse" is a different job from "lines unmapped".
-  await expect(page.getByText("Shop", { exact: true })).toBeVisible();
-  await expect(page.getByText("Warehouse", { exact: true })).toBeVisible();
-  await expect(page.getByText("1 of 1 unmapped")).toBeVisible();
+  // row names what is left rather than a bare "not ready". Under the reference, where the order list
+  // puts the stage: the first gap by name and the rest counted, every one of them on the badge's title
+  // (`the-draft-list-is-the-drafts-tab`).
+  const draftRow = page.getByTestId(/^draft-row-/).filter({ hasText: EXTERNAL_ID });
+  const gaps = draftRow.getByTestId(/^draft-gaps-/);
+  await expect(gaps).toHaveText("Shop +2");
+  await expect(gaps).toHaveAttribute("title", /Warehouse/);
+  await expect(draftRow.getByText("1 of 1 unmapped")).toBeVisible();
 });
 
 // PRUNING IS THE OTHER HALF OF THIS SCREEN. Nothing expires, and an app pushing continuously fills
@@ -129,7 +132,9 @@ test("Order drafts: the detail shows the scrape beside the mapping, and says why
   await pushDraft(page, ref);
   await page.reload();
 
-  await page.getByText(ref).click();
+  // The ROW opens the draft — clicked on its date, because the reference itself is a copy button and
+  // copying must not navigate.
+  await page.getByTestId(/^draft-row-/).filter({ hasText: ref }).getByTestId(/^draft-updated-/).click();
   await expect(page.getByTestId("draft-detail-page")).toBeVisible();
 
   // THE EVIDENCE OF WHAT WAS ORDERED, on screen and not replaced by the mapping. Without it nobody

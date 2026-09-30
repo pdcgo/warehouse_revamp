@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Box, Flex, Icon, SimpleGrid, Text } from "@chakra-ui/react";
+import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 
 import { formatRupiah } from "../../lib/money";
+import { SummaryCard, SummaryStrip } from "./SummaryCard";
 import type { OrderSummaryRow } from "./stat";
 import {
   summaryAtv,
@@ -13,30 +14,23 @@ import {
   summaryUpt,
 } from "./stat";
 
-// THE SUMMARY ABOVE THE ORDER LIST — BY STATUS FIRST (owner).
+// THE SUMMARY ABOVE THE ORDER LIST — two strips, one per kind of tab (owner, 2026-09-30).
 //
-//   the CARD STRIP is always there and always the same: a total, then one card per status.
-//   the MEASURE LINE under it follows the STATUS TAB above — the chosen status, or the total.
+//   ALL STATUS   a card per pile: the total, then one per status — what each is worth, how many,
+//                whether it is earning
+//   A STATUS     that status's figures as cards: value, Tx, items, UPT, ATV, purchase value, margin
+//
+// ⚠ THIS REVERSES "NOTHING APPEARS OR DISAPPEARS WHEN THE TAB CHANGES" (owner: *"statistik untuk setiap
+// status cuma ada di all status … kalau sudah masuk ke filter status … tampilkan statistiknya dengan
+// nilai tx item dsb, jadi yang bawahnya bisa dihilangkan"*). The per-status breakdown answers "how do the
+// piles compare", which only the All tab asks; once one status is chosen, the other eight cards were
+// noise and the figures that mattered sat on a small line underneath. That line is gone — on a status
+// tab its measures ARE the cards.
 //
 // ⚠ IT SITS BELOW THE STATUS FILTER AND CONTROLS NOTHING (owner). No card navigates, filters or
 // selects — the tab strip above is how a status is chosen, and this is what the choice looks like.
-// Two controls doing one job is exactly what an earlier version of this had: pressable cards over a
-// tab strip that already did the same thing.
 //
-// ⚠ AND NO CARD IS HIGHLIGHTED (owner). Every card draws identically. The ACTIVE TAB is directly
-// above the strip and already says which pile the measure line belongs to — marking the card as well
-// says it twice, and a highlight on something that cannot be pressed reads as a control anyway.
-//
-// ⚠ NOTHING APPEARS OR DISAPPEARS WHEN THE TAB CHANGES (owner). Only the measure line's numbers do.
-// This replaced a design where "All Status" and a filtered status were two different layouts — cards
-// with borders against borderless text, different heights, different information — so switching tabs
-// redrew the whole top of the screen instead of updating it. Each element now keeps ONE meaning: a
-// card is a pile of orders, the line under it is what the chosen pile is made of.
-//
-// ⚠ NOT A TABLE, AND THE FIRST ATTEMPT WAS ONE (owner). It was argued from "the eye can run down a
-// column and compare statuses", which is true and was outweighed twice over: this screen ALREADY
-// ends in a table, so a second grid of rows directly above it reads as orders you can open — and it
-// spent the top of a WORK screen on forty-two numbers before anybody reached the work.
+// ⚠ AND NO CARD IS HIGHLIGHTED (owner). Every card draws identically.
 //
 // ⚠ IT IS NOT A PROFIT STRIP. The furthest it goes is GROSS MARGIN — the goods minus what the goods
 // cost. The warehouse fee, the courier and everything the marketplace deducts are all outside it,
@@ -47,7 +41,8 @@ export interface OrderSummaryProps {
   /** One row per status, in the order they should read — the caller passes the tab order. */
   rows: OrderSummaryRow[];
   /**
-   * Which row's figures the measure line carries. Omitted (or unknown) means the total.
+   * The chosen status. Omitted (or unknown) means All Status — the strip of piles; a known key means
+   * that pile's own figures, as cards.
    *
    * ⚠ A ROW KEY, NOT A PROTO STATUS. This strip is drawn over the SCREEN's vocabulary — the owner's
    * eight stages, not the contract's six enum values — so it never learns either set by name.
@@ -99,9 +94,7 @@ function pctText(pct: number | null): string | null {
   return pct === null ? null : `${pct.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%`;
 }
 
-// ⚠ `value` IS IN HERE even though the line below leaves it out — the card's big number IS that
-// measure, rendered larger. Dropping it from the array would leave the card's headline as a figure
-// with no definition beside the others.
+// The same seven every time, in the same order, so the eye learns where each sits.
 const MEASURES: Measure[] = [
   // ⚠ `onTheWire` GATES THE COUNT AND THE VALUE TOO. A pile the contract has no status for sums to
   // zero, and printing that zero claims "no orders are completed" — which is not something a
@@ -172,51 +165,14 @@ function CostUnknownNote({ row }: { row: OrderSummaryRow }) {
   );
 }
 
-// WHAT THE SELECTED PILE IS MADE OF — the same six every time, in the same order, so the eye learns
-// where each sits and stops reading the labels.
-//
-// `value` is left out because the card above is already showing it, larger. Everything else has no
-// other home on this strip.
-function MeasureLine({ row }: { row: OrderSummaryRow }) {
-  const { t } = useTranslation();
-
-  return (
-    <Flex
-      gap="card"
-      rowGap="2"
-      wrap="wrap"
-      align="baseline"
-      mt="card"
-      data-testid="order-summary-measures"
-    >
-      {MEASURES.filter((measure) => measure.key !== "value").map((measure) => (
-        <Flex
-          key={measure.key}
-          gap="1.5"
-          align="baseline"
-          minW="0"
-          data-testid={`order-summary-measure-${measure.key}`}
-        >
-          <Text fontSize="xs" color="fg.muted" whiteSpace="nowrap">
-            {t(`orders.summary.${measure.key}`)}
-          </Text>
-          <Text fontSize="sm" fontWeight="bold" whiteSpace="nowrap">
-            {measure.render(row)}
-          </Text>
-        </Flex>
-      ))}
-    </Flex>
-  );
-}
-
 export function OrderSummary({ rows, selectedKey, total, marks, badge }: OrderSummaryProps) {
   const { t } = useTranslation();
 
-  // An unknown key and no key at all are the same state — the line carries the total.
-  const shown = rows.find((row) => row.key === selectedKey) ?? total;
+  // An unknown key and no key at all are the same state — All Status.
+  const selected = rows.find((row) => row.key === selectedKey);
 
   return (
-    <Box data-testid="order-summary" data-pile={shown.key} minW="0" maxW="full">
+    <Box data-testid="order-summary" data-pile={selected?.key ?? "total"} minW="0" maxW="full">
       {marks && (
         // Right-aligned, above the figures — out of the reading path of the numbers themselves.
         <Flex gap="2" align="center" justify="flex-end" mb="2" data-testid="order-summary-marks">
@@ -224,21 +180,31 @@ export function OrderSummary({ rows, selectedKey, total, marks, badge }: OrderSu
         </Flex>
       )}
 
-      {/* ⚠ FITTED, NOT COUNTED. A fixed column count was right while the strip held seven cards and
-          wrong the moment it held nine — two stragglers on a second row read as a different group.
-          The caller decides how many piles there are, so the grid has to follow rather than assume. */}
-      <SimpleGrid minChildWidth="8.5rem" gap="3">
-        {/* The total is a card like the others — the "All Status" tab's pile, in the position the
-            tab has above. */}
-        <SummaryCard row={total} label={t("orders.summary.total")} testId="order-summary-total" />
+      {selected ? (
+        // ONE STATUS: its figures, each a card. Which status is said by the tab directly above.
+        <SummaryStrip testId="order-summary-measures">
+          {MEASURES.map((measure) => (
+            <SummaryCard
+              key={measure.key}
+              label={t(`orders.summary.${measure.key}`)}
+              value={measure.render(selected)}
+              testId={`order-summary-measure-${measure.key}`}
+            />
+          ))}
+        </SummaryStrip>
+      ) : (
+        // ALL STATUS: the piles side by side. The total is a card like the others, in the position the
+        // All tab has above.
+        <SummaryStrip testId="order-summary-piles">
+          <PileCard row={total} label={t("orders.summary.total")} testId="order-summary-total" />
 
-        {rows.map((row) => (
-          <SummaryCard key={row.key} row={row} badge={badge(row)} />
-        ))}
-      </SimpleGrid>
+          {rows.map((row) => (
+            <PileCard key={row.key} row={row} badge={badge(row)} />
+          ))}
+        </SummaryStrip>
+      )}
 
-      <MeasureLine row={shown} />
-      <CostUnknownNote row={shown} />
+      <CostUnknownNote row={selected ?? total} />
     </Box>
   );
 }
@@ -250,7 +216,7 @@ export function OrderSummary({ rows, selectedKey, total, marks, badge }: OrderSu
 //
 // ⚠ A CARD IS NOT A CONTROL (owner). It does not navigate, filter or select: the status tab above
 // the strip already does that, and a second control for one job is what this deliberately is not.
-function SummaryCard({
+function PileCard({
   row,
   label,
   badge,
@@ -266,43 +232,17 @@ function SummaryCard({
   const { t } = useTranslation();
   const pct = pctText(summaryMarginPct(row));
 
+  // Two facts on the line. The margin is an em-dash rather than a percentage whenever nothing in this
+  // pile has a recorded cost — and the whole line is one when the contract has no such status.
   return (
-    <Box
-      borderWidth="1px"
-      // ⚠ EVERY CARD DRAWS THE SAME (owner) — no card is singled out for the tab that is active. The
-      // tab strip sits directly above and already says which one, and a highlight on something that
-      // cannot be pressed reads as a control that is broken.
-      borderColor="border"
-      bg="bg.subtle"
-      borderRadius="l2"
-      px="3"
-      py="2.5"
-      minW="0"
-      data-testid={testId ?? `order-summary-row-${row.key}`}
-    >
-      {label ? (
-        <Text fontSize="xs" fontWeight="bold" color="fg.label">
-          {label}
-        </Text>
-      ) : (
-        badge
-      )}
-
-      <Text
-        fontSize="md"
-        fontWeight="bold"
-        mt="1.5"
-        lineClamp={1}
-        color={row.onTheWire ? undefined : "fg.subtle"}
-      >
-        {row.onTheWire ? formatRupiah(row.value) : "—"}
-      </Text>
-
-      {/* Two facts on one line. The margin is an em-dash rather than a percentage whenever nothing
-          in this pile has a recorded cost — and the whole line is one when the contract has no such
-          status to count in the first place. */}
-      <Text fontSize="xs" color="fg.muted">
-        {row.onTheWire ? (
+    <SummaryCard
+      label={label}
+      badge={badge}
+      testId={testId ?? `order-summary-row-${row.key}`}
+      muted={!row.onTheWire}
+      value={row.onTheWire ? formatRupiah(row.value) : "—"}
+      line={
+        row.onTheWire ? (
           <>
             {t("orders.summary.cardLine", { count: row.count })}
             {" · "}
@@ -310,8 +250,8 @@ function SummaryCard({
           </>
         ) : (
           t("orders.summary.notOnTheWire")
-        )}
-      </Text>
-    </Box>
+        )
+      }
+    />
   );
 }

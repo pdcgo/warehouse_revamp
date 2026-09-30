@@ -21,11 +21,11 @@ import { ReceiptUpload, hasReceipt, useReceiptUpload } from "../../../components
 import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 import { ShippingSelect } from "../../../components/pickers/ShippingSelect";
 import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { checkRefAgainstMarketplace, checkTrackingAgainstCourier } from "../checks";
+import { checkRefAgainstMarketplace, checkTrackingAgainstCourier } from "./checks";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "../pending";
+import { ORDER_FORM_PENDING } from "./pending";
 
 // THE RECEIPT FILE COMES FIRST, AND THE TWO NUMBERS IT CARRIES SIT BESIDE IT (owner).
 //

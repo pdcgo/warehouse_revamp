@@ -4,7 +4,7 @@ import { Icon, chakra } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 
-import { writeClipboard } from "../../../lib/clipboard";
+import { writeClipboard } from "../../lib/clipboard";
 
 // A VALUE SOMEBODY HAS TO PASTE SOMEWHERE ELSE (owner: *"resi dan orderid copyable"*).
 //
@@ -23,9 +23,11 @@ import { writeClipboard } from "../../../lib/clipboard";
 // async API refuses, so the icon now shows ✓ on success and ⚠ on a real failure — and a failure leaves
 // the text selectable, so it can still be copied by hand.
 //
-// ⚠ IT IS NOT IN `components/` YET, deliberately — one page uses it (CLAUDE.md's rule is that the
-// second page to import it is what makes it design-system furniture). It wants a story the day it
-// moves.
+// ⚠ DESIGN-SYSTEM FURNITURE NOW — the order list, the order detail and the drafts screen all copy
+// with it, so it moved out of `pages/orders/` and carries a story.
+export const description =
+  "A value somebody has to paste somewhere else — a marketplace order id, a tracking number, an amount. Click copies it, and the icon says ✓ only when the browser accepted the write (⚠ when it refused, leaving the text selectable). It stops the click from reaching a clickable row, so copying never also navigates.";
+
 export function CopyText({
   value,
   display,

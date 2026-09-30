@@ -52,24 +52,22 @@ there that is not true yet invites reading an estimate as money in the bank.
 ```mermaid
 flowchart TB
   TAB["STATUS TABS — the filter"]
-  TAB --> STRIP["CARD STRIP — a total, then one card per status"]
-  STRIP --> LINE["MEASURE LINE — the six remaining measures, for the chosen pile"]
+  TAB -->|"All Status"| STRIP["PILE CARDS — a total, then one card per status"]
+  TAB -->|"one status"| MEAS["MEASURE CARDS — value, Tx, items, UPT, ATV, purchase value, margin"]
 ```
 
 The strip sits **below the status filter** and is **not a control**: no card navigates, filters or
-selects, and **none is highlighted**. The tab above chooses the status and already says which pile
-the line describes — the cards show every pile, identically, and the line under them carries the
-chosen one.
-
-A card is a **headline** — what the pile is worth, how many orders, whether it is earning. The other
-measures live on the one line below it, which is the only part that changes when the tab does.
+selects, and **none is highlighted**. Under **All Status** it compares the piles — a card is a headline:
+what the pile is worth, how many orders, whether it is earning. Under **one status** the other piles are
+gone and that status's own figures are the cards; there is no measure line under either
+([the-summary-follows-the-tab](design_decision.md#the-summary-follows-the-tab)).
 
 ⚠ **Three shapes were tried and rejected, and the reasons are worth keeping** (2026-09-24):
 
 | tried | why it went |
 | --- | --- |
 | a **table**, one row per status | this screen already ends in a table — a second grid of rows above it reads as orders you can open, and it spent the top of a work screen on forty-two numbers |
-| **cards for "All", tiles when filtered** | the two states were different layouts, heights and information, so changing tab redrew the top of the screen instead of updating it |
+| **cards for "All", tiles when filtered** | the two states were different layouts, heights and information, so changing tab redrew the top of the screen instead of updating it. ⚠ **Came back in a different form** (2026-09-30): both states are now the SAME card — only what the cards hold changes |
 | **pressable cards** that selected a status | two controls doing one job, directly above each other — the tab strip already selects a status |
 | a **highlight** on the active status's card | the active tab sits directly above the strip and already names the pile, so the mark said it twice — and a highlight on something unpressable reads as a control that is broken |
 
@@ -322,6 +320,35 @@ flowchart TD
 ```
 
 
+## the order detail's withdrawal section was replaced, and two earlier decisions still describe it
+
+**The example.** [settlement-replaces-withdrawal-on-the-order](design_decision.md#settlement-replaces-withdrawal-on-the-order)
+(2026-09-30) removed the withdrawal section. Two earlier entries in the same append-only file still
+describe it as present:
+
+| site | says | now |
+| --- | --- | --- |
+| [the-order-detail-is-one-page-of-sections](design_decision.md#the-order-detail-is-one-page-of-sections), layout diagram | main column ends with *Withdrawal* | ends with *Settlement* |
+| same, navigation row | short label example *`Withdrawal`* | no such nav item |
+| same, *Withdrawal* and *WD summary* rows | invented rows and a WD summary under them | removed; payouts are ledger rows |
+| same, build-marks row | *"the withdrawal table's mark"* | the `withdrawal` ⚠ is on the Settlement title |
+| [the-detail-preview-became-the-order-detail](design_decision.md#the-detail-preview-became-the-order-detail), diagram and settlement row | Settlement *"before Withdrawal"*, the question *"stays open"* | Settlement is the last section, and the question is answered |
+
+The later decision is the right one. The two earlier entries are a record of what was decided at the time,
+and the file is append-only, so they are not edited.
+
+**→ Recommend** reading a `_decision.md` bottom-up for the order detail: a later entry that names an
+earlier section supersedes it. What stops it recurring is the same thing as last time: a decision that
+removes a section names every earlier entry that listed it, as the table above does.
+
+```mermaid
+flowchart LR
+  N["settlement-replaces-withdrawal-on-the-order"] --> A["one-page-of-sections — 4 rows name Withdrawal"]
+  N --> B["the-detail-preview-became-the-order-detail — Settlement placed before Withdrawal"]
+  A --> R["superseded, left as written"]
+  B --> R
+```
+
 ---
 
 ## Question
@@ -396,29 +423,13 @@ flowchart TD
    field for either.
    ⚠ And the deadline itself has no field anywhere — see the `deadline` mark on the column.
 
-10. **Is "withdrawal & penyesuaian" the settlement ledger?** The owner: *"mungkin sekarang jadi
-    settlement itu, jadi aku masih bingung di sini"*. They differ on the one thing that decides where a
-    row lives:
-
-    | | names an order? | what moves |
-    | --- | --- | --- |
-    | settlement entry | **required** | what the platform paid or deducted for THIS sale |
-    | withdrawal | **never** | a wallet → bank transfer for the whole shop |
-
-    **→ Recommend the section shows SETTLEMENT**, renamed, and withdrawals stay a shop-level screen.
-    Every column the owner listed — two dates, a source, a signed amount, a foreign leg, a description
-    — is a settlement entry's shape already; the one that does not fit is the word "withdrawal", and
-    that is because a withdrawal is not about one order. The preview shows invented rows in the
-    owner's columns so the shape can be argued with.
-    ⚠ This is the same fork as Q2 above (where a wallet → bank withdrawal lives), seen from the order.
-
-11. **Does promoting a draft keep the marketplace's product title?** `OrderDraftItem` carries
+10. **Does promoting a draft keep the marketplace's product title?** `OrderDraftItem` carries
     `external_name` + `external_sku` — *"never overwritten … the evidence of what the buyer actually
     ordered"* — and `OrderItem` has neither, so promote throws the evidence away at the moment the goods
     start being picked against the mapping. The detail preview shows it per line (invented).
     **→ Recommend** both fields on `OrderItem`, copied verbatim at promote and empty on a typed order.
 
-12. **What is a return shipment?** A parcel can travel twice (owner: *"resi bisa 2 dan jejak pengiriman
+11. **What is a return shipment?** A parcel can travel twice (owner: *"resi bisa 2 dan jejak pengiriman
     juga bisa 2, dari order dan return"*), each leg with its own courier, number and trail. Today there is
     no return record at all — no status, no number, no trail. The preview shows two legs, the return one
     invented for order 108.
@@ -426,7 +437,7 @@ flowchart TD
     second set of `return_*` columns on the order — a third leg (a re-send after a lost parcel) then costs
     nothing.
 
-13. **Who may edit a user note, and can one be deleted?** Notes are now a list with two kinds (owner:
+12. **Who may edit a user note, and can one be deleted?** Notes are now a list with two kinds (owner:
     *"catatan … bisa lebih dari 1 dan … ada tipenya, dari sistem dan dari user"*), and user notes are
     editable. The preview lets anyone edit any user note and offers no delete.
     **→ Recommend** only the note's AUTHOR may edit it, every edit keeps the earlier text (an "edited"
@@ -437,3 +448,26 @@ flowchart TD
     printed, a return received). Merging them buries the status history in chatter.
     ⚠ Contract: `Order.note` is one string; this needs an `order_notes` table (`kind`, `author_user_id`,
     `text`, `created_at`, `edited_at`) and create/update RPCs.
+
+14. **What does a draft line map to?** A scraped row can now be mapped to a product, a bundle (with its slot fills),
+    or several products ([a-draft-row-maps-to-a-product-a-bundle-or-a-split](design_decision.md#a-draft-row-maps-to-a-product-a-bundle-or-a-split)),
+    but `OrderDraftItem` holds one `product_id` — so a bundle or split mapping is lost on save and blocks Promote.
+    **→ Recommend** a mapping on the draft line with a kind: `product` (today's `product_id`), `bundle`
+    (`bundle_id` + the slot fills), `split` (child lines of product + quantity per unit) — and the same grouping on
+    `OrderItem`, which the create form's `bundle` mark already asks for, so Promote can carry it into the order.
+    ⚠ Bundles need a contract of their own first; this question waits on that one.
+
+15. **Should a draft carry a sell price from the start?** The app reads the order's total off the marketplace as well
+    as each line's price, and the draft page lets the sell price be typed over (owner: *"bisa juga kita masuk di
+    kontrak awal atau 0"*) — but `OrderDraft` has no field, so a typed one is lost (`sellPrice` ⚠).
+    **→ Recommend** `marketplace_total` on `OrderDraft` and `OrderDraftPush` (0 = not read), editable through
+    `OrderDraftUpdate` like any other field, and carried into the order by Promote. The rows' sum stays the seed
+    when the app sends none.
+
+13. **Where does a draft's pushing app go on the row?** The draft list used to show `source` under the reference;
+    [the-draft-list-is-the-drafts-tab](design_decision.md#the-draft-list-is-the-drafts-tab) gave that line to
+    *what is left*, so the app's name is now on the detail only. Two apps can scrape the same marketplace, and
+    the reference alone does not say whose it is.
+    **→ Recommend** it takes the author's line in the *Dibuat* cell — `via <app>` instead of `oleh <name>`. Per
+    [drafts-exist-only-for-the-third-party-app](../../business/order/context_decision.md#drafts-exist-only-for-the-third-party-app)
+    the app IS the author, and the user id on the draft is only whoever owns the token it pushed with.

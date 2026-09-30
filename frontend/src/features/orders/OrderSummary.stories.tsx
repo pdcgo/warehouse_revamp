@@ -87,7 +87,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The order list's summary, by status first: a card per pile plus a total, and a measure line under them carrying the selected pile's figures. It sits below the status tabs and controls nothing — no card is pressable and none is highlighted, because the active tab directly above already says which pile the line belongs to. The strip is identical whether a status is filtered or not; only the line's numbers change. A figure the contract does not carry is an em-dash, never a zero, and a pile where no order has a recorded cost shows no margin at all rather than a confident 100%.",
+          "The order list's summary. Under All Status it is a card per pile plus a total — what each is worth, how many, whether it is earning. Under one status it is that status's own figures as cards: value, Tx, items, UPT, ATV, purchase value, gross margin. It sits below the status tabs and controls nothing — no card is pressable and none is highlighted. A figure the contract does not carry is an em-dash, never a zero, and a pile where no order has a recorded cost shows no margin at all rather than a confident 100%.",
       },
     },
   },
@@ -113,34 +113,37 @@ export const NothingButTheCensus: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-// ⚠ THE STRIP DOES NOT CHANGE SHAPE WHEN THE TAB DOES (owner). Every card is present in both states
-// — only the measure line's numbers move. The design this replaced drew cards for "All Status" and
-// borderless tiles for a filtered one, so changing tab redrew the top of the screen.
-export const TheSameCardsAreThereWhetherFilteredOrNot: Story = {
-  args: { selectedKey: "shipped" },
+// UNDER ALL STATUS, THE PILES — every status side by side with the total, and no measure strip.
+export const AllStatusShowsEveryPile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    await expect(canvas.getByTestId("order-summary")).toHaveAttribute("data-pile", "total");
     await expect(canvas.getByTestId("order-summary-total")).toBeInTheDocument();
     for (const row of ROWS) {
       await expect(canvas.getByTestId(`order-summary-row-${row.key}`)).toBeInTheDocument();
     }
-
-    // …and the measure line is there in both states too, carrying the SELECTED pile.
-    await expect(canvas.getByTestId("order-summary-measures")).toBeInTheDocument();
-    await expect(canvas.getByTestId("order-summary-measure-atv")).toHaveTextContent("Rp 320.000");
+    await expect(canvas.queryByTestId("order-summary-measures")).toBeNull();
   },
 };
 
-// With nothing filtered, the line carries the TOTAL — the strip is never without a subject.
-export const WithNoFilterTheLineCarriesTheTotal: Story = {
+// ⚠ UNDER ONE STATUS, ITS OWN FIGURES AS CARDS — and the other piles are gone (owner: *"statistik untuk
+// setiap status cuma ada di all status"*). There is no line under the cards any more: on a status tab
+// its measures ARE the cards.
+export const AStatusShowsItsOwnFiguresAsCards: Story = {
+  args: { selectedKey: "shipped" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByTestId("order-summary-measure-tx")).toHaveTextContent(
-      String(TOTAL.count),
-    );
-    await expect(canvas.getByTestId("order-summary")).toHaveAttribute("data-pile", "total");
+    await expect(canvas.getByTestId("order-summary")).toHaveAttribute("data-pile", "shipped");
+    await expect(canvas.getByTestId("order-summary-measure-value")).toHaveTextContent("Rp 640.000");
+    await expect(canvas.getByTestId("order-summary-measure-tx")).toHaveTextContent("2");
+    await expect(canvas.getByTestId("order-summary-measure-atv")).toHaveTextContent("Rp 320.000");
+
+    await expect(canvas.queryByTestId("order-summary-total")).toBeNull();
+    for (const row of ROWS) {
+      await expect(canvas.queryByTestId(`order-summary-row-${row.key}`)).toBeNull();
+    }
   },
 };
 
@@ -239,7 +242,6 @@ export const NoCardIsPressable: Story = {
 // active tab sits directly above the strip and already names the pile, so marking the card as well
 // says it twice, and a highlight on something unpressable reads as a control that is broken.
 export const NoCardIsHighlighted: Story = {
-  args: { selectedKey: "shipped" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -260,7 +262,6 @@ export const NoCardIsHighlighted: Story = {
 // statuses and the enum has no value for it — so "0 orders are completed" is a claim the contract
 // cannot make, and printing it would be the confident-zero mistake one level up from a cogs of 0.
 export const APileTheContractCannotHoldIsUnknown: Story = {
-  args: { selectedKey: "completed" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -268,9 +269,16 @@ export const APileTheContractCannotHoldIsUnknown: Story = {
     await expect(card).toHaveTextContent("—");
     await expect(card).not.toHaveTextContent("Rp 0");
     await expect(card).not.toHaveTextContent("0 tx");
+  },
+};
 
-    // …and the measure line refuses everything too, the count included.
-    for (const key of ["tx", "items", "upt", "atv", "spend", "margin"]) {
+// …and its own tab refuses every figure, the count and the value included.
+export const ItsOwnTabRefusesEveryFigure: Story = {
+  args: { selectedKey: "completed" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    for (const key of ["value", "tx", "items", "upt", "atv", "spend", "margin"]) {
       await expect(canvas.getByTestId(`order-summary-measure-${key}`)).toHaveTextContent("—");
     }
   },
@@ -303,11 +311,21 @@ export const AFigureTheContractDoesNotCarryIsADash: Story = {
     await expect(total).toHaveTextContent("—");
     await expect(total).not.toHaveTextContent("%");
 
+    // …and with no cost recorded anywhere, there is no note to write either.
+    await expect(canvas.queryByTestId("order-summary-cost-unknown")).toBeNull();
+  },
+};
+
+// The same refusal on a status tab: the count and the value are real, everything built on a cost is a
+// dash.
+export const OnAStatusTabTheMissingFiguresAreDashes: Story = {
+  args: { rows: BLANK, total: orderSummaryTotal(BLANK), selectedKey: "shipped" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("order-summary-measure-value")).toHaveTextContent("Rp 640.000");
     for (const key of ["items", "upt", "spend", "margin"]) {
       await expect(canvas.getByTestId(`order-summary-measure-${key}`)).toHaveTextContent("—");
     }
-
-    // …and with no cost recorded anywhere, there is no note to write either.
-    await expect(canvas.queryByTestId("order-summary-cost-unknown")).toBeNull();
   },
 };

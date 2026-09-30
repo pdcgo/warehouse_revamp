@@ -3,7 +3,7 @@ import { Box, Flex, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { CopyText } from "../../orders/components/CopyText";
+import { CopyText } from "../../../components/chrome/CopyText";
 import { ORDER_DETAIL_PENDING } from "../pending";
 
 // THE TWO NUMBERS THAT LEAVE THE APP — first thing in the first card (owner: *"resi lumayan penting di

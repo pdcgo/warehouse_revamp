@@ -1,9 +1,8 @@
+import type { ReactNode } from "react";
 import { Badge, Box, Flex, Tabs } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDERS_LIST_PENDING } from "../pending";
-import { ALL_STAGE, ORDER_STAGES, stageIsOnTheWire } from "../../../features/orders/stages";
+import { ALL_STAGE, ORDER_STAGES, stageIsOnTheWire } from "./stages";
 
 /** The value the DRAFTS tab carries — not a stage: a draft is a different record in a different table. */
 export const DRAFTS_TAB = "drafts";
@@ -19,14 +18,18 @@ export const DRAFTS_TAB = "drafts";
 // are the same cause — the enum has not migrated — so both carry ONE mark, `statusSet`, rather than
 // five. See `pending.ts`.
 //
-// ⚠ IT IS A PREVIEW-LOCAL COPY OF `features/orders/OrderTabs`, deliberately. That one is shared by
-// the live order list and the drafts screen, and it renders the six proto statuses; changing it would
-// change two screens that are not being reviewed. When this preview is promoted it replaces that one.
+// ⚠ TWO SCREENS DRAW IT — the seller's order list and the drafts screen, which is that list's Drafts
+// tab (`the-draft-list-is-the-drafts-tab`). The warehouse's list still draws the old six-status
+// `OrderTabs`; it has not been redesigned.
+//
+// ⚠ THE ⚠ IS THE CALLER'S (`mark`). The strip's gap is the same on both screens, but each screen's
+// pending list is its own, and a feature reaching into a page for one is backwards.
 export function StageTabs({
   value,
   onSelect,
   count,
   draftCount,
+  mark,
 }: {
   /** The active tab: a stage id, `ALL_STAGE`, or `DRAFTS_TAB`. */
   value: string;
@@ -35,6 +38,8 @@ export function StageTabs({
   count: (value: string) => number;
   /** Undefined hides the badge — a screen that has not counted them shows no number, not a 0. */
   draftCount?: number;
+  /** The strip's single ⚠ — `statusSet`, from the calling screen's own pending list. */
+  mark?: ReactNode;
 }) {
   const { t } = useTranslation();
 
@@ -130,9 +135,7 @@ export function StageTabs({
 
       {/* ONE MARK FOR THE WHOLE STRIP, not one per empty tab. Four badges saying the same sentence is
           four times the width for no extra information. */}
-      <Box flexShrink="0">
-        <NotImplemented list={ORDERS_LIST_PENDING} id="statusSet" />
-      </Box>
+      {mark && <Box flexShrink="0">{mark}</Box>}
     </Flex>
   );
 }

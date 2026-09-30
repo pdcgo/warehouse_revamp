@@ -5,7 +5,7 @@ import { TriangleAlert } from "lucide-react";
 import { CreditMeter, creditWarning, limitStateOf } from "../../../features/liability/CreditMeter";
 import { formatRupiah } from "../../../lib/money";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "../pending";
+import { ORDER_FORM_PENDING } from "./pending";
 
 // HOW MUCH MORE THIS TEAM MAY OWE — one row per creditor.
 //

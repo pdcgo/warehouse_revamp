@@ -30,9 +30,16 @@ import { ORDER_DETAIL_PENDING } from "../pending";
 // Only one stage reaches the limit today — `processed` at PACKED, read by the warehouse (four) — so the
 // collapse is real but rare, which is the point.
 
-/** How many buttons fit before the rest fold. The phone gets fewer — see `compact`. */
+/**
+ * How many buttons fit before the rest fold.
+ *
+ * ⚠ THE PHONE GETS NONE (owner: *"heading yang sticky top terlalu ramai"*). One labelled button beside
+ * the title was enough to wrap the sticky block onto a second row, with its ⚠ beside it. On a phone every
+ * action lives behind `⋯` — one fixed icon slot, even when it holds a single action, because there the
+ * cost of a menu is one tap and the cost of a button is the header's height.
+ */
 const LIMIT = 3;
-const LIMIT_COMPACT = 1;
+const LIMIT_COMPACT = 0;
 
 /** Which actions stay as buttons and which fold into `⋯`. Pure, so the rule reads in one place. */
 export function splitActions(
@@ -45,6 +52,10 @@ export function splitActions(
     ...actions.filter((a) => !a.destructive),
     ...actions.filter((a) => a.destructive),
   ];
+
+  if (limit === 0) {
+    return { inline: [], overflow: ranked };
+  }
 
   if (ranked.length <= limit) {
     return { inline: ranked, overflow: [] };
@@ -70,7 +81,7 @@ export function OrderActionBar({
   status: OrderStatus;
   stage: OrderStageId | undefined;
   warehouseId: bigint;
-  /** A narrow screen: one button beside the title, the rest in `⋯`. */
+  /** A phone: no buttons, every action in `⋯`. */
   compact?: boolean;
 }) {
   const { t } = useTranslation();

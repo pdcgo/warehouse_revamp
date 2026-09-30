@@ -6,9 +6,9 @@ import { ArrowRight, CopyPlus, History } from "lucide-react";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { ProductSelect } from "../../../components/products/ProductSelect";
 import type { PickedProduct } from "../../../components/products/ProductSelect";
-import { mockProductImage } from "../mockImages";
+import { mockProductImage } from "./mockImages";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "../pending";
+import { ORDER_FORM_PENDING } from "./pending";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
 

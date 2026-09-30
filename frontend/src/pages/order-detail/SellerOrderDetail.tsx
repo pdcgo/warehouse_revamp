@@ -37,9 +37,9 @@ import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
-import { mockDeadline } from "../orders/deadlineMock";
-import { mockReceiptCode } from "../orders/rowMock";
-import { DeadlineCell } from "../orders/components/OrderRowCells";
+import { mockDeadline } from "../../features/orders/deadlineMock";
+import { mockReceiptCode } from "../../features/orders/rowMock";
+import { DeadlineCell } from "../../features/orders/OrderRowCells";
 import { Fact, Section, SectionEmpty } from "./components/Section";
 import { OrderActionBar } from "./components/OrderActionBar";
 import { SectionNav } from "./components/SectionNav";
@@ -49,8 +49,6 @@ import { useScrollSpy } from "./useScrollSpy";
 import { useIsMobile } from "../../layouts/shell";
 import { MoneyBreakdown } from "./components/MoneyBreakdown";
 import { ORDER_DETAIL_PENDING } from "./pending";
-import { mockWithdrawals } from "./withdrawalMock";
-import { formatMarginPct } from "../../features/orders/margin";
 import { mockExternalName, mockOutboundTrail, mockReturnLeg } from "./shipmentMock";
 import { ShipmentLeg } from "./components/ShipmentLeg";
 import { ScrapedName } from "./components/ScrapedName";
@@ -60,7 +58,7 @@ import { mockNotes } from "./notesMock";
 import { Rail } from "./components/Rail";
 import { StageStepper } from "./components/StageStepper";
 import { SummaryTiles } from "./components/SummaryTiles";
-import { CopyText } from "../orders/components/CopyText";
+import { CopyText } from "../../components/chrome/CopyText";
 
 // THE SELLER'S ORDER DETAIL — the owner's page of sections, approved as a preview and now routed at
 // `/orders/:orderId` for every team that is not a warehouse (the picker is `index.tsx`).
@@ -110,7 +108,7 @@ function addressLines(address: OrderAddress | undefined) {
  * height as Items, so it would tie with Items and win for the whole of the items card. Before anything
  * has passed the line the spy falls back to the first section, which is Info anyway.
  */
-const MAIN_COLUMN: SectionKey[] = ["items", "timeline", "shipping", "settlement", "withdrawal"];
+const MAIN_COLUMN: SectionKey[] = ["items", "timeline", "shipping", "settlement"];
 
 export function SellerOrderDetailPage() {
   const { t } = useTranslation();
@@ -206,10 +204,6 @@ export function SellerOrderDetailPage() {
   const stage = stageOfStatus(order.status);
   const deadline = mockDeadline(order.id, order.status);
   const receiptCode = mockReceiptCode(order.id, order.status);
-  const withdrawals = mockWithdrawals(order.id, order.createdAtUnix, order.marketplaceTotal);
-  // What came in, and what was taken back — the two halves the old system reported per order.
-  const wdIn = withdrawals.filter((row) => row.amount > 0n).reduce((sum, row) => sum + row.amount, 0n);
-  const wdAdjust = withdrawals.filter((row) => row.amount < 0n).reduce((sum, row) => sum + row.amount, 0n);
   const outboundTrail = mockOutboundTrail(order.id, order.status, order.createdAtUnix);
   const returnLeg = mockReturnLeg(order.id, order.createdAtUnix);
 
@@ -291,10 +285,48 @@ export function SellerOrderDetailPage() {
       id={sectionDomId("items")}
       icon={sectionIcon("items")}
       testId="section-items"
+      // On a phone there is no column header to carry these, so they ride beside the section title.
+      marks={
+        mobile ? (
+          <>
+            <NotImplemented list={ORDER_DETAIL_PENDING} id="productImage" />
+            <NotImplemented list={ORDER_DETAIL_PENDING} id="externalName" />
+          </>
+        ) : undefined
+      }
     >
       <Stack gap="card">
         {order.items.length === 0 ? (
           <SectionEmpty>{t("orderDetail.items.empty")}</SectionEmpty>
+        ) : mobile ? (
+          // ⚠ A PHONE GETS ONE BLOCK PER LINE, NOT THE TABLE (owner: *"product itemsnya kepotong-potong
+          // karena terlalu sempit"*). Five columns in 360px clamped both product names to a word each, and
+          // the qty and line total sat off the edge in the scroll box. Here each name gets the full width
+          // and the arithmetic reads as a sentence: harga beli × qty = line total.
+          <Stack gap="0" data-testid="order-items-list">
+            {order.items.map((item, index) => (
+              <Stack
+                key={item.id.toString()}
+                gap="2"
+                py="3"
+                borderTopWidth={index === 0 ? "0" : "1px"}
+                borderColor="border"
+                data-testid={`order-item-${item.id}`}
+              >
+                <ScrapedName evidence={mockExternalName(order.orderExternalRefId, item.name, index)} />
+                <ProductListItem product={{ id: item.productId, sku: item.sku, name: item.name }} />
+                <Flex justify="space-between" align="baseline" gap="3" fontSize="sm">
+                  <Text color="fg.muted">
+                    {item.unitCost > 0n ? formatRupiah(item.unitCost) : "—"} × {item.quantity}
+                    {teamName ? ` · ${teamName}` : ""}
+                  </Text>
+                  <Text fontWeight="bold" whiteSpace="nowrap">
+                    {item.unitCost > 0n ? formatRupiah(item.unitCost * BigInt(item.quantity)) : "—"}
+                  </Text>
+                </Flex>
+              </Stack>
+            ))}
+          </Stack>
         ) : (
           <Box overflowX="auto" maxW="full">
             {/* ⚠ ITS OWN SCROLL BOX. A table is the one thing allowed to be wider than a phone, and
@@ -474,24 +506,23 @@ export function SellerOrderDetailPage() {
     </Section>
   );
 
-  // ── 6. WITHDRAWAL & PENYESUAIAN — the section the owner is undecided about ─────────────────
-  // ── SETTLEMENT — the real ledger, carried over from the page this replaced ───────────────────────────
-  // ⚠ IT IS WIRED AND THE WITHDRAWAL SECTION IS NOT. The built page had it as a tab
-  // (`order-detail-manages-the-ledger`), reading `OrderSettlement` and posting entries for real; the
-  // approved preview had only the invented withdrawal table. Applying the preview without it would have
-  // taken a working feature off the seller's order page — so it comes across as a section, and whether
-  // "withdrawal & penyesuaian" IS this ledger stays the open question it was, now with both on screen.
+  // ── 6. SETTLEMENT — the real ledger, and the seat the withdrawal section had ───────────────────
+  // ⚠ WD IS REPLACED BY SETTLEMENT (owner: *"wd mungkin diganti settlement"*). The invented withdrawal
+  // table is gone; money arriving from the marketplace is a PAYOUT row in this ledger. What is still
+  // missing is the import that would write those rows, and that is the `withdrawal` mark on the title.
   //
-  // The four values passed down are the ones settlement is forbidden to know — it never sees the
-  // marketplace reference, and the names and cogs belong to selling_service.
+  // The values passed down are the ones settlement is forbidden to know — it never sees the marketplace
+  // reference, and the cogs belong to selling_service.
   const settlementSection = (
     <Section
       title={t("orderDetail.settlement.title")}
       id={sectionDomId("settlement")}
       icon={sectionIcon("settlement")}
       testId="section-settlement"
+      marks={<NotImplemented list={ORDER_DETAIL_PENDING} id="withdrawal" />}
     >
       <SettlementTab
+        bare
         orderId={order.id}
         shopId={order.shopId}
         orderRef={order.orderExternalRefId || String(order.id)}
@@ -500,88 +531,18 @@ export function SellerOrderDetailPage() {
     </Section>
   );
 
-  const withdrawalSection = (
-    <Section
-      title={t("orderDetail.withdrawal.title")}
-      id={sectionDomId("withdrawal")}
-      icon={sectionIcon("withdrawal")}
-      testId="section-withdrawal"
-      marks={<NotImplemented list={ORDER_DETAIL_PENDING} id="withdrawal" />}
-    >
-      <Stack gap="card">
-        {withdrawals.length === 0 ? (
-          <SectionEmpty>{t("orderDetail.withdrawal.empty")}</SectionEmpty>
-        ) : (
-          <Box overflowX="auto" maxW="full">
-            {/* ⚠ ITS OWN SCROLL BOX. A table is the one thing allowed to be wider than a phone, and
-                only inside its own container — unwrapped, this one pushed the whole page sideways. */}
-            <Table.Root size="sm" data-testid="withdrawal-table">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>{t("orderDetail.withdrawal.withdrawnAt")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("orderDetail.withdrawal.importedAt")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("orderDetail.withdrawal.source")}</Table.ColumnHeader>
-                  <Table.ColumnHeader textAlign="end">{t("orderDetail.withdrawal.amount")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("orderDetail.withdrawal.foreign")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("orderDetail.withdrawal.description")}</Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-  
-              <Table.Body>
-                {withdrawals.map((row) => (
-                  <Table.Row key={row.id} data-testid={`withdrawal-${row.id}`}>
-                    <Table.Cell whiteSpace="nowrap">{formatUnixDateTime(row.withdrawnAt)}</Table.Cell>
-                    <Table.Cell whiteSpace="nowrap">{formatUnixDateTime(row.importedAt)}</Table.Cell>
-                    <Table.Cell>{row.source}</Table.Cell>
-                    {/* ⚠ A NEGATIVE ROW IS MONEY GOING BACK, which is what most penyesuaian are — so it
-                        is coloured as a loss rather than printed as a smaller positive. */}
-                    <Table.Cell
-                      textAlign="end"
-                      whiteSpace="nowrap"
-                      color={row.amount < 0n ? "error.fg" : undefined}
-                    >
-                      {formatRupiah(row.amount)}
-                    </Table.Cell>
-                    <Table.Cell>{row.foreign || "—"}</Table.Cell>
-                    <Table.Cell>{row.description}</Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
-          </Box>
-        )}
+  // Placed by the layout: beside the title on a desktop, under the sticky block on a phone.
+  const deadlineLine =
+    deadline !== undefined ? (
+      <Flex gap="1" align="center" data-testid="order-detail-deadline">
+        <DeadlineCell unix={deadline} />
+        <NotImplemented list={ORDER_DETAIL_PENDING} id="deadline" />
+      </Flex>
+    ) : null;
 
-        {/* THE WD FIGURES THE OLD SYSTEM SHOWED PER ORDER — nilai withdrawal, penyesuaian, and what
-            arrived as a share of the marketplace total (owner: *"wd dan sebagainya"*). Summed from the
-            rows above, so they are exactly as invented as the rows, and carry the same mark. */}
-        {withdrawals.length > 0 && (
-          <SimpleGrid minChildWidth="9rem" gap="card" data-testid="withdrawal-summary">
-            <Fact
-              label={t("orderDetail.withdrawal.total")}
-              mark={<NotImplemented list={ORDER_DETAIL_PENDING} id="withdrawal" />}
-            >
-              {formatRupiah(wdIn)}
-            </Fact>
-            <Fact label={t("orderDetail.withdrawal.adjustments")}>
-              <Text as="span" color={wdAdjust < 0n ? "error.fg" : undefined}>
-                {formatRupiah(wdAdjust)}
-              </Text>
-            </Fact>
-            <Fact label={t("orderDetail.withdrawal.net")}>{formatRupiah(wdIn + wdAdjust)}</Fact>
-            <Fact label={t("orderDetail.withdrawal.ofMp")}>
-              {order.marketplaceTotal > 0n
-                ? formatMarginPct(Number(((wdIn + wdAdjust) * 1000n) / order.marketplaceTotal) / 10)
-                : undefined}
-            </Fact>
-          </SimpleGrid>
-        )}
-
-        <Text fontSize="xs" color="fg.muted" data-testid="withdrawal-question">
-          {t("orderDetail.withdrawal.question")}
-        </Text>
-      </Stack>
-    </Section>
-  );
+  // The life of an order past "shipped" has no RPCs — retur, selesai, lost, sengketa. Marked always,
+  // like every other gap, not only when this order happens to offer one.
+  const lifecycleMark = <NotImplemented list={ORDER_DETAIL_PENDING} id="lifecycle" />;
 
   return (
     <Stack
@@ -626,15 +587,12 @@ export function SellerOrderDetailPage() {
             </Heading>
             {stage && <StageBadge stage={stage} />}
             {/* ⚠ THE DEADLINE IS INVENTED, so its mark rides beside it — in the header, where it is most
-                prominent, not only on the shipping card further down. */}
-            {deadline !== undefined && (
-              <Flex gap="1" align="center">
-                <DeadlineCell unix={deadline} />
-                <NotImplemented list={ORDER_DETAIL_PENDING} id="deadline" />
-              </Flex>
-            )}
+                prominent, not only on the shipping card further down. On a phone it is the first line
+                UNDER the header instead: see `deadlineLine`. */}
+            {!mobile && deadlineLine}
             <Spacer />
-            {/* Buttons, not a kebab — see `OrderActionBar`. The same per-status table as the list. */}
+            {/* Buttons, not a kebab — see `OrderActionBar`. The same per-status table as the list. On a
+                phone, `⋯` alone. */}
             <Flex gap="1" align="center">
               <OrderActionBar
                 teamId={teamId}
@@ -644,9 +602,7 @@ export function SellerOrderDetailPage() {
                 warehouseId={order.warehouseId}
                 compact={mobile}
               />
-              {/* The life of an order past "shipped" has no RPCs — retur, selesai, lost, sengketa. Marked
-                  here always, like every other gap, not only when this order happens to offer one. */}
-              <NotImplemented list={ORDER_DETAIL_PENDING} id="lifecycle" />
+              {!mobile && lifecycleMark}
             </Flex>
           </Flex>
 
@@ -654,6 +610,11 @@ export function SellerOrderDetailPage() {
           {mobile && <SectionNav compact active={active} onSelect={scrollTo} />}
         </Stack>
       </Box>
+
+      {/* ⚠ ON A PHONE THE STICKY BLOCK IS ONE ROW AND THE CHIPS (owner: *"heading yang sticky top terlalu
+          ramai"*). The deadline and the marks that sat beside the buttons come down here: still the
+          first thing read, but they scroll away instead of riding over every section. */}
+      {mobile && deadlineLine}
 
       <NotImplementedSummary list={ORDER_DETAIL_PENDING} />
 
@@ -665,6 +626,8 @@ export function SellerOrderDetailPage() {
         </Box>
         {/* "Selesai" is a step no order can reach until the enum grows past the old six. */}
         <NotImplemented list={ORDER_DETAIL_PENDING} id="statusSet" />
+        {/* On a phone the lifecycle mark sits here, on the steps it is about — retur, selesai, lost. */}
+        {mobile && lifecycleMark}
       </Flex>
 
       {/* ② FOUR NUMBERS TO LAND ON — the answer before the working. */}
@@ -711,7 +674,6 @@ export function SellerOrderDetailPage() {
                 {timelineSection}
                 {shippingSection}
                 {settlementSection}
-                {withdrawalSection}
               </Stack>
               <Stack gap="section" minW="0">
                 {notesSection}
@@ -728,7 +690,6 @@ export function SellerOrderDetailPage() {
             {shippingSection}
             {recipientSection}
             {settlementSection}
-            {withdrawalSection}
           </Stack>
         )}
       </Grid>

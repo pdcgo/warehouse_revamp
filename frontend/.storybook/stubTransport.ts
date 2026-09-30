@@ -858,12 +858,19 @@ export const transport = createRouterTransport(({ service }) => {
     // A draft is team-scoped AND personal, and — unlike an order — it has only ONE side: it belongs
     // to the team that typed it. So this is a plain `teamId` match, and a warehouse's list is empty
     // because a warehouse never types one.
+    // Newest first unless ASC is asked for — the server's `id DESC` default, which the drafts screen's
+    // "oldest" card reverses to read the first draft ever written.
     orderDraftList: (req) =>
       pagedColumnar(
         "orderDraft",
         orderDrafts
           .filter((d) => d.teamId === req.teamId)
-          .filter((d) => !req.filter?.source || d.source === req.filter.source),
+          .filter((d) => !req.filter?.source || d.source === req.filter.source)
+          .slice()
+          .sort((a, b) => {
+            const asc = req.sort?.sortType === CommonSortType.ASC;
+            return (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) * (asc ? 1 : -1);
+          }),
         req.page,
       ),
 

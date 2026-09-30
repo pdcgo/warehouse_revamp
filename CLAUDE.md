@@ -918,7 +918,7 @@ screen in the real app — shows them. ⚠ **Never add a switch for this to a pa
 is invented or a typed value is thrown away; the person using the warehouse must not be able to turn
 that off, and the audience for the switch is whoever is reviewing the design.
 
-Two more UI rules:
+More UI rules:
 
 - **Many row actions → an overflow `Menu`.** When a table row has several actions (roughly three
   or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
@@ -940,6 +940,27 @@ Two more UI rules:
   warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
   confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
+- **A table cell is at most TWO lines, and ONE context** (owner). Pairing is only for one fact read
+  twice (the marketplace's date and the deadline that runs from it), never two questions sharing a cell
+  (shop and warehouse were paired and that was wrong). A row's status sits UNDER its reference, so the
+  badges line up down the page. The cells are
+  [OrderRowCells](frontend/src/features/orders/OrderRowCells.tsx) — reuse them, and see
+  [one-context-per-column-and-never-three-lines](docs/technical/order/design_decision.md#one-context-per-column-and-never-three-lines).
+- **A phone gets its own arrangement, not the desktop's squeezed** (owner) — three rules, each a JS
+  breakpoint (never CSS hiding):
+  - a **sticky header is ONE row** — back, the title, the status, `⋯`. Actions fold into `⋯` (even a
+    single one), and anything else (a deadline, a mark) moves to the first line under it;
+  - a **wide table becomes one block per row** — names at full width, the arithmetic as a line
+    (`Rp 48.000 × 2 · Toko Melati … Rp 96.000`), never five clamped columns in a scroll box;
+  - a **filter strip is the search plus a Filter button** opening a bottom sheet of full-width controls
+    — [`FilterBar`](frontend/src/components/chrome/FilterBar.tsx) does it for you.
+  See [the-phone-header-is-one-row](docs/technical/order/design_decision.md#the-phone-header-is-one-row),
+  [a-phone-reads-each-line-as-a-block](docs/technical/order/design_decision.md#a-phone-reads-each-line-as-a-block),
+  [a-phone-filters-from-a-sheet](docs/technical/order/design_decision.md#a-phone-filters-from-a-sheet).
+- **Never a card inside a card** (owner). When a panel that draws its own card is placed inside a
+  section that is already one, it renders **bare** — no border, no second title, its actions moved to
+  its foot. [`OrderLedgerPanel`](frontend/src/pages/order-settlement/components/OrderLedgerPanel.tsx)'s
+  `bare` prop is the pattern; give a panel the same prop rather than nesting its card.
 - **Every shared component has a STORY beside it, and the story is the documentation.** (owner)
   `frontend/src/components/<Component>.stories.tsx`, in the same commit as the component. It carries
   the states worth reviewing AND a `play()` function per behavioural rule — see *Storybook* below.

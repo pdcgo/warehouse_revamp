@@ -1,6 +1,6 @@
-import type { PickedProduct } from "../../components/products/ProductSelect";
-import type { LineDraft } from "../../features/orders/lines";
-import { lineFor, toQty } from "../../features/orders/lines";
+import type { PickedProduct } from "../../../components/products/ProductSelect";
+import type { LineDraft } from "../lines";
+import { lineFor, toQty } from "../lines";
 import type { BundleTemplate } from "./mockData";
 
 // A BUNDLE ON AN ORDER, as the screen holds it while it is being edited.

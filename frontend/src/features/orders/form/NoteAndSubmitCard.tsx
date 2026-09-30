@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button, Card, Field, Flex, Icon, SimpleGrid, Stack, Text, Textarea } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { FileClock, TriangleAlert } from "lucide-react";
@@ -28,6 +29,22 @@ interface NoteAndSubmitCardProps {
   canDraft: boolean;
   savingDraft: boolean;
   onSaveDraft: () => void;
+  /**
+   * THE DRAFT PAGE'S VARIANT (`the-draft-page-wears-the-order-form`) — the same card with Save and
+   * Promote instead of Save as Draft and Create. Omitted, it is the new order's card.
+   */
+  variant?: {
+    saveLabel: string;
+    saveTestId: string;
+    submitLabel: string;
+    submitTestId: string;
+    /** Promote is a click, not the form's submit — the draft page has no <form> around it. */
+    onSubmit: () => void;
+  };
+  /** A ⚠ beside the note's title — on a draft, the note is not stored. */
+  noteMark?: ReactNode;
+  /** Under the buttons — on a draft, what still stands between it and an order. */
+  footer?: ReactNode;
 }
 
 export function NoteAndSubmitCard({
@@ -40,13 +57,19 @@ export function NoteAndSubmitCard({
   canDraft,
   savingDraft,
   onSaveDraft,
+  variant,
+  noteMark,
+  footer,
 }: NoteAndSubmitCardProps) {
   const { t } = useTranslation();
 
   return (
     <Card.Root>
       <Card.Header pb={compact ? "0" : undefined}>
-        <Card.Title>{t("orders.note")}</Card.Title>
+        <Flex align="center" gap="2">
+          <Card.Title>{t("orders.note")}</Card.Title>
+          {noteMark}
+        </Flex>
         {!compact && <Card.Description>{t("orders.noteHelp")}</Card.Description>}
       </Card.Header>
 
@@ -75,24 +98,25 @@ export function NoteAndSubmitCard({
                 variant="outline"
                 loading={savingDraft}
                 disabled={!canDraft || saving}
-                data-testid="order-create-save-draft"
+                data-testid={variant?.saveTestId ?? "order-create-save-draft"}
                 onClick={onSaveDraft}
               >
                 <Icon as={FileClock} boxSize="4" />
-                {t("orders.saveAsDraft")}
+                {variant?.saveLabel ?? t("orders.saveAsDraft")}
               </Button>
 
               {/* ⚠ A SUBMIT, not a click handler: the page wraps this card in its <form>, so Enter in
                   any field places the order the same way this button does. */}
               <Button
-                type="submit"
+                type={variant ? "button" : "submit"}
                 w="full"
                 colorPalette="brand"
                 loading={saving}
                 disabled={!canSave || savingDraft}
-                data-testid="order-create-save"
+                data-testid={variant?.submitTestId ?? "order-create-save"}
+                onClick={variant?.onSubmit}
               >
-                {t("orders.createOrder")}
+                {variant?.submitLabel ?? t("orders.createOrder")}
               </Button>
             </SimpleGrid>
 
@@ -108,6 +132,7 @@ export function NoteAndSubmitCard({
               </Flex>
             )}
 
+            {footer}
           </Stack>
         </Stack>
       </Card.Body>

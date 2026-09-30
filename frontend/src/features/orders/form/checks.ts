@@ -1,5 +1,5 @@
-import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
+import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
+import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 
 // WHAT IS CHECKED BEFORE AN ORDER IS PLACED (owner) — six rules, in one file.
 //

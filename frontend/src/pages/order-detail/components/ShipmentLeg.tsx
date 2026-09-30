@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Truck } from "lucide-react";
 
 import { formatUnixDateTime } from "../../../lib/datetime";
-import { CopyText } from "../../orders/components/CopyText";
+import { CopyText } from "../../../components/chrome/CopyText";
 import type { TrailEvent } from "../shipmentMock";
 import { Fact, SectionEmpty } from "./Section";
 import { Rail } from "./Rail";

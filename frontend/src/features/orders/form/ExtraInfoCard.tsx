@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { DatePicker } from "../../../components/datetime/DatePicker";
 import { todayDateInput } from "../../../lib/datetime";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { ORDER_FORM_PENDING } from "../pending";
+import { ORDER_FORM_PENDING } from "./pending";
 
 // THE TWO OPTIONAL FACTS THAT HAVE NOWHERE TO GO YET.
 //

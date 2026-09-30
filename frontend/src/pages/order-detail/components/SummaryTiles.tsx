@@ -9,7 +9,7 @@ import {
   orderSpend,
 } from "../../../features/orders/margin";
 import { formatRupiah } from "../../../lib/money";
-import { CopyText } from "../../orders/components/CopyText";
+import { CopyText } from "../../../components/chrome/CopyText";
 import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ORDER_DETAIL_PENDING } from "../pending";
 
