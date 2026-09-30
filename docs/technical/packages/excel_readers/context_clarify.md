@@ -50,7 +50,7 @@ TikTok row is an order decomposed into fees, and the money moving is on a *diffe
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | ✅ **Handled** (see [What I built](#what-i-built-for-tiktok)) — but the finding stands for the contract. **TikTok's column set is not fixed — 3 layouts in 13 files.** 61 cols (`niko_lape`), 63 (`salah_tarik`, `shipping_issurance`), 64 (`gmv_mlongo`, `isna_negative`). Columns *appear* — `GMV Max ad fee`, `Article 22 Income Tax withheld`, `Platform special service fee`, `Distance item fee from Horizon+ Program` — **and disappear**: `Flat fee` and `Sales fee` are in the 61- and 63-col files and gone from the 64-col one. A positional or fixed-struct mapping is broken on arrival. | Map by **header text**, never by index. And **carry unknown columns** into an `Extra` map rather than dropping them — silently dropping a new fee column is how `Total Fees` stops reconciling with nobody noticing. |
+| **1** | ✅ **Handled** (see [What I built](#what-i-built-for-tiktok)) — but the finding stands for the contract. **TikTok's column set is not fixed — 3 layouts in 13 files.** 61 cols (`niko_lape`), 63 (`salah_tarik`, `shipping_issurance`), 64 (`gmv_mlongo`, `isna_negative`). Columns *appear* — `GMV Max ad fee`, `Article 22 Income Tax withheld`, `Platform special service fee`, `Distance item fee from Horizon+ Program` — **and disappear**: `Flat fee` and `Sales fee` are in the 61- and 63-col files and gone from the 64-col one. A positional or fixed-struct mapping is broken on arrival. 🆕 **And the header TEXT is not fixed either — a 4th layout, 76 cols (`cannot_open.xlsx`, 2026-09), renamed columns the item is read from**: `Type` → `Transaction type` (on `Withdrawal records` too), `Order/adjustment ID` → `Order/Adjustment ID`, `Order Source` → `Order source`, plus the Reports labels `Time period:` → `Time period` and `Timezone` → `Time zone`. 12 more columns were renamed and 16 fee columns came or went. The reader refused the file outright. | Map by **header text**, never by index. And **carry unknown columns** into an `Extra` map rather than dropping them — silently dropping a new fee column is how `Total Fees` stops reconciling with nobody noticing. ✅ **Built for the renames**: every column the reader relies on is matched under every spelling measured, and one it cannot find **fails the read, naming it** — until now a missing column read as `""` or `0` and went into the hash. Summing the mapped columns gives back the file's own Reports totals exactly. ⚠ Whether the **keys** survive the switchover is not known yet — [Q7](#question). |
 | **2** | **Amounts are not always numbers.** 6 of 13 TikTok files — `gmv_mlongo`, `gmv_payment`, `isna_negative`, `overlapping_earning`, `pay_deduction`, `shipping_issurance` — store **every cell as a shared string**, with zero numeric cells in the sheet. And `awan_beban_return.xlsx` stores `"8400769.00"` as text while `awan_beban_return_simple.xlsx`, the same report re-saved through another spreadsheet tool, stores `-18923082` as `t="n"`. Both forms will arrive, from the same seller. | **Normalise to a number on the way in** — the cell's storage type is an accident of who last opened the file, and `GenerateUniqueID` is only stable because the value is parsed, never because it is passed through. ✅ **Built** — `parseAmount` reads the raw stored text and parses it, and `TestShopeeUniqueIDSurvivesAReSave` is the regression test. ⚠ **I had the second half of this wrong**: I recommended `int64` minor units, which contradicts a settled decision — see [Contradiction](#contradiction). `float64` is correct here. |
 | **3** | **`Order/adjustment ID` is 18 digits — it must never touch a float.** `581595973617353910` is about 5.8e17, well past float64's exact-integer range of 9.0e15. Anything that round-trips it through a number corrupts the last digits, and the corruption looks like a platform mismatch rather than a parser bug. | The ID is a **`string`** in the returned type, start to finish. Same for Shopee's `No. Pesanan`. |
 | **4** | **Rows are padded with blanks inside the used range.** `niko_lape.xlsx` has 219 `<row>` elements and **43** with data. `husen_campaign` 219 to 36. `salah_tarik` 220 to 59. A reader that trusts the sheet dimension emits about 180 empty records per file. | Stop at the first row whose key column is empty, or skip and count. Either way **report the number of skipped rows** — a silently-dropped row and a blank padding row are indistinguishable otherwise. |
@@ -89,7 +89,7 @@ load-bearing, not a style choice, and it is worth a sentence in `context.md` say
 | **21** | ⛔ **`SettlementType()` cannot be written today — the enum it returns is EMPTY.** The new contract says *"what inside `SettlementType` its reference to [this](../../../business/settlement/context.md#what-is-settlement_type)"*, and that section in `settlement/context.md` is **a bare heading with no list** as of this edit — the eight values it used to carry were deleted in the same session. Per RULE 8b.11 an empty heading means *not designed yet*, so the reader has nothing to map onto. | **Refill `what is settlement_type` first**, then this is a half-hour of work. ⚠ Note the mapping table introduces **`withdrawal`**, which was *not* among the eight values that were there before — so this is a redesign of the enum, not a pointer to an existing one. |
 | **22** | ⛔ **The mapping table has no row for `Program Ekspor Shopee FLEXI`.** It maps three of the four measured `Tipe Transaksi` values. The fourth is real — 1 row in 3788, `shopee_malaysia.xlsx`, a cross-border FLEXI order — so `SettlementType()` returns an error for a file that is otherwise perfectly valid, and that file is one of your own samples. | Add the row. **→ Recommend `other`**, which the old enum had, rather than a new type — it is a genuine marketplace earning whose only peculiarity is the programme it came through. Until then, the built reader returns the raw `Tipe Transaksi` and classifies nothing. |
 | **23** | ✅ **Accepted 2026-09-29 — the built item IS the TikTok contract** ([the-built-tiktok-item-is-the-contract](context_decision.md#the-built-tiktok-item-is-the-contract)), asked from the settlement importer, whose key it is. Was: `TiktokSettlementItem` was written with Shopee's columns, none of which a TikTok workbook has, and I built it from TikTok's own. Kept as a row so the numbers hold. | — |
-| **24** | ⛔ **`Shopping center items` is the one column that is NOT stable across exports, and it would have silently doubled every re-import.** Comparing the 43 orders that appear in more than one sample export — 77 pairs — **exactly one column ever differs**: the SKU list, whose entries come back in a different ORDER (`…958086 * 1; …061062 * 1;` vs the reverse). Same items, same counts, different string. Under [hash-the-whole-struct](context_decision.md#hash-the-whole-struct) that is enough to give one order two keys. | Keep it off the item — done. It is readable through `GetDetails`. ⚠ **This is the argument for the whole design**: had the fee breakdown gone on the item, the 7 drifting fee columns would have done the same thing, 7 times over. |
+| **24** | ⛔ **`Shopping center items` is the one column that is NOT stable across exports, and it would have silently doubled every re-import.** Comparing the 43 orders that appear in more than one sample export — 77 pairs — **exactly one column ever differs**: the SKU list, whose entries come back in a different ORDER (`…958086 * 1; …061062 * 1;` vs the reverse). Same items, same counts, different string. Under [hash-the-whole-struct](context_decision.md#hash-the-whole-struct) that is enough to give one order two keys. | Keep it off the item — done. It is readable through `GetDetails`. ⚠ **This is the argument for the whole design**: had the fee breakdown gone on the item, the drifting fee columns — 7 then, 23 across the four layouts now — would have done the same thing, once each. |
 | **20** | **`ShopeeSettlementType` is declared with no values**, which leaves [Q1](#question) open in the code rather than settling it. A named string type is a good middle ground — it documents intent without making an unseen value a parse failure. | Declare the four measured constants (`Penghasilan dari Pesanan`, `Penarikan Dana`, `Penyesuaian`, `Program Ekspor Shopee FLEXI`) and a `Known()` helper, keeping unknown values *parseable*. The fourth appears once in 3788 rows, so the list is demonstrably not closed. |
 
 ✅ **Shopee's layout is genuinely stable** — header at row 18, the same 8 columns, in all 12 files
@@ -120,9 +120,9 @@ pairs compared, and exactly one column differs (#24).
 
 ```mermaid
 flowchart TB
-  F["Order details, 61 to 64 columns"] --> S{"stable across exports?"}
+  F["Order details, 61 to 76 columns"] --> S{"stable across exports?"}
   S -->|"yes, 10 columns"| I["TiktokSettlementItem, hashed, IS the key"]
-  S -->|"no, 7 fee columns drift"| D["GetDetails, every column by header text, NOT hashed"]
+  S -->|"no, 23 fee columns drift"| D["GetDetails, every column by header text, NOT hashed"]
   S -->|"no, SKU list reorders"| D
   W["Withdrawal records"] --> WI["TiktokWithdrawalItem, where money actually moves"]
   R["Reports sheet"] --> M["GetPeriod, GetTimezone, GetCurrency"]
@@ -133,15 +133,16 @@ flowchart TB
 | `TiktokSettlementItem` | `At` (settled), `CreatedAt`, `TransactionType`, `OrderRefID`, `RelatedOrderRefID`, `Currency`, `Amount`, `Revenue`, `TotalFees`, `Source` — all measured stable |
 | `GetDetails()` | every column of every row, by header text, keyed by unique id — the fee breakdown lives here so drift cannot touch a key |
 | `GetWithdrawals()` | the third sheet. **Not in your doc** — but `Order details` is what an order was *worth*, and this is where money *moves*, so a settlement reader without it is blind to withdrawals |
-| `GetDriftingColumns()` | which of the 7 unstable fee columns this export happens to carry |
+| `GetDriftingColumns()` | which of the 23 unstable fee columns this export happens to carry |
 | `GetTimezone()` | TikTok **states** `UTC+7` on its Reports sheet, so it is read, not assumed — the one place TikTok is better specified than Shopee |
 
 **What I deliberately did not carry:** `Shopping center items` (unstable, #24) and `Bank account` from
 the withdrawal sheet (masked PII, and it would enter the hash).
 
-**Nine tests, green over all 13 samples** — including that one order settling twice keeps two distinct
-keys, that the same order in two exports keeps *one* key, and that `Flat fee` being **absent** from the
-64-column layout is expected rather than a parse failure.
+**Eleven tests, green over all 14 samples** — including that one order settling twice keeps two distinct
+keys, that the same order in two exports keeps *one* key, that `Flat fee` being **absent** from the
+64-column layout is expected rather than a parse failure, and that the renamed 2026-09 layout sums back
+to its own Reports totals.
 
 ---
 
@@ -281,6 +282,38 @@ backend/pkgs/san_excel_readers/
    call now. The evidence it needs is #12: both `Gagal` rows in the corpus are failed withdrawals that
    **already left the wallet**, each reversed by a separate row a day later, and the `Saldo Akhir` chain
    counts both. **→ Recommend booking every row** — skipping the failures is what corrupts the balance.
+7. **Do TikTok keys survive the 2026-09 layout, or do its adjustments get booked twice?** Unmeasurable
+   from the samples — no order appears in both an old-layout and a new-layout file. ⚠ But the new layout
+   gives a specific reason to doubt it for **adjustment** rows. An adjustment's `Type` has always been
+   **its Reports label, verbatim** (all 22 in the samples), and the new Reports tree respells or drops
+   most of those labels:
+
+   | `Type` in the samples | rows | the 2026-09 Reports label |
+   | --- | ---: | --- |
+   | `GMV Payment for TikTok Ads` | 10 | `GMV payment for TikTok Ads` |
+   | `Additional Campaign Package` | 4 | `Additional marketing benefits package fee` |
+   | `Platform reimbursement` | 4 | *(gone)* |
+   | `Logistics reimbursement` · `Shipping insurance compensation` | 4 | unchanged |
+
+   If `Type` follows its label, 18 of those 22 get a **second key** when the same period is downloaded
+   again. `Order` rows (2707 of 2729) keep `Order`, and their other nine fields are the same data. An
+   adjustment with no order writes the same `/`+TAB and empty source in both layouts, so those cells are
+   not the risk.
+
+   ```mermaid
+   flowchart LR
+     O["adjustment, old export, Type GMV Payment for TikTok Ads"] --> K1["key A, stored"]
+     N["same adjustment, re-downloaded in the 2026-09 layout"] --> T{"Type respelled?"}
+     T -->|"no"| K1
+     T -->|"yes, GMV payment for TikTok Ads"| K2["key B, a second row, booked twice"]
+   ```
+
+   **→ Recommend measuring before building.** Re-download one period that is already in the samples
+   (e.g. `niko_lape`'s 2025-12-18 to 12-24) — it comes back in the new layout, and one diff answers it.
+   If adjustments re-key, map each respelled `Type` back to its **old** spelling *before* hashing, so no
+   stored key moves. That changes what
+   [hash-the-whole-struct](context_decision.md#hash-the-whole-struct) hashes, which is why it is your call
+   and not built.
 
 ---
 

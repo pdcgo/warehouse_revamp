@@ -12,7 +12,7 @@ its [clarify](../../technical/packages/excel_readers/context_clarify.md) and
 | [backend/pkgs/san_excel_readers/shopee.go](../../../backend/pkgs/san_excel_readers/shopee.go) | ✅ built — `NewShopeeSettlementDocument(io.Reader)`, `GetShopUsername`, `GetPeriod`, `GetItems`, `ShopeeSettlementItem.GenerateUniqueID` |
 | [backend/pkgs/san_excel_readers/shopee_test.go](../../../backend/pkgs/san_excel_readers/shopee_test.go) | ✅ 7 tests, green over all 12 sample workbooks |
 | [backend/pkgs/san_excel_readers/tiktok.go](../../../backend/pkgs/san_excel_readers/tiktok.go) | ✅ built — `NewTiktokSettlementDocument`, `GetItems`, `GetWithdrawals`, `GetDetails`, `GetDriftingColumns`, `GetPeriod`/`GetTimezone`/`GetCurrency` |
-| [backend/pkgs/san_excel_readers/tiktok_test.go](../../../backend/pkgs/san_excel_readers/tiktok_test.go) | ✅ 9 tests, green over all 13 sample workbooks |
+| [backend/pkgs/san_excel_readers/tiktok_test.go](../../../backend/pkgs/san_excel_readers/tiktok_test.go) | ✅ 11 tests, green over all 14 sample workbooks, plus in-memory workbooks for the header spellings |
 | [backend/pkgs/san_excel_readers/settlement_type.go](../../../backend/pkgs/san_excel_readers/settlement_type.go) | ⚠ type only — the enum has no values yet |
 | dependency | `github.com/xuri/excelize/v2 v2.11.0`, added to the root `go.mod` |
 
@@ -40,9 +40,14 @@ check against, so expect this to recur.
 
 All 25 workbooks were parsed cell by cell. The five findings that shaped the code:
 
-1. **TikTok's column set is not fixed** — 61 / 63 / 64 columns across 13 files. `Flat fee` and
+1. **TikTok's column set is not fixed** — 61 / 63 / 64 / 76 columns across 14 files. `Flat fee` and
    `Sales fee` *disappear*; `GMV Max ad fee` appears. A fixed-struct TikTok reader is broken on
-   arrival — it must map by header text.
+   arrival — it must map by header text. ⚠ **And the header TEXT is not fixed either**: the 2026-09
+   layout (`cannot_open.xlsx`, found by the owner's batch run over stored uploads) renamed `Type` →
+   `Transaction type` on both sheets, changed the case of `Order/adjustment ID` and `Order Source`, and
+   respelled two Reports labels — the reader refused it. Now every column an item is read from is
+   matched under every spelling in `tiktokRenamed`, and one it cannot find **fails the read, naming
+   it**. Before, a missing column read as `""` or `0` and went into the hash.
 2. **The same report re-saved changes its storage type** — text `"8400769.00"` becomes numeric
    `-18923082`. Parsing to a number is what keeps the key stable; hashing the raw cell text scores
    **0/141** on the re-save test.
@@ -64,16 +69,26 @@ All 25 workbooks were parsed cell by cell. The five findings that shaped the cod
   clarify, never decided, so not written (HARD RULE 8).
 - **Platform detection (`Detect`/`Open`)** — proposed, not decided. `NewShopeeSettlementDocument`
   does reject a TikTok workbook with `ErrNotShopeeReport`, which is tested.
+- **Key stability across TikTok's 2026-09 layout** — unmeasured, asked as
+  [Q7](../../technical/packages/excel_readers/context_clarify.md#question). An adjustment's `Type` is its
+  Reports label, and the new layout respells most of those labels, so an adjustment re-downloaded in the
+  new layout may re-key. The respelling map that would fix it changes what is hashed — not built.
+- ⚠ **The Reports sheet is still read leniently.** A period, timezone or currency label the reader
+  cannot find gives a zero period, the WIB fallback or `""`, not an error. Only the columns an item is
+  read from are required. Tightening it is a one-line change per label, not made because nothing reads
+  those values yet.
 
-## ⚠ The fixtures are not committed
+## ⚠ The fixtures ARE committed — whether they should be is still open
 
-`examples/settlement_samples/` is **untracked and not gitignored**, and the workbooks carry real
-seller usernames, order IDs and daily revenue — into a **public** repo. It was left out of the commit
-deliberately, pending the owner's call to scrub or ignore (critique #10 in the clarify).
+An earlier version of this report said `examples/settlement_samples/` was untracked. **It was wrong**:
+the owner committed the 25 original workbooks in `8b14718` (2026-09-21), before the readers were built.
+`tiktok/cannot_open.xlsx` (the 2026-09 layout) is untracked as of this pass. They carry real seller
+usernames, order IDs and daily revenue in a **public** repo, and critique #10 in the clarify is still
+open.
 
-**Consequence:** the tests **skip** without it, the same way `san_testdb` skips with no database. They
-pass locally where the samples exist and skip in CI until that is settled — so a green CI is not
-evidence this package works.
+A sample missing from a checkout **skips** its test, the way `san_testdb` skips with no database.
+`TestTiktokMissingColumnFailsInsteadOfReadingZero` builds its workbooks in memory, so the TikTok header
+spellings are tested with or without the samples.
 
 ## ⚠ The TikTok item deviates from the owner's contract
 
@@ -87,7 +102,7 @@ this, said build it anyway, and what was built is the nearest implementable thin
 the item *is* its own key, so only columns that are **identical across two exports of the same order**
 may be on it. That was measured, not assumed: 43 orders appear in more than one sample export, 77
 pairs compared, and exactly **one** column ever differs — `Shopping center items`, whose SKU list comes
-back reordered. It is excluded, along with the 7 drifting fee columns.
+back reordered. It is excluded, along with the drifting fee columns — 23 across the four layouts.
 
 Everything unstable is reachable through `GetDetails()` (every column, by header text, keyed by unique
 id), which is not hashed. `GetWithdrawals()` is also an addition — the owner's doc does not mention the

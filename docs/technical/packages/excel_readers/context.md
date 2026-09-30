@@ -20,9 +20,7 @@
 ```go
 type SettlementType string
 ```
-1. `SettlementType` have:
-    - `withdrawal`
-    - `adjustment`
+1. what inside `SettlementType` its reference to [this](../../../business/settlement/context.md#what-is-settlement_type)
 
 
 ### Shopee Contract
@@ -55,13 +53,34 @@ type ShopeeSettlementDocument interface {
 func NewShopeeSettlementDocument(r io.Reader) (ShopeeSettlementDocument, error)
 
 ```
-1. How We Parsing `ShopeeSettlementType`
-    - 
-
+#### How We Parsing `SettlementType`
+| Settlement Type | `TransactionType` |
+|-----------------|-------------------|
+| `withdrawal` | Penarikan Dana |
+| `fund` | Penghasilan dari Pesanan |
+| `marketplace_adjustment` | Penyesuaian |
 
 
 ### Tiktok Contract
 ```go
+
+type TiktokSettlementItem struct {
+    At              time.Time               // Column "Tanggal Transaksi"
+    TransactionType string                  // Column "Tipe Transaksi"
+    Description     string                  // Column "Deskripsi"
+    OrderRefID      string                  // Column "No. Pesanan"
+    Amount          float64                 // Column "Jumlah"
+    LastBalance     float64                 // Column "Saldo Akhir"
+}
+
+func (s *TiktokSettlementItem) GenerateUniqueID() (string, error) {
+    // md5hash of (json serialise of s)
+}
+
+func (s *TiktokSettlementItem) SettlementType() (SettlementType, error) {
+    ...
+}
+
 type TiktokSettlementDocument interface {
     ...
 }
