@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ your lines 43, 46–47, 90 | `account_type` is `provider`: [provider-replaces-account-type](./context_decision.md#provider-replaces-account-type) — critique 2 narrows to deriving `type` · `name` and `holder_name`: [an-account-has-a-name-and-a-holder](./context_decision.md#an-account-has-a-name-and-a-holder) — critique 3 adopted · `occurred_at`: [the-log-keeps-the-day-the-money-moved](./context_decision.md#the-log-keeps-the-day-the-money-moved) — critique 7 adopted · no new contradiction · lines below 45 moved down 2, below 89 down 3 |
 | ✅ your line 82 | the log carries `account_id`: [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account) · ⛔ the [log contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) closes, as recommended — **none left** · lines below 81 moved down 1 |
 | ✅ answered in chat | two parts of Q9 — the team record holds no bank: its three columns are **dropped**, not copied (built: `team_service` `00008`): [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank) · [Q9](#question) narrows to where a team is paid |
 | 🔄 elaborated | Q9 — five parts: is it an account · where *where we are paid* lives · who sees it · where it shows · what happens to the three fields |
@@ -34,7 +35,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **One question open, six critiques, no contradiction.**
+already touch a bank without naming one. **One question open, four critiques, no contradiction.**
 
 ## What already moves money
 
@@ -72,14 +73,14 @@ flowchart LR
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | 🔄 **A log row names no cause.** `description` *(line 86)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. ✅ Its **account** is there now — [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
-| **2** | **`type` and `account_type` can disagree** *(lines 42–43)*. The provider decides the kind — `bca` is a bank, `shopeepay` a wallet — and `cash` sits in both lists. Two columns that must agree, and nothing making them: a `bank_account` whose provider is `shopeepay`. 🆕 `unknown` now sits in both lists too *(lines 57, 67)*. | The person picks the **provider**; the server derives the kind from one fixed table — `unknown` gives `unknown`, as `cash` gives `cash`. Rename `account_type` → `provider` — *type* and *account type* read as the same word. A new bank (Mandiri, BRI, SeaBank) is an append to the list, never free text: the provider is what will pick a bank-statement reader later, as the marketplace picks the settlement reader. |
-| **3** | **An account has no name and no holder.** A team with two BCA accounts tells them apart by ten digits in every picker. And the holder — *atas nama* — is what a payer checks before transferring; `team_infos.bank_owner_name` exists for exactly that. | `name` — required, unique in the team (*BCA Operasional*, *Kas Gudang*) — and `holder_name`. |
+| **1** | 🔄 **A log row names no cause.** `description` *(line 88)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. ✅ Its **account** is there now — [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
+| **2** | 🔄 **Half adopted** — `account_type` is `provider` now: [provider-replaces-account-type](./context_decision.md#provider-replaces-account-type). Left: **`type` and `provider` can still disagree** *(lines 42–43)* — nothing stops a `bank_account` whose provider is `shopeepay`, and `cash` and `unknown` sit in both lists *(lines 58–59, 64, 69)*. | The person picks the **provider**; the server derives `type` from one fixed table — `bca` → `bank_account`, `shopeepay` → `wallet`, `cash` → `cash`, `unknown` → `unknown`. A new bank is an append to the list, never free text: the provider is what will pick a bank-statement reader later. |
+| **3** | ✅ **Adopted** — `name` and `holder_name`: [an-account-has-a-name-and-a-holder](./context_decision.md#an-account-has-a-name-and-a-holder). Kept as a line so the numbers hold. | — |
 | **4** | **An account opens with no row.** One registered with Rp 50.000.000 already in it either starts at 0 — wrong on day one — or sets `balance` with no log row, which the ledger your line 13 names forbids: *"cannot change the `State` without log recorded"*. | Creating an account posts its first row, `opening_balance`. |
 | **5** | ✅ **Adopted** — `last_balance` is `balance_after` now: [the-log-says-balance-after](./context_decision.md#the-log-says-balance-after). Kept as a line so the numbers hold. | — |
 | **6** | ✅ **Decided** — every movement has a type of its own, and an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). Kept as a line so the numbers hold. | — |
-| **7** | **The date the money moved is not kept.** `created_at` is when someone typed it. Yesterday's transfer typed this morning files under today, while the bank statement lists yesterday — the two never line up. | `occurred_at`. A broker row already has it — every event carries when its fact happened — so only a hand row needs a date picked, defaulting to today. The running balance still follows entry order. |
-| **8** | **An archived account can hold money.** Nothing says what `archived` *(line 73)* stops, or whether an account holding Rp 3.000.000 may be archived — its money then drops out of the team's total, or sits in a total nobody can spend. | Archive only at zero — transfer or reconcile first. An archived account takes no row **by hand**, stays readable everywhere, and can be restored. 🆕 A row **from the broker** still posts — refused, it would dead-letter — so the pickers stop offering an archived account, and a row that lands anyway shows as money to move out. |
+| **7** | ✅ **Adopted** — `occurred_at`: [the-log-keeps-the-day-the-money-moved](./context_decision.md#the-log-keeps-the-day-the-money-moved). Kept as a line so the numbers hold. | — |
+| **8** | **An archived account can hold money.** Nothing says what `archived` *(line 75)* stops, or whether an account holding Rp 3.000.000 may be archived — its money then drops out of the team's total, or sits in a total nobody can spend. | Archive only at zero — transfer or reconcile first. An archived account takes no row **by hand**, stays readable everywhere, and can be restored. 🆕 A row **from the broker** still posts — refused, it would dead-letter — so the pickers stop offering an archived account, and a row that lands anyway shows as money to move out. |
 
 ## Recommendation
 
@@ -94,8 +95,7 @@ listener is new · **3.** restock · **4.** expense · **5.** team payment — e
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 ✅ **Nothing in your doc blocks the account screens now** — the log names its account. Left: [Q9](#question), which
-shapes only the payee screens, and the log's last two gaps — its cause ([critique 1](#critique)) and its date
-([critique 7](#critique)).
+shapes only the payee screens, and the log's last gap — its cause ([critique 1](#critique)).
 
 ## Proposed Design
 
@@ -239,11 +239,11 @@ erDiagram
   financial_accounts {
     bigint id PK
     bigint team_id
-    text name "NEW, unique in the team"
-    text provider "your account_type: bca, bni, jago, shopeepay, cash, unknown"
+    text name "yours, unique in the team is my spec"
+    text provider "yours: bca, bni, jago, shopeepay, cash, unknown"
     text type "wallet, bank_account, cash or unknown, derived from provider"
     text account_number "a bank number or a wallet phone, none for cash or unknown"
-    text holder_name "NEW, atas nama"
+    text holder_name "yours, atas nama"
     text description
     text status "active or archived"
     numeric balance "moves only with a log row"
@@ -261,7 +261,7 @@ erDiagram
     bigint group_id "NEW, both legs of one transfer or payment"
     numeric change
     numeric balance_after "yours, was last_balance"
-    date occurred_at "NEW, the day the money moved"
+    timestamptz occurred_at "yours, when the money moved"
     text description
     bigint actor_id
     timestamptz created_at
@@ -401,7 +401,7 @@ to it hold.
 account, and two withdrawals from a new shop can no longer make two `unknown` accounts. `operational_accounts` keeps
 several per team, as it should. Kept as a heading so the links to it hold.
 
-✅ **Closed — *account_number is unique, and a cash box has none*** (line 45 against lines 56 and 62): the rule now
+✅ **Closed — *account_number is unique, and a cash box has none*** (line 45 against lines 58 and 64): the rule now
 has its scope, [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) — unique per
 provider and number across all teams, a cash box exempt. ⚠ Line 45 still reads only *"its unique"* — yours to carry
 into the doc.
@@ -414,5 +414,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
-- 🆕 **§Financial Analytical Reports Design *(line 111)* is started** — a heading only now; *Smallest Grain Reports* was
+- 🆕 **§Financial Analytical Reports Design *(line 114)* is started** — a heading only now; *Smallest Grain Reports* was
   removed. No content yet. Read when it has some.

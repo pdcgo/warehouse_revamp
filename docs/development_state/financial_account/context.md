@@ -3,7 +3,7 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **twenty-four owner decisions**. The
+[context_decision.md](../../business/financial_account/context_decision.md) — **twenty-seven owner decisions**. The
 lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
@@ -12,9 +12,12 @@ lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no tec
 | --- | --- |
 | [the-accounts-are-one-ledger](../../business/financial_account/context_decision.md#the-accounts-are-one-ledger) | `financial_accounts` is the state, `financial_account_logs` the log — no balance moves without a log row, in the same transaction |
 | [every-log-row-names-its-account](../../business/financial_account/context_decision.md#every-log-row-names-its-account) *(line 82)* | every log row carries `account_id` — `balance_after` runs per account · `team_id` stays as a copy (⚠ my reading) · an index on `(account_id, id)` (⚠ my spec) |
+| [provider-replaces-account-type](../../business/financial_account/context_decision.md#provider-replaces-account-type) *(critique 2, half)* | the column is `provider` — `account_type` in older entries means it · `type` stays; whether it is derived is critique 2 |
+| [an-account-has-a-name-and-a-holder](../../business/financial_account/context_decision.md#an-account-has-a-name-and-a-holder) *(critique 3)* | `name` and `holder_name` on every account · ⚠ `name` required and unique in the team, my spec |
+| [the-log-keeps-the-day-the-money-moved](../../business/financial_account/context_decision.md#the-log-keeps-the-day-the-money-moved) *(critique 7)* | `occurred_at` on every log row — the event's time from the broker, a picked day by hand · `balance_after` stays in entry order (⚠ my spec) |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
-| [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(account_type, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
+| [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(provider, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
 | [below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused) *(Q7)* | no balance check on any write path · a warning on the list and the account page while below zero |
 | [opening-transfer-and-team-payment-join-the-types](../../business/financial_account/context_decision.md#opening-transfer-and-team-payment-join-the-types) *(Q4, three of four)* | three more `change_type` values · ⚠ their posting rules — the opening row at create, two legs per transfer, a team payment at confirm — are my spec, marked so in the decision |
 | [capital-joins-the-types](../../business/financial_account/context_decision.md#capital-joins-the-types) *(Q4, the fourth)* | the owner's money in or out, one signed type · ⚠ two rows sharing a `group_id` when it moves between teams — my spec |
@@ -53,8 +56,8 @@ Build order: accounts and the hand path → withdrawal (its event already exists
 each of the last three needing a new event variant first. Every row names its cause — `source_id` and `reversal`
 (critique 1).
 
-✅ The owner's log carries `account_id` ([every-log-row-names-its-account](../../business/financial_account/context_decision.md#every-log-row-names-its-account)), so the ledger's state and log share one scope. Still
-missing from it: the cause (critique 1) and the date the money moved (critique 7) — proposals, not blockers.
+✅ The owner's log carries `account_id` ([every-log-row-names-its-account](../../business/financial_account/context_decision.md#every-log-row-names-its-account)), so the ledger's state and log share one scope. It keeps
+the day the money moved too (`occurred_at`). Still missing: the cause (critique 1) — a proposal, not a blocker.
 
 ## Open
 
@@ -65,4 +68,4 @@ open. Q9 shapes only the payee screens.
 the answered question, rebuild `docs/biggest_question.md`. The service will be
 `backend/services/financial_account_service/` (HARD RULE 2). The Storybook prototype of the account screens is
 unblocked — the owner's log carries its `account_id`. Build the payee screens only after Q9, and mark critique 1's
-`source_id` and critique 7's `occurred_at` as proposals in any contract drawn before the owner adopts them (HARD RULE 8).
+`source_id` and `reversal` as proposals in any contract drawn before the owner adopts them (HARD RULE 8).

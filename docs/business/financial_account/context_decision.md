@@ -23,6 +23,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-shop-has-one-account](#a-shop-has-one-account) | a shop names one account — `shop_id` is unique in `shop_accounts` · an account may take many shops | owner | — |
 | [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) | `team_infos` holds no bank — its three bank columns are dropped, not copied, and a team's bank lives only as a financial account | owner | [Q9](./context_clarify.md#question) — where a team is paid |
 | [every-log-row-names-its-account](#every-log-row-names-its-account) | every log row carries `account_id` — the state and the log share one scope, the account | owner | — |
+| [provider-replaces-account-type](#provider-replaces-account-type) | the column naming who holds the money is `provider` (was `account_type`) · `type` stays beside it | owner | [critique 2](./context_clarify.md#critique) — is `type` derived from it |
+| [an-account-has-a-name-and-a-holder](#an-account-has-a-name-and-a-holder) | every account has a `name` and a `holder_name` (*atas nama*) | owner | — |
+| [the-log-keeps-the-day-the-money-moved](#the-log-keeps-the-day-the-money-moved) | every log row keeps `occurred_at`, when the money moved, beside `created_at` | owner | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -811,3 +814,77 @@ flowchart LR
 | a transfer, a team payment | two rows, one per account — each leg names its own ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types)) |
 | ⚠ my spec — the read | an index on `(account_id, id)` — an account's page reads its rows newest first |
 | still missing from the log | the row behind it — critique 1 · the day the money moved — critique 7 |
+
+## provider-replaces-account-type
+
+> `context.md` §Table that Named `financial_accounts` *(owner, 2026-09-30)* — `account_type` renamed `provider`
+> *(lines 43, 61–69)*. The first half of [critique 2](./context_clarify.md#critique).
+
+**The verdict.** The column that says **who holds the money** — BCA, BNI, Jago, ShopeePay, a cash box — is
+`provider`. `type` stays beside it as the kind: wallet, bank account, cash.
+
+```mermaid
+flowchart LR
+  P["provider — bca"] -->|"its kind"| T["type — bank_account"]
+  P2["provider — shopeepay"] -->|"its kind"| T2["type — wallet"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| `provider` | `cash`, `bca`, `bni`, `jago`, `shopeepay`, `unknown` |
+| `type` | stays — `wallet`, `bank_account`, `cash`, `unknown` |
+| still open | whether `type` is picked or derived from `provider` — [critique 2](./context_clarify.md#critique) |
+| ⚠ my spec — a new bank | an append to the list, never free text |
+| the older entries | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once), [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) and [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) say `account_type` — read it as `provider` |
+
+## an-account-has-a-name-and-a-holder
+
+> `context.md` §Table that Named `financial_accounts` *(owner, 2026-09-30)* — `name` and `holder_name` added
+> *(lines 46–47)*. [Critique 3](./context_clarify.md#critique) as recommended.
+
+**The verdict.** Every account carries a **`name`** — what the team calls it, *BCA Operasional*, *Kas Gudang* — and a
+**`holder_name`**, the *atas nama* a payer checks before transferring.
+
+```mermaid
+flowchart LR
+  P["Paid from"] --> A["BCA Operasional — 123…"]
+  P --> B["BCA Gaji — 456…"]
+  P --> C["Kas Gudang"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| `name` | what every list and picker shows — two BCA accounts told apart by name, not by ten digits |
+| ⚠ my spec — `name` | required, unique in the team |
+| `holder_name` | the *atas nama* · ⚠ my spec: empty for a cash box |
+| an `unknown` account | named *Unknown — <the shop>* ([a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one)) |
+| ⚠ my spec — editing | both editable; the provider and number are not |
+
+## the-log-keeps-the-day-the-money-moved
+
+> `context.md` §Table that Named `financial_account_logs` *(owner, 2026-09-30)* — `occurred_at` added *(line 90)*.
+> [Critique 7](./context_clarify.md#critique) as recommended.
+
+**The verdict.** Every log row carries **`occurred_at`** — when the money moved — beside `created_at`, when the row was
+written. The two differ whenever a movement is recorded late, and the bank statement lists the first.
+
+```mermaid
+flowchart LR
+  T["a transfer made on 29 Sep"] --> R["typed on 30 Sep"]
+  R --> O["occurred_at — 29 Sep, what the statement lists"]
+  R --> C["created_at — 30 Sep, when it was typed"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| a row from the broker | its event's own time — when the withdrawal, restock, expense or payment happened |
+| a row by hand | picked on the form, defaulting to today |
+| ⚠ my spec — its type | `timestamptz`, as its `_at` name says; a hand row picks a day |
+| ⚠ my spec — `balance_after` | still runs in entry order, so a late row never rewrites the rows after it |
+| a reconcile | lines rows up with the statement by `occurred_at` |
