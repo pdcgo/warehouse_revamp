@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ your line 19 | `shop_id` is unique — a shop names one account: [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) · ⛔ the [shop-key contradiction](#a-table-that-must-decide-one-account-allows-several) closes, as recommended · *Smallest Grain Reports* removed from line 110's section |
 | ✅ answered in chat, and your line 93 | Q13 — settlement's ads and the accounts are independent, nothing syncs: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) · `ads_expense` joins the types: [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) · lines below 92 moved down 1 |
 | 🔄 elaborated | Q13 — my *Marketplace balance* choice withdrawn: it counted a withheld ad in settlement and in expense, which [withheld-is-not-spent](../settlement/context_clarify.md#withheld-is-not-spent) rules out · now: a withheld ad is never an expense |
 | ✅ answered in chat | Q12 — an unknown account is filled in or moved in: [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in) · Q2 and Q3 — every restock and every expense **must** name the account that paid: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) · [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · the account required, against my *optional* · 🆕 [Q13](#question) — an ads charge the platform took from the seller balance |
@@ -30,7 +31,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **One question open, six critiques, two contradictions.**
+already touch a bank without naming one. **One question open, six critiques, one contradiction.**
 
 ## What already moves money
 
@@ -89,8 +90,8 @@ account it names — required: [a-restock-must-name-the-account-that-paid](./con
 listener is new · **3.** restock · **4.** expense · **5.** team payment — each of these needs its own event first.
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-**Answer first:** the two [contradictions](#contradiction) — the log's missing account and the shop key. Both are edits
-in your doc, and the account screens' contract waits on them. Then [Q9](#question).
+**Answer first:** the [contradiction](#contradiction) — the log's missing account. It is an edit in your doc, and the
+account screens' contract waits on it. Then [Q9](#question).
 
 ## Proposed Design
 
@@ -264,7 +265,7 @@ erDiagram
   shop_accounts {
     bigint id PK
     bigint team_id
-    bigint shop_id "yours, opaque shop_service id, unique alone per the contradiction"
+    bigint shop_id "yours, unique, one account per shop"
     bigint account_id
     timestamptz updated_at
     timestamptz created_at
@@ -288,7 +289,7 @@ erDiagram
 | `(team_id, name)` | a picker never shows two of the same |
 | `(provider, account_number)` where a number exists — across all teams | ✅ one real account, one row — [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) |
 | `(account_id, change_type, source_id, reversal)` where `source_id <> 0` | one cause posts once |
-| `shop_accounts (shop_id)` | one account per shop — [Contradiction](#a-table-that-must-decide-one-account-allows-several) |
+| `shop_accounts (shop_id)` | ✅ yours — one account per shop, [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) |
 | `operational_accounts (account_id)` | yours — an account is marked once |
 | `payee_accounts (team_id)` | one place a team is paid ([Q9](#question)) |
 
@@ -312,7 +313,7 @@ balance — a person picking *which account paid* is recording a fact, and the b
 
 1. ✅ **Answered 2026-09-30 — each shop names the account it withdraws into**, as recommended: [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into), revenue
    staying in settlement: [revenue-stays-in-settlement](./context_decision.md#revenue-stays-in-settlement). ⛔ Its key
-   allows a shop two accounts — [Contradiction](#a-table-that-must-decide-one-account-allows-several) · a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one). Kept as a line so
+   allows a shop two accounts — ✅ closed: [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) · a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one). Kept as a line so
    the numbers hold.
 
 2. ✅ **Answered 2026-09-30 — every restock names, at create, the operational account that paid**, as recommended
@@ -400,34 +401,9 @@ flowchart TB
 
 ## a-table-that-must-decide-one-account-allows-several
 
-> line 19 — `shop_id`, *"its composite unique with `account_id`"* · line 24 — *"used to decide what account used by
-> shops when like `withdrawal` happen"* · line 30 — `account_id` unique, so a team may mark several · line 34 —
-> *"used to decide what account used for operational like restock"*.
-
-Both new tables allow **several** accounts where their purpose says they **decide one**. A shop with two rows receives
-a withdrawal that names no bank — nothing can say which of the two it went to. A team with two operational accounts
-pays a restock — the table alone cannot say which.
-
-**Which is wrong:** the shop's key *(line 19)*. A statement never names the bank, so a second row can only be a guess.
-🆕 [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) makes
-it sharper: two withdrawals from one new shop arriving in the same second would each create an `unknown` account, and
-the composite key lets both rows in — `shop_id` alone refuses the second, and it posts into the first.
-The operational key *(line 30)* is right — ShopeePay and BCA both paying restocks is ordinary — because the restock
-itself names which one paid ([a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid)).
-
-**→ Recommend:** `shop_id` unique in `shop_accounts` — one account per shop; a shop that changes bank edits its
-row. Keep `operational_accounts` as it is. What stops it recurring: a mapping table says which side is *one* — *a
-shop has one account, an account serves many shops*.
-
-```mermaid
-flowchart TB
-  S1["shop_accounts — shop 1, BCA"] --> WQ{"a withdrawal from shop 1 — no bank named"}
-  S2["shop_accounts — shop 1, Jago"] --> WQ
-  WQ -->|"cannot decide"| GUESS["a guess"]
-  O1["operational — ShopeePay"] --> RQ{"a restock"}
-  O2["operational — BCA"] --> RQ
-  RQ -->|"the restock names which paid, required"| OK["decided"]
-```
+✅ **Closed 2026-09-30, as recommended** — line 19 now reads *"`shop_id`, its unique."*: [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account). A shop names one
+account, and two withdrawals from a new shop can no longer make two `unknown` accounts. `operational_accounts` keeps
+several per team, as it should. Kept as a heading so the links to it hold.
 
 ✅ **Closed — *account_number is unique, and a cash box has none*** (line 45 against lines 56 and 62): the rule now
 has its scope, [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) — unique per
@@ -442,5 +418,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
-- 🆕 **§Financial Analytical Reports Design *(line 110)* is started** — a heading and *Smallest Grain Reports*, no content
-  yet. Read when it has some.
+- 🆕 **§Financial Analytical Reports Design *(line 110)* is started** — a heading only now; *Smallest Grain Reports* was
+  removed. No content yet. Read when it has some.

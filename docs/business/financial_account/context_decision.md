@@ -18,9 +18,10 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | ✅ what inventory publishes: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
 | [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | ✅ which account: a withdrawal ([a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into)), an expense ([an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid)) |
 | [revenue-stays-in-settlement](#revenue-stays-in-settlement) | revenue is settlement's — a financial account records the marketplace's money only when it is withdrawn, as `withdrawal` (was `revenue_fund`) | owner | [Q1](./context_clarify.md#question) — where a withdrawal lands |
-| [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ⛔ its key allows a shop two accounts — [Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) · ✅ a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) |
+| [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ✅ one account per shop: [a-shop-has-one-account](#a-shop-has-one-account) · ✅ a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) |
 | [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | ✅ which one paid a given restock: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
-| [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ⛔ one per shop needs the [shop key](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) fixed |
+| [a-shop-has-one-account](#a-shop-has-one-account) | a shop names one account — `shop_id` is unique in `shop_accounts` · an account may take many shops | owner | — |
+| [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
 | [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid) | every expense a person types names the account that paid it | owner, required against my recommendation | ✅ an ads charge taken from the seller balance: [settlement-ads-and-accounts-are-independent](#settlement-ads-and-accounts-are-independent) |
@@ -722,3 +723,31 @@ flowchart LR
 | ⚠ my reading — the way in | the broker only — the same expense event, when its kind is `ADS`: an ads expense is recorded in `expense_service`, and [one-way-in-per-type](#one-way-in-per-type) sends what another service records through the broker. Typed here as well, one ad would be in two places |
 | `expense` | now means every other kind a person types — `PAYROLL`, `OPERATIONAL`, `OTHER` |
 | settlement's ads | never — [settlement-ads-and-accounts-are-independent](#settlement-ads-and-accounts-are-independent) |
+
+## a-shop-has-one-account
+
+> `context.md` §Table that Named `shop_accounts` *(owner, 2026-09-30)* — line 19 now reads *"`shop_id`, its unique."*,
+> was *"its composite unique with `account_id`"*. The
+> [contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) resolved as recommended.
+
+**The verdict.** A shop names **one** account — `shop_id` is unique in `shop_accounts`. An account may still take
+many shops' withdrawals, and `operational_accounts` still marks several per team, because a restock names which one
+paid.
+
+```mermaid
+flowchart LR
+  S1["shop 1"] --> BCA["BCA"]
+  S2["shop 2"] --> BCA
+  S3["shop 3"] --> J["Jago"]
+  W["a withdrawal from shop 1"] -->|"one row, one answer"| BCA
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the key | `shop_accounts (shop_id)` unique |
+| a shop's bank changes | edit its row — later withdrawals follow, earlier ones stay where they posted ([a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into)) |
+| one account, many shops | allowed — one BCA may take every shop's withdrawals |
+| two withdrawals from a new shop at once | the second one's `shop_accounts` insert is refused ([a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one)) · ⚠ my spec: its transaction rolls back whole — no orphan `unknown` account — and the retry finds the first one's row and posts there |
+| `operational_accounts` | unchanged — several per team ([operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations)) |
