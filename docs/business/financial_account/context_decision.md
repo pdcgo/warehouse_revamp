@@ -18,6 +18,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes |
 | [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | [Q1](./context_clarify.md#question), [Q3](./context_clarify.md#question) — which account a withdrawal and an expense name |
 | [revenue-stays-in-settlement](#revenue-stays-in-settlement) | revenue is settlement's — a financial account records the marketplace's money only when it is withdrawn, as `withdrawal` (was `revenue_fund`) | owner | [Q1](./context_clarify.md#question) — where a withdrawal lands |
+| [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ⛔ its key allows a shop two accounts — [Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) · [Q11](./context_clarify.md#question) — a shop with no row |
+| [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | [Q2](./context_clarify.md#question) — which one paid a given restock |
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 
 ## the-accounts-are-one-ledger
@@ -470,3 +472,52 @@ alone means money **leaving** the bank, and this row is money **arriving** — w
 
 [one-way-in-per-type](#one-way-in-per-type) and [capital-joins-the-types](#capital-joins-the-types) say
 `revenue_fund` — read it as `withdrawal`.
+
+## a-shop-names-the-account-it-withdraws-into
+
+> `context.md` §Table that Named `shop_accounts` *(owner, 2026-09-30)* — *"It's used to decide what account used by
+> shops when like `withdrawal` happen"* *(lines 15–24)*. [Q1](./context_clarify.md#question) as recommended — option
+> A, each shop names its account.
+
+**The verdict.** A withdrawal lands in the account **its shop names** in `shop_accounts` — set up once per shop, never
+chosen per withdrawal. A statement names the shop, never the bank, so the shop is where the answer is kept.
+
+```mermaid
+flowchart LR
+  W["settlement — a withdrawal row, naming its shop"] --> SA["shop_accounts — the shop's account"]
+  SA --> A["that account — + withdrawal"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the table | `shop_accounts` — `team_id`, `shop_id`, `account_id` |
+| what it decides | which account a withdrawal from the shop lands in. ⚠ The doc says *like* `withdrawal` — my reading: withdrawals only, until another use is named |
+| a shop's bank changes | edit the shop's row — later withdrawals follow, earlier rows stay where they posted |
+| ⛔ one shop, two rows | the key `(shop_id, account_id)` allows it, and then the table cannot decide — [Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) |
+| a shop with no row | [Q11](./context_clarify.md#question) |
+| ⚠ my spec — the account | the shop's own team's, and active |
+
+## operational-accounts-pay-for-operations
+
+> `context.md` §Table that Named `operational_accounts` *(owner, 2026-09-30)* — *"It's used to decide what account
+> used for operational like restock"* *(lines 26–34)*. The *which account* part of [Q2](./context_clarify.md#question).
+
+**The verdict.** A team **marks which of its accounts pay for its operations** — a restock first — in
+`operational_accounts`. Those are the accounts an operational payment may come from.
+
+```mermaid
+flowchart LR
+  T["a team's accounts — BCA, ShopeePay, Kas Gudang"] -->|"marked operational"| O["operational_accounts"]
+  O --> R["what a restock may be paid from"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the table | `operational_accounts` — `team_id`, `account_id` unique |
+| what it decides | which accounts pay for operations. ⚠ The doc says *like* restock — my reading: also the courier's ask at the door, and an expense ([Q3](./context_clarify.md#question)) |
+| several per team | allowed by the key — a team paying restocks from ShopeePay and from BCA marks both. Which one paid a given restock: [Q2](./context_clarify.md#question) |
+| ⚠ my spec — the account | the team's own, and active |
