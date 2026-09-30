@@ -8,19 +8,22 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | --- | --- | --- | --- |
 | [the-accounts-are-one-ledger](#the-accounts-are-one-ledger) | `financial_accounts` is the ledger's state and `financial_account_logs` its log — the ledger template applies | owner | ⛔ the log has no account, so its grain is not the state's — [Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains) |
 | [a-row-comes-by-hand-or-from-the-broker](#a-row-comes-by-hand-or-from-the-broker) | two ways in: a person types a row, or the service hears an event another service published | owner | [Q10](./context_clarify.md#question) — which type takes which way |
-| [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | [Q2](./context_clarify.md#question), [Q4](./context_clarify.md#question) — what moves it |
+| [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | ✅ what moves it: a restock ([a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid)), a top-up ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types)) |
 | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
 | [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
 | [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q10](./context_clarify.md#question) — which way each comes in |
 | [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | ✅ who types it: [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) |
 | [adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only) | an `adjustment` is only ever the difference a reconcile finds — the manager types the figure the bank shows, never an amount | owner | ✅ who reconciles: [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) |
 | [the-log-says-balance-after](#the-log-says-balance-after) | a log row's running balance is `balance_after` — the balance once its change is applied | owner | — |
-| [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | [Q2](./context_clarify.md#question) — what inventory publishes |
-| [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | [Q1](./context_clarify.md#question), [Q3](./context_clarify.md#question) — which account a withdrawal and an expense name |
+| [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand) | a `restock` row comes only from the broker — no hand screen and no RPC takes one from a person | owner | ✅ what inventory publishes: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
+| [one-way-in-per-type](#one-way-in-per-type) | every type has exactly one way in — what another service records comes only from the broker, what no other service knows only by hand | owner | ✅ which account: a withdrawal ([a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into)), an expense ([an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid)) |
 | [revenue-stays-in-settlement](#revenue-stays-in-settlement) | revenue is settlement's — a financial account records the marketplace's money only when it is withdrawn, as `withdrawal` (was `revenue_fund`) | owner | [Q1](./context_clarify.md#question) — where a withdrawal lands |
 | [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ⛔ its key allows a shop two accounts — [Contradiction](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) · ✅ a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) |
-| [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | [Q2](./context_clarify.md#question) — which one paid a given restock |
-| [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | [Q12](./context_clarify.md#question) — how it becomes the real account · ⛔ one per shop needs the [shop key](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) fixed |
+| [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | ✅ which one paid a given restock: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
+| [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ⛔ one per shop needs the [shop key](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) fixed |
+| [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
+| [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
+| [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid) | every expense a person types names the account that paid it | owner, required against my recommendation | [Q13](./context_clarify.md#question) — an ads charge taken from the seller balance |
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 
 ## the-accounts-are-one-ledger
@@ -563,3 +566,103 @@ I recommended holding the withdrawal until the shop named an account. This is be
 in the team's total from the day it arrived, and every withdrawal keeps its own row and date. The cost: the real bank
 reconciles short by what the unknown account holds until it is identified — which is the right signal, and it points
 at the missing name.
+
+## an-unknown-account-is-filled-in-or-moved-in
+
+> In chat *(owner, 2026-09-30)* — *"for q12 follow recomend"*. [Q12](./context_clarify.md#question) as recommended.
+
+**The verdict.** An `unknown` account ([a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one))
+becomes the real one through one action, *Which account is this?* — **filled in** when the real account is not
+registered yet, **moved in** when it is.
+
+```mermaid
+flowchart LR
+  U["Unknown — shop 7, Rp 4.200.000"] --> Q{"is the real bank registered?"}
+  Q -->|"no"| F["fill it in — it becomes BCA 123, its rows stay"]
+  Q -->|"yes, BCA 123"| M["transfer into BCA 123, re-point shop 7, archive the unknown"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the action | `FinancialAccountIdentify` — admin and up ([seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up)) · offered only on an `unknown` account |
+| not registered yet — **fill in** | provider, number, holder and name set on the unknown account, `type` derived from the provider · its rows stay, each withdrawal on its own day |
+| already registered — **move in** | one transaction: a `transfer` of the whole balance into the real account — two legs, one `group_id` — the shop's `shop_accounts` row re-pointed, the unknown account archived at zero |
+| why not only one of them | fill in a registered number — [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) refuses it · register new, then transfer — one row summing every withdrawal, dated the day it was fixed, beside a statement that lists each on its own day |
+| later withdrawals | follow the shop's row — to the real account either way |
+| the one exception | provider and number are fixed on every account — except `unknown`, filled in once |
+| ⚠ my spec — the real account | the unknown one's own team's, active, not `unknown` |
+
+## a-restock-must-name-the-account-that-paid
+
+> In chat *(owner, 2026-09-30)* — *"for q2 follow recomend but its not optional"*, and asked which part was not
+> optional: *"Both"* — the restock's account and the expense's. [Q2](./context_clarify.md#question) as recommended,
+> with the account **required** — against the recommendation's *not paid yet*.
+
+**The verdict.** Every restock names, when it is created, the operational account that paid for it — there is no
+*not paid yet*. Inventory publishes the payment, and this service posts it.
+
+```mermaid
+flowchart LR
+  CS["a CS raises a restock"] -->|"Paid from — required, an operational account"| R["inventory — the restock"]
+  R -->|"a restock event — the account, the change"| B["message broker"]
+  B --> A["that account — − restock"]
+  R -.->|"an edit — the difference · a cancel, money back — a refund"| B
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| which account | **required** at create — one of the team's operational accounts ([operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations)), pre-filled when there is only one · replaces `payment_type` on new restocks |
+| how much | goods plus shipping, from the restock's own lines — no separate *amount paid* |
+| when | at create — the money left when the restock was raised |
+| an edit | posts the difference, never the whole again |
+| a cancel | asks *did the money come back?* — yes posts a refund into the account that paid, no posts nothing |
+| the courier's ask | the warehouse's cost line names the warehouse's own operational account — usually its cash box · ⚠ my reading: required too, as *not optional* covers the whole of Q2 |
+| restocks already made | keep their `payment_type` — nothing posts back |
+| the account | the restock team's own, active, operational |
+| the event | new — inventory publishes nothing today · it carries the account and the change, never the restock's total |
+| ⚠ my spec — no operational account | the form cannot be sent, and says *ask an admin to mark an operational account* — marking one is admin and up |
+| ⚠ launch | every team starts with no account — its accounts and one operational mark are set up before the field ships, or no restock can be raised |
+
+### What *required* costs — recorded, not re-argued
+
+A restock bought on credit — the supplier paid days later — is recorded as paid the day it is raised: the account
+drops before the bank does, and a reconcile in between finds the gap. The gain: no restock is ever left with its
+payment unrecorded.
+
+## an-expense-must-name-the-account-that-paid
+
+> In chat *(owner, 2026-09-30)* — the same answer's *"Both"*: [Q3](./context_clarify.md#question) as recommended,
+> with *Paid from* **required** — against the recommendation's *optionally*.
+
+**The verdict.** Every expense a person types names the account it was paid from. Expense publishes it, this service
+posts it, and a void reverses it.
+
+```mermaid
+flowchart LR
+  M["a manager types an expense"] -->|"Paid from — required"| E["expense_service — the record"]
+  E -->|"an expense event — the account, the amount"| B["message broker"]
+  B --> A["that account — − expense"]
+  E -.->|"a void — the reversal"| B
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| which account | **required** — one of the team's operational accounts, the list a restock picks from |
+| the kinds a person types | `ADS`, `PAYROLL`, `OPERATIONAL`, `OTHER` — each names an account |
+| `STOCK_LOSS` | ⚠ my reading: outside the rule — inventory posts it, no person types it, and it moves no cash: goods written off at their cost |
+| an ads charge the platform took from the seller balance | open — [Q13](./context_clarify.md#question): no bank moved, and settlement already records it |
+| a void | publishes the reversal — the account gets its money back |
+| the event | new — expense publishes nothing today |
+| ⚠ my spec — expenses already made | nothing posts back — each account's opening balance already holds the past |
+| ⚠ my spec — no operational account | the form cannot be sent — as for a restock |
+
+### What *required* costs — recorded, not re-argued
+
+An expense cannot be recorded until someone knows which account paid it — a receipt with no account waits. The gain:
+every expense typed is in a balance, so a reconcile finds only what was never typed.

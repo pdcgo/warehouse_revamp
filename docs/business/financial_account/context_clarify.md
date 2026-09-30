@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat | Q12 — an unknown account is filled in or moved in: [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in) · Q2 and Q3 — every restock and every expense **must** name the account that paid: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) · [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · the account required, against my *optional* · 🆕 [Q13](#question) — an ads charge the platform took from the seller balance |
 | ✅ answered in chat, and your lines 57, 67 | Q11 — a shop with no row gets an account typed `unknown`: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) · against my recommendation, and better than it · 🆕 [Q12](#question) — how an unknown account becomes the real one · ⛔ it sharpens the [shop key](#a-table-that-must-decide-one-account-allows-several) · lines below 56 moved down 1–2 |
 | ✅ your two new tables | `shop_accounts` — [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into) (Q1, as recommended) · `operational_accounts` — [operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations) (Q2's *which account*) · 🆕 [Q11](#question) — a shop with no row · ⛔ both keys allow several accounts where they must decide one — [Contradiction](#a-table-that-must-decide-one-account-allows-several) |
 | ✅ your list | `revenue_fund` is `withdrawal` — revenue stays in settlement: [revenue-stays-in-settlement](./context_decision.md#revenue-stays-in-settlement) · the name against my recommendation · [Q1](#question) narrows to where a withdrawal lands |
@@ -27,18 +28,18 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Four questions open, six critiques, two contradictions.**
+already touch a bank without naming one. **Two questions open, six critiques, two contradictions.**
 
 ## What already moves money
 
 | your doc | already in the build | on the broker | |
 | --- | --- | --- | --- |
 | a team's *Bank Account* | `team_infos.bank_type` · `bank_owner_name` · `bank_account_number` — **one** bank per team, on the team detail, so other teams know where to pay | — | [Q9](#question) |
-| *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | [Q2](#question) |
-| `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | [Q3](#question) |
+| *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
+| `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · [Q13](#question) |
 | `withdrawal` — was `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
 | — | `liability_payments` — one team paying another, recorded then confirmed; the money moves *"by bank outside this system"* | ❌ nothing published | ✅ [a type](./context_decision.md#opening-transfer-and-team-payment-join-the-types) |
-| *Cash* | nothing — the courier's ask is a `restock_cost_lines` row the warehouse pays at the door, from no account | ❌ | [Q2](#question) |
+| *Cash* | nothing — the courier's ask is a `restock_cost_lines` row the warehouse pays at the door, from no account | ❌ | ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
 
 ✅ **Two boundaries already hold, and your doc keeps both.** The team balance is *"not a wallet — no cash, no bank
 account"* ([balance-manages-reports-and-takes-payments](../balance/context_decision.md#balance-manages-reports-and-takes-payments)),
@@ -80,14 +81,14 @@ flowchart LR
 ([a-row-comes-by-hand-or-from-the-broker](./context_decision.md#a-row-comes-by-hand-or-from-the-broker)) and which
 way each type takes ([one-way-in-per-type](./context_decision.md#one-way-in-per-type)). What is left of it is small:
 every row **names its cause** — `source_id` and `reversal` ([critique 1](#critique)) — and each publisher carries the
-account it names ([Q2](#question), [Q3](#question)).
+account it names — required: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid), [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid).
 
 🔄 **Build order**, settlement already publishing: **1.** accounts and the hand path · **2.** withdrawal — only the
 listener is new · **3.** restock · **4.** expense · **5.** team payment — each of these needs its own event first.
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 **Answer first:** the two [contradictions](#contradiction) — the log's missing account and the shop key. Both are edits
-in your doc, and the account screens' contract waits on them. Then [Q12](#question), [Q2](#question), [Q3](#question) and
+in your doc, and the account screens' contract waits on them. Then [Q13](#question) and
 [Q9](#question).
 
 ## Proposed Design
@@ -107,8 +108,8 @@ in your doc, and the account screens' contract waits on them. Then [Q12](#questi
 | --- | --- | --- | --- |
 | `opening_balance` ✅ | in | ✅ by hand only — creating the account | once |
 | `withdrawal` ✅ | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account — ✅ an `unknown` one made for it when the shop has none | [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into) · [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) |
-| `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid | created · an edit posts the difference · a refund on cancel — [Q2](#question) |
-| `expense` | out | ✅ broker only — 🆕 an expense event, when the expense names an account | created · a void reverses it — [Q3](#question) |
+| `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid, always | created · an edit posts the difference · a refund on cancel — ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
+| `expense` | out | ✅ broker only — 🆕 an expense event — every expense a person types names one | created · a void reverses it — ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) |
 | `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
 | `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — 🆕 a payment event | the creditor confirms · a reversal reverses both |
 | `capital` ✅ | in or out | ✅ by hand only — the business owner's own money | when typed |
@@ -163,7 +164,7 @@ stateDiagram-v2
 | its rows, and the causes they link to | ✅ | ✅ |
 
 🆕 An `unknown` account ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one))
-is `active` — `unknown` is a type, not a status — and stops being unknown only as [Q12](#question) settles.
+is `active` — `unknown` is a type, not a status — and stops being unknown as [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in) says.
 
 ### Reconcile
 
@@ -200,7 +201,7 @@ sequenceDiagram
 | `FinancialAccountByIds` | anyone reading a row that names an account | guideline ByIds · `GENERAL` — a restock names *which* account paid, never what is left in it |
 | `FinancialAccountCreate` | admin and up | name, provider, number, holder, description, opening balance → posts `opening_balance` · refused when the number is already registered ([a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once)) |
 | `FinancialAccountUpdate` | admin and up | name, holder, description — provider and number are fixed: another number is another account |
-| `FinancialAccountIdentify` 🆕 | admin and up | an `unknown` account → filled in as a new real one, or moved into one already registered ([Q12](#question)) |
+| `FinancialAccountIdentify` 🆕 | admin and up | an `unknown` account → filled in as a new real one, or moved into one already registered — ✅ [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in) |
 | `FinancialAccountArchive` · `FinancialAccountRestore` | admin and up | archive refused unless the balance is zero |
 | `FinancialAccountTransfer` | admin and up | from, to, amount, date, note → two legs sharing a `group_id` |
 | `FinancialAccountCapital` | admin and up | in or out, amount, date, note ([capital-joins-the-types](./context_decision.md#capital-joins-the-types)) |
@@ -217,7 +218,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account — a shop with none gets an `unknown` one first — the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
 | a restock topic | 🆕 inventory publishes | `restock` — the account that paid, and the change |
-| an expense topic | 🆕 expense publishes | `expense` — only when the expense names an account |
+| an expense topic | 🆕 expense publishes | `expense` — every expense a person types · an ads charge from the seller balance is [Q13](#question) |
 | a payment topic | 🆕 liability publishes | `team_payment` — both legs on confirm, reversed on a reversal |
 
 ### The data
@@ -293,10 +294,10 @@ erDiagram
 
 | where | what |
 | --- | --- |
-| `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash, unknown · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) · an `unknown` account warned *bank not named*, with **Which account is this?** ([Q12](#question)) |
+| `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash, unknown · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) · an `unknown` account warned *bank not named*, with **Which account is this?** ([an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in)) |
 | `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row links to its cause · Transfer · Reconcile |
-| the restock form | *Paid from* — `FinancialAccountSelect` over the team's operational accounts, replacing `PaymentTypeSelect` ([Q2](#question)) |
-| the expense form | *Paid from*, optional ([Q3](#question)) |
+| the restock form | *Paid from* — `FinancialAccountSelect` over the team's operational accounts, replacing `PaymentTypeSelect` — **required** ([a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid)) · no operational account: the form cannot be sent |
+| the expense form | *Paid from*, **required** ([an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid)) · *Marketplace balance* on `ADS` ([Q13](#question)) |
 | a team payment | *Paid from* on record · *Received into* on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) |
 | the shop detail | *Withdraws into* — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) · *Unknown — not named yet* after a withdrawal found none ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one)) |
 | `/financial-accounts` | mark an account *operational* ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) |
@@ -312,32 +313,12 @@ balance — a person picking *which account paid* is recording a fact, and the b
    allows a shop two accounts — [Contradiction](#a-table-that-must-decide-one-account-allows-several) · a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one). Kept as a line so
    the numbers hold.
 
-2. 🔄 **Which account paid a restock, how much, and when?** *(line 95)*
-   ✅ It comes only from the broker — [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand).
-   What inventory publishes is what this asks — seven parts, one recommendation each:
+2. ✅ **Answered 2026-09-30 — every restock names, at create, the operational account that paid**, as recommended
+   but required — no *not paid yet*: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid). Kept as a line so the numbers hold.
 
-   | | **→ Recommend** | instead | why not |
-   | --- | --- | --- | --- |
-   | which account | ✅ one of the team's operational accounts ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) — the restock's *Paid from* picks it, pre-filled when there is only one, replacing `payment_type` | the table alone, no picker | a team paying from ShopeePay and from BCA could not say which one paid |
-   | how much | goods plus shipping, from the restock's own lines | a separate *amount paid* | a second number that can disagree with the lines — and the lines are what the stock's unit cost is built from, so a voucher belongs in them |
-   | when | when the restock names its account — at create if it is paid, later if not; *not paid yet* stays selectable | when the warehouse accepts | the money left days before the goods arrived — the account would disagree with the bank until then |
-   | an edit | posts the difference | post the whole again | a second full row — the payment counted twice |
-   | a cancel | asks *did the money come back?* — yes posts a refund into the account that paid | refund on every cancel | a supplier that keeps the money would show a refund that never came |
-   | the courier's ask | the warehouse's cost line names the account it paid from — usually its cash box | nothing | the cash box drifts by every tip paid at the door |
-   | restocks already made | keep their `payment_type`; nothing posts back | back-post them | a guess about which account paid months ago — and each account's opening balance already holds the past |
-
-   The account must be the restock team's own, and active. It also supplies what
-   [purchasing-is-the-restock-document](../../technical/architecture/context_clarify.md#purchasing-is-the-restock-document)
-   found missing: a cash account and a payment moment. ⚠ Inventory publishes nothing today — the event is new, and it
-   carries the change, never the restock's total.
-
-3. 🔄 **Narrowed — does an expense name the account it was paid from?** *(line 92)*
-   ✅ It is typed in `expense_service`, never here — [one-way-in-per-type](./context_decision.md#one-way-in-per-type).
-   **→ Recommend yes, optionally: a *paid from* account on the expense form.** Expense publishes the expense and the
-   account hears it; a void publishes the reversal. An expense naming no account moves none — and two kinds must
-   name none: `STOCK_LOSS` (goods written off, no cash moved) and an ads charge the platform took from the seller
-   balance (that is a settlement row). The picker offers the team's operational accounts — the list a restock picks
-   from ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)). ⚠ Expense publishes nothing today — the event is new.
+3. ✅ **Answered 2026-09-30 — every expense a person types names the account that paid**, required rather than
+   optional: [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · an ads charge taken from the seller balance is [Q13](#question). Kept as a line so the
+   numbers hold.
 
 4. ✅ **Answered 2026-09-29 — all four types joined, and an adjustment is only a reconcile's difference**, as
    recommended: [opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types) ·
@@ -379,23 +360,25 @@ balance — a person picking *which account paid* is recording a fact, and the b
     [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one).
     Kept as a line so the numbers hold.
 
-12. 🆕 **How does an `unknown` account become the real one?** *(lines 57, 67)*
-    **→ Recommend one action — *Which account is this?* — with two outcomes**, chosen by whether the real account is
-    already registered:
+12. ✅ **Answered 2026-09-30 — an unknown account is filled in, or moved into the real one**, as recommended:
+    [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in). Kept as a line so the numbers hold.
 
-    | the real account | **→ Recommend** | instead | why not |
-    | --- | --- | --- | --- |
-    | not registered yet | **fill it in** — provider, number, holder and name, set once on the unknown account · its rows stay | register it new, then transfer | the new account gets one row summing every withdrawal, dated the day it was fixed — the bank statement lists each on its own day |
-    | already registered | **move it in** — its balance transfers into the real one, the shop's row re-points, the unknown account archives at zero, in one act | fill it in | the same bank registered twice — [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once) refuses it |
+13. 🆕 **An ads charge the platform took from the seller balance — what does its required *Paid from* say?**
+    *(from [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid))* No bank moved — the marketplace deducted it from the seller balance, and settlement
+    already records that. Naming a bank would move a balance that never moved.
+    **→ Recommend: one more choice in the picker, *Marketplace balance*, offered on `ADS` only** — still required, so
+    nobody skips it, and it posts nothing here.
 
-    Either way later withdrawals follow the shop's row. Filling in is the one exception to *provider and number are
-    fixed* — from `unknown` only, once.
+    | instead | why not |
+    | --- | --- |
+    | not typed as an expense at all | the ads spend report misses it — `ADS` exists so *ads spend last month* has an answer |
+    | name a bank account anyway | the bank drops by money that never left it — the next reconcile finds a gap that is not there |
 
     ```mermaid
     flowchart LR
-      U["Unknown — shop 7, Rp 4.200.000"] --> Q{"is the real bank registered?"}
-      Q -->|"no"| F["fill it in — it becomes BCA 123, its rows stay"]
-      Q -->|"yes, BCA 123"| M["transfer into BCA 123, re-point shop 7, archive the unknown"]
+      A["an ADS expense"] --> Q{"Paid from"}
+      Q -->|"BCA — ads credit topped up from the bank"| B["BCA — − expense"]
+      Q -->|"Marketplace balance — the platform deducted it"| N["nothing posts here — settlement has it"]
     ```
 
 # Contradiction
@@ -442,7 +425,7 @@ pays a restock — the table alone cannot say which.
 it sharper: two withdrawals from one new shop arriving in the same second would each create an `unknown` account, and
 the composite key lets both rows in — `shop_id` alone refuses the second, and it posts into the first.
 The operational key *(line 30)* is right — ShopeePay and BCA both paying restocks is ordinary — because the restock
-itself can say which one paid ([Q2](#question)).
+itself names which one paid ([a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid)).
 
 **→ Recommend:** `shop_id` unique in `shop_accounts` — one account per shop; a shop that changes bank edits its
 row. Keep `operational_accounts` as it is. What stops it recurring: a mapping table says which side is *one* — *a
@@ -455,7 +438,7 @@ flowchart TB
   WQ -->|"cannot decide"| GUESS["a guess"]
   O1["operational — ShopeePay"] --> RQ{"a restock"}
   O2["operational — BCA"] --> RQ
-  RQ -->|"the restock says which paid, Q2"| OK["decided"]
+  RQ -->|"the restock names which paid, required"| OK["decided"]
 ```
 
 ✅ **Closed — *account_number is unique, and a cash box has none*** (line 45 against lines 56 and 62): the rule now
