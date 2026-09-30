@@ -39,10 +39,7 @@ erDiagram
         bigint      return_warehouse_id "nullable opaque cross-service id"
         bigint      return_user_id      "nullable opaque cross-service id"
         bigint      default_warehouse_id "nullable, the warehouse a SELLING team ships from by default (#145)"
-        text        contact_number
-        text        bank_type
-        text        bank_owner_name
-        text        bank_account_number
+        text        contact_number "no bank — dropped by 00008, a team's bank is a financial account"
         timestamptz created_at
         timestamptz updated_at
     }

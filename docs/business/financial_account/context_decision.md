@@ -9,7 +9,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [the-accounts-are-one-ledger](#the-accounts-are-one-ledger) | `financial_accounts` is the ledger's state and `financial_account_logs` its log — the ledger template applies | owner | ⛔ the log has no account, so its grain is not the state's — [Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains) |
 | [a-row-comes-by-hand-or-from-the-broker](#a-row-comes-by-hand-or-from-the-broker) | two ways in: a person types a row, or the service hears an event another service published | owner | [Q10](./context_clarify.md#question) — which type takes which way |
 | [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | ✅ what moves it: a restock ([a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid)), a top-up ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types)) |
-| [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ⚠ [Q9](./context_clarify.md#question) — a number two teams typed into `team_infos` |
+| [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ✅ moot — the `team_infos` numbers were dropped, not copied: [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) |
 | [below-zero-is-warned-never-refused](#below-zero-is-warned-never-refused) | a row that takes an account below zero posts, whichever way it came in, and the account shows a warning until it is back | owner | — |
 | [opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types) | `opening_balance`, `transfer` and `team_payment` are types of their own — none of them is typed as an `adjustment` | owner | [Q10](./context_clarify.md#question) — which way each comes in |
 | [capital-joins-the-types](#capital-joins-the-types) | `capital` is a type of its own — the business owner's money, put in or taken out, never read as revenue, an expense or an adjustment | owner | ✅ who types it: [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) |
@@ -21,6 +21,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ✅ one account per shop: [a-shop-has-one-account](#a-shop-has-one-account) · ✅ a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) |
 | [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | ✅ which one paid a given restock: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
 | [a-shop-has-one-account](#a-shop-has-one-account) | a shop names one account — `shop_id` is unique in `shop_accounts` · an account may take many shops | owner | — |
+| [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) | `team_infos` holds no bank — its three bank columns are dropped, not copied, and a team's bank lives only as a financial account | owner | [Q9](./context_clarify.md#question) — where a team is paid |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -751,3 +752,35 @@ flowchart LR
 | one account, many shops | allowed — one BCA may take every shop's withdrawals |
 | two withdrawals from a new shop at once | the second one's `shop_accounts` insert is refused ([a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one)) · ⚠ my spec: its transaction rolls back whole — no orphan `unknown` account — and the retry finds the first one's row and posts there |
 | `operational_accounts` | unchanged — several per team ([operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations)) |
+
+## the-team-record-holds-no-bank
+
+> In chat *(owner, 2026-09-30)* — *"remove bank info like bank_type, bank_owner_name, bank_account number in team
+> info"*, then, asked whether to keep the stored numbers until this service could copy them: *"Drop now"*. Two parts
+> of [Q9](./context_clarify.md#question) — whether a team's bank is an account, and what happens to the three fields.
+
+**The verdict.** `team_infos` holds **no bank**. Its three bank columns are dropped — not copied — and the only place
+a team's bank lives is a financial account.
+
+```mermaid
+flowchart LR
+  subgraph "team_infos — after 00008"
+    C["contact_number · return warehouse · default warehouse"]
+  end
+  subgraph "financial accounts"
+    A["BCA 123 — the team's bank, typed once"]
+  end
+  X["bank_type · bank_owner_name · bank_account_number"] -->|"dropped, not copied"| G["gone"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the columns | `bank_type`, `bank_owner_name`, `bank_account_number` dropped — `team_service` migration `00008_drop_team_bank` |
+| the contract | `TeamInfo` and `TeamInfoUpdateRequest` reserve fields 3–5 and their names |
+| the screens | the team detail's section and the row menu read *Contact* · the dialog edits the contact number only |
+| a number stored before | gone — a team enters it again as a financial account · the copy Q9 proposed does not happen, so its collision ripple of [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) is moot |
+| ⚠ my reading — is it an account | yes, by elimination: a team's bank has no other home now |
+| ⚠ until this service ships | no screen shows where a team is paid — a payer in balance's Payment Flow asks the creditor |
+| still open | where a team is paid, who sees it, where it shows — [Q9](./context_clarify.md#question) |

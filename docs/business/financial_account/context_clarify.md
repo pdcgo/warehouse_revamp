@@ -7,7 +7,8 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| 🔄 elaborated | [Q9](#question) — five parts: is it an account · where *where we are paid* lives · who sees it · where it shows · what happens to the three fields |
+| ✅ answered in chat | two parts of Q9 — the team record holds no bank: its three columns are **dropped**, not copied (built: `team_service` `00008`): [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank) · [Q9](#question) narrows to where a team is paid |
+| 🔄 elaborated | Q9 — five parts: is it an account · where *where we are paid* lives · who sees it · where it shows · what happens to the three fields |
 | ✅ your line 19 | `shop_id` is unique — a shop names one account: [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) · ⛔ the [shop-key contradiction](#a-table-that-must-decide-one-account-allows-several) closes, as recommended · *Smallest Grain Reports* removed from line 110's section |
 | ✅ answered in chat, and your line 93 | Q13 — settlement's ads and the accounts are independent, nothing syncs: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) · `ads_expense` joins the types: [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) · lines below 92 moved down 1 |
 | 🔄 elaborated | Q13 — my *Marketplace balance* choice withdrawn: it counted a withheld ad in settlement and in expense, which [withheld-is-not-spent](../settlement/context_clarify.md#withheld-is-not-spent) rules out · now: a withheld ad is never an expense |
@@ -38,7 +39,7 @@ already touch a bank without naming one. **One question open, six critiques, one
 
 | your doc | already in the build | on the broker | |
 | --- | --- | --- | --- |
-| a team's *Bank Account* | `team_infos.bank_type` · `bank_owner_name` · `bank_account_number` — **one** bank per team, on the team detail, so other teams know where to pay | — | [Q9](#question) |
+| a team's *Bank Account* | ✅ none — `team_infos`' three bank columns were dropped 2026-09-30, so a team's bank lives only here | — | [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank) · [Q9](#question) |
 | *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
 | `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) |
 | `withdrawal` — was `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
@@ -305,7 +306,7 @@ erDiagram
 | a team payment | *Paid from* on record · *Received into* on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) |
 | the shop detail | *Withdraws into* — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) · *Unknown — not named yet* after a withdrawal found none ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one)) |
 | `/financial-accounts` | mark an account *operational* ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) |
-| the team detail | *Where we are paid* replaces the three bank fields ([Q9](#question)) |
+| the team detail | *Where we are paid* ([Q9](#question)) — the three bank fields are already gone ([the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank)) |
 
 `FinancialAccountSelect` is one picker in `components/pickers/`, with its story. It names the account and shows no
 balance — a person picking *which account paid* is recording a fact, and the balance is on the accounts page.
@@ -346,37 +347,26 @@ balance — a person picking *which account paid* is recording a fact, and the b
    against my recommendation: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up).
    Kept as a line so the numbers hold.
 
-9. 🔄 **Is the bank on the team record one of the team's financial accounts?**
-   Today `team_infos` holds **one** bank per team — `bank_type` (free text), `bank_owner_name`,
-   `bank_account_number` — edited in *contact & bank*, and shown by `TeamDetail` to anyone signed in, so another
-   team knows where to pay. The same bank is about to be typed again as a financial account. Five parts, one
-   recommendation each:
+9. 🔄 **Narrowed — where is a team paid, and how does a payer find it?**
+   ✅ The team record holds no bank — dropped, not copied, and a team's bank is only a financial account: [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank).
+   Until something marks *where we are paid*, no screen tells a payer in balance's Payment Flow where to transfer.
+   Three parts left, one recommendation each:
 
    | | **→ Recommend** | instead | why not |
    | --- | --- | --- | --- |
-   | is it an account | **yes** — the bank a team is paid into is one of its financial accounts | keep both | one bank typed twice — the day one is edited, a payer transfers to the other number |
-   | which one is *where we are paid* | a `payee_accounts` row, one per team — the shape of your `shop_accounts` | a `payee_account_id` on `team_infos` | team_service holding an id into another service's table, and a team detail that needs both services to show one number |
-   | who sees it | anyone signed in, as `TeamDetail` today — its name, number and holder, **never its balance** | only teams it has a debt with | a payer finds out where to pay before the debt is on screen · the number is already this open today |
+   | which one is *where we are paid* | a `payee_accounts` row, one per team — the shape of your `shop_accounts` | a flag on `financial_accounts` | a flag lets two accounts claim it — the table's key says *one* |
+   | who sees it | anyone signed in, as the team detail was — its name, number and holder, **never its balance** | only teams it has a debt with | a payer finds out where to pay before the debt is on screen |
    | where it shows | the team detail's *Where we are paid* · the payment form's *Pay to* · *Received into* pre-filled on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) | the team detail only | the payer copies a number from another screen — the step that sends money to a stale one |
-   | the three fields | copied into an account once, then retired: `account_type` read from the free text — *BCA*, *bank bca* → `bca`, anything else `unknown` · the holder kept · the balance **not set** until an admin types it, which posts `opening_balance` | copied at zero | a balance of 0 that is not true, on day one |
 
-   ⚠ **Ripple of [a-real-account-is-recorded-once](./context_decision.md#a-real-account-is-recorded-once):** those fields took any number, so one bank can sit in two teams today — the copy takes it
-   once, and lists the rest for a person to settle. A team with no payee account can still record a payment — the
-   form says *this team has not named where it is paid*.
+   A team with no payee account can still record a payment — the form says *this team has not named where it is
+   paid*.
 
    ```mermaid
    flowchart LR
-     subgraph "today — one bank, typed twice"
-       TI["team_infos — BCA 123"] --> TD["team detail — contact and bank"]
-       FA1["financial_accounts — BCA 123"]
-       TI -.-|"the same bank"| FA1
-     end
-     subgraph "proposed — typed once"
-       FA2["financial_accounts — BCA 123"] --> PA["payee_accounts — the team's one"]
-       PA --> TD2["team detail — Where we are paid"]
-       PA --> PF["payment form — Pay to"]
-       PA --> CF["confirm — Received into, pre-filled"]
-     end
+     FA["financial_accounts — BCA 123"] --> PA["payee_accounts — the team's one"]
+     PA --> TD["team detail — Where we are paid"]
+     PA --> PF["payment form — Pay to"]
+     PA --> CF["confirm — Received into, pre-filled"]
    ```
 
 10. ✅ **Answered 2026-09-29 — every type has one way in**, as recommended:

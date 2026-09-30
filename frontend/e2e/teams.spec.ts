@@ -56,23 +56,20 @@ test("EditTeam: rename sticks; type and code are untouched", async ({ page }) =>
   await expect(row).toContainText(CODE);
 });
 
-test("TeamInfo: bank details round-trip", async ({ page }) => {
+test("TeamInfo: the contact round-trips", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
   await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`info-team-${CODE}`).click();
   await page.getByTestId("info-contact").fill("0812-0000");
-  await page.getByTestId("info-bank-owner").fill("E2E Holder");
-  await page.getByTestId("info-bank-account").fill("999888777");
   await page.getByTestId("submit-team-info").click();
   await expect(page.getByTestId("submit-team-info")).toBeHidden();
 
-  // Reopen: the values must have persisted (TeamDetail returns them).
+  // Reopen: the value must have persisted (TeamDetail returns it).
   await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`info-team-${CODE}`).click();
-  await expect(page.getByTestId("info-bank-owner")).toHaveValue("E2E Holder");
-  await expect(page.getByTestId("info-bank-account")).toHaveValue("999888777");
+  await expect(page.getByTestId("info-contact")).toHaveValue("0812-0000");
 });
 
 test("TeamDetail: the dedicated detail page shows the team and its members", async ({ page }) => {

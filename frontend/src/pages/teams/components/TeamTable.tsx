@@ -11,7 +11,7 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Eye, Landmark, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Phone, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
 import type { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
@@ -152,8 +152,8 @@ export function TeamTable({
                                 data-testid={`info-team-${team.teamCode}`}
                                 onClick={() => setDialog({ kind: "info", team })}
                               >
-                                <Icon as={Landmark} boxSize="4" />
-                                {t("teams.contactBank")}
+                                <Icon as={Phone} boxSize="4" />
+                                {t("teams.contactInfo")}
                               </Menu.Item>
 
                               {admin && (
