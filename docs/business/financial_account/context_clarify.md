@@ -378,7 +378,7 @@ balance — a person picking *which account paid* is recording a fact, and the b
      F->>F: team_payment — out of BCA A, into BCA 123
    ```
 
-   And four cases the walk-through does not show, one recommendation each:
+   And five cases the walk-through does not show, one recommendation each:
 
    | case | **→ Recommend** | why |
    | --- | --- | --- |
