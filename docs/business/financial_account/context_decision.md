@@ -6,7 +6,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 
 | decision | what it decided | from | still open |
 | --- | --- | --- | --- |
-| [the-accounts-are-one-ledger](#the-accounts-are-one-ledger) | `financial_accounts` is the ledger's state and `financial_account_logs` its log — the ledger template applies | owner | ⛔ the log has no account, so its grain is not the state's — [Contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains) |
+| [the-accounts-are-one-ledger](#the-accounts-are-one-ledger) | `financial_accounts` is the ledger's state and `financial_account_logs` its log — the ledger template applies | owner | ✅ the log names its account: [every-log-row-names-its-account](#every-log-row-names-its-account) |
 | [a-row-comes-by-hand-or-from-the-broker](#a-row-comes-by-hand-or-from-the-broker) | two ways in: a person types a row, or the service hears an event another service published | owner | [Q10](./context_clarify.md#question) — which type takes which way |
 | [shopeepay-is-the-wallet-a-team-pays-with](#shopeepay-is-the-wallet-a-team-pays-with) | `shopeepay` is the e-wallet a team pays suppliers with — never the Shopee seller balance, which stays out of scope | owner | ✅ what moves it: a restock ([a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid)), a top-up ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types)) |
 | [a-real-account-is-recorded-once](#a-real-account-is-recorded-once) | a provider and its number are unique across all teams — one real account, one row, one team · a cash box is exempt | owner | ✅ moot — the `team_infos` numbers were dropped, not copied: [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) |
@@ -22,6 +22,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | ✅ which one paid a given restock: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
 | [a-shop-has-one-account](#a-shop-has-one-account) | a shop names one account — `shop_id` is unique in `shop_accounts` · an account may take many shops | owner | — |
 | [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) | `team_infos` holds no bank — its three bank columns are dropped, not copied, and a team's bank lives only as a financial account | owner | [Q9](./context_clarify.md#question) — where a team is paid |
+| [every-log-row-names-its-account](#every-log-row-names-its-account) | every log row carries `account_id` — the state and the log share one scope, the account | owner | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -784,3 +785,29 @@ flowchart LR
 | ⚠ my reading — is it an account | yes, by elimination: a team's bank has no other home now |
 | ⚠ until this service ships | no screen shows where a team is paid — a payer in balance's Payment Flow asks the creditor |
 | still open | where a team is paid, who sees it, where it shows — [Q9](./context_clarify.md#question) |
+
+## every-log-row-names-its-account
+
+> `context.md` §Table that Named `financial_account_logs` *(owner, 2026-09-30)* — `account_id` added *(line 82)*.
+> The [contradiction](./context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains) resolved as
+> recommended.
+
+**The verdict.** Every log row names the **account** it moved — the ledger's state and its log now share one scope,
+the account, as [the-accounts-are-one-ledger](#the-accounts-are-one-ledger) needs.
+
+```mermaid
+flowchart LR
+  A1["BCA — balance 12.345.000"] --- L1["BCA's rows — balance_after runs for BCA alone"]
+  A2["Kas Gudang — balance 800.000"] --- L2["Kas Gudang's rows — its own running balance"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the column | `account_id` on every `financial_account_logs` row — the scope, a `financial_accounts.id` |
+| `balance_after` | one account's running balance — that account's previous row plus this `change` ([the-log-says-balance-after](#the-log-says-balance-after)) |
+| `team_id` | stays beside it — ⚠ my reading: a copy, so a team's rows read without a join |
+| a transfer, a team payment | two rows, one per account — each leg names its own ([opening-transfer-and-team-payment-join-the-types](#opening-transfer-and-team-payment-join-the-types)) |
+| ⚠ my spec — the read | an index on `(account_id, id)` — an account's page reads its rows newest first |
+| still missing from the log | the row behind it — critique 1 · the day the money moved — critique 7 |

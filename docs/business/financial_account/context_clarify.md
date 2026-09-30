@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ your line 82 | the log carries `account_id`: [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account) · ⛔ the [log contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains) closes, as recommended — **none left** · lines below 81 moved down 1 |
 | ✅ answered in chat | two parts of Q9 — the team record holds no bank: its three columns are **dropped**, not copied (built: `team_service` `00008`): [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank) · [Q9](#question) narrows to where a team is paid |
 | 🔄 elaborated | Q9 — five parts: is it an account · where *where we are paid* lives · who sees it · where it shows · what happens to the three fields |
 | ✅ your line 19 | `shop_id` is unique — a shop names one account: [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) · ⛔ the [shop-key contradiction](#a-table-that-must-decide-one-account-allows-several) closes, as recommended · *Smallest Grain Reports* removed from line 110's section |
@@ -33,7 +34,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **One question open, six critiques, one contradiction.**
+already touch a bank without naming one. **One question open, six critiques, no contradiction.**
 
 ## What already moves money
 
@@ -71,7 +72,7 @@ flowchart LR
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | 🔄 **A log row names no cause.** `description` *(line 85)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. Its missing **account** is now a [contradiction](#one-ledger-and-its-state-and-its-log-have-different-grains). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
+| **1** | 🔄 **A log row names no cause.** `description` *(line 86)* is text, so *why did BCA drop 2.000.000?* cannot open the restock behind it, and a correction has nothing to point at. ✅ Its **account** is there now — [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account). | `source_id` beside `change_type` — the settlement, restock, expense or payment row behind it — and `reversal`. On the broker path the cause is already in the event (`log_id` on `SettlementLogPosted`), so keeping it costs nothing. |
 | **2** | **`type` and `account_type` can disagree** *(lines 42–43)*. The provider decides the kind — `bca` is a bank, `shopeepay` a wallet — and `cash` sits in both lists. Two columns that must agree, and nothing making them: a `bank_account` whose provider is `shopeepay`. 🆕 `unknown` now sits in both lists too *(lines 57, 67)*. | The person picks the **provider**; the server derives the kind from one fixed table — `unknown` gives `unknown`, as `cash` gives `cash`. Rename `account_type` → `provider` — *type* and *account type* read as the same word. A new bank (Mandiri, BRI, SeaBank) is an append to the list, never free text: the provider is what will pick a bank-statement reader later, as the marketplace picks the settlement reader. |
 | **3** | **An account has no name and no holder.** A team with two BCA accounts tells them apart by ten digits in every picker. And the holder — *atas nama* — is what a payer checks before transferring; `team_infos.bank_owner_name` exists for exactly that. | `name` — required, unique in the team (*BCA Operasional*, *Kas Gudang*) — and `holder_name`. |
 | **4** | **An account opens with no row.** One registered with Rp 50.000.000 already in it either starts at 0 — wrong on day one — or sets `balance` with no log row, which the ledger your line 13 names forbids: *"cannot change the `State` without log recorded"*. | Creating an account posts its first row, `opening_balance`. |
@@ -92,8 +93,9 @@ account it names — required: [a-restock-must-name-the-account-that-paid](./con
 listener is new · **3.** restock · **4.** expense · **5.** team payment — each of these needs its own event first.
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-**Answer first:** the [contradiction](#contradiction) — the log's missing account. It is an edit in your doc, and the
-account screens' contract waits on it. Then [Q9](#question).
+✅ **Nothing in your doc blocks the account screens now** — the log names its account. Left: [Q9](#question), which
+shapes only the payee screens, and the log's last two gaps — its cause ([critique 1](#critique)) and its date
+([critique 7](#critique)).
 
 ## Proposed Design
 
@@ -251,7 +253,7 @@ erDiagram
   }
   financial_account_logs {
     bigint id PK
-    bigint account_id "NEW, the scope, the name your new tables use"
+    bigint account_id "yours, the scope"
     bigint team_id
     text change_type
     bigint source_id "NEW, the row that caused it, 0 when typed here"
@@ -389,30 +391,9 @@ balance — a person picking *which account paid* is recording a fact, and the b
 
 ## one ledger, and its state and its log have different grains
 
-> line 13 — *"for the ledger, we have `financial_accounts` and `financial_account_logs`"* · line 47 — `balance` on
-> each **account** row · lines 79–87 — the log carries `team_id` and **no account**.
-
-The template gives a ledger **one** scope, shared by its state and its log — *"scope is use smallest grain to track
-ledger balance"* ([mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) §Scope). Here the state's
-grain is the account and the log's is the team, so `balance_after` is a running total of every account the team
-holds — a number no bank shows — and one account's history cannot be read back out of it.
-
-**Which is wrong:** lines 79–87 — the log is missing its scope. Line 13 is right, and it is what makes the gap
-visible. 🆕 And your two new tables both carry `account_id` — the log, the one table that must, still does not.
-
-**→ Recommend:** `account_id` on every log row — the name your new tables already use; `team_id` stays as a copy.
-What stops it recurring: a ledger's field list starts with its scope — the template's ERD puts `scope` right after
-the id.
-
-```mermaid
-flowchart TB
-  L13["line 13 — the two tables are one ledger"] --> T["the template — one scope for the state and its log"]
-  S["line 47 — a balance per account"] --> T
-  G["lines 79 to 87 — a log row per team, no account"] --> T
-  T --> X["balance_after runs across every account the team holds"]
-  X --> Y["no bank statement matches it, and one account's history cannot be read"]
-  F["account_id on every log row"] -.->|"fixes"| X
-```
+✅ **Closed 2026-09-30, as recommended** — line 82 adds `account_id` to the log: [every-log-row-names-its-account](./context_decision.md#every-log-row-names-its-account). The state and the log share
+one scope, the account, so `balance_after` is one account's running balance again. Kept as a heading so the links
+to it hold.
 
 ## a-table-that-must-decide-one-account-allows-several
 
@@ -433,5 +414,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
-- 🆕 **§Financial Analytical Reports Design *(line 110)* is started** — a heading only now; *Smallest Grain Reports* was
+- 🆕 **§Financial Analytical Reports Design *(line 111)* is started** — a heading only now; *Smallest Grain Reports* was
   removed. No content yet. Read when it has some.

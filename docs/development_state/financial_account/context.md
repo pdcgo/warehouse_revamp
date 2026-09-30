@@ -3,7 +3,7 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **twenty-three owner decisions**. The
+[context_decision.md](../../business/financial_account/context_decision.md) — **twenty-four owner decisions**. The
 lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
@@ -11,6 +11,7 @@ lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no tec
 | decision | what it means for the build |
 | --- | --- |
 | [the-accounts-are-one-ledger](../../business/financial_account/context_decision.md#the-accounts-are-one-ledger) | `financial_accounts` is the state, `financial_account_logs` the log — no balance moves without a log row, in the same transaction |
+| [every-log-row-names-its-account](../../business/financial_account/context_decision.md#every-log-row-names-its-account) *(line 82)* | every log row carries `account_id` — `balance_after` runs per account · `team_id` stays as a copy (⚠ my reading) · an index on `(account_id, id)` (⚠ my spec) |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(account_type, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
@@ -52,19 +53,16 @@ Build order: accounts and the hand path → withdrawal (its event already exists
 each of the last three needing a new event variant first. Every row names its cause — `source_id` and `reversal`
 (critique 1).
 
-⛔ The owner's log table has no account column — now a recorded
-[contradiction](../../business/financial_account/context_clarify.md#one-ledger-and-its-state-and-its-log-have-different-grains)
-with the ledger line 13 names. The owner's log edits so far renamed `balance_after` and grew the type list; the
-account, the cause (critique 1) and the date the money moved (critique 7) are still missing. Do not build from it as
-written.
+✅ The owner's log carries `account_id` ([every-log-row-names-its-account](../../business/financial_account/context_decision.md#every-log-row-names-its-account)), so the ledger's state and log share one scope. Still
+missing from it: the cause (critique 1) and the date the money moved (critique 7) — proposals, not blockers.
 
 ## Open
 
-Q9 in the clarify. The account screens' own contract waits on one contradiction — an edit in the owner's
-doc: the log's missing `account_id`.
+Q9 in the clarify. Nothing in the owner's doc blocks the account screens' contract — no contradiction is
+open. Q9 shapes only the payee screens.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be
-`backend/services/financial_account_service/` (HARD RULE 2). Do not start the Storybook prototype until the
-owner's log carries its `account_id` — building the contract on my proposed column first would settle the
-contradiction unasked (HARD RULE 8).
+`backend/services/financial_account_service/` (HARD RULE 2). The Storybook prototype of the account screens is
+unblocked — the owner's log carries its `account_id`. Build the payee screens only after Q9, and mark critique 1's
+`source_id` and critique 7's `occurred_at` as proposals in any contract drawn before the owner adopts them (HARD RULE 8).
