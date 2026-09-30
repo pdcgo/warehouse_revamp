@@ -23,7 +23,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ⛔ one per shop needs the [shop key](./context_clarify.md#a-table-that-must-decide-one-account-allows-several) fixed |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
-| [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid) | every expense a person types names the account that paid it | owner, required against my recommendation | [Q13](./context_clarify.md#question) — an ads charge taken from the seller balance |
+| [an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid) | every expense a person types names the account that paid it | owner, required against my recommendation | ✅ an ads charge taken from the seller balance: [settlement-ads-and-accounts-are-independent](#settlement-ads-and-accounts-are-independent) |
+| [settlement-ads-and-accounts-are-independent](#settlement-ads-and-accounts-are-independent) | settlement's ads and a financial account never connect — an ad reaches an account only as an `ADS` expense naming the account that paid, and nothing syncs | owner | — |
+| [ads-expense-joins-the-types](#ads-expense-joins-the-types) | ads paid from an account post as `ads_expense`, a type of their own beside `expense` | owner | ⚠ my reading: from the expense event when its kind is `ADS` |
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 
 ## the-accounts-are-one-ledger
@@ -666,3 +668,57 @@ flowchart LR
 
 An expense cannot be recorded until someone knows which account paid it — a receipt with no account waits. The gain:
 every expense typed is in a balance, so a reconcile finds only what was never typed.
+
+## settlement-ads-and-accounts-are-independent
+
+> In chat *(owner, 2026-09-30)* — *"for q13, ads in settlement and financial its independent, no connection, so no
+> need sync it"*. [Q13](./context_clarify.md#question) — my *Marketplace balance* choice stays withdrawn.
+
+**The verdict.** An ad the platform withheld and an ad we paid for live in two books that **never connect**:
+settlement keeps its ads rows, a financial account keeps only the ads an `ADS` expense says an account paid — and
+nothing syncs, matches or copies between them.
+
+```mermaid
+flowchart LR
+  subgraph "settlement"
+    W["ads taken from the seller balance"] --> S["its ads row"]
+  end
+  subgraph "financial account"
+    T["an ADS expense — Paid from BCA"] --> A["BCA — ads_expense"]
+  end
+  S -.-|"no connection, no sync"| A
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| settlement's ads rows | never reach an account — the settlement listener posts only `withdrawal` rows ([revenue-stays-in-settlement](#revenue-stays-in-settlement)) |
+| an ad in a financial account | only through an `ADS` expense, *Paid from* the account that paid it ([an-expense-must-name-the-account-that-paid](#an-expense-must-name-the-account-that-paid)) — posted as `ads_expense` ([ads-expense-joins-the-types](#ads-expense-joins-the-types)) |
+| *Paid from* on `ADS` | required with no exception — no *Marketplace balance* choice |
+| between the two | nothing — no sync, no matching, no cross-check |
+| ⚠ my reading — an ad the platform withheld | is not typed as an `ADS` expense: typed, it would have to name an account that never paid it |
+| ⚠ my spec — the form | on `ADS`, a hint: *taken from the seller balance? It is already in settlement* — text only, no link between the books |
+
+## ads-expense-joins-the-types
+
+> `context.md` §What is `change_type` *(owner, 2026-09-30)* — `ads_expense` added *(line 93)*, beside `expense`.
+
+**The verdict.** Ads paid from an account are a type of their own, `ads_expense` — so an account's page and its
+totals say how much went on ads apart from every other expense.
+
+```mermaid
+flowchart LR
+  E["expense_service — an expense, Paid from BCA"] --> K{"its kind"}
+  K -->|"ADS"| AD["BCA — ads_expense"]
+  K -->|"PAYROLL, OPERATIONAL, OTHER"| EX["BCA — expense"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the type | `ads_expense` — out · a void reverses it |
+| ⚠ my reading — the way in | the broker only — the same expense event, when its kind is `ADS`: an ads expense is recorded in `expense_service`, and [one-way-in-per-type](#one-way-in-per-type) sends what another service records through the broker. Typed here as well, one ad would be in two places |
+| `expense` | now means every other kind a person types — `PAYROLL`, `OPERATIONAL`, `OTHER` |
+| settlement's ads | never — [settlement-ads-and-accounts-are-independent](#settlement-ads-and-accounts-are-independent) |

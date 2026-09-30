@@ -7,7 +7,8 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| 🔄 elaborated | [Q13](#question) — my *Marketplace balance* choice withdrawn: it counted a withheld ad in settlement and in expense, which [withheld-is-not-spent](../settlement/context_clarify.md#withheld-is-not-spent) rules out · now: a withheld ad is never an expense |
+| ✅ answered in chat, and your line 93 | Q13 — settlement's ads and the accounts are independent, nothing syncs: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) · `ads_expense` joins the types: [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) · lines below 92 moved down 1 |
+| 🔄 elaborated | Q13 — my *Marketplace balance* choice withdrawn: it counted a withheld ad in settlement and in expense, which [withheld-is-not-spent](../settlement/context_clarify.md#withheld-is-not-spent) rules out · now: a withheld ad is never an expense |
 | ✅ answered in chat | Q12 — an unknown account is filled in or moved in: [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in) · Q2 and Q3 — every restock and every expense **must** name the account that paid: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) · [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · the account required, against my *optional* · 🆕 [Q13](#question) — an ads charge the platform took from the seller balance |
 | ✅ answered in chat, and your lines 57, 67 | Q11 — a shop with no row gets an account typed `unknown`: [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) · against my recommendation, and better than it · 🆕 [Q12](#question) — how an unknown account becomes the real one · ⛔ it sharpens the [shop key](#a-table-that-must-decide-one-account-allows-several) · lines below 56 moved down 1–2 |
 | ✅ your two new tables | `shop_accounts` — [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into) (Q1, as recommended) · `operational_accounts` — [operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations) (Q2's *which account*) · 🆕 [Q11](#question) — a shop with no row · ⛔ both keys allow several accounts where they must decide one — [Contradiction](#a-table-that-must-decide-one-account-allows-several) |
@@ -29,7 +30,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Two questions open, six critiques, two contradictions.**
+already touch a bank without naming one. **One question open, six critiques, two contradictions.**
 
 ## What already moves money
 
@@ -37,7 +38,7 @@ already touch a bank without naming one. **Two questions open, six critiques, tw
 | --- | --- | --- | --- |
 | a team's *Bank Account* | `team_infos.bank_type` · `bank_owner_name` · `bank_account_number` — **one** bank per team, on the team detail, so other teams know where to pay | — | [Q9](#question) |
 | *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
-| `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · [Q13](#question) |
+| `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) |
 | `withdrawal` — was `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
 | — | `liability_payments` — one team paying another, recorded then confirmed; the money moves *"by bank outside this system"* | ❌ nothing published | ✅ [a type](./context_decision.md#opening-transfer-and-team-payment-join-the-types) |
 | *Cash* | nothing — the courier's ask is a `restock_cost_lines` row the warehouse pays at the door, from no account | ❌ | ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
@@ -89,8 +90,7 @@ listener is new · **3.** restock · **4.** expense · **5.** team payment — e
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 **Answer first:** the two [contradictions](#contradiction) — the log's missing account and the shop key. Both are edits
-in your doc, and the account screens' contract waits on them. Then [Q13](#question) and
-[Q9](#question).
+in your doc, and the account screens' contract waits on them. Then [Q9](#question).
 
 ## Proposed Design
 
@@ -110,7 +110,8 @@ in your doc, and the account screens' contract waits on them. Then [Q13](#questi
 | `opening_balance` ✅ | in | ✅ by hand only — creating the account | once |
 | `withdrawal` ✅ | in | ✅ broker only — a `withdrawal` row on `SettlementLogPosted`, into its shop's account — ✅ an `unknown` one made for it when the shop has none | [a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into) · [a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one) |
 | `restock` | out · in, for a refund | ✅ broker only — 🆕 a restock event naming the account that paid, always | created · an edit posts the difference · a refund on cancel — ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
-| `expense` | out | ✅ broker only — 🆕 an expense event — every expense a person types names one | created · a void reverses it — ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) |
+| `expense` | out | ✅ broker only — 🆕 an expense event — every kind a person types but `ADS` | created · a void reverses it — ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) |
+| `ads_expense` ✅ | out | ✅ broker only — the same expense event, when its kind is `ADS` — ⚠ my reading | created · a void reverses it — [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) |
 | `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
 | `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — 🆕 a payment event | the creditor confirms · a reversal reverses both |
 | `capital` ✅ | in or out | ✅ by hand only — the business owner's own money | when typed |
@@ -219,7 +220,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account — a shop with none gets an `unknown` one first — the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
 | a restock topic | 🆕 inventory publishes | `restock` — the account that paid, and the change |
-| an expense topic | 🆕 expense publishes | `expense` — every expense a person types · an ads charge from the seller balance is [Q13](#question) |
+| an expense topic | 🆕 expense publishes | `expense`, or `ads_expense` when its kind is `ADS` — every expense a person types · settlement's ads never, [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) |
 | a payment topic | 🆕 liability publishes | `team_payment` — both legs on confirm, reversed on a reversal |
 
 ### The data
@@ -298,7 +299,7 @@ erDiagram
 | `/financial-accounts` 🆕 | the team's accounts — name, provider, number, holder, balance, *last checked* · a warning on any account below zero ([below-zero-is-warned-never-refused](./context_decision.md#below-zero-is-warned-never-refused)) · a total per kind: bank, wallet, cash, unknown · **New account** · row menu: Transfer, Reconcile, Archive (a `ConfirmDialog`) · an `unknown` account warned *bank not named*, with **Which account is this?** ([an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in)) |
 | `/financial-accounts/:id` 🆕 | the balance — warned while below zero — and its rows, newest first, paginated; each row links to its cause · Transfer · Reconcile |
 | the restock form | *Paid from* — `FinancialAccountSelect` over the team's operational accounts, replacing `PaymentTypeSelect` — **required** ([a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid)) · no operational account: the form cannot be sent |
-| the expense form | *Paid from*, **required** ([an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid)) · on `ADS`, *taken from the seller balance? It is already in settlement* ([Q13](#question)) |
+| the expense form | *Paid from*, **required** ([an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid)) · on `ADS`, *taken from the seller balance? It is already in settlement* ([settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent)) |
 | a team payment | *Paid from* on record · *Received into* on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) |
 | the shop detail | *Withdraws into* — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) · *Unknown — not named yet* after a withdrawal found none ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one)) |
 | `/financial-accounts` | mark an account *operational* ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) |
@@ -318,7 +319,7 @@ balance — a person picking *which account paid* is recording a fact, and the b
    but required — no *not paid yet*: [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid). Kept as a line so the numbers hold.
 
 3. ✅ **Answered 2026-09-30 — every expense a person types names the account that paid**, required rather than
-   optional: [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · an ads charge taken from the seller balance is [Q13](#question). Kept as a line so the
+   optional: [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · an ads charge taken from the seller balance: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent). Kept as a line so the
    numbers hold.
 
 4. ✅ **Answered 2026-09-29 — all four types joined, and an adjustment is only a reconcile's difference**, as
@@ -364,42 +365,9 @@ balance — a person picking *which account paid* is recording a fact, and the b
 12. ✅ **Answered 2026-09-30 — an unknown account is filled in, or moved into the real one**, as recommended:
     [an-unknown-account-is-filled-in-or-moved-in](./context_decision.md#an-unknown-account-is-filled-in-or-moved-in). Kept as a line so the numbers hold.
 
-13. 🔄 **Is an ads charge the platform took from the seller balance ever an expense?**
-    *(from [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid))* An ad is paid one of two ways, and only one moves a
-    financial account:
-
-    | how the ad was paid | what moved | already recorded in |
-    | --- | --- | --- |
-    | ads credit topped up from BCA or ShopeePay | our account | nothing yet — this is the `ADS` expense, *Paid from* the account |
-    | the platform took it from the seller balance | the marketplace wallet — no account of ours | settlement — its ads row, posted by the importer |
-
-    🔄 **I withdraw my *Marketplace balance* choice.** It let the second kind be typed as an `ADS` expense too — the
-    same ad money in settlement **and** in expense, which
-    [withheld-is-not-spent](../settlement/context_clarify.md#withheld-is-not-spent) already rules out: `ADS` holds ads we *paid for*, never ads the platform
-    *withheld*.
-
-    **→ Recommend: never an expense — settlement has it.** Then *Paid from* is required with no exception: every
-    `ADS` expense is a top-up that left one of our accounts. *Ads spend last month* reads both books — the `ADS`
-    expenses and settlement's ads rows — and they never overlap. The expense form says so on `ADS`: *taken from the
-    seller balance? It is already in settlement.*
-
-    | instead | why not |
-    | --- | --- |
-    | a *Marketplace balance* choice — my first answer | the same ad counted twice, once per book · a P&L summing both overstates ads by exactly what the platform withheld |
-    | name a bank account anyway | the bank drops by money that never left it — the next reconcile finds a gap that is not there |
-
-    ```mermaid
-    flowchart LR
-      subgraph "paid by us — an expense"
-        T["ads credit topped up from BCA"] --> E["ADS expense — Paid from BCA"]
-        E --> A["BCA — − expense"]
-      end
-      subgraph "withheld by the platform — settlement"
-        W["ads taken from the seller balance"] --> S["settlement — its ads row"]
-      end
-      E --> R["ads spend last month — both, never overlapping"]
-      S --> R
-    ```
+13. ✅ **Answered 2026-09-30 — settlement's ads and the accounts are independent**, and nothing syncs between them;
+    *Paid from* on `ADS` is required with no exception: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) — and an ad posts as `ads_expense`: [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types).
+    Kept as a line so the numbers hold.
 
 # Contradiction
 
@@ -474,5 +442,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
-- 🆕 **§Financial Analytical Reports Design *(line 109)* is started** — a heading and *Smallest Grain Reports*, no content
+- 🆕 **§Financial Analytical Reports Design *(line 110)* is started** — a heading and *Smallest Grain Reports*, no content
   yet. Read when it has some.
