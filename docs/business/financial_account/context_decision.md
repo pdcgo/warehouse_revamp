@@ -33,6 +33,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) | a team payment posts only on the creditor's acceptance — the balance service's event carries the from and to account ids | owner | ✅ Q14 closed — [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) |
 | [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) | an accepted team payment is final in the balance service, so its two `team_payment` rows are never posted back — there is no reversal to hear | owner | — |
 | [the-team-description-says-where-to-pay](#the-team-description-says-where-to-pay) | a payer learns where to transfer from the creditor's own description — no `payee_accounts`, and the creditor picks *to* when accepting | owner, against my recommendation | — |
+| [analytics-are-delivered-the-settlement-way](#analytics-are-delivered-the-settlement-way) | the analytics are served in settlement's shape — a timeframe search, and a group search plus metric · daily, monthly, yearly, by `provider`, by `change_type` | owner | [Q15](./context_clarify.md#question), [Q16](./context_clarify.md#question), [Q17](./context_clarify.md#question), [critique 9](./context_clarify.md#critique) |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -1097,3 +1098,37 @@ go stale without anything noticing. A payer who transfers to an old number sends
 may no longer watch, and with [an-accepted-payment-is-final](../balance/context_decision.md#an-accepted-payment-is-final)
 that cannot be undone. What keeps the ledger right: the creditor picks *to* from where the money really arrived. The
 gain: no table, no picker, no rule — and every team already has the field.
+
+## analytics-are-delivered-the-settlement-way
+
+> `context.md` §How Financial Account Service Rpc Deliver Analytical Data *(owner, 2026-10-01, lines 122–130)* — *"we
+> adopt how settlement deliver analitical data"*, linking
+> [settlement's §How Rpc Api Deliver Analytical Data](../settlement/analytic_context.md#how-rpc-api-deliver-analytical-data),
+> and the metrics *Daily · Monthly · Yearly · `provider` Grouped · `change_type` Grouped*.
+
+**The verdict.** The accounts' analytics are served in **settlement's shape**: one RPC for a timeframe series, and a
+search-then-metric pair for grouped data. Five metrics exist — daily, monthly, yearly, by `provider`, by `change_type`.
+
+```mermaid
+sequenceDiagram
+  participant fe as the report screen
+  participant ts as AnalyticTimeSearch
+  participant gs as AnalyticGroupSearch
+  participant gm as AnalyticGroupMetric
+  fe->>ts: DAILY, MONTHLY or YEARLY, a date range, a filter
+  ts-->>fe: one row per day, month or year
+  fe->>gs: group by provider or change_type, sort
+  gs-->>fe: the sorted group keys
+  fe->>gm: those keys
+  gm-->>fe: the metric of each
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| a series over time | `AnalyticTimeSearch` — `DAILY`, `MONTHLY`, `YEARLY` — settlement's three |
+| grouped | `AnalyticGroupSearch` returns the sorted keys, `AnalyticGroupMetric` the metric of each — by `provider`, by `change_type` |
+| ⚠ my reading — the names | settlement's RPC names, inside the financial account service's own proto package |
+| who reads it | every member of the team ([seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up)) |
+| still open | which day a row counts in ([Q15](./context_clarify.md#question)) · the daily row's grain and fields ([Q16](./context_clarify.md#question)) · how it is computed ([Q17](./context_clarify.md#question)) · a group by account ([critique 9](./context_clarify.md#critique)) |
