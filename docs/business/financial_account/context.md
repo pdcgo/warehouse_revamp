@@ -109,7 +109,23 @@
 2. Listen from Message Broker.
 
 
+## What Happen when if Payment Accepted.
+```mermaid
+flowchart TD
+
+acc["Payment Accepted (contain from/to account_id)"]
+acc-->postfrom["post payer account id"]
+acc-->postto["post payee account id"]
+```
 
 
+# How Financial Account Service Rpc Deliver Analytical Data.
+we adopt how settlement deliver analitical data. [see this](../settlement/analytic_context.md#how-rpc-api-deliver-analytical-data)
 
-# Financial Analytical Reports Design.
+## What Metric that existed.
+1. Daily
+2. Monthly
+3. Yearly
+3. `provider` Grouped
+4. `change_type` Grouped
+5. Account Grouped
