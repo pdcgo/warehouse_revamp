@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| 🔄 elaborated | [Q9](#question) — the core choice as A (one payee account) · B (ask in chat) · C (show every account), and why finality raises the stakes |
 | ✅ answered in chat | a team payment posts only on acceptance, and the balance service's event carries the from and to account ids: [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · ✅ and never reversed: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 | 🔄 elaborated | Q9 — one payment end to end, and who names the payee · which account may be it · a change while a payment waits · archiving it |
 | ✅ answered in chat | critique 2 — `type` and `provider` are picked apart: [type-and-provider-are-picked-apart](./context_decision.md#type-and-provider-are-picked-apart) · critique 1 — the cause is the `description`: [the-description-names-the-cause](./context_decision.md#the-description-names-the-cause) · both against my recommendation · **no critique left** |
@@ -354,7 +355,20 @@ balance — a person picking *which account paid* is recording a fact, and the b
 9. 🔄 **Narrowed — where is a team paid, and how does a payer find it?**
    ✅ The team record holds no bank — dropped, not copied, and a team's bank is only a financial account: [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank).
    Until something marks *where we are paid*, no screen tells a payer in balance's Payment Flow where to transfer.
-   Three parts left, one recommendation each:
+   **The core choice** — the acceptance carries a *to* account ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)), and something has to
+   tell the payer which one to transfer into:
+
+   | | how the payer learns where to pay | what it costs |
+   | --- | --- | --- |
+   | **A → Recommend** | the creditor marks **one** account *where we are paid*; the payment form shows it and pre-fills *to* | one table, one picker on the accounts page |
+   | B | nobody marks one — the payer asks the creditor in chat, and the creditor picks *to* when accepting | the number travels by chat, the step that sends money to an old account |
+   | C | the payer sees **every** bank and wallet the creditor holds, and picks one | a team's whole list of accounts shown to every other team — and the payer guessing which one is watched |
+
+   🆕 **Finality raises the stakes.** An acceptance can no longer be undone ([an-accepted-payment-is-final](../balance/context_decision.md#an-accepted-payment-is-final)), so a payment
+   accepted into the wrong account stays there until a reconcile. A *to* pre-filled from one named account is the
+   cheapest guard against that.
+
+   With **A**, three parts, one recommendation each:
 
    | | **→ Recommend** | instead | why not |
    | --- | --- | --- | --- |
