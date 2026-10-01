@@ -10,6 +10,7 @@ other services may ask it.**
 
 | | |
 | --- | --- |
+| 🔄 elaborated (2026-10-01) | [Q3](#question) — five parts: close only · only new selling refused · waiting drafts stay · the code unique among **open** shops (🔄 my *reserved* revised) · grants stay editable. ⛔ Checked against the code: **four built sites refuse a deleted shop**, and a fifth is being built — financial_account's *Point a shop here* ([A shop's life](#a-shops-life--q3)) |
 | ✅ answered (2026-09-29) | [Q2](#question) — its own `shop_service`: [the-shop-gets-its-own-service](./context_decision.md#the-shop-gets-its-own-service). ⚠ `ShopAccessCheck` and the primary CS were built into `selling_service` an hour earlier (f6dab3b) — they move with the shop |
 | ✅ answered (2026-09-29, later) | [Q7](#question) — the primary CS is a flag on one of the shop's grants: the first grant becomes it, the owner or admin moves it, removing that grant leaves none — [the-primary-cs-is-a-flag-on-a-grant](./context_decision.md#the-primary-cs-is-a-flag-on-a-grant) · ✅ `ShopAccessCheck` built as [critique 10](#critique) recommends (f6dab3b) |
 | ✅ answered (2026-09-29) | [Q1](#question) — a write needs a grant for the shop, or the team's owner or admin role · reads stay team-wide · every current CS is granted on rollout: [a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager) |
@@ -73,7 +74,7 @@ flowchart LR
 
 ## Recommendation
 
-✅ **Q1, Q2 and Q7 are decided.** Next, **Q3 — before the importer ships**: the built `ShopAccessCheck` answers a
+✅ **Q1, Q2 and Q7 are decided.** Next, **Q3 — the importer has shipped**, and the built `ShopAccessCheck` answers a
 deleted shop `NotFound`, so a shop's last statements, paid after it stops selling, can never be imported. Then **Q6**,
 now that a grant is real access. **Q4 and Q5 cost least now** — the move to `shop_service`
 ([the-shop-gets-its-own-service](./context_decision.md#the-shop-gets-its-own-service)) rewrites every shop RPC anyway.
@@ -95,17 +96,33 @@ now that a grant is real access. **Q4 and Q5 cost least now** — the move to `s
 stateDiagram-v2
   [*] --> open: ShopCreate — marketplace and team fixed
   open --> closed: ShopClose — the storefront stopped selling
-  closed --> open: ShopReopen
+  closed --> open: ShopReopen — refused while an open shop holds its code
 ```
 
-| | open | closed |
+Only **new selling** is refused. Money already earned and work already started all run:
+
+```mermaid
+flowchart LR
+  C["a closed shop"]
+  C -->|"❌ refused"| N["OrderCreate, OrderDraftPush, OrderDraftPromote, the order form's picker"]
+  C -->|"✅ runs to its end"| R["a placed order — its status, cancel, return"]
+  C -->|"✅ ShopAccessCheck, with its status"| P["the importer, settlement's imported shop row, Point a shop here"]
+  C -->|"✅ on trust, as today"| E["an expense naming it, the withdrawal listener"]
+  C -->|"✅ marked closed"| L["lists, reports, filters, labels"]
+```
+
+| site — read in the code | a deleted shop today | a closed shop |
 | --- | --- | --- |
-| a new order or draft | ✅ | ❌ refused |
-| an order already placed | runs to its end | runs to its end |
-| a settlement post, an import | ✅ | ✅ — its last payouts arrive after it closes |
-| lists, reports, filters, labels | ✅ | ✅ marked closed |
-| the order form's picker | ✅ | ❌ |
-| its `shop_code` | reserved | still reserved — it can reopen |
+| `OrderCreate` — `shopExists`, [order_place.go:119](../../../backend/services/selling_service/selling_v1/order_place.go#L119) | ❌ `NotFound` | ❌ *"the shop is closed"* |
+| `OrderDraftPush` | ✅ stored on trust, no check | ❌ — the gate [critique 1](#critique) already plans |
+| `OrderDraftPromote` | ❌ through `order_place` | ❌ — the draft stays (3c) |
+| a placed order — status, cancel, return | ✅ no shop check | ✅ |
+| the importer's check — [import_run.go:123](../../../backend/services/settlement_importer_service/settlement_importer_v1/import_run.go#L123) | ❌ *"not one of your team's shops"* | ✅ |
+| settlement, an imported shop row — [shop_primary.go:56](../../../backend/services/settlement_service/settlement_v1/shop_primary.go#L56) | ❌ *"not a live shop"* | ✅ |
+| financial_account **Point a shop here** — `ShopOfTeam`, 🔨 being built | ❌ | ✅ — its last withdrawals need an account, or they open an `unknown` one |
+| grants and the primary CS — `lockShop`, `shopExists` | ❌ | ✅ (3e) |
+| `ShopList` · `ShopDetail` | ❌ hidden — a report names it `#7` | ✅ marked closed |
+| `shop_code` | freed | unique among **open** shops, as today (3d) |
 
 ### What a shop carries
 
@@ -114,7 +131,7 @@ stateDiagram-v2
 | `team_id` | ❌ | a SELLING team (critique 4) — never moves (Q4) |
 | `marketplace` | ❌ (Q4) | set at creation |
 | `name` | ✅ | what people read |
-| `shop_code` | ✅ | unique in the team, closed shops included |
+| `shop_code` | ✅ | unique in the team among **open** shops (Q3, 3d) |
 | `platform_shop_ref` 🆕 Q5 | ✅ — platforms allow a rename | unique per marketplace among open shops, **across all teams** |
 | `description` | ✅ | |
 | `status` 🆕 | by close and reopen | `open` · `closed` — replaces `deleted` |
@@ -158,7 +175,7 @@ erDiagram
     bigint team_id "a SELLING team, never moves"
     text marketplace "fixed at creation"
     text name
-    text shop_code "unique per team, closed shops included"
+    text shop_code "unique per team among open shops"
     text platform_shop_ref "NEW, unique per marketplace among open shops"
     text description
     text status "NEW, open or closed, replaces deleted"
@@ -194,14 +211,26 @@ erDiagram
    [the-shop-gets-its-own-service](./context_decision.md#the-shop-gets-its-own-service). It also answers
    architecture Q6. Kept as a line so the numbers hold.
 
-3. **What does *delete* do to a shop with history — and what may a closed shop still do?** 🆕 Critique 3.
-   **→ Recommend: close, not delete.** A closed shop takes no new order or draft and leaves the pickers — and
-   is everything else still: readable everywhere, named on its old orders and in every report, and **open to
-   settlement posts and imports**, because the platform pays out a shop's last orders and its balance after it
-   stops selling. It can reopen, so its code stays reserved.
-   ⚠ **It changes the importer's check**: [its spec](../settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)
-   refuses a deleted shop — my reading, marked ⚠ there — and a closed shop must pass it. So `ShopAccessCheck`
-   answers for a closed shop too, with its status: the importer takes it, an order refuses it.
+3. **What does *delete* do to a shop with history — and what may a closed shop still do?** Critique 3.
+   **→ Recommend: close, not delete.** The platform pays out a shop's last orders and its balance **after** it stops
+   selling, and today every one of those payouts is refused. 🔄 *Elaborated 2026-10-01* — five parts, each its own
+   yes or no. Every site, today and after: [A shop's life](#a-shops-life--q3).
+
+   | | the question | → Recommend |
+   | --- | --- | --- |
+   | **3a** | close **instead of** delete, or keep a delete for a shop made by mistake? | **Close only.** *"It has no history"* means asking five services (orders, drafts, settlement, expense, accounts), and a draft can land mid-check. A mistaken shop is closed, and the default *open* filter hides it |
+   | **3b** | what does a closed shop refuse? | **Only new selling**: an order, a draft pushed or promoted, the order form's picker. Everything else runs |
+   | **3c** | its drafts still waiting? | **The close goes through. They stay, and promote refuses** *"the shop is closed"*: the CS deletes them, or the owner reopens. Refusing the close would let one forgotten draft keep a shop open |
+   | **3d** | its `shop_code` | 🔄 **Revised: unique among OPEN shops, as today.** I had *reserved while closed*, but the code is a label `ShopUpdate` already edits, and no other table stores it. Reopen refuses while an open shop holds it. Rename one, then reopen. It also spares the migration from rewriting codes already reused |
+   | **3e** | who closes it, and what still works on it? | **Close and Reopen take `ShopDelete`'s roles**: owner, admin. **Grants and the primary CS stay editable.** An import needs a primary CS ([a-shop-with-no-primary-cs-cannot-import](../settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)), so if theirs leaves after the close, the last statements wait until someone names another |
+
+   **How `ShopAccessCheck` says it:** the `Shop` it returns carries `status`, and **each caller decides**. The
+   importer, settlement and the accounts take a closed shop, and an order refuses it. What a closed shop may do is
+   the caller's rule, so it lives with the caller, not as a flag on the shop's RPC.
+   ⚠ It changes the importer's check: [its spec](../settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)
+   refuses a deleted shop (my reading, marked ⚠ there), and a closed shop must pass it.
+   ⚠ **The shops already deleted become `closed`**, with `closed_at` set to their `updated_at`. They come back under
+   *Closed*, and their report rows get their names back instead of `#7`.
 
 4. **Are a shop's marketplace and team fixed once it exists?** 🆕 Critique 5.
    **→ Recommend yes, both.** A storefront cannot change platforms or teams: the marketplace picks the import
