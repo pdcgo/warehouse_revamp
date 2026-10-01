@@ -21,7 +21,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-shop-names-the-account-it-withdraws-into](#a-shop-names-the-account-it-withdraws-into) | a withdrawal lands in the account its shop names in `shop_accounts` — set up once per shop, never chosen per withdrawal | owner | ✅ one account per shop: [a-shop-has-one-account](#a-shop-has-one-account) · ✅ a shop with no row: [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) |
 | [operational-accounts-pay-for-operations](#operational-accounts-pay-for-operations) | a team marks which of its accounts pay for its operations — a restock first — in `operational_accounts` | owner | ✅ which one paid a given restock: [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) |
 | [a-shop-has-one-account](#a-shop-has-one-account) | a shop names one account — `shop_id` is unique in `shop_accounts` · an account may take many shops | owner | — |
-| [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) | `team_infos` holds no bank — its three bank columns are dropped, not copied, and a team's bank lives only as a financial account | owner | [Q9](./context_clarify.md#question) — where a team is paid |
+| [the-team-record-holds-no-bank](#the-team-record-holds-no-bank) | `team_infos` holds no bank — its three bank columns are dropped, not copied, and a team's bank lives only as a financial account | owner | ✅ where a team is paid: [the-team-description-says-where-to-pay](#the-team-description-says-where-to-pay) |
 | [every-log-row-names-its-account](#every-log-row-names-its-account) | every log row carries `account_id` — the state and the log share one scope, the account | owner | — |
 | [provider-replaces-account-type](#provider-replaces-account-type) | the column naming who holds the money is `provider` (was `account_type`) · `type` stays beside it | owner | ✅ `type` is picked apart: [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart) |
 | [an-account-has-a-name-and-a-holder](#an-account-has-a-name-and-a-holder) | every account has a `name` and a `holder_name` (*atas nama*) | owner | — |
@@ -32,6 +32,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [the-description-names-the-cause](#the-description-names-the-cause) | a log row's cause is its `description` — no `source_id`, no `reversal` | owner, against my recommendation | — |
 | [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) | a team payment posts only on the creditor's acceptance — the balance service's event carries the from and to account ids | owner | ✅ Q14 closed — [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) |
 | [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) | an accepted team payment is final in the balance service, so its two `team_payment` rows are never posted back — there is no reversal to hear | owner | — |
+| [the-team-description-says-where-to-pay](#the-team-description-says-where-to-pay) | a payer learns where to transfer from the creditor's own description — no `payee_accounts`, and the creditor picks *to* when accepting | owner, against my recommendation | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -1061,3 +1062,38 @@ flowchart LR
 | heard | the acceptance only — unchanged from [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) |
 | a mistaken accept | stays in both accounts. If the money never landed, a **reconcile** finds the gap and it lands as an `adjustment` ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
 | a reversal event | none exists, and none should be built — it would contradict the balance decision |
+
+## the-team-description-says-where-to-pay
+
+> In chat *(owner, 2026-10-01)* — *"for 'How the payer learns which account to pay into' we just simple write in
+> description"*. The last part of [Q9](./context_clarify.md#question) — **against my recommendation** of a
+> `payee_accounts` row.
+
+**The verdict.** A payer learns where to transfer from **text the creditor writes**, not from a marked account. There
+is no `payee_accounts` table, no *Pay to* drawn from one, and nothing pre-fills the *to* account — the creditor picks
+it when accepting ([a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept)).
+
+```mermaid
+flowchart LR
+  D["Team B's description — Transfer ke BCA 123 a.n. PT B"] --> A["Team A reads it, transfers"]
+  A --> R["Team A records the payment — from BCA A"]
+  R --> AC["Team B accepts — picks to: BCA 123"]
+  AC --> F["team_payment — out of BCA A, into BCA 123"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| ⚠ my reading — which description | the creditor team's own `description` on its team record — the one field another team can read (`TeamDetail` is open to anyone signed in); a financial account's description is seen only inside its team |
+| what it holds | free text — the bank, the number, *atas nama* — written and kept current by the creditor |
+| *to* on acceptance | picked by the creditor from its own accounts, where the money actually arrived — never pre-filled |
+| no table, no RPC | `payee_accounts`, `FinancialAccountPayeeSet` and `FinancialAccountPayee` are withdrawn from the proposal |
+
+### What it costs — recorded, not re-argued
+
+The bank number is written twice again — as text in the description and as a financial account — and the text can
+go stale without anything noticing. A payer who transfers to an old number sends money to an account the creditor
+may no longer watch, and with [an-accepted-payment-is-final](../balance/context_decision.md#an-accepted-payment-is-final)
+that cannot be undone. What keeps the ledger right: the creditor picks *to* from where the money really arrived. The
+gain: no table, no picker, no rule — and every team already has the field.

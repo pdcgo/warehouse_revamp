@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-three owner decisions**. The
-lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-four owner decisions**. **No question
+is open** — the business analysis is done; next is the Storybook prototype. No technical doc, no code.
 
 ## Decided
 
@@ -21,6 +21,7 @@ lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no tec
 | [the-description-names-the-cause](../../business/financial_account/context_decision.md#the-description-names-the-cause) *(critique 1, against my recommendation)* | no `source_id`, no `reversal` — the cause is `description`, written by the listener from the event (⚠ my spec) · dedup is the library's `Claim(event_id)` |
 | [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept) | the team-payment listener hears only the balance service's acceptance · the event carries `from_account_id` and `to_account_id` — both new on `liability_service`'s payment · two `team_payment` rows |
 | [a-team-payment-is-never-reversed](../../business/financial_account/context_decision.md#a-team-payment-is-never-reversed) *(Q14)* | an accepted payment is final — `LiabilityPaymentReverse` is removed, so there is no reversal topic and the two rows never post back |
+| [the-team-description-says-where-to-pay](../../business/financial_account/context_decision.md#the-team-description-says-where-to-pay) *(Q9, against my recommendation)* | no `payee_accounts`, no payee RPCs — a payer reads the creditor team's `description` (⚠ my reading of which description) · the creditor picks *to* on acceptance |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(provider, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
@@ -50,7 +51,7 @@ Nothing of this context. What it overlaps is already built elsewhere:
 
 | | where | on the broker | the clarify proposes |
 | --- | --- | --- | --- |
-| a team's one bank | ✅ **gone** — dropped from `team_infos` by `team_service` `00008`, contract fields 3–5 reserved | — | Q9 — which account a team is paid into |
+| a team's one bank | ✅ **gone** — dropped from `team_infos` by `team_service` `00008`, contract fields 3–5 reserved | — | ✅ where to pay is the team's `description` — [the-team-description-says-where-to-pay](../../business/financial_account/context_decision.md#the-team-description-says-where-to-pay) |
 | how a restock was paid — `shopee_pay` / `bank_account` | `inventory_service` · `restock_requests.payment_type` · `PaymentTypeSelect` | ❌ | ✅ which operational account paid — **required**, replacing the kind |
 | expenses | `expense_service` · `expense_records` — names no account | ❌ | ✅ a **required** *paid from* · `ADS` posts `ads_expense` · settlement's ads never reach an account |
 | withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | ✅ each posts a `withdrawal` into the account in `shop_accounts` — an `unknown` one made when the shop has none |
@@ -66,11 +67,11 @@ the day the money moved too (`occurred_at`). Its cause is the `description` — 
 
 ## Open
 
-Q9 in the clarify. Nothing in the owner's doc blocks the account screens' contract — no contradiction is
-open. Q9 shapes only the payee screens.
+Nothing — no question, critique or contradiction is open in the clarify. Still empty in the owner's doc: §General
+and §Financial Analytical Reports Design.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be
 `backend/services/financial_account_service/` (HARD RULE 2). The Storybook prototype of the account screens is
-unblocked — the owner's log carries its `account_id`. Build the payee screens only after Q9, and mark my ⚠ specs
-(`group_id`, `reconciled_at`, the payee table) as proposals in any contract drawn before the owner adopts them (HARD RULE 8).
+unblocked — the owner's log carries its `account_id`. There are no payee screens — Q9 withdrew them. Mark my ⚠ specs
+(`group_id`, `reconciled_at`) as proposals in any contract drawn before the owner adopts them (HARD RULE 8).

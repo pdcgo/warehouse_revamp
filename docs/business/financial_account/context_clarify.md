@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat | Q9 — a payer learns where to pay from the creditor's description, against my `payee_accounts`: [the-team-description-says-where-to-pay](./context_decision.md#the-team-description-says-where-to-pay) · **no question left** |
 | ✅ your §What Happen when if Payment Accepted *(lines 112–119)* | the acceptance carries the from and to account ids, and posts on each — as [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) records · its diagram parses · nothing new to decide |
 | 🔄 elaborated | [Q9](#question) — which service holds the payee |
 | 🔄 elaborated | Q9 — the core choice as A (one payee account) · B (ask in chat) · C (show every account), and why finality raises the stakes |
@@ -42,13 +43,13 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **One question open, no critique, no contradiction.**
+already touch a bank without naming one. **No question open, no critique, no contradiction.**
 
 ## What already moves money
 
 | your doc | already in the build | on the broker | |
 | --- | --- | --- | --- |
-| a team's *Bank Account* | ✅ none — `team_infos`' three bank columns were dropped 2026-09-30, so a team's bank lives only here | — | [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank) · [Q9](#question) |
+| a team's *Bank Account* | ✅ none — `team_infos`' three bank columns were dropped 2026-09-30, so a team's bank lives only here | — | [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank) · where to pay: [the-team-description-says-where-to-pay](./context_decision.md#the-team-description-says-where-to-pay) |
 | *Shopeepay* or a bank, as a way to pay | `restock_requests.payment_type` — `shopee_pay` or `bank_account`: the **kind** that paid, never **which** account | ❌ nothing published | ✅ [a-restock-must-name-the-account-that-paid](./context_decision.md#a-restock-must-name-the-account-that-paid) |
 | `expense` | `expense_records` — typed by a manager, naming no account · `STOCK_LOSS` is posted by inventory and moves no cash | ❌ nothing published | ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) · [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) |
 | `withdrawal` — was `revenue_fund` | settlement's `withdrawal` rows — imported, shop-addressed, successful only: money that reached the bank | ✅ `SettlementLogPosted` — the whole row | [Q1](#question) |
@@ -101,8 +102,8 @@ account it names — required: [a-restock-must-name-the-account-that-paid](./con
 listener is new · **3.** restock · **4.** expense · **5.** team payment — each of these needs its own event first.
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
-✅ **Nothing in your doc blocks the account screens now** — the log names its account. Left: [Q9](#question), which
-shapes only the payee screens.
+✅ **Nothing in your doc blocks the account screens now** — the log names its account. **Nothing is left open** —
+the next step is the Storybook prototype of the account screens.
 
 ## Proposed Design
 
@@ -223,8 +224,6 @@ sequenceDiagram
 | `FinancialAccountLogList` | every member of the team | one account's rows, newest first, paginated, by type and date |
 | `FinancialAccountShopSet` | admin and up | a shop's account — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) |
 | `FinancialAccountOperationalSet` | admin and up | marks or unmarks an account operational — `operational_accounts` ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) |
-| `FinancialAccountPayeeSet` | admin and up | the account the team is paid into ([Q9](#question)) |
-| `FinancialAccountPayee` | any team paying another — [Q9](#question) | the account a team is paid into — name, number, holder, never its balance |
 
 🔄 No RPC for other services to write with — they publish, and the account listens:
 
@@ -242,7 +241,6 @@ erDiagram
   financial_accounts ||--o{ financial_account_logs : "every move of its balance"
   financial_accounts ||--o{ shop_accounts : "yours — a shop withdraws into it"
   financial_accounts ||--o{ operational_accounts : "yours — it pays for operations"
-  financial_accounts ||--o| payee_accounts : "the team is paid into it, Q9"
   financial_accounts {
     bigint id PK
     bigint team_id
@@ -286,11 +284,6 @@ erDiagram
     timestamptz updated_at
     timestamptz created_at
   }
-  payee_accounts {
-    bigint team_id PK "NEW, Q9, one per team, the shape of your two tables"
-    bigint account_id
-    timestamptz updated_at
-  }
 ```
 
 | unique | why |
@@ -300,7 +293,6 @@ erDiagram
 | — a broker row | posts once by its `event_id`, claimed beside the write ([one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types)) — no key on the row |
 | `shop_accounts (shop_id)` | ✅ yours — one account per shop, [a-shop-has-one-account](./context_decision.md#a-shop-has-one-account) |
 | `operational_accounts (account_id)` | yours — an account is marked once |
-| `payee_accounts (team_id)` | one place a team is paid ([Q9](#question)) |
 
 ### The screens
 
@@ -313,7 +305,7 @@ erDiagram
 | a team payment | *Paid from* on record · *Received into* on accept — both carried in the acceptance ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)) |
 | the shop detail | *Withdraws into* — its `shop_accounts` row ([a-shop-names-the-account-it-withdraws-into](./context_decision.md#a-shop-names-the-account-it-withdraws-into)) · *Unknown — not named yet* after a withdrawal found none ([a-shop-with-no-account-gets-an-unknown-one](./context_decision.md#a-shop-with-no-account-gets-an-unknown-one)) |
 | `/financial-accounts` | mark an account *operational* ([operational-accounts-pay-for-operations](./context_decision.md#operational-accounts-pay-for-operations)) |
-| the team detail | *Where we are paid* ([Q9](#question)) — the three bank fields are already gone ([the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank)) |
+| the team detail | its `description` says where to pay ([the-team-description-says-where-to-pay](./context_decision.md#the-team-description-says-where-to-pay)) — the three bank fields are gone ([the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank)) |
 
 `FinancialAccountSelect` is one picker in `components/pickers/`, with its story. It names the account and shows no
 balance — a person picking *which account paid* is recording a fact, and the balance is on the accounts page.
@@ -354,59 +346,10 @@ balance — a person picking *which account paid* is recording a fact, and the b
    against my recommendation: [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up).
    Kept as a line so the numbers hold.
 
-9. 🔄 **Narrowed — where is a team paid, and how does a payer find it?**
-   ✅ The team record holds no bank — dropped, not copied, and a team's bank is only a financial account: [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank).
-   Until something marks *where we are paid*, no screen tells a payer in balance's Payment Flow where to transfer.
-   **The core choice** — the acceptance carries a *to* account ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)), and something has to
-   tell the payer which one to transfer into:
-
-   | | how the payer learns where to pay | what it costs |
-   | --- | --- | --- |
-   | **A → Recommend** | the creditor marks **one** account *where we are paid*; the payment form shows it and pre-fills *to* | one table, one picker on the accounts page |
-   | B | nobody marks one — the payer asks the creditor in chat, and the creditor picks *to* when accepting | the number travels by chat, the step that sends money to an old account |
-   | C | the payer sees **every** bank and wallet the creditor holds, and picks one | a team's whole list of accounts shown to every other team — and the payer guessing which one is watched |
-
-   🆕 **Finality raises the stakes.** An acceptance can no longer be undone ([an-accepted-payment-is-final](../balance/context_decision.md#an-accepted-payment-is-final)), so a payment
-   accepted into the wrong account stays there until a reconcile. A *to* pre-filled from one named account is the
-   cheapest guard against that.
-
-   With **A**, three parts, one recommendation each:
-
-   | | **→ Recommend** | instead | why not |
-   | --- | --- | --- | --- |
-   | which one is *where we are paid* | a `payee_accounts` row, one per team — the shape of your `shop_accounts` | a flag on `financial_accounts` | a flag lets two accounts claim it — the table's key says *one* |
-   | which service holds it | **financial accounts** — beside `shop_accounts` and `operational_accounts`, the other *which account is used for X* tables · the balance service reads it to draw *Pay to* and pre-fill *to* | the balance service, a payee id per team | the balance service would hold an id into another service's table, and financial accounts could not refuse archiving an account it does not know is the payee |
-   | who sees it | anyone signed in, as the team detail was — its name, number and holder, **never its balance** | only teams it has a debt with | a payer finds out where to pay before the debt is on screen |
-   | where it shows | the team detail's *Where we are paid* · the payment form's *Pay to* · *Received into* pre-filled on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) | the team detail only | the payer copies a number from another screen — the step that sends money to a stale one |
-
-   One payment, end to end — Team A owes Team B:
-
-   ```mermaid
-   sequenceDiagram
-     participant A as Team A — the payer
-     participant L as balance — payment
-     participant F as financial accounts
-     participant B as Team B — the creditor
-     A->>F: FinancialAccountPayee(B)
-     F-->>A: Pay to — BCA 123, a.n. PT B — no balance
-     A->>A: transfers by bank, outside the system
-     A->>L: record — proof, Paid from BCA A, paid to BCA 123
-     B->>L: confirm — Received into pre-filled BCA 123
-     L-->>F: payment accepted — from BCA A, to BCA 123
-     F->>F: team_payment — out of BCA A, into BCA 123
-   ```
-
-   And five cases the walk-through does not show, one recommendation each:
-
-   | case | **→ Recommend** | why |
-   | --- | --- | --- |
-   | who names it | admin and up, `FinancialAccountPayeeSet` ([seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up)) | the same people who open and archive accounts |
-   | which account may be it | the team's own, active, `bank_account` or `wallet` — never `cash`, never `unknown` | nobody can transfer into a cash box, and an `unknown` account has no number to show |
-   | it changes while a payment waits | the payment keeps the account it was **shown** — *paid to BCA 123* — and confirm pre-fills that one, not today's | the money went where the payer was told; a new payee is for the next payment |
-   | its account is archived | refused while it is the payee — name another first ([an-account-is-archived-only-at-zero](./context_decision.md#an-account-is-archived-only-at-zero) already needs it at zero) | a team would otherwise go quietly unpayable |
-   | no payee named yet | the payment can still be recorded — the form says *this team has not named where it is paid* | the debt is real either way; the payer asks the creditor |
-
-   ✅ The payment holds both account ids, and the acceptance carries them: [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept).
+9. ✅ **Answered 2026-10-01 — a payer learns where to pay from the creditor's description**, against my
+   `payee_accounts`: [the-team-description-says-where-to-pay](./context_decision.md#the-team-description-says-where-to-pay) — after [the-team-record-holds-no-bank](./context_decision.md#the-team-record-holds-no-bank)
+   and [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) settled the rest. Kept as a
+   line so the numbers hold.
 
 10. ✅ **Answered 2026-09-29 — every type has one way in**, as recommended:
     [restock-is-never-typed-by-hand](./context_decision.md#restock-is-never-typed-by-hand), then
