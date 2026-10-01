@@ -9,6 +9,7 @@ import (
 	category_v1 "github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	financial_account_v1 "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
@@ -87,6 +88,10 @@ func InitializeApp() (*App, error) {
 		// Joins inventory to expense (#211) — writing off the value of damaged/lost stock. See
 		// expense_poster.go.
 		NewExpensePoster,
+		// The money a team holds — its accounts, their logs, the withdrawal listener. Its one outside question,
+		// whether a shop is the team's, is asked of the shop — see financial_account_deps.go.
+		financial_account_v1.NewService,
+		NewFinancialAccountShopChecker,
 
 		NewServeMux,
 		NewServer,

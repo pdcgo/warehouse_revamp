@@ -91,3 +91,13 @@ export const CHANGE_TYPE_PALETTE: Record<number, string> = {
 export const BY_HAND: ReadonlySet<T> = new Set([T.OPENING_BALANCE, T.TRANSFER, T.CAPITAL, T.ADJUSTMENT]);
 
 export const isUnknown = (account: { type: FinancialAccountType }) => account.type === FinancialAccountType.UNKNOWN;
+
+// A SHOP's NAME where the server could only write its id.
+//
+// The withdrawal listener names what it makes after the shop — an unknown account is "Unknown — shop #25",
+// a withdrawal's row "Withdrawal from shop #21" — but it hears an EVENT, not a person, so it has no caller to
+// ask the shop's service with. The screens already hold the team's shops, so they put the name in. An id the
+// team's shops do not resolve is left as written.
+export function withShopNames(text: string, nameOf: (shopId: bigint) => string | undefined): string {
+  return text.replace(/shop #(\d+)/g, (written, id: string) => nameOf(BigInt(id)) ?? written);
+}

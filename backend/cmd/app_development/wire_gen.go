@@ -10,6 +10,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
@@ -80,7 +81,9 @@ func InitializeApp() (*App, error) {
 	settlementWriteServiceClient := NewSettlementWriteClient(config, mainInternalHTTPClient)
 	ledger := NewImporterLedger(settlementWriteServiceClient)
 	settlement_importer_v1Service := settlement_importer_v1.NewService(db, shopChecker, orderFinder, statementStore, ledger)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, docstoreConfig, roleResolver, signer)
+	financial_account_v1ShopChecker := NewFinancialAccountShopChecker(shopServiceClient)
+	financial_account_v1Service := financial_account_v1.NewService(db, financial_account_v1ShopChecker)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

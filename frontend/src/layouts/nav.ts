@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -150,6 +150,10 @@ const SETTLEMENT_IMPORTS: MenuItem = {
   label: "nav.settlementImports",
   icon: FileUp,
 };
+// The money a team actually HOLDS — its bank, wallet and cash accounts (docs/business/financial_account).
+// Every member of a selling or warehouse team sees it (seeing-is-team-wide-moving-is-admin-and-up); the
+// page hides the buttons that move money from anyone below admin, and the server refuses them anyway.
+const FINANCIAL_ACCOUNTS: MenuItem = { to: "/financial-accounts", label: "nav.financialAccounts", icon: Landmark };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -316,6 +320,11 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
 
   if (teamType === TeamType.SELLING && canImportSettlement(role)) {
     menu.push(SETTLEMENT_IMPORTS);
+  }
+
+  // The accounts close the money section, for EVERY member — the one money screen not gated on a role.
+  if (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) {
+    menu.push(FINANCIAL_ACCOUNTS);
   }
 
   // Inventories sub-menu — restock, racks, batches, opname — for a WAREHOUSE (#95). A selling team

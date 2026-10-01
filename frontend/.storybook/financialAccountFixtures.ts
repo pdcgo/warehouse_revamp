@@ -77,10 +77,11 @@ export const financialAccounts: AccountFixture[] = [
     description: "", operational: true, shopIds: [], reconciledAgo: 9,
   },
   {
-    // UNKNOWN — Melati TikTok withdrew twice before anyone named its bank, so the listener made this
-    // (a-shop-with-no-account-gets-an-unknown-one).
+    // UNKNOWN — Melati TikTok (shop 25) withdrew twice before anyone named its bank, so the listener made
+    // this (a-shop-with-no-account-gets-an-unknown-one). Named as the server names it — by the shop's id;
+    // the screens show the shop's name.
     id: 1304n, teamId: 12n, type: FinancialAccountType.UNKNOWN, provider: P.UNKNOWN, status: ACTIVE,
-    accountNumber: "", name: "Unknown — Melati TikTok", holderName: "", description: "",
+    accountNumber: "", name: "Unknown — shop #25", holderName: "", description: "",
     operational: false, shopIds: [25n],
   },
   {
@@ -128,23 +129,23 @@ export const financialAccountLogs: LogFixture[] = [
   { id: 1408n, accountId: 1308n, changeType: T.OPENING_BALANCE, change: 750_000, description: "Opening balance", actorId: ANI, ago: 20 },
 
   // BCA Operasional's month
-  { id: 1409n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 3_500_000, description: "Withdrawal from Melati Official", actorId: LISTENER, ago: 35 },
+  { id: 1409n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 3_500_000, description: "Withdrawal from shop #21", actorId: LISTENER, ago: 35 },
   { id: 1410n, accountId: 1301n, changeType: T.RESTOCK, change: -2_750_000, description: "Restock R-1021 — PT Sumber Makmur", actorId: LISTENER, ago: 30 },
   { id: 1411n, accountId: 1306n, changeType: T.RESTOCK, change: -150_000, description: "Courier's ask — restock R-1021", actorId: LISTENER, ago: 30 },
   { id: 1412n, accountId: 1301n, changeType: T.TRANSFER, change: -3_000_000, description: "To BCA Gaji — September payroll", actorId: ANI, ago: 28, groupId: 1n, counterAccountId: 1302n },
   { id: 1413n, accountId: 1302n, changeType: T.TRANSFER, change: 3_000_000, description: "From BCA Operasional — September payroll", actorId: ANI, ago: 28, groupId: 1n, counterAccountId: 1301n },
   { id: 1414n, accountId: 1302n, changeType: T.EXPENSE, change: -2_400_000, description: "Expense — September payroll (Payroll)", actorId: LISTENER, ago: 25 },
-  { id: 1415n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 4_800_000, description: "Withdrawal from Melati Store", actorId: LISTENER, ago: 21 },
+  { id: 1415n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 4_800_000, description: "Withdrawal from shop #22", actorId: LISTENER, ago: 21 },
   { id: 1416n, accountId: 1303n, changeType: T.RESTOCK, change: -450_000, description: "Restock R-1030 — CV Cahaya Abadi", actorId: LISTENER, ago: 20 },
   { id: 1417n, accountId: 1301n, changeType: T.EXPENSE, change: -1_200_000, description: "Expense — packing material (Operational)", actorId: LISTENER, ago: 18 },
   { id: 1418n, accountId: 1301n, changeType: T.ADS_EXPENSE, change: -900_000, description: "Expense — Shopee ads top-up (Ads)", actorId: LISTENER, ago: 14 },
-  { id: 1419n, accountId: 1304n, changeType: T.WITHDRAWAL, change: 1_700_000, description: "Withdrawal from Melati TikTok", actorId: LISTENER, ago: 12 },
+  { id: 1419n, accountId: 1304n, changeType: T.WITHDRAWAL, change: 1_700_000, description: "Withdrawal from shop #25", actorId: LISTENER, ago: 12 },
   { id: 1420n, accountId: 1301n, changeType: T.TEAM_PAYMENT, change: -1_500_000, description: "Payment to Gudang Pusat — September fees", actorId: LISTENER, ago: 10, groupId: 2n, counterAccountId: 1307n },
   { id: 1421n, accountId: 1307n, changeType: T.TEAM_PAYMENT, change: 1_500_000, description: "Payment from Toko Melati — September fees", actorId: LISTENER, ago: 10, groupId: 2n, counterAccountId: 1301n },
   { id: 1422n, accountId: 1301n, changeType: T.TRANSFER, change: -500_000, description: "To ShopeePay Melati — top-up", actorId: ANI, ago: 6, groupId: 3n, counterAccountId: 1303n },
   { id: 1423n, accountId: 1303n, changeType: T.TRANSFER, change: 500_000, description: "From BCA Operasional — top-up", actorId: ANI, ago: 6, groupId: 3n, counterAccountId: 1301n },
-  { id: 1424n, accountId: 1304n, changeType: T.WITHDRAWAL, change: 2_500_000, description: "Withdrawal from Melati TikTok", actorId: LISTENER, ago: 4 },
-  { id: 1425n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 2_000_000, description: "Withdrawal from Melati Official", actorId: LISTENER, ago: 3 },
+  { id: 1424n, accountId: 1304n, changeType: T.WITHDRAWAL, change: 2_500_000, description: "Withdrawal from shop #25", actorId: LISTENER, ago: 4 },
+  { id: 1425n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 2_000_000, description: "Withdrawal from shop #21", actorId: LISTENER, ago: 3 },
   { id: 1426n, accountId: 1303n, changeType: T.RESTOCK, change: -400_000, description: "Restock R-1044 — PT Sumber Makmur", actorId: LISTENER, ago: 2 },
   { id: 1427n, accountId: 1301n, changeType: T.CAPITAL, change: 1_000_000, description: "Capital in — the owner's top-up", actorId: ANI, ago: 2 },
   { id: 1428n, accountId: 1301n, changeType: T.ADJUSTMENT, change: -6_500, description: "Reconcile — the app showed Rp 11.443.500 · bank fee", actorId: ANI, ago: 1 },

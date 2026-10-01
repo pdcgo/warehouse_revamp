@@ -30,7 +30,8 @@
     "liability": "Kewajiban",
     "settlement": "Penyelesaian",
     "settlementReport": "Laporan Penyelesaian",
-    "settlementImports": "Impor Penyelesaian"
+    "settlementImports": "Impor Penyelesaian",
+    "financialAccounts": "Akun Keuangan"
   },
   "menu": {
     "theme": "Tema",

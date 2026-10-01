@@ -30,7 +30,8 @@
     "liability": "Liability",
     "settlement": "Settlement",
     "settlementReport": "Settlement Report",
-    "settlementImports": "Settlement Imports"
+    "settlementImports": "Settlement Imports",
+    "financialAccounts": "Accounts"
   },
   "menu": {
     "theme": "Theme",

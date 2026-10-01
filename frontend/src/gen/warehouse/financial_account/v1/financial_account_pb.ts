@@ -2421,10 +2421,10 @@ export const AnalyticMetricSortSchema: GenEnum<AnalyticMetricSort> = /*@__PURE__
   enumDesc(file_warehouse_financial_account_v1_financial_account, 13);
 
 /**
- * ⚠ PROTOTYPE CONTRACT — drawn for design_accept, served by nothing yet. No handler, no migration.
+ * Accepted at design_accept (the-prototype-and-its-contract-are-accepted) and served by backend/services/financial_account_service.
  * The business design is docs/business/financial_account/context_decision.md; every rule below names
- * the decision it comes from. A rule marked "my spec" is the agent's proposal, accepted or not at the
- * same gate as the screens (contract-accepted-with-the-screens).
+ * the decision it comes from. A rule marked "my spec" was the agent's proposal, accepted with the screens
+ * (contract-accepted-with-the-screens).
  *
  * The money a team actually HOLDS — a bank account, a ShopeePay wallet, a cash box — each with a balance
  * that moves only with a log row, in the same transaction (the-accounts-are-one-ledger).

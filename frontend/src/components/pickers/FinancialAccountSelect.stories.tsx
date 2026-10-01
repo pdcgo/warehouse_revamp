@@ -5,7 +5,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { account } from "../../../.storybook/financialAccountFixtures";
 import { FinancialAccountSelect, description, type FinancialAccountSelectProps } from "./FinancialAccountSelect";
 
-// ⚠ PROTOTYPE for design_accept — docs/business/financial_account. The picker a restock's and an
+// docs/business/financial_account — accepted at design_accept (the-prototype-and-its-contract-are-accepted). The picker a restock's and an
 // expense's *Paid from* will use, and the Transfer and Which Account Is This? dialogs use now.
 //
 // Fixtures: Toko Melati (12) has BCA Operasional and ShopeePay Melati marked operational, BCA Gaji not,
@@ -15,7 +15,7 @@ import { FinancialAccountSelect, description, type FinancialAccountSelectProps }
 const BCA_OPS = account("BCA Operasional");
 const BCA_GAJI = account("BCA Gaji");
 const SHOPEEPAY = account("ShopeePay Melati");
-const UNKNOWN = account("Unknown — Melati TikTok");
+const UNKNOWN = account("Unknown — shop #25");
 const BNI = account("BNI Lama");
 const KAS = account("Kas Gudang");
 

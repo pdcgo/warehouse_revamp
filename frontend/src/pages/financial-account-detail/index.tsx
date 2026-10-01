@@ -11,11 +11,10 @@ import {
   type FinancialAccountChangeType,
   FinancialAccountStatus,
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { AccountActions } from "../../features/financialAccount/AccountActions";
 import { BalanceText, ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useAccountLogs, useFinancialAccount } from "../../features/financialAccount/queries";
-import { TYPE_KEY, isUnknown } from "../../features/financialAccount/vocab";
+import { TYPE_KEY, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
@@ -41,7 +40,7 @@ function windowOf(range: DateRange): { from: string; to: string } {
 // FinancialAccountDetailPage — one account: its balance, where its money comes from, and its statement
 // (docs/business/financial_account).
 //
-// ⚠ PROTOTYPE for design_accept — not routed until accepted.
+// Mounted at /financial-accounts/:accountId. Accepted at design_accept (the-prototype-and-its-contract-are-accepted).
 //
 // The balance is warned while below zero (below-zero-is-warned-never-refused), and says when it was last
 // checked against the bank. The statement is every row, newest first, each saying why it moved — the
@@ -96,7 +95,10 @@ export function FinancialAccountDetailPage() {
   const archived = account.status === FinancialAccountStatus.ARCHIVED;
   const unknown = isUnknown(account);
   const canMove = canMoveAccountMoney(current.role);
-  const shopName = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name ?? `#${shopId}`;
+  const nameOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name;
+  const shopName = (shopId: bigint) => nameOf(shopId) ?? `#${shopId}`;
+  // An unknown account is named after its shop by id — shown by the shop's name.
+  const shown = { ...account, name: withShopNames(account.name, nameOf) };
   const actorName = (actorId: bigint) => actors.data?.get(actorId.toString())?.name ?? `#${actorId}`;
 
   return (
@@ -107,7 +109,7 @@ export function FinancialAccountDetailPage() {
         <Stack gap="1">
           <HStack gap="2" wrap="wrap">
             <Heading size="md" data-testid="account-name-heading">
-              {account.name}
+              {shown.name}
             </Heading>
             <ProviderBadge provider={account.provider} />
             {archived && <Badge colorPalette="gray">{t("financialAccounts.archived")}</Badge>}
@@ -130,7 +132,7 @@ export function FinancialAccountDetailPage() {
         {canMove && (
           <AccountActions
             teamId={teamId}
-            account={account}
+            account={shown}
             balance={b?.balance}
             shopNames={account.shopIds.map(shopName)}
             buttons
@@ -173,9 +175,10 @@ export function FinancialAccountDetailPage() {
         </Box>
       </Flex>
 
-      {/* Only a selling team has shops — a warehouse's accounts take no withdrawals. */}
-      {current.teamType === TeamType.SELLING && (
-        <ShopLinks teamId={teamId} account={account} shopName={shopName} canSet={canMove && !archived && !unknown} />
+      {/* Only where there are shops — a warehouse has none, so its accounts take no withdrawals. Decided by
+          the team's SHOPS rather than its type, so a root team that runs shops is not left without it. */}
+      {((shops.data?.length ?? 0) > 0 || account.shopIds.length > 0) && (
+        <ShopLinks teamId={teamId} account={shown} shopName={shopName} nameOf={nameOf} canSet={canMove && !archived && !unknown} />
       )}
 
       <Stack gap="field">
@@ -209,7 +212,7 @@ export function FinancialAccountDetailPage() {
           <Spinner colorPalette="brand" />
         ) : (
           <RefreshOverlay busy={logs.isFetching && !logs.isPending}>
-            <AccountLogTable logs={logs.data?.logs ?? []} actorName={actorName} />
+            <AccountLogTable logs={logs.data?.logs ?? []} actorName={actorName} describe={(text) => withShopNames(text, nameOf)} />
           </RefreshOverlay>
         )}
 

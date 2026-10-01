@@ -398,6 +398,7 @@ constant beside the handler that serves it):
 | `liability-order-placed` | `order-placed` | liability charges an order's fees |
 | `liability-order-cancelled` | `order-cancelled` | liability reverses them |
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
+| `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
 
 ⚠ **`settlement-fold` is SEEKED by `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other

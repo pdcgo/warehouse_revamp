@@ -29,7 +29,7 @@ import { AccountActions } from "../../features/financialAccount/AccountActions";
 import { AccountFormDialog } from "../../features/financialAccount/AccountFormDialog";
 import { BalanceText, ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useFinancialAccounts, useTypeTotals } from "../../features/financialAccount/queries";
-import { TYPE_KEY, isUnknown } from "../../features/financialAccount/vocab";
+import { TYPE_KEY, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { formatUnixRelative } from "../../lib/datetime";
@@ -40,8 +40,8 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // FinancialAccountsPage — what the team holds, and where (docs/business/financial_account).
 //
-// ⚠ PROTOTYPE for design_accept: served by the Storybook stub only, NOT routed, until the owner accepts
-// the screens and their contract (design-accept-blocks).
+// Mounted at /financial-accounts, under **Accounts** for every member of a selling or warehouse team.
+// Accepted at design_accept (the-prototype-and-its-contract-are-accepted).
 //
 // The rules this screen carries:
 //  - every member SEES the accounts and their balances; only admin and up gets New Account and the row
@@ -81,7 +81,8 @@ export function FinancialAccountsPage() {
   }
 
   const canMove = canMoveAccountMoney(current.role);
-  const shopName = (id: bigint) => shops.data?.find((s) => s.id === id)?.name ?? `#${id}`;
+  const nameOf = (id: bigint) => shops.data?.find((s) => s.id === id)?.name;
+  const shopName = (id: bigint) => nameOf(id) ?? `#${id}`;
 
   // Counted by the server across EVERY account, not this page's — a warning that depended on which page
   // was open would disappear exactly when somebody paged past the problem.
@@ -183,6 +184,8 @@ export function FinancialAccountsPage() {
                   const b = balances.data?.get(id);
                   const archived = account.status === FinancialAccountStatus.ARCHIVED;
                   const unknown = isUnknown(account);
+                  // An unknown account is named after its shop by id — shown by the shop's name.
+                  const shown = { ...account, name: withShopNames(account.name, nameOf) };
 
                   return (
                     <Table.Row
@@ -195,7 +198,7 @@ export function FinancialAccountsPage() {
                         <Stack gap="0">
                           <HStack gap="2">
                             <Text fontWeight="medium" color={archived ? "fg.muted" : undefined}>
-                              {account.name}
+                              {shown.name}
                             </Text>
                             {archived && (
                               <Badge colorPalette="gray" data-testid={`account-archived-${id}`}>
@@ -253,7 +256,7 @@ export function FinancialAccountsPage() {
                         <Table.Cell textAlign="end">
                           <AccountActions
                             teamId={teamId}
-                            account={account}
+                            account={shown}
                             balance={b?.balance}
                             shopNames={account.shopIds.map(shopName)}
                           />

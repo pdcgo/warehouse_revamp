@@ -1591,3 +1591,114 @@ erDiagram
 | `uploaded_files_team_created_idx` (team_id, created_at DESC, id DESC) | the import screen — a team's uploads, newest first |
 | `uploaded_files_team_shop_created_idx` (team_id, shop_id, created_at DESC, id DESC) | the same, one shop's |
 | `uploaded_file_lines_file_outcome_idx` (uploaded_file_id, outcome, line_no) | one file's page — its lines by outcome, in the file's order |
+
+---
+
+## financial_account_service
+
+`backend/services/financial_account_service/db_migrations/`
+
+The money a team actually HOLDS — its bank accounts, ShopeePay wallet and cash box
+([context_decision.md](business/financial_account/context_decision.md)). `financial_accounts` is the ledger's
+STATE and `financial_account_logs` its LOG: a balance moves only with a log row, in the same transaction
+([the-accounts-are-one-ledger](business/financial_account/context_decision.md#the-accounts-are-one-ledger)).
+Money is `NUMERIC(20,2)`, rounded to whole rupiah as it posts — the wire is `double`
+([rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point)).
+
+```mermaid
+erDiagram
+  financial_accounts ||--o{ financial_account_logs : "every move of its balance"
+  financial_accounts ||--o{ shop_accounts : "the shops that withdraw into it"
+  financial_accounts ||--o| operational_accounts : "marked: it pays for operations"
+  financial_accounts ||--o{ financial_account_daily_reports : "one row per day it moved"
+  financial_accounts {
+    bigserial id PK
+    bigint team_id "the scope — opaque, no FK"
+    text type "wallet, bank_account, cash or unknown"
+    text provider "cash, bca, bni, jago, shopeepay or unknown"
+    text status "active or archived — archived only at zero"
+    text account_number "a bank number or a wallet phone — empty for cash and unknown"
+    text name "unique in the team, case-blind"
+    text holder_name "atas nama"
+    text description
+    numeric balance "moves ONLY with a log row — may go below zero"
+    timestamptz reconciled_at "last checked against the bank — NULL is never"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  financial_account_logs {
+    bigserial id PK
+    bigint team_id
+    bigint account_id FK "financial_accounts — the scope of balance_after"
+    text change_type "expense, ads_expense, adjustment, withdrawal, restock, opening_balance, transfer, team_payment, capital"
+    numeric change "signed — positive is money INTO the account"
+    numeric balance_after "the previous row's plus this change, in ENTRY order"
+    text description "the cause in words — no source id"
+    bigint actor_id "who — 0 for a listener with no person behind it"
+    timestamptz occurred_at "when the money MOVED — the analytics day, in Jakarta"
+    bigint group_id "both legs of one transfer — 0 for a single-leg row"
+    bigint counter_account_id "a transfer's other account — 0 otherwise"
+    timestamptz created_at "when it was recorded"
+  }
+  shop_accounts {
+    bigserial id PK
+    bigint team_id
+    bigint shop_id "UNIQUE — a shop names one account; opaque selling_service id"
+    bigint account_id FK "financial_accounts"
+    timestamptz updated_at
+    timestamptz created_at
+  }
+  operational_accounts {
+    bigserial id PK
+    bigint team_id
+    bigint account_id FK "UNIQUE — financial_accounts"
+    timestamptz updated_at
+    timestamptz created_at
+  }
+  financial_account_daily_reports {
+    bigserial id PK
+    date day "the Jakarta day of the rows' occurred_at"
+    bigint account_id "UNIQUE with day"
+    bigint team_id
+    numeric expense "one signed sum per change type"
+    numeric ads_expense
+    numeric adjustment
+    numeric withdrawal
+    numeric restock
+    numeric opening_balance
+    numeric transfer
+    numeric team_payment
+    numeric capital
+    numeric change "the day's net — close minus open"
+    numeric open_balance "the account's balance as the day opened — SHIFTED by a late row"
+    numeric close_balance
+    timestamptz last_updated
+  }
+  financial_account_event_logs {
+    text event_id PK "the listener's claim — a redelivered event posts once"
+    bigint occurred_at_unix
+    timestamptz received_at
+  }
+```
+
+### One write path
+
+Every row goes through the ledger's `post`, on an account its caller has locked `FOR UPDATE`: the log row,
+the balance and the day's report row in one transaction — the report row is upserted and every LATER day of
+the account shifted, so a row dated last week moves every day since and the report is never behind the
+balance ([the-daily-row-is-written-with-the-log-row](business/financial_account/context_decision.md#the-daily-row-is-written-with-the-log-row)).
+A transfer locks both accounts in id order. The lock order is `audits/services/financial_account_service/concurrency/lock-order.md`.
+
+| index | answers |
+| --- | --- |
+| `financial_accounts_provider_number_unique` (provider, account_number) WHERE account_number <> '' | one real account, one row, across ALL teams — a cash box and an unknown account exempt ([a-real-account-is-recorded-once](business/financial_account/context_decision.md#a-real-account-is-recorded-once)) |
+| `financial_accounts_team_name_unique` (team_id, lower(name)) | a picker never shows two of the same |
+| `financial_accounts_team_status_idx` (team_id, status) | the accounts page and every picker |
+| `financial_account_logs_account_id_idx` (account_id, id) | one account's statement newest first — and the previous row a post reads |
+| `shop_accounts_shop_unique` (shop_id) | a shop names one account ([a-shop-has-one-account](business/financial_account/context_decision.md#a-shop-has-one-account)) — also what makes two first withdrawals of a new shop make ONE unknown account |
+| `operational_accounts_account_unique` (account_id) | an account is marked once |
+| `financial_account_daily_reports_account_day_unique` (account_id, day) | the upsert's conflict target, the previous-day lookup and the later-day shift |
+| `financial_account_daily_reports_team_day_idx` (team_id, day) | a team's series and its rankings |
+
+`shop_accounts.shop_id` is an opaque `selling_service` id — `FinancialAccountShopSet` asks the shop's service
+whether it is the team's before linking it, and the withdrawal listener trusts settlement's event.

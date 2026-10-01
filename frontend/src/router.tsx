@@ -73,6 +73,17 @@ const SettlementImportsPage = lazy(() =>
 const SettlementImportDetailPage = lazy(() =>
   import("./pages/settlement-import-detail").then((m) => ({ default: m.SettlementImportDetailPage })),
 );
+// The money a team actually HOLDS — its accounts, one account's statement, and the reports
+// (docs/business/financial_account).
+const FinancialAccountsPage = lazy(() =>
+  import("./pages/financial-accounts").then((m) => ({ default: m.FinancialAccountsPage })),
+);
+const FinancialAccountDetailPage = lazy(() =>
+  import("./pages/financial-account-detail").then((m) => ({ default: m.FinancialAccountDetailPage })),
+);
+const FinancialAccountReportPage = lazy(() =>
+  import("./pages/financial-account-report").then((m) => ({ default: m.FinancialAccountReportPage })),
+);
 const LiabilityDetailPage = lazy(() =>
   import("./pages/liability-detail").then((m) => ({ default: m.LiabilityDetailPage })),
 );
@@ -288,6 +299,10 @@ export const router = createBrowserRouter([
       { path: "settlement/report", element: <SettlementReportPage /> },
       { path: "settlement/imports", element: <SettlementImportsPage /> },
       { path: "settlement/imports/:fileId", element: <SettlementImportDetailPage /> },
+      // ⚠ "report" is a static segment, so it outranks :accountId — an account is never read as "report".
+      { path: "financial-accounts", element: <FinancialAccountsPage /> },
+      { path: "financial-accounts/report", element: <FinancialAccountReportPage /> },
+      { path: "financial-accounts/:accountId", element: <FinancialAccountDetailPage /> },
       // ⚠ BEFORE the :counterpartyId route. React Router ranks a static segment above a dynamic
       // one so the order is not load-bearing today — but reading it in this order is, because
       // "terms" would otherwise look like a counterparty id to anyone scanning the file.

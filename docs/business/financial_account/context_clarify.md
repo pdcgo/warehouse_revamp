@@ -3,43 +3,17 @@
 What I read out of [context.md](./context.md), and what has to be settled beside it. **That doc is yours — this
 one is mine.** An answered point is deleted; what you settled is in [context_decision.md](./context_decision.md).
 
-🔨 **Next phase, 2026-10-01 — `implementation_analysis`.** Nothing is open here, so the prototype is built: three
-screens, a picker and the contract, in Storybook against a stub — `cd frontend && npm run storybook` → **Pages /
-FinancialAccount / Accounts**, **Account**, **Report** and **Components / Pickers / FinancialAccountSelect**. ⛔ **It waits
-on your design_accept** ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)): no handler, no migration until you accept, and the contract is
-accepted with the screens ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)).
-
-| accepting it accepts | |
-| --- | --- |
-| the accounts page | `/financial-accounts` — the team's money by type (bank, wallet, cash, bank not named) and in all · one row per account: name and holder, provider, number, balance, *last checked*, *Operational*, the shops that withdraw into it · a banner for any account below zero, and for unknown ones · archived on request · **New Account** |
-| the row menu | active: Transfer · Reconcile · Capital · Edit · Mark / Unmark operational · Archive — offered only at zero, and says so · unknown: Which account is this? · Transfer out · Archive · archived: Restore · admin and up only — a CS sees every balance and no button |
-| an account's page | `/financial-accounts/:id` — the balance, warned below zero · *last checked* · the shops that withdraw here, and **Point a shop here** · the statement, newest first: type, why, *by hand · who* or *automatic*, change, balance after · by type and date |
-| the report | `/financial-accounts/report` — your six metrics: open, net change and close with each type's movement · daily, monthly, yearly · ranked by account, provider or type · the whole team or one account |
-| the picker | `FinancialAccountSelect` — active, real accounts: name, provider, the number's last four, **no balance** · operational only, pre-picks a single one, and says *ask an admin* when there is none — the restock's and the expense's *Paid from* |
-| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService`: List, ByIds, Overview, LogList, Create, Update, Identify, Archive, Restore, Transfer, Capital, Reconcile, ShopSet, OperationalSet · `FinancialAccountAnalyticService`: AnalyticTimeSearch, AnalyticGroupSearch, AnalyticGroupMetric · the policies of [seeing-is-team-wide-moving-is-admin-and-up](./context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) |
-| not in it | *Paid from* on the restock and expense forms, and *Received into* on a team payment's accept — each changes another service's contract and needs its new event, so each follows this one in the build order |
-
-⚠ **My proposals inside it** — no decision covers these; accepting the prototype accepts them:
-
-| | |
-| --- | --- |
-| a log row | `group_id` — both legs of a transfer or a payment · `counter_account_id` — the other account, so a leg reads *To BCA Gaji* without a lookup |
-| *last checked* | `reconciled_at` · *never checked* is a state, shown |
-| a reconcile | a non-zero difference needs a note · a zero one posts nothing and still marks the account checked |
-| a hand row's day | picked, never in the future · an opening balance even at 0, never below it |
-| a name | unique in the team |
-| an unknown account | made only by the withdrawal listener · transfer out only · no reconcile, never operational, in no picker · filled in with type and provider picked apart — [see Contradiction](#identify-derives-the-type-and-the-form-picks-it) |
-| the analytics | `AnalyticGroupKey` — an account id, a provider or a change type — where settlement returns `uint64` ids: two of your three groupings are an enum · the team's headline is the sum of its providers, at most six |
-| Overview | no sort and no page — balances for the ids the list page holds, type totals at most four rows |
-| the shops | on the **account's** page, where [The screens](#the-screens) had them on the shop's — that page is another context's |
-| money | `double` — the first contract to follow [rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point). `liability_service`'s payment amount is still `int64`, so the team-payment event crosses types at its listener |
-| not routed | no menu entry until accepted — the screens would call a service nothing serves. Accepted, they go under **Accounts** for every member |
+✅ **Built, 2026-10-01** — design_accept passed ([the-prototype-and-its-contract-are-accepted](./context_decision.md#the-prototype-and-its-contract-are-accepted)),
+and the service, the withdrawal listener and the screens are implemented, tested and audited
+([state report](../../development_state/financial_account/context.md)). Nothing here is open.
 
 🔄 **Re-examined through 2026-10-01 — newest first.**
 
 | | |
 | --- | --- |
-| 🔨 the prototype | built for design_accept — see the top · nothing new to ask · ⛔ one [contradiction](#identify-derives-the-type-and-the-form-picks-it) found between two decisions, settled by the later one |
+| ✅ built | the service, its schema, the withdrawal listener, the routed screens — tests and audits in the [state report](../../development_state/financial_account/context.md) · the restock, expense and team-payment listeners wait on their services' events |
+| ✅ design_accept | accepted in chat — *"i have review the frontend, make fully implemented"*: [the-prototype-and-its-contract-are-accepted](./context_decision.md#the-prototype-and-its-contract-are-accepted) · the build starts |
+| 🔨 the prototype | built for design_accept · nothing new to ask · ⛔ one [contradiction](#identify-derives-the-type-and-the-form-picks-it) found between two decisions, settled by the later one |
 | ✅ answered in chat | Q15 — the `occurred_at` day, Jakarta time: [a-row-counts-on-the-day-the-money-moved](./context_decision.md#a-row-counts-on-the-day-the-money-moved) · Q16 — one row per account per day: [the-daily-row-is-one-account-one-day](./context_decision.md#the-daily-row-is-one-account-one-day) · Q17 — written with the log row: [the-daily-row-is-written-with-the-log-row](./context_decision.md#the-daily-row-is-written-with-the-log-row) · all as recommended · your line 131 adds *Account Grouped* — critique 9 adopted: [account-grouped-joins-the-metrics](./context_decision.md#account-grouped-joins-the-metrics) · **nothing left open** |
 | 🆕 your §How Financial Account Service Rpc Deliver Analytical Data *(lines 122–130)* | settlement's delivery adopted: [analytics-are-delivered-the-settlement-way](./context_decision.md#analytics-are-delivered-the-settlement-way) · it leaves the daily table undefined — 🆕 [Q15](#question) which day a row counts in · [Q16](#question) the daily row's grain and fields · [Q17](#question) how it is computed · 🆕 [critique 9](#critique) no group by account · see [Analytics](#analytics) |
 | ✅ answered in chat | Q9 — a payer learns where to pay from the creditor's description, against my `payee_accounts`: [the-team-description-says-where-to-pay](./context_decision.md#the-team-description-says-where-to-pay) · **no question left** |
@@ -78,8 +52,7 @@ accepted with the screens ([contract-accepted-with-the-screens](../../developmen
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **No question open, no critique, no contradiction** — the prototype waits on your
-design_accept.
+already touch a bank without naming one. **No question open, no critique, no contradiction** — built.
 
 ## What already moves money
 

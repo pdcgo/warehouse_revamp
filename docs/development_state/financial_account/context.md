@@ -1,12 +1,12 @@
 # Development state — financial_account
 
-**Pass:** 🔨 **implementation_analysis (2026-10-01)** — the Storybook prototype and its contract are built and ⛔ **wait on the
-owner's design_accept** ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)): no handler, no migration, not routed.
-Before it: business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
+**Pass:** ✅ **implemented (2026-10-01)** — design_accept passed ([the-prototype-and-its-contract-are-accepted](../../business/financial_account/context_decision.md#the-prototype-and-its-contract-are-accepted)), and the service, its schema,
+the withdrawal listener and the routed screens are built, tested end to end and audited. Before it: the Storybook prototype
+(`implementation_analysis`), and business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-nine owner decisions**. **Nothing is open** —
-the business analysis is done, the analytics included. No technical doc, no backend.
+[context_decision.md](../../business/financial_account/context_decision.md) — **forty owner decisions**. **Nothing is open** —
+the business analysis is done, the analytics included. No technical doc.
 
 ## Decided
 
@@ -28,6 +28,7 @@ the business analysis is done, the analytics included. No technical doc, no back
 | [a-row-counts-on-the-day-the-money-moved](../../business/financial_account/context_decision.md#a-row-counts-on-the-day-the-money-moved) *(Q15)* | the analytics day is `occurred_at` in Jakarta time, never `created_at` |
 | [the-daily-row-is-one-account-one-day](../../business/financial_account/context_decision.md#the-daily-row-is-one-account-one-day) *(Q16)* | `financial_account_daily_reports` — unique `(day, account_id)`, a signed sum per `change_type`, `open_balance`, `close_balance` · no state table |
 | [the-daily-row-is-written-with-the-log-row](../../business/financial_account/context_decision.md#the-daily-row-is-written-with-the-log-row) *(Q17)* | every log write upserts its day's row and shifts later days in the same transaction — no event table, lock or replay · ⚠ audit it with `audit-sql`: two writes on one account shift the same days |
+| [the-prototype-and-its-contract-are-accepted](../../business/financial_account/context_decision.md#the-prototype-and-its-contract-are-accepted) | ✅ design_accept — the three screens, the picker and the 14 + 3 RPC contract are what was built · my proposals in the prototype accepted with it |
 | [account-grouped-joins-the-metrics](../../business/financial_account/context_decision.md#account-grouped-joins-the-metrics) *(critique 9)* | `AnalyticGroupSearch` also groups by account — keys are account ids |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
@@ -52,51 +53,77 @@ the business analysis is done, the analytics included. No technical doc, no back
 | [operational-accounts-pay-for-operations](../../business/financial_account/context_decision.md#operational-accounts-pay-for-operations) *(Q2, which account)* | the owner's `operational_accounts` — the restock's *Paid from* picks among them |
 | [seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) *(Q8)* | `FinancialAccountList`, `FinancialAccountOverview` and `FinancialAccountLogList` open to every member of the team · Create, Update, Archive, Restore, Transfer, Capital, Reconcile, ShopSet to admin and up — `TEAM_ADMIN`/`TEAM_OWNER`, `WAREHOUSE_ADMIN`/`WAREHOUSE_OWNER`, `ADMIN`/`ROOT` (⚠ my reading of *admin up*) · balances stay on their own RPC so narrowing *for now* later is one policy line |
 
-## What exists — the prototype, for design_accept
+## What exists — built 2026-10-01
 
 | | where |
 | --- | --- |
-| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService` (14 RPCs) and `FinancialAccountAnalyticService` (3) · generated for Go and TS · **nothing serves it** — no `financial_account_service` yet |
-| the accounts page | [pages/financial-accounts/](../../../frontend/src/pages/financial-accounts/) — totals by type, banners (below zero, unknown), the table, New Account · 15 stories |
-| an account's page | [pages/financial-account-detail/](../../../frontend/src/pages/financial-account-detail/) — balance, last checked, shops (Point a shop here), the statement · 19 stories |
-| the report | [pages/financial-account-report/](../../../frontend/src/pages/financial-account-report/) — summary, series, ranking by account / provider / type · 7 stories |
-| the picker | [FinancialAccountSelect](../../../frontend/src/components/pickers/FinancialAccountSelect.tsx) — no balance, operational only, pre-pick, *ask an admin* · 7 stories |
-| the domain | [features/financialAccount/](../../../frontend/src/features/financialAccount/) — queries, analytics, the six dialogs, the row menu, badges |
-| the stub | [.storybook/financialAccountStub.ts](../../../frontend/.storybook/financialAccountStub.ts) — a writeable ledger whose balance is DERIVED from its rows, playing every refusal · the analytics read the same rows · fixtures in [financialAccountFixtures.ts](../../../frontend/.storybook/financialAccountFixtures.ts), one consistent book |
-| a session role | [.storybook/sessionScenario.ts](../../../frontend/.storybook/sessionScenario.ts) — `asRole(...)`, so a story can stand as a CS. New, shared by any story |
+| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService` (14 RPCs) and `FinancialAccountAnalyticService` (3), as accepted |
+| **the service** | [backend/services/financial_account_service/](../../../backend/services/financial_account_service/) — one handler file per RPC and a unit test beside each · the ledger's one write path [ledger.go](../../../backend/services/financial_account_service/financial_account_v1/ledger.go): lock the account, the log row, the balance, the day's report row and every later day's shift, one transaction · mounted in the dev server, wired by Wire |
+| the schema | [00001_create_financial_accounts.sql](../../../backend/services/financial_account_service/db_migrations/00001_create_financial_accounts.sql) — `financial_accounts`, `financial_account_logs`, `shop_accounts`, `operational_accounts`, `financial_account_daily_reports`, the listener's `financial_account_event_logs` · [database-schema.md](../../database-schema.md#financial_account_service) · flows: [rpc.md](../../services/financial_account_service/rpc.md) |
+| the withdrawal listener | push route `/event/financial-account-withdrawal/push` on `settlement-log-posted` — settlement's `withdrawal` rows into the shop's account, sign turned; an `unknown` account made for a shop with none · subscription declared in `san pubsub ensure` ([san.md](../../tools/san.md)) |
+| ShopSet's one outside question | [financial_account_deps.go](../../../backend/cmd/app_development/financial_account_deps.go) — `ShopAccessCheck` under the caller's token, before the transaction: another team's shop is refused |
+| the screens | `/financial-accounts`, `/financial-accounts/:id`, `/financial-accounts/report` — routed, **Accounts** in the menu for every member of a selling or warehouse team · the prototype's pages on the real client |
+| tests | 50 unit tests · 48 stories · [e2e/financial_accounts.spec.ts](../../../frontend/e2e/financial_accounts.spec.ts) — 10 steps against the real server, the withdrawal pushed to the listener's route |
+| audits | [audits/services/financial_account_service/](../../../audits/services/financial_account_service/) — 9 performance reports, the lock-order matrix |
+| the dev database | migrated 2026-10-01: financial_account_service 00001 |
 
-`npx vitest run --project=storybook src/pages/financial-account* src/components/pickers/FinancialAccountSelect.stories.tsx` — 48 stories.
-What accepting it accepts, and my proposals inside it, are at the top of the [clarify](../../business/financial_account/context_clarify.md).
+```sh
+go test ./backend/services/financial_account_service/...
+go test -tags raceaudit -run 'TestRace_|TestInterleave_' ./backend/services/financial_account_service/financial_account_v1/
+go test -tags perfaudit -run TestPerf_ -v ./backend/services/financial_account_service/financial_account_v1/
+cd frontend && npx vitest run --project=storybook src/pages/financial-account* src/components/pickers/FinancialAccountSelect.stories.tsx
+cd frontend && npx playwright test e2e/financial_accounts.spec.ts   # Docker up; the Pub/Sub emulator up and ensured
+```
 
-### What it overlaps, already built elsewhere
+## How one withdrawal lands
 
-| | where | on the broker | the clarify proposes |
-| --- | --- | --- | --- |
-| a team's one bank | ✅ **gone** — dropped from `team_infos` by `team_service` `00008`, contract fields 3–5 reserved | — | ✅ where to pay is the team's `description` — [the-team-description-says-where-to-pay](../../business/financial_account/context_decision.md#the-team-description-says-where-to-pay) |
-| how a restock was paid — `shopee_pay` / `bank_account` | `inventory_service` · `restock_requests.payment_type` · `PaymentTypeSelect` | ❌ | ✅ which operational account paid — **required**, replacing the kind |
-| expenses | `expense_service` · `expense_records` — names no account | ❌ | ✅ a **required** *paid from* · `ADS` posts `ads_expense` · settlement's ads never reach an account |
-| withdrawals | `settlement_service` · `withdrawal` rows, from the importer | ✅ `SettlementLogPosted` | ✅ each posts a `withdrawal` into the account in `shop_accounts` — an `unknown` one made when the shop has none |
-| team payments | `liability_service` · `liability_payments` | ❌ | ✅ posts on acceptance only, from a new event carrying both account ids — [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept) |
+```mermaid
+flowchart LR
+  S["settlement — a withdrawal row"] -->|"SettlementLogPosted"| T["settlement-log-posted"]
+  T -->|"push"| L["the listener — claim the event id"]
+  L --> Q{"the shop's link?"}
+  Q -->|"none"| U["make an unknown account, link it"]
+  Q -->|"an account"| K["lock it, re-read the link"]
+  K -->|"moved while waiting"| R["fail — redelivered, follows the shop"]
+  K --> P["post — sign turned, on the day the money moved"]
+  U --> P
+```
 
-## Proposed, not decided
+## Audits — what they found
 
-Build order: accounts and the hand path → withdrawal (its event already exists) → restock → expense → team payment,
-each of the last three needing a new event variant first. A row's cause is its `description`.
+| | verdict |
+| --- | --- |
+| concurrency | ✅ safe — one lock, the account row, two only in id order ([lock-order.md](../../../audits/services/financial_account_service/concurrency/lock-order.md)) · ⚠ **one race found and fixed**: the listener read the shop's link before locking, so a withdrawal waiting on a move-in posted into the archived account the shop had left — it now re-checks under the lock and retries |
+| `AnalyticTimeSearch` | 🔴 heavy — the balance is re-derived per bucket over the team's history: 156 ms for 30 days, 3.3 s for 200 daily points. Settlement's report has the same shape and the same open finding. **→ Recommend a running sum** ([report](../../../audits/services/financial_account_service/performances/AnalyticTimeSearch.md)) — the owner's call |
+| 8 write paths | 🟡 heavy by the "> 5 statements" rule only — 6 to 15 fixed statements, 2–6 ms, none growing · **→ Recommend** reading a write's answer in one query instead of three; the 4-statement ledger leg left as is |
+| every read but the series | not heavy — 1 to 4 queries, ≤ 47 ms at a production-like spread, no N+1 |
 
-✅ The owner's log carries `account_id` ([every-log-row-names-its-account](../../business/financial_account/context_decision.md#every-log-row-names-its-account)), so the ledger's state and log share one scope. It keeps
-the day the money moved too (`occurred_at`). Its cause is the `description` — no `source_id`, by decision.
+## Not built — the next passes, in the build order
+
+| | needs first |
+| --- | --- |
+| *Paid from* on a restock → `restock` rows | inventory's restock event, naming the account ([a-restock-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#a-restock-must-name-the-account-that-paid)) · the restock form swaps `PaymentTypeSelect` for `FinancialAccountSelect` (operational only, pre-picked) |
+| *Paid from* on an expense → `expense` / `ads_expense` rows | expense's event ([an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid)) |
+| *Received into* on a team payment → two `team_payment` rows | the balance service's acceptance event, with both account ids ([a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) |
+
+Until each is wired, a reconcile catches what it moved as an `adjustment` — honest: it was not recorded.
+
+## ⚠ Traps this pass walked into
+
+| | |
+| --- | --- |
+| **The e2e broker has PULL subscriptions and the dev server no pull worker** | CI's `san pubsub ensure` passes no `--push-base-url`, so no event-driven path reaches a handler in e2e. The spec POSTs a Pub/Sub push envelope to the listener's route instead — the route, the decode, the claim and the post are real |
+| **A listener has no caller token**, so it cannot ask the shop's service for a name | the server writes `shop #<id>` into an unknown account's name and a withdrawal's description; `withShopNames` in [vocab.ts](../../../frontend/src/features/financialAccount/vocab.ts) puts the name in on screen |
+| **`gofmt -l` lists ~50 CRLF files in `tools/san`** | untouched files — format only the files you wrote |
+| **Docker Desktop was down** | every `san_testdb` test SKIPS without Postgres — start Docker and `docker compose up -d` before believing a green run |
 
 ## Open
 
-⛔ **design_accept** — the owner previews the prototype. No question, critique or contradiction is open. Still empty in the
+Nothing in the business analysis. For the owner: whether to adopt the running-sum read in `AnalyticTimeSearch` (and
+settlement's), and the one-query answer for the writes — both open questions in their reports. Still empty in the
 owner's doc: §General.
 
-**Next agent:** ⛔ **wait for design_accept.** Its three outcomes ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)):
-**accept** → record it in the decision file (named, RULE 12), route the pages and add the menu entry (*Accounts*, every member),
-then `backend_analysis` → `backend/services/financial_account_service/` · **screen is wrong** → back to the prototype ·
-**requirement was wrong** → back to the owner's doc. Before that, when the owner answers anything, record it in `financial_account/context_decision.md` (named, RULE 12), delete
-the answered question, rebuild `docs/biggest_question.md`. The service will be
-`backend/services/financial_account_service/` (HARD RULE 2). The prototype marks my ⚠ specs (`group_id`, `counter_account_id`,
-`reconciled_at`, the typed group key) as "my spec" in the proto — accepted or not at the gate (HARD RULE 8). Not in the
-prototype: *Paid from* on the restock and expense forms and *Received into* on a team payment — other services' contracts,
-each after its event.
+**Next agent:** the next pass is a restock event in inventory and its listener here — the build order above. A new
+listener follows [withdrawal_listener.go](../../../backend/services/financial_account_service/financial_account_v1/withdrawal_listener.go): claim, then lock the
+account, re-check what was read before the lock, then `post`. Its subscription goes in `tools/san/pubsub.go` and
+[san.md](../../tools/san.md) beside `financial-account-withdrawal`.

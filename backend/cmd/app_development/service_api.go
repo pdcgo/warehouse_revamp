@@ -18,6 +18,8 @@ import (
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	expense_service "github.com/pdcgo/warehouse_revamp/backend/services/expense_service"
 	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	financial_account_service "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service"
+	financial_account_v1 "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
 	inventory_service "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service"
@@ -61,6 +63,7 @@ func NewServeMux(
 	liabilityService *liability_v1.Service,
 	settlementService *settlement_v1.Service,
 	importerService *settlement_importer_v1.Service,
+	accountService *financial_account_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -108,6 +111,7 @@ func NewServeMux(
 		liability_service.NewRegister(mux, liabilityService, opts),
 		settlement_service.NewRegister(mux, settlementService, opts),
 		settlement_importer_service.NewRegister(mux, importerService, opts),
+		financial_account_service.NewRegister(mux, accountService, opts),
 	)
 
 	return mux, nil

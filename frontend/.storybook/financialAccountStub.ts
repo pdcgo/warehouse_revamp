@@ -1,7 +1,8 @@
-// The financial account service as the prototype's stub — docs/business/financial_account.
+// The financial account service as Storybook's stub — docs/business/financial_account.
 //
-// ⚠ PROTOTYPE for design_accept. Nothing serves warehouse.financial_account.v1 yet; this plays the
-// decided rules so the screens can be judged against them, and every refusal below names its decision.
+// It plays the rules backend/services/financial_account_service enforces, so a story fails when a screen
+// stops honouring one; every refusal below names its decision. Built for the prototype, kept for the
+// stories (the-prototype-and-its-contract-are-accepted).
 //
 // WRITEABLE, and the balance is DERIVED: an account holds no balance field here — it is the sum of its
 // rows, and `balance_after` is computed in entry order on the way out. So "the balance moves only with a

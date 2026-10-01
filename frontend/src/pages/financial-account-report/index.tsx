@@ -29,6 +29,8 @@ import {
   useAccountReportSummary,
 } from "../../features/financialAccount/analytics";
 import { useFinancialAccounts } from "../../features/financialAccount/queries";
+import { withShopNames } from "../../features/financialAccount/vocab";
+import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { toDateInputValue } from "../../lib/datetime";
 import type { PeriodGrain } from "../../lib/period";
@@ -53,7 +55,8 @@ function windowOf(range: DateRange): { from: string; to: string } {
 // (analytics-are-delivered-the-settlement-way), read from one row per account per day
 // (the-daily-row-is-one-account-one-day).
 //
-// ⚠ PROTOTYPE for design_accept — not routed until accepted.
+// Mounted at /financial-accounts/report, reached from the accounts page. Accepted at design_accept
+// (the-prototype-and-its-contract-are-accepted).
 //
 // Unlike settlement's report, nothing here lags: the daily row is written in the log row's own transaction
 // (the-daily-row-is-written-with-the-log-row), so this page and the accounts page always agree. A row
@@ -76,7 +79,11 @@ export function FinancialAccountReportPage() {
 
   // Every account the report can name — archived and unknown included, their past still happened.
   const accounts = useFinancialAccounts({ teamId, q: "", includeArchived: true, page: 1, pageSize: 200 });
-  const accountOf = (id: bigint) => accounts.data?.accounts.find((a) => a.id === id);
+  const shops = useShopOptions({ teamId: teamId ?? 0n });
+  const nameOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name;
+  // An unknown account is named after its shop by id — shown by the shop's name.
+  const shownAccounts = (accounts.data?.accounts ?? []).map((a) => ({ ...a, name: withShopNames(a.name, nameOf) }));
+  const accountOf = (id: bigint) => shownAccounts.find((a) => a.id === id);
 
   const summary = useAccountReportSummary({ teamId, from, to, valid, accountId });
   const series = useAccountReportSeries({ teamId, from, to, valid, grain, accountId, page: seriesPage, pageSize: PAGE_SIZE });
@@ -99,7 +106,7 @@ export function FinancialAccountReportPage() {
         <Badge colorPalette="brand">{current.teamName}</Badge>
         <Spacer />
         <AccountFilter
-          accounts={accounts.data?.accounts ?? []}
+          accounts={shownAccounts}
           value={accountId}
           onChange={(next) => {
             setAccountId(next);

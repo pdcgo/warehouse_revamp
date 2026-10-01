@@ -18,9 +18,12 @@ import { formatUnixDate } from "../../../lib/datetime";
 export function AccountLogTable({
   logs,
   actorName,
+  describe,
 }: {
   logs: FinancialAccountLog[];
   actorName: (id: bigint) => string;
+  /** The row's description as shown — a listener writes a shop by id, the screen puts its name in. */
+  describe: (text: string) => string;
 }) {
   const { t } = useTranslation();
 
@@ -65,7 +68,7 @@ export function AccountLogTable({
                 </Table.Cell>
                 <Table.Cell>
                   <Stack gap="0">
-                    <Text fontSize="sm">{log.description}</Text>
+                    <Text fontSize="sm">{describe(log.description)}</Text>
                     <Text fontSize="xs" color="fg.muted" data-testid={`account-log-way-${log.id}`}>
                       {byHand
                         ? t("financialAccounts.log.byHand", { name: actorName(log.actorId) })

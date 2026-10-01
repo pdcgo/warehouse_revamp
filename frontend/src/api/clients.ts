@@ -72,7 +72,7 @@ export const settlementAnalyticClient = createClient(SettlementAnalyticService, 
 // The platform statements that FEED that ledger — a file in, rows posted, the import streamed.
 export const settlementImporterClient = createClient(SettlementImporterService, transport);
 // The money a team actually HOLDS — its bank, wallet and cash accounts (docs/business/financial_account).
-// ⚠ PROTOTYPE: nothing serves it yet, so only Storybook reaches these — the screens are not routed.
+// Served by backend/services/financial_account_service; its withdrawals arrive from settlement's event.
 export const financialAccountClient = createClient(FinancialAccountService, transport);
 export const financialAccountAnalyticClient = createClient(FinancialAccountAnalyticService, transport);
 

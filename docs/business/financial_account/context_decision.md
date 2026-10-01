@@ -38,6 +38,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [the-daily-row-is-one-account-one-day](#the-daily-row-is-one-account-one-day) | the daily report is one row per account per day — a sum per `change_type`, the open and close balance | owner | — |
 | [the-daily-row-is-written-with-the-log-row](#the-daily-row-is-written-with-the-log-row) | the day's row is written in the log row's own transaction, never later from the broker | owner | — |
 | [account-grouped-joins-the-metrics](#account-grouped-joins-the-metrics) | the analytics group by account too — one line per account under its `provider` total | owner | — |
+| [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted) | ✅ design_accept passed — the three screens, the picker and the 14 + 3 RPC contract are what the backend builds against | owner | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -1237,3 +1238,38 @@ flowchart LR
 | by account | the keys are account ids — the shape `AnalyticGroupSearch` was built for: many ids, sorted, then fetched |
 | its rows | the daily rows of each account, summed over the range ([the-daily-row-is-one-account-one-day](#the-daily-row-is-one-account-one-day)) |
 | ⚠ my spec — archived accounts | included, marked archived — their past still happened |
+
+## the-prototype-and-its-contract-are-accepted
+
+> Chat *(owner, 2026-10-01)* — *"i have review the frontend, make fully implemented"*, after the Storybook prototype —
+> **Pages / FinancialAccount / Accounts**, **Account**, **Report** and **Components / Pickers / FinancialAccountSelect** —
+> and its contract were put up for design_accept.
+
+**The verdict.** The owner reviewed the prototype and **accepted it**: the `design_accept` gate
+([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)) is passed. The three screens, the picker and the contract they carry
+([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)) are what `backend_analysis` and the build work from — and *"fully
+implemented"* is the build's bar. My proposals inside the prototype are accepted with it, as the clarify said they
+would be.
+
+```mermaid
+flowchart LR
+  P["the prototype — three screens, the picker"] --> G{"design_accept"}
+  C["the contract — 14 + 3 RPCs"] --> G
+  G -->|"accept, 2026-10-01"| B["backend_analysis"]
+  B --> S["financial_account_service — the ledger, the daily rows, the withdrawal listener"]
+  S --> T["routed, tested, audited, then the state report"]
+```
+
+### The spec — what was accepted
+
+| | |
+| --- | --- |
+| the accounts page | `/financial-accounts` — the team's money by type and in all · one row per account: name and holder, provider, number, balance, *last checked*, *Operational*, its shops · banners for below zero and for unknown accounts · archived on request · **New Account** · a row menu per state, admin and up |
+| an account's page | `/financial-accounts/:id` — balance, *last checked*, the shops that withdraw here and **Point a shop here**, the statement newest first with *by hand · who* or *automatic* |
+| the report | `/financial-accounts/report` — open, net change, close and each type's movement · daily, monthly, yearly · ranked by account, provider or type · the team or one account |
+| the picker | `FinancialAccountSelect` — active real accounts, no balance, operational only, a single option pre-picked, *ask an admin* when there is none |
+| the menu | **Accounts**, for every member of every team |
+| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService` (List, ByIds, Overview, LogList, Create, Update, Identify, Archive, Restore, Transfer, Capital, Reconcile, ShopSet, OperationalSet) · `FinancialAccountAnalyticService` (AnalyticTimeSearch, AnalyticGroupSearch, AnalyticGroupMetric) |
+| my proposals in it | `group_id` and `counter_account_id` on a log row · `reconciled_at` · a note on a non-zero reconcile, none posted on a zero one · a picked day never in the future · an opening balance even at 0 · a name unique in the team · an unknown account only from the listener, transfer out only · the typed `AnalyticGroupKey` · the team's headline as the sum of its providers · Overview without sort or page · the shops on the account's page · money as `double` |
+| the build | the service, its five tables and the daily report written in the log row's transaction · every RPC with a unit test · the **withdrawal listener** on `settlement-log-posted` — its event already exists |
+| not in the build | *Paid from* on a restock and an expense, and the team payment's accept — each needs another service's new event first ([one-way-in-per-type](#one-way-in-per-type)): they are the next passes, in the build order |

@@ -204,6 +204,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "settlement-log-posted",
 			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
 		},
+		// financial_account_service's withdrawal listener — mirrors financial_account_service.WithdrawalSubscription.
+		// The SAME topic as settlement's fold, its OWN subscription: each consumer keeps its own delivery state.
+		{
+			ID:     "financial-account-withdrawal",
+			Topic:  "settlement-log-posted",
+			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
+		},
 	}
 }
 

@@ -10,7 +10,7 @@ import {
 import { formatRupiahNumber } from "../../lib/money";
 import { FinancialAccountReportPage } from "./index";
 
-// ⚠ PROTOTYPE for design_accept — the owner's six metrics (context.md lines 126–131), delivered the
+// The account report — the owner's six metrics (context.md lines 126–131), delivered the
 // settlement way (analytics-are-delivered-the-settlement-way).
 //
 // Toko Melati over the last 30 days (today and the 29 before), from .storybook/financialAccountFixtures.ts:
@@ -19,7 +19,6 @@ import { FinancialAccountReportPage } from "./index";
 //   → +5.143.500 → closed at 16.093.500 — exactly what the accounts page's total says.
 
 const BCA_OPS = account("BCA Operasional");
-const UNKNOWN = account("Unknown — Melati TikTok");
 const BNI = account("BNI Lama");
 
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatRupiahNumber(Math.abs(n))}`.replace(/\s/g, " ");
@@ -98,7 +97,8 @@ export const GroupedByAccount: Story = {
 
     const table = await canvas.findByTestId("account-report-groups");
     const rows = within(table).getAllByRole("row");
-    await expect(rows[1]).toHaveTextContent(UNKNOWN.name);
+    // Named by its shop — the server writes "shop #25", the screen shows Melati TikTok.
+    await expect(rows[1]).toHaveTextContent("Unknown — Melati TikTok");
     await expect(canvas.getByTestId(`account-report-group-accountId-${BNI.id}`)).toHaveTextContent("Archived");
   },
 };

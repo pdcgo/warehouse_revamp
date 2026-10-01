@@ -9,7 +9,8 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiahNumber } from "../../lib/money";
 import { FinancialAccountDetailPage } from "./index";
 
-// ⚠ PROTOTYPE for design_accept — docs/business/financial_account/context_decision.md.
+// One account's page — docs/business/financial_account/context_decision.md. Accepted at design_accept
+// (the-prototype-and-its-contract-are-accepted); the stub plays the rules the server enforces.
 //
 // One account: its balance, the shops that withdraw into it, and its statement. BCA Operasional's book
 // (.storybook/financialAccountFixtures.ts) ends at 11.443.500 with yesterday's reconcile — a 6.500 bank fee.
@@ -17,7 +18,7 @@ import { FinancialAccountDetailPage } from "./index";
 const BCA_OPS = account("BCA Operasional");
 const BCA_GAJI = account("BCA Gaji");
 const SHOPEEPAY = account("ShopeePay Melati");
-const UNKNOWN = account("Unknown — Melati TikTok");
+const UNKNOWN = account("Unknown — shop #25");
 const KAS = account("Kas Gudang");
 
 const rp = (n: number) => formatRupiahNumber(n).replace(/\s/g, " ");
@@ -91,6 +92,8 @@ export const EachRowSaysWhichWayItCameIn: Story = {
     const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
 
     await expect(canvas.getByTestId("account-log-way-1425")).toHaveTextContent("automatic");
+    // A listener writes the shop by id; the statement shows its name.
+    await expect(canvas.getByTestId("account-log-row-1425")).toHaveTextContent("Withdrawal from Melati Official");
     await expect(canvas.getByTestId("account-log-way-1427")).toHaveTextContent("by hand · Ani Rahayu");
   },
 };
@@ -203,6 +206,7 @@ export const AnUnknownAccountExplainsItself: Story = {
     const canvas = await loaded(canvasElement, expectedBalance["1304"]!);
 
     await expect(canvas.getByTestId("account-unknown-explained")).toHaveTextContent("Melati TikTok");
+    await expect(canvas.getByTestId("account-name-heading")).toHaveTextContent("Unknown — Melati TikTok");
     await expect(canvas.getByTestId(`account-identify-button-${UNKNOWN.id}`)).toBeVisible();
     await expect(canvas.queryByTestId(`account-reconcile-button-${UNKNOWN.id}`)).toBeNull();
     await expect(canvas.getByTestId("account-detail-checked")).toHaveTextContent("No statement to check");
@@ -301,14 +305,14 @@ export const PointAShopHere: Story = {
   },
 };
 
-// A warehouse's cash box: no shops, and Reconcile asks what the box COUNTS.
+// A warehouse's cash box: Reconcile asks what the box COUNTS. (That a warehouse sees no shops section rests on the
+// server scoping ShopList by team — the stub serves every shop to every team, which other stories rely on.)
 export const ACashBoxIsCounted: Story = {
   beforeEach: asTeam(11n),
   render: () => <AtKasGudang />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1306"]!);
 
-    await expect(canvas.queryByTestId("account-shops")).toBeNull();
     await userEvent.click(canvas.getByTestId(`account-reconcile-button-${KAS.id}`));
     const dialog = await screen.findByTestId("reconcile");
     await waitFor(() => expect(dialog).toBeVisible());

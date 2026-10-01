@@ -9,7 +9,8 @@ import { FinancialAccountType } from "../../gen/warehouse/financial_account/v1/f
 import { formatRupiahNumber } from "../../lib/money";
 import { FinancialAccountsPage } from "./index";
 
-// ⚠ PROTOTYPE for design_accept — docs/business/financial_account/context_decision.md.
+// The accounts page — docs/business/financial_account/context_decision.md. Accepted at design_accept
+// (the-prototype-and-its-contract-are-accepted); the stub plays the rules the server enforces.
 //
 // Toko Melati's accounts, from ONE consistent book (.storybook/financialAccountFixtures.ts): BCA
 // Operasional 11.443.500, BCA Gaji 600.000, ShopeePay Melati −150.000 (below zero), an unknown account
@@ -18,7 +19,7 @@ import { FinancialAccountsPage } from "./index";
 const BCA_OPS = account("BCA Operasional");
 const BCA_GAJI = account("BCA Gaji");
 const SHOPEEPAY = account("ShopeePay Melati");
-const UNKNOWN = account("Unknown — Melati TikTok");
+const UNKNOWN = account("Unknown — shop #25");
 const BNI = account("BNI Lama");
 
 const rp = (n: number) => formatRupiahNumber(n).replace(/\s/g, " ");
@@ -95,6 +96,8 @@ export const AnUnknownAccountIsWarned: Story = {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.getByTestId(`account-unknown-${UNKNOWN.id}`)).toHaveTextContent("Bank not named");
+    // The server names it by the shop's id; the row shows the shop's name.
+    await expect(canvas.getByTestId(`account-row-${UNKNOWN.id}`)).toHaveTextContent("Unknown — Melati TikTok");
     await expect(canvas.getByTestId("unknown-warning")).toBeVisible();
     await expect(canvas.getByTestId(`account-shop-${UNKNOWN.id}-25`)).toHaveTextContent("Melati TikTok");
 
