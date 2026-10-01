@@ -56,12 +56,15 @@ service LiabilityService {
 }
 
 // Liability is TWO-PHASE (#188): the payer records, the creditor confirms, and only the CONFIRM
-// posts to the ledger. A confirmed payment posted in error is corrected by a compensating entry.
+// posts to the ledger.
+//
+// ⚠ A CONFIRMATION IS FINAL (an-accepted-payment-is-final). There is no reverse: the creditor checks
+// the proof BEFORE accepting, and once accepted the payment can never change. A reverse RPC shipped
+// here once and was removed by that decision — do not bring one back without reopening it.
 service LiabilityPaymentService {
   rpc LiabilityPaymentRecord(LiabilityPaymentRecordRequest) returns (LiabilityPaymentRecordResponse);
   rpc LiabilityPaymentConfirm(LiabilityPaymentConfirmRequest) returns (LiabilityPaymentConfirmResponse);
   rpc LiabilityPaymentReject(LiabilityPaymentRejectRequest) returns (LiabilityPaymentRejectResponse);
-  rpc LiabilityPaymentReverse(LiabilityPaymentReverseRequest) returns (LiabilityPaymentReverseResponse);
   rpc LiabilityPaymentList(LiabilityPaymentListRequest) returns (LiabilityPaymentListResponse);
 }
 
@@ -505,22 +508,21 @@ enum LiabilityPaymentStatus {
   LIABILITY_PAYMENT_STATUS_RECORDED = 1;
 
   // The creditor saw the money arrive. THIS is what posts the entry.
+  //
+  // ⚠ TERMINAL (an-accepted-payment-is-final). Nothing moves a payment out of CONFIRMED.
   LIABILITY_PAYMENT_STATUS_CONFIRMED = 2;
 
-  // A confirmation made in error, undone by a compensating entry — the confirmation itself is never
-  // deleted.
-  LIABILITY_PAYMENT_STATUS_REVERSED = 3;
+  // 3 was REVERSED — a confirmation undone by a compensating entry. Removed with the reverse RPC by
+  // an-accepted-payment-is-final. Reserved so the number can never be reused for a different meaning.
+  reserved 3;
+  reserved "LIABILITY_PAYMENT_STATUS_REVERSED";
 
   // THE CREDITOR LOOKED AND THE MONEY WAS NOT THERE. `balance_context.md` §Payment Flow ends its
   // *"Is Payment Correct?"* branch here, and the lifecycle diagram makes it terminal.
   //
   // ⚠ IT POSTS NOTHING, and that is the entire point of the state. Before it existed a creditor faced
-  // with a claim that never landed could only leave it at RECORDED forever, or CONFIRM and then
-  // REVERSE — which writes two real ledger movements for money that never moved and leaves the pair's
-  // history telling a story that did not happen.
-  //
-  // ⚠ NOT THE SAME AS REVERSED. Rejecting refuses a CLAIM (nothing was ever posted); reversing undoes
-  // a CONFIRMATION (a posting is compensated). Two different failures, and they must not share a path.
+  // with a claim that never landed could only leave it at RECORDED forever — or confirm it, writing a
+  // real ledger movement for money that never moved.
   LIABILITY_PAYMENT_STATUS_REJECTED = 4;
 }
 
@@ -560,9 +562,7 @@ message LiabilityPayment {
   // design declines to trust.
   repeated string document_ids = 11;
 
-  // WHY a creditor refused or undid this payment. Empty while the payment is RECORDED or CONFIRMED —
-  // the status says which act filled it, which is why REJECTED and REVERSED share one column rather
-  // than owning two that are each always null for the other.
+  // WHY a creditor refused this payment. Empty unless the payment is REJECTED.
   //
   // ⚠ IT IS SHOWN TO THE PAYER. A refusal a debtor cannot read is a debt they cannot fix — they would
   // see a claim marked wrong with no way to learn whether to re-send the slip or the money.
@@ -643,39 +643,6 @@ message LiabilityPaymentConfirmRequest {
 }
 
 message LiabilityPaymentConfirmResponse {
-  LiabilityPayment payment = 1;
-}
-
-message LiabilityPaymentReverseRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
-    ]
-  };
-
-  // The CREDITOR again — whoever confirmed is who un-confirms.
-  uint64 team_id = 1 [
-    (buf.validate.field).uint64.gt = 0,
-    (warehouse.role_base.v1.use_scope) = true
-  ];
-
-  uint64 payment_id = 2 [(buf.validate.field).uint64.gt = 0];
-
-  // Why. Reversing a confirmation says a person got it wrong, and the next person to read the history
-  // deserves to know what happened rather than seeing two entries that cancel out for no stated
-  // reason.
-  string reason = 3 [(buf.validate.field).string = {
-    min_len: 1
-    max_len: 500
-  }];
-}
-
-message LiabilityPaymentReverseResponse {
   LiabilityPayment payment = 1;
 }
 

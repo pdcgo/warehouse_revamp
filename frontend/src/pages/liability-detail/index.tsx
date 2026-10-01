@@ -111,8 +111,6 @@ function statusKey(status: LiabilityPaymentStatus): string {
       return "liabilityDetail.statusRecorded";
     case LiabilityPaymentStatus.CONFIRMED:
       return "liabilityDetail.statusConfirmed";
-    case LiabilityPaymentStatus.REVERSED:
-      return "liabilityDetail.statusReversed";
     case LiabilityPaymentStatus.REJECTED:
       return "liabilityDetail.statusRejected";
     default:
@@ -126,9 +124,7 @@ function statusPalette(status: LiabilityPaymentStatus): string {
       return "orange";
     case LiabilityPaymentStatus.CONFIRMED:
       return "green";
-    // ⚠ RED, and REVERSED stays grey. A refusal is an outcome the payer has to act on — re-send the
-    // slip, or the money — while a reversal is a correction already made. Giving them one colour
-    // would flatten "you must do something" into "something happened".
+    // ⚠ RED. A refusal is an outcome the payer has to act on — re-send the slip, or the money.
     case LiabilityPaymentStatus.REJECTED:
       return "red";
     default:

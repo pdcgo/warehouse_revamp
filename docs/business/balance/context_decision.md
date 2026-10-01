@@ -27,6 +27,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-daily-report-is-deferred](#the-daily-report-is-deferred) | ⛔ **parked, not cancelled.** ⚠ §Responsbility 2 goes on promising selling teams a screen that refuses them |
 | [the-cross-markup-belongs-to-the-product](#the-cross-markup-belongs-to-the-product) | the cross-product markup is **`product_service`'s**. ⚠ removed from the balance frontend; the ledger still CHARGES from balance's column |
 | [found-posts-without-a-handshake](#found-posts-without-a-handshake) | cause 5 posts **unilaterally** — no acknowledgement. ⚠ against recommendation, and it hands the whole weight to the unbuilt dispute |
+| [an-accepted-payment-is-final](#an-accepted-payment-is-final) | once the creditor accepts, the payment **never changes and is never reversed**. `LiabilityPaymentReverse` is removed. ⚠ against recommendation |
 
 ---
 
@@ -1100,3 +1101,48 @@ alone. ⚠ **It must be deleted in the same change that moves the charge**, or i
 
 **→ What is still open is the backend move**, and it is not mine to pick:
 [technical Q10](../../technical/balance/team_balance_design_clarify.md#question).
+
+## an-accepted-payment-is-final
+
+> The owner, in chat *(2026-10-01)* — *"remove it, when accept it, its final and cannot change or
+> reversed"*. Answers [Q11](./context_clarify.md#question), and financial_account's
+> [Q14](../financial_account/context_clarify.md#question) with it.
+
+**The verdict.** When the creditor accepts a payment, it is **final**. It cannot be changed, and it
+cannot be reversed. §Payment Flow's lifecycle is now exactly what the code does.
+
+⚠ **This went against the recommendation.** I recommended keeping the reverse, so that a mistaken
+accept could be corrected with a record linked to the payment. The owner chose the stricter rule: the
+check happens **before** accepting, never after.
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending: payer records, with proof
+  pending --> accepted: creditor accepts, posts the settling entry
+  pending --> rejected: creditor rejects, posts nothing
+  accepted --> [*]: final
+  rejected --> [*]: final
+```
+
+### The spec — what was removed
+
+| | |
+| --- | --- |
+| proto | `rpc LiabilityPaymentReverse` and its request/response messages. `LIABILITY_PAYMENT_STATUS_REVERSED = 3` is **reserved**, number and name, so it can never come back with a different meaning |
+| handler | `payment_reverse.go` and its six unit tests |
+| race audit | `TestRace_LiabilityPaymentConfirmAgainstReverse`. The confirm-only race and the confirm-against-reject race stay |
+| `paymentPosting` | loses its `reversal` parameter. A payment posts once, at accept, and nothing un-posts it |
+| frontend | the `REVERSED` status label, in both locales. No screen had ever called the RPC |
+| schema | **nothing.** `status` is `TEXT` with no CHECK. A stray `reversed` row reads as `UNSPECIFIED`, and none should exist because no screen ever produced one |
+
+### What it means for each party
+
+| | |
+| --- | --- |
+| the creditor | accepting says *"the money is in our account"*, so check the proof against the bank first. A mistaken accept stays: the debt is settled whether or not the money arrived |
+| the payer | a rejected claim is also final. They record a **new** payment if they still mean to pay |
+| financial accounts | [a-team-payment-posts-on-accept](../financial_account/context_decision.md#a-team-payment-posts-on-accept) posts the two `team_payment` rows, and **nothing ever removes them**. There is no reverse event to listen for, so FA Q14 is closed |
+
+✅ **The tests that now hold the rule** are the ones that already existed:
+`TestPaymentConfirm_CannotBeConfirmedTwice` and `TestPaymentReject_RefusesAConfirmedPayment`. Between
+them, nothing can move a payment out of `accepted`.

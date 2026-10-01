@@ -112,7 +112,6 @@
     "causeUnknown": "Unknown #{{id}}",
     "statusRecorded": "Recorded",
     "statusConfirmed": "Confirmed",
-    "statusReversed": "Reversed",
     "statusRejected": "Rejected",
     "statusUnknown": "—",
     "kindWarehouse": "Warehouse team",

@@ -7,7 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| ✅ answered in chat | a team payment posts only on acceptance, and the balance service's event carries the from and to account ids: [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · 🆕 [Q14](#question) — an acceptance later reversed |
+| ✅ answered in chat | a team payment posts only on acceptance, and the balance service's event carries the from and to account ids: [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · ✅ and never reversed: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 | 🔄 elaborated | Q9 — one payment end to end, and who names the payee · which account may be it · a change while a payment waits · archiving it |
 | ✅ answered in chat | critique 2 — `type` and `provider` are picked apart: [type-and-provider-are-picked-apart](./context_decision.md#type-and-provider-are-picked-apart) · critique 1 — the cause is the `description`: [the-description-names-the-cause](./context_decision.md#the-description-names-the-cause) · both against my recommendation · **no critique left** |
 | ✅ answered in chat, and your line 105 | critique 4 — an account opens with an `opening_balance` log row: [an-account-opens-with-a-log-row](./context_decision.md#an-account-opens-with-a-log-row) · critique 8 — archived only at zero: [an-account-is-archived-only-at-zero](./context_decision.md#an-account-is-archived-only-at-zero) · ⚠ line 105 repeats `opening_balance` — [reported](#contradiction) |
@@ -99,7 +99,7 @@ listener is new · **3.** restock · **4.** expense · **5.** team payment — e
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 ✅ **Nothing in your doc blocks the account screens now** — the log names its account. Left: [Q9](#question), which
-shapes only the payee screens, and [Q14](#question) — whether a reversed payment reaches the accounts.
+shapes only the payee screens.
 
 ## Proposed Design
 
@@ -122,7 +122,7 @@ shapes only the payee screens, and [Q14](#question) — whether a reversed payme
 | `expense` | out | ✅ broker only — 🆕 an expense event — every kind a person types but `ADS` | created · a void reverses it — ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) |
 | `ads_expense` ✅ | out | ✅ broker only — the same expense event, when its kind is `ADS` — ⚠ my reading | created · a void reverses it — [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) |
 | `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
-| `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — 🆕 the balance service's acceptance, carrying both account ids | the creditor accepts — [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · a reversal: [Q14](#question) |
+| `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — 🆕 the balance service's acceptance, carrying both account ids | the creditor accepts — [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · never reversed: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 | `capital` ✅ | in or out | ✅ by hand only — the business owner's own money | when typed |
 | `adjustment` ✅ | in or out | ✅ by hand only — a reconcile; the difference, never typed | [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 
@@ -230,7 +230,7 @@ sequenceDiagram
 | `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account — a shop with none gets an `unknown` one first — the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
 | a restock topic | 🆕 inventory publishes | `restock` — the account that paid, and the change |
 | an expense topic | 🆕 expense publishes | `expense`, or `ads_expense` when its kind is `ADS` — every expense a person types · settlement's ads never, [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) |
-| a payment-accepted topic | 🆕 the balance service publishes | `team_payment` — out of `from_account_id`, into `to_account_id` ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)) · a reversal: [Q14](#question) |
+| a payment-accepted topic | 🆕 the balance service publishes | `team_payment` — out of `from_account_id`, into `to_account_id` ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)) · no reversal topic: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 
 ### The data
 
@@ -407,23 +407,9 @@ balance — a person picking *which account paid* is recording a fact, and the b
     *Paid from* on `ADS` is required with no exception: [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) — and an ad posts as `ads_expense`: [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types).
     Kept as a line so the numbers hold.
 
-14. 🆕 **A payment accepted, then reversed — does the account hear the reversal?**
-    *(from [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept))* The balance service can undo an acceptance — `LiabilityPaymentReverse`, *"a person got it wrong"*.
-    Hearing only the acceptance, both accounts keep a movement the balance has undone.
-    **→ Recommend: hear the reversal too** — the same two ids, the two rows posted back, the description saying which
-    payment it undoes.
-
-    | instead | why not |
-    | --- | --- |
-    | nothing — a reconcile catches it | both accounts are wrong until someone reconciles, and the fix lands as an unexplained `adjustment` instead of a named reversal |
-
-    ```mermaid
-    flowchart LR
-      AC["accept"] -->|"heard"| P["team_payment — out of A, into B"]
-      RV["reverse — a person got it wrong"] --> Q{"heard?"}
-      Q -->|"recommend: yes"| R["team_payment back — into A, out of B"]
-      Q -->|"no"| G["both accounts keep it until a reconcile"]
-    ```
+14. ✅ **Answered 2026-10-01 — there is no reversal to hear.** The balance service made an accepted payment final and
+    removed its reverse: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed).
+    Kept as a line so the numbers hold.
 
 # Contradiction
 

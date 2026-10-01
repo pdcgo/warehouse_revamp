@@ -112,7 +112,6 @@
     "causeUnknown": "Tidak diketahui #{{id}}",
     "statusRecorded": "Dicatat",
     "statusConfirmed": "Dikonfirmasi",
-    "statusReversed": "Dibalik",
     "statusRejected": "Ditolak",
     "statusUnknown": "—",
     "kindWarehouse": "Tim gudang",

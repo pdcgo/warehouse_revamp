@@ -30,7 +30,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [an-account-is-archived-only-at-zero](#an-account-is-archived-only-at-zero) | an account is archived only when its balance is zero — move the money out or reconcile first | owner | — |
 | [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart) | `type` and `provider` are picked apart — nothing derives one from the other, and a pair that disagrees saves | owner, against my recommendation | — |
 | [the-description-names-the-cause](#the-description-names-the-cause) | a log row's cause is its `description` — no `source_id`, no `reversal` | owner, against my recommendation | — |
-| [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) | a team payment posts only on the creditor's acceptance — the balance service's event carries the from and to account ids | owner | [Q14](./context_clarify.md#question) — a reversed acceptance |
+| [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) | a team payment posts only on the creditor's acceptance — the balance service's event carries the from and to account ids | owner | ✅ Q14 closed — [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) |
+| [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) | an accepted team payment is final in the balance service, so its two `team_payment` rows are never posted back — there is no reversal to hear | owner | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -1038,3 +1039,25 @@ sequenceDiagram
 | ⚠ my spec — `occurred_at` | when the creditor accepted |
 | a redelivered event | posts once — its `event_id` claimed ([one-contract-for-both-handler-types](../../technical/event_architecture/context_decision.md#one-contract-for-both-handler-types)) |
 | an accepted payment later reversed | not heard — open: [Q14](./context_clarify.md#question) |
+
+## a-team-payment-is-never-reversed
+
+> The owner, in chat *(2026-10-01)*, deciding for the balance service — *"remove it, when accept it, its final and
+> cannot change or reversed"*. Recorded there as
+> [an-accepted-payment-is-final](../balance/context_decision.md#an-accepted-payment-is-final). Closes
+> [Q14](./context_clarify.md#question), against my recommendation to hear a reversal: there is no longer one to hear.
+
+**The verdict.** The two `team_payment` rows posted on acceptance are **permanent**. The balance service has no
+reverse, so this service listens for the acceptance and nothing else.
+
+```mermaid
+flowchart LR
+  AC["balance — creditor accepts"] -->|"the only event"| P["team_payment out of A, into B"]
+  P --> F["final — nothing posts it back"]
+```
+
+| | |
+| --- | --- |
+| heard | the acceptance only — unchanged from [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) |
+| a mistaken accept | stays in both accounts. If the money never landed, a **reconcile** finds the gap and it lands as an `adjustment` ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
+| a reversal event | none exists, and none should be built — it would contradict the balance decision |
