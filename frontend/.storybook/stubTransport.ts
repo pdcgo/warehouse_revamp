@@ -35,7 +35,6 @@ import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
@@ -49,6 +48,12 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
+import { sessionScenario } from "./sessionScenario";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountService,
+} from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
+import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -605,7 +610,8 @@ export const transport = createRouterTransport(({ service }) => {
                   t.id.toString(),
                   {
                     teamId: t.id,
-                    role: Role.WAREHOUSE_ADMIN,
+                    // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
+                    role: sessionScenario.role,
                     alias: "",
                     teamName: t.name,
                     teamType: t.type,
@@ -1323,6 +1329,11 @@ export const transport = createRouterTransport(({ service }) => {
 
   // The settlement importer, served with the rules it owns: another team's file is absent, and each
   // import runs whether or not its stream is still being read.
+  // The financial accounts — the prototype stub, in its own module because it is the whole service
+  // (financialAccountStub.ts): a writeable ledger plus the reports read from it.
+  service(FinancialAccountService, financialAccountService);
+  service(FinancialAccountAnalyticService, financialAccountAnalyticService);
+
   service(SettlementImporterService, {
     uploadedFileList: (req) => {
       const rows = importsTable

@@ -4,6 +4,13 @@ export function formatRupiah(amount: bigint): string {
   return `Rp ${amount.toLocaleString("id-ID")}`;
 }
 
+// formatRupiahNumber is formatRupiah for a `double` amount — the wire type rupiah-is-floating-point
+// decided, which the newer contracts carry. Rounded to whole rupiah for display: a fraction of a rupiah
+// is not money anyone can hand over, and the server rounds as a row posts anyway.
+export function formatRupiahNumber(amount: number): string {
+  return formatRupiah(BigInt(Math.round(amount)));
+}
+
 // The Indonesian short-scale suffixes, largest first so the first match wins.
 const COMPACT_UNITS: Array<{ limit: number; suffix: string }> = [
   { limit: 1e12, suffix: "T" }, // triliun

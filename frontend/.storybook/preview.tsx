@@ -17,6 +17,8 @@ import {
   resetShipmentChannels,
 } from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
+import { resetFinancialAccounts } from "./financialAccountStub";
+import { resetSessionScenario } from "./sessionScenario";
 import { system } from "../src/theme";
 import "../src/i18n/config";
 
@@ -248,6 +250,10 @@ const preview: Preview = {
     // …and the imported-files table, which every story that runs an import adds a row to — and its
     // scenario flags (no primary CS, a wrong-shop file), which one story sets for itself alone.
     resetSettlementImports();
+    // …and the financial accounts, whose ledger a transfer, a reconcile or an archive writes to.
+    resetFinancialAccounts();
+    // …and who is signed in — a story standing as a CS must not leave the next one a CS.
+    resetSessionScenario();
     stubClipboard();
   },
   parameters: {

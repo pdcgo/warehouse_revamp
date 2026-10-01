@@ -1,10 +1,12 @@
 # Development state — financial_account
 
-**Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
+**Pass:** 🔨 **implementation_analysis (2026-10-01)** — the Storybook prototype and its contract are built and ⛔ **wait on the
+owner's design_accept** ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)): no handler, no migration, not routed.
+Before it: business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
 [context_decision.md](../../business/financial_account/context_decision.md) — **thirty-nine owner decisions**. **Nothing is open** —
-the business analysis is done, the analytics included. No Storybook prototype, no technical doc, no code.
+the business analysis is done, the analytics included. No technical doc, no backend.
 
 ## Decided
 
@@ -50,9 +52,23 @@ the business analysis is done, the analytics included. No Storybook prototype, n
 | [operational-accounts-pay-for-operations](../../business/financial_account/context_decision.md#operational-accounts-pay-for-operations) *(Q2, which account)* | the owner's `operational_accounts` — the restock's *Paid from* picks among them |
 | [seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) *(Q8)* | `FinancialAccountList`, `FinancialAccountOverview` and `FinancialAccountLogList` open to every member of the team · Create, Update, Archive, Restore, Transfer, Capital, Reconcile, ShopSet to admin and up — `TEAM_ADMIN`/`TEAM_OWNER`, `WAREHOUSE_ADMIN`/`WAREHOUSE_OWNER`, `ADMIN`/`ROOT` (⚠ my reading of *admin up*) · balances stay on their own RPC so narrowing *for now* later is one policy line |
 
-## What exists
+## What exists — the prototype, for design_accept
 
-Nothing of this context. What it overlaps is already built elsewhere:
+| | where |
+| --- | --- |
+| the contract | [financial_account.proto](../../../proto/warehouse/financial_account/v1/financial_account.proto) — `FinancialAccountService` (14 RPCs) and `FinancialAccountAnalyticService` (3) · generated for Go and TS · **nothing serves it** — no `financial_account_service` yet |
+| the accounts page | [pages/financial-accounts/](../../../frontend/src/pages/financial-accounts/) — totals by type, banners (below zero, unknown), the table, New Account · 15 stories |
+| an account's page | [pages/financial-account-detail/](../../../frontend/src/pages/financial-account-detail/) — balance, last checked, shops (Point a shop here), the statement · 19 stories |
+| the report | [pages/financial-account-report/](../../../frontend/src/pages/financial-account-report/) — summary, series, ranking by account / provider / type · 7 stories |
+| the picker | [FinancialAccountSelect](../../../frontend/src/components/pickers/FinancialAccountSelect.tsx) — no balance, operational only, pre-pick, *ask an admin* · 7 stories |
+| the domain | [features/financialAccount/](../../../frontend/src/features/financialAccount/) — queries, analytics, the six dialogs, the row menu, badges |
+| the stub | [.storybook/financialAccountStub.ts](../../../frontend/.storybook/financialAccountStub.ts) — a writeable ledger whose balance is DERIVED from its rows, playing every refusal · the analytics read the same rows · fixtures in [financialAccountFixtures.ts](../../../frontend/.storybook/financialAccountFixtures.ts), one consistent book |
+| a session role | [.storybook/sessionScenario.ts](../../../frontend/.storybook/sessionScenario.ts) — `asRole(...)`, so a story can stand as a CS. New, shared by any story |
+
+`npx vitest run --project=storybook src/pages/financial-account* src/components/pickers/FinancialAccountSelect.stories.tsx` — 48 stories.
+What accepting it accepts, and my proposals inside it, are at the top of the [clarify](../../business/financial_account/context_clarify.md).
+
+### What it overlaps, already built elsewhere
 
 | | where | on the broker | the clarify proposes |
 | --- | --- | --- | --- |
@@ -72,10 +88,15 @@ the day the money moved too (`occurred_at`). Its cause is the `description` — 
 
 ## Open
 
-Nothing — no question, critique or contradiction is open. Still empty in the owner's doc: §General.
+⛔ **design_accept** — the owner previews the prototype. No question, critique or contradiction is open. Still empty in the
+owner's doc: §General.
 
-**Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
+**Next agent:** ⛔ **wait for design_accept.** Its three outcomes ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)):
+**accept** → record it in the decision file (named, RULE 12), route the pages and add the menu entry (*Accounts*, every member),
+then `backend_analysis` → `backend/services/financial_account_service/` · **screen is wrong** → back to the prototype ·
+**requirement was wrong** → back to the owner's doc. Before that, when the owner answers anything, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be
-`backend/services/financial_account_service/` (HARD RULE 2). The Storybook prototype of the account screens is
-unblocked — the owner's log carries its `account_id`. There are no payee screens — Q9 withdrew them. Mark my ⚠ specs
-(`group_id`, `reconciled_at`) as proposals in any contract drawn before the owner adopts them (HARD RULE 8).
+`backend/services/financial_account_service/` (HARD RULE 2). The prototype marks my ⚠ specs (`group_id`, `counter_account_id`,
+`reconciled_at`, the typed group key) as "my spec" in the proto — accepted or not at the gate (HARD RULE 8). Not in the
+prototype: *Paid from* on the restock and expense forms and *Received into* on a team payment — other services' contracts,
+each after its event.

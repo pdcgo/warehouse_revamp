@@ -2257,5 +2257,217 @@
       "platform_reimbursement": "Platform reimbursed",
       "marketplace_program": "Platform programme"
     }
+  },
+  "financialAccounts": {
+    "title": "Accounts",
+    "selectTeam": "Pick a team to see its accounts.",
+    "subtitle": "What the team holds, and where. A balance moves only with a row — open an account to read them.",
+    "report": {
+      "title": "Account Report",
+      "subtitle": "What moved the team's money, by the day it moved. Always up to date with the balances.",
+      "rangeInvalid": "Pick a start and an end, the start first.",
+      "open": "Opening balance",
+      "change": "Net change",
+      "close": "Closing balance",
+      "overTime": "Over time",
+      "ranking": "What moved it",
+      "period": "Period",
+      "empty": "Nothing moved in this window.",
+      "wholeTeam": "The whole team",
+      "by": {
+        "account": "Account",
+        "provider": "Provider",
+        "changeType": "Type"
+      }
+    },
+    "newAccount": "New Account",
+    "searchPlaceholder": "Search a name, holder or number",
+    "showArchived": "Show archived accounts",
+    "archived": "Archived",
+    "operational": "Operational",
+    "bankNotNamed": "Bank not named",
+    "neverChecked": "Never checked",
+    "noStatement": "No statement to check",
+    "notFound": "This account is not in this team.",
+    "empty": "No accounts yet. An admin adds the team's bank, wallet and cash accounts here.",
+    "emptySearch": "No account matches that search.",
+    "belowZero": "Below zero",
+    "belowZeroBanner_one": "{{count}} account is below zero. That is allowed — check it against the bank.",
+    "belowZeroBanner_other": "{{count}} accounts are below zero. That is allowed — check them against the bank.",
+    "unknownBanner_one": "{{count}} account holds withdrawals from a shop whose bank is not named yet. Open it and choose Which Account Is This?",
+    "unknownBanner_other": "{{count}} accounts hold withdrawals from shops whose bank is not named yet. Open each and choose Which Account Is This?",
+    "unknownExplained": "A withdrawal from {{shops}} arrived before anyone named its bank, so this account was made to hold it. Name the bank, or move the money into an account you already have.",
+    "belowZeroExplained": "Below zero in the books — usually a payment recorded before the top-up. Reconcile against the bank.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "failed": "That did not go through",
+    "amount": "Amount (Rp)",
+    "movedOn": "The day the money moved",
+    "note": "Note",
+    "col": {
+      "account": "Account",
+      "provider": "Provider",
+      "number": "Number",
+      "balance": "Balance",
+      "lastChecked": "Last checked",
+      "usedFor": "Used for",
+      "actions": "Actions"
+    },
+    "totals": {
+      "bank": "Bank accounts",
+      "wallet": "Wallets",
+      "cash": "Cash",
+      "unknown": "Bank not named",
+      "team": "The team holds",
+      "accounts_one": "{{count}} account",
+      "accounts_other": "{{count}} accounts",
+      "belowZero_one": "{{count}} below zero",
+      "belowZero_other": "{{count}} below zero"
+    },
+    "provider": {
+      "cash": "Cash",
+      "bca": "BCA",
+      "bni": "BNI",
+      "jago": "Jago",
+      "shopeepay": "ShopeePay",
+      "unknown": "Unknown"
+    },
+    "type": {
+      "wallet": "Wallet",
+      "bankAccount": "Bank account",
+      "cash": "Cash",
+      "unknown": "Unknown"
+    },
+    "changeType": {
+      "unspecified": "—",
+      "expense": "Expense",
+      "adsExpense": "Ads",
+      "adjustment": "Adjustment",
+      "withdrawal": "Withdrawal",
+      "restock": "Restock",
+      "openingBalance": "Opening balance",
+      "transfer": "Transfer",
+      "teamPayment": "Team payment",
+      "capital": "Capital"
+    },
+    "select": {
+      "placeholder": "Choose an account",
+      "empty": "No account to choose",
+      "noOperational": "No operational account — ask an admin to mark one",
+      "unavailable": "Accounts unavailable"
+    },
+    "form": {
+      "newTitle": "New Account",
+      "editTitle": "Edit {{name}}",
+      "name": "Name",
+      "nameHelp": "What the team calls it — unique in the team.",
+      "type": "Type",
+      "provider": "Provider",
+      "providerPlaceholder": "Choose a bank or wallet",
+      "number": "Account number",
+      "numberHelp": "The bank number, or the wallet's phone. One real account is recorded once, across every team.",
+      "holder": "Holder (atas nama)",
+      "holderHelp": "The name the bank prints.",
+      "description": "Description",
+      "opening": "Opening balance (Rp)",
+      "openingHelp": "Posted as the account's first row — 0 is fine.",
+      "openingOn": "True on",
+      "fixedHelp": "fixed: another number is another account"
+    },
+    "transfer": {
+      "title": "Transfer From {{name}}",
+      "to": "To",
+      "after": "{{name}} after: {{amount}}",
+      "belowZero": "{{name}} will be below zero. That is allowed, and it will be warned.",
+      "notePlaceholder": "e.g. ShopeePay top-up",
+      "save": "Transfer"
+    },
+    "capital": {
+      "title": "Capital — {{name}}",
+      "direction": "Direction",
+      "in": "Money in",
+      "out": "Money out",
+      "help": "The business owner's own money, put in or taken out."
+    },
+    "reconcile": {
+      "title": "Reconcile {{name}}",
+      "books": "The books say",
+      "shows": "What does the bank app show? (Rp)",
+      "counted": "What does the box count? (Rp)",
+      "agree": "The books agree — nothing is posted, the account is marked checked.",
+      "differs": "Difference {{amount}} — posted as an adjustment.",
+      "asOf": "Read on",
+      "why": "Why do they differ?",
+      "whyPlaceholder": "e.g. bank fee",
+      "whyHelp": "Needed when there is a difference — it is the one row that can hide missing cash.",
+      "save": "Reconcile"
+    },
+    "identify": {
+      "title": "Which Account Is This?",
+      "intro": "{{amount}} came in from {{shops}} before its bank was named.",
+      "itsShop": "its shop",
+      "fill": "Not recorded yet — fill it in",
+      "move": "It is one we already have",
+      "fillHelp": "This account becomes it — its rows stay, each withdrawal on its own day.",
+      "into": "Move the money into",
+      "moveHelp": "{{amount}} moves into it, {{shops}} withdraws there from now on, and this account is archived."
+    },
+    "actions": {
+      "label": "Account actions",
+      "transfer": "Transfer",
+      "transferOut": "Transfer out",
+      "reconcile": "Reconcile",
+      "capital": "Capital in / out",
+      "edit": "Edit",
+      "markOperational": "Mark operational",
+      "unmarkOperational": "Unmark operational",
+      "identify": "Which account is this?",
+      "archive": "Archive",
+      "archiveOnlyAtZero": "only at zero",
+      "restore": "Restore"
+    },
+    "archiveDialog": {
+      "title": "Archive {{name}}",
+      "message": "{{name}} holds {{amount}}. Archived, it leaves every picker and takes no row by hand; its history stays. You can restore it."
+    },
+    "toast": {
+      "created": "{{name}} added",
+      "updated": "{{name}} saved",
+      "transferred": "{{amount}} moved out of {{from}}",
+      "capitalIn": "{{amount}} capital into {{name}}",
+      "capitalOut": "{{amount}} capital out of {{name}}",
+      "reconciledAgree": "{{name}} checked — the books agree",
+      "reconciledAdjusted": "{{name}} checked — {{amount}} adjusted",
+      "filledIn": "It is {{name}} now",
+      "movedIn": "Moved into {{name}}",
+      "restored": "{{name}} restored",
+      "archived": "{{name}} archived",
+      "markedOperational": "{{name}} pays for operations now",
+      "unmarkedOperational": "{{name}} no longer pays for operations",
+      "shopSet": "{{shop}} withdraws into {{name}} now"
+    },
+    "shops": {
+      "title": "Shops that withdraw here",
+      "point": "Point a shop here",
+      "none": "No shop withdraws into this account.",
+      "dialogTitle": "Point a Shop at {{name}}",
+      "shop": "Shop",
+      "already": "{{shop}} already withdraws here.",
+      "moves": "{{shop}} withdraws into {{from}} now — it moves to {{to}}.",
+      "first": "{{shop}} names no account yet — its withdrawals start landing here."
+    },
+    "log": {
+      "title": "Statement",
+      "empty": "No rows in this view.",
+      "date": "Date",
+      "type": "Type",
+      "description": "Why",
+      "change": "Change",
+      "balanceAfter": "Balance after",
+      "recordedOn": "recorded {{date}}",
+      "byHand": "by hand · {{name}}",
+      "automatic": "automatic — from where it happened",
+      "allTypes": "All types"
+    }
   }
 }

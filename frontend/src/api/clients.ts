@@ -26,6 +26,10 @@ import {
   SettlementWriteService,
 } from "../gen/warehouse/settlement/v1/settlement_pb";
 import { SettlementImporterService } from "../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountService,
+} from "../gen/warehouse/financial_account/v1/financial_account_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
@@ -67,6 +71,10 @@ export const settlementWriteClient = createClient(SettlementWriteService, transp
 export const settlementAnalyticClient = createClient(SettlementAnalyticService, transport);
 // The platform statements that FEED that ledger — a file in, rows posted, the import streamed.
 export const settlementImporterClient = createClient(SettlementImporterService, transport);
+// The money a team actually HOLDS — its bank, wallet and cash accounts (docs/business/financial_account).
+// ⚠ PROTOTYPE: nothing serves it yet, so only Storybook reaches these — the screens are not routed.
+export const financialAccountClient = createClient(FinancialAccountService, transport);
+export const financialAccountAnalyticClient = createClient(FinancialAccountAnalyticService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {
