@@ -39,7 +39,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Two questions open, no critique, no contradiction.**
+already touch a bank without naming one. **One question open, no critique, no contradiction.**
 
 ## What already moves money
 

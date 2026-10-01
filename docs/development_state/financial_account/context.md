@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-two owner decisions**. The
-lifecycle is at *waiting for the owner* on Q9 and Q14 — no Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-three owner decisions**. The
+lifecycle is at *waiting for the owner* on Q9 — no Storybook prototype, no technical doc, no code.
 
 ## Decided
 
@@ -19,7 +19,8 @@ lifecycle is at *waiting for the owner* on Q9 and Q14 — no Storybook prototype
 | [an-account-is-archived-only-at-zero](../../business/financial_account/context_decision.md#an-account-is-archived-only-at-zero) *(critique 8)* | `FinancialAccountArchive` refused unless the balance is 0 · ⚠ an archived account takes no hand row but still takes broker rows — my spec |
 | [type-and-provider-are-picked-apart](../../business/financial_account/context_decision.md#type-and-provider-are-picked-apart) *(critique 2, against my recommendation)* | `type` and `provider` both picked on the form — no derivation, a mismatched pair saves |
 | [the-description-names-the-cause](../../business/financial_account/context_decision.md#the-description-names-the-cause) *(critique 1, against my recommendation)* | no `source_id`, no `reversal` — the cause is `description`, written by the listener from the event (⚠ my spec) · dedup is the library's `Claim(event_id)` |
-| [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept) | the team-payment listener hears only the balance service's acceptance · the event carries `from_account_id` and `to_account_id` — both new on `liability_service`'s payment · two `team_payment` rows · a reversal is Q14 |
+| [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept) | the team-payment listener hears only the balance service's acceptance · the event carries `from_account_id` and `to_account_id` — both new on `liability_service`'s payment · two `team_payment` rows |
+| [a-team-payment-is-never-reversed](../../business/financial_account/context_decision.md#a-team-payment-is-never-reversed) *(Q14)* | an accepted payment is final — `LiabilityPaymentReverse` is removed, so there is no reversal topic and the two rows never post back |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(provider, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
@@ -65,7 +66,7 @@ the day the money moved too (`occurred_at`). Its cause is the `description` — 
 
 ## Open
 
-Q9 and Q14 in the clarify. Nothing in the owner's doc blocks the account screens' contract — no contradiction is
+Q9 in the clarify. Nothing in the owner's doc blocks the account screens' contract — no contradiction is
 open. Q9 shapes only the payee screens.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
