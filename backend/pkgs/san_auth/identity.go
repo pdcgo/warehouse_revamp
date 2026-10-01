@@ -209,3 +209,37 @@ func GetBearer(ctx context.Context) string {
 func WithBearer(ctx context.Context, token string) context.Context {
 	return context.WithValue(ctx, bearerCtxKey{}, token)
 }
+
+type callerRoleCtxKey struct{}
+
+// GetCallerRole returns the caller's role IN THE TEAM THE REQUEST WAS SCOPED TO, or
+// ROLE_UNSPECIFIED when they hold none there (including when nothing set it — a direct domain call
+// in a test).
+//
+// ⚠ IT IS NOT AN AUTHORIZATION CHECK, and must never be used as one. The interceptor has already
+// decided whether the call is allowed by the time a handler can read this; what it answers is a
+// different question — *on whose behalf* was the call allowed. A handler re-deriving permission from
+// it would be a second, drifting copy of the policy the proto already declares.
+//
+// ⚠ ROLE_UNSPECIFIED HERE MEANS "OUTSIDE THE TEAM", which is the useful signal: the request got in,
+// so it was authorized, and holding no role in the scoped team means it was authorized by the
+// root-team bypass instead. That is precisely the definition of an OVERRIDE in
+// docs/business/balance/context_decision.md#terms-are-team-scoped-root-is-global — a write by
+// somebody outside the creditor team.
+//
+// It is derived by the server, never sent by the caller: whether a write was an override is a fact
+// about who made it, and the caller is the one party that cannot be trusted to report it.
+func GetCallerRole(ctx context.Context) role_basev1.Role {
+	role, _ := ctx.Value(callerRoleCtxKey{}).(role_basev1.Role)
+
+	return role
+}
+
+// WithCallerRole stores the role resolved for this request's scope. The interceptor calls it;
+// handlers read it back with GetCallerRole.
+//
+// The key lives HERE for the same reason WithBearer's does: setter and getter in different packages
+// would compile fine and silently disagree.
+func WithCallerRole(ctx context.Context, role role_basev1.Role) context.Context {
+	return context.WithValue(ctx, callerRoleCtxKey{}, role)
+}

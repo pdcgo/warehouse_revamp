@@ -1,0 +1,304 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// SupplierService owns `suppliers` — the vendors a team buys stock from (#103), managed under the
+// Inventory area. Every RPC is team-scoped: `team_id` carries (use_scope) and each query is
+// constrained to that team, so one team can never read or mutate another team's supplier by id.
+//
+// SupplierByIds is the ONE EXCEPTION, and it is deliberate — see its comment.
+service SupplierService {
+  rpc SupplierCreate(SupplierCreateRequest) returns (SupplierCreateResponse);
+  rpc SupplierList(SupplierListRequest) returns (SupplierListResponse);
+  rpc SupplierByIds(SupplierByIdsRequest) returns (SupplierByIdsResponse);
+  rpc SupplierDetail(SupplierDetailRequest) returns (SupplierDetailResponse);
+  rpc SupplierUpdate(SupplierUpdateRequest) returns (SupplierUpdateResponse);
+  rpc SupplierDelete(SupplierDeleteRequest) returns (SupplierDeleteResponse);
+}
+
+message Supplier {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  // A short stable code, unique per team among active suppliers (like a shop/team code).
+  string code = 3;
+  string name = 4;
+  string contact = 5;
+  string province = 6;
+  string city = 7;
+  string address = 8;
+  string description = 9;
+  bool deleted = 10;
+}
+
+message SupplierCreateRequest {
+  // Write: only a SELLING team's managers manage suppliers (#107) — warehouse teams get read-only
+  // (list/detail) below. Team-level roles are legal because team_id carries use_scope.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  string code = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string contact = 4 [(buf.validate.field).string.max_len = 50];
+  string province = 5 [(buf.validate.field).string.max_len = 100];
+  string city = 6 [(buf.validate.field).string.max_len = 100];
+  string address = 7 [(buf.validate.field).string.max_len = 500];
+  string description = 8 [(buf.validate.field).string.max_len = 500];
+}
+
+message SupplierCreateResponse {
+  Supplier supplier = 1;
+}
+
+message SupplierListRequest {
+  // Read: anyone in the team, including staff and customer service.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  SupplierListFilter filter = 2;
+  SupplierListFilterSort sort = 3;
+  repeated SupplierListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message SupplierListFilter {
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+}
+
+enum SupplierListDataType {
+  SUPPLIER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SUPPLIER_LIST_DATA_TYPE_GENERAL = 1;
+  SUPPLIER_LIST_DATA_TYPE_SUPPLIER = 2;
+}
+
+enum SupplierRowSort {
+  SUPPLIER_ROW_SORT_UNSPECIFIED = 0;
+  SUPPLIER_ROW_SORT_ID = 1;
+  SUPPLIER_ROW_SORT_NAME = 2;
+  SUPPLIER_ROW_SORT_CODE = 3;
+}
+
+message SupplierListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    SupplierRowSort supplier = 3;
+  }
+}
+
+message SupplierRowMapItem {
+  map<uint64, Supplier> map_data = 1;
+}
+
+message SupplierListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SupplierRowMapItem supplier = 2;
+  }
+}
+
+message SupplierListResponse {
+  repeated SupplierListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// SupplierByIds resolves ids the caller ALREADY HOLDS into suppliers, whoever owns them.
+//
+// It is the ONLY supplier read not constrained to the caller's team, and that is the whole reason it
+// exists. A restock names its supplier by id, and a WAREHOUSE accepting that delivery has to show it:
+// the crew is matching a physical box against the record, and "Supplier #2" is a number standing in
+// for the name printed on the carton in their hands. Every other read here stays team-scoped —
+// SupplierDetail already grants warehouse roles and still returns NotFound cross-team, because its
+// query filters by team.
+//
+// ⚠ THIS REVERSES AN EARLIER CALL, recorded so nobody re-derives it as a bug. #133/#125 removed the
+// supplier from the warehouse's restock detail on the grounds that a buying team's vendor is its own
+// commercial business and the warehouse "was never entitled to" it. The owner reversed that for the
+// ACCEPT screen (2026-07-30): the person at the door is holding the supplier's carton, so withholding
+// the name protects nothing and costs them the check they are there to make.
+//
+// The bound is the same one ProductByIds draws: a by-ids lookup is NOT a browse — the caller must
+// already hold the id — and what comes back is a name, not terms, prices or payment details.
+message SupplierByIdsRequest {
+  // Read: selling roles AND warehouse roles. The warehouse ones are the point.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The team the CALLER holds a role in — NOT the team whose suppliers come back. A warehouse asking
+  // about a selling team's supplier passes its own id, exactly as on every other scoped call.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  SupplierByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Which slices to load per supplier. Empty defaults to the SUPPLIER (row) slice.
+  repeated SupplierByIdsDataType data_request = 3;
+}
+
+// SupplierByIdsFilter carries the NON-scope inputs (the ids to resolve). The scoped team_id stays
+// top-level on the request. It does not page: the caller supplies the set, so the response can never
+// exceed what was asked for, and max_items is what stops this becoming a bulk export.
+message SupplierByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum SupplierByIdsDataType {
+  SUPPLIER_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  SUPPLIER_BY_IDS_DATA_TYPE_GENERAL = 1;
+  SUPPLIER_BY_IDS_DATA_TYPE_SUPPLIER = 2;
+}
+
+message SupplierByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SupplierRowMapItem supplier = 2;
+  }
+}
+
+message SupplierByIdsResponseList {
+  repeated SupplierByIdsResponseItem items = 1;
+}
+
+message SupplierByIdsResponse {
+  // Keyed by supplier id. An id that resolves to nothing is simply ABSENT rather than an error: a
+  // caller holding a restock that names a since-deleted supplier is asking a reasonable question, and
+  // failing the whole lookup would blank a delivery over one dead id. Soft-deleted suppliers ARE
+  // returned (a restock outlives its vendor record); Supplier.deleted is on the wire so a caller that
+  // cares can tell.
+  map<uint64, SupplierByIdsResponseList> items = 1;
+}
+
+message SupplierDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message SupplierDetailResponse {
+  Supplier supplier = 1;
+}
+
+message SupplierUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it.
+  optional string code = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+  optional string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  optional string contact = 5 [(buf.validate.field).string.max_len = 50];
+  optional string province = 6 [(buf.validate.field).string.max_len = 100];
+  optional string city = 7 [(buf.validate.field).string.max_len = 100];
+  optional string address = 8 [(buf.validate.field).string.max_len = 500];
+  optional string description = 9 [(buf.validate.field).string.max_len = 500];
+}
+
+message SupplierUpdateResponse {
+  Supplier supplier = 1;
+}
+
+message SupplierDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message SupplierDeleteResponse {}

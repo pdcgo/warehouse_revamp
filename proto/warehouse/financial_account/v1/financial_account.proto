@@ -1,0 +1,1019 @@
+syntax = "proto3";
+
+package warehouse.financial_account.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1;financial_accountv1";
+
+// Accepted at design_accept (the-prototype-and-its-contract-are-accepted) and served by backend/services/financial_account_service.
+// The business design is docs/business/financial_account/context_decision.md; every rule below names
+// the decision it comes from. A rule marked "my spec" was the agent's proposal, accepted with the screens
+// (contract-accepted-with-the-screens).
+//
+// The money a team actually HOLDS — a bank account, a ShopeePay wallet, a cash box — each with a balance
+// that moves only with a log row, in the same transaction (the-accounts-are-one-ledger).
+//
+// A row arrives two ways and no other (a-row-comes-by-hand-or-from-the-broker): a manager on these
+// screens, or a listener on another service's event. So there is NO write RPC for other services — a
+// restock, an expense, a withdrawal and a team payment are heard, never called in. Each type has exactly
+// one of the two ways (one-way-in-per-type):
+//
+//   by hand     opening_balance (create) · transfer · capital · adjustment (reconcile only)
+//   broker      withdrawal · restock · expense · ads_expense · team_payment
+//
+// Who: every member of the team SEES; admin and up MOVES the money
+// (seeing-is-team-wide-moving-is-admin-and-up). Balances are on their own RPC (Overview), never on the
+// list, so narrowing who sees them later is one policy line.
+//
+// Money is `double` on the wire (rupiah-is-floating-point), stored `numeric` and rounded to whole rupiah
+// as it posts — so a balance compares exactly against zero and against the bank's figure.
+service FinancialAccountService {
+  // The team's accounts — name, provider, number, holder, status. NO balance.
+  rpc FinancialAccountList(FinancialAccountListRequest) returns (FinancialAccountListResponse);
+  // Accounts a caller already holds the id of — a restock names which account paid. NO balance.
+  rpc FinancialAccountByIds(FinancialAccountByIdsRequest) returns (FinancialAccountByIdsResponse);
+  // The balances — per account, and a total per type.
+  rpc FinancialAccountOverview(FinancialAccountOverviewRequest) returns (FinancialAccountOverviewResponse);
+  // One account's rows, newest first.
+  rpc FinancialAccountLogList(FinancialAccountLogListRequest) returns (FinancialAccountLogListResponse);
+
+  rpc FinancialAccountCreate(FinancialAccountCreateRequest) returns (FinancialAccountCreateResponse);
+  rpc FinancialAccountUpdate(FinancialAccountUpdateRequest) returns (FinancialAccountUpdateResponse);
+  // An `unknown` account becomes a real one — filled in, or moved into one already registered.
+  rpc FinancialAccountIdentify(FinancialAccountIdentifyRequest) returns (FinancialAccountIdentifyResponse);
+  rpc FinancialAccountArchive(FinancialAccountArchiveRequest) returns (FinancialAccountArchiveResponse);
+  rpc FinancialAccountRestore(FinancialAccountRestoreRequest) returns (FinancialAccountRestoreResponse);
+
+  rpc FinancialAccountTransfer(FinancialAccountTransferRequest) returns (FinancialAccountTransferResponse);
+  rpc FinancialAccountCapital(FinancialAccountCapitalRequest) returns (FinancialAccountCapitalResponse);
+  rpc FinancialAccountReconcile(FinancialAccountReconcileRequest) returns (FinancialAccountReconcileResponse);
+
+  // Which account a shop withdraws into — its `shop_accounts` row.
+  rpc FinancialAccountShopSet(FinancialAccountShopSetRequest) returns (FinancialAccountShopSetResponse);
+  // Marks or unmarks an account as one that pays for operations — `operational_accounts`.
+  rpc FinancialAccountOperationalSet(FinancialAccountOperationalSetRequest) returns (FinancialAccountOperationalSetResponse);
+}
+
+// The REPORTS — settlement's delivery, adopted (analytics-are-delivered-the-settlement-way).
+//
+// Every number is read from `financial_account_daily_reports`, one row per account per day
+// (the-daily-row-is-one-account-one-day), written in the log row's own transaction
+// (the-daily-row-is-written-with-the-log-row) — so unlike settlement's, a report is NEVER behind the
+// balance, and there is no replay and no maintenance service.
+service FinancialAccountAnalyticService {
+  // A metric series — daily, monthly or yearly — for the team, or one account.
+  rpc AnalyticTimeSearch(AnalyticTimeSearchRequest) returns (AnalyticTimeSearchResponse);
+  // The RANKING of groups — accounts, providers or change types — over a window. Keys only, sorted.
+  rpc AnalyticGroupSearch(AnalyticGroupSearchRequest) returns (AnalyticGroupSearchResponse);
+  // The metrics for the keys the caller already ranked.
+  rpc AnalyticGroupMetric(AnalyticGroupMetricRequest) returns (AnalyticGroupMetricResponse);
+}
+
+// ---------------------------------------------------------------------------- the vocabulary
+
+// What KIND of place holds the money. Picked on the form, apart from `provider` — a mismatched pair
+// saves (type-and-provider-are-picked-apart).
+enum FinancialAccountType {
+  FINANCIAL_ACCOUNT_TYPE_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_TYPE_WALLET = 1;
+  FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT = 2;
+  FINANCIAL_ACCOUNT_TYPE_CASH = 3;
+  // The owner's `unknown` — an account the withdrawal listener made for a shop that named none
+  // (a-shop-with-no-account-gets-an-unknown-one). NOT the same as UNSPECIFIED, which is "not sent".
+  // Never picked by hand (my spec): it leaves `unknown` only through FinancialAccountIdentify.
+  FINANCIAL_ACCOUNT_TYPE_UNKNOWN = 4;
+}
+
+// WHO holds the money — the bank or the wallet (provider-replaces-account-type).
+enum FinancialAccountProvider {
+  FINANCIAL_ACCOUNT_PROVIDER_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_PROVIDER_CASH = 1;
+  FINANCIAL_ACCOUNT_PROVIDER_BCA = 2;
+  FINANCIAL_ACCOUNT_PROVIDER_BNI = 3;
+  FINANCIAL_ACCOUNT_PROVIDER_JAGO = 4;
+  // The team's e-wallet it pays suppliers with — never the Shopee seller balance
+  // (shopeepay-is-the-wallet-a-team-pays-with).
+  FINANCIAL_ACCOUNT_PROVIDER_SHOPEEPAY = 5;
+  // See FINANCIAL_ACCOUNT_TYPE_UNKNOWN.
+  FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN = 6;
+}
+
+enum FinancialAccountStatus {
+  FINANCIAL_ACCOUNT_STATUS_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_STATUS_ACTIVE = 1;
+  // Only at a zero balance (an-account-is-archived-only-at-zero). Takes no hand row; a broker row still
+  // posts — refusing it would dead-letter money that really moved (my spec). Out of every picker.
+  FINANCIAL_ACCOUNT_STATUS_ARCHIVED = 2;
+}
+
+// WHY a balance moved. Each has one way in (one-way-in-per-type).
+enum FinancialAccountChangeType {
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_UNSPECIFIED = 0;
+  // Broker — an expense a person typed, every kind but ADS (an-expense-must-name-the-account-that-paid).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_EXPENSE = 1;
+  // Broker — the same expense event when its kind is ADS (ads-expense-joins-the-types).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_ADS_EXPENSE = 2;
+  // By hand, and only as a reconcile's difference — no RPC takes an adjustment amount
+  // (adjustment-is-for-reconciling-only).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_ADJUSTMENT = 3;
+  // Broker — settlement's `withdrawal` row, sign turned, into the shop's account
+  // (revenue-stays-in-settlement, a-shop-names-the-account-it-withdraws-into).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_WITHDRAWAL = 4;
+  // Broker — a restock's payment, from a new inventory event (restock-is-never-typed-by-hand).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_RESTOCK = 5;
+  // By hand — creating the account posts it, in the same transaction (an-account-opens-with-a-log-row).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_OPENING_BALANCE = 6;
+  // By hand — two legs, out of one account and into another, in one act.
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_TRANSFER = 7;
+  // Broker — the balance service's acceptance, out of the payer and into the creditor
+  // (a-team-payment-posts-on-accept). Never reversed (a-team-payment-is-never-reversed).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT = 8;
+  // By hand — the business owner's own money, in or out (capital-joins-the-types).
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL = 9;
+}
+
+// ---------------------------------------------------------------------------- the account
+
+// One place the team holds money. NO balance on it — balances are FinancialAccountOverview's.
+message FinancialAccount {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  FinancialAccountType type = 3;
+  FinancialAccountProvider provider = 4;
+  FinancialAccountStatus status = 5;
+  // A bank number or a wallet's phone. Empty for a cash box and for an `unknown` account. Unique per
+  // provider across ALL teams, archived included, when set (a-real-account-is-recorded-once).
+  string account_number = 6;
+  // Unique in the team (my spec) — so a picker never shows two of the same.
+  string name = 7;
+  // *Atas nama* — whose name the bank prints (an-account-has-a-name-and-a-holder).
+  string holder_name = 8;
+  string description = 9;
+  // Marked in `operational_accounts` — a restock's *Paid from* picks among these
+  // (operational-accounts-pay-for-operations).
+  bool operational = 10;
+  // The shops whose `shop_accounts` row names this account — they withdraw into it. A shop names one
+  // account (a-shop-has-one-account); an account takes many shops.
+  repeated uint64 shop_ids = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// ---------------------------------------------------------------------------- list
+
+message FinancialAccountListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  FinancialAccountListFilter filter = 2;
+  FinancialAccountListFilterSort sort = 3;
+  repeated FinancialAccountListDataType data_request = 4;
+  // Paginated (HARD RULE 9). A picker asks one large first page.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message FinancialAccountListFilter {
+  // Matches name, holder or number.
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  // Default false = active only — what every picker asks. The accounts page sets it, because an
+  // archived account is restored from there.
+  bool include_archived = 2;
+  // Only accounts marked operational — the restock form's *Paid from*.
+  bool operational_only = 3;
+  // Empty = every type.
+  repeated FinancialAccountType types = 4 [(buf.validate.field).repeated.max_items = 4];
+  // The account this shop withdraws into — at most one (a-shop-has-one-account). 0 = no filter.
+  uint64 shop_id = 5;
+}
+
+enum FinancialAccountListDataType {
+  FINANCIAL_ACCOUNT_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_LIST_DATA_TYPE_GENERAL = 1;
+  FINANCIAL_ACCOUNT_LIST_DATA_TYPE_ACCOUNT = 2;
+}
+
+enum FinancialAccountRowSort {
+  FINANCIAL_ACCOUNT_ROW_SORT_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_ROW_SORT_NAME = 1;
+  FINANCIAL_ACCOUNT_ROW_SORT_PROVIDER = 2;
+  FINANCIAL_ACCOUNT_ROW_SORT_CREATED_AT = 3;
+}
+
+message FinancialAccountListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    FinancialAccountRowSort account = 3;
+  }
+}
+
+message FinancialAccountRowMapItem {
+  map<uint64, FinancialAccount> map_data = 1;
+}
+
+message FinancialAccountListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    FinancialAccountRowMapItem account = 2;
+  }
+}
+
+message FinancialAccountListResponse {
+  repeated FinancialAccountListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ---------------------------------------------------------------------------- by ids
+
+// ARCHIVED ACCOUNTS ARE RETURNED — an old restock still names the account that paid. An id that is not
+// this team's, or never existed, is absent.
+message FinancialAccountByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  FinancialAccountByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  // Empty defaults to the ACCOUNT slice.
+  repeated FinancialAccountByIdsDataType data_request = 3;
+}
+
+message FinancialAccountByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum FinancialAccountByIdsDataType {
+  FINANCIAL_ACCOUNT_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_BY_IDS_DATA_TYPE_GENERAL = 1;
+  FINANCIAL_ACCOUNT_BY_IDS_DATA_TYPE_ACCOUNT = 2;
+}
+
+message FinancialAccountByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    FinancialAccountRowMapItem account = 2;
+  }
+}
+
+message FinancialAccountByIdsResponseList {
+  repeated FinancialAccountByIdsResponseItem items = 1;
+}
+
+message FinancialAccountByIdsResponse {
+  map<uint64, FinancialAccountByIdsResponseList> items = 1;
+}
+
+// ---------------------------------------------------------------------------- overview — the balances
+
+// The guideline's Overview shape, without its sort and page: BALANCE answers the ids the caller's list
+// page already holds (≤ 200), and TYPE_TOTAL is at most four rows — neither has anything to rank or page.
+message FinancialAccountOverviewRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  FinancialAccountOverviewFilter filter = 2;
+  repeated FinancialAccountMetricDataType metric_request = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+message FinancialAccountOverviewFilter {
+  // For BALANCE — the accounts whose balance is wanted. Required by BALANCE, ignored by TYPE_TOTAL.
+  repeated uint64 account_ids = 1 [(buf.validate.field).repeated = {
+    max_items: 200
+    unique: true
+  }];
+}
+
+enum FinancialAccountMetricDataType {
+  FINANCIAL_ACCOUNT_METRIC_DATA_TYPE_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_METRIC_DATA_TYPE_BALANCE = 1;
+  FINANCIAL_ACCOUNT_METRIC_DATA_TYPE_TYPE_TOTAL = 2;
+}
+
+message FinancialAccountBalanceItem {
+  uint64 account_id = 1;
+  // May be BELOW ZERO — warned on screen, never refused (below-zero-is-warned-never-refused).
+  double balance = 2;
+  // The last reconcile — "last checked". Unset = never checked (my spec).
+  google.protobuf.Timestamp reconciled_at = 3;
+}
+
+message FinancialAccountBalanceMapItem {
+  map<uint64, FinancialAccountBalanceItem> map_data = 1;
+}
+
+// The team's money, by type. ACTIVE accounts only — an archived one holds zero by rule.
+message FinancialAccountTypeTotalItem {
+  FinancialAccountType type = 1;
+  double balance = 2;
+  int64 account_count = 3;
+  // How many of them are below zero — the list's warning, counted once.
+  int64 below_zero_count = 4;
+}
+
+message FinancialAccountTypeTotalList {
+  repeated FinancialAccountTypeTotalItem items = 1;
+}
+
+message FinancialAccountOverviewResponseItem {
+  oneof d {
+    FinancialAccountBalanceMapItem balance = 1;
+    FinancialAccountTypeTotalList type_total = 2;
+  }
+}
+
+message FinancialAccountOverviewResponse {
+  repeated FinancialAccountOverviewResponseItem items = 1;
+}
+
+// ---------------------------------------------------------------------------- the log
+
+// One move of one account's balance. Append-only — a mistake is corrected by a further row.
+message FinancialAccountLog {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  // The scope — `balance_after` runs per account (every-log-row-names-its-account).
+  uint64 account_id = 3;
+  FinancialAccountChangeType change_type = 4;
+  // Signed: positive is money INTO this account.
+  double change = 5;
+  // The previous row's plus this one's change, in ENTRY order (the-log-says-balance-after).
+  double balance_after = 6;
+  // The cause, in words — no source id, no reversal flag (the-description-names-the-cause). A listener
+  // writes it from its event; a person types it.
+  string description = 7;
+  // Who did it. 0 for a row a listener posted with no person behind it.
+  uint64 actor_id = 8;
+  // When the money MOVED — the event's time, or the day a person picked
+  // (the-log-keeps-the-day-the-money-moved). The analytics day is this, in Jakarta time
+  // (a-row-counts-on-the-day-the-money-moved).
+  google.protobuf.Timestamp occurred_at = 9;
+  // When it was RECORDED.
+  google.protobuf.Timestamp created_at = 10;
+  // Both legs of one transfer, or of one payment, share it (my spec). 0 for a single-leg row.
+  uint64 group_id = 11;
+  // The other account of a transfer or a team payment — this team's or the counterparty's. 0 otherwise
+  // (my spec: so a leg can say "to BCA Gaji" without a second lookup by group).
+  uint64 counter_account_id = 12;
+}
+
+message FinancialAccountLogListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  FinancialAccountLogListFilter filter = 2 [(buf.validate.field).required = true];
+  FinancialAccountLogListFilterSort sort = 3;
+  repeated FinancialAccountLogListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message FinancialAccountLogListFilter {
+  // One account — the log is read account by account, the way a bank statement is.
+  uint64 account_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // Empty = every type.
+  repeated FinancialAccountChangeType change_types = 2 [(buf.validate.field).repeated.max_items = 9];
+  // Over `occurred_at`'s Jakarta day, inclusive, YYYY-MM-DD. Empty ends are open.
+  string occurred_from = 3 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+  string occurred_to = 4 [(buf.validate.field).string.pattern = "^([0-9]{4}-[0-9]{2}-[0-9]{2})?$"];
+}
+
+enum FinancialAccountLogListDataType {
+  FINANCIAL_ACCOUNT_LOG_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  FINANCIAL_ACCOUNT_LOG_LIST_DATA_TYPE_LOG = 1;
+}
+
+enum FinancialAccountLogSort {
+  FINANCIAL_ACCOUNT_LOG_SORT_UNSPECIFIED = 0;
+  // Entry order — the order `balance_after` runs in. The default, descending: newest first.
+  FINANCIAL_ACCOUNT_LOG_SORT_ID = 1;
+  FINANCIAL_ACCOUNT_LOG_SORT_OCCURRED_AT = 2;
+}
+
+message FinancialAccountLogListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    FinancialAccountLogSort log = 2;
+  }
+}
+
+message FinancialAccountLogMapItem {
+  map<uint64, FinancialAccountLog> map_data = 1;
+}
+
+message FinancialAccountLogListResponseItem {
+  oneof d {
+    FinancialAccountLogMapItem log = 1;
+  }
+}
+
+message FinancialAccountLogListResponse {
+  repeated FinancialAccountLogListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ---------------------------------------------------------------------------- account writes
+
+message FinancialAccountCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Not UNKNOWN — only the withdrawal listener makes one (my spec).
+  FinancialAccountType type = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [1, 2, 3]
+  }];
+  FinancialAccountProvider provider = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [1, 2, 3, 4, 5]
+  }];
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  string holder_name = 5 [(buf.validate.field).string.max_len = 120];
+  // Empty only for a cash box. Refused with ALREADY_EXISTS when this provider and number are recorded
+  // in ANY team, archived included (a-real-account-is-recorded-once).
+  string account_number = 6 [(buf.validate.field).string.max_len = 40];
+  string description = 7 [(buf.validate.field).string.max_len = 500];
+  // Posted as the `opening_balance` row, in the same transaction — even at 0, so every account's log
+  // starts with a row (an-account-opens-with-a-log-row; "even at 0" is my spec).
+  double opening_balance = 8 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  // The day that opening figure was true — the row's `occurred_at`. YYYY-MM-DD, not in the future.
+  string opening_on = 9 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+}
+
+message FinancialAccountCreateResponse {
+  FinancialAccount account = 1;
+}
+
+// Name, holder and description. Provider and number are FIXED — another number is another account.
+message FinancialAccountUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+  string holder_name = 4 [(buf.validate.field).string.max_len = 120];
+  string description = 5 [(buf.validate.field).string.max_len = 500];
+}
+
+message FinancialAccountUpdateResponse {
+  FinancialAccount account = 1;
+}
+
+// An `unknown` account only — refused FAILED_PRECONDITION on any other
+// (an-unknown-account-is-filled-in-or-moved-in).
+message FinancialAccountIdentifyRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  oneof target {
+    option (buf.validate.oneof).required = true;
+    // NOT REGISTERED YET — the unknown account becomes it: same id, rows kept. Refused ALREADY_EXISTS
+    // when the provider and number are recorded already — the answer is `move_into_account_id`.
+    FinancialAccountIdentity fill_in = 3;
+    // ALREADY REGISTERED in this team — one transaction: its balance transferred in, its shops re-pointed,
+    // the unknown account archived at zero.
+    uint64 move_into_account_id = 4;
+  }
+}
+
+message FinancialAccountIdentity {
+  FinancialAccountType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [1, 2, 3]
+  }];
+  FinancialAccountProvider provider = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    in: [1, 2, 3, 4, 5]
+  }];
+  string account_number = 3 [(buf.validate.field).string.max_len = 40];
+  string holder_name = 4 [(buf.validate.field).string.max_len = 120];
+  string name = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+}
+
+message FinancialAccountIdentifyResponse {
+  // The account the money is in now — the same one filled in, or the one moved into.
+  FinancialAccount account = 1;
+}
+
+// Refused FAILED_PRECONDITION unless the balance is exactly zero (an-account-is-archived-only-at-zero).
+message FinancialAccountArchiveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message FinancialAccountArchiveResponse {
+  FinancialAccount account = 1;
+}
+
+message FinancialAccountRestoreRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message FinancialAccountRestoreResponse {
+  FinancialAccount account = 1;
+}
+
+// ---------------------------------------------------------------------------- the hand rows
+
+// Two rows, one act: `transfer` out of `from`, `transfer` into `to`. Both this team's, both active,
+// never the same. Below zero is allowed — warned, never refused (below-zero-is-warned-never-refused).
+message FinancialAccountTransferRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 from_account_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 to_account_id = 3 [(buf.validate.field).uint64.gt = 0];
+  double amount = 4 [(buf.validate.field).double = {
+    gt: 0
+    finite: true
+  }];
+  // The day it moved — both rows' `occurred_at`. YYYY-MM-DD, not in the future.
+  string occurred_on = 5 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  // Becomes both rows' description, after the generated "To BCA Gaji" / "From BCA Operasional".
+  string note = 6 [(buf.validate.field).string.max_len = 500];
+}
+
+message FinancialAccountTransferResponse {
+  // [the out leg, the in leg].
+  repeated FinancialAccountLog logs = 1;
+}
+
+enum CapitalDirection {
+  CAPITAL_DIRECTION_UNSPECIFIED = 0;
+  // The owner puts money in.
+  CAPITAL_DIRECTION_IN = 1;
+  // The owner takes money out.
+  CAPITAL_DIRECTION_OUT = 2;
+}
+
+// One `capital` row, signed by `direction` — the person never types a sign.
+message FinancialAccountCapitalRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+  CapitalDirection direction = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  double amount = 4 [(buf.validate.field).double = {
+    gt: 0
+    finite: true
+  }];
+  string occurred_on = 5 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string note = 6 [(buf.validate.field).string.max_len = 500];
+}
+
+message FinancialAccountCapitalResponse {
+  FinancialAccountLog log = 1;
+}
+
+// The manager types what the bank app shows — or what the cash box counts — and the DIFFERENCE posts as
+// an `adjustment`. Nobody types an adjustment's sign (adjustment-is-for-reconciling-only).
+//
+// A non-zero difference needs a `note`, refused INVALID_ARGUMENT without one — it is the one row that can
+// hide missing cash (my spec). Every reconcile stamps `reconciled_at`, a zero difference included (my spec).
+message FinancialAccountReconcileRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // What the bank or the box says now.
+  double actual_balance = 3 [(buf.validate.field).double.finite = true];
+  // The day the figure was read — the adjustment's `occurred_at`. YYYY-MM-DD, not in the future.
+  string as_of = 4 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string note = 5 [(buf.validate.field).string.max_len = 500];
+}
+
+message FinancialAccountReconcileResponse {
+  // actual_balance − the balance before. 0 when the books already agreed — then no row is posted.
+  double difference = 1;
+  // The adjustment row, when the difference was not zero.
+  FinancialAccountLog log = 2;
+  google.protobuf.Timestamp reconciled_at = 3;
+}
+
+// ---------------------------------------------------------------------------- the two link tables
+
+// Upserts the shop's `shop_accounts` row. `shop_id` is unique (a-shop-has-one-account), so pointing a
+// shop here MOVES it off whichever account it named before. The account must be this team's and active.
+message FinancialAccountShopSetRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 account_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message FinancialAccountShopSetResponse {
+  FinancialAccount account = 1;
+  // The account the shop named before, or 0 if it named none.
+  uint64 previous_account_id = 2;
+}
+
+message FinancialAccountOperationalSetRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 account_id = 2 [(buf.validate.field).uint64.gt = 0];
+  bool operational = 3;
+}
+
+message FinancialAccountOperationalSetResponse {
+  FinancialAccount account = 1;
+}
+
+// ---------------------------------------------------------------------------- analytics
+
+// One window's movement, by change type, and the balance at its two edges — the fields of
+// `financial_account_daily_reports` (the-daily-row-is-one-account-one-day). Each type column is SIGNED,
+// positive into the account.
+message FinancialAccountMetric {
+  double expense = 1;
+  double ads_expense = 2;
+  double adjustment = 3;
+  double withdrawal = 4;
+  double restock = 5;
+  double opening_balance = 6;
+  // Nets to zero for a team — both legs are its own accounts.
+  double transfer = 7;
+  double team_payment = 8;
+  double capital = 9;
+  // The sum of the nine — `close_balance − open_balance`.
+  double change = 10;
+  double open_balance = 11;
+  double close_balance = 12;
+}
+
+enum AnalyticTimeframe {
+  ANALYTIC_TIMEFRAME_UNSPECIFIED = 0;
+  // One point per day. Span capped at 366 days.
+  ANALYTIC_TIMEFRAME_DAILY = 1;
+  // One point per calendar month. Span capped at 60 months.
+  ANALYTIC_TIMEFRAME_MONTHLY = 2;
+  // One point per calendar year. Span capped at 20 years.
+  ANALYTIC_TIMEFRAME_YEARLY = 3;
+}
+
+// A window over `occurred_at`'s Jakarta day, inclusive at both ends, YYYY-MM-DD.
+message AnalyticDateRange {
+  string start_date = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+  string end_date = 2 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
+}
+
+message AnalyticTimeSearchFilter {
+  AnalyticDateRange date_range = 1 [(buf.validate.field).required = true];
+  // One account, or 0 for the whole team.
+  uint64 account_id = 2;
+}
+
+message AnalyticTimeSearchRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  AnalyticTimeframe timeframe = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  AnalyticTimeSearchFilter filter = 3 [(buf.validate.field).required = true];
+  // Over the bucket's date. Unspecified reads ASCENDING, oldest first.
+  warehouse.common.v1.CommonSortType sort_type = 4;
+  // Pages over BUCKETS — a quiet day is a point too, carrying the balance forward.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message TimeframeMetric {
+  // The bucket's first day, YYYY-MM-DD.
+  string at = 1;
+  FinancialAccountMetric metric = 2;
+}
+
+message AnalyticTimeSearchResponse {
+  repeated TimeframeMetric datas = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// The three groupings in the owner's metric list (line 126–131 of context.md).
+enum AnalyticGroupType {
+  ANALYTIC_GROUP_TYPE_UNSPECIFIED = 0;
+  // Read from the account when grouping, never copied onto the daily row — an `unknown` account filled
+  // in moves its history to its new provider.
+  ANALYTIC_GROUP_TYPE_PROVIDER = 1;
+  ANALYTIC_GROUP_TYPE_CHANGE_TYPE = 2;
+  // (account-grouped-joins-the-metrics) — archived accounts included; their past still happened.
+  ANALYTIC_GROUP_TYPE_ACCOUNT = 3;
+}
+
+// ⚠ A TYPED KEY, where settlement's group search returns `repeated uint64 ids` (my spec). Two of the three
+// groupings here are an enum, not an id — a uint64 carrying a provider's enum number would read as an
+// account id to anyone who did not know.
+message AnalyticGroupKey {
+  oneof key {
+    uint64 account_id = 1;
+    FinancialAccountProvider provider = 2;
+    FinancialAccountChangeType change_type = 3;
+  }
+}
+
+enum AnalyticMetricSort {
+  ANALYTIC_METRIC_SORT_UNSPECIFIED = 0;
+  // The default: the largest movement first, by absolute value.
+  ANALYTIC_METRIC_SORT_CHANGE = 1;
+  ANALYTIC_METRIC_SORT_CLOSE_BALANCE = 2;
+}
+
+message AnalyticGroupFilter {
+  AnalyticDateRange date_range = 1 [(buf.validate.field).required = true];
+  AnalyticGroupType group_type = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+message AnalyticGroupSearchRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  AnalyticGroupFilter filter = 2 [(buf.validate.field).required = true];
+  AnalyticMetricSort sort = 3 [(buf.validate.field).enum.defined_only = true];
+  warehouse.common.v1.CommonSortType sort_type = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message AnalyticGroupSearchResponse {
+  // RANKED. Every key of the group type that has a row in the team — a provider with no account is absent.
+  repeated AnalyticGroupKey keys = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message AnalyticGroupMetricRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  AnalyticGroupFilter filter = 2 [(buf.validate.field).required = true];
+  // The page AnalyticGroupSearch returned — capped like a page, because it is one.
+  repeated AnalyticGroupKey keys = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+message AnalyticGroupMetricItem {
+  AnalyticGroupKey key = 1;
+  // For a CHANGE_TYPE key: that type's column and `change` only — a balance belongs to an account, not to
+  // a type, so `open_balance` and `close_balance` are 0.
+  FinancialAccountMetric metric = 2;
+}
+
+message AnalyticGroupMetricResponse {
+  // In the request's key order. A key with no movement in the window still gets a metric — its balance
+  // carried in from before the window.
+  repeated AnalyticGroupMetricItem items = 1;
+}

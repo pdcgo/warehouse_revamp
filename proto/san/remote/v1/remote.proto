@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+// san.remote.v1 is a TOOL contract, not a warehouse domain contract — which is why it sits
+// under san/ rather than warehouse/. Nothing the warehouse serves belongs here, and nothing
+// here is ever mounted on the application server: RemoteService runs a shell, and the one place
+// that must never happen is the process serving customers.
+package san.remote.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/san/remote/v1;remotev1";
+
+// RemoteService lets an agent working on this project run shell commands in the operator's
+// checkout and watch the output arrive.
+//
+// ⚠ IT IS NOT A SANDBOX. A caller holding the token can run anything the operator can run, and
+// the workspace root is a guard against a mistyped path, not against a determined caller. The
+// protection is the token: `san remote serve` mints a fresh one per run, prints it once, and
+// binds to loopback unless told otherwise.
+//
+// Authorization is a per-run bearer token in the Authorization header — NOT the warehouse
+// identity system. Two reasons: the caller is a program, not a person with a role in a team;
+// and the roling interceptor refuses streaming RPCs outright, because it reads its team scope
+// from the request BODY, which a stream has not delivered when the interceptor runs. A header
+// credential has no such problem, so this service's own interceptor guards unary and streaming
+// calls alike.
+service RemoteService {
+  // Info is the handshake: where the workspace is, what shell will run the command, when the
+  // token dies. An agent calls it once before doing anything, and it doubles as the cheapest
+  // possible check that the token is good.
+  rpc Info(InfoRequest) returns (InfoResponse);
+
+  // Exec runs ONE command and streams its output as it is produced.
+  rpc Exec(ExecRequest) returns (stream ExecResponse);
+
+  // FileRead and FileWrite move EXACT BYTES, which the shell cannot.
+  //
+  // Everything an agent does to a file could in principle go through Exec — but writing source
+  // through a heredoc means the content passes through a shell parser, and PowerShell in
+  // particular will interpolate a `$` and mangle a backtick in code it was only supposed to
+  // store. Reading back through `cat` adds the shell's own line-ending and encoding opinions.
+  // These two carry bytes, so what the agent sent is what lands on disk.
+  rpc FileRead(FileReadRequest) returns (FileReadResponse);
+  rpc FileWrite(FileWriteRequest) returns (FileWriteResponse);
+}
+
+message InfoRequest {}
+
+message InfoResponse {
+  // Absolute path of the workspace root on the server. Every working_dir is relative to it.
+  string workspace_root = 1;
+
+  // The argv the command is handed to, e.g. ["sh", "-c"] or ["pwsh", "-NoProfile", "-Command"].
+  // An agent needs this to know which syntax to write.
+  repeated string shell = 2;
+
+  string os = 3;   // runtime.GOOS
+  string arch = 4; // runtime.GOARCH
+
+  // Applied when a request asks for 0.
+  uint32 default_timeout_seconds = 5;
+
+  // The ceiling. A request asking for more is capped to this, not refused.
+  uint32 max_timeout_seconds = 6;
+
+  // When this run's token stops working. Unset = it lives as long as the server process.
+  google.protobuf.Timestamp token_expires_at = 7;
+}
+
+message ExecRequest {
+  // The command line, handed to the server's shell — so pipes, redirects and && behave the way
+  // they do in a terminal. Call Info first to learn WHICH shell.
+  string command = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 65536
+  }];
+
+  // Where to run, RELATIVE to the workspace root. Empty = the root itself.
+  //
+  // An absolute path, or one that climbs out of the root with .., is refused. This stops a
+  // wrong path, not a hostile caller — the command itself can `cd` anywhere the operator can.
+  string working_dir = 2 [(buf.validate.field).string.max_len = 4096];
+
+  // Extra environment, on top of the server process's own.
+  map<string, string> env = 3;
+
+  // Written to the command's stdin, which is then closed. Empty = stdin is closed immediately,
+  // so a command that reads it sees EOF instead of hanging until the timeout.
+  string stdin = 4 [(buf.validate.field).string.max_len = 1048576];
+
+  // Kill the command after this long. 0 = the server's default. The server's maximum always
+  // wins, so a caller cannot pin a process open forever.
+  uint32 timeout_seconds = 5 [(buf.validate.field).uint32.lte = 86400];
+}
+
+// ExecStream names which pipe a frame's text came from. SYSTEM is the server talking about the
+// run (what it is about to execute, how it ended) rather than the command talking.
+enum ExecStream {
+  EXEC_STREAM_UNSPECIFIED = 0;
+  EXEC_STREAM_SYSTEM = 1;
+  EXEC_STREAM_STDOUT = 2;
+  EXEC_STREAM_STDERR = 3;
+}
+
+message ExecResponse {
+  // The text of this frame. Named `message` because the long-running-task guideline requires
+  // every streaming response to carry one — it is what a caller can print without understanding
+  // anything else in this file.
+  //
+  // ⚠ Sanitised to valid UTF-8 before sending. proto3 strings must be valid UTF-8 and command
+  // output is not obliged to be, so a stray byte is replaced rather than being allowed to fail
+  // the marshal and kill an otherwise healthy run.
+  string message = 1;
+
+  ExecStream stream = 2;
+
+  // Set on the FINAL frame only, and that frame is how a caller knows the run is over.
+  ExecResult result = 3;
+}
+
+message ExecResult {
+  // The command's exit status. -1 when it never started, or was killed before reporting one.
+  int32 exit_code = 1;
+
+  // True when the timeout killed it. exit_code is then whatever the kill produced, so this is
+  // the field to branch on — a non-zero exit does not by itself mean "timed out".
+  bool timed_out = 2;
+
+  int64 duration_ms = 3;
+}
+
+// FileReadRequest reads one file from the workspace.
+message FileReadRequest {
+  // Path RELATIVE to the workspace root, forward slashes or native. Same containment rule as
+  // ExecRequest.working_dir: absolute paths and anything climbing out with .. are refused.
+  string path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 4096
+  }];
+}
+
+message FileReadResponse {
+  // The file, byte for byte. `bytes` and not `string` on purpose — a source file is usually
+  // UTF-8 but a fixture, an image or a file mid-edit is not obliged to be, and proto3 would
+  // reject it.
+  bytes content = 1;
+
+  int64 size = 2;
+
+  // Last modification time, so an agent can tell whether the file moved under it between the
+  // read it based an edit on and the write that follows.
+  google.protobuf.Timestamp modified_at = 3;
+}
+
+message FileWriteRequest {
+  // Path RELATIVE to the workspace root.
+  string path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 4096
+  }];
+
+  // The whole file. A write REPLACES — there is no append and no partial write, because a
+  // half-applied edit is the failure mode worth designing out.
+  bytes content = 2;
+
+  // Create the parent directories when they are missing. Off by default, so a typo in a path
+  // fails loudly instead of quietly creating a tree nobody asked for.
+  bool create_dirs = 3;
+}
+
+message FileWriteResponse {
+  int64 size = 1;
+
+  // True when the write replaced an existing file rather than creating one — the cheapest way
+  // for an agent to notice it clobbered something it did not mean to.
+  bool replaced = 2;
+}

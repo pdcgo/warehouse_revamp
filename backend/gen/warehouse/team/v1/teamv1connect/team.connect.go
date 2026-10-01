@@ -48,6 +48,12 @@ const (
 	// TeamServiceTeamInfoUpdateProcedure is the fully-qualified name of the TeamService's
 	// TeamInfoUpdate RPC.
 	TeamServiceTeamInfoUpdateProcedure = "/warehouse.team.v1.TeamService/TeamInfoUpdate"
+	// TeamServiceWarehouseInfoDetailProcedure is the fully-qualified name of the TeamService's
+	// WarehouseInfoDetail RPC.
+	TeamServiceWarehouseInfoDetailProcedure = "/warehouse.team.v1.TeamService/WarehouseInfoDetail"
+	// TeamServiceWarehouseInfoUpdateProcedure is the fully-qualified name of the TeamService's
+	// WarehouseInfoUpdate RPC.
+	TeamServiceWarehouseInfoUpdateProcedure = "/warehouse.team.v1.TeamService/WarehouseInfoUpdate"
 )
 
 // TeamServiceClient is a client for the warehouse.team.v1.TeamService service.
@@ -61,6 +67,12 @@ type TeamServiceClient interface {
 	// callers must check for presence, never index blindly.
 	TeamByIds(context.Context, *connect.Request[v1.TeamByIdsRequest]) (*connect.Response[v1.TeamByIdsResponse], error)
 	TeamInfoUpdate(context.Context, *connect.Request[v1.TeamInfoUpdateRequest]) (*connect.Response[v1.TeamInfoUpdateResponse], error)
+	// WarehouseInfoDetail returns a warehouse's weekly hours (operating + receiving-orders).
+	// Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+	// receive its orders. Days with no stored row default to closed.
+	WarehouseInfoDetail(context.Context, *connect.Request[v1.WarehouseInfoDetailRequest]) (*connect.Response[v1.WarehouseInfoDetailResponse], error)
+	// WarehouseInfoUpdate replaces a warehouse's weekly hours. Warehouse managers edit their own.
+	WarehouseInfoUpdate(context.Context, *connect.Request[v1.WarehouseInfoUpdateRequest]) (*connect.Response[v1.WarehouseInfoUpdateResponse], error)
 }
 
 // NewTeamServiceClient constructs a client for the warehouse.team.v1.TeamService service. By
@@ -116,18 +128,32 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(teamServiceMethods.ByName("TeamInfoUpdate")),
 			connect.WithClientOptions(opts...),
 		),
+		warehouseInfoDetail: connect.NewClient[v1.WarehouseInfoDetailRequest, v1.WarehouseInfoDetailResponse](
+			httpClient,
+			baseURL+TeamServiceWarehouseInfoDetailProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("WarehouseInfoDetail")),
+			connect.WithClientOptions(opts...),
+		),
+		warehouseInfoUpdate: connect.NewClient[v1.WarehouseInfoUpdateRequest, v1.WarehouseInfoUpdateResponse](
+			httpClient,
+			baseURL+TeamServiceWarehouseInfoUpdateProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("WarehouseInfoUpdate")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // teamServiceClient implements TeamServiceClient.
 type teamServiceClient struct {
-	teamCreate     *connect.Client[v1.TeamCreateRequest, v1.TeamCreateResponse]
-	teamUpdate     *connect.Client[v1.TeamUpdateRequest, v1.TeamUpdateResponse]
-	teamDelete     *connect.Client[v1.TeamDeleteRequest, v1.TeamDeleteResponse]
-	teamList       *connect.Client[v1.TeamListRequest, v1.TeamListResponse]
-	teamDetail     *connect.Client[v1.TeamDetailRequest, v1.TeamDetailResponse]
-	teamByIds      *connect.Client[v1.TeamByIdsRequest, v1.TeamByIdsResponse]
-	teamInfoUpdate *connect.Client[v1.TeamInfoUpdateRequest, v1.TeamInfoUpdateResponse]
+	teamCreate          *connect.Client[v1.TeamCreateRequest, v1.TeamCreateResponse]
+	teamUpdate          *connect.Client[v1.TeamUpdateRequest, v1.TeamUpdateResponse]
+	teamDelete          *connect.Client[v1.TeamDeleteRequest, v1.TeamDeleteResponse]
+	teamList            *connect.Client[v1.TeamListRequest, v1.TeamListResponse]
+	teamDetail          *connect.Client[v1.TeamDetailRequest, v1.TeamDetailResponse]
+	teamByIds           *connect.Client[v1.TeamByIdsRequest, v1.TeamByIdsResponse]
+	teamInfoUpdate      *connect.Client[v1.TeamInfoUpdateRequest, v1.TeamInfoUpdateResponse]
+	warehouseInfoDetail *connect.Client[v1.WarehouseInfoDetailRequest, v1.WarehouseInfoDetailResponse]
+	warehouseInfoUpdate *connect.Client[v1.WarehouseInfoUpdateRequest, v1.WarehouseInfoUpdateResponse]
 }
 
 // TeamCreate calls warehouse.team.v1.TeamService.TeamCreate.
@@ -165,6 +191,16 @@ func (c *teamServiceClient) TeamInfoUpdate(ctx context.Context, req *connect.Req
 	return c.teamInfoUpdate.CallUnary(ctx, req)
 }
 
+// WarehouseInfoDetail calls warehouse.team.v1.TeamService.WarehouseInfoDetail.
+func (c *teamServiceClient) WarehouseInfoDetail(ctx context.Context, req *connect.Request[v1.WarehouseInfoDetailRequest]) (*connect.Response[v1.WarehouseInfoDetailResponse], error) {
+	return c.warehouseInfoDetail.CallUnary(ctx, req)
+}
+
+// WarehouseInfoUpdate calls warehouse.team.v1.TeamService.WarehouseInfoUpdate.
+func (c *teamServiceClient) WarehouseInfoUpdate(ctx context.Context, req *connect.Request[v1.WarehouseInfoUpdateRequest]) (*connect.Response[v1.WarehouseInfoUpdateResponse], error) {
+	return c.warehouseInfoUpdate.CallUnary(ctx, req)
+}
+
 // TeamServiceHandler is an implementation of the warehouse.team.v1.TeamService service.
 type TeamServiceHandler interface {
 	TeamCreate(context.Context, *connect.Request[v1.TeamCreateRequest]) (*connect.Response[v1.TeamCreateResponse], error)
@@ -176,6 +212,12 @@ type TeamServiceHandler interface {
 	// callers must check for presence, never index blindly.
 	TeamByIds(context.Context, *connect.Request[v1.TeamByIdsRequest]) (*connect.Response[v1.TeamByIdsResponse], error)
 	TeamInfoUpdate(context.Context, *connect.Request[v1.TeamInfoUpdateRequest]) (*connect.Response[v1.TeamInfoUpdateResponse], error)
+	// WarehouseInfoDetail returns a warehouse's weekly hours (operating + receiving-orders).
+	// Any authenticated caller: a selling team legitimately needs to know when a warehouse can
+	// receive its orders. Days with no stored row default to closed.
+	WarehouseInfoDetail(context.Context, *connect.Request[v1.WarehouseInfoDetailRequest]) (*connect.Response[v1.WarehouseInfoDetailResponse], error)
+	// WarehouseInfoUpdate replaces a warehouse's weekly hours. Warehouse managers edit their own.
+	WarehouseInfoUpdate(context.Context, *connect.Request[v1.WarehouseInfoUpdateRequest]) (*connect.Response[v1.WarehouseInfoUpdateResponse], error)
 }
 
 // NewTeamServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -227,6 +269,18 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(teamServiceMethods.ByName("TeamInfoUpdate")),
 		connect.WithHandlerOptions(opts...),
 	)
+	teamServiceWarehouseInfoDetailHandler := connect.NewUnaryHandler(
+		TeamServiceWarehouseInfoDetailProcedure,
+		svc.WarehouseInfoDetail,
+		connect.WithSchema(teamServiceMethods.ByName("WarehouseInfoDetail")),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceWarehouseInfoUpdateHandler := connect.NewUnaryHandler(
+		TeamServiceWarehouseInfoUpdateProcedure,
+		svc.WarehouseInfoUpdate,
+		connect.WithSchema(teamServiceMethods.ByName("WarehouseInfoUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.team.v1.TeamService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TeamServiceTeamCreateProcedure:
@@ -243,6 +297,10 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 			teamServiceTeamByIdsHandler.ServeHTTP(w, r)
 		case TeamServiceTeamInfoUpdateProcedure:
 			teamServiceTeamInfoUpdateHandler.ServeHTTP(w, r)
+		case TeamServiceWarehouseInfoDetailProcedure:
+			teamServiceWarehouseInfoDetailHandler.ServeHTTP(w, r)
+		case TeamServiceWarehouseInfoUpdateProcedure:
+			teamServiceWarehouseInfoUpdateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -278,4 +336,12 @@ func (UnimplementedTeamServiceHandler) TeamByIds(context.Context, *connect.Reque
 
 func (UnimplementedTeamServiceHandler) TeamInfoUpdate(context.Context, *connect.Request[v1.TeamInfoUpdateRequest]) (*connect.Response[v1.TeamInfoUpdateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.team.v1.TeamService.TeamInfoUpdate is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) WarehouseInfoDetail(context.Context, *connect.Request[v1.WarehouseInfoDetailRequest]) (*connect.Response[v1.WarehouseInfoDetailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.team.v1.TeamService.WarehouseInfoDetail is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) WarehouseInfoUpdate(context.Context, *connect.Request[v1.WarehouseInfoUpdateRequest]) (*connect.Response[v1.WarehouseInfoUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.team.v1.TeamService.WarehouseInfoUpdate is not implemented"))
 }
