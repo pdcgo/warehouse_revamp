@@ -3,8 +3,8 @@
 **Pass:** business analysis on the owner's new [financial_account/context.md](../../business/financial_account/context.md)
 — a team's bank, ShopeePay and cash accounts, each with a balance and a log — re-examined after each of the owner's
 edits. Questions: [context_clarify.md](../../business/financial_account/context_clarify.md). Decisions:
-[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-five owner decisions**. Open: Q15–Q17 and
-critique 9, all about the analytics — the account screens are unblocked. No Storybook prototype, no technical doc, no code.
+[context_decision.md](../../business/financial_account/context_decision.md) — **thirty-nine owner decisions**. **Nothing is open** —
+the business analysis is done, the analytics included. No Storybook prototype, no technical doc, no code.
 
 ## Decided
 
@@ -22,7 +22,11 @@ critique 9, all about the analytics — the account screens are unblocked. No St
 | [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept) | the team-payment listener hears only the balance service's acceptance · the event carries `from_account_id` and `to_account_id` — both new on `liability_service`'s payment · two `team_payment` rows |
 | [a-team-payment-is-never-reversed](../../business/financial_account/context_decision.md#a-team-payment-is-never-reversed) *(Q14)* | an accepted payment is final — `LiabilityPaymentReverse` is removed, so there is no reversal topic and the two rows never post back |
 | [the-team-description-says-where-to-pay](../../business/financial_account/context_decision.md#the-team-description-says-where-to-pay) *(Q9, against my recommendation)* | no `payee_accounts`, no payee RPCs — a payer reads the creditor team's `description` (⚠ my reading of which description) · the creditor picks *to* on acceptance |
-| [analytics-are-delivered-the-settlement-way](../../business/financial_account/context_decision.md#analytics-are-delivered-the-settlement-way) *(lines 122–130)* | `AnalyticTimeSearch` (DAILY, MONTHLY, YEARLY) and `AnalyticGroupSearch` + `AnalyticGroupMetric` (by `provider`, `change_type`) — settlement's shape · the daily table behind them is Q15–Q17 |
+| [analytics-are-delivered-the-settlement-way](../../business/financial_account/context_decision.md#analytics-are-delivered-the-settlement-way) *(lines 122–130)* | `AnalyticTimeSearch` (DAILY, MONTHLY, YEARLY) and `AnalyticGroupSearch` + `AnalyticGroupMetric` (by `provider`, `change_type`) — settlement's shape · the daily table behind them: the three rows below |
+| [a-row-counts-on-the-day-the-money-moved](../../business/financial_account/context_decision.md#a-row-counts-on-the-day-the-money-moved) *(Q15)* | the analytics day is `occurred_at` in Jakarta time, never `created_at` |
+| [the-daily-row-is-one-account-one-day](../../business/financial_account/context_decision.md#the-daily-row-is-one-account-one-day) *(Q16)* | `financial_account_daily_reports` — unique `(day, account_id)`, a signed sum per `change_type`, `open_balance`, `close_balance` · no state table |
+| [the-daily-row-is-written-with-the-log-row](../../business/financial_account/context_decision.md#the-daily-row-is-written-with-the-log-row) *(Q17)* | every log write upserts its day's row and shifts later days in the same transaction — no event table, lock or replay · ⚠ audit it with `audit-sql`: two writes on one account shift the same days |
+| [account-grouped-joins-the-metrics](../../business/financial_account/context_decision.md#account-grouped-joins-the-metrics) *(critique 9)* | `AnalyticGroupSearch` also groups by account — keys are account ids |
 | [a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker) | two ways in: the account screens, or a listener per topic. No RPC for other services to write with |
 | [shopeepay-is-the-wallet-a-team-pays-with](../../business/financial_account/context_decision.md#shopeepay-is-the-wallet-a-team-pays-with) *(Q5)* | a `shopeepay` account is the team's e-wallet — no settlement row ever posts to an account |
 | [a-real-account-is-recorded-once](../../business/financial_account/context_decision.md#a-real-account-is-recorded-once) *(Q6)* | a partial unique index on `(provider, account_number)` where a number exists, across all teams, archived included · a cash box exempt · the `team_infos` copy never happens — the columns were dropped ([the-team-record-holds-no-bank](../../business/financial_account/context_decision.md#the-team-record-holds-no-bank)) |
@@ -68,8 +72,7 @@ the day the money moved too (`occurred_at`). Its cause is the `description` — 
 
 ## Open
 
-Q15 (which day a row counts in), Q16 (the daily row's grain and fields), Q17 (computed in the log's transaction or
-from the broker), critique 9 (a group by account). Still empty in the owner's doc: §General.
+Nothing — no question, critique or contradiction is open. Still empty in the owner's doc: §General.
 
 **Next agent:** when the owner answers, record it in `financial_account/context_decision.md` (named, RULE 12), delete
 the answered question, rebuild `docs/biggest_question.md`. The service will be

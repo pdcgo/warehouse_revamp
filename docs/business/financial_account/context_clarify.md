@@ -7,6 +7,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat | Q15 — the `occurred_at` day, Jakarta time: [a-row-counts-on-the-day-the-money-moved](./context_decision.md#a-row-counts-on-the-day-the-money-moved) · Q16 — one row per account per day: [the-daily-row-is-one-account-one-day](./context_decision.md#the-daily-row-is-one-account-one-day) · Q17 — written with the log row: [the-daily-row-is-written-with-the-log-row](./context_decision.md#the-daily-row-is-written-with-the-log-row) · all as recommended · your line 131 adds *Account Grouped* — critique 9 adopted: [account-grouped-joins-the-metrics](./context_decision.md#account-grouped-joins-the-metrics) · **nothing left open** |
 | 🆕 your §How Financial Account Service Rpc Deliver Analytical Data *(lines 122–130)* | settlement's delivery adopted: [analytics-are-delivered-the-settlement-way](./context_decision.md#analytics-are-delivered-the-settlement-way) · it leaves the daily table undefined — 🆕 [Q15](#question) which day a row counts in · [Q16](#question) the daily row's grain and fields · [Q17](#question) how it is computed · 🆕 [critique 9](#critique) no group by account · see [Analytics](#analytics) |
 | ✅ answered in chat | Q9 — a payer learns where to pay from the creditor's description, against my `payee_accounts`: [the-team-description-says-where-to-pay](./context_decision.md#the-team-description-says-where-to-pay) · **no question left** |
 | ✅ your §What Happen when if Payment Accepted *(lines 112–119)* | the acceptance carries the from and to account ids, and posts on each — as [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) records · its diagram parses · nothing new to decide |
@@ -44,7 +45,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 First pass: this is the *cash service* [order/context.md](../order/context.md) set aside on its line 13 — *"The
 Cash, about withdrawal & platform wallet. we separate in other service"* — arriving where four built services
-already touch a bank without naming one. **Three questions open, one critique, no contradiction.**
+already touch a bank without naming one. **No question open, no critique, no contradiction.**
 
 ## What already moves money
 
@@ -90,7 +91,7 @@ flowchart LR
 | **6** | ✅ **Decided** — every movement has a type of its own, and an adjustment is only a reconcile's difference: [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only). Kept as a line so the numbers hold. | — |
 | **7** | ✅ **Adopted** — `occurred_at`: [the-log-keeps-the-day-the-money-moved](./context_decision.md#the-log-keeps-the-day-the-money-moved). Kept as a line so the numbers hold. | — |
 | **8** | ✅ **Adopted** — archived only at zero: [an-account-is-archived-only-at-zero](./context_decision.md#an-account-is-archived-only-at-zero). Kept as a line so the numbers hold. | — |
-| **9** | 🆕 **No group by account** *(lines 125–130)*. `provider` grouped adds a team's two BCA accounts into one *bca* line, so *how much went through BCA Operasional this month* has no answer — and the account is the one group the search-then-metric pair was built for: many ids, sorted, then fetched. `provider` has six values and `change_type` nine. | **Add *Account grouped*** — the keys are account ids, exactly settlement's shape. Keep `provider` grouped as the summary above it. |
+| **9** | ✅ **Adopted** — *Account grouped*: [account-grouped-joins-the-metrics](./context_decision.md#account-grouped-joins-the-metrics). Kept as a line so the numbers hold. | — |
 
 ## Recommendation
 
@@ -105,8 +106,8 @@ listener is new · **3.** restock · **4.** expense · **5.** team payment — e
 Until a type is wired, a reconcile catches what it moved as an `adjustment` — which is honest: it was not recorded.
 
 ✅ **Nothing in your doc blocks the account screens now** — the log names its account. The next step is the
-Storybook prototype of the account screens. 🆕 The analytics screens wait on [Q15](#question)–[Q17](#question) and
-[critique 9](#critique) — your new section adopts settlement's delivery but not yet what is delivered.
+Storybook prototype of the account screens. The analytics are decided too —
+nothing is left open.
 
 ## Proposed Design
 
@@ -315,11 +316,11 @@ balance — a person picking *which account paid* is recording a fact, and the b
 
 ### Analytics
 
-Your delivery, settlement's shape ([analytics-are-delivered-the-settlement-way](./context_decision.md#analytics-are-delivered-the-settlement-way)), over a daily table your section does not define yet. My proposal for it:
+Your delivery, settlement's shape ([analytics-are-delivered-the-settlement-way](./context_decision.md#analytics-are-delivered-the-settlement-way)), over a daily table — ✅ its day, grain and write are decided:
 
 ```mermaid
 flowchart LR
-  L["a log row — account, change_type, change, occurred_at"] -->|"same transaction, Q17"| D["financial_account_daily_reports — one row per account per day"]
+  L["a log row — account, change_type, change, occurred_at"] -->|"same transaction"| D["financial_account_daily_reports — one row per account per day"]
   D --> TS["AnalyticTimeSearch — DAILY, MONTHLY, YEARLY"]
   D --> GS["AnalyticGroupSearch — by provider, change_type, account"]
   GS --> GM["AnalyticGroupMetric — the metric of each key"]
@@ -327,10 +328,10 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the table | `financial_account_daily_reports` — `id`, `day`, `account_id`, `team_id`, `last_updated` · unique `(day, account_id)` ([Q16](#question)) |
+| the table | `financial_account_daily_reports` — `id`, `day`, `account_id`, `team_id`, `last_updated` · unique `(day, account_id)` — ✅ [the-daily-row-is-one-account-one-day](./context_decision.md#the-daily-row-is-one-account-one-day) |
 | its fields | one sum per `change_type` — `expense`, `ads_expense`, `adjustment`, `withdrawal`, `restock`, `opening_balance`, `transfer`, `team_payment`, `capital` — plus `open_balance` and `close_balance` |
-| the day | the row's `occurred_at`, in Jakarta time ([jakarta-is-the-clock](../../technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock)) ([Q15](#question)) |
-| a late row | its own day's row, then every later day's balances shifted — settlement's step 3, never a recomputation |
+| the day | the row's `occurred_at`, in Jakarta time ([jakarta-is-the-clock](../../technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock)) — ✅ [a-row-counts-on-the-day-the-money-moved](./context_decision.md#a-row-counts-on-the-day-the-money-moved) |
+| a late row | its own day's row, then every later day's balances shifted, in the log row's transaction — ✅ [the-daily-row-is-written-with-the-log-row](./context_decision.md#the-daily-row-is-written-with-the-log-row) |
 | a team's total | the sum of its accounts' rows — a transfer between two of its accounts nets to zero |
 | `provider` | read from the account when grouping, never copied onto the row — an `unknown` account filled in changes it |
 | the balance state | none — `financial_accounts.balance` already is it, where settlement needed `shop_settlement_reports` |
@@ -397,37 +398,14 @@ flowchart LR
     removed its reverse: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed).
     Kept as a line so the numbers hold.
 
-15. 🆕 **Which day does a row count in — `occurred_at` or `created_at`?** *(line 126)*
-    Settlement files a row under its `created_at`, in Jakarta time ([its step 1](../settlement/analytic_context.md#flow)). Here a row has both.
-    **→ Recommend `occurred_at`, in Jakarta time** ([jakarta-is-the-clock](../../technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock)) — you added it so a row lines up with the
-    bank statement, and a monthly report is read against that statement.
+15. ✅ **Answered 2026-10-01 — the `occurred_at` day, in Jakarta time**, as recommended: [a-row-counts-on-the-day-the-money-moved](./context_decision.md#a-row-counts-on-the-day-the-money-moved). Kept as a line so
+    the numbers hold.
 
-    | instead | why not |
-    | --- | --- |
-    | `created_at` | a transfer made on 30 Sep and typed on 1 Oct lands in October, while the bank's September statement lists it |
+16. ✅ **Answered 2026-10-01 — one row per account per day**, as recommended: [the-daily-row-is-one-account-one-day](./context_decision.md#the-daily-row-is-one-account-one-day). Kept as a line so the
+    numbers hold.
 
-16. 🆕 **What is the daily row's grain, and what does it track?** *(lines 125–130)*
-    Settlement's is `(day, shop_id, team_id)` with one sum per type ([its daily reports](../settlement/analytic_context.md#daily-reports)).
-    **→ Recommend `(day, account_id)`**, with `team_id` beside it, and one sum per `change_type` plus `open_balance` and
-    `close_balance`. Every metric you listed is then a sum of these rows: daily, monthly and yearly over days, `provider` over
-    accounts, and `change_type` is the row's own columns read sideways.
-
-    | instead | why not |
-    | --- | --- |
-    | `(day, team_id, provider)` | two BCA accounts become one line, and an account's own month cannot be read back |
-    | one row per `(day, account, change_type)` | the same numbers in nine times the rows, and no row carries a day's opening and closing balance |
-
-17. 🆕 **Is the daily row computed from the broker, as settlement's is, or in the log row's own transaction?**
-    Settlement publishes its ledger's event and computes the report in its own webhook, with an idempotency table, a
-    lock and a replay ([its flow](../settlement/analytic_context.md#flow)).
-    **→ Recommend the same transaction** — this service writes the log row, so it can write the day's row beside it.
-
-    | instead | why not |
-    | --- | --- |
-    | settlement's way, through the broker | a report that trails the balance, an event table and a lock and a replay to keep — for data the service already holds in hand |
-
-    What it would cost: the write path grows by one upsert and one shift per row. What it buys: the report is never
-    behind the balance, and a repair is the reconcile you already have, not a replay.
+17. ✅ **Answered 2026-10-01 — written in the log row's own transaction**, as recommended: [the-daily-row-is-written-with-the-log-row](./context_decision.md#the-daily-row-is-written-with-the-log-row). Kept as a line
+    so the numbers hold.
 
 # Contradiction
 

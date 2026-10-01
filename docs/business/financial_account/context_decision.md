@@ -33,7 +33,11 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept) | a team payment posts only on the creditor's acceptance — the balance service's event carries the from and to account ids | owner | ✅ Q14 closed — [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) |
 | [a-team-payment-is-never-reversed](#a-team-payment-is-never-reversed) | an accepted team payment is final in the balance service, so its two `team_payment` rows are never posted back — there is no reversal to hear | owner | — |
 | [the-team-description-says-where-to-pay](#the-team-description-says-where-to-pay) | a payer learns where to transfer from the creditor's own description — no `payee_accounts`, and the creditor picks *to* when accepting | owner, against my recommendation | — |
-| [analytics-are-delivered-the-settlement-way](#analytics-are-delivered-the-settlement-way) | the analytics are served in settlement's shape — a timeframe search, and a group search plus metric · daily, monthly, yearly, by `provider`, by `change_type` | owner | [Q15](./context_clarify.md#question), [Q16](./context_clarify.md#question), [Q17](./context_clarify.md#question), [critique 9](./context_clarify.md#critique) |
+| [analytics-are-delivered-the-settlement-way](#analytics-are-delivered-the-settlement-way) | the analytics are served in settlement's shape — a timeframe search, and a group search plus metric · daily, monthly, yearly, by `provider`, by `change_type` | owner | ✅ the day, the grain, the write: [a-row-counts-on-the-day-the-money-moved](#a-row-counts-on-the-day-the-money-moved), [the-daily-row-is-one-account-one-day](#the-daily-row-is-one-account-one-day), [the-daily-row-is-written-with-the-log-row](#the-daily-row-is-written-with-the-log-row) · ✅ by account: [account-grouped-joins-the-metrics](#account-grouped-joins-the-metrics) |
+| [a-row-counts-on-the-day-the-money-moved](#a-row-counts-on-the-day-the-money-moved) | in the analytics a row counts on its `occurred_at` day, in Jakarta time | owner | — |
+| [the-daily-row-is-one-account-one-day](#the-daily-row-is-one-account-one-day) | the daily report is one row per account per day — a sum per `change_type`, the open and close balance | owner | — |
+| [the-daily-row-is-written-with-the-log-row](#the-daily-row-is-written-with-the-log-row) | the day's row is written in the log row's own transaction, never later from the broker | owner | — |
+| [account-grouped-joins-the-metrics](#account-grouped-joins-the-metrics) | the analytics group by account too — one line per account under its `provider` total | owner | — |
 | [a-shop-with-no-account-gets-an-unknown-one](#a-shop-with-no-account-gets-an-unknown-one) | a withdrawal from a shop with no `shop_accounts` row creates an account typed `unknown`, connects it to the shop, and posts there — never held | owner, against my recommendation | ✅ how it becomes the real account: [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) · ✅ one per shop holds: [a-shop-has-one-account](#a-shop-has-one-account) |
 | [an-unknown-account-is-filled-in-or-moved-in](#an-unknown-account-is-filled-in-or-moved-in) | an `unknown` account is filled in when its real account is not registered, and moved into it by a transfer when it is | owner | — |
 | [a-restock-must-name-the-account-that-paid](#a-restock-must-name-the-account-that-paid) | every restock names, at create, the operational account that paid — no *not paid yet* · an edit posts the difference, a cancel asks whether the money came back | owner, required against my recommendation | — |
@@ -1132,3 +1136,104 @@ sequenceDiagram
 | ⚠ my reading — the names | settlement's RPC names, inside the financial account service's own proto package |
 | who reads it | every member of the team ([seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up)) |
 | still open | which day a row counts in ([Q15](./context_clarify.md#question)) · the daily row's grain and fields ([Q16](./context_clarify.md#question)) · how it is computed ([Q17](./context_clarify.md#question)) · a group by account ([critique 9](./context_clarify.md#critique)) |
+
+## a-row-counts-on-the-day-the-money-moved
+
+> In chat *(owner, 2026-10-01)* — *"for q15 follow recomend"*. [Q15](./context_clarify.md#question) as recommended.
+
+**The verdict.** In the analytics, a log row counts on the day of its **`occurred_at`**, read in **Jakarta time** — the
+day the money moved, the day the bank statement lists it.
+
+```mermaid
+flowchart LR
+  T["a transfer made 30 Sep 23:10 WIB, typed 1 Oct"] --> O["occurred_at — 30 Sep"]
+  O --> S["September's report — as the bank's September statement"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the day | `occurred_at` converted to Jakarta time, then its date ([jakarta-is-the-clock](../../technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock)) |
+| never | `created_at` — when it was typed |
+| a month, a year | the days inside it, by the same rule |
+
+## the-daily-row-is-one-account-one-day
+
+> In chat *(owner, 2026-10-01)* — *"for q16 follow recomend"*. [Q16](./context_clarify.md#question) as recommended.
+
+**The verdict.** The analytics' smallest grain is **one row per account per day**. It carries one sum per
+`change_type` and the day's opening and closing balance; every metric is a sum of these rows.
+
+```mermaid
+flowchart LR
+  R["financial_account_daily_reports — BCA, 30 Sep"] --> M["monthly — its days"]
+  R --> P["by provider — its accounts"]
+  R --> C["by change_type — its own columns"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the table | `financial_account_daily_reports` — `id`, `day`, `account_id`, `team_id`, `last_updated` |
+| unique | `(day, account_id)` |
+| its fields | one signed sum per `change_type` — `expense`, `ads_expense`, `adjustment`, `withdrawal`, `restock`, `opening_balance`, `transfer`, `team_payment`, `capital` — plus `open_balance` and `close_balance` |
+| ⚠ my spec — indexes | `(team_id, day)` for a team's series · `(account_id, day)` for one account's |
+| a team's total | the sum of its accounts' rows — a transfer between two of its own accounts nets to zero |
+| `provider` | read from the account when grouping, never copied onto the row |
+| no state table | `financial_accounts.balance` is the state already |
+
+## the-daily-row-is-written-with-the-log-row
+
+> In chat *(owner, 2026-10-01)* — *"for q17 follow recomend"*. [Q17](./context_clarify.md#question) as recommended.
+
+**The verdict.** The day's row is written **in the same transaction as the log row** — not computed later from the
+service's own event through the broker, as settlement's is.
+
+```mermaid
+sequenceDiagram
+  participant W as a write — by hand or a listener
+  participant DB as one transaction
+  W->>DB: insert the log row, move the balance
+  W->>DB: upsert its day's row — the change into its change_type column
+  W->>DB: shift every later day's open and close balance by the change
+  DB-->>W: commit — the report is never behind the balance
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| when | every log row — by hand, from a listener, a reconcile's adjustment, an opening balance |
+| the day's row | upserted on `(day, account_id)` — settlement's step 2 |
+| a late row | every later day of that account shifted by the change — settlement's step 3, never a recomputation |
+| no event table, no lock, no replay | the report cannot fall behind, so there is nothing to replay |
+| a repair | a reconcile's `adjustment` — it posts like any row ([adjustment-is-for-reconciling-only](#adjustment-is-for-reconciling-only)) |
+| ⚠ my spec — the concurrency audit | two rows on one account at once both shift the same later days — the write takes the account's row lock first, as moving its balance already must |
+
+## account-grouped-joins-the-metrics
+
+> `context.md` §What Metric that existed *(owner, 2026-10-01)* — *"5. Account Grouped"* added *(line 131)*.
+> [Critique 9](./context_clarify.md#critique) as recommended.
+
+**The verdict.** The analytics group by **account** as well — a team's two BCA accounts each get their own line, under
+the `provider` total that adds them.
+
+```mermaid
+flowchart LR
+  GS["AnalyticGroupSearch — group by account, sorted"] -->|"account ids"| GM["AnalyticGroupMetric — each account's sums"]
+  GM --> A1["BCA Operasional"]
+  GM --> A2["BCA Gaji"]
+  A1 --> P["provider bca — their total"]
+  A2 --> P
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the metrics | daily, monthly, yearly · grouped by `provider`, by `change_type`, by account |
+| by account | the keys are account ids — the shape `AnalyticGroupSearch` was built for: many ids, sorted, then fetched |
+| its rows | the daily rows of each account, summed over the range ([the-daily-row-is-one-account-one-day](#the-daily-row-is-one-account-one-day)) |
+| ⚠ my spec — archived accounts | included, marked archived — their past still happened |
