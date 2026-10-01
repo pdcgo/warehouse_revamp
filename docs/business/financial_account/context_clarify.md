@@ -7,7 +7,9 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| 🔄 elaborated | [Q9](#question) — the core choice as A (one payee account) · B (ask in chat) · C (show every account), and why finality raises the stakes |
+| ✅ your §What Happen when if Payment Accepted *(lines 112–119)* | the acceptance carries the from and to account ids, and posts on each — as [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) records · its diagram parses · nothing new to decide |
+| 🔄 elaborated | [Q9](#question) — which service holds the payee |
+| 🔄 elaborated | Q9 — the core choice as A (one payee account) · B (ask in chat) · C (show every account), and why finality raises the stakes |
 | ✅ answered in chat | a team payment posts only on acceptance, and the balance service's event carries the from and to account ids: [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · ✅ and never reversed: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 | 🔄 elaborated | Q9 — one payment end to end, and who names the payee · which account may be it · a change while a payment waits · archiving it |
 | ✅ answered in chat | critique 2 — `type` and `provider` are picked apart: [type-and-provider-are-picked-apart](./context_decision.md#type-and-provider-are-picked-apart) · critique 1 — the cause is the `description`: [the-description-names-the-cause](./context_decision.md#the-description-names-the-cause) · both against my recommendation · **no critique left** |
@@ -373,6 +375,7 @@ balance — a person picking *which account paid* is recording a fact, and the b
    | | **→ Recommend** | instead | why not |
    | --- | --- | --- | --- |
    | which one is *where we are paid* | a `payee_accounts` row, one per team — the shape of your `shop_accounts` | a flag on `financial_accounts` | a flag lets two accounts claim it — the table's key says *one* |
+   | which service holds it | **financial accounts** — beside `shop_accounts` and `operational_accounts`, the other *which account is used for X* tables · the balance service reads it to draw *Pay to* and pre-fill *to* | the balance service, a payee id per team | the balance service would hold an id into another service's table, and financial accounts could not refuse archiving an account it does not know is the payee |
    | who sees it | anyone signed in, as the team detail was — its name, number and holder, **never its balance** | only teams it has a debt with | a payer finds out where to pay before the debt is on screen |
    | where it shows | the team detail's *Where we are paid* · the payment form's *Pay to* · *Received into* pre-filled on confirm ([opening-transfer-and-team-payment-join-the-types](./context_decision.md#opening-transfer-and-team-payment-join-the-types)) | the team detail only | the payer copies a number from another screen — the step that sends money to a stale one |
 
@@ -454,5 +457,5 @@ service — reported in [its clarify](../../technical/architecture/context_clari
 - **§General *(line 3)* is empty.** Who reads these accounts, and to decide what, is the first thing it could say —
   [The jobs](#the-jobs) is my reading.
 - **No technical doc yet** — `docs/technical/financial_account/` is where each new event's shape gets decided.
-- 🆕 **§Financial Analytical Reports Design *(line 115)* is started** — a heading only now; *Smallest Grain Reports* was
+- 🆕 **§Financial Analytical Reports Design *(line 122)* is started** — a heading only now; *Smallest Grain Reports* was
   removed. No content yet. Read when it has some.
