@@ -3,7 +3,7 @@
 The owner's decisions about the **liability list** (`/liability`) — what teams owe each other. **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[technical/balance/team_balance_design_decision.md](../../technical/balance/team_balance_design_decision.md) first and moved here on 2026-10-02; each old heading there now points here.
+[technical/balance/team_balance_design_decision.md](../balance/team_balance_design_decision.md) first and moved here on 2026-10-02; each old heading there now points here.
 
 | decision | what it settles |
 | --- | --- |
@@ -12,7 +12,7 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 
 ## the-summary-is-tiles-on-the-list
 
-> The owner, in chat — *"q7, tile on the list"*, answering [Q7](../../technical/balance/team_balance_design_clarify.md#question).
+> The owner, in chat — *"q7, tile on the list"*, answering [Q7](../balance/team_balance_design_clarify.md#question).
 
 **The verdict.** *"Summarize All Balance"* is the **tiles on top of `/liability`**, not a screen of its
 own. ✅ Closes as this file recommended.
@@ -32,7 +32,7 @@ flowchart TB
 
 ### ⛔ It does not fix the tiles — it makes fixing them mandatory
 
-[Critique 16](../../technical/balance/team_balance_design_clarify.md#critique) survives this answer intact, and the answer
+[Critique 16](../balance/team_balance_design_clarify.md#critique) survives this answer intact, and the answer
 raises its cost: a separate screen could have run its own whole-set query, while a tile sitting on a
 **paginated** list is now permanently exposed to the list's page window.
 
@@ -67,7 +67,7 @@ balance by requirement, and a search box is not a scope.
 
 ### What it does NOT settle
 
-The **80% warning** is a per-row badge, not a tile ([Q9](../../technical/balance/team_balance_design_clarify.md#question) is
+The **80% warning** is a per-row badge, not a tile ([Q9](../balance/team_balance_design_clarify.md#question) is
 still open on where the debtor's half lives). A tile that said *"3 teams near their limit"* would be a
 fifth summary number nobody asked for.
 
@@ -75,7 +75,7 @@ fifth summary number nobody asked for.
 
 ## the-default-terms-row-is-a-dialog-on-the-list
 
-> The owner, in chat — *"q6, dedicated popup in list"*, answering [Q6](../../technical/balance/team_balance_design_clarify.md#question).
+> The owner, in chat — *"q6, dedicated popup in list"*, answering [Q6](../balance/team_balance_design_clarify.md#question).
 
 **The verdict.** The DEFAULT row — `counterparty_id = 0`, the terms applying to every team without
 their own — is edited in a **dedicated dialog opened from `/liability`**.
@@ -123,7 +123,7 @@ and back-link would special-case it. The dialog is what makes that route unneces
 
 ### ⚠ It qualifies the decision above it, and the qualification is worth naming
 
-[terms-live-on-the-pair-detail](../../technical/balance/team_balance_design_decision.md#terms-live-on-the-pair-detail) reasoned *"terms are read where the
+[terms-live-on-the-pair-detail](../balance/team_balance_design_decision.md#terms-live-on-the-pair-detail) reasoned *"terms are read where the
 pair is read"*. That rule has exactly one exception and this is it: the default has no pair, so it is
 read where the **set of pairs** is read. Not a contradiction — that decision opened this question
 itself — but the rule is now *"a pair's terms live on the pair, the default lives on the list"*, and

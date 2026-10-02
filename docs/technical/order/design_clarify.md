@@ -13,7 +13,7 @@ from a map instead of from this conversation.
 ## Proposed Design
 
 > **The SUMMARY strip is what this section designs.** The table's own columns are settled in
-> [one-context-per-column-and-never-three-lines](../../business/frontend/context_decision.md#one-context-per-column-and-never-three-lines),
+> [one-context-per-column-and-never-three-lines](../frontend/context_decision.md#one-context-per-column-and-never-three-lines),
 > and the status vocabulary in
 > [the-warehouse-steps-are-not-order-statuses](../../business/order/context_decision.md#the-warehouse-steps-are-not-order-statuses).
 > Neither is repeated here.
@@ -60,7 +60,7 @@ The strip sits **below the status filter** and is **not a control**: no card nav
 selects, and **none is highlighted**. Under **All Status** it compares the piles — a card is a headline:
 what the pile is worth, how many orders, whether it is earning. Under **one status** the other piles are
 gone and that status's own figures are the cards; there is no measure line under either
-([the-summary-follows-the-tab](../../business/frontend/order_list_decision.md#the-summary-follows-the-tab)).
+([the-summary-follows-the-tab](../frontend/order_list_decision.md#the-summary-follows-the-tab)).
 
 ⚠ **Three shapes were tried and rejected, and the reasons are worth keeping** (2026-09-24):
 
@@ -291,9 +291,9 @@ that reading fell with it:
 
 | reversed | was | is |
 | --- | --- | --- |
-| [the-row-shows-total-beli-and-total-mp](../../business/frontend/order_list_decision.md#the-row-shows-total-beli-and-total-mp) | one total: `subtotal` + fee | **two**: beli (`cogs` + fee) and MP |
-| [the-margin-is-mp-minus-total-beli](../../business/frontend/order_list_decision.md#the-margin-is-mp-minus-total-beli) | `subtotal − cogs`, % of `subtotal` | `MP − beli`, % of MP |
-| [one-context-per-column-and-never-three-lines](../../business/frontend/context_decision.md#one-context-per-column-and-never-three-lines) | six paired cells | one context per column, never three lines |
+| [the-row-shows-total-beli-and-total-mp](../frontend/order_list_decision.md#the-row-shows-total-beli-and-total-mp) | one total: `subtotal` + fee | **two**: beli (`cogs` + fee) and MP |
+| [the-margin-is-mp-minus-total-beli](../frontend/order_list_decision.md#the-margin-is-mp-minus-total-beli) | `subtotal − cogs`, % of `subtotal` | `MP − beli`, % of MP |
+| [one-context-per-column-and-never-three-lines](../frontend/context_decision.md#one-context-per-column-and-never-three-lines) | six paired cells | one context per column, never three lines |
 
 **→ Recommend:** when an instruction names a figure from the old system, **ask which fields it is
 made of before building on it** — the words *total*, *beli* and *margin* each name two different sums
@@ -325,17 +325,17 @@ flowchart TD
 
 ## the order detail's withdrawal section was replaced, and two earlier decisions still describe it
 
-**The example.** [settlement-replaces-withdrawal-on-the-order](../../business/frontend/order_detail_decision.md#settlement-replaces-withdrawal-on-the-order)
+**The example.** [settlement-replaces-withdrawal-on-the-order](../frontend/order_detail_decision.md#settlement-replaces-withdrawal-on-the-order)
 (2026-09-30) removed the withdrawal section. Two earlier entries in the same append-only file still
 describe it as present:
 
 | site | says | now |
 | --- | --- | --- |
-| [the-order-detail-is-one-page-of-sections](../../business/frontend/order_detail_decision.md#the-order-detail-is-one-page-of-sections), layout diagram | main column ends with *Withdrawal* | ends with *Settlement* |
+| [the-order-detail-is-one-page-of-sections](../frontend/order_detail_decision.md#the-order-detail-is-one-page-of-sections), layout diagram | main column ends with *Withdrawal* | ends with *Settlement* |
 | same, navigation row | short label example *`Withdrawal`* | no such nav item |
 | same, *Withdrawal* and *WD summary* rows | invented rows and a WD summary under them | removed; payouts are ledger rows |
 | same, build-marks row | *"the withdrawal table's mark"* | the `withdrawal` ⚠ is on the Settlement title |
-| [the-detail-preview-became-the-order-detail](../../business/frontend/order_detail_decision.md#the-detail-preview-became-the-order-detail), diagram and settlement row | Settlement *"before Withdrawal"*, the question *"stays open"* | Settlement is the last section, and the question is answered |
+| [the-detail-preview-became-the-order-detail](../frontend/order_detail_decision.md#the-detail-preview-became-the-order-detail), diagram and settlement row | Settlement *"before Withdrawal"*, the question *"stays open"* | Settlement is the last section, and the question is answered |
 
 The later decision is the right one. The two earlier entries are a record of what was decided at the time,
 and the file is append-only, so they are not edited.
@@ -485,7 +485,7 @@ flowchart LR
     `text`, `created_at`, `edited_at`) and create/update RPCs.
 
 14. **What does a draft line map to?** A scraped row can now be mapped to a product, a bundle (with its slot fills),
-    or several products ([a-draft-row-maps-to-a-product-a-bundle-or-a-split](../../business/frontend/order_draft_decision.md#a-draft-row-maps-to-a-product-a-bundle-or-a-split)),
+    or several products ([a-draft-row-maps-to-a-product-a-bundle-or-a-split](../frontend/order_draft_decision.md#a-draft-row-maps-to-a-product-a-bundle-or-a-split)),
     but `OrderDraftItem` holds one `product_id` — so a bundle or split mapping is lost on save and blocks Promote.
     **→ Recommend** a mapping on the draft line with a kind: `product` (today's `product_id`), `bundle`
     (`bundle_id` + the slot fills), `split` (child lines of product + quantity per unit) — and the same grouping on
@@ -500,7 +500,7 @@ flowchart LR
     when the app sends none.
 
 16. **What must an order list carry to a WAREHOUSE reader?** The warehouse row
-    ([the-warehouse-row-is-the-old-systems-columns](../../business/frontend/warehouse_order_list_decision.md#the-warehouse-row-is-the-old-systems-columns))
+    ([the-warehouse-row-is-the-old-systems-columns](../frontend/warehouse_order_list_decision.md#the-warehouse-row-is-the-old-systems-columns))
     shows the seller's shop and marketplace, the units on the order and who created it — none of which a list result
     gives a warehouse: `ShopList` is scoped to the selling team, items are empty in a list, and `Order` has no creator.
     **→ Recommend** denormalised fields on the list row — `shop_name`, `marketplace`, `item_quantity`,
@@ -508,7 +508,7 @@ flowchart LR
     seller's shops. The resi, the marketplace date and the deadline are the open fields already asked about above.
 
 17. **What must the warehouse be able to filter by?** The warehouse list
-    ([the-warehouse-filters-by-team-marketplace-and-courier](../../business/frontend/warehouse_order_list_decision.md#the-warehouse-filters-by-team-marketplace-and-courier))
+    ([the-warehouse-filters-by-team-marketplace-and-courier](../frontend/warehouse_order_list_decision.md#the-warehouse-filters-by-team-marketplace-and-courier))
     offers a seller team, a marketplace, a courier and a shipment state — `OrderListFilter` has a status, a search, a
     shop and a date window, and none of those four. Its search also does not reach the MP order id or the resi, which
     is what a packer has in hand.
@@ -518,8 +518,8 @@ flowchart LR
 
 18. **What does the warehouse workbench need from the contract?** The warehouse list now changes steps by the old
     system's table, scans parcels to hand over, validates picks by scan, and prints labels in bulk
-    ([a-warehouse-step-moves-by-the-old-systems-table](../../business/frontend/warehouse_order_list_decision.md#a-warehouse-step-moves-by-the-old-systems-table),
-    [scanning-is-the-crews-hands](../../business/frontend/warehouse_order_list_decision.md#scanning-is-the-crews-hands)). Missing today:
+    ([a-warehouse-step-moves-by-the-old-systems-table](../frontend/warehouse_order_list_decision.md#a-warehouse-step-moves-by-the-old-systems-table),
+    [scanning-is-the-crews-hands](../frontend/warehouse_order_list_decision.md#scanning-is-the-crews-hands)). Missing today:
 
     | need | → Recommend |
     | --- | --- |
@@ -532,7 +532,7 @@ flowchart LR
     | export | the order list's export, shared with the seller's |
 
 13. **Where does a draft's pushing app go on the row?** The draft list used to show `source` under the reference;
-    [the-draft-list-is-the-drafts-tab](../../business/frontend/order_draft_decision.md#the-draft-list-is-the-drafts-tab) gave that line to
+    [the-draft-list-is-the-drafts-tab](../frontend/order_draft_decision.md#the-draft-list-is-the-drafts-tab) gave that line to
     *what is left*, so the app's name is now on the detail only. Two apps can scrape the same marketplace, and
     the reference alone does not say whose it is.
     **→ Recommend** it takes the author's line in the *Dibuat* cell — `via <app>` instead of `oleh <name>`. Per

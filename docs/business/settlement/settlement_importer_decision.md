@@ -943,4 +943,4 @@ flowchart LR
 | --- | --- |
 | the import screens | `/settlement/imports`, **Import File**, `/settlement/imports/:fileId` — the accepted prototype on the real API (f163139, c9c1861) · e2e `settlement_imports.spec.ts` |
 | the shop's primary CS | the **Primary CS** badge on its grant, **★ Make primary** on every other granted user for an owner or admin, a *No primary CS* warning on the shop's page and a badge on `/shops` ([the-primary-cs-is-a-flag-on-a-grant](../shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant), c9c1861) · e2e `shops.spec.ts` |
-| the report | **Withdrawn** as its own column and total, and the headline **Position to date** ([the-report-headline-is-position-to-date](../frontend/settlement_report_decision.md#the-report-headline-is-position-to-date), 9f20652) · Storybook **Pages / Settlement / Report** |
+| the report | **Withdrawn** as its own column and total, and the headline **Position to date** ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date), 9f20652) · Storybook **Pages / Settlement / Report** |

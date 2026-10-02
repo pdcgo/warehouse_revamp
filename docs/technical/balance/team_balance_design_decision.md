@@ -11,8 +11,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [two-logs-two-names](#two-logs-two-names) | `liability_logs` for the balance one, `liability_terms_logs` for the limit one — neither owns the bare word *log* |
 | [the-actor-was-dropped-at-every-boundary](#the-actor-was-dropped-at-every-boundary) | the human actor is already computed at the call site and thrown away — two parameters, not a sentinel |
 | [terms-live-on-the-pair-detail](#terms-live-on-the-pair-detail) | Credit Terms is a **section** of the pair detail, not a screen. ⚠ opened the default-row question below |
-| [the-summary-is-tiles-on-the-list](../../business/frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) | *Summarize All Balance* is the **tiles on `/liability`** — and the totals must come from the SERVER, not the loaded page |
-| [the-default-terms-row-is-a-dialog-on-the-list](../../business/frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) | `counterparty_id = 0` is edited in a **dialog opened from the list**. ⚠ against recommendation. Fixes a live regression |
+| [the-summary-is-tiles-on-the-list](../frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) | *Summarize All Balance* is the **tiles on `/liability`** — and the totals must come from the SERVER, not the loaded page |
+| [the-default-terms-row-is-a-dialog-on-the-list](../frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) | `counterparty_id = 0` is edited in a **dialog opened from the list**. ⚠ against recommendation. Fixes a live regression |
 
 ---
 
@@ -339,9 +339,9 @@ until somebody overrides it, which is what an exception-to-a-rule should look li
 
 ## the-summary-is-tiles-on-the-list
 
-➡ **Moved** to [frontend/liability_list_decision.md](../../business/frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
+➡ **Moved** to [frontend/liability_list_decision.md](../frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/technical/frontend/`).
 
 ## the-default-terms-row-is-a-dialog-on-the-list
 
-➡ **Moved** to [frontend/liability_list_decision.md](../../business/frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
+➡ **Moved** to [frontend/liability_list_decision.md](../frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/technical/frontend/`).
 

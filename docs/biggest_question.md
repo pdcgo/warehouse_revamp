@@ -1231,7 +1231,7 @@ Q2, which is a pointer to order's a-lost-publish-is-not-tracked-on-the-order (wa
 > ([a-missing-account-is-fixed-by-hand](business/settlement/context_decision.md#a-missing-account-is-fixed-by-hand)):
 > a person fixes it on the order detail page. A flag, a `san` repair command and a cross-service
 > reconcile were all considered and turned down — **nothing new is built**, because
-> [order-detail-manages-the-ledger](business/frontend/order_settlement_decision.md#order-detail-manages-the-ledger)
+> [order-detail-manages-the-ledger](technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger)
 > already put the ledger on that page and CS is already permitted to post `initial_total`. Discovery is
 > human: the gap surfaces when somebody reconciles against the marketplace payout report.
 > ⚠ **One consequence is now load-bearing** — manual posting *is* the repair path, so the handler must
@@ -1713,8 +1713,8 @@ Q2, which is a pointer to order's a-lost-publish-is-not-tracked-on-the-order (wa
 >
 > | the question | the answer | |
 > | --- | --- | --- |
-> | *Summarize All Balance* — screen or tiles? | **the tiles** | [the-summary-is-tiles-on-the-list](business/frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) |
-> | where is the DEFAULT terms row edited? | **a dialog on the list** ⚠ against recommendation | [the-default-terms-row-is-a-dialog-on-the-list](business/frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) |
+> | *Summarize All Balance* — screen or tiles? | **the tiles** | [the-summary-is-tiles-on-the-list](technical/frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) |
+> | where is the DEFAULT terms row edited? | **a dialog on the list** ⚠ against recommendation | [the-default-terms-row-is-a-dialog-on-the-list](technical/frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) |
 > | does `found` need the owner's acknowledgement? | **no** ⚠ against recommendation | [found-posts-without-a-handshake](business/balance/context_decision.md#found-posts-without-a-handshake) |
 >
 > ⛔ **One of them moved weight rather than removing it, and it landed at #3.** Refusing `found` a

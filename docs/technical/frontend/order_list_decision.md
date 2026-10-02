@@ -3,7 +3,7 @@
 The owner's decisions about the selling team's **order list** (`/orders`) — its row, its tabs and its summary. **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[technical/order/design_decision.md](../../technical/order/design_decision.md) first and moved here on 2026-10-02;
+[technical/order/design_decision.md](../order/design_decision.md) first and moved here on 2026-10-02;
 each old heading there now points here.
 
 | decision | what it settles |
@@ -98,7 +98,7 @@ flowchart LR
 ```
 
 ⚠ **`Order.total` is on neither side.** It is `subtotal + shipping_cost` — our own quote plus postage
-— and the row never reads it. See [the contradiction](../../technical/order/design_clarify.md#contradiction) for the four
+— and the row never reads it. See [the contradiction](../order/design_clarify.md#contradiction) for the four
 sites that decision touched.
 
 ⚠ **The `biaya` half is a SAMPLE.** Nothing carries a warehouse fee per order: it is a liability row

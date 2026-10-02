@@ -3,7 +3,7 @@
 The owner's decisions about the selling team's **order detail** (`/orders/:orderId`). **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[technical/order/design_decision.md](../../technical/order/design_decision.md) first and moved here on 2026-10-02;
+[technical/order/design_decision.md](../order/design_decision.md) first and moved here on 2026-10-02;
 each old heading there now points here.
 
 | decision | what it settles |
@@ -105,7 +105,7 @@ flowchart LR
 | | what | why |
 | --- | --- | --- |
 | warehouse | keeps the old tabbed detail | same argument as [the-two-ends-are-two-screens](warehouse_order_list_decision.md#the-two-ends-are-two-screens): the seller page shows harga beli and margin, which a building fulfilling many sellers has no business reading |
-| settlement | carried over as a SECTION, placed before Withdrawal | it is wired (reads `OrderSettlement`, posts entries); the preview had only the invented withdrawal table, so applying it bare would have removed a working feature. Whether *withdrawal & penyesuaian* IS this ledger stays open in [design_clarify.md](../../technical/order/design_clarify.md) — now with both on screen |
+| settlement | carried over as a SECTION, placed before Withdrawal | it is wired (reads `OrderSettlement`, posts entries); the preview had only the invented withdrawal table, so applying it bare would have removed a working feature. Whether *withdrawal & penyesuaian* IS this ledger stays open in [design_clarify.md](../order/design_clarify.md) — now with both on screen |
 | receipt document | carried over as a fact of Info | the uploaded PDF is real; only the resi CODE is sampled |
 | address | full, never clamped | the preview's one-line region summary dropped the street — the one part a parcel cannot go without |
 | not found / bad id | back button + message, as before | a dead end on a mistyped URL |
@@ -139,7 +139,7 @@ flowchart LR
 | --- | --- |
 | on screen | the section keeps the ledger's summary and rows, with no card of its own inside the section card |
 | still missing | nothing IMPORTS the marketplace's payouts yet, so a payout appears only when posted by hand. That is the `withdrawal` ⚠ on the section title, and Edit Withdrawal still has no RPC |
-| not decided by this | where a wallet → bank withdrawal lives ([design_clarify.md](../../technical/order/design_clarify.md#question) Q2). It names no order, so it was never going to fit on one |
+| not decided by this | where a wallet → bank withdrawal lives ([design_clarify.md](../order/design_clarify.md#question) Q2). It names no order, so it was never going to fit on one |
 
 ⚠ The owner said *mungkin*. Built as decided because the recommendation was the same, and it can be
 reversed by bringing a section back. The ledger itself is unchanged.

@@ -61,7 +61,7 @@ flowchart LR
 | --- | --- |
 | the five types of 2026-09-24 ([the Contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight), built) | `SettlementType` 9–13, `mapper.go`, `trackedColumns` + 00006's columns, `SettlementMetric` 12–16, `AnalyticMetricSort` 12–16 — widened together, never the enum before the fold. A withdrawal naming an order is refused (`errWithdrawalIsShopWide`) |
 | [withdrawal-counts-in-the-position](../../business/settlement/context_decision.md#withdrawal-counts-in-the-position) | nothing special-cased — a withdrawal's `change` sums into `balance`, `last_balance` and the carry like every type |
-| [the-report-headline-is-position-to-date](../../business/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date) | `features/settlement/measure.ts` — `received` leaves withdrawals out, `withdrawn`, `positionToDate`; `ReportSummary`, `SeriesTable` |
+| [the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date) | `features/settlement/measure.ts` — `received` leaves withdrawals out, `withdrawn`, `positionToDate`; `ReportSummary`, `SeriesTable` |
 | [the-source-is-named-importer](../../business/settlement/settlement_importer_decision.md#the-source-is-named-importer) | `SOURCE_TYPE_IMPORTER = 1` (the number kept), text `importer`, 00006 rewrote stored `exporter` |
 | [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) | `shop_primary.go` — `ShopPrimary`, asked in `postEntry` BEFORE the transaction for source `importer` + no order. A failed ask or no primary is HELD until the idempotency check: a stored row is answered, and a new one refused (760b8e2) · `settlement_logs.user_id` · `SettlementLogPosted.user_id` · the fold counts a shop row for it when set |
 
@@ -107,8 +107,8 @@ Q1, the withdrawal, answered 2026-09-29) · [analytic_context_clarify](../../bus
 ## The list, reworked (2026-10-02)
 
 The owner went through `/settlement` one decision at a time; each is in
-[frontend/order_settlement_decision.md](../../business/frontend/order_settlement_decision.md), and the rules every
-screen follows in [frontend/context_decision.md](../../business/frontend/context_decision.md).
+[frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md), and the rules every
+screen follows in [frontend/context_decision.md](../../technical/frontend/context_decision.md).
 
 | | now |
 | --- | --- |

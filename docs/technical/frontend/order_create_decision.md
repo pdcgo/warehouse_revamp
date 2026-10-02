@@ -3,7 +3,7 @@
 The owner's decisions about **creating an order** (`/orders/new`). **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[technical/order/design_decision.md](../../technical/order/design_decision.md) first and moved here on 2026-10-02;
+[technical/order/design_decision.md](../order/design_decision.md) first and moved here on 2026-10-02;
 each old heading there now points here.
 
 | decision | what it settles |

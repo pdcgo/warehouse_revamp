@@ -3,7 +3,7 @@
 The owner's decisions about **order drafts** — the Drafts tab (`/order-drafts`) and the draft page (`/order-drafts/:id`). **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[technical/order/design_decision.md](../../technical/order/design_decision.md) first and moved here on 2026-10-02;
+[technical/order/design_decision.md](../order/design_decision.md) first and moved here on 2026-10-02;
 each old heading there now points here.
 
 | decision | what it settles |
@@ -56,11 +56,11 @@ flowchart LR
   calling screen.
 
 ⚠ **Dropped from the row: the pushing app's name** (`source`), which sat under the reference. The readiness took
-that line. See [design_clarify.md](../../technical/order/design_clarify.md#question).
+that line. See [design_clarify.md](../order/design_clarify.md#question).
 
 ⚠ Found while analysing: the build lets a person draft and promotes on the server, against two business
 decisions — recorded in
-[the-build-lets-a-person-draft-and-promotes-on-the-server](../order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server).
+[the-build-lets-a-person-draft-and-promotes-on-the-server](../../business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server).
 
 ## the-draft-summary-is-three-cards
 
@@ -131,7 +131,7 @@ flowchart LR
   own box instead of pushing the page past the screen.
 - The business contradiction (a person drafts, Promote finalizes on the server) stands, with a note that the
   form route was tried —
-  [the-build-lets-a-person-draft-and-promotes-on-the-server](../order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server).
+  [the-build-lets-a-person-draft-and-promotes-on-the-server](../../business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server).
 
 ## the-draft-page-wears-the-order-form
 
@@ -180,7 +180,7 @@ flowchart LR
 | split | allowed, because a bundle is optional; the row offers **Make It a Bundle** (⚠ `makeBundle` — templates are samples) |
 | price | the marketplace price stays on the package row; HPP is the sum of what fills it |
 | memory | a mapping is NOT remembered for the next draft |
-| storing | only a product mapping is stored — a draft line holds one `product_id`. A bundle or split row is shown and counted, saved unmapped, and blocks Promote (⚠ `rowBundle`, `rowSplit`) until the contract can hold it ([design_clarify.md](../../technical/order/design_clarify.md#question)) |
+| storing | only a product mapping is stored — a draft line holds one `product_id`. A bundle or split row is shown and counted, saved unmapped, and blocks Promote (⚠ `rowBundle`, `rowSplit`) until the contract can hold it ([design_clarify.md](../order/design_clarify.md#question)) |
 
 ## the-draft-sell-price-starts-from-the-rows
 
@@ -198,7 +198,7 @@ stateDiagram-v2
 
 - It follows the rows while untouched; typing takes it over, down to 0; **Use the Rows' Prices** hands it back.
 - ⚠ `sellPrice` — a draft has no sell price, so a typed one is not kept. It could arrive with the draft from the
-  start ([design_clarify.md](../../technical/order/design_clarify.md#question)).
+  start ([design_clarify.md](../order/design_clarify.md#question)).
 - Refines [the-draft-page-wears-the-order-form](#the-draft-page-wears-the-order-form), whose price row said the sell
   price is the rows' sum.
 - The split row's product picker keeps a product row's width instead of stretching across the row.

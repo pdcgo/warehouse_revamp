@@ -3,7 +3,7 @@
 The owner's decisions about the **warehouse's order list** — the other end of `/orders`, a preview hidden in Storybook (`Pages/Warehouse/PickQueueNextPage`) until it is routed. **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[technical/order/design_decision.md](../../technical/order/design_decision.md) first and moved here on 2026-10-02;
+[technical/order/design_decision.md](../order/design_decision.md) first and moved here on 2026-10-02;
 each old heading there now points here.
 
 | decision | what it settles |
@@ -95,7 +95,7 @@ flowchart LR
 
 The warehouse does not read the order's statuses (Menunggu, Diproses, Dikirim, …) — those are the seller's and the
 buyer's. Inside the building an order is one of the steps of `processed`
-([the-warehouse-steps-are-not-order-statuses](../order/context_decision.md#the-warehouse-steps-are-not-order-statuses)).
+([the-warehouse-steps-are-not-order-statuses](../../business/order/context_decision.md#the-warehouse-steps-are-not-order-statuses)).
 
 ```mermaid
 flowchart LR
@@ -154,7 +154,7 @@ flowchart LR
 
 | filter | rule |
 | --- | --- |
-| cari | one box, looks everywhere — so no "filter type" choosing which field it searches. ⚠ It does not reach the MP order id or the resi yet ([design_clarify.md](../../technical/order/design_clarify.md#question)) |
+| cari | one box, looks everywhere — so no "filter type" choosing which field it searches. ⚠ It does not reach the MP order id or the resi yet ([design_clarify.md](../order/design_clarify.md#question)) |
 | status | not built: the warehouse's steps are already the tabs ([the-warehouse-tabs-are-the-processed-steps](#the-warehouse-tabs-are-the-processed-steps)) |
 | tanggal | the date the order was written down — the marketplace date has no field |
 | team · marketplace · jasa kirim | search selects (team, courier) and the marketplace list, each with a ⚠: `OrderListFilter` has none of the three, so they narrow nothing yet (`dropped`) |
@@ -192,7 +192,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | waiting | Dikonfirmasi | CONFIRMED |
 | picking | Sedang diambil | PICKING |
-| picked | **Sudah diambil** (new — [picked-is-a-warehouse-step](../order/context_decision.md#picked-is-a-warehouse-step)) | none ⚠ |
+| picked | **Sudah diambil** (new — [picked-is-a-warehouse-step](../../business/order/context_decision.md#picked-is-a-warehouse-step)) | none ⚠ |
 | packing_completed | Dikemas | PACKED |
 | completed | Sudah diserahkan | none — the build records it as SHIPPED |
 

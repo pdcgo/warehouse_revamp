@@ -4,7 +4,7 @@ The owner's decisions about **`/settlement`** (the order settlement list) and th
 detail page. **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md); the settlement *business* decisions
-stay in [settlement/context_decision.md](../settlement/context_decision.md). These were recorded there first
+stay in [settlement/context_decision.md](../../business/settlement/context_decision.md). These were recorded there first
 and moved here on 2026-10-02; each old heading there now points here.
 
 | decision | what it decided |
@@ -68,7 +68,7 @@ flowchart LR
 
 | control | spec |
 | --- | --- |
-| search | the shared `FilterSearch`, placeholder *Search order ID* — the server matches `CAST(order_id AS TEXT) LIKE %q%`; settlement never sees the marketplace reference ([settlement-keys-on-our-order-id](../settlement/context_decision.md#settlement-keys-on-our-order-id)) |
+| search | the shared `FilterSearch`, placeholder *Search order ID* — the server matches `CAST(order_id AS TEXT) LIKE %q%`; settlement never sees the marketplace reference ([settlement-keys-on-our-order-id](../../business/settlement/context_decision.md#settlement-keys-on-our-order-id)) |
 | shop | the design system's `ShopSelect` over the team's shops, *All shops* = none |
 | date | the order list's `DateRangePicker`, with one field segment reading **Last moved**: the filter is the account's latest entry (`updated_at`), not the order date — a plain picker would read as the order date |
 | layout | the shared `FilterBar` — search in the row, the rest in a sheet on a phone, Clear while anything narrows |
@@ -144,7 +144,7 @@ flowchart LR
 - **No deductions card** (owner: *"potongan bisa dihitung manual? kalau tidak statnya hilangkan saja"*):
   `sale − Σ payout` cannot be summed for the set — the server sums no payouts and the page holds one page of
   rows without their entries — so the card was removed rather than marked or filled from the page.
-- ⚠ **It amends [design-accepted](../settlement/context_decision.md#design-accepted)'s "implied take-rate card"**: with no deductions sum there is
+- ⚠ **It amends [design-accepted](../../business/settlement/context_decision.md#design-accepted)'s "implied take-rate card"**: with no deductions sum there is
   no take rate on the list until the server sums payouts.
 
 ## the-sale-is-the-marketplace-selling-price
@@ -153,7 +153,7 @@ flowchart LR
 
 `initial_total` — what the buyer paid on the platform — is written **harga jual marketplace** (EN *marketplace
 selling price*) wherever a sentence names it: *tanpa harga jual marketplace*, *Harga jual marketplace tidak
-tercatat*. It is a fact, not an estimate ([marketplace-total-is-a-fact-not-an-estimate](../settlement/context_decision.md#marketplace-total-is-a-fact-not-an-estimate)).
+tercatat*. It is a fact, not an estimate ([marketplace-total-is-a-fact-not-an-estimate](../../business/settlement/context_decision.md#marketplace-total-is-a-fact-not-an-estimate)).
 
 | | before | now |
 | --- | --- | --- |
@@ -194,7 +194,7 @@ flowchart LR
 ```
 
 `initial_total − Σ fund` is **Potongan** (EN *Deductions*) in the ledger panel's hint (*potongan Rp 20.000 · dirinci +Rp 10.000*). It amends the label half of
-[hidden-cost-is-left-in-the-balance](../settlement/context_decision.md#hidden-cost-is-left-in-the-balance) once more. Whether the figure is
+[hidden-cost-is-left-in-the-balance](../../business/settlement/context_decision.md#hidden-cost-is-left-in-the-balance) once more. Whether the figure is
 always a deduction — it is not, before any payout arrives — is open in the chat that recorded this.
 
 **Not on the list** (owner, 2026-10-02: *"hilangkan potongan karena memang tidak ada"*). A list row carries no
@@ -232,17 +232,17 @@ it is what the built prototype already assumes.
 | **read** the running ledger | ✅ | every row, its running balance, and the four derived figures |
 | **add** an entry | ✅ | §What Frontend Expected 1, verbatim |
 | **reverse** a row | ✅ | confirms the recommendation that was Critique 5 — the negation, same type, linked to the row it undoes |
-| **edit** a row | ⛔ | [a-correction-is-a-new-row](../settlement/context_decision.md#a-correction-is-a-new-row). Unchanged — "manage" does not reopen append-only |
+| **edit** a row | ⛔ | [a-correction-is-a-new-row](../../business/settlement/context_decision.md#a-correction-is-a-new-row). Unchanged — "manage" does not reopen append-only |
 | **delete** a row | ⛔ | same |
-| **decide WHO may do any of it** | ❓ | still open — [Question 1](../settlement/context_clarify.md#question) |
-| **type `initial_total`** | ❓ | still open — [Question 2](../settlement/context_clarify.md#question) |
+| **decide WHO may do any of it** | ❓ | still open — [Question 1](../../business/settlement/context_clarify.md#question) |
+| **type `initial_total`** | ❓ | still open — [Question 2](../../business/settlement/context_clarify.md#question) |
 
 ⚠ **Manage widens the VERBS, not the guarantees.** Append-only survives it intact: reversing posts a
 further row rather than removing one, which is why Reverse is a management action and Delete is not.
 
 ### Why the order page and not a settlement screen
 
-The ledger's grain IS the order ([superseded-the-grain-is-the-order](../settlement/context_decision.md#superseded-the-grain-is-the-order)), so the order page
+The ledger's grain IS the order ([superseded-the-grain-is-the-order](../../business/settlement/context_decision.md#superseded-the-grain-is-the-order)), so the order page
 is the only screen where the whole account is in scope at once. A person adding a fee is looking at the
 order to decide whether the fee is right — the lines, the shipping, what the buyer paid — and none of
 that is on a settlement list.
@@ -272,9 +272,9 @@ I do about it*. Every management verb lives on the second — the list never wri
 | | |
 | --- | --- |
 | where | `pages/order-detail/index.tsx`, `Tabs.Trigger value="settlement"` |
-| why third | Info is what the order IS and Timeline is what happened to it — both settled by the time money starts arriving. Settlement is the only tab that keeps changing for days afterwards ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)) |
+| why third | Info is what the order IS and Timeline is what happened to it — both settled by the time money starts arriving. Settlement is the only tab that keeps changing for days afterwards ([a-residual-balance-is-normal](../../business/settlement/context_decision.md#a-residual-balance-is-normal)) |
 | what it renders | the ledger table, the four derived figures, **Add entry**, and a per-row **Reverse** behind the row's overflow menu |
-| gating | one prop, `canPost`, resolved from the viewer's role — the single place [Question 1](../settlement/context_clarify.md#question)'s answer lands. Reading is never gated: the role gates writing, never looking |
+| gating | one prop, `canPost`, resolved from the viewer's role — the single place [Question 1](../../business/settlement/context_clarify.md#question)'s answer lands. Reading is never gated: the role gates writing, never looking |
 
 ⚠ **Built and previewable now**, but as a SEPARATE shell —
 `pages/order-settlement/components/OrderDetailPreview.tsx`, story `Pages/Order Settlement/On Order

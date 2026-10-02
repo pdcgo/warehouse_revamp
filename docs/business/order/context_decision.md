@@ -1343,7 +1343,7 @@ flowchart LR
 
 **It rests on decisions settlement already made:** entries arrive by API or by hand
 ([entries-arrive-by-api-or-by-hand](../settlement/context_decision.md#entries-arrive-by-api-or-by-hand)), from the
-order detail page ([order-detail-manages-the-ledger](../frontend/order_settlement_decision.md#order-detail-manages-the-ledger)),
+order detail page ([order-detail-manages-the-ledger](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger)),
 and an account that never fully settles is normal
 ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)). No change to
 settlement is needed.

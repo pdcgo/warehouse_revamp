@@ -3,7 +3,7 @@
 The owner's decisions about the **settlement report** (`/settlement/report`). **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md). These were recorded in
-[settlement/context_decision.md](../settlement/context_decision.md) first and moved here on 2026-10-02; each old heading there now points here.
+[settlement/context_decision.md](../../business/settlement/context_decision.md) first and moved here on 2026-10-02; each old heading there now points here.
 
 | decision | what it settles |
 | --- | --- |
@@ -12,7 +12,7 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 ## the-report-headline-is-position-to-date
 
 > Chat *(owner, 2026-09-29)* — *"Rename + Withdrawn column"*, asked after
-> [withdrawal-counts-in-the-position](../settlement/context_decision.md#withdrawal-counts-in-the-position): the report's *Hidden cost to date* would
+> [withdrawal-counts-in-the-position](../../business/settlement/context_decision.md#withdrawal-counts-in-the-position): the report's *Hidden cost to date* would
 > read as roughly every sale from the first imported withdrawal.
 
 **The verdict.** The report's running figure is labelled **Position to date** — what buyers paid, less everything the
@@ -39,7 +39,7 @@ flowchart LR
 | Gap · take rate | `sales − received` — unchanged |
 | Position to date 🔄 | `−close_balance`, relabelled — was *Hidden cost to date*. Its hint: *what buyers paid, less everything the platform moved — withdrawals included* |
 
-⚠ **It amends the label half of [hidden-cost-is-left-in-the-balance](../settlement/context_decision.md#hidden-cost-is-left-in-the-balance)** — the
+⚠ **It amends the label half of [hidden-cost-is-left-in-the-balance](../../business/settlement/context_decision.md#hidden-cost-is-left-in-the-balance)** — the
 unitemised take is still in the balance, but the balance is no longer only that, so the screen stops calling it so.
-[the-measure-is-sales-received-and-gap](../settlement/context_decision.md#the-measure-is-sales-received-and-gap) stands: its three figures are
+[the-measure-is-sales-received-and-gap](../../business/settlement/context_decision.md#the-measure-is-sales-received-and-gap) stands: its three figures are
 unchanged, and Withdrawn joins them.
