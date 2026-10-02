@@ -4,7 +4,9 @@ import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 export const ROLE_LABEL: Record<number, string> = {
   [Role.UNSPECIFIED]: "-",
   [Role.ROOT]: "Root",
-  [Role.ADMIN]: "Admin",
+  // Never the bare word: `administrator` and the admin team's `admin_administrator` are one word apart
+  // and worlds apart in power (the-two-administrators-have-distinct-labels).
+  [Role.ADMIN]: "System Administrator",
   [Role.TEAM_OWNER]: "Team Owner",
   [Role.TEAM_ADMIN]: "Team Admin",
   [Role.TEAM_CUSTOMER_SERVICE]: "Customer Service",
@@ -14,15 +16,24 @@ export const ROLE_LABEL: Record<number, string> = {
   [Role.SYSTEM]: "System",
 };
 
-export function roleLabel(role: Role | number | undefined): string {
+// A role's label, told apart by the TEAM it is held in where one enum value still serves two teams.
+//
+// Until the-role-names-are-the-codes-names is built, the admin team borrows the selling team's two
+// roles, so TEAM_OWNER / TEAM_ADMIN read differently there. Pass the team type wherever it is known.
+export function roleLabel(role: Role | number | undefined, teamType?: TeamType): string {
+  if (teamType === TeamType.ADMIN) {
+    if (role === Role.TEAM_OWNER) return "Admin Team Owner";
+    if (role === Role.TEAM_ADMIN) return "Admin Team Admin";
+  }
+
   return ROLE_LABEL[role ?? Role.UNSPECIFIED] ?? "Unknown";
 }
 
-// rolesFor lists the roles that make sense INSIDE a team of this type.
+// rolesFor lists the roles a team of this type HAS (every-role-has-a-code-name), highest first.
 //
-// ROOT and ADMIN are absent on purpose: they are only meaningful in the root team (the
-// super-admin scope), and the backend refuses to grant them anywhere else. Offering them in a
-// warehouse-team picker would just be a button that always errors.
+// It is the team's set, not what anybody may give — that is grantableRoles, below. ROOT and ADMIN
+// exist only in the root team, the super-admin scope; offering them in a warehouse-team picker would
+// just be a button that always errors.
 export function rolesFor(teamType: TeamType | undefined): Role[] {
   switch (teamType) {
     case TeamType.WAREHOUSE:
@@ -32,12 +43,127 @@ export function rolesFor(teamType: TeamType | undefined): Role[] {
       return [Role.TEAM_OWNER, Role.TEAM_ADMIN, Role.TEAM_CUSTOMER_SERVICE];
 
     case TeamType.ADMIN:
+      return [Role.TEAM_OWNER, Role.TEAM_ADMIN];
+
     case TeamType.ROOT:
-      return [Role.ROOT, Role.ADMIN, Role.TEAM_OWNER, Role.TEAM_ADMIN];
+      return [Role.ROOT, Role.ADMIN];
 
     default:
       return [Role.TEAM_OWNER, Role.TEAM_ADMIN];
   }
+}
+
+// ── Who may do what to whom (docs/business/user/context_decision.md) ────────────────────────────
+//
+// ⚠ ALL OF IT IS UX ONLY, like every helper in this file: it decides what a screen OFFERS. The access
+// interceptor and the handlers are the boundary. Until the user decisions are built the server does
+// NOT check a caller's rank against the person's, so these functions are the prototype of that check.
+
+/** How high a role stands. Inside a team: Owner > Admin > the floor role. Root and the Administrator
+ *  stand above every team. */
+export function roleRank(role: Role | undefined): number {
+  switch (role) {
+    case Role.ROOT:
+      return 100;
+    case Role.ADMIN:
+      return 90;
+    case Role.TEAM_OWNER:
+    case Role.WAREHOUSE_OWNER:
+      return 30;
+    case Role.TEAM_ADMIN:
+    case Role.WAREHOUSE_ADMIN:
+      return 20;
+    case Role.TEAM_CUSTOMER_SERVICE:
+    case Role.WAREHOUSE_STAFF:
+      return 10;
+    default:
+      return 0;
+  }
+}
+
+/** Whether `role` manages the members of a team of `teamType`
+ *  (the-admin-team-admin-alone-does-not-manage-members): every Owner, the warehouse and selling Admins,
+ *  Root and the Administrator — not the admin team's Admin. */
+export function managesMembers(role: Role | undefined, teamType: TeamType | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMIN:
+    case Role.TEAM_OWNER:
+    case Role.WAREHOUSE_OWNER:
+    case Role.WAREHOUSE_ADMIN:
+      return true;
+    case Role.TEAM_ADMIN:
+      return teamType !== TeamType.ADMIN;
+    default:
+      return false;
+  }
+}
+
+/** The roles `caller` may give in a team of `teamType`:
+ *  never Root (root-is-granted-only-through-san), the Administrator only by Root
+ *  (root-grants-the-administrator), and otherwise only below your own (an-owner-never-makes-another-owner,
+ *  no-admin-makes-another-admin). */
+export function grantableRoles(teamType: TeamType | undefined, caller: Role | undefined): Role[] {
+  const roles = rolesFor(teamType).filter((r) => r !== Role.ROOT);
+
+  if (caller === Role.ROOT) return roles;
+  if (caller === Role.ADMIN) return roles.filter((r) => r !== Role.ADMIN);
+  if (!managesMembers(caller, teamType)) return [];
+
+  return roles.filter((r) => roleRank(r) < roleRank(caller));
+}
+
+/** The role a create or add form starts on: the LOWEST on offer — the one a newcomer most often gets,
+ *  and the least harm if left as is. Except in the root team, where every role on offer is a platform
+ *  role: making someone the System Administrator is never a default, so the form starts empty. */
+export function defaultGrant(teamType: TeamType | undefined, offered: Role[]): Role {
+  if (teamType === TeamType.ROOT) return Role.UNSPECIFIED;
+
+  return offered[offered.length - 1] ?? Role.UNSPECIFIED;
+}
+
+/** Whether `caller` may change the role of, or remove, a member holding `target`
+ *  (change-role-only-below-your-own, removing-a-member-drops-their-shop-access). Nobody touches
+ *  their own membership. */
+export function canManageMember(args: {
+  caller: Role | undefined;
+  teamType: TeamType | undefined;
+  target: Role | undefined;
+  isSelf: boolean;
+}): boolean {
+  const { caller, teamType, target, isSelf } = args;
+
+  if (isSelf) return false;
+  if (target === Role.ROOT) return false;
+  if (caller === Role.ROOT) return true;
+  if (caller === Role.ADMIN) return target !== Role.ADMIN;
+  if (!managesMembers(caller, teamType)) return false;
+
+  return roleRank(target) < roleRank(caller);
+}
+
+/** Whether `caller` may suspend (or unsuspend) an account whose ROOT-TEAM role is `target`
+ *  (only-root-and-the-administrator-suspend): Root suspends anyone but a Root; the Administrator
+ *  anyone below Administrator; nobody suspends themselves. A team's Owner or Admin suspends nobody. */
+export function canSuspendUser(args: { caller: Role | undefined; target: Role | undefined; isSelf: boolean }): boolean {
+  const { caller, target, isSelf } = args;
+
+  if (isSelf) return false;
+  if (caller === Role.ROOT) return target !== Role.ROOT;
+  if (caller === Role.ADMIN) return target !== Role.ROOT && target !== Role.ADMIN;
+
+  return false;
+}
+
+/** Erasing is for a FORMER user — an account already suspended — by those who may suspend it
+ *  (erase-keeps-the-row). */
+export function canEraseUser(args: {
+  caller: Role | undefined;
+  target: Role | undefined;
+  isSelf: boolean;
+  suspended: boolean;
+}): boolean {
+  return args.suspended && canSuspendUser(args);
 }
 
 // canManageUsers mirrors the backend policy on CreateUser / UserList / TeamUserUpdate.

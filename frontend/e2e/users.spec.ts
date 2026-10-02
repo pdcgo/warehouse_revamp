@@ -45,6 +45,16 @@ async function loginExpectingFailure(page: Page, username: string, password: str
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
+// Root's team is the ROOT team, whose only role on offer is the System Administrator — and a form there
+// starts with NO role, because making someone an Administrator is never a default (defaultGrant).
+const ROLE_ADMIN = 2;
+
+// Typing opens the list — a click on the field alone does not.
+async function pickRole(page: Page, role: number, label: string) {
+  await page.getByTestId("role-select").locator("input").fill(label);
+  await page.getByTestId(`role-select-option-${role}`).click();
+}
+
 async function gotoUsers(page: Page) {
   await page.getByRole("link", { name: "Users", exact: true }).click();
   await expect(page.getByTestId("users-table")).toBeVisible();
@@ -67,6 +77,7 @@ test("CreateUser rejects an invalid username — lowercase alphanumeric only (#8
   await page.getByTestId("new-username").fill("Bad_Name");
   await page.getByTestId("new-password").fill("e2epassword1");
   await page.getByTestId("new-name").fill("Nope");
+  await pickRole(page, ROLE_ADMIN, "Administrator");
   await page.getByTestId("submit-create-user").click();
 
   // The frontend blocks it with a validation error; no account is created.
@@ -82,6 +93,7 @@ test("CreateUser: a new user appears, and can immediately sign in", async ({ pag
   await page.getByTestId("new-username").fill(NEW_USER);
   await page.getByTestId("new-password").fill(NEW_PASSWORD);
   await page.getByTestId("new-name").fill("E2E User");
+  await pickRole(page, ROLE_ADMIN, "Administrator");
   await page.getByTestId("submit-create-user").click();
 
   // CreateUser writes the account AND the membership in one transaction, so the new user shows
@@ -214,11 +226,12 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
   await page.getByTestId("users-tab-team").click();
 
-  // SearchUser is unscoped precisely so this works: finding someone who is NOT in your team.
-  // The dialog now uses the shared UserSelect combobox (#62).
+  // The Add Member SEARCH POPUP (a-member-is-found-in-a-search-popup): Root searches by part, picks the
+  // person from the list, and gives them a role.
   await page.getByTestId("open-add-member").click();
-  await page.getByTestId("user-select").locator("input").fill(NEW_USER);
-  await page.getByTestId(`user-select-option-${NEW_USER}`).click();
+  await page.getByTestId("add-member-search").fill(NEW_USER);
+  await page.getByTestId(`add-member-result-${NEW_USER}`).click();
+  await pickRole(page, ROLE_ADMIN, "Administrator");
   await page.getByTestId("submit-add-member").click();
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
@@ -261,17 +274,12 @@ test("ForgotPassword: recover the account with an OTP, then sign in", async ({ p
   await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
 });
 
-test("DeleteUser: the account is gone for good", async ({ page }) => {
+test("a user is never deleted: the row offers no Delete", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
+  // a-user-is-never-deleted — a person who leaves is suspended, and erased on request; the row stays.
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
-  await page.getByTestId(`delete-${NEW_USER}`).click();
-  await page.getByTestId("confirm-action").click();
-
-  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
-
-  // Really gone — not just filtered out of this team's view. The All User tab lists everyone.
-  await page.getByTestId("users-tab-all").click();
-  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+  await expect(page.getByTestId(`edit-${NEW_USER}`)).toBeVisible();
+  await expect(page.getByTestId(`delete-${NEW_USER}`)).toHaveCount(0);
 });

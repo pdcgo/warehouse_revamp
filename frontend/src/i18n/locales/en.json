@@ -1566,7 +1566,8 @@
       "user": "User",
       "email": "Email",
       "status": "Status",
-      "actions": "Actions"
+      "actions": "Actions",
+      "role": "Role"
     },
     "status": {
       "suspended": "Suspended",
@@ -1579,7 +1580,8 @@
       "resetPassword": "Reset Password",
       "restore": "Restore",
       "suspend": "Suspend",
-      "delete": "Delete"
+      "changeRole": "Change Role",
+      "erase": "Erase Personal Data"
     },
     "empty": "No users found.",
     "toast": {
@@ -1587,15 +1589,16 @@
       "userRestored": "{{username}} restored",
       "suspendedDescription": "Their active session was cut off immediately.",
       "suspendFailed": "Suspend failed",
-      "userDeleted": "{{username}} deleted",
-      "deleteFailed": "Delete failed",
       "removedFromTeam": "{{username}} removed from the team",
       "removeFailed": "Remove failed",
       "userCreated": "{{username}} created",
       "userUpdated": "{{username}} updated",
       "passwordReset": "Password reset for {{username}}",
       "passwordResetDescription": "All of their existing sessions were signed out.",
-      "memberAdded": "Member added"
+      "memberAdded": "Member added",
+      "roleChanged": "{{username}} is now {{role}}",
+      "userErased": "Personal data of user #{{id}} erased",
+      "eraseFailed": "Erase failed"
     },
     "confirm": {
       "removeFromTeam": {
@@ -1611,9 +1614,9 @@
         "title": "Suspend Account",
         "message": "Suspend {{username}}? Their active session is cut off immediately and they cannot sign in."
       },
-      "delete": {
-        "title": "Delete User",
-        "message": "Permanently delete {{username}}? Their team memberships are removed too. This cannot be undone."
+      "erase": {
+        "title": "Erase Personal Data",
+        "message": "Erase the personal data of {{username}}? Their name, email, phone, photo and password are wiped and the username is freed. The account stays as user #{{id}}, so every record they made still points at it. This cannot be undone."
       }
     },
     "thisTeam": "this team",
@@ -1641,7 +1644,8 @@
     },
     "helper": {
       "usernameRule": "Lowercase letters and numbers only.",
-      "min8": "At least 8 characters."
+      "min8": "At least 8 characters.",
+      "rootUsername": "The first Root always keeps the username root."
     },
     "cancel": "Cancel",
     "edit": {
@@ -1658,10 +1662,88 @@
     "addMember": {
       "trigger": "Add Member",
       "title": "Add Member",
-      "findUser": "Find a user",
-      "searchPlaceholder": "Search across all teams",
-      "helper": "Searches everyone — add a user who isn't in this team yet.",
-      "submit": "Add"
+      "findUser": "Find a person",
+      "submit": "Add",
+      "createTitle": "New Member",
+      "placeholderExact": "Their exact username, phone or email",
+      "placeholderBroad": "Part of a name or username",
+      "helperExact": "Type the whole username, phone or email of the person you are adding.",
+      "helperBroad": "Searches everyone in the system.",
+      "found_one": "{{count}} person found",
+      "found_other": "{{count}} people found",
+      "phoneEnding": "phone ending {{last4}}",
+      "noMatch": "No one matches “{{q}}”.",
+      "createNew": "Create New User",
+      "repick": "Pick Someone Else",
+      "alreadyMember": "Already in this team as {{role}}.",
+      "selectRole": "Select role",
+      "changeRole": "Change role",
+      "cannotChange": "Their role is not below yours, so you cannot change it.",
+      "createLead": "A new account, added to this team in the same step.",
+      "oneAccountHelper": "A phone number or email belongs to one account only.",
+      "backToSearch": "Back to Search",
+      "submitChange": "Change Role",
+      "submitCreate": "Create and Add",
+      "pending": {
+        "exactSearch": {
+          "label": "Exact match for Owners and Admins",
+          "reason": "the server still matches any two letters of a name, for everyone"
+        },
+        "phoneLast4": {
+          "label": "The phone ending on each result",
+          "reason": "the server does not send it yet"
+        },
+        "alreadyMember": {
+          "label": "Who is already in this team",
+          "reason": "the server does not say, so a member reads as a newcomer and Add overwrites their role"
+        },
+        "duplicateRefusal": {
+          "label": "One account per phone",
+          "reason": "a phone number already on another account is not refused yet"
+        }
+      },
+      "nothingToChange": "There is no other role you can give them."
+    },
+    "changeRole": {
+      "title": "Change Role for {{username}}",
+      "current": "Current role: {{role}}",
+      "newRole": "New role",
+      "helper": "Only roles below your own are offered.",
+      "submit": "Change Role"
+    },
+    "log": {
+      "title": "Membership History",
+      "added": "{{actor}} added {{user}} as {{to}}",
+      "changed": "{{actor}} changed {{user}} from {{from}} to {{to}}",
+      "removed": "{{actor}} removed {{user}} ({{from}})",
+      "system": "the system",
+      "userRef": "user #{{id}}",
+      "override": "override",
+      "notBuilt": "The membership history is not recorded yet.",
+      "failed": "The membership history could not be loaded.",
+      "empty": "No one has joined, left or changed role yet."
+    },
+    "pending": {
+      "roleColumn": {
+        "label": "Each member's role",
+        "reason": "the server does not send it yet, so the column reads — and the row actions cannot tell an Owner from Staff"
+      },
+      "rankRules": {
+        "label": "Who may act on whom",
+        "reason": "decided on this screen only — the server still lets a manager change or remove anyone in the team"
+      },
+      "erase": {
+        "label": "Erase Personal Data",
+        "reason": "the server answers that it is not built yet"
+      },
+      "username": {
+        "label": "A new username",
+        "reason": "the server ignores it, so the old one stays"
+      },
+      "memberLog": {
+        "label": "Membership history",
+        "reason": "nothing records who added, changed or removed whom yet"
+      }
     }
   },
   "inventory": {

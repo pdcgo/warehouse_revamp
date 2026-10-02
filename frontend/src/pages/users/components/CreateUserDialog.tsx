@@ -17,11 +17,14 @@ import { useTeam } from "../../../features/team/TeamContext";
 import { PasswordInput } from "../../../components/inputs/PasswordInput";
 import { RoleSelect } from "../../../components/pickers/RoleSelect";
 import { toaster } from "../../../components/feedback/Toaster";
-import { rolesFor } from "../../../lib/roles";
+import { defaultGrant, grantableRoles } from "../../../lib/roles";
 import { useCreateUser } from "../../../features/users/queries";
 
 // CreateUserDialog calls CreateUser, which creates the account AND the team membership in ONE
 // transaction. So there is no window where a user exists with no team.
+//
+// The role picker offers only what the caller may give — a role below their own, never Root
+// (an-owner-never-makes-another-owner, no-admin-makes-another-admin, root-is-granted-only-through-san).
 export function CreateUserDialog({
   open: openProp,
   onOpenChange,
@@ -39,7 +42,7 @@ export function CreateUserDialog({
   const { t } = useTranslation();
   const { current } = useTeam();
 
-  const roles = rolesFor(current?.teamType);
+  const roles = grantableRoles(current?.teamType, current?.role);
 
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -62,7 +65,7 @@ export function CreateUserDialog({
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>(roles[roles.length - 1] ?? Role.TEAM_ADMIN);
+  const [role, setRole] = useState<Role>(defaultGrant(current?.teamType, roles));
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -166,7 +169,7 @@ export function CreateUserDialog({
 
                   <Field.Root>
                     <Field.Label>{t("users.create.roleInTeam", { team: current?.teamName || t("users.thisTeam") })}</Field.Label>
-                    <RoleSelect teamType={current?.teamType} value={role} onChange={setRole} />
+                    <RoleSelect roles={roles} teamType={current?.teamType} value={role} onChange={setRole} />
                   </Field.Root>
                 </Stack>
               </Dialog.Body>

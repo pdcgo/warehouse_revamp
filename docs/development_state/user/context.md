@@ -1,13 +1,30 @@
 # Development state — user
 
-**Pass:** business analysis on the owner's [user/context.md](../../business/user/context.md) — roles per team type,
+**Pass:** implementation analysis — the **prototype is built, awaiting design_accept**
+([Q23](../../business/user/context_clarify.md#question)). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md) — roles per team type,
 Root and the System Administrator, suspend, the dev root, and how a team's members are managed. Questions:
-[context_clarify.md](../../business/user/context_clarify.md), **none open** (Q3–Q20 answered by 2026-10-02). Decisions:
+[context_clarify.md](../../business/user/context_clarify.md), **three open** (Q21–Q23, from the prototype; Q3–Q20 answered by 2026-10-02). Decisions:
 [context_decision.md](../../business/user/context_decision.md) — **42 recorded, 2 of them superseded**. One question was
 re-routed: who confirms a stock count is [inventory Q12](../../business/inventory/context_clarify.md#question).
 
 The service predates the lifecycle: every RPC in `proto/warehouse/user/v1/user.proto` (19) has a handler and a test,
 and they pass against Postgres. **The decisions below are mostly NOT built yet.**
+
+## Prototype — built, not accepted
+
+Screens are built to the decisions; the server is unchanged. Each part the server does not do carries a pending mark
+(`pages/users/pending.ts`, `features/users/pending.ts`). Preview: Storybook `Pages/Users/Users`,
+`Features/Users/AddMemberDialog`. The stub `.storybook/userStub.ts` plays the decided rules in its own terms (never
+imports `lib/roles.ts`), writeable, reset per story.
+
+| | |
+| --- | --- |
+| contract (additive) | `UserList` MEMBERSHIP slice · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` · `UserErase` · `TeamMemberLogList` · `DeleteUser` deprecated. Placeholders `user_erase.go`, `team_member_log_list.go` answer `Unimplemented`, with tests |
+| screen rules | `lib/roles.ts`: `roleRank`, `managesMembers`, `grantableRoles`, `canManageMember`, `canSuspendUser`, `canEraseUser`, `defaultGrant` (no role preselected in the root team) |
+| Users page | role column, rank-gated ⋯ menu, Change Role dialog, Erase, membership history, no Delete. Add Member / New User only for member managers |
+| Add Member popup | `features/users/AddMemberDialog.tsx` rewritten: search list → Select Role / Change Role / Create and Add |
+| elsewhere | Edit has a username field (not on yourself) · New User offers `grantableRoles` · the shop grant's picker is scoped to its team · `RoleSelect` seeds its list (a prefilled role used to read blank) |
+| e2e | `e2e/users.spec.ts`: roles chosen explicitly in the root team, the popup's test ids, DeleteUser test → "no Delete offered" |
 
 ## Built, and the decisions agree
 
@@ -49,3 +66,6 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
+| do the restock filters stop using `SearchUser` | [user Q21](../../business/user/context_clarify.md#question) |
+| an Admin changes nobody's role | [user Q22](../../business/user/context_clarify.md#question) |
+| accept the prototype; remove New User | [user Q23](../../business/user/context_clarify.md#question) |

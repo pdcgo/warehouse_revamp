@@ -49,6 +49,7 @@ import {
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
 import { sessionScenario } from "./sessionScenario";
+import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
   FinancialAccountService,
@@ -98,7 +99,6 @@ import {
   orders,
   productCosts,
   products,
-  publicUsers,
   racks,
   regionTree,
   regions,
@@ -703,21 +703,9 @@ export const transport = createRouterTransport(({ service }) => {
       ids: teams.map((t) => t.id),
       pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(teams.length) },
     }),
-    // UserList is the TEAM-scoped search; SearchUser is the global typeahead. The two return
-    // different messages (User vs the narrower PublicUser), which is exactly why UserSelect has two
-    // paths — so the stub keeps them distinct rather than serving one shape for both.
-    userList: (req) => columnar("user", users.filter((u) => match(req.filter?.q, u.name, u.username))),
-    // THE ACTORS BEHIND A TIMELINE. `fetchActors` SWALLOWS a failure here and returns an empty map,
-    // so leaving this unstubbed does not throw — it silently degrades every history to "User #61".
-    // That is the one shape of broken stub this file's `unimplemented` default cannot shout about,
-    // which is exactly why it is stubbed rather than left out.
-    //
-    // ⚠ AN UNKNOWN ID IS ABSENT, never a null row — `byIds` already enforces that, and the pages
-    // depend on it: id 0 means "not recorded" and must fall through to the page's own fallback.
-    userByIDs: (req) => byIds("publicUser", publicUsers, req.filter?.ids ?? []),
-    searchUser: (req) => ({
-      users: publicUsers.filter((u) => match(req.q, u.name, u.username)).slice(0, req.limit || 10),
-    }),
+    // Everything else — the member list, the search, the membership writes, the history — is the
+    // writeable stub in userStub.ts, which plays the user decisions (docs/business/user).
+    ...userStub,
   });
 
   service(ShopService, {

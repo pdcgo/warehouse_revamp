@@ -4,6 +4,9 @@ import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import {
+  logEntriesFromList,
+  memberListRowData,
+  membershipsFromList,
   publicUsersByIds,
   teamAccessFromList,
   teamAccessRowData,
@@ -102,12 +105,15 @@ export function useUsers({ teamId, q, page, pageSize }: UserListArgs) {
       const res = await userClient.userList({
         teamId: teamId!,
         filter: { q },
-        dataRequest: userListRowData(),
+        dataRequest: memberListRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
         users: usersFromList(res.items, res.ids),
+        // Each person's role in the scoped team (at 0n, in the root team). Empty until the server
+        // sends the MEMBERSHIP slice — the user decisions are not built yet.
+        memberships: membershipsFromList(res.items),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -189,6 +195,58 @@ export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
   });
 }
 
+// The ADD MEMBER popup's search (a-member-is-found-in-a-search-popup).
+//
+// SearchUser, told which team the person is being added to, so the answer also says who is ALREADY
+// in it (an-existing-member-gets-change-role). A separate hook from useUserSearch because it is a
+// different question with a different answer shape — the picker only needs people.
+//
+// ⚠ Until the user decisions are built the server ignores `team_id`, matches any two letters for
+// everyone, and sends `roles_in_team` and `phone_last4` empty. The popup says so on itself.
+export function useMemberSearch(args: { teamId: bigint | undefined; q: string }) {
+  const { teamId, q } = args;
+
+  return useQuery({
+    queryKey: key.users(teamId, { memberSearch: q }),
+    ...referenceQuery,
+    enabled: q.length >= 2 && teamId !== undefined,
+    queryFn: async () => {
+      const res = await userClient.searchUser({ q, limit: 10, teamId: teamId! });
+
+      return {
+        users: res.users,
+        rolesInTeam: new Map<string, Role>(Object.entries(res.rolesInTeam)),
+      };
+    },
+  });
+}
+
+// One team's membership history, newest first (every-role-change-is-logged).
+//
+// ⚠ The server answers Unimplemented until the log table exists; the panel reads that as "not built
+// yet", not as a failure — so a failure is not retried.
+export function useTeamMemberLog(args: { teamId: bigint | undefined; page: number; pageSize: number }) {
+  const { teamId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.users(teamId, { memberLog: true, page, pageSize }),
+    ...listQuery,
+    enabled: teamId !== undefined && teamId > 0n,
+    retry: false,
+    queryFn: async () => {
+      const res = await userClient.teamMemberLogList({
+        teamId: teamId!,
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        entries: logEntriesFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
 export function useInvalidateUsers() {
   const client = useQueryClient();
 
@@ -230,16 +288,21 @@ interface SaveUserVars {
   name: string;
   email: string;
   phoneNumber: string;
+  /**
+   * A new username (the-username-is-editable) — UpdateUser only, never your own profile.
+   * ⚠ The server ignores it until the user decisions are built.
+   */
+  username?: string;
 }
 
 export function useSaveUser() {
   const invalidate = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: async ({ userId, ...vars }: SaveUserVars) =>
+    mutationFn: async ({ userId, username, ...vars }: SaveUserVars) =>
       userId === undefined
         ? await userClient.updateProfile(vars)
-        : await userClient.updateUser({ ...vars, userId }),
+        : await userClient.updateUser({ ...vars, userId, username }),
     onSuccess: () => invalidate(),
   });
 }
@@ -256,6 +319,8 @@ export function useCreateUser() {
       password: string;
       name: string;
       email: string;
+      /** Optional — the Add Member popup's inline create asks for it, the New User form does not. */
+      phoneNumber?: string;
       role: Role;
       alias: string;
     }) => userClient.createUser(vars),
@@ -272,11 +337,13 @@ export function useSuspendUser() {
   });
 }
 
-export function useDeleteUser() {
+// No useDeleteUser: a user is never deleted (a-user-is-never-deleted). A former user is suspended,
+// and their personal data is erased on request — the row and the id stay.
+export function useEraseUser() {
   const invalidate = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: (vars: { userId: bigint }) => userClient.deleteUser(vars),
+    mutationFn: (vars: { userId: bigint }) => userClient.userErase(vars),
     onSuccess: () => invalidate(),
   });
 }
@@ -301,6 +368,10 @@ export function useAddTeamMember() {
     onSuccess: () => invalidate(),
   });
 }
+
+// Change Role is the SAME write as an add — TeamUserUpdate's add overwrites the role of someone already
+// in the team (an-existing-member-gets-change-role). A second name, so a call site says which it means.
+export const useChangeMemberRole = useAddTeamMember;
 
 export function useRemoveTeamMember() {
   const invalidate = useInvalidateUsers();

@@ -47,11 +47,14 @@ export function RoleSelect({
 }: RoleSelectProps) {
   const options: RoleOption[] = useMemo(() => {
     const offered = roles ?? (teamType !== undefined ? rolesFor(teamType) : ALL_ROLES);
-    return offered.map((r) => ({ label: roleLabel(r), value: String(r) }));
+    return offered.map((r) => ({ label: roleLabel(r, teamType), value: String(r) }));
   }, [roles, teamType]);
 
+  // ⚠ SEEDED with the options, not filled in later by the effect below. The role set is known on the
+  // first render, and a combobox whose collection arrives late renders a PREFILLED value blank (Zag
+  // derives the input's text once, at init) — every create form that starts on a role read empty.
   const { collection, set } = useListCollection<RoleOption>({
-    initialItems: [],
+    initialItems: options,
     itemToString: (item) => item.label,
     itemToValue: (item) => item.value,
   });

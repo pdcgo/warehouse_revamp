@@ -25,7 +25,13 @@ export const ForAWarehouseTeam: Story = { args: { teamType: TeamType.WAREHOUSE }
 
 export const ForASellingTeam: Story = { args: { teamType: TeamType.SELLING } };
 
-export const Selected: Story = { args: { value: Role.WAREHOUSE_ADMIN } };
+// A prefilled role READS — the field is not blank while the value is set (the late-collection bug).
+export const Selected: Story = {
+  args: { value: Role.WAREHOUSE_ADMIN },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole("combobox")).toHaveValue("Warehouse Admin");
+  },
+};
 
 export const Disabled: Story = { args: { value: Role.TEAM_OWNER, disabled: true } };
 

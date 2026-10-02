@@ -14,10 +14,16 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**155 open questions across 29 files.** The seven below are shown; **148 are not** — they are not
+**158 open questions across 29 files.** The seven below are shown; **151 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▼ **−1 this round — user Q20 answered: the user context has nothing open** (2026-10-02). Its four readings are
+▲ **+3 this round — the user prototype is built, and asks three things** (2026-10-02):
+[user Q21–Q23](business/user/context_clarify.md#question). Do the restock filters stop using `SearchUser` (the decided
+rules would refuse Staff and Customer Service there) · an Admin changes nobody's role, since a team has one role below
+Admin · **design_accept**, which blocks the user pass. None outranks the seven: they block one context's next phase,
+not money.
+
+▼ **−1 the round before — user Q20 answered: the user context has nothing open** (2026-10-02). Its four readings are
 confirmed. Next: implementation analysis — the Storybook prototype of the user screens.
 
 ▼ **−3 the round before — user Q17, Q18, Q19 answered in chat** (2026-10-02): a removal is made by those who add, only below
@@ -1953,13 +1959,13 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 148 are
+## Where the other 151 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **155**, the whole set, not to 148. Previous rounds left
+*from* these files, so the column sums to **158**, the whole set, not to 151. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 156 last round, ▼ −1 (user Q20): **155** across 29 files, and the column below sums to it.
+are counted as a DELTA this round, not recounted — 155 last round, ▲ +3 (user Q21–Q23): **158** across 29 files, and the column below sums to it.
 
 | File | Open | |
 | --- | ---: | --- |
@@ -1976,7 +1982,7 @@ are counted as a DELTA this round, not recounted — 156 last round, ▼ −1 (u
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ which markup does the ledger charge from |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 12 | +6 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
-| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 | ✅ **(2026-10-02) nothing open** — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
+| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 3 | ▲ **+3 (2026-10-02)** Q21–Q23 from the prototype — the restock filters' search, an Admin changes no role, design_accept. Before that: ✅ nothing open — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | 🔄 **Q2 now holds #2** (2026-09-28) — the settlement report's check was declined, so whether any report can heal a lost event is the open decision. See **#2**. Before that: ▲ the `### Why` section landed — it argues the pattern's case but names the wrong coupling, and it opens a structural one: is `analytic` a LIBRARY or a SERVICE |
 | [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 4 | 🆕 counted for the first time |
 | [business/project/member_clarify.md](business/project/member_clarify.md#question) | 5 | 🆕 who DECIDES, rather than what the system does. ▼ progress reporting is settled |

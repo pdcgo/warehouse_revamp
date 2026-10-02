@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Avatar, Badge, HStack, Stack, Text } from "@chakra-ui/react";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { roleLabel } from "../../lib/roles";
 
 export interface UserItemProps {
@@ -9,6 +10,9 @@ export interface UserItemProps {
   user: Pick<PublicUser, "name" | "username" | "avatarUrl">;
   // Optionally show the user's role as a badge (e.g. their role in a team).
   role?: Role;
+  // The type of the team the role is held in — the admin team's two roles read differently from the
+  // selling team's until they are renamed (the-two-administrators-have-distinct-labels).
+  teamType?: TeamType;
   // Optional trailing content: action buttons, a check, etc.
   action?: ReactNode;
   size?: "sm" | "md";
@@ -19,7 +23,7 @@ export interface UserItemProps {
 // that renders "a user" should use this so avatars and naming stay consistent across the app.
 export const description = "The shared way to show a user — avatar (or initials), display name, and @username.";
 
-export function UserItem({ user, role, action, size = "sm" }: UserItemProps) {
+export function UserItem({ user, role, teamType, action, size = "sm" }: UserItemProps) {
   const display = user.name || user.username;
   const showRole = role !== undefined && role !== Role.UNSPECIFIED;
 
@@ -40,7 +44,7 @@ export function UserItem({ user, role, action, size = "sm" }: UserItemProps) {
           </Text>
           {showRole && (
             <Badge colorPalette="brand" size="xs">
-              {roleLabel(role)}
+              {roleLabel(role, teamType)}
             </Badge>
           )}
         </HStack>

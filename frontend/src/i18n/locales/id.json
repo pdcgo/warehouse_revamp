@@ -1561,7 +1561,8 @@
       "user": "Pengguna",
       "email": "Email",
       "status": "Status",
-      "actions": "Tindakan"
+      "actions": "Tindakan",
+      "role": "Peran"
     },
     "status": {
       "suspended": "Ditangguhkan",
@@ -1574,7 +1575,8 @@
       "resetPassword": "Atur Ulang Kata Sandi",
       "restore": "Pulihkan",
       "suspend": "Tangguhkan",
-      "delete": "Hapus"
+      "changeRole": "Ubah Peran",
+      "erase": "Hapus Data Pribadi"
     },
     "empty": "Tidak ada pengguna ditemukan.",
     "toast": {
@@ -1582,15 +1584,16 @@
       "userRestored": "{{username}} dipulihkan",
       "suspendedDescription": "Sesi aktif mereka langsung diputus.",
       "suspendFailed": "Gagal menangguhkan",
-      "userDeleted": "{{username}} dihapus",
-      "deleteFailed": "Gagal menghapus",
       "removedFromTeam": "{{username}} dikeluarkan dari tim",
       "removeFailed": "Gagal mengeluarkan",
       "userCreated": "{{username}} dibuat",
       "userUpdated": "{{username}} diperbarui",
       "passwordReset": "Kata sandi diatur ulang untuk {{username}}",
       "passwordResetDescription": "Semua sesi mereka yang ada telah dikeluarkan.",
-      "memberAdded": "Anggota ditambahkan"
+      "memberAdded": "Anggota ditambahkan",
+      "roleChanged": "{{username}} kini {{role}}",
+      "userErased": "Data pribadi pengguna #{{id}} dihapus",
+      "eraseFailed": "Gagal menghapus data"
     },
     "confirm": {
       "removeFromTeam": {
@@ -1606,9 +1609,9 @@
         "title": "Tangguhkan Akun",
         "message": "Tangguhkan {{username}}? Sesi aktif mereka langsung diputus dan mereka tidak dapat masuk."
       },
-      "delete": {
-        "title": "Hapus Pengguna",
-        "message": "Hapus {{username}} secara permanen? Keanggotaan tim mereka juga dihapus. Tindakan ini tidak dapat dibatalkan."
+      "erase": {
+        "title": "Hapus Data Pribadi",
+        "message": "Hapus data pribadi {{username}}? Nama, email, telepon, foto dan kata sandinya dihapus, dan nama penggunanya dibebaskan. Akunnya tetap ada sebagai pengguna #{{id}}, jadi setiap catatan yang dibuatnya tetap menunjuk ke sana. Tindakan ini tidak bisa dibatalkan."
       }
     },
     "thisTeam": "tim ini",
@@ -1636,7 +1639,8 @@
     },
     "helper": {
       "usernameRule": "Hanya huruf kecil dan angka.",
-      "min8": "Minimal 8 karakter."
+      "min8": "Minimal 8 karakter.",
+      "rootUsername": "Root pertama selalu memakai nama pengguna root."
     },
     "cancel": "Batal",
     "edit": {
@@ -1653,10 +1657,88 @@
     "addMember": {
       "trigger": "Tambah Anggota",
       "title": "Tambah Anggota",
-      "findUser": "Cari pengguna",
-      "searchPlaceholder": "Cari di semua tim",
-      "helper": "Mencari semua orang — tambahkan pengguna yang belum ada di tim ini.",
-      "submit": "Tambah"
+      "findUser": "Cari orang",
+      "submit": "Tambah",
+      "createTitle": "Anggota Baru",
+      "placeholderExact": "Nama pengguna, telepon atau email lengkapnya",
+      "placeholderBroad": "Sebagian nama atau nama pengguna",
+      "helperExact": "Ketik nama pengguna, telepon atau email lengkap orang yang Anda tambahkan.",
+      "helperBroad": "Mencari semua orang di sistem.",
+      "found_one": "{{count}} orang ditemukan",
+      "found_other": "{{count}} orang ditemukan",
+      "phoneEnding": "telepon berakhiran {{last4}}",
+      "noMatch": "Tidak ada yang cocok dengan “{{q}}”.",
+      "createNew": "Buat Pengguna Baru",
+      "repick": "Pilih Orang Lain",
+      "alreadyMember": "Sudah di tim ini sebagai {{role}}.",
+      "selectRole": "Pilih peran",
+      "changeRole": "Ubah peran",
+      "cannotChange": "Perannya tidak di bawah peran Anda, jadi Anda tidak bisa mengubahnya.",
+      "createLead": "Akun baru, langsung ditambahkan ke tim ini.",
+      "oneAccountHelper": "Satu nomor telepon atau email hanya untuk satu akun.",
+      "backToSearch": "Kembali ke Pencarian",
+      "submitChange": "Ubah Peran",
+      "submitCreate": "Buat dan Tambah",
+      "pending": {
+        "exactSearch": {
+          "label": "Pencocokan persis untuk Pemilik dan Admin",
+          "reason": "server masih mencocokkan dua huruf nama mana pun, untuk semua orang"
+        },
+        "phoneLast4": {
+          "label": "Akhiran telepon di tiap hasil",
+          "reason": "server belum mengirimnya"
+        },
+        "alreadyMember": {
+          "label": "Siapa yang sudah ada di tim ini",
+          "reason": "server tidak memberitahu, jadi anggota terbaca sebagai pendatang baru dan Tambah menimpa perannya"
+        },
+        "duplicateRefusal": {
+          "label": "Satu akun per telepon",
+          "reason": "nomor telepon yang sudah dipakai akun lain belum ditolak"
+        }
+      },
+      "nothingToChange": "Tidak ada peran lain yang bisa Anda berikan kepadanya."
+    },
+    "changeRole": {
+      "title": "Ubah Peran untuk {{username}}",
+      "current": "Peran saat ini: {{role}}",
+      "newRole": "Peran baru",
+      "helper": "Hanya peran di bawah peran Anda yang ditawarkan.",
+      "submit": "Ubah Peran"
+    },
+    "log": {
+      "title": "Riwayat Keanggotaan",
+      "added": "{{actor}} menambahkan {{user}} sebagai {{to}}",
+      "changed": "{{actor}} mengubah {{user}} dari {{from}} menjadi {{to}}",
+      "removed": "{{actor}} mengeluarkan {{user}} ({{from}})",
+      "system": "sistem",
+      "userRef": "pengguna #{{id}}",
+      "override": "penggantian",
+      "notBuilt": "Riwayat keanggotaan belum dicatat.",
+      "failed": "Riwayat keanggotaan gagal dimuat.",
+      "empty": "Belum ada yang bergabung, keluar, atau berganti peran."
+    },
+    "pending": {
+      "roleColumn": {
+        "label": "Peran tiap anggota",
+        "reason": "server belum mengirimnya, jadi kolomnya berisi — dan tindakan baris tidak bisa membedakan Pemilik dari Staf"
+      },
+      "rankRules": {
+        "label": "Siapa boleh bertindak atas siapa",
+        "reason": "diputuskan di layar ini saja — server masih membiarkan pengelola mengubah atau mengeluarkan siapa pun di tim"
+      },
+      "erase": {
+        "label": "Hapus Data Pribadi",
+        "reason": "server menjawab bahwa fitur ini belum dibangun"
+      },
+      "username": {
+        "label": "Nama pengguna baru",
+        "reason": "server mengabaikannya, jadi yang lama tetap dipakai"
+      },
+      "memberLog": {
+        "label": "Riwayat keanggotaan",
+        "reason": "belum ada yang mencatat siapa menambah, mengubah atau mengeluarkan siapa"
+      }
     }
   },
   "inventory": {

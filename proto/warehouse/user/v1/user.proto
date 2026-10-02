@@ -63,7 +63,26 @@ service UserService {
   rpc SuspendUser(SuspendUserRequest) returns (SuspendUserResponse);
 
   // DeleteUser removes an account and, by FK cascade, all of its memberships.
-  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  //
+  // ⚠ DEPRECATED by a-user-is-never-deleted (docs/business/user/context_decision.md): no screen
+  // offers it any more. It is removed — RPC, handler, test — when the user decisions are built.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
+    option deprecated = true;
+  }
+
+  // UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
+  // they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
+  // Administrator, and never a Root or another Administrator.
+  //
+  // ⚠ CONTRACT ONLY — accepted at design_accept with the screens. The handler answers Unimplemented
+  // until the backend is built.
+  rpc UserErase(UserEraseRequest) returns (UserEraseResponse);
+
+  // TeamMemberLogList — the history of one team's membership: every add, role change and removal,
+  // who did it, and when (every-role-change-is-logged). Newest first.
+  //
+  // ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
+  rpc TeamMemberLogList(TeamMemberLogListRequest) returns (TeamMemberLogListResponse);
 
   // UserList — paginated, team-scoped.
   rpc UserList(UserListRequest) returns (UserListResponse);
@@ -86,6 +105,13 @@ message PublicUser {
   string name = 3;
   // Compact avatar URL — safe to show (an avatar is meant to be seen); empty if none.
   string avatar_url = 4;
+
+  // The LAST FOUR digits of the phone, so two people with one name are told apart in a search
+  // result without showing anyone's number (a-result-shows-the-phones-last-four-digits). Computed on
+  // the server; the full number never leaves it. Empty when there is no phone.
+  //
+  // ⚠ CONTRACT ONLY until the user decisions are built — the server sends it empty today.
+  string phone_last4 = 5;
 }
 
 message UpdateProfileRequest {
@@ -120,6 +146,16 @@ message UpdateUserRequest {
   optional string name = 2 [(buf.validate.field).string.max_len = 128];
   optional string email = 3 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 4 [(buf.validate.field).string.max_len = 40];
+
+  // A typo in a username is fixed in place (the-username-is-editable): the same rule as at create,
+  // and still unique. User 1 keeps `root`.
+  //
+  // ⚠ CONTRACT ONLY until the user decisions are built — the server ignores it today.
+  optional string username = 5 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 100
+    pattern: "^[a-z0-9]+$"
+  }];
 }
 
 message UpdateUserResponse {
@@ -156,6 +192,20 @@ message DeleteUserRequest {
 
 message DeleteUserResponse {}
 
+message UserEraseRequest {
+  // Unscoped roles-policy = Root and the Administrator, as for SuspendUser — an account spans teams.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN
+    ]
+  };
+
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message UserEraseResponse {}
+
 // ── The guideline list shape for users (guidelines/service-guideline.md) ──────────────────────────
 
 // UserListDataType selects which slices the response carries per user.
@@ -164,6 +214,12 @@ enum UserListDataType {
   USER_LIST_DATA_TYPE_GENERAL = 1;
   // USER: the full user row (email, phone) — which is why UserList is role-gated.
   USER_LIST_DATA_TYPE_USER = 2;
+  // MEMBERSHIP: each user's role in the SCOPED team — what a member row shows, and what decides
+  // whether the caller may change or remove them (change-role-only-below-your-own). At team_id = 0
+  // it is the role in the root team, so the all-users view can tell Root and the Administrator apart.
+  //
+  // ⚠ CONTRACT ONLY until the user decisions are built — the server returns no such slice today.
+  USER_LIST_DATA_TYPE_MEMBERSHIP = 3;
 }
 
 // UserRowSort is the sort selection paired with the USER (row) slice.
@@ -214,10 +270,21 @@ message UserRowMapItem {
   map<uint64, User> map_data = 1;
 }
 
+// The MEMBERSHIP slice: one user's place in the scoped team.
+message UserMembership {
+  warehouse.role_base.v1.Role role = 1;
+  string alias = 2;
+}
+
+message UserMembershipMapItem {
+  map<uint64, UserMembership> map_data = 1;
+}
+
 message UserListResponseItem {
   oneof d {
     warehouse.common.v1.GeneralMapItem general = 1;
     UserRowMapItem user = 2;
+    UserMembershipMapItem membership = 3;
   }
 }
 
@@ -292,10 +359,114 @@ message SearchUserRequest {
     gte: 1
     lte: 20
   }];
+
+  // The team the person is being added to. It answers who is ALREADY in it (roles_in_team), so the
+  // popup offers Change Role instead of an add (an-existing-member-gets-change-role).
+  //
+  // ⚠ It becomes the SCOPE when the user decisions are built (only-member-managers-open-the-search):
+  // tagged use_scope, with a policy naming the Owners and the warehouse and selling Admins, and the
+  // match narrowed to an exact username, phone or email for them. Untagged in the prototype so the
+  // live search keeps working.
+  uint64 team_id = 3;
 }
 
 message SearchUserResponse {
   repeated PublicUser users = 1;
+
+  // For each user found, their role in `team_id`. A user who is not a member is ABSENT.
+  //
+  // ⚠ CONTRACT ONLY until the user decisions are built — the server returns it empty today.
+  map<uint64, warehouse.role_base.v1.Role> roles_in_team = 2;
+}
+
+// ── The membership log (every-role-change-is-logged), in the guideline list shape ────────────────
+
+enum TeamMemberLogAction {
+  TEAM_MEMBER_LOG_ACTION_UNSPECIFIED = 0;
+  TEAM_MEMBER_LOG_ACTION_ADD = 1;
+  TEAM_MEMBER_LOG_ACTION_CHANGE_ROLE = 2;
+  TEAM_MEMBER_LOG_ACTION_REMOVE = 3;
+}
+
+enum TeamMemberLogDataType {
+  TEAM_MEMBER_LOG_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_MEMBER_LOG_DATA_TYPE_ENTRY = 1;
+}
+
+// TeamMemberLogSort is the sort selection paired with the ENTRY slice.
+enum TeamMemberLogSort {
+  TEAM_MEMBER_LOG_SORT_UNSPECIFIED = 0;
+  TEAM_MEMBER_LOG_SORT_CREATED = 1;
+}
+
+message TeamMemberLogListFilter {
+  // One person's history in the team; 0 = everyone.
+  uint64 user_id = 1;
+}
+
+message TeamMemberLogListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    TeamMemberLogSort entry = 2;
+  }
+}
+
+message TeamMemberLogListRequest {
+  // The people who manage members read their team's history. The admin team's Admin is left out
+  // once it has its own role (the-admin-team-admin-alone-does-not-manage-members).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  TeamMemberLogListFilter filter = 2;
+  TeamMemberLogListFilterSort sort = 3;
+  repeated TeamMemberLogDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One change to the team's membership. Never updated, never deleted.
+message TeamMemberLogEntry {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  // Who did it. A developer acting through tools/san is recorded as such (agent), with 0 here.
+  uint64 actor_user_id = 3;
+  string actor_agent = 4;
+  // Whose membership changed.
+  uint64 user_id = 5;
+  TeamMemberLogAction action = 6;
+  // UNSPECIFIED before an ADD, and after a REMOVE.
+  warehouse.role_base.v1.Role role_before = 7;
+  warehouse.role_base.v1.Role role_after = 8;
+  // Whether the actor got in by the root-team bypass (an-override-is-stamped-in-every-service).
+  bool is_override = 9;
+  int64 created_at_unix = 10;
+}
+
+message TeamMemberLogMapItem {
+  map<uint64, TeamMemberLogEntry> map_data = 1;
+}
+
+message TeamMemberLogListResponseItem {
+  oneof d {
+    TeamMemberLogMapItem entry = 1;
+  }
+}
+
+message TeamMemberLogListResponse {
+  repeated TeamMemberLogListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message User {

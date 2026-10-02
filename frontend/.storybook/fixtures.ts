@@ -82,14 +82,25 @@ export const users = [
   { id: 61n, username: "ani", name: "Ani Rahayu", email: "ani@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
   { id: 62n, username: "budi", name: "Budi Santoso", email: "budi@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
   { id: 63n, username: "citra", name: "Citra Dewi", email: "citra@example.test", phoneNumber: "", isSuspended: true, avatarUrl: "" },
+  // The member list's cast (userStub.ts gives each a role per team). APPEND, never reorder — stories
+  // index this positionally. Dewi owns both teams, Fajar is a second Root, Gita the System Administrator.
+  { id: 64n, username: "dewi", name: "Dewi Lestari", email: "dewi@example.test", phoneNumber: "081234567890", isSuspended: false, avatarUrl: "" },
+  { id: 65n, username: "eko", name: "Eko Prasetyo", email: "eko@example.test", phoneNumber: "+62 812-9876-1234", isSuspended: false, avatarUrl: "" },
+  { id: 66n, username: "fajar", name: "Fajar Nugroho", email: "fajar@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
+  { id: 67n, username: "gita", name: "Gita Ramadhani", email: "gita@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
+  // A SECOND Ani, in no team — two people one name apart, told apart only by the phone ending
+  // (a-result-shows-the-phones-last-four-digits).
+  { id: 68n, username: "anil", name: "Ani Lestari", email: "anil@example.test", phoneNumber: "081377778888", isSuspended: false, avatarUrl: "" },
 ];
 
-// PublicUser is the narrower shape SearchUser returns — no email, no suspension.
+// PublicUser is the narrower shape SearchUser returns — no email, no suspension, and of the phone only
+// its last four digits (a-result-shows-the-phones-last-four-digits).
 export const publicUsers = users.map((u) => ({
   id: u.id,
   username: u.username,
   name: u.name,
   avatarUrl: u.avatarUrl,
+  phoneLast4: u.phoneNumber.replace(/D/g, "").slice(-4),
 }));
 
 // ── A CATALOGUE BIG ENOUGH TO OVERFLOW A DIALOG ─────────────────────────────────────────────────

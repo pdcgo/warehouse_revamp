@@ -23,6 +23,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"for q4, yes"* (confirmed: Staff accepts) · added §How Managing Team User Member | ✅ [staff-accepts-the-restock](./context_decision.md#staff-accepts-the-restock), against my recommendation, Critique 3 deleted, **Q4** keeps only the markup half · ✅ [owner-root-and-administrator-add-members](./context_decision.md#owner-root-and-administrator-add-members) narrows **Q5** · ▲ **Q11** how an Owner finds the person (Critique 15, Critique 16) · your diagram parses |
 > | §Role: *"Owner can't create another owner"*, the selling Owner's and Admin's responsibilities | ✅ [the-selling-owner-and-admin-set-markup-reserve-and-lock](./context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock) closes **Q4** as recommended, Critique 4 deleted · ✅ [an-owner-never-makes-another-owner](./context_decision.md#an-owner-never-makes-another-owner) · ✅ [the-selling-admin-manages-members](./context_decision.md#the-selling-admin-manages-members), against my recommendation · **Q5** narrows to the warehouse and admin teams' Admins · ⚠ one contradiction inside your doc, [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) |
 > | *"1 yes"* — Q20 | ✅ all four readings confirmed, written into their decisions. **Nothing is open in this context** |
+> | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
 > | §warehouse team, line 51: `warehouse_admin` fixed | ✅ Critique 14 deleted |
@@ -162,17 +163,107 @@ The person keeps their account and their other teams, and every record they made
 | **assign a role to a person** | ? | Root: **nobody** in the app, only `tools/san` ([root-is-granted-only-through-san](./context_decision.md#root-is-granted-only-through-san)) · every other role: **no role yet** — [Q5](#question) |
 | create a team | **System Administrator** | ✅ named, and it can do anything — [the-administrator-can-do-anything](./context_decision.md#the-administrator-can-do-anything) |
 
+### The prototype — what accepting it accepts
+
+Built 2026-10-02, the implementation-analysis pass. **Preview it in Storybook** (`cd frontend && npm run storybook`):
+`Pages/Users/Users` and `Features/Users/AddMemberDialog`. Each story's `play()` is one decided rule, and the stub
+([userStub.ts](../../../frontend/.storybook/userStub.ts)) refuses what the decisions refuse. The running app shows the
+same screens against the unchanged server, with a ⚠ mark on every part the server does not do yet.
+
+```mermaid
+flowchart LR
+  subgraph "the screens — built"
+    T["Users table — role column, rank-gated row menu"]
+    P["Add Member popup — Select Role, Change Role, Create"]
+    H["Membership history"]
+  end
+  subgraph "the contract — added, not built"
+    M["UserList MEMBERSHIP slice"]
+    C["SearchUser team_id, phone_last4, roles_in_team"]
+    E["UserErase, TeamMemberLogList"]
+    U["UpdateUser username"]
+  end
+  T --> M
+  T --> U
+  P --> C
+  H --> E
+  M --> S["server — unchanged: old answers, or Unimplemented"]
+  C --> S
+  E --> S
+  U --> S
+```
+
+| part | what it is | in the running app today |
+| --- | --- | --- |
+| **Users table** | a Role column. The ⋯ menu offers Change Role and Remove only on a role below yours ([change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own)), Suspend only to Root and the Administrator ([only-root-and-the-administrator-suspend](./context_decision.md#only-root-and-the-administrator-suspend)), Erase only on a suspended account ([erase-keeps-the-row](./context_decision.md#erase-keeps-the-row)). **No Delete** ([a-user-is-never-deleted](./context_decision.md#a-user-is-never-deleted)) | the role reads —, so every row looks removable · Erase answers *not built* |
+| **Change Role** | its own dialog from the row: the roles below yours, minus the one held. An Admin never sees it, [Q22](#question) | the server takes any role |
+| **Membership history** | under the team's list. One sentence per change, newest first, an override badged ([every-role-change-is-logged](./context_decision.md#every-role-change-is-logged)) | *"not recorded yet"* |
+| **Add Member popup** | your flow: search → found and new → **Select Role** → Add · found and already here → **Change Role** · nobody → **Create User** → Create and Add. Exact match for an Owner or Admin, by part for Root and the Administrator, the phone's last four on each result, suspended accounts left out | the server still matches by part for everyone and says nothing of membership |
+| **Edit** | a username field on someone else's account ([the-username-is-editable](./context_decision.md#the-username-is-editable)) | the server ignores it |
+| **New User** | offers only the roles you may give, and only to those who manage members | |
+| **Shop grant** | picks from the team's members ([a-shop-grant-picks-from-the-teams-members](./context_decision.md#a-shop-grant-picks-from-the-teams-members)) | ✅ works now — `UserList` already admits the Owner and Admin |
+| **contract** | `UserList`'s MEMBERSHIP slice, `SearchUser.team_id`, `PublicUser.phone_last4`, `roles_in_team`, `UpdateUser.username`, `UserErase`, `TeamMemberLogList`. `DeleteUser` deprecated. All additive, so the live screens keep working | `UserErase` and `TeamMemberLogList` answer `Unimplemented` |
+
+**Choices I made, which you accept with it.** Say so if one is wrong.
+
+| choice | why |
+| --- | --- |
+| in the **root team**, a create or add form starts with **no role** | the only role on offer there is the System Administrator, and that is never a default. Elsewhere a form starts on the lowest role |
+| Suspend and Erase are in **both** tabs | they act on the account, so they follow the account, not the tab |
+| the team detail page's member list is **unchanged** | it is the team context's screen. Its Add Member button opens the new popup |
+| **New User** stays beside the popup's Create | [Q23c](#question) |
+| the role rename stays **unbuilt** | your *"Not yet"* — [the-role-names-are-the-codes-names](./context_decision.md#the-role-names-are-the-codes-names) |
+
+Found while building, and fixed: the shared role picker showed a **prefilled role as blank**, because its list filled in
+after the first render. Every form that starts on a role read empty. Its story now fails if that comes back.
+
 ---
 
 ## Critique
 
-**None open.** Every critique is answered or fixed.
+Two, both found while building the prototype.
+
+### Critique 23 — SearchUser has two jobs, and the decisions are about one
+
+The Add Member popup is not `SearchUser`'s only caller. Two restock filters search people with it, with no team:
+
+| filter | who uses it | after [only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search) and [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) |
+| --- | --- | --- |
+| restock, selling side — *accepted by*, before a warehouse is picked | the selling team, Customer Service included | Customer Service is refused · an Owner or Admin must type a whole username |
+| restock, warehouse side — *created by* | the warehouse team, Staff included | Staff is refused · an Owner or Admin must type a whole username |
+
+**→ Recommend:** the filters stop searching the whole system. Each lists the people who **appear on those restocks**,
+read from the restock side, so it offers only names that can match a row. `SearchUser` is then the popup's search
+alone, and both rules apply to it whole. [Q21](#question).
+
+```mermaid
+flowchart LR
+  P["Add Member popup"] -->|"a team, exact"| S["SearchUser"]
+  F1["restock filter — accepted by"] -.->|"today, no team"| S
+  F2["restock filter — created by"] -.->|"today, no team"| S
+  F1 -->|"recommend"| R["the people on those restocks"]
+  F2 -->|"recommend"| R
+```
+
+### Critique 24 — an Admin never changes a role
+
+[change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own) lets an Admin change *Staff or Customer Service* to *Staff or Customer
+Service*. But a warehouse team has one role below Admin (Staff) and a selling team one (Customer Service), so there is
+never another role to change to. The decision's row reads as a power the Admin does not have.
+
+| team | below Admin | an Admin may change it to |
+| --- | --- | --- |
+| warehouse | Staff | nothing else |
+| selling | Customer Service | nothing else |
+
+**→ Recommend:** keep the rule, and read it as *an Admin adds and removes the floor role, and changes nobody's role*.
+The prototype hides Change Role when there is nothing to pick. [Q22](#question).
 
 ---
 
 ## Question
 
-**None open.** Q3–Q20 are answered and recorded in [context_decision.md](./context_decision.md).
+**Three open, from building the prototype.** Q3–Q20 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -197,6 +288,16 @@ The person keeps their account and their other teams, and every record they made
 19. ✅ **Answered** (2026-10-02): the warehouse Admin equals the Owner except three money acts — [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money).
 20. ✅ **Answered** (2026-10-02): all four readings confirmed — any team type, nobody suspends themselves, the last Root
     cannot be removed, and a phone matches however it is written.
+21. **Do the restock filters stop using `SearchUser`?** ([Critique 23](#critique))
+    **→ Recommend: yes.** Each lists the people on its own restocks, and `SearchUser` is the Add Member search alone.
+22. **An Admin adds and removes the floor role, and changes nobody's role — right?** ([Critique 24](#critique))
+    **→ Recommend: yes**, as the rule already implies.
+23. **design_accept — do you accept the prototype?** Preview it in Storybook: `Pages/Users/Users` and
+    `Features/Users/AddMemberDialog`. See [what accepting it accepts](#the-prototype--what-accepting-it-accepts).
+    - **a.** The screens and the contract additions, as the design to build. **→ Recommend: yes**, then backend analysis.
+    - **b.** In the root team, a form starts with no role. **→ Recommend: yes.**
+    - **c.** **New User** and the popup's **Create** are two ways to make an account. **→ Recommend: remove New User** once
+      (a) is accepted. Your flow has one way in, through the search, so nobody makes a duplicate of someone already here.
 
 ---
 
@@ -220,6 +321,10 @@ site of a contradiction already recorded* — so it is filed there rather than d
 [business_level_clarity → a team is liable for records it does not solely control](../business_level_clarify.md#a-team-is-liable-for-records-it-does-not-solely-control).
 §General adds the sharper version of it: the outsider who can move a team's numbers need not be another
 team at all — it can be **one of that team's own people, wearing a hat from somewhere else**.
+
+**Re-checked after building the prototype (2026-10-02): none between docs.** Both finds were in my own decisions, not
+between docs, and are [Critiques 23 and 24](#critique). One code site said the opposite of
+[a-user-is-never-deleted](./context_decision.md#a-user-is-never-deleted): the e2e spec's DeleteUser test. It now checks that no Delete is offered.
 
 **Re-checked after §How Managing Team User Member: none.** It extends the Administrator's job beyond *"create teams"*,
 which [Q9](#question) now lists. It does not contradict it.
@@ -401,6 +506,6 @@ flowchart LR
 
 # Awaiting
 
-Nothing. The three items that waited here became [Q17–Q19](#question) on 2026-10-02: removing a member, what
+**Your design_accept, [Q23](#question).** Nothing on the server is built until it lands. Before that, nothing else waited. The three items that waited here became [Q17–Q19](#question) on 2026-10-02: removing a member, what
 Customer Service does, and whether the warehouse Admin is the Owner's equal. Couriers and suppliers turned out to be
 answered — see *What the build already lets the undocumented roles do*, above.

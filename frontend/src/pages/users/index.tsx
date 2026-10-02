@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { useTeam } from "../../features/team/TeamContext";
-import { isGlobalAdmin } from "../../lib/roles";
+import { isGlobalAdmin, managesMembers } from "../../lib/roles";
 import { AddMemberDialog } from "../../features/users/AddMemberDialog";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { USERS_PENDING } from "./pending";
 import { CreateUserDialog } from "./components/CreateUserDialog";
 import { UsersTable } from "./components/UsersTable";
 
@@ -19,6 +21,10 @@ import { UsersTable } from "./components/UsersTable";
 // the "My Team User" tab, but not "All User". Neither signals the tables any more (#177): each write
 // invalidates the user cache itself, so BOTH tabs' lists refresh — the old `reload` counter only
 // ever reached the one that happened to be mounted.
+//
+// Both buttons are for those who MANAGE MEMBERS (only-member-managers-open-the-search) — every Owner,
+// the warehouse and selling Admins, Root and the Administrator. The admin team's Admin sees the list
+// and neither button (the-admin-team-admin-alone-does-not-manage-members).
 export function UsersPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
@@ -28,6 +34,7 @@ export function UsersPage() {
 
   // Add member is a team-membership action — offered wherever the view is a single team.
   const teamScoped = !globalAdmin || tab === "team";
+  const manager = managesMembers(current?.role, current?.teamType);
 
   const header = (
     <Flex align="center" gap="card">
@@ -36,8 +43,8 @@ export function UsersPage() {
         <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
       )}
       <Spacer />
-      {teamScoped && <AddMemberDialog />}
-      <CreateUserDialog />
+      {manager && teamScoped && <AddMemberDialog />}
+      {manager && <CreateUserDialog />}
     </Flex>
   );
 
@@ -45,6 +52,7 @@ export function UsersPage() {
     return (
       <Stack gap="section">
         {header}
+        <NotImplementedSummary list={USERS_PENDING} />
         <UsersTable mode="team" />
       </Stack>
     );
@@ -53,6 +61,7 @@ export function UsersPage() {
   return (
     <Stack gap="section">
       {header}
+      <NotImplementedSummary list={USERS_PENDING} />
 
       {/* lazyMount + unmountOnExit: only the visible tab's table is mounted, so exactly one user
           list is fetched and the shared `users-table` testid is never duplicated. */}
