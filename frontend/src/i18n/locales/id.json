@@ -480,8 +480,9 @@
     "viewDetail": "Lihat Detail",
     "step": {
       "all": "Semua langkah",
-      "confirm": "Perlu konfirmasi",
-      "picking": "Diambil",
+      "confirm": "Dikonfirmasi",
+      "picking": "Sedang diambil",
+      "picked": "Sudah diambil",
       "packed": "Dikemas",
       "handover": "Sudah diserahkan"
     },
@@ -2692,5 +2693,166 @@
     },
     "sellPriceTyped": "Diketik manual, bukan dari harga baris.",
     "sellPriceReset": "Pakai Harga Baris"
+  },
+  "warehouseOrders": {
+    "col": {
+      "createdBy": "Dibuat oleh",
+      "shop": "Toko MP",
+      "awb": "AWB",
+      "created": "Tanggal",
+      "mpDate": "Tanggal MP"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "Sudah diserahkan",
+        "reason": "Sudah diserahkan adalah langkah terakhir gudang, tapi kontrak belum punya statusnya — tabnya belum bisa menyaring apa pun."
+      },
+      "creator": {
+        "label": "Dibuat oleh",
+        "reason": "Order tidak mencatat pembuatnya — hanya tim tempat order dibuat."
+      },
+      "shop": {
+        "label": "Toko seller",
+        "reason": "Order hanya membawa id toko, dan gudang tidak bisa membaca toko milik seller."
+      },
+      "receiptCode": {
+        "label": "Nomor resi",
+        "reason": "Order menyimpan kurir, bukan nomor resi yang tercetak."
+      },
+      "quantity": {
+        "label": "Qty",
+        "reason": "Hasil daftar tidak membawa item, jadi baris tidak bisa menghitung unit."
+      },
+      "mpDate": {
+        "label": "Tanggal MP",
+        "reason": "Order belum punya field untuk kapan pembeli memesan di marketplace."
+      },
+      "deadline": {
+        "label": "Deadline kirim",
+        "reason": "Belum ada order yang membawa deadline kirim."
+      },
+      "teamFilter": {
+        "label": "Filter tim",
+        "reason": "Daftar order belum punya filter tim seller — memilih tim belum menyaring apa pun."
+      },
+      "marketplaceFilter": {
+        "label": "Filter marketplace",
+        "reason": "Daftar order belum punya filter marketplace — memilihnya belum menyaring apa pun."
+      },
+      "courierFilter": {
+        "label": "Filter jasa kirim",
+        "reason": "Daftar order belum punya filter jasa kirim — memilihnya belum menyaring apa pun."
+      },
+      "shipmentStatus": {
+        "label": "Status pengiriman",
+        "reason": "Apakah paket yang sudah diserahkan sedang jalan adalah milik catatan pengiriman, yang belum ada."
+      },
+      "stepMove": {
+        "label": "Memindah langkah",
+        "reason": "Server baru bisa memindah order satu langkah maju. Melompat langkah, mundur, atau pindah ke Sudah diambil belum berjalan."
+      },
+      "resiLookup": {
+        "label": "Mencari lewat resi",
+        "reason": "Belum ada RPC untuk mencari order lewat nomor resi, jadi scan serah kurir hanya mencari di order yang sudah dimuat layar ini."
+      },
+      "bulkHandover": {
+        "label": "Serah kurir massal",
+        "reason": "Belum ada RPC serah kurir massal — ambil massal menyerahkan paket satu panggilan per paket."
+      },
+      "barcode": {
+        "label": "Barcode",
+        "reason": "Produk belum punya barcode, jadi scan validasi mencocokkan SKU setiap barang."
+      },
+      "printMerge": {
+        "label": "Cetak resi sekaligus",
+        "reason": "Belum ada yang menggabungkan beberapa file resi menjadi satu dokumen."
+      },
+      "exportFile": {
+        "label": "Export",
+        "reason": "Belum ada RPC export."
+      }
+    },
+    "tab": {
+      "toConfirm": "Perlu konfirmasi",
+      "all": "Semua"
+    },
+    "filter": {
+      "team": "Semua tim",
+      "courier": "Semua jasa kirim",
+      "shipment": "Status pengiriman",
+      "shipmentState": {
+        "any": "Semua",
+        "notMoving": "Belum jalan",
+        "inTransit": "Dalam perjalanan"
+      }
+    },
+    "header": {
+      "scanHandover": "Pindai Serah Kurir"
+    },
+    "bulk": {
+      "selected": "{{count}} dipilih",
+      "changeStep": "Ubah Langkah",
+      "print": "Cetak Resi",
+      "handover": "Serah Kurir",
+      "clear": "Batal Pilih",
+      "skipped": "{{count}} belum Dikemas — dilewati",
+      "hint": "Centang order untuk aksi massal",
+      "exportSelected": "Export {{count}}",
+      "exportAll": "Export Semua"
+    },
+    "row": {
+      "actions": "Aksi order",
+      "moveTo": "Pindah ke {{step}}",
+      "backTo": "Kembalikan ke {{step}}",
+      "validate": "Pindai Validasi",
+      "findParcel": "Cari Paket",
+      "printLabel": "Cetak Resi",
+      "open": "Buka Daftar Ambil",
+      "noReceipt": "Tidak ada file resi",
+      "select": "Pilih order {{id}}",
+      "selectAll": "Pilih semua order di halaman ini"
+    },
+    "back": {
+      "title": "Kembalikan ke Dikonfirmasi",
+      "warning": "Order kembali ke antrean dan progresnya dibatalkan. Stok di rak tidak berubah — barang sudah dihitung keluar saat order dibuat.",
+      "reason": "Alasan",
+      "reasonPlaceholder": "Barang tidak ketemu di rak, rusak, …",
+      "confirm": "Kembalikan Order"
+    },
+    "scan": {
+      "placeholder": "Scan, atau ketik lalu tekan Enter"
+    },
+    "handover": {
+      "title": "Serah ke Kurir",
+      "mass": "Ambil massal",
+      "massOn": "Hasil scan dikumpulkan di daftar, lalu diserahkan sekaligus.",
+      "massOff": "Setiap scan yang valid langsung diserahkan.",
+      "ready": "Siap",
+      "wrongStep": "Bukan Dikemas — {{step}}",
+      "notFound": "Tidak ditemukan",
+      "handedOver": "Sudah diserahkan",
+      "failed": "Gagal",
+      "submit": "Serahkan {{count}} Paket",
+      "empty": "Scan label paket untuk mulai.",
+      "done_one": "{{count}} paket diserahkan",
+      "done_other": "{{count}} paket diserahkan"
+    },
+    "find": {
+      "title": "Cari Paket Ini",
+      "lookingFor": "Mencari",
+      "help": "Scan label di tumpukan sampai ada yang berbunyi cocok.",
+      "match": "Cocok — ini paketnya",
+      "noMatch": "Bukan paket ini"
+    },
+    "validate": {
+      "title": "Pindai Validasi",
+      "help": "Scan setiap barang. Langkah bisa lanjut kalau semua baris sudah pas.",
+      "unknown": "Tidak ada di order ini: {{code}}",
+      "over": "Melebihi jumlah pesanan",
+      "complete": "Semua barang sudah pas",
+      "next": "Pindah ke {{step}}",
+      "loading": "Memuat barang di order…"
+    },
+    "moved": "Dipindah ke {{step}}"
   }
 }

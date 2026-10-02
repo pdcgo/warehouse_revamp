@@ -32,15 +32,26 @@ function statusMeta(s: OrderStatus): { labelKey: string; color: string } {
 }
 
 // OrderStatusBadge renders an order's status as a Chakra Badge in its standard colour (#68).
-export const description = "An order's status as a standard-coloured Chakra Badge (placed=blue, confirmed=green, cancelled=red; the warehouse's picking/packed steps share orange, shipped=purple).";
+export const description = "An order's status as a standard-coloured Chakra Badge (placed=blue, confirmed=green, cancelled=red; the warehouse's picking/packed steps share orange, shipped=purple). A screen whose tabs use other names for the same states passes `label`, so the badge in the row reads what the tab above it says — the colour stays the status's.";
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+export function OrderStatusBadge({
+  status,
+  label,
+}: {
+  status: OrderStatus;
+  /**
+   * The name to show instead of the status's own — the warehouse reads PLACED as "Perlu konfirmasi",
+   * because that is what its tab is called (`the-warehouse-tabs-are-the-processed-steps`). The colour
+   * stays the status's, so a status still looks the same everywhere.
+   */
+  label?: string;
+}) {
   const { t } = useTranslation();
   const { labelKey, color } = statusMeta(status);
 
   return (
     <Badge colorPalette={color} data-testid={`order-status-${status}`}>
-      {t(labelKey)}
+      {label ?? t(labelKey)}
     </Badge>
   );
 }

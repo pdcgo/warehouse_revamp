@@ -115,7 +115,7 @@ export function stageCanFilterTheList(stage: OrderStage): boolean {
 // kurir" — the moment the parcel changes hands, before it starts moving — has nothing to count.
 
 export interface ProcessedStep {
-  id: "confirm" | "picking" | "packed" | "handover";
+  id: "confirm" | "picking" | "picked" | "packed" | "handover";
   /** Undefined = the contract has no status for this step, so it can only be marked, never counted. */
   status?: OrderStatus;
 }
@@ -123,6 +123,10 @@ export interface ProcessedStep {
 export const PROCESSED_STEPS: ProcessedStep[] = [
   { id: "confirm", status: OrderStatus.CONFIRMED },
   { id: "picking", status: OrderStatus.PICKING },
+  // SUDAH DIAMBIL — picking done, not yet packed (owner, 2026-10-01: *"kalau belum ada bisa ditambahkan"*).
+  // It is the queue at the packing table when the person who picks is not the person who packs. No status
+  // for it yet, so it is offered and disabled, like the handover.
+  { id: "picked" },
   { id: "packed", status: OrderStatus.PACKED },
   { id: "handover" },
 ];

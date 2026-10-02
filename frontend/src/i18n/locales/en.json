@@ -483,8 +483,9 @@
     "viewDetail": "View Detail",
     "step": {
       "all": "All steps",
-      "confirm": "To confirm",
+      "confirm": "Confirmed",
       "picking": "Picking",
+      "picked": "Picked",
       "packed": "Packed",
       "handover": "Handed over"
     },
@@ -2702,5 +2703,166 @@
     },
     "sellPriceTyped": "Typed over the rows' prices.",
     "sellPriceReset": "Use the Rows' Prices"
+  },
+  "warehouseOrders": {
+    "col": {
+      "createdBy": "Created by",
+      "shop": "Marketplace shop",
+      "awb": "AWB",
+      "created": "Date",
+      "mpDate": "Marketplace date"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "Handed over",
+        "reason": "Handed over is the warehouse's last step, but the contract has no status for it yet — its tab cannot narrow anything."
+      },
+      "creator": {
+        "label": "Created by",
+        "reason": "An order records no creator — only the team it was placed for."
+      },
+      "shop": {
+        "label": "The seller's shop",
+        "reason": "The order carries only the shop id, and a warehouse cannot read the seller's shops."
+      },
+      "receiptCode": {
+        "label": "Tracking number",
+        "reason": "The order stores the courier, not the printed tracking number."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "reason": "A list result carries no items, so the row cannot count units."
+      },
+      "mpDate": {
+        "label": "Marketplace date",
+        "reason": "The order has no field for when the buyer ordered on the marketplace."
+      },
+      "deadline": {
+        "label": "Ship-by deadline",
+        "reason": "No order carries a ship-by deadline yet."
+      },
+      "teamFilter": {
+        "label": "Team filter",
+        "reason": "The order list has no seller-team filter yet — picking a team narrows nothing."
+      },
+      "marketplaceFilter": {
+        "label": "Marketplace filter",
+        "reason": "The order list has no marketplace filter yet — picking one narrows nothing."
+      },
+      "courierFilter": {
+        "label": "Courier filter",
+        "reason": "The order list has no courier filter yet — picking one narrows nothing."
+      },
+      "shipmentStatus": {
+        "label": "Shipment state",
+        "reason": "Whether a handed-over parcel is moving belongs to a shipment record, which does not exist yet."
+      },
+      "stepMove": {
+        "label": "Moving a step",
+        "reason": "The server only moves an order one step forward. Skipping a step, moving back, or moving into Picked does nothing yet."
+      },
+      "resiLookup": {
+        "label": "Finding by tracking number",
+        "reason": "No RPC finds an order by its tracking number, so the handover scan looks only in the orders this screen has loaded."
+      },
+      "bulkHandover": {
+        "label": "Bulk handover",
+        "reason": "There is no bulk handover RPC — a mass pickup hands the parcels over one call at a time."
+      },
+      "barcode": {
+        "label": "Barcode",
+        "reason": "Products have no barcode yet, so the validation scan matches each item's SKU."
+      },
+      "printMerge": {
+        "label": "Printing labels together",
+        "reason": "Nothing merges several receipt files into one document yet."
+      },
+      "exportFile": {
+        "label": "Export",
+        "reason": "There is no export RPC yet."
+      }
+    },
+    "tab": {
+      "toConfirm": "To confirm",
+      "all": "All"
+    },
+    "filter": {
+      "team": "All teams",
+      "courier": "All couriers",
+      "shipment": "Shipment state",
+      "shipmentState": {
+        "any": "Any",
+        "notMoving": "Not moving yet",
+        "inTransit": "In transit"
+      }
+    },
+    "header": {
+      "scanHandover": "Scan Handover"
+    },
+    "bulk": {
+      "selected": "{{count}} selected",
+      "changeStep": "Change Step",
+      "print": "Print Labels",
+      "handover": "Hand Over",
+      "clear": "Clear Selection",
+      "skipped": "{{count}} not packed — skipped",
+      "hint": "Tick orders for bulk actions",
+      "exportSelected": "Export {{count}}",
+      "exportAll": "Export All"
+    },
+    "row": {
+      "actions": "Order actions",
+      "moveTo": "Move to {{step}}",
+      "backTo": "Back to {{step}}",
+      "validate": "Scan to Validate",
+      "findParcel": "Find Parcel",
+      "printLabel": "Print Label",
+      "open": "Open Pick List",
+      "noReceipt": "No receipt file",
+      "select": "Select order {{id}}",
+      "selectAll": "Select every order on this page"
+    },
+    "back": {
+      "title": "Return to Confirmed",
+      "warning": "The order goes back to the queue and its progress is undone. Nothing on the shelf changes — the goods were counted out when the order was placed.",
+      "reason": "Reason",
+      "reasonPlaceholder": "Item not found on the shelf, damaged, …",
+      "confirm": "Return Order"
+    },
+    "scan": {
+      "placeholder": "Scan, or type and press Enter"
+    },
+    "handover": {
+      "title": "Hand Over to Courier",
+      "mass": "Mass pickup",
+      "massOn": "Scans collect into the list; hand them over together.",
+      "massOff": "Each good scan is handed over at once.",
+      "ready": "Ready",
+      "wrongStep": "Not packed — {{step}}",
+      "notFound": "Not found",
+      "handedOver": "Handed over",
+      "failed": "Failed",
+      "submit": "Hand Over {{count}}",
+      "empty": "Scan a parcel's label to begin.",
+      "done_one": "{{count}} parcel handed over",
+      "done_other": "{{count}} parcels handed over"
+    },
+    "find": {
+      "title": "Find This Parcel",
+      "lookingFor": "Looking for",
+      "help": "Scan the labels in the pile until one sounds a match.",
+      "match": "Match — this is the parcel",
+      "noMatch": "Not this parcel"
+    },
+    "validate": {
+      "title": "Scan to Validate",
+      "help": "Scan every item. The step can move on once every line is exact.",
+      "unknown": "Not on this order: {{code}}",
+      "over": "More than ordered",
+      "complete": "Every item is exact",
+      "next": "Move to {{step}}",
+      "loading": "Loading the order's items…"
+    },
+    "moved": "Moved to {{step}}"
   }
 }

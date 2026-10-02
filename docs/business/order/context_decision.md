@@ -1332,3 +1332,21 @@ order detail page ([order-detail-manages-the-ledger](../settlement/context_decis
 and an account that never fully settles is normal
 ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)). No change to
 settlement is needed.
+
+## picked-is-a-warehouse-step
+
+> Owner, in chat (2026-10-01), on the old warehouse system's statuses (`waiting · picking · picked ·
+> packing_completed · completed`): *"kalau belum ada bisa ditambahkan"*.
+
+`processed` covers **five** steps of work, not four: `confirm · picking · picked · packed · sudah diserahkan`.
+**Picked** is the goods off the shelves and not yet packed — the queue at the packing table when the person who
+picks is not the person who packs. It amends
+[the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses), which listed four.
+
+```mermaid
+flowchart LR
+  C["confirm"] --> PI["picking"] --> PD["picked — new"] --> PK["packed"] --> H["sudah diserahkan"]
+```
+
+The contract has no status for it yet (nor for the handover); both are asked for in
+[design_clarify.md](../../technical/order/design_clarify.md#question).

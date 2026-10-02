@@ -147,7 +147,7 @@ One mark covers all of it (`statusSet`), because there is one cause: the enum ha
 
 ```mermaid
 flowchart TB
-  T["tab: Diproses"] --> F["step filter — all · to confirm · picking · packed · handed over"]
+  T["tab: Diproses"] --> F["step filter — all · confirmed · picking · packed · handed over"]
   F --> L["the ORDER TABLE narrows"]
   T --> S["the SUMMARY — still the whole processed pile"]
 ```
@@ -156,7 +156,7 @@ flowchart TB
 | --- | --- |
 | it appears only under `processed` | a "Packed" filter hanging over the Shipped tab filters something nobody is looking at |
 | it carries **no counts** (owner) | a per-step count line was built and taken out — what a seller does with these is pick one, and the figures that matter about the pile are already the summary's |
-| `to confirm` · `picking` · `packed` **really narrow the table** | each is a single enum value, so `OrderListFilter.status` can take it — unlike `processed` itself, which is three at once |
+| `confirmed` · `picking` · `packed` **really narrow the table** | each is a single enum value, so `OrderListFilter.status` can take it — unlike `processed` itself, which is three at once |
 | `handed over` is **disabled** | it has no enum value at all: a control that provably cannot do its job should refuse, not sit there inert. ⚠ It is "handed over", not "ready to hand over" (owner) — the parcel has already changed hands |
 | changing tab **forgets the step** | otherwise a filter stays set on a status it cannot apply to, invisibly |
 
@@ -463,6 +463,38 @@ flowchart LR
     **→ Recommend** `marketplace_total` on `OrderDraft` and `OrderDraftPush` (0 = not read), editable through
     `OrderDraftUpdate` like any other field, and carried into the order by Promote. The rows' sum stays the seed
     when the app sends none.
+
+16. **What must an order list carry to a WAREHOUSE reader?** The warehouse row
+    ([the-warehouse-row-is-the-old-systems-columns](design_decision.md#the-warehouse-row-is-the-old-systems-columns))
+    shows the seller's shop and marketplace, the units on the order and who created it — none of which a list result
+    gives a warehouse: `ShopList` is scoped to the selling team, items are empty in a list, and `Order` has no creator.
+    **→ Recommend** denormalised fields on the list row — `shop_name`, `marketplace`, `item_quantity`,
+    `created_by_user_id` — written when the order is placed, rather than giving a warehouse read access to every
+    seller's shops. The resi, the marketplace date and the deadline are the open fields already asked about above.
+
+17. **What must the warehouse be able to filter by?** The warehouse list
+    ([the-warehouse-filters-by-team-marketplace-and-courier](design_decision.md#the-warehouse-filters-by-team-marketplace-and-courier))
+    offers a seller team, a marketplace, a courier and a shipment state — `OrderListFilter` has a status, a search, a
+    shop and a date window, and none of those four. Its search also does not reach the MP order id or the resi, which
+    is what a packer has in hand.
+    **→ Recommend** `seller_team_id`, `marketplace` and `shipping_code` on `OrderListFilter` (all already on the order
+    or on the denormalised row of Q16), and the search widened to `order_external_ref_id` and the tracking number.
+    The shipment state waits on the shipment record; courier first, because parcels are batched by courier.
+
+18. **What does the warehouse workbench need from the contract?** The warehouse list now changes steps by the old
+    system's table, scans parcels to hand over, validates picks by scan, and prints labels in bulk
+    ([a-warehouse-step-moves-by-the-old-systems-table](design_decision.md#a-warehouse-step-moves-by-the-old-systems-table),
+    [scanning-is-the-crews-hands](design_decision.md#scanning-is-the-crews-hands)). Missing today:
+
+    | need | → Recommend |
+    | --- | --- |
+    | statuses for **Sudah diambil** and **Sudah diserahkan** | `PICKED` and `HANDED_OVER` in one migration (Q4 already asks for the second) |
+    | moves beyond one step forward | one `WarehouseStepChange(order_ids, to, reason)` with the transition table on the server, a reason required for a move back and written to the timeline |
+    | finding an order by its label | a lookup by tracking number or MP order id, scoped to the warehouse — the same field Q17's search needs |
+    | a real bulk handover | the step change above taking many ids, with a result per order |
+    | a product barcode | `barcode` on the product (several per product, for different packs) |
+    | labels printed together | the document service merging several receipts into one file |
+    | export | the order list's export, shared with the seller's |
 
 13. **Where does a draft's pushing app go on the row?** The draft list used to show `source` under the reference;
     [the-draft-list-is-the-drafts-tab](design_decision.md#the-draft-list-is-the-drafts-tab) gave that line to
