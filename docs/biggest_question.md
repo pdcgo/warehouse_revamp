@@ -14,10 +14,140 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**159 open questions across 29 files.** The seven below are shown; **152 are not** — they are not
+**155 open questions across 29 files.** The seven below are shown; **148 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▲ **+15 this round — the `hfrada` branch merged** (2026-10-02): it brings
+▼ **−1 this round — user Q20 answered: the user context has nothing open** (2026-10-02). Its four readings are
+confirmed. Next: implementation analysis — the Storybook prototype of the user screens.
+
+▼ **−3 the round before — user Q17, Q18, Q19 answered in chat** (2026-10-02): a removal is made by those who add, only below
+their own role, logged, and drops the person's shop access in that team · Customer Service runs orders, restock
+requests **and settlements** (against my recommendation on settlements, and as built) · the warehouse Admin equals the
+Owner except the liability terms, transfers and capital. Only user Q20 is left: four of my readings to confirm.
+
+▲ **+4 the round before — what was left in the user context, made into questions** (2026-10-02):
+[user Q17–Q20](business/user/context_clarify.md#question). How a member is removed · what Customer Service does (the
+build lets it make 62 calls, some of them settlement and restock money acts) · whether the warehouse Admin is the Owner's
+equal (the build makes them identical, 85 calls each) · four of my readings to confirm. None blocks a pass.
+
+▼ **−5 the round before — user Q12–Q16 answered in chat, all as recommended** (2026-10-02): the admin team monitors all and
+manages its own · a membership log · overrides stamped in every service · *System Administrator* and *Admin Team Admin*
+· one account per phone stays a refusal. The user context has no open question. None of it is built.
+
+▲ **+5 the round before — the owner asked for a critique of the user design as decided** (2026-10-02):
+[user Q12–Q16](business/user/context_clarify.md#question). The admin team now has no job (`business_level.md` says it
+manages every team, the decision lets it manage only itself) · nothing records who gave a role · a do-anything write
+leaves no trace outside liability · `administrator` and `admin_administrator` are one word apart · shared phone
+numbers. None blocks a pass.
+
+± **0 the round before — the admin team's roles get team management only** (2026-10-02)
+([admin-team-roles-manage-only-their-team](business/user/context_decision.md#admin-team-roles-manage-only-their-team)).
+The role rename stays decided and unbuilt, on the owner's word.
+
+▼ **−1 the round before — user Q11 answered, the user context has no open question** (2026-10-02): the search popup opens only
+for those who manage members, an Owner or Admin finds a person by exact username, phone or email, a result shows the
+phone's last four digits, Change Role touches only roles below your own, a phone or email belongs to one account, and a
+shop grant picks from the team's members. All as recommended; none built yet. State report:
+[development_state/user/context.md](development_state/user/context.md).
+
+± **0 the round before — the owner drew Change Role into the member flow** (2026-10-02): someone already in the team gets
+*Change Role* in the same flow
+([an-existing-member-gets-change-role](business/user/context_decision.md#an-existing-member-gets-change-role)), against
+my recommendation. [User Q11d](business/user/context_clarify.md#question) narrows to whose role it may change. ⚠ Today:
+anyone's, so an Admin can demote the Owner.
+
+🔄 **±0 the round before — user Q11 elaborated** (2026-10-02) into six parts: who opens the search popup · exact or partial match
+· what a result shows · someone already a member · duplicate accounts · the shop grant's search
+([user Q11](business/user/context_clarify.md#question)). ⚠ Checked against the code: **re-adding a member overwrites
+their role**, so an Admin can demote the Owner from the Add Member popup, and **a shop grant searches every user in the
+system**.
+
+± **0 the round before — the owner gave the warehouse Admin "manage member"** (2026-10-02): it supersedes half of the Q5 answer
+recorded the round before. The warehouse and selling Admins manage members, the admin team's does not
+([the-admin-team-admin-alone-does-not-manage-members](business/user/context_decision.md#the-admin-team-admin-alone-does-not-manage-members)).
+The build already lets both Admins do it. No question opened or closed.
+
+▼ **−3 the round before — user Q5, Q9 and Q10 answered in chat** (2026-10-02): only the selling Admin manages members, and
+nobody gives their own role · the Administrator keeps "do anything", against my recommendation
+([the-administrator-can-do-anything](business/user/context_decision.md#the-administrator-can-do-anything)) · the role
+names become the code's names, so `ROLE_TEAM_*` is renamed `ROLE_SELLING_*` and the admin team gets two roles
+([the-role-names-are-the-codes-names](business/user/context_decision.md#the-role-names-are-the-codes-names)). The
+member is found in a search popup; user Q11 stays open on what it matches.
+
+▼ **−1 the round before — user Q4 closed** (2026-10-02): the selling Owner and Admin set the markup, the reserve and the lock
+([the-selling-owner-and-admin-set-markup-reserve-and-lock](business/user/context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock)),
+as built. No Owner makes another Owner, and the selling Admin manages members. Q5 narrows to the warehouse and admin
+teams' Admins. ⚠ One contradiction inside the owner's doc: the member flow's heading leaves out the selling Admin.
+
+▲ **+1 the round before — user Q4's restock half answered, and the owner drew how a member is added** (2026-10-02). Staff
+accepts a restock alone ([staff-accepts-the-restock](business/user/context_decision.md#staff-accepts-the-restock)),
+against my recommendation, and the build already does it. Root, the Administrator or the team's Owner add a member
+([owner-root-and-administrator-add-members](business/user/context_decision.md#owner-root-and-administrator-add-members)).
+Opened [user Q11](business/user/context_clarify.md#question): today **any signed-in user can search every user in the
+system**, and a missed search creates a second account for the same person.
+
+± **0 the round before — the owner named every role** (2026-10-02): ten code names
+([every-role-has-a-code-name](business/user/context_decision.md#every-role-has-a-code-name)), several Roots
+([root-can-be-several](business/user/context_decision.md#root-can-be-several), closes user Q8), and Root grants the
+Administrator (narrows Q5). Opened [user Q10](business/user/context_clarify.md#question): are the names the code's
+names. ⚠ Only five of the ten match the build: the selling roles are `TEAM_*`, and the admin team has no roles of its own.
+
+▼ **−1 the round before — user Q7 closed: the owner changed their mind on suspend** (2026-10-02). New §Suspend Users: only Root
+and the Administrator suspend, never sideways
+([only-root-and-the-administrator-suspend](business/user/context_decision.md#only-root-and-the-administrator-suspend)).
+The team-level suspend recorded the round before is superseded, which makes 7f moot. ⚠ Today the build refuses to suspend
+only user 1, so an Admin can suspend another Admin.
+
+± **0 the round before — user Q7d and 7e answered in chat** (2026-10-02): a suspended user is never offered when picking
+someone ([a-suspended-user-is-never-picked](business/user/context_decision.md#a-suspended-user-is-never-picked)), and a
+former user is erased, keeping the row and id, by Root or the System Administrator
+([erase-keeps-the-row](business/user/context_decision.md#erase-keeps-the-row)). Q7 stays open on 7f alone.
+
+± **0 the round before — user Q7a, 7b and 7c answered in chat** (2026-10-02): never delete, the username is editable, and
+suspend has two levels — Root and the System Administrator suspend an account, a team's Owner or Admin suspends a member
+in that team only ([superseded-two-levels-of-suspend](business/user/context_decision.md#superseded-two-levels-of-suspend)). Q7 stays open on
+7d, 7e and a new 7f: may a team's Admin suspend its Owner.
+
+🔄 **±0 the round before — user Q7 elaborated** (2026-10-02) into five parts: never delete · fix a typo by editing the
+username · only Root and the System Administrator suspend · a suspended user is never offered in a picker · erase personal
+data without deleting the row ([user Q7](business/user/context_clarify.md#question)). Checked against the code: a delete
+leaves **22 columns in 8 services** pointing at nobody.
+
+▼ **−1 the round before — user Q6 answered in chat** (2026-10-02): *"its okay write password in migration"*. A migration
+writes `root1234`, only while root's password is still empty, so a production password already set is never reset
+([the-migration-writes-the-dev-root-password](business/user/context_decision.md#the-migration-writes-the-dev-root-password)).
+Against my recommendation. Not built yet.
+
+± **0 the round before — the dev root password is now `root1234`** (2026-10-02): 8 characters, so it passes the app's rule
+([dev-root-password-is-root1234](business/user/context_decision.md#dev-root-password-is-root1234)). It closes the length
+half of [user Q6](business/user/context_clarify.md#question). Q6 stays open on its other half: whether the migration or
+`tools/san` writes the password.
+
+▲ **+2 the round before — the owner rewrote the user doc's root team** (2026-10-02): Root is granted by nobody in the app
+([root-is-granted-only-through-san](business/user/context_decision.md#root-is-granted-only-through-san)) and can do
+anything ([root-can-do-anything](business/user/context_decision.md#root-can-do-anything)), which closes half of user Q5
+against my recommendation. ⛔ **The app can grant Root today**, three ways. Opened:
+[user Q8](business/user/context_clarify.md#question) one Root or several ·
+[user Q9](business/user/context_clarify.md#question) whether the new System Administrator is the build's `ROLE_ADMIN`, which
+can do anything too. Neither blocks a pass.
+
+▼ **−2 the round before — the owner answered user Q1 and Q2** (2026-10-02). [user Q2](business/user/context_clarify.md#question):
+one person holds one role in a team, and any role in another
+([one-role-per-person-per-team](business/user/context_decision.md#one-role-per-person-per-team)); the database already
+enforces it. 🔄 Then **user Q3 elaborated, and MOVED to [inventory Q12](business/inventory/context_clarify.md#question)** — the owner: *"what count? we talk in user context"*. A stock count is inventory's act. Five parts (which acts · who records and confirms · never the same
+human · the root team as an override · what a pending shelf shows). Checked against the code: **no count has a confirm step**,
+and one role per team does not stop a manager confirming their own count. [user Q1](business/user/context_clarify.md#question)
+is answered as recommended — Staff (`WAREHOUSE_STAFF`) is the whole floor job
+([warehouse-staff-is-the-whole-floor-job](business/user/context_decision.md#warehouse-staff-is-the-whole-floor-job)).
+The code already matched. The rename left "Packer" in 15 places across five other clarify files and one state report, all
+fixed ([the-packer-rename-left-fourteen-sites](business/user/context_clarify.md#the-packer-rename-left-fourteen-sites)).
+
+▲ **+2 the round before — the owner added §Responsbility and §Default Data to the user doc** (2026-10-02):
+[user Q6](business/user/context_clarify.md#question) — the dev root password `root123` is 7 characters and the
+app requires 8, and root is made only by a migration that also runs on production · [user Q7](business/user/context_clarify.md#question) —
+the build hard-deletes users, which §Responsbility does not list. Neither blocks a pass, so neither ranks into the seven.
+
+▲ **+15 the round before — the `hfrada` branch merged** (2026-10-02): it brings
 [technical/order/design_clarify.md](technical/order/design_clarify.md#question) and its 15 questions about the
 order screens. Its own rollup ranked none of them into the seven, and that is kept, not re-ranked. It also brought one contradiction, which is not counted as a question:
 [the-warehouse-steps-rule-met-the-return-status](business/order/context_clarify.md#the-warehouse-steps-rule-met-the-return-status).
@@ -1823,14 +1953,13 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 152 are
+## Where the other 148 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **159**, the whole set, not to 152. Previous rounds left
+*from* these files, so the column sums to **155**, the whole set, not to 148. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 144 last round, ±0 (financial_account built), ▲ +15 (the `hfrada` merge brought
-`technical/order/design_clarify.md`): **159** across 29 files, and the column below sums to it.
+are counted as a DELTA this round, not recounted — 156 last round, ▼ −1 (user Q20): **155** across 29 files, and the column below sums to it.
 
 | File | Open | |
 | --- | ---: | --- |
@@ -1842,12 +1971,12 @@ are counted as a DELTA this round, not recounted — 144 last round, ±0 (financ
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 0 | ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-28)** Q6 — where a shop lives — moved to [shop Q2](business/shop/context_clarify.md#question), ✅ answered 2026-09-29 — its own `shop_service`. Before that: ▼ **−1 (2026-09-26)** Q7 — where a withdrawal lives, answered by settlement's type list. Before that: ⚠ **counted 10 here last round and 11 mechanically** — the row said "count unchanged" while one had been added. 🔄 2026-09-17: re-examined against the built shipment context — every `shipping_service` proposal rewritten, Q8 (region) reworded to *does region_service stay separate*, +1 Contradiction: its line 13 still describes the old shipping service. Count unchanged. ▼ was 11 — Q2 became a pointer to order's half-finished-orders question. What stayed is a contradiction, not a question |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 | ▼ **−1 (2026-10-01)** Q11 answered — an accepted payment is final, the reverse is removed. Before that: ▼ was 9 — `found` needs no handshake |
-| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 11 | ▲ +1 re-routed from order_creation: a stock count between create and pick re-adds a taken unit · ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |
+| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 12 | ▲ **+1 (2026-10-02)** Q12 moved from user Q3 — who confirms a count or a loss, five parts. Before that: ▲ +1 re-routed from order_creation: a stock count between create and pick re-adds a taken unit · ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ which markup does the ledger charge from |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 12 | +6 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
-| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |
+| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 | ✅ **(2026-10-02) nothing open** — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | 🔄 **Q2 now holds #2** (2026-09-28) — the settlement report's check was declined, so whether any report can heal a lost event is the open decision. See **#2**. Before that: ▲ the `### Why` section landed — it argues the pattern's case but names the wrong coupling, and it opens a structural one: is `analytic` a LIBRARY or a SERVICE |
 | [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 4 | 🆕 counted for the first time |
 | [business/project/member_clarify.md](business/project/member_clarify.md#question) | 5 | 🆕 who DECIDES, rather than what the system does. ▼ progress reporting is settled |

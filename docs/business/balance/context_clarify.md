@@ -18,7 +18,7 @@ points are **deleted**, so this file is always the current open set.
 > **Re-examined again.** The only change to `balance_context.md` this round was a spelling fix in
 > §Balance Policy, so nothing below is closed by it. One word did get a definition elsewhere:
 > *"team owner"* is now a real role
-> *([user_context](../user/context_clarify.md#warehouse-roles-are-owner-admin-packer))*, so
+> *([user_context](../user/context_clarify.md#warehouse-roles-are-owner-admin-staff))*, so
 > [Critique 4](#critique) narrows to **whose** owner — the creditor's or the debtor's — and drops the
 > "what is a team owner" half.
 

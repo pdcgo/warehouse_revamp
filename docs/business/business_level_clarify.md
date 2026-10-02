@@ -41,7 +41,7 @@ Siblings: [user_context](./user/context_clarify.md) · [product_context](./produ
 | --- | --- | --- | --- | --- |
 | **Root** | Root | highest access to everything | nothing operational | — |
 | **Admin** | Owner, Admin | monitors **and manages all resource** of warehouse and selling teams · overrides a debt threshold | nothing operational | — |
-| **Warehouse** | Owner, Admin, **Packer** | holds goods, places them, processes orders, handles returns/broken/lost, opname | **no goods** | owes Unit Price on custody loss · is owed order fee + receiving outlay |
+| **Warehouse** | Owner, Admin, **Staff** | holds goods, places them, processes orders, handles returns/broken/lost, opname | **no goods** | owes Unit Price on custody loss · is owed order fee + receiving outlay |
 | **Selling** | Owner, Admin, **Customer Service** | orders, shops, products, restock decisions, suppliers · bears the loss at receiving | **the stock** | owes order fee, outlay, cross charge |
 
 ⚠ **Naming the roles did not assign the acts.** No role accepts a restock, declares a loss, runs an
@@ -150,7 +150,7 @@ negative half — the doc that defines the four teams' responsibilities says who
 | §"Whats Should be covered" | The actor | Missing before it can be built |
 | --- | --- | --- |
 | 1 · order management for marketplace | selling team's **Customer Service** | ✅ actor and entry path both answered — the order's *lifecycle* is not |
-| 2 · stock management | warehouse team's **Packer**, presumably | ⚠ the role is named for packing only — [user_context_clarity](./user/context_clarify.md#critique) |
+| 2 · stock management | warehouse team's **Staff** | ✅ the actor is answered — [warehouse-staff-is-the-whole-floor-job](./user/context_decision.md#warehouse-staff-is-the-whole-floor-job) |
 | 3 · transparency accounting | ? | **the term is undefined** — [Critique 1](#critique) |
 | 4 · flexible statistics | admin team | "flexible" and the question list are undefined |
 | 5 · sharing stock between selling teams | both selling teams | ✅ consent answered — **no role** is named for setting the reserve or the lock |
@@ -167,7 +167,7 @@ negative half — the doc that defines the four teams' responsibilities says who
 | **2** | **"Responsibility" is still used for two different things and the money hangs on the difference.** §Warehouse 3 says the warehouse *handles* returns, broken and lost. §Warehouse 6 says it has no *responsibility* for broken/lost at receiving. The first means "does the work", the second means "bears the cost". `inventory/context.md` has adopted the sharper word — *"its shortfall a warehouse **liability**"* — and this doc still has not. | Use both words here: **handles** (does the physical work) vs **liable for** (pays). §3 is *handles*, §5 and §6 are *liable*. |
 | **3** | **[warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) now names a price and still not WHICH ONE.** A team's stock is FIFO layers at different unit prices — that is the whole point of [batch-fifo-pricing](./product/context_clarify.md#batch-fifo-pricing) — so "Unit Price" singular has no referent until the broken unit is tied to a **batch**. The cheap layer and the dear layer can differ by a lot, and the warehouse is paying the difference. Worse, a unit found short at opname is by definition **untraceable to a layer**, so the rule has no number at all in the case that produces the most losses. | Say which layer: **the batch the unit actually came from**, when it is known — the warehouse pays for what it broke. When it is **not** known (an opname shortfall), name a fallback rather than leaving it undefined: I would draw the shortfall **FIFO from the oldest layers**, the same order a sale would have consumed them, so the stock that remains is the stock the books say remains. |
 | **4** | **§Admin now says "manage all resource" and that is a very large sentence.** It answers whether Admin acts — it does — but not *what*. Managing a team's users is one thing; adjusting a stock count, editing a cross markup, or posting a balance entry are each a different order of power, and the third would make Admin a second set of books. | Enumerate it in §Admin: I would allow **manage users and roles · override a control · unblock · read everything**, and forbid **posting money** and **changing a count** — the two acts that would let a non-owner rewrite what another team owes. And every admin act is **recorded with actor and reason**, which is [Critique 1](#critique) again. |
-| **5** | **Whether a TEAM can be two types is still unanswered — and the person half being settled makes it sharper, not softer.** `user_context.md` §General now allows one human to hold roles in several teams, so a person standing on both sides of a money rule is a described case rather than a worry. If a **team** could also be both a warehouse and a selling team, [warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) would have it reimbursing itself, and a debt threshold would apply against itself. | State: **a team has exactly ONE type.** The four responsibilities are genuinely different jobs, and one team holding two of them turns three money rules into no-ops. The small-operation case that would otherwise tempt a dual-type team is already covered by the person-level flexibility — see [user_context_clarity Question 2](./user/context_clarify.md#question). |
+| **5** | **Whether a TEAM can be two types is still unanswered — and the person half being settled makes it sharper, not softer.** `user_context.md` §General now allows one human to hold roles in several teams, so a person standing on both sides of a money rule is a described case rather than a worry. If a **team** could also be both a warehouse and a selling team, [warehouse-reimburses-unit-price](#warehouse-reimburses-unit-price) would have it reimbursing itself, and a debt threshold would apply against itself. | State: **a team has exactly ONE type.** The four responsibilities are genuinely different jobs, and one team holding two of them turns three money rules into no-ops. The small-operation case that would otherwise tempt a dual-type team is already covered by the person-level flexibility — one person may hold a role in a warehouse team and another in a selling team ([one-role-per-person-per-team](./user/context_decision.md#one-role-per-person-per-team)). |
 | **6** | **"until its shipped" ends the warehouse's job and nothing covers the parcel after it.** A courier loses a shipped parcel — not broken in the warehouse, not at receiving, not a return. `inventory/context.md` §Stock loss covers only the two phases inside the building, and no role hands the parcel over. | Add a third loss phase — **in transit to the customer** — and name who bears it. I would put it on the **selling team** (it owns the sale and the courier relationship), with the courier claim as the recovery. |
 | **7** | **Placement is now asserted twice in the same list.** *"§Warehouse 4: Ownership of stock is by selling team. But, warehouse managing phisique of goods and **placement of goods**"* · *"§Warehouse 8: manage **placements** of the stocks."* One responsibility, two homes, in the one place HARD RULE 11 says restated lists go stale — the next rule about placement has two items to be added to, and only one will get it. | **I read item 8 as a promotion, not a slip** — *placements* (plural, manageable things) is a different claim from *placement of goods* (an activity) — and if so the fix is to **fold the clause out of item 4**, leaving it to say only what it is about: ownership. Item 4 then reads *"Ownership of stock is by selling team, but the warehouse holds the goods physically"*, and item 8 owns placement outright. ⚠ If instead you meant item 8 as a restatement, delete one — but then [warehouse-manages-placements](#warehouse-manages-placements) is not a new capability and the questions it raises do not arise. **Only you can say which.** |
 
@@ -205,7 +205,7 @@ negative half — the doc that defines the four teams' responsibilities says who
 > team."* — so a **different** team may manage the warehouse's resources.
 >
 > [`user_context.md`](./user/context.md) §1: the warehouse's own people are
-> **Owner, Admin, Packer** — three roles, none of which the doc says may or may not record a loss.
+> **Owner, Admin, Staff** — three roles, none of which the doc says may or may not record a loss.
 
 If "all resource" includes stock counts, then a person outside the warehouse team can create or erase a
 warehouse liability, and the warehouse pays for a number it did not write. If it does not include stock
@@ -219,7 +219,7 @@ liable team's numbers need not be another *team* at all:
 > §General: *"User can be have different role across teams"* — and the diagram shows one person holding
 > two roles in two teams at once.
 
-So one human may be Customer Service in a selling team **and** a Packer in the warehouse that holds its
+So one human may be Customer Service in a selling team **and** Staff in the warehouse that holds its
 goods — taking the order, picking it, and recording the shortfall. Every rule in the set assigns the cost
 to a **team**, and a team is not a person: naming *which role* may write the number does not help when one
 human holds both roles. **The cause is the same in both sites** — a rule says who **pays** without saying
@@ -234,7 +234,7 @@ on.**
 ```mermaid
 flowchart TB
   A["Admin team — manages all resource"] --> N["the stock count"]
-  P["Packer — inside the warehouse team"] --> N
+  P["Staff — inside the warehouse team"] --> N
   H["one human wearing a hat in BOTH teams"] --> N
   N --> L["a shortfall becomes a WAREHOUSE TEAM liability"]
   L --> Q{"who wrote the number?"}
@@ -301,4 +301,4 @@ flowchart LR
 - **No lifecycle anywhere.** Nothing says what states an order, a restock, a return or a team passes
   through, or who moves them.
 - **No volumes.** How many warehouses, racks, SKUs, orders a day, people at once — and now, how many
-  Packers work one shelf at a time.
+  Staff work one shelf at a time.

@@ -35,7 +35,7 @@ ChatGPT cannot reach a local app ([Q8](#question)). How the account connects and
 | **2** | ✅ **Decided — [the-tools-live-in-the-shipped-app](./context_decision.md#the-tools-live-in-the-shipped-app)**, against my recommendation: the tools live in the app you ship, and it calls our RPC API. ⛔ **It cannot reach ChatGPT**, which [chatgpt-and-claude-are-the-agents-for-now](./context_decision.md#chatgpt-and-claude-are-the-agents-for-now) names — ChatGPT connects only to a public URL. Was: a shipped binary is a client we cannot redeploy, and it reaches desktop agents only. | [Q8](#question) — **C**: our server hosts the MCP, behind an OAuth login. |
 | **3** | **"Connect their account" has no mechanism.** The only credential is the session token: an agent holding one dies within a day or a week, cannot be revoked alone, and carries every write the person may make — which [an-agent-only-reads-for-now](./context_decision.md#an-agent-only-reads-for-now) now rules out. A password typed into an agent's config is a password in plain text on disk. | An **agent key** — made by the person on a screen, shown once, named, read-only, bound to one team, expiring, revoked on its own without touching the person's sessions. [Q3](#question) |
 | **4** | **Whose data is not said.** One person holds roles in several teams ([user/context.md](../user/context.md) §General), so a key that *is* the person reads all of them — and lets an agent join them. ⛔ Worse, root and admin of team 1 pass every scope check: a root's key hands **every team's** orders and money to a third-party AI. | A key reads **one team**, fixed when it is made, and **the root bypass never applies to a key**. [Q4](#question) |
-| **5** | **Who may send a team's data out is not said.** The data is the team's, not the person's: a CS connecting a personal agent sends the team's sales, costs and buyers to that agent's provider. Read-only does not help here — it limits what an agent can do, not what it sends. | The team's **owner and admin** may connect an agent; CS and packer only if the owner allows it for the team. [Q5](#question) |
+| **5** | **Who may send a team's data out is not said.** The data is the team's, not the person's: a CS connecting a personal agent sends the team's sales, costs and buyers to that agent's provider. Read-only does not help here — it limits what an agent can do, not what it sends. | The team's **owner and admin** may connect an agent; CS and staff only if the owner allows it for the team. [Q5](#question) |
 | **6** | **"Analyze" over raw lists is a crawl, and 164 tools is noise.** Lists page ([HARD RULE 9](../../../CLAUDE.md#9-a-list-rpc-over-data-that-can-grow-must-paginate)), so *"my best product last month"* over `OrderList` is hundreds of paged calls — slow for the person, and a bot's load on the database the shelf is using. A long tool list costs the agent context every turn and makes it choose worse. | A **short list** — the 11 aggregates, plus lookups by name, code or ref — and a **rate limit per key**. [Q6](#question) |
 | **7** | **Buyers' personal data would leave the system.** Whatever a tool returns goes to the agent's provider and may be kept there. Analysis never needs to know who the buyer is. | No tool returns a buyer's **name, phone or address**. [Q7](#question) |
 | **8** | **The diagram draws the call backwards, and no account.** `mcp-->agent: used by agent` points from the MCP to the agent — the agent is the caller. And §General 2's *"connect their account"* — the key, and who issued it — is not in the picture. | [The picture](#the-picture) below — yours to take or leave. |
@@ -56,7 +56,7 @@ data it reads.
 | a selling team's owner, admin | asks their agent *which shop lost money last week* · *what should I restock* · *why did the payout drop* | daily, weekly |
 | a warehouse team's owner, admin | asks what is on hand, what is coming in, where the cost goes | weekly |
 | the same person | connects an agent once · sees what is connected and when it last read · disconnects one | rarely |
-| CS, packer | nothing, unless the owner allows it — [Q5](#question) | |
+| CS, staff | nothing, unless the owner allows it — [Q5](#question) | |
 
 ### The picture
 
@@ -256,7 +256,7 @@ sequenceDiagram
    else. ⚠ The price: an owner of two selling teams cannot ask one agent to compare them without both keys set up.
 
 5. **Who may connect a team's data to an agent?** Critique 5.
-   **→ Recommend the team's owner and admin**; CS and packer only if the owner turns it on for the team. The owner
+   **→ Recommend the team's owner and admin**; CS and staff only if the owner turns it on for the team. The owner
    sees every key reading the team, and can revoke any. ⚠ Read-only does not settle this: an agent that cannot
    write still sends everything it reads to its provider.
 
