@@ -8,7 +8,7 @@
 | decision | what it settles |
 | --- | --- |
 | [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim) | every status keeps the hue it had, collisions included |
-| [one-context-per-column-and-never-three-lines](#one-context-per-column-and-never-three-lines) | pairing is only for one fact read twice — it REPLACES the six-paired-cells decision |
+| [one-context-per-column-and-never-three-lines](../../business/frontend/context_decision.md#one-context-per-column-and-never-three-lines) | pairing is only for one fact read twice — it REPLACES the six-paired-cells decision |
 | [the-row-shows-total-beli-and-total-mp](#the-row-shows-total-beli-and-total-mp) | two totals: what it cost us, and what the platform paid — it REPLACES an-order-total-is-goods-plus-fulfilment |
 | [the-margin-is-mp-minus-total-beli](#the-margin-is-mp-minus-total-beli) | margin and its percentage are both measured against the MARKETPLACE price |
 | [the-ongkir-is-the-warehouses-to-set](#the-ongkir-is-the-warehouses-to-set) | shipping is priced by the building that ships it, so it is absent from the create screen |
@@ -24,14 +24,14 @@
 | [the-detail-margin-is-mp-minus-system](#the-detail-margin-is-mp-minus-system) | margin = total MP − total sistem, the list's formula read from the detail |
 | [the-detail-preview-became-the-order-detail](#the-detail-preview-became-the-order-detail) | a seller's `/orders/:id` IS the approved page now — and it keeps the two wired features the preview lacked |
 | [settlement-replaces-withdrawal-on-the-order](#settlement-replaces-withdrawal-on-the-order) | the order's money-back section IS the settlement ledger; withdrawals stay a shop-level question |
-| [the-phone-header-is-one-row](#the-phone-header-is-one-row) | on a phone the sticky block is the number, the stage and `⋯` — plus the section chips |
-| [a-phone-reads-each-line-as-a-block](#a-phone-reads-each-line-as-a-block) | the item table becomes one block per line below `md` |
+| [the-phone-header-is-one-row](../../business/frontend/context_decision.md#the-phone-header-is-one-row) | on a phone the sticky block is the number, the stage and `⋯` — plus the section chips |
+| [a-phone-reads-each-line-as-a-block](../../business/frontend/context_decision.md#a-phone-reads-each-line-as-a-block) | the item table becomes one block per line below `md` |
 | [the-draft-list-is-the-drafts-tab](#the-draft-list-is-the-drafts-tab) | `/order-drafts` wears the seller list's shell and row grammar, with only the columns a draft can fill |
 | [the-draft-summary-is-three-cards](#the-draft-summary-is-three-cards) | total and oldest are real; ready counts this page only, says so, and carries a ⚠ |
 | [the-draft-cards-are-the-order-list-cards](#the-draft-cards-are-the-order-list-cards) | one `SummaryCard` and one grid for both tabs, so a card is the same shape and size on each |
 | [the-summary-follows-the-tab](#the-summary-follows-the-tab) | All Status shows the piles; a status tab shows its own figures as cards; the measure line is gone. The cards fill the row again |
-| [a-summary-card-is-at-most-a-fifth](#a-summary-card-is-at-most-a-fifth) | cards fill the row but never exceed 1/5 of it on a large screen — 1/4, 1/3, 1/2 as it narrows |
-| [a-phone-filters-from-a-sheet](#a-phone-filters-from-a-sheet) | on a phone the search stays in the row; every other filter is in a bottom sheet behind a counted Filter button |
+| [a-summary-card-is-at-most-a-fifth](../../business/frontend/context_decision.md#a-summary-card-is-at-most-a-fifth) | cards fill the row but never exceed 1/5 of it on a large screen — 1/4, 1/3, 1/2 as it narrows |
+| [a-phone-filters-from-a-sheet](../../business/frontend/context_decision.md#a-phone-filters-from-a-sheet) | on a phone the search stays in the row; every other filter is in a bottom sheet behind a counted Filter button |
 | [the-draft-keeps-its-own-page](#the-draft-keeps-its-own-page) | `/order-drafts/:id` stays the separate draft page — opening the draft in the order form was tried and reverted |
 | [the-draft-page-wears-the-order-form](#the-draft-page-wears-the-order-form) | the draft page uses the create form's cards and rail; save in any state, Promote as strict as Create |
 | [a-draft-row-maps-to-a-product-a-bundle-or-a-split](#a-draft-row-maps-to-a-product-a-bundle-or-a-split) | each scraped row maps to one product, one bundle, or several products — a split suggests a bundle |
@@ -105,100 +105,7 @@ flowchart LR
 
 ## one-context-per-column-and-never-three-lines
 
-> Owner, in chat (2026-09-28): *"1 line lebih dari 2 baris"* · *"konteks berbeda di satukan (toko dan
-> gudang), beli.margin tidak masalah"* · *"tanggal bedakan saja columnnya, status belum kamu bedakan
-> jadi tidak lurus kebawah"*.
-
-⚠ **This REPLACES `the-row-is-six-cells-not-twelve-columns`.** That decision paired twelve facts into
-six cells and treated pairing as the way to fit a wide table. Two rules replace it:
-
-| | |
-| --- | --- |
-| **1. No cell is more than two lines** | one row of the table is one row of reading |
-| **2. One context per cell** | pairing is for ONE FACT READ TWICE, never for two questions |
-
-**What was wrong with the old pairing** is not that it was dense — it is that it answered two questions
-in one place. Toko and Gudang are not one fact; somebody scanning for *which warehouse* had to read past
-a shop name to get there.
-
-```mermaid
-flowchart TB
-  subgraph before["six paired cells"]
-    A["Toko + Gudang"]
-    B["#id + ref + status + resi"]
-    C["dibuat + MP date + status date"]
-    D["Beli + margin"]
-  end
-  subgraph after["one context per column"]
-    A1["Toko + its badge"] --- A2["Gudang dropped"]
-    B1["#id alone"] --- B2["ref + status"] --- B3["Resi"]
-    C1["dibuat + oleh"] --- C2["Tgl MP + deadline"] --- C3["Tgl status"]
-    D1["Beli"] --- D2["Total MP + margin"]
-  end
-  A --> A1
-  B --> B1
-  C --> C1
-  D --> D1
-```
-
-⚠ **THE RULE IS THE TEST, NOT THE PAIRS.** Which facts count as one took several rounds, and every
-pairing below had to earn its second line by being the SAME fact read twice — the marketplace's name for
-the order and where that order stands; the storefront's order time and the deadline it starts. A pair
-that merely had room is what the rule rejects.
-
-**The columns, in order** — nine, and only four carry a second line:
-
-| | column | line 1 | line 2 |
-| --- | --- | --- | --- |
-| 1 | ID Order | the marketplace's reference, **copyable** | the status badge |
-| 2 | Resi | the tracking number, **copyable** | |
-| 3 | Toko *or* Tim | the shop's name | its marketplace badge |
-| 4 | Dipesan | our date | `oleh <nama>` |
-| 5 | Tgl MP | the storefront's order date | **the ship-by deadline** |
-| 6 | Tgl `<status>` | **only while a status is filtered** | |
-| 7 | Beli | total beli | |
-| 8 | Total MP | what the platform paid | **the margin · %** |
-| 9 | Aksi | the kebab | |
-
-**What came OFF the row, and why.** Both answer *tell me about this order* rather than *which order do
-I want* — which is the test a column has to pass:
-
-| dropped | |
-| --- | --- |
-| **Penerima** (owner) | the search box already reaches the customer's name, so finding one never needed a column to look at |
-| **Gudang** (owner) | a seller's orders nearly all ship from the same building, and the crew reading its own queue would see its own name twenty times |
-| **`#id`** (owner) | nothing reads it. The marketplace reference is what a buyer, a shop and a courier all quote; our number survives as the row's link target and its testid, not as a column |
-
-**Where each pair landed, and why it is ONE fact rather than two:**
-
-| pair | why they belong together |
-| --- | --- |
-| ID Order / status | the marketplace's name for the order, and where that order has got to |
-| Toko / marketplace badge | two storefronts often share a name — the pair IS the identifier |
-| Tgl MP / deadline | **causal**: the ship-by window runs FROM the storefront's order time |
-| Total MP / margin | the margin is `harga MP − total beli`, measured against the figure above it |
-| Dipesan / `oleh` | one event: when we wrote it down, and who did |
-
-⚠ **THE STATUS MOVED TWICE, and the second move is not a reversal of the first.** It began on the second
-line of the `#id` cell, where the badges did not line up down the page. A column of its own fixed that;
-under the marketplace reference it is line 2 on *every* row, so they line up there too — and it costs no
-column.
-
-⚠ **THE TWO COPYABLE FIELDS ARE THE TWO THAT LEAVE THE APP.** The marketplace reference is pasted into
-the platform's dashboard and the resi into a courier's tracking page or a reply to a buyer. Our `#id` is
-quoted across a room, not pasted, so it is not copyable. Both stop the row's navigate — without that,
-copying a number would also leave the page and nobody would see it happen.
-
-⚠ **THE DEADLINE SAT UNDER THE RESI FOR ONE ROUND, and moved because the premise was wrong.** The pairing
-there assumed a resi appears only at handover, so the two would never coexist — but *"resi pasti ada"*
-(owner): the marketplace prints the label at confirmation, which is exactly why the action table offers
-*Edit Resi* on `created` and `process`. The resi answers *which parcel*, the deadline *when it has to go*.
-
-⚠ **The price is a wider table, and that is accepted.** The page still never scrolls sideways — the table
-scrolls inside its own box (measured at 400px). Five of the nine columns are a single line.
-
-⚠ **One column appears and disappears**: the status date only exists under the tab that asks for it,
-because a permanently blank column is one people learn to skip.
+➡ **Moved** to [frontend/context_decision.md](../../business/frontend/context_decision.md#one-context-per-column-and-never-three-lines) — a rule for every screen (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
 
 ## the-row-shows-total-beli-and-total-mp
 
@@ -281,7 +188,6 @@ our quote against our cost and never looks at what the platform paid. One formul
 than a bug to tune.** The census gives the sample Σ `total` and a count, so an excluded order can only
 be charged the pile's average size — and the excluded one here (#108) is the largest of the nine. Only
 the server knows the size of what it left out, which is the argument for making these columns real.
-
 
 ## the-ongkir-is-the-warehouses-to-set
 
@@ -659,50 +565,11 @@ reversed by bringing a section back. The ledger itself is unchanged.
 
 ## the-phone-header-is-one-row
 
-> Owner, in chat (2026-09-30): *"heading yang sticky top terlalu ramai"*.
-
-Below `md` the sticky block is **one row** (back, the order number, the stage, `⋯`) and the section
-chips under it. It was 153px and is now 109px.
-
-```mermaid
-flowchart TB
-  subgraph "before — three rows"
-    A1["back · Order #101 · Pending · deadline ⚠"]
-    A2["Edit Tracking Number ⚠ · ⋯ · ⚠"]
-    A3["chips"]
-  end
-  subgraph "after — one row and the chips"
-    B1["back · Order #101 · Pending · ⋯"]
-    B2["chips"]
-  end
-  B1 -.-> D["deadline ⚠ — first line UNDER the sticky block"]
-  B1 -.-> L["lifecycle ⚠ — beside the stepper"]
-```
-
-| moved | to | why |
-| --- | --- | --- |
-| every action | the `⋯` menu, even when it holds only one | a labelled button was what wrapped the header onto a second row. On a phone a menu costs a tap and a button costs the header's height |
-| the deadline and its ⚠ | the first line under the header | still the first thing read, but it scrolls away |
-| the lifecycle ⚠ | beside the stepper | the steps it is about: retur, selesai, lost |
-
-The desktop header is unchanged.
+➡ **Moved** to [frontend/context_decision.md](../../business/frontend/context_decision.md#the-phone-header-is-one-row) — a rule for every screen (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
 
 ## a-phone-reads-each-line-as-a-block
 
-> Owner, in chat (2026-09-30): *"product itemsnya kepotong-potong karena terlalu sempit"*.
-
-Below `md` the item table becomes **one block per line**: the marketplace's title, then our product,
-then `harga beli × qty · team` on the left and the line total on the right. At 390px the five-column
-table clamped both names to a word each, and qty and the line total sat off the edge. The ⚠ for the
-picture and the marketplace title move to the section title, since there is no column header on a phone.
-
-```mermaid
-flowchart TB
-  L1["Scraped · MP-8841-1 — the marketplace's title, full width"]
-  L2["picture · our product name · SKU"]
-  L3["Rp 48.000 × 2 · Toko Melati  ………  Rp 96.000"]
-  L1 --> L2 --> L3
-```
+➡ **Moved** to [frontend/context_decision.md](../../business/frontend/context_decision.md#a-phone-reads-each-line-as-a-block) — a rule for every screen (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
 
 ## the-draft-list-is-the-drafts-tab
 
@@ -830,56 +697,11 @@ flowchart LR
 
 ## a-summary-card-is-at-most-a-fifth
 
-> Owner, in chat (2026-09-30): *"jadi strech, gini aja, di layar 2k maksimal widthnya 1/5, dan untuk ukuran di
-> bawahnya kamu sesuaikan"*.
-
-`SummaryStrip` (in `features/orders/SummaryCard.tsx`) replaces the bare grid on all three strips — the order
-list's piles, its measure cards, and the drafts page's cards.
-
-| screen | widest a card may be |
-| --- | --- |
-| ≥ 1536px (`2xl`, including 2K) | 1/5 |
-| ≥ 1024px (`lg`) | 1/4 |
-| ≥ 768px (`md`) | 1/3 |
-| phone | 1/2 |
-
-```mermaid
-flowchart LR
-  N{"cards vs cap"} -->|"more cards than the cap"| F["auto-fit of 8.5rem — fill the row, already under the cap"]
-  N -->|"as many or fewer"| C["exactly cap columns — each card is the cap, the rest of the row empty"]
-```
-
-Measured at 2560px: three draft cards at 0.196 of the strip each, seven measure cards at 0.139, the piles
-filling the row. At 1440px the draft cards are 1/4. The count decides the layout because CSS grid alone
-cannot say *fill the row, but at most 1/5*: `auto-fit` stretched few cards, `auto-fill` shrank many.
+➡ **Moved** to [frontend/context_decision.md](../../business/frontend/context_decision.md#a-summary-card-is-at-most-a-fifth) — a rule for every screen (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
 
 ## a-phone-filters-from-a-sheet
 
-> Owner, in chat (2026-09-30): *"bentuk filter di order list cukup berantakan pada tampilan mobile"*.
-
-Below `md`, `FilterBar` draws one row — the search and a **Filter** button — and puts every other control in a
-bottom sheet, each at the full width. Desktop is unchanged.
-
-```mermaid
-flowchart LR
-  R["row: search · Filter (count)"] -->|"tap Filter"| S["bottom sheet — warehouse, creator, marketplace, shop, dates, full width"]
-  S -->|"Done"| R
-  S -->|"Clear Filters"| R
-```
-
-| | before | after |
-| --- | --- | --- |
-| phone | six controls in six ragged rows (15rem, 13rem, `auto`), ~280px before the tabs | one 36px row |
-| Filter button | — | counts what is narrowing the list (search included) |
-| Clear | inline, while filtering | in the sheet's footer, beside Done |
-| applying | live | still live — Done only closes the sheet, it is not an Apply |
-
-- The search stays out of the sheet because it is the one control used on every visit.
-- `FilterBar` finds the search by type, so the order list writes one set of children for both layouts, and a
-  `FilterField` becomes a full-width row inside the sheet (its control too — the date button has a minimum
-  width of its own).
-- A JS breakpoint, never CSS, so every control mounts once.
-- The story runner's canvas is phone-width, so the list's filter stories open the sheet first.
+➡ **Moved** to [frontend/context_decision.md](../../business/frontend/context_decision.md#a-phone-filters-from-a-sheet) — a rule for every screen (owner, 2026-10-02: screen decisions live in `docs/business/frontend/`).
 
 ## the-draft-keeps-its-own-page
 

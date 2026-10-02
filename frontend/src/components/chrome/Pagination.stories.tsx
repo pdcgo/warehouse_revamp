@@ -46,19 +46,21 @@ export const NextPageEmitsTheNewPage: Story = {
   },
 };
 
-// Dropping the pager in unconditionally is only safe because it renders NOTHING when everything
-// fits on one page — every list in the app relies on that, so it is a test rather than a comment.
-export const HiddenWhenEverythingFitsOnOnePage: Story = {
+// THE PAGER IS ALWAYS ON SCREEN (owner, `the-pager-is-always-on-screen`) — on one page too, where both
+// arrows are off. It used to vanish, which made a short list look like a broken one.
+export const ShownEvenWhenEverythingFitsOnOnePage: Story = {
   args: { count: 4, pageSize: 10 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.queryByTestId("pagination-bar")).toBeNull();
+    await expect(canvas.getByTestId("pagination-bar")).toBeInTheDocument();
+    await expect(canvas.getByTestId("page-prev")).toBeDisabled();
+    await expect(canvas.getByTestId("page-next")).toBeDisabled();
   },
 };
 
-// …but NOT when there is a size picker: the control that changes the page size has to stay reachable
-// even on a short list, or a 10-row default can never be widened.
+// …and with a size picker the per-page choice is there on a short list too, or a 10-row default could
+// never be widened.
 export const VisibleOnOnePageWhenItHasASizePicker: Story = {
   args: {
     count: 4,
@@ -74,21 +76,9 @@ export const VisibleOnOnePageWhenItHasASizePicker: Story = {
   },
 };
 
-// `alwaysShow` — a list whose owner decided the pager is part of the page keeps it on ONE page…
-export const AlwaysShownEvenOnOnePage: Story = {
-  args: { count: 4, pageSize: 10, alwaysShow: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await expect(canvas.getByTestId("pagination-bar")).toBeInTheDocument();
-    await expect(canvas.getByTestId("page-prev")).toBeDisabled();
-    await expect(canvas.getByTestId("page-next")).toBeDisabled();
-  },
-};
-
 // …and on an EMPTY list, where it reads as one page rather than "1 of 0".
-export const AlwaysShownOnAnEmptyList: Story = {
-  args: { count: 0, pageSize: 10, alwaysShow: true },
+export const ShownOnAnEmptyList: Story = {
+  args: { count: 0, pageSize: 10 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

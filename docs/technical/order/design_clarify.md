@@ -13,7 +13,7 @@ from a map instead of from this conversation.
 ## Proposed Design
 
 > **The SUMMARY strip is what this section designs.** The table's own columns are settled in
-> [one-context-per-column-and-never-three-lines](design_decision.md#one-context-per-column-and-never-three-lines),
+> [one-context-per-column-and-never-three-lines](../../business/frontend/context_decision.md#one-context-per-column-and-never-three-lines),
 > and the status vocabulary in
 > [the-warehouse-steps-are-not-order-statuses](../../business/order/context_decision.md#the-warehouse-steps-are-not-order-statuses).
 > Neither is repeated here.
@@ -293,7 +293,7 @@ that reading fell with it:
 | --- | --- | --- |
 | [the-row-shows-total-beli-and-total-mp](design_decision.md#the-row-shows-total-beli-and-total-mp) | one total: `subtotal` + fee | **two**: beli (`cogs` + fee) and MP |
 | [the-margin-is-mp-minus-total-beli](design_decision.md#the-margin-is-mp-minus-total-beli) | `subtotal − cogs`, % of `subtotal` | `MP − beli`, % of MP |
-| [one-context-per-column-and-never-three-lines](design_decision.md#one-context-per-column-and-never-three-lines) | six paired cells | one context per column, never three lines |
+| [one-context-per-column-and-never-three-lines](../../business/frontend/context_decision.md#one-context-per-column-and-never-three-lines) | six paired cells | one context per column, never three lines |
 
 **→ Recommend:** when an instruction names a figure from the old system, **ask which fields it is
 made of before building on it** — the words *total*, *beli* and *margin* each name two different sums

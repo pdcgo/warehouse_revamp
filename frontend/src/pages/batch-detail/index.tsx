@@ -431,19 +431,18 @@ export function BatchDetailPage() {
                 emptyText={t("batchDetail.noHistory")}
                 striped
               />
-              {historyMovements.length === 0 ? null : (
-                <Pagination
-                  page={historyPage}
-                  pageSize={historyPageSize}
-                  count={historyTotal}
-                  onPageChange={setHistoryPage}
-                  pageSizeOptions={PAGE_SIZE_OPTIONS}
-                  onPageSizeChange={(size) => {
-                    setHistoryPageSize(size);
-                    setHistoryPage(1);
-                  }}
-                />
-              )}
+              {/* Always on screen, an empty history included (`the-pager-is-always-on-screen`). */}
+              <Pagination
+                page={historyPage}
+                pageSize={historyPageSize}
+                count={historyTotal}
+                onPageChange={setHistoryPage}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onPageSizeChange={(size) => {
+                  setHistoryPageSize(size);
+                  setHistoryPage(1);
+                }}
+              />
             </Tabs.Content>
           </Tabs.Root>
         </Card.Body>

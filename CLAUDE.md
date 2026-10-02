@@ -947,7 +947,7 @@ More UI rules:
   (shop and warehouse were paired and that was wrong). A row's status sits UNDER its reference, so the
   badges line up down the page. The cells are
   [OrderRowCells](frontend/src/features/orders/OrderRowCells.tsx) — reuse them, and see
-  [one-context-per-column-and-never-three-lines](docs/technical/order/design_decision.md#one-context-per-column-and-never-three-lines).
+  [one-context-per-column-and-never-three-lines](docs/business/frontend/context_decision.md#one-context-per-column-and-never-three-lines).
 - **A phone gets its own arrangement, not the desktop's squeezed** (owner) — three rules, each a JS
   breakpoint (never CSS hiding):
   - a **sticky header is ONE row** — back, the title, the status, `⋯`. Actions fold into `⋯` (even a
@@ -956,9 +956,9 @@ More UI rules:
     (`Rp 48.000 × 2 · Toko Melati … Rp 96.000`), never five clamped columns in a scroll box;
   - a **filter strip is the search plus a Filter button** opening a bottom sheet of full-width controls
     — [`FilterBar`](frontend/src/components/chrome/FilterBar.tsx) does it for you.
-  See [the-phone-header-is-one-row](docs/technical/order/design_decision.md#the-phone-header-is-one-row),
-  [a-phone-reads-each-line-as-a-block](docs/technical/order/design_decision.md#a-phone-reads-each-line-as-a-block),
-  [a-phone-filters-from-a-sheet](docs/technical/order/design_decision.md#a-phone-filters-from-a-sheet).
+  See [the-phone-header-is-one-row](docs/business/frontend/context_decision.md#the-phone-header-is-one-row),
+  [a-phone-reads-each-line-as-a-block](docs/business/frontend/context_decision.md#a-phone-reads-each-line-as-a-block),
+  [a-phone-filters-from-a-sheet](docs/business/frontend/context_decision.md#a-phone-filters-from-a-sheet).
 - **Never a card inside a card** (owner). When a panel that draws its own card is placed inside a
   section that is already one, it renders **bare** — no border, no second title, its actions moved to
   its foot. [`OrderLedgerPanel`](frontend/src/pages/order-settlement/components/OrderLedgerPanel.tsx)'s

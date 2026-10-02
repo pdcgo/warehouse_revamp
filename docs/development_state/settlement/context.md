@@ -107,8 +107,8 @@ Q1, the withdrawal, answered 2026-09-29) · [analytic_context_clarify](../../bus
 ## The list, reworked (2026-10-02)
 
 The owner went through `/settlement` one decision at a time; each is in
-[context_decision.md](../../business/settlement/context_decision.md) from
-[the-settlement-list-always-shows-its-pager](../../business/settlement/context_decision.md#the-settlement-list-always-shows-its-pager) on.
+[frontend/order_settlement_decision.md](../../business/frontend/order_settlement_decision.md), and the rules every
+screen follows in [frontend/context_decision.md](../../business/frontend/context_decision.md).
 
 | | now |
 | --- | --- |

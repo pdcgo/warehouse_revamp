@@ -37,20 +37,15 @@ export interface PaginationProps {
    * restates what the reader can already see.
    */
   showRange?: boolean;
-  /**
-   * Never hide — not on one page, not on an empty list (an empty list reads "1 of 1", both arrows off).
-   *
-   * Opt-in, for a list whose owner decided the pager is part of the page rather than a control that
-   * appears once there is something to page (the settlement list, `the-settlement-list-always-shows-its-pager`).
-   * Every other list keeps the default: it hides when everything fits.
-   */
-  alwaysShow?: boolean;
 }
 
 // Pagination is the ONE shared pager for the whole app (#96/#99): right-aligned, a COMPACT previous /
 // page-text / next (not numbered pages), optionally preceded by a page-size selector (Chakra's
-// composable Select). Without a size selector it renders nothing when everything fits on one page, so
-// callers can drop it in unconditionally. Icons are lucide via <Icon> (the app's icon system).
+// composable Select). Icons are lucide via <Icon> (the app's icon system).
+//
+// ⚠ IT IS ALWAYS ON SCREEN — on one page and on an empty list, which read "1 of 1" with both arrows off
+// (owner: `the-pager-is-always-on-screen`). It used to vanish when everything fitted, so a short list and
+// a broken one looked alike, and the per-page choice disappeared exactly when somebody wanted fewer rows.
 export function Pagination({
   count,
   pageSize,
@@ -59,7 +54,6 @@ export function Pagination({
   pageSizeOptions,
   onPageSizeChange,
   showRange,
-  alwaysShow,
 }: PaginationProps) {
   const { t } = useTranslation();
   const showSizePicker = !!(pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange);
@@ -71,12 +65,6 @@ export function Pagination({
       }),
     [pageSizeOptions],
   );
-
-  // Nothing to show for an empty list; and with no size picker, hide when it all fits on one page —
-  // unless the caller asked for the pager to stay.
-  if (!alwaysShow && (count === 0 || (count <= pageSize && !showSizePicker))) {
-    return null;
-  }
 
   // An empty list still has ONE page — the one you are looking at. Chakra counts zero pages for zero
   // items and would read "1 of 0".

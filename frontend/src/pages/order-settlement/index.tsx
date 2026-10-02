@@ -182,7 +182,6 @@ export function OrderSettlementPage({
           onPageChange={paging.onPageChange}
           pageSizeOptions={paging.pageSizeOptions}
           onPageSizeChange={paging.onPageSizeChange}
-          alwaysShow
         />
       )}
     </Stack>
