@@ -17,13 +17,13 @@
 import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
 
 import { CategoryService } from "../src/gen/warehouse/category/v1/category_pb";
-import { DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
+import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
 import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
-import { RegionService } from "../src/gen/warehouse/region/v1/region_pb";
+import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityPaymentService,
   LiabilityService,
@@ -92,7 +92,9 @@ import {
   settlementReportGroups,
   expenseDays,
   orderDetailFor,
+  orderDraftDetailFor,
   orderDrafts,
+  pickLocationsFor,
   orders,
   productCosts,
   products,
@@ -459,6 +461,69 @@ function stubImport(
   })();
 }
 
+// ── UPLOADS ──────────────────────────────────────────────────────────────────────────────────────
+//
+// document_service's two-phase upload — RequestUpload → PUT the bytes to a signed URL → ConfirmUpload
+// — end to end, IN-PROCESS. Every attachment in the app goes this way (an order's receipt, a product
+// image, a payment proof, a profile or team picture), and without it every one of them ended in a
+// toast reading "[unimplemented] … RequestUpload is not implemented".
+//
+// The middle step is a real `fetch` PUT, which a router transport never sees, so `stubUploads()` (run
+// per story from preview.tsx) wraps `window.fetch` for ONE made-up origin and lets everything else
+// through. The PUT's body becomes an object URL, so a public image (product, profile, team) comes back
+// showing the very picture that was picked, and a private one (receipt, proof) opens it.
+const STUB_UPLOAD_ORIGIN = "https://storybook-upload.invalid";
+
+interface PendingUpload {
+  teamId: bigint;
+  resourceType: DocumentResourceType;
+  filename: string;
+  mimeType: string;
+  sizeBytes: bigint;
+  // Set by the PUT; a confirm without one is an upload whose bytes never arrived.
+  objectUrl?: string;
+}
+
+const pendingUploads = new Map<string, PendingUpload>();
+// documentId → the object URL its bytes live at, for GetDownloadUrl.
+const uploadedDocs = new Map<string, string>();
+let uploadSeq = 0;
+
+// The resource types a real Document carries a PUBLIC url for (document.proto). A receipt or a proof is
+// private: it has no public url and is opened through GetDownloadUrl instead.
+const PUBLIC_DOCUMENTS = new Set([DocumentResourceType.PROFILE_PICTURE, DocumentResourceType.PRODUCT_IMAGE]);
+
+export function stubUploads() {
+  for (const url of [...uploadedDocs.values(), ...[...pendingUploads.values()].map((p) => p.objectUrl)]) {
+    if (url) URL.revokeObjectURL(url);
+  }
+  pendingUploads.clear();
+  uploadedDocs.clear();
+  uploadSeq = 0;
+
+  // Wrapped ONCE and kept: re-wrapping per story would nest a wrapper around a wrapper each time.
+  const w = window as unknown as { __storybookRealFetch?: typeof fetch };
+  if (w.__storybookRealFetch) return;
+
+  const real = window.fetch.bind(window);
+  w.__storybookRealFetch = real;
+
+  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.startsWith(STUB_UPLOAD_ORIGIN + "/")) {
+      return real(input, init);
+    }
+
+    const pending = pendingUploads.get(url.slice(STUB_UPLOAD_ORIGIN.length + 1));
+    if (!pending) {
+      return new Response(null, { status: 404, statusText: "Unknown upload token" });
+    }
+
+    pending.objectUrl = URL.createObjectURL(init?.body instanceof Blob ? init.body : new Blob([]));
+    return new Response(null, { status: 200 });
+  }) as typeof fetch;
+}
+
 // ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
 function byIds<C extends string, R extends Row>(slice: C, rows: R[], wanted: bigint[]) {
   const items: Record<string, { items: { d: { case: C; value: { mapData: Record<string, R> } } }[] }> = {};
@@ -522,6 +587,14 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
 
+// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
+function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
+  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
+  if (!order) throw new ConnectError("order not found", Code.NotFound);
+
+  return order;
+}
+
 // ── The daily statement, from three services at once ────────────────────────────────────────────
 //
 // The statement is the one screen here that subtracts one service from another (revenue or
@@ -567,6 +640,10 @@ export const transport = createRouterTransport(({ service }) => {
             // then narrows a ProductDiscover by the ids — so a stub that ignored the filter would
             // hand back every team and make the Priority tab indistinguishable from Other.
             (!req.filter?.priorityProductOnly || t.priorityProduct) &&
+            // THE TYPE FILTER, as team_service applies it (`type = ?` when set). A stub that ignored it
+            // handed the order form's WAREHOUSE picker every selling team too — a bug that existed only
+            // here, and so read as a real one to anybody reviewing the form in Storybook.
+            (!req.filter?.teamType || t.type === req.filter.teamType) &&
             match(req.filter?.q, t.name, t.teamCode),
         ),
       ),
@@ -724,6 +801,41 @@ export const transport = createRouterTransport(({ service }) => {
     regionSearchByKodePos: (req) => ({
       results: regions.filter((r) => r.kodePos.startsWith(req.kodePos)).slice(0, req.limit || 10),
     }),
+    // The name typeahead, narrowed to one level — "find the kecamatan called X".
+    //
+    // ⚠ A HIT STOPS AT ITS OWN LEVEL. The real service returns an ancestry filled from provinsi DOWN
+    // TO the hit and empty below it, so a kecamatan hit carries no desa and no kode pos — which is
+    // exactly the case AddressPicker's derivation exists for. A stub that helpfully returned the
+    // desa's postcode would make that code path untestable and the picker look like it worked.
+    regionSearch: (req) => {
+      const q = req.q.toLowerCase();
+      const level = req.level;
+
+      const matches = regions.filter((r) =>
+        level === RegionLevel.KECAMATAN
+          ? r.kecamatanName.toLowerCase().includes(q)
+          : level === RegionLevel.KABUPATEN
+            ? r.kabupatenName.toLowerCase().includes(q)
+            : level === RegionLevel.PROVINSI
+              ? r.provinsiName.toLowerCase().includes(q)
+              : r.desaName.toLowerCase().includes(q),
+      );
+
+      if (level !== RegionLevel.KECAMATAN) {
+        return { results: matches.slice(0, req.limit || 10) };
+      }
+
+      // One row per kecamatan: the fixtures hold an ancestry per DESA, and two desa of the same
+      // kecamatan would otherwise come back as two identical-looking hits.
+      const byKecamatan = new Map<string, (typeof regions)[number]>();
+      for (const r of matches) {
+        if (!byKecamatan.has(r.kecamatanCode)) {
+          byKecamatan.set(r.kecamatanCode, { ...r, desaCode: "", desaName: "", kodePos: "" });
+        }
+      }
+
+      return { results: [...byKecamatan.values()].slice(0, req.limit || 10) };
+    },
     // Hydration: a consumer may hold a saved address as CODES ONLY, and one resolve back-fills every
     // label. Matching on the DESA code is enough for the fixtures, which is the deepest level.
     regionResolve: (req) => ({
@@ -891,6 +1003,14 @@ export const transport = createRouterTransport(({ service }) => {
         ]),
       ),
     }),
+
+    // The shelves an order's goods were drawn from, keyed by the ref selling_service recorded the draw
+    // under (`order:<id>`). A ref this stub does not recognise answers EMPTY, as the server would —
+    // "nothing was drawn" is a real answer, not an error.
+    stockPickLocations: (req) => {
+      const match = /^order:(\d+)$/.exec(req.ref);
+      return { locations: match ? pickLocationsFor(BigInt(match[1]!)) : [] };
+    },
   });
 
   service(OrderService, {
@@ -934,6 +1054,17 @@ export const transport = createRouterTransport(({ service }) => {
       return { order };
     },
 
+    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
+    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
+    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    //
+    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
+    // selling team pressing these would be refused by the policy long before the handler.
+    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
+    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
+
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
     // about to click. Every OTHER filter does apply, and that is the same rule from the other side —
@@ -969,12 +1100,19 @@ export const transport = createRouterTransport(({ service }) => {
     // A draft is team-scoped AND personal, and — unlike an order — it has only ONE side: it belongs
     // to the team that typed it. So this is a plain `teamId` match, and a warehouse's list is empty
     // because a warehouse never types one.
+    // Newest first unless ASC is asked for — the server's `id DESC` default, which the drafts screen's
+    // "oldest" card reverses to read the first draft ever written.
     orderDraftList: (req) =>
       pagedColumnar(
         "orderDraft",
         orderDrafts
           .filter((d) => d.teamId === req.teamId)
-          .filter((d) => !req.filter?.source || d.source === req.filter.source),
+          .filter((d) => !req.filter?.source || d.source === req.filter.source)
+          .slice()
+          .sort((a, b) => {
+            const asc = req.sort?.sortType === CommonSortType.ASC;
+            return (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) * (asc ? 1 : -1);
+          }),
         req.page,
       ),
 
@@ -997,6 +1135,28 @@ export const transport = createRouterTransport(({ service }) => {
       },
     }),
     orderDraftUpdate: (req) => ({ draft: { id: req.draftId } }),
+
+    // ONE side, like the list: a draft another team typed is NotFound, never "forbidden".
+    orderDraftDetail: (req) => {
+      const draft = orderDraftDetailFor(req.draftId);
+      if (!draft || draft.teamId !== req.teamId) {
+        throw new ConnectError("draft not found", Code.NotFound);
+      }
+
+      return { draft };
+    },
+
+    // Counts only the ids that are this team's — an id that is not the caller's is SKIPPED, not a
+    // failure (order_draft.proto), so `deleted` can be smaller than what was asked. Stateless, like the
+    // fulfilment steps: the list keeps its rows, and the story asserts on the toast.
+    orderDraftDelete: (req) => ({
+      deleted: req.draftIds.filter((id) => orderDrafts.some((d) => d.id === id && d.teamId === req.teamId))
+        .length,
+    }),
+
+    // The draft becomes an order with a new id — the page navigates there, which is what a story
+    // asserts on.
+    orderDraftPromote: () => ({ order: { id: 902n } }),
   });
 
   service(LiabilityService, {
@@ -1103,11 +1263,56 @@ export const transport = createRouterTransport(({ service }) => {
     },
   });
 
-  // Proof is uploaded by the PAYER and read by the CREDITOR (a-payment-must-carry-proof). The stub
-  // only needs the READ half: `useProofUpload` PUTs bytes to a signed URL, which no in-process fake
-  // can stand in for, so the upload path is exercised by e2e rather than here.
+  // UPLOADS — see `stubUploads()` above for the PUT in the middle. The e2e still exercise the real
+  // storage path; this only lets a story (and the person reviewing it) actually attach a file.
   service(DocumentService, {
-    getDownloadUrl: (req) => ({ url: `https://example.invalid/proof/${req.documentId}` }),
+    requestUpload: (req) => {
+      const token = `upload-${++uploadSeq}`;
+      pendingUploads.set(token, {
+        teamId: req.teamId,
+        resourceType: req.resourceType,
+        filename: req.filename,
+        mimeType: req.contentType,
+        sizeBytes: req.sizeBytes,
+      });
+
+      return {
+        uploadUrl: `${STUB_UPLOAD_ORIGIN}/${token}`,
+        method: "PUT",
+        headers: { "Content-Type": req.contentType },
+        uploadToken: token,
+        expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 15 * 60),
+      };
+    },
+    confirmUpload: (req) => {
+      const pending = pendingUploads.get(req.uploadToken);
+      if (!pending?.objectUrl) {
+        throw new ConnectError("upload not found, or its bytes were never PUT", Code.NotFound);
+      }
+      pendingUploads.delete(req.uploadToken);
+
+      const id = `stub-${req.uploadToken}`;
+      uploadedDocs.set(id, pending.objectUrl);
+      const publicUrl = PUBLIC_DOCUMENTS.has(pending.resourceType) ? pending.objectUrl : "";
+
+      return {
+        document: {
+          id,
+          teamId: pending.teamId,
+          resourceType: pending.resourceType,
+          filename: pending.filename,
+          mimeType: pending.mimeType,
+          sizeBytes: pending.sizeBytes,
+          publicUrl,
+          thumbnailUrl: publicUrl,
+        },
+      };
+    },
+    // A document uploaded in this story opens its own bytes; a fixture id (a proof the fixtures name)
+    // gets a placeholder, as before.
+    getDownloadUrl: (req) => ({
+      url: uploadedDocs.get(req.documentId) ?? `https://example.invalid/proof/${req.documentId}`,
+    }),
   });
 
   service(LiabilityTermsService, {

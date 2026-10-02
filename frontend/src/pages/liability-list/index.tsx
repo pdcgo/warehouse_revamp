@@ -38,8 +38,8 @@ const PAGE_SIZE = 20;
 // How the age of the oldest unsettled entry reads — the actionable signal (#221). The colour escalates
 // with age; a manager chases the reddening rows first.
 function ageColor(days: number): string {
-  if (days >= 30) return "red.fg";
-  if (days >= 14) return "orange.fg";
+  if (days >= 30) return "error.fg";
+  if (days >= 14) return "warning.fg";
   return "fg.subtle";
 }
 
@@ -185,13 +185,13 @@ export function LiabilityListPage() {
       <SimpleGrid columns={{ base: 2, md: 4 }} gap="card">
         <Stat.Root>
           <Stat.Label>{t("liability.totalPayable")}</Stat.Label>
-          <Stat.ValueText color="orange.fg" data-testid="liability-total-payable">
+          <Stat.ValueText color="warning.fg" data-testid="liability-total-payable">
             {formatRupiah(totalPayable)}
           </Stat.ValueText>
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("liability.totalReceivable")}</Stat.Label>
-          <Stat.ValueText color="green.fg">{formatRupiah(totalReceivable)}</Stat.ValueText>
+          <Stat.ValueText color="success.fg">{formatRupiah(totalReceivable)}</Stat.ValueText>
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("liability.awaitingTile")}</Stat.Label>
@@ -275,7 +275,7 @@ export function LiabilityListPage() {
       {query.isPending ? (
         <Spinner colorPalette="brand" />
       ) : query.isError ? (
-        <Text color="red.fg" data-testid="liability-error">
+        <Text color="error.fg" data-testid="liability-error">
           {rpcError(query.error)}
         </Text>
       ) : (
@@ -334,10 +334,10 @@ export function LiabilityListPage() {
                       )}
                     </Table.Cell>
                     {/* Direction is TWO columns, never a sign (#185). */}
-                    <Table.Cell textAlign="end" color="orange.fg">
+                    <Table.Cell textAlign="end" color="warning.fg">
                       {p.balance < 0n ? formatRupiah(-p.balance) : "—"}
                     </Table.Cell>
-                    <Table.Cell textAlign="end" color="green.fg">
+                    <Table.Cell textAlign="end" color="success.fg">
                       {p.balance > 0n ? formatRupiah(p.balance) : "—"}
                     </Table.Cell>
                     <Table.Cell>
@@ -358,7 +358,7 @@ export function LiabilityListPage() {
                         )}
                         {nearLimit >= WARN_AT && (
                           <Badge
-                            colorPalette={nearLimit >= 1 ? "red" : "orange"}
+                            colorPalette={nearLimit >= 1 ? "error" : "warning"}
                             data-testid={`liability-near-limit-${p.counterpartyId}`}
                           >
                             {t("liability.nearLimit", { percent: Math.round(nearLimit * 100) })}

@@ -81,7 +81,7 @@ export function TeamTable({
     <RefreshOverlay busy={refreshing}>
       <Stack gap="section">
         {error && (
-          <Text color="red.fg" data-testid="teams-error">
+          <Text color="error.fg" data-testid="teams-error">
             {error}
           </Text>
         )}

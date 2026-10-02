@@ -127,7 +127,7 @@ export function DiscoverProductsPage() {
       </HStack>
 
       {error && (
-        <Text color="red.fg" data-testid="discover-error">
+        <Text color="error.fg" data-testid="discover-error">
           {error}
         </Text>
       )}

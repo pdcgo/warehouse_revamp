@@ -117,7 +117,7 @@ export function BatchesPage() {
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("batches.statExpiring")}</Stat.Label>
-          <Stat.ValueText color={(res?.expiringSoonCount ?? 0n) > 0n ? "orange.fg" : undefined}>
+          <Stat.ValueText color={(res?.expiringSoonCount ?? 0n) > 0n ? "warning.fg" : undefined}>
             {(res?.expiringSoonCount ?? 0n).toString()}
           </Stat.ValueText>
         </Stat.Root>
@@ -175,7 +175,7 @@ export function BatchesPage() {
       {query.isPending ? (
         <Spinner colorPalette="brand" />
       ) : query.isError ? (
-        <Text color="red.fg" data-testid="batches-error">
+        <Text color="error.fg" data-testid="batches-error">
           {rpcError(query.error)}
         </Text>
       ) : (
@@ -247,7 +247,7 @@ export function BatchesPage() {
                   </Table.Cell>
                   <Table.Cell>
                     {b.expiresOnUnix > 0n ? (
-                      <Text color={isExpiringSoon(b.expiresOnUnix) ? "orange.fg" : undefined}>
+                      <Text color={isExpiringSoon(b.expiresOnUnix) ? "warning.fg" : undefined}>
                         {formatDateUnix(b.expiresOnUnix)}
                       </Text>
                     ) : (

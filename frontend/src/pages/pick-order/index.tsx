@@ -153,7 +153,7 @@ export function PickOrderPage() {
     return (
       <Stack gap="section">
         {back}
-        <Text color="red.fg" data-testid="pick-order-error">
+        <Text color="error.fg" data-testid="pick-order-error">
           {error || t("picking.detail.notFound")}
         </Text>
       </Stack>
@@ -222,11 +222,11 @@ export function PickOrderPage() {
           Above the pick list on purpose: an instruction about how to pack has to be read before the
           walking starts, not found underneath it. `pre-wrap` because it was typed as lines. */}
       {order.note !== "" && (
-        <Card.Root borderColor="orange.emphasized" borderWidth="1px">
+        <Card.Root borderColor="warning.emphasized" borderWidth="1px">
           <Card.Body>
             <Stack gap="card">
               <Flex align="center" gap="2">
-                <Icon as={StickyNote} boxSize="4" color="orange.fg" />
+                <Icon as={StickyNote} boxSize="4" color="warning.fg" />
                 <Text fontSize="sm" fontWeight="medium" color="fg.muted">
                   {t("orders.note")}
                 </Text>

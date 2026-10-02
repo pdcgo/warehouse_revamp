@@ -126,7 +126,7 @@ export function PickQueuePage() {
           <RefreshOverlay busy={refreshing}>
             <Stack gap="card">
               {error && (
-                <Text color="red.fg" data-testid="pick-queue-error">
+                <Text color="error.fg" data-testid="pick-queue-error">
                   {error}
                 </Text>
               )}

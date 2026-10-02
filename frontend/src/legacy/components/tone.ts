@@ -27,16 +27,17 @@ export const TONES: Tone[] = [
   "error",
 ];
 
-// tone → Chakra colorPalette. "active" maps to `brand`, the app accent defined in theme.ts, so the
-// accent stays a single decision even though the ramp itself is still a placeholder identity.
+// tone → Chakra colorPalette. Each tone has a ROLE palette of the same name in theme.ts (THE PALETTE),
+// where the owner's Tailwind colour is chosen — "active" is `brand` (rose), "plain" is `gray`. So this
+// map names roles and never hues, and a colour change is made in theme.ts alone.
 const TONE_PALETTE: Record<Tone, string> = {
   active: "brand",
   plain: "gray",
-  primary: "purple",
-  info: "blue",
-  success: "green",
-  warning: "orange",
-  error: "red",
+  primary: "primary",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  error: "error",
 };
 
 // palette resolves a tone to the Chakra colorPalette to hand a component.

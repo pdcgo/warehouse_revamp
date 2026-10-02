@@ -142,7 +142,7 @@ export function ShopUsersSection({
       </HStack>
 
       {error && (
-        <Text color="red.fg" data-testid="shop-users-error">
+        <Text color="error.fg" data-testid="shop-users-error">
           {error}
         </Text>
       )}
@@ -188,7 +188,7 @@ export function ShopUsersSection({
                     <IconButton
                       size="xs"
                       variant="ghost"
-                      colorPalette="red"
+                      colorPalette="error"
                       aria-label={`Remove ${label}`}
                       data-testid={`remove-shop-user-${label}`}
                       onClick={() => setRemoving({ id, label })}

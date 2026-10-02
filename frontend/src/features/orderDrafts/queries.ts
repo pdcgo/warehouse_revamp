@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderDraftClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery } from "../../api/queryClient";
 import { draftsFromList, orderDraftListRowData } from "./adapt";
+import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import { OrderDraftRowSort } from "../../gen/warehouse/selling/v1/order_draft_pb";
 
 // The draft screens' reads and writes (#195/#196).
 //
@@ -16,7 +18,10 @@ export function useOrderDrafts(args: {
 }) {
   const { teamId, page, pageSize, source = "" } = args;
 
+  // `listQuery`: a page turn refines the same question, so the previous rows stay on screen under the
+  // caller's RefreshOverlay instead of the table tearing down (CLAUDE.md, rule 10).
   return useQuery({
+    ...listQuery,
     queryKey: key.orderDrafts(teamId, { page, pageSize, source }),
     enabled: teamId !== undefined,
     queryFn: async () => {
@@ -31,6 +36,31 @@ export function useOrderDrafts(args: {
         drafts: draftsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
+    },
+  });
+}
+
+// THE OLDEST DRAFT — one row, sorted by id ascending. Ids are issued in order, so the first one is the
+// draft that has waited longest. It is a real figure off the existing list RPC, which is why the draft
+// screen's "oldest" card needs no aggregate the server does not have.
+//
+// Keyed under `orderDrafts`, so a delete that invalidates the list refreshes this with it.
+export function useOldestOrderDraft(teamId: bigint | undefined) {
+  return useQuery({
+    queryKey: key.orderDrafts(teamId, { oldest: "1" }),
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await orderDraftClient.orderDraftList({
+        teamId: teamId!,
+        sort: {
+          sortType: CommonSortType.ASC,
+          s: { case: "orderDraft", value: OrderDraftRowSort.ID },
+        },
+        dataRequest: orderDraftListRowData(),
+        page: { page: 1, limit: 1 },
+      });
+
+      return draftsFromList(res.items, res.ids)[0] ?? null;
     },
   });
 }

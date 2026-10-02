@@ -84,6 +84,20 @@ export const SearchesByLabel: Story = {
   },
 };
 
+// ⚠ CLEARING EMITS Role.UNSPECIFIED — it does not do nothing (ShippingSelect's #131 lesson). The
+// dialogs that use this picker disable their submit on UNSPECIFIED, so a cleared role is a form that
+// cannot be sent rather than one that quietly sends the role the field no longer shows.
+export const ClearingEmitsUnspecified: Story = {
+  args: { value: Role.WAREHOUSE_ADMIN },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByRole("button", { name: /clear/i }));
+
+    await expect(args.onChange).toHaveBeenCalledWith(Role.UNSPECIFIED);
+  },
+};
+
 export const Interactive: Story = {
   render: (args) => {
     const [value, setValue] = useState<Role | undefined>(undefined);

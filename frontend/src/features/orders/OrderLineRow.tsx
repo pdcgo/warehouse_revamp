@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, Badge, Flex, Icon, IconButton, Input, Stack, Table, Text } from "@chakra-ui/react";
+import { Avatar, Badge, Box, Flex, Icon, IconButton, Stack, Table, Text } from "@chakra-ui/react";
 import { Package, Trash2 } from "lucide-react";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 import { formatRupiah } from "../../lib/money";
 import type { Costs, LineDraft, LineStock } from "./lines";
 import { costKnown, lineTotal, unitCost } from "./lines";
@@ -101,11 +102,11 @@ export function OrderLineRow(props: OrderLineRowProps) {
       <Table.Cell textAlign="end">
         {stock.kind === "known" ? (
           <Stack gap="0" align="end">
-            <Text fontSize="sm" color={short ? "red.fg" : undefined} data-testid={`${idPrefix}-stock-${index}`}>
+            <Text fontSize="sm" color={short ? "error.fg" : undefined} data-testid={`${idPrefix}-stock-${index}`}>
               {stock.ready.toString()}
             </Text>
             {short && (
-              <Badge size="xs" colorPalette="red">
+              <Badge size="xs" colorPalette="error">
                 {t("orders.lineShortBadge", { wanted: stock.wanted.toString() })}
               </Badge>
             )}
@@ -118,17 +119,18 @@ export function OrderLineRow(props: OrderLineRowProps) {
       </Table.Cell>
 
       <Table.Cell textAlign="end">
-        <Input
-          type="number"
-          min="1"
-          size="xs"
-          w="16"
-          textAlign="end"
-          value={line.quantity}
-          borderColor={short ? "red.solid" : undefined}
-          data-testid={`${idPrefix}-qty-${index}`}
-          onChange={(e) => onPatch({ quantity: e.target.value })}
-        />
+        {/* THE SHARED QUANTITY FIELD — ± steppers that are ours rather than the browser's, and a
+            value that cannot be changed by scrolling past it. See QuantityInput. */}
+        <Box borderRadius="l2" borderWidth={short ? "1px" : undefined} borderColor={short ? "error.solid" : undefined}>
+          <QuantityInput
+            value={line.quantity}
+            min={1}
+            width="20"
+            aria-label={t("orders.qty")}
+            testId={`${idPrefix}-qty-${index}`}
+            onChange={(quantity) => onPatch({ quantity })}
+          />
+        </Box>
       </Table.Cell>
 
       {/* The HPP, READ not typed (owner). What the goods cost is a fact the warehouse recorded, not a
@@ -141,7 +143,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
           ) : (
             // 0 is UNKNOWN, never free: a product received without a restock has no recorded cost, and
             // printing "Rp 0" would book it as costing nothing.
-            <Text fontSize="sm" color="orange.fg">
+            <Text fontSize="sm" color="warning.fg">
               {t("orders.hppUnknown")}
             </Text>
           ))}
@@ -156,7 +158,7 @@ export function OrderLineRow(props: OrderLineRowProps) {
           type="button"
           size="xs"
           variant="ghost"
-          colorPalette="red"
+          colorPalette="error"
           aria-label={t("orders.removeLine")}
           data-testid={`${idPrefix}-remove-${index}`}
           onClick={onRemove}

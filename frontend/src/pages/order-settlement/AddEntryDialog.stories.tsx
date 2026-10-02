@@ -236,7 +236,11 @@ export const BelongsToNotToday: Story = {
   args: base,
   render: () => <Harness />,
   play: async () => {
-    await expect(await screen.findByTestId("entry-date")).toHaveValue("2026-01-10");
+    // The picker is a BUTTON now, showing the date in the app's own format — so the assertion is on
+    // what it SAYS rather than on an input's value.
+    const entryDate = await screen.findByTestId("entry-date");
+    await expect(entryDate).toHaveTextContent("2026");
+    await expect(entryDate).toHaveTextContent("10");
     await expect(screen.getByTestId("add-entry-dialog")).toHaveTextContent(
       /the day the charge belongs to, not today/i,
     );

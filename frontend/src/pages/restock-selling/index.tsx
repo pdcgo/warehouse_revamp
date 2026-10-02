@@ -245,7 +245,7 @@ export function RestockSellingPage() {
         <Stat.Root>
           <Stat.Label>{t("restock.stat.ongoing")}</Stat.Label>
           <Stat.ValueText
-            color={(ongoing.data?.qty ?? 0n) > 0n ? "orange.fg" : undefined}
+            color={(ongoing.data?.qty ?? 0n) > 0n ? "warning.fg" : undefined}
             data-testid="restock-stat-ongoing"
           >
             {(ongoing.data?.qty ?? 0n).toString()}
@@ -298,7 +298,8 @@ export function RestockSellingPage() {
             value={createdByFilter > 0n ? createdByFilter : undefined}
             teamId={teamId}
             placeholder={t("restock.createdByAll")}
-            onChange={(id) => refilter(() => setCreatedByFilter(id))}
+            // A cleared picker emits undefined → 0n, "everyone" — the filter is removed, not stuck.
+            onChange={(id) => refilter(() => setCreatedByFilter(id ?? 0n))}
           />
         </Box>
         <Box maxW="56" w="full">
@@ -306,7 +307,7 @@ export function RestockSellingPage() {
             value={acceptedByFilter > 0n ? acceptedByFilter : undefined}
             teamId={warehouseFilter > 0n ? warehouseFilter : undefined}
             placeholder={t("restock.acceptedByAll")}
-            onChange={(id) => refilter(() => setAcceptedByFilter(id))}
+            onChange={(id) => refilter(() => setAcceptedByFilter(id ?? 0n))}
           />
         </Box>
         {/* The range picker carries the DATE TYPE itself (#224): its `fields` segment chooses which
@@ -342,7 +343,7 @@ export function RestockSellingPage() {
           <RefreshOverlay busy={refreshing}>
           <Stack gap="section">
             {error && (
-              <Text color="red.fg" data-testid="restock-requests-error">
+              <Text color="error.fg" data-testid="restock-requests-error">
                 {error}
               </Text>
             )}
@@ -431,7 +432,7 @@ export function RestockSellingPage() {
                                 that arrived empty. */}
                             {short > 0n && (
                               <Badge
-                                colorPalette="orange"
+                                colorPalette="warning"
                                 data-testid={`restock-short-${request.id}`}
                               >
                                 {t("restock.table.shortBy", { count: Number(short) })}
@@ -546,7 +547,7 @@ export function RestockSellingPage() {
                                       trigger={
                                         <Menu.Item
                                           value="cancel"
-                                          color="red.fg"
+                                          color="error.fg"
                                           data-testid={`cancel-${request.id}`}
                                           // The menu must NOT close on this one: it opens a confirm
                                           // dialog, and a menu that closes takes the trigger with it.

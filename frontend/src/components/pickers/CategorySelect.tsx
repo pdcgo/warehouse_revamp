@@ -193,7 +193,7 @@ export function CategorySelect({
                   <Spinner size="sm" colorPalette="brand" />
                 </Flex>
               ) : error ? (
-                <Text p="2" fontSize="sm" color="red.fg">
+                <Text p="2" fontSize="sm" color="error.fg">
                   {error}
                 </Text>
               ) : query.trim() ? (

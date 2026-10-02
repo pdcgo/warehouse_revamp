@@ -26,6 +26,17 @@ export interface OrderLineItemProps {
   /** Where the order has got to. OPTIONAL, and omitting it renders NO badge — a draft has no status
    * at all, and inventing one (`PLACED`, "unknown") would state something about it that is not true. */
   status?: OrderStatus;
+  /**
+   * A badge to draw INSTEAD of the one `status` would produce.
+   *
+   * ⚠ A BRIDGE WITH AN END DATE, not a styling hook. The owner's status set is eight
+   * (`the-order-has-eight-statuses`) and the proto enum is still the old six, so a screen written in
+   * the new vocabulary would otherwise put "Diproses" on its tabs and "Packed" on the row beneath —
+   * two names for one order, which is the drift a shared badge exists to prevent.
+   *
+   * The day the enum migrates, `OrderStatusBadge` speaks the eight on its own and this goes. Until
+   * then a caller that has already translated may hand the translation in. */
+  statusBadge?: ReactNode;
 
   /** The RECEIPT CODE — the courier's tracking number (nomor resi), as printed on the slip. The
    * order's THIRD name, and the one that outlives us: it is what the courier, the marketplace and the
@@ -75,10 +86,13 @@ export interface OrderLineItemProps {
 // an N+1. That is also why it shows the receipt CODE and not the attached slip: the code is a string
 // already on the row, while the file needs a document_service call per order.
 //
-// ⚠ THE PROTO CARRIES NEITHER STRING ON AN ORDER YET. A DRAFT has `external_id` (the ref), but a
-// promoted `Order` has no ref and no receipt code — `OrderReceipt` is the FILE and `shipping_code` is
-// the courier, not the parcel. This is the frontend-first order working as intended (HARD RULE 6): the
-// screen states what it needs and the contract follows. Until it does, the caller supplies the strings.
+// ⚠ ONE OF THE TWO STRINGS HAS LANDED, THE OTHER HAS NOT — and this paragraph said neither had, for
+// longer than it was true. `Order.order_external_ref_id` now rides on every list row, so `orderRefId`
+// costs a caller nothing. `receiptCode` is still genuinely absent: `OrderReceipt` is the FILE and
+// `shipping_code` is the courier, and nothing holds the number printed on the slip.
+//
+// That is the frontend-first order working as intended (HARD RULE 6) — the screen stated what it
+// needed and half the contract has followed. The other half renders as silence until it does.
 //
 // The status comes from the shared `OrderStatusBadge` rather than a local colour table, so a status
 // looks the same here as on the tabs above it. Re-implementing it is how two screens start disagreeing
@@ -93,6 +107,7 @@ export function OrderLineItem({
   id,
   orderRefId,
   status,
+  statusBadge,
   receiptCode,
   action,
   size = "md",
@@ -149,7 +164,7 @@ export function OrderLineItem({
             </Text>
           )}
 
-          {status !== undefined && <OrderStatusBadge status={status} />}
+          {statusBadge ?? (status !== undefined && <OrderStatusBadge status={status} />)}
         </HStack>
 
         {code !== "" && (

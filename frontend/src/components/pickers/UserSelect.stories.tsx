@@ -87,6 +87,20 @@ export const EmitsTheUserId: Story = {
   },
 };
 
+// ⚠ CLEARING EMITS `undefined` — it does not do nothing (ShippingSelect's #131 lesson). Swallowing the
+// ✕ left a restock list's "created by" filter impossible to remove, and an add-member dialog still
+// enabled for a user its field no longer showed.
+export const ClearingEmitsUndefined: Story = {
+  args: { value: users[0]!.id },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByRole("button", { name: /clear/i }));
+
+    await expect(args.onChange).toHaveBeenCalledWith(undefined);
+  },
+};
+
 export const Interactive: Story = {
   render: (args) => {
     const [value, setValue] = useState<bigint | undefined>(undefined);

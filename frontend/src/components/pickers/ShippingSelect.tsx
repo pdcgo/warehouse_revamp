@@ -3,6 +3,7 @@ import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
 import { useShippingCatalogue } from "../../features/shipping/catalogue";
+import { ShippingBadge } from "../badges/ShippingBadge";
 
 export interface ShippingSelectProps {
   /** Selected courier CODE (Shipping.code — the stable key a shipment stores, not the name). */
@@ -18,7 +19,7 @@ export interface ShippingSelectProps {
 //
 // A Chakra Combobox (#146) rather than a NativeSelect: the courier catalogue is curated but it is a
 // list of dozens, and a searchable field beats scrolling a native dropdown to find "JNE REG".
-export const description = "Searchable courier picker (Chakra Combobox) backed by the shipping catalogue — matches on name or code. Emits a courier code, and can be cleared back to none.";
+export const description = "Searchable courier picker (Chakra Combobox) backed by the shipping catalogue — matches on name or code, and each option renders as its ShippingBadge, the same colour the courier wears everywhere else. Emits a courier code, and can be cleared back to none.";
 
 export function ShippingSelect({
   value,
@@ -120,7 +121,10 @@ export function ShippingSelect({
                     key={courier.code}
                     data-testid={`shipping-select-option-${courier.code}`}
                   >
-                    {courier.name}
+                    {/* The BADGE, not the bare name — a courier is shown the same way here as in every
+                        table and detail (the-courier-has-one-colour). It resolves the name from the same
+                        catalogue this picker already loaded, so it costs no second read. */}
+                    <ShippingBadge code={courier.code} />
                     <Combobox.ItemIndicator />
                   </Combobox.Item>
                 ))}

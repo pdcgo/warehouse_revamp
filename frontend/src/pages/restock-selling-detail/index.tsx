@@ -156,7 +156,7 @@ export function RestockSellingDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-detail-error">
+        <Text color="error.fg" data-testid="restock-detail-error">
           {error || t("restock.detail.notFound")}
         </Text>
       </Stack>
@@ -192,7 +192,7 @@ export function RestockSellingDetailPage() {
         </Heading>
         <RestockStatusBadge status={request.status} />
         {short > 0n && (
-          <Badge colorPalette="orange" data-testid="restock-detail-short">
+          <Badge colorPalette="warning" data-testid="restock-detail-short">
             {t("restock.table.shortBy", { count: Number(short) })}
           </Badge>
         )}
@@ -221,7 +221,7 @@ export function RestockSellingDetailPage() {
             confirmLabel={t("restock.cancel.confirm")}
             onConfirm={cancelRequest}
             trigger={
-              <Button variant="outline" colorPalette="red" data-testid="restock-detail-cancel">
+              <Button variant="outline" colorPalette="error" data-testid="restock-detail-cancel">
                 <Icon as={Ban} boxSize="4" />
                 {t("restock.cancel.action")}
               </Button>

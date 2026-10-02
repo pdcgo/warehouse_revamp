@@ -232,7 +232,7 @@ export function ReturnsPage() {
       <SimpleGrid columns={{ base: 1, sm: 3 }} gap="card">
         <Stat.Root>
           <Stat.Label>{t("returns.statOngoing")}</Stat.Label>
-          <Stat.ValueText color={ongoing.length > 0 ? "orange.fg" : undefined}>
+          <Stat.ValueText color={ongoing.length > 0 ? "warning.fg" : undefined}>
             {ongoing.length}
           </Stat.ValueText>
           <Stat.HelpText>{t("returns.statOngoingHint")}</Stat.HelpText>

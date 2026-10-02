@@ -261,7 +261,7 @@ export function TermsEditDialog({
                   </Field.Root>
 
                   {error && (
-                    <Dialog.Description color="red.fg" data-testid="terms-form-error">
+                    <Dialog.Description color="error.fg" data-testid="terms-form-error">
                       {error}
                     </Dialog.Description>
                   )}

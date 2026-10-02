@@ -192,7 +192,7 @@ export function RestockWarehousePage() {
             on this page targets it — so the badge restated the chrome, exactly as the title/badge/blurb
             did on the selling list before they were dropped for the same reason. */}
         <Spacer />
-        {/* No "New restock" here, and that is the rule rather than an omission: a warehouse does not
+        {/* No "New Restock" here, and that is the rule rather than an omission: a warehouse does not
             order goods for itself — it receives what a selling team bought (#105). */}
       </Flex>
 
@@ -219,7 +219,7 @@ export function RestockWarehousePage() {
         <Stat.Root>
           <Stat.Label>{t("restock.stat.inboundUnits")}</Stat.Label>
           <Stat.ValueText
-            color={(inbound.data?.unitCount ?? 0n) > 0n ? "orange.fg" : undefined}
+            color={(inbound.data?.unitCount ?? 0n) > 0n ? "warning.fg" : undefined}
             data-testid="restock-stat-units"
           >
             {(inbound.data?.unitCount ?? 0n).toString()}
@@ -240,7 +240,7 @@ export function RestockWarehousePage() {
         <Stat.Root>
           <Stat.Label>{t("restock.stat.oldestPending")}</Stat.Label>
           <Stat.ValueText
-            color={daysSinceUnix(inbound.data?.oldestPendingUnix ?? 0n) >= 3 ? "red.fg" : undefined}
+            color={daysSinceUnix(inbound.data?.oldestPendingUnix ?? 0n) >= 3 ? "error.fg" : undefined}
             data-testid="restock-stat-oldest"
           >
             {(inbound.data?.oldestPendingUnix ?? 0n) > 0n
@@ -367,7 +367,8 @@ export function RestockWarehousePage() {
               value={actorId > 0n ? actorId : undefined}
               teamId={actorRole === "accepted" ? teamId : undefined}
               placeholder={t("restock.inbound.actorAll")}
-              onChange={(id) => refilter(() => setActorId(id))}
+              // A cleared picker emits undefined → 0n, "anyone" — the filter is removed, not stuck.
+              onChange={(id) => refilter(() => setActorId(id ?? 0n))}
             />
           </Box>
         </Flex>
@@ -391,7 +392,7 @@ export function RestockWarehousePage() {
           <RefreshOverlay busy={refreshing}>
           <Stack gap="section">
             {error && (
-              <Text color="red.fg" data-testid="restock-inbound-error">
+              <Text color="error.fg" data-testid="restock-inbound-error">
                 {error}
               </Text>
             )}
@@ -443,7 +444,7 @@ export function RestockWarehousePage() {
                                 its list too — it is the record of what it reported at the door. */}
                             {short > 0n && (
                               <Badge
-                                colorPalette="orange"
+                                colorPalette="warning"
                                 data-testid={`restock-short-${request.id}`}
                               >
                                 {t("restock.table.shortBy", { count: Number(short) })}
@@ -477,7 +478,7 @@ export function RestockWarehousePage() {
                               <IconButton
                                 size="xs"
                                 variant="ghost"
-                                colorPalette="green"
+                                colorPalette="success"
                                 aria-label={t("restock.receive.title")}
                                 data-testid={`fulfil-${request.id}`}
                                 onClick={() =>

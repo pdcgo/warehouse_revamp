@@ -51,6 +51,7 @@ import { useProductsByIds } from "../../features/products/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
 import { goodsTotal } from "../../features/restock/summary";
 import { deltaLabel, toReceived, toRupiah, unitGoods, unitHpp } from "../../features/restock/counting";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // One shelf a line's goods went to, and how many. `place` is RackSelect's value: "" (no shelf yet —
 // this is what blocks Accept), UNPLACED (the holding pile), or a rack id string.
@@ -458,7 +459,7 @@ export function RestockAcceptPage() {
     return (
       <Stack gap="section">
         {back}
-        <Text color="red.fg" data-testid="accept-error">
+        <Text color="error.fg" data-testid="accept-error">
           {error || t("restock.accept.notFound")}
         </Text>
       </Stack>
@@ -490,7 +491,7 @@ export function RestockAcceptPage() {
               {t("restock.accept.restockCount", { count: totalReceived.toString() })}
             </Text>
             {blockedLines > 0 && (
-              <Text fontSize="xs" color="orange.fg" data-testid="accept-progress">
+              <Text fontSize="xs" color="warning.fg" data-testid="accept-progress">
                 {t("restock.accept.notPlaced", { count: blockedLines })}
               </Text>
             )}
@@ -512,7 +513,7 @@ export function RestockAcceptPage() {
       </Box>
 
       {error && (
-        <Text color="red.fg" data-testid="accept-error">
+        <Text color="error.fg" data-testid="accept-error">
           {error}
         </Text>
       )}
@@ -816,7 +817,7 @@ export function RestockAcceptPage() {
                     </Text>
                     {delta && (
                       <Badge
-                        colorPalette={st.count < item.quantity ? "orange" : "green"}
+                        colorPalette={st.count < item.quantity ? "warning" : "success"}
                         data-testid={`accept-delta-${item.productId}`}
                       >
                         {delta}
@@ -865,11 +866,11 @@ export function RestockAcceptPage() {
                       </Text>
                       <Spacer />
                       {st.blocking > 0n ? (
-                        <Badge colorPalette="orange" data-testid={`accept-unbalanced-${item.productId}`}>
+                        <Badge colorPalette="warning" data-testid={`accept-unbalanced-${item.productId}`}>
                           {t("restock.accept.toPlace", { count: st.blocking.toString() })}
                         </Badge>
                       ) : (
-                        <Badge colorPalette="green" data-testid={`accept-balanced-${item.productId}`}>
+                        <Badge colorPalette="success" data-testid={`accept-balanced-${item.productId}`}>
                           {t("restock.accept.pcs", { count: st.count.toString() })}
                         </Badge>
                       )}
@@ -908,19 +909,17 @@ export function RestockAcceptPage() {
                             onChange={(v) => patchPlacement(st.key, row.key, { place: v })}
                           />
                         </Box>
-                        <Input
-                          type="number"
-                          min="0"
-                          w="20"
-                          flexShrink={0}
+                        <QuantityInput
+                          min={0}
+                          width="20"
                           value={row.quantity}
-                          data-testid={`accept-placement-qty-${item.productId}-${row.key}`}
-                          onChange={(e) => patchPlacement(st.key, row.key, { quantity: e.target.value })}
+                          testId={`accept-placement-qty-${item.productId}-${row.key}`}
+                          onChange={(quantity) => patchPlacement(st.key, row.key, { quantity })}
                         />
                         <IconButton
                           size="xs"
                           variant="ghost"
-                          colorPalette="red"
+                          colorPalette="error"
                           flexShrink={0}
                           aria-label={t("restock.accept.removePlacement")}
                           disabled={st.rows.length === 1}
@@ -978,16 +977,16 @@ export function RestockAcceptPage() {
                 ) : (
                   <Box
                     borderWidth="1px"
-                    borderColor="orange.emphasized"
+                    borderColor="warning.emphasized"
                     borderRadius="md"
-                    bg="orange.subtle"
+                    bg="warning.subtle"
                     p="card"
                     h="full"
                   >
                     <Stack gap="card">
                       <Flex align="center" gap="2">
-                        <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
-                        <Text fontSize="sm" fontWeight="semibold" color="orange.fg">
+                        <Icon as={TriangleAlert} boxSize="4" color="warning.fg" />
+                        <Text fontSize="sm" fontWeight="semibold" color="warning.fg">
                           {t("restock.accept.problems")}
                         </Text>
                       </Flex>
@@ -1007,19 +1006,17 @@ export function RestockAcceptPage() {
                                 onChange={(type) => patchProblem(st.key, row.key, { type })}
                               />
                             </Box>
-                            <Input
-                              type="number"
-                              min="1"
-                              w="20"
-                              flexShrink={0}
+                            <QuantityInput
+                              min={1}
+                              width="20"
                               value={row.quantity}
-                              data-testid={`accept-problem-qty-${item.productId}-${row.key}`}
-                              onChange={(e) => patchProblem(st.key, row.key, { quantity: e.target.value })}
+                              testId={`accept-problem-qty-${item.productId}-${row.key}`}
+                              onChange={(quantity) => patchProblem(st.key, row.key, { quantity })}
                             />
                             <IconButton
                               size="xs"
                               variant="ghost"
-                              colorPalette="red"
+                              colorPalette="error"
                               flexShrink={0}
                               aria-label={t("restock.accept.removeProblem")}
                               onClick={() => removeProblem(st.key, row.key)}

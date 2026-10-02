@@ -1,42 +1,19 @@
-import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
-import { teamTypeLabel } from "../../../components/pickers/TeamTypeSelect";
-import type { Tone } from "../tone";
-import { ToneBadge, type ToneBadgeProps } from "./ToneBadge";
+import {
+  TeamTypeBadge as SharedTeamTypeBadge,
+  type TeamTypeBadgeProps as SharedTeamTypeBadgeProps,
+} from "../../../components/badges/TeamTypeBadge";
 
-// The STANDARD tone per team type. A person works across several teams and switches between them
-// constantly, so the type needs to be readable at a glance from the badge alone — the switcher, the
-// team table and every scoped header render through this one mapping.
-function teamTypeTone(type: TeamType | undefined): Tone {
-  switch (type) {
-    case TeamType.SELLING:
-      return "primary";
-    case TeamType.WAREHOUSE:
-      return "warning";
-    case TeamType.ROOT:
-      return "success";
-    case TeamType.ADMIN:
-      return "error";
-    default:
-      return "plain";
-  }
-}
-
-// TeamTypeBadge renders a team's type as a standard-toned badge.
+// The adopted-legacy name for the live design system's TeamTypeBadge (components/badges).
+//
+// It used to map each type to a legacy TONE — a second colour table for the same fact, which is how
+// the switcher and the team list had already come to disagree about the root team. It now renders the
+// shared badge, so a legacy screen and a live one show a team type identically, from the one mapping
+// in theme.ts (`teamType.*`).
 export const description =
-  "A team's type (Selling / Warehouse / Root / Admin) as a standard-toned badge.";
+  "A team's type (Selling / Warehouse / Root / Admin) as a standard-coloured badge — renders the live TeamTypeBadge.";
 
-export interface TeamTypeBadgeProps extends Omit<ToneBadgeProps, "tone" | "children"> {
-  type?: TeamType;
-}
+export type TeamTypeBadgeProps = SharedTeamTypeBadgeProps;
 
-export function TeamTypeBadge({ type, ...rest }: TeamTypeBadgeProps) {
-  return (
-    <ToneBadge
-      tone={teamTypeTone(type)}
-      data-testid={`team-type-badge-${type ?? TeamType.UNSPECIFIED}`}
-      {...rest}
-    >
-      {teamTypeLabel(type ?? TeamType.UNSPECIFIED)}
-    </ToneBadge>
-  );
+export function TeamTypeBadge(props: TeamTypeBadgeProps) {
+  return <SharedTeamTypeBadge {...props} />;
 }

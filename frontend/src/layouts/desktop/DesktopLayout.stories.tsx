@@ -156,6 +156,7 @@ export const ThePageCanvasIsChosenByTheShell: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("at-batch-detail")).toBeInTheDocument());
     const main = canvas.getByRole("main");
-    await expect(window.getComputedStyle(main).backgroundColor).toBe("rgb(246, 247, 249)");
+    // gray.100 — GREY_CANVAS in shell.ts.
+    await expect(window.getComputedStyle(main).backgroundColor).toBe("rgb(243, 244, 246)");
   },
 };

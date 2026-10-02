@@ -28,7 +28,7 @@ export function RackChip({ rack, count }: RackChipProps) {
 
   return (
     <Badge
-      colorPalette={unplaced ? "orange" : "gray"}
+      colorPalette={unplaced ? "warning" : "gray"}
       variant="subtle"
       data-testid="rack-chip"
       data-unplaced={unplaced ? "true" : "false"}

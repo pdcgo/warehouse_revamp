@@ -46,9 +46,9 @@ export function directionCopy(balance: bigint): { key: string; amount: string } 
 export function directionPalette(balance: bigint): string {
   switch (directionOf(balance)) {
     case "they-owe-you":
-      return "green";
+      return "success";
     case "you-owe-them":
-      return "orange";
+      return "warning";
     default:
       return "gray";
   }

@@ -134,7 +134,7 @@ export function ScanStation({
           <Button
             size="xs"
             variant={armed ? "subtle" : "outline"}
-            colorPalette={armed ? "green" : "gray"}
+            colorPalette={armed ? "success" : "gray"}
             onClick={() => setArmed((a) => !a)}
             data-testid="scan-arm"
             aria-label={armed ? "Sound on" : "Sound off"}

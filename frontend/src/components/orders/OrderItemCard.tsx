@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Button, Card, Flex, Heading, Icon, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Button, Card, Flex, Icon, Stack, Table, Text } from "@chakra-ui/react";
 import { PackagePlus } from "lucide-react";
 
 import { AllProductPicker } from "../products/AllProductPicker";
@@ -85,14 +85,13 @@ export function OrderItemCard({
               and drops it under the text on a narrow one. */}
           <Flex align="start" gap="card" wrap="wrap" justify="space-between">
             <Stack gap="0.5" minW="0">
-              {/* `md`, a step up from the `sm` the other section headings on this page carry (owner).
-                  The lines are the SUBJECT of an order — the shop, the customer and the note are all
-                  about goods that are named here — so the card that holds them reads as the main one
-                  rather than as one of five equals. */}
-              <Heading as="h3" size="md">{t("orders.items")}</Heading>
-              <Text fontSize="xs" color="fg.muted" data-testid="order-items-help">
-                {t("orders.itemsHelp")}
-              </Text>
+              {/* The card's title and subtitle, styled like every other card title on the form (bold,
+                  then a quieter line) — but ONE STEP LARGER (20px against their 18px), as decided
+                  (owner): the lines are the SUBJECT of an order — the shop, the customer and the note
+                  are all about goods that are named here — so the card that holds them reads as the
+                  main one rather than as one of five equals. */}
+              <Card.Title textStyle="xl">{t("orders.items")}</Card.Title>
+              <Card.Description data-testid="order-items-help">{t("orders.itemsHelp")}</Card.Description>
             </Stack>
 
             <Flex align="center" gap="card" wrap="wrap">
@@ -148,7 +147,7 @@ export function OrderItemCard({
 
               {/* WHY it is disabled, beside the disabled thing. */}
               {noWarehouse && (
-                <Text fontSize="sm" color="orange.fg" data-testid="order-create-need-warehouse">
+                <Text fontSize="sm" color="warning.fg" data-testid="order-create-need-warehouse">
                   {t("orders.pickWarehouseFirst")}
                 </Text>
               )}

@@ -245,7 +245,7 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
     /^data:image\/png/,
   );
 
-  // ── ONGOING: the request just filed is now "on the way" (owner) ──────────────────────────────
+  // ── ONGOING: the request just filed is now "ongoing" (owner) ──────────────────────────────
   //
   // The double-order guard, asserted against a restock this test really created rather than a seeded
   // number: 4 of skuA were ordered above, nobody has accepted them, so the picker must say 4 the next
@@ -278,10 +278,10 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // layout says it with NAMED COLUMNS instead, and a sticky header so the labels survive scrolling.
   // That is the same claim, made better; the assertion just outlived the element.
   const head = page.getByTestId("product-picker-list").locator("thead");
-  await expect(head).toContainText("On the way");
-  await expect(head).toContainText("Ready stock");
+  await expect(head).toContainText("Ongoing");
+  await expect(head).toContainText("Ready");
 
-  // skuB was ordered on the SAME request (2 of them), so it is on the way too — proof the badge
+  // skuB was ordered on the SAME request (2 of them), so it is ongoing too — proof the badge
   // reflects the line rather than the request.
   await page.getByTestId("product-picker-search").fill(skuB);
   const pickedB = page

@@ -15,7 +15,9 @@ interface SelectableUser {
 
 export interface UserSelectProps {
   value?: bigint;
-  onChange?: (userId: bigint) => void;
+  // Emits `undefined` when the field is CLEARED — "no user", the same way `value` says it, and the way
+  // every caller already holds it.
+  onChange?: (userId: bigint | undefined) => void;
   placeholder?: string;
   disabled?: boolean;
   // Scope of the search:
@@ -73,10 +75,11 @@ export function UserSelect({
       disabled={disabled}
       value={value !== undefined ? [value.toString()] : []}
       onValueChange={(e) => {
+        // ⚠ CLEARING EMITS `undefined` — it does not do nothing (ShippingSelect's #131 lesson).
+        // Swallowing the empty case left the parent holding a user the field no longer showed, with
+        // the form's submit still enabled for them.
         const picked = e.value[0];
-        if (picked !== undefined) {
-          onChange?.(BigInt(picked));
-        }
+        onChange?.(picked !== undefined ? BigInt(picked) : undefined);
       }}
       onInputValueChange={(e) => setInput(e.inputValue)}
       data-testid="user-select"

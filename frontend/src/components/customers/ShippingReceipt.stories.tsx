@@ -211,7 +211,7 @@ export const EmptyOffersAttach: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByTestId("order-receipt-pick")).toHaveTextContent("Attach receipt");
+    await expect(canvas.getByTestId("order-receipt-pick")).toHaveTextContent("Attach Receipt");
     await expect(canvas.queryByTestId("order-receipt-attached")).toBeNull();
   },
 };
@@ -224,7 +224,7 @@ export const AttachedOffersReplaceNotAdd: Story = {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByTestId("order-receipt-attached")).toHaveTextContent("jne-4711.pdf");
-    await expect(canvas.getByTestId("order-receipt-pick")).toHaveTextContent("Replace receipt");
+    await expect(canvas.getByTestId("order-receipt-pick")).toHaveTextContent("Replace Receipt");
   },
 };
 

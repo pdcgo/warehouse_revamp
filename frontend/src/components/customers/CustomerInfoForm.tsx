@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Field, Grid, GridItem, Heading, Input, Stack } from "@chakra-ui/react";
+import { Card, Field, Flex, Grid, GridItem, Heading, Input, Stack } from "@chakra-ui/react";
 
 import { AddressPicker } from "./AddressPicker";
 import type { AddressValue } from "./AddressPicker";
@@ -18,6 +19,8 @@ export interface CustomerInfoFormProps {
    * snapshot the names onto its own record. */
   address: AddressValue;
   onAddressChange: (value: AddressValue) => void;
+  /** Pass through to AddressPicker: offer the kecamatan-by-name search as well as the kode pos. */
+  addressKecamatanSearch?: boolean;
 
   /** The team the receipt's file is uploaded FOR — document_service scopes every file to one. */
   teamId?: bigint;
@@ -33,6 +36,19 @@ export interface CustomerInfoFormProps {
   /** WHICH COURIER is carrying it — a `Shipping.code` from the shared catalogue. Rendered inside the
    * receipt cell, so it appears only when that cell does. */
   shippingCode?: string;
+  /**
+   * The courier's TRACKING NUMBER, as typed — the resi itself, not the courier.
+   *
+   * ⚠ THE PAIR IS WHAT MAKES IT APPEAR. `ShippingReceipt` hides the field unless a caller can hold
+   * the value, and this form did not offer the props at all — so the order screens showed a courier
+   * and a file upload and no box for the number the buyer is actually given. A field whose contents
+   * are dropped on submit is worse than no field, which is why it stays opt-in rather than becoming
+   * a box every caller suddenly renders.
+   */
+  receiptCode?: string;
+  onReceiptCodeChange?: (value: string) => void;
+  /** Rendered beside the card's title — a badge, a count, a mark. Nothing by default. */
+  titleExtra?: ReactNode;
   onShippingCodeChange?: (value: string) => void;
 }
 
@@ -104,7 +120,12 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
           Shipping receipt are its parts. Without it the card opened on three same-sized headings with
           nothing saying they belonged together. */}
       <Card.Header>
-        <Card.Title>{t("orders.customerInfo")}</Card.Title>
+        {/* The title, and whatever the screen wants to hang on it. A Flex rather than a bare title
+            because a badge under the heading reads as part of the description. */}
+        <Flex align="center" gap="2" wrap="wrap">
+          <Card.Title>{t("orders.customerInfo")}</Card.Title>
+          {props.titleExtra}
+        </Flex>
         <Card.Description>{t("orders.customerInfoHelp")}</Card.Description>
       </Card.Header>
 
@@ -154,7 +175,11 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
           <GridItem gridColumn={{ md: 2 }} gridRow={{ md: "1 / span 2" }}>
             <Stack gap="card" data-testid={`${idPrefix}-address`}>
               <Heading as="h3" size="sm">{t("orders.deliveryAddress")}</Heading>
-              <AddressPicker value={address} onChange={onAddressChange} />
+              <AddressPicker
+                value={address}
+                onChange={onAddressChange}
+                kecamatanSearch={props.addressKecamatanSearch}
+              />
             </Stack>
           </GridItem>
 
@@ -167,6 +192,8 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
                 onChange={onReceiptChange}
                 shippingCode={shippingCode}
                 onShippingCodeChange={onShippingCodeChange}
+                code={props.receiptCode}
+                onCodeChange={props.onReceiptCodeChange}
               />
             </GridItem>
           )}

@@ -832,15 +832,20 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | --- | --- | --- |
 | `pickers/` | 16 | choose a thing — every `*Select`, `ProductPicker`, `AddressPicker` |
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
-| `entity/` | 5 | show a product / a team / a person the same way everywhere |
-| `badges/` | 4 | a status or a kind, in its ONE standard colour |
+| `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
+| `badges/` | 6 | a status or a kind, in its ONE standard colour |
 | `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
 | `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
-| `inputs/` | 2 | a typed value, formatted or masked |
+| `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 
 The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
 I find it?" have the same answer. A new component goes in the group it belongs to and its story's
 `title` is `Components/<Group>/<Name>` — if neither is obvious, the component is probably two things.
+
+**A `features/<domain>/` component stories as `Features/<Domain>/<Name>`**, by the same mirror. It is
+not design-system furniture — it knows a domain — so it does not belong under `Components/`, and a
+domain component shared by several pages is exactly the thing that needs a story most: nothing else
+pins its rules. `Features/Orders/OrderSummary` is the first.
 
 This is not only about saving effort — **a re-implementation is how two screens start disagreeing.**
 The pickers carry rules learned the hard way and invisible from the outside: `RackSelect` keeps
@@ -861,7 +866,61 @@ colours, and a11y wiring, and skipping them is how an app drifts off its design 
 picker (searchable, multi-level) prefer Chakra's composable `Select` over `NativeSelect`. If a
 native element is genuinely needed, get an explicit ask first.
 
-Two more UI rules:
+**Two controls are NEVER the native one** (owner):
+
+- **A date is [`DatePicker`](frontend/src/components/datetime/DatePicker.tsx)** — Chakra's DatePicker
+  with a **button trigger** showing the date in the app's format, a day → month → year calendar, and
+  `withTime` for a time row under it (`DateTimePicker` is that flag with its own name). A native
+  `<input type="date">` looks different in every browser, offers no month jump and has nowhere to put
+  a clock. ⚠ It emits `yyyy-mm-dd` (or `yyyy-mm-ddThh:mm`) from `value[0].toString()`, never Ark's
+  `valueAsString`, which is formatted for the LOCALE.
+- **A quantity is [`QuantityInput`](frontend/src/components/inputs/QuantityInput.tsx)** — Chakra's
+  NumberInput with a − and a + flanking the box. `<input type="number">` draws the browser's own 15px
+  spinners, **changes its value when somebody scrolls past it**, and accepts `1e3`. The value stays a
+  STRING, so a cleared box is empty rather than 0.
+
+**A picker over data that GROWS is a SEARCH SELECT** (owner). Chakra's `Combobox` — a field you type
+into — not a `Select` you scroll. The exception is a set that is **static AND small**: it stays a plain
+list, because searching seven options you can already see in full is a keystroke tax.
+
+| | | |
+| --- | --- | --- |
+| **search select** | the set grows with the business | `TeamSelect` (warehouses, sellers), `UserSelect`, `ShopSelect`, `ProductSelect`, `SupplierSelect` |
+| **plain list** | static and small, changed by a code edit | `MarketplaceSelect`, `RoleSelect`, `TeamTypeSelect`, `ExpenseKindSelect`, `PaymentTypeSelect` |
+
+- **"Few TODAY" is not the test — "bounded FOREVER" is.** A team runs four shops now and there is no
+  ceiling on that, so `ShopSelect` searches; a marketplace enum only grows when the company enters a
+  new country, so it does not. Getting this wrong is silent until the data arrives, and by then the
+  screen is one somebody scrolls.
+- **Where the search RUNS depends on the size, not on the control.** A bounded-ish list loads whole and
+  filters in the field (`ShopSelect`, `TeamSelect`); an unbounded one searches the server, debounced,
+  with a minimum term (`UserSelect`, `ProductSelect`). Both are the same control to the person using it.
+- ⚠ **A combobox whose collection fills in LATE renders BLANK when it was prefilled.** Zag derives the
+  input's text at machine init and thereafter only when `value` changes — so a value already set while
+  the list is still in flight resolves against an empty collection and never recovers. Both search
+  selects fix it the same way: `key={filled ? "ready" : "loading"}` on the Root, remounting once when
+  the list lands. Copy that with the list, not the day it breaks.
+- **Clearing emits the "none" sentinel** (`0n`, or `undefined`) — never nothing. #131 again: a field
+  that empties while the parent still holds the old id filters on a shop the screen no longer shows.
+
+**A screen built AHEAD of its backend says so, on itself** — [features/pending/](frontend/src/features/pending/),
+not a comment and not a sentence typed into each card. The screen declares a `PendingList` (`{ns, parts}`,
+one `pending.ts` per page); `<NotImplementedSummary list>` renders the folded strip at the top and
+`<NotImplemented list id>` the ⚠ + NUMBER on the control it belongs to. **The number is the position
+in the list**, so a badge and its row cannot drift, and removing an entry removes both. Four kinds,
+and they cost the reader different things: `dropped` (typed and thrown away), `sample` (invented
+figures), `derived` (real figures, unsettled rule), `missing` (not on screen at all, and a total is
+short because of it). The shared copy is the `pending.*` i18n namespace; each screen's own labels are
+`<ns>.pending.<id>.label|reason`.
+
+**The marks can be switched off — in STORYBOOK ONLY** (owner, 2026-09-29). The toolbar's *Pending
+marks* global hides the badges and the strip together, so a layout is reviewable without the
+scaffolding on it. `PendingMarksContext` defaults to **`true`**, so a screen with no provider — every
+screen in the real app — shows them. ⚠ **Never add a switch for this to a page.** A mark says a figure
+is invented or a typed value is thrown away; the person using the warehouse must not be able to turn
+that off, and the audience for the switch is whoever is reviewing the design.
+
+More UI rules:
 
 - **Many row actions → an overflow `Menu`.** When a table row has several actions (roughly three
   or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
@@ -870,12 +929,40 @@ Two more UI rules:
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
   reversible — goes through a [`ConfirmDialog`](frontend/src/components/feedback/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.
-- **Dialog titles are Title Case.** "Delete Product", "Reset Password for …", "New Category" — not
-  "Delete product" / "reset password". This includes the `title` passed to `ConfirmDialog`.
+- **Titles AND actions are Title Case** (owner). A dialog title, a page or card title, a **button**, a
+  **menu item**: "Delete Product", "Reset Password for …", "New Category", "Add Line", "Sign Out",
+  "Post Count". This includes the `title` passed to `ConfirmDialog`. Small words stay lowercase unless
+  they open the label — `a, an, the, and, or, of, to, for, in, on, by, as, at, from, with`, and in
+  Indonesian `dan, atau, di, ke, dari, untuk, yang, pada` — so "Save as Draft", "Remove from Team".
+
+  **Sentence case everywhere else**, because none of it is a title: placeholders ("Select a category"),
+  `aria-label`s (they are spoken), toast titles and descriptions (sentences), field labels, column
+  headers, stat labels and helper text. Both catalogues follow the same split.
 - **A detail view is a PAGE, not a dialog.** "See the full record" — user detail, team detail,
   warehouse detail, and every one that follows — is a dedicated route (`/users/:id`,
   `/teams/:id`, …), reached by clicking the row. A dialog is for a focused *action* (create, edit,
   confirm), not for *reading* an entity. Only use a dialog for a detail view on an explicit ask.
+- **A table cell is at most TWO lines, and ONE context** (owner). Pairing is only for one fact read
+  twice (the marketplace's date and the deadline that runs from it), never two questions sharing a cell
+  (shop and warehouse were paired and that was wrong). A row's status sits UNDER its reference, so the
+  badges line up down the page. The cells are
+  [OrderRowCells](frontend/src/features/orders/OrderRowCells.tsx) — reuse them, and see
+  [one-context-per-column-and-never-three-lines](docs/technical/order/design_decision.md#one-context-per-column-and-never-three-lines).
+- **A phone gets its own arrangement, not the desktop's squeezed** (owner) — three rules, each a JS
+  breakpoint (never CSS hiding):
+  - a **sticky header is ONE row** — back, the title, the status, `⋯`. Actions fold into `⋯` (even a
+    single one), and anything else (a deadline, a mark) moves to the first line under it;
+  - a **wide table becomes one block per row** — names at full width, the arithmetic as a line
+    (`Rp 48.000 × 2 · Toko Melati … Rp 96.000`), never five clamped columns in a scroll box;
+  - a **filter strip is the search plus a Filter button** opening a bottom sheet of full-width controls
+    — [`FilterBar`](frontend/src/components/chrome/FilterBar.tsx) does it for you.
+  See [the-phone-header-is-one-row](docs/technical/order/design_decision.md#the-phone-header-is-one-row),
+  [a-phone-reads-each-line-as-a-block](docs/technical/order/design_decision.md#a-phone-reads-each-line-as-a-block),
+  [a-phone-filters-from-a-sheet](docs/technical/order/design_decision.md#a-phone-filters-from-a-sheet).
+- **Never a card inside a card** (owner). When a panel that draws its own card is placed inside a
+  section that is already one, it renders **bare** — no border, no second title, its actions moved to
+  its foot. [`OrderLedgerPanel`](frontend/src/pages/order-settlement/components/OrderLedgerPanel.tsx)'s
+  `bare` prop is the pattern; give a panel the same prop rather than nesting its card.
 - **Every shared component has a STORY beside it, and the story is the documentation.** (owner)
   `frontend/src/components/<Component>.stories.tsx`, in the same commit as the component. It carries
   the states worth reviewing AND a `play()` function per behavioural rule — see *Storybook* below.
@@ -905,6 +992,10 @@ against a real Go server and a real Postgres, while a story pins ONE component w
 A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
 timeout in an order-flow spec.
 
+**Only `Pages/*` stories get the page gutter** (owner) — `p="page"` is applied by `preview.tsx` to
+those and to nothing else, so a page story is framed the way the app frames it while a component
+story stays flush against the canvas and can be judged on its own edges.
+
 **The API is stubbed at the TRANSPORT**, not per hook — [.storybook/stubTransport.ts](frontend/.storybook/stubTransport.ts)
 is a `createRouterTransport` fake that replaces `src/transport.ts` at build time
 ([stubTransportPlugin.ts](frontend/.storybook/stubTransportPlugin.ts)). That module has exactly ONE
@@ -931,14 +1022,64 @@ the stories too, so a story asserts on the same values the stub served.
 | A controlled input needs real state | a story pinning `value` to a constant re-renders the field back after every keystroke, so typing tests nothing. `userEvent.type(el, "…", { delay: 40 })` too — at machine speed a controlled input drops characters |
 | Module-level caches survive between stories | the shipping catalogue and the color-mode/token storage are reset in `preview.tsx`'s `beforeEach` |
 
-[frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density and spacing are
-set. Two things are centralised there on purpose:
+[frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density, spacing and colour
+are set. Three things are centralised there on purpose:
 
 - **Control sizing** defaults to `sm` for button/input/textarea/select. Do **not** sprinkle
   `size="sm"` through the app — an explicit size on a control is an override, and should be
   rare (e.g. `size="xs"` on a table row action).
 - **Semantic spacing tokens** — `field` / `card` / `section` / `page`. Components reference
   those, never raw spacing values, so the whole app's density is retuned in one place.
+- **The palette is seven TONES, each a Tailwind colour** (owner): main **rose** (`brand`), primary
+  **indigo** (`primary`), success **emerald**, warning **amber**, info **sky**, error **red**,
+  plain **gray**. Each tone is a `colorPalette` of its own name, defined once in theme.ts.
+
+  ⚠ **A status is written as its ROLE, never as a hue** — `colorPalette="success"`,
+  `color="warning.fg"`, not `"green"` / `"orange.fg"`. A hue name (`green`, `orange`, `purple`, …) is
+  only for **categorical** colour, where the colour tells things apart rather than saying good or bad:
+  a courier, a team type, an order's lifecycle step. Written as a hue, a status is a colour that a
+  palette change silently misses.
+- **The TYPE SCALE is four sizes and one weight** (owner). Lato ships no 500/600, so the levels are
+  told apart by SIZE and COLOUR with bold as the single strong weight: page title 22, card title 18,
+  section 15, **field label 13 bold in `fg.label` with a red `*` when required**, helper text 12
+  `fg.muted`. It is set on the `heading`, `card` and `field` recipes — ⚠ under `variants.size`, never
+  `sizes`, which Chakra v3 silently ignores.
+- **Fields react in the main tone, thinly** (owner): hover and focus change the BORDER to
+  `border.fieldHover` / `brand.focusRing`, with `focusVisibleRing: "none"` — Chakra's own ring plus a
+  border reads as a 2px double line. `FIELD_OUTLINE` is applied by NAME to every recipe that draws a
+  box (input, textarea, select trigger, combobox input, nativeSelect field, datePicker trigger);
+  `nativeSelect` copies `select`'s styles at import time, so overriding one does NOT reach the other.
+- **An option row is padded like the combobox's** (owner) — `OPTION_PY`, shared by select, combobox
+  and menu: comfortable on a desktop and **44px on a phone**, which is the thumb target the people
+  using this app at a shelf actually need.
+- **The scrollbar is the app's, in both modes** (owner): a transparent track and a thumb in
+  `border.emphasized`, written BOTH as `scrollbar-width`/`scrollbar-color` (Firefox) and
+  `::-webkit-scrollbar` (Blink/WebKit), on `*` so every scroll area is covered at once.
+
+  ⚠ **`color-scheme` is set on `html` and must stay set**, or the browser paints its own widgets LIGHT
+  over a dark page — the scrollbar and every still-native control (the date picker's time input,
+  autofill). It is written as two selectors (`html` and `html.dark`), because Chakra's `_dark`
+  compiles to `.dark &` and the class is ON `html`, so `_dark` there matches nothing.
+- **A scrolling list keeps away from its scrollbar** (owner) — `layerStyle="scrollList"`, which is
+  `overflowY: auto` + `pe: 2` + `scrollbar-gutter: stable`. In a dialog (the product picker is the
+  case that prompted it) rows ran flush to the right edge, so the bar was drawn ON the list and the
+  last column and the thumb shared the same pixels.
+
+  ⚠ **The gutter is the half that stops a JUMP**: without it a list is one scrollbar wider while it
+  fits on one page, and every row shifts sideways the moment a search narrows it to something that
+  scrolls. Say the layerStyle rather than copying the two numbers.
+
+  ⚠ **AND THE BAR RIDES THE PANEL'S EDGE** (owner). Inside a padded container the scroller is pulled
+  out through that padding and given the same amount back as its own — in a dialog body,
+  `me="-6" pe="6"`. The scrollbar then sits on the dialog's right edge while every row stays where
+  it was; left inside the padding it floats in the middle of the white margin, which is what reads
+  as unfinished.
+- **Marketplaces carry their BRAND colour**, adapted per colour mode: `marketplace.<name>.bg` / `.fg` in
+  theme.ts, read only by `MarketplaceBadge`. A new marketplace gets its own pair there, not a hue.
+- **Team types carry their own colour too**: `teamType.<type>.badge` / `.avatar` / `.fg` in theme.ts,
+  read only by [`TeamTypeBadge`](frontend/src/components/badges/TeamTypeBadge.tsx) — which also exports
+  the avatar tint (`teamTypeAvatar`) and the name (`teamTypeLabel`). TeamItem, TeamSelect, TeamSwitcher,
+  TeamTypeSelect and the legacy badge all go through it; never re-type the mapping in a screen.
 
 **Icons come from [lucide-react](https://lucide.dev), rendered through Chakra's `<Icon>` wrapper.**
 Import the named icon, then wrap it: `import { Pencil } from "lucide-react"` →
@@ -949,8 +1090,6 @@ icon obey Chakra's sizing/colour tokens, so **size is a `boxSize` token, not a r
 icons — they render differently on every platform. Keep the button's `aria-label` — the icon is
 decorative, the label is the name. Chakra's own `CloseButton` is a primitive, not an icon, and
 stays.
-
-The accent ramp there is a **placeholder** — no visual identity has been chosen yet.
 
 Auth is deliberately **not wired** into the frontend shell: it is still being designed.
 

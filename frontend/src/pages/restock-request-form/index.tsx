@@ -37,6 +37,7 @@ import { PaymentTypeSelect } from "../../components/pickers/PaymentTypeSelect";
 import { ShippingSelect } from "../../components/pickers/ShippingSelect";
 import { formatRupiah } from "../../lib/money";
 import { toaster } from "../../components/feedback/Toaster";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // One editable restock line. product id/sku/name come from the picker (a snapshot — the product may
 // live in another team's catalogue); quantity and the line's TOTAL supplier price are typed (#140). The
@@ -432,7 +433,7 @@ export function RestockRequestFormPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-edit-load-error">
+        <Text color="error.fg" data-testid="restock-edit-load-error">
           {loadError.key ? t(loadError.key) : loadError.text}
         </Text>
       </Stack>
@@ -459,7 +460,7 @@ export function RestockRequestFormPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="restock-create-error">
+        <Text color="error.fg" data-testid="restock-create-error">
           {error}
         </Text>
       )}
@@ -552,14 +553,12 @@ export function RestockRequestFormPage() {
                             <Flex gap="card" align="end" justify="end" wrap="wrap">
                               <Field.Root w="20">
                                 <Field.Label fontSize="xs">{t("restock.form.quantity")}</Field.Label>
-                                <Input
-                                  type="number"
-                                  min="1"
+                                <QuantityInput
+                                  min={1}
+                                  width="full"
                                   value={line.quantity}
-                                  data-testid={`restock-qty-${i}`}
-                                  onChange={(e) =>
-                                    patchLine(line.productId, { quantity: e.target.value })
-                                  }
+                                  testId={`restock-qty-${i}`}
+                                  onChange={(quantity) => patchLine(line.productId, { quantity })}
                                 />
                               </Field.Root>
 
@@ -586,7 +585,7 @@ export function RestockRequestFormPage() {
                                 type="button"
                                 size="xs"
                                 variant="ghost"
-                                colorPalette="red"
+                                colorPalette="error"
                                 mb="1"
                                 aria-label={t("restock.form.removeProduct")}
                                 data-testid={`restock-remove-${i}`}

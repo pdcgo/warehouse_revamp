@@ -305,18 +305,30 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 //   107 is the only CANCELLED one, and it ships from the OTHER warehouse, which leaves Gudang Pusat
 //       with an empty Cancelled tab — the one state that says "no orders in THIS status" rather than
 //       "no orders". The 30-day money excludes it either way: a cancelled order is not a sale.
+// Two more rows carry a job in the MONEY columns:
+//
+//   107 has NO marketplace figure and NO recorded cost — a phone order, cancelled, that nobody ever
+//       costed. It is the row where the margin cell must refuse (`—`) rather than print a confident
+//       100%, and where the "MP" line under the total must be absent rather than `Rp 0`.
+//   108 has a marketplace REFERENCE but no marketplace TOTAL. Those are two different absences and
+//       this is the row that proves it: the order plainly came from a storefront, and nobody wrote
+//       down what the storefront took. 0 is "not recorded", never "sold for nothing" (order.proto).
+//
+// ⚠ `marketplaceTotal` DISAGREES WITH `total` on every row that has one, on purpose: `total` is what
+// WE quoted and the marketplace figure is what the buyer paid the platform after its own vouchers and
+// subsidies. A fixture where they matched would make every settlement screen look right by accident.
 export const orders = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, shippingCode: "jne", createdAtUnix: daysAgo(1) },
-  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, shippingCode: "sicepat", createdAtUnix: daysAgo(2) },
-  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, shippingCode: "jne", createdAtUnix: daysAgo(3) },
-  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, shippingCode: "anteraja", createdAtUnix: daysAgo(4) },
-  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PACKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, shippingCode: "jne", createdAtUnix: daysAgo(5) },
-  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPED, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, shippingCode: "sicepat", createdAtUnix: daysAgo(6) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PACKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, marketplaceTotal: 303_500n, cogs: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPED, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, marketplaceTotal: 137_000n, cogs: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdAtUnix: daysAgo(6) },
   { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCELLED, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdAtUnix: daysAgo(8) },
-  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPED, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, shippingCode: "anteraja", createdAtUnix: daysAgo(120) },
-  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.CONFIRMED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, shippingCode: "jne", createdAtUnix: daysAgo(1) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPED, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, cogs: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.CONFIRMED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, marketplaceTotal: 258_000n, cogs: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdAtUnix: daysAgo(1) },
 
-  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PLACED, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, shippingCode: "anteraja", createdAtUnix: daysAgo(2) },
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PLACED, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, marketplaceTotal: 628_000n, cogs: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdAtUnix: daysAgo(2) },
   { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PACKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdAtUnix: daysAgo(3) },
 ];
 
@@ -354,11 +366,13 @@ export const orderDetailExtras: Record<
   // opens its account from the marketplace figure, never from ours, so a fixture where the two were
   // equal would hide the one number that matters and make every liability screen look right by
   // accident.
+  // ⚠ IT NO LONGER RESTATES THE MONEY. `marketplace_total` and `cogs` are on the ROW, and repeating
+  // them here — nor the marketplace reference — is how the same order came to read 150.400 on the
+  // list and 148.000 on its own detail, under two different marketplace ids.
+  // The list reads `order.cogs` while the detail SUMS THE LINES, and `order.proto` says those are the
+  // same number ("the lines it was computed from are frozen too").
   "101": {
-    marketplaceTotal: 245_000n,
-    cogs: 148_000n,
     note: "Titip bubble wrap tambahan, barang pecah belah.",
-    orderExternalRefId: "MEL-250101-0001",
     items: [
       { id: 1n, productId: 301n, sku: "KPH-M", name: "Kaos Polos Hitam — M", quantity: 2, unitPrice: 75_000n, unitCost: 48_000n },
       { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitPrice: 75_000n, unitCost: 46_000n },
@@ -381,9 +395,10 @@ export const orderDetailExtras: Record<
 
   // A CANCELLED order, and the only fixture whose timeline ENDS badly. The Timeline tab colours the
   // two endings and nothing in between, so one of each is the minimum that proves it.
+  // ⚠ IT ADDS ONLY EVENTS. It used to carry a marketplace total and a cost, which its own LIST row
+  // says it does not have — the same order reading as costed on one screen and uncosted on the next.
+  // The row is the source of truth for the money; extras add what a list row cannot carry.
   "107": {
-    marketplaceTotal: 73_000n,
-    cogs: 41_000n,
     events: [
       { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(8) },
       { id: 2n, kind: 3, actorUserId: 63n, atUnix: daysAgo(7) },
@@ -418,10 +433,15 @@ export function orderDetailFor(id: bigint) {
 
   return {
     ...row,
-    marketplaceTotal: extra.marketplaceTotal ?? row.total,
-    cogs: extra.cogs ?? (row.subtotal * 6n) / 10n,
+    // ⚠ THE ROW WINS OVER A DERIVED GUESS. These three used to fall back to `row.total`, to 60% of
+    // the subtotal and to `""` — so the detail page contradicted the list about the same order:
+    // a different marketplace figure, a different cost, and a reference that vanished on opening it.
+    // The extras add what a list row cannot carry (lines, events, address, receipt, note); the money
+    // and the reference belong to the row.
+    marketplaceTotal: extra.marketplaceTotal ?? row.marketplaceTotal ?? 0n,
+    cogs: extra.cogs ?? row.cogs ?? 0n,
     note: extra.note ?? "",
-    orderExternalRefId: extra.orderExternalRefId ?? "",
+    orderExternalRefId: extra.orderExternalRefId ?? row.orderExternalRefId ?? "",
     address: extra.address,
     receipt: extra.receipt,
     items: extra.items ?? [
@@ -432,7 +452,11 @@ export function orderDetailFor(id: bigint) {
         name: "Kaos Polos Hitam — M",
         quantity: 1,
         unitPrice: row.subtotal,
-        unitCost: (row.subtotal * 6n) / 10n,
+        // ⚠ THE ROW'S OWN `cogs`, not an invented 60%. The detail page SUMS its lines while the list
+        // reads `order.cogs`, and `order.proto` says those are one number — so a made-up line cost made
+        // the same order read Rp 310.700 on the list and Rp 291.500 on its detail, and gave a cancelled
+        // order the list calls unpriced a cost on its detail. `0` stays unknown, as on the row.
+        unitCost: row.cogs ?? 0n,
       },
     ],
     events: extra.events ?? [{ id: 1n, kind: 1, actorUserId: 61n, atUnix: row.createdAtUnix }],
@@ -445,9 +469,77 @@ export function orderDetailFor(id: bigint) {
 // warehouse never types one. It is what the Drafts tab's badge counts, so the two versions of the
 // list differ there too — a number for Melati, a zero for Gudang Pusat.
 export const orderDrafts = [
-  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", shippingCode: "jne", shippingCost: 15_000n, itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1) },
-  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", shippingCode: "sicepat", shippingCost: 12_000n, itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(2) },
+  { id: 201n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9001", shopId: 21n, warehouseId: 11n, customerName: "Bu Lestari", customerPhone: "0812-3456-0101", shippingCode: "jne", shippingCost: 15_000n, itemCount: 3, unmappedItemCount: 1, touchedFields: [], createdAtUnix: daysAgo(2), updatedAtUnix: daysAgo(1) },
+  { id: 202n, teamId: 12n, authorUserId: 61n, source: "manual", externalId: "MEL-9002", shopId: 22n, warehouseId: 11n, customerName: "Pak Mamat", customerPhone: "0812-3456-0102", shippingCode: "sicepat", shippingCost: 12_000n, itemCount: 2, unmappedItemCount: 0, touchedFields: [], createdAtUnix: daysAgo(1), updatedAtUnix: daysAgo(1) },
 ];
+
+// ── What a draft DETAIL read adds — its lines ───────────────────────────────────────────────────
+//
+// Same split as `orderDetailExtras`: `OrderDraftList` returns a summary with only the COUNTS, and
+// `OrderDraftDetail` is the one read that populates `items`. The line counts here must agree with
+// `itemCount` / `unmappedItemCount` above, or the list and the detail disagree about the same draft.
+//
+//   201  three lines, ONE UNMAPPED (productId 0) — Promote is disabled and says why.
+//   202  two lines, all mapped, all within the warehouse's stock — the draft that is READY.
+//
+// Mapped lines point at products 71 and 72, which Gudang Pusat holds (`warehouseStock`), so the
+// availability column has a real figure to show rather than a dash.
+const draftAddress = {
+  provinsiCode: "32", provinsiName: "Jawa Barat",
+  kabupatenCode: "3273", kabupatenName: "Kota Bandung",
+  kecamatanCode: "327301", kecamatanName: "Sukajadi",
+  desaCode: "3273011001", desaName: "Sukawarna",
+  kodePos: "40162",
+  addressLine: "Jl. Sukajadi No. 45",
+};
+
+export const orderDraftItems: Record<
+  string,
+  { id: bigint; externalSku: string; externalName: string; productId: bigint; quantity: number; unitPrice: bigint }[]
+> = {
+  "201": [
+    { id: 2011n, externalSku: "SHP-KOPI-250", externalName: "Kopi Arabika Gayo 250gr Biji Sangrai", productId: 71n, quantity: 2, unitPrice: 55_000n },
+    { id: 2012n, externalSku: "SHP-TEH-100", externalName: "Teh Melati Wangi 100 gram", productId: 72n, quantity: 1, unitPrice: 25_000n },
+    // THE UNMAPPED ONE — the scrape read it, nobody has said which product it is yet.
+    { id: 2013n, externalSku: "SHP-MUG-01", externalName: "Mug Keramik Motif Batik (bonus)", productId: 0n, quantity: 1, unitPrice: 20_000n },
+  ],
+  "202": [
+    { id: 2021n, externalSku: "TK-KOPI-250", externalName: "Kopi Arabika 250g", productId: 71n, quantity: 1, unitPrice: 55_000n },
+    // EXACTLY what the warehouse holds (product 72 has 3) — ready as it stands, and ONE click on the
+    // + away from short. That is the edge the short-stock alert is judged against.
+    { id: 2022n, externalSku: "TK-TEH-100", externalName: "Teh Melati Kemasan 100gr", productId: 72n, quantity: 3, unitPrice: 25_000n },
+  ],
+};
+
+/** One draft as `OrderDraftDetail` returns it — the list row plus its lines and a frozen address. */
+export function orderDraftDetailFor(id: bigint) {
+  const row = orderDrafts.find((d) => d.id === id);
+  if (!row) return undefined;
+
+  return { ...row, address: draftAddress, items: orderDraftItems[id.toString()] ?? [] };
+}
+
+// ── Where an order's goods were drawn from — `StockPickLocations` ───────────────────────────────
+//
+// Keyed by order id. 101 is the pick list worth looking at, because its three lines land on the
+// three things the shelf column can say:
+//
+//   301  TWO shelves — two walks, and the screen must show both, never choose one for the picker
+//   302  UNPLACED (rack 0) — a real place, said in words rather than left blank
+//   303  NO recorded draw at all — an order placed before stock integration (#149)
+//
+// Every other order ships its one default line (product 301) from a single shelf.
+export const pickLocations: Record<string, { productId: bigint; rackId: bigint; rackCode: string; quantity: bigint }[]> = {
+  "101": [
+    { productId: 301n, rackId: 41n, rackCode: "A-01-1", quantity: 1n },
+    { productId: 301n, rackId: 42n, rackCode: "A-01-2", quantity: 1n },
+    { productId: 302n, rackId: 0n, rackCode: "", quantity: 1n },
+  ],
+};
+
+export function pickLocationsFor(orderId: bigint) {
+  return pickLocations[orderId.toString()] ?? [{ productId: 301n, rackId: 43n, rackCode: "B-02-1", quantity: 1n }];
+}
 
 // ── The daily statement's money ─────────────────────────────────────────────────────────────────
 //

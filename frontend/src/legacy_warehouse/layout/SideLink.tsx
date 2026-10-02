@@ -42,7 +42,7 @@ export function SideLink({ item, current, onNavigate }: SideLinkProps) {
       </Text>
 
       {item.badge !== undefined && item.badge > 0 && (
-        <Badge colorPalette="red" variant="solid" borderRadius="full" data-testid="side-link-badge">
+        <Badge colorPalette="error" variant="solid" borderRadius="full" data-testid="side-link-badge">
           {item.badge > 99 ? "99+" : item.badge}
         </Badge>
       )}

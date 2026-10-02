@@ -58,6 +58,27 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// THE SAME FORM, ON A PHONE-SHAPED CANVAS (owner) — the first of the order screens to get one.
+//
+// It is the same page and the same data: only the canvas is narrow, which is what the form's own
+// responsive rules answer to. Worth looking at here, in this order:
+//
+//   - the two columns collapse into one, so "which shop / which warehouse" no longer sits beside the
+//     lines it governs — it sits ABOVE them, which is the reading order the design wanted anyway;
+//   - the totals card stops being a sticky right rail and lands at the bottom, after the lines;
+//   - every picker's option rows are 44px here against 36px on a desktop (theme.ts, OPTION_PY), and a
+//     product row's controls stack rather than squeeze.
+//
+// ⚠ NO `play()`, DELIBERATELY. The `viewport` global resizes the WORKBENCH canvas only — the story
+// runner has one fixed viewport (see MobileLayout.stories) — so an assertion written here would be
+// making a claim about a width the test never renders at. This story is for looking.
+//
+// The shell around it on a real phone (the compact top bar, the bottom tab bar) is its own story:
+// Layouts/Mobile/AppShell. What this one shows is the PAGE inside that shell.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+};
+
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
 // Two products, a name and a shop — the smallest order this form will accept. Reused by the rules
@@ -209,5 +230,143 @@ export const PlacingTheOrderNavigatesWithoutAskingToDiscard: Story = {
     await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
     // No discard dialog on the way out.
     await expect(screen.queryByTestId("confirm-action")).toBeNull();
+  },
+};
+
+// ── WHAT THE REBUILT FORM ADDED (owner) ─────────────────────────────────────────────────────────
+
+// ⚠ A BUNDLE'S PRODUCTS ARE REAL LINES. They are drawn from the same warehouse, judged by the same
+// rule and SENT with the order — only the grouping has nowhere to live (mark 1). The short-line
+// alert is the proof: a slot asking for more than the shelf holds blocks Create exactly as a
+// hand-picked line does. If bundles were decorative, this would pass in silence and the totals would
+// promise stock the order never draws.
+export const ABundlesProductsAreOrderedLikeAnyOther: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(within(canvas.getByTestId("bundle-search")).getByRole("combobox"));
+
+    const hampers = await screen.findByTestId("bundle-option-hampers");
+    await waitFor(() => expect(hampers).toBeVisible());
+    await userEvent.click(hampers);
+
+    // Teh Melati (72) has THREE on the shelf in the fixtures.
+    const qty = await canvas.findByTestId("slot-qty-72");
+    await userEvent.clear(qty);
+    await userEvent.type(qty, "5", { delay: 40 });
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-short")).toBeInTheDocument());
+    await expect(canvas.getByTestId("order-create-save")).toBeDisabled();
+  },
+};
+
+// THE RECEIPT FILE LEADS, AND THE TWO NUMBERS IT CARRIES SIT WITH IT (owner) — the marketplace's
+// order id and the courier's tracking number are printed on one piece of paper, so they are one card
+// at the top rather than two fields three cards apart. The other half of the move is that the
+// customer card no longer holds a courier or a file.
+export const TheReceiptFileLeadsWithBothOfItsNumbers: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const receiptCard = canvas.getByTestId("order-create-receipt-preview").closest("div[class*='card__root']");
+    await expect(receiptCard).not.toBeNull();
+    await expect(within(receiptCard as HTMLElement).getByTestId("order-external-ref-id")).toBeInTheDocument();
+    await expect(within(receiptCard as HTMLElement).getByTestId("order-receipt-code")).toBeInTheDocument();
+
+    // The old home of the courier + upload, now empty of them.
+    await expect(canvas.queryByTestId("order-receipt-section")).toBeNull();
+  },
+};
+
+// ── THE CHECKS AT CREATE (owner) ────────────────────────────────────────────────────────────────
+
+// ⚠ AN ERROR IS NOT AN "ARE YOU SURE". One number in both boxes is a transcription mistake every
+// time — the order it would place cannot be found again from either side — so the dialog offers a
+// way BACK and nothing else, and the RPC is never reached.
+export const TheSameNumberInBothBoxesRefusesToPlace: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+
+    await pickProduct(canvasElement, products[0]!.id);
+
+    // The same reference typed into both — the case the rule exists for.
+    await userEvent.type(canvas.getByTestId("order-external-ref-id"), "JP2026081500471183", {
+      delay: 10,
+    });
+    await userEvent.type(canvas.getByTestId("order-receipt-code"), "JP2026081500471183", {
+      delay: 10,
+    });
+
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled());
+    await userEvent.click(create);
+
+    const dialog = await screen.findByTestId("order-checks-dialog");
+    await expect(within(dialog).getByTestId("order-check-refsIdentical")).toBeInTheDocument();
+    // No way through: the order was NOT placed and the form is still here.
+    await expect(within(dialog).queryByTestId("order-checks-place")).toBeNull();
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+  },
+};
+
+// …and a WARNING is the other half of the rule: a thin margin is a decision somebody is entitled to
+// make, so it is shown, and then it can be overruled. The order really is placed afterwards — the
+// dialog is a question, not a second Create button.
+export const AThinMarginAsksFirstAndThenPlaces: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-create-customer-name"), "Bu Ani", { delay: 40 });
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const shop = await canvas.findByTestId(`shop-select-option-${shops[0]!.id}`);
+    await waitFor(() => expect(shop).toBeVisible());
+    await userEvent.click(shop);
+
+    await pickProduct(canvasElement, products[0]!.id);
+
+    // Sold for less than it cost — comfortably under the 35% floor.
+    await userEvent.type(canvas.getByTestId("order-marketplace-total"), "1000", { delay: 10 });
+
+    const create = canvas.getByTestId("order-create-save");
+    await waitFor(() => expect(create).toBeEnabled());
+    await userEvent.click(create);
+
+    const dialog = await screen.findByTestId("order-checks-dialog");
+    await expect(within(dialog).getByTestId("order-check-profitBelowFloor")).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByTestId("order-checks-place"));
+
+    await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+  },
+};
+
+// ⚠ THE WAREHOUSE LEADS THE FORM (owner). It is not a field of the order — it is what every figure
+// on the screen is measured against — so it sits in its own band above the cards, under the strip
+// that says what the screen cannot do yet. This pins the ORDER of those three, because the whole
+// point of the change is the reading order: what is unfinished → which building → the order itself.
+export const TheWarehouseLeadsTheFormUnderTheWarning: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const top = (el: HTMLElement) => el.getBoundingClientRect().top;
+
+    const warning = canvas.getByTestId("not-implemented-summary");
+    const band = canvas.getByTestId("order-warehouse-band");
+    const firstCard = canvas.getByTestId("order-create-receipt-preview");
+
+    await expect(top(warning)).toBeLessThan(top(band));
+    await expect(top(band)).toBeLessThan(top(firstCard));
+
+    // …and it left the Order Information card behind: the picker is in the band, nowhere else.
+    await expect(canvas.getAllByTestId("order-warehouse")).toHaveLength(1);
+    await expect(band).toContainElement(canvas.getByTestId("order-warehouse"));
   },
 };

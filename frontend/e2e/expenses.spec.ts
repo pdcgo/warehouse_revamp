@@ -60,7 +60,11 @@ test("Expenses: record, correct, and void — the totals follow each step (#170)
   await page.getByTestId("expense-kind-select").click();
   await page.getByTestId("expense-kind-select-3").click(); // OPERATIONAL
   await page.getByTestId("expense-amount").fill("800000");
-  await page.getByTestId("expense-date").fill(today);
+  // The date picker is a button opening a calendar (it stopped being a native <input type="date">),
+  // so today is CLICKED. `[data-today]` is the day cell the calendar marks itself — no date maths in
+  // the spec, and no dependence on the machine's locale for the format.
+  await page.getByTestId("expense-date").click();
+  await page.locator('[data-testid="expense-date-content"] [data-today]').click();
   await page.getByTestId("expense-note").fill(NOTE);
   await page.getByTestId("submit-cost").click();
 

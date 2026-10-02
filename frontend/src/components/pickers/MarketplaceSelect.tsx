@@ -1,29 +1,7 @@
 import { useMemo } from "react";
 import { Select, createListCollection } from "@chakra-ui/react";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-
-// marketplaceLabel is the shared display name for a marketplace — used by the picker below and by
-// callers that show a shop's marketplace read-only (e.g. a table cell).
-export function marketplaceLabel(m: Marketplace): string {
-  switch (m) {
-    case Marketplace.SHOPEE:
-      return "Shopee";
-    case Marketplace.TOKOPEDIA:
-      return "Tokopedia";
-    case Marketplace.LAZADA:
-      return "Lazada";
-    case Marketplace.TIKTOK:
-      return "TikTok";
-    case Marketplace.BLIBLI:
-      return "Blibli";
-    case Marketplace.BUKALAPAK:
-      return "Bukalapak";
-    case Marketplace.OTHER:
-      return "Other";
-    default:
-      return "Unspecified";
-  }
-}
+import { MarketplaceBadge, marketplaceLabel } from "../badges/MarketplaceBadge";
 
 // The marketplaces a shop may be on — UNSPECIFIED is excluded (it is the "not picked" sentinel).
 export const MARKETPLACES: Marketplace[] = [
@@ -45,7 +23,12 @@ export interface MarketplaceSelectProps {
 
 // MarketplaceSelect is the shared marketplace picker (#66), built on Chakra's composable Select. It
 // emits a Marketplace enum, so callers work in the enum, not strings.
-export const description = "Marketplace picker (Chakra Select). Emits a Marketplace enum (a shop's storefront).";
+//
+// COLOUR-CODED: every option, and the picked value in the closed trigger, is a MarketplaceBadge — a
+// marketplace is never bare text, and the picker shows it exactly as every table and detail does. The
+// badge carries the name, so the colour is never the only cue.
+export const description =
+  "Marketplace picker (Chakra Select), colour-coded: each option and the picked value is a MarketplaceBadge. Emits a Marketplace enum (a shop's storefront).";
 
 export function MarketplaceSelect({
   value,
@@ -56,7 +39,7 @@ export function MarketplaceSelect({
   const collection = useMemo(
     () =>
       createListCollection({
-        items: MARKETPLACES.map((m) => ({ label: marketplaceLabel(m), value: String(m) })),
+        items: MARKETPLACES.map((m) => ({ label: marketplaceLabel(m), value: String(m), marketplace: m })),
       }),
     [],
   );
@@ -77,7 +60,20 @@ export function MarketplaceSelect({
 
       <Select.Control>
         <Select.Trigger data-testid="marketplace-select">
-          <Select.ValueText placeholder={placeholder} />
+          {/* Read from the Select's own state rather than the `value` prop, so the badge follows the
+              pick even when a caller leaves the picker uncontrolled. No pick → ValueText falls back to
+              the placeholder. */}
+          <Select.Context>
+            {(select) => {
+              const picked = select.value[0];
+
+              return (
+                <Select.ValueText placeholder={placeholder}>
+                  {picked !== undefined ? <MarketplaceBadge marketplace={Number(picked) as Marketplace} /> : undefined}
+                </Select.ValueText>
+              );
+            }}
+          </Select.Context>
         </Select.Trigger>
         <Select.IndicatorGroup>
           <Select.Indicator />
@@ -91,7 +87,9 @@ export function MarketplaceSelect({
         <Select.Content>
           {collection.items.map((item) => (
             <Select.Item item={item} key={item.value}>
-              <Select.ItemText>{item.label}</Select.ItemText>
+              <Select.ItemText>
+                <MarketplaceBadge marketplace={item.marketplace} />
+              </Select.ItemText>
               <Select.ItemIndicator />
             </Select.Item>
           ))}

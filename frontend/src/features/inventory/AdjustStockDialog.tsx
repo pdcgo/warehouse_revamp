@@ -20,6 +20,7 @@ import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
 import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
 import { useAdjustStock, useProductBatches, useProductPlaces } from "./queries";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // The reason drives the model (#211): a RECOUNT reconciles the whole shelf to a counted figure, while
 // DAMAGED/LOST/FOUND change a specific batch's units.
@@ -157,7 +158,7 @@ export function AdjustStockDialog({
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="adjust-error">
+                    <Text color="error.fg" data-testid="adjust-error">
                       {error}
                     </Text>
                   )}
@@ -223,12 +224,13 @@ export function AdjustStockDialog({
 
                   <Field.Root required>
                     <Field.Label>{amountLabel}</Field.Label>
-                    <Input
-                      type="number"
-                      min={isBatch ? "1" : "0"}
+                    <QuantityInput
+                      min={isBatch ? 1 : 0}
+                      width="full"
+                      size="sm"
                       value={amount}
-                      data-testid="adjust-amount"
-                      onChange={(e) => setAmount(e.target.value)}
+                      testId="adjust-amount"
+                      onChange={setAmount}
                     />
                     <Field.HelperText>{t("inventory.adjustHelper")}</Field.HelperText>
                   </Field.Root>
@@ -256,7 +258,7 @@ export function AdjustStockDialog({
                     >
                       <Text fontSize="sm" fontVariantNumeric="tabular-nums">
                         <b>{current.toString()}</b> → <b>{next.toString()}</b>{" "}
-                        <Text as="span" color={signedDelta < 0n ? "red.fg" : "green.fg"}>
+                        <Text as="span" color={signedDelta < 0n ? "error.fg" : "success.fg"}>
                           ({signedDelta > 0n ? "+" : ""}
                           {signedDelta.toString()})
                         </Text>

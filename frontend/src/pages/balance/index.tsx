@@ -179,7 +179,7 @@ export function BalanceSheetPage({ sheet, onRangeChange }: BalanceSheetPageProps
 
       {/* Said on the screen and not only in a comment. A money page that looks finished is read as
           finished, and this one's figures are typed into a fixture file. */}
-      <Flex align="center" gap="2" color="orange.fg" data-testid="balance-mock-notice">
+      <Flex align="center" gap="2" color="warning.fg" data-testid="balance-mock-notice">
         <Icon as={FlaskConical} boxSize="4" />
         <Text fontSize="sm">{t("balance.mockNotice")}</Text>
       </Flex>
@@ -190,7 +190,7 @@ export function BalanceSheetPage({ sheet, onRangeChange }: BalanceSheetPageProps
           business holds and owes somebody would have to type in every month, which is the number the
           decision to build a ledger actually turns on. */}
       {showGaps && (
-        <Flex align="center" gap="2" color="orange.fg" data-testid="balance-gap-summary">
+        <Flex align="center" gap="2" color="warning.fg" data-testid="balance-gap-summary">
           <Icon as={TriangleAlert} boxSize="4" />
           <Text fontSize="sm">
             {t("balance.gapSummary", {
@@ -254,14 +254,14 @@ export function BalanceSheetPage({ sheet, onRangeChange }: BalanceSheetPageProps
                 approached from opposite ends. Nothing else on either screen would notice them
                 drifting apart — so it is checked here, out loud, rather than trusted. */}
             {profitTies ? (
-              <Flex align="center" gap="2" color="green.fg" data-testid="balance-profit-ties">
+              <Flex align="center" gap="2" color="success.fg" data-testid="balance-profit-ties">
                 <Icon as={Check} boxSize="4" />
                 <Text fontSize="xs">
                   {t("balance.profitTies", { amount: formatRupiah(profitOnSheet) })}
                 </Text>
               </Flex>
             ) : (
-              <Flex align="center" gap="2" color="red.fg" data-testid="balance-profit-mismatch">
+              <Flex align="center" gap="2" color="error.fg" data-testid="balance-profit-mismatch">
                 <Icon as={TriangleAlert} boxSize="4" />
                 <Text fontSize="xs">
                   {t("balance.profitMismatch", {

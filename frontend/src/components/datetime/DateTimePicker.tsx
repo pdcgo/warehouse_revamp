@@ -1,63 +1,41 @@
-import { Box, Icon, IconButton, Input } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
+
+import { DatePicker } from "./DatePicker";
 import { dateTimeInputToUnix, unixToDateTimeInput } from "../../lib/datetime";
 
 // Re-export the conversions so a caller imports the picker and its unit helper from one place.
 export { dateTimeInputToUnix, unixToDateTimeInput };
 
 export const description =
-  "Single instant field (Chakra Input type=\"datetime-local\"). Holds a `yyyy-mm-ddThh:mm` string (\"\" = unset), minute precision; pass `clearable` for an inline reset. Convert with `dateTimeInputToUnix`/`unixToDateTimeInput` (0 = unset). Local time — the value maps to the same wall clock the user sees, never UTC.";
+  "Single instant field — `DatePicker` with its time row on. The trigger is a button showing the chosen date AND time; the popover holds the calendar with a time input under it. Holds a `yyyy-mm-ddThh:mm` string (\"\" = unset), minute precision; pass `clearable` for an inline reset. Convert with `dateTimeInputToUnix`/`unixToDateTimeInput` (0 = unset). Local time — the value maps to the same wall clock the user sees, never UTC.";
 
 export interface DateTimePickerProps {
   /** The chosen instant as `yyyy-mm-ddThh:mm`; `""` means nothing chosen. */
   value: string;
   onChange: (value: string) => void;
-  /** Bounds passed straight to the native input (`yyyy-mm-ddThh:mm`). */
+  /** Bounds as `yyyy-mm-dd` — the calendar's floor and ceiling are DAYS. */
   min?: string;
   max?: string;
   disabled?: boolean;
   /** Show an inline clear (×) once a value is set. */
   clearable?: boolean;
   testId?: string;
+  placeholder?: string;
 }
 
-// DateTimePicker is the shared single-instant field — DatePicker with a time-of-day. Same overlay
-// approach: a bare <Input type="datetime-local"> keeps its Field wiring, with an optional clear
-// button laid over it.
-export function DateTimePicker({ value, onChange, min, max, disabled, clearable, testId }: DateTimePickerProps) {
+// DateTimePicker is the shared single-instant control: the date picker with its clock shown.
+//
+// ⚠ IT IS A NAME, NOT A SECOND IMPLEMENTATION. When both were native inputs this file carried its own
+// markup, and the two drifted — different overlays, different clear buttons, and a time picker that
+// could never gain the calendar the date one had. Now there is one calendar, one trigger, one clear,
+// and this component's whole job is to say which of the two value shapes a caller is holding:
+// `yyyy-mm-ddThh:mm` here, `yyyy-mm-dd` there, with the unit helpers to match.
+export function DateTimePicker(props: DateTimePickerProps) {
   const { t } = useTranslation();
-  const showClear = clearable && !!value && !disabled;
 
+  // Its own empty-state wording: this control asks for a time as well, and "Choose a date" on a
+  // button that also wants 09:30 is half a question.
   return (
-    <Box position="relative" w="full">
-      <Input
-        type="datetime-local"
-        value={value}
-        min={min}
-        max={max}
-        disabled={disabled}
-        data-testid={testId}
-        onChange={(e) => onChange(e.target.value)}
-        pe={showClear ? "2rem" : undefined}
-      />
-      {showClear ? (
-        <IconButton
-          type="button"
-          size="xs"
-          variant="ghost"
-          aria-label={t("dateTimePicker.clear")}
-          tabIndex={-1}
-          onClick={() => onChange("")}
-          data-testid={testId ? `${testId}-clear` : undefined}
-          position="absolute"
-          top="50%"
-          insetEnd="1.5rem"
-          transform="translateY(-50%)"
-        >
-          <Icon as={X} boxSize="4" />
-        </IconButton>
-      ) : null}
-    </Box>
+    <DatePicker {...props} withTime placeholder={props.placeholder ?? t("dateTimePicker.placeholder")} />
   );
 }

@@ -24,7 +24,7 @@ export function BalanceCheckCard({ result }: BalanceCheckCardProps) {
     <Card.Root
       data-testid="balance-check"
       data-balanced={balanced ? "true" : "false"}
-      borderColor={balanced ? undefined : "red.solid"}
+      borderColor={balanced ? undefined : "error.solid"}
     >
       <Card.Body>
         <SimpleGrid columns={{ base: 1, md: 3 }} gap="card" alignItems="center">
@@ -77,12 +77,12 @@ export function BalanceCheckCard({ result }: BalanceCheckCardProps) {
             The number is stated as a FAULT with its size, so it reads as work to do rather than as a
             column that happens to be there. */}
         {balanced ? (
-          <Flex align="center" gap="2" mt="card" color="green.fg" data-testid="balance-tie-ok">
+          <Flex align="center" gap="2" mt="card" color="success.fg" data-testid="balance-tie-ok">
             <Icon as={Check} boxSize="4" />
             <Text fontSize="sm">{t("balance.ties")}</Text>
           </Flex>
         ) : (
-          <Flex align="center" gap="2" mt="card" color="red.fg" data-testid="balance-tie-broken">
+          <Flex align="center" gap="2" mt="card" color="error.fg" data-testid="balance-tie-broken">
             <Icon as={TriangleAlert} boxSize="4" />
             <Text fontSize="sm">
               {t("balance.doesNotTie", { amount: formatBalance(difference) })}

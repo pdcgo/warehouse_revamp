@@ -130,14 +130,14 @@ export function ProductListExternal({
             the gap is what makes it scan as the card's name rather than as a first line of content,
             and this card needs that more than most: everything under it is somebody else's text, and
             a heading that blends into the lines below is one nobody reads before reading them. */}
-        <Card.Title fontSize="lg" data-testid="product-list-external-title">
+        <Card.Title data-testid="product-list-external-title">
           {title ?? t("productListExternal.title")}
         </Card.Title>
         {/* WHO SENT THIS — "Send By External Extension" (owner), under the heading because that is
             where a heading's qualification is read. It names the browser extension that pushed the
             draft in, which is the one thing on the card saying the lines below did not come from
             here — and is what lets the rows themselves stay clean. */}
-        <Card.Description fontSize="xs" data-testid="product-list-external-caption">
+        <Card.Description data-testid="product-list-external-caption">
           {source
             ? t("productListExternal.captionFrom", { source })
             : t("productListExternal.caption")}
@@ -203,7 +203,7 @@ export function ProductListExternal({
                         // NOT "× 0". A zero the app failed to read, printed as a number, is a lie
                         // with a multiplication sign in front of it.
                         <Badge
-                          colorPalette="orange"
+                          colorPalette="warning"
                           size="xs"
                           data-testid={`product-list-external-qty-unknown-${key}`}
                         >
@@ -222,7 +222,7 @@ export function ProductListExternal({
                         // Rp 0 is STATED, not hidden and not relabelled — it is what the app sent.
                         // The colour asks for a second look without claiming to know which of "free"
                         // and "unread" it was, because the wire cannot tell us.
-                        color={item.price === 0n ? "orange.fg" : undefined}
+                        color={item.price === 0n ? "warning.fg" : undefined}
                         data-testid={`product-list-external-price-${key}`}
                       >
                         {formatRupiah(item.price!)}
@@ -271,7 +271,7 @@ export function ProductListExternal({
               would be a confident number that is quietly missing money — and nobody reconciling
               against the marketplace would know which of the two was wrong. */}
           {partial && (
-            <Badge colorPalette="orange" size="xs" data-testid="product-list-external-total-partial">
+            <Badge colorPalette="warning" size="xs" data-testid="product-list-external-total-partial">
               {t("productListExternal.totalPartial")}
             </Badge>
           )}

@@ -116,7 +116,7 @@ export function BatchReceiptPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("batchReceipt.back")}
         </Button>
-        <Text color="red.fg" data-testid="batch-receipt-error">
+        <Text color="error.fg" data-testid="batch-receipt-error">
           {query.isError ? rpcError(query.error) : t("batchReceipt.notFound")}
         </Text>
       </Stack>
@@ -218,7 +218,7 @@ export function BatchReceiptPage() {
                     )}
                   </Table.Cell>
                   <Table.Cell textAlign="end">{l.arrived.toString()}</Table.Cell>
-                  <Table.Cell textAlign="end" color={l.damaged > 0n ? "red.fg" : undefined}>
+                  <Table.Cell textAlign="end" color={l.damaged > 0n ? "error.fg" : undefined}>
                     {l.damaged.toString()}
                   </Table.Cell>
                   <Table.Cell textAlign="end">{l.accepted.toString()}</Table.Cell>

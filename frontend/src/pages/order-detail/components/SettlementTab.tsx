@@ -49,6 +49,8 @@ export interface SettlementTabProps {
    */
   orderRef: string;
   cogs: bigint;
+  /** Drop the panel's own card — the host is already one. See `OrderLedgerPanel`. */
+  bare?: boolean;
 }
 
 export function SettlementTab({
@@ -56,6 +58,7 @@ export function SettlementTab({
   shopId,
   orderRef,
   cogs,
+  bare = false,
 }: SettlementTabProps) {
   const { current } = useTeam();
   const teamId = current?.teamId;
@@ -147,6 +150,7 @@ export function SettlementTab({
         role={role}
         onAddEntry={addEntry}
         onReverse={reverse}
+        bare={bare}
       />
     </Stack>
   );

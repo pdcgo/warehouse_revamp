@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 
-import { ChakraProvider } from "@chakra-ui/react";
+import { Box, ChakraProvider } from "@chakra-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router-dom";
 
+import { PendingMarksProvider } from "../src/features/pending/PendingMarks";
 import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
@@ -15,12 +16,20 @@ import {
   resetLiabilityTerms,
   resetSettlementImports,
   resetShipmentChannels,
+  stubUploads,
 } from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { resetFinancialAccounts } from "./financialAccountStub";
 import { resetSessionScenario } from "./sessionScenario";
-import { system } from "../src/theme";
-import "../src/i18n/config";
+import { SYSTEM_FONT_STACK, system } from "../src/theme";
+import i18n from "../src/i18n/config";
+import type { Lang } from "../src/i18n/language";
+
+// The toolbar's Language, as the app's Lang. Anything but "id" is English — the default every story's
+// play() asserts against.
+function langOf(globals: Record<string, unknown>): Lang {
+  return globals.locale === "id" ? "id" : "en";
+}
 
 // The app shell, minus the app.
 //
@@ -35,11 +44,19 @@ import "../src/i18n/config";
 // re-render — which makes it worth stating rather than rediscovering.
 function StoryProviders({
   colorMode,
+  font,
+  lang,
   ownRouter,
+  pageGutter,
+  pendingMarks,
   children,
 }: {
   colorMode: "light" | "dark";
+  font: "lato" | "system";
+  lang: Lang;
   ownRouter: boolean;
+  pageGutter: boolean;
+  pendingMarks: boolean;
   children: ReactNode;
 }) {
   // A FRESH client per story. Sharing one would let a picker's options survive into the next story
@@ -63,6 +80,42 @@ function StoryProviders({
     document.documentElement.classList.toggle("dark", colorMode === "dark");
   }, [colorMode]);
 
+  // The toolbar's Language drives i18n with the same `changeLanguage` the app's own switcher calls
+  // (useLanguage, src/i18n/language.ts) — minus its localStorage write, so browsing in Indonesian
+  // leaves no preference behind. Switching re-renders the open story in place; a NEW story is set
+  // before it renders, in `beforeEach`.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    void i18n.changeLanguage(lang);
+  }, [lang]);
+
+  // ⚠ TEMPORARY — a before/after switch while the typeface is being decided; remove it once Lato is
+  // settled. "System" overrides the two font variables the theme emits with the old stack, inline on
+  // <html> so it beats the `:root` rule; "Lato" removes the override and the theme applies again.
+  useEffect(() => {
+    const root = document.documentElement.style;
+
+    if (font === "system") {
+      root.setProperty("--chakra-fonts-body", SYSTEM_FONT_STACK);
+      root.setProperty("--chakra-fonts-heading", SYSTEM_FONT_STACK);
+    } else {
+      root.removeProperty("--chakra-fonts-body");
+      root.removeProperty("--chakra-fonts-heading");
+    }
+  }, [font]);
+
+  // A PAGE gets the gutter the desktop shell gives it in the app (`p="page"` on DesktopLayout's
+  // <main>), so a page story reads the way the screen does. Everything else is `fullscreen` (see
+  // `parameters.layout`) — a shell fills the frame, and a component sits flush.
+  //
+  // It lives here, inside ChakraProvider, rather than in a decorator of its own: `p="page"` is a theme
+  // token, and resolving it must not depend on the order decorators happen to wrap in.
+  // ⚠ INSIDE THE GUTTER, so turning the marks off changes what is drawn and nothing about where.
+  // Wrapping outside would leave the page's padding keyed to a subtree that may now render nothing.
+  const marked = <PendingMarksProvider show={pendingMarks}>{children}</PendingMarksProvider>;
+
+  const content = pageGutter ? <Box p="page">{marked}</Box> : marked;
+
   return (
     <ChakraProvider value={system}>
       <QueryClientProvider client={queryClient}>
@@ -80,7 +133,7 @@ function StoryProviders({
             builds its own; this decorator then supplies NO router at all. Opt-in rather than
             default, for the same reason `signedIn` is: a data router means naming routes, and the
             ~40 stories that only render a Link should not have to. */}
-        {ownRouter ? children : <MemoryRouter>{children}</MemoryRouter>}
+        {ownRouter ? content : <MemoryRouter>{content}</MemoryRouter>}
         {/* Outside the router deliberately — a toast is chrome, it renders no Link, and keeping it
             out is what lets the branch above swap routers without moving it. */}
         <Toaster />
@@ -92,7 +145,13 @@ function StoryProviders({
 const withProviders: Decorator = (Story, context) => (
   <StoryProviders
     colorMode={context.globals.colorMode === "dark" ? "dark" : "light"}
+    font={context.globals.font === "system" ? "system" : "lato"}
+    lang={langOf(context.globals)}
     ownRouter={context.parameters.dataRouter === true}
+    // Default ON, and the default is the one that matters — see `features/pending/PendingMarks`.
+    pendingMarks={context.globals.pendingMarks !== "off"}
+    // The live app's pages only — `Legacy/Pages/*` and `LegacyWarehouse/Pages/*` stay fullscreen.
+    pageGutter={context.title.startsWith("Pages/")}
   >
     <Story />
   </StoryProviders>
@@ -208,6 +267,9 @@ const preview: Preview = {
   ],
   initialGlobals: {
     colorMode: "light",
+    font: "lato",
+    locale: "en",
+    pendingMarks: "on",
   },
   globalTypes: {
     colorMode: {
@@ -222,8 +284,66 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    // The UI language, for reviewing a screen in Bahasa Indonesia.
+    //
+    // ⚠ ENGLISH IS THE DEFAULT, AND THE TESTS DEPEND ON IT: every play() asserts English text, and
+    // `npm run test:stories` runs at the default. Browsing in Indonesian therefore shows those checks
+    // FAILING in the Interactions panel — expected, and nothing to fix. The ~10 keys `id.json` lacks
+    // fall back to English.
+    locale: {
+      description: "The app's UI language",
+      toolbar: {
+        title: "Language",
+        icon: "globe",
+        items: [
+          { value: "en", title: "English" },
+          { value: "id", title: "Bahasa Indonesia" },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    // THE BUILD-STATUS MARKS — the ⚠ badges and the folded strip above them (owner, 2026-09-29).
+    //
+    // ⚠ THIS IS THE ONLY PLACE THEY CAN BE TURNED OFF, and deliberately: the marks tell somebody that a
+    // figure on their screen is invented, so a person using the warehouse must never be able to switch
+    // that off. The audience for the switch is the person REVIEWING a layout, and a row of triangles is
+    // the loudest thing on a table while being no part of the design.
+    //
+    // ⚠ SHOWN IS THE DEFAULT AND THE TESTS RUN AT IT. `npm run test:stories` asserts on marks in
+    // several screens; browsing with them hidden shows those checks failing in the Interactions panel,
+    // the same way browsing in Indonesian does.
+    pendingMarks: {
+      description: "The ⚠ marks for what a screen cannot do yet",
+      toolbar: {
+        title: "Pending marks",
+        icon: "alert",
+        items: [
+          { value: "on", title: "Shown" },
+          { value: "off", title: "Hidden" },
+        ],
+        dynamicTitle: true,
+      },
+    },
+    // ⚠ TEMPORARY — see the font effect in StoryProviders.
+    font: {
+      description: "The app typeface — Lato, or the system stack it replaced",
+      toolbar: {
+        title: "Font",
+        icon: "paragraph",
+        items: [
+          { value: "lato", title: "Lato" },
+          { value: "system", title: "System (before)" },
+        ],
+        dynamicTitle: true,
+      },
+    },
   },
-  async beforeEach() {
+  async beforeEach(context) {
+    // The language, set BEFORE the story renders. The Sidebar and MenuSheet stories carry the app's
+    // real language switcher, which persists its choice — without this, a story that clicks it would
+    // leave every later story in Indonesian.
+    localStorage.removeItem("warehouse.lang");
+    await i18n.changeLanguage(langOf(context.globals));
     // The courier catalogue is a MODULE-LEVEL session cache, not a query — it is loaded once and
     // shared by every ShippingBadge on a page (features/shipping/catalogue.ts). Module state
     // survives between stories in one browser tab, so without this a later story would render from
@@ -254,9 +374,14 @@ const preview: Preview = {
     resetFinancialAccounts();
     // …and who is signed in — a story standing as a CS must not leave the next one a CS.
     resetSessionScenario();
+    // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
+    // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
+    stubUploads();
     stubClipboard();
   },
   parameters: {
+    // No frame padding by default — the `Pages/` gutter is added in StoryProviders instead.
+    layout: "fullscreen",
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     options: {
       // The sidebar groups mirror `src/components/<group>/` one-for-one, so "where does this live?"
@@ -300,44 +425,12 @@ const preview: Preview = {
           // page is mounted inside it.
           "Layouts",
           "Pages",
-          // The adopted legacy UI (src/legacy/), kept as its OWN top-level section rather than
-          // merged into Components above. Two reasons: it is a staging area whose pieces are still
-          // being reconciled against the live design system, and a reviewer browsing for something
-          // to reuse needs to be able to tell instantly which of the two they are looking at. It
-          // sits last because the live design system is what a new screen should reach for first.
-          "Legacy",
-          [
-            "Components",
-            [
-              "Text",
-              "Cells",
-              "Display",
-              "Charts",
-              "Pickers",
-              "Date & Time",
-              "Badges",
-              "Inputs",
-              "Feedback",
-              // Same wildcard rule as above — an unlisted group lands silently at the bottom.
-              "*",
-            ],
-            "Layout",
-            "Pages",
-            "*",
-          ],
-          // The adopted WAREHOUSE-FLOOR UI (src/legacy_warehouse/) — a different app from the one
-          // above, and kept apart from it for the same reason `Legacy` is kept apart from
-          // `Components`: a reviewer must be able to tell at a glance whether they are looking at
-          // the selling-team screens or the screens somebody uses with a scanner in their hand.
-          // Scan leads its Components group because it is what the whole app is built around.
-          "LegacyWarehouse",
-          [
-            "Components",
-            ["Scan", "Badges", "Display", "*"],
-            "Layout",
-            "Pages",
-            "*",
-          ],
+          // ⚠ THE WORKBENCH IS THE LIVE APP ONLY (owner). `src/legacy/` and `src/legacy_warehouse/` —
+          // the two adopted UIs — used to carry ~185 story files of their own and had their own
+          // sections here. They are a staging area, not a design system: nobody reviewed them in the
+          // workbench, and their stories made up two thirds of the test suite. The screens are still
+          // routed and still compile; they simply have no stories any more, and a new one does not
+          // belong there either.
           "*",
         ],
       },

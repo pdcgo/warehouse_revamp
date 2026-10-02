@@ -110,7 +110,7 @@ export function RejectPaymentDialog({ target, onClose, teamId }: RejectPaymentDi
                 </Dialog.ActionTrigger>
                 <Button
                   type="submit"
-                  colorPalette="red"
+                  colorPalette="error"
                   loading={busy}
                   disabled={!ready}
                   data-testid="liability-detail-reject-submit"

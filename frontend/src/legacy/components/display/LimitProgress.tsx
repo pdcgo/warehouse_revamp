@@ -89,7 +89,7 @@ export function LimitProgress({ unpaid, threshold, showIcon, showValue }: LimitP
           <Icon
             as={STATUS_ICON[status]}
             boxSize="3.5"
-            colorPalette={STATUS_TONE[status] === "success" ? "green" : STATUS_TONE[status] === "warning" ? "orange" : "red"}
+            colorPalette={STATUS_TONE[status] === "success" ? "success" : STATUS_TONE[status] === "warning" ? "warning" : "error"}
             color="colorPalette.solid"
           />
         )}

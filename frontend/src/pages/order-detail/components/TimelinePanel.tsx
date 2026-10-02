@@ -36,7 +36,13 @@ const LOOK: Partial<Record<OrderEventKind, { icon: LucideIcon; palette?: string 
   [OrderEventKind.CANCELLED]: { icon: Ban, palette: "red" },
 };
 
-const TITLE_KEY: Partial<Record<OrderEventKind, string>> = {
+/**
+ * The i18n key per event kind.
+ *
+ * ⚠ EXPORTED because the order-detail PREVIEW renders the same events in a flat list. Two screens
+ * naming the same event differently is exactly what one shared map prevents.
+ */
+export const TIMELINE_TITLE: Partial<Record<OrderEventKind, string>> = {
   [OrderEventKind.PLACED]: "orders.timeline.placed",
   [OrderEventKind.CONFIRMED]: "orders.timeline.confirmed",
   [OrderEventKind.PICKING]: "orders.timeline.picking",
@@ -90,7 +96,7 @@ export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelPro
               event={event}
               actor={actors?.get(event.actorUserId.toString())}
               fallback={actorFallback(event.actorUserId)}
-              title={t(TITLE_KEY[event.kind] ?? "orders.timeline.unknown")}
+              title={t(TIMELINE_TITLE[event.kind] ?? "orders.timeline.unknown")}
               icon={LOOK[event.kind]?.icon ?? Clock}
               palette={LOOK[event.kind]?.palette}
             />
@@ -143,7 +149,7 @@ function EventStep({
   icon: LucideIcon;
   palette?: string;
 }) {
-  const testId = `order-timeline-${kindSlug(event.kind)}`;
+  const testId = `order-timeline-${timelineKindSlug(event.kind)}`;
 
   return (
     <Timeline.Item data-testid={testId}>
@@ -198,7 +204,8 @@ function EventStep({
 
 // The testid segment per kind. Stable strings rather than the enum's number, so a selector reads
 // `order-timeline-shipped` and survives the enum gaining a value.
-function kindSlug(kind: OrderEventKind): string {
+/** Exported so the seller's timeline RAIL carries the same testids this tab's steps do. */
+export function timelineKindSlug(kind: OrderEventKind): string {
   switch (kind) {
     case OrderEventKind.PLACED:
       return "placed";

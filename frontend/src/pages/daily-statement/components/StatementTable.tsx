@@ -156,7 +156,7 @@ export function StatementTable({
                         as={TriangleAlert}
                         boxSize="3"
                         ml="1"
-                        color="orange.fg"
+                        color="warning.fg"
                         aria-label={t("statement.unknownCostRow", {
                           count: row.unknownCostOrders,
                           unit: t(`statement.unit.${grain}`, { count: 1 }),
@@ -173,14 +173,14 @@ export function StatementTable({
                 </>
               )}
 
-              <Table.Cell textAlign="end" color={row.stockLoss > 0n ? "orange.fg" : undefined}>
+              <Table.Cell textAlign="end" color={row.stockLoss > 0n ? "warning.fg" : undefined}>
                 {money(row.stockLoss)}
               </Table.Cell>
               <Table.Cell textAlign="end">{money(row.otherExpenses)}</Table.Cell>
 
               <Table.Cell
                 textAlign="end"
-                color={row.profit < 0n ? "red.fg" : undefined}
+                color={row.profit < 0n ? "error.fg" : undefined}
                 fontWeight="medium"
               >
                 {money(row.profit)}
@@ -189,7 +189,7 @@ export function StatementTable({
               {/* The RUNNING total is what makes this a statement rather than a table of periods: it says
                   where the period stood at the close of each one, so a bad week is visible as the line
                   turning over rather than as three rows a reader has to add up. */}
-              <Table.Cell textAlign="end" color={row.running < 0n ? "red.fg" : "fg.muted"}>
+              <Table.Cell textAlign="end" color={row.running < 0n ? "error.fg" : "fg.muted"}>
                 {formatRupiah(row.running)}
               </Table.Cell>
             </Table.Row>
@@ -221,14 +221,14 @@ export function StatementTable({
               </>
             )}
 
-            <Table.Cell textAlign="end" color={stockLoss > 0n ? "orange.fg" : undefined}>
+            <Table.Cell textAlign="end" color={stockLoss > 0n ? "warning.fg" : undefined}>
               {money(stockLoss)}
             </Table.Cell>
             <Table.Cell textAlign="end">{money(spent - stockLoss)}</Table.Cell>
             <Table.Cell
               textAlign="end"
               fontWeight="bold"
-              color={income - spent < 0n ? "red.fg" : undefined}
+              color={income - spent < 0n ? "error.fg" : undefined}
               data-testid="statement-footer-profit"
             >
               {formatRupiah(income - spent)}

@@ -129,7 +129,7 @@ export function WarehouseEditPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="warehouse-edit-error">
+        <Text color="error.fg" data-testid="warehouse-edit-error">
           {error}
         </Text>
       )}

@@ -105,7 +105,7 @@ export function ProductCard({ product, stock, teamName, action }: ProductCardPro
             )}
             {showStock && (
               <Badge
-                colorPalette={inStock ? "green" : "red"}
+                colorPalette={inStock ? "success" : "error"}
                 size="xs"
                 data-testid={`product-card-stock-${product.id ?? ""}`}
               >

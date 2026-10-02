@@ -175,7 +175,7 @@ test("Opname: posting corrects the shelf, prices the shortfall, and leaves uncou
 
   // A count changes real stock and writes off value, so it confirms (the destructive-action rule).
   await page.getByTestId("opname-post").click();
-  await page.getByRole("button", { name: "Post count" }).click();
+  await page.getByRole("button", { name: "Post Count" }).click();
 
   const result = page.getByTestId("opname-result");
   await expect(result).toBeVisible();
@@ -206,7 +206,7 @@ test("Opname: the shortfall shows up as stock loss on the daily statement", asyn
 
   await page.getByTestId(`opname-count-${productA}`).fill(String(ARRIVED_A - 5));
   await page.getByTestId("opname-post").click();
-  await page.getByRole("button", { name: "Post count" }).click();
+  await page.getByRole("button", { name: "Post Count" }).click();
   await expect(page.getByTestId("opname-result")).toBeVisible();
 
   // Root's team is not a WAREHOUSE, so the statement renders in selling mode — but the expense is on

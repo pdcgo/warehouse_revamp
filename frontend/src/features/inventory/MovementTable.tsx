@@ -160,7 +160,7 @@ export function MovementTable({
                   nothing is not an increase. */}
               <Table.Cell
                 textAlign="end"
-                color={m.delta > 0n ? "green.fg" : m.delta < 0n ? "red.fg" : undefined}
+                color={m.delta > 0n ? "success.fg" : m.delta < 0n ? "error.fg" : undefined}
               >
                 {m.delta > 0n ? `+${m.delta}` : m.delta.toString()}
               </Table.Cell>

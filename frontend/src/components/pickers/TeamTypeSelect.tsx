@@ -1,23 +1,11 @@
 import { useMemo } from "react";
 import { Portal, Select, createListCollection } from "@chakra-ui/react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { TeamTypeBadge, teamTypeLabel } from "../badges/TeamTypeBadge";
 
-// teamTypeLabel is the shared display name for a team type — used by the picker below and by
-// callers that show a locked/read-only type.
-export function teamTypeLabel(type: TeamType): string {
-  switch (type) {
-    case TeamType.ROOT:
-      return "Root";
-    case TeamType.ADMIN:
-      return "Admin";
-    case TeamType.WAREHOUSE:
-      return "Warehouse";
-    case TeamType.SELLING:
-      return "Selling";
-    default:
-      return "Unspecified";
-  }
-}
+// The shared display name now lives with the badge (TeamTypeBadge owns how a team type is shown);
+// re-exported so the callers that already import it from the picker keep working.
+export { teamTypeLabel };
 
 // The team types a caller may CREATE — ROOT is excluded (the root team is seeded, never created).
 export const CREATABLE_TEAM_TYPES: TeamType[] = [
@@ -37,7 +25,12 @@ export interface TeamTypeSelectProps {
 
 // TeamTypeSelect is the shared team-type picker (#45), built on Chakra's composable Select. It
 // emits a TeamType, so callers work in the enum, not strings.
-export const description = "Team-type picker (Chakra Select). Emits a TeamType; defaults to the creatable set.";
+//
+// COLOUR-CODED: every option, and the picked value in the closed trigger, is a TeamTypeBadge — the same
+// colour the type wears in the team list and the switcher. The badge carries the name, so the colour is
+// never the only cue.
+export const description =
+  "Team-type picker (Chakra Select), colour-coded: each option and the picked value is a TeamTypeBadge. Emits a TeamType; defaults to the creatable set.";
 
 export function TeamTypeSelect({
   value,
@@ -48,7 +41,7 @@ export function TeamTypeSelect({
 }: TeamTypeSelectProps) {
   const collection = useMemo(
     () =>
-      createListCollection({ items: types.map((t) => ({ label: teamTypeLabel(t), value: String(t) })) }),
+      createListCollection({ items: types.map((t) => ({ label: teamTypeLabel(t), value: String(t), type: t })) }),
     [types],
   );
 
@@ -68,7 +61,19 @@ export function TeamTypeSelect({
 
       <Select.Control>
         <Select.Trigger data-testid="team-type-select">
-          <Select.ValueText placeholder={placeholder} />
+          {/* Read from the Select's own state rather than the `value` prop, so the badge follows the
+              pick even when a caller leaves the picker uncontrolled. No pick → the placeholder. */}
+          <Select.Context>
+            {(select) => {
+              const picked = select.value[0];
+
+              return (
+                <Select.ValueText placeholder={placeholder}>
+                  {picked !== undefined ? <TeamTypeBadge type={Number(picked) as TeamType} /> : undefined}
+                </Select.ValueText>
+              );
+            }}
+          </Select.Context>
         </Select.Trigger>
         <Select.IndicatorGroup>
           <Select.Indicator />
@@ -80,7 +85,9 @@ export function TeamTypeSelect({
           <Select.Content>
             {collection.items.map((item) => (
               <Select.Item item={item} key={item.value}>
-                <Select.ItemText>{item.label}</Select.ItemText>
+                <Select.ItemText>
+                  <TeamTypeBadge type={item.type} />
+                </Select.ItemText>
                 <Select.ItemIndicator />
               </Select.Item>
             ))}

@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orderDetailFor, orders, teams, users } from "../../../.storybook/fixtures";
 import { OrderDetailPage } from "./index";
+import { ORDER_DETAIL_PENDING } from "./pending";
 
 // ONE ORDER, READ SECTION BY SECTION — the detail route behind every row of the order list.
 //
@@ -76,15 +77,30 @@ export const Default: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
 
-    // The header is the ORDER's, and stays put whichever tab is open.
+    // The header is the ORDER's, and stays put while the sections scroll under it.
     await expect(canvas.getByTestId("order-detail-title")).toHaveTextContent(FULL.id.toString());
-    await expect(canvas.getByTestId("order-detail-tabs")).toBeInTheDocument();
 
-    // Info opens first — it is what the order IS, and it is where the lines live.
+    // ONE PAGE OF SECTIONS, not tabs (`the-order-detail-is-one-page-of-sections`): every section is
+    // on the page at once, and the nav lists them.
+    await expect(canvas.queryByTestId("order-detail-tabs")).not.toBeInTheDocument();
+    await expect(canvas.getByTestId("section-items")).toBeInTheDocument();
+    await expect(canvas.getByTestId("section-timeline")).toBeInTheDocument();
+
     for (const line of FULL.items) {
       await expect(canvas.getByText(line.name)).toBeInTheDocument();
     }
   },
+};
+
+// THE SAME ORDER, ON A PHONE-SHAPED CANVAS (owner). What to look at: the header and its actions, the
+// section chips that replace the left nav, and the item table — the widest thing on the page, in its
+// own scroll box.
+//
+// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only, and the story runner has one
+// fixed viewport (MobileLayout.stories), so an assertion here would describe a width nothing renders
+// at. This is for looking. The shell around it is Layouts/Mobile/AppShell.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
 };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
@@ -102,13 +118,15 @@ export const Default: Story = {
  */
 export const MarketplaceTotalDiffersFromOurs: Story = {
   play: async ({ canvasElement }) => {
-    await waitFor(() =>
-      expect(within(canvasElement).getByTestId("order-detail-title")).toBeInTheDocument(),
-    );
+    const canvas = within(canvasElement);
 
+    await waitFor(() => expect(canvas.getByTestId("summary-tiles")).toBeInTheDocument());
+
+    // Two facts on two tiles: what the platform paid, and what the order cost us (goods + fee). The
+    // list shows the same pair (`the-row-shows-total-beli-and-total-mp`).
     await expect(FULL.marketplaceTotal).not.toBe(FULL.total);
-    await expect(canvasElement).toHaveTextContent(/Rp 250\.000/); // ours
-    await expect(canvasElement).toHaveTextContent(/Rp 245\.000/); // the platform's
+    await expect(canvas.getByTestId("tile-mp")).toHaveTextContent("Rp 245.000");
+    await expect(canvas.getByTestId("tile-system")).toHaveTextContent("Rp 150.500");
   },
 };
 
@@ -123,8 +141,7 @@ export const Timeline: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
-    await userEvent.click(canvas.getByTestId("order-detail-tab-timeline"));
+    await waitFor(() => expect(canvas.getByTestId("timeline-rail")).toBeInTheDocument());
 
     const ani = users.find((u) => u.id === 61n)!;
     await waitFor(async () => {
@@ -147,8 +164,7 @@ export const UnrecordedActor: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
-    await userEvent.click(canvas.getByTestId("order-detail-tab-timeline"));
+    await waitFor(() => expect(canvas.getByTestId("timeline-rail")).toBeInTheDocument());
 
     // The steps are there — asserted by TESTID, not by the word "shipped", which also appears in the
     // status badge in the header and would pass against a completely empty timeline.
@@ -176,7 +192,10 @@ export const CancelledOrderHasNoCancelButton: Story = {
     const canvas = within(canvasElement);
 
     await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
-    await expect(canvas.queryByTestId("order-cancel")).not.toBeInTheDocument();
+
+    // An end state offers NOTHING: no cancel, and no action bar drawn empty or disabled.
+    await expect(canvas.queryByTestId("order-action-cancel")).not.toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-action-bar")).not.toBeInTheDocument();
   },
 };
 
@@ -191,6 +210,9 @@ const AtOtherTeamsOrder = Routed(`/orders/${OTHER_TEAMS.id}`);
 // 107 is CANCELLED and has no settlement account in the stub — the "never settled" case.
 const AtCancelledOrder = Routed(`/orders/${CANCELLED.id}`);
 
+// ⚠ AND IT READS THE OLD PAGE. A warehouse gets `WarehouseOrderDetail` — the seller's rebuilt detail
+// shows harga beli and margin, which a building fulfilling many sellers has no business reading
+// (`the-two-ends-are-two-screens`). The tabs below are that page's.
 export const WarehouseReadsAnotherTeamsOrder: Story = {
   beforeEach: asTeam(WAREHOUSE.id),
   render: () => <AtOtherTeamsOrder />,
@@ -243,7 +265,7 @@ export const InvalidId: Story = {
 };
 
 /**
- * THE SETTLEMENT LEDGER IN ITS REAL SEAT — the third tab.
+ * THE SETTLEMENT LEDGER IN ITS REAL SEAT — a section of the order, as it was a tab of it.
  *
  * `order-detail-manages-the-ledger` put it here rather than on a screen of its own: the ledger is a
  * property OF an order, and the person adding a row is looking at that order.
@@ -256,8 +278,7 @@ export const SettlementLedger: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
-    await userEvent.click(canvas.getByTestId("order-detail-tab-settlement"));
+    await waitFor(() => expect(canvas.getByTestId("section-settlement")).toBeInTheDocument());
 
     // The panel loads from the real query hook through the stubbed transport — not a prop — so this
     // also proves the adapter maps the wire enums back to the shapes the panel was designed against.
@@ -283,11 +304,44 @@ export const SettlementNotRecordedYet: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() => expect(canvas.getByTestId("order-detail-title")).toBeInTheDocument());
-    await userEvent.click(canvas.getByTestId("order-detail-tab-settlement"));
+    await waitFor(() => expect(canvas.getByTestId("section-settlement")).toBeInTheDocument());
 
     await waitFor(() => {
       expect(canvas.getByTestId("settlement-absent")).toBeInTheDocument();
     });
+  },
+};
+
+// ── From the approved preview ───────────────────────────────────────────────────────────────────────
+
+/** The layout without the ⚠ scaffolding — the version to judge the design on. */
+export const WithoutTheMarks: Story = {
+  globals: { pendingMarks: "off" },
+};
+
+/**
+ * BOTH LEGS OF THE PARCEL, populated — out and back, each with its own courier, number and trail.
+ * 108 is the only fixture given a return, and it is invented: there is no return record yet.
+ */
+const AtReturned = Routed("/orders/108");
+
+export const WithAReturn: Story = {
+  render: () => <AtReturned />,
+};
+
+/**
+ * ⚠ EVERY GAP THE SCREEN DECLARES HAS A MARK ON IT. The deadline entry once sat in the pending list for
+ * a whole round with no badge anywhere, while the deadline itself was the loudest invented thing on the
+ * page. No exemptions (owner: *"kasih saja dulu seperti lainnya"*).
+ */
+export const EveryDeclaredGapIsMarkedOnScreen: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("summary-tiles")).toBeInTheDocument());
+
+    for (const part of ORDER_DETAIL_PENDING.parts) {
+      await expect(canvas.queryAllByTestId(`not-implemented-${part.id}`).length).toBeGreaterThan(0);
+    }
   },
 };

@@ -218,7 +218,7 @@ export function WarehouseProductPage() {
     return (
       <Stack gap="section">
         {back}
-        <Text color="red.fg" data-testid="warehouse-product-error">
+        <Text color="error.fg" data-testid="warehouse-product-error">
           {error || t("warehouseProduct.notFound")}
         </Text>
       </Stack>
@@ -428,7 +428,7 @@ export function WarehouseProductPage() {
                     <Table.Cell>{d && d.lastInUnix > 0n ? formatDateUnix(d.lastInUnix) : "—"}</Table.Cell>
                     <Table.Cell>
                       {opname > 0n ? (
-                        <Text color={isStaleOpname(opname) ? "orange.fg" : undefined}>
+                        <Text color={isStaleOpname(opname) ? "warning.fg" : undefined}>
                           {formatDateUnix(opname)}
                         </Text>
                       ) : (
@@ -548,7 +548,7 @@ export function WarehouseProductPage() {
                     </Table.Cell>
                     <Table.Cell>
                       {b.expiresOnUnix > 0n ? (
-                        <Text color={isExpiringSoon(b.expiresOnUnix) ? "orange.fg" : undefined}>
+                        <Text color={isExpiringSoon(b.expiresOnUnix) ? "warning.fg" : undefined}>
                           {formatDateUnix(b.expiresOnUnix)}
                         </Text>
                       ) : (

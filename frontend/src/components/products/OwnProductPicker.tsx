@@ -31,7 +31,7 @@ export interface OwnProductPickerProps {
 }
 
 export const description =
-  "Multi-select picker over ONE TEAM'S CATALOGUE (ProductList) — searchable, paginated, laid out as a TABLE: product | on the way | ready stock, one tickable row each. `teamId` is required: this picker is \"my products\", so there is no unset case that widens to every team (use AllProductPicker for that). The two figures are columns rather than badges because this is the BUYING picker and buying is a comparison down a column — READY is what is on a shelf at `stockWarehouseId`, ONGOING is what is already ordered and not yet accepted, totalled across EVERY warehouse. A cell shows 0 for a real zero and \"—\" when the figure was never read. `readyLens` picks which READY: \"owned\" (default, what this team owns there) or \"available\" (what a pick would find). Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards.";
+  "Multi-select picker over ONE TEAM'S CATALOGUE (ProductList) — searchable, paginated, laid out as a TABLE: product | ongoing | ready, one tickable row each. `teamId` is required: this picker is \"my products\", so there is no unset case that widens to every team (use AllProductPicker for that). The two figures are columns rather than badges because this is the BUYING picker and buying is a comparison down a column — READY is what is on a shelf at `stockWarehouseId`, ONGOING is what is already ordered and not yet accepted, totalled across EVERY warehouse. A cell shows 0 for a real zero and \"—\" when the figure was never read. `readyLens` picks which READY: \"owned\" (default, what this team owns there) or \"available\" (what a pick would find). Ticks are a draft — Confirm applies them (an empty list clears), Cancel discards.";
 
 // OwnProductPicker is the BUYING-side picker: the products this team sells, whether or not any
 // warehouse currently holds them. That is the difference from OwnStockedProductPicker — a restock is
@@ -67,7 +67,7 @@ export function OwnProductPicker({
       }}
       loadBadges={catalogueBadges({ scopeTeamId: teamId, stockWarehouseId, readyLens })}
       // A TABLE, not a list of badges (owner). This is the BUYING picker, and buying is a comparison:
-      // you scan down "what is already on the way" and "what is already here" across rows to decide
+      // you scan down "what is already ongoing" and "what is already here" across rows to decide
       // what to order. Badges make each row readable on its own and make the column unreadable.
       layout="table"
       value={value}

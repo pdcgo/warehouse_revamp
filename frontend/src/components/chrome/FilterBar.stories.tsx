@@ -110,9 +110,9 @@ export const Narrow: Story = {
 
 // ── The layout rules, as tests ──────────────────────────────────────────────────────────────────
 
-// One rem in pixels. The widths here are theme tokens (`13rem`, `sm`), and this app's root font is
-// 14px — so a test written in raw pixels would be pinning a number that has nothing to do with the
-// rule it claims to check, and would break the day the type scale is retuned.
+// One rem in pixels. The widths here are theme tokens (`13rem`, `sm`), measured against the root font
+// — so a test written in raw pixels would be pinning a number that has nothing to do with the rule it
+// claims to check, and would break the day the type scale is retuned (as it already was once).
 function rem(): number {
   return parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
@@ -183,8 +183,8 @@ export const ControlsWrapInsteadOfSqueezing: Story = {
     const search = canvas.getByTestId("bar-search").getBoundingClientRect();
     const team = canvas.getByTestId("bar-team").getBoundingClientRect();
 
-    // Still its full 13rem in a container too narrow to hold the row. Measured in rem, not pixels:
-    // this app's root font is 14px, so a hard-coded 208 would be asserting a different theme.
+    // Still its full 13rem in a container too narrow to hold the row. Measured in rem, not pixels, so
+    // the assertion holds whatever the root font is.
     await expect(team.width).toBeGreaterThanOrEqual(13 * rem() - 1);
     // Which it can only be by having moved to a second line.
     await expect(team.top).toBeGreaterThanOrEqual(search.bottom);

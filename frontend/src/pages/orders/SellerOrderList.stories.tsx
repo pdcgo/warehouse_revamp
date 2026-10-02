@@ -34,6 +34,26 @@ const Routed = routedPage(
   "/orders",
 );
 
+/**
+ * WHERE THE FILTER CONTROLS ARE. On a phone every control but the search lives in a bottom sheet behind
+ * the Filter button (`FilterBar`, rule 4) — and the story runner's canvas IS phone-width — so open it
+ * when it is there and hand back its scope. On a desktop canvas the controls are inline.
+ */
+async function filterControls(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  const open = canvas.queryByTestId("orders-filters-open");
+
+  if (!open) {
+    return canvas;
+  }
+
+  await userEvent.click(open);
+  const sheet = await screen.findByTestId("orders-filters-sheet");
+  await waitFor(() => expect(sheet).toBeVisible());
+
+  return within(sheet);
+}
+
 const meta = {
   title: "Pages/Order/SellerOrderListPage",
   component: OrdersPage,
@@ -62,6 +82,17 @@ const SHIPPED_FROM_ELSEWHERE = OWN.find((o) => o.warehouseId !== teams[0]!.id)!;
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 export const Default: Story = {};
+
+// THE SAME LIST, ON A PHONE-SHAPED CANVAS (owner). What to look at: the stat tiles stacking, the
+// filter strip wrapping rather than squeezing its pickers (FilterBar's rule), and the TABLE — a
+// row of columns written for a desktop, on a screen that cannot hold them.
+//
+// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only, and the story runner has one
+// fixed viewport (MobileLayout.stories), so an assertion here would describe a width nothing renders
+// at. This is for looking. The shell around it is Layouts/Mobile/AppShell.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+};
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
@@ -110,10 +141,11 @@ export const TheShopFilterIsOfferedAndNarrowsTheTable: Story = {
     const onThatShop = OWN.filter((o) => o.shopId === shop.id);
     const elsewhere = OWN.find((o) => o.shopId !== shop.id)!;
 
-    // ShopSelect renders INLINE (it has to work inside modal Dialogs), so its options are in the
-    // canvas rather than a portal.
-    await userEvent.click(canvas.getByTestId("shop-select"));
-    const option = await canvas.findByTestId(`shop-select-option-${shop.id}`);
+    // ShopSelect renders INLINE (it has to work inside modal Dialogs), so its options are beside it —
+    // in the canvas on a desktop, in the filter sheet on a phone.
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("shop-select"));
+    const option = await controls.findByTestId(`shop-select-option-${shop.id}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
@@ -148,21 +180,25 @@ export const SearchingByCustomerNarrowsTheTable: Story = {
 // ⚠ THE FILTER BAR NARROWS THE WHOLE SCREEN — THE STAT INCLUDED. A header computed without the
 // filters would sit above a table describing a smaller set: "To confirm 2" over one visible row,
 // with nothing on screen explaining the gap.
-export const TheStatFollowsTheFilterBar: Story = {
+export const TheSummaryFollowsTheFilterBar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // `pending` is the owner's name for what the contract still calls PLACED.
     const placed = OWN.filter((o) => o.status === OrderStatus.PLACED);
     await waitFor(() =>
-      expect(canvas.getByTestId("orders-stat-to-confirm")).toHaveTextContent(String(placed.length)),
+      expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent(
+        `${placed.length} tx`,
+      ),
     );
 
     await userEvent.type(canvas.getByTestId("orders-search"), placed[0]!.customerName, { delay: 40 });
 
     // One buyer searched for, so one order left to confirm.
-    await waitFor(() => expect(canvas.getByTestId("orders-stat-to-confirm")).toHaveTextContent("1"), {
-      timeout: 3000,
-    });
+    await waitFor(
+      () => expect(canvas.getByTestId("order-summary-row-pending")).toHaveTextContent("1 tx"),
+      { timeout: 3000 },
+    );
   },
 };
 
@@ -173,7 +209,7 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const before = canvas.getByTestId("orders-tab-count-placed");
+    const before = canvas.getByTestId("orders-tab-count-pending");
     await waitFor(() => expect(before).not.toHaveTextContent("0"));
     const count = before.textContent;
 
@@ -185,7 +221,36 @@ export const ATabNarrowsTheTableButNeverTheCounts: Story = {
     await expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull();
 
     // The Placed tab still says how many are waiting, from the tab you are standing on.
-    await expect(canvas.getByTestId("orders-tab-count-placed")).toHaveTextContent(count!);
+    await expect(canvas.getByTestId("orders-tab-count-pending")).toHaveTextContent(count!);
+  },
+};
+
+// ⚠ …AND "DIPROSES" CANNOT NARROW AT ALL, WHICH IS WHY THE STEP FILTER EXISTS. The owner folded four
+// warehouse steps into one status and `OrderListFilter.status` takes exactly one enum value — so the
+// tab can COUNT its three (confirmed, picking, packed) and cannot narrow to them. Picking a step does
+// what the tab cannot.
+//
+// ⚠ THIS TEST IS PINNED TO A GAP, ON PURPOSE. It is the `statusSet` mark written as an assertion, so
+// the day the enum gains a single `PROCESSED` value this fails and somebody re-reads the step filter's
+// reason for existing.
+export const DiprosesCountsButOnlyAStepCanNarrow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const packed = OWN.find((o) => o.status === OrderStatus.PACKED)!;
+    const placed = OWN.find((o) => o.status === OrderStatus.PLACED)!;
+
+    await userEvent.click(canvas.getByTestId("orders-tab-processed"));
+
+    // The tab alone leaves the table as it was — the pending order is still listed.
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument());
+    await expect(canvas.getByTestId(`order-row-${placed.id}`)).toBeInTheDocument();
+
+    // One step IS one enum value, so it narrows.
+    await userEvent.click(canvas.getByTestId("processed-step-filter-packed"));
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${placed.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`order-row-${packed.id}`)).toBeInTheDocument();
   },
 };
 
@@ -200,7 +265,8 @@ export const TheDateWindowHidesTheOldOrder: Story = {
 
     await waitFor(() => expect(canvas.getByTestId(`order-row-${old.id}`)).toBeInTheDocument());
 
-    await userEvent.click(canvas.getByTestId("orders-date"));
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(controls.getByTestId("orders-date"));
     const last30 = await screen.findByTestId("orders-date-quick-30");
     await waitFor(() => expect(last30).toBeVisible());
     await userEvent.click(last30);
@@ -217,14 +283,17 @@ export const ClearAppearsOnlyWhileFilteringAndRestoresEverything: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.queryByTestId("orders-clear-filters")).toBeNull();
+    await expect(canvas.queryByTestId("orders-filters-clear")).toBeNull();
 
     await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
-    await waitFor(() => expect(canvas.getByTestId("orders-clear-filters")).toBeInTheDocument());
 
-    await userEvent.click(canvas.getByTestId("orders-clear-filters"));
+    // On a phone Clear is in the sheet's footer, beside Done.
+    const controls = await filterControls(canvasElement);
+    await waitFor(() => expect(controls.getByTestId("orders-filters-clear")).toBeInTheDocument());
 
-    await waitFor(() => expect(canvas.queryByTestId("orders-clear-filters")).toBeNull());
+    await userEvent.click(controls.getByTestId("orders-filters-clear"));
+
+    await waitFor(() => expect(controls.queryByTestId("orders-filters-clear")).toBeNull());
     for (const o of OWN) {
       await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
     }
@@ -247,15 +316,33 @@ export const AnEmptySearchSaysNothingMatchedRatherThanNoOrders: Story = {
 
 // THE WHOLE ROW OPENS THE ORDER, as every other list in the app does. The click target used to be
 // the `#id` text alone — a few characters wide — so a row that looked clickable everywhere else did
-// nothing when you clicked the customer or the total.
+// nothing when you clicked the shop or the total.
+//
+// ⚠ IT CLICKS THE DATE, WHICH IS THE POINT: a cell with nothing interactive in it, far from the two
+// copy buttons and the kebab. Those three stop the click on purpose (copying a number must not also
+// navigate), and a story that clicked one of them would pass while the rest of the row was dead.
 export const ClickingAnywhereOnARowOpensTheOrder: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     const row = await canvas.findByTestId(`order-row-${OWN[0]!.id}`);
-    await userEvent.click(within(row).getByText(OWN[0]!.customerName));
+    await userEvent.click(within(row).getByTestId("order-placed-at"));
 
     await waitFor(() => expect(screen.getByTestId("at-order-detail")).toBeInTheDocument());
+  },
+};
+
+// …and the two COPY buttons do NOT open it. Carrying a tracking number to a courier's site is the
+// commonest thing anybody does on this screen, and doing it must not also leave the page — the copy
+// would succeed and nobody would see it happen.
+export const CopyingAReferenceDoesNotOpenTheOrder: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const row = await canvas.findByTestId(`order-row-${OWN[0]!.id}`);
+    await userEvent.click(within(row).getByTestId("order-receipt"));
+
+    await expect(screen.queryByTestId("at-order-detail")).toBeNull();
   },
 };
 
@@ -273,5 +360,31 @@ export const TheDraftsTabCountsAndLeaves: Story = {
 
     await userEvent.click(canvas.getByTestId("orders-tab-drafts"));
     await waitFor(() => expect(screen.getByTestId("at-order-drafts")).toBeInTheDocument());
+  },
+};
+
+/**
+ * ⚠ ON A PHONE THE FILTERS ARE A SHEET (owner: *"bentuk filter di order list cukup berantakan pada
+ * tampilan mobile"*). The search stays in the row; the pickers are behind the Filter button, which counts
+ * what is narrowing the list. Six ragged rows of controls were ~280px of the screen before the tabs.
+ */
+export const OnAPhoneTheFiltersAreASheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("orders-search")).toBeVisible();
+    await expect(canvas.queryByTestId("shop-select")).toBeNull();
+    await expect(canvas.queryByTestId("orders-filters-count")).toBeNull();
+
+    await userEvent.type(canvas.getByTestId("orders-search"), "Ani", { delay: 40 });
+    await waitFor(() => expect(canvas.getByTestId("orders-filters-count")).toHaveTextContent("1"));
+
+    const controls = await filterControls(canvasElement);
+    await expect(controls.getByTestId("shop-select")).toBeVisible();
+    await expect(controls.getByTestId("orders-date")).toBeVisible();
+
+    await userEvent.click(controls.getByTestId("orders-filters-done"));
+    await waitFor(() => expect(screen.queryByTestId("orders-filters-sheet")).toBeNull());
   },
 };

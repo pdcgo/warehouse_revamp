@@ -1,4 +1,4 @@
-import { Input } from "@chakra-ui/react";
+import { Box, Input, Span } from "@chakra-ui/react";
 import type { InputProps } from "@chakra-ui/react";
 
 // Strips everything that is not a digit, then removes leading zeros (#166).
@@ -23,9 +23,9 @@ export function toDigits(raw: string): string {
 
 // Groups digits the way Indonesian money is written: 20000 → "20.000" (#166).
 //
-// Deliberately NOT `formatRupiah`, which prefixes "Rp". A prefix inside an input is a character the
-// caret has to be walked past and the parser has to strip back off, so the label says Rupiah and the
-// field holds the number.
+// Deliberately NOT `formatRupiah`, which prefixes "Rp". A prefix inside the VALUE is a character the
+// caret has to be walked past and the parser has to strip back off — the "Rp" is drawn beside the
+// number instead (see the addon below), so the field still holds nothing but digits.
 export function formatDigits(digits: string): string {
   if (digits === "") return "";
 
@@ -50,18 +50,40 @@ export interface CurrencyInputProps extends Omit<InputProps, "value" | "onChange
 // A TEXT input, not `type="number"`, because "20.000" is not a valid number and the browser would
 // clear it. That also loses the spinner arrows, which nobody wants on a price, and the silent
 // acceptance of "1e5" and "-3".
+// THE "Rp" IS AN ADDON, NOT PART OF THE VALUE (owner): a money field says what it is without the
+// label having to, and a number with no unit in front of it is a number somebody has to guess at.
+// It is drawn OVER a bare `<Input>` — the same trick PasswordInput and DatePicker use — because
+// wrapping the input in Chakra's `InputGroup` would sever the surrounding Field's label/required/
+// aria wiring. `pointerEvents="none"` keeps the click going to the field under it.
 export const description =
-  "Money field that formats as you type (20000 → 20.000, id-ID grouping) and drops leading zeros. The caller holds raw digits and never sees a separator.";
+  "Money field with an \"Rp\" addon that formats as you type (20000 → 20.000, id-ID grouping) and drops leading zeros. The caller holds raw digits and never sees the prefix or a separator.";
 
 export function CurrencyInput({ value, onChange, ...rest }: CurrencyInputProps) {
   return (
-    <Input
-      {...rest}
-      // inputMode brings up the numeric keypad on a phone without the type="number" behaviour that
-      // would reject the grouped text.
-      inputMode="numeric"
-      value={formatDigits(value)}
-      onChange={(e) => onChange(toDigits(e.target.value))}
-    />
+    <Box position="relative" w="full">
+      <Span
+        position="absolute"
+        insetStart="2.5"
+        top="50%"
+        transform="translateY(-50%)"
+        color="fg.muted"
+        pointerEvents="none"
+        userSelect="none"
+        data-testid="currency-input-addon"
+      >
+        Rp
+      </Span>
+      <Input
+        {...rest}
+        // inputMode brings up the numeric keypad on a phone without the type="number" behaviour that
+        // would reject the grouped text.
+        inputMode="numeric"
+        value={formatDigits(value)}
+        onChange={(e) => onChange(toDigits(e.target.value))}
+        // Room for the addon. After the spread, so a caller cannot reclaim the space and leave the
+        // digits sitting under the "Rp".
+        ps="2.5rem"
+      />
+    </Box>
   );
 }
