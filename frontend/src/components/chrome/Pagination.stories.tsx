@@ -74,6 +74,30 @@ export const VisibleOnOnePageWhenItHasASizePicker: Story = {
   },
 };
 
+// `alwaysShow` — a list whose owner decided the pager is part of the page keeps it on ONE page…
+export const AlwaysShownEvenOnOnePage: Story = {
+  args: { count: 4, pageSize: 10, alwaysShow: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("pagination-bar")).toBeInTheDocument();
+    await expect(canvas.getByTestId("page-prev")).toBeDisabled();
+    await expect(canvas.getByTestId("page-next")).toBeDisabled();
+  },
+};
+
+// …and on an EMPTY list, where it reads as one page rather than "1 of 0".
+export const AlwaysShownOnAnEmptyList: Story = {
+  args: { count: 0, pageSize: 10, alwaysShow: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("pagination-bar")).toBeInTheDocument();
+    await expect(canvas.getByTestId("page-text")).not.toHaveTextContent("0");
+    await expect(canvas.getByTestId("page-next")).toBeDisabled();
+  },
+};
+
 // The RANGE line — "Showing 21–40 of 312". "Page 2 of 16" says where you are among PAGES; it does
 // not say how many records there are, which is usually the actual question.
 export const ShowingRange: Story = {

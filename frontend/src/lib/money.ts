@@ -4,6 +4,14 @@ export function formatRupiah(amount: bigint): string {
   return `Rp ${amount.toLocaleString("id-ID")}`;
 }
 
+// formatSignedRupiah writes the SIGN in front of the currency — "+Rp 4.000", "−Rp 10.000", "Rp 0" — for
+// an amount whose direction is the point (a settlement adjustment). formatRupiah would print a loss as
+// "Rp -10.000", the sign buried after the currency where nobody reads it.
+export function formatSignedRupiah(amount: bigint): string {
+  if (amount === 0n) return formatRupiah(0n);
+  return `${amount > 0n ? "+" : "−"}${formatRupiah(amount > 0n ? amount : -amount)}`;
+}
+
 // formatRupiahNumber is formatRupiah for a `double` amount — the wire type rupiah-is-floating-point
 // decided, which the newer contracts carry. Rounded to whole rupiah for display: a fraction of a rupiah
 // is not money anyone can hand over, and the server rounds as a row posts anyway.

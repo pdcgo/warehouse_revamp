@@ -2317,23 +2317,48 @@
     "postedOn": "learned {{date}}",
     "estimate": "Sold for",
     "received": "Received",
-    "lost": "Lost",
-    "gained": "Gained",
+    "lost": "Adjustment",
     "trueMargin": "True margin",
-    "lossHint": "{{hidden}} never itemised, {{named}} named",
-    "noEstimateTitle": "No marketplace total was recorded for this order",
-    "noEstimateBody": "Every figure here measures what reached us against what the buyer paid. Without that figure there is nothing to measure against — an order taken by phone has no marketplace total.",
+    "lossHint": "deducted {{hidden}} · itemised {{named}}",
+    "noEstimateTitle": "No marketplace selling price was recorded for this order",
+    "noEstimateBody": "Every figure here measures what reached us against what the buyer paid. Without that figure there is nothing to measure against — an order taken by phone has no marketplace selling price.",
     "listTitle": "Settlement",
-    "listSubtitle": "Orders ranked by how much of what the buyer paid never reached us. A gap is normal — the platform keeps costs it never itemises.",
-    "totalEstimate": "Sold for",
-    "totalLost": "Lost",
-    "totalHidden": "Never itemised",
-    "impliedRate": "{{rate}}% of sales",
-    "filterShop": "Shop",
+    "listSubtitle": "Orders ranked by their adjustment — how much of the marketplace selling price never reached us. An adjustment is normal: the platform deducts costs it does not always itemise.",
     "allShops": "All shops",
+    "searchPlaceholder": "Search order ID",
+    "lastMoved": "Last moved",
+    "stat": {
+      "orders": "Orders",
+      "sold": "Sold for",
+      "received": "Received",
+      "lost": "Adjustment",
+      "ofSales": "{{pct}}% of sales",
+      "unrecorded": "{{count}} with no marketplace selling price",
+      "allRecorded": "every selling price recorded",
+      "soldLine": "over {{count}} orders"
+    },
+    "sortBy": "Sort by {{column}}",
+    "sortLabel": "Sort",
+    "sortOption": {
+      "loss": {
+        "desc": "Most negative adjustment first",
+        "asc": "Most positive adjustment first"
+      },
+      "sold": {
+        "desc": "Highest sale first",
+        "asc": "Lowest sale first"
+      },
+      "received": {
+        "desc": "Most received first",
+        "asc": "Least received first"
+      },
+      "orderId": {
+        "desc": "Newest order ID first",
+        "asc": "Oldest order ID first"
+      }
+    },
     "noRef": "(no reference)",
-    "hasManual": "has manual entries",
-    "rowNoEstimate": "No marketplace total recorded — nothing to measure against",
+    "rowNoEstimate": "No marketplace selling price recorded — nothing to measure against",
     "col": {
       "when": "When",
       "type": "Type",
@@ -2344,15 +2369,14 @@
       "shop": "Shop",
       "estimate": "Sold for",
       "received": "Received",
-      "lost": "Lost",
-      "hidden": "Never itemised"
+      "lost": "Adjustment"
     },
     "type": {
       "initial_total": "Estimate",
       "fund": "Payout",
       "external_ads_fee": "Ads fee",
       "affiliate_fee": "Affiliate fee",
-      "marketplace_adjustment": "Adjustment",
+      "marketplace_adjustment": "Marketplace adjustment",
       "other": "Other",
       "initial_total_cancel": "Estimate cancelled",
       "withdrawal": "Withdrawal",
@@ -2375,6 +2399,11 @@
       "amount": "Amount",
       "occurredOn": "Belongs to",
       "note": "Note"
+    },
+    "source": {
+      "importer": "Import",
+      "manual": "Manual",
+      "order": "Order"
     }
   },
   "terms": {

@@ -37,6 +37,14 @@ export interface PaginationProps {
    * restates what the reader can already see.
    */
   showRange?: boolean;
+  /**
+   * Never hide — not on one page, not on an empty list (an empty list reads "1 of 1", both arrows off).
+   *
+   * Opt-in, for a list whose owner decided the pager is part of the page rather than a control that
+   * appears once there is something to page (the settlement list, `the-settlement-list-always-shows-its-pager`).
+   * Every other list keeps the default: it hides when everything fits.
+   */
+  alwaysShow?: boolean;
 }
 
 // Pagination is the ONE shared pager for the whole app (#96/#99): right-aligned, a COMPACT previous /
@@ -51,6 +59,7 @@ export function Pagination({
   pageSizeOptions,
   onPageSizeChange,
   showRange,
+  alwaysShow,
 }: PaginationProps) {
   const { t } = useTranslation();
   const showSizePicker = !!(pageSizeOptions && pageSizeOptions.length > 0 && onPageSizeChange);
@@ -63,10 +72,15 @@ export function Pagination({
     [pageSizeOptions],
   );
 
-  // Nothing to show for an empty list; and with no size picker, hide when it all fits on one page.
-  if (count === 0 || (count <= pageSize && !showSizePicker)) {
+  // Nothing to show for an empty list; and with no size picker, hide when it all fits on one page —
+  // unless the caller asked for the pager to stay.
+  if (!alwaysShow && (count === 0 || (count <= pageSize && !showSizePicker))) {
     return null;
   }
+
+  // An empty list still has ONE page — the one you are looking at. Chakra counts zero pages for zero
+  // items and would read "1 of 0".
+  const pagedCount = Math.max(count, 1);
 
   // The window this page covers, 1-based and inclusive. `to` is CLAMPED to the total, so the last
   // page reads "301–312 of 312" rather than promising rows that do not exist.
@@ -134,7 +148,7 @@ export function Pagination({
       )}
 
       <ChakraPagination.Root
-        count={count}
+        count={pagedCount}
         pageSize={pageSize}
         page={page}
         onPageChange={(e) => onPageChange(e.page)}

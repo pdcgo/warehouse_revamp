@@ -163,6 +163,8 @@ export interface OrderSettlement {
   orderId: bigint;
   /** The marketplace's own id, for a human to recognise the order by. Display only. */
   orderRef: string;
+  /** The shop the order sold through — on the wire, so the shop filter can narrow by it. */
+  shopId: bigint;
   shopName: string;
   teamName: string;
   /**

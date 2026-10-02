@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -15,11 +14,12 @@ import {
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Clock, Hand, MoreHorizontal, Plus, Undo2 } from "lucide-react";
+import { Clock, MoreHorizontal, Plus, Undo2 } from "lucide-react";
 
+import { SettlementSourceBadge } from "../../../components/badges/SettlementSourceBadge";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { AddEntryDialog, type EntryDraft } from "./AddEntryDialog";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiah, formatSignedRupiah } from "../../../lib/money";
 import {
   direction,
   hiddenCost,
@@ -274,18 +274,17 @@ function SettlementSummary({
         value={formatRupiah(received)}
         testId="received"
       />
+      {/* THE ADJUSTMENT, signed (owner: *"penyesuaian"*) — one label both ways, so a gain is "+Rp 4.000"
+          rather than a second word. Green when the order came out AHEAD: a red-only design renders a
+          gain as a smaller loss, which is wrong in the one direction nobody double-checks. */}
       <Figure
-        label={
-          lost >= 0n ? t("orderSettlement.lost") : t("orderSettlement.gained")
-        }
-        value={formatRupiah(lost >= 0n ? lost : -lost)}
-        // Green when the order came out AHEAD. A red-only design renders a gain as a smaller loss,
-        // which is wrong in the one direction nobody double-checks.
+        label={t("orderSettlement.lost")}
+        value={formatSignedRupiah(-lost)}
         tone={lost > 0n ? "fg.error" : lost < 0n ? "fg.success" : undefined}
         testId="loss"
         hint={t("orderSettlement.lossHint", {
           hidden: formatRupiah(hidden),
-          named: formatRupiah(named),
+          named: formatSignedRupiah(named),
         })}
       />
       <Figure
@@ -364,13 +363,9 @@ function LedgerRow({
           <Text fontSize="sm">
             {t(`orderSettlement.type.${entry.settlementType}`)}
           </Text>
-          {/* Visibility IS the control — nothing detects a wrong amount, so who typed it must show. */}
-          {entry.sourceType === "manual" && (
-            <Badge size="sm" colorPalette="purple" data-testid="manual-badge">
-              <Icon as={Hand} boxSize="3" />
-              {entry.actorName}
-            </Badge>
-          )}
+          {/* Every entry says where it came from (owner: *"sumber buat saja jadi badge"*). A manual one
+              also names who typed it — nothing detects a wrong amount, so visibility IS the control. */}
+          <SettlementSourceBadge source={entry.sourceType} actor={entry.actorName} />
         </Flex>
       </Table.Cell>
 

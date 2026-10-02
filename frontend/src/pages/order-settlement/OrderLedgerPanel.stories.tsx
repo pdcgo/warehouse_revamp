@@ -60,7 +60,7 @@ export const WorkedExample: Story = {
     // ⚠ The word is LOST. `a-residual-balance-is-normal` means nobody is collecting this, so any
     // label implying a debt — "outstanding", "unpaid", "due" — would be wrong on every order.
     const summary = canvas.getByTestId("settlement-summary");
-    await expect(summary).toHaveTextContent("Lost");
+    await expect(summary).toHaveTextContent("Adjustment");
     await expect(summary).not.toHaveTextContent(/outstanding|unpaid|due/i);
   },
 };
@@ -115,8 +115,8 @@ export const ManualAndReversal: Story = {
 
     // Three manual rows, each badged with WHO — the only review this design supports, because
     // nothing detects a wrong amount and nothing can remove one.
-    await expect(canvas.getAllByTestId("manual-badge")).toHaveLength(3);
-    await expect(canvas.getAllByTestId("manual-badge")[0]).toHaveTextContent("Budi");
+    await expect(canvas.getAllByTestId("source-badge-manual")).toHaveLength(3);
+    await expect(canvas.getAllByTestId("source-badge-manual")[0]).toHaveTextContent("Budi");
 
     // The mistake is still there.
     await expect(canvas.getByTestId("entry-typo")).toBeInTheDocument();
@@ -173,8 +173,9 @@ export const CameOutAhead: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(loss(ahead)).toBe(-4_000n);
-    // The label flips too. "Lost −Rp 4.000" is a double negative nobody reads correctly.
-    await expect(canvas.getByTestId("loss")).toHaveTextContent("Gained");
+    // ONE label both ways, signed — "+Rp 4.000" rather than a second word for a gain.
+    await expect(canvas.getByTestId("loss")).toHaveTextContent("Adjustment");
+    await expect(canvas.getByTestId("loss")).toHaveTextContent("+Rp 4.000");
     await expect(canvas.getByTestId("loss")).toHaveTextContent("Rp 4.000");
   },
 };
@@ -206,7 +207,7 @@ export const ReadOnly: Story = {
     await expect(canvas.queryByTestId("add-entry")).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /row actions/i })).not.toBeInTheDocument();
     // Attribution stays visible — reading who typed what is not a posting right.
-    await expect(canvas.getAllByTestId("manual-badge").length).toBeGreaterThan(0);
+    await expect(canvas.getAllByTestId("source-badge-manual").length).toBeGreaterThan(0);
   },
 };
 

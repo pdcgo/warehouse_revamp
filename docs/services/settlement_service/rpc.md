@@ -262,7 +262,20 @@ while a live fold inserts a new one, and the two cannot conflict.
 
 `OrderSettlementList` follows the guideline's list shape — `ids` carries the ranking, map-slices carry
 the data. **Sorted worst-loss-first by default**, and the totals are the **whole filtered set**, not the
-page. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
+page.
+
+| sort | SQL (`DESC` shown — the default) |
+| --- | --- |
+| `LOSS` | `(initial_total = 0), last_balance ASC, order_id DESC` — loss is `−last_balance`, so its DESC is the balance's ASC |
+| `INITIAL_TOTAL` | `(initial_total = 0), initial_total DESC, order_id DESC` |
+| `RECEIVED` | `(initial_total = 0), (last_balance + initial_total) DESC, order_id DESC` |
+| `ORDER_ID` | `order_id DESC` — an id is real whether or not the sale was recorded |
+
+- The direction is the **named measure's**; `UNSPECIFIED` is `DESC`.
+- An **unrecorded sale** (`initial_total = 0`) sorts **last** under every money measure, either way, and is
+  **left out of both sums** — its balance is payout with nothing to measure against. `total_unrecorded`
+  counts it.
+- `order_id` breaks ties, so equal rows keep one order across pages. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
 activity — and an order with no account is **`NotFound`**, never a zeroed row.
 
 ### The reports
