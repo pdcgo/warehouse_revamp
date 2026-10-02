@@ -3,6 +3,12 @@
 **Pass:** implementation of `balance_context.md`, end to end (2026-08-31). Everything the owner's doc
 promises that has been DECIDED is now built, tested and documented.
 
+**2026-10-01:** `LiabilityPaymentReverse` **removed** — [an-accepted-payment-is-final](../../business/balance/context_decision.md#an-accepted-payment-is-final).
+RPC, handler, its 6 unit tests and its race test are gone; `REVERSED = 3` is `reserved` in the proto; no
+schema change. ⚠ **New build work arrived from financial_account** and is NOT done: a payment must carry
+`from_account_id` (payer, at record) and `to_account_id` (creditor, at accept), and accept must publish
+them — [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept).
+
 **Lifecycle position:** `Run Testing` complete — unit, integration and e2e all green for the first
 time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at the running screens.
 
@@ -18,7 +24,7 @@ time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at th
 | §General 1–4 — team scope, two mirrored rows, per-pair grain, no overdue | ✅ |
 | §Responsbility 1 — Manage Balance | ✅ |
 | §Responsbility 2 — Serve Balance Daily Report | ⚠ **warehouse only.** The selling half is DEFERRED by decision, and the shipped page refuses non-warehouse teams |
-| §Responsbility 3 — Manage Payments Across Team | ✅ record · confirm · **reject** · reverse, with proof readable by both sides |
+| §Responsbility 3 — Manage Payments Across Team | ✅ record · confirm · **reject**, with proof readable by both sides. ⛔ **No reverse** — removed 2026-10-01 by [an-accepted-payment-is-final](../../business/balance/context_decision.md#an-accepted-payment-is-final) |
 | §Payment Flow — claim with proof → check manually → accept / reject | ✅ **complete**, and covered end to end in e2e |
 | §Payment lifecycle — pending → accept \| reject | ✅ both terminal states exist |
 | §What Things Affect The Balance — all six causes | ✅ all post |
@@ -120,7 +126,6 @@ parked by the owner or waiting on an answer only they can give (HARD RULE 8):
 | the selling team's daily report | ⛔ **deferred** ([the-daily-report-is-deferred](../../business/balance/context_decision.md#the-daily-report-is-deferred)). §Responsbility 2 goes on promising it |
 | a dispute mechanism | ⛔ **[balance Q5](../../business/balance/context_clarify.md#question)**, and it is now **#3 in [biggest_question.md](../../biggest_question.md)** — refusing `found` a handshake made dispute a team's only recourse against a charge asserted in the asserter's favour |
 | a chase instrument | [balance Q6](../../business/balance/context_clarify.md#question) — lowering the limit is still the only lever |
-| a `PaymentReverse` screen | [balance Q11](../../business/balance/context_clarify.md#question) — the RPC ships and may be a path the design does not want. **Do not build it until that answers** |
 | an `order_id` filter on the log | [balance Q9](../../business/balance/context_clarify.md#question) — recommended, not decided |
 | `handling_fee` → `order_fee` | [technical Q8](../../technical/balance/team_balance_design_clarify.md#question) — the terms screen says *Handling fee* for money the pair detail calls an *Order fee* |
 | `offset` as a payment method · goods repayment | [technical Q2](../../technical/balance/team_balance_design_clarify.md#question) · [balance Q3](../../business/balance/context_clarify.md#question) — one question wearing two hats: is a payment ever non-cash? |

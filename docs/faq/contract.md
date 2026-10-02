@@ -79,8 +79,10 @@ message TeamInfoUpdateRequest {
 - One field carries the team scope via `use_scope`.
 
 `ValidateDescriptors()` runs at startup and refuses to boot on a `use_scope` tag that is non-uint,
-nested, or duplicated — each of those is silent at runtime otherwise. Streaming RPCs are **refused,
-not degraded**: a streaming interceptor cannot read the request body, so it cannot read the scope.
+nested, or duplicated — each of those is silent at runtime otherwise. **Server streams are
+authorized on their request; client and bidi streams are refused** — a server stream carries one
+request, checked as it is read and before the handler runs, while the others carry many
+([a-server-stream-is-authorized-on-its-request](../business/settlement/settlement_importer_decision.md#a-server-stream-is-authorized-on-its-request)).
 
 Debugging a denial: [backend.md](backend.md#why-is-my-new-rpc-returning-permission-denied).
 

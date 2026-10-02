@@ -31,9 +31,9 @@ var (
 // user to satisfy the roling system would put a shell behind a credential the login screen also
 // accepts. A random secret that dies with the process is both simpler and strictly narrower.
 //
-// It is also why streaming works here at all: the warehouse interceptor refuses streams because
-// it reads its team scope from the request BODY, which has not arrived when an interceptor runs.
-// A header credential has no such problem.
+// It is also why every kind of stream works here: the warehouse interceptor reads its team scope
+// from the request BODY, so it can authorize a server stream's one request but refuses client and
+// bidi streams, which carry many. A header credential has no such problem.
 type Token struct {
 	value string
 
@@ -108,10 +108,11 @@ func (t *Token) Verify(candidate string, now time.Time) error {
 
 // NewAuthInterceptor guards every RPC of this service, unary AND streaming.
 //
-// Both, because the one RPC that matters here is a stream. This is the mirror image of the
-// warehouse's access interceptor, which refuses streams outright — the difference is entirely
-// where the credential lives. A team scope is a request FIELD and a stream has not delivered it
-// yet; a bearer token is a HEADER and is there before the first message.
+// Both, because the one RPC that matters here is a stream. The warehouse's access interceptor
+// authorizes a server stream only once its one request has been read, and refuses client and bidi
+// streams — the difference is entirely where the credential lives. A team scope is a request FIELD,
+// which a stream delivers late or many times; a bearer token is a HEADER and is there before the
+// first message.
 func NewAuthInterceptor(token *Token, now func() time.Time) connect.Interceptor {
 	if now == nil {
 		now = time.Now

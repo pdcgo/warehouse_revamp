@@ -79,6 +79,36 @@ export function isTeamManager(role: Role | undefined): boolean {
   }
 }
 
+// canImportSettlement mirrors the policy on both settlement imports and their file list — the
+// settlement write set, CS and up, since every imported row posts under the uploader's token
+// (cs-and-up-import-daily).
+//
+// ⚠ THIS IS UX ONLY. Hiding the menu entry hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canImportSettlement(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMIN:
+    case Role.TEAM_OWNER:
+    case Role.TEAM_ADMIN:
+    case Role.TEAM_CUSTOMER_SERVICE:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+// canMoveAccountMoney mirrors the policy on every financial-account WRITE — create, edit, archive,
+// transfer, capital, reconcile, the shop and operational links: admin and up, team or warehouse
+// (seeing-is-team-wide-moving-is-admin-and-up). Seeing the accounts and their balances is every member.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canMoveAccountMoney(role: Role | undefined): boolean {
+  return isTeamManager(role);
+}
+
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMIN;

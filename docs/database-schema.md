@@ -39,10 +39,7 @@ erDiagram
         bigint      return_warehouse_id "nullable opaque cross-service id"
         bigint      return_user_id      "nullable opaque cross-service id"
         bigint      default_warehouse_id "nullable, the warehouse a SELLING team ships from by default (#145)"
-        text        contact_number
-        text        bank_type
-        text        bank_owner_name
-        text        bank_account_number
+        text        contact_number "no bank — dropped by 00008, a team's bank is a financial account"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -259,6 +256,7 @@ erDiagram
         bigserial   id         PK
         bigint      shop_id    FK "-> shops(id), ON DELETE CASCADE"
         bigint      user_id    "opaque user_service id, no FK"
+        boolean     is_primary "the shop's primary CS, at most one per shop, partial unique (00014)"
         timestamptz created_at
     }
 
@@ -285,7 +283,7 @@ erDiagram
         bigint      cogs               "what the goods COST us, frozen at order time (#74); 0 = unknown, not free"
         bigint      total              "subtotal + shipping_cost"
         bigint      marketplace_total  "what the storefront took — a NOTE, never summed into total; 0 = not recorded"
-        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none (a phone order). NOT unique — uniqueness is still open"
+        text        order_external_ref_id "the MARKETPLACE'S own id for this order, verbatim; '' = none. Indexed with team_id for the statement lookup (00014). NOT unique — its rule is checked in code, not built yet"
         text        note                "free text for the people handling the order; nothing reads it, '' = none"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
@@ -371,6 +369,17 @@ erDiagram
   through the shop's team (the request carries the team_id, and the handler verifies the shop
   belongs to it); the frontend resolves the ids to names via `UserByIDs`. `ON DELETE CASCADE` drops
   the grants when a shop is hard-deleted.
+  - **`is_primary`** (`00014`) — the shop's **primary CS**
+    ([the-primary-cs-is-a-flag-on-a-grant](business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)):
+    a flag on ONE grant, so a primary is never someone without access, and removing the grant removes the
+    flag. `UNIQUE (shop_id) WHERE is_primary` holds it to one; every change to it takes the shop's row
+    `FOR UPDATE` first. The migration flagged each shop's earliest grant. It is read onto
+    `Shop.primary_user_id` and by `ShopAccessCheck` — a shop with none cannot import a statement.
+- **`orders_team_external_ref_idx`** (`00014`) — `(team_id, order_external_ref_id) WHERE
+  order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
+  statement's refs to orders in one query. **Not unique** —
+  [an-order-is-unique-by-shop-and-marketplace-ref](business/order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref)
+  excludes cancelled orders, which a plain unique index cannot say, and is checked in code (not built yet).
 - **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
   read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
   claim that something happened at a moment, and a mutable history is not a history.
@@ -533,7 +542,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -563,7 +572,9 @@ erDiagram
   a generated thumbnail. `order_receipt` (an order's courier slip or the marketplace's PDF) is
   **private** like `general` — it names a buyer and an address, so it is read through a short-lived
   signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
-  transfer slip names an account number.
+  transfer slip names an account number. And `settlement_statement` (`00006`) — the .xlsx the settlement
+  importer stores under the hash of its bytes before it reads it: it lists every order and what the
+  platform took.
 
 - **`document_shares`** — the ONE way a document is readable outside the team that owns it
   ([a-payment-must-carry-proof](business/balance/context_decision.md#a-payment-must-carry-proof)).
@@ -1322,8 +1333,9 @@ erDiagram
     bigint shop_id "denormalised, frozen"
     bigint team_id "denormalised, frozen"
     bigint actor_id "the human accountable, even on machine rows"
-    text source_type "exporter, manual or order"
-    text settlement_type "one of eight"
+    bigint user_id "who the per-user report counts it for, when not the actor — an imported shop row's primary CS (00006). 0 otherwise"
+    text source_type "importer, manual or order"
+    text settlement_type "one of thirteen"
     bigint change "signed. POSITIVE IS MONEY TOWARD US"
     bigint balance "running, after this row"
     text unique_id "caller-generated. UNIQUE across the whole log"
@@ -1429,7 +1441,8 @@ erDiagram
     bigint shop_id
     bigint team_id
     bigint initial_total "one column per settlement_type, the log's sign"
-    bigint fund "and six more tracked movements"
+    bigint fund "and eleven more tracked movements"
+    bigint withdrawal "one of the five of 00006 — counts in the position like every column"
     bigint change "the day's net movement"
     bigint open_balance "STORED carry — the position before the day"
     bigint close_balance "the position after it"
@@ -1439,7 +1452,7 @@ erDiagram
   user_settlement_daily_reports {
     bigserial id PK
     date day "UNIQUE with user_id and team_id"
-    bigint user_id "the ORDER creator, or the actor of a shop row. 0 = not recorded"
+    bigint user_id "the ORDER creator; for a shop row its written user_id, else its actor. 0 = not recorded"
     bigint team_id
     bigint change "same tracked columns as the shop grain"
     bigint open_balance
@@ -1478,7 +1491,9 @@ erDiagram
 
 | | |
 | --- | --- |
-| **the tracked columns** | `initial_total`, `initial_total_cancel`, `other`, `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `system_adjustment` — the settlement_type TEXT is the column name — plus `change` |
+| **the tracked columns** | `initial_total`, `initial_total_cancel`, `other`, `fund`, `external_ads_fee`, `affiliate_fee`, `marketplace_adjustment`, `system_adjustment`, and since `00006` `withdrawal`, `shipment_adjustment`, `logistic_reimbursement`, `platform_reimbursement`, `marketplace_program` — the settlement_type TEXT is the column name — plus `change`. ⚠ **Widened WITH `SettlementPost`, never after**: the fold refuses a type it has no column for |
+| **`withdrawal` is in the position** | summed into `change` and the carry like every column ([withdrawal-counts-in-the-position](business/settlement/context_decision.md#withdrawal-counts-in-the-position)) — so `close_balance` is the shortfall PLUS what was withdrawn, and the report calls it *Position to date* |
+| **who a shop row counts for** | the user grain folds an order row for its creator, and a shop row for its `settlement_logs.user_id` when set — an imported shop row's primary CS, carried on the event — else for its actor ([settlement-asks-the-shop-for-its-primary-cs](business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) |
 | **the carry** | `open(D) = Σ change before D`, `close(D) = Σ change up to D` ([the-carry-materialises-the-day-boundary-position](business/settlement/context_decision.md#the-carry-materialises-the-day-boundary-position)). Maintained by increment: a late event shifts every later day |
 | **a quiet day has NO row** | a position read falls back to the last row at or before the date |
 | **the dedup and the fold share ONE transaction** | a failure rolls the claim back with the compute, so the redelivery is really reprocessed |
@@ -1498,6 +1513,192 @@ erDiagram
   [an-entry-names-an-order-or-a-shop](business/settlement/context_decision.md#an-entry-names-an-order-or-a-shop)
   made it nullable (`00003`), which is what gives a platform **withdrawal** or a `system_adjustment` a
   shop-addressed home.
+- **The shop's primary CS as a table.** An imported shop row's `user_id` is ASKED of the shop
+  (`ShopAccessCheck`) before the write and kept on the row — settlement stores the answer, never the shop.
+  The `00006` migration also rewrote any `source_type` `exporter` to `importer`
+  ([the-source-is-named-importer](business/settlement/settlement_importer_decision.md#the-source-is-named-importer)).
 - **No `order_ref`, names or `cogs`.** Settlement keys on our internal order id and never sees the
   marketplace's reference; the names and the cost live in `selling_service`, and a service does not
   read another's tables. The screens supply all four from where they already are.
+
+---
+
+## settlement_importer_service
+
+`backend/services/settlement_importer_service/db_migrations/`
+
+A platform statement, uploaded as a file and posted to the settlement ledger line by line
+([settlement_importer.md](business/settlement/settlement_importer.md)). **It owns no ledger** — the rows it
+posts are `settlement_logs` rows, written by `SettlementPost` under the uploader's token. These two tables
+say what an upload DID: the import screen pages over the first, one file's page over the second.
+
+```mermaid
+erDiagram
+  uploaded_files ||--o{ uploaded_file_lines : "one per line read, ON DELETE CASCADE"
+  uploaded_files {
+    bigserial id PK
+    bigint team_id "the scope — opaque, no FK"
+    bigint shop_id "the shop picked — opaque selling_service id"
+    text platform "shopee or tiktok — the shop's marketplace picks it"
+    text document_id "document_service's stored bytes — opaque, no FK"
+    text content_sha256 "the stored file's name. NOT unique — the same file twice is two rows"
+    date period_from "the statement's own range, NULL until read"
+    date period_to
+    text status "running, done or failed — INTERRUPTED is worked out when read, never stored"
+    text failure "why a failed file failed — its ERROR line"
+    int rows_total "the stream's count"
+    int rows_posted
+    int rows_existing "already in the ledger — the row key's own dedupe"
+    int rows_held
+    int rows_skipped
+    int rows_posted_to_shop "of rows_posted, whose ref found no order"
+    bigint created_by_user_id "the uploader — the actor on every row it posts"
+    bigint primary_user_id "the shop's primary CS when the file was checked"
+    timestamptz created_at
+    timestamptz updated_at "moves after every line — a running row that stops moving reads interrupted"
+    timestamptz finished_at
+  }
+  uploaded_file_lines {
+    bigserial id PK
+    bigint uploaded_file_id FK "uploaded_files"
+    int line_no "the order read — the stream's step"
+    text sheet "Rincian Transaksi, Order details or Withdrawal records"
+    text unique_id "the ledger key — platform, sheet and the reader's hash"
+    text order_ref "as the file wrote it"
+    text platform_type
+    text description
+    text settlement_type "settlement's text — empty when unmapped"
+    bigint change "whole rupiah"
+    date occurred_on
+    bigint order_id "0 means the shop"
+    text outcome "posted, existing, held or skipped"
+    text reason "no_order, unmapped_type, fractional_amount, refused, repeats_order_details, failed_withdrawal"
+    text detail "a refusal's message, a fraction as written, a withdrawal's status"
+    bigint settlement_log_id "the ledger row it posted or found — 0 when held or skipped"
+    timestamptz created_at
+  }
+```
+
+| | |
+| --- | --- |
+| **nothing unique but the ids** | duplicates are caught row by row, by the ledger's key — never file by file ([the-row-key-is-the-only-dedupe](business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). The same file twice is a second row whose lines read `existing` |
+| **INTERRUPTED is derived** | a `running` row whose `updated_at` is over two minutes old — the server stopped mid-file ([an-import-finishes-whether-anyone-watches](business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). The list filters it in SQL on the same line; nothing sweeps it |
+| **every line is kept** | not only the ones worth a look — the file page's three views (held · skipped · posted to the shop) are filters over all of them |
+| **no FK across services** | `team_id`, `shop_id`, `order_id`, `document_id`, `settlement_log_id` are other services' ids, kept as given |
+
+| index | answers |
+| --- | --- |
+| `uploaded_files_team_created_idx` (team_id, created_at DESC, id DESC) | the import screen — a team's uploads, newest first |
+| `uploaded_files_team_shop_created_idx` (team_id, shop_id, created_at DESC, id DESC) | the same, one shop's |
+| `uploaded_file_lines_file_outcome_idx` (uploaded_file_id, outcome, line_no) | one file's page — its lines by outcome, in the file's order |
+
+---
+
+## financial_account_service
+
+`backend/services/financial_account_service/db_migrations/`
+
+The money a team actually HOLDS — its bank accounts, ShopeePay wallet and cash box
+([context_decision.md](business/financial_account/context_decision.md)). `financial_accounts` is the ledger's
+STATE and `financial_account_logs` its LOG: a balance moves only with a log row, in the same transaction
+([the-accounts-are-one-ledger](business/financial_account/context_decision.md#the-accounts-are-one-ledger)).
+Money is `NUMERIC(20,2)`, rounded to whole rupiah as it posts — the wire is `double`
+([rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point)).
+
+```mermaid
+erDiagram
+  financial_accounts ||--o{ financial_account_logs : "every move of its balance"
+  financial_accounts ||--o{ shop_accounts : "the shops that withdraw into it"
+  financial_accounts ||--o| operational_accounts : "marked: it pays for operations"
+  financial_accounts ||--o{ financial_account_daily_reports : "one row per day it moved"
+  financial_accounts {
+    bigserial id PK
+    bigint team_id "the scope — opaque, no FK"
+    text type "wallet, bank_account, cash or unknown"
+    text provider "cash, bca, bni, jago, shopeepay or unknown"
+    text status "active or archived — archived only at zero"
+    text account_number "a bank number or a wallet phone — empty for cash and unknown"
+    text name "unique in the team, case-blind"
+    text holder_name "atas nama"
+    text description
+    numeric balance "moves ONLY with a log row — may go below zero"
+    timestamptz reconciled_at "last checked against the bank — NULL is never"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  financial_account_logs {
+    bigserial id PK
+    bigint team_id
+    bigint account_id FK "financial_accounts — the scope of balance_after"
+    text change_type "expense, ads_expense, adjustment, withdrawal, restock, opening_balance, transfer, team_payment, capital"
+    numeric change "signed — positive is money INTO the account"
+    numeric balance_after "the previous row's plus this change, in ENTRY order"
+    text description "the cause in words — no source id"
+    bigint actor_id "who — 0 for a listener with no person behind it"
+    timestamptz occurred_at "when the money MOVED — the analytics day, in Jakarta"
+    bigint group_id "both legs of one transfer — 0 for a single-leg row"
+    bigint counter_account_id "a transfer's other account — 0 otherwise"
+    timestamptz created_at "when it was recorded"
+  }
+  shop_accounts {
+    bigserial id PK
+    bigint team_id
+    bigint shop_id "UNIQUE — a shop names one account; opaque selling_service id"
+    bigint account_id FK "financial_accounts"
+    timestamptz updated_at
+    timestamptz created_at
+  }
+  operational_accounts {
+    bigserial id PK
+    bigint team_id
+    bigint account_id FK "UNIQUE — financial_accounts"
+    timestamptz updated_at
+    timestamptz created_at
+  }
+  financial_account_daily_reports {
+    bigserial id PK
+    date day "the Jakarta day of the rows' occurred_at"
+    bigint account_id "UNIQUE with day"
+    bigint team_id
+    numeric expense "one signed sum per change type"
+    numeric ads_expense
+    numeric adjustment
+    numeric withdrawal
+    numeric restock
+    numeric opening_balance
+    numeric transfer
+    numeric team_payment
+    numeric capital
+    numeric change "the day's net — close minus open"
+    numeric open_balance "the account's balance as the day opened — SHIFTED by a late row"
+    numeric close_balance
+    timestamptz last_updated
+  }
+  financial_account_event_logs {
+    text event_id PK "the listener's claim — a redelivered event posts once"
+    bigint occurred_at_unix
+    timestamptz received_at
+  }
+```
+
+### One write path
+
+Every row goes through the ledger's `post`, on an account its caller has locked `FOR UPDATE`: the log row,
+the balance and the day's report row in one transaction — the report row is upserted and every LATER day of
+the account shifted, so a row dated last week moves every day since and the report is never behind the
+balance ([the-daily-row-is-written-with-the-log-row](business/financial_account/context_decision.md#the-daily-row-is-written-with-the-log-row)).
+A transfer locks both accounts in id order. The lock order is `audits/services/financial_account_service/concurrency/lock-order.md`.
+
+| index | answers |
+| --- | --- |
+| `financial_accounts_provider_number_unique` (provider, account_number) WHERE account_number <> '' | one real account, one row, across ALL teams — a cash box and an unknown account exempt ([a-real-account-is-recorded-once](business/financial_account/context_decision.md#a-real-account-is-recorded-once)) |
+| `financial_accounts_team_name_unique` (team_id, lower(name)) | a picker never shows two of the same |
+| `financial_accounts_team_status_idx` (team_id, status) | the accounts page and every picker |
+| `financial_account_logs_account_id_idx` (account_id, id) | one account's statement newest first — and the previous row a post reads |
+| `shop_accounts_shop_unique` (shop_id) | a shop names one account ([a-shop-has-one-account](business/financial_account/context_decision.md#a-shop-has-one-account)) — also what makes two first withdrawals of a new shop make ONE unknown account |
+| `operational_accounts_account_unique` (account_id) | an account is marked once |
+| `financial_account_daily_reports_account_day_unique` (account_id, day) | the upsert's conflict target, the previous-day lookup and the later-day shift |
+| `financial_account_daily_reports_team_day_idx` (team_id, day) | a team's series and its rankings |
+
+`shop_accounts.shop_id` is an opaque `selling_service` id — `FinancialAccountShopSet` asks the shop's service
+whether it is the team's before linking it, and the withdrawal listener trusts settlement's event.

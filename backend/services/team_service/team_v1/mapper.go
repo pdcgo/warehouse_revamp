@@ -219,11 +219,8 @@ func teamByIdsMap(
 
 func teamInfoToProto(info *team_service_models.TeamInfo) *teamv1.TeamInfo {
 	out := &teamv1.TeamInfo{
-		TeamId:            info.TeamID,
-		ContactNumber:     info.ContactNumber,
-		BankType:          info.BankType,
-		BankOwnerName:     info.BankOwnerName,
-		BankAccountNumber: info.BankAccountNumber,
+		TeamId:        info.TeamID,
+		ContactNumber: info.ContactNumber,
 	}
 
 	if info.ReturnWarehouseID != nil {

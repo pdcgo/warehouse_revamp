@@ -35,7 +35,6 @@ import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
@@ -48,6 +47,22 @@ import {
   SourceType as WireSourceType,
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
+import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
+import { sessionScenario } from "./sessionScenario";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountService,
+} from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
+import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
+import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import {
+  LogLevel,
+  SettlementImporterService,
+  UploadedFileLineOutcome,
+  UploadedFileLineReason,
+  UploadedFileStatus,
+} from "../src/gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 
 // The prototype's string unions, back to the wire enums. Same mapping as src/features/settlement,
 // kept here rather than imported so the stub never depends on app code it is meant to replace.
@@ -62,13 +77,15 @@ const stubSettlementType: Record<string, WireSettlementType> = {
 };
 
 const stubSourceType: Record<string, WireSourceType> = {
-  exporter: WireSourceType.EXPORTER,
+  importer: WireSourceType.IMPORTER,
   manual: WireSourceType.MANUAL,
   order: WireSourceType.ORDER,
 };
 
 import {
   categories,
+  settlementImportLines,
+  settlementImports,
   shipmentChannels,
   dayKey,
   settlementReportDays,
@@ -283,6 +300,230 @@ export function stubUploads() {
   }) as typeof fetch;
 }
 
+// ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
+//
+// The file list and each file's rows are WRITEABLE: an import started in a story adds its row and its
+// lines, so the list and the file's page show what the dialog just did. Reset per story.
+type StubImport = (typeof settlementImports)[number];
+type StubImportLine = (typeof settlementImportLines)[number];
+
+const seedImports = (): StubImport[] => settlementImports.map((f) => ({ ...f, tally: { ...f.tally } }));
+let importsTable: StubImport[] = seedImports();
+let importLinesTable: StubImportLine[] = [...settlementImportLines];
+let nextImportId = 950n;
+let nextImportLineId = 99_000n;
+
+
+export function resetSettlementImports() {
+  importsTable = seedImports();
+  importLinesTable = [...settlementImportLines];
+  nextImportId = 950n;
+  nextImportLineId = 99_000n;
+  resetSettlementImportScenario();
+}
+
+type ImportMessage = { level: LogLevel; message: string; step?: number; count?: number; file?: StubImport };
+
+type StubRow = {
+  sheet: string;
+  orderRef: string;
+  platformType: string;
+  settlementType: ImportSettlementType;
+  change: bigint;
+  outcome: UploadedFileLineOutcome;
+  reason: UploadedFileLineReason;
+  level: LogLevel;
+  text: string;
+};
+
+const posted = (sheet: string, orderRef: string, platformType: string, change: bigint, type = ImportSettlementType.FUND): StubRow => ({
+  sheet,
+  orderRef,
+  platformType,
+  settlementType: type,
+  change,
+  outcome: UploadedFileLineOutcome.POSTED,
+  reason: UploadedFileLineReason.UNSPECIFIED,
+  level: LogLevel.INFO,
+  text: `${platformType} ${orderRef} — posted`,
+});
+
+// The rows a stub statement yields. One is a type nobody mapped (held), one names an order that does
+// not exist (posted to the shop), one must not post (skipped); TikTok's first order carries an affiliate
+// commission, which posts as its own row (tiktok-affiliate-commission-posts-as-affiliate-fee).
+function stubImportRows(platform: Marketplace): StubRow[] {
+  if (platform === Marketplace.TIKTOK) {
+    const sheet = "Order details";
+    return [
+      posted(sheet, "577005550001", "Order", 185_000n),
+      { ...posted(sheet, "577005550001", "Affiliate commission", -9_250n, ImportSettlementType.AFFILIATE_FEE), text: "577005550001 — its affiliate commission, posted as its own row" },
+      posted(sheet, "577005550002", "Order", 92_000n),
+      { sheet, orderRef: "577005550003", platformType: "Seller shipping fee compensation", settlementType: ImportSettlementType.UNSPECIFIED, change: 8_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Seller shipping fee compensation” is not mapped — held" },
+      posted(sheet, "577005550004", "Order", 143_500n),
+      posted(sheet, "577005550005", "Order", 61_000n),
+      { ...posted(sheet, "577009990000", "Order", 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 577009990000 — posted to the shop" },
+      posted(sheet, "577005550006", "Order", 210_000n),
+      posted(sheet, "577005550007", "Order", 49_900n),
+      { sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", settlementType: ImportSettlementType.UNSPECIFIED, change: 1_020_400n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, level: LogLevel.INFO, text: "Earnings repeat the order rows — skipped" },
+      posted(sheet, "577005550008", "Order", 118_000n),
+      posted(sheet, "577005550009", "Order", 95_000n),
+    ];
+  }
+
+  const sheet = "Rincian Transaksi";
+  const income = "Penghasilan dari Pesanan";
+  return [
+    posted(sheet, "240928AAAA", income, 185_000n),
+    posted(sheet, "240928BBBB", income, 92_000n),
+    posted(sheet, "240928CCCC", income, 143_500n),
+    { sheet, orderRef: "", platformType: "Biaya Program Baru", settlementType: ImportSettlementType.UNSPECIFIED, change: -15_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Biaya Program Baru” is not mapped — held" },
+    posted(sheet, "240928DDDD", income, 61_000n),
+    posted(sheet, "240928EEEE", income, 210_000n),
+    { ...posted(sheet, "240928WXYZ", income, 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 240928WXYZ — posted to the shop" },
+    posted(sheet, "240928FFFF", income, 49_900n),
+    posted(sheet, "240928GGGG", income, 118_000n),
+    { sheet, orderRef: "", platformType: "Penarikan Dana", settlementType: ImportSettlementType.UNSPECIFIED, change: -2_500_000n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, level: LogLevel.INFO, text: "a withdrawal that did not succeed — skipped" },
+    posted(sheet, "240928HHHH", income, 95_000n),
+    posted(sheet, "240928IIII", income, 72_500n),
+  ];
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const snapshot = (f: StubImport): StubImport => ({ ...f, tally: { ...f.tally } });
+
+// ONE import. It runs as its own task and the stream only WATCHES it: when the client goes away the
+// generator is abandoned, but the task carries on and the row finishes — the decided behaviour
+// (an-import-finishes-whether-anyone-watches), so a story can close the dialog and find the row still going.
+function stubImport(
+  req: { teamId: bigint; shopId: bigint; fileContent: Uint8Array },
+  platform: Marketplace,
+): AsyncIterable<ImportMessage> {
+  const queue: ImportMessage[] = [];
+  let finished = false;
+  let wake: (() => void) | null = null;
+  const push = (m: ImportMessage) => {
+    queue.push(m);
+    wake?.();
+  };
+  const finish = () => {
+    finished = true;
+    wake?.();
+  };
+
+  void (async () => {
+    // THE SHOP CHECK — before anything is stored (the-shop-is-checked-before-the-file-is-stored).
+    const shop = shops.find((x) => x.id === req.shopId && x.teamId === req.teamId);
+    if (!shop) {
+      push({ level: LogLevel.ERROR, message: "This shop is not in your team — nothing was stored" });
+      return finish();
+    }
+    if (shop.marketplace !== platform) {
+      push({ level: LogLevel.ERROR, message: `${shop.name} is not a ${platform === Marketplace.TIKTOK ? "TikTok" : "Shopee"} shop — nothing was stored` });
+      return finish();
+    }
+    if (settlementImportScenario.noPrimaryCs.has(shop.id)) {
+      push({ level: LogLevel.ERROR, message: `${shop.name} has no primary CS — choose a primary CS first` });
+      return finish();
+    }
+    push({ level: LogLevel.INFO, message: `Shop checked — ${shop.name}` });
+
+    const now = timestampFromDate(new Date());
+    const id = nextImportId++;
+    const file: StubImport = {
+      id,
+      teamId: req.teamId,
+      shopId: shop.id,
+      platform,
+      documentId: `doc-${id}`,
+      contentSha256: "5e1a".repeat(16),
+      periodFrom: "",
+      periodTo: "",
+      status: UploadedFileStatus.RUNNING,
+      failure: "",
+      tally: { total: 0, posted: 0, existing: 0, held: 0, skipped: 0, postedToShop: 0 },
+      createdByUserId: 61n,
+      createdAt: now,
+      updatedAt: now,
+      finishedAt: undefined,
+    };
+    importsTable = [file, ...importsTable];
+    push({ level: LogLevel.INFO, message: `File stored — ${req.fileContent.length.toLocaleString()} bytes`, file: snapshot(file) });
+    await sleep(settlementImportScenario.stepMs);
+
+    file.periodFrom = "2026-09-28";
+    file.periodTo = "2026-09-28";
+
+    if (settlementImportScenario.wrongShopFile) {
+      file.status = UploadedFileStatus.FAILED;
+      file.failure = "3 of this file's orders belong to Melati Store — the whole file is refused, nothing was posted";
+      file.finishedAt = timestampFromDate(new Date());
+      push({ level: LogLevel.ERROR, message: file.failure, file: snapshot(file) });
+      return finish();
+    }
+
+    const rows = stubImportRows(platform);
+    file.tally.total = rows.length;
+    push({ level: LogLevel.INFO, message: `Read ${rows.length} rows, 2026-09-28`, count: rows.length, file: snapshot(file) });
+
+    for (const [i, row] of rows.entries()) {
+      await sleep(settlementImportScenario.stepMs);
+
+      if (row.outcome === UploadedFileLineOutcome.POSTED) file.tally.posted += 1;
+      if (row.outcome === UploadedFileLineOutcome.HELD) file.tally.held += 1;
+      if (row.outcome === UploadedFileLineOutcome.SKIPPED) file.tally.skipped += 1;
+      if (row.reason === UploadedFileLineReason.NO_ORDER) file.tally.postedToShop += 1;
+      file.updatedAt = timestampFromDate(new Date());
+
+      // The file's page lists only the rows worth a look — held, skipped, posted to the shop.
+      if (row.outcome !== UploadedFileLineOutcome.POSTED || row.reason === UploadedFileLineReason.NO_ORDER) {
+        importLinesTable.push({
+          id: nextImportLineId++,
+          uploadedFileId: id,
+          sheet: row.sheet,
+          orderRef: row.orderRef,
+          platformType: row.platformType,
+          description: row.platformType,
+          settlementType: row.settlementType,
+          change: row.change,
+          occurredOn: "2026-09-28",
+          orderId: 0n,
+          outcome: row.outcome,
+          reason: row.reason,
+          detail: "",
+          settlementLogId: 0n,
+        });
+      }
+
+      push({ level: row.level, message: `Row ${i + 1}: ${row.text}`, step: i + 1, count: rows.length, file: snapshot(file) });
+    }
+
+    file.status = UploadedFileStatus.DONE;
+    file.finishedAt = timestampFromDate(new Date());
+    push({
+      level: LogLevel.INFO,
+      message: `Done — ${file.tally.posted} posted, ${file.tally.held} held, ${file.tally.skipped} skipped`,
+      step: rows.length,
+      count: rows.length,
+      file: snapshot(file),
+    });
+    finish();
+  })();
+
+  return (async function* () {
+    for (;;) {
+      if (queue.length > 0) {
+        yield queue.shift()!;
+        continue;
+      }
+      if (finished) return;
+      await new Promise<void>((resolve) => {
+        wake = resolve;
+      });
+      wake = null;
+    }
+  })();
+}
+
 // ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
 function byIds<C extends string, R extends Row>(slice: C, rows: R[], wanted: bigint[]) {
   const items: Record<string, { items: { d: { case: C; value: { mapData: Record<string, R> } } }[] }> = {};
@@ -446,7 +687,8 @@ export const transport = createRouterTransport(({ service }) => {
                   t.id.toString(),
                   {
                     teamId: t.id,
-                    role: Role.WAREHOUSE_ADMIN,
+                    // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
+                    role: sessionScenario.role,
                     alias: "",
                     teamName: t.name,
                     teamType: t.type,
@@ -1289,6 +1531,47 @@ export const transport = createRouterTransport(({ service }) => {
       };
     },
   });
+
+  // The settlement importer, served with the rules it owns: another team's file is absent, and each
+  // import runs whether or not its stream is still being read.
+  // The financial accounts — the prototype stub, in its own module because it is the whole service
+  // (financialAccountStub.ts): a writeable ledger plus the reports read from it.
+  service(FinancialAccountService, financialAccountService);
+  service(FinancialAccountAnalyticService, financialAccountAnalyticService);
+
+  service(SettlementImporterService, {
+    uploadedFileList: (req) => {
+      const rows = importsTable
+        .filter((f) => f.teamId === req.teamId)
+        .filter((f) => !req.filter?.shopId || f.shopId === req.filter.shopId)
+        .filter((f) => !req.filter?.platform || f.platform === req.filter.platform)
+        .filter((f) => !req.filter?.statuses?.length || req.filter.statuses.includes(f.status));
+
+      return pagedColumnar("file", rows, req.page as PageReq);
+    },
+    uploadedFileByIds: (req) =>
+      byIds(
+        "file",
+        importsTable.filter((f) => f.teamId === req.teamId),
+        req.filter?.ids ?? [],
+      ),
+    uploadedFileLineList: (req) => {
+      const fileId = req.filter?.uploadedFileId ?? 0n;
+      const owned = importsTable.some((f) => f.id === fileId && f.teamId === req.teamId);
+      const outcomes = req.filter?.outcomes ?? [];
+      const reasons = req.filter?.reasons ?? [];
+      const rows = owned
+        ? importLinesTable
+            .filter((l) => l.uploadedFileId === fileId)
+            .filter((l) => outcomes.length === 0 || outcomes.includes(l.outcome))
+            .filter((l) => reasons.length === 0 || reasons.includes(l.reason))
+        : [];
+
+      return pagedColumnar("line", rows, req.page as PageReq);
+    },
+    tiktokSettlementImport: (req) => stubImport(req, Marketplace.TIKTOK),
+    shopeeSettlementImport: (req) => stubImport(req, Marketplace.SHOPEE),
+  });
 });
 
 // ── The settlement reports' arithmetic ──────────────────────────────────────────────────────────
@@ -1302,7 +1585,7 @@ function reportBook(teamId: bigint): ReportDay[] {
 }
 
 const changeOf = (d: ReportDay) =>
-  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment;
+  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment + d.withdrawal;
 
 const sumOf = (rows: ReportDay[], pick: (d: ReportDay) => bigint) =>
   rows.reduce((total, d) => total + pick(d), 0n);
@@ -1321,6 +1604,11 @@ function reportMetric(movements: ReportDay[], upToEnd: ReportDay[]) {
     affiliateFee: 0n,
     marketplaceAdjustment: sumOf(movements, (d) => d.marketplaceAdjustment),
     systemAdjustment: 0n,
+    withdrawal: sumOf(movements, (d) => d.withdrawal),
+    shipmentAdjustment: 0n,
+    logisticReimbursement: 0n,
+    platformReimbursement: 0n,
+    marketplaceProgram: 0n,
     change,
     openBalance: close - change,
     closeBalance: close,

@@ -29,7 +29,9 @@
     "more": "Lainnya",
     "liability": "Kewajiban",
     "settlement": "Penyelesaian",
-    "settlementReport": "Laporan Penyelesaian"
+    "settlementReport": "Laporan Penyelesaian",
+    "settlementImports": "Impor Penyelesaian",
+    "financialAccounts": "Akun Keuangan"
   },
   "menu": {
     "theme": "Tema",
@@ -111,7 +113,6 @@
     "causeUnknown": "Tidak diketahui #{{id}}",
     "statusRecorded": "Dicatat",
     "statusConfirmed": "Dikonfirmasi",
-    "statusReversed": "Dibalik",
     "statusRejected": "Ditolak",
     "statusUnknown": "—",
     "kindWarehouse": "Tim gudang",
@@ -1291,7 +1292,12 @@
       "empty": "Belum ada pengguna yang memiliki akses.",
       "removeTitle": "Hapus Akses",
       "removeConfirm": "Hapus akses {{label}} ke toko ini?",
-      "remove": "Hapus"
+      "remove": "Hapus",
+      "primaryBadge": "CS utama",
+      "makePrimaryLabel": "Jadikan {{label}} CS utama",
+      "primaryChanged": "CS utama diganti",
+      "makePrimaryFailed": "Gagal mengganti CS utama",
+      "noPrimary": "Belum ada CS utama — toko ini tidak bisa mengimpor laporannya sampai salah satu penggunanya dijadikan utama."
     },
     "detail": {
       "invalidId": "ID toko tidak valid.",
@@ -1302,7 +1308,8 @@
       "edit": "Ubah",
       "code": "Kode",
       "description": "Deskripsi"
-    }
+    },
+    "noPrimary": "Belum ada CS utama"
   },
   "racks": {
     "title": "Rak",
@@ -1482,10 +1489,7 @@
     "remove": "Keluarkan",
     "create": "Buat",
     "contactNumber": "Nomor kontak",
-    "bank": "Bank",
-    "accountHolder": "Pemilik rekening",
-    "accountNumber": "Nomor rekening",
-    "contactBank": "Kontak & bank",
+    "contactInfo": "Kontak",
     "open": "Buka",
     "closed": "Tutup",
     "operatingHours": "Jam operasional",
@@ -1516,7 +1520,7 @@
     "editTeamTitle": "Ubah {{name}}",
     "teamUpdated": "Tim \"{{name}}\" diperbarui",
     "typeCodeFixed": "Tipe ({{code}}) dan kode tidak dapat diubah setelah dibuat.",
-    "contactBankTitle": "{{name}} — Kontak & Bank",
+    "contactTitle": "{{name}} — Kontak",
     "teamInfoUpdated": "Info tim diperbarui",
     "detailsAction": "Detail",
     "teamDeleted": "Tim \"{{name}}\" dihapus",
@@ -2262,12 +2266,14 @@
     "salesHint": "Yang dibayar pembeli, setelah pembatalan",
     "received": "Diterima",
     "receivedHint": "Yang dipindahkan marketplace, termasuk biaya yang tercatat",
+    "withdrawn": "Ditarik",
+    "withdrawnHint": "Dipindahkan dari dompet marketplace ke bank — bukan bagian dari yang diterima",
     "gap": "Selisih",
     "gapHint": "Dari penjualan periode ini, tidak pernah sampai",
     "takeRate": "Potongan",
     "takeRateValue": "{{rate}}% dari penjualan",
-    "hiddenCost": "Biaya tersembunyi s.d. kini",
-    "hiddenCostHint": "Semua yang tidak pernah diterima hingga akhir periode — tidak akan ditagih siapa pun",
+    "positionToDate": "Posisi s.d. kini",
+    "positionToDateHint": "Yang dibayar pembeli, dikurangi semua yang dipindahkan platform — termasuk penarikan",
     "overTime": "Dari waktu ke waktu",
     "ranking": "Siapa yang menanggung",
     "byShop": "Per toko",
@@ -2280,9 +2286,10 @@
       "user": "Orang",
       "sales": "Terjual",
       "received": "Diterima",
+      "withdrawn": "Ditarik",
       "gap": "Selisih",
       "takeRate": "Potongan",
-      "hiddenCost": "Biaya tersembunyi s.d. kini"
+      "positionToDate": "Posisi s.d. kini"
     }
   },
   "orderSettlement": {
@@ -2336,7 +2343,13 @@
       "external_ads_fee": "Biaya iklan",
       "affiliate_fee": "Biaya afiliasi",
       "marketplace_adjustment": "Penyesuaian",
-      "other": "Lainnya"
+      "other": "Lainnya",
+      "initial_total_cancel": "Estimasi dibatalkan",
+      "withdrawal": "Penarikan",
+      "shipment_adjustment": "Penyesuaian pengiriman",
+      "logistic_reimbursement": "Penggantian ongkir",
+      "platform_reimbursement": "Penggantian platform",
+      "marketplace_program": "Program platform"
     },
     "addDialogTitle": "Tambah Entri Settlement",
     "addDialogConfirm": "Buat Entri",
@@ -2854,5 +2867,332 @@
       "loading": "Memuat barang di order…"
     },
     "moved": "Dipindah ke {{step}}"
+  },
+  "settlementImports": {
+    "title": "Impor Penyelesaian",
+    "subtitle": "Laporan platform tiap toko, diunggah setiap hari dan dicatat ke buku penyelesaian baris demi baris.",
+    "importFile": "Impor File",
+    "empty": "Belum ada laporan yang diimpor.",
+    "interruptedHint": "Server berhenti di tengah file. Unggah file yang sama lagi untuk menyelesaikannya — baris yang sudah tercatat tetap ada.",
+    "filter": {
+      "allShops": "Semua toko",
+      "clearShop": "Hapus filter toko",
+      "allStatuses": "Semua status"
+    },
+    "col": {
+      "shop": "Toko",
+      "period": "Periode laporan",
+      "uploaded": "Diunggah",
+      "status": "Status"
+    },
+    "status": {
+      "unknown": "Tidak diketahui",
+      "running": "Berjalan",
+      "interrupted": "Terputus",
+      "done": "Selesai",
+      "failed": "Gagal"
+    },
+    "tally": {
+      "posted": "Tercatat",
+      "postedToShop_one": "{{count}} ke toko — pesanan tidak ditemukan",
+      "postedToShop_other": "{{count}} ke toko — pesanan tidak ditemukan",
+      "existing": "Sudah ada",
+      "held": "Ditahan",
+      "skipped": "Dilewati"
+    },
+    "dialog": {
+      "title": "Impor File Penyelesaian",
+      "shop": "Toko",
+      "file": "File laporan",
+      "pickFile": "Pilih file .xlsx",
+      "replaceFile": "Pilih file lain",
+      "fileHelp": "Laporan persis seperti yang diekspor platform. Impor setiap hari, agar uang tiap hari tercatat di harinya sendiri.",
+      "notXlsx": "Pilih file .xlsx yang diekspor platform.",
+      "tooLarge": "File lebih besar dari 10 MB.",
+      "unsupported": "Untuk saat ini hanya laporan Shopee dan TikTok yang bisa diimpor.",
+      "cancel": "Batal",
+      "start": "Mulai impor",
+      "reading": "Membaca file…",
+      "progress": "{{step}} dari {{count}} baris",
+      "keepsGoing": "Jendela ini boleh ditutup — impor tetap berjalan, dan daftar menunjukkan progresnya.",
+      "failed": "File tidak diimpor",
+      "allPosted": "Semua baris tercatat.",
+      "notPosted_one": "{{count}} baris perlu dicek:",
+      "notPosted_other": "{{count}} baris perlu dicek:",
+      "moreOnPage_one": "…dan {{count}} lagi di halaman file.",
+      "moreOnPage_other": "…dan {{count}} lagi di halaman file.",
+      "showLog_one": "Lihat log ({{count}} baris)",
+      "showLog_other": "Lihat log ({{count}} baris)",
+      "hideLog": "Sembunyikan log",
+      "openFile": "Buka file",
+      "close": "Tutup",
+      "closeRunning": "Tutup — impor tetap jalan"
+    },
+    "detail": {
+      "notFound": "File ini tidak ada di impor tim Anda.",
+      "period": "Laporan {{from}} – {{to}}",
+      "periodUnread": "Periode laporan belum terbaca",
+      "uploadedBy": "Diunggah oleh {{name}}, {{at}}",
+      "download": "Unduh file asli",
+      "failed": "Seluruh file ditolak — tidak ada yang tercatat",
+      "view": {
+        "held_one": "Ditahan ({{count}})",
+        "held_other": "Ditahan ({{count}})",
+        "skipped_one": "Dilewati ({{count}})",
+        "skipped_other": "Dilewati ({{count}})",
+        "toShop_one": "Tercatat ke toko ({{count}})",
+        "toShop_other": "Tercatat ke toko ({{count}})"
+      },
+      "heldNote": "Baris ini tidak bisa tercatat. Setelah penyebabnya diperbaiki, unggah file yang sama lagi — hanya baris ini yang masuk.",
+      "skippedNote": "Baris ini sengaja tidak dicatat — mengulang uang yang sudah dibawa baris lain, atau penarikan yang tidak berhasil.",
+      "toShopNote": "Baris ini menyebut pesanan yang tidak ditemukan, jadi tercatat ke toko. Pesanan yang dibuat kemudian tidak menerimanya.",
+      "noLines": "Tidak ada baris di sini."
+    },
+    "line": {
+      "date": "Tanggal",
+      "orderRef": "Ref pesanan",
+      "platformType": "Di laporan",
+      "becomes": "Dicatat sebagai",
+      "amount": "Jumlah",
+      "reason": "Alasan",
+      "unmapped": "Belum dipetakan"
+    },
+    "reason": {
+      "unspecified": "—",
+      "noOrder": "Tidak ada pesanan dengan ref ini",
+      "unmappedType": "Tipe yang belum dipetakan",
+      "fractionalAmount": "Pecahan rupiah — tidak dibulatkan",
+      "refused": "Ditolak oleh penyelesaian",
+      "repeatsOrderDetails": "Mengulang baris pesanan",
+      "failedWithdrawal": "Penarikan yang tidak berhasil"
+    },
+    "type": {
+      "unspecified": "—",
+      "initial_total": "Estimasi",
+      "fund": "Pencairan",
+      "external_ads_fee": "Biaya iklan",
+      "affiliate_fee": "Biaya afiliasi",
+      "marketplace_adjustment": "Penyesuaian",
+      "other": "Lainnya",
+      "initial_total_cancel": "Estimasi dibatalkan",
+      "system_adjustment": "Penyesuaian sistem",
+      "withdrawal": "Penarikan",
+      "shipment_adjustment": "Penyesuaian pengiriman",
+      "logistic_reimbursement": "Penggantian ongkir",
+      "platform_reimbursement": "Penggantian platform",
+      "marketplace_program": "Program platform"
+    }
+  },
+  "financialAccounts": {
+    "title": "Akun Keuangan",
+    "selectTeam": "Pilih tim untuk melihat akunnya.",
+    "subtitle": "Uang yang dipegang tim, dan di mana. Saldo hanya berubah lewat baris — buka akun untuk membacanya.",
+    "report": {
+      "title": "Laporan Akun",
+      "subtitle": "Apa yang menggerakkan uang tim, menurut hari uang berpindah. Selalu sejalan dengan saldo.",
+      "rangeInvalid": "Pilih awal dan akhir, awal lebih dulu.",
+      "open": "Saldo awal",
+      "change": "Perubahan bersih",
+      "close": "Saldo akhir",
+      "overTime": "Dari waktu ke waktu",
+      "ranking": "Yang menggerakkannya",
+      "period": "Periode",
+      "empty": "Tidak ada pergerakan di rentang ini.",
+      "wholeTeam": "Seluruh tim",
+      "by": {
+        "account": "Akun",
+        "provider": "Penyedia",
+        "changeType": "Jenis"
+      }
+    },
+    "newAccount": "Akun Baru",
+    "searchPlaceholder": "Cari nama, atas nama, atau nomor",
+    "showArchived": "Tampilkan akun yang diarsipkan",
+    "archived": "Diarsipkan",
+    "operational": "Operasional",
+    "bankNotNamed": "Bank belum disebut",
+    "neverChecked": "Belum pernah dicek",
+    "noStatement": "Tidak ada mutasi untuk dicek",
+    "notFound": "Akun ini bukan milik tim ini.",
+    "empty": "Belum ada akun. Admin menambahkan rekening bank, dompet, dan kas tim di sini.",
+    "emptySearch": "Tidak ada akun yang cocok.",
+    "belowZero": "Di bawah nol",
+    "belowZeroBanner_one": "{{count}} akun di bawah nol. Itu boleh — cocokkan dengan bank.",
+    "belowZeroBanner_other": "{{count}} akun di bawah nol. Itu boleh — cocokkan dengan bank.",
+    "unknownBanner_one": "{{count}} akun menampung penarikan dari toko yang banknya belum disebut. Buka dan pilih Akun Yang Mana Ini?",
+    "unknownBanner_other": "{{count}} akun menampung penarikan dari toko yang banknya belum disebut. Buka satu per satu dan pilih Akun Yang Mana Ini?",
+    "unknownExplained": "Penarikan dari {{shops}} masuk sebelum banknya disebut, jadi akun ini dibuat untuk menampungnya. Sebut banknya, atau pindahkan uangnya ke akun yang sudah ada.",
+    "belowZeroExplained": "Di bawah nol di pembukuan — biasanya pembayaran tercatat sebelum top-up. Rekonsiliasi dengan bank.",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "failed": "Gagal diproses",
+    "amount": "Jumlah (Rp)",
+    "movedOn": "Tanggal uang berpindah",
+    "note": "Catatan",
+    "col": {
+      "account": "Akun",
+      "provider": "Penyedia",
+      "number": "Nomor",
+      "balance": "Saldo",
+      "lastChecked": "Terakhir dicek",
+      "usedFor": "Dipakai untuk",
+      "actions": "Aksi"
+    },
+    "totals": {
+      "bank": "Rekening bank",
+      "wallet": "Dompet digital",
+      "cash": "Kas",
+      "unknown": "Bank belum disebut",
+      "team": "Total tim",
+      "accounts_one": "{{count}} akun",
+      "accounts_other": "{{count}} akun",
+      "belowZero_one": "{{count}} di bawah nol",
+      "belowZero_other": "{{count}} di bawah nol"
+    },
+    "provider": {
+      "cash": "Kas",
+      "bca": "BCA",
+      "bni": "BNI",
+      "jago": "Jago",
+      "shopeepay": "ShopeePay",
+      "unknown": "Tidak diketahui"
+    },
+    "type": {
+      "wallet": "Dompet",
+      "bankAccount": "Rekening bank",
+      "cash": "Kas",
+      "unknown": "Tidak diketahui"
+    },
+    "changeType": {
+      "unspecified": "—",
+      "expense": "Biaya",
+      "adsExpense": "Iklan",
+      "adjustment": "Penyesuaian",
+      "withdrawal": "Penarikan",
+      "restock": "Restok",
+      "openingBalance": "Saldo awal",
+      "transfer": "Transfer",
+      "teamPayment": "Pembayaran tim",
+      "capital": "Modal"
+    },
+    "select": {
+      "placeholder": "Pilih akun",
+      "empty": "Tidak ada akun untuk dipilih",
+      "noOperational": "Belum ada akun operasional — minta admin menandainya",
+      "unavailable": "Akun tidak tersedia"
+    },
+    "form": {
+      "newTitle": "Akun Baru",
+      "editTitle": "Ubah {{name}}",
+      "name": "Nama",
+      "nameHelp": "Sebutan tim untuk akun ini — unik dalam tim.",
+      "type": "Jenis",
+      "provider": "Penyedia",
+      "providerPlaceholder": "Pilih bank atau dompet",
+      "number": "Nomor rekening",
+      "numberHelp": "Nomor rekening, atau nomor HP dompet. Satu rekening nyata hanya dicatat sekali, di semua tim.",
+      "holder": "Atas nama",
+      "holderHelp": "Nama yang dicetak bank.",
+      "description": "Keterangan",
+      "opening": "Saldo awal (Rp)",
+      "openingHelp": "Dicatat sebagai baris pertama akun — 0 boleh.",
+      "openingOn": "Per tanggal",
+      "fixedHelp": "tetap: nomor lain berarti akun lain"
+    },
+    "transfer": {
+      "title": "Transfer Dari {{name}}",
+      "to": "Ke",
+      "after": "{{name}} setelahnya: {{amount}}",
+      "belowZero": "{{name}} akan di bawah nol. Itu boleh, dan akan diberi peringatan.",
+      "notePlaceholder": "mis. top-up ShopeePay",
+      "save": "Transfer"
+    },
+    "capital": {
+      "title": "Modal — {{name}}",
+      "direction": "Arah",
+      "in": "Uang masuk",
+      "out": "Uang keluar",
+      "help": "Uang pemilik usaha sendiri, dimasukkan atau diambil."
+    },
+    "reconcile": {
+      "title": "Rekonsiliasi {{name}}",
+      "books": "Menurut pembukuan",
+      "shows": "Berapa yang tampil di aplikasi bank? (Rp)",
+      "counted": "Berapa hasil hitung kas? (Rp)",
+      "agree": "Pembukuan cocok — tidak ada baris dicatat, akun ditandai sudah dicek.",
+      "differs": "Selisih {{amount}} — dicatat sebagai penyesuaian.",
+      "asOf": "Dibaca tanggal",
+      "why": "Kenapa berbeda?",
+      "whyPlaceholder": "mis. biaya admin bank",
+      "whyHelp": "Wajib bila ada selisih — inilah satu-satunya baris yang bisa menyembunyikan uang hilang.",
+      "save": "Rekonsiliasi"
+    },
+    "identify": {
+      "title": "Akun Yang Mana Ini?",
+      "intro": "{{amount}} masuk dari {{shops}} sebelum banknya disebut.",
+      "itsShop": "tokonya",
+      "fill": "Belum tercatat — isi datanya",
+      "move": "Sudah ada di daftar",
+      "fillHelp": "Akun ini menjadi akun tersebut — barisnya tetap, tiap penarikan di harinya sendiri.",
+      "into": "Pindahkan uangnya ke",
+      "moveHelp": "{{amount}} pindah ke akun itu, {{shops}} menarik ke sana mulai sekarang, dan akun ini diarsipkan."
+    },
+    "actions": {
+      "label": "Aksi akun",
+      "transfer": "Transfer",
+      "transferOut": "Transfer keluar",
+      "reconcile": "Rekonsiliasi",
+      "capital": "Modal masuk / keluar",
+      "edit": "Ubah",
+      "markOperational": "Tandai operasional",
+      "unmarkOperational": "Hapus tanda operasional",
+      "identify": "Akun yang mana ini?",
+      "archive": "Arsipkan",
+      "archiveOnlyAtZero": "hanya saat nol",
+      "restore": "Pulihkan"
+    },
+    "archiveDialog": {
+      "title": "Arsipkan {{name}}",
+      "message": "{{name}} berisi {{amount}}. Setelah diarsipkan, akun hilang dari semua pilihan dan tidak menerima baris manual; riwayatnya tetap. Bisa dipulihkan."
+    },
+    "toast": {
+      "created": "{{name}} ditambahkan",
+      "updated": "{{name}} disimpan",
+      "transferred": "{{amount}} keluar dari {{from}}",
+      "capitalIn": "Modal {{amount}} masuk ke {{name}}",
+      "capitalOut": "Modal {{amount}} keluar dari {{name}}",
+      "reconciledAgree": "{{name}} dicek — pembukuan cocok",
+      "reconciledAdjusted": "{{name}} dicek — {{amount}} disesuaikan",
+      "filledIn": "Sekarang menjadi {{name}}",
+      "movedIn": "Dipindahkan ke {{name}}",
+      "restored": "{{name}} dipulihkan",
+      "archived": "{{name}} diarsipkan",
+      "markedOperational": "{{name}} kini membayar operasional",
+      "unmarkedOperational": "{{name}} tidak lagi membayar operasional",
+      "shopSet": "{{shop}} kini menarik ke {{name}}"
+    },
+    "shops": {
+      "title": "Toko yang menarik ke sini",
+      "point": "Arahkan toko ke sini",
+      "none": "Belum ada toko yang menarik ke akun ini.",
+      "dialogTitle": "Arahkan Toko ke {{name}}",
+      "shop": "Toko",
+      "already": "{{shop}} sudah menarik ke sini.",
+      "moves": "{{shop}} saat ini menarik ke {{from}} — akan pindah ke {{to}}.",
+      "first": "{{shop}} belum punya akun — penarikannya mulai masuk ke sini."
+    },
+    "log": {
+      "title": "Mutasi",
+      "empty": "Tidak ada baris di tampilan ini.",
+      "date": "Tanggal",
+      "type": "Jenis",
+      "description": "Keterangan",
+      "change": "Perubahan",
+      "balanceAfter": "Saldo setelah",
+      "recordedOn": "dicatat {{date}}",
+      "byHand": "manual · {{name}}",
+      "automatic": "otomatis — dari tempat kejadiannya",
+      "allTypes": "Semua jenis"
+    }
   }
 }

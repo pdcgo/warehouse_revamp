@@ -42,10 +42,7 @@ type TeamInfo struct {
 	// The warehouse this SELLING team ships from by default (#145). NULL = not configured.
 	DefaultWarehouseID *uint64
 
-	ContactNumber     string
-	BankType          string
-	BankOwnerName     string
-	BankAccountNumber string
+	ContactNumber string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

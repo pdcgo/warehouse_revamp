@@ -27,7 +27,7 @@ mine.** Answered points are **deleted**, so this file is always the current open
 > | ✅ closed | `settlement_service` → **`liability_service`** — the rename landed, so the tree and §Responsbility now agree. Your line 7 (`balance_service`) is the last dissenting name |
 > | ⚠ opened | `settlement_service` is now **free and unbuilt** — your line 6 names it *"handle settlement of the order"*, which is exactly the payout ledger [design-accepted](../../business/settlement/context_decision.md#design-accepted) approved. It is the one service the doc names that nobody has started |
 > | ✅ closed | `revenue_service` is **removed from the tree** — deleted 2026-08-28 with its statistics deferred ([decision](../../business/settlement/context_decision.md#revenue-service-is-removed-and-statistics-deferred)). `backend/services/` now holds **eleven** |
-> | still open | `order_service` (your line 9) vs the shipped `selling_service`, and `export_service` in no list at all |
+> | still open | `order_service` (your line 9) vs the shipped `selling_service`, and `export_service` in no list at all · 🆕 `shop_service`, decided 2026-09-29 ([the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service)), in no list either · 🆕 `financial_account_service` — named by your [financial_account/context.md](../../business/financial_account/context.md) (2026-09-29), the cash service `order/context.md` set aside — in no list either ([its clarify](../../business/financial_account/context_clarify.md)) |
 >
 > ⚠ **The split argument survives the rename untouched** — a gate, a book and a policy are still in one box,
 > the box is just called something else now. That is [Critique 2](#critique) and it has not moved.
@@ -140,7 +140,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | 1 | identity, login, one person across teams | `user_context.md:4` | `user_service` | the person is one row regardless of how many teams they serve |
 | 2 | roles per team, the ACL | `user_context.md:30-46` | `user_service` | a role is a membership, and enforcement must sit with what it reads |
 | 3 | the four team kinds, membership | `business_level.md:37-41` | `team_service` | the team is the scope every other service is partitioned by |
-| 4 | shops in the marketplace | `business_level.md:67` | `team_service` | a shop is a selling team's storefront identity — master data an order only references ([Q6](#question)) |
+| 4 | shops in the marketplace | `business_level.md:67` | ✅ `shop_service` — [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) | a shop is a selling team's storefront identity — master data an order only references. Was `team_service` until [Q6](#question) moved to the shop doc |
 | 5 | product catalogue | `product_context.md:45` | `product_service` | the selling team's own list |
 | 6 | cross/shared fee markup percent | `product_context.md:51-57` | `product_service` | a product attribute, set by its owner |
 | 7 | reserved stock **number** | `product_context.md:61` | `product_service` | policy, not quantity |
@@ -165,7 +165,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | 26 | warehouse order fee | `balance_context.md:7` | `order_service` then `balance_service` | caused per order, settled as a pair delta |
 | 27 | estimated revenue (statistic only) | `order_context.md:150` | `order_service` | explicitly not a ledger fact |
 | 28 | true revenue and `revenue_log` | `order_context.md:168`, `ledger_context.md:10` | `order_service` | your diagram draws Revenue Log **inside** the Sales/Order box |
-| 29 | platform withdrawal | `order_context.md:176-177` | `order_service` | the wallet is fed by that shop's orders — reconciled against them ([Q7](#question)) |
+| 29 | platform withdrawal | `settlement/context.md` §what is `settlement_type` | `settlement_service` | 🔄 a shop-addressed settlement row — [withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type) (2026-09-24). My `order_service` placement is overtaken ([Q7](#question)) |
 | 30 | purchasing and `purchasing_log` | `ledger_context.md:18-24` | `inventory_service` | [purchasing-is-the-restock-document](#purchasing-is-the-restock-document) |
 | 31 | expenses — electricity, ads, payroll | `business_level.md:22`, `ledger_context.md:36-44` | `expense_service` | its own box in your ledger flow, its own recorder and approver |
 | 32 | payments between teams | `balance_context.md:12` | `balance_service` | it moves the pair balance and must be atomic with it |
@@ -185,7 +185,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | Service | OWNS (tables) | EXPOSES (key RPCs) | PUBLISHES | NEVER owns |
 | --- | --- | --- | --- | --- |
 | `user_service` | `user`, `team_member_role`, credentials | `UserList`, `SearchUser`, `UserTeams`, `TeamAccessList` | `RoleChanged` | a team's business data — it answers *who, and what may they do* |
-| `team_service` | `team`, `warehouse_info`, `shop`, `shop_user` | `TeamList`, `TeamInfoUpdate`, `ShopList` | `TeamCreated` | balances, thresholds, stock — a team's **money** is not the team record |
+| `team_service` | `team`, `warehouse_info` — ✅ `shop` and `shop_user` go to `shop_service` ([the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service)) | `TeamList`, `TeamInfoUpdate` | `TeamCreated` | balances, thresholds, stock — a team's **money** is not the team record |
 | `product_service` | `product`, `product_image`, `category`, `supplier`, `product_link_map`, markup / reserve number / shared lock | `ProductList`, `ProductByIds`, `SetSharingPolicy`, `ResolveLinkMap` | `ProductPolicyChanged` | **any quantity.** A catalogue that stores a count is a second stock system |
 | `inventory_service` | `stock_batch`, `stock_level`, `stock_movement`, `rack`, `restock_request`, `restock_cost_line`, receiving / opname / return / breakage records, **`inventory_log`**, **`purchasing_log`** | `Receive`, `DrawForOrder`, `ReleaseDraw`, `Opname`, `DeclareBroken`, `Place`, `StockByProduct` | `InventoryLogged`, `PurchaseLogged` | the markup, the reserve **number**, the journal. It states amounts — it does not book them |
 | `order_service` | `order`, `order_item`, `order_draft`, `order_event`, estimated and true revenue, withdrawal, **`revenue_log`** | `OrderDraftCreate`, `OrderFinalize`, `OrderAccept`, `OrderPack`, `OrderHandover`, `OrderCancel`, `OrderList` | `RevenueLogged`, `OrderFinalized` | stock, layers, the markup value, the balance row. It **asks**, it does not compute |
@@ -286,7 +286,8 @@ Stated as fact and as a proposal, never as a justification (HARD RULE 8b.5).
 | Existing | Verdict | Reason |
 | --- | --- | --- |
 | `user_service` | **keep** | matches `architecture_context.md:5` exactly |
-| `team_service` | **keep, absorb `shop`** | a shop is team master data — it sits in `selling_service` today |
+| `team_service` | **keep** — ✅ not `shop`: it gets `shop_service` | a shop sits in `selling_service` until the move |
+| `shop_service` | ✅ **new — decided 2026-09-29** | [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) — shops and shop access leave `selling_service` |
 | `product_service` | **keep, absorb `category_service`**, and gain supplier + LinkMap | catalogue master data belongs with the catalogue |
 | `category_service` | **absorb** into `product_service` | a taxonomy with no catalogue is an orphan tree |
 | `inventory_service` | **keep** — already the closest match | it already holds batches, levels, racks, restock, movements |
@@ -347,11 +348,16 @@ a debit.** `liability_service` is the one that genuinely breaks the rule today, 
    **→ I recommend no — money statistics are `ledger_service` (already the projection engine), operational
    statistics stay in the service that owns the rows. A `report_service` reading five databases is the one
    design that makes every boundary above meaningless.**
-6. **Does a shop belong to `team_service` or to `order_service`?**
-   **→ I recommend `team_service` — a shop exists before any order and outlives every one of them.**
-7. **Where does a platform WITHDRAWAL live?** *(order_context.md:176)* It is a shop-level cash event, not a
-   per-order one. **→ I recommend `order_service`, because the wallet is fed by that shop's orders and the
-   withdrawal is reconciled against them. If a bank or cash account is ever modelled, it moves.**
+6. ➡ **Re-routed 2026-09-28 to [shop Q2](../../business/shop/context_clarify.md#question)** — the owner's new
+   *Shop Service* doc is the one that answers where a shop lives. It now recommends a `shop_service` of its own,
+   not `team_service`: settlement has to ask about shops, and selling already calls settlement. Kept as a line so
+   the numbers hold. ✅ **Answered there 2026-09-29** — its own `shop_service`:
+   [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service).
+7. ➡ **ANSWERED in settlement — a withdrawal is a settlement row**, type `withdrawal`, shop-addressed
+   ([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type),
+   from the owner's `settlement/context.md` edit of 2026-09-24). My `order_service` recommendation is
+   overtaken. What is still open — whether it counts toward settlement's position — is
+   [settlement Q1](../../business/settlement/context_clarify.md#question).
 8. **Does `region_service` stay its own service?** My old answer — *"shipping's, a region is a destination"* —
    is **withdrawn**: shipment was decided as the courier catalogue alone, and an order stores its address as
    plain names ([an-address-is-plain-names](../../business/order/context_decision.md#an-address-is-plain-names)),

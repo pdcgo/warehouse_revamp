@@ -15,7 +15,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [importing-is-not-settlements-job](#importing-is-not-settlements-job) | file import, matching and the unmatched tray belong to `export_service` — settlement is a ledger with a write API |
 | [a-residual-balance-is-normal](#a-residual-balance-is-normal) | the balance does NOT reach zero, and that is expected — it is a VARIANCE, not a receivable |
 | [settlement-ignores-our-order-status](#settlement-ignores-our-order-status) | nothing is gated on `OrderStatus`; a row can post anytime |
-| [entries-arrive-by-api-or-by-hand](#entries-arrive-by-api-or-by-hand) | two write paths — the exporter's API and a person on the order detail page — and `source_type` records which |
+| [entries-arrive-by-api-or-by-hand](#entries-arrive-by-api-or-by-hand) | two write paths — the exporter's API and a person on the order detail page — and `source_type` records which. 🔄 the exporter's source is `importer` now — [the-source-is-named-importer](./settlement_importer_decision.md#the-source-is-named-importer) |
 | [every-entry-names-its-actor](#every-entry-names-its-actor) | `actor_id` on every row: a human is accountable for every entry, including API ones |
 | [a-correction-is-a-new-row](#a-correction-is-a-new-row) | append-only — no edit, no delete. A mistake is offset by a further row |
 | [initial-total-is-an-estimate-and-fund-is-what-we-actually-got](#initial-total-is-an-estimate-and-fund-is-what-we-actually-got) | the two core types are an ESTIMATE and a REALISATION. ⚠ its "`fund` is net" reading is **narrowed** by [fund-is-not-the-final-figure](#fund-is-not-the-final-figure) |
@@ -27,7 +27,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-state-holds-initial-total-and-last-balance](#the-state-holds-initial-total-and-last-balance) | `order_settlements` holds `order_id`, `initial_total`, `last_balance` |
 | [the-recipe-is-the-callers-problem](#the-recipe-is-the-callers-problem) | how a `unique_id` is derived is OUTSIDE settlement — it enforces uniqueness and nothing more |
 | [no-role-policy-yet](#no-role-policy-yet) | role design deferred. ⚠ **ANSWERED** by [the-write-set-is-cs-and-up](#the-write-set-is-cs-and-up) — the policy is no longer deferred |
-| [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) | the unexplained gap is hidden platform cost the platform never itemises — it stays in the balance, and the balance IS that measure |
+| [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) | the unexplained gap is hidden platform cost the platform never itemises — it stays in the balance, and the balance IS that measure. ⚠ **Amended** by [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date): withdrawals are in the balance too, so the screen stops calling it hidden cost |
 | [marketplace-total-is-a-fact-not-an-estimate](#marketplace-total-is-a-fact-not-an-estimate) | `marketplace_total` is what the buyer actually paid. The ESTIMATE is the expectation that it will all reach us — so the balance is literally the platform's take |
 | [order-detail-manages-the-ledger](#order-detail-manages-the-ledger) | the order page MANAGES settlement — read, add, reverse — as a third tab. ⚠ widens the verbs, not the guarantees: append-only stands |
 | [the-write-set-is-cs-and-up](#the-write-set-is-cs-and-up) | `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, TEAM_CUSTOMER_SERVICE]` scoped on `team_id` — answers [no-role-policy-yet](#no-role-policy-yet)s liveness ⚠ |
@@ -62,14 +62,24 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [superseded-genesis-is-seeded-from-the-state-table](#superseded-genesis-is-seeded-from-the-state-table) | the migration writes a day-zero row per scope from `SUM(order_settlements.last_balance)`, so no live shop opens at a false `0` |
 | [a-replay-deletes-its-range-first](#a-replay-deletes-its-range-first) | `AnalyticReplayCompute` clears `day >= @start_date` and rebuilds — it never folds on top of what is there |
 | [the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row) | `order_settlements.created_by_user_id`, written once when the account opens — so genesis and replay can both attribute |
-| [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) | the rebuild redelivers through the same webhook, not a second re-fold path — ⚠ which requires generation-scoped dedup, `retain_acked_messages`, and accepts a retention ceiling |
+| [the-replay-seeks-the-broker](#the-replay-seeks-the-broker) | the rebuild redelivers through the same webhook, not a second re-fold path — ⚠ which requires generation-scoped dedup, `retain_acked_messages`, and accepts a retention ceiling · ⚠ `retain_acked_messages` superseded by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) |
 | [the-order-commits-without-settlement](#the-order-commits-without-settlement) | a failed `SettlementPost` never fails the order — a missing account is repairable, a lost order is not |
 | [the-creator-is-read-from-the-token-at-placement](#the-creator-is-read-from-the-token-at-placement) | `orders.created_by_user_id` comes from `san_auth.GetIdentity(ctx)` at `OrderPlace` — never client-supplied |
 | [a-missing-account-is-fixed-by-hand](#a-missing-account-is-fixed-by-hand) | a person repairs it on the order detail page — no flag, no repair command, no reconcile job |
 | [the-replay-cuts-three-tables-on-one-line](#the-replay-cuts-three-tables-on-one-line) | `settlement_event_logs` gains `day`, and a replay deletes from all three tables under `day >= @start_date` in one transaction |
 | [the-carry-materialises-the-day-boundary-position](#the-carry-materialises-the-day-boundary-position) | the day-boundary position is what the number MEANS, the carry is how it is KEPT — reconciling the two decisions above, and closing the "two definitions" contradiction |
 | [a-past-date-position-is-a-real-screen](#a-past-date-position-is-a-real-screen) | `open_balance` / `close_balance` STAY — a screen reads a shop's position at a past date, so the cascade, the genesis seed, the floor and the reseed are all paid for |
-| [the-position-is-the-shortfall-not-the-wallet](#the-position-is-the-shortfall-not-the-wallet) | that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
+| [superseded-the-position-is-the-shortfall-not-the-wallet](#superseded-the-position-is-the-shortfall-not-the-wallet) | ⛔ **superseded in part** by [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) — was: that position is the cumulative SHORTFALL, not the marketplace wallet — the wallet is out of scope, and the withdrawal question stops being blocking |
+| [withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type) | a platform withdrawal is a shop-addressed settlement row of type `withdrawal`. ✅ it counts toward the position — [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) |
+| [the-reconcile-check-is-not-built](#the-reconcile-check-is-not-built) | nothing compares the stored carry with the log — drift is found by a person, and the replay repairs 31 days. ⚠ makes *the fold before the enum* load-bearing |
+| [the-user-carry-is-kept](#the-user-carry-is-kept) | the per-user carry stays — both user tables as shipped. A person's hidden cost to date is a figure the report keeps |
+| [only-the-replay-holds-the-lock](#only-the-replay-holds-the-lock) | `process_event_lock` is service state — only the replay sets it, for seconds. A person pauses the fold by switching its subscription to pull |
+| [periods-are-grouped-on-the-server](#periods-are-grouped-on-the-server) | a period's grain — day, month, year — is grouped by the RPC, never by the browser. Every period read, not only settlement's |
+| [the-fold-locks-shop-then-user](#the-fold-locks-shop-then-user) | every fold takes a transaction-scoped advisory lock on its shop, then its person — two events on one shop fold one after the other |
+| [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) | the replay's seek is carried by the topic's 31-day retention; subscriptions keep no acknowledged messages. ⚠ supersedes one requirement of the-replay-seeks-the-broker |
+| [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused) | a `unique_id` already written on ANOTHER account — another order, or another shop's row in any team — is refused; only a key on the caller's own account is a retry |
+| [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) | a `withdrawal` counts in `Σ change` like every type — the running balance, `last_balance` and the report's carry include it, in a column of its own; `received` does not. ⛔ supersedes in part the shortfall position |
+| [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date) | the report's running figure is **Position to date**, and **Withdrawn** stands beside Received — *hidden cost* no longer names it |
 
 ---
 
@@ -543,12 +553,12 @@ including on rows written over the API.
 
 This matches the rule `order_drafts` already set: *"There is no machine identity in this system and this
 feature does not invent one, so every draft has a human accountable on it."* An exporter run therefore
-posts under the login it runs as, and `actor_id` is never a system sentinel.
+posts under the login it runs as, and `actor_id` is never a system sentinel. ⚠ **Amended** by [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): an imported row whose ref finds its order names that order's creator. ✅ **Restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs): the actor is whoever posted again — ⚠ my reading — and who the report counts a row for is that decision's.
 
 | `source_type` | `actor_id` is |
 | --- | --- |
 | `manual` | the person who filled the form |
-| `exporter` | the person whose login the exporter runs under |
+| `exporter` | the person whose login the exporter runs under · ⚠ **Amended** by [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order · ✅ **restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) — ⚠ my reading |
 | `initial_total` | ⚠ nobody typed it — see [Question 3](./context_clarify.md#question) |
 
 ⚠ **`initial_total` is the one row no human causes.** It fires on order creation, so the honest
@@ -634,7 +644,7 @@ merely whichever session happened to write the row.
 | `source_type` | the PIC is |
 | --- | --- |
 | `manual` | the person who filled the form |
-| `exporter` | the person whose login the exporter runs under — no machine identity, matching the rule `order_drafts` already set |
+| `exporter` | the person whose login the exporter runs under — no machine identity, matching the rule `order_drafts` already set · ⚠ **Amended** by [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): the order's creator, when the row's ref finds its order · ✅ **restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) — ⚠ my reading |
 | `initial_total` | ⚠ nobody filled a form. The order's own PIC is the only honest candidate |
 
 ⚠ **`initial_total` still needs a rule.** It fires on order creation, so the person accountable is
@@ -2610,7 +2620,7 @@ Four things must be built or configured, or the replay deletes its range and reb
 | | why | → what to do |
 | --- | --- | --- |
 | **1 · the dedup must be generation-scoped** | `settlement_event_logs.id` **is** the broker's message id, and a seek redelivers the **same** ids — so every replayed message reads as *already processed* and is ACKed without computing | **`(id, run_id)` as the key**, with the current run id in `settlement_service_metadata`, bumped by each replay. A replay is then a new generation that legitimately re-reads, and ordinary redelivery inside a generation is still dropped. ⚠ The cheaper alternative — deleting dedup rows in the range — keys on `created_at` (when *received*), which is not the axis the seek uses, so it leaks |
-| **2 · `retain_acked_messages` must be TRUE on the subscription** | it defaults to **false**, and a seek backwards over already-acknowledged messages then delivers **nothing**. The replay becomes a pure delete, silently | set it, and state it in the doc — it is a subscription property, invisible from the code |
+| **2 · `retain_acked_messages` must be TRUE on the subscription** | it defaults to **false**, and a seek backwards over already-acknowledged messages then delivers **nothing**. The replay becomes a pure delete, silently | set it, and state it in the doc — it is a subscription property, invisible from the code. ⚠ **SUPERSEDED** by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay): the topic's 31-day retention carries the seek, and subscriptions keep no acknowledged messages |
 | **3 · the lock must not reject the replay's own traffic** | redelivered messages arrive at the webhook, which checks `process_event_lock` first — held by the replay itself. Each one 500s, NACKs and burns a delivery attempt toward the dead-letter policy | **the replay must not take the maintenance lock.** With deltas and generation-scoped dedup it does not need one: a live event during a rebuild is folded once and deduped on redelivery. `process_event_lock` stays what it is — a developer's switch |
 | **4 · the RPC cannot know when the rebuild finished** | a seek is asynchronous; the messages arrive over the following minutes | either the RPC returns *"started"* and completion is observed elsewhere, or it waits on the subscription backlog. **It must not report success on a trigger** |
 
@@ -2907,7 +2917,7 @@ flowchart TB
 | the `prev` lookup | ✅ stays |
 | the genesis seed | ✅ stays — without it every absolute figure is offset by the pre-launch position |
 | the replay floor · `AnalyticReseedGenesis` | ✅ **promoted from prudent to mandatory** ([Q1](./analytic_context_clarify.md#question), was Q2) — a destroyed anchor is now a wrong number in front of a person, not just a wrong row |
-| `retain_acked_messages` · 31-day retention | ✅ load-bearing for the same reason |
+| `retain_acked_messages` · 31-day retention | ✅ load-bearing for the same reason · ⚠ the first half superseded by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) — the 31 days are the topic's |
 
 ### What it BINDS — three requirements the screen creates
 
@@ -2966,7 +2976,13 @@ query the eager path cannot check itself with.
 
 ---
 
-## the-position-is-the-shortfall-not-the-wallet
+## superseded-the-position-is-the-shortfall-not-the-wallet
+
+> ⛔ **SUPERSEDED IN PART (2026-09-29) by [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position).** The owner
+> counted a withdrawal in the position — *"Count it in the position"* — so the position is no longer the shortfall
+> alone: it is the shortfall **plus** every withdrawal, and the screen calls it *Position to date*
+> ([the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date)). The wallet itself is still not
+> tracked. Kept as the record, per the header.
 
 > Owner, in chat (2026-09-07) — *"we dont care about shop wallet, `shop_settlement_daily_reports` is
 > enough"*, answering [analytic Q1](./analytic_context_clarify.md#question): which of two numbers the
@@ -3062,7 +3078,7 @@ part of what it was asked and calls it done.
 | **`genesis_day`** | `settlement_service_metadata` — written by a migration, read by the RPC, and nothing links them otherwise |
 | **`message_retention`** | ⚠ the same shape: the ceiling's value lives on the SUBSCRIPTION and is assumed by the RPC. It belongs beside `genesis_day`, or the guard drifts from the thing it guards |
 | **`AnalyticReseedGenesis`** | a separate, deliberate operation — `SUM(change) WHERE posted_on <= D0`. With the floor in place nothing else can ever repair a wrong genesis figure, and it must never be reachable by a `start_date` typo |
-| **the four subscription properties** | `retain_acked_messages = true`, retention at its 31-day maximum, dedup cut on `day` (not `created_at`), and the replay not taking the maintenance lock — all from [the-replay-seeks-the-broker](#the-replay-seeks-the-broker), all invisible from the code, all discovered during an incident if wrong |
+| **the four subscription properties** | `retain_acked_messages = true`, retention at its 31-day maximum, dedup cut on `day` (not `created_at`), and the replay not taking the maintenance lock — all from [the-replay-seeks-the-broker](#the-replay-seeks-the-broker), all invisible from the code, all discovered during an incident if wrong. ⚠ The first is superseded by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) — the topic's retention carries the seek |
 
 ### ✅ What it DE-ESCALATES
 
@@ -3120,7 +3136,7 @@ dangerous one because a retried cancel on a fresh key **credits the account twic
 | the index | `CREATE UNIQUE INDEX settlement_logs_unique_idx ON settlement_logs (unique_id)` |
 | ⚠ **strictly stronger** | a key that was legal on two different orders is now a collision. Intended: every recipe already embeds the order id or the platform reference (`hash(date + order_ref_id)`, and `hash(order_id + act_date + "cancel")`), so all of them are globally unique in practice. A recipe that was not is a caller bug this index surfaces instead of hiding |
 | the handler's lookup | `WHERE unique_id = ?`, no longer `order_id = ? AND unique_id = ?` |
-| ⛔ **a hit on ANOTHER order is refused, not returned** | `errUniqueIDTaken`. Without it the idempotency check would hand the caller a row from an account it never wrote to, **labelled as its own successful write** — worse than an error, because it reads as success |
+| ⛔ **a hit on ANOTHER order is refused, not returned** | ⚠ **Amended** by [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused): another ACCOUNT — another shop's row, in this team or another, is refused too. `errUniqueIDTaken`. Without it the idempotency check would hand the caller a row from an account it never wrote to, **labelled as its own successful write** — worse than an error, because it reads as success |
 | if the migration fails | that is the finding, not an obstacle: two rows already share a key across orders, and one writer's recipe does not identify what it records |
 
 ### ✅ What it closes
@@ -3142,7 +3158,11 @@ not have been.
 
 **The verdict.** A shop-addressed row is attributed in `user_settlement_daily_reports` to its
 **`actor_id`** — the identity on the token that posted it. Order-addressed rows keep
-[the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row).
+[the-creator-is-stamped-on-the-state-row](#the-creator-is-stamped-on-the-state-row). ⚠ **Contradicted for an IMPORTED
+shop row** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) *(owner, 2026-09-29)*: the shop's primary CS —
+[recorded](./settlement_importer_clarify.md#an-imported-shop-row-goes-to-the-shops-primary-cs-and-a-shop-row-goes-to-whoever-posted-it), and how it gets there is
+[importer Q13](./settlement_importer_clarify.md#question) — ✅ **decided**: [settlement-asks-the-shop-for-its-primary-cs](./settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs). A shop row
+posted by hand keeps its actor.
 
 ```mermaid
 flowchart LR
@@ -3180,7 +3200,7 @@ because it splits the measure:
 | row | its actor is | |
 | --- | --- | --- |
 | `initial_total` | the order's PIC | ✅ the salesperson |
-| `fund`, posted by the exporter | the person whose login the exporter runs under | ⛔ an operations person |
+| `fund`, posted by the exporter | the person whose login the exporter runs under · ⚠ since [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader), the order's creator when its ref finds the order · ✅ **restored** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs) — ⚠ my reading | ⛔ an operations person — still so for a row posted by hand |
 
 [the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) is
 `initial_total + fund`, so the two halves would land on **two different people** — a CS person's book
@@ -3427,7 +3447,7 @@ a read cannot drift from it.
 
 | | |
 | --- | --- |
-| the source | the subscription's `message_retention_duration`, from the Pub/Sub admin API |
+| the source | the subscription's `message_retention_duration`, from the Pub/Sub admin API. ⚠ **Amended** by [topic-retention-carries-the-replay](#topic-retention-carries-the-replay): the topic's retention as the subscription reports it — or the subscription's own, if it keeps acknowledged messages and that is longer. A subscription alone tops out at 7 days; the 31 are the topic's |
 | when read | at startup, cached — it is a configuration value, not a per-request fact. ⚠ A process that has run since before a retention change holds a stale bound until restart, which errs toward refusing |
 | the error | a **named** one carrying the window (*"the replay can reach back to 2026-08-10"*), never a bare `invalid_argument` — an operator reaching for this mid-incident needs to be told the limit, not that their input is malformed |
 | ⛔ **it replaces a literal, it does not add one** | if the admin API is unavailable, refuse rather than fall back to a default. A guard that guesses is not a guard |
@@ -3441,3 +3461,379 @@ no anchor, nothing to destroy at the beginning — and this is the survivor.
 ⚠ **What it does NOT do**: it prevents damage, it does not widen reach. Repairing something older than
 the window is still `system_adjustment` — with the class that cannot repair
 ([system-adjustment-is-a-ledger-type](#system-adjustment-is-a-ledger-type)), which stays open.
+
+---
+
+## withdrawal-is-a-settlement-type
+
+> `context.md` §what is `settlement_type` *(owner, 2026-09-24)* — `withdrawal` added to the list. The
+> same day, in the reader's thread: *"its contain settlement type withdrawal"*
+> ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)).
+
+**The verdict.** A platform withdrawal — the marketplace wallet paying our bank — is a **settlement row**
+of type `withdrawal`. It names no order, so it is **shop-addressed**
+([an-entry-names-an-order-or-a-shop](#an-entry-names-an-order-or-a-shop)). This answers the *where does it
+live* half of [context Q1](./context_clarify.md#question).
+
+```mermaid
+flowchart LR
+  S["Shopee — Penarikan Dana"] --> W["withdrawal, shop-addressed"]
+  T["TikTok — Withdrawal records, Withdrawal"] --> W
+  W --> L["settlement_logs"]
+  W -.->|"open — Q1"| P["does it count toward the position?"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| type | `withdrawal` — one of the five values the list gained on 2026-09-24 |
+| grain | the shop — `order_id` empty |
+| where it comes from | Shopee `Penarikan Dana` rows · TikTok `Withdrawal records` rows typed `Withdrawal` |
+| a failed withdrawal | ⛔ **not settled here** — whether its two rows are both booked is the importer's call, [importer Q6](./settlement_importer_clarify.md#question) |
+
+### What it does NOT settle
+
+✅ **Decided 2026-09-29 — it counts** ([withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position)). Was:
+⛔ **Whether it counts toward the position.** Summed into `Σ change`, it reverses
+[superseded-the-position-is-the-shortfall-not-the-wallet](#superseded-the-position-is-the-shortfall-not-the-wallet) — see
+[context Q1](./context_clarify.md#question) and its
+[Contradiction](./context_clarify.md#withdrawal-entered-the-log-and-the-position-is-defined-as-not-the-wallet).
+
+⚠ **It overtakes [architecture Q7](../../technical/architecture/context_clarify.md#question)**, which
+recommended `order_service` as the withdrawal's home.
+
+## the-reconcile-check-is-not-built
+
+> Owner, in chat (2026-09-28) — *"for q4, no need"*, on
+> [analytic Q4](./analytic_context_clarify.md#question): an on-demand, read-only RPC comparing each day's
+> stored `close_balance` with the log's running sum.
+
+**The verdict.** No reconcile check is built. Nothing compares the stored carry — `open_balance` /
+`close_balance` on the daily reports — with `settlement_logs`. The fold is trusted to keep it, the way
+[no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)
+trusts the publish.
+
+```mermaid
+flowchart LR
+  L["settlement_logs — the truth"] -->|"SettlementLogPosted"| F["the fold"]
+  F --> R["daily reports — open and close, stored"]
+  R --> P["a person reads a figure"]
+  P -->|"it looks wrong"| X{"within 31 days?"}
+  X -->|"yes"| RP["AnalyticReplayCompute rebuilds it"]
+  X -->|"no"| N["no repair — the day re-fold question"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| built | nothing — no `SettlementReconcile` RPC, no column, no job |
+| how drift is found | by a person, when a figure disagrees with what they know — the platform's statement, a shop's own history |
+| how it is repaired | [AnalyticReplayCompute](#the-replay-seeks-the-broker), within [31 days](#the-replay-reaches-31-days-and-that-is-accepted). Older: [the day re-fold question](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), open |
+| ⚠ now load-bearing | **the fold learns a settlement type before `SettlementPost` accepts it** — the same commit, or the fold first. The fold refuses a type it has no column for ([analytic_fold.go:48](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L48)); widened the other way round, every such row is missing from the report and no check would say so. The five types of 2026-09-24 are the first test |
+
+### What it does NOT settle
+
+- **Your template's nightly line** — [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md)
+  `# Statistic Design.` 2, *"Statistic is streaming and reconcile every midnight + 1 hour"*. That is a
+  second PATH into the report, not a check, and whether it is drawn is
+  [analytic Q2](../analytic/context_clarify.md#question), still open. If that is no as well, the template's
+  line stops being true for settlement.
+- **The per-user carry** — [analytic Q3](./analytic_context_clarify.md#question), open, and live on the
+  shipped report. ✅ **Answered** — [the-user-carry-is-kept](#the-user-carry-is-kept).
+
+⚠ **Three arguments leaned on the check and were corrected** —
+[Contradiction](./context_clarify.md#declining-the-reconcile-removed-the-premise-of-three-arguments).
+
+## the-user-carry-is-kept
+
+> Owner, in chat (2026-09-28) — *"for q3, no, its not drop"*, on
+> [analytic Q3](./analytic_context_clarify.md#question): drop `open_balance` / `close_balance` from the
+> user grain, because a person's running total only grows with tenure.
+
+**The verdict.** The per-user carry stays, as `analytic_context.md` §Daily Reports 2 and §Balance State
+Reports 2 draw it: `user_settlement_daily_reports` keeps `open_balance` / `close_balance`, and
+`user_settlement_reports` keeps each person's latest `close_balance`. A person's hidden cost to date is a
+figure the report keeps.
+
+```mermaid
+flowchart LR
+  L["settlement_logs"] --> F["the fold"]
+  F --> D["user_settlement_daily_reports — movements, open and close"]
+  D --> S["user_settlement_reports — the latest close, per person"]
+  S --> V["the per-user list — hidden cost to date"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| tables | unchanged — both user tables as shipped in `00005` |
+| the fold | keeps the per-user cascade — a late event shifts that person's later days, as it does a shop's |
+| the per-user list | unchanged — ranked by `close_balance`, the largest hidden cost first |
+
+### What it does NOT settle
+
+- **Who carries an imported shop-level row.** A shop-level row is credited to whoever posted it, the
+  importer posts as the person who uploads, and with this decision that person carries it for life —
+  [analytic Q7](./analytic_context_clarify.md#question). ✅ **Answered** — [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader): the uploader, when the row's ref finds no order. ⚠ **Superseded** by [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs): the shop's primary CS.
+
+## only-the-replay-holds-the-lock
+
+> Owner, in chat (2026-09-28) — *"yes"*, to [analytic Q1](./analytic_context_clarify.md#question) as last
+> put: *"should only the replay ever hold the processing lock?"* — with its recommendation: only the replay
+> sets it, for seconds; a person who needs the fold paused switches the subscription to pull.
+
+**The verdict.** `process_event_lock` is **service state**, not a switch. Only `AnalyticReplayCompute` sets
+it — across its delete and its seek call, seconds — and nothing else does. A person who needs the fold
+paused stops **delivery** instead of refusing it: the subscription goes from push to pull, events wait
+without spending their delivery attempts, and switching back resumes the fold.
+
+⛔ **It reverses** `meta_context.md`'s *"Used when Developer need maintain the event processing"*
+([Contradiction](./meta_context_clarify.md#the-lock-was-drawn-as-a-developers-switch-and-is-now-the-replays-alone))
+**and my own recommendation** in [meta Q1](./meta_context_clarify.md#question) that the table is
+configuration.
+
+```mermaid
+flowchart LR
+  subgraph "the replay — the only holder"
+    A["take the lock"] --> B["delete three tables on one line"] --> C["seek"] --> D["release — seconds later"]
+  end
+  subgraph "a person pausing the fold"
+    E["switch the subscription to pull"] --> F["events wait, retries unspent"] --> G["switch back to push — the fold resumes"]
+  end
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| who sets it | `AnalyticReplayCompute` only, by compare-and-set — built, and nothing else writes it |
+| how long | the replay's delete and seek call — seconds |
+| `AnalyticMaintenanceRun` | takes no lock — built |
+| a person's pause | subscription push → pull, and back. Nothing is refused, so nothing is dead-lettered |
+| the retry budget it protects | 5 delivery attempts, backoff 10 s → 600 s ([setup.go](../../../backend/pkgs/event_source/setup.go#L100)) |
+| resolved by the build | the two side points Q1 carried — the event carries the row ([context Q3](./context_clarify.md#question)), and each subscription has its own push route |
+
+### What it does NOT settle
+
+- ⛔ **What releases a lock the replay died holding** — a deploy mid-replay leaves it on, and every event is
+  then dead-lettered — [meta Q2](./meta_context_clarify.md#question).
+- **Two shipped texts still say a developer holds it** — the table's migration comment (*"human-set"*) and
+  the replay's error (*"a developer's maintenance"*). Build tasks, in the
+  [state report](../../development_state/settlement/context.md).
+
+## periods-are-grouped-on-the-server
+
+> Owner, in chat (2026-09-28) — *"for q5, grouping happen in server"*, on
+> [analytic Q5](./analytic_context_clarify.md#question): does the grain go on the wire, or stay a rollup the
+> browser does?
+
+**The verdict.** A period's grain — day, month or year — is **grouped by the server**. The RPC takes the
+grain and returns one row per bucket; the browser never buckets days into months. It holds for **every**
+period read, not only settlement's: two screens read side by side must compute *"August"* the same way,
+and one place to compute it is how they do.
+
+```mermaid
+flowchart LR
+  G["the screen asks for a grain — day, month or year"] --> R["the RPC groups by it"]
+  R --> B["one row per bucket"]
+  B --> S["the screen draws the rows as they come"]
+  X["the browser bucketing days into months"] -.->|"retired"| S
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| where | in the RPC's query, over the stored day — never a prefix of a date string in the browser |
+| the span it unlocks | 366 days at `day`, 60 months at `month`, 20 years at `year` — as settlement already ships |
+| settlement | ✅ already so — `AnalyticTimeSearch` takes `AnalyticTimeframe` |
+| ⛔ still in the browser | `ExpenseDaily` and `LiabilityDaily` return days, and the daily statement groups them with `bucketOf` — whose header ([period.ts:85](../../../frontend/src/lib/period.ts#L85)) states the old rule. All three move to the same shape. Build tasks, in the [state report](../../development_state/settlement/context.md) |
+| resolved by the build | Q5's side point — *Team Grouped* crosses team scope only from the root team |
+
+### What it does NOT settle
+
+- **Whether the month is RIGHT — only that two screens agree on it.** `posted_on` is a UTC date until the
+  Jakarta connection fix lands
+  ([the-system-runs-on-jakarta-time](../../technical/architecture/context_decision.md#the-system-runs-on-jakarta-time)).
+  Grouping on the server makes the screens agree; that fix makes them correct.
+
+## the-fold-locks-shop-then-user
+
+> Owner, in chat (2026-09-28) — *"for q2 yes"*, to [analytic Q2](./analytic_context_clarify.md#question) as
+> last put: keep the per-shop and per-person lock, shop first, as built.
+
+**The verdict.** Every fold takes two transaction-scoped advisory locks before it writes: the **shop's**, then
+the **person's**. Two events for one shop — or one person — fold one after the other, so a late event and a
+live one can no longer interleave the previous-close lookup and the later-day shift. Different shops still
+fold in parallel. It **supersedes my first recommendation** — lock the shop's state row `FOR UPDATE` —
+because that row does not exist before a shop's first event, and a missing row locks nothing.
+
+```mermaid
+sequenceDiagram
+    participant A as late event, day 05
+    participant L as the shop's lock
+    participant B as live event, day 07
+    A->>L: take it
+    B->>L: take it — waits
+    A->>A: add to day 05, shift every later day
+    A->>L: commit — released
+    L-->>B: granted
+    B->>B: day 07 opens from the committed close
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the locks | `pg_advisory_xact_lock(hashtextextended(key, 0))` — `settlement-shop:<team>:<shop>`, then `settlement-user:<team>:<user>` ([analytic_fold.go:107](../../../backend/services/settlement_service/settlement_v1/analytic_fold.go#L107)) |
+| the order | shop, then person, in every fold — two folds can only wait on each other one way, so they never deadlock |
+| the lifetime | the transaction — released at commit or rollback, so no crash can leave one behind |
+| one transaction | the claim, the day row, the later-day shift and the state row. *Latest* is the newest day, not the event's |
+| the proof | [analytic_fold_race_test.go](../../../backend/services/settlement_service/settlement_v1/analytic_fold_race_test.go) — eight days for one shop at once, in reverse, keep the carry true · one event delivered eight times folds once. ⚠ Not re-run on 2026-09-28: the local Postgres was down |
+
+### What it does NOT settle
+
+- **`analytic_context.md` §Flow draws no lock.** The doc is yours; one line in §Flow would say it.
+
+## topic-retention-carries-the-replay
+
+> Owner, in chat (2026-09-28) — *"for q6 yes"*, to [analytic Q6](./analytic_context_clarify.md#question):
+> is the topic's retention an acceptable way to make the replay's seek work, instead of
+> `retain_acked_messages` on the subscription?
+
+**The verdict.** The replay's seek is carried by the **topic's** retention — every topic keeps 31 days,
+Pub/Sub's maximum — and subscriptions keep **no** acknowledged messages. A subscription can seek to any time
+inside its topic's retention, acknowledged or not, so the replay reaches 31 days instead of the 7 a
+subscription can hold, for no storage the topic is not already paying for.
+
+⚠ **It supersedes one requirement of [the-replay-seeks-the-broker](#the-replay-seeks-the-broker)** —
+*"`retain_acked_messages` must be TRUE"* — and amends the source line of
+[the-replay-is-bounded-by-the-subscription-retention](#the-replay-is-bounded-by-the-subscription-retention).
+Both are annotated where they stand; neither verdict reverses.
+
+```mermaid
+flowchart LR
+  S["the replay seeks to a time"] --> T{"inside the topic's retention?"}
+  T -->|"yes — up to 31 days"| R["redelivered, acknowledged or not"]
+  T -->|"no"| X["refused, with the window named — nothing deleted"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the topics | 31 days of retention, set by `san pubsub ensure` ([setup.go:38](../../../backend/pkgs/event_source/setup.go#L38)) |
+| the subscriptions | keep no acknowledged messages — nothing to set |
+| the replay's reach | read from Pub/Sub: the topic's retention as the subscription reports it, or the subscription's own if it keeps acknowledged messages and that is longer ([replay.go:40](../../../backend/pkgs/event_source/replay.go#L40)) |
+| a topic made without retention | the replay shortens or refuses — it never deletes a day it cannot rebuild |
+
+## a-key-held-by-another-account-is-refused
+
+> Chat *(owner, 2026-09-29)* — *"fix it for me"*, to [critique 7](./context_clarify.md#critique): a shop row's key
+> already held by ANOTHER shop came back as the caller's own *"already exists"*.
+
+**The verdict.** A `unique_id` already written on **another account** is **refused** — another order, as before, and
+now **another shop's row** too, in this team or any other. Only a key on the caller's own account is a retry. It
+widens [the-idempotency-key-is-global](#the-idempotency-key-is-global), whose spec said *"another order"* while its own
+reason — *"a row from an account it never wrote to"* — already covered the shop.
+
+```mermaid
+flowchart TD
+  K["a post, with a key already in the log"] --> Q{"the existing row's account"}
+  Q -->|"this order, or this shop's own row"| R["a retry — the stored row, created false"]
+  Q -->|"another order"| X["refused — InvalidArgument, nothing written"]
+  Q -->|"another shop's row — this team or another"| X
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the check | the existing row's order **and** shop against the post's ([post_entry.go:338](../../../backend/services/settlement_service/settlement_v1/post_entry.go#L338)). A shop belongs to one team, so the shop covers the team |
+| the error | `InvalidArgument` — *"unique_id already names an entry on another account"*, which is how [rpc.md](../../services/settlement_service/rpc.md#errors) already documented it |
+| nothing written | the refused post rolls back whole — no row, and no account opened for the caller's shop |
+| measured before | 2026-09-29: a shop row's key posted to shop 30, then to shop 31 and to a shop in another team, answered *already exists* with shop 30's row both times |
+| tests | `TestSettlementPost_RefusesAKeyHeldByAnotherShop` and `…AnotherTeamsShop` — both fail on the old check. The concurrency tests pass unchanged: no new query, no new lock |
+
+### What it changes
+
+- **An import into the wrong shop shows.** A statement already posted into another shop reads *refused* line by line
+  in the right one, instead of *already there* — the case
+  [the-row-key-is-the-only-dedupe](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe) leaned on.
+- **Another team can no longer read a row by posting its key.**
+
+## withdrawal-counts-in-the-position
+
+> Chat *(owner, 2026-09-29)* — *"Count it in the position"*, to [context Q1](./context_clarify.md#question): an
+> imported withdrawal — the platform wallet paying our bank — does it count toward a shop's position?
+
+**The verdict.** A `withdrawal` row counts in the position **like every other type**. Its `change` — negative, money
+leaving the wallet — is summed into the row's running `balance`, the shop account's `last_balance`, and the report's
+`change`, `open_balance` and `close_balance`. It gets its own report column, as every type does. It **declines my
+recommendation** to keep it out, and it **supersedes in part**
+[superseded-the-position-is-the-shortfall-not-the-wallet](#superseded-the-position-is-the-shortfall-not-the-wallet):
+the position is no longer the shortfall alone.
+
+```mermaid
+flowchart LR
+  S["initial_total −120 — the sale"] --> P["the position — Σ change over every row"]
+  F["fund +100 — the platform pays the wallet"] --> P
+  W["withdrawal −100 — the wallet pays our bank"] --> P
+  P --> R["−120 — what buyers paid, less everything the platform moved"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the ledger | nothing special-cased — `balance = previous + change` for a withdrawal as for any row ([post_entry.go](../../../backend/services/settlement_service/settlement_v1/post_entry.go)) |
+| the type | `SETTLEMENT_TYPE_WITHDRAWAL` joins the contract with the other four of 2026-09-24 ([Contradiction](./context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)) — shop-addressed ([withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type)) |
+| the report | a `withdrawal` column on both daily tables and on `SettlementMetric`, summed into `change` and the carry like every column |
+| `received` | **not** summed into it — `received` is what the platform moved toward us, and a withdrawal is our own money moving on. So `gap = sales − received` stays the platform's take |
+| what reads differently | `−close_balance` is no longer the hidden cost — it is the gap **plus** everything withdrawn. The screen names it by [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date) |
+
+### What it accepts
+
+- **The position reads as roughly every sale** once withdrawals post — withdrawals are 101% of `fund` across the 26
+  samples. The identity `gap = −Σ change` holds only with the withdrawn added back.
+- Only a successful withdrawal is recorded
+  ([only-a-successful-withdrawal-is-recorded](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)),
+  so what counts is money that reached the bank.
+
+## the-report-headline-is-position-to-date
+
+> Chat *(owner, 2026-09-29)* — *"Rename + Withdrawn column"*, asked after
+> [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position): the report's *Hidden cost to date* would
+> read as roughly every sale from the first imported withdrawal.
+
+**The verdict.** The report's running figure is labelled **Position to date** — what buyers paid, less everything the
+platform moved, withdrawals included — and **Withdrawn** stands as its own figure beside *Received*. The window's
+**Gap** still shows the platform's take. It is my recommendation.
+
+```mermaid
+flowchart LR
+  M["SettlementMetric — one column per type"] --> S["Sales"]
+  M --> R["Received — every movement but the sale and withdrawals"]
+  M --> W["Withdrawn — the window's withdrawals"]
+  S --> G["Gap — sales minus received, the take"]
+  R --> G
+  M --> P["Position to date — minus close_balance"]
+```
+
+### The spec
+
+| figure | is |
+| --- | --- |
+| Sales | `−(initial_total + initial_total_cancel)` — unchanged |
+| Received | every other type but `withdrawal` — `fund`, the fees, the adjustments, the reimbursements, `marketplace_program`, `other`, `system_adjustment` |
+| Withdrawn 🆕 | `−withdrawal` — positive: money that went to the bank in the window |
+| Gap · take rate | `sales − received` — unchanged |
+| Position to date 🔄 | `−close_balance`, relabelled — was *Hidden cost to date*. Its hint: *what buyers paid, less everything the platform moved — withdrawals included* |
+
+⚠ **It amends the label half of [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance)** — the
+unitemised take is still in the balance, but the balance is no longer only that, so the screen stops calling it so.
+[the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) stands: its three figures are
+unchanged, and Withdrawn joins them.

@@ -111,75 +111,6 @@ func TestRace_LiabilityPaymentConfirm(t *testing.T) {
 	}
 }
 
-// ⚠ CONFIRM AND REVERSE RACING EACH OTHER must not both win against one confirmation. The two guards
-// are complementary — Confirm demands RECORDED, Reverse demands CONFIRMED — so under the lock exactly
-// one ordering is possible and the balance can only land on 0 (confirmed) or 15000 (confirmed then
-// reversed). Anything else means the two transactions read the same row and both acted on it.
-func TestRace_LiabilityPaymentConfirmAgainstReverse(t *testing.T) {
-	h := san_race.New(t, paymentTables...)
-	db := h.DB()
-	svc := liability_v1.NewService(db)
-	ctx := context.Background()
-
-	_, err := svc.PostEntry(ctx, nil, liability_v1.Posting{
-		DebtorTeamID:   selling,
-		CreditorTeamID: warehouse,
-		Amount:         15000,
-		SourceType:     liability_v1.SourceTypeIncidentalFee,
-		SourceID:       9002,
-	})
-	if err != nil {
-		t.Fatalf("seed the debt: %v", err)
-	}
-
-	recorded, err := svc.LiabilityPaymentRecord(ctx,
-		connect.NewRequest(&liabilityv1.LiabilityPaymentRecordRequest{
-			TeamId:         selling,
-			CreditorTeamId: warehouse,
-			Amount:         15000,
-		}))
-	if err != nil {
-		t.Fatalf("seed the payment: %v", err)
-	}
-
-	paymentID := recorded.Msg.GetPayment().GetId()
-
-	h.Race(t, 8, func(i int) error {
-		if i%2 == 0 {
-			_, confirmErr := svc.LiabilityPaymentConfirm(ctx,
-				connect.NewRequest(&liabilityv1.LiabilityPaymentConfirmRequest{
-					TeamId:    warehouse,
-					PaymentId: paymentID,
-				}))
-
-			return confirmErr
-		}
-
-		_, reverseErr := svc.LiabilityPaymentReverse(ctx,
-			connect.NewRequest(&liabilityv1.LiabilityPaymentReverseRequest{
-				TeamId:    warehouse,
-				PaymentId: paymentID,
-				Reason:    "racing",
-			}))
-
-		return reverseErr
-	}).Report(t)
-
-	var balance int64
-
-	err = db.Raw(`SELECT balance FROM liability_balances WHERE team_id = ? AND counterparty_id = ?`,
-		selling, warehouse).Scan(&balance).Error
-	if err != nil {
-		t.Fatalf("read balance: %v", err)
-	}
-
-	// -15000 is "still owed" (confirm then reverse, or reverse never ran); 0 is "settled".
-	if balance != 0 && balance != -15000 {
-		t.Fatalf("balance = %d, want 0 (settled) or -15000 (settled then reversed) — any other value "+
-			"means confirm and reverse both acted on the same read", balance)
-	}
-}
-
 // ⛔ THE SHARPEST RACE THIS SERVICE HAS: CONFIRM AGAINST REJECT, on one claim, in the same second.
 //
 // Two managers look at the same pending payment. One believes the money arrived and clicks Confirm —
@@ -188,9 +119,8 @@ func TestRace_LiabilityPaymentConfirmAgainstReverse(t *testing.T) {
 // the money never came, or an unsettled debt whose claim says it did. Either way the books and the
 // screen disagree, which is the one thing this service exists to prevent.
 //
-// ⚠ IT IS NASTIER THAN CONFIRM-VS-REVERSE. Those two have COMPLEMENTARY guards (RECORDED vs
-// CONFIRMED), so only one ordering was ever possible. These two demand the SAME status, so the guard
-// alone decides nothing — only the row lock does.
+// ⚠ BOTH ACTS DEMAND THE SAME STATUS (RECORDED), so the guard alone decides nothing — only the row
+// lock does.
 func TestRace_LiabilityPaymentConfirmAgainstReject(t *testing.T) {
 	h := san_race.New(t, paymentTables...)
 	db := h.DB()

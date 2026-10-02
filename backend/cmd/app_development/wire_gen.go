@@ -10,11 +10,13 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/category_service/category_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
@@ -61,18 +63,31 @@ func InitializeApp() (*App, error) {
 	selling_v1ProductCatalog := NewProductCatalog(product_v1Service)
 	selling_v1CreditChecker := NewCreditChecker(liability_v1Service)
 	settlement_v1ReplayBroker := NewReplayBroker(client)
-	settlement_v1Service := settlement_v1.NewService(db, eventSender, settlement_v1ReplayBroker)
+	shopServiceClient := NewShopClient(config, mainInternalHTTPClient)
+	settlement_v1ShopPrimary := NewShopPrimary(shopServiceClient)
+	settlement_v1Service := settlement_v1.NewService(db, eventSender, settlement_v1ReplayBroker, settlement_v1ShopPrimary)
 	selling_v1SettlementPoster := NewSettlementPoster(settlement_v1Service)
-	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog, selling_v1CreditChecker, selling_v1SettlementPoster)
+	selling_v1RoleReader := NewRoleReader(roleResolver)
+	selling_v1Service := selling_v1.NewService(db, selling_v1StockPicker, eventSender, selling_v1ProductCatalog, selling_v1CreditChecker, selling_v1SettlementPoster, selling_v1RoleReader)
 	category_v1Service := category_v1.NewService(db)
 	docstoreConfig := NewDocumentConfig(config)
 	document_v1Service := document_v1.NewService(db, docstoreConfig)
 	region_v1Service := region_v1.NewService(db)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, docstoreConfig, roleResolver, signer)
+	shopChecker := NewImporterShopChecker(shopServiceClient)
+	orderServiceClient := NewOrderClient(config, mainInternalHTTPClient)
+	orderFinder := NewImporterOrderFinder(orderServiceClient)
+	documentServiceClient := NewDocumentClient(config, mainInternalHTTPClient)
+	statementStore := NewImporterStatementStore(documentServiceClient, mainInternalHTTPClient)
+	settlementWriteServiceClient := NewSettlementWriteClient(config, mainInternalHTTPClient)
+	ledger := NewImporterLedger(settlementWriteServiceClient)
+	settlement_importer_v1Service := settlement_importer_v1.NewService(db, shopChecker, orderFinder, statementStore, ledger)
+	financial_account_v1ShopChecker := NewFinancialAccountShopChecker(shopServiceClient)
+	financial_account_v1Service := financial_account_v1.NewService(db, financial_account_v1ShopChecker)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}
 	server := NewServer(config, serveMux)
-	app := NewApp(server)
+	app := NewApp(server, settlement_importer_v1Service)
 	return app, nil
 }

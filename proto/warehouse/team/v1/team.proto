@@ -130,9 +130,12 @@ enum TeamType {
 message TeamInfo {
   uint64 team_id = 1;
   string contact_number = 2;
-  string bank_type = 3;
-  string bank_owner_name = 4;
-  string bank_account_number = 5;
+
+  // 3–5 were the team's bank — type, holder, number. The team record holds no bank (owner,
+  // 2026-09-30): a bank a team holds is a financial account, and kept here too it would be one bank
+  // typed in two places.
+  reserved 3, 4, 5;
+  reserved "bank_type", "bank_owner_name", "bank_account_number";
 
   // Opaque ids owned by other services. Not validated here — no FK is possible across a
   // service boundary. 0 = unset.
@@ -413,11 +416,11 @@ message TeamInfoUpdateRequest {
 
   // ALL optional — explicit presence. Absent = leave alone. Present = write it, including
   // present-and-zero = clear. Without presence there is no way to say "don't touch this", and
-  // a contact-number-only update silently blanks the bank details.
+  // a contact-number-only update silently blanks the return and default warehouse.
   optional string contact_number = 2 [(buf.validate.field).string.max_len = 40];
-  optional string bank_type = 3 [(buf.validate.field).string.max_len = 60];
-  optional string bank_owner_name = 4 [(buf.validate.field).string.max_len = 128];
-  optional string bank_account_number = 5 [(buf.validate.field).string.max_len = 60];
+  // 3–5 were the team's bank — see TeamInfo.
+  reserved 3, 4, 5;
+  reserved "bank_type", "bank_owner_name", "bank_account_number";
   optional uint64 return_warehouse_id = 6; // present & 0 = clear to NULL
   optional uint64 return_user_id = 7; // present & 0 = clear to NULL
   optional uint64 default_warehouse_id = 8; // present & 0 = clear to NULL (#145)

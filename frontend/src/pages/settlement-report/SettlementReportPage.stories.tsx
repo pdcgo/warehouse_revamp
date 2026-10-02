@@ -42,14 +42,33 @@ async function loaded(canvasElement: HTMLElement) {
 }
 
 // The headline is the WHOLE WINDOW, asked of the server — never a sum of the page of periods below it.
-export const TheWindowInFiveNumbers: Story = {
+export const TheWindowInSixNumbers: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.getByTestId("report-received-value")).toHaveTextContent(rp(240_000n));
+    await expect(canvas.getByTestId("report-withdrawn-value")).toHaveTextContent(rp(200_000n));
     await expect(canvas.getByTestId("report-gap-value")).toHaveTextContent(rp(60_000n));
     await expect(canvas.getByTestId("report-take-rate-value")).toHaveTextContent("20%");
-    await expect(canvas.getByTestId("report-hidden-cost-value")).toHaveTextContent(rp(60_000n));
+    await expect(canvas.getByTestId("report-position-value")).toHaveTextContent(rp(260_000n));
+  },
+};
+
+// withdrawal-counts-in-the-position · the-report-headline-is-position-to-date: a withdrawal is NOT
+// received — the gap stays the platform's take — but it moves the position, which is therefore labelled
+// "Position to date" and never "hidden cost".
+export const AWithdrawalMovesThePositionNotTheGap: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const day = await canvas.findByTestId(`report-series-row-${dayKey(2)}`);
+    const cells = within(day).getAllByRole("cell");
+
+    // period · sold · received · withdrawn · gap · take rate · position
+    await expect(cells[2]).toHaveTextContent(rp(0n));
+    await expect(cells[3]).toHaveTextContent(rp(200_000n));
+    await expect(cells[6]).toHaveTextContent(rp(265_000n));
+    await expect(canvas.queryByText(/hidden cost/i)).toBeNull();
   },
 };
 
@@ -63,13 +82,13 @@ export const ACancelledSaleNetsToNothing: Story = {
     const yesterday = await canvas.findByTestId(`report-series-row-${dayKey(1)}`);
     const cells = within(yesterday).getAllByRole("cell");
 
-    // period · sold · received · gap · take rate · hidden cost
+    // period · sold · received · withdrawn · gap · take rate · position
     await expect(cells[1]).toHaveTextContent(rp(0n));
     await expect(cells[2]).toHaveTextContent(rp(5_000n));
   },
 };
 
-// Every period in the window is a row, NEWEST first — and a quiet day still carries the hidden cost
+// Every period in the window is a row, NEWEST first — and a quiet day still carries the position
 // forward rather than dropping to nothing.
 export const AQuietDayCarriesTheShortfall: Story = {
   play: async ({ canvasElement }) => {
@@ -83,7 +102,7 @@ export const AQuietDayCarriesTheShortfall: Story = {
 
     const today = within(rows[1]!).getAllByRole("cell");
     await expect(today[1]).toHaveTextContent(rp(0n));
-    await expect(today[5]).toHaveTextContent(rp(60_000n));
+    await expect(today[6]).toHaveTextContent(rp(260_000n));
   },
 };
 
@@ -128,8 +147,8 @@ export const MonthlyRollsUpThePeriod: Story = {
   },
 };
 
-// ⚠ THE POSITION IS HIDDEN COST, never a debt (#hidden-cost-is-left-in-the-balance). A label that
-// promised a receivable would be wrong on every row — nobody is going to collect it.
+// ⚠ THE POSITION IS NEVER A DEBT. A label that promised a receivable would be wrong on every row — nobody
+// is going to collect it (#the-report-headline-is-position-to-date).
 export const NeverCallsItOwed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);

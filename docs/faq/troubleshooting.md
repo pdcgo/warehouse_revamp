@@ -169,6 +169,25 @@ Local broker: `docker compose --profile pubsub up -d` (emulator on `:8085`, hono
 
 ---
 
+## An import, or placing an order, hangs for about a minute
+
+The Pub/Sub emulator is not running. Start it, and create its topics — nothing else does. From the repo root:
+
+```sh
+docker compose --profile pubsub up -d                                  # the emulator, on :8085
+go run ./tools/san pubsub ensure --project warehouse-dev --emulator    # its topics
+```
+
+A write that publishes an event waits up to **60 s** for the broker's ack
+([`publishTimeout`](../../backend/pkgs/event_source/sender.go)), then logs the failure and carries on,
+and the write itself is committed. So nothing fails and nothing warns you. It is just a minute per
+order placed, and a minute per row of a settlement statement, because each row is its own
+`SettlementPost`. The dev server boots without a broker on purpose
+([event_sender.go](../../backend/cmd/app_development/event_sender.go)). The e2e needs one too, and CI
+starts it before the e2e.
+
+---
+
 ## My MCP endpoint answers 403 to everything, but only through the tunnel
 
 You did not pass `--public-url`. Restart with it:
@@ -240,3 +259,22 @@ saying you may.** See
 Until that is answered: **do not widen `GetDownloadUrl`**, do not teach `document_service` what a
 payment is, and do not add an internal signing path that skips the scope check — one bug in the
 calling service would then leak every private file in the system.
+
+---
+
+## Why is my settlement import refused?
+
+Read the import's last line. A refused file ends on one `ERROR` line that says why, and **nothing
+was posted**:
+
+| the line says | because | do |
+| --- | --- | --- |
+| *… has no primary CS — choose a primary CS first* | a row naming no order (a withdrawal) is counted for the shop's primary CS ([a-shop-with-no-primary-cs-cannot-import](../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)) | an owner or admin opens the shop and presses ★ beside one of its users |
+| *You have no access to …* | no grant on the shop, and not the team's owner or admin ([a-write-needs-a-grant-or-a-manager](../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)) | ask for the shop to be granted to you |
+| *N of this file's orders belong to …* | one order in another shop refuses the whole file ([a-file-with-another-shops-orders-is-refused](../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)) | choose the shop the statement was downloaded from |
+| *This is not a Shopee statement* (or TikTok) | the file is another marketplace's, or not a statement | the right shop, or download it again |
+
+Then import the same file again: a row already posted reads *already there*, never twice
+([the-row-key-is-the-only-dedupe](../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)).
+A **held** row is not a refusal — the file ran and that row waits. The whole flow:
+[rpc.md](../services/settlement_importer_service/rpc.md#one-import).

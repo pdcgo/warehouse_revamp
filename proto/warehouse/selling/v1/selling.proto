@@ -25,6 +25,15 @@ service ShopService {
   rpc ShopUserList(ShopUserListRequest) returns (ShopUserListResponse);
   rpc ShopUserAdd(ShopUserAddRequest) returns (ShopUserAddResponse);
   rpc ShopUserRemove(ShopUserRemoveRequest) returns (ShopUserRemoveResponse);
+
+  // Make primary — moves the shop's primary CS to another of its granted users
+  // (the-primary-cs-is-a-flag-on-a-grant).
+  rpc ShopUserSetPrimary(ShopUserSetPrimaryRequest) returns (ShopUserSetPrimaryResponse);
+
+  // For other services — the shop, its primary CS, and whether a user may WRITE on it, in one answer
+  // (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
+  // settlement asks it for an imported shop row's primary CS.
+  rpc ShopAccessCheck(ShopAccessCheckRequest) returns (ShopAccessCheckResponse);
 }
 
 message Shop {
@@ -35,6 +44,9 @@ message Shop {
   warehouse.marketplace.v1.Marketplace marketplace = 5;
   string description = 6;
   bool deleted = 7;
+  // The shop's primary CS — one of its granted users, flagged (the-primary-cs-is-a-flag-on-a-grant).
+  // 0 = none: the shop cannot import until someone is made primary.
+  uint64 primary_user_id = 8;
 }
 
 message ShopCreateRequest {
@@ -308,3 +320,66 @@ message ShopUserRemoveRequest {
 }
 
 message ShopUserRemoveResponse {}
+
+// --- The primary CS (the-primary-cs-is-a-flag-on-a-grant) ---
+
+message ShopUserSetPrimaryRequest {
+  // Write: the managers who give and take grants.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Must already hold a grant on the shop — a primary is never someone without access.
+  uint64 user_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopUserSetPrimaryResponse {
+  Shop shop = 1;
+}
+
+// --- ShopAccessCheck (one-call-answers-the-shop-and-the-access) ---
+//
+// ⚠ Built as shop critique 10 recommends — the owner's §Rpc draft had no team to scope it and message
+// names buf refuses — keeping the owner's field name `is_have_access`.
+
+message ShopAccessCheckRequest {
+  // Read: the team's own people. The importer asks it under the uploader's token, settlement under the
+  // poster's — both CS and up.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Whose access to answer for.
+  uint64 user_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ShopAccessCheckResponse {
+  // A live shop of the request's team. Another team's shop, or a deleted one, is NotFound.
+  Shop shop = 1;
+  // The shop's primary CS — 0 = none (a-shop-with-no-primary-cs-cannot-import).
+  uint64 primary_user_id = 2;
+  // May the user WRITE on the shop (a-write-needs-a-grant-or-a-manager): granted it, or the team's
+  // owner or admin, or root or admin.
+  bool is_have_access = 3;
+}

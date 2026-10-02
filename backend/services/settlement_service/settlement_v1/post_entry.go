@@ -15,7 +15,7 @@ import (
 // SettlementPost appends one row to an order's ledger and re-projects the account.
 //
 // ⚠ IT IS IDEMPOTENT, and that is the whole reason all three writers share one RPC. Every one of them
-// retries for a different reason — the exporter re-imports an overlapping statement, a person
+// retries for a different reason — the importer re-imports an overlapping statement, a person
 // double-submits the form, and `order_service` retries a cancel across a network timeout. The last is
 // the dangerous one: a retried cancel landing on a fresh key would CREDIT THE ACCOUNT TWICE. Settling
 // that in three separate RPCs would be settling it three times, which is how two of them end up wrong.
@@ -216,9 +216,30 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		return out, errAdjustmentIsShopWide
 	}
 
+	if typeText == typeWithdrawal && in.OrderID != 0 {
+		return out, errWithdrawalIsShopWide
+	}
+
 	occurred, err := parseDate(in.OccurredOn)
 	if err != nil {
 		return out, err
+	}
+
+	// WHO AN IMPORTED SHOP ROW COUNTS FOR — the shop's primary CS, asked here, before the transaction
+	// (#settlement-asks-the-shop-for-its-primary-cs). An order row counts for its creator and a shop row
+	// posted by hand for its actor, so only this row asks.
+	//
+	// ⚠ A FAILED ASK IS HELD, NOT RETURNED — only a WRITE needs the person. A retry of a row already
+	// written is answered from the ledger inside the transaction, like every retry, and its user_id was
+	// settled when it was first written. Returning the error here refused exactly that retry, and the
+	// re-post that republishes a lost event, whenever the shop could not answer or had lost its primary.
+	var (
+		userID uint64
+		askErr error
+	)
+
+	if sourceText == sourceImporter && in.OrderID == 0 {
+		userID, askErr = s.importedShopRowUser(ctx, in)
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -335,7 +356,13 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 		// row from an account it never wrote to, labelled as its own successful (idempotent) write.
 		// Compared across the GRAIN too: an order row and a shop row are different accounts even when
 		// they share a shop.
-		if existing.ID != 0 && derefOrder(existing.OrderID) != in.OrderID {
+		//
+		// ⚠ AND ACROSS SHOPS (#a-key-held-by-another-account-is-refused). Two shop rows both read as
+		// order 0, so comparing the order alone let a shop row's key held by ANOTHER shop — or another
+		// team's shop — come back as this caller's own "already written", with nothing written for it.
+		// A shop belongs to one team, so comparing the shop covers the team.
+		if existing.ID != 0 &&
+			(derefOrder(existing.OrderID) != in.OrderID || existing.ShopID != in.ShopID) {
 			return errUniqueIDTaken
 		}
 
@@ -346,6 +373,12 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			out.setState(in.OrderID != 0, orderState, shopState)
 
 			return nil
+		}
+
+		// A NEW imported shop row whose person the shop could not name — refused now, with the ask's own
+		// reason, and before anything is written.
+		if askErr != nil {
+			return askErr
 		}
 
 		// A reversal points BACKWARDS at a row of the SAME account. Checked because a dangling pointer
@@ -401,6 +434,7 @@ func (s *Service) postEntry(ctx context.Context, in PostInput, opts postOptions)
 			ShopID:         in.ShopID,
 			TeamID:         in.TeamID,
 			ActorID:        in.ActorID,
+			UserID:         userID,
 			SourceType:     sourceText,
 			SettlementType: typeText,
 			Change:         in.Change,

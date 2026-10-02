@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -130,7 +131,14 @@ func TestFileWriteNeedsCreateDirsForANewTree(t *testing.T) {
 func TestFileWriteRefusesEscapes(t *testing.T) {
 	h := newHarness(t, nil)
 
-	for _, path := range []string{"../escaped.txt", "/tmp/escaped.txt", `C:\escaped.txt`} {
+	escapes := []string{"../escaped.txt", "/tmp/escaped.txt"}
+	if runtime.GOOS == "windows" {
+		// Windows only — on Linux `C:\escaped.txt` is a file name inside the workspace, not a way out
+		// of it (see TestFileReadRefusesEscapes).
+		escapes = append(escapes, `C:\escaped.txt`)
+	}
+
+	for _, path := range escapes {
 		_, err := h.write(t, &remotev1.FileWriteRequest{Path: path, Content: []byte("x")})
 		if err == nil {
 			t.Fatalf("FileWrite(%q) succeeded — it is outside the workspace", path)

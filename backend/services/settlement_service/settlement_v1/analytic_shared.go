@@ -30,6 +30,13 @@ var trackedColumns = []string{
 	typeAffiliateFee,
 	typeMarketplaceAdjust,
 	typeSystemAdjustment,
+	// The five of 2026-09-24, widened WITH SettlementPost, never after: the fold refuses a type it has no
+	// column for, and nothing compares the report with the log (#the-reconcile-check-is-not-built).
+	typeWithdrawal,
+	typeShipmentAdjustment,
+	typeLogisticReimbursement,
+	typePlatformReimbursement,
+	typeMarketplaceProgram,
 }
 
 // columnOfType is the report column a settlement_type folds into.
@@ -123,6 +130,11 @@ func metricToProto(m settlement_service_models.SettlementMetricColumns) *settlem
 		AffiliateFee:          m.AffiliateFee,
 		MarketplaceAdjustment: m.MarketplaceAdjustment,
 		SystemAdjustment:      m.SystemAdjustment,
+		Withdrawal:            m.Withdrawal,
+		ShipmentAdjustment:    m.ShipmentAdjustment,
+		LogisticReimbursement: m.LogisticReimbursement,
+		PlatformReimbursement: m.PlatformReimbursement,
+		MarketplaceProgram:    m.MarketplaceProgram,
 		Change:                m.Change,
 		OpenBalance:           m.OpenBalance,
 		CloseBalance:          m.CloseBalance,

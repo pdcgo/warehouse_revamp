@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
+	settlement_importerv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1/settlement_importerv1connect"
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
@@ -396,10 +399,14 @@ func TestScopeDetection(t *testing.T) {
 	}
 }
 
-// stubStreamConn is the minimum connect.StreamingHandlerConn needed to reach the interceptor.
-type stubStreamConn struct{}
+// ------------------------------------------------------------------ streams
 
-func (stubStreamConn) Spec() connect.Spec                        { return connect.Spec{} }
+// stubStreamConn is the minimum connect.StreamingHandlerConn needed to reach the interceptor.
+type stubStreamConn struct {
+	streamType connect.StreamType
+}
+
+func (c stubStreamConn) Spec() connect.Spec                      { return connect.Spec{StreamType: c.streamType} }
 func (stubStreamConn) Peer() connect.Peer                        { return connect.Peer{} }
 func (stubStreamConn) Receive(any) error                         { return nil }
 func (stubStreamConn) Send(any) error                            { return nil }
@@ -408,24 +415,189 @@ func (stubStreamConn) ResponseHeader() http.Header               { return http.H
 func (stubStreamConn) ResponseTrailer() http.Header              { return http.Header{} }
 func (stubStreamConn) Conditional() connect.StreamingHandlerConn { return nil }
 
-// Streaming must be refused outright, not silently degraded to root/admin like the source.
-func TestStreamingIsRefused(t *testing.T) {
-	intercept := NewInterceptor(testSigner(), stubResolver{})
+// Client and bidi streams carry many messages and no ONE request to read a scope from — refused
+// outright, never degraded to root/admin like the source.
+func TestClientAndBidiStreamsAreRefused(t *testing.T) {
+	for _, streamType := range []connect.StreamType{connect.StreamTypeClient, connect.StreamTypeBidi} {
+		reached := false
 
-	reached := false
+		handler := NewInterceptor(testSigner(), stubResolver{}).WrapStreamingHandler(
+			func(_ context.Context, _ connect.StreamingHandlerConn) error {
+				reached = true
 
-	handler := intercept.WrapStreamingHandler(func(_ context.Context, _ connect.StreamingHandlerConn) error {
-		reached = true
+				return nil
+			})
 
-		return nil
-	})
+		err := handler(context.Background(), stubStreamConn{streamType: streamType})
+		if codeOf(err) != connect.CodeUnimplemented {
+			t.Fatalf("stream type %v: code = %v, want Unimplemented", streamType, codeOf(err))
+		}
 
-	err := handler(context.Background(), stubStreamConn{})
-	if codeOf(err) != connect.CodeUnimplemented {
-		t.Fatalf("code = %v, want Unimplemented — a streaming interceptor cannot read scope, so it must refuse rather than degrade", codeOf(err))
+		if reached {
+			t.Errorf("stream type %v: the handler was reached — it must never be", streamType)
+		}
+	}
+}
+
+// A server stream whose spec carries no schema has no readable policy — denied, never passed.
+func TestServerStreamWithNoSchemaIsDenied(t *testing.T) {
+	handler := NewInterceptor(testSigner(), stubResolver{}).WrapStreamingHandler(
+		func(_ context.Context, _ connect.StreamingHandlerConn) error {
+			t.Fatal("the handler was reached")
+
+			return nil
+		})
+
+	err := handler(context.Background(), stubStreamConn{streamType: connect.StreamTypeServer})
+	if codeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("code = %v, want PermissionDenied", codeOf(err))
+	}
+}
+
+// streamingImporter is a real server stream, mounted behind the interceptor the way register.go
+// mounts one — what it records is what the interceptor let through.
+type streamingImporter struct {
+	settlement_importerv1connect.UnimplementedSettlementImporterServiceHandler
+
+	reached  bool
+	identity uint64
+	bearer   string
+}
+
+func (s *streamingImporter) TiktokSettlementImport(
+	ctx context.Context,
+	_ *connect.Request[settlement_importerv1.TiktokSettlementImportRequest],
+	stream *connect.ServerStream[settlement_importerv1.TiktokSettlementImportResponse],
+) error {
+	s.reached = true
+
+	identity, err := san_auth.GetIdentity(ctx)
+	if err == nil {
+		s.identity = identity.GetIdentityId()
 	}
 
-	if reached {
-		t.Error("a streaming handler was reached — it must never be")
+	s.bearer = san_auth.GetBearer(ctx)
+
+	for step := uint32(1); step <= 2; step++ {
+		err = stream.Send(&settlement_importerv1.TiktokSettlementImportResponse{Message: "row", Step: step, Count: 2})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// streamImport calls the mounted stream over HTTP and returns how many messages arrived.
+func streamImport(t *testing.T, resolver RoleResolver, teamID uint64, token string) (*streamingImporter, int, error) {
+	t.Helper()
+
+	importer := &streamingImporter{}
+
+	mux := http.NewServeMux()
+	mux.Handle(settlement_importerv1connect.NewSettlementImporterServiceHandler(
+		importer,
+		connect.WithInterceptors(NewInterceptor(testSigner(), resolver)),
+	))
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	client := settlement_importerv1connect.NewSettlementImporterServiceClient(server.Client(), server.URL)
+
+	req := connect.NewRequest(&settlement_importerv1.TiktokSettlementImportRequest{
+		TeamId:      teamID,
+		ShopId:      1,
+		FileContent: []byte("PK"),
+	})
+	if token != "" {
+		req.Header().Set("Authorization", "Bearer "+token)
+	}
+
+	stream, err := client.TiktokSettlementImport(context.Background(), req)
+	if err != nil {
+		return importer, 0, err
+	}
+	defer stream.Close()
+
+	received := 0
+	for stream.Receive() {
+		received++
+	}
+
+	return importer, received, stream.Err()
+}
+
+// THE PROOF a-server-stream-is-authorized-on-its-request asks for: a member streams, and the
+// handler's ctx carries the caller's identity and bearer — what it forwards to other services.
+func TestServerStreamIsAuthorizedOnItsRequest(t *testing.T) {
+	token := tokenFor(t, 7)
+
+	importer, received, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_TEAM_CUSTOMER_SERVICE), 5, token)
+	if err != nil {
+		t.Fatalf("a CS of team 5 should stream team 5's import: %v", err)
+	}
+
+	if received != 2 {
+		t.Errorf("received %d messages, want 2", received)
+	}
+
+	if importer.identity != 7 {
+		t.Errorf("the handler's identity = %d, want 7", importer.identity)
+	}
+
+	if importer.bearer != token {
+		t.Error("the handler's ctx does not carry the caller's bearer — it could not forward it")
+	}
+}
+
+// ...and a caller with no role in the REQUEST's team is refused before the handler runs.
+func TestServerStreamRefusesANonMemberBeforeTheHandler(t *testing.T) {
+	importer, received, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_TEAM_CUSTOMER_SERVICE), 6, tokenFor(t, 7))
+	if codeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("code = %v, want PermissionDenied — a role in team 5 must not open team 6's stream", codeOf(err))
+	}
+
+	if importer.reached || received != 0 {
+		t.Fatal("the handler ran for a refused request")
+	}
+}
+
+func TestServerStreamRefusesAWrongRole(t *testing.T) {
+	importer, _, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_WAREHOUSE_STAFF), 5, tokenFor(t, 7))
+	if codeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("code = %v, want PermissionDenied for a role the policy does not list", codeOf(err))
+	}
+
+	if importer.reached {
+		t.Fatal("the handler ran for a refused request")
+	}
+}
+
+func TestServerStreamNeedsAToken(t *testing.T) {
+	importer, _, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_TEAM_OWNER), 5, "")
+	if codeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("code = %v, want Unauthenticated", codeOf(err))
+	}
+
+	if importer.reached {
+		t.Fatal("the handler ran with no token")
+	}
+}
+
+// Suspension outranks every role on a stream exactly as on a unary call.
+func TestServerStreamRefusesASuspendedMember(t *testing.T) {
+	resolver := stubResolver{
+		roles:     map[uint64]role_basev1.Role{5: role_basev1.Role_ROLE_TEAM_OWNER},
+		suspended: true,
+	}
+
+	importer, _, err := streamImport(t, resolver, 5, tokenFor(t, 7))
+	if codeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("code = %v, want PermissionDenied", codeOf(err))
+	}
+
+	if importer.reached {
+		t.Fatal("a suspended member's stream reached the handler")
 	}
 }

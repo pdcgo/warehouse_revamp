@@ -14,9 +14,9 @@ import (
 
 // THE fix, pinned: a partial TeamInfoUpdate must not blank the fields it did not send.
 //
-// The source assigned all six fields unconditionally, so a contact-number-only update wiped the
-// bank details. With proto3 `optional` (presence), an absent field is left alone. This test goes
-// red the moment that regresses.
+// The source assigned every field unconditionally, so a contact-number-only update wiped the rest.
+// With proto3 `optional` (presence), an absent field is left alone. This test goes red the moment
+// that regresses.
 func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(db)
@@ -24,12 +24,11 @@ func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 	teamID := newTeam(t, db, "warehouse", "WH-INFO")
 	ctx := context.Background()
 
-	// Set the bank details in full.
+	// Set two fields.
 	_, err := svc.TeamInfoUpdate(ctx, connect.NewRequest(&teamv1.TeamInfoUpdateRequest{
 		TeamId:            teamID,
-		BankOwnerName:     proto.String("Budi"),
-		BankAccountNumber: proto.String("12345"),
 		ContactNumber:     proto.String("0811"),
+		ReturnWarehouseId: proto.Uint64(42),
 	}))
 	if err != nil {
 		t.Fatalf("first update: %v", err)
@@ -50,12 +49,8 @@ func TestTeamInfoUpdate_PartialDoesNotBlank(t *testing.T) {
 		t.Errorf("contact = %q, want 0822", info.GetContactNumber())
 	}
 
-	if info.GetBankOwnerName() != "Budi" {
-		t.Errorf("bank owner = %q, want Budi — a contact-only update BLANKED the bank details", info.GetBankOwnerName())
-	}
-
-	if info.GetBankAccountNumber() != "12345" {
-		t.Errorf("bank account = %q, want 12345 — blanked by a partial update", info.GetBankAccountNumber())
+	if info.GetReturnWarehouseId() != 42 {
+		t.Errorf("return warehouse = %d, want 42 — a contact-only update BLANKED it", info.GetReturnWarehouseId())
 	}
 }
 

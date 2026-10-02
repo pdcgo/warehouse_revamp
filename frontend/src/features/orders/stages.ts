@@ -2,9 +2,13 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 
 // THE EIGHT STATUSES THE OWNER DECIDED, as the screen reads them.
 //
-// `docs/business/order/context.md` §Order Status, recorded as `the-order-has-eight-statuses`:
+// `docs/business/order/context.md` §Order Status, recorded as `superseded-the-order-has-eight-statuses`:
 // `pending · processed · shipped · completed · problem · lost · return · cancel`. That is the
 // vocabulary the tabs and the summary both use here.
+//
+// ⚠ NINE NOW. `the-accept-is-the-status-return-completed` added `return_completed` after `return`, and
+// this list has not taken it — where it sits on the tabs is open in `docs/technical/order/design_clarify.md`
+// (#the-order-screens-count-eight-statuses-and-the-owner-added-a-ninth). The contract has neither.
 //
 // ⚠ THE CONTRACT IS FOUR SHORT AND ONE SPLIT. `OrderStatus` today is
 // `placed · confirmed · picking · packed · shipped · cancelled`, which the owner's own clarify

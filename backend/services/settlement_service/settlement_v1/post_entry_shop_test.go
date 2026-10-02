@@ -39,11 +39,32 @@ func postShop(
 	return svc.PostEntry(context.Background(), in)
 }
 
+// stubPrimary answers the shop's primary CS the way ShopAccessCheck would — a person, none, or an error —
+// and counts how often it was asked (#settlement-asks-the-shop-for-its-primary-cs).
+type stubPrimary struct {
+	user  uint64
+	err   error
+	asked int
+}
+
+func (s *stubPrimary) PrimaryUser(context.Context, uint64, uint64, uint64) (uint64, error) {
+	s.asked++
+
+	return s.user, s.err
+}
+
+// shopPrimaryCS is the person an imported shop row counts for in these tests.
+const shopPrimaryCS uint64 = 70
+
+func primaryIs(user uint64) *stubPrimary {
+	return &stubPrimary{user: user}
+}
+
 func shopOther(uniqueID string, change int64) settlement_v1.PostInput {
 	return settlement_v1.PostInput{
 		UniqueID:       uniqueID,
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER,
-		SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+		SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 		Change:         change,
 	}
 }
@@ -52,7 +73,7 @@ func shopOther(uniqueID string, change int64) settlement_v1.PostInput {
 // — because there is none. An empty OrderSettlement would read as an account whose every figure is 0.
 func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
 
 	result, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -99,7 +120,7 @@ func TestSettlementPost_ShopAddressedOpensItsOwnAccount(t *testing.T) {
 // movements only, and the order rows are a different chain entirely.
 func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -133,7 +154,7 @@ func TestSettlementPost_TheTwoChainsDoNotMix(t *testing.T) {
 // A shop-addressed row is idempotent on the same key, exactly as an order-addressed one is.
 func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
 
 	first, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -159,11 +180,96 @@ func TestSettlementPost_ShopAddressedIsIdempotent(t *testing.T) {
 	}
 }
 
+// ⚠ A KEY HELD BY ANOTHER SHOP IS A COLLISION, NOT A RETRY (#a-key-held-by-another-account-is-refused).
+//
+// Two shop rows both read as order 0, so comparing the order alone once let this through: the second
+// post came back `created: false` carrying the FIRST shop's row, and nothing was written for its own.
+// A statement imported into the right shop, after it had gone into the wrong one, read "already there"
+// on every line while the money sat in the other shop.
+func TestSettlementPost_RefusesAKeyHeldByAnotherShop(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+
+	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
+	if err != nil {
+		t.Fatalf("first post: %v", err)
+	}
+
+	in := shopOther("shop-30-withdrawal", -20_000)
+	in.ShopID = shop + 1
+
+	_, err = postShop(t, svc, in)
+	if err == nil {
+		t.Fatal("another shop's key was returned as this shop's own write")
+	}
+
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+
+	// Refused means NOTHING of the second shop is written — not a row, and not the account the post
+	// opened on its way to the check.
+	var rows int64
+
+	err = db.
+		Model(&settlement_service_models.SettlementLog{}).
+		Where("shop_id = ?", shop+1).
+		Count(&rows).
+		Error
+	if err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+
+	if rows != 0 {
+		t.Errorf("%d rows written for the refused shop, want 0", rows)
+	}
+
+	var accounts int64
+
+	err = db.
+		Model(&settlement_service_models.ShopSettlement{}).
+		Where("shop_id = ?", shop+1).
+		Count(&accounts).
+		Error
+	if err != nil {
+		t.Fatalf("count accounts: %v", err)
+	}
+
+	if accounts != 0 {
+		t.Errorf("the refused post left an account for its shop behind")
+	}
+}
+
+// And across teams: the same key posted to a shop of ANOTHER team must not hand that team this team's
+// row — its amount, its note, its dates.
+func TestSettlementPost_RefusesAKeyHeldByAnotherTeamsShop(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
+
+	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
+	if err != nil {
+		t.Fatalf("first post: %v", err)
+	}
+
+	in := shopOther("shop-30-withdrawal", -20_000)
+	in.TeamID = team + 1
+	in.ShopID = 40
+
+	result, err := postShop(t, svc, in)
+	if err == nil {
+		t.Fatalf("another team was handed this team's row %d", result.Entry.ID)
+	}
+
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("code = %v, want invalid_argument", connect.CodeOf(err))
+	}
+}
+
 // ⚠ THE GRAIN IS DECIDED BY THE TYPE, not by the caller. A sale belongs to an order: with no order
 // there is no account to open, and the row would never reach the detail panel that explains it.
 func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
 
 	_, err := postShop(t, svc, settlement_v1.PostInput{
 		UniqueID:       "shop-30-sale",
@@ -184,12 +290,12 @@ func TestSettlementPost_RefusesAnInitialTotalWithNoOrder(t *testing.T) {
 // where it would move that order's balance for something the marketplace never did.
 func TestSettlementPost_RefusesASystemAdjustmentOnAnOrder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
 
 	_, err := post(t, svc, settlement_v1.PostInput{
 		UniqueID:       "repair-aug",
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT,
-		SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+		SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 		Change:         -5_000,
 	})
 	if err == nil {
@@ -205,7 +311,7 @@ func TestSettlementPost_RefusesASystemAdjustmentOnAnOrder(t *testing.T) {
 // is: the scope proves the caller's team, never the account's.
 func TestSettlementPost_RefusesAnotherTeamsShopAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, primaryIs(shopPrimaryCS))
 
 	_, err := postShop(t, svc, shopOther("shop-30-withdrawal", -20_000))
 	if err != nil {
@@ -216,7 +322,7 @@ func TestSettlementPost_RefusesAnotherTeamsShopAccount(t *testing.T) {
 		TeamID:         team + 1,
 		UniqueID:       "shop-30-intruder",
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_OTHER,
-		SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+		SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 		Change:         -1_000,
 	})
 	if err == nil {

@@ -3,6 +3,7 @@
 ## General
 1. we have local mcp app that shipped to user.
 2. mcp used for if user need connect their account and colaborating with their ai agent to access / analize data in our system.
+3. we use `https://github.com/modelcontextprotocol/go-sdk`
 
 
 ## General Flow Of MCP

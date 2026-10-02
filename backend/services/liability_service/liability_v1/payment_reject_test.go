@@ -124,8 +124,8 @@ func TestPaymentReject_ThePayerCannotRejectTheirOwnClaim(t *testing.T) {
 
 // A CONFIRMED PAYMENT CANNOT BE REJECTED. Rejecting one would leave a posted entry beside a claim
 // saying the money never came — the disagreement between books and screen this service exists to
-// prevent. That correction is LiabilityPaymentReverse, which posts the compensating entry a rejection
-// deliberately does not.
+// prevent. With the reverse gone, this test and CannotBeConfirmedTwice are what hold
+// an-accepted-payment-is-final: nothing moves a payment out of CONFIRMED.
 func TestPaymentReject_RefusesAConfirmedPayment(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := liability_v1.NewService(db)

@@ -295,9 +295,13 @@ type SettlementLogPosted struct {
 	// consumer re-derives a day from an instant in some other timezone.
 	PostedOn string `protobuf:"bytes,12,opt,name=posted_on,json=postedOn,proto3" json:"posted_on,omitempty"`
 	// YYYY-MM-DD. The day the money belongs to — carried, never bucketed.
-	OccurredOn    string `protobuf:"bytes,13,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
-	ReversesId    uint64 `protobuf:"varint,14,opt,name=reverses_id,json=reversesId,proto3" json:"reverses_id,omitempty"`
-	Note          string `protobuf:"bytes,15,opt,name=note,proto3" json:"note,omitempty"`
+	OccurredOn string `protobuf:"bytes,13,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
+	ReversesId uint64 `protobuf:"varint,14,opt,name=reverses_id,json=reversesId,proto3" json:"reverses_id,omitempty"`
+	Note       string `protobuf:"bytes,15,opt,name=note,proto3" json:"note,omitempty"`
+	// WHO THE PER-USER REPORT COUNTS A SHOP ROW FOR — the shop's primary CS on an IMPORTED shop row, written
+	// on the row by settlement (#settlement-asks-the-shop-for-its-primary-cs). 0 = the row's actor counts it.
+	// Carried, never re-asked: a replay folds the person the row was written with.
+	UserId        uint64 `protobuf:"varint,16,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -435,6 +439,13 @@ func (x *SettlementLogPosted) GetNote() string {
 		return x.Note
 	}
 	return ""
+}
+
+func (x *SettlementLogPosted) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
 }
 
 // OrderPlaced announces that an order was placed and COMMITTED (#153).
@@ -774,7 +785,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
-	"\amessage\x12\x05\xbaH\x02\b\x01\"\xc3\x04\n" +
+	"\amessage\x12\x05\xbaH\x02\b\x01\"\xdc\x04\n" +
 	"\x13SettlementLogPosted\x12\x15\n" +
 	"\x06log_id\x18\x01 \x01(\x04R\x05logId\x12\x1b\n" +
 	"\tunique_id\x18\x02 \x01(\tR\buniqueId\x12\x19\n" +
@@ -794,7 +805,8 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"occurredOn\x12\x1f\n" +
 	"\vreverses_id\x18\x0e \x01(\x04R\n" +
 	"reversesId\x12\x12\n" +
-	"\x04note\x18\x0f \x01(\tR\x04note:\x1b\x8a\xb5\x18\x17\n" +
+	"\x04note\x18\x0f \x01(\tR\x04note\x12\x17\n" +
+	"\auser_id\x18\x10 \x01(\x04R\x06userId:\x1b\x8a\xb5\x18\x17\n" +
 	"\x15settlement-log-posted\"\xc1\x02\n" +
 	"\vOrderPlaced\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x19\n" +

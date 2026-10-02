@@ -7,9 +7,16 @@
 // Ids are deliberately small and distinct per entity kind (teams 1x, shops 2x, suppliers 3x …) so a
 // failure that shows an id makes it obvious which fixture leaked into the wrong picker.
 
+import { type Timestamp, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { ExpenseKind } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
+import { SettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import {
+  UploadedFileLineOutcome,
+  UploadedFileLineReason,
+  UploadedFileStatus,
+} from "../src/gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 
 // ── Teams ───────────────────────────────────────────────────────────────────────────────────────
@@ -43,6 +50,9 @@ export const shops = [
   // Kenanga's storefront, so the OTHER selling team's orders can name a shop that exists rather than
   // a dangling id. Appended for the same reason as the team above.
   { id: 24n, teamId: 13n, name: "Kenanga Official", shopCode: "KEN-TOK", marketplace: Marketplace.TOKOPEDIA, description: "", deleted: false },
+  // Melati's TikTok storefront — the settlement importer reads Shopee and TikTok statements, and this is
+  // the only way a story reaches the TikTok import. Appended, so every index above still holds.
+  { id: 25n, teamId: 12n, name: "Melati TikTok", shopCode: "MEL-TIK", marketplace: Marketplace.TIKTOK, description: "", deleted: false },
 ];
 
 // ── Suppliers ───────────────────────────────────────────────────────────────────────────────────
@@ -713,10 +723,12 @@ export const liabilityPayments = [
 //
 //   5 days ago   a sale of 300.000                                      shortfall −300.000
 //   3 days ago   250.000 arrives, a 15.000 ads fee is charged           shortfall  −65.000
-//   1 day ago    a 120.000 sale is placed AND cancelled, +5.000 claim   shortfall  −60.000
+//   2 days ago   200.000 is withdrawn to the bank                       position  −265.000
+//   1 day ago    a 120.000 sale is placed AND cancelled, +5.000 claim   position  −260.000
 //
 // So over the default 30 days: sold 300.000, received 240.000, a gap of 60.000 — a 20% take rate —
-// and 60.000 of hidden cost to date, because nothing older than the window exists.
+// 200.000 withdrawn, and a position to date of 260.000: the gap PLUS the withdrawal, which counts in it
+// (#withdrawal-counts-in-the-position) and is never part of what was received.
 export const settlementReportDays: {
   teamId: bigint;
   ago: number;
@@ -725,10 +737,12 @@ export const settlementReportDays: {
   fund: bigint;
   externalAdsFee: bigint;
   marketplaceAdjustment: bigint;
+  withdrawal: bigint;
 }[] = [
-  { teamId: 12n, ago: 5, initialTotal: -300_000n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n },
-  { teamId: 12n, ago: 3, initialTotal: 0n, initialTotalCancel: 0n, fund: 250_000n, externalAdsFee: -15_000n, marketplaceAdjustment: 0n },
-  { teamId: 12n, ago: 1, initialTotal: -120_000n, initialTotalCancel: 120_000n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 5_000n },
+  { teamId: 12n, ago: 5, initialTotal: -300_000n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n, withdrawal: 0n },
+  { teamId: 12n, ago: 3, initialTotal: 0n, initialTotalCancel: 0n, fund: 250_000n, externalAdsFee: -15_000n, marketplaceAdjustment: 0n, withdrawal: 0n },
+  { teamId: 12n, ago: 2, initialTotal: 0n, initialTotalCancel: 0n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 0n, withdrawal: -200_000n },
+  { teamId: 12n, ago: 1, initialTotal: -120_000n, initialTotalCancel: 120_000n, fund: 0n, externalAdsFee: 0n, marketplaceAdjustment: 5_000n, withdrawal: 0n },
 ];
 
 // The same book split by SHOP and by PERSON. Each split sums to the team: 300.000 sold, 240.000
@@ -743,3 +757,144 @@ export const settlementReportGroups = {
     { id: 62n, sales: 120_000n, received: 105_000n },
   ],
 };
+
+// ── Settlement imports ──────────────────────────────────────────────────────────────────────────
+//
+// Toko Melati's imported statements (docs/business/settlement/settlement_importer_decision.md) — one of
+// each state the list has to draw: done twice, interrupted, failed. A file's held, skipped and
+// to-the-shop tallies are exactly the rows its page lists below, so a story can check one against the
+// other.
+const importedAt = (iso: string) => timestampFromDate(new Date(iso));
+const sha = (seed: string) => seed.repeat(64 / seed.length);
+
+// Spelled out rather than inferred: inference would type each row's `finishedAt` as what THAT row
+// holds, and the stub importer writes a timestamp onto a row that started without one.
+type ImportFile = {
+  id: bigint;
+  teamId: bigint;
+  shopId: bigint;
+  platform: Marketplace;
+  documentId: string;
+  contentSha256: string;
+  periodFrom: string;
+  periodTo: string;
+  status: UploadedFileStatus;
+  failure: string;
+  tally: { total: number; posted: number; existing: number; held: number; skipped: number; postedToShop: number };
+  createdByUserId: bigint;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  finishedAt: Timestamp | undefined;
+};
+
+export const settlementImports: ImportFile[] = [
+  {
+    id: 901n,
+    teamId: 12n,
+    shopId: 21n,
+    platform: Marketplace.SHOPEE,
+    documentId: "doc-901",
+    contentSha256: sha("9f2c"),
+    periodFrom: "2026-09-27",
+    periodTo: "2026-09-27",
+    status: UploadedFileStatus.DONE,
+    failure: "",
+    tally: { total: 124, posted: 120, existing: 0, held: 2, skipped: 2, postedToShop: 2 },
+    createdByUserId: 62n,
+    createdAt: importedAt("2026-09-28T09:10:00+07:00"),
+    updatedAt: importedAt("2026-09-28T09:10:40+07:00"),
+    finishedAt: importedAt("2026-09-28T09:10:40+07:00"),
+  },
+  {
+    id: 902n,
+    teamId: 12n,
+    shopId: 25n,
+    platform: Marketplace.TIKTOK,
+    documentId: "doc-902",
+    contentSha256: sha("47ab"),
+    periodFrom: "2026-09-26",
+    periodTo: "2026-09-27",
+    status: UploadedFileStatus.DONE,
+    failure: "",
+    tally: { total: 86, posted: 70, existing: 12, held: 1, skipped: 3, postedToShop: 1 },
+    createdByUserId: 61n,
+    createdAt: importedAt("2026-09-28T08:45:00+07:00"),
+    updatedAt: importedAt("2026-09-28T08:45:25+07:00"),
+    finishedAt: importedAt("2026-09-28T08:45:25+07:00"),
+  },
+  // The server stopped at row 110 of 240. Uploading the same file again finishes it.
+  {
+    id: 903n,
+    teamId: 12n,
+    shopId: 25n,
+    platform: Marketplace.TIKTOK,
+    documentId: "doc-903",
+    contentSha256: sha("c3d1"),
+    periodFrom: "2026-09-20",
+    periodTo: "2026-09-26",
+    status: UploadedFileStatus.INTERRUPTED,
+    failure: "",
+    tally: { total: 240, posted: 110, existing: 0, held: 0, skipped: 0, postedToShop: 0 },
+    createdByUserId: 62n,
+    createdAt: importedAt("2026-09-27T17:02:00+07:00"),
+    updatedAt: importedAt("2026-09-27T17:03:10+07:00"),
+    finishedAt: undefined,
+  },
+  // A statement from the wrong shop: its orders belong to Melati Store (a-file-with-another-shops-orders-is-refused).
+  {
+    id: 904n,
+    teamId: 12n,
+    shopId: 21n,
+    platform: Marketplace.SHOPEE,
+    documentId: "doc-904",
+    contentSha256: sha("0e7f"),
+    periodFrom: "2026-09-25",
+    periodTo: "2026-09-25",
+    status: UploadedFileStatus.FAILED,
+    failure: "3 of this file's orders belong to Melati Store — the whole file is refused, nothing was posted",
+    tally: { total: 0, posted: 0, existing: 0, held: 0, skipped: 0, postedToShop: 0 },
+    createdByUserId: 61n,
+    createdAt: importedAt("2026-09-26T10:15:00+07:00"),
+    updatedAt: importedAt("2026-09-26T10:15:05+07:00"),
+    finishedAt: importedAt("2026-09-26T10:15:05+07:00"),
+  },
+];
+
+type ImportLine = {
+  id: bigint;
+  uploadedFileId: bigint;
+  sheet: string;
+  orderRef: string;
+  platformType: string;
+  description: string;
+  settlementType: SettlementType;
+  change: bigint;
+  occurredOn: string;
+  orderId: bigint;
+  outcome: UploadedFileLineOutcome;
+  reason: UploadedFileLineReason;
+  detail: string;
+  settlementLogId: bigint;
+};
+
+const SHOPEE_SHEET = "Rincian Transaksi";
+
+export const settlementImportLines: ImportLine[] = [
+  // 901 — Shopee. Held: a type nobody mapped, and a key another account already holds.
+  { id: 9011n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Biaya Program Baru", description: "Biaya program promosi September", settlementType: SettlementType.UNSPECIFIED, change: -15_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
+  { id: 9012n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927QRST", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927QRST", settlementType: SettlementType.FUND, change: 212_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.REFUSED, detail: "unique_id already names an entry on another account", settlementLogId: 0n },
+  // Skipped: a withdrawal that failed, and the refund that returned it (only-a-successful-withdrawal-is-recorded).
+  { id: 9013n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Penarikan dana ke rekening — Gagal", settlementType: SettlementType.UNSPECIFIED, change: -5_899_085n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, detail: "", settlementLogId: 0n },
+  { id: 9014n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "", platformType: "Penarikan Dana", description: "Pengembalian Dana untuk Penarikan Gagal", settlementType: SettlementType.UNSPECIFIED, change: 5_899_085n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, detail: "", settlementLogId: 0n },
+  // Posted to the shop: their refs found no order (an-unmatched-ref-posts-to-the-shop).
+  { id: 9015n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927ABCD", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927ABCD", settlementType: SettlementType.FUND, change: 185_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7001n },
+  { id: 9016n, uploadedFileId: 901n, sheet: SHOPEE_SHEET, orderRef: "240927EFGH", platformType: "Penghasilan dari Pesanan", description: "Penghasilan dari pesanan 240927EFGH", settlementType: SettlementType.FUND, change: 92_500n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7002n },
+
+  // 902 — TikTok. Held: an adjustment type nobody mapped.
+  { id: 9021n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577001234567", platformType: "Seller shipping fee compensation", description: "Seller shipping fee compensation", settlementType: SettlementType.UNSPECIFIED, change: 8_000n, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, detail: "", settlementLogId: 0n },
+  // Skipped: Earnings and GMV Pay Deduction repeat money the Order details rows already carry.
+  { id: 9022n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 4_210_000n, occurredOn: "2026-09-26", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
+  { id: 9023n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", description: "Earnings", settlementType: SettlementType.UNSPECIFIED, change: 3_985_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
+  { id: 9024n, uploadedFileId: 902n, sheet: "Withdrawal records", orderRef: "", platformType: "GMV Pay Deduction", description: "GMV Pay Deduction", settlementType: SettlementType.UNSPECIFIED, change: -412_500n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, detail: "", settlementLogId: 0n },
+  { id: 9025n, uploadedFileId: 902n, sheet: "Order details", orderRef: "577009876543", platformType: "Order", description: "Order", settlementType: SettlementType.FUND, change: 156_000n, occurredOn: "2026-09-27", orderId: 0n, outcome: UploadedFileLineOutcome.POSTED, reason: UploadedFileLineReason.NO_ORDER, detail: "", settlementLogId: 7003n },
+];

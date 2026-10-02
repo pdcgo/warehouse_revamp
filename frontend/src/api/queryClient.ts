@@ -128,6 +128,12 @@ export const key = {
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),
   liability: (teamId: bigint | undefined, params?: Params) => scope("liability", teamId, params),
   settlement: (teamId: bigint | undefined, params?: Params) => scope("settlement", teamId, params),
+  // Its OWN prefix, not a filter on `settlement`: an import finishing refreshes the file list, and
+  // must not refetch every ledger screen the team has open.
+  settlementImports: (teamId: bigint | undefined, params?: Params) => scope("settlementImports", teamId, params),
+  // The accounts, their logs, their balances AND their reports under ONE prefix: every write moves a
+  // balance, and a balance is in all four — so one write refreshes the lot.
+  financialAccounts: (teamId: bigint | undefined, params?: Params) => scope("financialAccounts", teamId, params),
 
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),

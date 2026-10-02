@@ -11,8 +11,11 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-order-follows-settlement-for-its-money](#the-order-follows-settlement-for-its-money) | marketplace money is described by the settlement doc — the order only opens and cancels the sale |
 | [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) | no two live orders share `(shop_id, order_external_ref_id)` · the ref is never empty · checked in code |
 | [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
-| [the-order-has-eight-statuses](#the-order-has-eight-statuses) | the status set, and every move allowed between them |
+| [superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses) | ⛔ reversed — a ninth status `return_completed` was added |
 | [the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses) | the order carries the milestone, the record that owns the work carries its steps |
+| [picked-is-a-warehouse-step](#picked-is-a-warehouse-step) | `processed` covers five steps — **picked** joins between picking and packed |
+| [the-accept-is-the-status-return-completed](#the-accept-is-the-status-return-completed) | the warehouse accepting a return is a STATUS, not a record — nine statuses now |
+| [an-own-line-never-touches-the-map](#an-own-line-never-touches-the-map) | a line the team already owns goes straight to the item list — it neither reads nor writes `product_return_maps` |
 | [lost-is-final](#lost-is-final) | an order marked `lost` never moves again |
 | [the-total-is-ours-the-platform-total-is-theirs](#the-total-is-ours-the-platform-total-is-theirs) | the buyer-paid figure is `platform_total` everywhere — the build's `marketplace_total` is renamed |
 | [superseded-the-warehouse-fee-is-a-percentage-of-our-total](#superseded-the-warehouse-fee-is-a-percentage-of-our-total) | ⛔ reversed — the basis became `sub_total` |
@@ -40,6 +43,14 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand) | `lost` triggers nothing — Customer Service adjusts the settlement account manually |
 | [drafts-exist-only-for-the-third-party-app](#drafts-exist-only-for-the-third-party-app) | a person never drafts — Customer Service creates the order directly |
 | [the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend) | the draft seeds the create-order form in the browser; there is no promote RPC |
+| [a-return-map-is-written-once](#a-return-map-is-written-once) | a `product_return_maps` row is never re-pointed at a different own product |
+| [the-map-is-unique-on-its-source](#the-map-is-unique-on-its-source) | unique on `(team_id, shared_product_id)` · `to_product_id` never existed · `warehouse_id` is dropped |
+| [a-return-may-land-in-another-warehouse](#a-return-may-land-in-another-warehouse) | a return need not come back to the warehouse that shipped it — the drift is accepted |
+| [the-return-warehouse-is-per-team](#the-return-warehouse-is-per-team) | one return warehouse per selling team, for all its shops — no per-shop override |
+| [the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens) | the order carries no return warehouse — the configuration is read at the moment of the return |
+| [a-stale-return-location-is-accepted](#a-stale-return-location-is-accepted) | the configuration is trusted over the printed label — the operator never picks a warehouse |
+| [both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order) | either may set `return` — but the warehouse person always ACCEPTS, and that is when stock moves |
+| [a-return-is-never-partial](#a-return-is-never-partial) | a return is the whole order or nothing — no line comes back on its own |
 | [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
 
 ---
@@ -273,7 +284,11 @@ uniqueness now spans two tables.
 
 ---
 
-## the-order-has-eight-statuses
+## superseded-the-order-has-eight-statuses
+
+> ⛔ **SUPERSEDED 2026-09-21** by [the-accept-is-the-status-return-completed](#the-accept-is-the-status-return-completed):
+> a ninth status `return_completed` was added, with the move `return --> return_completed`. Everything below
+> still holds for the other eight — only the count and that one edge changed.
 
 > Owner, in the doc (2026-09-15): §Order Status — *Status That Existed* and *Status Move*, revised over the
 > session to the form below.
@@ -374,7 +389,7 @@ out — what a seller does with these is pick one.
 [return-means-received-by-the-warehouse](./context_clarify.md#return-means-received-by-the-warehouse)
 put a return's transit on a return record rather than on the order, and shipment tracking was
 deferred to the shipment. Picking and packed are the third instance, so the set of eight
-([the-order-has-eight-statuses](#the-order-has-eight-statuses)) is not a simplification for its own
+([superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses)) is not a simplification for its own
 sake — it is one boundary applied consistently.
 
 ⚠ **The old system had already reached the same place by hand.** Its eleven statuses sat under a
@@ -1332,6 +1347,420 @@ order detail page ([order-detail-manages-the-ledger](../settlement/context_decis
 and an account that never fully settles is normal
 ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)). No change to
 settlement is needed.
+
+---
+
+## a-return-map-is-written-once
+
+> Asked as *"Is a map ever re-pointed, or written once?"* — [order_return.md](./order_return.md)
+> §Table Must Have gives `product_return_maps` an `updated_at`, which says a row is expected to change.
+> **Owner: written once.**
+
+**The verdict.** A `product_return_maps` row is created the first time a borrowed product comes back to a
+team, and is **never re-pointed** at a different own product afterwards. The pair it records is permanent.
+
+```mermaid
+flowchart LR
+  B["team B's product, borrowed"] -->|"first return — cloned, then mapped"| A["team A's own product"]
+  A --> S["every later return of B's product lands on this same row"]
+  X["re-point the map at a different own product"] -.->|"never"| A
+```
+
+**Why it matters more than it looks.** Stock already on a shelf was put there *under the old mapping*. Change
+the map and those units sit under a product the map no longer names — findable by nobody, and reconcilable only
+by hand.
+
+| | |
+| --- | --- |
+| the map's key | `(team_id, shared_product_id)` — see [the-map-is-unique-on-its-source](#the-map-is-unique-on-its-source) |
+| `updated_at` | kept for uniformity, but it can only ever mirror `created_at`. Nothing updates the row |
+| if a team ever must move | that is a **stock transfer** between two of its own products, not an `UPDATE` to this table — the units have to move with the name |
+
+## a-return-is-never-partial
+
+> Asked as *"Does a return always cover the whole order, or can one line come back partially?"* — the flow
+> iterates over order items and carries no quantity anywhere. **Owner: return never partials.**
+
+**The verdict.** A return is **the whole order or nothing**. Every line comes back, each at the quantity it
+left with, and the order's status moves to `return`. There is no partial return and no per-line return
+quantity.
+
+```mermaid
+flowchart LR
+  O["order — 3 lines"] --> R{"returned?"}
+  R -->|"yes"| ALL["all 3 lines come back, each at its ordered qty — status becomes return"]
+  R -->|"no"| NONE["nothing comes back — the status does not move"]
+  P["one line back on its own"] -.->|"does not exist"| O
+```
+
+⚠ **This reverses my recommendation, and the doc was right.** I had argued for a per-line returned quantity
+([was `can-part-of-an-order-return`](./order_return_clarify.md)) and read the missing quantity in the owner's
+flow as an omission. It was not: with the whole order returning, **the ordered quantity IS the returned
+quantity**, so the flow's line-by-line iteration with no qty is exactly correct as drawn.
+
+**What it settles, in one stroke.**
+
+| the worry | why it is gone |
+| --- | --- |
+| *no line carries a returned quantity* | there is none to carry — each line returns in full |
+| *a partial return has no status to be in* | there are no partial returns, so the status is always `return` |
+| *the payload needs a qty per line* | the take's own quantities are what go back |
+
+**What it leaves open.** A parcel that arrives with one item missing is now **not a return** — it is a
+discrepancy with no home in this design, and `problem` is the only status that comes close. That is a
+different question from this one and is not settled here.
+
+## the-map-is-unique-on-its-source
+
+> Asked as *"the field list says `shared_product_id` is composite unique with `to_product_id`, and the column
+> beneath it is `own_product_id` — which name is stale? And what is `warehouse_id` doing in a catalogue map?"*
+> **Owner: all three of the recommendation.**
+
+**The verdict.** `to_product_id` does not exist — `own_product_id` is the column. The map is unique on the
+**source**, not the pair. And `warehouse_id` comes out of the table: a map from one team's product to another's
+is a **catalogue** fact, and has no location in it.
+
+```
+product_return_maps
+  id                 PK
+  team_id            the team that owns the map
+  shared_product_id  the borrowed product
+  own_product_id     the clone in this team's catalogue
+  created_at
+  updated_at         mirrors created_at — the row is written once
+
+  UNIQUE (team_id, shared_product_id)
+```
+
+```mermaid
+flowchart LR
+  SRC["team B's product — shared_product_id"] -->|"exactly one row per team"| ROW["product_return_maps"]
+  ROW --> OWN["team A's own_product_id"]
+  TWO["a second own product for the same source"] -.->|"refused by the unique key"| ROW
+  WH["warehouse_id"] -.->|"dropped — a map is not a location"| ROW
+```
+
+**Why the source and not the pair.** A pair-unique index says *"this exact mapping appears once"*, which is
+true of two rows pointing the same borrowed product at two different own products. That is two clones, two
+stock piles and one physical thing — the duplication the map exists to prevent.
+
+| | |
+| --- | --- |
+| `to_product_id` | never existed. The doc's uniqueness line is the stale half |
+| `warehouse_id` | dropped. In the key it would fork a clone per warehouse, out of the key nothing reads it |
+| `updated_at` | kept for uniformity only — [a-return-map-is-written-once](#a-return-map-is-written-once) |
+| ⚠ the owner's doc | [order_return.md](./order_return.md) §Table Must Have still lists `warehouse_id` and still names `to_product_id`. That is the owner's to amend (RULE 7b) |
+
+## a-return-may-land-in-another-warehouse
+
+> Asked as *"Can a return land in a warehouse the order did not ship from — yes or no?"*
+> **Owner: yes, it can go to another warehouse.**
+
+**The verdict.** The warehouse that receives a return is **independent of the one that fulfilled the order**.
+The courier delivers to the address printed on the platform's label, and we do not overrule it. An order
+therefore touches **two** warehouses in its life: it ships from `orders.warehouse_id` and comes back to the
+configured return warehouse.
+
+```mermaid
+flowchart LR
+  O["order — fulfilled from warehouse X"] -->|"take at create: X on_hand minus 1"| X["stock_levels (X, product)"]
+  O -->|"return at receipt: Y on_hand plus 1"| Y["stock_levels (Y, product)"]
+  X --> D["X drains, Y accumulates"]
+  Y --> D
+  D --> T["nothing moves it back — that is accepted, not solved"]
+```
+
+**What it keeps alive.** The alternative — *a return must land where the order shipped from* — would have
+turned the whole configuration into a validation and deleted §General's gate. It does not:
+
+| | |
+| --- | --- |
+| the configuration | real, and the gate on create is real |
+| freezing it on the order | still required — a parcel in transit must not be re-pointed |
+| per shop or per team | still a live question, because the platform prints the address per shop |
+| stock is two piles | `stock_levels` is keyed `(warehouse_id, product_id)`, so X and Y are genuinely separate |
+
+**The drift is ACCEPTED, not solved.** Every return moves a unit from a fulfilling warehouse to the return
+warehouse and nothing moves it back. A team that fulfils from three warehouses and returns to one pools its
+entire return volume where it may not sell from. That is a known operational cost of following the label, and
+it leaves two successors open — who moves the stock back, and how the receiving warehouse knows what is coming
+([order_return_clarify](./order_return_clarify.md#question)).
+
+**Checked for contradiction, and there is none.** [context.md](./context.md) §Cross Product Feature says an
+order *"only can shipped and processed in single warehouse"* — that rule is about **sourcing the lines at
+create**, so that cross lines can be picked together. It says nothing about where the goods come back to, and
+this decision does not weaken it: an order is still fulfilled from exactly one warehouse.
+
+```mermaid
+flowchart LR
+  R["one warehouse SOURCES and SHIPS the order — unchanged"] --> C["cross lines can still be picked together"]
+  R2["a different warehouse may RECEIVE the return — new"] --> C2["the two rules do not meet"]
+```
+
+## the-return-warehouse-is-per-team
+
+> Asked as *"Do the shops of one selling team print DIFFERENT return addresses on their labels, or do they all
+> resolve to the same building?"* **Owner: per team only.**
+
+**The verdict.** One return warehouse per selling team, for all of its shops. There is **no per-shop override**
+and no new configuration table — the column already exists as `team_infos.return_warehouse_id` in
+`team_service`, beside its outbound twin `default_warehouse_id`.
+
+```mermaid
+flowchart LR
+  S1["shop 1"] --> T["team_infos.return_warehouse_id"]
+  S2["shop 2"] --> T
+  S3["shop 3"] --> T
+  T -->|"copied at create"| O["orders.return_warehouse_id — frozen"]
+  X["a per-shop override"] -.->|"not built"| T
+```
+
+**What is built, and what is not.**
+
+| | |
+| --- | --- |
+| the configuration | `team_infos.return_warehouse_id` — **already shipped**, nullable, opaque id |
+| what it still lacks | a **screen that sets it** and a **server that reads it**. Today it is written by `TeamInfoUpdate` and read by nobody |
+| `shops.return_warehouse_id` | **not built** |
+| `team_return_configurations` | **not built** — [order_return.md](./order_return.md) §Table Must Have asks for it, and the owner's doc is theirs to amend (RULE 7b) |
+| on the order | `orders.return_warehouse_id`, resolved from the team at create — its freezing is [still open](./order_return_clarify.md#frozen-on-the-order) |
+
+⚠ **This reverses my recommendation, and the reasoning I lost on is worth keeping.** I argued the platform
+prints the return address **per shop**, so a team with three shops could have three of them and a parcel would
+arrive where nobody expected it. The owner's answer says the shops resolve to one building in practice, so the
+per-shop column would have been a nullable override that is always NULL — a migration and a form field paying
+for a case that does not occur.
+
+**The limit of this decision, recorded so it is not rediscovered.** It holds only while a team's shops share a
+return address. The day a team configures a shop on a platform to return somewhere else, parcels arrive at a
+warehouse that was never told to expect them and nothing in the system can express it. That is a **reversal
+trigger**, not a defect: if it happens, this decision is renamed and a per-shop override is added.
+
+```mermaid
+flowchart LR
+  OK["every shop returns to the same building"] -->|"holds today"| D["one warehouse per team is enough"]
+  NEW["a shop is set to return elsewhere on the platform"] -.->|"reversal trigger"| D
+```
+
+## the-return-warehouse-is-read-when-the-return-happens
+
+> Asked as *"Is the return warehouse copied onto the order at create?"*
+> **Owner: no — `return_warehouse_id` is read from the configuration when the return happens.**
+
+**The verdict.** The order does **not** carry a return warehouse. When a parcel comes back, the flow reads
+`team_infos.return_warehouse_id` **at that moment**, as [order_return.md](./order_return.md)'s first box
+(`Get Team Return Configuration`) already draws it. There is no `orders.return_warehouse_id` column.
+
+```mermaid
+flowchart LR
+  C["team_infos.return_warehouse_id — read NOW"] --> R["the return being received"]
+  R --> M["the inventory return movement records the warehouse"]
+  O["orders — carries no return warehouse"] -.->|"not built"| R
+```
+
+⚠ **This reverses my recommendation, and the flaw in my argument is worth keeping.** I argued from
+`orders.warehouse_id`, which is frozen because *"what an order says happened must stay what happened"*. That
+column freezes a **fact** — the order shipped from there. A return warehouse on the order would have frozen an
+**expectation**, which is a different kind of thing, and the fact itself is recorded anyway by the return
+movement in inventory (`stock_movements` carries `warehouse_id`). Freezing would have bought auditability that
+already exists somewhere better.
+
+**What it removes.**
+
+| | |
+| --- | --- |
+| `orders.return_warehouse_id` | **not built** |
+| the resolve-at-create step | gone — nothing about returns happens at order create except the gate |
+| the gate | unaffected. §General still refuses an order from a team with no configuration |
+
+⚠ **It also settles which half of the flow's two readings is authoritative.** The diagram reads the warehouse
+twice — `Get Team Return Configuration` at the top and *"Set Team Return Configuration, `warehouse_id` from
+order"* inside the loop. **The top one is right**; the `from order` box is the stale half, and is the owner's to
+amend (RULE 7b).
+
+**The successor this opens, and it is a real one.** Our `return_warehouse_id` does not route the parcel — the
+**address printed on the platform's label** does. Change the configuration and parcels already in transit still
+arrive at the OLD building, while the configuration now names the new one, so a return received during the
+change is recorded in a warehouse it never physically reached
+([order_return_clarify](./order_return_clarify.md#question)).
+
+```mermaid
+flowchart LR
+  L["label printed with the OLD address"] --> P["parcel physically arrives at warehouse X"]
+  CFG["configuration changed to Y"] --> REC["the return is recorded into warehouse Y"]
+  P --> BAD["stock is on X's shelf and in Y's numbers"]
+  REC --> BAD
+```
+
+## a-stale-return-location-is-accepted
+
+> Asked as *"the configuration does not route the parcel, the printed label does — so a parcel posted last week
+> arrives at the old building while the configuration names the new one. What breaks if the scanner decides?"*
+> **Owner: yes, it is okay. Selling teams do not change their return warehouse often, and in our business it
+> happens nearly zero. It provides better ops — fast to create a return, without thinking about the return
+> location again.**
+
+**The verdict.** The configuration is read at the moment of the return and is **trusted**, even though it can
+in principle disagree with where the parcel physically arrived. The window only exists between a configuration
+change and the last parcel printed with the old address, and that window is close to never.
+
+```mermaid
+flowchart LR
+  OP["the person creating the return"] --> F["the form already knows the warehouse"]
+  F --> FAST["no location to choose, no decision to make"]
+  RARE["a configuration change with parcels in flight"] -.->|"near zero, and corrected by hand if it ever lands"| F
+```
+
+**The reason is OPERATIONAL, and it is the point of the decision.** Creating a return is a repetitive job done
+under time pressure. A form that asks *"which warehouse did this arrive at?"* asks a question whose answer is
+the same every time, and a question asked a hundred times is a question answered wrongly eventually. Removing
+the field is worth more than the accuracy it theoretically costs.
+
+| | |
+| --- | --- |
+| what the operator sees | no warehouse picker — the location is already resolved |
+| the stale window | accepted. If a mismatch ever lands, it is corrected by a manual stock transfer |
+| no safeguard is built | no warning on configuration change, no reconciliation job. The frequency does not justify the machinery |
+
+⚠ **My counter-proposal is withdrawn, and the flaw in it is worth keeping.** I argued the receiving warehouse
+should be *whoever scanned the parcel*, because a person standing in a building cannot be wrong about which
+building they are in. That assumes the return is created **by someone in the receiving warehouse** — which is
+an assumption about who does this job, and it was never established. If Customer Service creates returns from
+an office, there is no building to read, and the proposal has nothing to stand on. **That is now the open
+question** ([who-creates-the-return](./order_return_clarify.md#who-creates-the-return)).
+
+```mermaid
+flowchart LR
+  Q{"who creates the return?"} -->|"the receiving warehouse"| A["the building could have been read from the person"]
+  Q -->|"Customer Service, from an office"| B["there is no building to read — the configuration is the only source"]
+  B --> D["which is what was decided"]
+```
+
+## both-cs-and-the-warehouse-can-return-an-order
+
+> Asked as *"who creates the return — Customer Service from an office, or the receiving warehouse?"*
+> **Owner: both**, written directly into [order_return.md](./order_return.md) §Who Change The Returns.
+
+**The verdict.** Either side may notice first, and the return converges on one final act: **the warehouse
+person accepting it**. Neither of my two options was right — I offered an either/or and the answer is a race
+with a join.
+
+```mermaid
+flowchart TD
+  H["a return happens"] --> CS["Customer Service notices first"]
+  H --> W["the warehouse person receives the parcel first"]
+  CS --> SET["CS changes the order to return"]
+  SET --> WAIT["waiting for the warehouse person to accept"]
+  WAIT --> ACC["warehouse person ACCEPTS the return"]
+  W --> S{"warehouse searches for the order"}
+  S -->|"already return"| ACC
+  S -->|"not return"| F["warehouse FORCES the order to return"]
+  F --> ACC
+  ACC --> E["done"]
+```
+
+**A return is therefore TWO acts, not one.**
+
+| act | who | what it means |
+| --- | --- | --- |
+| set `return` | CS, or the warehouse forcing it | *we believe this order is coming back* |
+| **accept** | always the warehouse person | *the goods are physically here* |
+
+⚠ **The accept is the one that matters to stock**, because it is the only step at which somebody is holding the
+goods. The two paths differ only in who moves first — they do not produce different outcomes.
+
+⚠ **It reopens what `return` MEANS.** [order_context](./context_clarify.md) still carries
+*return-means-received-by-the-warehouse* with my recommendation of **received**. This design says otherwise: CS
+sets `return` while the parcel is still in transit, so `return` is a **claim**, and *received* is the accept.
+That question is now answered by this section rather than by me, and the pair needs one name each.
+
+```mermaid
+flowchart LR
+  R["status: return"] --> M1["a claim that it is coming back — set by CS or forced"]
+  A["accept"] --> M2["the goods are here — the only step that moves stock"]
+  M1 -.->|"not the same moment"| M2
+```
+
+## the-accept-is-the-status-return-completed
+
+> Owner, in the doc (2026-09-21): §Order Status gains a ninth status `return_completed` and the single move
+> `return --> return_completed`. It answers *"the accept has no state"* — it does, and it is a status.
+
+**The verdict.** The warehouse person accepting a return is recorded as a **status transition**, not as a
+separate record. `return` is the **claim**; `return_completed` is the **goods being here**.
+
+```mermaid
+stateDiagram-v2
+  shipped --> return
+  problem --> return
+  completed --> return
+  return --> return_completed
+  return_completed --> [*]
+```
+
+⚠ **This reverses my recommendation.** I argued the accept should be a return RECORD, on the grounds that a
+status cannot carry who accepted, when and where. It still cannot — but the owner's answer is that the *state*
+is what matters, and the who/when/where is a detail that can hang off the transition later if it is ever needed.
+One status is one column, and it makes the warehouse's queue a plain `WHERE status = 'return'`.
+
+**What it settles, beyond its own question.**
+
+| | |
+| --- | --- |
+| what `return` means | a **claim** that goods are coming back — NOT that they have arrived |
+| what `return_completed` means | the warehouse person has them |
+| the warehouse's working queue | orders in `return` — claimed, not yet in hand. It is now listable |
+| a return record | **not built**. The two states are the whole model |
+| [superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses) | renamed — there are nine |
+
+⚠ **It also answers a question asked in the other clarify.** *return-means-received-by-the-warehouse* asked
+whether `return` means *in transit* or *received*, and I recommended **received**. It means **in transit**;
+*received* is the new status.
+
+```mermaid
+flowchart LR
+  A["return"] --> A2["a claim — the parcel may still be in transit"]
+  B["return_completed"] --> B2["received — the only step where somebody holds the goods"]
+  OLD["my recommendation: return means received"] -.->|"wrong"| A2
+```
+
+## an-own-line-never-touches-the-map
+
+> Asked as *"is the `no` branch routing own products into the product map deliberate, or the slip it looks
+> like?"* **Owner: a slip — fixed in two passes in [order_return.md](./order_return.md) §Order Return Flow.**
+
+**The verdict.** A line whose product the team already owns goes **straight to the item list**. It does not read
+`product_return_maps` and it does not write to it. The map exists for one purpose — remembering which own
+product a **borrowed** product became — and an own product was never borrowed.
+
+```mermaid
+flowchart TD
+  IT{"is the line cross or shared?"} -->|"no — we own it"| ADD["add it to the item list payload"]
+  IT -->|"yes — borrowed"| M{"is it mapped?"}
+  M -->|"yes"| USE["use the mapped own product"]
+  USE --> ADD
+  M -->|"no"| C["clone it, then record the map"]
+  C --> ADD
+```
+
+**It was fixed in two steps, and the intermediate state is worth recording.** The first pass re-pointed the
+branch from `Get Product Map` to `Add Product Map`, which removed the clone — the expensive half — but left a
+**write**: an own product would have got a map row pointing at itself. Because
+[the-map-is-unique-on-its-source](#the-map-is-unique-on-its-source) keys the map on
+`(team_id, shared_product_id)`, that junk row would have **occupied the only slot** a genuine mapping needed
+later, so the first real cross return of that product could not have recorded its map. The second pass points
+it at the item list and the branch is clean.
+
+| | |
+| --- | --- |
+| an own line | item list, directly |
+| a borrowed line, mapped | the mapped own product, then the item list |
+| a borrowed line, unmapped | clone, record the map, then the item list |
+
+⚠ **What survives, and is still the owner's to amend:** the `Set Team Return Configuration, warehouse_id from
+order` box is still on the own branch. It is stale twice —
+[the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens)
+put the warehouse in the configuration rather than the order, and the diagram's own first box already read it.
 
 ## picked-is-a-warehouse-step
 

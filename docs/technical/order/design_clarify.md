@@ -122,12 +122,15 @@ lines*.
 ### The status tabs — the owner's eight, not the build's six
 
 Decided 2026-09-24: the tabs carry the set from
-[the-order-has-eight-statuses](../../business/order/context_decision.md#the-order-has-eight-statuses),
+[superseded-the-order-has-eight-statuses](../../business/order/context_decision.md#superseded-the-order-has-eight-statuses),
 and the warehouse's steps fold into `processed`
 ([the-warehouse-steps-are-not-order-statuses](../../business/order/context_decision.md#the-warehouse-steps-are-not-order-statuses)).
 The alternative — mirroring the six enum values the build happens to have — would put a vocabulary on
 screen that the owner's own clarify already records as stale, and the screen would be rebuilt when
 the migration lands.
+
+⚠ The owner has since added a ninth, `return_completed` — see
+[the order screens count eight statuses, and the owner added a ninth](#the-order-screens-count-eight-statuses-and-the-owner-added-a-ninth).
 
 | the owner's eight | what the contract has | on this screen |
 | --- | --- | --- |
@@ -347,6 +350,38 @@ flowchart LR
   N --> B["the-detail-preview-became-the-order-detail — Settlement placed before Withdrawal"]
   A --> R["superseded, left as written"]
   B --> R
+```
+
+## the order screens count eight statuses, and the owner added a ninth
+
+**The example.** Found when `dev` was merged into the order design line (2026-10-02). On `dev`,
+[the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed)
+(2026-09-21) added `return_completed` after `return` and renamed the eight-status decision
+[superseded-the-order-has-eight-statuses](../../business/order/context_decision.md#superseded-the-order-has-eight-statuses).
+The order screens were built on the other line and never saw it:
+
+| site | says | now |
+| --- | --- | --- |
+| [The status tabs](#the-status-tabs--the-owners-eight-not-the-builds-six) above | *"the owner's eight"* | nine |
+| `frontend/src/features/orders/stages.ts` — `ORDER_STAGES` | eight stages, `return` the only return pile | no `return_completed` |
+| [the-warehouse-steps-are-not-order-statuses](../../business/order/context_decision.md#the-warehouse-steps-are-not-order-statuses) | *"the set of eight … one boundary applied consistently"* | the argument holds; the count does not |
+
+Nothing on screen is wrong yet: the contract has neither `return` nor `return_completed`, so the Retur tab
+already reads `—`. It becomes wrong the day the enum grows.
+
+**→ Recommend** no ninth tab. **Retur** gets a step filter of its own, the way Diproses has one: *Diklaim*
+(`return`) · *Diterima gudang* (`return_completed`). To a seller a return is one pile they are waiting on;
+the warehouse's acceptance is its last step, the same shape as the handover closing Diproses. What stops it
+recurring: a merge that brings a renamed decision greps the other line's references too — these four were
+new on this line, so `dev`'s own grep could not see them.
+
+```mermaid
+flowchart LR
+  D["the-accept-is-the-status-return-completed — 9 statuses"] --> T["status tabs section — says eight"]
+  D --> S["stages.ts ORDER_STAGES — no return_completed"]
+  D --> W["the-warehouse-steps-are-not-order-statuses — the set of eight"]
+  T --> R["Retur tab + step filter — Diklaim, Diterima gudang"]
+  S --> R
 ```
 
 ---

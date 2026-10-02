@@ -201,19 +201,20 @@ export function useDeleteTeam() {
   });
 }
 
-// The team's INFO — contact, bank details, and the default warehouse (#145).
+// The team's INFO — contact, returns, and the default warehouse (#145). It holds no bank: a team's
+// bank is a financial account (owner, 2026-09-30).
 //
-// Teams ONLY: `info` is carried by TeamDetail and nothing else — no user query returns a bank
-// account, so invalidating `["users"]` here would refetch lists that cannot have changed.
+// Teams ONLY: `info` is carried by TeamDetail and nothing else — no user query returns it, so
+// invalidating `["users"]` here would refetch lists that cannot have changed.
 //
 // ⚠ ALL FIELDS OPTIONAL, and here it is not a nicety — it is the difference between saving a setting
-// and destroying somebody's bank details.
+// and destroying another one.
 //
 // team.proto states it outright: "ALL optional — explicit presence. Absent = leave alone. Present =
 // write it, including empty." Two screens write this message and they touch DISJOINT fields — the
-// contact/bank dialog, and the settings screen's default-warehouse picker. If the vars required the
-// bank fields, saving a default warehouse would send four present-and-empty strings and wipe the
-// account details of the team that saved it.
+// contact dialog, and the settings screen's default-warehouse picker. If the vars required the
+// contact number, saving a default warehouse would send it present-and-empty and wipe the contact
+// of the team that saved it.
 //
 // The ids stay optional for the mirror-image reason: `present & 0` is how the contract says CLEAR,
 // so a caller that means "leave the return warehouse alone" must omit it rather than send 0.
@@ -224,9 +225,6 @@ export function useSaveTeamInfo() {
     mutationFn: (vars: {
       teamId: bigint;
       contactNumber?: string;
-      bankType?: string;
-      bankOwnerName?: string;
-      bankAccountNumber?: string;
       returnWarehouseId?: bigint;
       returnUserId?: bigint;
       defaultWarehouseId?: bigint;

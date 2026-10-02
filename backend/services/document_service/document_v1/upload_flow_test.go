@@ -203,3 +203,50 @@ func TestRequestUpload_TooLarge(t *testing.T) {
 		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 }
+
+// A settlement statement is PRIVATE: the settlement importer stores the .xlsx under its content hash, and
+// it is read back only through a short-lived signed URL — it lists every order and what the platform took.
+func TestUploadFlow_SettlementStatementIsPrivate(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc, cfg := newService(t, db)
+	ctx := context.Background()
+
+	const xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+	up, err := svc.RequestUpload(ctx, connect.NewRequest(&documentv1.RequestUploadRequest{
+		TeamId:       2,
+		ResourceType: documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT,
+		ContentType:  xlsx,
+		SizeBytes:    2,
+		Filename:     "3f2a9c0b7d1e4f5a6b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c.xlsx",
+	}))
+	if err != nil {
+		t.Fatalf("RequestUpload: %v", err)
+	}
+
+	putBytes(t, cfg, up.Msg.GetUploadUrl(), []byte("PK"))
+
+	conf, err := svc.ConfirmUpload(ctx, connect.NewRequest(&documentv1.ConfirmUploadRequest{
+		UploadToken: up.Msg.GetUploadToken(),
+	}))
+	if err != nil {
+		t.Fatalf("ConfirmUpload: %v", err)
+	}
+
+	doc := conf.Msg.GetDocument()
+	if doc.GetResourceType() != documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT ||
+		doc.GetPublicUrl() != "" || doc.GetMimeType() != xlsx {
+		t.Fatalf("a statement must come back private, typed, and as the xlsx it is: %+v", doc)
+	}
+
+	dl, err := svc.GetDownloadUrl(ctx, connect.NewRequest(&documentv1.GetDownloadUrlRequest{
+		TeamId: 2, DocumentId: doc.GetId(),
+	}))
+	if err != nil {
+		t.Fatalf("GetDownloadUrl: %v", err)
+	}
+
+	if dl.Msg.GetPublic() || dl.Msg.GetExpiresAtUnix() == 0 {
+		t.Fatalf("a statement's download must be signed and time-limited: %+v", dl.Msg)
+	}
+}

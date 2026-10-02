@@ -49,8 +49,8 @@ func (s *Service) LiabilityPaymentReject(
 
 		// Only a RECORDED payment can be rejected. Rejecting a CONFIRMED one would leave a posted
 		// entry beside a claim that says the money never came — the disagreement between the books and
-		// the screen that this service exists to prevent. That correction is `LiabilityPaymentReverse`,
-		// which posts the compensating entry a rejection deliberately does not.
+		// the screen that this service exists to prevent. And a confirmed payment is FINAL
+		// (an-accepted-payment-is-final): there is no correction path at all, by decision.
 		if found.Status != paymentRecorded {
 			return errPaymentNotRejectable
 		}

@@ -59,6 +59,14 @@ service OrderService {
   // would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
   // decide which tab to open.
   rpc OrderStat(OrderStatRequest) returns (OrderStatResponse);
+
+  // ── A statement's refs, resolved ───────────────────────────────────────────────────────────────
+  //
+  // The settlement importer turns every platform ref in a statement into OUR order, in one call per
+  // file (settlement_importer critique 4): the order, its shop — a ref in another shop fails the file
+  // (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
+  // (user-id-is-the-orders-creator-else-the-shops-primary-cs).
+  rpc OrderByExternalRefs(OrderByExternalRefsRequest) returns (OrderByExternalRefsResponse);
 }
 
 // Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -846,4 +854,77 @@ message OrderStatResponse {
   // caller knows the full enum and renders the gaps, and "nothing to say" travels lighter (the same
   // convention OwnerStockByIds uses for a product with no stock).
   repeated OrderStatusCount by_status = 2;
+}
+
+// ── OrderByExternalRefs ──────────────────────────────────────────────────────────────────────────
+
+message OrderByExternalRefsFilter {
+  // The marketplace refs, as the statement wrote them. No paging: the caller supplies the set, and
+  // max_items is a statement's worth — the largest sample carries under 1,500.
+  repeated string refs = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2000
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
+}
+
+enum OrderByExternalRefsDataType {
+  ORDER_BY_EXTERNAL_REFS_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_BY_EXTERNAL_REFS_DATA_TYPE_ORDER_REF = 1;
+}
+
+message OrderByExternalRefsRequest {
+  // Read: the team's own people, the same audience as OrderList — the importer asks under the
+  // uploader's token.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMIN,
+      ROLE_TEAM_OWNER,
+      ROLE_TEAM_ADMIN,
+      ROLE_TEAM_CUSTOMER_SERVICE
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OrderByExternalRefsFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OrderByExternalRefsDataType data_request = 3;
+}
+
+// One of the team's orders carrying the ref.
+message OrderRefItem {
+  uint64 order_id = 1;
+  uint64 shop_id = 2;
+  // Who placed it — 0 on an order placed before the creator was recorded.
+  uint64 created_by_user_id = 3;
+  OrderStatus status = 4;
+}
+
+message OrderRefMapItem {
+  // Keyed by order id. A ref two shops share, or a cancelled order re-recorded, carries several.
+  map<uint64, OrderRefItem> map_data = 1;
+}
+
+message OrderByExternalRefsResponseItem {
+  oneof d {
+    OrderRefMapItem order_ref = 1;
+  }
+}
+
+message OrderByExternalRefsResponseList {
+  repeated OrderByExternalRefsResponseItem items = 1;
+}
+
+message OrderByExternalRefsResponse {
+  // Keyed by ref. A ref no order of the team carries is ABSENT.
+  map<string, OrderByExternalRefsResponseList> items = 1;
 }

@@ -237,26 +237,23 @@ Break long method chains one step per line. One handler method per file as a ser
 use `golang.org/x/net/http2/h2c` — it is deprecated; `net/http` speaks unencrypted HTTP/2 natively
 through `http.Protocols`.
 
-## What is the difference between rejecting a payment and reversing one?
+## Can an accepted payment be reversed?
 
-**They are different failures and they must never share a code path.**
+**No. Accepting is final** — [an-accepted-payment-is-final](../business/balance/context_decision.md#an-accepted-payment-is-final).
+The creditor checks the proof **before** accepting; once accepted, the payment never changes.
 
-| | refuses | posts to the ledger | when |
+| | refuses | posts to the ledger | after it |
 | --- | --- | --- | --- |
-| `LiabilityPaymentReject` | a **claim** | **nothing** | the creditor checked the proof and the money is not there |
-| `LiabilityPaymentReverse` | a **confirmation** | a **compensating entry** | the creditor already agreed, in error |
+| `LiabilityPaymentReject` | a **claim** | **nothing** | final — the payer re-records if they still mean to pay |
+| `LiabilityPaymentConfirm` | — | the settling entry | final — no undo, by decision |
 
-Both are terminal, and both are drawn in `balance_context.md` §Payment Flow — the `no` arm of *"Is
-Payment Correct?"* is a reject.
+⚠ **A `LiabilityPaymentReverse` RPC existed and was removed** (2026-10-01). It shipped before
+`balance_context.md` §Payment Flow drew `accept` as terminal, and no screen ever called it. Do not
+bring one back without reopening the decision — a reverse would also have to un-post the two
+`team_payment` rows in the financial accounts.
 
-⛔ **Why it matters.** Before `rejected` existed, a creditor facing a payment that never landed could
-only leave it at `recorded` forever, or **confirm it and then reverse it** — which writes two real
-ledger movements for money that never moved, and leaves the pair's history telling a story that did
-not happen.
-
-They share one `reason` column, because the `status` already says which act filled it. A reject also
-leaves `confirmed_by` / `confirmed_at` **empty** — borrowing them would make every *"when was this
-agreed"* query count refusals as agreements.
+A reject fills `reason` and leaves `confirmed_by` / `confirmed_at` **empty** — borrowing them would
+make every *"when was this agreed"* query count refusals as agreements.
 
 Details: [docs/services/liability_service/rpc.md](../services/liability_service/rpc.md).
 

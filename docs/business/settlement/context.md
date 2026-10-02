@@ -103,31 +103,37 @@ update_cache-->e
 
 
 ## Settlement Log Ledger Shapes
-1. It has field :
-    - `id`, common primary key id
-    - `unique_id`, string type, custom idempotency key
-    - `order_id`, its can be nullable
-    - `shop_id`
-    - `team_id`
-    - `actor_id`
-    - `source_type`
-    - `settlement_type`
-    - `change`, it can -/+
-    - `balance`
-    - `created_at`
+### It has field :
+- `id`, common primary key id
+- `unique_id`, string type, custom idempotency key
+- `order_id`, its can be nullable
+- `shop_id`
+- `team_id`
+- `actor_id`
+- `source_type`
+- `settlement_type`
+- `change`, it can -/+
+- `balance`
+- `created_at`
 
-2. what is `settlement_type`
-    - `initial_total`, its estimated revenue marketplace platform total
-    - `fund`, its real revenue we get, usualy after customer received the order, its not net, platform still charge in other day sometimes
-    - `external_ads_fee`
-    - `affiliate_fee`
-    - `marketplace_adjustment`
-    - `system_adjustment`, its used for repair report in our internal system.
-    - `other`
-    - `initial_total_cancel`
+### what is `settlement_type`
+- `initial_total`, its estimated revenue marketplace platform total
+- `fund`, its real revenue we get, usualy after customer received the order, its not net, platform still charge in other day sometimes
+- `external_ads_fee`
+- `affiliate_fee`
+- `marketplace_adjustment`
+- `shipment_adjustment`
+- `system_adjustment`, its used for repair report in our internal system.
+- `other`
+- `initial_total_cancel`
+- `withdrawal`
+- `logistic_reimbursement`
+- `platform_reimbursement`
+- `marketplace_program`
+
 
 3. what is `source_type`, its for determined how entry added:
-    - by external service, `exporter`
+    - by external service, `importer`
     - or by manual in frontend, `manual`
 
 4. `actor_id` is who create the entry, its pic

@@ -48,9 +48,10 @@ function windowOf(range: DateRange): { from: string; to: string } {
 //   over time     which period moved it
 //   the ranking   which shop or which person carries it
 //
-// ⚠ THE WORD "BALANCE" IS NOT ON THIS SCREEN, and neither is "outstanding". The position is the
-// cumulative SHORTFALL (#the-position-is-the-shortfall-not-the-wallet) — money the platform kept and
-// nobody will collect (#hidden-cost-is-left-in-the-balance) — so it is labelled "hidden cost to date".
+// ⚠ THE WORD "BALANCE" IS NOT ON THIS SCREEN, and neither is "outstanding". The position is Σ change,
+// withdrawals included (#withdrawal-counts-in-the-position) — the shortfall PLUS what went to the bank —
+// so it is labelled "position to date", and Withdrawn stands beside Received
+// (#the-report-headline-is-position-to-date).
 //
 // ⚠ EVERY FIGURE IS FOLDED, not live. The reports are built from the ledger through the broker, so a
 // post made a moment ago can take a moment to appear here — the order page's ledger tab is the live view.

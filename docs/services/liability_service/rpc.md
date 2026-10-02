@@ -449,33 +449,25 @@ sequenceDiagram
         S-->>P: the payer reads the reason and re-records
     end
 
-    opt confirmed in error
-        C->>S: LiabilityPaymentReverse — reason required
-        Note over S: demand status = confirmed
-        S->>S: status = reversed AND a COMPENSATING entry
-        Note over S: the debt is back, and both entries stay
-    end
+    Note over S: confirmed and rejected are both FINAL — nothing leaves either
 ```
 
-### `reject` and `reverse` are DIFFERENT FAILURES
+### An accepted payment is FINAL
 
-`balance_context.md` §Payment Flow draws *"Is Payment Correct?"* with two arms and its lifecycle
-diagram makes both terminal. They must never share a path:
+`balance_context.md` §Payment Flow draws *"Is Payment Correct?"* with two arms, and its lifecycle
+diagram makes both terminal. [an-accepted-payment-is-final](../../business/balance/context_decision.md#an-accepted-payment-is-final)
+holds the code to that: **there is no reverse.** A `LiabilityPaymentReverse` shipped before the
+decision, was never called by any screen, and was removed.
 
-| | refuses | posts | when |
+| | refuses | posts | after it |
 | --- | --- | --- | --- |
-| `Reject` | a **claim** | **nothing** | the creditor looked and the money is not there |
-| `Reverse` | a **confirmation** | a **compensating entry** | the creditor already agreed, in error |
-
-⛔ **Before `rejected` existed** the shipped statuses were `recorded · confirmed · reversed`, so a
-creditor facing a payment that never landed could only leave it pending forever — or confirm it and
-then reverse it, writing **two real ledger movements for money that never moved** and leaving the
-pair's history telling a story that did not happen.
+| `Reject` | a **claim** | **nothing** | final — the payer re-records if they still mean to pay |
+| `Confirm` | — | the **settling entry** | final — the check happens BEFORE accepting, never after |
 
 - **The status needed no migration** — the column is `TEXT`, for the same reason
   `liability_logs.source_type` is: the set of states is a design decision, not a database one.
-- **`reversal_reason` became `reason`** (migration `00007`). Two acts fill it now and the STATUS says
-  which, so one column serves both; two would leave one permanently NULL on every row.
+  A stray `reversed` row (none should exist) maps to `UNSPECIFIED` rather than failing the list.
+- **`reversal_reason` became `reason`** (migration `00007`). Only a reject fills it now.
 - **A reject leaves `confirmed_by` / `confirmed_at` empty.** Borrowing them to record who refused
   would make every *"when was this agreed"* query count refusals as agreements.
 - **The row is still locked FOR UPDATE** even though nothing posts: confirm and reject race each
@@ -511,7 +503,6 @@ confirm.
 | `Record` | the **payer** | you may only assert a movement of your own money |
 | `Confirm` | the **creditor** | a payer who could confirm their own payment could write off any debt |
 | `Reject` | the **creditor** | only the team that was supposedly paid can say the money did not arrive |
-| `Reverse` | the **creditor** | whoever confirmed is who un-confirms |
 
 The scope is in the `WHERE` of the lookup, not a check after loading, so somebody else's payment
 reads as **NOT FOUND** rather than forbidden — a caller must not be able to probe payment ids to
@@ -529,7 +520,7 @@ settles a debt. Two managers clicking Confirm in the same second is an ordinary 
   show and the screen says is settled.
 
 Proven, not asserted: `payment_confirm_race_test.go` (`-tags raceaudit`) runs 8 concurrent confirms —
-exactly one succeeds and the balance lands on 0 — and races Confirm against Reverse.
+exactly one succeeds and the balance lands on 0 — and races Confirm against Reject.
 
 ### ⚠ A payment moves value the OPPOSITE way to a fee
 
@@ -538,23 +529,9 @@ reduces the payer's payable, so their balance moves **up** toward zero while the
 moves **down**. Writing the teams the "natural" way round would settle the debt backwards —
 arithmetically consistent, completely wrong, and invisible until somebody reads a screen.
 
-`reversal` distinguishes the confirmation from its undoing inside the ledger's idempotency key
-`(source_type, source_id, counterparty, reversal)` — which is what lets one payment be posted once
-and un-posted once, and neither of them twice.
-
-### Reversal is compensation, never an edit
-
-The confirmation stays in the ledger and an equal-and-opposite entry joins it, so the balance nets
-back and the history shows the payment was agreed and then withdrawn. `confirmed_at` and
-`confirmed_by` **survive** — when it was agreed, and by whom, are facts, and clearing them would
-erase who to ask about it.
-
-The `reason` is required by the contract and stored. Reversing says a person got it wrong, and the
-next reader deserves better than two entries that cancel out for no stated reason.
-
-> ⚠ **The stored `reversal_reason` has no getter on the wire yet.** `LiabilityPayment` carries no
-> reason field, so the column is written and cannot be read back. Worth a proto field before the
-> screens land — until then the reason is recoverable only from the database.
+A payment always posts with `reversal = false`, so the ledger's idempotency key
+`(source_type, source_id, counterparty, reversal)` lets it post **once**. Nothing un-posts it —
+[an-accepted-payment-is-final](../../business/balance/context_decision.md#an-accepted-payment-is-final).
 
 ### The badge — `awaiting_my_confirmation`
 

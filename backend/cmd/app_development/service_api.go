@@ -18,17 +18,21 @@ import (
 	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	expense_service "github.com/pdcgo/warehouse_revamp/backend/services/expense_service"
 	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
+	financial_account_service "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service"
+	financial_account_v1 "github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_v1"
 	inventory_service "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service"
+	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	product_service "github.com/pdcgo/warehouse_revamp/backend/services/product_service"
 	product_v1 "github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_v1"
 	region_service "github.com/pdcgo/warehouse_revamp/backend/services/region_service"
 	region_v1 "github.com/pdcgo/warehouse_revamp/backend/services/region_service/region_v1"
 	selling_service "github.com/pdcgo/warehouse_revamp/backend/services/selling_service"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/liability_service"
+	settlement_importer_service "github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service"
+	settlement_importer_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service"
-	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	shipment_service "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service"
 	shipment_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
@@ -58,6 +62,8 @@ func NewServeMux(
 	costService *expense_v1.Service,
 	liabilityService *liability_v1.Service,
 	settlementService *settlement_v1.Service,
+	importerService *settlement_importer_v1.Service,
+	accountService *financial_account_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -104,6 +110,8 @@ func NewServeMux(
 		expense_service.NewRegister(mux, costService, opts),
 		liability_service.NewRegister(mux, liabilityService, opts),
 		settlement_service.NewRegister(mux, settlementService, opts),
+		settlement_importer_service.NewRegister(mux, importerService, opts),
+		financial_account_service.NewRegister(mux, accountService, opts),
 	)
 
 	return mux, nil

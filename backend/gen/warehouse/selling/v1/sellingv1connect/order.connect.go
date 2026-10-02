@@ -61,6 +61,9 @@ const (
 	OrderServiceOrderActivityStatProcedure = "/warehouse.selling.v1.OrderService/OrderActivityStat"
 	// OrderServiceOrderStatProcedure is the fully-qualified name of the OrderService's OrderStat RPC.
 	OrderServiceOrderStatProcedure = "/warehouse.selling.v1.OrderService/OrderStat"
+	// OrderServiceOrderByExternalRefsProcedure is the fully-qualified name of the OrderService's
+	// OrderByExternalRefs RPC.
+	OrderServiceOrderByExternalRefsProcedure = "/warehouse.selling.v1.OrderService/OrderByExternalRefs"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -106,6 +109,13 @@ type OrderServiceClient interface {
 	// would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
 	// decide which tab to open.
 	OrderStat(context.Context, *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error)
+	// ── A statement's refs, resolved ───────────────────────────────────────────────────────────────
+	//
+	// The settlement importer turns every platform ref in a statement into OUR order, in one call per
+	// file (settlement_importer critique 4): the order, its shop — a ref in another shop fails the file
+	// (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
+	// (user-id-is-the-orders-creator-else-the-shops-primary-cs).
+	OrderByExternalRefs(context.Context, *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -185,6 +195,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
 			connect.WithClientOptions(opts...),
 		),
+		orderByExternalRefs: connect.NewClient[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse](
+			httpClient,
+			baseURL+OrderServiceOrderByExternalRefsProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -201,6 +217,7 @@ type orderServiceClient struct {
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
+	orderByExternalRefs       *connect.Client[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -258,6 +275,11 @@ func (c *orderServiceClient) OrderStat(ctx context.Context, req *connect.Request
 	return c.orderStat.CallUnary(ctx, req)
 }
 
+// OrderByExternalRefs calls warehouse.selling.v1.OrderService.OrderByExternalRefs.
+func (c *orderServiceClient) OrderByExternalRefs(ctx context.Context, req *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error) {
+	return c.orderByExternalRefs.CallUnary(ctx, req)
+}
+
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
 type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
@@ -301,6 +323,13 @@ type OrderServiceHandler interface {
 	// would be scoped to the tab, so switching to "Cancelled" would empty the very counts you use to
 	// decide which tab to open.
 	OrderStat(context.Context, *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error)
+	// ── A statement's refs, resolved ───────────────────────────────────────────────────────────────
+	//
+	// The settlement importer turns every platform ref in a statement into OUR order, in one call per
+	// file (settlement_importer critique 4): the order, its shop — a ref in another shop fails the file
+	// (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
+	// (user-id-is-the-orders-creator-else-the-shops-primary-cs).
+	OrderByExternalRefs(context.Context, *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -376,6 +405,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderStat")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderByExternalRefsHandler := connect.NewUnaryHandler(
+		OrderServiceOrderByExternalRefsProcedure,
+		svc.OrderByExternalRefs,
+		connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -400,6 +435,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderActivityStatHandler.ServeHTTP(w, r)
 		case OrderServiceOrderStatProcedure:
 			orderServiceOrderStatHandler.ServeHTTP(w, r)
+		case OrderServiceOrderByExternalRefsProcedure:
+			orderServiceOrderByExternalRefsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -451,4 +488,8 @@ func (UnimplementedOrderServiceHandler) OrderActivityStat(context.Context, *conn
 
 func (UnimplementedOrderServiceHandler) OrderStat(context.Context, *connect.Request[v1.OrderStatRequest]) (*connect.Response[v1.OrderStatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderStat is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderByExternalRefs(context.Context, *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderByExternalRefs is not implemented"))
 }

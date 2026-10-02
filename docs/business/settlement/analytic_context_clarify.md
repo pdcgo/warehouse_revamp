@@ -1266,179 +1266,6 @@ different column in the code.
 
 ---
 
-## Proposed Design — the reconcile
-
-> ⛔ **`folded_count` is DEFERRED** ([folded-count-is-deferred](./context_decision.md#folded-count-is-deferred),
-> owner 2026-09-10). Everything below about the **value** check stands and is the design. The
-> completeness column is not built, and my claim that *"neither substitutes"* was overstated — the value
-> check localises the failing day on its own. What is given up is the **compensating-error** case only
-> (two offsetting losses on one day), and that is permanent: `folded_count` cannot be backfilled.
-
-The concrete answer to [Q4](#question). Two mechanisms, and they answer different questions: one says
-*"this day is INCOMPLETE"*, the other says *"this chain is WRONG"*. Neither substitutes.
-
-```mermaid
-flowchart TB
-  L["settlement_logs — the truth, complete from day one"]
-  R["the daily report — a stored, incremented copy"]
-  L --> C1["COMPLETENESS: does the day hold every row the log has for it ?"]
-  R --> C1
-  L --> C2["VALUE: does close_balance equal the log's running sum ?"]
-  R --> C2
-  C1 --> W["a work list of days that disagree"]
-  C2 --> W
-```
-
-### ⚠ I am revising `folded_through` — it does not work
-
-My earlier recommendation was a **`folded_through`** column holding the highest `settlement_log.id`
-folded into the row. **That is unreliable, and the reason is ordinary Postgres.** `id` comes from a
-`BIGSERIAL`, which assigns at INSERT and not at COMMIT — so a higher id can commit *before* a lower one.
-A watermark set to the max id then claims to have passed rows it never saw, and the gap is invisible.
-
-```mermaid
-flowchart TB
-  A["txn A takes id 100"] --> B["txn B takes id 101"]
-  B --> C["B commits first — folded, folded_through = 101"]
-  C --> D["A commits later with id 100"]
-  D --> E["a check for id > 101 never looks at 100"]
-  E --> F["the row claims completeness it does not have"]
-```
-
-**→ Use `folded_count` instead** — how many log rows have been folded into this day. It compares against
-`COUNT(*)` from the log, which is exact and has no ordering assumption at all. It is also **symmetric**:
-too few means a lost movement, too many means one was folded twice (a redelivery past the dedup).
-
-| | `folded_through` (withdrawn) | `folded_count` |
-| --- | --- | --- |
-| assumption | ids commit in order — **false** | none |
-| catches a lost row | ⚠ only if its id is above the mark | ✅ always |
-| catches a double-fold | ⛔ no | ✅ yes |
-| cost | one BIGINT | one BIGINT |
-
-⛔ **It must be in the migration that CREATES the tables.** Added later it cannot be backfilled — the
-number of rows already folded into a given day is not recoverable from anything, so every pre-existing
-day would carry a value that is either wrong or unknown.
-
-### The schema
-
-```
-shop_settlement_daily_reports.folded_count  BIGINT NOT NULL DEFAULT 0
-user_settlement_daily_reports.folded_count  BIGINT NOT NULL DEFAULT 0
-```
-
-The fold's own statement already touches the row — it costs one more `SET`:
-
-```sql
-ON CONFLICT (shop_id, team_id, day) DO UPDATE
-SET ...,
-    folded_count = d.folded_count + 1
-```
-
-⚠ **The genesis row's `folded_count` is 0**, and correctly so — no log rows were folded into a synthetic
-day. The reconcile must know to skip the completeness check there while still checking its VALUE, which
-is the check that would have caught
-[the genesis seed reading one state table when there are two](../settlement/context_clarify.md#-the-genesis-seed-reads-one-state-table-and-there-are-now-two).
-
-### The check, as one query per scope
-
-**The log is complete from day one**, so its running sum is the definition — including the prehistory
-that genesis compresses. That is what makes this able to validate genesis itself rather than trusting it.
-
-```sql
-WITH truth AS (
-    SELECT posted_on                                   AS day,
-           COUNT(*)                                    AS rows_in_log,
-           SUM(SUM(change)) OVER (ORDER BY posted_on)  AS running
-    FROM settlement_logs
-    WHERE shop_id = @shop_id AND team_id = @team_id
-    GROUP BY posted_on
-)
-SELECT COALESCE(d.day, t.day) AS day,
-       d.close_balance, t.running,
-       d.folded_count,  t.rows_in_log
-FROM shop_settlement_daily_reports d
-FULL JOIN truth t
-       ON t.day = d.day AND d.shop_id = @shop_id AND d.team_id = @team_id
-WHERE d.close_balance IS DISTINCT FROM t.running
-   OR (d.folded_count IS DISTINCT FROM t.rows_in_log AND d.day > @genesis_day)
-ORDER BY day;
-```
-
-| | |
-| --- | --- |
-| `FULL JOIN` | a day in one and not the other is itself a finding — an inner join would hide exactly the missing-row case |
-| `IS DISTINCT FROM` | `NULL` compares correctly, so a missing side reports rather than silently passing |
-| the window sum | one pass over the scope's log, not one query per day |
-| the genesis guard | the seed row legitimately has no log rows behind it |
-
-### The RPC
-
-Governed shape, and deliberately **not** paginated — the span is the bound, capped at 366 days like every
-other period read, so the settlement reconcile cannot load part of a period and look complete.
-
-```proto
-message SettlementReconcileFilter {
-  string from = 1;          // YYYY-MM-DD, required
-  string to   = 2;          // YYYY-MM-DD, required
-  uint64 shop_id = 3;       // 0 = every shop in the team
-}
-
-message SettlementReconcileRequest {
-  option (warehouse.role_base.v1.request_policy) = { roles: [ROLE_ROOT, ROLE_ADMIN] };
-  uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
-  SettlementReconcileFilter filter = 2 [(buf.validate.field).required = true];
-}
-
-message ReconcileFinding {
-  string date = 1;
-  uint64 shop_id = 2;
-  int64  stored_close = 3;
-  int64  log_close = 4;      // the truth
-  int64  drift = 5;          // stored − log, signed, so the sign says which way
-  int64  stored_rows = 6;
-  int64  log_rows = 7;
-}
-
-message SettlementReconcileResponse {
-  repeated ReconcileFinding findings = 1;   // SPARSE — only days that disagree
-  uint64 days_checked = 2;                  // so "nothing found" is distinguishable from "nothing ran"
-}
-```
-
-⛔ **SPARSE is the design, not an optimisation.** A reconcile that returns every day is a report nobody
-reads; one that returns only breaks is a work list. And `days_checked` is what stops an empty response
-meaning two different things.
-
-✅ **Read-only. It never repairs.** Same rule the performance and concurrency audits follow: the report
-is input to a decision. Repair is `AnalyticReplayCompute`, a day re-fold, or `AnalyticReseedGenesis` —
-each a deliberate act.
-
-### What it catches, and what it cannot
-
-| | |
-| --- | --- |
-| ✅ a lost movement (the dead-letter path) | value AND count disagree |
-| ✅ a cascade that did not run | value disagrees from that day forward |
-| ✅ **a wrong genesis** | every day's value is off by the same amount — the one check that can see it, since the floor makes it otherwise unrepairable |
-| ✅ a replay that skipped a day | count disagrees on that day |
-| ✅ a double-fold | count is too HIGH |
-| ⛔ **a log row that was never written** | — the log and the report agree, and both are short. That is [order: a-lost-publish-is-not-tracked-on-the-order](../order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order)'s finder, not this |
-| ⚠ **a `system_adjustment` posted to repair a fold-only loss** | reports a difference **forever** — see [the note on system_adjustment](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other). Building this makes that problem visible, which is good, and makes answering it urgent, which is the point |
-
-### Cost, and when it runs
-
-| | |
-| --- | --- |
-| the fold | one extra `SET` on a row it already writes — immeasurable |
-| the reconcile | one window pass over a scope's log. On a shop-year that is thousands of rows, not millions |
-| when | **on demand**, not nightly, to start with. It is a diagnostic, and a nightly job that nobody reads is how a wrong number gets a green tick beside it |
-
-→ **Recommend both**, and `folded_count` **in the create-tables migration** — it is the only part with a
-deadline, because it cannot be backfilled.
-
----
-
 ## Proposed Design — the settlement event
 
 > 🔄 **Re-shaped for [one-event-one-topic-per-variant](../../technical/event_architecture/context_decision.md#one-event-one-topic-per-variant)
@@ -1538,22 +1365,22 @@ doc** and the recommendation stays on the table.
 
 | open question | what the code does |
 | --- | --- |
-| **Q1** — the lock and the DLQ | `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
-| **Q2** — a late and a live fold on one shop | `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
-| **Q3** — the carry on the USER table | kept, as the doc lists it |
-| **Q4** — the reconcile | **not built** — it is not in the doc |
-| **Q5** — grain on the wire | `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
+| **Q1** — the lock and the DLQ | ✅ **answered** — [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). `AnalyticMaintenanceRun` does **not** take the lock (as recommended). The replay holds it only across its delete and the seek call — your drawn flow — so redelivered traffic arrives after it is released |
+| **Q2** — a late and a live fold on one shop | ✅ **answered** — [the-fold-locks-shop-then-user](./context_decision.md#the-fold-locks-shop-then-user). `pg_advisory_xact_lock` per scope, **shop then user**, at the top of the fold's transaction — the requirement recorded in [dedup-and-compute-share-one-transaction](./context_decision.md#dedup-and-compute-share-one-transaction). It serialises exactly what the state-row lock would |
+| **Q3** — the carry on the USER table | ✅ **answered: kept** — [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept) |
+| **Q4** — the reconcile | ✅ **answered: not built** — [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built) |
+| **Q5** — grain on the wire | ✅ **answered** — [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). `AnalyticTimeframe` on the wire as the doc sketches, with the **span unlock** recommended: 366 days, 60 months, 20 years |
 | 🆕 TEAM grouping across teams | only when the scope is the ROOT team — the one scope ROOT and ADMIN hold. Any other scope reads its own team |
 | 🆕 the dedup key | the EVENT id, not the broker message id — see [Contradiction](#idempotency-layer-keys-on-the-message-id-and-the-event-architecture-keys-on-the-event-id) |
-| 🆕 the replay's reach | read from Pub/Sub as the larger of the TOPIC retention and, if acked messages are retained, the subscription's — see [Q6](#question) |
+| 🆕 the replay's reach | ✅ **answered** — [topic-retention-carries-the-replay](./context_decision.md#topic-retention-carries-the-replay). Read from Pub/Sub as the larger of the TOPIC retention and, if acked messages are retained, the subscription's |
 
 ## Question
 
-**Six open.** 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
+**None open** — Q1 to Q7 were answered 2026-09-28 and stay as one-line pointers so the numbers hold; Q7 by the owner's `settlement_importer.md`. 🆕 Q6 from the build. ✅ **`system_adjustment` is DECIDED** — `context.md` made it an eighth `settlement_type`, so it is a **LEDGER row**, shop-addressed, reaching the report through the broker. **My report-column recommendation is withdrawn as the default.** ⚠ What survives is not an argument against it but a gap it leaves: the adjustment moves the log and the report **together**, which repairs damage where both were wrong and **cannot** repair damage where only the fold was lost — which is what every known drift cause produces. That is now a note in [context_clarify](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other), recommending a targeted day re-fold from the log. 🆕 **One question arrived this round** — whether the grain goes on the wire ([Q5](#question)). ✅ **The replay's reach also closed** ([the-replay-reaches-31-days-and-that-is-accepted](./context_decision.md#the-replay-reaches-31-days-and-that-is-accepted)): the seek stands, my `settlement_logs` re-fold recommendation is withdrawn, the archive's deadline is retired for settlement, and what it left is a BUILD task in [Awaiting](#awaiting). ✅ Scoped to RECEIVING (owner), so publishing is re-routed to [context Q3](./context_clarify.md#question). **The tables, the write path, the dedup layer and the replay are all fully specified** — none of what is left stops the first migration.
 [a-past-date-position-is-a-real-screen](./context_decision.md#a-past-date-position-is-a-real-screen)
 confirmed a reader, so `open_balance` / `close_balance` and the five mechanisms that maintain them are
 paid for, and my recommendation to drop them is **withdrawn**. ✅ **And what that position MEANS is
-settled** — [the-position-is-the-shortfall-not-the-wallet](./context_decision.md#the-position-is-the-shortfall-not-the-wallet):
+settled** — [superseded-the-position-is-the-shortfall-not-the-wallet](./context_decision.md#superseded-the-position-is-the-shortfall-not-the-wallet):
 the cumulative shortfall, never the marketplace wallet, which is out of scope entirely. That closed a
 question that was upstream of the carry decision itself, and it **de-escalated the withdrawal gap** —
 settlement is no longer waiting on [context Q1](./context_clarify.md#question) /
@@ -1563,122 +1390,28 @@ three tables, one predicate, one transaction, `settlement_event_logs` gaining a 
 two earlier recommendations of mine: the generation counter and the handler-side range filter are **not
 built**.
 
-1. ⛔ **Does the lock's 500 lose messages to the dead-letter topic — and does `AnalyticMaintenanceRun`
-   need the lock at all?** ⬆ **The receiving question that replaced the publishing one.** ✅ *"Who sends
-   it"* is out of scope here and re-routed to [context_clarify.md](./context_clarify.md#question).
-   ⛔ **The webhook returns 500 while locked, Pub/Sub treats any non-2xx as a NACK, and a dead-letter
-   policy is mandatory** ([`push.go`](../../../backend/pkgs/event_source/push.go) — *"a permanently
-   malformed message is redelivered FOREVER"*, and CLAUDE.md requires the DLQ). So a lock window longer
-   than `maxDeliveryAttempts` × backoff turns a **healthy** message into a dead-lettered one: it is never
-   folded, the daily tables silently miss that movement, and **no invariant can see it** — `close − open
-   = change` holds on every row that does exist.
-   **→ I recommend `AnalyticMaintenanceRun` NOT take the lock.** It deletes dedup rows *older than
-   retention* while a live fold *inserts a new* one — **they cannot conflict**, so the long-running job
-   never needs to block the webhook. That leaves the lock held only by the replay's delete: one short
-   transaction, where NACK-and-retry is exactly right.
-   ⚠ **And whatever the window is, `maxDeliveryAttempts` × backoff must exceed it** — the third
-   subscription setting that is load-bearing and invisible from the code, after `retain_acked_messages`
-   and `message_retention`.
-   ⚠ **Two smaller receiving gaps beside it**: `sub_id` in `/event/[sub_id]/push` **selects nothing** —
-   `NewMuxPushHandler` takes one handler and never reads the path, so either it routes (undesigned) or it
-   is decoration; and the payload contract is still owed here even though the sender is not — the fold
-   needs **the `settlement_logs` row id and nothing else**, since everything else is readable in-process,
-   and `### Events.`'s four-field list is a **fat** event, which is the one shape that makes a replay fold
-   stale values.
-   ([the working](#-the-receiver-side-once-publishing-is-out-of-scope))
+1. ✅ **Answered 2026-09-28 — only the replay holds the lock**:
+   [only-the-replay-holds-the-lock](./context_decision.md#only-the-replay-holds-the-lock). Kept as a line so the numbers hold.
 
-2. ⛔ **Does the fold take one lock per shop — or does a late event and a live one lose an update?**
-   ⬇ **Shrunk hard this round.** ✅ `user_settlement_reports` is renamed, ✅ the state tables carry
-   `close_balance` alone, and ✅ that makes *"latest from daily reports"* precisely defined — so the
-   ambiguity is gone. ⛔ **And I retract my replay claim**: traced against the one-column table, the
-   derived writer **self-heals** — a shop with rows in the deleted range gets those same events
-   redelivered, and each re-fold re-derives its state row. A dormant shop had nothing deleted. **The
-   state tables do not need naming in the replay's delete.**
-   ⛔ **What is left is a real lost update**, and it is exactly the *"event can be late"* case
-   `### We Must Aware Of this` names. Two folds on one shop: a late event posting to day 05 and a live one
-   creating day 07. The live fold's `prev` lookup cannot see the uncommitted late fold, and the late
-   fold's `UPDATE … WHERE day > 05` cannot see the not-yet-inserted day 07. **Both commit, day 07 is
-   understated, and `close − open = change` still holds** — so nothing detects it, and the state row
-   copies the wrong close.
-   ⭐ **→ I recommend an ORDERING change, not a lock table: take the state row `FOR UPDATE` at the top of
-   the fold's transaction.** One row per shop, so every fold for that shop serialises on it, and the race
-   disappears for the daily tables too — the state table stops inheriting a race and starts **preventing**
-   one, at the cost of a lock the transaction was going to take at step 4 anyway.
-   ⚠ **Two conditions the doc should state either way**: step 4 runs in the **same transaction** as
-   statements 1–2, and *"latest"* means `ORDER BY day DESC LIMIT 1` — not the row for `@day`, which a late
-   event makes a different thing.
-   ⚠ This is what the `audit-sql` pass is for, and it cannot use `san_testdb.DB(t)` — two goroutines in
-   one transaction never block on each other.
-   ([the working](#-balance-state-reports--now-coherent-and-one-real-finding-is-left))
+2. ✅ **Answered 2026-09-28 — the fold locks the shop, then the person**:
+   [the-fold-locks-shop-then-user](./context_decision.md#the-fold-locks-shop-then-user). Kept as a line so the numbers hold.
 
-3. ⚠ **Does the past-date position screen exist per USER as well as per shop?** The answer that settled
-   the carry was about a **shop**. On `user_settlement_daily_reports` the same two columns mean something
-   different: *one CS person's lifetime running total of hidden platform cost*, which only ever grows —
-   so **the newest CS always looks best and the longest-serving always looks worst**, regardless of
-   performance.
-   **→ I recommend dropping `open_balance` / `close_balance` from the USER table only**, keeping its
-   movement columns. A window's `gap` and `take_rate` compare people fairly. ⚠ It also halves the
-   cascade, and the user table is the busier of the two — one CS touches many shops, so a backdated event
-   walks more rows there than on any single shop.
-   Keep them if the same screen exists per person.
-   ([the working](#-the-carry-is-settled--what-survives-is-two-smaller-things))
+3. ✅ **Answered 2026-09-28 — the user carry is kept**:
+   [the-user-carry-is-kept](./context_decision.md#the-user-carry-is-kept). Kept as a line so the numbers below hold.
 
-4. ⚠ **A reconcile pass is now load-bearing — is it in scope?** ⭐ **Now written as a buildable spec** — [the reconcile design](#proposed-design--the-reconcile-and-the-column-it-needs-in-the-first-migration). ⚠ **It revises my own earlier `folded_through` recommendation**: a max-id watermark is unreliable because `BIGSERIAL` assigns at INSERT and not at COMMIT, so a lower id can commit after a higher one and be skipped forever. **`folded_count` replaces it** — exact, no ordering assumption, and it catches a double-fold too. ⛔ **`folded_count` must be in the migration that CREATES the tables**: it cannot be backfilled, because how many rows were folded into a past day is not recoverable from anything.
-   [the-carry-materialises-the-day-boundary-position](./context_decision.md#the-carry-materialises-the-day-boundary-position)
-   named the bug class: the stored copy can drift from its own definition and **`close − open = change`
-   still holds on every row**, so no invariant on the table detects it. With a screen reading the number,
-   that is a wrong figure a person acts on.
-   **→ I recommend one RPC that checks a scope against the log it materialises** —
-   `close_balance(D) = Σ change WHERE posted_on <= D`, same service, no HARD RULE 3 problem — run on
-   demand rather than nightly to start with. It is the only check the eager write path cannot do itself.
+4. ✅ **Answered 2026-09-28 — no reconcile check is built**:
+   [the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built). Kept as a line so Q5 and Q6 keep
+   their numbers.
 
+5. ✅ **Answered 2026-09-28 — periods are grouped on the server**:
+   [periods-are-grouped-on-the-server](./context_decision.md#periods-are-grouped-on-the-server). Kept as a line so the numbers hold.
 
-5. ⚠ **Does the GRAIN go on the wire, or stay a client rollup?** 🆕 `TimeframeType {DAILY, MONTHLY,
-   YEARLY}` puts it on the wire. **The app currently answers the other way**, and it already ships:
-   `ExpenseDaily` / `LiabilityDaily` return a flat daily series and
-   [`daily-statement`](../../../frontend/src/pages/daily-statement/index.tsx) rolls it up with
-   `PeriodGrainPicker` + `bucketOf`. [`period.ts`](../../../frontend/src/lib/period.ts) states the
-   position outright: *"THE SERIES UNDERNEATH IS ALWAYS DAILY … a coarser grain is a ROLLUP the client
-   does"*.
-   ⚠ **Your version fixes a limitation that file admits to** — the 366-day cap means a yearly view
-   reaches one year — so this is a real trade, not a style point.
-   ⛔ **But whichever wins has to win for BOTH screens.** Settlement's series and the statement's are read
-   side by side; if one buckets in SQL (`date_trunc`, in the database's timezone) and the other in the
-   browser (`date.slice`), *"August"* is computed two ways and they disagree exactly where
-   [the timezone contradiction](#the-bucket-day-is-derived-twice-in-two-timezones-and-the-two-disagree-for-a-third-of-the-clock)
-   already bites.
-   **→ I recommend keeping the grain client-side** and leaving the multi-year limitation open, because it
-   is one rollup definition instead of two and touches no other service. **→ If it goes on the wire, do it
-   as a SPAN-UNLOCK** — grain widens the cap (366 days / 60 months / 20 years) rather than being a display
-   preference — and change all three Daily RPCs together.
-   ⚠ **Beside it, one confirmation**: `Team Grouped` crosses team scope, which only ROOT/ADMIN in team 1
-   can do. **→ Declare it an admin screen** — no new mechanism needed, and it is the cheapest of the three
-   options.
+6. ✅ **Answered 2026-09-28 — topic retention carries the replay**:
+   [topic-retention-carries-the-replay](./context_decision.md#topic-retention-carries-the-replay). Kept as a line so the numbers hold.
 
-6. **Is the TOPIC's retention an acceptable way to make the replay's seek work — instead of
-   `retain_acked_messages` on the subscription?** 🆕 from the build.
-   [the-replay-seeks-the-broker](./context_decision.md#the-replay-seeks-the-broker) says
-   `retain_acked_messages` *must be TRUE*, because a seek backwards over acknowledged messages otherwise
-   delivers nothing. ✅ **That is true of the subscription alone** — but Pub/Sub also lets a subscription
-   seek to any time within its **topic's** retention, acked or not, and `san pubsub ensure` already sets
-   every topic to the 31-day maximum.
-   ```mermaid
-   flowchart LR
-     S["seek to a time"] --> T{"topic retention covers it?"}
-     T -->|"yes — 31 days, set by san pubsub ensure"| R["redelivered, acked or not"]
-     T -->|"no"| A{"subscription retains acked?"}
-     A -->|"yes — 7 days at most"| R
-     A -->|"no"| X["nothing redelivered — the replay refuses"]
-   ```
-   | | `retain_acked_messages` on the subscription | topic retention (built) |
-   | --- | --- | --- |
-   | reach | **7 days** — the subscription maximum | **31 days** |
-   | extra storage | every acked message, per subscription | already paid — the topic retains anyway |
-   | what the replay reads | the subscription's retention | the larger of the two, from `GetSubscription` |
-   **→ I recommend topic retention** — it reaches four times further and costs nothing already not paid.
-   The replay reads the window from Pub/Sub, so if a topic is ever made without retention the replay
-   shortens or refuses instead of deleting days it cannot rebuild. ⚠ If yes, the decision's *"must be
-   TRUE"* line is the one to amend.
+7. ✅ **Answered 2026-09-28 — the uploader carries it, by your importer doc**:
+   [superseded-an-imported-row-names-its-orders-creator-else-the-uploader](./settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader). My user-0 recommendation is declined. ⚠ **Superseded 2026-09-29** — the shop's
+   primary CS carries it now: [user-id-is-the-orders-creator-else-the-shops-primary-cs](./settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs). Kept as a line so the numbers hold.
 
 ⚠ **The order seam is no longer open here** — it was answered in full
 ([the-order-commits-without-settlement](./context_decision.md#the-order-commits-without-settlement) ·
@@ -1913,6 +1646,44 @@ flowchart LR
 **→ Recommend** §Idempotency Layer say *"the event's id"*. **Built that way** — `settlement_event_logs.id`
 holds `settlement-log:<log_id>`. What stops it recurring: the event architecture now owns the dedup key,
 so a context doc names it by linking there rather than restating it.
+
+---
+
+## two decisions of 2026-09-10 reached the reconcile's header and not the rest of it
+
+> [folded-count-is-deferred](./context_decision.md#folded-count-is-deferred) — *"The daily tables ship
+> **without** `folded_count`. The reconcile keeps its **value** check only."*
+>
+> Q4, as it stood until 2026-09-28 — *"⛔ **`folded_count` must be in the migration that CREATES the
+> tables**"*.
+
+**The decision was right and my text was stale.** It — and, the same day,
+[genesis-is-not-needed-when-the-log-starts-empty](./context_decision.md#genesis-is-not-needed-when-the-log-starts-empty)
+— was applied to a note at the top of the reconcile design and nowhere else. Six sites, one cause:
+
+| site | still said |
+| --- | --- |
+| Q4 | `folded_count` has a deadline — and linked an anchor the renamed heading no longer has |
+| the design's closing line | *"Recommend both, and `folded_count` in the create-tables migration"* |
+| the SQL | a `folded_count` comparison and a `@genesis_day` guard |
+| the catch table | *"a wrong genesis"*, and two rows only a count can see |
+| the repair paths | `AnalyticReseedGenesis`, withdrawn in [Awaiting](#awaiting) |
+| the proto | `stored_rows` / `log_rows` |
+
+**→ Fixed** on 2026-09-28 — and the same day the check was declined
+([the-reconcile-check-is-not-built](./context_decision.md#the-reconcile-check-is-not-built)), so the design itself is gone. **The lesson
+stands**: a decision that trims a design is applied to the design's BODY and to its question — a note saying
+*"ignore what follows"* is a contradiction waiting for the reader who skips it.
+
+```mermaid
+flowchart LR
+  D["2026-09-10 — folded_count deferred, genesis withdrawn"] --> N["the design's opening note — updated"]
+  D -.->|"not updated"| Q["Q4 — a deadline for a column that will not exist"]
+  D -.->|"not updated"| S["the SQL, the catch table, the proto"]
+  N --> F["2026-09-28 — rewritten, then declined and removed"]
+  Q --> F
+  S --> F
+```
 
 ---
 

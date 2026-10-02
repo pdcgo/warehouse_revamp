@@ -13,14 +13,15 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { Landmark } from "lucide-react";
+import { Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
 import type { Team } from "../../../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveTeamInfo, useTeamDetail } from "../../../features/teams/queries";
 
-// TeamInfoDialog edits a team's contact + bank details (its TeamInfo).
+// TeamInfoDialog edits a team's contact (its TeamInfo). It holds no bank — a team's bank is a
+// financial account (owner, 2026-09-30).
 //
 // It loads the current values via TeamDetail (which is the only RPC that returns `info`), then
 // writes with TeamInfoUpdate. That RPC is team-scoped: a team owner/admin may edit their own,
@@ -43,9 +44,6 @@ export function TeamInfoDialog({
   const [error, setError] = useState("");
 
   const [contactNumber, setContactNumber] = useState("");
-  const [bankType, setBankType] = useState("");
-  const [bankOwnerName, setBankOwnerName] = useState("");
-  const [bankAccountNumber, setBankAccountNumber] = useState("");
 
   function setOpen(next: boolean) {
     if (isControlled) {
@@ -88,14 +86,11 @@ export function TeamInfoDialog({
     }
 
     setContactNumber(info?.contactNumber ?? "");
-    setBankType(info?.bankType ?? "");
-    setBankOwnerName(info?.bankOwnerName ?? "");
-    setBankAccountNumber(info?.bankAccountNumber ?? "");
     setSeeded(true);
   }, [open, seeded, query.isSuccess, info]);
 
   // A failed READ shows in the same place a failed write does — there is one error line in this
-  // dialog and either failure is a reason you cannot edit the bank details.
+  // dialog and either failure is a reason you cannot edit the contact.
   const readError = query.isError ? rpcError(query.error) : "";
   const shownError = error || readError;
 
@@ -105,7 +100,7 @@ export function TeamInfoDialog({
     setError("");
 
     save.mutate(
-      { teamId: team.id, contactNumber, bankType, bankOwnerName, bankAccountNumber },
+      { teamId: team.id, contactNumber },
       {
         onSuccess: () => {
           toaster.create({ type: "success", title: t("teams.teamInfoUpdated") });
@@ -121,7 +116,7 @@ export function TeamInfoDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           <IconButton size="xs" variant="ghost" aria-label="Team info" data-testid={`info-team-${team.teamCode}`}>
-            <Icon as={Landmark} boxSize="4" />
+            <Icon as={Phone} boxSize="4" />
           </IconButton>
         </Dialog.Trigger>
       )}
@@ -132,7 +127,7 @@ export function TeamInfoDialog({
           <Dialog.Content>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{t("teams.contactBankTitle", { name: team.name })}</Dialog.Title>
+                <Dialog.Title>{t("teams.contactTitle", { name: team.name })}</Dialog.Title>
               </Dialog.Header>
 
               <Dialog.Body>
@@ -152,33 +147,6 @@ export function TeamInfoDialog({
                         value={contactNumber}
                         data-testid="info-contact"
                         onChange={(e) => setContactNumber(e.target.value)}
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label>{t("teams.bank")}</Field.Label>
-                      <Input
-                        value={bankType}
-                        data-testid="info-bank-type"
-                        onChange={(e) => setBankType(e.target.value)}
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label>{t("teams.accountHolder")}</Field.Label>
-                      <Input
-                        value={bankOwnerName}
-                        data-testid="info-bank-owner"
-                        onChange={(e) => setBankOwnerName(e.target.value)}
-                      />
-                    </Field.Root>
-
-                    <Field.Root>
-                      <Field.Label>{t("teams.accountNumber")}</Field.Label>
-                      <Input
-                        value={bankAccountNumber}
-                        data-testid="info-bank-account"
-                        onChange={(e) => setBankAccountNumber(e.target.value)}
                       />
                     </Field.Root>
                   </Stack>

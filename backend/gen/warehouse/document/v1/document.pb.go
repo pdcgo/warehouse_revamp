@@ -49,6 +49,13 @@ const (
 	// CREDITOR is the person who has to look at it, which is what `ShareDocument` exists for. Private
 	// for an obvious reason: a transfer slip names an account number.
 	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF DocumentResourceType = 5
+	// PRIVATE: a marketplace settlement statement — the .xlsx a platform exports and the settlement importer
+	// stores before it reads it (the-import-is-one-streamed-call). Named by the hash of its bytes
+	// (the-file-is-named-by-its-content-hash).
+	//
+	// Private because a statement lists every order and what the platform took from each — the shop's
+	// books, read through a signed URL by somebody who belongs to the team.
+	DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT DocumentResourceType = 6
 )
 
 // Enum value maps for DocumentResourceType.
@@ -60,14 +67,16 @@ var (
 		3: "DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE",
 		4: "DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT",
 		5: "DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF",
+		6: "DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT",
 	}
 	DocumentResourceType_value = map[string]int32{
-		"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED":     0,
-		"DOCUMENT_RESOURCE_TYPE_GENERAL":         1,
-		"DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE": 2,
-		"DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE":   3,
-		"DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT":   4,
-		"DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF":   5,
+		"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED":          0,
+		"DOCUMENT_RESOURCE_TYPE_GENERAL":              1,
+		"DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE":      2,
+		"DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE":        3,
+		"DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT":        4,
+		"DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF":        5,
+		"DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT": 6,
 	}
 )
 
@@ -729,14 +738,15 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"withTeamId:\x0e\x92\xb5\x18\n" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x17\n" +
-	"\x15ShareDocumentResponse*\x8c\x02\n" +
+	"\x15ShareDocumentResponse*\xbd\x02\n" +
 	"\x14DocumentResourceType\x12&\n" +
 	"\"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDOCUMENT_RESOURCE_TYPE_GENERAL\x10\x01\x12*\n" +
 	"&DOCUMENT_RESOURCE_TYPE_PROFILE_PICTURE\x10\x02\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE\x10\x03\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x04\x12(\n" +
-	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x052\xc4\x03\n" +
+	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x05\x12/\n" +
+	"+DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT\x10\x062\xc4\x03\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
 	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12m\n" +

@@ -11,8 +11,16 @@ import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
 import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
-import { resetLiabilityPayments, resetLiabilityTerms, resetShipmentChannels, stubUploads } from "./stubTransport";
+import {
+  resetLiabilityPayments,
+  resetLiabilityTerms,
+  resetSettlementImports,
+  resetShipmentChannels,
+  stubUploads,
+} from "./stubTransport";
 import { TeamProvider } from "../src/features/team/TeamContext";
+import { resetFinancialAccounts } from "./financialAccountStub";
+import { resetSessionScenario } from "./sessionScenario";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -362,6 +370,13 @@ const preview: Preview = {
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();
+    // …and the imported-files table, which every story that runs an import adds a row to — and its
+    // scenario flags (no primary CS, a wrong-shop file), which one story sets for itself alone.
+    resetSettlementImports();
+    // …and the financial accounts, whose ledger a transfer, a reconcile or an archive writes to.
+    resetFinancialAccounts();
+    // …and who is signed in — a story standing as a CS must not leave the next one a CS.
+    resetSessionScenario();
     stubClipboard();
   },
   parameters: {

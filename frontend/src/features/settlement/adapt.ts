@@ -31,6 +31,11 @@ const settlementTypeOf: Record<number, SettlementType> = {
   [WireSettlementType.AFFILIATE_FEE]: "affiliate_fee",
   [WireSettlementType.MARKETPLACE_ADJUSTMENT]: "marketplace_adjustment",
   [WireSettlementType.OTHER]: "other",
+  [WireSettlementType.WITHDRAWAL]: "withdrawal",
+  [WireSettlementType.SHIPMENT_ADJUSTMENT]: "shipment_adjustment",
+  [WireSettlementType.LOGISTIC_REIMBURSEMENT]: "logistic_reimbursement",
+  [WireSettlementType.PLATFORM_REIMBURSEMENT]: "platform_reimbursement",
+  [WireSettlementType.MARKETPLACE_PROGRAM]: "marketplace_program",
 };
 
 export const wireSettlementType: Record<SettlementType, WireSettlementType> = {
@@ -41,10 +46,15 @@ export const wireSettlementType: Record<SettlementType, WireSettlementType> = {
   affiliate_fee: WireSettlementType.AFFILIATE_FEE,
   marketplace_adjustment: WireSettlementType.MARKETPLACE_ADJUSTMENT,
   other: WireSettlementType.OTHER,
+  withdrawal: WireSettlementType.WITHDRAWAL,
+  shipment_adjustment: WireSettlementType.SHIPMENT_ADJUSTMENT,
+  logistic_reimbursement: WireSettlementType.LOGISTIC_REIMBURSEMENT,
+  platform_reimbursement: WireSettlementType.PLATFORM_REIMBURSEMENT,
+  marketplace_program: WireSettlementType.MARKETPLACE_PROGRAM,
 };
 
 const sourceTypeOf: Record<number, SourceType> = {
-  [WireSourceType.EXPORTER]: "exporter",
+  [WireSourceType.IMPORTER]: "importer",
   [WireSourceType.MANUAL]: "manual",
   [WireSourceType.ORDER]: "order",
 };
@@ -61,7 +71,7 @@ export function entryFromWire(wire: WireSettlementEntry): SettlementEntry {
     settlementType: settlementTypeOf[wire.settlementType] ?? "other",
     change: wire.change,
     balance: wire.balance,
-    sourceType: sourceTypeOf[wire.sourceType] ?? "exporter",
+    sourceType: sourceTypeOf[wire.sourceType] ?? "importer",
     // ⚠ The id, not a name. Resolving it needs user_service, and a ledger does not read another
     // service's tables (HARD RULE 3) — the screen looks it up where it already lists people.
     actorName: wire.actorName || String(wire.actorId),

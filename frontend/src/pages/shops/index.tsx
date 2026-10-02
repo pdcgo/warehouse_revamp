@@ -124,13 +124,21 @@ export function ShopsPage() {
             {shops.map((shop) => (
               <Table.Row key={shop.id.toString()} data-testid={`shop-row-${shop.shopCode}`}>
                 <Table.Cell>
-                  <Box
-                    cursor="pointer"
-                    data-testid={`open-shop-${shop.shopCode}`}
-                    onClick={() => navigate(`/shops/${shop.id}`)}
-                  >
-                    {shop.name}
-                  </Box>
+                  <HStack gap="2">
+                    <Box
+                      cursor="pointer"
+                      data-testid={`open-shop-${shop.shopCode}`}
+                      onClick={() => navigate(`/shops/${shop.id}`)}
+                    >
+                      {shop.name}
+                    </Box>
+                    {/* the-primary-cs-is-a-flag-on-a-grant — a shop with none cannot import its statements. */}
+                    {shop.primaryUserId === 0n && (
+                      <Badge colorPalette="orange" size="sm" data-testid={`shop-no-primary-${shop.shopCode}`}>
+                        {t("shops.noPrimary")}
+                      </Badge>
+                    )}
+                  </HStack>
                 </Table.Cell>
                 <Table.Cell>{shop.shopCode}</Table.Cell>
                 <Table.Cell>

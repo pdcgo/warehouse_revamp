@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Field, HStack, Heading, Icon, IconButton, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { UserMinus } from "lucide-react";
+import { Badge, Button, Field, HStack, Heading, Icon, IconButton, Spinner, Stack, Table, Text } from "@chakra-ui/react";
+import { Star, UserMinus } from "lucide-react";
 import { rpcError, shopClient, userClient } from "../../../api/clients";
 import { publicUsersByIds, userByIdsRowData } from "../../../features/users/adapt";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
@@ -13,7 +13,22 @@ import { toaster } from "../../../components/feedback/Toaster";
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect (unscoped — grant anyone),
 // and removes with a confirm. Scoped to the shop's team; the backend is the real gate.
-export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: bigint }) {
+//
+// ⚠ AND IT SHOWS THE PRIMARY CS (the-primary-cs-is-a-flag-on-a-grant) — a badge on that user's row, and
+// Make primary on every other. The first user granted becomes it and removing its grant leaves none,
+// both on the server — so every change here asks the page to re-read the shop. A shop with none cannot
+// import its statements, and says so.
+export function ShopUsersSection({
+  teamId,
+  shopId,
+  primaryUserId,
+  onChanged,
+}: {
+  teamId: bigint;
+  shopId: bigint;
+  primaryUserId: bigint;
+  onChanged: () => void;
+}) {
   const { t } = useTranslation();
   const [userIds, setUserIds] = useState<bigint[]>([]);
   const [users, setUsers] = useState<Record<string, PublicUser>>({});
@@ -71,6 +86,7 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
       toaster.create({ type: "success", title: t("shops.users.userAdded") });
       setAdding(undefined);
       await load();
+      onChanged();
     } catch (err) {
       toaster.create({ type: "error", title: t("shops.users.addFailed"), description: rpcError(err) });
     } finally {
@@ -83,14 +99,31 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
       await shopClient.shopUserRemove({ teamId, shopId, userId });
       toaster.create({ type: "success", title: t("shops.users.accessRemoved") });
       await load();
+      onChanged();
     } catch (err) {
       toaster.create({ type: "error", title: t("shops.users.removeFailed"), description: rpcError(err) });
+    }
+  }
+
+  async function makePrimary(userId: bigint) {
+    try {
+      await shopClient.shopUserSetPrimary({ teamId, shopId, userId });
+      toaster.create({ type: "success", title: t("shops.users.primaryChanged") });
+      onChanged();
+    } catch (err) {
+      toaster.create({ type: "error", title: t("shops.users.makePrimaryFailed"), description: rpcError(err) });
     }
   }
 
   return (
     <Stack gap="card" data-testid="shop-users-section">
       <Heading size="sm">{t("shops.users.heading")}</Heading>
+
+      {primaryUserId === 0n && (
+        <Text color="orange.fg" fontSize="sm" data-testid="shop-no-primary">
+          {t("shops.users.noPrimary")}
+        </Text>
+      )}
 
       <HStack gap="card" align="end">
         <Field.Root>
@@ -126,13 +159,32 @@ export function ShopUsersSection({ teamId, shopId }: { teamId: bigint; shopId: b
             {userIds.map((id) => {
               const u = users[id.toString()];
               const label = u?.username || id.toString();
+              const primary = id === primaryUserId;
 
               return (
                 <Table.Row key={id.toString()} data-testid={`shop-user-row-${label}`}>
                   <Table.Cell>
-                    <UserItem user={u ?? { username: label, name: "", avatarUrl: "" }} />
+                    <HStack gap="2">
+                      <UserItem user={u ?? { username: label, name: "", avatarUrl: "" }} />
+                      {primary && (
+                        <Badge colorPalette="brand" size="sm" data-testid={`shop-user-primary-${label}`}>
+                          {t("shops.users.primaryBadge")}
+                        </Badge>
+                      )}
+                    </HStack>
                   </Table.Cell>
                   <Table.Cell textAlign="end">
+                    {!primary && (
+                      <IconButton
+                        size="xs"
+                        variant="ghost"
+                        aria-label={t("shops.users.makePrimaryLabel", { label })}
+                        data-testid={`make-primary-${label}`}
+                        onClick={() => void makePrimary(id)}
+                      >
+                        <Icon as={Star} boxSize="4" />
+                      </IconButton>
+                    )}
                     <IconButton
                       size="xs"
                       variant="ghost"

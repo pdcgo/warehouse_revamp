@@ -11,9 +11,11 @@ inversion — which is invisible from inside any one handler.
 | --- | --- | --- |
 | `LiabilityPaymentConfirm` | `liability_payments` → `liability_balances` | `lockPayment` (`FOR UPDATE`), then `PostEntry` |
 | `LiabilityPaymentReject` | `liability_payments` | a strict PREFIX of confirm's order, so it cannot invert it. Nothing posts |
-| `LiabilityPaymentReverse` | `liability_payments` → `liability_balances` | same as confirm; the entry is compensating |
 | `LiabilityPaymentRecord` | *(none)* | one INSERT, no read-modify-write |
-| `PostEntry` | `liability_balances` | reached only from the three above, or standalone from another service |
+| `PostEntry` | `liability_balances` | reached from confirm, or standalone from another service |
+
+> `LiabilityPaymentReverse` was a third locking path (same order as confirm) and was **removed** on
+> 2026-10-01 by [an-accepted-payment-is-final](../../../../docs/business/balance/context_decision.md#an-accepted-payment-is-final).
 | `LiabilityTermsSet` | *(none)* | read-then-upsert in one transaction — see below |
 | `LiabilityTermsDelete` | *(none)* | read-then-delete in one transaction — see below |
 
@@ -50,7 +52,6 @@ third entry at the top.
 | | |
 | --- | --- |
 | `TestRace_LiabilityPaymentConfirm` | 8 concurrent confirms → exactly 1 winner, balance 0 |
-| `TestRace_LiabilityPaymentConfirmAgainstReverse` | complementary guards, balance lands on 0 or 15000 |
 | `TestRace_LiabilityPaymentConfirmAgainstReject` | 🆕 8 callers alternating confirm/reject → 1 winner, and the status and the balance tell the SAME story |
 | `TestInterleave_RejectBlocksBehindConfirm` | 🆕 **the proof of safety** — B blocked 305ms on A's lock and re-read `confirmed` after acquiring it |
 

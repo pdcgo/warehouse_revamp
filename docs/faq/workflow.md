@@ -201,11 +201,11 @@ The caller is a program, not a person with roles in a team, so there is no ident
 role to look up — and minting a fake user would put a shell behind the credential the login screen
 also accepts.
 
-It is also the only thing that makes streaming work. The access interceptor
-[refuses every streaming RPC](../../backend/services/user_service/access_interceptors/interceptor.go)
-because it reads team scope from the request **body**, which has not arrived when an interceptor
-runs. A bearer token is a **header** — present before the first message — so `remote`'s own
-interceptor guards unary and streaming calls alike.
+It also guards streams the warehouse interceptor cannot. That interceptor
+[authorizes a server stream on its one request and refuses client and bidi streams](../../backend/services/user_service/access_interceptors/interceptor.go),
+because it reads team scope from the request **body** and those carry many. A bearer token is a
+**header** — present before the first message — so `remote`'s own interceptor guards unary and
+every kind of stream alike.
 
 ---
 

@@ -36,7 +36,7 @@ func detail(
 // would show a running total that appears to count backwards, which reads as corrupted data.
 func TestOrderSettlementDetail_ReturnsTheLogOldestFirst(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -46,7 +46,7 @@ func TestOrderSettlementDetail_ReturnsTheLogOldestFirst(t *testing.T) {
 	_, err = post(t, svc, settlement_v1.PostInput{
 		UniqueID:       "stmt-aug-fund",
 		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
-		SourceType:     settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+		SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 		Change:         arrived,
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func TestOrderSettlementDetail_ReturnsTheLogOldestFirst(t *testing.T) {
 // returning a zeroed row would render as a completed settlement that nobody performed.
 func TestOrderSettlementDetail_DistinguishesNeverSettledFromZero(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := detail(t, svc, team, 999_999)
 	if err == nil {
@@ -101,7 +101,7 @@ func TestOrderSettlementDetail_DistinguishesNeverSettledFromZero(t *testing.T) {
 // read another team's ledger.
 func TestOrderSettlementDetail_RefusesAnotherTeamsAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
