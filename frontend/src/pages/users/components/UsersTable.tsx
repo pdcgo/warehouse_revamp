@@ -41,7 +41,6 @@ import { useTeams } from "../../../features/teams/queries";
 import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
 import { ChangeRoleDialog } from "./ChangeRoleDialog";
-import { MemberLog } from "./MemberLog";
 import { useEraseUser, useRemoveTeamMember, useSuspendUser, useUsers } from "../../../features/users/queries";
 import { USERS_PENDING } from "../pending";
 
@@ -50,8 +49,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // UsersTable is the one user-management surface, used by both faces of the Users page (#58):
 //
 //  - mode="team": manage the members of ONE team (the current team). Offers Change Role and
-//    Remove-from-team, and the team's membership history below. This is the whole page for warehouse
-//    and selling managers, and the "My Team User" tab for Root and the Administrator.
+//    Remove-from-team. It is the "My Team User" tab; the team's history is the tab beside it.
 //  - mode="all": manage EVERY user across EVERY team (Root and the Administrator only). A team filter
 //    narrows the list; team_id = 0 means everyone (the root scope).
 //
@@ -427,8 +425,6 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
           )}
         </Stack>
       </RefreshOverlay>
-
-      {mode === "team" && current && <MemberLog teamId={current.teamId} teamType={current.teamType} />}
 
       {/* One instance of each dialog, driven by the row menu's selection above. */}
       {dialog?.kind === "edit" && (

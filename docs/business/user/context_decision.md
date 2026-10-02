@@ -1096,3 +1096,21 @@ flowchart LR
 `FinancialAccountCapital` lose `ROLE_WAREHOUSE_ADMIN`. Recording, confirming and rejecting a payment, and reconciling,
 stay open to the Admin. The **selling** Admin is not covered by this decision: those calls are open to it today, and
 nothing here changes that.
+
+## the-history-is-a-tab-beside-the-members
+
+> Owner, in chat *(2026-10-02)*: *"make member and membership history as tab"*. Feedback on the prototype, before
+> [Q23](./context_clarify.md#question).
+
+**The verdict.** The Users page shows a team's members and its membership history on **two tabs**, not one under the
+other. Root and the System Administrator keep their third tab, everyone across every team.
+
+```mermaid
+flowchart LR
+  U["Users page"] --> M["My Team User — the members"]
+  U --> H["Membership History — who added, changed, removed whom"]
+  U -.->|"Root and the System Administrator only"| A["All User"]
+```
+
+**The spec.** Built in the prototype. The history tab sits beside the members because it is the same team's. It loads
+only when opened. Add Member shows on both team tabs, not on All User. The history's ⚠ mark moves to its tab.

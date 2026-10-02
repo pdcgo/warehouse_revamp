@@ -17,6 +17,10 @@ const ADMIN_SET_PASSWORD = "admin-set-pass-1"; // set by an admin (AdminResetPas
 // visitor straight back into the app, so navigating there while signed in does nothing.
 async function login(page: Page, username: string, password: string) {
   await page.goto("/");
+  // ⚠ Let the page SETTLE before clearing. On load the app renews its token (CheckAccess) and writes
+  // the answer back — clear before that answer lands and the old session is restored, so /login
+  // redirects straight back into the app as the previous user.
+  await page.waitForLoadState("networkidle");
 
   await page.evaluate(() => {
     window.localStorage.clear();
@@ -33,6 +37,10 @@ async function login(page: Page, username: string, password: string) {
 // loginExpectingFailure drives the form without asserting success.
 async function loginExpectingFailure(page: Page, username: string, password: string) {
   await page.goto("/");
+  // ⚠ Let the page SETTLE before clearing. On load the app renews its token (CheckAccess) and writes
+  // the answer back — clear before that answer lands and the old session is restored, so /login
+  // redirects straight back into the app as the previous user.
+  await page.waitForLoadState("networkidle");
 
   await page.evaluate(() => {
     window.localStorage.clear();

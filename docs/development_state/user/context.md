@@ -4,7 +4,7 @@
 ([Q23](../../business/user/context_clarify.md#question)). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md) — roles per team type,
 Root and the System Administrator, suspend, the dev root, and how a team's members are managed. Questions:
 [context_clarify.md](../../business/user/context_clarify.md), **three open** (Q21–Q23, from the prototype; Q3–Q20 answered by 2026-10-02). Decisions:
-[context_decision.md](../../business/user/context_decision.md) — **42 recorded, 2 of them superseded**. One question was
+[context_decision.md](../../business/user/context_decision.md) — **43 recorded, 2 of them superseded**. One question was
 re-routed: who confirms a stock count is [inventory Q12](../../business/inventory/context_clarify.md#question).
 
 The service predates the lifecycle: every RPC in `proto/warehouse/user/v1/user.proto` (19) has a handler and a test,
@@ -21,7 +21,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 | --- | --- |
 | contract (additive) | `UserList` MEMBERSHIP slice · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` · `UserErase` · `TeamMemberLogList` · `DeleteUser` deprecated. Placeholders `user_erase.go`, `team_member_log_list.go` answer `Unimplemented`, with tests |
 | screen rules | `lib/roles.ts`: `roleRank`, `managesMembers`, `grantableRoles`, `canManageMember`, `canSuspendUser`, `canEraseUser`, `defaultGrant` (no role preselected in the root team) |
-| Users page | role column, rank-gated ⋯ menu, Change Role dialog, Erase, membership history, no Delete. Add Member / New User only for member managers |
+| Users page | tabs: My Team User · Membership History · All User (Root and the Administrator only). Role column, rank-gated ⋯ menu, Change Role dialog, Erase, no Delete. Add Member / New User only for member managers |
 | Add Member popup | `features/users/AddMemberDialog.tsx` rewritten: search list → Select Role / Change Role / Create and Add |
 | elsewhere | Edit has a username field (not on yourself) · New User offers `grantableRoles` · the shop grant's picker is scoped to its team · `RoleSelect` seeds its list (a prefilled role used to read blank) |
 | e2e | `e2e/users.spec.ts`: roles chosen explicitly in the root team, the popup's test ids, DeleteUser test → "no Delete offered" |

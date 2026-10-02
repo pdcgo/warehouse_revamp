@@ -33,6 +33,13 @@ async function allUsers(canvas: ReturnType<typeof within>) {
   await waitFor(() => expect(canvas.getByTestId("role-fajar")).toHaveTextContent("Root"), { timeout: 4000 });
 }
 
+/** Open the Membership History tab and return its panel. */
+async function history(canvas: ReturnType<typeof within>) {
+  await userEvent.click(await canvas.findByTestId("users-tab-history"));
+
+  return canvas.findByTestId("member-log");
+}
+
 async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
   await waitFor(() => expect(canvas.getByTestId("role-dewi")).toHaveTextContent("Warehouse Owner"), { timeout: 4000 });
@@ -76,6 +83,7 @@ export const TheHistoryIsNotBuiltYet: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await history(canvas);
 
     await expect(await canvas.findByTestId("member-log-not-built")).toBeInTheDocument();
   },
@@ -157,18 +165,24 @@ export const ChangeRoleIsLogged: Story = {
     await userEvent.click(within(dialog).getByTestId("submit-change-role"));
 
     await waitFor(() => expect(canvas.getByTestId("role-eko")).toHaveTextContent("Warehouse Admin"));
-    await waitFor(() =>
-      expect(canvas.getByTestId("member-log")).toHaveTextContent("ani changed eko from Warehouse Staff to Warehouse Admin"),
-    );
+
+    const log = await history(canvas);
+    await waitFor(() => expect(log).toHaveTextContent("ani changed eko from Warehouse Staff to Warehouse Admin"));
   },
 };
 
-// The history is sentences, newest first — and a Root's change in a team they are not in is stamped.
+// The history is its own tab beside the members (the-history-is-a-tab-beside-the-members): sentences,
+// newest first — and a Root's change in a team they are not in is stamped.
 export const TheHistoryReadsAsSentences: Story = {
   beforeEach: asRole(Role.WAREHOUSE_OWNER),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const log = await canvas.findByTestId("member-log");
+
+    // Not on the members tab — it is a tab of its own.
+    await canvas.findByTestId("users-table");
+    await expect(canvas.queryByTestId("member-log")).toBeNull();
+
+    const log = await history(canvas);
 
     await waitFor(() => expect(log).toHaveTextContent("dewi changed budi from Warehouse Staff to Warehouse Admin"));
     await expect(log).toHaveTextContent("san added dewi as Warehouse Owner");

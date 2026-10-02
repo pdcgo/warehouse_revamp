@@ -4,23 +4,26 @@ import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin, managesMembers } from "../../lib/roles";
 import { AddMemberDialog } from "../../features/users/AddMemberDialog";
+import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { USERS_PENDING } from "./pending";
 import { CreateUserDialog } from "./components/CreateUserDialog";
+import { MemberLog } from "./components/MemberLog";
 import { UsersTable } from "./components/UsersTable";
 
-// The Users page has two faces (#58), and the caller's reach decides which:
+type Tab = "team" | "history" | "all";
+
+// The Users page is TABS (#58, the-history-is-a-tab-beside-the-members):
 //
-//  - A global admin (root/admin) manages people across the whole system, so they get TABS:
-//    "My Team User" (their own team's membership) and "All User" (everyone, filterable by team).
-//  - Everyone else — a warehouse/selling team manager — can only manage their own team, so they
-//    get that single team-scoped table with no tabs.
+//  - "My Team User" — the current team's members.
+//  - "Membership History" — who added, changed and removed whom in that same team, beside it.
+//  - "All User" — everyone, filterable by team. Root and the System Administrator only, since only they
+//    act outside a team.
 //
 // The Add member / New user buttons live in the page header (top-right), NOT inside the tabs (#58
-// review). "Add Member" only makes sense for a team-scoped view, so it shows on the plain page and
-// the "My Team User" tab, but not "All User". Neither signals the tables any more (#177): each write
-// invalidates the user cache itself, so BOTH tabs' lists refresh — the old `reload` counter only
-// ever reached the one that happened to be mounted.
+// review). "Add Member" is a team-membership action, so it shows on both of the team's tabs but not
+// "All User". Neither signals the tables (#177): each write invalidates the user cache itself, so
+// every tab's list refreshes.
 //
 // Both buttons are for those who MANAGE MEMBERS (only-member-managers-open-the-search) — every Owner,
 // the warehouse and selling Admins, Root and the Administrator. The admin team's Admin sees the list
@@ -29,58 +32,55 @@ export function UsersPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
   const globalAdmin = isGlobalAdmin(current?.role);
-
-  const [tab, setTab] = useState<"team" | "all">("team");
-
-  // Add member is a team-membership action — offered wherever the view is a single team.
-  const teamScoped = !globalAdmin || tab === "team";
   const manager = managesMembers(current?.role, current?.teamType);
 
-  const header = (
-    <Flex align="center" gap="card">
-      <Heading size="md">{t("users.title")}</Heading>
-      {!globalAdmin && current && (
-        <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-      )}
-      <Spacer />
-      {manager && teamScoped && <AddMemberDialog />}
-      {manager && <CreateUserDialog />}
-    </Flex>
-  );
+  const [tab, setTab] = useState<Tab>("team");
 
-  if (!globalAdmin) {
-    return (
-      <Stack gap="section">
-        {header}
-        <NotImplementedSummary list={USERS_PENDING} />
-        <UsersTable mode="team" />
-      </Stack>
-    );
-  }
+  const teamScoped = tab !== "all";
 
   return (
     <Stack gap="section">
-      {header}
+      <Flex align="center" gap="card">
+        <Heading size="md">{t("users.title")}</Heading>
+        {!globalAdmin && current && (
+          <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
+        )}
+        <Spacer />
+        {manager && teamScoped && <AddMemberDialog />}
+        {manager && <CreateUserDialog />}
+      </Flex>
+
       <NotImplementedSummary list={USERS_PENDING} />
 
-      {/* lazyMount + unmountOnExit: only the visible tab's table is mounted, so exactly one user
-          list is fetched and the shared `users-table` testid is never duplicated. */}
-      <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value as "team" | "all")} lazyMount unmountOnExit>
+      {/* lazyMount + unmountOnExit: only the visible tab is mounted, so exactly one list is fetched and
+          the shared `users-table` testid is never duplicated. The history loads only when opened. */}
+      <Tabs.Root value={tab} onValueChange={(e) => setTab(e.value as Tab)} lazyMount unmountOnExit>
         <Tabs.List>
           <Tabs.Trigger value="team" data-testid="users-tab-team">
             {t("users.tab.myTeam")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="all" data-testid="users-tab-all">
-            {t("users.tab.allUsers")}
+          <Tabs.Trigger value="history" data-testid="users-tab-history">
+            {t("users.log.title")}
+            <NotImplemented list={USERS_PENDING} id="memberLog" />
           </Tabs.Trigger>
+          {globalAdmin && (
+            <Tabs.Trigger value="all" data-testid="users-tab-all">
+              {t("users.tab.allUsers")}
+            </Tabs.Trigger>
+          )}
         </Tabs.List>
 
         <Tabs.Content value="team">
           <UsersTable mode="team" />
         </Tabs.Content>
-        <Tabs.Content value="all">
-          <UsersTable mode="all" />
+        <Tabs.Content value="history">
+          {current && <MemberLog teamId={current.teamId} teamType={current.teamType} />}
         </Tabs.Content>
+        {globalAdmin && (
+          <Tabs.Content value="all">
+            <UsersTable mode="all" />
+          </Tabs.Content>
+        )}
       </Tabs.Root>
     </Stack>
   );
