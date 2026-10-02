@@ -293,9 +293,9 @@ run rather than ignored — if results look impossible, check nothing old is sti
 The owner's definition is *"total dari beli … subtotal produk + biaya, dan total dari mp"*, and the
 ongkir is **the warehouse's to set, not the seller's** — which is also why the create screen has no
 shipping field. See
-[the-row-shows-total-beli-and-total-mp](../technical/order/design_decision.md#the-row-shows-total-beli-and-total-mp)
+[the-row-shows-total-beli-and-total-mp](../business/frontend/order_list_decision.md#the-row-shows-total-beli-and-total-mp)
 and
-[the-ongkir-is-the-warehouses-to-set](../technical/order/design_decision.md#the-ongkir-is-the-warehouses-to-set).
+[the-ongkir-is-the-warehouses-to-set](../business/frontend/order_create_decision.md#the-ongkir-is-the-warehouses-to-set).
 
 ## How is the margin on an order computed?
 
@@ -305,7 +305,7 @@ persentase = margin ÷ harga MP
 ```
 
 **Against the MARKETPLACE's price, never our own.** See
-[the-margin-is-mp-minus-total-beli](../technical/order/design_decision.md#the-margin-is-mp-minus-total-beli).
+[the-margin-is-mp-minus-total-beli](../business/frontend/order_list_decision.md#the-margin-is-mp-minus-total-beli).
 
 - **One implementation** — `features/orders/margin.ts`, read by both the summary strip and the table
   row, so the card and the rows beneath it cannot disagree.
@@ -327,7 +327,7 @@ persentase = margin ÷ harga MP
 
 So the MP date is shown whenever there is a reference, and the MP amount only when there is an
 amount. Fixture 108 is deliberately the second case, so the distinction is exercised. See
-[every-date-gets-its-own-column](../technical/order/design_decision.md#every-date-gets-its-own-column).
+[every-date-gets-its-own-column](../business/frontend/order_list_decision.md#every-date-gets-its-own-column).
 
 ---
 

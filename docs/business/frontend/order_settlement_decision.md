@@ -4,7 +4,7 @@ The owner's decisions about **`/settlement`** (the order settlement list) and th
 detail page. **Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
 
 The rules every screen follows are in [context_decision.md](context_decision.md); the settlement *business* decisions
-stay in [settlement/context_decision.md](../settlement/context_decision.md). These eight were recorded there first
+stay in [settlement/context_decision.md](../settlement/context_decision.md). These were recorded there first
 and moved here on 2026-10-02; each old heading there now points here.
 
 | decision | what it decided |
@@ -17,6 +17,7 @@ and moved here on 2026-10-02; each old heading there now points here.
 | [the-gap-is-an-adjustment](#the-gap-is-an-adjustment) | what reached us less the selling price is **Penyesuaian** (EN *Adjustment*), signed — not *Hilang* / *Lebih* |
 | [the-unitemised-take-is-a-deduction](#the-unitemised-take-is-a-deduction) | the selling price less every payout is **Potongan** (EN *Deductions*) — not *Tidak dirinci* |
 | [the-source-is-a-badge](#the-source-is-a-badge) | an entry's source — Import · Manual · Order — is a badge in the ledger; the list row shows none |
+| [order-detail-manages-the-ledger](#order-detail-manages-the-ledger) | the order page MANAGES settlement — read, add, reverse — as a third tab. ⚠ widens the verbs, not the guarantees: append-only stands |
 
 ## the-settlement-list-always-shows-its-pager
 
@@ -214,3 +215,72 @@ Storybook. The column, its summary card and its ⚠ marks are removed; no column
 - **The list row shows no source badge** (owner, 2026-10-02: *"hilangkan sama sekali"*). Whether an order holds a
   hand-typed entry needs its entries, and a list row carries none — the earlier *has manual entries* line was
   only ever right in Storybook, whose sample rows carry their entries. No column was added for it (*"ga perlu"*).
+
+## order-detail-manages-the-ledger
+
+**The order detail page is where an order's settlement is MANAGED — not merely where an entry is
+added.** (owner, 2026-08-28)
+
+§What Frontend Expected 1 said *"manually add settlement entry from order detail page"*, which is one
+verb. The owner's confirmation is the wider one: **manage**. That settles the seat and the verbs, and
+it is what the built prototype already assumes.
+
+### What "manage" covers, and where it stops
+
+| | | |
+| --- | --- | --- |
+| **read** the running ledger | ✅ | every row, its running balance, and the four derived figures |
+| **add** an entry | ✅ | §What Frontend Expected 1, verbatim |
+| **reverse** a row | ✅ | confirms the recommendation that was Critique 5 — the negation, same type, linked to the row it undoes |
+| **edit** a row | ⛔ | [a-correction-is-a-new-row](../settlement/context_decision.md#a-correction-is-a-new-row). Unchanged — "manage" does not reopen append-only |
+| **delete** a row | ⛔ | same |
+| **decide WHO may do any of it** | ❓ | still open — [Question 1](../settlement/context_clarify.md#question) |
+| **type `initial_total`** | ❓ | still open — [Question 2](../settlement/context_clarify.md#question) |
+
+⚠ **Manage widens the VERBS, not the guarantees.** Append-only survives it intact: reversing posts a
+further row rather than removing one, which is why Reverse is a management action and Delete is not.
+
+### Why the order page and not a settlement screen
+
+The ledger's grain IS the order ([superseded-the-grain-is-the-order](../settlement/context_decision.md#superseded-the-grain-is-the-order)), so the order page
+is the only screen where the whole account is in scope at once. A person adding a fee is looking at the
+order to decide whether the fee is right — the lines, the shipping, what the buyer paid — and none of
+that is on a settlement list.
+
+```mermaid
+flowchart TD
+  subgraph OD["order detail — /orders/:orderId"]
+    I["Info — lines, our total, the marketplace total"]
+    T["Timeline — what happened to it"]
+    S["Settlement — the running ledger"]
+  end
+  I -. "the same marketplace_total, frozen" .-> S
+  S --> A["Add entry — 5 types, direction is a choice"]
+  S --> R["Reverse — posts the negation"]
+  S --> X["Edit / Delete — never"]
+  L["/settlement — which orders drifted furthest"] -->|"a row opens its order"| OD
+```
+
+**The two screens are a pair with one direction of travel.** `/settlement` ranks orders by loss and
+answers *which order should I look at*; the order page answers *what happened to this one, and what do
+I do about it*. Every management verb lives on the second — the list never writes.
+
+### The spec
+
+**A third tab on the order detail page**, after Info and Timeline.
+
+| | |
+| --- | --- |
+| where | `pages/order-detail/index.tsx`, `Tabs.Trigger value="settlement"` |
+| why third | Info is what the order IS and Timeline is what happened to it — both settled by the time money starts arriving. Settlement is the only tab that keeps changing for days afterwards ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)) |
+| what it renders | the ledger table, the four derived figures, **Add entry**, and a per-row **Reverse** behind the row's overflow menu |
+| gating | one prop, `canPost`, resolved from the viewer's role — the single place [Question 1](../settlement/context_clarify.md#question)'s answer lands. Reading is never gated: the role gates writing, never looking |
+
+⚠ **Built and previewable now**, but as a SEPARATE shell —
+`pages/order-settlement/components/OrderDetailPreview.tsx`, story `Pages/Order Settlement/On Order
+Detail`. Info and Timeline in it are the real shipped components; only the settlement tab is invented.
+The real page is not touched until `design_accept`, because a fixture-fed ledger on `/orders/:orderId`
+would show invented money on real orders. **On acceptance the tab moves into the real page and the
+preview shell is deleted.**
+
+---
