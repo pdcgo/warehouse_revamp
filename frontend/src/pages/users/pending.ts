@@ -8,15 +8,12 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // number is its position here.
 
 /** One unwired part of the screen. The id is also its i18n key (`users.pending.<id>`). */
-export type UsersPendingId = "roleColumn" | "rankRules" | "erase" | "username" | "memberLog";
+export type UsersPendingId = "roleColumn" | "erase" | "username" | "memberLog";
 
 const PARTS: PendingPart<UsersPendingId>[] = [
   // The role of each member in this team. The server sends no MEMBERSHIP slice yet, so the column
   // reads "—" — and the actions below cannot tell an Owner from Staff.
   { id: "roleColumn", kind: "missing" },
-  // Who may change, remove, suspend or erase whom is decided on this screen only. The server still
-  // checks the old, wider policies (an Admin can demote the Owner by calling the RPC).
-  { id: "rankRules", kind: "derived" },
   // UserErase answers "not built yet".
   { id: "erase", kind: "dropped" },
   // UpdateUser ignores a new username, so what is typed is thrown away.

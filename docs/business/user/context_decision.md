@@ -139,6 +139,9 @@ may count), or anyone holding Root or Admin in the root team, which acts in ever
 > Data: *"its added by migration or tools in `tools/san`"*. It answers the Root half of [Q5](./context_clarify.md#question),
 > **against my recommendation** (Root grants Root): not even a Root grants Root in the app.
 
+> 🔄 *(2026-10-05, built)* Enforced on the server: `checkMemberWrite` in `user_v1/member_rules.go`, called by `TeamUserUpdate`
+> and `CreateUser` under a lock on the person's `users` row. A role must also be of its team's type.
+
 **The verdict.** Root exists from the start. The app never grants or revokes it, not even for a Root. Adding a Root,
 removing one, and resetting a Root's password happen only through `tools/san`, run by a developer.
 
@@ -385,6 +388,9 @@ stateDiagram-v2
 > suspend another administrator. Only root can do it."* The owner changed their mind: it supersedes
 > [superseded-two-levels-of-suspend](#superseded-two-levels-of-suspend), and it closes [Q7f](./context_clarify.md#question).
 
+> 🔄 *(2026-10-05, built)* `SuspendUser` judges the target by its root-team role under a lock on the target's `users` row:
+> a Root never, an Administrator only by Root, nobody themselves (`checkSuspend`, `user_v1/member_rules.go`).
+
 **The verdict.** A suspend is always **account-wide**, and only Root and the Administrator do it, never sideways.
 
 | who | may suspend | may not suspend |
@@ -476,6 +482,9 @@ flowchart LR
 
 > `context.md` §root team 2 *(owner, 2026-10-02)*: *"Granted by: The Root."* It answers half of
 > [Q5](./context_clarify.md#question), as recommended.
+
+> 🔄 *(2026-10-05, built)* Enforced on the server: `checkMemberWrite` in `user_v1/member_rules.go`, called by `TeamUserUpdate`
+> and `CreateUser` under a lock on the person's `users` row. A role must also be of its team's type.
 
 **The verdict.** Only Root grants the System Administrator (`administrator`). An Administrator does not make another.
 
@@ -570,6 +579,9 @@ and Admin, in their own team. Whether a warehouse writes products at all is prod
 > 🔄 *(2026-10-05)* The first Owner is the person the Create Team form names, not whoever created the team —
 > [the-create-team-form-names-the-first-owner](#the-create-team-form-names-the-first-owner).
 
+> 🔄 *(2026-10-05, built)* Enforced on the server: `checkMemberWrite` in `user_v1/member_rules.go`, called by `TeamUserUpdate`
+> and `CreateUser` under a lock on the person's `users` row. A role must also be of its team's type.
+
 **The verdict.** No Owner gives the Owner role, in any team. A team's first Owner comes with the team, which the
 Administrator creates. A second Owner is made by Root or the Administrator.
 
@@ -633,6 +645,9 @@ both. The admin team's Admin cannot be told apart from the selling one until it 
 ## no-admin-makes-another-admin
 
 > Owner, in chat *(2026-10-02)*: *"for q5 no"*, the second half of [Q5](./context_clarify.md#question), as recommended.
+
+> 🔄 *(2026-10-05, built)* Enforced on the server: `checkMemberWrite` in `user_v1/member_rules.go`, called by `TeamUserUpdate`
+> and `CreateUser` under a lock on the person's `users` row. A role must also be of its team's type.
 
 **The verdict.** No Admin gives the Admin role. With [an-owner-never-makes-another-owner](#an-owner-never-makes-another-owner),
 the rule is one sentence: **nobody gives their own role.** In practice: `selling_admin` adds Customer Service and `warehouse_admin` adds Staff, never another Admin
@@ -850,6 +865,9 @@ computed on the server. The full number never leaves it.
 
 > 🔄 *(2026-10-05)* The Admin's row below grants nothing: each team has one role under Admin, so an Admin adds and removes
 > it and changes nobody's role — [an-admin-changes-nobodys-role](#an-admin-changes-nobodys-role).
+
+> 🔄 *(2026-10-05, built)* Enforced on the server: `checkMemberWrite` in `user_v1/member_rules.go`, called by `TeamUserUpdate`
+> and `CreateUser` under a lock on the person's `users` row. A role must also be of its team's type.
 
 **The verdict.** *Change Role* may change only a role **below your own**, and only to a role **below your own**. Nobody
 changes their own role. Root and the Administrator change anyone's, inside their own limits.

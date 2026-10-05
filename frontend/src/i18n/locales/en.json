@@ -1726,10 +1726,6 @@
         "label": "Each member's role",
         "reason": "the server does not send it yet, so the column reads — and the row actions cannot tell an Owner from Staff"
       },
-      "rankRules": {
-        "label": "Who may act on whom",
-        "reason": "decided on this screen only — the server still lets a manager change or remove anyone in the team"
-      },
       "erase": {
         "label": "Erase Personal Data",
         "reason": "the server answers that it is not built yet"

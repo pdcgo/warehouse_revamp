@@ -1721,10 +1721,6 @@
         "label": "Peran tiap anggota",
         "reason": "server belum mengirimnya, jadi kolomnya berisi — dan tindakan baris tidak bisa membedakan Pemilik dari Staf"
       },
-      "rankRules": {
-        "label": "Siapa boleh bertindak atas siapa",
-        "reason": "diputuskan di layar ini saja — server masih membiarkan pengelola mengubah atau mengeluarkan siapa pun di tim"
-      },
       "erase": {
         "label": "Hapus Data Pribadi",
         "reason": "server menjawab bahwa fitur ini belum dibangun"

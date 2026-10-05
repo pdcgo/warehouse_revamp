@@ -1,8 +1,48 @@
 # user_service — complex RPC flows
 
 Only RPCs with a non-trivial flow or a cross-service dependency are here (HARD RULE 3). The plain
-CRUD (`CreateUser`, `UpdateUser`, `SuspendUser`, `DeleteUser`, `UserList`, `SearchUser`, …) is
-single-table and needs no diagram.
+CRUD (`UpdateUser`, `DeleteUser`, `UserList`, `SearchUser`, …) is single-table and needs no diagram.
+
+## TeamUserUpdate, CreateUser, SuspendUser — a grant is CHECKED, and fails CLOSED
+
+Giving, changing or taking a role, and suspending an account, pass the decided rules in
+[`member_rules.go`](../../../backend/services/user_service/user_v1/member_rules.go): never Root, the
+Administrator only by Root, otherwise only below the caller's own role, and a role only of its team's type
+(docs/business/user/context_decision.md — `change-role-only-below-your-own`,
+`an-owner-never-makes-another-owner`, `no-admin-makes-another-admin`, `root-is-granted-only-through-san`,
+`root-grants-the-administrator`, `only-root-and-the-administrator-suspend`, `every-role-has-a-code-name`).
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant U as user_service
+    participant T as team_service
+    C->>U: TeamUserUpdate(team, person, role)
+    U->>U: the caller's reach — Root, the Administrator, or their role in the team (cached)
+    U->>T: TeamByIds(team) — its TYPE (cached a minute)
+    alt type unknown, or team_service down
+        U-->>C: failed_precondition — a grant is never made on an unchecked type
+    else type known
+        U->>U: BEGIN, lock the person's users row FOR UPDATE
+        U->>U: read their current role in the team
+        U->>U: check — current and next both below the caller, next of the team's type
+        U->>U: upsert or delete the membership, COMMIT
+        U->>U: evict the person's cached roles
+        U-->>C: ok
+    end
+```
+
+- **The opposite of `TeamAccessList` below.** A name may degrade to blank. A grant that cannot check the
+  team's type is **refused** — a selling team must not end up holding an admin-team role.
+- **The team type is fetched BEFORE the transaction**, so no lock is held across the network call.
+- **The lock is on the person, not the membership.** Every membership write and every suspend for one
+  person queues on their `users` row, so a role read under it cannot be overtaken — proved in
+  [the lock-order matrix](../../../audits/services/user_service/concurrency/lock-order.md).
+- **`TeamCreate` calls this** with the creator's token to grant the new team's Owner. That is why Root
+  and the Administrator may add **themselves** to a team they are not in, while nobody changes a
+  membership they already hold.
+- `CreateUser` checks the new person's role the same way (a new person holds none), and `SuspendUser`
+  locks the same row and judges the target by its **root-team role**, never its id.
 
 ## TeamAccessList — a cross-service read that DEGRADES, never fails
 
