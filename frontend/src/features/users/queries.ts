@@ -319,7 +319,7 @@ export function useCreateUser() {
       password: string;
       name: string;
       email: string;
-      /** Optional — the Add Member popup's inline create asks for it, the New User form does not. */
+      /** Optional, as the phone is (only-name-and-username-are-required). */
       phoneNumber?: string;
       role: Role;
       alias: string;

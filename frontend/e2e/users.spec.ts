@@ -77,32 +77,42 @@ test("root can reach the Users screen", async ({ page }) => {
   await expect(page.getByTestId(`user-row-${ROOT_USERNAME}`)).toBeVisible();
 });
 
+// An account is made ONLY from the Add Member popup, when its search finds nobody
+// (an-account-is-made-only-from-the-member-search) — there is no New User button.
+async function openCreate(page: Page, term: string) {
+  await expect(page.getByTestId("open-create-user")).toHaveCount(0);
+  await page.getByTestId("open-add-member").click();
+  await page.getByTestId("add-member-search").fill(term);
+  await page.getByTestId("add-member-create").click();
+}
+
 test("CreateUser rejects an invalid username — lowercase alphanumeric only (#87)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
-  await page.getByTestId("open-create-user").click();
-  await page.getByTestId("new-username").fill("Bad_Name");
-  await page.getByTestId("new-password").fill("e2epassword1");
-  await page.getByTestId("new-name").fill("Nope");
+  await openCreate(page, `nobody${SUFFIX}`);
+  await page.getByTestId("add-member-new-username").fill("Bad_Name");
+  await page.getByTestId("add-member-new-password").fill("e2epassword1");
+  await page.getByTestId("add-member-new-name").fill("Nope");
   await pickRole(page, ROLE_ADMIN, "Administrator");
-  await page.getByTestId("submit-create-user").click();
+  await page.getByTestId("submit-add-member").click();
 
   // The frontend blocks it with a validation error; no account is created.
-  await expect(page.getByTestId("create-user-error")).toBeVisible();
-  await expect(page.getByTestId("submit-create-user")).toBeVisible(); // dialog stays open
+  await expect(page.getByTestId("add-member-error")).toBeVisible();
+  await expect(page.getByTestId("submit-add-member")).toBeVisible(); // dialog stays open
 });
 
 test("CreateUser: a new user appears, and can immediately sign in", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
-  await page.getByTestId("open-create-user").click();
-  await page.getByTestId("new-username").fill(NEW_USER);
-  await page.getByTestId("new-password").fill(NEW_PASSWORD);
-  await page.getByTestId("new-name").fill("E2E User");
+  // What was searched for is offered as the username.
+  await openCreate(page, NEW_USER);
+  await expect(page.getByTestId("add-member-new-username")).toHaveValue(NEW_USER);
+  await page.getByTestId("add-member-new-password").fill(NEW_PASSWORD);
+  await page.getByTestId("add-member-new-name").fill("E2E User");
   await pickRole(page, ROLE_ADMIN, "Administrator");
-  await page.getByTestId("submit-create-user").click();
+  await page.getByTestId("submit-add-member").click();
 
   // CreateUser writes the account AND the membership in one transaction, so the new user shows
   // up in this team's list right away.

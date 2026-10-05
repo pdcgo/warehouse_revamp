@@ -1,16 +1,17 @@
 # Development state — user
 
-**Pass:** implementation analysis — the **prototype is built, awaiting design_accept**
-([Q23](../../business/user/context_clarify.md#question)). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md) — roles per team type,
-Root and the System Administrator, suspend, the dev root, and how a team's members are managed. Questions:
-[context_clarify.md](../../business/user/context_clarify.md), **four open**: Q21–Q23 from the prototype, Q25 from §General Data, found 2026-10-05. Q3–Q20 were answered by 2026-10-02, Q24 on 2026-10-05: there is no short_code. Decisions:
-[context_decision.md](../../business/user/context_decision.md) — **45 recorded, 3 of them superseded**. One question was
-re-routed: who confirms a stock count is [inventory Q12](../../business/inventory/context_clarify.md#question).
+**Pass:** design_accept **passed** 2026-10-05 ([the-user-prototype-is-accepted](../../business/user/context_decision.md#the-user-prototype-is-accepted)).
+**Next: backend analysis**, and where it starts waits on [Q26](../../business/user/context_clarify.md#question): is the role
+rename still on hold. Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
+Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **one open** (Q26). Q3–Q25 are
+answered, Q21–Q25 on 2026-10-05. Decisions: [context_decision.md](../../business/user/context_decision.md) — **54 recorded, 3
+of them superseded**. One question was re-routed: who confirms a stock count is
+[inventory Q12](../../business/inventory/context_clarify.md#question).
 
 The service predates the lifecycle: every RPC in `proto/warehouse/user/v1/user.proto` (19) has a handler and a test,
 and they pass against Postgres. **The decisions below are mostly NOT built yet.**
 
-## Prototype — built, not accepted
+## Prototype — accepted
 
 Screens are built to the decisions; the server is unchanged. Each part the server does not do carries a pending mark
 (`pages/users/pending.ts`, `features/users/pending.ts`). Preview: Storybook `Pages/Users/Users`,
@@ -21,10 +22,10 @@ imports `lib/roles.ts`), writeable, reset per story.
 | --- | --- |
 | contract (additive) | `UserList` MEMBERSHIP slice · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` · `UserErase` · `TeamMemberLogList` · `DeleteUser` deprecated. Placeholders `user_erase.go`, `team_member_log_list.go` answer `Unimplemented`, with tests |
 | screen rules | `lib/roles.ts`: `roleRank`, `managesMembers`, `grantableRoles`, `canManageMember`, `canSuspendUser`, `canEraseUser`, `defaultGrant` (no role preselected in the root team) |
-| Users page | tabs: My Team User · Membership History · All User (Root and the Administrator only). Role column, rank-gated ⋯ menu, Change Role dialog, Erase, no Delete. Add Member / New User only for member managers |
-| Add Member popup | `features/users/AddMemberDialog.tsx` rewritten: search list → Select Role / Change Role / Create and Add |
-| elsewhere | Edit has a username field (not on yourself) · New User offers `grantableRoles` · the shop grant's picker is scoped to its team · `RoleSelect` seeds its list (a prefilled role used to read blank) |
-| e2e | `e2e/users.spec.ts`: roles chosen explicitly in the root team, the popup's test ids, DeleteUser test → "no Delete offered" |
+| Users page | tabs: My Team User · Membership History · All User (Root and the Administrator only). Role column, rank-gated ⋯ menu, Change Role dialog, Erase, no Delete. Add Member only for member managers. **No New User** (removed 2026-10-05, [an-account-is-made-only-from-the-member-search](../../business/user/context_decision.md#an-account-is-made-only-from-the-member-search)) |
+| Add Member popup | `features/users/AddMemberDialog.tsx` rewritten: search list → Select Role / Change Role / Create and Add. The only way an account is made. Its create form requires a name ([only-name-and-username-are-required](../../business/user/context_decision.md#only-name-and-username-are-required)) |
+| elsewhere | Edit has a username field (not on yourself) · the shop grant's picker is scoped to its team · `RoleSelect` seeds its list (a prefilled role used to read blank) |
+| e2e | `e2e/users.spec.ts`: roles chosen explicitly in the root team, the popup's test ids, DeleteUser test → "no Delete offered", the two CreateUser tests go through the popup's Create. ⚠ Not run on 2026-10-05: Docker was down, so no Postgres |
 
 ## Built, and the decisions agree
 
@@ -39,7 +40,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 
 ## Decided, not built
 
-Grouped by what changes. **Do the rename first** — every later item names roles.
+Grouped by what changes. **Do the rename first** — every later item names roles. ⚠ It is on hold by the owner; [Q26](../../business/user/context_clarify.md#question) asks whether it still is. The proposed order is [build order](../../business/user/context_clarify.md#build-order--proposed): 1 · 12 · 15, then 2–11 · 13 · 16 · 19, then 14 · 17 · 18.
 
 | # | change | decisions |
 | --- | --- | --- |
@@ -60,13 +61,12 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | 15 | **Labels**: *System Administrator* and *Admin Team Admin* in both catalogues | [the-two-administrators-have-distinct-labels](../../business/user/context_decision.md#the-two-administrators-have-distinct-labels) |
 | 16 | **Removing a member**: the remove checks the caller's role against the person's, writes the log row, and publishes a *member removed* event; the shop side drops their grants in that team and clears a primary flag. Its topic is made by `san pubsub ensure` | [removing-a-member-drops-their-shop-access](../../business/user/context_decision.md#removing-a-member-drops-their-shop-access) |
 | 17 | **Warehouse Admin money limits**: `LiabilityTermsSet`, `LiabilityTermsDelete`, `FinancialAccountTransfer`, `FinancialAccountCapital` lose `ROLE_WAREHOUSE_ADMIN` | [the-warehouse-admin-equals-the-owner-except-money](../../business/user/context_decision.md#the-warehouse-admin-equals-the-owner-except-money) |
+| 18 | **Who filters**: inventory_service (both restock lists) and selling_service (orders) each answer *who appears on the rows I may show*, under the list's own policy, suspended people badged. The pickers stop calling `UserList` and `SearchUser` for this | [a-who-filter-lists-the-people-on-its-rows](../../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](../../business/user/context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](../../business/user/context_decision.md#a-filter-keeps-former-and-suspended-people) |
+| 19 | **The record**: drop `UserTeamRole.Alias` (a user_service migration, `docs/database-schema.md`) and reserve its four proto fields; `CreateUser` and `UpdateUser` refuse a blank name | [a-user-is-name-username-email-phone-and-photo](../../business/user/context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](../../business/user/context_decision.md#only-name-and-username-are-required) |
 
 ## Not decided
 
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
-| who filters (restocks both sides, orders): list the people on the rows, open to whoever reads the list, keep former and suspended people. ⚠ Today CS and Staff are refused on four of six | [user Q21](../../business/user/context_clarify.md#question) |
-| an Admin changes nobody's role | [user Q22](../../business/user/context_clarify.md#question) |
-| accept the prototype; remove New User | [user Q23](../../business/user/context_clarify.md#question) |
-| is §General Data the whole record: is phone kept, does the unused per-team `alias` go, is email required | [user Q25](../../business/user/context_clarify.md#question) |
+| is the role rename still on hold, now the build starts | [user Q26](../../business/user/context_clarify.md#question) |

@@ -50,7 +50,16 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [only-root-and-the-administrator-suspend](#only-root-and-the-administrator-suspend) | suspend is account-wide, by Root or the Administrator only, and never sideways: no Root suspends a Root, no Administrator an Administrator | owner, 2026-10-02 |
 | [the-history-is-a-tab-beside-the-members](#the-history-is-a-tab-beside-the-members) | the Users page shows the members and the membership history on two tabs | owner, 2026-10-02 |
 | [superseded-short-code-is-a-unique-alias](#superseded-short-code-is-a-unique-alias) | ⛔ superseded by [a-user-has-no-short-code](#a-user-has-no-short-code) — it made `short_code` a person's unique alias | owner, 2026-10-05 |
-| [a-user-has-no-short-code](#a-user-has-no-short-code) | there is no `short_code`. A user is name, username and email | owner, 2026-10-05 |
+| [a-user-has-no-short-code](#a-user-has-no-short-code) | there is no `short_code`. A user is name, username and email — extended by [a-user-is-name-username-email-phone-and-photo](#a-user-is-name-username-email-phone-and-photo) | owner, 2026-10-05 |
+| [a-who-filter-lists-the-people-on-its-rows](#a-who-filter-lists-the-people-on-its-rows) | a "who" filter offers the people on the list's own rows, answered by the list's own service | owner, 2026-10-05 |
+| [whoever-reads-a-list-may-filter-it](#whoever-reads-a-list-may-filter-it) | whoever may read a list may use its "who" filter, Customer Service and Staff included | owner, 2026-10-05 |
+| [a-filter-keeps-former-and-suspended-people](#a-filter-keeps-former-and-suspended-people) | a filter keeps people who left and suspended accounts, with a badge; *never picked* covers pickers that give | owner, 2026-10-05 |
+| [an-admin-changes-nobodys-role](#an-admin-changes-nobodys-role) | an Admin adds and removes the floor role, and changes nobody's role | owner, 2026-10-05 |
+| [the-user-prototype-is-accepted](#the-user-prototype-is-accepted) | ✅ design_accept passed — the screens and the contract additions are what the backend builds | owner, 2026-10-05 |
+| [a-root-team-form-starts-with-no-role](#a-root-team-form-starts-with-no-role) | in the root team a form starts with no role; elsewhere on the lowest | owner, 2026-10-05 |
+| [an-account-is-made-only-from-the-member-search](#an-account-is-made-only-from-the-member-search) | one way to make an account: the Add Member popup's Create. New User is removed | owner, 2026-10-05 |
+| [a-user-is-name-username-email-phone-and-photo](#a-user-is-name-username-email-phone-and-photo) | the whole user record is name, username, email, phone and photo; the per-team `alias` is removed | owner, 2026-10-05 |
+| [only-name-and-username-are-required](#only-name-and-username-are-required) | name and username are required; email and phone are optional, unique when given | owner, 2026-10-05 |
 
 ## warehouse-staff-is-the-whole-floor-job
 
@@ -310,6 +319,9 @@ that one, and this decision is renamed.
 
 > Owner, in chat *(2026-10-02)*: *"for 7d, i follow your recomendation"*. It answers [Q7d](./context_clarify.md#question),
 > as recommended.
+
+> 🔄 *(2026-10-05)* Bounded: a "who" filter is not a picker that gives, so it keeps suspended and former people with a
+> badge — [a-filter-keeps-former-and-suspended-people](#a-filter-keeps-former-and-suspended-people).
 
 **The verdict.** A suspended user cannot be newly given anything, and is still visible wherever they already are.
 
@@ -823,6 +835,9 @@ computed on the server. The full number never leaves it.
 > Owner, in chat *(2026-10-02)*: *"for q11 i follow your recomendation"*. It answers [Q11d](./context_clarify.md#question), as recommended, and bounds
 [an-existing-member-gets-change-role](#an-existing-member-gets-change-role).
 
+> 🔄 *(2026-10-05)* The Admin's row below grants nothing: each team has one role under Admin, so an Admin adds and removes
+> it and changes nobody's role — [an-admin-changes-nobodys-role](#an-admin-changes-nobodys-role).
+
 **The verdict.** *Change Role* may change only a role **below your own**, and only to a role **below your own**. Nobody
 changes their own role. Root and the Administrator change anyone's, inside their own limits.
 
@@ -1148,6 +1163,9 @@ searches by it.
 > [superseded-short-code-is-a-unique-alias](#superseded-short-code-is-a-unique-alias) and closes
 > [Q24](./context_clarify.md#question).
 
+> 🔄 *(2026-10-05, later)* Still no short_code, but the record is wider than the three fields below: phone and photo are
+> in it, and the per-team `alias` goes — [a-user-is-name-username-email-phone-and-photo](#a-user-is-name-username-email-phone-and-photo).
+
 **The verdict.** A user has **no short_code**. §General Data In Users is name, username and email. The username is
 the one unique handle a person has.
 
@@ -1161,3 +1179,211 @@ flowchart LR
 
 **The spec.** Nothing to build or remove: no short_code column ever existed. Whether the phone, the photo and the
 build's unused per-team `alias` belong to the record is [Q25](./context_clarify.md#question).
+
+## a-who-filter-lists-the-people-on-its-rows
+
+> Owner, in chat *(2026-10-05)*: *"yes for 3 question i follow your recomendation"*, confirmed as all four open
+> questions. It answers [Q21a](./context_clarify.md#question), as recommended.
+
+**The verdict.** A "who" filter (*created by*, *accepted by*) offers **the people who appear on the rows that list can
+show**, and the list's own service answers it. It never borrows a member list or the system-wide user search.
+
+```mermaid
+flowchart LR
+  F["a who filter"] --> L["the list's own service — the people on its rows"]
+  L --> N["UserByIDs — their names"]
+  F -.->|"never"| UL["UserList — a team's members"]
+  F -.->|"never"| SU["SearchUser — every user"]
+```
+
+**The spec.** ⚠ **Not built.** Three pages, each filter asking a manager tool today:
+
+| page | filter | answered by |
+| --- | --- | --- |
+| restock, selling side | created by · accepted by | inventory_service, over the restock requests this team may see |
+| restock, warehouse side | created by · accepted by | inventory_service, over the restock requests this warehouse may see |
+| orders, selling side | created by | selling_service, over the orders this team may see |
+
+- Each service returns the **distinct user ids** in that role on rows the caller may read, and the picker resolves the
+  names with `UserByIDs`. Nothing new is exposed: every name is already printed on a row the caller can see.
+- **Across teams**, a selling team's *accepted by* lists the warehouse people who accepted its own restocks, without
+  reading the warehouse's member list.
+- The picker loads the set whole and filters as you type. It grows only with staff turnover.
+- After this, `SearchUser` serves the Add Member popup alone, and `UserList` by team serves the member page and the shop
+  grant.
+
+## whoever-reads-a-list-may-filter-it
+
+> Owner, in chat *(2026-10-05)*. It answers [Q21b](./context_clarify.md#question), as recommended.
+
+**The verdict.** Whoever may read a list may use its "who" filter. Customer Service and Staff run these lists
+([customer-service-runs-orders-restock-requests-and-settlements](#customer-service-runs-orders-restock-requests-and-settlements),
+[staff-accepts-the-restock](#staff-accepts-the-restock)), so they filter them too.
+
+```mermaid
+flowchart LR
+  CS["Customer Service"] --> R["may read the list"]
+  ST["Staff"] --> R
+  OW["Owner, Admin"] --> R
+  R --> F["may use its who filter"]
+```
+
+**The spec.** ⚠ **Not built.** The filter's RPC carries **the list's own policy**, not a member-management one. Today
+Customer Service and Staff are refused on four of the six filters, and a selling Owner on *accepted by* once a warehouse
+is picked. All of that goes with [a-who-filter-lists-the-people-on-its-rows](#a-who-filter-lists-the-people-on-its-rows).
+
+## a-filter-keeps-former-and-suspended-people
+
+> Owner, in chat *(2026-10-05)*. It answers [Q21c](./context_clarify.md#question), as recommended, and bounds
+> [a-suspended-user-is-never-picked](#a-suspended-user-is-never-picked).
+
+**The verdict.** A "who" filter looks **back**, so it keeps everyone who appears on a row, including a person who has
+left the team and a suspended account, shown with a badge. *Never picked* covers pickers that **give** something (add to
+a team, grant a shop), not a filter.
+
+| picker | gives something? | a suspended or former person |
+| --- | --- | --- |
+| Add Member popup | yes, a membership | never offered |
+| shop grant | yes, a shop | never offered |
+| a who filter | no, it reads | offered, with a badge |
+
+```mermaid
+flowchart LR
+  S["a suspended or former person"] -.->|"never offered"| G["pickers that give — add a member, grant a shop"]
+  S -->|"offered, with a badge"| F["a who filter — last year's restocks are still theirs"]
+```
+
+**The spec.** ⚠ **Not built.** The filter's answer carries each person's suspended state, and the picker badges it.
+Former members need nothing extra: they are on the rows, so they are in the set.
+
+## an-admin-changes-nobodys-role
+
+> Owner, in chat *(2026-10-05)*. It answers [Q22](./context_clarify.md#question), as recommended, and reads
+> [change-role-only-below-your-own](#change-role-only-below-your-own) for the Admin.
+
+**The verdict.** An Admin **adds and removes** the floor role, and **changes nobody's role**. Each team has one role
+below Admin, so there is never another role to change to. The rule is unchanged; this is what it means for an Admin.
+
+| team | below the Admin | an Admin may |
+| --- | --- | --- |
+| warehouse | Staff | add Staff, remove Staff |
+| selling | Customer Service | add Customer Service, remove Customer Service |
+
+```mermaid
+flowchart LR
+  A["an Admin"] -->|"adds, removes"| F["Staff or Customer Service"]
+  A -.->|"no other role below to change to"| C["Change Role"]
+```
+
+**The spec.** Built in the prototype: Change Role is hidden when nothing is left to pick, and the popup says so
+(`add-member-nothing-to-change`). ⚠ **The server is not built**: `TeamUserUpdate` refuses an Admin's role change through
+[change-role-only-below-your-own](#change-role-only-below-your-own), with no special case.
+
+## the-user-prototype-is-accepted
+
+> Owner, in chat *(2026-10-05)*. It answers [Q23a](./context_clarify.md#question), as recommended. **design_accept
+> passed.**
+
+**The verdict.** The user prototype is the design to build: the screens, and the contract additions that came with
+them. The next pass is backend analysis.
+
+```mermaid
+flowchart LR
+  P["the prototype — Storybook"] -->|"accepted 2026-10-05"| B["backend analysis"]
+  B --> I["implementation — the decided-not-built list"]
+```
+
+**The spec.** The prototype as built on 2026-10-02, with the changes the decisions below make:
+
+| part | what is accepted |
+| --- | --- |
+| Users page | three tabs: My Team User · Membership History · All User (Root and the Administrator only). A role column, a rank-gated ⋯ menu, Change Role, Erase, no Delete |
+| Add Member popup | search → Select Role / Change Role / Create and Add, the only way an account is made ([an-account-is-made-only-from-the-member-search](#an-account-is-made-only-from-the-member-search)) |
+| contract (additive) | `UserList` MEMBERSHIP slice · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUser.username` · `UserErase` · `TeamMemberLogList` · `DeleteUser` deprecated |
+| choices accepted with it | Suspend and Erase in both tabs, since they act on the account · the team detail page's member list unchanged, its Add Member opens the popup · the role rename still unbuilt, by the owner's *"not yet"* |
+
+## a-root-team-form-starts-with-no-role
+
+> Owner, in chat *(2026-10-05)*. It answers [Q23b](./context_clarify.md#question), as recommended.
+
+**The verdict.** In the **root team**, a form that gives a role starts with **no role selected**. The only role on offer
+there is the System Administrator, and that is never a default. In every other team a form starts on the lowest role.
+
+```mermaid
+flowchart LR
+  R["the root team"] --> N["no role preselected — the Administrator is chosen on purpose"]
+  O["any other team"] --> L["the lowest role — Staff or Customer Service"]
+```
+
+**The spec.** Built in the prototype: `defaultGrant` in `frontend/src/lib/roles.ts`.
+
+## an-account-is-made-only-from-the-member-search
+
+> Owner, in chat *(2026-10-05)*. It answers [Q23c](./context_clarify.md#question), as recommended.
+
+**The verdict.** There is **one way to make an account**: search for the person in the Add Member popup, and create
+them only when the search finds nobody. The **New User** button is removed, so nobody makes a second account for
+someone already here.
+
+```mermaid
+flowchart LR
+  S["Add Member — search"] -->|"found"| A["Select Role or Change Role"]
+  S -->|"nobody"| C["Create User, then Add"]
+  N["New User button"] -.->|"removed"| C
+```
+
+**The spec.** Done in the prototype on 2026-10-05: `CreateUserDialog` and its button are gone from the Users page. The
+All User tab has no create; Root and the Administrator add a person from the team they are adding them to. `CreateUser`
+stays, because the popup's Create calls it.
+
+## a-user-is-name-username-email-phone-and-photo
+
+> Owner, in chat *(2026-10-05)*. It answers [Q25](./context_clarify.md#question), as recommended, and extends
+> [a-user-has-no-short-code](#a-user-has-no-short-code).
+
+**The verdict.** A user is **name, username, email, phone and photo**. That is the whole record. The per-team `alias`,
+which no screen fills, is **removed**.
+
+| field | unique | what needs it |
+| --- | --- | --- |
+| name | no | every screen |
+| username | system-wide | login, search |
+| email | when given | search |
+| phone | when given | the forgot-password OTP, search, the last four digits, one account per person |
+| photo | — | avatars |
+
+```mermaid
+flowchart LR
+  U["a user"] --> N["name"]
+  U --> H["username"]
+  U --> E["email"]
+  U --> P["phone"]
+  U --> F["photo"]
+  M["a membership — team, user, role"] -.->|"removed"| A["alias"]
+```
+
+**The spec.** ⚠ **Not built.** Every user field already exists. Removing `alias` touches the membership row
+(`UserTeamRole.Alias`, so a user_service migration and `docs/database-schema.md`) and four proto fields:
+`UserMembership.alias`, `CreateUserRequest.alias`, `TeamAccessItem.alias` and `AddTeamUser.alias`. Each is `reserved`,
+never renumbered.
+
+## only-name-and-username-are-required
+
+> Owner, in chat *(2026-10-05)*. It answers [Q25](./context_clarify.md#question), as recommended.
+
+**The verdict.** **Name and username are required.** Email and phone are optional, and unique when given
+([a-phone-or-email-belongs-to-one-account](#a-phone-or-email-belongs-to-one-account)). A packer has a WhatsApp number
+and rarely an email they check, so a required email gets invented, and the second person given the same made-up
+address is refused.
+
+```mermaid
+flowchart LR
+  R["required"] --> N["name"]
+  R --> H["username"]
+  O["optional, unique when given"] --> E["email"]
+  O --> P["phone"]
+```
+
+**The spec.** The prototype's create form marks the name required and refuses a blank one. ⚠ **The server is not
+built**: `CreateUserRequest.name` has a maximum length and no minimum, so it accepts a blank name, and `UpdateUser` may
+blank one. Both gain a minimum length of one.

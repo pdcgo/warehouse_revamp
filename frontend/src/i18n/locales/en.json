@@ -1630,11 +1630,8 @@
     },
     "create": {
       "usernameError": "Username may only contain lowercase letters and numbers.",
-      "title": "New User",
-      "roleInTeam": "Role in {{team}}",
-      "submit": "Create"
+      "nameRequired": "Name is required."
     },
-    "newUser": "New User",
     "field": {
       "username": "Username",
       "password": "Password",

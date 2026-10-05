@@ -34,7 +34,8 @@ const NEW_USER = { username: "", password: "", name: "", email: "", phone: "" };
 
 // AddMemberDialog — the SEARCH POPUP a member is added from (a-member-is-found-in-a-search-popup).
 // It targets the CURRENT team by default; the team detail page passes `teamId` + `teamType` to manage
-// an arbitrary team's members.
+// an arbitrary team's members. Its Create is the ONLY way an account is made
+// (an-account-is-made-only-from-the-member-search) — there is no separate New User form.
 //
 // It is the owner's flow, one branch per answer (context.md §How Managing Team User Member):
 //
@@ -152,6 +153,12 @@ export function AddMemberDialog({
       // Username is lowercase alphanumeric only (#87) — the backend enforces the same rule.
       if (!/^[a-z0-9]+$/.test(draft.username)) {
         setError(t("users.create.usernameError"));
+        return;
+      }
+
+      // Name and username are the two required fields (only-name-and-username-are-required).
+      if (draft.name.trim() === "") {
+        setError(t("users.create.nameRequired"));
         return;
       }
 
@@ -359,7 +366,7 @@ export function AddMemberDialog({
                       <Field.HelperText>{t("users.helper.min8")}</Field.HelperText>
                     </Field.Root>
 
-                    <Field.Root>
+                    <Field.Root required>
                       <Field.Label>{t("users.field.name")}</Field.Label>
                       <Input
                         value={draft.name}

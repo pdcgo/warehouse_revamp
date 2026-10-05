@@ -1625,11 +1625,8 @@
     },
     "create": {
       "usernameError": "Nama pengguna hanya boleh berisi huruf kecil dan angka.",
-      "title": "Pengguna Baru",
-      "roleInTeam": "Peran di {{team}}",
-      "submit": "Buat"
+      "nameRequired": "Nama wajib diisi."
     },
-    "newUser": "Pengguna Baru",
     "field": {
       "username": "Nama Pengguna",
       "password": "Kata Sandi",

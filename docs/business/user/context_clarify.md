@@ -28,6 +28,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"for q24, its just for unique alias"* | ✅ [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias), against my reading. The paper rules are deleted · 🔄 **Q24** narrows to four parts: does it replace the per-team alias, is it required, its format and who changes it, is it searchable |
 > | *"i cancel it"*, short_code removed from §General Data | ✅ [a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code) supersedes the alias decision · ✅ **Q24** closed · Critique 25 deleted · Q23 waits on nothing again · the sites it left are [short-code-was-cancelled](#short-code-was-cancelled) |
 > | *(you asked)* elaborate Q21 | 🔄 **Q21** split into three parts, checked against the build: the orders page's creator filter is a third site · ⚠ the floor roles are refused on four of six who filters **today**, and a selling Owner on *accepted by* once a warehouse is picked · ⚠ the suspended rule, as specified, would hide former staff from every filter |
+> | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
@@ -92,27 +93,18 @@ owns authentication. *(§Responsbility 1–4)*
 In development there is a root account: username `root`, password `root1234`, email `root@pdc.com`, written by a
 migration ([the-migration-writes-the-dev-root-password](./context_decision.md#the-migration-writes-the-dev-root-password)). *(§Default Data 1)*
 
-### The user record — proposed
+### The user record — decided
 
-Your §General Data, plus what the decisions already use. **Bold** is what I added or changed. [Q25](#question).
-
-| field | required | unique | changes | read by |
-| --- | --- | --- | --- | --- |
-| name | yes | no | the person, a member manager | every screen |
-| username | yes | system-wide | Root, the Administrator ([the-username-is-editable](./context_decision.md#the-username-is-editable)) | login, search |
-| email | **no** | when given ([a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account)) | the person, a member manager | search |
-| **phone** | no | when given | the person, a member manager | the OTP reset, search, the last four digits |
-| **photo** | no | — | the person | avatars |
-
-The build already has every row. It also has a per-team `alias` that no screen fills and your list does not name. If the
-list is the whole record, it goes, [Q25](#question). There is no short_code ([a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code)).
+Name, username, email, phone and photo; name and username required; the per-team `alias` removed. See
+[a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) and
+[only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required).
 
 ### §Responsbility against what is built
 
 | Responsibility | Built as | |
 | --- | --- | --- |
 | create, suspend, update user | `CreateUser` · `SuspendUser` · `UpdateUser` · `UpdateProfile` | ✅ |
-| manage a user's role | `TeamUserUpdate` · `RoleResolve` | ✅ — *who* may assign is still [Q5](#question) |
+| manage a user's role | `TeamUserUpdate` · `RoleResolve` | ✅ — *who* may assign is decided, [change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own), not built |
 | manage a team's members | `TeamUserUpdate` (add, remove) · `TeamAccessList` · `UserTeams` | ✅ |
 | manage authentication | `Login` · `Logout` · `CheckAccess` · three password resets (own, by admin, by OTP) | ✅ |
 | *not listed* | **`DeleteUser`**, a hard delete, a row action on the Users screen | ⛔ to be removed — [a-user-is-never-deleted](./context_decision.md#a-user-is-never-deleted) |
@@ -132,11 +124,11 @@ flowchart TB
   A -->|"Staff — another team, so allowed"| W["Warehouse Team 1"]
   A -.->|"a second role here — FORBIDDEN"| S1
   A -->|"Admin"| RT["the root team"]
-  RT -.->|"Root acts in every team, and so does Admin today — Q9"| W
+  RT -.->|"Root and the Administrator act in every team"| W
 ```
 
-**Settled:** one role per team, and any role in any other team. Root may do anything in any team ([root-can-do-anything](./context_decision.md#root-can-do-anything));
-whether the root team's other role may too is [Q9](#question). Whether one person may record and confirm the same stock count is inventory's question,
+**Settled:** one role per team, and any role in any other team. Root may do anything in any team ([root-can-do-anything](./context_decision.md#root-can-do-anything)),
+and so may the System Administrator ([the-administrator-can-do-anything](./context_decision.md#the-administrator-can-do-anything)). Whether one person may record and confirm the same stock count is inventory's question,
 [inventory Q12](../inventory/context_clarify.md#question).
 
 ### What the build already lets the undocumented roles do
@@ -180,159 +172,61 @@ The person keeps their account and their other teams, and every record they made
 | set the cross markup, the reserve, the shared lock | **the selling Owner and Admin** | ✅ [the-selling-owner-and-admin-set-markup-reserve-and-lock](./context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock) |
 | set a debt threshold | *"team owner"* | ✅ the word has a definition — whose owner is open in [balance_context](../balance/context_clarify.md#question) |
 | **add a member to a team** | **Root, the Administrator, the team's Owner, the warehouse and selling Admins** | ✅ [owner-root-and-administrator-add-members](./context_decision.md#owner-root-and-administrator-add-members) |
-| **assign a role to a person** | ? | Root: **nobody** in the app, only `tools/san` ([root-is-granted-only-through-san](./context_decision.md#root-is-granted-only-through-san)) · every other role: **no role yet** — [Q5](#question) |
+| **assign a role to a person** | **whoever adds members, only below their own role** | ✅ Root: **nobody** in the app, only `tools/san` ([root-is-granted-only-through-san](./context_decision.md#root-is-granted-only-through-san)) · every other role: [change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own), and an Admin changes nobody's ([an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role)) |
 | create a team | **System Administrator** | ✅ named, and it can do anything — [the-administrator-can-do-anything](./context_decision.md#the-administrator-can-do-anything) |
 
-### A who filter lists the people on the rows — proposed
+### The prototype — accepted
 
-[Q21](#question). The list's own service answers *"who appears on the rows I may show"*, so the filter needs no user
-search at all, and nothing new is exposed: every name it offers is already printed on a row the caller can see.
+design_accept passed on 2026-10-05 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)).
+The one change it asked for is made: **New User** is gone, and the Add Member popup's Create is the only way an account is
+made ([an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search)).
+Next is backend analysis, which builds the decided-not-built list in the
+[state report](../../development_state/user/context.md).
 
-```mermaid
-flowchart LR
-  subgraph "today"
-    F0["a who filter"] --> UL["UserList — managers, one team"]
-    F0 --> SU["SearchUser — everyone"]
-  end
-  subgraph "proposed"
-    F1["a who filter"] --> L["the list's own service — the people on its rows"]
-    L --> N["UserByIDs — the names, any signed-in user"]
-  end
-  P["Add Member popup"] --> SU
-```
+### Build order — proposed
 
-| | |
-| --- | --- |
-| who answers | the service that owns the list: restocks for the two restock pages, orders for the orders page |
-| who may ask | whoever may read that list, so Customer Service and Staff too |
-| which people | everyone named on a row the caller may see, in that role (created, accepted): former members and suspended people included, with a badge |
-| across teams | a selling team's *accepted by* lists the warehouse people who accepted its restocks, without reading the warehouse's member list |
-| the picker | loads the set and filters as you type. The set grows only with staff turnover |
-| what is left for the user search | `SearchUser`: the Add Member popup alone. `UserList` by team: the member page and the shop grant. The picker loses its *everyone* mode |
-
-### The prototype — what accepting it accepts
-
-Built 2026-10-02, the implementation-analysis pass. **Preview it in Storybook** (`cd frontend && npm run storybook`):
-`Pages/Users/Users` and `Features/Users/AddMemberDialog`. Each story's `play()` is one decided rule, and the stub
-([userStub.ts](../../../frontend/.storybook/userStub.ts)) refuses what the decisions refuse. The running app shows the
-same screens against the unchanged server, with a ⚠ mark on every part the server does not do yet.
+[Q26](#question). Three steps, the rename first, because every later step names roles.
 
 ```mermaid
 flowchart LR
-  subgraph "the screens — built"
-    T["Users table — role column, rank-gated row menu"]
-    P["Add Member popup — Select Role, Change Role, Create"]
-    H["Membership history"]
-  end
-  subgraph "the contract — added, not built"
-    M["UserList MEMBERSHIP slice"]
-    C["SearchUser team_id, phone_last4, roles_in_team"]
-    E["UserErase, TeamMemberLogList"]
-    U["UpdateUser username"]
-  end
-  T --> M
-  T --> U
-  P --> C
-  H --> E
-  M --> S["server — unchanged: old answers, or Unimplemented"]
-  C --> S
-  E --> S
-  U --> S
+  R["1 — the rename and the two admin-team roles"] --> U["2 — user_service rules"]
+  U --> O["3 — the other services"]
+  R --> A["the admin team reads every team · the two labels"]
 ```
 
-| part | what it is | in the running app today |
+| step | what | items in the state report |
 | --- | --- | --- |
-| **Users table** | a Role column. The ⋯ menu offers Change Role and Remove only on a role below yours ([change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own)), Suspend only to Root and the Administrator ([only-root-and-the-administrator-suspend](./context_decision.md#only-root-and-the-administrator-suspend)), Erase only on a suspended account ([erase-keeps-the-row](./context_decision.md#erase-keeps-the-row)). **No Delete** ([a-user-is-never-deleted](./context_decision.md#a-user-is-never-deleted)) | the role reads —, so every row looks removable · Erase answers *not built* |
-| **Change Role** | its own dialog from the row: the roles below yours, minus the one held. An Admin never sees it, [Q22](#question) | the server takes any role |
-| **Membership history** | its own tab beside the members ([the-history-is-a-tab-beside-the-members](./context_decision.md#the-history-is-a-tab-beside-the-members)). One sentence per change, newest first, an override badged ([every-role-change-is-logged](./context_decision.md#every-role-change-is-logged)) | *"not recorded yet"* |
-| **Add Member popup** | your flow: search → found and new → **Select Role** → Add · found and already here → **Change Role** · nobody → **Create User** → Create and Add. Exact match for an Owner or Admin, by part for Root and the Administrator, the phone's last four on each result, suspended accounts left out | the server still matches by part for everyone and says nothing of membership |
-| **Edit** | a username field on someone else's account ([the-username-is-editable](./context_decision.md#the-username-is-editable)) | the server ignores it |
-| **New User** | offers only the roles you may give, and only to those who manage members | |
-| **Shop grant** | picks from the team's members ([a-shop-grant-picks-from-the-teams-members](./context_decision.md#a-shop-grant-picks-from-the-teams-members)) | ✅ works now — `UserList` already admits the Owner and Admin |
-| **contract** | `UserList`'s MEMBERSHIP slice, `SearchUser.team_id`, `PublicUser.phone_last4`, `roles_in_team`, `UpdateUser.username`, `UserErase`, `TeamMemberLogList`. `DeleteUser` deprecated. All additive, so the live screens keep working | `UserErase` and `TeamMemberLogList` answer `Unimplemented` |
-
-**Choices I made, which you accept with it.** Say so if one is wrong.
-
-| choice | why |
-| --- | --- |
-| in the **root team**, a create or add form starts with **no role** | the only role on offer there is the System Administrator, and that is never a default. Elsewhere a form starts on the lowest role |
-| Suspend and Erase are in **both** tabs | they act on the account, so they follow the account, not the tab |
-| the team detail page's member list is **unchanged** | it is the team context's screen. Its Add Member button opens the new popup |
-| **New User** stays beside the popup's Create | [Q23c](#question) |
-| the role rename stays **unbuilt** | your *"Not yet"* — [the-role-names-are-the-codes-names](./context_decision.md#the-role-names-are-the-codes-names) |
-
-Found while building, and fixed: the shared role picker showed a **prefilled role as blank**, because its list filled in
-after the first render. Every form that starts on a role read empty. Its story now fails if that comes back.
+| 1 | rename the roles, add `admin_owner` and `admin_administrator`, the admin team's reads, the labels | 1 · 12 · 15 |
+| 2 | grant checks, the search, one account per phone or email, suspend by role, no delete, erase, the username, the dev root, `san` adds and removes a Root, the membership log, removal, the record | 2–11 · 13 · 16 · 19 |
+| 3 | the override stamp, the warehouse Admin's money limits, the who filters in inventory and selling | 14 · 17 · 18 |
 
 ---
 
 ## Critique
 
-Three. Two were found while building the prototype (23, 24) and one in §General Data (26).
+One open, from design_accept (27). Critiques 23, 24 and 26 were answered with Q21, Q22 and Q25 on 2026-10-05.
 
-### Critique 23 — every "who" filter borrows a member-management search
+### Critique 27 — the build starts, and the step it starts with is on hold
 
-*(Elaborated 2026-10-05, checked against the build.)* Three list pages filter by a person: who created it, who
-accepted it. All three use the shared user picker, and the picker asks one of two manager tools: `UserList` (a team's
-members, Owners and Admins only) or `SearchUser` (everyone, soon managers only and exact,
-[only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search)).
+The decided-not-built list puts the rename first, because every later item names roles. You held it on 2026-10-02
+(*"not yet"*), when nothing was being built. Now something is.
 
-| page | filter | the picker asks | Customer Service / Staff | an Owner or Admin |
-| --- | --- | --- | --- | --- |
-| restock, selling side | created by | `UserList`, this team | ⛔ refused **today** | works |
-| restock, selling side | accepted by, a warehouse picked | `UserList`, **that warehouse** | ⛔ refused | ⛔ refused **today**: they hold no role in the warehouse |
-| restock, selling side | accepted by, no warehouse | `SearchUser`, everyone | works today, refused once built | every user in the system today, a whole username once built |
-| restock, warehouse side | created by | `SearchUser`, everyone | works today, refused once built | the same |
-| restock, warehouse side | accepted by | `UserList`, this team | ⛔ refused **today** | works |
-| orders, selling side | created by | `UserList`, this team | ⛔ refused **today** | works |
-
-Two more problems sit behind the table:
-
-| | the problem | → Recommend |
-| --- | --- | --- |
-| **a** | the people offered are the wrong set. A member list lacks anyone who **left** the team, and `SearchUser` offers everyone in the system, most of whom can never match a row | offer the people who **appear on the rows** this list can show, answered by the list's own service |
-| **b** | the floor roles run these lists. Customer Service records orders and restock requests, Staff accepts restocks ([customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), [staff-accepts-the-restock](./context_decision.md#staff-accepts-the-restock)) | whoever may read the list may use its filter |
-| **c** | [a-suspended-user-is-never-picked](./context_decision.md#a-suspended-user-is-never-picked) hides suspended accounts from *"the user search behind the pickers"*, which is this picker. Once built, last year's restocks by someone who has left could not be filtered | the rule covers pickers that **give** something (add to a team, grant a shop), not a filter that looks back. Suspended people stay in a filter, with a badge |
-
-**→ Recommend:** all three, as in [a who filter lists the people on the rows](#a-who-filter-lists-the-people-on-the-rows--proposed).
-`SearchUser` then serves the Add Member popup alone, and both of its rules apply to it whole. [Q21](#question).
-
-### Critique 24 — an Admin never changes a role
-
-[change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own) lets an Admin change *Staff or Customer Service* to *Staff or Customer
-Service*. But a warehouse team has one role below Admin (Staff) and a selling team one (Customer Service), so there is
-never another role to change to. The decision's row reads as a power the Admin does not have.
-
-| team | below Admin | an Admin may change it to |
-| --- | --- | --- |
-| warehouse | Staff | nothing else |
-| selling | Customer Service | nothing else |
-
-**→ Recommend:** keep the rule, and read it as *an Admin adds and removes the floor role, and changes nobody's role*.
-The prototype hides Change Role when there is nothing to pick. [Q22](#question).
-
-### Critique 26 — the list leaves out the phone, and the phone does work
-
-§General Data lists name, username and email. It has no phone, but four things run on it:
-
-| the phone carries | where |
+| if step 2 is built before the rename | the cost |
 | --- | --- |
-| the forgot-password OTP | `RequestPasswordResetOtp` sends it to the account's phone |
-| finding a person | [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) |
-| telling two Anis apart | [a-result-shows-the-phones-last-four-digits](./context_decision.md#a-result-shows-the-phones-last-four-digits) |
-| one account per person | [a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account) · [one-account-per-phone-stays-a-refusal](./context_decision.md#one-account-per-phone-stays-a-refusal) |
+| grant checks, search policy, suspend by role, the membership log | each adds role references under the old names, and all of them are renamed again after |
+| the admin team's reads, the two labels | cannot be built at all: `admin_owner` and `admin_administrator` do not exist yet |
 
-Email has the opposite risk. A packer has a WhatsApp number and rarely an email they check. If email is required, it
-gets invented, and the second time someone reuses the same made-up address the uniqueness rule refuses a real person.
+Renaming keeps every role number, so no stored role changes. The two new roles move only an admin-type team's members,
+and dev has none.
 
-**→ Recommend:** the list is the whole record, with phone and photo added. Required: name and username.
-Email and phone are optional and unique when given, as already decided. See [the user record](#the-user-record--proposed). [Q25](#question).
+**→ Recommend:** lift the hold and do the rename first, as [build order](#build-order--proposed) step 1. It is mechanical,
+and it is cheapest on today's code. [Q26](#question).
 
 ---
 
 ## Question
 
-**Four open.** Q21–Q23 came from building the prototype and Q25 from §General Data. Q3–Q20 and Q24 are answered and recorded in [context_decision.md](./context_decision.md).
+**One open**, Q26, from design_accept. Q3–Q25 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -357,31 +251,28 @@ Email and phone are optional and unique when given, as already decided. See [the
 19. ✅ **Answered** (2026-10-02): the warehouse Admin equals the Owner except three money acts — [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money).
 20. ✅ **Answered** (2026-10-02): all four readings confirmed — any team type, nobody suspends themselves, the last Root
     cannot be removed, and a phone matches however it is written.
-21. 🔄 **Elaborated** (2026-10-05): the three list pages' who filters, not only the restock ones ([Critique 23](#critique)).
-    ⚠ Today Customer Service and Staff are refused on four of the six filters, and a selling Owner on one.
-    - **a.** A who filter offers the people who appear on the rows, answered by the list's own service, not a member
-      list or the whole system. **→ Recommend: yes.**
-    - **b.** Whoever may read the list may use its filter, Customer Service and Staff included. **→ Recommend: yes.**
-    - **c.** Former members and suspended people stay in a filter, with a badge.
-      [a-suspended-user-is-never-picked](./context_decision.md#a-suspended-user-is-never-picked) covers pickers that give
-      something, not filters. **→ Recommend: yes.**
-22. **An Admin adds and removes the floor role, and changes nobody's role — right?** ([Critique 24](#critique))
-    **→ Recommend: yes**, as the rule already implies.
-23. **design_accept — do you accept the prototype?** Preview it in Storybook: `Pages/Users/Users` and
-    `Features/Users/AddMemberDialog`. See [what accepting it accepts](#the-prototype--what-accepting-it-accepts).
-    - **a.** The screens and the contract additions, as the design to build. **→ Recommend: yes**, then backend analysis.
-    - **b.** In the root team, a form starts with no role. **→ Recommend: yes.**
-    - **c.** **New User** and the popup's **Create** are two ways to make an account. **→ Recommend: remove New User** once
-      (a) is accepted. Your flow has one way in, through the search, so nobody makes a duplicate of someone already here.
+21. ✅ **Answered** (2026-10-05): a who filter lists the people on its own rows, open to whoever reads the list, former and
+    suspended people kept — [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows), [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it), [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people).
+22. ✅ **Answered** (2026-10-05): an Admin changes nobody's role — [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role).
+23. ✅ **Answered** (2026-10-05): design_accept passed, a root-team form starts with no role, New User removed —
+    [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted), [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role), [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search).
 24. ✅ **Answered** (2026-10-05): there is no short_code — [a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code). It was briefly a
     unique alias, now [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias).
-25. **Is §General Data the whole user record, and is the phone dropped or just not listed?** ([Critique 26](#critique))
-    **→ Recommend:** it is the whole record, with phone and photo added, and the unused per-team `alias` goes. Required:
-    name and username. Email and phone are optional, as [the user record](#the-user-record--proposed) shows.
+25. ✅ **Answered** (2026-10-05): name, username, email, phone and photo; name and username required; the per-team `alias`
+    removed — [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo), [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required).
+26. **The role rename is on hold since 2026-10-02. Now that the build starts, is it still?** ([Critique 27](#critique))
+    **→ Recommend: lift it, and build it first**, as [build order](#build-order--proposed) step 1. Kept on hold, step 2
+    builds on the old names and step 1's admin-team items wait.
 
 ---
 
 # Contradiction
+
+**Re-checked after Q21, Q22, Q23 and Q25 (2026-10-05): one, between your doc and the decisions** —
+[phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). Two of my own decisions were read narrower and
+each now carries a 🔄 pointer, which is not a contradiction: [a-suspended-user-is-never-picked](./context_decision.md#a-suspended-user-is-never-picked)
+covers pickers that give, and [change-role-only-below-your-own](./context_decision.md#change-role-only-below-your-own)'s
+Admin row grants nothing.
 
 **None between this doc and the four-team model.** [roles-are-per-team-type](#roles-are-per-team-type)
 lists exactly the four teams of `business_level.md` §Business Entity and adds no fifth, and §General's
@@ -407,10 +298,11 @@ short_code lived only in my own files for a few minutes. What it left is [short-
 
 **Re-checked after §General Data (2026-10-05): none recorded, one possible.** The list has no phone, and four decisions
 you made search, match and send on it. It is either an omission or a removal, and only you know which, so it is
-[Q25](#question) rather than an entry here. Nothing else in the requirement set mentions short_code.
+[Q25](#question) rather than an entry here. Nothing else in the requirement set mentions short_code. *Q25 answered: an
+omission, now [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record).*
 
 **Re-checked after building the prototype (2026-10-02): none between docs.** Both finds were in my own decisions, not
-between docs, and are [Critiques 23 and 24](#critique). One code site said the opposite of
+between docs, and were Critiques 23 and 24, answered as [Q21 and Q22](#question). One code site said the opposite of
 [a-user-is-never-deleted](./context_decision.md#a-user-is-never-deleted): the e2e spec's DeleteUser test. It now checks that no Delete is offered.
 
 **Re-checked after §How Managing Team User Member: none.** It extends the Administrator's job beyond *"create teams"*,
@@ -421,6 +313,28 @@ which [Q9](#question) now lists. It does not contradict it.
 
 **Re-checked after §root team: none between docs.** `business_level.md` §Root, *"highest access for all resource"*,
 agrees with *"root is superuser and can do whatever"*. The ripple is in my own files, below.
+
+## phone-and-photo-joined-the-record
+
+**The example.** Your doc and the decision now list different fields:
+
+> `context.md` §General Data In Users: *"1. name 2. username 3. email"*
+>
+> [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo): name, username, email, **phone, photo**
+
+The decision is later and is the one that stands. My sites are fixed: the index row of
+[a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code) said *"A user is name, username and email"* and
+now points on, and its section carries a 🔄.
+
+**→ Recommend:** add phone and photo to §General Data, and mark name and username required. What stops it recurring: a
+field list in your doc is the record's first copy, so a decision that changes the record names the doc's list as a site.
+
+```mermaid
+flowchart LR
+  G["§General Data — name, username, email"] -.->|"lags"| D["decided — plus phone and photo"]
+  D --> S["a-user-has-no-short-code — 🔄 pointer"]
+  D --> Y["§General Data — yours to add"]
+```
 
 ## short-code-was-cancelled
 
@@ -617,6 +531,5 @@ flowchart LR
 
 # Awaiting
 
-**Your design_accept, [Q23](#question).** Nothing on the server is built until it lands. Before that, nothing else waited. The three items that waited here became [Q17–Q19](#question) on 2026-10-02: removing a member, what
-Customer Service does, and whether the warehouse Admin is the Owner's equal. Couriers and suppliers turned out to be
-answered — see *What the build already lets the undocumented roles do*, above.
+**Your answer to [Q26](#question)**, which decides where backend analysis starts. design_accept passed on 2026-10-05
+([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.

@@ -146,10 +146,27 @@ export const NobodyFoundCreatesThem: Story = {
     // What was typed is most often the username they were meant to have.
     await expect(within(dialog).getByTestId("add-member-new-username")).toHaveValue("hendra");
     await userEvent.type(within(dialog).getByTestId("add-member-new-password"), "hendra123", { delay: 20 });
+    await userEvent.type(within(dialog).getByTestId("add-member-new-name"), "Hendra", { delay: 20 });
     await expect(within(dialog).getByTestId("submit-add-member")).toHaveTextContent("Create and Add");
 
     await userEvent.click(within(dialog).getByTestId("submit-add-member"));
     await expect(await screen.findByText("hendra created")).toBeInTheDocument();
+  },
+};
+
+// only-name-and-username-are-required — a blank name is refused before anything is sent.
+export const ANameIsRequired: Story = {
+  play: async ({ canvasElement }) => {
+    const dialog = await search(canvasElement, "hendra");
+    await userEvent.click(await within(dialog).findByTestId("add-member-create", {}, { timeout: 4000 }));
+
+    await userEvent.type(within(dialog).getByTestId("add-member-new-password"), "hendra123", { delay: 20 });
+    await userEvent.click(within(dialog).getByTestId("submit-add-member"));
+
+    await expect(within(dialog).getByTestId("add-member-error")).toHaveTextContent("Name is required");
+    // Still open on the create step. (Not "no toast": the toaster outlives a story, so the previous
+    // story's "hendra created" may still be on screen.)
+    await expect(within(dialog).getByTestId("add-member-new-name")).toBeVisible();
   },
 };
 
@@ -160,6 +177,7 @@ export const APhoneAlreadyTakenIsRefused: Story = {
     await userEvent.click(await within(dialog).findByTestId("add-member-create", {}, { timeout: 4000 }));
 
     await userEvent.type(within(dialog).getByTestId("add-member-new-password"), "hendra123", { delay: 20 });
+    await userEvent.type(within(dialog).getByTestId("add-member-new-name"), "Hendra", { delay: 20 });
     await userEvent.type(within(dialog).getByTestId("add-member-new-phone"), "0812 3456 7890", { delay: 20 });
     await userEvent.click(within(dialog).getByTestId("submit-add-member"));
 

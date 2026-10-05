@@ -7,7 +7,6 @@ import { AddMemberDialog } from "../../features/users/AddMemberDialog";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { USERS_PENDING } from "./pending";
-import { CreateUserDialog } from "./components/CreateUserDialog";
 import { MemberLog } from "./components/MemberLog";
 import { UsersTable } from "./components/UsersTable";
 
@@ -20,14 +19,17 @@ type Tab = "team" | "history" | "all";
 //  - "All User" — everyone, filterable by team. Root and the System Administrator only, since only they
 //    act outside a team.
 //
-// The Add member / New user buttons live in the page header (top-right), NOT inside the tabs (#58
-// review). "Add Member" is a team-membership action, so it shows on both of the team's tabs but not
-// "All User". Neither signals the tables (#177): each write invalidates the user cache itself, so
-// every tab's list refreshes.
+// The Add Member button lives in the page header (top-right), NOT inside the tabs (#58 review). It is a
+// team-membership action, so it shows on both of the team's tabs but not "All User". It does not signal
+// the tables (#177): each write invalidates the user cache itself, so every tab's list refreshes.
 //
-// Both buttons are for those who MANAGE MEMBERS (only-member-managers-open-the-search) — every Owner,
-// the warehouse and selling Admins, Root and the Administrator. The admin team's Admin sees the list
-// and neither button (the-admin-team-admin-alone-does-not-manage-members).
+// There is no New User button: the popup's Create is the only way an account is made
+// (an-account-is-made-only-from-the-member-search), so nobody makes a second account for someone already
+// here. Root and the Administrator add a person from the team they are adding them to.
+//
+// The button is for those who MANAGE MEMBERS (only-member-managers-open-the-search) — every Owner, the
+// warehouse and selling Admins, Root and the Administrator. The admin team's Admin sees the list and no
+// button (the-admin-team-admin-alone-does-not-manage-members).
 export function UsersPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
@@ -47,7 +49,6 @@ export function UsersPage() {
         )}
         <Spacer />
         {manager && teamScoped && <AddMemberDialog />}
-        {manager && <CreateUserDialog />}
       </Flex>
 
       <NotImplementedSummary list={USERS_PENDING} />
