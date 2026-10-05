@@ -45,7 +45,9 @@ Siblings: [user_context](./user/context_clarify.md) · [product_context](./produ
 | **Selling** | Owner, Admin, **Customer Service** | orders, shops, products, restock decisions, suppliers · bears the loss at receiving | **the stock** | owes order fee, outlay, cross charge |
 
 ⚠ **Naming the roles did not assign the acts.** No role accepts a restock, declares a loss, runs an
-opname, or hands a parcel to a courier — see [user_context_clarity](./user/context_clarify.md#critique).
+opname, or hands a parcel to a courier. ✅ Since answered: Staff accepts a restock and hands over to the courier
+([staff-accepts-the-restock](./user/context_decision.md#staff-accepts-the-restock), [warehouse-staff-is-the-whole-floor-job](./user/context_decision.md#warehouse-staff-is-the-whole-floor-job)); who declares
+a loss or confirms an opname is [inventory Q12](./inventory/context_clarify.md#question).
 
 ### The rules, named
 
@@ -227,7 +229,7 @@ who may **write**.
 
 **→ Recommend** bound the sentence — *manage all resource **except** the records that determine a team's
 liability* — and pair it with a **person-level** recorder/confirmer split
-([user_context_clarity Critique 2](./user/context_clarify.md#critique)), not a role-level one. What stops
+(user Critique 2, now [inventory Q12](./inventory/context_clarify.md#question)), not a role-level one. What stops
 this recurring: **any rule that says a team pays must also say which human may write the number it pays
 on.**
 

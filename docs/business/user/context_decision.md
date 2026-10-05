@@ -341,7 +341,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the user search behind the pickers | leaves out suspended accounts, and members suspended in the team being picked for |
+| the user search behind the pickers | leaves out suspended accounts. ~~And members suspended in the team being picked for~~ ⛔ lapsed with [superseded-two-levels-of-suspend](#superseded-two-levels-of-suspend) |
 | the user list and member list | keep them, with a Suspended badge and a filter |
 | a record's author | still resolves to their name |
 

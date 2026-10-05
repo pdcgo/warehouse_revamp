@@ -2,8 +2,8 @@
 
 **Pass:** design_accept **passed** 2026-10-05 ([the-user-prototype-is-accepted](../../business/user/context_decision.md#the-user-prototype-is-accepted)).
 **Next: backend analysis**, and where it starts waits on [Q26](../../business/user/context_clarify.md#question): is the role
-rename still on hold. Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
-Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **one open** (Q26). Q3–Q25 are
+rename still on hold (elaborated: add two roles, then rename four, both before the grant checks). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
+Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **two open** (Q26, Q27). Q3–Q25 are
 answered, Q21–Q25 on 2026-10-05. Decisions: [context_decision.md](../../business/user/context_decision.md) — **54 recorded, 3
 of them superseded**. One question was re-routed: who confirms a stock count is
 [inventory Q12](../../business/inventory/context_clarify.md#question).
@@ -40,7 +40,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 
 ## Decided, not built
 
-Grouped by what changes. **Do the rename first** — every later item names roles. ⚠ It is on hold by the owner; [Q26](../../business/user/context_clarify.md#question) asks whether it still is. The proposed order is [build order](../../business/user/context_clarify.md#build-order--proposed): 1 · 12 · 15, then 2–11 · 13 · 16 · 19, then 14 · 17 · 18.
+Grouped by what changes. **Do the rename first** — every later item names roles. ⚠ It is on hold by the owner; [Q26](../../business/user/context_clarify.md#question) asks whether it still is. The proposed order is [build order](../../business/user/context_clarify.md#build-order--proposed): 1a add `admin_owner` and `admin_administrator` (with 12 · 15), 1b rename four roles, then 2–11 · 13 · 16 · 19, then 14 · 17 · 18. ⚠ Found: `ownerRoleFor` (team_service `mapper.go`) gives an admin-type team's creator `ROLE_TEAM_OWNER`, the selling Owner; 1a fixes it.
 
 | # | change | decisions |
 | --- | --- | --- |
@@ -69,4 +69,5 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
-| is the role rename still on hold, now the build starts | [user Q26](../../business/user/context_clarify.md#question) |
+| is the role rename still on hold: add two roles, rename four, no alias | [user Q26](../../business/user/context_clarify.md#question) |
+| a new team's first Owner: a person the form names, or whoever created it (today: the creator) | [user Q27](../../business/user/context_clarify.md#question) |

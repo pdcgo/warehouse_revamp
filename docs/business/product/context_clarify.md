@@ -176,7 +176,7 @@ flowchart LR
 
 ⚠ **And no role may set either control.** [user_context.md](../user/context.md) names
 Owner, Admin and Customer Service on the selling side and assigns none of them the markup, the reserve or
-the lock — [user_context_clarity Critique 4](../user/context_clarify.md#critique).
+the lock — user Critique 4, since answered: the selling Owner and Admin set all three, [the-selling-owner-and-admin-set-markup-reserve-and-lock](../user/context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock).
 
 ### The code namespace, and what `globally unique` costs
 
