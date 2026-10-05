@@ -4,7 +4,7 @@
 ([Q23](../../business/user/context_clarify.md#question)). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md) — roles per team type,
 Root and the System Administrator, suspend, the dev root, and how a team's members are managed. Questions:
 [context_clarify.md](../../business/user/context_clarify.md), **five open**: Q21–Q23 from the prototype, Q24–Q25 from §General Data, found 2026-10-05. Q3–Q20 were answered by 2026-10-02. Decisions:
-[context_decision.md](../../business/user/context_decision.md) — **43 recorded, 2 of them superseded**. One question was
+[context_decision.md](../../business/user/context_decision.md) — **44 recorded, 2 of them superseded**. One question was
 re-routed: who confirms a stock count is [inventory Q12](../../business/inventory/context_clarify.md#question).
 
 The service predates the lifecycle: every RPC in `proto/warehouse/user/v1/user.proto` (19) has a handler and a test,
@@ -60,6 +60,7 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | 15 | **Labels**: *System Administrator* and *Admin Team Admin* in both catalogues | [the-two-administrators-have-distinct-labels](../../business/user/context_decision.md#the-two-administrators-have-distinct-labels) |
 | 16 | **Removing a member**: the remove checks the caller's role against the person's, writes the log row, and publishes a *member removed* event; the shop side drops their grants in that team and clears a primary flag. Its topic is made by `san pubsub ensure` | [removing-a-member-drops-their-shop-access](../../business/user/context_decision.md#removing-a-member-drops-their-shop-access) |
 | 17 | **Warehouse Admin money limits**: `LiabilityTermsSet`, `LiabilityTermsDelete`, `FinancialAccountTransfer`, `FinancialAccountCapital` lose `ROLE_WAREHOUSE_ADMIN` | [the-warehouse-admin-equals-the-owner-except-money](../../business/user/context_decision.md#the-warehouse-admin-equals-the-owner-except-money) |
+| 18 | **short_code**: a unique alias column on `users`, unique system-wide. Its rules wait on Q24a–d | [short-code-is-a-unique-alias](../../business/user/context_decision.md#short-code-is-a-unique-alias) |
 
 ## Not decided
 
@@ -69,5 +70,5 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | do the restock filters stop using `SearchUser` | [user Q21](../../business/user/context_clarify.md#question) |
 | an Admin changes nobody's role | [user Q22](../../business/user/context_clarify.md#question) |
 | accept the prototype; remove New User | [user Q23](../../business/user/context_clarify.md#question). Waits on Q24 |
-| what short_code is for: unique, format, fixed. Not in the build | [user Q24](../../business/user/context_clarify.md#question) |
+| short_code, a unique alias: does it replace `alias`, is it required, its format and who changes it, is it searchable | [user Q24](../../business/user/context_clarify.md#question) |
 | is §General Data the whole record, and is phone kept. Email required? | [user Q25](../../business/user/context_clarify.md#question) |

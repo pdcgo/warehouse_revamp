@@ -48,6 +48,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [customer-service-runs-orders-restock-requests-and-settlements](#customer-service-runs-orders-restock-requests-and-settlements) | Customer Service runs orders, drafts, restock requests and settlements — the build's list, settlements included | owner, 2026-10-02 |
 | [the-warehouse-admin-equals-the-owner-except-money](#the-warehouse-admin-equals-the-owner-except-money) | the warehouse Admin equals the Owner, except setting the liability terms and moving money between financial accounts | owner, 2026-10-02 |
 | [only-root-and-the-administrator-suspend](#only-root-and-the-administrator-suspend) | suspend is account-wide, by Root or the Administrator only, and never sideways: no Root suspends a Root, no Administrator an Administrator | owner, 2026-10-02 |
+| [the-history-is-a-tab-beside-the-members](#the-history-is-a-tab-beside-the-members) | the Users page shows the members and the membership history on two tabs | owner, 2026-10-02 |
+| [short-code-is-a-unique-alias](#short-code-is-a-unique-alias) | `short_code` is a person's unique alias and has no other job | owner, 2026-10-05 |
 
 ## warehouse-staff-is-the-whole-floor-job
 
@@ -1114,3 +1116,25 @@ flowchart LR
 
 **The spec.** Built in the prototype. The history tab sits beside the members because it is the same team's. It loads
 only when opened. Add Member shows on both team tabs, not on All User. The history's ⚠ mark moves to its tab.
+
+## short-code-is-a-unique-alias
+
+> Owner, in chat *(2026-10-05)*: *"for q24, its just for unique alias"*. Answers the first half of
+> [Q24](./context_clarify.md#question). It goes against my reading, which was a *who did this* mark for slips and labels.
+
+**The verdict.** `short_code` (§General Data In Users) is a person's **alias**: a short name that is **unique**. It has
+no other job. It is not a mark on paper, so the rules I derived from paper do not apply: it may change, and 0 and 1 are
+allowed.
+
+```mermaid
+flowchart LR
+  U["Ani Rahma"] --> C["short_code ANIR — unique"]
+  C --> T1["Selling Team 1"]
+  C --> T2["Warehouse Team 1"]
+  X["another user"] -.->|"ANIR — refused, taken"| C
+```
+
+**The spec.** ⚠ **Not built**: no column exists. It sits on the user, not on a membership, so it is unique across the
+whole system and the same in every team. Four rules are still open in [Q24](./context_clarify.md#question): whether it
+replaces the per-team `alias`, whether it is required, its format and who changes it, and whether the Add Member popup
+searches by it.
