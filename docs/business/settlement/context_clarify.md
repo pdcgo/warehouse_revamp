@@ -780,7 +780,7 @@ took the other four.
 | screen | who opens it | the one question it answers |
 | --- | --- | --- |
 | `/settlement` | selling manager | per shop: which orders drifted furthest from face value |
-| order detail, **a third tab** | a manager on the order | **the running ledger itself** — your §Settlement Behaviors table, rendered, with **Add entry** and a per-row **Reverse**. ✅ settled by [order-detail-manages-the-ledger](./context_decision.md#order-detail-manages-the-ledger) |
+| order detail, **a third tab** | a manager on the order | **the running ledger itself** — your §Settlement Behaviors table, rendered, with **Add entry** and a per-row **Reverse**. ✅ settled by [order-detail-manages-the-ledger](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger) |
 
 ⚠ `/settlement` and `/settlement/:counterpartyId` are currently the superseded liability pages
 (`router.tsx:275-276`), deleted by
@@ -859,7 +859,7 @@ column, and it is the difference between a repairable failure and a theoreticall
 flag, the `san` repair command and the cross-service reconcile I worked through were all **declined**,
 and the argument for them is deleted rather than left standing (RULE 8b.9).
 
-**Nothing new is built** — [order-detail-manages-the-ledger](./context_decision.md#order-detail-manages-the-ledger)
+**Nothing new is built** — [order-detail-manages-the-ledger](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger)
 already put the ledger on the order page and
 [initial-total-is-postable-by-cs-and-owners](./context_decision.md#initial-total-is-postable-by-cs-and-owners)
 already permits the entry. Discovery is human: the gap surfaces when somebody reconciles against the
@@ -1001,7 +1001,7 @@ narrative point at the numbers they had then, and every answer lives in
 1. ✅ **Answered 2026-09-29 — a withdrawal counts in the position**, against my recommendation:
    [withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position) — and the report calls
    the figure *Position to date*, with *Withdrawn* beside *Received*
-   ([the-report-headline-is-position-to-date](./context_decision.md#the-report-headline-is-position-to-date)). Kept as
+   ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)). Kept as
    a line so the numbers hold.
 
 2. **Is `problem funding` from `§2` the same as `marketplace_adjustment`?** Your worked example uses that
@@ -1434,7 +1434,7 @@ flowchart LR
 
 ✅ **Decided 2026-09-29** — [withdrawal-counts-in-the-position](./context_decision.md#withdrawal-counts-in-the-position): it counts,
 against my recommendation, and the screen names the figure *Position to date*
-([the-report-headline-is-position-to-date](./context_decision.md#the-report-headline-is-position-to-date)). The three sites
+([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)). The three sites
 below change with it: the running balance and `last_balance` include it by design, `received` leaves it out, and the
 headline is relabelled.
 

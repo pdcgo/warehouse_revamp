@@ -30,6 +30,7 @@ import { StageBadge } from "../../features/orders/StageBadge";
 import { stageOfStatus } from "../../features/orders/stages";
 import { TIMELINE_TITLE, timelineKindSlug } from "./components/TimelinePanel";
 import { SettlementTab } from "./components/SettlementTab";
+import { orderSpend } from "../../features/orders/margin";
 import { ReceiptFile } from "./components/ReceiptCard";
 import type { OrderAddress } from "../../gen/warehouse/selling/v1/order_pb";
 import { ProductListItem } from "../../components/products/ProductListItem";
@@ -526,7 +527,8 @@ export function SellerOrderDetailPage() {
         orderId={order.id}
         shopId={order.shopId}
         orderRef={order.orderExternalRefId || String(order.id)}
-        cogs={order.cogs}
+        // The SAME total sistem the money section shows, so the ledger's margins and the page's agree.
+        totalBeli={orderSpend(productCost, fees, !anyCostMissing) ?? undefined}
       />
     </Section>
   );

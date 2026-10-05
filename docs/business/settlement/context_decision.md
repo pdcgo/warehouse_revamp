@@ -27,9 +27,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-state-holds-initial-total-and-last-balance](#the-state-holds-initial-total-and-last-balance) | `order_settlements` holds `order_id`, `initial_total`, `last_balance` |
 | [the-recipe-is-the-callers-problem](#the-recipe-is-the-callers-problem) | how a `unique_id` is derived is OUTSIDE settlement — it enforces uniqueness and nothing more |
 | [no-role-policy-yet](#no-role-policy-yet) | role design deferred. ⚠ **ANSWERED** by [the-write-set-is-cs-and-up](#the-write-set-is-cs-and-up) — the policy is no longer deferred |
-| [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) | the unexplained gap is hidden platform cost the platform never itemises — it stays in the balance, and the balance IS that measure. ⚠ **Amended** by [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date): withdrawals are in the balance too, so the screen stops calling it hidden cost |
+| [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance) | the unexplained gap is hidden platform cost the platform never itemises — it stays in the balance, and the balance IS that measure. ⚠ **Amended** by [the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date): withdrawals are in the balance too, so the screen stops calling it hidden cost |
 | [marketplace-total-is-a-fact-not-an-estimate](#marketplace-total-is-a-fact-not-an-estimate) | `marketplace_total` is what the buyer actually paid. The ESTIMATE is the expectation that it will all reach us — so the balance is literally the platform's take |
-| [order-detail-manages-the-ledger](#order-detail-manages-the-ledger) | the order page MANAGES settlement — read, add, reverse — as a third tab. ⚠ widens the verbs, not the guarantees: append-only stands |
+| [order-detail-manages-the-ledger](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger) | the order page MANAGES settlement — read, add, reverse — as a third tab. ⚠ widens the verbs, not the guarantees: append-only stands |
 | [the-write-set-is-cs-and-up](#the-write-set-is-cs-and-up) | `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, TEAM_CUSTOMER_SERVICE]` scoped on `team_id` — answers [no-role-policy-yet](#no-role-policy-yet)s liveness ⚠ |
 | [initial-total-is-postable-by-cs-and-owners](#initial-total-is-postable-by-cs-and-owners) | the sale figure IS hand-postable — by root, admin, team_owner and CS, never team_admin. ⚠ REVERSES the clarifys Q2, and the account vetoes the role when one already exists |
 | [design-accepted](#design-accepted) | ✅ the gate is PASSED — the prototype is the design `implementation` builds against |
@@ -79,7 +79,15 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [topic-retention-carries-the-replay](#topic-retention-carries-the-replay) | the replay's seek is carried by the topic's 31-day retention; subscriptions keep no acknowledged messages. ⚠ supersedes one requirement of the-replay-seeks-the-broker |
 | [a-key-held-by-another-account-is-refused](#a-key-held-by-another-account-is-refused) | a `unique_id` already written on ANOTHER account — another order, or another shop's row in any team — is refused; only a key on the caller's own account is a retry |
 | [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position) | a `withdrawal` counts in `Σ change` like every type — the running balance, `last_balance` and the report's carry include it, in a column of its own; `received` does not. ⛔ supersedes in part the shortfall position |
-| [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date) | the report's running figure is **Position to date**, and **Withdrawn** stands beside Received — *hidden cost* no longer names it |
+| [the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date) | the report's running figure is **Position to date**, and **Withdrawn** stands beside Received — *hidden cost* no longer names it |
+| [the-settlement-list-always-shows-its-pager](../../technical/frontend/order_settlement_decision.md#the-settlement-list-always-shows-its-pager) | the `/settlement` list keeps its pager AND its per-page selector on screen on one page and on an empty list |
+| [the-settlement-list-filters-what-the-contract-can](../../technical/frontend/order_settlement_decision.md#the-settlement-list-filters-what-the-contract-can) | the `/settlement` list filters by order id, one shop (`ShopSelect`) and the date the account last moved (the order list's picker) |
+| [the-settlement-list-sorts-by-its-headings](../../technical/frontend/order_settlement_decision.md#the-settlement-list-sorts-by-its-headings) | Order · Sold for · Received · Adjustment sort from their headings, largest first then flipped; an unrecorded sale always last |
+| [the-settlement-list-summary-is-the-order-lists-cards](../../technical/frontend/order_settlement_decision.md#the-settlement-list-summary-is-the-order-lists-cards) | the summary is the order list's card strip, over the whole filtered set, an unrecorded sale counted and left out of the sums |
+| [the-sale-is-the-marketplace-selling-price](../../technical/frontend/order_settlement_decision.md#the-sale-is-the-marketplace-selling-price) | the recorded sale is written **harga jual marketplace** (EN *marketplace selling price*), never "total marketplace" |
+| [the-gap-is-an-adjustment](../../technical/frontend/order_settlement_decision.md#the-gap-is-an-adjustment) | what reached us less the selling price is **Penyesuaian** (EN *Adjustment*), signed — not *Hilang* / *Lebih* |
+| [the-unitemised-take-is-a-deduction](../../technical/frontend/order_settlement_decision.md#the-unitemised-take-is-a-deduction) | the selling price less every payout is **Potongan** (EN *Deductions*) — not *Tidak dirinci* |
+| [the-source-is-a-badge](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge) | an entry's source — Import · Manual · Order — is a badge in the ledger; the list row shows none |
 
 ---
 
@@ -1046,72 +1054,7 @@ revenue"* still holds.
 
 ## order-detail-manages-the-ledger
 
-**The order detail page is where an order's settlement is MANAGED — not merely where an entry is
-added.** (owner, 2026-08-28)
-
-§What Frontend Expected 1 said *"manually add settlement entry from order detail page"*, which is one
-verb. The owner's confirmation is the wider one: **manage**. That settles the seat and the verbs, and
-it is what the built prototype already assumes.
-
-### What "manage" covers, and where it stops
-
-| | | |
-| --- | --- | --- |
-| **read** the running ledger | ✅ | every row, its running balance, and the four derived figures |
-| **add** an entry | ✅ | §What Frontend Expected 1, verbatim |
-| **reverse** a row | ✅ | confirms the recommendation that was Critique 5 — the negation, same type, linked to the row it undoes |
-| **edit** a row | ⛔ | [a-correction-is-a-new-row](#a-correction-is-a-new-row). Unchanged — "manage" does not reopen append-only |
-| **delete** a row | ⛔ | same |
-| **decide WHO may do any of it** | ❓ | still open — [Question 1](./context_clarify.md#question) |
-| **type `initial_total`** | ❓ | still open — [Question 2](./context_clarify.md#question) |
-
-⚠ **Manage widens the VERBS, not the guarantees.** Append-only survives it intact: reversing posts a
-further row rather than removing one, which is why Reverse is a management action and Delete is not.
-
-### Why the order page and not a settlement screen
-
-The ledger's grain IS the order ([superseded-the-grain-is-the-order](#superseded-the-grain-is-the-order)), so the order page
-is the only screen where the whole account is in scope at once. A person adding a fee is looking at the
-order to decide whether the fee is right — the lines, the shipping, what the buyer paid — and none of
-that is on a settlement list.
-
-```mermaid
-flowchart TD
-  subgraph OD["order detail — /orders/:orderId"]
-    I["Info — lines, our total, the marketplace total"]
-    T["Timeline — what happened to it"]
-    S["Settlement — the running ledger"]
-  end
-  I -. "the same marketplace_total, frozen" .-> S
-  S --> A["Add entry — 5 types, direction is a choice"]
-  S --> R["Reverse — posts the negation"]
-  S --> X["Edit / Delete — never"]
-  L["/settlement — which orders drifted furthest"] -->|"a row opens its order"| OD
-```
-
-**The two screens are a pair with one direction of travel.** `/settlement` ranks orders by loss and
-answers *which order should I look at*; the order page answers *what happened to this one, and what do
-I do about it*. Every management verb lives on the second — the list never writes.
-
-### The spec
-
-**A third tab on the order detail page**, after Info and Timeline.
-
-| | |
-| --- | --- |
-| where | `pages/order-detail/index.tsx`, `Tabs.Trigger value="settlement"` |
-| why third | Info is what the order IS and Timeline is what happened to it — both settled by the time money starts arriving. Settlement is the only tab that keeps changing for days afterwards ([a-residual-balance-is-normal](#a-residual-balance-is-normal)) |
-| what it renders | the ledger table, the four derived figures, **Add entry**, and a per-row **Reverse** behind the row's overflow menu |
-| gating | one prop, `canPost`, resolved from the viewer's role — the single place [Question 1](./context_clarify.md#question)'s answer lands. Reading is never gated: the role gates writing, never looking |
-
-⚠ **Built and previewable now**, but as a SEPARATE shell —
-`pages/order-settlement/components/OrderDetailPreview.tsx`, story `Pages/Order Settlement/On Order
-Detail`. Info and Timeline in it are the real shipped components; only the settlement tab is invented.
-The real page is not touched until `design_accept`, because a fixture-fed ledger on `/orders/:orderId`
-would show invented money on real orders. **On acceptance the tab moves into the real page and the
-preview shell is deleted.**
-
----
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/technical/frontend/`).
 
 ## the-write-set-is-cs-and-up
 
@@ -2740,7 +2683,7 @@ flowchart LR
 
 ### Why this is enough, and it is not a shortcut
 
-**The repair path already exists and is already permitted.** [order-detail-manages-the-ledger](#order-detail-manages-the-ledger)
+**The repair path already exists and is already permitted.** [order-detail-manages-the-ledger](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger)
 put the ledger on the order's own page, and [initial-total-is-postable-by-cs-and-owners](#initial-total-is-postable-by-cs-and-owners)
 lets CS and owners post `initial_total` from it. Nothing new is built — the failure lands in a screen that
 was designed for it.
@@ -2981,7 +2924,7 @@ query the eager path cannot check itself with.
 > ⛔ **SUPERSEDED IN PART (2026-09-29) by [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position).** The owner
 > counted a withdrawal in the position — *"Count it in the position"* — so the position is no longer the shortfall
 > alone: it is the shortfall **plus** every withdrawal, and the screen calls it *Position to date*
-> ([the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date)). The wallet itself is still not
+> ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date)). The wallet itself is still not
 > tracked. Kept as the record, per the header.
 
 > Owner, in chat (2026-09-07) — *"we dont care about shop wallet, `shop_settlement_daily_reports` is
@@ -3793,7 +3736,7 @@ flowchart LR
 | the type | `SETTLEMENT_TYPE_WITHDRAWAL` joins the contract with the other four of 2026-09-24 ([Contradiction](./context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight)) — shop-addressed ([withdrawal-is-a-settlement-type](#withdrawal-is-a-settlement-type)) |
 | the report | a `withdrawal` column on both daily tables and on `SettlementMetric`, summed into `change` and the carry like every column |
 | `received` | **not** summed into it — `received` is what the platform moved toward us, and a withdrawal is our own money moving on. So `gap = sales − received` stays the platform's take |
-| what reads differently | `−close_balance` is no longer the hidden cost — it is the gap **plus** everything withdrawn. The screen names it by [the-report-headline-is-position-to-date](#the-report-headline-is-position-to-date) |
+| what reads differently | `−close_balance` is no longer the hidden cost — it is the gap **plus** everything withdrawn. The screen names it by [the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date) |
 
 ### What it accepts
 
@@ -3805,35 +3748,36 @@ flowchart LR
 
 ## the-report-headline-is-position-to-date
 
-> Chat *(owner, 2026-09-29)* — *"Rename + Withdrawn column"*, asked after
-> [withdrawal-counts-in-the-position](#withdrawal-counts-in-the-position): the report's *Hidden cost to date* would
-> read as roughly every sale from the first imported withdrawal.
+➡ **Moved** to [frontend/settlement_report_decision.md](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/technical/frontend/`).
 
-**The verdict.** The report's running figure is labelled **Position to date** — what buyers paid, less everything the
-platform moved, withdrawals included — and **Withdrawn** stands as its own figure beside *Received*. The window's
-**Gap** still shows the platform's take. It is my recommendation.
+## the-settlement-list-always-shows-its-pager
 
-```mermaid
-flowchart LR
-  M["SettlementMetric — one column per type"] --> S["Sales"]
-  M --> R["Received — every movement but the sale and withdrawals"]
-  M --> W["Withdrawn — the window's withdrawals"]
-  S --> G["Gap — sales minus received, the take"]
-  R --> G
-  M --> P["Position to date — minus close_balance"]
-```
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-settlement-list-always-shows-its-pager) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
 
-### The spec
+## the-settlement-list-filters-what-the-contract-can
 
-| figure | is |
-| --- | --- |
-| Sales | `−(initial_total + initial_total_cancel)` — unchanged |
-| Received | every other type but `withdrawal` — `fund`, the fees, the adjustments, the reimbursements, `marketplace_program`, `other`, `system_adjustment` |
-| Withdrawn 🆕 | `−withdrawal` — positive: money that went to the bank in the window |
-| Gap · take rate | `sales − received` — unchanged |
-| Position to date 🔄 | `−close_balance`, relabelled — was *Hidden cost to date*. Its hint: *what buyers paid, less everything the platform moved — withdrawals included* |
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-settlement-list-filters-what-the-contract-can) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
 
-⚠ **It amends the label half of [hidden-cost-is-left-in-the-balance](#hidden-cost-is-left-in-the-balance)** — the
-unitemised take is still in the balance, but the balance is no longer only that, so the screen stops calling it so.
-[the-measure-is-sales-received-and-gap](#the-measure-is-sales-received-and-gap) stands: its three figures are
-unchanged, and Withdrawn joins them.
+## the-settlement-list-sorts-by-its-headings
+
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-settlement-list-sorts-by-its-headings) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
+
+## the-settlement-list-summary-is-the-order-lists-cards
+
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-settlement-list-summary-is-the-order-lists-cards) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
+
+## the-sale-is-the-marketplace-selling-price
+
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-sale-is-the-marketplace-selling-price) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
+
+## the-gap-is-an-adjustment
+
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-gap-is-an-adjustment) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
+
+## the-unitemised-take-is-a-deduction
+
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-unitemised-take-is-a-deduction) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
+
+## the-source-is-a-badge
+
+➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).

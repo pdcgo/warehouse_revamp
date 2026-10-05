@@ -16,7 +16,7 @@ maintenance RPCs, the report screen.
 | service | `backend/services/settlement_service/` — mounted, plus the push route `/event/settlement-fold/push` |
 | wiring | `cmd/app_development/settlement_poster.go` (selling → settlement) · `replay_broker.go` (the replay's subscription) · `shop_primary.go` (settlement → the shop's `ShopAccessCheck`, a Connect client forwarding the caller's token) |
 | provisioning | `san pubsub ensure` declares `settlement-fold` on `settlement-log-posted` |
-| frontend | `/settlement` (list, now with a Report button), the order page's Settlement tab, **`/settlement/report`** (`pages/settlement-report/`), nav entry, `features/settlement/{analytics,measure}.ts` |
+| frontend | `/settlement` (list — **reworked 2026-10-02**, [below](#the-list-reworked-2026-10-02)), the order page's Settlement tab, **`/settlement/report`** (`pages/settlement-report/`), nav entry, `features/settlement/{analytics,measure,window}.ts` |
 | docs | [rpc.md](../../services/settlement_service/rpc.md) · [database-schema.md](../../database-schema.md#settlement_service) · [san.md](../../tools/san.md#pubsub-ensure) |
 
 ```sh
@@ -61,7 +61,7 @@ flowchart LR
 | --- | --- |
 | the five types of 2026-09-24 ([the Contradiction](../../business/settlement/context_clarify.md#the-type-list-grew-to-thirteen-and-the-contract-still-takes-eight), built) | `SettlementType` 9–13, `mapper.go`, `trackedColumns` + 00006's columns, `SettlementMetric` 12–16, `AnalyticMetricSort` 12–16 — widened together, never the enum before the fold. A withdrawal naming an order is refused (`errWithdrawalIsShopWide`) |
 | [withdrawal-counts-in-the-position](../../business/settlement/context_decision.md#withdrawal-counts-in-the-position) | nothing special-cased — a withdrawal's `change` sums into `balance`, `last_balance` and the carry like every type |
-| [the-report-headline-is-position-to-date](../../business/settlement/context_decision.md#the-report-headline-is-position-to-date) | `features/settlement/measure.ts` — `received` leaves withdrawals out, `withdrawn`, `positionToDate`; `ReportSummary`, `SeriesTable` |
+| [the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date) | `features/settlement/measure.ts` — `received` leaves withdrawals out, `withdrawn`, `positionToDate`; `ReportSummary`, `SeriesTable` |
 | [the-source-is-named-importer](../../business/settlement/settlement_importer_decision.md#the-source-is-named-importer) | `SOURCE_TYPE_IMPORTER = 1` (the number kept), text `importer`, 00006 rewrote stored `exporter` |
 | [settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs) | `shop_primary.go` — `ShopPrimary`, asked in `postEntry` BEFORE the transaction for source `importer` + no order. A failed ask or no primary is HELD until the idempotency check: a stored row is answered, and a new one refused (760b8e2) · `settlement_logs.user_id` · `SettlementLogPosted.user_id` · the fold counts a shop row for it when set |
 
@@ -103,3 +103,32 @@ flowchart LR
 [context_clarify](../../business/settlement/context_clarify.md#question) — 4 (`problem funding`, Q3–Q5 above;
 Q1, the withdrawal, answered 2026-09-29) · [analytic_context_clarify](../../business/settlement/analytic_context_clarify.md#question)
 — 0, Q1–Q7 answered 2026-09-28 · [meta_context_clarify](../../business/settlement/meta_context_clarify.md#question) — 1.
+
+## The list, reworked (2026-10-02)
+
+The owner went through `/settlement` one decision at a time; each is in
+[frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md), and the rules every
+screen follows in [frontend/context_decision.md](../../technical/frontend/context_decision.md).
+
+| | now |
+| --- | --- |
+| filters | `FilterBar`: search (order id) · `ShopSelect` · the order list's `DateRangePicker` with one field, **Last moved** (`updated_at`) |
+| summary | the order list's `SummaryStrip`: Orders · Sold for · Received · **Penyesuaian** (signed) — server sums over the filtered set |
+| columns | Order · Shop · Sold for · Received · Penyesuaian — sortable headings except Shop; the phone's sheet carries *Urutkan* |
+| pager | always on screen, with per page `10 · 20 · 50` (default 20) — `Pagination alwaysShow` |
+| ledger panel | Penyesuaian signed, *potongan · dirinci* hint, a `SettlementSourceBadge` on every entry |
+| contract | `OrderSettlementSort.RECEIVED`; the direction is the named measure's (`LOSS DESC` = biggest loss); an unrecorded sale sorts last and is left out of both sums; `total_unrecorded`; `order_id` breaks ties |
+
+**Removed, because a list row carries no entries** (they were right only in Storybook): the deductions column and
+card, the Manual badge. The owner declined a column to carry them (*"ga perlu"*).
+
+⚠ **Not done:**
+
+- The five new `settlement_list_test.go` cases have **never run** — Docker was down, `san_testdb` skipped them.
+  Run them before trusting the new `ORDER BY` and the filtered sums.
+- No performance audit of the new `ORDER BY` — it sorts on expressions, so `(team_id, last_balance)` no longer
+  serves it.
+- Order column still shows the internal id and Shop is blank on live — the ref needs an order lookup by many ids,
+  the name the team's shop list.
+- Open with the owner: whether *Terjual* and the entry types *Estimasi* / *Pembayaran* are renamed, and a label for
+  `system_adjustment` (it has none).

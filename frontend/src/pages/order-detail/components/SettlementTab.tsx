@@ -48,7 +48,11 @@ export interface SettlementTabProps {
    * shop and team names appear nowhere on it. Passing them would be props nothing reads.
    */
   orderRef: string;
-  cogs: bigint;
+  /**
+   * The page's own "total sistem" — what the order cost, everything included — for the panel's two
+   * margins. Undefined when the page does not know it; the margins then stay off.
+   */
+  totalBeli?: bigint;
   /** Drop the panel's own card — the host is already one. See `OrderLedgerPanel`. */
   bare?: boolean;
 }
@@ -57,7 +61,7 @@ export function SettlementTab({
   orderId,
   shopId,
   orderRef,
-  cogs,
+  totalBeli,
   bare = false,
 }: SettlementTabProps) {
   const { current } = useTeam();
@@ -67,7 +71,7 @@ export function SettlementTab({
   const query = useOrderSettlement({
     teamId,
     orderId,
-    known: { orderRef, cogs },
+    known: { orderRef },
   });
 
   const post = usePostSettlementEntry(teamId);
@@ -151,6 +155,7 @@ export function SettlementTab({
         onAddEntry={addEntry}
         onReverse={reverse}
         bare={bare}
+        totalBeli={totalBeli}
       />
     </Stack>
   );

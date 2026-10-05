@@ -481,8 +481,9 @@
     "viewDetail": "Lihat Detail",
     "step": {
       "all": "Semua langkah",
-      "confirm": "Perlu konfirmasi",
-      "picking": "Diambil",
+      "confirm": "Dikonfirmasi",
+      "picking": "Sedang diambil",
+      "picked": "Sudah diambil",
       "packed": "Dikemas",
       "handover": "Sudah diserahkan"
     },
@@ -2343,16 +2344,16 @@
     "openReport": "Laporan",
     "selectTeam": "Pilih tim untuk melihat laporan penyelesaiannya.",
     "rangeInvalid": "Pilih tanggal awal dan akhir — laporan membutuhkan keduanya.",
-    "sales": "Terjual",
+    "sales": "Harga jual",
     "salesHint": "Yang dibayar pembeli, setelah pembatalan",
     "received": "Diterima",
     "receivedHint": "Yang dipindahkan marketplace, termasuk biaya yang tercatat",
     "withdrawn": "Ditarik",
     "withdrawnHint": "Dipindahkan dari dompet marketplace ke bank — bukan bagian dari yang diterima",
     "gap": "Selisih",
-    "gapHint": "Dari penjualan periode ini, tidak pernah sampai",
+    "gapHint": "Dari harga jual periode ini, tidak pernah sampai",
     "takeRate": "Potongan",
-    "takeRateValue": "{{rate}}% dari penjualan",
+    "takeRateValue": "{{rate}}% dari harga jual",
     "positionToDate": "Posisi s.d. kini",
     "positionToDateHint": "Yang dibayar pembeli, dikurangi semua yang dipindahkan platform — termasuk penarikan",
     "overTime": "Dari waktu ke waktu",
@@ -2365,7 +2366,7 @@
       "period": "Periode",
       "shop": "Toko",
       "user": "Orang",
-      "sales": "Terjual",
+      "sales": "Harga jual",
       "received": "Diterima",
       "withdrawn": "Ditarik",
       "gap": "Selisih",
@@ -2375,55 +2376,81 @@
   },
   "orderSettlement": {
     "tab": "Settlement",
-    "initialTotalWarning": "⚠ Ini menulis ulang nilai penjualan yang jadi dasar semua perhitungan rugi order ini. Tidak bisa diedit atau dihapus — hanya bisa diimbangi.",
+    "initialTotalWarning": "⚠ Ini menulis ulang harga jual yang jadi dasar semua perhitungan rugi order ini. Tidak bisa diedit atau dihapus — hanya bisa diimbangi.",
     "panelTitle": "Buku settlement",
     "addEntry": "Tambah Entri",
-    "rowActions": "Aksi baris",
     "reverse": "Balikkan",
     "reverseTitle": "Balikkan Entri Ini",
-    "reverseBody": "Ini membuat entri baru sebesar {{amount}} dengan arah berlawanan. Entri asli tetap ada — entri tidak pernah diubah atau dihapus.",
+    "reverseBody": "Ini membuat entri {{amount}} dengan arah berlawanan, membalikkan {{type}} tanggal {{date}}. Entri asli tetap ada — entri tidak pernah diubah atau dihapus.",
     "reverseConfirm": "Buat Pembalikan",
-    "reversalOf": "membalikkan entri sebelumnya",
     "appendOnlyNotice": "Entri tidak bisa diubah atau dihapus. Koreksi dibuat sebagai entri baru, agar buku tetap menjadi catatan apa yang terjadi.",
     "postedOn": "diketahui {{date}}",
-    "estimate": "Terjual",
+    "estimate": "Harga jual",
     "received": "Diterima",
-    "lost": "Hilang",
-    "gained": "Lebih",
+    "lost": "Penyesuaian",
+    "estimatedMargin": "Estimasi margin",
     "trueMargin": "Margin riil",
-    "lossHint": "{{hidden}} tidak dirinci, {{named}} dirinci",
-    "noEstimateTitle": "Total marketplace tidak tercatat untuk pesanan ini",
-    "noEstimateBody": "Semua angka di sini membandingkan yang sampai ke kita dengan yang dibayar pembeli. Tanpa angka itu tidak ada pembanding — pesanan lewat telepon tidak punya total marketplace.",
+    "noEstimateTitle": "Harga jual marketplace tidak tercatat untuk pesanan ini",
+    "noEstimateBody": "Semua angka di sini membandingkan yang sampai ke kita dengan yang dibayar pembeli. Tanpa angka itu tidak ada pembanding — pesanan lewat telepon tidak punya harga jual marketplace.",
     "listTitle": "Settlement",
-    "listSubtitle": "Pesanan diurutkan dari berapa banyak uang pembeli yang tidak sampai ke kita. Selisih itu normal — platform menahan biaya yang tidak pernah dirinci.",
-    "totalEstimate": "Terjual",
-    "totalLost": "Hilang",
-    "totalHidden": "Tidak dirinci",
-    "impliedRate": "{{rate}}% dari penjualan",
-    "filterShop": "Toko",
+    "listSubtitle": "Pesanan diurutkan dari penyesuaiannya — berapa dari harga jual marketplace yang tidak sampai ke kita. Penyesuaian itu normal: platform memotong biaya yang tidak selalu dirinci.",
     "allShops": "Semua toko",
+    "searchPlaceholder": "Cari ID order",
+    "lastMoved": "Terakhir bergerak",
+    "stat": {
+      "orders": "Order",
+      "sold": "Harga jual",
+      "received": "Diterima",
+      "lost": "Penyesuaian",
+      "ofSales": "{{pct}}% dari harga jual",
+      "unrecorded": "{{count}} tanpa harga jual marketplace",
+      "allRecorded": "semua harga jual tercatat",
+      "soldLine": "dari {{count}} order",
+      "soldDetailLine": "dari marketplace",
+      "marginNote": "diterima − total beli",
+      "entryCount_other": "dari {{count}} entri",
+      "estimatedMarginNote": "harga jual − total beli"
+    },
+    "sortBy": "Urutkan menurut {{column}}",
+    "sortLabel": "Urutkan",
+    "sortOption": {
+      "loss": {
+        "desc": "Penyesuaian paling minus",
+        "asc": "Penyesuaian paling plus"
+      },
+      "sold": {
+        "desc": "Harga jual terbesar",
+        "asc": "Harga jual terkecil"
+      },
+      "received": {
+        "desc": "Diterima terbesar",
+        "asc": "Diterima terkecil"
+      },
+      "orderId": {
+        "desc": "ID order terbaru",
+        "asc": "ID order terlama"
+      }
+    },
     "noRef": "(tanpa referensi)",
-    "hasManual": "ada entri manual",
-    "rowNoEstimate": "Total marketplace tidak tercatat — tidak ada pembanding",
+    "rowNoEstimate": "Harga jual marketplace tidak tercatat — tidak ada pembanding",
     "col": {
-      "when": "Kapan",
-      "type": "Jenis",
-      "detail": "Detail",
+      "when": "Tanggal",
+      "type": "Sumber",
       "change": "Perubahan",
       "balance": "Saldo",
       "order": "Pesanan",
       "shop": "Toko",
-      "estimate": "Terjual",
+      "estimate": "Harga jual",
       "received": "Diterima",
-      "lost": "Hilang",
-      "hidden": "Tidak dirinci"
+      "lost": "Penyesuaian",
+      "detail": "Detail"
     },
     "type": {
       "initial_total": "Estimasi",
       "fund": "Pembayaran",
       "external_ads_fee": "Biaya iklan",
       "affiliate_fee": "Biaya afiliasi",
-      "marketplace_adjustment": "Penyesuaian",
+      "marketplace_adjustment": "Penyesuaian marketplace",
       "other": "Lainnya",
       "initial_total_cancel": "Estimasi dibatalkan",
       "withdrawal": "Penarikan",
@@ -2435,8 +2462,8 @@
     "addDialogTitle": "Tambah Entri Settlement",
     "addDialogConfirm": "Buat Entri",
     "addDialogWarning": "Entri tidak bisa diubah atau dihapus setelahnya. Kesalahan dikoreksi dengan membuat pembalikan.",
-    "directionIn": "Uang masuk ke kita",
-    "directionOut": "Uang diambil dari kita",
+    "directionIn": "Masuk ke kita",
+    "directionOut": "Diambil dari kita",
     "previewIn": "Ini akan menambah {{amount}} ke pesanan.",
     "previewOut": "Ini akan mengurangi {{amount}} dari pesanan.",
     "occurredHelp": "Hari biaya itu berlaku, bukan hari ini. Hari pencatatan disimpan terpisah.",
@@ -2446,6 +2473,21 @@
       "amount": "Jumlah",
       "occurredOn": "Berlaku pada",
       "note": "Catatan"
+    },
+    "source": {
+      "importer": "Impor",
+      "manual": "Manual",
+      "order": "Order"
+    },
+    "reversalOf": "membalikkan {{amount}} tanggal {{date}}",
+    "reversalOfUnknown": "membalikkan entri sebelumnya",
+    "balanceShort": "saldo",
+    "breakdown": {
+      "title": "Rincian Margin",
+      "open": "Rincian",
+      "totalBeli": "Total beli",
+      "difference": "Selisih = penyesuaian",
+      "deducted": "Potongan saat cair"
     }
   },
   "terms": {
@@ -2538,6 +2580,167 @@
       "unavailable": "Kurir tidak tersedia",
       "empty": "Kurir tidak ditemukan"
     }
+  },
+  "warehouseOrders": {
+    "col": {
+      "createdBy": "Dibuat oleh",
+      "shop": "Toko MP",
+      "awb": "AWB",
+      "created": "Tanggal",
+      "mpDate": "Tanggal MP"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "Sudah diserahkan",
+        "reason": "Sudah diserahkan adalah langkah terakhir gudang, tapi kontrak belum punya statusnya — tabnya belum bisa menyaring apa pun."
+      },
+      "creator": {
+        "label": "Dibuat oleh",
+        "reason": "Order tidak mencatat pembuatnya — hanya tim tempat order dibuat."
+      },
+      "shop": {
+        "label": "Toko seller",
+        "reason": "Order hanya membawa id toko, dan gudang tidak bisa membaca toko milik seller."
+      },
+      "receiptCode": {
+        "label": "Nomor resi",
+        "reason": "Order menyimpan kurir, bukan nomor resi yang tercetak."
+      },
+      "quantity": {
+        "label": "Qty",
+        "reason": "Hasil daftar tidak membawa item, jadi baris tidak bisa menghitung unit."
+      },
+      "mpDate": {
+        "label": "Tanggal MP",
+        "reason": "Order belum punya field untuk kapan pembeli memesan di marketplace."
+      },
+      "deadline": {
+        "label": "Deadline kirim",
+        "reason": "Belum ada order yang membawa deadline kirim."
+      },
+      "teamFilter": {
+        "label": "Filter tim",
+        "reason": "Daftar order belum punya filter tim seller — memilih tim belum menyaring apa pun."
+      },
+      "marketplaceFilter": {
+        "label": "Filter marketplace",
+        "reason": "Daftar order belum punya filter marketplace — memilihnya belum menyaring apa pun."
+      },
+      "courierFilter": {
+        "label": "Filter jasa kirim",
+        "reason": "Daftar order belum punya filter jasa kirim — memilihnya belum menyaring apa pun."
+      },
+      "shipmentStatus": {
+        "label": "Status pengiriman",
+        "reason": "Apakah paket yang sudah diserahkan sedang jalan adalah milik catatan pengiriman, yang belum ada."
+      },
+      "stepMove": {
+        "label": "Memindah langkah",
+        "reason": "Server baru bisa memindah order satu langkah maju. Melompat langkah, mundur, atau pindah ke Sudah diambil belum berjalan."
+      },
+      "resiLookup": {
+        "label": "Mencari lewat resi",
+        "reason": "Belum ada RPC untuk mencari order lewat nomor resi, jadi scan serah kurir hanya mencari di order yang sudah dimuat layar ini."
+      },
+      "bulkHandover": {
+        "label": "Serah kurir massal",
+        "reason": "Belum ada RPC serah kurir massal — ambil massal menyerahkan paket satu panggilan per paket."
+      },
+      "barcode": {
+        "label": "Barcode",
+        "reason": "Produk belum punya barcode, jadi scan validasi mencocokkan SKU setiap barang."
+      },
+      "printMerge": {
+        "label": "Cetak resi sekaligus",
+        "reason": "Belum ada yang menggabungkan beberapa file resi menjadi satu dokumen."
+      },
+      "exportFile": {
+        "label": "Export",
+        "reason": "Belum ada RPC export."
+      }
+    },
+    "tab": {
+      "toConfirm": "Perlu konfirmasi",
+      "all": "Semua"
+    },
+    "filter": {
+      "team": "Semua tim",
+      "courier": "Semua jasa kirim",
+      "shipment": "Status pengiriman",
+      "shipmentState": {
+        "any": "Semua",
+        "notMoving": "Belum jalan",
+        "inTransit": "Dalam perjalanan"
+      }
+    },
+    "header": {
+      "scanHandover": "Pindai Serah Kurir"
+    },
+    "bulk": {
+      "selected": "{{count}} dipilih",
+      "changeStep": "Ubah Langkah",
+      "print": "Cetak Resi",
+      "handover": "Serah Kurir",
+      "clear": "Batal Pilih",
+      "skipped": "{{count}} belum Dikemas — dilewati",
+      "hint": "Centang order untuk aksi massal",
+      "exportSelected": "Export {{count}}",
+      "exportAll": "Export Semua"
+    },
+    "row": {
+      "actions": "Aksi order",
+      "moveTo": "Pindah ke {{step}}",
+      "backTo": "Kembalikan ke {{step}}",
+      "validate": "Pindai Validasi",
+      "findParcel": "Cari Paket",
+      "printLabel": "Cetak Resi",
+      "open": "Buka Daftar Ambil",
+      "noReceipt": "Tidak ada file resi",
+      "select": "Pilih order {{id}}",
+      "selectAll": "Pilih semua order di halaman ini"
+    },
+    "back": {
+      "title": "Kembalikan ke Dikonfirmasi",
+      "warning": "Order kembali ke antrean dan progresnya dibatalkan. Stok di rak tidak berubah — barang sudah dihitung keluar saat order dibuat.",
+      "reason": "Alasan",
+      "reasonPlaceholder": "Barang tidak ketemu di rak, rusak, …",
+      "confirm": "Kembalikan Order"
+    },
+    "scan": {
+      "placeholder": "Scan, atau ketik lalu tekan Enter"
+    },
+    "handover": {
+      "title": "Serah ke Kurir",
+      "mass": "Ambil massal",
+      "massOn": "Hasil scan dikumpulkan di daftar, lalu diserahkan sekaligus.",
+      "massOff": "Setiap scan yang valid langsung diserahkan.",
+      "ready": "Siap",
+      "wrongStep": "Bukan Dikemas — {{step}}",
+      "notFound": "Tidak ditemukan",
+      "handedOver": "Sudah diserahkan",
+      "failed": "Gagal",
+      "submit": "Serahkan {{count}} Paket",
+      "empty": "Scan label paket untuk mulai.",
+      "done_one": "{{count}} paket diserahkan",
+      "done_other": "{{count}} paket diserahkan"
+    },
+    "find": {
+      "title": "Cari Paket Ini",
+      "lookingFor": "Mencari",
+      "help": "Scan label di tumpukan sampai ada yang berbunyi cocok.",
+      "match": "Cocok — ini paketnya",
+      "noMatch": "Bukan paket ini"
+    },
+    "validate": {
+      "title": "Pindai Validasi",
+      "help": "Scan setiap barang. Langkah bisa lanjut kalau semua baris sudah pas.",
+      "unknown": "Tidak ada di order ini: {{code}}",
+      "over": "Melebihi jumlah pesanan",
+      "complete": "Semua barang sudah pas",
+      "next": "Pindah ke {{step}}",
+      "loading": "Memuat barang di order…"
+    },
+    "moved": "Dipindah ke {{step}}"
   },
   "settlementImports": {
     "title": "Impor Penyelesaian",

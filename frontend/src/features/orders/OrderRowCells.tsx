@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { Badge, Icon, Stack, Text } from "@chakra-ui/react";
+import { Badge, Flex, Icon, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Clock } from "lucide-react";
 
 import { ShopItem } from "../../components/entity/ShopItem";
+import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { formatUnixDateTime } from "../../lib/datetime";
+import { formatUnixDateTime, formatUnixRelative } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
 import {
   formatMarginPct,
@@ -359,5 +361,112 @@ export function DeadlineCell({ unix }: { unix: bigint }) {
       <Icon as={Clock} boxSize="3" />
       {label}
     </Badge>
+  );
+}
+
+// ── The warehouse row's cells (`the-warehouse-row-is-the-old-systems-columns`) ─────────────────────
+
+/**
+ * WHO WROTE THE ORDER DOWN, and for which team — one event, two lines (owner: user first, team under).
+ *
+ * ⚠ THE PERSON IS A SAMPLE: `Order` records no creator. The team is real (`team_id`).
+ */
+export function PersonTeamCell({ person, team, mark }: { person: string; team: string; mark?: ReactNode }) {
+  return (
+    <Stack gap="0.5" minW="0">
+      <Flex align="center" gap="1" minW="0">
+        <Text lineClamp={1} data-testid="order-created-person">
+          {person || "—"}
+        </Text>
+        {mark}
+      </Flex>
+      <Under testId="order-created-team">{team}</Under>
+    </Stack>
+  );
+}
+
+/**
+ * THE STOREFRONT AND ITS NAME FOR THE ORDER — `[Shopee] Melati Official` over the order id the
+ * marketplace prints on the label, which is what a packer matches the parcel against (copyable).
+ */
+export function ShopRefCell({
+  shop,
+  orderRefId,
+  mark,
+}: {
+  shop?: { name: string; marketplace: Marketplace };
+  orderRefId: string;
+  mark?: ReactNode;
+}) {
+  const ref = orderRefId.trim();
+
+  return (
+    <Stack gap="0.5" minW="0" align="start">
+      <Flex align="center" gap="1.5" minW="0">
+        {shop ? (
+          <>
+            <MarketplaceBadge marketplace={shop.marketplace} size="sm" />
+            <Text lineClamp={1} data-testid="order-shop-name">
+              {shop.name}
+            </Text>
+          </>
+        ) : (
+          <Nothing testId="order-shop-none" />
+        )}
+        {mark}
+      </Flex>
+      {ref === "" ? <Nothing testId="order-ref-none" /> : <CopyText value={ref} fontSize="xs" testId="order-ref" />}
+    </Stack>
+  );
+}
+
+/**
+ * THE AIR WAYBILL — the courier over the tracking number (copyable). The column packing and handover are
+ * done by: parcels are grouped by courier, and the number is what the courier scans.
+ */
+export function AwbCell({ courier, code, mark }: { courier: string; code?: string; mark?: ReactNode }) {
+  const value = (code ?? "").trim();
+
+  return (
+    <Stack gap="0.5" minW="0" align="start">
+      {courier ? <ShippingBadge code={courier} /> : <Nothing testId="order-courier-none" />}
+      <Flex align="center" gap="1">
+        {value === "" ? <Nothing testId="order-receipt-none" /> : <CopyText value={value} mono fontSize="xs" testId="order-receipt" />}
+        {mark}
+      </Flex>
+    </Stack>
+  );
+}
+
+/**
+ * A DATE, AND HOW LONG AGO — or, when given, something more pressing on the second line (the deadline
+ * that runs from the marketplace's date replaces its "ago": one fact read twice).
+ */
+export function DateAgoCell({
+  unix,
+  under,
+  mark,
+  testId,
+}: {
+  unix?: bigint;
+  /** Replaces the "ago" line — the deadline, when there is one. */
+  under?: ReactNode;
+  mark?: ReactNode;
+  testId?: string;
+}) {
+  if (unix === undefined || unix <= 0n) {
+    return <Nothing testId={testId ? `${testId}-none` : undefined} />;
+  }
+
+  return (
+    <Stack gap="0.5" minW="0" align="start">
+      <Flex align="center" gap="1">
+        <Text whiteSpace="nowrap" data-testid={testId}>
+          {formatUnixDateTime(unix)}
+        </Text>
+        {mark}
+      </Flex>
+      {under ?? <Under testId={testId ? `${testId}-ago` : undefined}>{formatUnixRelative(unix)}</Under>}
+    </Stack>
   );
 }

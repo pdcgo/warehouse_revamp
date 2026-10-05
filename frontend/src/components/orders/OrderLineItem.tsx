@@ -29,12 +29,12 @@ export interface OrderLineItemProps {
   /**
    * A badge to draw INSTEAD of the one `status` would produce.
    *
-   * ⚠ A BRIDGE WITH AN END DATE, not a styling hook. The owner's status set is eight
-   * (`the-order-has-eight-statuses`) and the proto enum is still the old six, so a screen written in
+   * ⚠ A BRIDGE WITH AN END DATE, not a styling hook. The owner's status set is nine
+   * (`the-accept-is-the-status-return-completed`) and the proto enum is still the old six, so a screen written in
    * the new vocabulary would otherwise put "Diproses" on its tabs and "Packed" on the row beneath —
    * two names for one order, which is the drift a shared badge exists to prevent.
    *
-   * The day the enum migrates, `OrderStatusBadge` speaks the eight on its own and this goes. Until
+   * The day the enum migrates, `OrderStatusBadge` speaks the nine on its own and this goes. Until
    * then a caller that has already translated may hand the translation in. */
   statusBadge?: ReactNode;
 

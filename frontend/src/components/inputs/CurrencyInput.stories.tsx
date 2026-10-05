@@ -15,7 +15,6 @@ const meta = {
   args: {
     value: "",
     onChange: fn(),
-    placeholder: "0",
     "aria-label": "Price",
   },
 } satisfies Meta<typeof CurrencyInput>;
@@ -26,6 +25,18 @@ type Story = StoryObj<typeof meta>;
 export const Empty: Story = {};
 
 export const WithValue: Story = { args: { value: "20000" } };
+
+/**
+ * "0" UNTIL SOMETHING IS TYPED (owner, `a-money-field-shows-0-until-typed`) — the placeholder, never the
+ * value: the field still emits "" until a digit arrives. A caller may pass its own.
+ */
+export const ShowsZeroUntilTyped: Story = {
+  play: async ({ canvasElement }) => {
+    const field = within(canvasElement).getByRole("textbox", { name: "Price" });
+    await expect(field).toHaveAttribute("placeholder", "0");
+    await expect(field).toHaveValue("");
+  },
+};
 
 export const Large: Story = { args: { value: "125000000" } };
 

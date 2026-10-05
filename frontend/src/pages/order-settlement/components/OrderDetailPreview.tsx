@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { create } from "@bufbuild/protobuf";
 import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import { useIsMobile } from "../../../layouts/shell";
 
 import {
   OrderEventKind,
@@ -46,6 +47,8 @@ export interface OrderDetailPreviewProps {
   defaultTab?: "info" | "timeline" | "settlement";
   onAddEntry?: (draft: EntryDraft) => void;
   today?: string;
+  /** What the order cost us, everything included — the panel's two margins. See `OrderLedgerPanel`. */
+  totalBeli?: bigint;
 }
 
 export function OrderDetailPreview({
@@ -55,8 +58,10 @@ export function OrderDetailPreview({
   defaultTab = "settlement",
   onAddEntry,
   today = "2026-01-10",
+  totalBeli,
 }: OrderDetailPreviewProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [entries, setEntries] = useState<EntryDraft[]>([]);
   const order = orderFor(settlement);
 
@@ -80,8 +85,14 @@ export function OrderDetailPreview({
           is the only tab that keeps changing for days after the order is otherwise finished
           (`a-residual-balance-is-normal`), so it reads last: the record, then its history, then what
           it actually earned. */}
-      <Tabs.Root defaultValue={defaultTab} orientation="vertical" data-testid="preview-tabs">
-        <Tabs.List minW="40">
+      {/* On a phone the tabs go ACROSS the top: a vertical list beside the panel left the ledger ~150px
+          wide, and every note broke a letter per line. A JS breakpoint, never CSS hiding. */}
+      <Tabs.Root
+        defaultValue={defaultTab}
+        orientation={isMobile ? "horizontal" : "vertical"}
+        data-testid="preview-tabs"
+      >
+        <Tabs.List minW={isMobile ? undefined : "40"}>
           <Tabs.Trigger value="info" data-testid="preview-tab-info">
             {t("orders.detail.tab.info")}
           </Tabs.Trigger>
@@ -107,6 +118,7 @@ export function OrderDetailPreview({
         <Tabs.Content value="settlement" flex="1" minW="0">
           <OrderLedgerPanel
             settlement={settlement}
+            totalBeli={totalBeli}
             canPost={canPost}
             role={role}
             today={today}

@@ -65,17 +65,26 @@ func (s *Service) OrderSettlementList(
 		return nil, dbError(err)
 	}
 
-	// ⚠ THE TOTALS ARE THE WHOLE FILTERED SET, NOT THIS PAGE. The card above the list is an implied
-	// take-rate for the period; one that changed as you turned pages would be reporting the page,
-	// which nobody asked about.
+	// ⚠ THE TOTALS ARE THE WHOLE FILTERED SET, NOT THIS PAGE. The summary above the list describes
+	// the period; one that changed as you turned pages would be reporting the page, which nobody
+	// asked about.
+	//
+	// ⚠ AND THE SUMS SKIP AN UNRECORDED SALE. An account with `initial_total = 0` holds only payouts,
+	// so its balance is positive — summing it would shrink the loss by money that was never a gain.
+	// It is counted instead, so the screen can say how many it left out.
 	var totals struct {
 		InitialTotal int64
 		LastBalance  int64
+		Unrecorded   int64
 	}
 
 	err = query.
 		Session(&gorm.Session{}).
-		Select("COALESCE(SUM(initial_total), 0) AS initial_total, COALESCE(SUM(last_balance), 0) AS last_balance").
+		Select(
+			"COALESCE(SUM(initial_total) FILTER (WHERE initial_total <> 0), 0) AS initial_total, " +
+				"COALESCE(SUM(last_balance) FILTER (WHERE initial_total <> 0), 0) AS last_balance, " +
+				"COUNT(*) FILTER (WHERE initial_total = 0) AS unrecorded",
+		).
 		Scan(&totals).
 		Error
 	if err != nil {
@@ -142,31 +151,45 @@ func (s *Service) OrderSettlementList(
 		},
 		TotalInitialTotal: totals.InitialTotal,
 		TotalLastBalance:  totals.LastBalance,
+		TotalUnrecorded:   uint64(totals.Unrecorded),
 	}), nil
 }
 
-// sortClause maps the proto's sort selection to SQL.
+// sortClause maps the proto's sort selection to SQL (#the-settlement-list-sorts-by-its-headings).
 //
-// ⚠ The default is `last_balance ASC` — MOST NEGATIVE FIRST, which is the biggest loss. Ascending
-// looks wrong until you remember the sign convention: a loss is a negative balance, so the worst
-// order is the smallest number.
+// The direction applies to the NAMED measure, and an unspecified one is DESC — the largest first. So
+// the default, LOSS DESC, is the biggest loss first, which in the sign convention is `last_balance ASC`:
+// a loss is a negative balance, and the worst order is the smallest number.
+//
+// Under a money measure an UNRECORDED sale (`initial_total = 0`) sorts last whichever way — its figures
+// are not real, so it may not lead the ranking in either direction. `order_id` breaks every tie, so
+// rows of equal value keep one order across pages.
 func sortClause(sort *settlementv1.OrderSettlementListFilterSort) string {
+	desc := sort.GetSortType() != commonv1.CommonSortType_COMMON_SORT_TYPE_ASC
+
 	direction := "ASC"
-	if sort.GetSortType() == commonv1.CommonSortType_COMMON_SORT_TYPE_DESC {
+	if desc {
 		direction = "DESC"
 	}
 
+	const unrecordedLast = "(initial_total = 0) ASC, "
+	tiebreak := ", order_id " + direction
+
 	switch sort.GetSort() {
 	case settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_ORDER_ID:
+		// An order id is real whether or not the sale was recorded, so nothing is pushed down here.
 		return "order_id " + direction
 	case settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_INITIAL_TOTAL:
-		return "initial_total " + direction
+		return unrecordedLast + "initial_total " + direction + tiebreak
+	case settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_RECEIVED:
+		return unrecordedLast + "(last_balance + initial_total) " + direction + tiebreak
 	default:
-		// Loss. Unspecified lands here too, so the screen opens on the question it exists to answer.
-		if sort.GetSortType() == commonv1.CommonSortType_COMMON_SORT_TYPE_DESC {
-			return "last_balance DESC"
+		// Loss — `−last_balance`, so its direction is the balance's reversed. Unspecified lands here.
+		balance := "ASC"
+		if !desc {
+			balance = "DESC"
 		}
 
-		return "last_balance ASC"
+		return unrecordedLast + "last_balance " + balance + tiebreak
 	}
 }

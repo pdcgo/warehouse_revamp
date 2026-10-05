@@ -34,13 +34,14 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
-// "Rp 1.234.567" → 1234567, and "Rp -5.000" → -5000. The minus matters: a loss is the one figure here
-// somebody has to notice, so a test that silently read it as positive would be worthless.
+// "Rp 1.234.567" → 1234567, and "−Rp 5.000" → -5000. The minus matters: a loss is the one figure here
+// somebody has to notice, so a test that silently read it as positive would be worthless. ⚠ Either minus:
+// the screen writes the typographic "−" before "Rp" (`a-negative-amount-puts-its-minus-before-rp`).
 async function money(page: Page, testId: string): Promise<number> {
   const text = await page.getByTestId(testId).innerText();
   const digits = text.replace(/[^0-9]/g, "");
 
-  return (text.includes("-") ? -1 : 1) * Number(digits);
+  return (/[-−]/.test(text) ? -1 : 1) * Number(digits);
 }
 
 // One column's cell on one day's row, as a number — FOUND BY ITS HEADER, never by a fixed index.

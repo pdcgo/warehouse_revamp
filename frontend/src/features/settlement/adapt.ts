@@ -97,6 +97,7 @@ export function settlementFromWire(
   return {
     orderId: wire.orderId,
     orderRef: known.orderRef ?? String(wire.orderId),
+    shopId: wire.shopId,
     shopName: known.shopName ?? "",
     teamName: known.teamName ?? "",
     initialTotal: wire.initialTotal,

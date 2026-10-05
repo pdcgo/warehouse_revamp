@@ -484,8 +484,9 @@
     "viewDetail": "View Detail",
     "step": {
       "all": "All steps",
-      "confirm": "To confirm",
+      "confirm": "Confirmed",
       "picking": "Picking",
+      "picked": "Picked",
       "packed": "Packed",
       "handover": "Handed over"
     },
@@ -2353,16 +2354,16 @@
     "openReport": "Report",
     "selectTeam": "Select a team to view its settlement report.",
     "rangeInvalid": "Pick a start and an end date — a report needs both ends.",
-    "sales": "Sold for",
+    "sales": "Selling price",
     "salesHint": "What buyers paid, cancels netted",
     "received": "Received",
     "receivedHint": "What the marketplace moved, named fees included",
     "withdrawn": "Withdrawn",
     "withdrawnHint": "Moved from the marketplace wallet to the bank — not part of what was received",
     "gap": "Gap",
-    "gapHint": "Of this window's sales, never reached us",
+    "gapHint": "Of this window's selling price, never reached us",
     "takeRate": "Take rate",
-    "takeRateValue": "{{rate}}% of sales",
+    "takeRateValue": "{{rate}}% of the selling price",
     "positionToDate": "Position to date",
     "positionToDateHint": "What buyers paid, less everything the platform moved — withdrawals included",
     "overTime": "Over time",
@@ -2375,7 +2376,7 @@
       "period": "Period",
       "shop": "Shop",
       "user": "Person",
-      "sales": "Sold for",
+      "sales": "Selling price",
       "received": "Received",
       "withdrawn": "Withdrawn",
       "gap": "Gap",
@@ -2385,55 +2386,82 @@
   },
   "orderSettlement": {
     "tab": "Settlement",
-    "initialTotalWarning": "⚠ This rewrites the sale every loss on this order is measured against. It cannot be edited or deleted afterwards — only offset.",
+    "initialTotalWarning": "⚠ This rewrites the selling price every loss on this order is measured against. It cannot be edited or deleted afterwards — only offset.",
     "panelTitle": "Settlement ledger",
     "addEntry": "Add Entry",
-    "rowActions": "Row actions",
     "reverse": "Reverse",
     "reverseTitle": "Reverse This Entry",
-    "reverseBody": "This posts a new entry of {{amount}} in the opposite direction. The original stays on the ledger — entries are never edited or deleted.",
+    "reverseBody": "This posts {{amount}} in the opposite direction, undoing the {{type}} of {{date}}. The original stays on the ledger — entries are never edited or deleted.",
     "reverseConfirm": "Post Reversal",
-    "reversalOf": "reverses an earlier entry",
     "appendOnlyNotice": "Entries cannot be edited or deleted. A correction is posted as a further entry, so the ledger stays a record of what happened.",
     "postedOn": "learned {{date}}",
-    "estimate": "Sold for",
+    "estimate": "Selling price",
     "received": "Received",
-    "lost": "Lost",
-    "gained": "Gained",
+    "lost": "Adjustment",
+    "estimatedMargin": "Estimated margin",
     "trueMargin": "True margin",
-    "lossHint": "{{hidden}} never itemised, {{named}} named",
-    "noEstimateTitle": "No marketplace total was recorded for this order",
-    "noEstimateBody": "Every figure here measures what reached us against what the buyer paid. Without that figure there is nothing to measure against — an order taken by phone has no marketplace total.",
+    "noEstimateTitle": "No marketplace selling price was recorded for this order",
+    "noEstimateBody": "Every figure here measures what reached us against what the buyer paid. Without that figure there is nothing to measure against — an order taken by phone has no marketplace selling price.",
     "listTitle": "Settlement",
-    "listSubtitle": "Orders ranked by how much of what the buyer paid never reached us. A gap is normal — the platform keeps costs it never itemises.",
-    "totalEstimate": "Sold for",
-    "totalLost": "Lost",
-    "totalHidden": "Never itemised",
-    "impliedRate": "{{rate}}% of sales",
-    "filterShop": "Shop",
+    "listSubtitle": "Orders ranked by their adjustment — how much of the marketplace selling price never reached us. An adjustment is normal: the platform deducts costs it does not always itemise.",
     "allShops": "All shops",
+    "searchPlaceholder": "Search order ID",
+    "lastMoved": "Last moved",
+    "stat": {
+      "orders": "Orders",
+      "sold": "Selling price",
+      "received": "Received",
+      "lost": "Adjustment",
+      "ofSales": "{{pct}}% of the selling price",
+      "unrecorded": "{{count}} with no marketplace selling price",
+      "allRecorded": "every selling price recorded",
+      "soldLine": "over {{count}} orders",
+      "soldDetailLine": "from the marketplace",
+      "marginNote": "received − total cost",
+      "entryCount_one": "from {{count}} entry",
+      "entryCount_other": "from {{count}} entries",
+      "estimatedMarginNote": "selling price − total cost"
+    },
+    "sortBy": "Sort by {{column}}",
+    "sortLabel": "Sort",
+    "sortOption": {
+      "loss": {
+        "desc": "Most negative adjustment first",
+        "asc": "Most positive adjustment first"
+      },
+      "sold": {
+        "desc": "Highest selling price first",
+        "asc": "Lowest selling price first"
+      },
+      "received": {
+        "desc": "Most received first",
+        "asc": "Least received first"
+      },
+      "orderId": {
+        "desc": "Newest order ID first",
+        "asc": "Oldest order ID first"
+      }
+    },
     "noRef": "(no reference)",
-    "hasManual": "has manual entries",
-    "rowNoEstimate": "No marketplace total recorded — nothing to measure against",
+    "rowNoEstimate": "No marketplace selling price recorded — nothing to measure against",
     "col": {
-      "when": "When",
-      "type": "Type",
-      "detail": "Detail",
+      "when": "Date",
+      "type": "Source",
       "change": "Change",
       "balance": "Balance",
       "order": "Order",
       "shop": "Shop",
-      "estimate": "Sold for",
+      "estimate": "Selling price",
       "received": "Received",
-      "lost": "Lost",
-      "hidden": "Never itemised"
+      "lost": "Adjustment",
+      "detail": "Detail"
     },
     "type": {
       "initial_total": "Estimate",
       "fund": "Payout",
       "external_ads_fee": "Ads fee",
       "affiliate_fee": "Affiliate fee",
-      "marketplace_adjustment": "Adjustment",
+      "marketplace_adjustment": "Marketplace adjustment",
       "other": "Other",
       "initial_total_cancel": "Estimate cancelled",
       "withdrawal": "Withdrawal",
@@ -2445,8 +2473,8 @@
     "addDialogTitle": "Add Settlement Entry",
     "addDialogConfirm": "Post Entry",
     "addDialogWarning": "Entries cannot be edited or deleted afterwards. A mistake is corrected by posting a reversal.",
-    "directionIn": "Money reached us",
-    "directionOut": "Money taken from us",
+    "directionIn": "Reached us",
+    "directionOut": "Taken from us",
     "previewIn": "This will add {{amount}} to the order.",
     "previewOut": "This will take {{amount}} from the order.",
     "occurredHelp": "The day the charge belongs to, not today. The day it was recorded is stamped separately.",
@@ -2456,6 +2484,21 @@
       "amount": "Amount",
       "occurredOn": "Belongs to",
       "note": "Note"
+    },
+    "source": {
+      "importer": "Import",
+      "manual": "Manual",
+      "order": "Order"
+    },
+    "reversalOf": "reverses {{amount}} of {{date}}",
+    "reversalOfUnknown": "reverses an earlier entry",
+    "balanceShort": "balance",
+    "breakdown": {
+      "title": "Margin Breakdown",
+      "open": "Details",
+      "totalBeli": "Total cost",
+      "difference": "Difference = the adjustment",
+      "deducted": "Deducted at payout"
     }
   },
   "terms": {
@@ -2548,6 +2591,167 @@
       "unavailable": "Couriers unavailable",
       "empty": "No couriers found"
     }
+  },
+  "warehouseOrders": {
+    "col": {
+      "createdBy": "Created by",
+      "shop": "Marketplace shop",
+      "awb": "AWB",
+      "created": "Date",
+      "mpDate": "Marketplace date"
+    },
+    "pending": {
+      "statusSet": {
+        "label": "Handed over",
+        "reason": "Handed over is the warehouse's last step, but the contract has no status for it yet — its tab cannot narrow anything."
+      },
+      "creator": {
+        "label": "Created by",
+        "reason": "An order records no creator — only the team it was placed for."
+      },
+      "shop": {
+        "label": "The seller's shop",
+        "reason": "The order carries only the shop id, and a warehouse cannot read the seller's shops."
+      },
+      "receiptCode": {
+        "label": "Tracking number",
+        "reason": "The order stores the courier, not the printed tracking number."
+      },
+      "quantity": {
+        "label": "Quantity",
+        "reason": "A list result carries no items, so the row cannot count units."
+      },
+      "mpDate": {
+        "label": "Marketplace date",
+        "reason": "The order has no field for when the buyer ordered on the marketplace."
+      },
+      "deadline": {
+        "label": "Ship-by deadline",
+        "reason": "No order carries a ship-by deadline yet."
+      },
+      "teamFilter": {
+        "label": "Team filter",
+        "reason": "The order list has no seller-team filter yet — picking a team narrows nothing."
+      },
+      "marketplaceFilter": {
+        "label": "Marketplace filter",
+        "reason": "The order list has no marketplace filter yet — picking one narrows nothing."
+      },
+      "courierFilter": {
+        "label": "Courier filter",
+        "reason": "The order list has no courier filter yet — picking one narrows nothing."
+      },
+      "shipmentStatus": {
+        "label": "Shipment state",
+        "reason": "Whether a handed-over parcel is moving belongs to a shipment record, which does not exist yet."
+      },
+      "stepMove": {
+        "label": "Moving a step",
+        "reason": "The server only moves an order one step forward. Skipping a step, moving back, or moving into Picked does nothing yet."
+      },
+      "resiLookup": {
+        "label": "Finding by tracking number",
+        "reason": "No RPC finds an order by its tracking number, so the handover scan looks only in the orders this screen has loaded."
+      },
+      "bulkHandover": {
+        "label": "Bulk handover",
+        "reason": "There is no bulk handover RPC — a mass pickup hands the parcels over one call at a time."
+      },
+      "barcode": {
+        "label": "Barcode",
+        "reason": "Products have no barcode yet, so the validation scan matches each item's SKU."
+      },
+      "printMerge": {
+        "label": "Printing labels together",
+        "reason": "Nothing merges several receipt files into one document yet."
+      },
+      "exportFile": {
+        "label": "Export",
+        "reason": "There is no export RPC yet."
+      }
+    },
+    "tab": {
+      "toConfirm": "To confirm",
+      "all": "All"
+    },
+    "filter": {
+      "team": "All teams",
+      "courier": "All couriers",
+      "shipment": "Shipment state",
+      "shipmentState": {
+        "any": "Any",
+        "notMoving": "Not moving yet",
+        "inTransit": "In transit"
+      }
+    },
+    "header": {
+      "scanHandover": "Scan Handover"
+    },
+    "bulk": {
+      "selected": "{{count}} selected",
+      "changeStep": "Change Step",
+      "print": "Print Labels",
+      "handover": "Hand Over",
+      "clear": "Clear Selection",
+      "skipped": "{{count}} not packed — skipped",
+      "hint": "Tick orders for bulk actions",
+      "exportSelected": "Export {{count}}",
+      "exportAll": "Export All"
+    },
+    "row": {
+      "actions": "Order actions",
+      "moveTo": "Move to {{step}}",
+      "backTo": "Back to {{step}}",
+      "validate": "Scan to Validate",
+      "findParcel": "Find Parcel",
+      "printLabel": "Print Label",
+      "open": "Open Pick List",
+      "noReceipt": "No receipt file",
+      "select": "Select order {{id}}",
+      "selectAll": "Select every order on this page"
+    },
+    "back": {
+      "title": "Return to Confirmed",
+      "warning": "The order goes back to the queue and its progress is undone. Nothing on the shelf changes — the goods were counted out when the order was placed.",
+      "reason": "Reason",
+      "reasonPlaceholder": "Item not found on the shelf, damaged, …",
+      "confirm": "Return Order"
+    },
+    "scan": {
+      "placeholder": "Scan, or type and press Enter"
+    },
+    "handover": {
+      "title": "Hand Over to Courier",
+      "mass": "Mass pickup",
+      "massOn": "Scans collect into the list; hand them over together.",
+      "massOff": "Each good scan is handed over at once.",
+      "ready": "Ready",
+      "wrongStep": "Not packed — {{step}}",
+      "notFound": "Not found",
+      "handedOver": "Handed over",
+      "failed": "Failed",
+      "submit": "Hand Over {{count}}",
+      "empty": "Scan a parcel's label to begin.",
+      "done_one": "{{count}} parcel handed over",
+      "done_other": "{{count}} parcels handed over"
+    },
+    "find": {
+      "title": "Find This Parcel",
+      "lookingFor": "Looking for",
+      "help": "Scan the labels in the pile until one sounds a match.",
+      "match": "Match — this is the parcel",
+      "noMatch": "Not this parcel"
+    },
+    "validate": {
+      "title": "Scan to Validate",
+      "help": "Scan every item. The step can move on once every line is exact.",
+      "unknown": "Not on this order: {{code}}",
+      "over": "More than ordered",
+      "complete": "Every item is exact",
+      "next": "Move to {{step}}",
+      "loading": "Loading the order's items…"
+    },
+    "moved": "Moved to {{step}}"
   },
   "settlementImports": {
     "title": "Settlement Imports",

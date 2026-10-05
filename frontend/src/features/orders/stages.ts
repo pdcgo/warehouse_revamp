@@ -2,9 +2,13 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 
 // THE EIGHT STATUSES THE OWNER DECIDED, as the screen reads them.
 //
-// `docs/business/order/context.md` §Order Status, recorded as `the-order-has-eight-statuses`:
+// `docs/business/order/context.md` §Order Status, recorded as `superseded-the-order-has-eight-statuses`:
 // `pending · processed · shipped · completed · problem · lost · return · cancel`. That is the
 // vocabulary the tabs and the summary both use here.
+//
+// ⚠ NINE NOW. `the-accept-is-the-status-return-completed` added `return_completed` after `return`, and
+// this list has not taken it — where it sits on the tabs is open in `docs/technical/order/design_clarify.md`
+// (#the-order-screens-count-eight-statuses-and-the-owner-added-a-ninth). The contract has neither.
 //
 // ⚠ THE CONTRACT IS FOUR SHORT AND ONE SPLIT. `OrderStatus` today is
 // `placed · confirmed · picking · packed · shipped · cancelled`, which the owner's own clarify
@@ -115,7 +119,7 @@ export function stageCanFilterTheList(stage: OrderStage): boolean {
 // kurir" — the moment the parcel changes hands, before it starts moving — has nothing to count.
 
 export interface ProcessedStep {
-  id: "confirm" | "picking" | "packed" | "handover";
+  id: "confirm" | "picking" | "picked" | "packed" | "handover";
   /** Undefined = the contract has no status for this step, so it can only be marked, never counted. */
   status?: OrderStatus;
 }
@@ -123,6 +127,10 @@ export interface ProcessedStep {
 export const PROCESSED_STEPS: ProcessedStep[] = [
   { id: "confirm", status: OrderStatus.CONFIRMED },
   { id: "picking", status: OrderStatus.PICKING },
+  // SUDAH DIAMBIL — picking done, not yet packed (owner, 2026-10-01: *"kalau belum ada bisa ditambahkan"*).
+  // It is the queue at the packing table when the person who picks is not the person who packs. No status
+  // for it yet, so it is offered and disabled, like the handover.
+  { id: "picked" },
   { id: "packed", status: OrderStatus.PACKED },
   { id: "handover" },
 ];

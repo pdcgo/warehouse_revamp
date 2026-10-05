@@ -41,8 +41,11 @@ export interface PaginationProps {
 
 // Pagination is the ONE shared pager for the whole app (#96/#99): right-aligned, a COMPACT previous /
 // page-text / next (not numbered pages), optionally preceded by a page-size selector (Chakra's
-// composable Select). Without a size selector it renders nothing when everything fits on one page, so
-// callers can drop it in unconditionally. Icons are lucide via <Icon> (the app's icon system).
+// composable Select). Icons are lucide via <Icon> (the app's icon system).
+//
+// ⚠ IT IS ALWAYS ON SCREEN — on one page and on an empty list, which read "1 of 1" with both arrows off
+// (owner: `the-pager-is-always-on-screen`). It used to vanish when everything fitted, so a short list and
+// a broken one looked alike, and the per-page choice disappeared exactly when somebody wanted fewer rows.
 export function Pagination({
   count,
   pageSize,
@@ -63,10 +66,9 @@ export function Pagination({
     [pageSizeOptions],
   );
 
-  // Nothing to show for an empty list; and with no size picker, hide when it all fits on one page.
-  if (count === 0 || (count <= pageSize && !showSizePicker)) {
-    return null;
-  }
+  // An empty list still has ONE page — the one you are looking at. Chakra counts zero pages for zero
+  // items and would read "1 of 0".
+  const pagedCount = Math.max(count, 1);
 
   // The window this page covers, 1-based and inclusive. `to` is CLAMPED to the total, so the last
   // page reads "301–312 of 312" rather than promising rows that do not exist.
@@ -134,7 +136,7 @@ export function Pagination({
       )}
 
       <ChakraPagination.Root
-        count={count}
+        count={pagedCount}
         pageSize={pageSize}
         page={page}
         onPageChange={(e) => onPageChange(e.page)}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { AddEntryDialog, type EntryDraft } from "./components/AddEntryDialog";
 import { MANUAL_TYPES, type PostingRole } from "./model";
@@ -45,6 +45,19 @@ const base = {
   onSubmit: () => {},
 };
 
+/** The types on offer, in order — read off the Select's own options, open or not. */
+function offeredTypes(): string[] {
+  return screen
+    .getAllByTestId(/^entry-type-option-/)
+    .map((o) => o.getAttribute("data-testid")!.replace("entry-type-option-", ""));
+}
+
+/**
+ * The main tone's fill, rose-600 — the submit (`the-post-entry-button-is-in-the-main-tone`) and the chosen
+ * direction (`a-chosen-option-is-in-the-main-tone`) alike.
+ */
+const BRAND_SOLID = "rgb(225, 29, 72)";
+
 /** A harness that keeps the dialog open and shows whatever draft came back. */
 function Harness(props: { onDraft?: (d: EntryDraft) => void; role?: PostingRole }) {
   const [open, setOpen] = useState(true);
@@ -83,8 +96,8 @@ function Harness(props: { onDraft?: (d: EntryDraft) => void; role?: PostingRole 
 export const TeamAdminCannotAuthorTheSale: Story = {
   args: base,
   play: async () => {
-    const select = await screen.findByTestId("entry-type");
-    const options = Array.from(select.querySelectorAll("option")).map((o) => o.value);
+    await screen.findByTestId("entry-type");
+    const options = offeredTypes();
 
     await expect(options).toEqual(MANUAL_TYPES);
     await expect(options).not.toContain("initial_total");
@@ -103,8 +116,8 @@ export const TeamAdminCannotAuthorTheSale: Story = {
 export const CustomerServiceMayAuthorTheSale: Story = {
   args: { ...base, settlement: noEstimate, role: "customer_service" },
   play: async () => {
-    const select = await screen.findByTestId("entry-type");
-    const options = Array.from(select.querySelectorAll("option")).map((o) => o.value);
+    await screen.findByTestId("entry-type");
+    const options = offeredTypes();
 
     // First in the list — it is the thing this account is missing.
     await expect(options[0]).toBe("initial_total");
@@ -123,8 +136,8 @@ export const CustomerServiceMayAuthorTheSale: Story = {
 export const SaleAlreadyAuthoredHidesTheType: Story = {
   args: { ...base, settlement: awaiting, role: "customer_service" },
   play: async () => {
-    const select = await screen.findByTestId("entry-type");
-    const options = Array.from(select.querySelectorAll("option")).map((o) => o.value);
+    await screen.findByTestId("entry-type");
+    const options = offeredTypes();
 
     await expect(options).not.toContain("initial_total");
     await expect(options).toHaveLength(5);
@@ -144,7 +157,10 @@ export const TheSaleFigureWarnsLouder: Story = {
     // Not shown for an ordinary type…
     await expect(screen.queryByTestId("initial-total-warning")).not.toBeInTheDocument();
 
-    await userEvent.selectOptions(await screen.findByTestId("entry-type"), "initial_total");
+    await userEvent.click(await screen.findByTestId("entry-type"));
+    const option = screen.getByTestId("entry-type-option-initial_total");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
     await waitFor(async () => {
       await expect(screen.getByTestId("initial-total-warning")).toBeVisible();
     });
@@ -157,7 +173,7 @@ export const TheSaleFigureWarnsLouder: Story = {
 // ── The form's own rules ────────────────────────────────────────────────────────────────────────
 
 /**
- * THE SIGN IS TWO BUTTONS, NEVER A TYPED MINUS.
+ * THE SIGN IS TWO RADIO CARDS, NEVER A TYPED MINUS.
  *
  * `change` is signed, and a signed text field is how somebody eventually posts −45.000 meaning
  * +45.000 — in a ledger where `a-residual-balance-is-normal` hides the mistake and
@@ -254,5 +270,35 @@ export const WarnsBeforeWriting: Story = {
     await expect(await screen.findByTestId("entry-preview")).toHaveTextContent(
       /cannot be edited or deleted/i,
     );
+  },
+};
+
+/**
+ * CHAKRA'S OWN CONTROLS, THE PICK IN PRIMARY (owner) — `the-add-entry-form-picks-with-chakra-controls`.
+ *
+ * The type is a Chakra `Select` (a button that opens a list, never a native `<select>`), and the direction
+ * a radio-card pair whose chosen card is drawn in rose, the submit's own colour — not the default near-black.
+ */
+export const PicksWithChakraControls: Story = {
+  args: base,
+  play: async () => {
+    const trigger = await screen.findByTestId("entry-type");
+    await expect(trigger.tagName).toBe("BUTTON");
+    await expect(trigger).toHaveTextContent("Marketplace adjustment");
+
+    // The direction says which way, without "money" in front — it made both cards run long.
+    await expect(screen.getByTestId("direction-in")).toHaveTextContent(/^Reached us$/);
+    await expect(screen.getByTestId("direction-out")).toHaveTextContent(/^Taken from us$/);
+
+    const out = screen.getByTestId("direction-out");
+    await expect(within(out).getByRole("radio")).toBeChecked();
+    await expect(getComputedStyle(out).borderColor).toBe(BRAND_SOLID);
+
+    await userEvent.click(screen.getByTestId("direction-in"));
+    await waitFor(() => expect(getComputedStyle(screen.getByTestId("direction-in")).borderColor).toBe(BRAND_SOLID));
+
+    // The note is a sentence, so a textarea; the action is in the main tone.
+    await expect(screen.getByTestId("entry-note").tagName).toBe("TEXTAREA");
+    await expect(getComputedStyle(screen.getByTestId("entry-submit")).backgroundColor).toBe(BRAND_SOLID);
   },
 };

@@ -163,6 +163,8 @@ export interface OrderSettlement {
   orderId: bigint;
   /** The marketplace's own id, for a human to recognise the order by. Display only. */
   orderRef: string;
+  /** The shop the order sold through — on the wire, so the shop filter can narrow by it. */
+  shopId: bigint;
   shopName: string;
   teamName: string;
   /**
@@ -229,10 +231,6 @@ export function namedAdjustments(s: OrderSettlement): bigint {
     .reduce((total, e) => total + e.change, 0n);
 }
 
-/** `netReceived − cogs` — the number no service in this system could produce before settlement. */
-export function trueMargin(s: OrderSettlement): bigint {
-  return netReceived(s) - s.cogs;
-}
 
 function sumOf(s: OrderSettlement, type: SettlementType): bigint {
   return s.entries

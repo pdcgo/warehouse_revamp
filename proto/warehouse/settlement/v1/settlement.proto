@@ -360,12 +360,21 @@ message OrderSettlementListFilter {
   string q = 4;
 }
 
+// Which measure ranks the list. The direction (`sort_type`) applies to the NAMED measure: DESC is the
+// largest first — for LOSS the biggest loss — and UNSPECIFIED means DESC, so an empty sort opens on the
+// question the screen exists for (#the-settlement-list-sorts-by-its-headings).
+//
+// ⚠ An order whose sale was never recorded (`initial_total = 0`) sorts LAST under every money measure,
+// whichever direction: its figures are not real, so it must never lead a ranking. Ties break on
+// `order_id`, so a page never reshuffles rows of equal value between requests.
 enum OrderSettlementSort {
   ORDER_SETTLEMENT_SORT_UNSPECIFIED = 0;
   // The default and the reason the screen exists: the orders that lost the most, first.
   ORDER_SETTLEMENT_SORT_LOSS = 1;
   ORDER_SETTLEMENT_SORT_ORDER_ID = 2;
   ORDER_SETTLEMENT_SORT_INITIAL_TOTAL = 3;
+  // What reached us: `last_balance + initial_total`.
+  ORDER_SETTLEMENT_SORT_RECEIVED = 4;
 }
 
 message OrderSettlementListFilterSort {
@@ -418,10 +427,17 @@ message OrderSettlementListResponse {
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
 
-  // The implied take-rate card on the list screen: these are the WHOLE FILTERED SET, not this page.
-  // A card that changed as you turned pages would be reporting the page, which nobody asked about.
+  // The summary over the list: these are the WHOLE FILTERED SET, not this page. A figure that changed
+  // as you turned pages would be reporting the page, which nobody asked about.
+  //
+  // ⚠ Both sums skip accounts whose sale was never recorded (`initial_total = 0`): such an account's
+  // balance is its payouts with nothing to measure them against, and adding it would shrink the loss
+  // by money that was never a gain. They are counted instead, in `total_unrecorded`.
   int64 total_initial_total = 4;
   int64 total_last_balance = 5;
+  // How many accounts in the filtered set have no recorded sale — counted in `page_info.total_items`,
+  // left out of the two sums.
+  uint64 total_unrecorded = 6;
 }
 
 // ⚠ THE LOG IS NOT PAGINATED, and that is a bounded choice rather than an oversight. Its length is

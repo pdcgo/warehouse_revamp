@@ -53,7 +53,10 @@ export function SummaryCard({
   mark,
   value,
   line,
+  note,
   muted = false,
+  emphasis = false,
+  wide = false,
   testId,
 }: {
   /** The card's name. Given instead of a badge — for a pile that is not a status. */
@@ -66,15 +69,31 @@ export function SummaryCard({
   value: ReactNode;
   /** The quiet line under it. */
   line?: ReactNode;
+  /** A second quiet line, under `line` — how the figure is made, where it is not obvious. */
+  note?: ReactNode;
   /** Grey the figure — a pile the contract cannot count. */
   muted?: boolean;
+  /**
+   * The ONE figure a strip leads with — a little louder, never a different shape: a full fill in pale
+   * blue (the `lead.*` tokens) and its figure one size up. Use it once per strip, or it
+   * means nothing.
+   */
+  emphasis?: boolean;
+  /**
+   * Span the whole strip — for the lead card on a phone, where two columns would leave it alone in half
+   * a row as an afterthought.
+   */
+  wide?: boolean;
   testId?: string;
 }) {
   return (
+    // A GREY GROUND AND A THIN LINE (owner: *"background subtle / border tipis"*). `bg.subtle` is white in
+    // this theme — the same as the page and the card it sits on — so the card read as an outline only.
     <Box
       borderWidth="1px"
-      borderColor="border"
-      bg="bg.subtle"
+      borderColor={emphasis ? "lead.border" : "border"}
+      bg={emphasis ? "lead.bg" : "bg.muted"}
+      gridColumn={wide ? "1 / -1" : undefined}
       borderRadius="l2"
       px="3"
       py="2.5"
@@ -93,11 +112,11 @@ export function SummaryCard({
       )}
 
       <Text
-        fontSize="md"
+        fontSize={emphasis ? "lg" : "md"}
         fontWeight="bold"
         mt="1.5"
         lineClamp={1}
-        color={muted ? "fg.subtle" : undefined}
+        color={muted ? "fg.subtle" : emphasis ? "lead.fg" : undefined}
         data-testid={testId ? `${testId}-value` : undefined}
       >
         {value}
@@ -106,6 +125,12 @@ export function SummaryCard({
       {line !== undefined && (
         <Text fontSize="xs" color="fg.muted" lineClamp={1}>
           {line}
+        </Text>
+      )}
+
+      {note !== undefined && (
+        <Text fontSize="xs" color="fg.subtle" lineClamp={1} data-testid={testId ? `${testId}-note` : undefined}>
+          {note}
         </Text>
       )}
     </Box>

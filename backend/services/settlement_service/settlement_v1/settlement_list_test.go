@@ -201,3 +201,144 @@ func TestOrderSettlementList_ReturnsAccountsWithoutADataRequest(t *testing.T) {
 		t.Errorf("account 1 balance = %d, want -5000", settlements[1].GetLastBalance())
 	}
 }
+
+// openUnrecorded opens an account whose sale was never recorded: a payout arrives with no
+// `initial_total` before it, so the account holds `initial_total = 0` and a POSITIVE balance.
+func openUnrecorded(t *testing.T, svc *settlement_v1.Service, orderID uint64, payout int64) {
+	t.Helper()
+
+	_, err := post(t, svc, settlement_v1.PostInput{
+		OrderID:        orderID,
+		ShopID:         shop,
+		UniqueID:       fmt.Sprintf("fund-%d", orderID),
+		SettlementType: settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
+		SourceType:     settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
+		Change:         payout,
+	})
+	if err != nil {
+		t.Fatalf("fund %d: %v", orderID, err)
+	}
+}
+
+func idsOf(t *testing.T, svc *settlement_v1.Service, sort settlementv1.OrderSettlementSort, dir commonv1.CommonSortType) []uint64 {
+	t.Helper()
+
+	return list(t, svc, &settlementv1.OrderSettlementListRequest{
+		Sort: &settlementv1.OrderSettlementListFilterSort{Sort: sort, SortType: dir},
+	}).GetIds()
+}
+
+func wantIDs(t *testing.T, got []uint64, want []uint64, why string) {
+	t.Helper()
+
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("ids = %v, want %v — %s", got, want, why)
+	}
+}
+
+// RECEIVED ranks by what reached us — `last_balance + initial_total` — and flips with the direction
+// (#the-settlement-list-sorts-by-its-headings).
+func TestOrderSettlementList_SortsByReceivedEitherWay(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	settleOrder(t, svc, 1, shop, -5_000)
+	settleOrder(t, svc, 2, shop, -40_000)
+	settleOrder(t, svc, 3, shop, -12_000)
+
+	received := settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_RECEIVED
+
+	wantIDs(t, idsOf(t, svc, received, commonv1.CommonSortType_COMMON_SORT_TYPE_DESC), []uint64{1, 3, 2},
+		"DESC is the most received first")
+	wantIDs(t, idsOf(t, svc, received, commonv1.CommonSortType_COMMON_SORT_TYPE_ASC), []uint64{2, 3, 1},
+		"ASC is the least received first")
+}
+
+// The direction applies to the NAMED measure: LOSS ASC is the SMALLEST loss first. Before, it applied
+// to the balance, so "ASC" meant the biggest loss — a contract that read backwards.
+func TestOrderSettlementList_LossDirectionIsTheLossNotTheBalance(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	settleOrder(t, svc, 1, shop, -5_000)
+	settleOrder(t, svc, 2, shop, -40_000)
+	settleOrder(t, svc, 3, shop, -12_000)
+
+	loss := settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_LOSS
+
+	wantIDs(t, idsOf(t, svc, loss, commonv1.CommonSortType_COMMON_SORT_TYPE_DESC), []uint64{2, 3, 1},
+		"LOSS DESC is the biggest loss first")
+	wantIDs(t, idsOf(t, svc, loss, commonv1.CommonSortType_COMMON_SORT_TYPE_ASC), []uint64{1, 3, 2},
+		"LOSS ASC is the smallest loss first")
+}
+
+// ⚠ AN UNRECORDED SALE NEVER LEADS. Its balance is pure payout — positive — so the smallest-loss end
+// of an ascending sort is exactly where it would land without the rule.
+func TestOrderSettlementList_AnUnrecordedSaleSortsLastEitherWay(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	settleOrder(t, svc, 1, shop, -5_000)
+	settleOrder(t, svc, 2, shop, -40_000)
+	openUnrecorded(t, svc, 4, 62_000)
+
+	for _, sort := range []settlementv1.OrderSettlementSort{
+		settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_LOSS,
+		settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_INITIAL_TOTAL,
+		settlementv1.OrderSettlementSort_ORDER_SETTLEMENT_SORT_RECEIVED,
+	} {
+		for _, dir := range []commonv1.CommonSortType{
+			commonv1.CommonSortType_COMMON_SORT_TYPE_DESC,
+			commonv1.CommonSortType_COMMON_SORT_TYPE_ASC,
+		} {
+			got := idsOf(t, svc, sort, dir)
+			if len(got) != 3 || got[2] != 4 {
+				t.Fatalf("%v %v: ids = %v, want order 4 last", sort, dir, got)
+			}
+		}
+	}
+}
+
+// Equal values break on `order_id`, so a page boundary cannot fall between two of them differently
+// on two requests.
+func TestOrderSettlementList_TiesBreakOnTheOrderID(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	settleOrder(t, svc, 5, shop, -10_000)
+	settleOrder(t, svc, 7, shop, -10_000)
+	settleOrder(t, svc, 6, shop, -10_000)
+
+	wantIDs(t, list(t, svc, &settlementv1.OrderSettlementListRequest{}).GetIds(), []uint64{7, 6, 5},
+		"an equal loss breaks on order_id, in the sort's direction")
+}
+
+// The sums skip an unrecorded sale and count it instead: its positive balance would otherwise shrink
+// the loss by money that was never a gain.
+func TestOrderSettlementList_TotalsSkipAnUnrecordedSale(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
+
+	settleOrder(t, svc, 1, shop, -5_000)
+	settleOrder(t, svc, 2, shop, -40_000)
+	settleOrder(t, svc, 3, shop, -12_000)
+	openUnrecorded(t, svc, 4, 62_000)
+
+	got := list(t, svc, &settlementv1.OrderSettlementListRequest{})
+
+	if got.GetTotalLastBalance() != -57_000 {
+		t.Errorf("total_last_balance = %d, want -57000 — the unrecorded payout must not offset the loss", got.GetTotalLastBalance())
+	}
+
+	if got.GetTotalInitialTotal() != 3*sale {
+		t.Errorf("total_initial_total = %d, want %d", got.GetTotalInitialTotal(), 3*sale)
+	}
+
+	if got.GetTotalUnrecorded() != 1 {
+		t.Errorf("total_unrecorded = %d, want 1", got.GetTotalUnrecorded())
+	}
+
+	if got.GetPageInfo().GetTotalItems() != 4 {
+		t.Errorf("total_items = %d, want 4 — the unrecorded account is still listed", got.GetPageInfo().GetTotalItems())
+	}
+}

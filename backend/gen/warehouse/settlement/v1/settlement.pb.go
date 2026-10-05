@@ -204,6 +204,13 @@ func (SourceType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{1}
 }
 
+// Which measure ranks the list. The direction (`sort_type`) applies to the NAMED measure: DESC is the
+// largest first — for LOSS the biggest loss — and UNSPECIFIED means DESC, so an empty sort opens on the
+// question the screen exists for (#the-settlement-list-sorts-by-its-headings).
+//
+// ⚠ An order whose sale was never recorded (`initial_total = 0`) sorts LAST under every money measure,
+// whichever direction: its figures are not real, so it must never lead a ranking. Ties break on
+// `order_id`, so a page never reshuffles rows of equal value between requests.
 type OrderSettlementSort int32
 
 const (
@@ -212,6 +219,8 @@ const (
 	OrderSettlementSort_ORDER_SETTLEMENT_SORT_LOSS          OrderSettlementSort = 1
 	OrderSettlementSort_ORDER_SETTLEMENT_SORT_ORDER_ID      OrderSettlementSort = 2
 	OrderSettlementSort_ORDER_SETTLEMENT_SORT_INITIAL_TOTAL OrderSettlementSort = 3
+	// What reached us: `last_balance + initial_total`.
+	OrderSettlementSort_ORDER_SETTLEMENT_SORT_RECEIVED OrderSettlementSort = 4
 )
 
 // Enum value maps for OrderSettlementSort.
@@ -221,12 +230,14 @@ var (
 		1: "ORDER_SETTLEMENT_SORT_LOSS",
 		2: "ORDER_SETTLEMENT_SORT_ORDER_ID",
 		3: "ORDER_SETTLEMENT_SORT_INITIAL_TOTAL",
+		4: "ORDER_SETTLEMENT_SORT_RECEIVED",
 	}
 	OrderSettlementSort_value = map[string]int32{
 		"ORDER_SETTLEMENT_SORT_UNSPECIFIED":   0,
 		"ORDER_SETTLEMENT_SORT_LOSS":          1,
 		"ORDER_SETTLEMENT_SORT_ORDER_ID":      2,
 		"ORDER_SETTLEMENT_SORT_INITIAL_TOTAL": 3,
+		"ORDER_SETTLEMENT_SORT_RECEIVED":      4,
 	}
 )
 
@@ -1339,12 +1350,19 @@ type OrderSettlementListResponse struct {
 	// Keyed by `order_id` — the accounts' identity IS the order (#the-grain-is-the-order).
 	Ids      []uint64     `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo *v1.PageInfo `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	// The implied take-rate card on the list screen: these are the WHOLE FILTERED SET, not this page.
-	// A card that changed as you turned pages would be reporting the page, which nobody asked about.
+	// The summary over the list: these are the WHOLE FILTERED SET, not this page. A figure that changed
+	// as you turned pages would be reporting the page, which nobody asked about.
+	//
+	// ⚠ Both sums skip accounts whose sale was never recorded (`initial_total = 0`): such an account's
+	// balance is its payouts with nothing to measure them against, and adding it would shrink the loss
+	// by money that was never a gain. They are counted instead, in `total_unrecorded`.
 	TotalInitialTotal int64 `protobuf:"varint,4,opt,name=total_initial_total,json=totalInitialTotal,proto3" json:"total_initial_total,omitempty"`
 	TotalLastBalance  int64 `protobuf:"varint,5,opt,name=total_last_balance,json=totalLastBalance,proto3" json:"total_last_balance,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// How many accounts in the filtered set have no recorded sale — counted in `page_info.total_items`,
+	// left out of the two sums.
+	TotalUnrecorded uint64 `protobuf:"varint,6,opt,name=total_unrecorded,json=totalUnrecorded,proto3" json:"total_unrecorded,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *OrderSettlementListResponse) Reset() {
@@ -1408,6 +1426,13 @@ func (x *OrderSettlementListResponse) GetTotalInitialTotal() int64 {
 func (x *OrderSettlementListResponse) GetTotalLastBalance() int64 {
 	if x != nil {
 		return x.TotalLastBalance
+	}
+	return 0
+}
+
+func (x *OrderSettlementListResponse) GetTotalUnrecorded() uint64 {
+	if x != nil {
+		return x.TotalUnrecorded
 	}
 	return 0
 }
@@ -2589,13 +2614,14 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\n" +
 	"settlement\x18\x02 \x01(\v2/.warehouse.settlement.v1.OrderSettlementMapItemH\x00R\n" +
 	"settlementB\x03\n" +
-	"\x01d\"\x99\x02\n" +
+	"\x01d\"\xc4\x02\n" +
 	"\x1bOrderSettlementListResponse\x12N\n" +
 	"\x05items\x18\x01 \x03(\v28.warehouse.settlement.v1.OrderSettlementListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12.\n" +
 	"\x13total_initial_total\x18\x04 \x01(\x03R\x11totalInitialTotal\x12,\n" +
-	"\x12total_last_balance\x18\x05 \x01(\x03R\x10totalLastBalance\"u\n" +
+	"\x12total_last_balance\x18\x05 \x01(\x03R\x10totalLastBalance\x12)\n" +
+	"\x10total_unrecorded\x18\x06 \x01(\x04R\x0ftotalUnrecorded\"u\n" +
 	"\x1cOrderSettlementDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
@@ -2710,12 +2736,13 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x17SOURCE_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14SOURCE_TYPE_IMPORTER\x10\x01\x12\x16\n" +
 	"\x12SOURCE_TYPE_MANUAL\x10\x02\x12\x15\n" +
-	"\x11SOURCE_TYPE_ORDER\x10\x03*\xa9\x01\n" +
+	"\x11SOURCE_TYPE_ORDER\x10\x03*\xcd\x01\n" +
 	"\x13OrderSettlementSort\x12%\n" +
 	"!ORDER_SETTLEMENT_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aORDER_SETTLEMENT_SORT_LOSS\x10\x01\x12\"\n" +
 	"\x1eORDER_SETTLEMENT_SORT_ORDER_ID\x10\x02\x12'\n" +
-	"#ORDER_SETTLEMENT_SORT_INITIAL_TOTAL\x10\x03*\xab\x01\n" +
+	"#ORDER_SETTLEMENT_SORT_INITIAL_TOTAL\x10\x03\x12\"\n" +
+	"\x1eORDER_SETTLEMENT_SORT_RECEIVED\x10\x04*\xab\x01\n" +
 	"\x1bOrderSettlementListDataType\x12/\n" +
 	"+ORDER_SETTLEMENT_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'ORDER_SETTLEMENT_LIST_DATA_TYPE_GENERAL\x10\x01\x12.\n" +

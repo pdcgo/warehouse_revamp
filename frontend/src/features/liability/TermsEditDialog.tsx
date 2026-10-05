@@ -220,7 +220,6 @@ export function TermsEditDialog({
                         value={limit}
                         onChange={setLimit}
                         disabled={busy}
-                        placeholder="0"
                         data-testid="terms-limit-amount"
                       />
                     )}
@@ -234,7 +233,6 @@ export function TermsEditDialog({
                       value={handlingFee}
                       onChange={setHandlingFee}
                       disabled={busy}
-                      placeholder="0"
                       data-testid="terms-handling-fee"
                     />
                     {/* Nothing configured means CHARGE NOTHING — a warehouse that has set no rate is

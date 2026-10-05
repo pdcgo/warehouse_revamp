@@ -1,7 +1,21 @@
 // Money is stored as whole rupiah (int64 → bigint here). formatRupiah renders it with id-ID
 // grouping, e.g. 25000n → "Rp 25.000".
+//
+// ⚠ A NEGATIVE AMOUNT PUTS ITS MINUS BEFORE "Rp" — "−Rp 10.000", never "Rp -10.000" (owner:
+// `a-negative-amount-puts-its-minus-before-rp`). The sign is what says which way the money went, and
+// buried after the currency it was the one character nobody read. The minus is the typographic "−", the
+// same one a signed change already shows, so a change and the balance beside it read alike.
 export function formatRupiah(amount: bigint): string {
+  if (amount < 0n) return `−Rp ${(-amount).toLocaleString("id-ID")}`;
   return `Rp ${amount.toLocaleString("id-ID")}`;
+}
+
+// formatSignedRupiah writes BOTH signs — "+Rp 4.000", "−Rp 10.000", "Rp 0" — for an amount whose
+// direction is the point (a change, a running balance, a settlement adjustment). formatRupiah writes the
+// minus the same way and leaves a positive amount bare.
+export function formatSignedRupiah(amount: bigint): string {
+  if (amount === 0n) return formatRupiah(0n);
+  return `${amount > 0n ? "+" : "−"}${formatRupiah(amount > 0n ? amount : -amount)}`;
 }
 
 // formatRupiahNumber is formatRupiah for a `double` amount — the wire type rupiah-is-floating-point
@@ -36,7 +50,8 @@ const COMPACT_UNITS: Array<{ limit: number; suffix: string }> = [
 export function formatRupiahCompact(amount: bigint): string {
   const n = Number(amount);
   const abs = Math.abs(n);
-  const sign = n < 0 ? "-" : "";
+  // The same minus, in the same place, as formatRupiah.
+  const sign = n < 0 ? "−" : "";
 
   for (const { limit, suffix } of COMPACT_UNITS) {
     if (abs >= limit) {

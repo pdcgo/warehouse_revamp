@@ -205,7 +205,6 @@ export function WarehouseOrderDetailPage() {
             orderId={order.id}
             shopId={order.shopId}
             orderRef={order.orderExternalRefId || String(order.id)}
-            cogs={order.cogs}
           />
         </Tabs.Content>
       </Tabs.Root>
