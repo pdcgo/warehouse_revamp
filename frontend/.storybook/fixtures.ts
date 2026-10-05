@@ -217,6 +217,28 @@ export const shipmentChannels = [
   { id: 94n, code: "pos", name: "POS Indonesia", desc: "No longer picks up here", isDeleted: true },
 ];
 
+// ── What the stubbed ReceiptCheck reads off a label ──────────────────────────────────────────────
+//
+// ⚠ INVENTED, in the real shapes (an SPX tracking number, a Shopee order number). Never a real
+// sample's values: those name a buyer and where their parcel went, and this repo is public.
+export const receiptLabel = {
+  receipt: "SPXID000000000001",
+  orderRefId: "260101AAAA0001",
+  customerName: "Budi Contoh",
+  phone: "",
+  address: "Jl. Contoh No. 1, Kebayoran Baru, Jakarta Selatan",
+};
+
+/**
+ * A fake label PDF for a story. `result` names the answer the stub gives (`not_shipping_label`,
+ * `multiple_labels`, `unknown_label`, `unreadable`); without it, the file reads as `receiptLabel`.
+ */
+export function receiptLabelFile(result?: string): File {
+  const body = `%PDF-1.4\n${result ? `stub-result:${result}\n` : ""}%%EOF\n`;
+
+  return new File([body], "label.pdf", { type: "application/pdf" });
+}
+
 // ── The region TREE, for AddressPicker's four cascading level selects ────────────────────────────
 //
 // Codes follow the real Kepmendagri shape — a child's code is prefixed by its parent's — because

@@ -5,7 +5,7 @@ import { Text } from "@chakra-ui/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { products, shops } from "../../../.storybook/fixtures";
+import { products, receiptLabel, receiptLabelFile, shops } from "../../../.storybook/fixtures";
 import { OrderCreatePage } from "./index";
 
 // The FIRST page storied, rather than another shared component — and the reason is that this screen
@@ -275,6 +275,97 @@ export const TheReceiptFileLeadsWithBothOfItsNumbers: Story = {
 
     // The old home of the courier + upload, now empty of them.
     await expect(canvas.queryByTestId("order-receipt-section")).toBeNull();
+  },
+};
+
+// ── THE LABEL, READ BACK — shipment's ReceiptCheck (receipt-check-is-shipments) ─────────────────
+//
+// The check runs on the FILE the person picked, beside its upload (receipt-check-takes-the-file-bytes).
+// The stub answers by a marker written into the fake PDF (`receiptLabelFile`), so each story names the
+// answer it is about.
+
+async function attachReceipt(canvasElement: HTMLElement, file: File, answer: string) {
+  const input = canvasElement.querySelector<HTMLInputElement>(
+    '[data-testid="order-receipt-upload"] input[type="file"]',
+  );
+  await expect(input).not.toBeNull();
+  await userEvent.upload(input as HTMLInputElement, file, { applyAccept: false });
+
+  const canvas = within(canvasElement);
+  await canvas.findByTestId("order-receipt-attached");
+  // The check has ANSWERED — what makes "nothing appeared" an assertion rather than a race.
+  await waitFor(() =>
+    expect(canvas.getByTestId("order-create-receipt-card")).toHaveAttribute("data-scan-result", answer),
+  );
+}
+
+// A label that reads fills BOTH empty boxes, and says it did: a box that filled itself looks exactly
+// like one somebody typed, and only one of the two should be trusted without a second look.
+export const AttachingALabelFillsItsTwoNumbers: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await attachReceipt(canvasElement, receiptLabelFile(), "read");
+
+    await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue(receiptLabel.orderRefId);
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue(receiptLabel.receipt);
+    await expect(canvas.getByTestId("order-create-scan-filled")).toBeVisible();
+    await expect(canvas.queryByTestId("order-create-scan-notice")).toBeNull();
+  },
+};
+
+// ⚠ A MACHINE NEVER OVERWRITES A PERSON. The typed order id stays; only the EMPTY tracking box fills.
+// The disagreement is raised at Create instead (`checkScanMatches`), where somebody can look at both.
+export const ALabelNeverOverwritesWhatWasTyped: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(canvas.getByTestId("order-external-ref-id"), "260101BBBB0002", { delay: 10 });
+    await attachReceipt(canvasElement, receiptLabelFile(), "read");
+
+    await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue("260101BBBB0002");
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue(receiptLabel.receipt);
+  },
+};
+
+// A file that is not a courier's label SAYS so — a warning, never a refusal: the file stays attached,
+// and nothing is filled from it (a-label-outcome-is-a-result-not-an-error).
+export const AFileThatIsNotALabelSaysSo: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await attachReceipt(canvasElement, receiptLabelFile("not_shipping_label"), "notShippingLabel");
+
+    await expect(canvas.getByTestId("order-create-scan-notice")).toHaveAttribute("data-result", "notShippingLabel");
+    await expect(canvas.getByTestId("order-receipt-attached")).toBeInTheDocument();
+    await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue("");
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue("");
+  },
+};
+
+// A bulk print is read as NOTHING — never page 1, which would fill in another order's numbers.
+export const ABulkPrintFillsNothingAndSaysWhy: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await attachReceipt(canvasElement, receiptLabelFile("multiple_labels"), "multipleLabels");
+
+    await expect(canvas.getByTestId("order-create-scan-notice")).toHaveAttribute("data-result", "multipleLabels");
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue("");
+  },
+};
+
+// …and a real label the reader has not learned yet says NOTHING. It is normal, not a failure: the
+// person types the numbers exactly as before the check existed.
+export const ALabelTheReaderDoesNotKnowSaysNothing: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await attachReceipt(canvasElement, receiptLabelFile("unknown_label"), "unknownLabel");
+
+    await expect(canvas.queryByTestId("order-create-scan-notice")).toBeNull();
+    await expect(canvas.queryByTestId("order-create-scan-filled")).toBeNull();
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue("");
   },
 };
 

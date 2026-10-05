@@ -2938,7 +2938,7 @@
       },
       "receiptScan": {
         "label": "Receipt file check",
-        "reason": "Nothing reads the uploaded file yet, so the autofill and the match check stand on a stand-in."
+        "reason": "The file goes to shipment's ReceiptCheck, which isn't built yet — outside Storybook nothing is read from it."
       },
       "refsDistinct": {
         "label": "Order ID vs tracking number",
@@ -3066,7 +3066,12 @@
       "halfMissing": "The receipt file carries both numbers — one of the boxes above is still empty.",
       "filledFromFile": "Filled in from the receipt file — check it against the paper.",
       "dropHere": "or drop the file here",
-      "pdfNoPreview": "PDF — open it to read the numbers"
+      "pdfNoPreview": "PDF — open it to read the numbers",
+      "scan": {
+        "multipleLabels": "This file holds several labels — attach the one for this order.",
+        "notShippingLabel": "This file isn't a courier's shipping label — check it's the right file.",
+        "unreadable": "This file can't be read — type the numbers from the label."
+      }
     },
     "checks": {
       "blockedTitle": "This order cannot be placed yet",

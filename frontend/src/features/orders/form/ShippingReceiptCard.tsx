@@ -21,6 +21,7 @@ import { ReceiptUpload, hasReceipt, useReceiptUpload } from "../../../components
 import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 import { ShippingSelect } from "../../../components/pickers/ShippingSelect";
 import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
+import type { LabelResult } from "../../shipment/receiptCheck";
 import { checkRefAgainstMarketplace, checkTrackingAgainstCourier } from "./checks";
 import { ImagePreview } from "./ImagePreview";
 import type { PreviewTarget } from "./ImagePreview";
@@ -48,6 +49,8 @@ interface ShippingReceiptCardProps {
   teamId: bigint;
   receipt: ReceiptValue;
   onReceiptChange: (value: ReceiptValue) => void;
+  /** The picked file, as its upload starts (`null` if it fails) — what the label check reads. */
+  onReceiptFile?: (file: File | null) => void;
   /** The storefront's own id for the order — printed on the same receipt file. */
   orderRefId: string;
   onOrderRefIdChange: (value: string) => void;
@@ -61,7 +64,18 @@ interface ShippingReceiptCardProps {
   marketplace: Marketplace;
   /** True once the file has been read and something was filled in from it. */
   filledFromFile?: boolean;
+  /** What the label check made of the file — `undefined` while unread, or when it was not checked. */
+  scanResult?: LabelResult;
 }
+
+// WHAT THE CHECK SAYS ABOUT A FILE IT COULD NOT READ NUMBERS FROM — only where the person can act on
+// it. An UNKNOWN label says nothing (a-label-outcome-is-a-result-not-an-error): it is a real label the
+// reader has not learned, and the person types the numbers exactly as before the check existed.
+const SCAN_NOTICES: ReadonlySet<LabelResult> = new Set<LabelResult>([
+  "multipleLabels",
+  "notShippingLabel",
+  "unreadable",
+]);
 
 export function ShippingReceiptCard({
   teamId,
@@ -75,13 +89,19 @@ export function ShippingReceiptCard({
   onShippingCodeChange,
   marketplace,
   filledFromFile,
+  scanResult,
+  onReceiptFile,
 }: ShippingReceiptCardProps) {
   const { t } = useTranslation();
   const [preview, setPreview] = useState<PreviewTarget | null>(null);
   const [dragging, setDragging] = useState(false);
   const { url, loading } = useReceiptUrl(teamId, receipt);
   // The SAME upload the button performs — one sequence, two ways to start it.
-  const { upload, busy: uploading } = useReceiptUpload({ teamId, onChange: onReceiptChange });
+  const { upload, busy: uploading } = useReceiptUpload({
+    teamId,
+    onChange: onReceiptChange,
+    onFile: onReceiptFile,
+  });
 
   const attached = hasReceipt(receipt);
   const pdf = receipt.mimeType === "application/pdf";
@@ -97,7 +117,9 @@ export function ShippingReceiptCard({
   const marketplaceFinding = checkRefAgainstMarketplace(orderRefId, marketplace);
 
   return (
-    <Card.Root>
+    // `data-scan-result` says the check has ANSWERED, even when its answer shows nothing — what a
+    // story waits on before asserting that nothing appeared.
+    <Card.Root data-testid="order-create-receipt-card" data-scan-result={scanResult ?? "none"}>
       <Card.Header>
         <Card.Title>{t("orderForm.resi.title")}</Card.Title>
         <Card.Description>{t("orderForm.resi.help")}</Card.Description>
@@ -189,7 +211,12 @@ export function ShippingReceiptCard({
             <Flex align="center" gap="2" wrap="wrap">
               {/* The attach / replace / remove row, exactly as every other screen shows it. */}
               <Box flex="1" minW="0">
-                <ReceiptUpload teamId={teamId} value={receipt} onChange={onReceiptChange} />
+                <ReceiptUpload
+                  teamId={teamId}
+                  value={receipt}
+                  onChange={onReceiptChange}
+                  onFile={onReceiptFile}
+                />
               </Box>
 
               {attached && url && (
@@ -267,6 +294,14 @@ export function ShippingReceiptCard({
                   {t("orderForm.resi.filledFromFile")}
                 </Text>
               </Flex>
+            )}
+
+            {/* WHAT THE FILE IS NOT — a warning, never a refusal: the file stays attached, and the
+                person decides whether it is the one they meant. */}
+            {scanResult && SCAN_NOTICES.has(scanResult) && (
+              <Text fontSize="xs" color="warning.fg" data-testid="order-create-scan-notice" data-result={scanResult}>
+                {t(`orderForm.resi.scan.${scanResult}`)}
+              </Text>
             )}
           </Stack>
         </SimpleGrid>

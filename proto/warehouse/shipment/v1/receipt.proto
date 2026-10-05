@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package warehouse.shipment.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipment/v1;shipmentv1";
+
+// ReceiptService reads an uploaded shipping label (receipt-check-is-shipments, in
+// docs/business/shipment/context_decision.md). It runs backend/pkgs/san_receipt_readers and stores
+// nothing: the order form sends the file's bytes while it uploads the same file to storage
+// (receipt-check-takes-the-file-bytes), and fills only the boxes that are still empty.
+//
+// A service of its own rather than one more RPC on ShipmentChannelService: that one is named for the
+// courier catalogue, and the 3 MB read cap (receipt-check-caps-the-body-before-reading) must reach this
+// handler only.
+service ReceiptService {
+  // ReceiptCheck answers what the label says. It READS and never VERIFIES
+  // (receipt-check-returns-what-the-library-reads): comparing the answer with what a person typed is
+  // the caller's job, so nothing can refuse an order on it.
+  rpc ReceiptCheck(ReceiptCheckRequest) returns (ReceiptCheckResponse);
+}
+
+message ReceiptCheckRequest {
+  // Any signed-in user, any team (receipt-check-needs-a-login). Unlike the channel reads it is NOT
+  // public: it parses a file the caller sends. No use_scope — the check reads no team's data.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  // The label file, a PDF. 2 MB is the reader's own cap; the handler refuses a body over 3 MB before
+  // reading it (receipt-check-caps-the-body-before-reading).
+  bytes file_content = 1 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 2097152
+  }];
+}
+
+// What the label says, field for field from san_receipt_readers.ReceiptData. "" = the label does not
+// print it, or prints it masked. Every field is "" unless result is READ.
+//
+// ⚠ Never logged (receipt-check-logs-only-the-result): it carries a buyer's name and address.
+message ReceiptCheckResponse {
+  ReceiptCheckResult result = 1;
+  // The courier's tracking number — or, on an instant / same-day label, its pickup code.
+  string receipt = 2;
+  // The marketplace's order number.
+  string order_ref_id = 3;
+  string customer_name = 4;
+  string phone = 5;
+  string address = 6;
+}
+
+// Every answer the reader can give about a file is a RESULT, not an error
+// (a-label-outcome-is-a-result-not-an-error): a label not learned yet is normal. Only a fault in the
+// handler itself is a Connect error.
+enum ReceiptCheckResult {
+  RECEIPT_CHECK_RESULT_UNSPECIFIED = 0;
+  // A known label: the fields are filled.
+  RECEIPT_CHECK_RESULT_READ = 1;
+  // A courier label the reader has not learned yet. The person types the numbers.
+  RECEIPT_CHECK_RESULT_UNKNOWN_LABEL = 2;
+  // A bulk print: more than one label in one file, so none of them is read.
+  RECEIPT_CHECK_RESULT_MULTIPLE_LABELS = 3;
+  // Read, and not a courier's label at all (a note, a screenshot, a label the seller designed).
+  RECEIPT_CHECK_RESULT_NOT_SHIPPING_LABEL = 4;
+  // Could not be read: not a PDF, too large, or broken.
+  RECEIPT_CHECK_RESULT_UNREADABLE = 5;
+}

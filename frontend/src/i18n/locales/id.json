@@ -2928,7 +2928,7 @@
       },
       "receiptScan": {
         "label": "Pemeriksaan file resi",
-        "reason": "Belum ada yang membaca file yang diunggah, jadi autofill dan pencocokannya masih memakai pengganti."
+        "reason": "File dikirim ke ReceiptCheck milik shipment, yang belum dibangun — di luar Storybook belum ada yang terbaca darinya."
       },
       "refsDistinct": {
         "label": "Order ID vs nomor resi",
@@ -3056,7 +3056,12 @@
       "halfMissing": "File resi memuat kedua nomornya — salah satu kolom di atas masih kosong.",
       "filledFromFile": "Terisi dari file resi — cocokkan lagi dengan kertasnya.",
       "dropHere": "atau taruh filenya di sini",
-      "pdfNoPreview": "PDF — buka untuk membaca nomornya"
+      "pdfNoPreview": "PDF — buka untuk membaca nomornya",
+      "scan": {
+        "multipleLabels": "File ini berisi beberapa label — lampirkan label untuk pesanan ini saja.",
+        "notShippingLabel": "File ini bukan label pengiriman kurir — pastikan filenya benar.",
+        "unreadable": "File ini tidak bisa dibaca — ketik nomornya dari label."
+      }
     },
     "checks": {
       "blockedTitle": "Pesanan ini belum bisa dibuat",

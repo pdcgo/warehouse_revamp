@@ -34,6 +34,7 @@ import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_p
 import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
+import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
@@ -109,6 +110,7 @@ import {
   liabilityPositions,
   liabilityTerms,
   liabilityTermsChanges,
+  receiptLabel,
   suppliers,
   teams,
   users,
@@ -474,6 +476,14 @@ function stubImport(
 // showing the very picture that was picked, and a private one (receipt, proof) opens it.
 const STUB_UPLOAD_ORIGIN = "https://storybook-upload.invalid";
 
+// The answers a story can ask ReceiptCheck for, by the marker's name.
+const RECEIPT_STUB_RESULTS: Record<string, ReceiptCheckResult> = {
+  unknown_label: ReceiptCheckResult.UNKNOWN_LABEL,
+  multiple_labels: ReceiptCheckResult.MULTIPLE_LABELS,
+  not_shipping_label: ReceiptCheckResult.NOT_SHIPPING_LABEL,
+  unreadable: ReceiptCheckResult.UNREADABLE,
+};
+
 interface PendingUpload {
   teamId: bigint;
   resourceType: DocumentResourceType;
@@ -778,6 +788,25 @@ export const transport = createRouterTransport(({ service }) => {
       const row = channelById(req.channelId);
       Object.assign(row, { isDeleted: false, updatedAt: timestampFromDate(new Date()) });
       return { channel: row };
+    },
+  });
+
+  // THE LABEL READER, without the reader. The Go package cannot run here, so a story NAMES the answer
+  // it wants by writing `stub-result:<name>` into its fake PDF (see `receiptLabelFile`); a file with no
+  // marker is a label that reads. What is kept from the real service is the shape of every answer: a
+  // RESULT in a successful response, never an error (a-label-outcome-is-a-result-not-an-error), and
+  // every field "" unless the result is READ.
+  service(ReceiptService, {
+    receiptCheck: (req) => {
+      const head = new TextDecoder().decode(req.fileContent.subarray(0, 512));
+      if (!head.startsWith("%PDF-")) {
+        return { result: ReceiptCheckResult.UNREADABLE };
+      }
+
+      const named = /stub-result:([a-z_]+)/.exec(head)?.[1] ?? "";
+      const result = RECEIPT_STUB_RESULTS[named] ?? ReceiptCheckResult.READ;
+
+      return result === ReceiptCheckResult.READ ? { result, ...receiptLabel } : { result };
     },
   });
 

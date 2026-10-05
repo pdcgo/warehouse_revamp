@@ -21,6 +21,13 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-channel-records-updated-at](#a-channel-records-updated-at) | `shipment_channels` gains `updated_at` |
 | [the-prototype-is-accepted](#the-prototype-is-accepted) | screens and `warehouse.shipment.v1` accepted at design_accept |
 | [the-old-catalogue-bridges-by-code](#the-old-catalogue-bridges-by-code) | `shipping_service` is deleted; code-storing screens read `shipment_service` by code |
+| [receipt-check-is-shipments](#receipt-check-is-shipments) | reading an uploaded shipping label is `ReceiptCheck`, served by `shipment_service` |
+| [receipt-check-takes-the-file-bytes](#receipt-check-takes-the-file-bytes) | the request carries the file's bytes, sent beside the upload — no stored document is fetched |
+| [receipt-check-returns-what-the-library-reads](#receipt-check-returns-what-the-library-reads) | it reads, it does not verify: the response is `Extract`'s `ReceiptData`, with no match verdict |
+| [receipt-check-needs-a-login](#receipt-check-needs-a-login) | any signed-in user may call it — unlike the channel reads, it is NOT public |
+| [a-label-outcome-is-a-result-not-an-error](#a-label-outcome-is-a-result-not-an-error) | unknown, several labels, not a label, unreadable: a `result` in a successful response |
+| [receipt-check-caps-the-body-before-reading](#receipt-check-caps-the-body-before-reading) | the handler refuses a request over 3 MB before reading it; the file stays `max_len` 2 MB |
+| [receipt-check-logs-only-the-result](#receipt-check-logs-only-the-result) | a log line carries the `result`, never the buyer's fields or the bytes |
 
 ---
 
@@ -376,3 +383,196 @@ flowchart LR
 | the `/shipping` menu | opens the new page, **root only** ([only-root-manages-channels](#only-root-manages-channels)) |
 | ⚠ old data | existing rows with a code outside the new seed (e.g. `anteraja`) render as the raw code until root creates that channel |
 | ⚠ old table | `shippings` is left in existing databases, unused — no migration of another service may drop it |
+
+---
+
+## receipt-check-is-shipments
+
+> Owner (2026-10-05), in [context.md](./context.md) §What Exposed to Public 2 and §`ReceiptCheck` rpc: *"provide tool
+> for check receipt that named `ReceiptCheck`"*, *"its use receipt reader"*. This answers
+> [receipt_readers Q3](../../technical/packages/receipt_readers/context_clarify.md#question), *which service hosts the
+> scan?* **Against my recommendation** (order_service).
+
+**The verdict.** The RPC that reads an uploaded shipping label is **`ReceiptCheck`**, served by `shipment_service`,
+and it runs [`san_receipt_readers.Extract`](../../technical/packages/receipt_readers/context.md). The name
+`ReceiptScan` from the receipt reader's clarify is retired.
+
+```mermaid
+flowchart LR
+  F["the order form, a label file"] -->|"ReceiptCheck"| S["shipment_service"]
+  S --> E["san_receipt_readers.Extract"]
+  E --> R["receipt, order ref, recipient"]
+  S --- C["shipment_channels"]
+```
+
+| | |
+| --- | --- |
+| host | `shipment_service`, not order_service as I had recommended |
+| name | `ReceiptCheck`, replacing `ReceiptScan` |
+| engine | `backend/pkgs/san_receipt_readers`: a package, and this RPC is its only caller |
+| still open | who may call it, read or verify, bytes or a stored document: [the clarify](./context_clarify.md#question) |
+
+**Why I now agree.** A receipt is the courier's number for one parcel. Shipment already owns two deferred jobs, the
+handover ([the-handover-is-shipments-and-deferred](#the-handover-is-shipments-and-deferred)) and tracking
+([tracking-is-deferred](#tracking-is-deferred)), and both are keyed on that number. My order_service argument looked
+only at today's caller.
+
+---
+
+## receipt-check-takes-the-file-bytes
+
+> Owner (2026-10-05): **"for q4 take file byte"**, to *"the file: its bytes, or a stored document?"* (was Q4,
+> re-routed from [receipt_readers Q2](../../technical/packages/receipt_readers/context_clarify.md#question)). As
+> recommended.
+
+**The verdict.** `ReceiptCheckRequest` carries the file's bytes. The order form sends them while it uploads the same
+file to storage, and shipment never fetches a stored document.
+
+```mermaid
+flowchart LR
+  P["the label file, picked"] -->|"the bytes"| RC["ReceiptCheck"]
+  P -->|"RequestUpload, PUT, ConfirmUpload"| D["document_service and storage"]
+  RC --> E["san_receipt_readers.Extract"]
+  RC -.->|"never"| D
+```
+
+| | spec |
+| --- | --- |
+| request | `bytes file_content`, the name `settlement_importer` already uses for a file |
+| document_service | not called: no service-to-service read |
+| starts | as soon as the file is picked, beside the upload rather than after it |
+| known cost | the server can't prove the checked bytes are the stored ones. Harmless, because the check gives no verdict ([receipt-check-returns-what-the-library-reads](#receipt-check-returns-what-the-library-reads)) |
+
+---
+
+## receipt-check-returns-what-the-library-reads
+
+> Owner (2026-10-05): **"for q3 return resp on library"**, to *"'check': read the label, or verify it?"* (was Q3). As
+> recommended: read.
+
+**The verdict.** `ReceiptCheck` reads; it does not verify. Its response is what
+[`Extract`](../../technical/packages/receipt_readers/context.md) returns, field for field. Comparing that with what
+the person typed is the order form's job, and the server gives no match verdict, so nothing can block an order on it.
+
+```mermaid
+flowchart LR
+  F["the file's bytes"] --> E["Extract"]
+  E --> D["ReceiptData"]
+  D --> R["ReceiptCheckResponse, the same fields"]
+  R --> FORM["order form: fills EMPTY fields, warns on a mismatch"]
+  R -.->|"no verdict"| O["OrderCreate is never blocked by it"]
+```
+
+| response field | from `ReceiptData` |
+| --- | --- |
+| `receipt` | `Receipt`: the tracking number, or an instant label's pickup code |
+| `order_ref_id` | `OrderID`. The name follows [receipt_readers critique 2](../../technical/packages/receipt_readers/context_clarify.md#critique) |
+| `customer_name` · `phone` · `address` | `CustomerName` · `Phone` · `Address`; `""` = not printed, or masked |
+| **not in it** | a match flag, the typed receipt, a courier ([courier-is-not-read](../../technical/packages/receipt_readers/context_decision.md#courier-is-not-read)) |
+
+⚠ Not decided here: how `Extract`'s **errors** reach the caller. The `result` enum is still my proposal
+([an-unknown-label-is-not-an-error](./context_clarify.md#critique)).
+
+---
+
+## receipt-check-needs-a-login
+
+> Owner (2026-10-05): **"for q2, signed user only"**, to *"who may call `ReceiptCheck`: anyone, or anyone signed in?"*
+> (was Q2). As recommended. It narrows §What Exposed to Public 2: "public" here does **not** mean no login, as it did
+> for the channel list ([the-channel-list-needs-no-login](#the-channel-list-needs-no-login)).
+
+**The verdict.** Any signed-in user may call `ReceiptCheck`, whatever their role or team. A caller without a valid token
+is refused. The channel reads stay open to everyone.
+
+```mermaid
+flowchart LR
+  ANON["no token"] -->|"allowed"| L["ShipmentChannelList, ShipmentChannelByIds"]
+  ANON -.->|"refused"| RC["ReceiptCheck"]
+  USER["any valid token, any role"] -->|"allowed"| RC
+  ROOT["ROLE_ROOT"] --> W["create, update, delete, restore"]
+```
+
+| | spec |
+| --- | --- |
+| policy | `request_policy = { allow_only_authenticated: true }` |
+| scope | **no `use_scope` field**: the check stores nothing and reads no team's data, so there is no team to check |
+| why not public | it parses a file the caller sends (up to 2 MB, barcode decoding, a PDF library that panics on hostile input), so an anonymous caller could loop it |
+
+| RPC | policy |
+| --- | --- |
+| `ShipmentChannelList`, `ShipmentChannelByIds` | `allow_all` |
+| `ReceiptCheck` | `allow_only_authenticated` — decided here |
+| create / update / delete / restore | `roles: [ROLE_ROOT]` |
+
+---
+
+## a-label-outcome-is-a-result-not-an-error
+
+> Owner (2026-10-05): **"yes"**, to *"outcomes as a field, not errors"* (critique an-unknown-label-is-not-an-error).
+
+**The verdict.** Every answer `Extract` can give about a file comes back in a **successful** response, as a `result`.
+Only a fault in the handler itself is a Connect error. A label the reader hasn't learned yet is normal, not a failure.
+
+```mermaid
+flowchart LR
+  E["Extract"] -->|"ReceiptData"| R1["READ"]
+  E -->|"neither exported error"| R2["UNKNOWN_LABEL"]
+  E -->|"more than one label"| R3["MULTIPLE_LABELS"]
+  E -->|"ErrNotShippingLabel"| R4["NOT_SHIPPING_LABEL"]
+  E -->|"ErrUnreadable"| R5["UNREADABLE"]
+  H["the handler itself breaks"] --> X["a Connect error"]
+```
+
+| `result` | the fields | the order form |
+| --- | --- | --- |
+| `READ` | filled, `""` where not printed or masked | fills the EMPTY fields, warns on a mismatch |
+| `UNKNOWN_LABEL` | all `""` | nothing: the person types |
+| `MULTIPLE_LABELS` | all `""`, never page 1 | "this file holds several labels" |
+| `NOT_SHIPPING_LABEL` | all `""` | "this is not a shipping label" |
+| `UNREADABLE` | all `""` | "this file can't be opened" |
+
+⚠ `MULTIPLE_LABELS` reaches the caller only once the reader exports that error
+([receipt_readers critique 4](../../technical/packages/receipt_readers/context_clarify.md#critique)). Until then a bulk
+print is `UNKNOWN_LABEL`: still safe, since nothing is filled.
+
+---
+
+## receipt-check-caps-the-body-before-reading
+
+> Owner (2026-10-05): **"yes"**, to *"a 3 MB request cap on this handler only"* (critique the-cap-arrives-too-late).
+
+**The verdict.** The `ReceiptCheck` handler is mounted with `connect.WithReadMaxBytes` of 3 MB, so a larger request is
+refused before it is read into memory. The contract still says the file's own limit: `max_len` 2 MB, `Extract`'s cap.
+
+```mermaid
+flowchart LR
+  B["a request body"] --> T{"over 3 MB?"}
+  T -->|"yes"| X["refused, never read"]
+  T -->|"no"| V{"file over 2 MB, max_len?"}
+  V -->|"yes"| Y["invalid argument"]
+  V -->|"no"| E["Extract"]
+```
+
+| | spec |
+| --- | --- |
+| transport | `connect.WithReadMaxBytes(3 << 20)` on `ReceiptService` only; the channel handlers keep the default |
+| why 3 MB | 2 MB of bytes is about 2.7 MB as base64 in JSON, which the browser sends |
+| contract | `bytes file_content` with `min_len: 1, max_len: 2097152` |
+| precedent | `settlement_importer_service/register.go` caps its file upload the same way |
+
+---
+
+## receipt-check-logs-only-the-result
+
+> Owner (2026-10-05): **"yes"**, to *"log only the result"* (critique the-response-carries-a-buyer).
+
+**The verdict.** Whatever `ReceiptCheck` logs carries the `result` and the file's size, never the receipt, the order
+number, the buyer's name, address or phone, and never the bytes.
+
+| logged | never logged |
+| --- | --- |
+| `result`, the file's size, the duration | `receipt`, `order_ref_id`, `customer_name`, `phone`, `address`, the file |
+
+**Why.** The caller sent the file, so the response leaks nothing to them, but a log line would copy a buyer's address
+into our logs. That's the same reason the receipt samples stay out of git
+([receipt_readers Q5](../../technical/packages/receipt_readers/context_clarify.md#question)).
