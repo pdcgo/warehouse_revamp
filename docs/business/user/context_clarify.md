@@ -25,7 +25,8 @@ points are **deleted**, so this file is always the current open set.
 > | *"1 yes"* — Q20 | ✅ all four readings confirmed, written into their decisions. **Nothing is open in this context** |
 > | *"make member and membership history as tab"* | ✅ [the-history-is-a-tab-beside-the-members](./context_decision.md#the-history-is-a-tab-beside-the-members) — built in the prototype. No question changes |
 > | §General Data In Users: name, username, email, short_code *(written 2026-10-02, found 2026-10-05)* · `auth/context.md` deleted | ▲ **Q24** what short_code is for (Critique 25) · ▲ **Q25** the list has no phone (Critique 26) · ⚠ Q23 waits on Q24, because a required short_code adds a field to both create forms · auth: nothing changes, §Responsbility 3 already has it and no doc linked to the deleted file |
-> | *"for q24, its just for unique alias"* | ✅ [short-code-is-a-unique-alias](./context_decision.md#short-code-is-a-unique-alias), against my reading. The paper rules are deleted · 🔄 **Q24** narrows to four parts: does it replace the per-team alias, is it required, its format and who changes it, is it searchable |
+> | *"for q24, its just for unique alias"* | ✅ [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias), against my reading. The paper rules are deleted · 🔄 **Q24** narrows to four parts: does it replace the per-team alias, is it required, its format and who changes it, is it searchable |
+> | *"i cancel it"*, short_code removed from §General Data | ✅ [a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code) supersedes the alias decision · ✅ **Q24** closed · Critique 25 deleted · Q23 waits on nothing again · the sites it left are [short-code-was-cancelled](#short-code-was-cancelled) |
 > | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
@@ -92,7 +93,7 @@ migration ([the-migration-writes-the-dev-root-password](./context_decision.md#th
 
 ### The user record — proposed
 
-Your §General Data, plus what the decisions already use. **Bold** is what I added or changed. [Q24](#question), [Q25](#question).
+Your §General Data, plus what the decisions already use. **Bold** is what I added or changed. [Q25](#question).
 
 | field | required | unique | changes | read by |
 | --- | --- | --- | --- | --- |
@@ -100,10 +101,10 @@ Your §General Data, plus what the decisions already use. **Bold** is what I add
 | username | yes | system-wide | Root, the Administrator ([the-username-is-editable](./context_decision.md#the-username-is-editable)) | login, search |
 | email | **no** | when given ([a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account)) | the person, a member manager | search |
 | **phone** | no | when given | the person, a member manager | the OTP reset, search, the last four digits |
-| short_code | **yes — Q24b** | system-wide ([short-code-is-a-unique-alias](./context_decision.md#short-code-is-a-unique-alias)) | **the person, a member manager — Q24c** | **every list and picker, beside the name** |
 | **photo** | no | — | the person | avatars |
 
-The build already has every row except short_code. Its per-team `alias` would go, [Q24a](#question).
+The build already has every row. It also has a per-team `alias` that no screen fills and your list does not name. If the
+list is the whole record, it goes, [Q25](#question). There is no short_code ([a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code)).
 
 ### §Responsbility against what is built
 
@@ -239,7 +240,7 @@ after the first render. Every form that starts on a role read empty. Its story n
 
 ## Critique
 
-Four. Two were found while building the prototype (23, 24) and two in §General Data (25, 26).
+Three. Two were found while building the prototype (23, 24) and one in §General Data (26).
 
 ### Critique 23 — SearchUser has two jobs, and the decisions are about one
 
@@ -277,30 +278,9 @@ never another role to change to. The decision's row reads as a power the Admin d
 **→ Recommend:** keep the rule, and read it as *an Admin adds and removes the floor role, and changes nobody's role*.
 The prototype hides Change Role when there is nothing to pick. [Q22](#question).
 
-### Critique 25 — a unique alias still needs four rules
-
-[short-code-is-a-unique-alias](./context_decision.md#short-code-is-a-unique-alias) says what the code is for. A builder
-still has to know four things, and none of them is written:
-
-| | the gap | → Recommend | because |
-| --- | --- | --- | --- |
-| **a** | the build already has an `alias`, one per team, which no screen fills (both create forms send `""`) | **short_code replaces it**: one alias per person, the same in every team | two aliases give two answers to *what do we call Ani* |
-| **b** | required or optional | **required**. Existing accounts get one made from their username | an alias exists to tell two people apart. If it is optional, the people without one are the ones who cannot be told apart |
-| **c** | format, and who changes it | **2–8 letters and digits, stored upper case**, so `ani` and `ANI` cannot both exist. Changed like the name: by the person or a member manager, and refused if taken | it is a name to call someone by, not a key. Records keep the user id, so changing it rewrites nothing |
-| **d** | can the Add Member popup find someone by it | **no**. The popup keeps exact username, phone or email | a short code is easy to guess. Typing AA, AB, AC… would list people one at a time with their phone's last four digits, the guessing that [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) blocks |
-
-```mermaid
-flowchart LR
-  A["Ani Rahma · ANIR"] --> L["every list and picker — the alias beside the name"]
-  P["Add Member popup"] -->|"exact username, phone or email"| A
-  P -.->|"not by alias — guessable"| A
-```
-
-**→ Recommend:** all four as in the table. [Q24](#question).
-
 ### Critique 26 — the list leaves out the phone, and the phone does work
 
-§General Data lists name, username, email and short_code. It has no phone, but four things run on it:
+§General Data lists name, username and email. It has no phone, but four things run on it:
 
 | the phone carries | where |
 | --- | --- |
@@ -312,14 +292,14 @@ flowchart LR
 Email has the opposite risk. A packer has a WhatsApp number and rarely an email they check. If email is required, it
 gets invented, and the second time someone reuses the same made-up address the uniqueness rule refuses a real person.
 
-**→ Recommend:** the list is the whole record, with phone and photo added. Required: name, username, short_code.
+**→ Recommend:** the list is the whole record, with phone and photo added. Required: name and username.
 Email and phone are optional and unique when given, as already decided. See [the user record](#the-user-record--proposed). [Q25](#question).
 
 ---
 
 ## Question
 
-**Five open.** Q21–Q23 came from building the prototype and Q24–Q25 from §General Data. Q3–Q20 are answered and recorded in [context_decision.md](./context_decision.md).
+**Four open.** Q21–Q23 came from building the prototype and Q25 from §General Data. Q3–Q20 and Q24 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -354,17 +334,11 @@ Email and phone are optional and unique when given, as already decided. See [the
     - **b.** In the root team, a form starts with no role. **→ Recommend: yes.**
     - **c.** **New User** and the popup's **Create** are two ways to make an account. **→ Recommend: remove New User** once
       (a) is accepted. Your flow has one way in, through the search, so nobody makes a duplicate of someone already here.
-    - ⚠ **Answer Q24 first.** short_code is decided, so the create forms, the Edit dialog and the table all gain it.
-      I would build that into the prototype before you accept it, so you accept what will be built.
-24. 🔄 **Answered in part** (2026-10-05): it is a unique alias — [short-code-is-a-unique-alias](./context_decision.md#short-code-is-a-unique-alias).
-    Four parts are left ([Critique 25](#critique)):
-    - **a.** It replaces the per-team `alias`. **→ Recommend: yes.**
-    - **b.** It is required, and existing accounts get one made from their username. **→ Recommend: yes.**
-    - **c.** 2–8 letters and digits, stored upper case, changed by the person or a member manager. **→ Recommend: yes.**
-    - **d.** The Add Member popup does not search by it. **→ Recommend: yes, it does not.**
+24. ✅ **Answered** (2026-10-05): there is no short_code — [a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code). It was briefly a
+    unique alias, now [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias).
 25. **Is §General Data the whole user record, and is the phone dropped or just not listed?** ([Critique 26](#critique))
-    **→ Recommend:** it is the whole record, with phone and photo added. Required: name, username, short_code. Email
-    and phone are optional, as [the user record](#the-user-record--proposed) shows.
+    **→ Recommend:** it is the whole record, with phone and photo added, and the unused per-team `alias` goes. Required:
+    name and username. Email and phone are optional, as [the user record](#the-user-record--proposed) shows.
 
 ---
 
@@ -389,8 +363,8 @@ site of a contradiction already recorded* — so it is filed there rather than d
 §General adds the sharper version of it: the outsider who can move a team's numbers need not be another
 team at all — it can be **one of that team's own people, wearing a hat from somewhere else**.
 
-**Re-checked after [short-code-is-a-unique-alias](./context_decision.md#short-code-is-a-unique-alias) (2026-10-05): none
-between docs.** The build's per-team `alias` disagrees with it, which is build work, [Q24a](#question).
+**Re-checked after [a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code) (2026-10-05): none between docs.**
+short_code lived only in my own files for a few minutes. What it left is [short-code-was-cancelled](#short-code-was-cancelled).
 
 **Re-checked after §General Data (2026-10-05): none recorded, one possible.** The list has no phone, and four decisions
 you made search, match and send on it. It is either an omission or a removal, and only you know which, so it is
@@ -408,6 +382,30 @@ which [Q9](#question) now lists. It does not contradict it.
 
 **Re-checked after §root team: none between docs.** `business_level.md` §Root, *"highest access for all resource"*,
 agrees with *"root is superuser and can do whatever"*. The ripple is in my own files, below.
+
+## short-code-was-cancelled
+
+**The example.** You made short_code *"just for unique alias"*, then *"i cancel it"* and removed it from §General
+Data. The second wins ([a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code)). Five of my sites said the first:
+
+| site | it said | now |
+| --- | --- | --- |
+| the decision `short-code-is-a-unique-alias` | a unique alias | renamed [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias), ⛔ kept as a record |
+| [the user record](#the-user-record--proposed) | a short_code row, required | removed. Required is name and username |
+| Critique 25, Q24 | four rules for it | deleted, closed |
+| Q23 | waits on Q24 | waits on nothing |
+| Q25, and the state report | *required: name, username, short_code* · a build row for the column | name and username · the row removed |
+
+**→ Recommend** (what stops it recurring): nothing to change. The `superseded-` rename did its job, and nothing was
+built in between.
+
+```mermaid
+flowchart LR
+  A["short_code — a unique alias"] -->|"you cancelled it"| B["a-user-has-no-short-code"]
+  B --> D["the alias decision renamed superseded"]
+  B --> T["the user record — row removed"]
+  B --> Q["Q24 closed, Q23 unblocked"]
+```
 
 ## the-admin-team-manages-nothing-but-itself
 
@@ -580,6 +578,6 @@ flowchart LR
 
 # Awaiting
 
-**Your design_accept, [Q23](#question)**, and [Q24](#question) before it. Nothing on the server is built until it lands. Before that, nothing else waited. The three items that waited here became [Q17–Q19](#question) on 2026-10-02: removing a member, what
+**Your design_accept, [Q23](#question).** Nothing on the server is built until it lands. Before that, nothing else waited. The three items that waited here became [Q17–Q19](#question) on 2026-10-02: removing a member, what
 Customer Service does, and whether the warehouse Admin is the Owner's equal. Couriers and suppliers turned out to be
 answered — see *What the build already lets the undocumented roles do*, above.
