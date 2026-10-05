@@ -28,16 +28,17 @@ Then get it running (below), click through the UI, and pick a **Ready** issue of
 Prerequisites: Go, Node, Docker. All commands from the **repo root** unless stated.
 
 ```sh
-docker compose up -d                          # Postgres :5433, Redis :6380
-go run ./tools/san migrate up    # prompts: database, then service — apply for EVERY service
-go run ./tools/san seed dev      # sample teams + logins (development only)
-cd frontend && npm install && cd ..           # once, and again when package.json changes
+go run ./tools/san dev setup     # docker, every migration, the dev logins, categories, regions, npm install
 go run ./tools/san dev run       # the API on :8080 + the UI on :5174, one terminal — Ctrl-C stops both
 ```
 
-Both servers must run, because the UI talks to the API. Open <http://localhost:5174>.
-[`san dev run`](../tools/san.md#dev-run) starts both. If you want them in separate terminals,
-start them by hand: `cd backend && go run ./cmd/app_development` and `cd frontend && npm run dev`.
+Open <http://localhost:5174> and log in as `dev` / `devpassword123`.
+
+- [`dev setup`](../tools/san.md#dev-setup) is safe to re-run. Run it again after a pull that brings
+  migrations. It acts only on the local docker database. It also resets the dev accounts' passwords.
+- [`dev run`](../tools/san.md#dev-run) starts both servers, because the UI talks to the API. If you
+  want them in separate terminals, start them by hand: `cd backend && go run ./cmd/app_development`
+  and `cd frontend && npm run dev`.
 
 ---
 
@@ -51,6 +52,8 @@ development fixture:
 go run ./tools/san seed root --password <yours>   # just the root account
 go run ./tools/san seed dev                       # teams + several accounts (recommended)
 ```
+
+[`dev setup`](../tools/san.md#dev-setup) already runs `seed dev`, so after it you can log in.
 
 `seed dev` is idempotent, and **hard-refuses a production target**. It creates:
 

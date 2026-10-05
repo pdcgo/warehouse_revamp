@@ -143,7 +143,9 @@ validation failure comes back as a readable `buf.validate` violation.
 ## From a clean machine
 
 `setup` is the whole path: docker up, migrate all 11 services in dependency order, seed the
-fixture. Verified end to end against the test database:
+fixture. The human equivalent is `go run ./tools/san dev setup`, which also loads categories and
+regions and runs `npm install`, but targets the LOCAL database only. It has no `--target test`, and
+it refuses when `DATABASE_URL` is set. Verified end to end against the test database:
 
 ```sh
 node .claude/skills/run-warehouse-revamp/driver.mjs setup --target test

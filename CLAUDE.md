@@ -616,6 +616,7 @@ it once a real domain service replaces it.
 | Start local Postgres (`:5433`) | `docker compose up -d` |
 | Lint the contract | `cd proto && buf lint` |
 | Regenerate Go + TS | `cd proto && buf generate` — needs Go and `frontend/node_modules`; **no Buf account** |
+| Set up a checkout (fresh, or after a pull) | `go run ./tools/san dev setup` — submodules, docker, every migration, dev logins, categories, regions, npm install; idempotent, LOCAL database only |
 | Run the whole dev stack (docker + API + UI) | `go run ./tools/san dev run` — one terminal, output prefixed per server, Ctrl-C stops all of it |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |

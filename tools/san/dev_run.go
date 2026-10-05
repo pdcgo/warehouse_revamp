@@ -49,11 +49,7 @@ func devRunCommand() *cli.Command {
 		Name:  "run",
 		Usage: "start postgres + redis, the API (:8080) and the UI (:5174) in one terminal — Ctrl-C stops all of it",
 		Flags: []cli.Flag{
-			// No backticks in Usage: urfave/cli reads a backticked word as the flag's value placeholder.
-			&cli.BoolFlag{
-				Name:  "no-docker",
-				Usage: "skip docker compose up — the database is already running",
-			},
+			noDockerFlag(),
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			// A closed terminal is a Ctrl-C too. main stops on Interrupt and SIGTERM only, and on
@@ -87,26 +83,6 @@ func devRunCommand() *cli.Command {
 			return superviseDev(ctx, os.Stdout, devStack(root))
 		},
 	}
-}
-
-// composeUp starts the containers and WAITS until they report healthy.
-//
-// Without --wait the API can start before Postgres accepts connections — the race the healthcheck in
-// docker-compose.yaml exists to close. It is a no-op on containers already running.
-func composeUp(ctx context.Context, root string, out io.Writer) error {
-	fmt.Fprintln(out, "→ docker compose up -d --wait")
-
-	cmd := exec.CommandContext(ctx, "docker", "compose", "up", "-d", "--wait")
-	cmd.Dir = root
-	cmd.Stdout = out
-	cmd.Stderr = out
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("docker compose up: %w — is Docker running? (--no-docker skips this step)", err)
-	}
-
-	return nil
 }
 
 // devExit is one child having finished.

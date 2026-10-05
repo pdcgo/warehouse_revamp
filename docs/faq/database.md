@@ -90,10 +90,7 @@ The data is a bind mount, so a reset is a container-down plus a directory remova
 ```sh
 docker compose down
 rm -rf development_data/postgres          # gitignored
-docker compose up -d
-go run ./tools/san migrate up   # once per service
-go run ./tools/san seed dev
-go run ./tools/san seed categories
+go run ./tools/san dev setup              # back up, every migration, every seed
 ```
 
 For the **test** database, there is a command — never touch the dev one with it:

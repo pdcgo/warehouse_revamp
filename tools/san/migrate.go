@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -117,6 +118,12 @@ func runMigrateUpAll(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer db.Close()
 
+	return migrateUpAll(ctx, db, target)
+}
+
+// migrateUpAll is the work of `migrate up-all` on an already-open database — shared with
+// `dev setup`, so there is one ordering of the services and not two.
+func migrateUpAll(ctx context.Context, db *sql.DB, target string) error {
 	services, err := orderedServicesWithMigrations()
 	if err != nil {
 		return err

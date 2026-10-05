@@ -144,15 +144,7 @@ const regionInsertBatch = 1000
 // new rows in place. NOTE: a region REMOVED upstream is not deleted here — a full sync would need a
 // delete pass, which is only worth building when an edition bump actually drops one.
 func loadRegionSeed(ctx context.Context, cmd *cli.Command) error {
-	path := cmd.String("file")
-
-	file, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("opening seed (run `region build-seed` first): %w", err)
-	}
-	defer file.Close()
-
-	rows, err := readSeedCSV(file)
+	rows, err := readRegionSeed(cmd.String("file"))
 	if err != nil {
 		return err
 	}
@@ -163,6 +155,23 @@ func loadRegionSeed(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer db.Close()
 
+	return loadRegions(ctx, db, target, rows)
+}
+
+// readRegionSeed opens and parses the generated CSV.
+func readRegionSeed(path string) ([]region, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("opening seed (run `region build-seed` first): %w", err)
+	}
+	defer file.Close()
+
+	return readSeedCSV(file)
+}
+
+// loadRegions is the work of `region load-seed` on an already-open database — shared with
+// `dev setup`.
+func loadRegions(ctx context.Context, db *sql.DB, target string, rows []region) error {
 	fmt.Printf("loading %d regions into %s\n", len(rows), target)
 
 	started := time.Now()

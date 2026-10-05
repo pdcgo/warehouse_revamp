@@ -24,7 +24,7 @@ go run ./tools/san user reset-password --username ani
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
 | **operations** | [`user reset-password`](#user-reset-password) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
-| **the local stack** | [`dev run`](#dev-run) | the containers, the API and the UI, in one terminal |
+| **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
 
 ```mermaid
 flowchart LR
@@ -33,13 +33,14 @@ flowchart LR
         S["seed · db · region"]
         U["user reset-password"]
         R["remote · remote mcp · refresh-token"]
-        V["dev run"]
+        V["dev setup · dev run"]
     end
     M -->|"shapes the schema"| DB[(Postgres)]
     S -->|"puts rows in it"| DB
     U -->|"changes what is IN it, through the services"| DB
     R -->|"runs shell commands in the checkout"| WS[/"the working tree"/]
     V -->|"starts the API and the UI from"| WS
+    V -->|"setup migrates and seeds the LOCAL one"| DB
 ```
 
 > **This used to be two binaries.** `migrate`, `seed`, `db` and `region` lived in
@@ -77,6 +78,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`seed`](#seed) | Development fixtures — `root`, `dev`, `categories` |
 | [`db`](#db) | Create, reset and drop the **test** database (`warehouse_test`) |
 | [`region`](#region) | Build and load region_service's reference data |
+| [`dev setup`](#dev-setup) | Make a checkout runnable: submodules, containers, every migration, the dev logins, categories, regions, `npm install`. Safe to re-run |
 | [`dev run`](#dev-run) | Start the containers, the API and the UI in one terminal — Ctrl-C stops all of it |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
@@ -89,9 +91,12 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
-**`remote`, `pubsub` and `dev` touch no database**, so they never ask Local/Production and need no
-Postgres running (`dev run` starts the container, and that is all). `--dsn` is meaningless to all three. `pubsub` has its own target flags instead — `--project`, and
-`--emulator` for the local broker.
+**`remote`, `pubsub` and `dev run` touch no database**, so they never ask Local/Production and need
+no Postgres running (`dev run` starts the container, and that is all). `--dsn` is meaningless to all
+three. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker.
+
+**`dev setup` touches only the local one, and never asks.** It refuses to run at all when `--dsn` or
+`DATABASE_URL` is set — see [local only](#dev-setup).
 
 ---
 
@@ -267,6 +272,80 @@ your working directory.
 
 ---
 
+## `dev setup`
+
+Makes a checkout runnable: everything [`dev run`](#dev-run) assumes is already there. Run it on a new
+machine, and **again after a pull** that brings migrations or changed seeds. Every step is
+idempotent, so there is no separate "update" command.
+
+```sh
+go run ./tools/san dev setup               # all of it
+go run ./tools/san dev setup --no-docker   # Postgres is already up
+```
+
+| | Step | The same as |
+| --- | --- | --- |
+| 1 | check out a submodule a plain `git clone` left empty | `git submodule update --init` |
+| 2 | `docker compose up -d --wait` | |
+| 3 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
+| 4 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller` | [`seed dev`](#seed) |
+| 5 | the product-category tree | [`seed categories`](#seed) |
+| 6 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
+| 7 | `npm install` in `frontend/` | |
+
+Steps 3–6 call **the same function** as their own command, so setup cannot drift from running them
+one at a time.
+
+| Flag | |
+| --- | --- |
+| `--no-docker` | Skip `docker compose up` |
+| `--password` | The password of every dev account. Default `devpassword123`, env `DEV_PASSWORD` |
+
+```mermaid
+flowchart TD
+    G{"--dsn or DATABASE_URL set?"} -->|"yes"| X["refuse — nothing has run"]
+    G -->|"no"| R["read the seed files"]
+    R --> S["submodules — only an EMPTY one"]
+    S --> D["docker compose up -d --wait"]
+    D --> M["migrate up-all"]
+    M --> SD["seed dev"]
+    SD --> SC["seed categories"]
+    SC --> RG["region load-seed"]
+    RG --> N["npm install"]
+    N --> OK["✓ next: dev run, log in as dev"]
+```
+
+**Local only, and it never asks.** It acts on the docker database (`POSTGRES_*` env, the same database
+the prompt calls *Database Local*), which is the one the API uses by default. `seed dev` creates
+superusers with a known password, so pointing it anywhere else has to be a deliberate act. When
+`--dsn` or `DATABASE_URL` is set, setup **refuses** instead of guessing which database you meant. To
+set up a different database, run the steps one by one against it.
+
+**Re-running resets the fixture**, which is usually what you want:
+
+- every dev account's password goes back to `--password`;
+- a category you deleted or archived from the seeded tree is inserted again;
+- rows you created yourself (teams, products, orders) are left alone.
+
+**Only an EMPTY submodule is checked out.** `git submodule update` would also move an initialised one
+back to the commit this repo records, under somebody who is working in it. Neither `san` nor the dev
+servers import a submodule. Step 1 is for `go build ./...` and `go test ./...`, which do.
+
+A re-run takes about 15 s on a warm machine. Most of it is the regions upsert, about 5 s.
+
+### Errors you should expect
+
+| Message | Cause |
+| --- | --- |
+| `dev setup acts only on the local docker database` | `--dsn` or `DATABASE_URL` is set. Unset it, or run the steps by hand |
+| `the dev password must be at least 8 characters` | `--password` is too short |
+| `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
+| `connecting to Database Local: …` | Postgres is not up. Drop `--no-docker`, or start it |
+| `migrating <service>: …` | A broken migration. The services before it are applied, so re-run once it is fixed |
+| `npm install: … is Node installed?` | Node is not installed or not on `PATH` |
+
+---
+
 ## `dev run`
 
 The whole local stack in **one terminal**, replacing the two terminals in the getting-started steps.
@@ -342,8 +421,7 @@ The stop is a **hard kill**. The API does not drain its requests, which is fine 
 
 | | Do it yourself |
 | --- | --- |
-| Migrate | [`migrate up-all`](#migrate). `dev run` never changes the schema of the database you review on |
-| Seed the logins | [`seed dev`](#seed) |
+| Migrate, seed the logins, `npm install` | [`dev setup`](#dev-setup). `dev run` never changes the database you review on |
 | Start the Pub/Sub emulator | `docker compose --profile pubsub up -d` and then [`pubsub ensure`](#pubsub-ensure). Without them, placing an order [waits about a minute](../faq/troubleshooting.md#an-import-or-placing-an-order-hangs-for-about-a-minute) |
 | Survive `kill -9` / `taskkill /F` of `san` itself | Cannot. The servers outlive it. Stop it with Ctrl-C |
 
@@ -352,7 +430,7 @@ The stop is a **hard kill**. The API does not drain its requests, which is fine 
 | Message | Cause |
 | --- | --- |
 | `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
-| `frontend/node_modules is missing` | `cd frontend && npm install` |
+| `frontend/node_modules is missing` | Run [`dev setup`](#dev-setup), or `cd frontend && npm install` |
 | `api exited (exit status 1) — stopped the rest` | Read the `api \|` lines above it. `failed to connect … :5433` means Postgres is down. A bind error on :8080 means the stack is already running somewhere |
 | `ui exited (exit status 1) — stopped the rest` | Read the `ui \|` lines. `Port 5174 is already in use` comes from vite's `strictPort` |
 | `start ui: exec: "npm": executable file not found` | Node is not installed or not on `PATH` |
@@ -1129,6 +1207,12 @@ them to it would be cargo cult — so be explicit about which shape a new comman
 tests start **the test binary itself** as the child processes, so they need no go, npm or docker. A
 kill that misses a child shows up as a test that never returns.
 
+[`dev setup`](#dev-setup) is neither shape. It acts on data but never picks a database (it is local
+by construction), and it calls the data commands' own functions instead of a service handler. Its
+test creates a **throwaway database** and runs every data step twice against it, which proves the
+re-run is safe. It cannot use `san_testdb`, because migrations do not run inside the per-test
+transaction.
+
 What does **not** change either way: a unit test beside the file, and a row in the Commands table of
 this document in the same commit.
 
@@ -1149,8 +1233,9 @@ this document in the same commit.
 | [`remote_exec.go`](../../tools/san/remote_exec.go) | the `remote exec` client |
 | [`remote_file.go`](../../tools/san/remote_file.go) | the `remote get` / `remote put` clients, and the shared authenticated client |
 | [`remote/`](../../tools/san/remote/) | the service: `exec.go`, `info.go`, `file_read.go`, `file_write.go`, `auth.go`, `workspace.go`, `shell.go`, one test per file |
-| [`dev.go`](../../tools/san/dev.go) | the `dev` group |
-| [`dev_run.go`](../../tools/san/dev_run.go) | `dev run`: the stack, `docker compose up`, the supervisor, the line prefixer |
+| [`dev.go`](../../tools/san/dev.go) | the `dev` group, and what both commands share: `--no-docker`, `docker compose up`, running one step |
+| [`dev_setup.go`](../../tools/san/dev_setup.go) | `dev setup`: the local-only guard, the submodule check, the data steps in order |
+| [`dev_run.go`](../../tools/san/dev_run.go) | `dev run`: the stack, the supervisor, the line prefixer |
 | [`proctree/`](../../tools/san/proctree/) | start a child in its own group, kill its whole tree. Shared by `remote` and `dev run` |
 | [`pkgs/san_dbtarget`](../../backend/pkgs/san_dbtarget/) | the Local/Production choice, shared with `cmd/tool` |
 

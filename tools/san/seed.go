@@ -95,22 +95,10 @@ type categorySeed struct {
 }
 
 func runSeedCategories(ctx context.Context, cmd *cli.Command) error {
-	raw, err := os.ReadFile(cmd.String("file"))
+	// The file is read BEFORE the database prompt, so a bad path fails without asking anything.
+	nodes, err := readCategorySeed(cmd.String("file"))
 	if err != nil {
-		return fmt.Errorf("reading category file: %w", err)
-	}
-
-	var doc struct {
-		Categories []categorySeed `json:"categories"`
-	}
-
-	err = json.Unmarshal(raw, &doc)
-	if err != nil {
-		return fmt.Errorf("parsing category file: %w", err)
-	}
-
-	if len(doc.Categories) == 0 {
-		return errors.New("the category file has no `categories`")
+		return err
 	}
 
 	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
@@ -119,7 +107,36 @@ func runSeedCategories(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer db.Close()
 
-	inserted, err := upsertCategories(ctx, db, doc.Categories, nil)
+	return seedCategories(ctx, db, target, nodes)
+}
+
+// readCategorySeed parses the taxonomy JSON.
+func readCategorySeed(path string) ([]categorySeed, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading category file: %w", err)
+	}
+
+	var doc struct {
+		Categories []categorySeed `json:"categories"`
+	}
+
+	err = json.Unmarshal(raw, &doc)
+	if err != nil {
+		return nil, fmt.Errorf("parsing category file: %w", err)
+	}
+
+	if len(doc.Categories) == 0 {
+		return nil, errors.New("the category file has no `categories`")
+	}
+
+	return doc.Categories, nil
+}
+
+// seedCategories is the work of `seed categories` on an already-open database — shared with
+// `dev setup`.
+func seedCategories(ctx context.Context, db *sql.DB, target string, nodes []categorySeed) error {
+	inserted, err := upsertCategories(ctx, db, nodes, nil)
 	if err != nil {
 		return err
 	}
@@ -235,8 +252,10 @@ func runSeedRoot(ctx context.Context, cmd *cli.Command) error {
 
 func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 	password := cmd.String("password")
-	if len(password) < 8 {
-		return errors.New("the dev password must be at least 8 characters")
+
+	err := checkDevPassword(password)
+	if err != nil {
+		return err
 	}
 
 	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
@@ -245,6 +264,22 @@ func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer db.Close()
 
+	return seedDev(ctx, db, target, password)
+}
+
+// checkDevPassword is the one rule on the dev fixture's password. Callers run it BEFORE connecting,
+// so a short password fails without a database prompt — or, for `dev setup`, before docker starts.
+func checkDevPassword(password string) error {
+	if len(password) < 8 {
+		return errors.New("the dev password must be at least 8 characters")
+	}
+
+	return nil
+}
+
+// seedDev is the work of `seed dev` on an already-open database — shared with `dev setup`. The
+// Production guard lives HERE, not in the command, so no caller can get past it.
+func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 	// THE GUARD. This fixture creates known-credential superusers, so it must never reach
 	// production. Refuse the Production target outright — do not even offer the type-"production"
 	// override that `root` allows.
