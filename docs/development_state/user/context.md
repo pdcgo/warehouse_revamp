@@ -66,7 +66,7 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
-| do the restock filters stop using `SearchUser` | [user Q21](../../business/user/context_clarify.md#question) |
+| who filters (restocks both sides, orders): list the people on the rows, open to whoever reads the list, keep former and suspended people. ⚠ Today CS and Staff are refused on four of six | [user Q21](../../business/user/context_clarify.md#question) |
 | an Admin changes nobody's role | [user Q22](../../business/user/context_clarify.md#question) |
 | accept the prototype; remove New User | [user Q23](../../business/user/context_clarify.md#question) |
 | is §General Data the whole record: is phone kept, does the unused per-team `alias` go, is email required | [user Q25](../../business/user/context_clarify.md#question) |

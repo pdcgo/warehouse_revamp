@@ -27,6 +27,7 @@ points are **deleted**, so this file is always the current open set.
 > | §General Data In Users: name, username, email, short_code *(written 2026-10-02, found 2026-10-05)* · `auth/context.md` deleted | ▲ **Q24** what short_code is for (Critique 25) · ▲ **Q25** the list has no phone (Critique 26) · ⚠ Q23 waits on Q24, because a required short_code adds a field to both create forms · auth: nothing changes, §Responsbility 3 already has it and no doc linked to the deleted file |
 > | *"for q24, its just for unique alias"* | ✅ [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias), against my reading. The paper rules are deleted · 🔄 **Q24** narrows to four parts: does it replace the per-team alias, is it required, its format and who changes it, is it searchable |
 > | *"i cancel it"*, short_code removed from §General Data | ✅ [a-user-has-no-short-code](./context_decision.md#a-user-has-no-short-code) supersedes the alias decision · ✅ **Q24** closed · Critique 25 deleted · Q23 waits on nothing again · the sites it left are [short-code-was-cancelled](#short-code-was-cancelled) |
+> | *(you asked)* elaborate Q21 | 🔄 **Q21** split into three parts, checked against the build: the orders page's creator filter is a third site · ⚠ the floor roles are refused on four of six who filters **today**, and a selling Owner on *accepted by* once a warehouse is picked · ⚠ the suspended rule, as specified, would hide former staff from every filter |
 > | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
@@ -182,6 +183,33 @@ The person keeps their account and their other teams, and every record they made
 | **assign a role to a person** | ? | Root: **nobody** in the app, only `tools/san` ([root-is-granted-only-through-san](./context_decision.md#root-is-granted-only-through-san)) · every other role: **no role yet** — [Q5](#question) |
 | create a team | **System Administrator** | ✅ named, and it can do anything — [the-administrator-can-do-anything](./context_decision.md#the-administrator-can-do-anything) |
 
+### A who filter lists the people on the rows — proposed
+
+[Q21](#question). The list's own service answers *"who appears on the rows I may show"*, so the filter needs no user
+search at all, and nothing new is exposed: every name it offers is already printed on a row the caller can see.
+
+```mermaid
+flowchart LR
+  subgraph "today"
+    F0["a who filter"] --> UL["UserList — managers, one team"]
+    F0 --> SU["SearchUser — everyone"]
+  end
+  subgraph "proposed"
+    F1["a who filter"] --> L["the list's own service — the people on its rows"]
+    L --> N["UserByIDs — the names, any signed-in user"]
+  end
+  P["Add Member popup"] --> SU
+```
+
+| | |
+| --- | --- |
+| who answers | the service that owns the list: restocks for the two restock pages, orders for the orders page |
+| who may ask | whoever may read that list, so Customer Service and Staff too |
+| which people | everyone named on a row the caller may see, in that role (created, accepted): former members and suspended people included, with a badge |
+| across teams | a selling team's *accepted by* lists the warehouse people who accepted its restocks, without reading the warehouse's member list |
+| the picker | loads the set and filters as you type. The set grows only with staff turnover |
+| what is left for the user search | `SearchUser`: the Add Member popup alone. `UserList` by team: the member page and the shop grant. The picker loses its *everyone* mode |
+
 ### The prototype — what accepting it accepts
 
 Built 2026-10-02, the implementation-analysis pass. **Preview it in Storybook** (`cd frontend && npm run storybook`):
@@ -242,27 +270,32 @@ after the first render. Every form that starts on a role read empty. Its story n
 
 Three. Two were found while building the prototype (23, 24) and one in §General Data (26).
 
-### Critique 23 — SearchUser has two jobs, and the decisions are about one
+### Critique 23 — every "who" filter borrows a member-management search
 
-The Add Member popup is not `SearchUser`'s only caller. Two restock filters search people with it, with no team:
+*(Elaborated 2026-10-05, checked against the build.)* Three list pages filter by a person: who created it, who
+accepted it. All three use the shared user picker, and the picker asks one of two manager tools: `UserList` (a team's
+members, Owners and Admins only) or `SearchUser` (everyone, soon managers only and exact,
+[only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search)).
 
-| filter | who uses it | after [only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search) and [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) |
+| page | filter | the picker asks | Customer Service / Staff | an Owner or Admin |
+| --- | --- | --- | --- | --- |
+| restock, selling side | created by | `UserList`, this team | ⛔ refused **today** | works |
+| restock, selling side | accepted by, a warehouse picked | `UserList`, **that warehouse** | ⛔ refused | ⛔ refused **today**: they hold no role in the warehouse |
+| restock, selling side | accepted by, no warehouse | `SearchUser`, everyone | works today, refused once built | every user in the system today, a whole username once built |
+| restock, warehouse side | created by | `SearchUser`, everyone | works today, refused once built | the same |
+| restock, warehouse side | accepted by | `UserList`, this team | ⛔ refused **today** | works |
+| orders, selling side | created by | `UserList`, this team | ⛔ refused **today** | works |
+
+Two more problems sit behind the table:
+
+| | the problem | → Recommend |
 | --- | --- | --- |
-| restock, selling side — *accepted by*, before a warehouse is picked | the selling team, Customer Service included | Customer Service is refused · an Owner or Admin must type a whole username |
-| restock, warehouse side — *created by* | the warehouse team, Staff included | Staff is refused · an Owner or Admin must type a whole username |
+| **a** | the people offered are the wrong set. A member list lacks anyone who **left** the team, and `SearchUser` offers everyone in the system, most of whom can never match a row | offer the people who **appear on the rows** this list can show, answered by the list's own service |
+| **b** | the floor roles run these lists. Customer Service records orders and restock requests, Staff accepts restocks ([customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), [staff-accepts-the-restock](./context_decision.md#staff-accepts-the-restock)) | whoever may read the list may use its filter |
+| **c** | [a-suspended-user-is-never-picked](./context_decision.md#a-suspended-user-is-never-picked) hides suspended accounts from *"the user search behind the pickers"*, which is this picker. Once built, last year's restocks by someone who has left could not be filtered | the rule covers pickers that **give** something (add to a team, grant a shop), not a filter that looks back. Suspended people stay in a filter, with a badge |
 
-**→ Recommend:** the filters stop searching the whole system. Each lists the people who **appear on those restocks**,
-read from the restock side, so it offers only names that can match a row. `SearchUser` is then the popup's search
-alone, and both rules apply to it whole. [Q21](#question).
-
-```mermaid
-flowchart LR
-  P["Add Member popup"] -->|"a team, exact"| S["SearchUser"]
-  F1["restock filter — accepted by"] -.->|"today, no team"| S
-  F2["restock filter — created by"] -.->|"today, no team"| S
-  F1 -->|"recommend"| R["the people on those restocks"]
-  F2 -->|"recommend"| R
-```
+**→ Recommend:** all three, as in [a who filter lists the people on the rows](#a-who-filter-lists-the-people-on-the-rows--proposed).
+`SearchUser` then serves the Add Member popup alone, and both of its rules apply to it whole. [Q21](#question).
 
 ### Critique 24 — an Admin never changes a role
 
@@ -324,8 +357,14 @@ Email and phone are optional and unique when given, as already decided. See [the
 19. ✅ **Answered** (2026-10-02): the warehouse Admin equals the Owner except three money acts — [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money).
 20. ✅ **Answered** (2026-10-02): all four readings confirmed — any team type, nobody suspends themselves, the last Root
     cannot be removed, and a phone matches however it is written.
-21. **Do the restock filters stop using `SearchUser`?** ([Critique 23](#critique))
-    **→ Recommend: yes.** Each lists the people on its own restocks, and `SearchUser` is the Add Member search alone.
+21. 🔄 **Elaborated** (2026-10-05): the three list pages' who filters, not only the restock ones ([Critique 23](#critique)).
+    ⚠ Today Customer Service and Staff are refused on four of the six filters, and a selling Owner on one.
+    - **a.** A who filter offers the people who appear on the rows, answered by the list's own service, not a member
+      list or the whole system. **→ Recommend: yes.**
+    - **b.** Whoever may read the list may use its filter, Customer Service and Staff included. **→ Recommend: yes.**
+    - **c.** Former members and suspended people stay in a filter, with a badge.
+      [a-suspended-user-is-never-picked](./context_decision.md#a-suspended-user-is-never-picked) covers pickers that give
+      something, not filters. **→ Recommend: yes.**
 22. **An Admin adds and removes the floor role, and changes nobody's role — right?** ([Critique 24](#critique))
     **→ Recommend: yes**, as the rule already implies.
 23. **design_accept — do you accept the prototype?** Preview it in Storybook: `Pages/Users/Users` and
