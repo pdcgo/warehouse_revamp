@@ -14,7 +14,7 @@ go run ./tools/san user reset-password --username ani
 
 ---
 
-## One CLI, four jobs
+## One CLI, five jobs
 
 `san` covers the whole life of the project's data and the environment around it.
 
@@ -24,6 +24,7 @@ go run ./tools/san user reset-password --username ani
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
 | **operations** | [`user reset-password`](#user-reset-password) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
+| **the local stack** | [`dev run`](#dev-run) | the containers, the API and the UI, in one terminal |
 
 ```mermaid
 flowchart LR
@@ -32,11 +33,13 @@ flowchart LR
         S["seed · db · region"]
         U["user reset-password"]
         R["remote · remote mcp · refresh-token"]
+        V["dev run"]
     end
     M -->|"shapes the schema"| DB[(Postgres)]
     S -->|"puts rows in it"| DB
     U -->|"changes what is IN it, through the services"| DB
     R -->|"runs shell commands in the checkout"| WS[/"the working tree"/]
+    V -->|"starts the API and the UI from"| WS
 ```
 
 > **This used to be two binaries.** `migrate`, `seed`, `db` and `region` lived in
@@ -74,6 +77,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`seed`](#seed) | Development fixtures — `root`, `dev`, `categories` |
 | [`db`](#db) | Create, reset and drop the **test** database (`warehouse_test`) |
 | [`region`](#region) | Build and load region_service's reference data |
+| [`dev run`](#dev-run) | Start the containers, the API and the UI in one terminal — Ctrl-C stops all of it |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
@@ -85,8 +89,8 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
-**`remote` and `pubsub` touch no database**, so they never ask Local/Production and need no Postgres
-running. `--dsn` is meaningless to both. `pubsub` has its own target flags instead — `--project`, and
+**`remote`, `pubsub` and `dev` touch no database**, so they never ask Local/Production and need no
+Postgres running (`dev run` starts the container, and that is all). `--dsn` is meaningless to all three. `pubsub` has its own target flags instead — `--project`, and
 `--emulator` for the local broker.
 
 ---
@@ -260,6 +264,100 @@ forgets the blank import.
 Both `--file` and `--out` default to the checked-in seed, resolved **against the repository root**,
 so they find it wherever the command is run from. An explicit relative path is still relative to
 your working directory.
+
+---
+
+## `dev run`
+
+The whole local stack in **one terminal**, replacing the two terminals in the getting-started steps.
+Every line of output is prefixed with the process that wrote it.
+
+```sh
+go run ./tools/san dev run               # docker compose up, then the API and the UI
+go run ./tools/san dev run --no-docker   # Postgres is already up
+```
+
+```
+→ docker compose up -d --wait
+→ api  go run ./cmd/app_development   (in backend)
+→ ui   npm run dev   (in frontend)
+ui  |   VITE v6.4.3  ready in 401 ms
+ui  |   ➜  Local:   http://localhost:5174/
+api | … listening on localhost:8080
+```
+
+| Flag | |
+| --- | --- |
+| `--no-docker` | Skip `docker compose up`, because the database is already running |
+
+It is a **machine** command ([two shapes](#two-shapes-and-which-rules-apply)): it picks no database
+and builds no Wire graph. Each server runs in the directory a person would `cd` into, so the API
+still finds an optional `backend/config.yaml`.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+    actor P as you
+    participant S as san dev run
+    participant D as docker compose
+    participant A as api, go run
+    participant U as ui, npm run dev
+    P->>S: go run ./tools/san dev run
+    S->>S: frontend/node_modules present?
+    S->>D: up -d --wait
+    D-->>S: postgres + redis healthy
+    par
+        S->>A: start, in backend/
+    and
+        S->>U: start, in frontend/
+    end
+    alt Ctrl-C, or the terminal closes
+        P->>S: Ctrl-C
+        S->>A: kill the whole process tree
+        S->>U: kill the whole process tree
+        S-->>P: ✓ stopped, exit 0
+    else one server exits on its own
+        A-->>S: exited
+        S->>U: kill the whole process tree
+        S-->>P: api exited — stopped the rest, exit 1
+    end
+```
+
+**It stops as one thing.** Half a stack is the confusing case: a UI whose API died a minute ago shows
+every screen failing, and nothing on the screen says the server is gone. So any server that exits,
+even with code 0, takes the other one down with it, and the error names the server that exited.
+
+**It kills the tree, not the process.** `go run` is go.exe → the toolchain's go.exe → the built
+server, and `npm run dev` is cmd.exe → npm → vite. Killing the outer process leaves the inner one
+holding :8080 or :5174. Each server is started in its own process group and stopped as a group:
+`kill(-pgid)` on Unix, `taskkill /T` on Windows. The code is
+[`proctree`](../../tools/san/proctree/), shared with [`remote`](#remote). Having its own group also
+means Ctrl-C reaches only `san`. On Windows that keeps cmd.exe from stopping at *"Terminate batch job
+(Y/N)?"*.
+
+The stop is a **hard kill**. The API does not drain its requests, which is fine for a dev server.
+
+### What it does NOT do
+
+| | Do it yourself |
+| --- | --- |
+| Migrate | [`migrate up-all`](#migrate). `dev run` never changes the schema of the database you review on |
+| Seed the logins | [`seed dev`](#seed) |
+| Start the Pub/Sub emulator | `docker compose --profile pubsub up -d` and then [`pubsub ensure`](#pubsub-ensure). Without them, placing an order [waits about a minute](../faq/troubleshooting.md#an-import-or-placing-an-order-hangs-for-about-a-minute) |
+| Survive `kill -9` / `taskkill /F` of `san` itself | Cannot. The servers outlive it. Stop it with Ctrl-C |
+
+### Errors you should expect
+
+| Message | Cause |
+| --- | --- |
+| `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
+| `frontend/node_modules is missing` | `cd frontend && npm install` |
+| `api exited (exit status 1) — stopped the rest` | Read the `api \|` lines above it. `failed to connect … :5433` means Postgres is down. A bind error on :8080 means the stack is already running somewhere |
+| `ui exited (exit status 1) — stopped the rest` | Read the `ui \|` lines. `Port 5174 is already in use` comes from vite's `strictPort` |
+| `start ui: exec: "npm": executable file not found` | Node is not installed or not on `PATH` |
+
+---
 
 ## `user reset-password`
 
@@ -1027,6 +1125,10 @@ them to it would be cargo cult — so be explicit about which shape a new comman
 | `protovalidate` | before calling the handler by hand | done by the **validation interceptor**, because it really is served over RPC |
 | Test harness | `san_testdb`, per-test transaction | a real server + the generated client, so the interceptor is tested too |
 
+[`dev run`](#dev-run) is a machine command that serves nothing, so it has no request to validate. Its
+tests start **the test binary itself** as the child processes, so they need no go, npm or docker. A
+kill that misses a child shows up as a test that never returns.
+
 What does **not** change either way: a unit test beside the file, and a row in the Commands table of
 this document in the same commit.
 
@@ -1047,6 +1149,9 @@ this document in the same commit.
 | [`remote_exec.go`](../../tools/san/remote_exec.go) | the `remote exec` client |
 | [`remote_file.go`](../../tools/san/remote_file.go) | the `remote get` / `remote put` clients, and the shared authenticated client |
 | [`remote/`](../../tools/san/remote/) | the service: `exec.go`, `info.go`, `file_read.go`, `file_write.go`, `auth.go`, `workspace.go`, `shell.go`, one test per file |
+| [`dev.go`](../../tools/san/dev.go) | the `dev` group |
+| [`dev_run.go`](../../tools/san/dev_run.go) | `dev run`: the stack, `docker compose up`, the supervisor, the line prefixer |
+| [`proctree/`](../../tools/san/proctree/) | start a child in its own group, kill its whole tree. Shared by `remote` and `dev run` |
 | [`pkgs/san_dbtarget`](../../backend/pkgs/san_dbtarget/) | the Local/Production choice, shared with `cmd/tool` |
 
 **`remote/` is a Connect service that deliberately does NOT live in `backend/services/`.** Every

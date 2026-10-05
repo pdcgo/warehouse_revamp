@@ -31,11 +31,13 @@ Prerequisites: Go, Node, Docker. All commands from the **repo root** unless stat
 docker compose up -d                          # Postgres :5433, Redis :6380
 go run ./tools/san migrate up    # prompts: database, then service — apply for EVERY service
 go run ./tools/san seed dev      # sample teams + logins (development only)
-cd backend && go run ./cmd/app_development    # the API on :8080
-cd frontend && npm install && npm run dev     # the UI on :5174
+cd frontend && npm install && cd ..           # once, and again when package.json changes
+go run ./tools/san dev run       # the API on :8080 + the UI on :5174, one terminal — Ctrl-C stops both
 ```
 
-Both servers must run — the UI talks to the API. Open <http://localhost:5174>.
+Both servers must run, because the UI talks to the API. Open <http://localhost:5174>.
+[`san dev run`](../tools/san.md#dev-run) starts both. If you want them in separate terminals,
+start them by hand: `cd backend && go run ./cmd/app_development` and `cd frontend && npm run dev`.
 
 ---
 

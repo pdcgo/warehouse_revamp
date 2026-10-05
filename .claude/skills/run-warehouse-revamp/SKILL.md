@@ -192,11 +192,13 @@ e2e runs — different ports, different database.
 ## Run (human path)
 
 ```sh
-cd backend && go run ./cmd/app_development     # :8080
-cd frontend && npm run dev                     # :5174
+go run ./tools/san dev run                     # docker, :8080 and :5174 in ONE terminal
 ```
 
-Two terminals, Ctrl-C each. The UI needs both.
+One terminal, and Ctrl-C stops the whole stack. If you would rather use two terminals, run
+`cd backend && go run ./cmd/app_development` and `cd frontend && npm run dev`. The UI needs both. An
+agent should still use the driver's `up`, which runs in the background and reuses servers that are
+already up.
 
 ## Test
 

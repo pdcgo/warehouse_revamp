@@ -616,6 +616,7 @@ it once a real domain service replaces it.
 | Start local Postgres (`:5433`) | `docker compose up -d` |
 | Lint the contract | `cd proto && buf lint` |
 | Regenerate Go + TS | `cd proto && buf generate` — needs Go and `frontend/node_modules`; **no Buf account** |
+| Run the whole dev stack (docker + API + UI) | `go run ./tools/san dev run` — one terminal, output prefixed per server, Ctrl-C stops all of it |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
 | Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/packages/<name> && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |

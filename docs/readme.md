@@ -94,11 +94,12 @@ Prerequisites: Go, Node, and Docker (for Postgres). All commands assume the repo
 ```sh
 docker compose up -d                      # Postgres on :5433 (and Redis on :6380)
 go run ./tools/san migrate up # apply migrations (prompts for db + service)
-cd backend && go run ./cmd/app_development # the API on :8080
-cd frontend && npm install && npm run dev  # the UI on :5174 (talks to :8080)
+cd frontend && npm install && cd ..       # once
+go run ./tools/san dev run                # the API on :8080 + the UI on :5174 — Ctrl-C stops both
 ```
 
-Both servers must run for the UI to reach the API. More commands (lint, generate, test, e2e,
+Both servers must run for the UI to reach the API, and
+[`san dev run`](tools/san.md#dev-run) starts both in one terminal. More commands (lint, generate, test, e2e,
 migrations) are in the [top-level guide](../CLAUDE.md#commands).
 
 ### Tools
