@@ -3,7 +3,7 @@
 **Pass:** implementation analysis — the **prototype is built, awaiting design_accept**
 ([Q23](../../business/user/context_clarify.md#question)). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md) — roles per team type,
 Root and the System Administrator, suspend, the dev root, and how a team's members are managed. Questions:
-[context_clarify.md](../../business/user/context_clarify.md), **three open** (Q21–Q23, from the prototype; Q3–Q20 answered by 2026-10-02). Decisions:
+[context_clarify.md](../../business/user/context_clarify.md), **five open**: Q21–Q23 from the prototype, Q24–Q25 from §General Data, found 2026-10-05. Q3–Q20 were answered by 2026-10-02. Decisions:
 [context_decision.md](../../business/user/context_decision.md) — **43 recorded, 2 of them superseded**. One question was
 re-routed: who confirms a stock count is [inventory Q12](../../business/inventory/context_clarify.md#question).
 
@@ -68,4 +68,6 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
 | do the restock filters stop using `SearchUser` | [user Q21](../../business/user/context_clarify.md#question) |
 | an Admin changes nobody's role | [user Q22](../../business/user/context_clarify.md#question) |
-| accept the prototype; remove New User | [user Q23](../../business/user/context_clarify.md#question) |
+| accept the prototype; remove New User | [user Q23](../../business/user/context_clarify.md#question). Waits on Q24 |
+| what short_code is for: unique, format, fixed. Not in the build | [user Q24](../../business/user/context_clarify.md#question) |
+| is §General Data the whole record, and is phone kept. Email required? | [user Q25](../../business/user/context_clarify.md#question) |
