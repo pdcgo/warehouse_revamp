@@ -755,7 +755,7 @@ type Team struct {
 	// picker's *Priority Product* tab.
 	//
 	// ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
-	// that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+	// that message is callable by SELLING_OWNER, so a capability granted by root must not live in it or a
 	// team could grant itself the feature. How root sets it is not designed yet — the column and the
 	// read path land first.
 	PriorityProduct bool `protobuf:"varint,9,opt,name=priority_product,json=priorityProduct,proto3" json:"priority_product,omitempty"`

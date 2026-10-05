@@ -317,9 +317,9 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 		alias  string
 		user   string
 	}{
-		{san_auth.RootTeamID, devID, role_basev1.Role_ROLE_ADMIN, "dev", "dev"},
+		{san_auth.RootTeamID, devID, role_basev1.Role_ROLE_ADMINISTRATOR, "dev", "dev"},
 		{whID, devID, role_basev1.Role_ROLE_WAREHOUSE_OWNER, "dev", "dev"},
-		{sellID, devID, role_basev1.Role_ROLE_TEAM_OWNER, "dev", "dev"},
+		{sellID, devID, role_basev1.Role_ROLE_SELLING_OWNER, "dev", "dev"},
 	}
 
 	// A few scoped, non-admin users so screens have realistic data.
@@ -331,7 +331,7 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 	}{
 		{"wh_owner", "Warehouse Owner", whID, role_basev1.Role_ROLE_WAREHOUSE_OWNER},
 		{"wh_staff", "Warehouse Staff", whID, role_basev1.Role_ROLE_WAREHOUSE_STAFF},
-		{"seller", "Seller", sellID, role_basev1.Role_ROLE_TEAM_OWNER},
+		{"seller", "Seller", sellID, role_basev1.Role_ROLE_SELLING_OWNER},
 	}
 
 	for _, s := range scoped {

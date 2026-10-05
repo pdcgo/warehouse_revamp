@@ -16,7 +16,7 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/rol
 //
 //   message TeamInfoUpdateRequest {
 //     option (warehouse.role_base.v1.request_policy) = {
-//       roles: [ROLE_ROOT, ROLE_ADMIN, ROLE_TEAM_OWNER]
+//       roles: [ROLE_ROOT, ROLE_ADMINISTRATOR, ROLE_SELLING_OWNER]
 //     };
 //     uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
 //   }
@@ -30,12 +30,20 @@ enum Role {
   reserved 7;
   reserved "ROLE_WAREHOUSE_LEADER";
 
+  // Renamed 2026-10-05, numbers kept (rename-the-roles-before-the-grant-checks): 2 was ROLE_ADMIN,
+  // 3 ROLE_TEAM_OWNER, 4 ROLE_TEAM_ADMIN, 5 ROLE_TEAM_CUSTOMER_SERVICE. "TEAM_OWNER" read as "any
+  // team's owner" and was the SELLING owner only. The old names are reserved so they cannot come
+  // back meaning something else, and are not aliased (no-alias-for-the-old-role-names).
+  reserved "ROLE_ADMIN", "ROLE_TEAM_OWNER", "ROLE_TEAM_ADMIN", "ROLE_TEAM_CUSTOMER_SERVICE";
+
   ROLE_UNSPECIFIED = 0;
   ROLE_ROOT = 1;
-  ROLE_ADMIN = 2;
-  ROLE_TEAM_OWNER = 3;
-  ROLE_TEAM_ADMIN = 4;
-  ROLE_TEAM_CUSTOMER_SERVICE = 5;
+  // The root team's System Administrator — `administrator`.
+  ROLE_ADMINISTRATOR = 2;
+  // A selling team's three roles — `selling_owner`, `selling_admin`, `selling_cs`.
+  ROLE_SELLING_OWNER = 3;
+  ROLE_SELLING_ADMIN = 4;
+  ROLE_SELLING_CS = 5;
   ROLE_WAREHOUSE_OWNER = 6;
   ROLE_WAREHOUSE_STAFF = 8;
   ROLE_WAREHOUSE_ADMIN = 9;

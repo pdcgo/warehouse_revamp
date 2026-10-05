@@ -36,7 +36,7 @@ const TERMS_PAGE = 200;
 // ⚠ It shapes the form only; the server decides for real. A UI that let one of these save with no
 // reason would be offering a write the backend is going to refuse.
 function isOverrideWriter(role: Role): boolean {
-  return role === Role.ROOT || role === Role.ADMIN;
+  return role === Role.ROOT || role === Role.ADMINISTRATOR;
 }
 
 export interface TermsPanelProps {

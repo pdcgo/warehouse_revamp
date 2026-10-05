@@ -3685,7 +3685,7 @@ func (*TeamAccessListResponseItem_TeamAccess) isTeamAccessListResponseItem_D() {
 
 type TeamAccessListFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
+	// 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMINISTRATOR — otherwise any
 	// authenticated user could enumerate anyone else's teams and roles.
 	UserId        uint64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -4324,7 +4324,7 @@ type RoleResolveResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The caller's role in team_id (ROLE_UNSPECIFIED = not a member).
 	Role v11.Role `protobuf:"varint,1,opt,name=role,proto3,enum=warehouse.role_base.v1.Role" json:"role,omitempty"`
-	// The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMIN here is the global
+	// The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMINISTRATOR here is the global
 	// super-admin bypass. Returned in the same call so the interceptor needs only ONE round trip.
 	RootRole v11.Role `protobuf:"varint,2,opt,name=root_role,json=rootRole,proto3,enum=warehouse.role_base.v1.Role" json:"root_role,omitempty"`
 	// Whether the account is suspended.

@@ -55,7 +55,7 @@ async function loginExpectingFailure(page: Page, username: string, password: str
 
 // Root's team is the ROOT team, whose only role on offer is the System Administrator — and a form there
 // starts with NO role, because making someone an Administrator is never a default (defaultGrant).
-const ROLE_ADMIN = 2;
+const ROLE_ADMINISTRATOR = 2;
 
 // Typing opens the list — a click on the field alone does not.
 async function pickRole(page: Page, role: number, label: string) {
@@ -94,7 +94,7 @@ test("CreateUser rejects an invalid username — lowercase alphanumeric only (#8
   await page.getByTestId("add-member-new-username").fill("Bad_Name");
   await page.getByTestId("add-member-new-password").fill("e2epassword1");
   await page.getByTestId("add-member-new-name").fill("Nope");
-  await pickRole(page, ROLE_ADMIN, "Administrator");
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
   await page.getByTestId("submit-add-member").click();
 
   // The frontend blocks it with a validation error; no account is created.
@@ -111,7 +111,7 @@ test("CreateUser: a new user appears, and can immediately sign in", async ({ pag
   await expect(page.getByTestId("add-member-new-username")).toHaveValue(NEW_USER);
   await page.getByTestId("add-member-new-password").fill(NEW_PASSWORD);
   await page.getByTestId("add-member-new-name").fill("E2E User");
-  await pickRole(page, ROLE_ADMIN, "Administrator");
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
   await page.getByTestId("submit-add-member").click();
 
   // CreateUser writes the account AND the membership in one transaction, so the new user shows
@@ -249,7 +249,7 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await page.getByTestId("open-add-member").click();
   await page.getByTestId("add-member-search").fill(NEW_USER);
   await page.getByTestId(`add-member-result-${NEW_USER}`).click();
-  await pickRole(page, ROLE_ADMIN, "Administrator");
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
   await page.getByTestId("submit-add-member").click();
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();

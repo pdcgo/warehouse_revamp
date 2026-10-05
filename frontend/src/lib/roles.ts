@@ -6,10 +6,10 @@ export const ROLE_LABEL: Record<number, string> = {
   [Role.ROOT]: "Root",
   // Never the bare word: `administrator` and the admin team's `admin_administrator` are one word apart
   // and worlds apart in power (the-two-administrators-have-distinct-labels).
-  [Role.ADMIN]: "System Administrator",
-  [Role.TEAM_OWNER]: "Team Owner",
-  [Role.TEAM_ADMIN]: "Team Admin",
-  [Role.TEAM_CUSTOMER_SERVICE]: "Customer Service",
+  [Role.ADMINISTRATOR]: "System Administrator",
+  [Role.SELLING_OWNER]: "Team Owner",
+  [Role.SELLING_ADMIN]: "Team Admin",
+  [Role.SELLING_CS]: "Customer Service",
   [Role.WAREHOUSE_OWNER]: "Warehouse Owner",
   [Role.WAREHOUSE_STAFF]: "Warehouse Staff",
   [Role.WAREHOUSE_ADMIN]: "Warehouse Admin",
@@ -19,11 +19,11 @@ export const ROLE_LABEL: Record<number, string> = {
 // A role's label, told apart by the TEAM it is held in where one enum value still serves two teams.
 //
 // Until the-role-names-are-the-codes-names is built, the admin team borrows the selling team's two
-// roles, so TEAM_OWNER / TEAM_ADMIN read differently there. Pass the team type wherever it is known.
+// roles, so SELLING_OWNER / SELLING_ADMIN read differently there. Pass the team type wherever it is known.
 export function roleLabel(role: Role | number | undefined, teamType?: TeamType): string {
   if (teamType === TeamType.ADMIN) {
-    if (role === Role.TEAM_OWNER) return "Admin Team Owner";
-    if (role === Role.TEAM_ADMIN) return "Admin Team Admin";
+    if (role === Role.SELLING_OWNER) return "Admin Team Owner";
+    if (role === Role.SELLING_ADMIN) return "Admin Team Admin";
   }
 
   return ROLE_LABEL[role ?? Role.UNSPECIFIED] ?? "Unknown";
@@ -40,16 +40,16 @@ export function rolesFor(teamType: TeamType | undefined): Role[] {
       return [Role.WAREHOUSE_OWNER, Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_STAFF];
 
     case TeamType.SELLING:
-      return [Role.TEAM_OWNER, Role.TEAM_ADMIN, Role.TEAM_CUSTOMER_SERVICE];
+      return [Role.SELLING_OWNER, Role.SELLING_ADMIN, Role.SELLING_CS];
 
     case TeamType.ADMIN:
-      return [Role.TEAM_OWNER, Role.TEAM_ADMIN];
+      return [Role.SELLING_OWNER, Role.SELLING_ADMIN];
 
     case TeamType.ROOT:
-      return [Role.ROOT, Role.ADMIN];
+      return [Role.ROOT, Role.ADMINISTRATOR];
 
     default:
-      return [Role.TEAM_OWNER, Role.TEAM_ADMIN];
+      return [Role.SELLING_OWNER, Role.SELLING_ADMIN];
   }
 }
 
@@ -65,15 +65,15 @@ export function roleRank(role: Role | undefined): number {
   switch (role) {
     case Role.ROOT:
       return 100;
-    case Role.ADMIN:
+    case Role.ADMINISTRATOR:
       return 90;
-    case Role.TEAM_OWNER:
+    case Role.SELLING_OWNER:
     case Role.WAREHOUSE_OWNER:
       return 30;
-    case Role.TEAM_ADMIN:
+    case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_ADMIN:
       return 20;
-    case Role.TEAM_CUSTOMER_SERVICE:
+    case Role.SELLING_CS:
     case Role.WAREHOUSE_STAFF:
       return 10;
     default:
@@ -87,12 +87,12 @@ export function roleRank(role: Role | undefined): number {
 export function managesMembers(role: Role | undefined, teamType: TeamType | undefined): boolean {
   switch (role) {
     case Role.ROOT:
-    case Role.ADMIN:
-    case Role.TEAM_OWNER:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
     case Role.WAREHOUSE_OWNER:
     case Role.WAREHOUSE_ADMIN:
       return true;
-    case Role.TEAM_ADMIN:
+    case Role.SELLING_ADMIN:
       return teamType !== TeamType.ADMIN;
     default:
       return false;
@@ -107,7 +107,7 @@ export function grantableRoles(teamType: TeamType | undefined, caller: Role | un
   const roles = rolesFor(teamType).filter((r) => r !== Role.ROOT);
 
   if (caller === Role.ROOT) return roles;
-  if (caller === Role.ADMIN) return roles.filter((r) => r !== Role.ADMIN);
+  if (caller === Role.ADMINISTRATOR) return roles.filter((r) => r !== Role.ADMINISTRATOR);
   if (!managesMembers(caller, teamType)) return [];
 
   return roles.filter((r) => roleRank(r) < roleRank(caller));
@@ -136,7 +136,7 @@ export function canManageMember(args: {
   if (isSelf) return false;
   if (target === Role.ROOT) return false;
   if (caller === Role.ROOT) return true;
-  if (caller === Role.ADMIN) return target !== Role.ADMIN;
+  if (caller === Role.ADMINISTRATOR) return target !== Role.ADMINISTRATOR;
   if (!managesMembers(caller, teamType)) return false;
 
   return roleRank(target) < roleRank(caller);
@@ -150,7 +150,7 @@ export function canSuspendUser(args: { caller: Role | undefined; target: Role | 
 
   if (isSelf) return false;
   if (caller === Role.ROOT) return target !== Role.ROOT;
-  if (caller === Role.ADMIN) return target !== Role.ROOT && target !== Role.ADMIN;
+  if (caller === Role.ADMINISTRATOR) return target !== Role.ROOT && target !== Role.ADMINISTRATOR;
 
   return false;
 }
@@ -173,9 +173,9 @@ export function canEraseUser(args: {
 export function canManageUsers(role: Role | undefined): boolean {
   switch (role) {
     case Role.ROOT:
-    case Role.ADMIN:
-    case Role.TEAM_OWNER:
-    case Role.TEAM_ADMIN:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_OWNER:
     case Role.WAREHOUSE_ADMIN:
       return true;
@@ -193,9 +193,9 @@ export function canManageUsers(role: Role | undefined): boolean {
 export function isTeamManager(role: Role | undefined): boolean {
   switch (role) {
     case Role.ROOT:
-    case Role.ADMIN:
-    case Role.TEAM_OWNER:
-    case Role.TEAM_ADMIN:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_OWNER:
     case Role.WAREHOUSE_ADMIN:
       return true;
@@ -214,10 +214,10 @@ export function isTeamManager(role: Role | undefined): boolean {
 export function canImportSettlement(role: Role | undefined): boolean {
   switch (role) {
     case Role.ROOT:
-    case Role.ADMIN:
-    case Role.TEAM_OWNER:
-    case Role.TEAM_ADMIN:
-    case Role.TEAM_CUSTOMER_SERVICE:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+    case Role.SELLING_CS:
       return true;
 
     default:
@@ -237,5 +237,5 @@ export function canMoveAccountMoney(role: Role | undefined): boolean {
 
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
-  return role === Role.ROOT || role === Role.ADMIN;
+  return role === Role.ROOT || role === Role.ADMINISTRATOR;
 }

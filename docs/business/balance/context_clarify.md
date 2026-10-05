@@ -140,8 +140,8 @@ points are **deleted**, so this file is always the current open set.
 > reading. [Q1](#question) narrows to whether the *absence of a record* is deliberate.
 >
 > ⚠ **NEW, and it may be a slip of wording rather than a decision** ([Critique 15](#critique)):
-> `ROLE_WAREHOUSE_OWNER` and `ROLE_WAREHOUSE_ADMIN` are **distinct roles** from `TEAM_OWNER` /
-> `TEAM_ADMIN`, and the creditor is normally the **warehouse**. Read literally, the party carrying the
+> `ROLE_WAREHOUSE_OWNER` and `ROLE_WAREHOUSE_ADMIN` are **distinct roles** from `SELLING_OWNER` /
+> `SELLING_ADMIN`, and the creditor is normally the **warehouse**. Read literally, the party carrying the
 > credit risk cannot set the limit protecting it. New [Q3](#question).
 >
 > ⚠ **Neither warning surface can render this yet.** The daily report exists; the terms screen does
@@ -164,7 +164,7 @@ points are **deleted**, so this file is always the current open set.
 > `actor_id`, and every override becomes identifiable without a new concept.
 >
 > ⚠ **Q3 survives, narrowed to an enum question.** *Which roles count as "a team's own people"* — a
-> warehouse is a team, but its people hold `ROLE_WAREHOUSE_*`, not `ROLE_TEAM_OWNER`.
+> warehouse is a team, but its people hold `ROLE_WAREHOUSE_*`, not `ROLE_SELLING_OWNER`.
 
 > # ✅ THE THRESHOLD IS FULLY DECIDED — three answers, and the file's oldest question set closes
 >

@@ -16,15 +16,15 @@ import { ToneBadge, type ToneBadgeProps } from "./ToneBadge";
 function roleTone(role: Role | undefined): Tone {
   switch (role) {
     case Role.ROOT:
-    case Role.ADMIN:
+    case Role.ADMINISTRATOR:
       return "error";
-    case Role.TEAM_OWNER:
+    case Role.SELLING_OWNER:
     case Role.WAREHOUSE_OWNER:
       return "active";
-    case Role.TEAM_ADMIN:
+    case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_ADMIN:
       return "primary";
-    case Role.TEAM_CUSTOMER_SERVICE:
+    case Role.SELLING_CS:
       return "info";
     case Role.WAREHOUSE_STAFF:
       return "success";

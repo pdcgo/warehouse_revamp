@@ -12,7 +12,7 @@ transaction, so it runs as a saga with a compensating action.
 
 ```mermaid
 sequenceDiagram
-    participant C as Caller (ROOT/ADMIN)
+    participant C as Caller (ROOT/ADMINISTRATOR)
     participant T as team_service
     participant U as user_service
     C->>T: TeamCreate(type, name, code, …)
@@ -30,7 +30,7 @@ sequenceDiagram
 ```
 
 **Why these choices:**
-- **Blocking RPC, not an event.** Only ROOT/ADMIN create teams, it is rare, and the exposure window
+- **Blocking RPC, not an event.** Only ROOT/ADMINISTRATOR create teams, it is rare, and the exposure window
   is one round-trip. A synchronous grant means the caller learns immediately whether they own the
   team, and the compensation keeps the two stores consistent.
 - **The caller's own bearer is forwarded** to `TeamUserUpdate`, never a service credential — so
@@ -41,6 +41,6 @@ sequenceDiagram
   one state a human must look at — grant failed *and* compensation failed — is logged at
   `slog.Error`.
 - The owner role depends on team type: a `warehouse` team's owner is `ROLE_WAREHOUSE_OWNER`,
-  everything else `ROLE_TEAM_OWNER` (see `ownerRoleFor` in `team_v1/mapper.go`).
+  everything else `ROLE_SELLING_OWNER` (see `ownerRoleFor` in `team_v1/mapper.go`).
 
 Code: `backend/services/team_service/team_v1/team_create.go`.

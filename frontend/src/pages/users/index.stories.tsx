@@ -69,7 +69,7 @@ export const AsTheWarehouseAdmin: Story = { beforeEach: asRole(Role.WAREHOUSE_AD
 export const AsASellingOwner: Story = {
   beforeEach: () => {
     asTeam(12n)();
-    asRole(Role.TEAM_OWNER)();
+    asRole(Role.SELLING_OWNER)();
   },
 };
 
@@ -219,7 +219,7 @@ export const RootSuspendsAnyoneButARoot: Story = {
 
 // The Administrator suspends neither a Root nor another Administrator.
 export const TheAdministratorSuspendsBelowThemselves: Story = {
-  beforeEach: asRole(Role.ADMIN),
+  beforeEach: asRole(Role.ADMINISTRATOR),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 

@@ -67,7 +67,7 @@ lives in the `.proto` files, and an interceptor reads it by reflection at reques
 ```proto
 message TeamInfoUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
-    roles: [ROLE_ROOT, ROLE_ADMIN, ROLE_TEAM_OWNER]
+    roles: [ROLE_ROOT, ROLE_ADMINISTRATOR, ROLE_SELLING_OWNER]
   };
   uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
 }

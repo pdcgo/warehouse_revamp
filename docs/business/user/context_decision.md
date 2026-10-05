@@ -680,6 +680,9 @@ exceptions are not built — each is listed in its own decision. The dev fixture
 > 🔄 *(2026-10-02, later)* What the two new admin-team roles may call is decided — [admin-team-roles-manage-only-their-team](#admin-team-roles-manage-only-their-team). The rename itself is
 > **not built yet**, on the owner's word: the proto still has the old names.
 
+> 🔄 *(2026-10-05, later)* **The four renames are built**, numbers kept and the old names `reserved`. The two new admin-team
+> roles are not yet ([the-admin-team-roles-are-added-first](#the-admin-team-roles-are-added-first)).
+
 > 🔄 *(2026-10-05)* The hold is lifted: the rename comes before the grant checks, with no alias —
 > [rename-the-roles-before-the-grant-checks](#rename-the-roles-before-the-grant-checks), [no-alias-for-the-old-role-names](#no-alias-for-the-old-role-names). The policy count is now 444 lines in 19 protos, not 284.
 

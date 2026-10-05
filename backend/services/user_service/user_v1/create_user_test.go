@@ -137,7 +137,7 @@ func TestCreateUser_GlobalRoleOutsideRoot_Rejected(t *testing.T) {
 	svc := newService(t, db)
 
 	_, err := svc.CreateUser(context.Background(), connect.NewRequest(&userv1.CreateUserRequest{
-		TeamId: 42, Username: "fakeadmin", Password: "fakeadmin1", Role: role_basev1.Role_ROLE_ADMIN,
+		TeamId: 42, Username: "fakeadmin", Password: "fakeadmin1", Role: role_basev1.Role_ROLE_ADMINISTRATOR,
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want InvalidArgument for ADMIN outside the root team", connect.CodeOf(err))

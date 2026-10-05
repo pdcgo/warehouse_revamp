@@ -286,7 +286,7 @@ export type Team = Message<"warehouse.team.v1.Team"> & {
    * picker's *Priority Product* tab.
    *
    * ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
-   * that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+   * that message is callable by SELLING_OWNER, so a capability granted by root must not live in it or a
    * team could grant itself the feature. How root sets it is not designed yet — the column and the
    * read path land first.
    *

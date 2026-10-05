@@ -7,10 +7,10 @@ import { roleLabel, rolesFor } from "../../lib/roles";
 // Every assignable role, for the "all" case — excludes UNSPECIFIED and the internal SYSTEM role.
 const ALL_ROLES: Role[] = [
   Role.ROOT,
-  Role.ADMIN,
-  Role.TEAM_OWNER,
-  Role.TEAM_ADMIN,
-  Role.TEAM_CUSTOMER_SERVICE,
+  Role.ADMINISTRATOR,
+  Role.SELLING_OWNER,
+  Role.SELLING_ADMIN,
+  Role.SELLING_CS,
   Role.WAREHOUSE_OWNER,
   Role.WAREHOUSE_ADMIN,
   Role.WAREHOUSE_STAFF,

@@ -657,7 +657,7 @@ interceptor reads both by reflection at request time. There is no policy table.
 ```proto
 message TeamInfoUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
-    roles: [ROLE_ROOT, ROLE_ADMIN, ROLE_TEAM_OWNER]
+    roles: [ROLE_ROOT, ROLE_ADMINISTRATOR, ROLE_SELLING_OWNER]
   };
   uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
 }
@@ -669,7 +669,7 @@ message TeamInfoUpdateRequest {
 - The token carries **identity only, never a role**. Roles are read from the database per
   request (cached ~1 min, invalidated on every membership change), so revoking a role takes
   effect without reissuing tokens.
-- **ROOT/ADMIN in team 1** (the root team) bypass every scope check.
+- **ROOT/ADMINISTRATOR in team 1** (the root team) bypass every scope check.
 
 **Where it lives:** [backend/services/user_service/access_interceptors/](backend/services/user_service/access_interceptors/)
 — user_service owns identity and roles, so it owns the enforcement. Other services import it.
@@ -678,10 +678,10 @@ The generic primitives (JWT, reading the proto options, descriptor validation) a
 
 ### Rules that are easy to get wrong
 
-- **Never put a team-level role (`TEAM_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with no
+- **Never put a team-level role (`SELLING_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with no
   `use_scope` field.** An unscoped roles-policy is evaluated against the root team, so those
   entries become **dead letters** — the proto claims something the system does not do. Either
-  give it a scope, or narrow the policy to `[ROOT, ADMIN]`.
+  give it a scope, or narrow the policy to `[ROOT, ADMINISTRATOR]`.
 - **Team scope is a message FIELD, never a header.** The frontend puts `team_id` in each request
   body; no interceptor can supply it.
 - **Every guarded handler must get the interceptor.** It is built once in `service_api.go` and

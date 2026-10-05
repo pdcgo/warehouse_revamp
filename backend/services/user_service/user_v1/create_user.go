@@ -95,7 +95,7 @@ func (s *Service) CreateUser(
 }
 
 func isGlobalRole(role role_basev1.Role) bool {
-	return role == role_basev1.Role_ROLE_ROOT || role == role_basev1.Role_ROLE_ADMIN
+	return role == role_basev1.Role_ROLE_ROOT || role == role_basev1.Role_ROLE_ADMINISTRATOR
 }
 
 // userToProto never includes the password hash. Obvious, and worth being deliberate about: a

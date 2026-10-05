@@ -188,9 +188,9 @@ func TestForeignSignatureRejected(t *testing.T) {
 // token got in with zero team membership.
 //
 // Now an unset scope RESOLVES TO THE ROOT TEAM, so the request is authorized against team 1.
-// A TEAM_OWNER of team 5 holds nothing in team 1, so they are denied.
+// A SELLING_OWNER of team 5 holds nothing in team 1, so they are denied.
 func TestScopedRequestWithZeroTeamResolvesToRootScope(t *testing.T) {
-	resolver := memberOf(5, role_basev1.Role_ROLE_TEAM_OWNER)
+	resolver := memberOf(5, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	reached, err := call(t, resolver, &teamv1.TeamUpdateRequest{TeamId: 0}, tokenFor(t, 7))
 	if reached {
@@ -218,11 +218,11 @@ func TestScopedRequestWithZeroTeamAllowsRoot(t *testing.T) {
 }
 
 func TestRoleInScopeIsAllowed(t *testing.T) {
-	resolver := memberOf(5, role_basev1.Role_ROLE_TEAM_OWNER)
+	resolver := memberOf(5, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	reached, err := call(t, resolver, &teamv1.TeamUpdateRequest{TeamId: 5}, tokenFor(t, 7))
 	if err != nil {
-		t.Fatalf("TEAM_OWNER should be able to update their own team: %v", err)
+		t.Fatalf("SELLING_OWNER should be able to update their own team: %v", err)
 	}
 
 	if !reached {
@@ -232,7 +232,7 @@ func TestRoleInScopeIsAllowed(t *testing.T) {
 
 // A role in ANOTHER team must not authorize this one. This is the whole point of use_scope.
 func TestRoleInAnotherTeamIsDenied(t *testing.T) {
-	resolver := memberOf(5, role_basev1.Role_ROLE_TEAM_OWNER)
+	resolver := memberOf(5, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	_, err := call(t, resolver, &teamv1.TeamUpdateRequest{TeamId: 6}, tokenFor(t, 7))
 	if codeOf(err) != connect.CodePermissionDenied {
@@ -263,9 +263,9 @@ func TestRootBypassesEverything(t *testing.T) {
 	}
 }
 
-// An UNSCOPED roles-policy means root/admin only. A mere TEAM_OWNER must not get in.
+// An UNSCOPED roles-policy means root/admin only. A mere SELLING_OWNER must not get in.
 func TestUnscopedRolesPolicyRequiresRoot(t *testing.T) {
-	resolver := memberOf(5, role_basev1.Role_ROLE_TEAM_OWNER)
+	resolver := memberOf(5, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	_, err := call(t, resolver, &teamv1.TeamDeleteRequest{TeamId: 9}, tokenFor(t, 7))
 	if codeOf(err) != connect.CodePermissionDenied {
@@ -533,7 +533,7 @@ func streamImport(t *testing.T, resolver RoleResolver, teamID uint64, token stri
 func TestServerStreamIsAuthorizedOnItsRequest(t *testing.T) {
 	token := tokenFor(t, 7)
 
-	importer, received, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_TEAM_CUSTOMER_SERVICE), 5, token)
+	importer, received, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_SELLING_CS), 5, token)
 	if err != nil {
 		t.Fatalf("a CS of team 5 should stream team 5's import: %v", err)
 	}
@@ -553,7 +553,7 @@ func TestServerStreamIsAuthorizedOnItsRequest(t *testing.T) {
 
 // ...and a caller with no role in the REQUEST's team is refused before the handler runs.
 func TestServerStreamRefusesANonMemberBeforeTheHandler(t *testing.T) {
-	importer, received, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_TEAM_CUSTOMER_SERVICE), 6, tokenFor(t, 7))
+	importer, received, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_SELLING_CS), 6, tokenFor(t, 7))
 	if codeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("code = %v, want PermissionDenied — a role in team 5 must not open team 6's stream", codeOf(err))
 	}
@@ -575,7 +575,7 @@ func TestServerStreamRefusesAWrongRole(t *testing.T) {
 }
 
 func TestServerStreamNeedsAToken(t *testing.T) {
-	importer, _, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_TEAM_OWNER), 5, "")
+	importer, _, err := streamImport(t, memberOf(5, role_basev1.Role_ROLE_SELLING_OWNER), 5, "")
 	if codeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("code = %v, want Unauthenticated", codeOf(err))
 	}
@@ -588,7 +588,7 @@ func TestServerStreamNeedsAToken(t *testing.T) {
 // Suspension outranks every role on a stream exactly as on a unary call.
 func TestServerStreamRefusesASuspendedMember(t *testing.T) {
 	resolver := stubResolver{
-		roles:     map[uint64]role_basev1.Role{5: role_basev1.Role_ROLE_TEAM_OWNER},
+		roles:     map[uint64]role_basev1.Role{5: role_basev1.Role_ROLE_SELLING_OWNER},
 		suspended: true,
 	}
 

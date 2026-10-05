@@ -175,7 +175,7 @@ message StockListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -217,7 +217,7 @@ message StockHistoryRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -270,7 +270,7 @@ message StockReceiveRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -311,7 +311,7 @@ message StockAdjustRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -408,7 +408,7 @@ message StockOpnameRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -501,7 +501,7 @@ message StockMoveRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -565,10 +565,10 @@ message StockPickRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -624,10 +624,10 @@ message StockedProductListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -664,10 +664,10 @@ message StockAvailabilityRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -710,10 +710,10 @@ message StockReturnRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -752,10 +752,10 @@ message StockCostRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
   uint64 team_id = 1 [
@@ -809,7 +809,7 @@ message StockTransferRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -849,7 +849,7 @@ message StockPickLocationsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -910,7 +910,7 @@ message WarehouseProductListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -956,7 +956,7 @@ message ProductPlacesRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1083,7 +1083,7 @@ message BatchListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1157,7 +1157,7 @@ message CostLayerListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1219,7 +1219,7 @@ message PlacementListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1266,7 +1266,7 @@ message ProductStockSummaryRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1302,7 +1302,7 @@ message BatchDetailRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1340,7 +1340,7 @@ message BatchPlacementListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1394,7 +1394,7 @@ message BatchReceiptRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -1512,10 +1512,10 @@ message OwnerStockByIdsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -1571,10 +1571,10 @@ message OwnerStockStatRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -1612,10 +1612,10 @@ message OwnerCostLayerListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -1655,10 +1655,10 @@ message OwnerBatchListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -1727,10 +1727,10 @@ message OwnerStockHistoryRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 

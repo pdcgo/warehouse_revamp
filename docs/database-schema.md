@@ -67,7 +67,7 @@ erDiagram
     On the **team** rather than on each product, because the decision is about a team — one write,
     and automatically true of everything the team adds later, with no backfill when a team is granted
     the feature. In **`teams`** rather than `team_infos` for a policy reason, not a layout one:
-    `TeamInfoUpdate` is callable by `ROLE_TEAM_OWNER`, so a capability granted by root must not live
+    `TeamInfoUpdate` is callable by `ROLE_SELLING_OWNER`, so a capability granted by root must not live
     in a message a team owner can write, or a team could grant itself the feature.
 
     ⚠ **`product_service` never reads this column** — it cannot, because `teams` belongs to

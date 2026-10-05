@@ -23,13 +23,13 @@ function postingRoleOf(role: Role | undefined): PostingRole | undefined {
   switch (role) {
     case Role.ROOT:
       return "root";
-    case Role.ADMIN:
+    case Role.ADMINISTRATOR:
       return "admin";
-    case Role.TEAM_OWNER:
+    case Role.SELLING_OWNER:
       return "team_owner";
-    case Role.TEAM_ADMIN:
+    case Role.SELLING_ADMIN:
       return "team_admin";
-    case Role.TEAM_CUSTOMER_SERVICE:
+    case Role.SELLING_CS:
       return "customer_service";
     default:
       // Everybody else reads and never writes. Returning undefined means the panel renders without

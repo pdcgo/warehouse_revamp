@@ -253,7 +253,7 @@ func (g *gate) authorize(ctx context.Context, message proto.Message) (context.Co
 	}
 
 	// 8. ROOT / ADMIN in the root team are global super-admins.
-	if access.RootRole == role_basev1.Role_ROLE_ROOT || access.RootRole == role_basev1.Role_ROLE_ADMIN {
+	if access.RootRole == role_basev1.Role_ROLE_ROOT || access.RootRole == role_basev1.Role_ROLE_ADMINISTRATOR {
 		return ctx, nil
 	}
 

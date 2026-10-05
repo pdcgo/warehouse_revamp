@@ -135,7 +135,7 @@ export function LiabilityListPage() {
 
   // ROOT and ADMIN write somebody else's terms, which is what makes a reason REQUIRED
   // (a-limit-change-is-recorded). The server decides for real; this only shapes the form.
-  const overrideWriter = current?.role === Role.ROOT || current?.role === Role.ADMIN;
+  const overrideWriter = current?.role === Role.ROOT || current?.role === Role.ADMINISTRATOR;
 
   // Search and team-type filter narrow the LOADED page client-side, as the mock drives them.
   const rows = positions.filter((p) => {

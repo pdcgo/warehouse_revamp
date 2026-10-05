@@ -50,12 +50,12 @@ const BASE_MEMBERS: [team: bigint, user: bigint, role: Role][] = [
   [11n, 62n, Role.WAREHOUSE_ADMIN],
   [11n, 65n, Role.WAREHOUSE_STAFF],
   [11n, 63n, Role.WAREHOUSE_STAFF],
-  [12n, 64n, Role.TEAM_OWNER],
-  [12n, 62n, Role.TEAM_ADMIN],
-  [12n, 65n, Role.TEAM_CUSTOMER_SERVICE],
-  [12n, 63n, Role.TEAM_CUSTOMER_SERVICE],
+  [12n, 64n, Role.SELLING_OWNER],
+  [12n, 62n, Role.SELLING_ADMIN],
+  [12n, 65n, Role.SELLING_CS],
+  [12n, 63n, Role.SELLING_CS],
   [ROOT_TEAM, 66n, Role.ROOT],
-  [ROOT_TEAM, 67n, Role.ADMIN],
+  [ROOT_TEAM, 67n, Role.ADMINISTRATOR],
 ];
 
 const DAY = 86_400n;
@@ -100,17 +100,17 @@ resetUserStub();
 
 const RANK: Partial<Record<Role, number>> = {
   [Role.ROOT]: 100,
-  [Role.ADMIN]: 90,
-  [Role.TEAM_OWNER]: 30,
+  [Role.ADMINISTRATOR]: 90,
+  [Role.SELLING_OWNER]: 30,
   [Role.WAREHOUSE_OWNER]: 30,
-  [Role.TEAM_ADMIN]: 20,
+  [Role.SELLING_ADMIN]: 20,
   [Role.WAREHOUSE_ADMIN]: 20,
-  [Role.TEAM_CUSTOMER_SERVICE]: 10,
+  [Role.SELLING_CS]: 10,
   [Role.WAREHOUSE_STAFF]: 10,
 };
 
 const rank = (r: Role | undefined) => (r === undefined ? 0 : (RANK[r] ?? 0));
-const isPlatform = (r: Role | undefined) => r === Role.ROOT || r === Role.ADMIN;
+const isPlatform = (r: Role | undefined) => r === Role.ROOT || r === Role.ADMINISTRATOR;
 
 function teamTypeOf(teamId: bigint): TeamType | undefined {
   return teamId === ROOT_TEAM ? TeamType.ROOT : teams.find((t) => t.id === teamId)?.type;
@@ -132,9 +132,9 @@ function rolesIn(teamId: bigint): Map<bigint, Role> {
 // Root and the Administrator.
 function managesMembers(caller: Role, teamType: TeamType | undefined): boolean {
   if (isPlatform(caller)) return true;
-  if (caller === Role.TEAM_ADMIN) return teamType !== TeamType.ADMIN;
+  if (caller === Role.SELLING_ADMIN) return teamType !== TeamType.ADMIN;
 
-  return caller === Role.TEAM_OWNER || caller === Role.WAREHOUSE_OWNER || caller === Role.WAREHOUSE_ADMIN;
+  return caller === Role.SELLING_OWNER || caller === Role.WAREHOUSE_OWNER || caller === Role.WAREHOUSE_ADMIN;
 }
 
 function refuse(code: Code, decision: string, what: string): never {
@@ -161,8 +161,8 @@ function checkMemberWrite(teamId: bigint, userId: bigint, next: Role | undefined
 
   if (caller === Role.ROOT) return;
 
-  if (caller === Role.ADMIN) {
-    if (target === Role.ADMIN || next === Role.ADMIN) {
+  if (caller === Role.ADMINISTRATOR) {
+    if (target === Role.ADMINISTRATOR || next === Role.ADMINISTRATOR) {
       refuse(Code.PermissionDenied, "root-grants-the-administrator", "only Root gives or takes the Administrator");
     }
     return;
@@ -182,7 +182,7 @@ function checkAccountWrite(userId: bigint) {
     refuse(Code.PermissionDenied, "only-root-and-the-administrator-suspend", "nobody suspends themselves");
   }
   if (caller === Role.ROOT && target !== Role.ROOT) return;
-  if (caller === Role.ADMIN && !isPlatform(target)) return;
+  if (caller === Role.ADMINISTRATOR && !isPlatform(target)) return;
 
   refuse(Code.PermissionDenied, "only-root-and-the-administrator-suspend", "you may not suspend this account");
 }

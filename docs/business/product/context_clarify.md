@@ -8,7 +8,7 @@ so this file is always the current open set.
 > ✅ **Closed by your decision:** *can a warehouse team own a product?* — **no**, recorded as
 > [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue). `## General.` 1 stands, and
 > four write policies narrow to match. ⚠ **Its successor is open below ([Q9](#question))**: the ACL narrowing does not
-> enforce the rule, because nothing stops `ROLE_TEAM_OWNER` being granted inside a warehouse team.
+> enforce the rule, because nothing stops `ROLE_SELLING_OWNER` being granted inside a warehouse team.
 >
 > ✅ **Closed by your decision:** *is `categories` plural?* — **yes**, recorded as
 > [a-product-files-under-many-categories](./context_decision.md#a-product-files-under-many-categories). `products.category_id` becomes a link table
@@ -276,7 +276,7 @@ flowchart LR
    opposite of your rule. `cross_markup_bps` stays as it is: percent to a person, basis points on the wire.
 8. **🆕 How does product_service learn a team's TYPE?** The successor to
    [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue): narrowing the four
-   write policies is not enforcement, because `ROLE_TEAM_OWNER` can be held inside a warehouse team and no grant
+   write policies is not enforcement, because `ROLE_SELLING_OWNER` can be held inside a warehouse team and no grant
    path checks `teams.type`. product_service has no read path to team_service today, and HARD RULE 3 makes it an
    RPC, not a shared model.
    **→ I recommend a team-type read at write time, cached** — a team's type changes approximately never, so the

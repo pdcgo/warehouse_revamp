@@ -322,7 +322,7 @@ export const ACashBoxIsCounted: Story = {
 
 // seeing-is-team-wide-moving-is-admin-and-up: a CS reads the statement and moves nothing.
 export const AMemberReadsButDoesNotMove: Story = {
-  beforeEach: asRole(Role.TEAM_CUSTOMER_SERVICE),
+  beforeEach: asRole(Role.SELLING_CS),
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
 

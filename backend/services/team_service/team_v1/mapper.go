@@ -54,11 +54,13 @@ func teamTypeFromText(text string) teamv1.TeamType {
 }
 
 // ownerRoleFor returns the OWNER role appropriate to a team's type. A warehouse team's owner is
-// ROLE_WAREHOUSE_OWNER; everything else is ROLE_TEAM_OWNER. They are the same role in different
-// team types.
+// ROLE_WAREHOUSE_OWNER; everything else is ROLE_SELLING_OWNER.
+//
+// ⚠ "Everything else" includes an ADMIN-type team, which therefore gets the SELLING owner — the mistake
+// the old name ROLE_TEAM_OWNER invited. the-admin-team-roles-are-added-first gives it admin_owner.
 func ownerRoleFor(t teamv1.TeamType) int32 {
 	const (
-		roleTeamOwner      = 3 // role_base.v1.ROLE_TEAM_OWNER
+		roleSellingOwner   = 3 // role_base.v1.ROLE_SELLING_OWNER
 		roleWarehouseOwner = 6 // role_base.v1.ROLE_WAREHOUSE_OWNER
 	)
 
@@ -66,7 +68,7 @@ func ownerRoleFor(t teamv1.TeamType) int32 {
 		return roleWarehouseOwner
 	}
 
-	return roleTeamOwner
+	return roleSellingOwner
 }
 
 func teamToProto(team *team_service_models.Team) *teamv1.Team {

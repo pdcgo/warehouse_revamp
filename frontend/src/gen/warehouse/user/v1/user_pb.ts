@@ -1476,7 +1476,7 @@ export const TeamAccessListResponseItemSchema: GenMessage<TeamAccessListResponse
  */
 export type TeamAccessListFilter = Message<"warehouse.user.v1.TeamAccessListFilter"> & {
   /**
-   * 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
+   * 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMINISTRATOR — otherwise any
    * authenticated user could enumerate anyone else's teams and roles.
    *
    * @generated from field: uint64 user_id = 1;
@@ -1766,7 +1766,7 @@ export type RoleResolveResponse = Message<"warehouse.user.v1.RoleResolveResponse
   role: Role;
 
   /**
-   * The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMIN here is the global
+   * The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMINISTRATOR here is the global
    * super-admin bypass. Returned in the same call so the interceptor needs only ONE round trip.
    *
    * @generated from field: warehouse.role_base.v1.Role root_role = 2;

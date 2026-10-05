@@ -137,7 +137,7 @@ message UpdateUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -166,7 +166,7 @@ message SuspendUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -183,7 +183,7 @@ message DeleteUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -197,7 +197,7 @@ message UserEraseRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -246,9 +246,9 @@ message UserListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -417,9 +417,9 @@ message TeamMemberLogListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -484,9 +484,9 @@ message CreateUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -553,7 +553,7 @@ message AdminResetPasswordRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -713,7 +713,7 @@ message TeamAccessListResponseItem {
 }
 
 message TeamAccessListFilter {
-  // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
+  // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMINISTRATOR — otherwise any
   // authenticated user could enumerate anyone else's teams and roles.
   uint64 user_id = 1;
 }
@@ -747,7 +747,7 @@ message UserTeamsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -774,9 +774,9 @@ message TeamUserUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -825,7 +825,7 @@ message RoleResolveResponse {
   // The caller's role in team_id (ROLE_UNSPECIFIED = not a member).
   warehouse.role_base.v1.Role role = 1;
 
-  // The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMIN here is the global
+  // The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMINISTRATOR here is the global
   // super-admin bypass. Returned in the same call so the interceptor needs only ONE round trip.
   warehouse.role_base.v1.Role root_role = 2;
 

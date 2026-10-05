@@ -22,7 +22,7 @@ import (
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 )
 
-// RootTeamID is the super-admin scope: ROLE_ROOT / ROLE_ADMIN *in this team* bypass every
+// RootTeamID is the super-admin scope: ROLE_ROOT / ROLE_ADMINISTRATOR *in this team* bypass every
 // other check. team_service's migration seeds team 1 as type='root' and constrains
 // (type = 'root') = (id = 1), so the constant and the data cannot drift apart.
 const RootTeamID uint64 = 1
