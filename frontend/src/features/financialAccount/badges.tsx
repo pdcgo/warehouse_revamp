@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Badge, HStack, Icon, Text } from "@chakra-ui/react";
+import { Badge, Box, HStack, Icon, Text } from "@chakra-ui/react";
 import { TriangleAlert } from "lucide-react";
 
 import {
@@ -51,10 +51,16 @@ export function BalanceText({
   balance,
   size = "sm",
   testId,
+  hint,
 }: {
   balance: number | undefined;
   size?: "sm" | "md" | "lg" | "2xl";
   testId?: string;
+  /**
+   * Below zero, put the ⚠ on a line UNDER the figure with these words, instead of beside it (owner,
+   * `a-balance-below-zero-says-to-check-the-bank`) — the figure stays a clean column of numbers.
+   */
+  hint?: string;
 }) {
   const { t } = useTranslation();
 
@@ -68,8 +74,29 @@ export function BalanceText({
 
   const below = balance < 0;
 
+  // ⚠ INLINE, so a cell's `textAlign="end"` reaches it. A block-level flex row ignores text-align and sat at
+  // the cell's left edge under a right-aligned heading (owner: *"angkanya juga tidak right"*).
+  if (below && hint) {
+    return (
+      <Box display="inline-block" data-testid={testId} data-below-zero>
+        <Text fontSize={size} fontWeight={size === "sm" ? undefined : "semibold"} color="fg.error">
+          {formatRupiahNumber(balance)}
+        </Text>
+        <Text
+          fontSize="xs"
+          color="fg.error"
+          whiteSpace="nowrap"
+          data-testid={testId ? `${testId}-below-zero` : undefined}
+        >
+          <Icon as={TriangleAlert} boxSize="3" me="1" verticalAlign="-0.125em" aria-label={t("financialAccounts.belowZero")} />
+          {hint}
+        </Text>
+      </Box>
+    );
+  }
+
   return (
-    <HStack gap="1" justify="inherit" data-testid={testId} data-below-zero={below || undefined}>
+    <HStack display="inline-flex" gap="1" data-testid={testId} data-below-zero={below || undefined}>
       {below && (
         <Icon
           as={TriangleAlert}

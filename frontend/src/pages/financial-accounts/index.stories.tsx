@@ -14,7 +14,7 @@ import { FinancialAccountsPage } from "./index";
 //
 // Toko Melati's accounts, from ONE consistent book (.storybook/financialAccountFixtures.ts): BCA
 // Operasional 11.443.500, BCA Gaji 600.000, ShopeePay Melati −150.000 (below zero), an unknown account
-// holding Melati TikTok's 4.200.000, and BNI Lama archived at zero. Every play() is one decided rule.
+// holding Melati TikTok's 4.200.000, Kas Melati 350.000 in the cash box, and BNI Lama archived at zero. Every play() is one decided rule.
 
 const BCA_OPS = account("BCA Operasional");
 const BCA_GAJI = account("BCA Gaji");
@@ -73,19 +73,48 @@ export const TotalsByType: Story = {
 
     await expect(canvas.getByTestId(`account-total-${FinancialAccountType.BANK_ACCOUNT}-value`)).toHaveTextContent(rp(12_043_500));
     await expect(canvas.getByTestId(`account-total-${FinancialAccountType.WALLET}-value`)).toHaveTextContent(rp(-150_000));
+    await expect(canvas.getByTestId(`account-total-${FinancialAccountType.CASH}-value`)).toHaveTextContent(rp(350_000));
     await expect(canvas.getByTestId(`account-total-${FinancialAccountType.UNKNOWN}-value`)).toHaveTextContent(rp(4_200_000));
-    await expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_093_500));
+    await expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_443_500));
   },
 };
 
-// below-zero-is-warned-never-refused: the row, the totals and a banner all say it.
+/**
+ * THE HEADER (owner) — the subtitle directly under the title, and the report button says its word. It used
+ * to render i18next's "returned an object instead of string": its key was the report page's namespace.
+ */
+export const TheHeaderReadsAsOneBlock: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("open-account-report")).toHaveTextContent(/^Report$/);
+    const title = canvas.getByRole("heading", { name: "Accounts" });
+    const subtitle = canvas.getByTestId("financial-accounts-subtitle");
+    // Under the title, inside the same block — not a section away.
+    await expect(subtitle.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toBeLessThan(12);
+  },
+};
+
+// below-zero-is-warned-never-refused: the row and the totals say it — in red on the card's line, where the
+// banner used to repeat it (the-accounts-page-has-no-banners).
 export const BelowZeroIsWarnedNeverRefused: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.getByTestId(`account-balance-${SHOPEEPAY.id}-below-zero`)).toBeVisible();
     await expect(canvas.getByTestId(`account-balance-${BCA_OPS.id}`)).not.toHaveAttribute("data-below-zero");
-    await expect(canvas.getByTestId("below-zero-warning")).toHaveTextContent("1 account is below zero");
+    // Under the figure, what the banner used to say: allowed, and check it against the bank.
+    await expect(canvas.getByTestId(`account-balance-${SHOPEEPAY.id}-below-zero`)).toHaveTextContent(
+      "Below zero · check it against the bank",
+    );
+    // Right-aligned under the right-aligned heading.
+    const figure = canvas.getByTestId(`account-balance-${BCA_OPS.id}`);
+    const cell = figure.closest("td")!;
+    await expect(cell.getBoundingClientRect().right - figure.getBoundingClientRect().right).toBeLessThan(16);
+    const count = canvas.getByTestId(`account-total-${FinancialAccountType.WALLET}-below-zero`);
+    await expect(count).toHaveTextContent("1 below zero");
+    await expect(getComputedStyle(count).color).not.toBe(getComputedStyle(count.parentElement!).color);
+    await expect(canvas.queryByTestId("below-zero-warning")).toBeNull();
   },
 };
 
@@ -98,7 +127,9 @@ export const AnUnknownAccountIsWarned: Story = {
     await expect(canvas.getByTestId(`account-unknown-${UNKNOWN.id}`)).toHaveTextContent("Bank not named");
     // The server names it by the shop's id; the row shows the shop's name.
     await expect(canvas.getByTestId(`account-row-${UNKNOWN.id}`)).toHaveTextContent("Unknown — Melati TikTok");
-    await expect(canvas.getByTestId("unknown-warning")).toBeVisible();
+    // Its own card says it, not a banner (the-accounts-page-has-no-banners).
+    await expect(canvas.getByTestId(`account-total-${FinancialAccountType.UNKNOWN}`)).toBeVisible();
+    await expect(canvas.queryByTestId("unknown-warning")).toBeNull();
     await expect(canvas.getByTestId(`account-shop-${UNKNOWN.id}-25`)).toHaveTextContent("Melati TikTok");
 
     await openMenu(canvas, UNKNOWN.id);
@@ -110,6 +141,86 @@ export const AnUnknownAccountIsWarned: Story = {
 };
 
 // Every account says when it was last checked — "never" is a state, not a blank.
+/**
+ * THE TYPE IS A TAB ROW, AND ITS CARD LEADS (owner, `the-accounts-type-is-a-tab-row`,
+ * `the-total-leads-until-a-type-is-picked`) — Total saldo leads until a type is picked; then that type's card
+ * does, and the table holds only that type.
+ */
+export const TheTypeTabNarrowsAndLeads: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("account-total-team")).toHaveAttribute("data-emphasis");
+    await expect(canvas.getByTestId("account-total-team")).toHaveTextContent("Total balance");
+    // The whole first, then what it is made of (the-total-saldo-comes-first).
+    await expect(canvas.getByTestId("account-totals").firstElementChild).toHaveAttribute("data-testid", "account-total-team");
+
+    const tab = canvas.getByTestId(`account-type-tab-${FinancialAccountType.UNKNOWN}`);
+    await userEvent.click(tab);
+    // The picked tab in the main tone — rose-700 text (a-selected-tab-is-in-the-main-tone).
+    await waitFor(() => expect(getComputedStyle(tab).color).toBe("rgb(190, 18, 60)"));
+
+    await waitFor(() => expect(canvas.queryByTestId(`account-row-${BCA_OPS.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`account-row-${UNKNOWN.id}`)).toBeVisible();
+    await expect(canvas.getByTestId(`account-total-${FinancialAccountType.UNKNOWN}`)).toHaveAttribute("data-emphasis");
+    await expect(canvas.getByTestId("account-total-team")).not.toHaveAttribute("data-emphasis");
+
+    await userEvent.click(canvas.getByTestId("account-type-tab-all"));
+    await waitFor(() => expect(canvas.getByTestId("account-total-team")).toHaveAttribute("data-emphasis"));
+  },
+};
+
+/** The rows on screen, in order, by id. */
+function rowIds(canvas: ReturnType<typeof within>): string[] {
+  return canvas
+    .getAllByTestId(/^account-row-\d+$/)
+    .map((r: HTMLElement) => r.getAttribute("data-testid")!.replace("account-row-", ""));
+}
+
+/**
+ * EVERY FILTER THE CONTRACT HAS (owner, `the-accounts-list-has-every-filter-the-contract-has`) — the search,
+ * the type, the shop, operational only, and archived; Clear resets them all.
+ */
+export const EveryFilterTheContractHas: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("account-search")).toBeVisible();
+    await expect(canvas.getByTestId("account-type-tabs")).toBeVisible();
+    await expect(canvas.getByTestId("account-shop-filter")).toBeVisible();
+
+    await userEvent.click(canvas.getByText("Operational only"));
+    await waitFor(() => expect(canvas.queryByTestId(`account-row-${BCA_GAJI.id}`)).toBeNull());
+    for (const id of rowIds(canvas)) {
+      await expect(canvas.getByTestId(`account-operational-${id}`)).toBeVisible();
+    }
+
+    await userEvent.click(canvas.getByTestId("account-filters-clear"));
+    await waitFor(() => expect(canvas.getByTestId(`account-row-${BCA_GAJI.id}`)).toBeVisible());
+  },
+};
+
+/**
+ * THE SORT IS IN THE HEADINGS (owner, `the-accounts-table-sorts-from-its-headings`) — Akun and Penyedia, A to
+ * Z first, then flipped; the server orders the whole set.
+ */
+export const SortsFromItsHeadings: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const byName = canvas.getByTestId("account-sort-name");
+
+    await userEvent.click(byName);
+    await expect(byName).toHaveAttribute("data-sort", "asc");
+    await waitFor(() => expect(rowIds(canvas)[0]).toBe(BCA_GAJI.id.toString()));
+
+    await userEvent.click(byName);
+    await expect(byName).toHaveAttribute("data-sort", "desc");
+    await waitFor(() => expect(rowIds(canvas)[0]).toBe(UNKNOWN.id.toString()));
+
+    await expect(canvas.getByRole("columnheader", { name: "Balance" }).querySelector("button")).toBeNull();
+  },
+};
+
 export const LastCheckedIsAlwaysSaid: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -191,7 +302,7 @@ export const ATransferMovesBothBalancesNotTheTotal: Story = {
 
     await waitFor(() => expect(canvas.getByTestId(`account-balance-${SHOPEEPAY.id}`)).toHaveTextContent(rp(350_000)));
     await expect(canvas.getByTestId(`account-balance-${BCA_OPS.id}`)).toHaveTextContent(rp(10_943_500));
-    await expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_093_500));
+    await expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_443_500));
     // ShopeePay is above zero now, so the warning goes with it.
     await waitFor(() => expect(canvas.queryByTestId("below-zero-warning")).toBeNull());
   },
@@ -243,7 +354,7 @@ export const ANewAccountOpensWithItsBalance: Story = {
 
     const row = await canvas.findByText("Kas Toko");
     await waitFor(() => expect(row).toBeVisible());
-    await waitFor(() => expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_343_500)));
+    await waitFor(() => expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_693_500)));
   },
 };
 
@@ -287,7 +398,7 @@ export const AMemberSeesButDoesNotMove: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_093_500));
+    await expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_443_500));
     await expect(canvas.queryByTestId("open-create-account")).toBeNull();
     await expect(canvas.queryByTestId(`account-actions-${BCA_OPS.id}`)).toBeNull();
   },

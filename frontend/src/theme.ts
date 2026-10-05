@@ -338,6 +338,29 @@ const customConfig = defineConfig({
       table: {
         variants: { variant: { line: { row: { bg: "transparent" } } } },
       },
+      // ── A SELECTED TAB IS IN THE MAIN TONE (owner, `a-selected-tab-is-in-the-main-tone`) ─────────────
+      //
+      // Chakra draws the picked tab's text in `fg` and its underline in the root palette — gray, so near-black.
+      // Rose instead, like a chosen radio and the calendar's day: the tab is the choice the list answers.
+      //
+      // ⚠ BY TOKEN, NOT BY `colorPalette`. A palette on the root is inherited by everything inside it, and a
+      // tab's count `Badge` would turn pink with it. Named on the `line` variant — the default, and a
+      // variant beats `base`, the trap `table` above walked into.
+      tabs: {
+        variants: {
+          variant: {
+            line: {
+              trigger: {
+                _selected: {
+                  color: "brand.fg",
+                  _horizontal: { "--indicator-color": "colors.brand.solid" },
+                  _vertical: { "--indicator-color": "colors.brand.solid" },
+                },
+              },
+            },
+          },
+        },
+      },
       // ── TYPE HIERARCHY (owner) ──────────────────────────────────────────────────────────────────
       //
       // Lato ships only 400 and 700 (no 500/600), so the levels are told apart by SIZE and COLOUR,

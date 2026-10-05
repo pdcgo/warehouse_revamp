@@ -135,6 +135,9 @@ export const ClearAppearsOnlyWhileFiltering: Story = {
     const clear = await canvas.findByTestId("filter-bar-clear");
     await expect(clear).toBeVisible();
     await expect(bar).toHaveAttribute("data-filtering", "true");
+    // Red and bold (owner, `clear-filters-is-red-and-bold`) — the error tone's text, Lato's one strong weight.
+    await expect(getComputedStyle(clear).fontWeight).toBe("700");
+    await expect(getComputedStyle(clear).color).toBe("rgb(185, 28, 28)");
 
     await userEvent.click(clear);
 

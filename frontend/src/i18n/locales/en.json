@@ -162,7 +162,8 @@
     "copied": "Copied",
     "copyFailed": "Could not copy — select the text and copy it by hand",
     "filters": "Filters",
-    "done": "Done"
+    "done": "Done",
+    "sortBy": "Sort by {{column}}"
   },
   "dateRange": {
     "all": "All dates",
@@ -3039,6 +3040,7 @@
     "title": "Accounts",
     "selectTeam": "Pick a team to see its accounts.",
     "subtitle": "What the team holds, and where. A balance moves only with a row — open an account to read them.",
+    "openReport": "Report",
     "report": {
       "title": "Account Report",
       "subtitle": "What moved the team's money, by the day it moved. Always up to date with the balances.",
@@ -3059,6 +3061,7 @@
     },
     "newAccount": "New Account",
     "searchPlaceholder": "Search a name, holder or number",
+    "allTypes": "All",
     "showArchived": "Show archived accounts",
     "archived": "Archived",
     "operational": "Operational",
@@ -3069,12 +3072,9 @@
     "empty": "No accounts yet. An admin adds the team's bank, wallet and cash accounts here.",
     "emptySearch": "No account matches that search.",
     "belowZero": "Below zero",
-    "belowZeroBanner_one": "{{count}} account is below zero. That is allowed — check it against the bank.",
-    "belowZeroBanner_other": "{{count}} accounts are below zero. That is allowed — check them against the bank.",
-    "unknownBanner_one": "{{count}} account holds withdrawals from a shop whose bank is not named yet. Open it and choose Which Account Is This?",
-    "unknownBanner_other": "{{count}} accounts hold withdrawals from shops whose bank is not named yet. Open each and choose Which Account Is This?",
     "unknownExplained": "A withdrawal from {{shops}} arrived before anyone named its bank, so this account was made to hold it. Name the bank, or move the money into an account you already have.",
     "belowZeroExplained": "Below zero in the books — usually a payment recorded before the top-up. Reconcile against the bank.",
+    "belowZeroHint": "Below zero · check it against the bank",
     "cancel": "Cancel",
     "save": "Save",
     "failed": "That did not go through",
@@ -3095,7 +3095,7 @@
       "wallet": "Wallets",
       "cash": "Cash",
       "unknown": "Bank not named",
-      "team": "The team holds",
+      "team": "Total balance",
       "accounts_one": "{{count}} account",
       "accounts_other": "{{count}} accounts",
       "belowZero_one": "{{count}} below zero",
@@ -3245,6 +3245,20 @@
       "byHand": "by hand · {{name}}",
       "automatic": "automatic — from where it happened",
       "allTypes": "All types"
+    },
+    "allShops": "All shops",
+    "operationalOnly": "Operational only",
+    "sort": {
+      "label": "Sort",
+      "default": "Default — active first, then name",
+      "name": {
+        "asc": "Name A–Z",
+        "desc": "Name Z–A"
+      },
+      "provider": {
+        "asc": "Provider A–Z",
+        "desc": "Provider Z–A"
+      }
     }
   }
 }

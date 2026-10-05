@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { financialAccountClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
+import type { SortState } from "../../components/chrome/SortableHeader";
+import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
 import {
   type CapitalDirection,
   type FinancialAccountChangeType,
@@ -11,6 +13,7 @@ import {
   FinancialAccountLogListDataType,
   FinancialAccountMetricDataType,
   type FinancialAccountProvider,
+  FinancialAccountRowSort,
   type FinancialAccountType,
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import {
@@ -36,19 +39,45 @@ export function useFinancialAccounts(args: {
   teamId: bigint | undefined;
   q: string;
   includeArchived: boolean;
+  /** Empty = every type. */
+  types?: FinancialAccountType[];
+  /** The account this shop withdraws into — at most one. 0n = every shop. */
+  shopId?: bigint;
+  operationalOnly?: boolean;
+  /** A heading's sort; `null` = the list's own order — active before archived, then by name. */
+  sort?: SortState<"name" | "provider"> | null;
   page: number;
   pageSize: number;
 }) {
-  const { teamId, q, includeArchived, page, pageSize } = args;
+  const { teamId, q, includeArchived, types = [], shopId = 0n, operationalOnly = false, sort = null, page, pageSize } = args;
 
   return useQuery({
     ...listQuery,
-    queryKey: key.financialAccounts(teamId, { list: true, q, includeArchived, page, pageSize }),
+    queryKey: key.financialAccounts(teamId, {
+      list: true,
+      q,
+      includeArchived,
+      types: types.join(","),
+      shopId: shopId.toString(),
+      operationalOnly,
+      sort: sort ? `${sort.by}:${sort.dir}` : "",
+      page,
+      pageSize,
+    }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await financialAccountClient.financialAccountList({
         teamId: teamId!,
-        filter: { q, includeArchived },
+        filter: { q, includeArchived, types, shopId, operationalOnly },
+        sort: sort
+          ? {
+              sortType: sort.dir === "desc" ? CommonSortType.DESC : CommonSortType.ASC,
+              s: {
+                case: "account",
+                value: sort.by === "name" ? FinancialAccountRowSort.NAME : FinancialAccountRowSort.PROVIDER,
+              },
+            }
+          : undefined,
         dataRequest: [FinancialAccountListDataType.ACCOUNT],
         page: { page, limit: pageSize },
       });

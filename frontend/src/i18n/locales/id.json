@@ -162,7 +162,8 @@
     "copied": "Tersalin",
     "copyFailed": "Gagal menyalin — pilih teksnya dan salin manual",
     "filters": "Filter",
-    "done": "Selesai"
+    "done": "Selesai",
+    "sortBy": "Urutkan menurut {{column}}"
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -3028,6 +3029,7 @@
     "title": "Akun Keuangan",
     "selectTeam": "Pilih tim untuk melihat akunnya.",
     "subtitle": "Uang yang dipegang tim, dan di mana. Saldo hanya berubah lewat baris — buka akun untuk membacanya.",
+    "openReport": "Laporan",
     "report": {
       "title": "Laporan Akun",
       "subtitle": "Apa yang menggerakkan uang tim, menurut hari uang berpindah. Selalu sejalan dengan saldo.",
@@ -3048,6 +3050,7 @@
     },
     "newAccount": "Akun Baru",
     "searchPlaceholder": "Cari nama, atas nama, atau nomor",
+    "allTypes": "Semua",
     "showArchived": "Tampilkan akun yang diarsipkan",
     "archived": "Diarsipkan",
     "operational": "Operasional",
@@ -3058,12 +3061,9 @@
     "empty": "Belum ada akun. Admin menambahkan rekening bank, dompet, dan kas tim di sini.",
     "emptySearch": "Tidak ada akun yang cocok.",
     "belowZero": "Di bawah nol",
-    "belowZeroBanner_one": "{{count}} akun di bawah nol. Itu boleh — cocokkan dengan bank.",
-    "belowZeroBanner_other": "{{count}} akun di bawah nol. Itu boleh — cocokkan dengan bank.",
-    "unknownBanner_one": "{{count}} akun menampung penarikan dari toko yang banknya belum disebut. Buka dan pilih Akun Yang Mana Ini?",
-    "unknownBanner_other": "{{count}} akun menampung penarikan dari toko yang banknya belum disebut. Buka satu per satu dan pilih Akun Yang Mana Ini?",
     "unknownExplained": "Penarikan dari {{shops}} masuk sebelum banknya disebut, jadi akun ini dibuat untuk menampungnya. Sebut banknya, atau pindahkan uangnya ke akun yang sudah ada.",
     "belowZeroExplained": "Di bawah nol di pembukuan — biasanya pembayaran tercatat sebelum top-up. Rekonsiliasi dengan bank.",
+    "belowZeroHint": "Di bawah nol · cocokkan dengan bank",
     "cancel": "Batal",
     "save": "Simpan",
     "failed": "Gagal diproses",
@@ -3084,7 +3084,7 @@
       "wallet": "Dompet digital",
       "cash": "Kas",
       "unknown": "Bank belum disebut",
-      "team": "Total tim",
+      "team": "Total saldo",
       "accounts_one": "{{count}} akun",
       "accounts_other": "{{count}} akun",
       "belowZero_one": "{{count}} di bawah nol",
@@ -3234,6 +3234,20 @@
       "byHand": "manual · {{name}}",
       "automatic": "otomatis — dari tempat kejadiannya",
       "allTypes": "Semua jenis"
+    },
+    "allShops": "Semua toko",
+    "operationalOnly": "Hanya operasional",
+    "sort": {
+      "label": "Urutkan",
+      "default": "Bawaan — aktif dulu, lalu nama",
+      "name": {
+        "asc": "Nama A–Z",
+        "desc": "Nama Z–A"
+      },
+      "provider": {
+        "asc": "Penyedia A–Z",
+        "desc": "Penyedia Z–A"
+      }
     }
   }
 }

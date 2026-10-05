@@ -21,6 +21,8 @@ when it applies one of these.
 | [a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone) | a chosen radio and the calendar's chosen day are drawn in the main tone, rose — the form's button colour, never the default near-black | [settlement add entry](order_settlement_decision.md#the-add-entry-form-picks-with-chakra-controls) |
 | [chakra-first-whenever-it-has-the-component](#chakra-first-whenever-it-has-the-component) | when Chakra has the component, the screen uses it — its full one, not a native element dressed up | [settlement add entry](order_settlement_decision.md#the-add-entry-form-picks-with-chakra-controls) |
 | [a-money-field-shows-0-until-typed](#a-money-field-shows-0-until-typed) | every money field shows a **0** placeholder until something is typed — the placeholder, never the value | every `CurrencyInput` |
+| [clear-filters-is-red-and-bold](#clear-filters-is-red-and-bold) | **Hapus filter** is red and bold — on every list, in the row and in the phone's sheet | [financial accounts](financial_accounts_decision.md#the-accounts-list-has-every-filter-the-contract-has) |
+| [a-selected-tab-is-in-the-main-tone](#a-selected-tab-is-in-the-main-tone) | the picked tab's text and underline are rose, on every tab row | [financial accounts](financial_accounts_decision.md#the-accounts-type-is-a-tab-row) |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -416,6 +418,39 @@ Jumlah
 | where | `CurrencyInput`'s default `placeholder` — so every money field gets it, and a caller may still pass its own |
 | the value | stays `""` until a digit is typed: an empty field is a person who has not answered, not a zero |
 | was | an empty box on most forms; four forms typed `placeholder="0"` by hand, now removed as the default |
+
+## clear-filters-is-red-and-bold
+
+> Owner, in chat (2026-10-05), on the accounts list's filter strip: *"catatan, hapus filter merah bold"*.
+
+```
+[Cari …] [Semua jenis ⌄] [Semua toko ⌄] ☐ Hanya operasional   Hapus filter   ← red, bold
+```
+
+| | |
+| --- | --- |
+| the button | `FilterBar`'s Clear — `colorPalette="error"`, bold, still a ghost button |
+| where | every list that uses `FilterBar` — the row on a desktop and the foot of the phone's sheet — set once in the component |
+| when | unchanged: only while a filter is narrowing the list |
+| why red | it throws away what somebody set, and on a list that looks emptier than expected it is the first thing to find |
+
+## a-selected-tab-is-in-the-main-tone
+
+> Owner, in chat (2026-10-05), on the accounts list's type tabs: *"warna tab warna utama"*.
+
+*The tab's twin of [a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone).*
+
+```
+[Semua 5]  [Rekening bank 2]  [Kas 1]
+ ━━━━━━━━                              ← the picked tab: rose text, rose underline
+```
+
+| | |
+| --- | --- |
+| the picked tab | text `brand.fg`, underline `brand.solid` — rose |
+| the others | unchanged — `fg.muted`, no underline |
+| where | `theme.ts`, the `line` variant — every tab row in the app, the order list's status tabs and the vertical detail tabs included |
+| the count badge | stays grey — the colour is set by token on the trigger, not as a palette the badge would inherit |
 
 ## Recorded elsewhere
 

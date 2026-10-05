@@ -247,7 +247,8 @@ test("A withdrawal from a shop with no account makes an unknown one, once", asyn
   const row = accountRow(page, `shop #${ORPHAN_SHOP}`);
   await expect(row).toContainText("Bank not named");
   await expect(balanceOf(row)).toHaveText(rp(150_000));
-  await expect(page.getByTestId("unknown-warning")).toBeVisible();
+  // Its own totals card says it — the banner is gone (the-accounts-page-has-no-banners). 4 = UNKNOWN.
+  await expect(page.getByTestId("account-total-4")).toBeVisible();
 });
 
 // an-unknown-account-is-filled-in-or-moved-in — MOVE IN: the money crosses, the unknown one is archived.

@@ -29,6 +29,7 @@ import {
   FinancialAccountLogSort,
   FinancialAccountMetricDataType,
   FinancialAccountProvider,
+  FinancialAccountRowSort,
   FinancialAccountService,
   FinancialAccountStatus,
   FinancialAccountType,
@@ -263,6 +264,22 @@ const matches = (q: string | undefined, ...fields: string[]) => {
 
 // ── FinancialAccountService ─────────────────────────────────────────────────────────────────────
 
+// The server's `listOrder`: a heading's sort when one is asked — the provider by its stored word, as the
+// column is text — else active before archived, then by name.
+function listOrder(sort: { sortType: CommonSortType; s: { case: string | undefined; value?: unknown } } | undefined) {
+  const flip = sort?.sortType === CommonSortType.DESC ? -1 : 1;
+  const by = sort?.s.case === "account" ? (sort.s.value as FinancialAccountRowSort) : undefined;
+
+  return (x: StubAccount, y: StubAccount) => {
+    if (by === FinancialAccountRowSort.NAME) return flip * x.name.localeCompare(y.name);
+    if (by === FinancialAccountRowSort.PROVIDER) {
+      const word = (a: StubAccount) => FinancialAccountProvider[a.provider].toLowerCase();
+      return flip * word(x).localeCompare(word(y)) || x.name.localeCompare(y.name);
+    }
+    return x.status - y.status || x.name.localeCompare(y.name);
+  };
+}
+
 export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccountService>> = {
   financialAccountList: (req) => {
     const f = req.filter;
@@ -273,8 +290,7 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
       .filter((a) => !f?.types?.length || f.types.includes(a.type))
       .filter((a) => !f?.shopId || a.shopIds.includes(f.shopId))
       .filter((a) => matches(f?.q, a.name, a.holderName, a.accountNumber))
-      // Active before archived, then by name — the list's default order.
-      .sort((x, y) => x.status - y.status || x.name.localeCompare(y.name));
+      .sort(listOrder(req.sort));
 
     const { rows: page, pageInfo } = window(rows, req.page);
     const mapData = Object.fromEntries(page.map((a) => [a.id.toString(), wireAccount(a)]));

@@ -38,7 +38,7 @@ type Story = StoryObj<typeof meta>;
 
 async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(16_093_500)), {
+  await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(16_443_500)), {
     timeout: 4000,
   });
 
@@ -53,7 +53,7 @@ export const TheWindowAddsUp: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("account-report-open-value")).toHaveTextContent(rp(10_950_000));
+    await expect(canvas.getByTestId("account-report-open-value")).toHaveTextContent(rp(11_300_000));
     await expect(canvas.getByTestId("account-report-change-value")).toHaveTextContent(signed(5_143_500));
     await expect(canvas.getByTestId(`account-report-type-${T.WITHDRAWAL}`)).toHaveTextContent(signed(11_000_000));
     await expect(canvas.getByTestId(`account-report-type-${T.EXPENSE}`)).toHaveTextContent(signed(-3_600_000));
@@ -85,7 +85,7 @@ export const DailyNewestFirst: Story = {
 
     const rows = within(canvas.getByTestId("account-report-series")).getAllByRole("row");
     await expect(rows).toHaveLength(1 + 20);
-    await expect(rows[1]).toHaveTextContent(rp(16_093_500));
+    await expect(rows[1]).toHaveTextContent(rp(16_443_500));
   },
 };
 

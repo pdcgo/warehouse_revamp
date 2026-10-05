@@ -110,6 +110,16 @@ export const financialAccounts: AccountFixture[] = [
     accountNumber: "1029384756", name: "Jago Kenanga", holderName: "Kenanga Abadi", description: "",
     operational: true, shopIds: [24n],
   },
+
+  // ── Toko Melati (12), again — appended, never reordered ──
+  {
+    // THE CASH BOX — so the selling team shows every kind of account a person can open, and the totals a
+    // Kas card (owner: *"dibuat akun ada kas, jadi kenapa di demo data tidak dikasih sekalian?"*). Counted
+    // five days ago and right; opened before the report's window, so the window's movements are unchanged.
+    id: 1309n, teamId: 12n, type: FinancialAccountType.CASH, provider: P.CASH, status: ACTIVE,
+    accountNumber: "", name: "Kas Melati", holderName: "", description: "The petty-cash box at the counter.",
+    operational: false, shopIds: [], reconciledAgo: 5,
+  },
 ];
 
 // ── The rows ────────────────────────────────────────────────────────────────────────────────────
@@ -149,6 +159,9 @@ export const financialAccountLogs: LogFixture[] = [
   { id: 1426n, accountId: 1303n, changeType: T.RESTOCK, change: -400_000, description: "Restock R-1044 — PT Sumber Makmur", actorId: LISTENER, ago: 2 },
   { id: 1427n, accountId: 1301n, changeType: T.CAPITAL, change: 1_000_000, description: "Capital in — the owner's top-up", actorId: ANI, ago: 2 },
   { id: 1428n, accountId: 1301n, changeType: T.ADJUSTMENT, change: -6_500, description: "Reconcile — the app showed Rp 11.443.500 · bank fee", actorId: ANI, ago: 1 },
+
+  // Kas Melati — appended, so it opens on day 40 with an id after everything else
+  { id: 1429n, accountId: 1309n, changeType: T.OPENING_BALANCE, change: 350_000, description: "Opening balance", actorId: ANI, ago: 40 },
 ];
 
 // ── What the book adds up to — the numbers the stories assert ───────────────────────────────────
@@ -161,6 +174,7 @@ export const expectedBalance: Record<string, number> = {
   "1306": 850_000,
   "1307": 25_000_000,
   "1308": 750_000,
+  "1309": 350_000,
 };
 
 /** The fixture account named `name` — by name, so a story reads like the screen does. */
