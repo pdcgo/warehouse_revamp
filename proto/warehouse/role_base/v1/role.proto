@@ -48,6 +48,12 @@ enum Role {
   ROLE_WAREHOUSE_STAFF = 8;
   ROLE_WAREHOUSE_ADMIN = 9;
   ROLE_SYSTEM = 10;
+  // The admin team's two roles — `admin_owner`, `admin_administrator` (the-admin-team-roles-are-added-first).
+  // They manage their own team and nothing else (admin-team-roles-manage-only-their-team): both edit the
+  // team's info and read its members; only the Owner adds, changes and removes them
+  // (the-admin-team-admin-alone-does-not-manage-members). Neither holds a selling policy.
+  ROLE_ADMIN_OWNER = 11;
+  ROLE_ADMIN_ADMINISTRATOR = 12;
 }
 
 enum IdentityType {

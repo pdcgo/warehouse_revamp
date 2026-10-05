@@ -103,8 +103,10 @@ const RANK: Partial<Record<Role, number>> = {
   [Role.ADMINISTRATOR]: 90,
   [Role.SELLING_OWNER]: 30,
   [Role.WAREHOUSE_OWNER]: 30,
+  [Role.ADMIN_OWNER]: 30,
   [Role.SELLING_ADMIN]: 20,
   [Role.WAREHOUSE_ADMIN]: 20,
+  [Role.ADMIN_ADMINISTRATOR]: 20,
   [Role.SELLING_CS]: 10,
   [Role.WAREHOUSE_STAFF]: 10,
 };
@@ -129,12 +131,17 @@ function rolesIn(teamId: bigint): Map<bigint, Role> {
 }
 
 // the-admin-team-admin-alone-does-not-manage-members — every Owner, the warehouse and selling Admins,
-// Root and the Administrator.
-function managesMembers(caller: Role, teamType: TeamType | undefined): boolean {
+// Root and the Administrator. The admin team's Admin has its own role now, so the team type is not needed.
+function managesMembers(caller: Role, _teamType: TeamType | undefined): boolean {
   if (isPlatform(caller)) return true;
-  if (caller === Role.SELLING_ADMIN) return teamType !== TeamType.ADMIN;
 
-  return caller === Role.SELLING_OWNER || caller === Role.WAREHOUSE_OWNER || caller === Role.WAREHOUSE_ADMIN;
+  return (
+    caller === Role.SELLING_OWNER ||
+    caller === Role.SELLING_ADMIN ||
+    caller === Role.WAREHOUSE_OWNER ||
+    caller === Role.WAREHOUSE_ADMIN ||
+    caller === Role.ADMIN_OWNER
+  );
 }
 
 function refuse(code: Code, decision: string, what: string): never {

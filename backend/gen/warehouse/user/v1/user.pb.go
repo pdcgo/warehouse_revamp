@@ -4447,14 +4447,15 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x124\n" +
 	"\x04user\x18\x03 \x01(\x0e2\x1e.warehouse.user.v1.UserRowSortH\x00R\x04userB\x03\n" +
-	"\x01s\"\xbf\x02\n" +
+	"\x01s\"\xc1\x02\n" +
 	"\x0fUserListRequest\x12\x1d\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x129\n" +
 	"\x06filter\x18\x02 \x01(\v2!.warehouse.user.v1.UserListFilterR\x06filter\x129\n" +
 	"\x04sort\x18\x03 \x01(\v2%.warehouse.user.v1.UserListFilterSortR\x04sort\x12F\n" +
 	"\fdata_request\x18\x04 \x03(\x0e2#.warehouse.user.v1.UserListDataTypeR\vdataRequest\x12A\n" +
-	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"\xb0\x01\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x06\t\v\f\"\xb0\x01\n" +
 	"\x0eUserRowMapItem\x12I\n" +
 	"\bmap_data\x18\x01 \x03(\v2..warehouse.user.v1.UserRowMapItem.MapDataEntryR\amapData\x1aS\n" +
 	"\fMapDataEntry\x12\x10\n" +
@@ -4517,14 +4518,15 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x1bTeamMemberLogListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\x05entry\x18\x02 \x01(\x0e2$.warehouse.user.v1.TeamMemberLogSortH\x00R\x05entryB\x03\n" +
-	"\x01s\"\xe6\x02\n" +
+	"\x01s\"\xe8\x02\n" +
 	"\x18TeamMemberLogListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12B\n" +
 	"\x06filter\x18\x02 \x01(\v2*.warehouse.user.v1.TeamMemberLogListFilterR\x06filter\x12B\n" +
 	"\x04sort\x18\x03 \x01(\v2..warehouse.user.v1.TeamMemberLogListFilterSortR\x04sort\x12K\n" +
 	"\fdata_request\x18\x04 \x03(\x0e2(.warehouse.user.v1.TeamMemberLogDataTypeR\vdataRequest\x12A\n" +
-	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"\xa0\x03\n" +
+	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x06\t\v\f\"\xa0\x03\n" +
 	"\x12TeamMemberLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\"\n" +
@@ -4561,7 +4563,7 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12!\n" +
 	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xd7\x02\n" +
+	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xd8\x02\n" +
 	"\x11CreateUserRequest\x12\x1d\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x122\n" +
 	"\busername\x18\x02 \x01(\tB\x16\xbaH\x13r\x11\x10\x03\x18d2\v^[a-z0-9]+$R\busername\x12&\n" +
@@ -4571,8 +4573,8 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x05email\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x05email\x12*\n" +
 	"\fphone_number\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\vphoneNumber\x120\n" +
 	"\x04role\x18\a \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x1d\n" +
-	"\x05alias\x18\b \x01(\tB\a\xbaH\x04r\x02\x18<R\x05alias:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"A\n" +
+	"\x05alias\x18\b \x01(\tB\a\xbaH\x04r\x02\x18<R\x05alias:\r\x92\xb5\x18\t\n" +
+	"\a\x01\x02\x03\x04\x06\t\v\"A\n" +
 	"\x12CreateUserResponse\x12+\n" +
 	"\x04user\x18\x01 \x01(\v2\x17.warehouse.user.v1.UserR\x04user\"y\n" +
 	"\x14ResetPasswordRequest\x12*\n" +
@@ -4661,12 +4663,12 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x04user\x18\x01 \x01(\v2\x1d.warehouse.user.v1.PublicUserR\x04user\x12C\n" +
 	"\x05items\x18\x02 \x03(\v2-.warehouse.user.v1.TeamAccessListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x03 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x04 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xcd\x01\n" +
+	"\tpage_info\x18\x04 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xce\x01\n" +
 	"\x15TeamUserUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x122\n" +
 	"\x03add\x18\x02 \x01(\v2\x1e.warehouse.user.v1.AddTeamUserH\x00R\x03add\x12;\n" +
-	"\x06remove\x18\x03 \x01(\v2!.warehouse.user.v1.RemoveTeamUserH\x00R\x06remove:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\tB\x0f\n" +
+	"\x06remove\x18\x03 \x01(\v2!.warehouse.user.v1.RemoveTeamUserH\x00R\x06remove:\r\x92\xb5\x18\t\n" +
+	"\a\x01\x02\x03\x04\x06\t\vB\x0f\n" +
 	"\x06action\x12\x05\xbaH\x02\b\x01\"\x8c\x01\n" +
 	"\vAddTeamUser\x12 \n" +
 	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\x12<\n" +

@@ -918,6 +918,10 @@ the same picker lists its members. Whether the server refuses a grant to a non-m
 > 🔄 *(2026-10-02, later)* Widened for **reading**: the admin team also reads every warehouse and selling team —
 > [the-admin-team-monitors-all-and-manages-its-own](#the-admin-team-monitors-all-and-manages-its-own). Its writes stay inside itself.
 
+> 🔄 *(2026-10-05, built)* `ROLE_ADMIN_OWNER` holds `TeamInfoUpdate`, `TeamUpdate`, `UserList`, `TeamMemberLogList`, `CreateUser`
+> and `TeamUserUpdate`; `ROLE_ADMIN_ADMINISTRATOR` the first four — it reads its members and manages none, as the accepted
+> prototype shows. A test walks every request policy and fails if either role appears anywhere else.
+
 **The verdict.** The admin team's roles manage **their own team** and nothing else. They get none of the selling calls
 (orders, products, shops) that they reach today by borrowing the selling roles, because the admin team does not sell.
 
@@ -1022,6 +1026,9 @@ every service, so it cannot exist in one and be forgotten in the next. Counts an
 ## the-two-administrators-have-distinct-labels
 
 > Owner, in chat *(2026-10-02)*: *"for q12, q13, q14, q15, 1q6 i follow your recomendation"*. It answers [Q15](./context_clarify.md#question), as recommended.
+
+> 🔄 *(2026-10-05, built)* *System Administrator*, *Admin Team Admin*, and *Admin Team Owner* beside them, in `ROLE_LABEL`
+> (`frontend/src/lib/roles.ts`).
 
 **The verdict.** The two roles one word apart are never shown with the same word.
 
@@ -1406,6 +1413,10 @@ blank one. Both gain a minimum length of one.
 > Owner, in chat *(2026-10-05)*: *"yes"*, confirmed as Q26 and Q27. It answers [Q26a](./context_clarify.md#question),
 > as recommended.
 
+> 🔄 *(2026-10-05, built)* The enum (`ROLE_ADMIN_OWNER = 11`, `ROLE_ADMIN_ADMINISTRATOR = 12`), the six policies, the labels
+> and the Owner grant are built. Not built: the admin team's reads, which have no screen yet ([Q28](./context_clarify.md#question)),
+> and moving existing members, since no admin-type team exists.
+
 **The verdict.** `admin_owner` and `admin_administrator` are added **first**, before any other user build step. They
 only add, so they clash with no branch, and three decisions wait on them.
 
@@ -1478,6 +1489,9 @@ when the rename ships, this is revisited before it ships, not after.
 
 > Owner, in chat *(2026-10-05)*. It answers [Q27](./context_clarify.md#question), as recommended, and says who
 > [an-owner-never-makes-another-owner](#an-owner-never-makes-another-owner)'s *"first Owner"* is.
+
+> 🔄 *(2026-10-05, later)* ⚠ Built alone, this cuts Root and the Administrator off from the teams they create: the team
+> switcher lists memberships only. It waits on [Q28](./context_clarify.md#question).
 
 **The verdict.** A new team's first Owner is **a person the Create Team form names**, found with the Add Member search
 and created if missing. Whoever creates the team is **not** made a member: Root and the Administrator already act in

@@ -40,7 +40,12 @@ sequenceDiagram
   soft-delete leaves the team recoverable and never dangles a role pointing at a vanished team. The
   one state a human must look at — grant failed *and* compensation failed — is logged at
   `slog.Error`.
-- The owner role depends on team type: a `warehouse` team's owner is `ROLE_WAREHOUSE_OWNER`,
-  everything else `ROLE_SELLING_OWNER` (see `ownerRoleFor` in `team_v1/mapper.go`).
+- The owner role depends on team type: `warehouse` → `ROLE_WAREHOUSE_OWNER`, `admin` →
+  `ROLE_ADMIN_OWNER`, `selling` → `ROLE_SELLING_OWNER` (see `ownerRoleFor` in `team_v1/mapper.go`). An
+  admin team used to get the selling Owner, and with it every selling RPC inside itself
+  ([the-admin-team-roles-are-added-first](../../business/user/context_decision.md#the-admin-team-roles-are-added-first)).
+- ⚠ The role goes to the **caller**. That changes with
+  [the-create-team-form-names-the-first-owner](../../business/user/context_decision.md#the-create-team-form-names-the-first-owner):
+  the form names the Owner, and the creator is not made a member. Not built yet.
 
 Code: `backend/services/team_service/team_v1/team_create.go`.

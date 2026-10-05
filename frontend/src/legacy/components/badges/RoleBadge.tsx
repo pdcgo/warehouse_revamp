@@ -20,9 +20,11 @@ function roleTone(role: Role | undefined): Tone {
       return "error";
     case Role.SELLING_OWNER:
     case Role.WAREHOUSE_OWNER:
+    case Role.ADMIN_OWNER:
       return "active";
     case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_ADMIN:
+    case Role.ADMIN_ADMINISTRATOR:
       return "primary";
     case Role.SELLING_CS:
       return "info";

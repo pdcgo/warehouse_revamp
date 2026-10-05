@@ -53,22 +53,27 @@ func teamTypeFromText(text string) teamv1.TeamType {
 	}
 }
 
-// ownerRoleFor returns the OWNER role appropriate to a team's type. A warehouse team's owner is
-// ROLE_WAREHOUSE_OWNER; everything else is ROLE_SELLING_OWNER.
+// ownerRoleFor returns the OWNER role of a team's type: each team type has its own
+// (every-role-has-a-code-name).
 //
-// ⚠ "Everything else" includes an ADMIN-type team, which therefore gets the SELLING owner — the mistake
-// the old name ROLE_TEAM_OWNER invited. the-admin-team-roles-are-added-first gives it admin_owner.
+// An admin-type team used to fall through to ROLE_SELLING_OWNER — read, under its old name
+// ROLE_TEAM_OWNER, as "a team's owner" — and so its Owner could call every selling RPC inside it
+// (the-admin-team-roles-are-added-first). Selling stays the fallback for an unknown type only.
 func ownerRoleFor(t teamv1.TeamType) int32 {
 	const (
-		roleSellingOwner   = 3 // role_base.v1.ROLE_SELLING_OWNER
-		roleWarehouseOwner = 6 // role_base.v1.ROLE_WAREHOUSE_OWNER
+		roleSellingOwner   = 3  // role_base.v1.ROLE_SELLING_OWNER
+		roleWarehouseOwner = 6  // role_base.v1.ROLE_WAREHOUSE_OWNER
+		roleAdminOwner     = 11 // role_base.v1.ROLE_ADMIN_OWNER
 	)
 
-	if t == teamv1.TeamType_TEAM_TYPE_WAREHOUSE {
+	switch t {
+	case teamv1.TeamType_TEAM_TYPE_WAREHOUSE:
 		return roleWarehouseOwner
+	case teamv1.TeamType_TEAM_TYPE_ADMIN:
+		return roleAdminOwner
+	default:
+		return roleSellingOwner
 	}
-
-	return roleSellingOwner
 }
 
 func teamToProto(team *team_service_models.Team) *teamv1.Team {

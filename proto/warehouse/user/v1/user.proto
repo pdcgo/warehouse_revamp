@@ -250,7 +250,9 @@ message UserListRequest {
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER,
+      ROLE_ADMIN_ADMINISTRATOR
     ]
   };
 
@@ -421,7 +423,9 @@ message TeamMemberLogListRequest {
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER,
+      ROLE_ADMIN_ADMINISTRATOR
     ]
   };
 
@@ -488,7 +492,8 @@ message CreateUserRequest {
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER
     ]
   };
 
@@ -778,7 +783,8 @@ message TeamUserUpdateRequest {
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER
     ]
   };
 

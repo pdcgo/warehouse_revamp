@@ -31,6 +31,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
+> | *"continue"* — step 1a built | ✅ the two admin-team roles, their six policies, the labels, the Owner grant · ▲ **Q28** the switcher lists memberships only, so Q27 would cut Root and the Administrator off from the teams they create, and the admin team's reads have no screen (Critique 29) |
 > | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
@@ -194,13 +195,43 @@ Next is backend analysis, which builds the decided-not-built list in the
 
 ## Critique
 
-None open. Critiques 27 and 28 were answered with Q26 and Q27 on 2026-10-05; 23, 24 and 26 with Q21, Q22 and Q25.
+One open, found while building step 1a (29). Critiques 23–28 are answered.
+
+### Critique 29 — "acts in every team" has no way in
+
+*(Found 2026-10-05, building [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first).)*
+The team switcher lists **your memberships**, for everyone, Root included
+([team_access_list.go](../../../backend/services/user_service/user_v1/team_access_list.go)). The access check lets Root and
+the Administrator into every team, but no screen lets them pick a team they are not in.
+
+| who | the API | the screens |
+| --- | --- | --- |
+| Root, the Administrator | pass every team's scope | reach a team only as its member. Today they are, because `TeamCreate` makes the creator its Owner |
+| after [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner) | unchanged | ⛔ the creator is not a member, so **they lose the way into the teams they create** |
+| the admin team, [the-admin-team-monitors-all-and-manages-its-own](./context_decision.md#the-admin-team-monitors-all-and-manages-its-own) | not built: it needs a "this request is a read" mark and an access-check change | ⛔ nothing to pick a team with, so the reads would have no screen to serve |
+
+My Q27 recommendation leaned on *"Root and the Administrator already act in every team"*. That is true of the API and
+false of the screens. Building it alone would cut them off.
+
+```mermaid
+flowchart LR
+  S["the team switcher"] -->|"lists"| M["your memberships"]
+  R["Root, the Administrator"] -.->|"not a member — no way in"| T["a team they created, after Q27"]
+  A["the admin team"] -.->|"not a member — no way in"| W["every team it monitors"]
+  P["proposed — the switcher also lists every team"] --> T
+  P -->|"read-only"| W
+```
+
+**→ Recommend:** the switcher lists **every team** to Root and the Administrator, and to the admin team's two roles
+**read-only**. A team you are not a member of is marked *not a member*, and the menu is the team type's menu at the
+reach you have. It goes in the same prototype pass as Q27's Create Team form, and Q27 is built only with it. The
+admin team's reads (item 12) are built then too, since only then do they have a screen. [Q28](#question).
 
 ---
 
 ## Question
 
-**None open.** Q3–Q27 are answered and recorded in [context_decision.md](./context_decision.md).
+**One open**, Q28, found while building step 1a. Q3–Q27 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -238,11 +269,19 @@ None open. Critiques 27 and 28 were answered with Q26 and Q27 on 2026-10-05; 23,
     checks, no alias — [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first), [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names).
 27. ✅ **Answered** (2026-10-05): the Create Team form names the first Owner, and the creator is not made a member —
     [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner).
+28. **Should the team switcher list every team to Root and the Administrator, and to the admin team read-only?**
+    ([Critique 29](#critique)) **→ Recommend: yes**, marked *not a member*, in the same prototype pass as Q27's Create
+    Team form. Without it, Q27 cuts Root and the Administrator off from the teams they create, and the admin team's reads
+    have no screen.
 
 
 ---
 
 # Contradiction
+
+**Re-checked after building step 1a (2026-10-05): none between docs.** One premise of my own was wrong: Q27's *"Root and
+the Administrator already act in every team"* holds for the API, not for the screens. It is [Critique 29](#critique) and
+[Q28](#question), and Q27's decision carries a 🔄.
 
 **Re-checked after Q26 and Q27 (2026-10-05): none between docs.** Two of my own sites went stale and each now carries a
 🔄: [the-role-names-are-the-codes-names](./context_decision.md#the-role-names-are-the-codes-names) counted 284 policy lines (now 444), and
@@ -513,5 +552,5 @@ flowchart LR
 
 # Awaiting
 
-**Nothing asked of you**, except your §General Data line, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). design_accept passed on 2026-10-05
+**Your answer to [Q28](#question)**, and your §General Data line, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). design_accept passed on 2026-10-05
 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.

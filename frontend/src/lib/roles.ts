@@ -14,18 +14,16 @@ export const ROLE_LABEL: Record<number, string> = {
   [Role.WAREHOUSE_STAFF]: "Warehouse Staff",
   [Role.WAREHOUSE_ADMIN]: "Warehouse Admin",
   [Role.SYSTEM]: "System",
+  // The admin team has roles of its own (the-admin-team-roles-are-added-first), and its Admin is never
+  // the bare word either.
+  [Role.ADMIN_OWNER]: "Admin Team Owner",
+  [Role.ADMIN_ADMINISTRATOR]: "Admin Team Admin",
 };
 
-// A role's label, told apart by the TEAM it is held in where one enum value still serves two teams.
-//
-// Until the-role-names-are-the-codes-names is built, the admin team borrows the selling team's two
-// roles, so SELLING_OWNER / SELLING_ADMIN read differently there. Pass the team type wherever it is known.
-export function roleLabel(role: Role | number | undefined, teamType?: TeamType): string {
-  if (teamType === TeamType.ADMIN) {
-    if (role === Role.SELLING_OWNER) return "Admin Team Owner";
-    if (role === Role.SELLING_ADMIN) return "Admin Team Admin";
-  }
-
+// A role's label. Every role now belongs to one team type, so the label no longer needs the team: the
+// admin team stopped borrowing the selling pair (the-admin-team-roles-are-added-first). The parameter
+// stays so callers keep passing the team where they know it.
+export function roleLabel(role: Role | number | undefined, _teamType?: TeamType): string {
   return ROLE_LABEL[role ?? Role.UNSPECIFIED] ?? "Unknown";
 }
 
@@ -43,7 +41,7 @@ export function rolesFor(teamType: TeamType | undefined): Role[] {
       return [Role.SELLING_OWNER, Role.SELLING_ADMIN, Role.SELLING_CS];
 
     case TeamType.ADMIN:
-      return [Role.SELLING_OWNER, Role.SELLING_ADMIN];
+      return [Role.ADMIN_OWNER, Role.ADMIN_ADMINISTRATOR];
 
     case TeamType.ROOT:
       return [Role.ROOT, Role.ADMINISTRATOR];
@@ -69,9 +67,11 @@ export function roleRank(role: Role | undefined): number {
       return 90;
     case Role.SELLING_OWNER:
     case Role.WAREHOUSE_OWNER:
+    case Role.ADMIN_OWNER:
       return 30;
     case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_ADMIN:
+    case Role.ADMIN_ADMINISTRATOR:
       return 20;
     case Role.SELLING_CS:
     case Role.WAREHOUSE_STAFF:
@@ -84,16 +84,19 @@ export function roleRank(role: Role | undefined): number {
 /** Whether `role` manages the members of a team of `teamType`
  *  (the-admin-team-admin-alone-does-not-manage-members): every Owner, the warehouse and selling Admins,
  *  Root and the Administrator — not the admin team's Admin. */
-export function managesMembers(role: Role | undefined, teamType: TeamType | undefined): boolean {
+export function managesMembers(role: Role | undefined, _teamType: TeamType | undefined): boolean {
   switch (role) {
     case Role.ROOT:
     case Role.ADMINISTRATOR:
     case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_OWNER:
     case Role.WAREHOUSE_ADMIN:
+    case Role.ADMIN_OWNER:
       return true;
-    case Role.SELLING_ADMIN:
-      return teamType !== TeamType.ADMIN;
+    // The admin team's Admin reads the members and changes none of them. Its own role says so now,
+    // so the team type is no longer needed to tell it from the selling Admin.
+    case Role.ADMIN_ADMINISTRATOR:
     default:
       return false;
   }
@@ -166,7 +169,8 @@ export function canEraseUser(args: {
   return args.suspended && canSuspendUser(args);
 }
 
-// canManageUsers mirrors the backend policy on CreateUser / UserList / TeamUserUpdate.
+// canManageUsers mirrors the backend policy on CreateUser / TeamUserUpdate. (UserList also admits the
+// admin team's Admin, who reads the members and manages none.)
 //
 // ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
 // interceptor is the only real boundary. Never move a check from the backend into here.
@@ -178,6 +182,7 @@ export function canManageUsers(role: Role | undefined): boolean {
     case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_OWNER:
     case Role.WAREHOUSE_ADMIN:
+    case Role.ADMIN_OWNER:
       return true;
 
     default:
@@ -185,8 +190,8 @@ export function canManageUsers(role: Role | undefined): boolean {
   }
 }
 
-// isTeamManager mirrors the backend policy on TeamUpdate (change a team's name/picture): the team
-// and warehouse OWNER/ADMIN roles, plus global root/admin.
+// isTeamManager mirrors the backend policy on TeamUpdate (change a team's name/picture): every team
+// type's OWNER and ADMIN, plus global root/admin.
 //
 // ⚠ THIS IS UX ONLY. Hiding a control hides nothing — the RPC is still reachable, and the access
 // interceptor is the only real boundary. Never move a check from the backend into here.
@@ -198,6 +203,8 @@ export function isTeamManager(role: Role | undefined): boolean {
     case Role.SELLING_ADMIN:
     case Role.WAREHOUSE_OWNER:
     case Role.WAREHOUSE_ADMIN:
+    case Role.ADMIN_OWNER:
+    case Role.ADMIN_ADMINISTRATOR:
       return true;
 
     default:
@@ -232,7 +239,9 @@ export function canImportSettlement(role: Role | undefined): boolean {
 // ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
 // interceptor is the only real boundary. Never move a check from the backend into here.
 export function canMoveAccountMoney(role: Role | undefined): boolean {
-  return isTeamManager(role);
+  // NOT isTeamManager: the admin team's roles edit their team and hold no money policy
+  // (admin-team-roles-manage-only-their-team).
+  return isTeamManager(role) && role !== Role.ADMIN_OWNER && role !== Role.ADMIN_ADMINISTRATOR;
 }
 
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).

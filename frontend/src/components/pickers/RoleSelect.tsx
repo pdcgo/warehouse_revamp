@@ -14,6 +14,8 @@ const ALL_ROLES: Role[] = [
   Role.WAREHOUSE_OWNER,
   Role.WAREHOUSE_ADMIN,
   Role.WAREHOUSE_STAFF,
+  Role.ADMIN_OWNER,
+  Role.ADMIN_ADMINISTRATOR,
 ];
 
 interface RoleOption {

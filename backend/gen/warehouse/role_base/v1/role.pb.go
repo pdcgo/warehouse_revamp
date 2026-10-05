@@ -40,6 +40,12 @@ const (
 	Role_ROLE_WAREHOUSE_STAFF Role = 8
 	Role_ROLE_WAREHOUSE_ADMIN Role = 9
 	Role_ROLE_SYSTEM          Role = 10
+	// The admin team's two roles — `admin_owner`, `admin_administrator` (the-admin-team-roles-are-added-first).
+	// They manage their own team and nothing else (admin-team-roles-manage-only-their-team): both edit the
+	// team's info and read its members; only the Owner adds, changes and removes them
+	// (the-admin-team-admin-alone-does-not-manage-members). Neither holds a selling policy.
+	Role_ROLE_ADMIN_OWNER         Role = 11
+	Role_ROLE_ADMIN_ADMINISTRATOR Role = 12
 )
 
 // Enum value maps for Role.
@@ -55,18 +61,22 @@ var (
 		8:  "ROLE_WAREHOUSE_STAFF",
 		9:  "ROLE_WAREHOUSE_ADMIN",
 		10: "ROLE_SYSTEM",
+		11: "ROLE_ADMIN_OWNER",
+		12: "ROLE_ADMIN_ADMINISTRATOR",
 	}
 	Role_value = map[string]int32{
-		"ROLE_UNSPECIFIED":     0,
-		"ROLE_ROOT":            1,
-		"ROLE_ADMINISTRATOR":   2,
-		"ROLE_SELLING_OWNER":   3,
-		"ROLE_SELLING_ADMIN":   4,
-		"ROLE_SELLING_CS":      5,
-		"ROLE_WAREHOUSE_OWNER": 6,
-		"ROLE_WAREHOUSE_STAFF": 8,
-		"ROLE_WAREHOUSE_ADMIN": 9,
-		"ROLE_SYSTEM":          10,
+		"ROLE_UNSPECIFIED":         0,
+		"ROLE_ROOT":                1,
+		"ROLE_ADMINISTRATOR":       2,
+		"ROLE_SELLING_OWNER":       3,
+		"ROLE_SELLING_ADMIN":       4,
+		"ROLE_SELLING_CS":          5,
+		"ROLE_WAREHOUSE_OWNER":     6,
+		"ROLE_WAREHOUSE_STAFF":     8,
+		"ROLE_WAREHOUSE_ADMIN":     9,
+		"ROLE_SYSTEM":              10,
+		"ROLE_ADMIN_OWNER":         11,
+		"ROLE_ADMIN_ADMINISTRATOR": 12,
 	}
 )
 
@@ -350,7 +360,7 @@ const file_warehouse_role_base_v1_role_proto_rawDesc = "" +
 	"\rRequestPolicy\x122\n" +
 	"\x05roles\x18\x01 \x03(\x0e2\x1c.warehouse.role_base.v1.RoleR\x05roles\x12\x1b\n" +
 	"\tallow_all\x18\x03 \x01(\bR\ballowAll\x128\n" +
-	"\x18allow_only_authenticated\x18\x04 \x01(\bR\x16allowOnlyAuthenticated*\xce\x02\n" +
+	"\x18allow_only_authenticated\x18\x04 \x01(\bR\x16allowOnlyAuthenticated*\x82\x03\n" +
 	"\x04Role\x12\x14\n" +
 	"\x10ROLE_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tROLE_ROOT\x10\x01\x12\x16\n" +
@@ -362,7 +372,9 @@ const file_warehouse_role_base_v1_role_proto_rawDesc = "" +
 	"\x14ROLE_WAREHOUSE_STAFF\x10\b\x12\x18\n" +
 	"\x14ROLE_WAREHOUSE_ADMIN\x10\t\x12\x0f\n" +
 	"\vROLE_SYSTEM\x10\n" +
-	"\"\x04\b\a\x10\a*\x15ROLE_WAREHOUSE_LEADER*\n" +
+	"\x12\x14\n" +
+	"\x10ROLE_ADMIN_OWNER\x10\v\x12\x1c\n" +
+	"\x18ROLE_ADMIN_ADMINISTRATOR\x10\f\"\x04\b\a\x10\a*\x15ROLE_WAREHOUSE_LEADER*\n" +
 	"ROLE_ADMIN*\x0fROLE_TEAM_OWNER*\x0fROLE_TEAM_ADMIN*\x1aROLE_TEAM_CUSTOMER_SERVICE*\x84\x01\n" +
 	"\fIdentityType\x12\x1d\n" +
 	"\x19IDENTITY_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
