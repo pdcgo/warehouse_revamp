@@ -426,6 +426,15 @@ const customConfig = defineConfig({
           solid: shade("rose", 600, 500),
         }),
         primary: rolePalette("indigo"),
+        // THE LEAD CARD (`a-summary-card-is-grey-with-a-thin-border`) — a full fill in plain blue, its pale
+        // steps (owner: *"biru biasa aja, yang agak pudar"*), so the one figure a strip leads with reads
+        // first without shouting. ⚠ NOT A STATUS AND NOT AN EIGHTH TONE: Chakra's own blue, reached only
+        // through these tokens, so it is never picked up as "info" or "primary".
+        lead: {
+          bg: shade("blue", 50, 950),
+          border: shade("blue", 200, 800),
+          fg: shade("blue", 700, 200),
+        },
         success: rolePalette("emerald"),
         // ⚠ White on amber fails contrast, so the warning fill is the lighter 500 with DARK text — the
         // way Chakra treats its own yellow.

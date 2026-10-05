@@ -231,10 +231,6 @@ export function namedAdjustments(s: OrderSettlement): bigint {
     .reduce((total, e) => total + e.change, 0n);
 }
 
-/** `netReceived − cogs` — the number no service in this system could produce before settlement. */
-export function trueMargin(s: OrderSettlement): bigint {
-  return netReceived(s) - s.cogs;
-}
 
 function sumOf(s: OrderSettlement, type: SettlementType): bigint {
   return s.entries

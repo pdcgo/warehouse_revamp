@@ -2272,16 +2272,16 @@
     "openReport": "Report",
     "selectTeam": "Select a team to view its settlement report.",
     "rangeInvalid": "Pick a start and an end date — a report needs both ends.",
-    "sales": "Sold for",
+    "sales": "Selling price",
     "salesHint": "What buyers paid, cancels netted",
     "received": "Received",
     "receivedHint": "What the marketplace moved, named fees included",
     "withdrawn": "Withdrawn",
     "withdrawnHint": "Moved from the marketplace wallet to the bank — not part of what was received",
     "gap": "Gap",
-    "gapHint": "Of this window's sales, never reached us",
+    "gapHint": "Of this window's selling price, never reached us",
     "takeRate": "Take rate",
-    "takeRateValue": "{{rate}}% of sales",
+    "takeRateValue": "{{rate}}% of the selling price",
     "positionToDate": "Position to date",
     "positionToDateHint": "What buyers paid, less everything the platform moved — withdrawals included",
     "overTime": "Over time",
@@ -2294,7 +2294,7 @@
       "period": "Period",
       "shop": "Shop",
       "user": "Person",
-      "sales": "Sold for",
+      "sales": "Selling price",
       "received": "Received",
       "withdrawn": "Withdrawn",
       "gap": "Gap",
@@ -2304,22 +2304,20 @@
   },
   "orderSettlement": {
     "tab": "Settlement",
-    "initialTotalWarning": "⚠ This rewrites the sale every loss on this order is measured against. It cannot be edited or deleted afterwards — only offset.",
+    "initialTotalWarning": "⚠ This rewrites the selling price every loss on this order is measured against. It cannot be edited or deleted afterwards — only offset.",
     "panelTitle": "Settlement ledger",
     "addEntry": "Add Entry",
-    "rowActions": "Row actions",
     "reverse": "Reverse",
     "reverseTitle": "Reverse This Entry",
-    "reverseBody": "This posts a new entry of {{amount}} in the opposite direction. The original stays on the ledger — entries are never edited or deleted.",
+    "reverseBody": "This posts {{amount}} in the opposite direction, undoing the {{type}} of {{date}}. The original stays on the ledger — entries are never edited or deleted.",
     "reverseConfirm": "Post Reversal",
-    "reversalOf": "reverses an earlier entry",
     "appendOnlyNotice": "Entries cannot be edited or deleted. A correction is posted as a further entry, so the ledger stays a record of what happened.",
     "postedOn": "learned {{date}}",
-    "estimate": "Sold for",
+    "estimate": "Selling price",
     "received": "Received",
     "lost": "Adjustment",
+    "estimatedMargin": "Estimated margin",
     "trueMargin": "True margin",
-    "lossHint": "deducted {{hidden}} · itemised {{named}}",
     "noEstimateTitle": "No marketplace selling price was recorded for this order",
     "noEstimateBody": "Every figure here measures what reached us against what the buyer paid. Without that figure there is nothing to measure against — an order taken by phone has no marketplace selling price.",
     "listTitle": "Settlement",
@@ -2329,13 +2327,18 @@
     "lastMoved": "Last moved",
     "stat": {
       "orders": "Orders",
-      "sold": "Sold for",
+      "sold": "Selling price",
       "received": "Received",
       "lost": "Adjustment",
-      "ofSales": "{{pct}}% of sales",
+      "ofSales": "{{pct}}% of the selling price",
       "unrecorded": "{{count}} with no marketplace selling price",
       "allRecorded": "every selling price recorded",
-      "soldLine": "over {{count}} orders"
+      "soldLine": "over {{count}} orders",
+      "soldDetailLine": "from the marketplace",
+      "marginNote": "received − total cost",
+      "entryCount_one": "from {{count}} entry",
+      "entryCount_other": "from {{count}} entries",
+      "estimatedMarginNote": "selling price − total cost"
     },
     "sortBy": "Sort by {{column}}",
     "sortLabel": "Sort",
@@ -2345,8 +2348,8 @@
         "asc": "Most positive adjustment first"
       },
       "sold": {
-        "desc": "Highest sale first",
-        "asc": "Lowest sale first"
+        "desc": "Highest selling price first",
+        "asc": "Lowest selling price first"
       },
       "received": {
         "desc": "Most received first",
@@ -2360,16 +2363,16 @@
     "noRef": "(no reference)",
     "rowNoEstimate": "No marketplace selling price recorded — nothing to measure against",
     "col": {
-      "when": "When",
-      "type": "Type",
-      "detail": "Detail",
+      "when": "Date",
+      "type": "Source",
       "change": "Change",
       "balance": "Balance",
       "order": "Order",
       "shop": "Shop",
-      "estimate": "Sold for",
+      "estimate": "Selling price",
       "received": "Received",
-      "lost": "Adjustment"
+      "lost": "Adjustment",
+      "detail": "Detail"
     },
     "type": {
       "initial_total": "Estimate",
@@ -2404,6 +2407,16 @@
       "importer": "Import",
       "manual": "Manual",
       "order": "Order"
+    },
+    "reversalOf": "reverses {{amount}} of {{date}}",
+    "reversalOfUnknown": "reverses an earlier entry",
+    "balanceShort": "balance",
+    "breakdown": {
+      "title": "Margin Breakdown",
+      "open": "Details",
+      "totalBeli": "Total cost",
+      "difference": "Difference = the adjustment",
+      "deducted": "Deducted at payout"
     }
   },
   "terms": {

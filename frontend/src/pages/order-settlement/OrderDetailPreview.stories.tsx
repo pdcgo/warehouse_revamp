@@ -13,9 +13,12 @@ import { worked, awaiting } from "./fixtures";
 //
 // What this story answers that the standalone Ledger Panel story cannot: does the settlement tab
 // still make sense BESIDE the order it belongs to — and do the two screens agree about the sale?
+// ⚠ EVERY STORY GETS A `totalBeli` BY DEFAULT (owner) — 80.000, what the order cost us all in — so the
+// settlement tab shows both margins as the real order detail does. `WithoutTotalBeli` leaves it out.
 const meta = {
   title: "Pages/Order Settlement/On Order Detail",
   component: OrderDetailPreview,
+  args: { totalBeli: 80_000n },
 } satisfies Meta<typeof OrderDetailPreview>;
 
 export default meta;
@@ -126,4 +129,26 @@ export const NothingArrivedYet: Story = {
     await expect(canvas.getByTestId("loss")).toHaveTextContent("Rp 85.000");
     await expect(canvas.getByTestId("ledger-table")).toBeVisible();
   },
+};
+
+/** The example WITHOUT a total beli — the tab shows its three cards and no margin. */
+export const WithoutTotalBeli: Story = {
+  args: { settlement: worked, canPost: true, today: "2026-01-10", totalBeli: undefined },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("order-ledger-panel")).toBeVisible();
+    await expect(canvas.queryByTestId("margin")).toBeNull();
+    await expect(canvas.queryByTestId("estimated-margin")).toBeNull();
+  },
+};
+
+/**
+ * THE PREVIEW ON A PHONE (owner).
+ *
+ * ⚠ NO `play()`, DELIBERATELY: the `viewport` global resizes the WORKBENCH canvas only — the story runner
+ * has one fixed desktop viewport (see MobileLayout.stories). Review it in Storybook.
+ */
+export const Mobile: Story = {
+  args: { settlement: worked, canPost: true, today: "2026-01-10" },
+  globals: { viewport: { value: "mobile2" } },
 };

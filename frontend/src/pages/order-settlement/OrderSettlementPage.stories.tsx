@@ -198,10 +198,10 @@ export const TheSummaryIsTheOrderListsCards: Story = {
     await expect(within(strip).getAllByTestId(/^settlement-stat-[a-z]+$/)).toHaveLength(4);
     await expect(canvas.getByTestId("settlement-stat-orders")).toHaveTextContent("1 with no marketplace selling price");
     await expect(canvas.getByTestId("settlement-stat-sold-value")).toHaveTextContent("851.000");
-    // An adjustment of −143.500 over 851.000 of sales — signed, so the minus is read first — and the
+    // An adjustment of −143.500 over a selling price of 851.000 — signed, so the minus is read first — and the
     // unrecorded order's +62.000 payout does NOT offset it.
     await expect(canvas.getByTestId("settlement-stat-lost-value")).toHaveTextContent("−Rp 143.500");
-    await expect(canvas.getByTestId("settlement-stat-lost")).toHaveTextContent("16.86% of sales");
+    await expect(canvas.getByTestId("settlement-stat-lost")).toHaveTextContent("16.86% of the selling price");
     await expect(canvas.getByTestId("settlement-stat-received-value")).toHaveTextContent("707.500");
 
     // The figure the server cannot sum is not on the strip at all — never summed from this page.

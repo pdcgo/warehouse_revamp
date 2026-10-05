@@ -15,6 +15,9 @@ when it applies one of these.
 | [a-phone-reads-each-line-as-a-block](#a-phone-reads-each-line-as-a-block) | the item table becomes one block per line below `md` | order screens |
 | [a-phone-filters-from-a-sheet](#a-phone-filters-from-a-sheet) | on a phone the search stays in the row; every other filter is in a bottom sheet behind a counted Filter button | order screens |
 | [a-summary-card-is-at-most-a-fifth](#a-summary-card-is-at-most-a-fifth) | cards fill the row but never exceed 1/5 of it on a large screen — 1/4, 1/3, 1/2 as it narrows | order screens |
+| [a-badge-stacks-under-its-text-when-the-table-is-cramped](#a-badge-stacks-under-its-text-when-the-table-is-cramped) | a badge column (an entry's source) sits under its text (the type) when the table would scroll, and on a phone; its own column when there is room | [settlement ledger](order_settlement_decision.md#the-ledger-reads-tanggal-and-its-balance-is-full-strength) |
+| [a-summary-card-is-grey-with-a-thin-border](#a-summary-card-is-grey-with-a-thin-border) | every summary card sits on a grey ground with a thin line; one card per strip may lead, in pale blue | [settlement ledger](order_settlement_decision.md#the-ledger-margin-leads-and-says-where-it-comes-from) |
+| [a-negative-amount-puts-its-minus-before-rp](#a-negative-amount-puts-its-minus-before-rp) | every negative amount reads **−Rp 10.000**, never *Rp -10.000*; a change or a running balance carries its + too | [settlement ledger](order_settlement_decision.md#the-ledger-reads-tanggal-and-its-balance-is-full-strength) |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -287,6 +290,67 @@ flowchart LR
 Measured at 2560px: three draft cards at 0.196 of the strip each, seven measure cards at 0.139, the piles
 filling the row. At 1440px the draft cards are 1/4. The count decides the layout because CSS grid alone
 cannot say *fill the row, but at most 1/5*: `auto-fit` stretched few cards, `auto-fill` shrank many.
+
+## a-badge-stacks-under-its-text-when-the-table-is-cramped
+
+> Owner, in chat (2026-10-03), on the settlement ledger's Type and Source: *"untuk kolom semacam ini rulenya: jika
+> tabel terlalu banyak kolom sampai harus buat scroll, taruh badge contoh sumber, di bawah teks/element contoh jenis ·
+> jika tabel renggang dan banyak space, pisah saja, tidak masalah · kalau di tampilan mobile gunakan yang atas bawah"*.
+
+```mermaid
+flowchart LR
+  T["a text column + a badge that qualifies it"] --> Q{"would the table scroll?"}
+  Q -->|"no — roomy"| A["two columns: Type · Source"]
+  Q -->|"yes — cramped"| B["one column: the type, the badge on its second line"]
+  P["a phone"] --> B
+```
+
+| | |
+| --- | --- |
+| applies to | a column whose value is qualified by a badge — an entry's type and its source is the first case |
+| roomy | separate columns |
+| cramped | the badge on the text's second line, and its column is gone — the cell stays at two lines ([one-context-per-column-and-never-three-lines](#one-context-per-column-and-never-three-lines)) |
+| a phone | always the stacked form |
+| how it is decided | measured, not guessed by screen width: watch the table's scroll container, stack the moment the roomy layout would overflow, unstack only once the container is as wide as the roomy layout needed — so the two cannot flicker at the edge. ⚠ No table uses it today: the ledger, its first user, moved its badge into Detail ([the-ledger-type-column-reads-sumber](order_settlement_decision.md#the-ledger-type-column-reads-sumber)) and its hook went with it |
+
+⚠ Stacking removes ONE column. A table that still does not fit after it — a ledger on a 360px screen — is the
+phone's block layout's job ([a-phone-reads-each-line-as-a-block](#a-phone-reads-each-line-as-a-block)), not this rule's.
+
+## a-summary-card-is-grey-with-a-thin-border
+
+> Owner, in chat (2026-10-03), on the ledger's cards: *"summary cards → background subtle / border tipis"*, and
+> *"buat margin riil sedikit lebih menonjol"*, then *"true margin bisa full biru saja?"* and *"biru biasa aja, yang agak pudar"*.
+
+| | |
+| --- | --- |
+| every card | `bg.muted` (a grey ground) and a 1px `border` — `bg.subtle` is white in this theme, the same as the page and the card around it, so a card used to read as an outline only |
+| the lead card | `SummaryCard emphasis` — a full PALE BLUE fill (the `lead.*` tokens: Chakra's own blue, 50 / 200 / 700 — not a status, not an eighth tone) and its figure one size up. **One per strip**, or it leads nothing |
+| a second quiet line | `note` — how a figure is made, under its line, in a quieter grey; only where it is not obvious |
+| where | `SummaryCard` (`features/orders/SummaryCard.tsx`) — so every strip changes at once: the order list, the drafts, the settlement list, the ledger |
+
+It amends the card's look in [a-list-summary-is-the-order-lists-card-strip](#a-list-summary-is-the-order-lists-card-strip);
+the shape — a label, one figure, a quiet line — is unchanged.
+
+## a-negative-amount-puts-its-minus-before-rp
+
+> Owner, in chat (2026-10-05), on the ledger: *"saldo formatnya samakan dengan perubahan, di perubahan adalah -Rp … di
+> saldo Rp -…, dan format ini berlaku untuk semuanya, buat jadi catatan"*.
+
+```mermaid
+flowchart LR
+  B["Rp -10.000 — before"] --> A["−Rp 10.000 — every money figure"]
+  D["a change, a running balance"] --> S["+Rp 4.000 / −Rp 10.000 — both signs"]
+```
+
+| | |
+| --- | --- |
+| any negative amount | **−Rp 10.000** — the minus BEFORE the currency, the typographic "−" |
+| a change or a running balance | both signs: **+Rp 4.000**, **−Rp 10.000** — its direction is the point |
+| any other positive amount | bare: **Rp 120.000** |
+| where | `formatRupiah`, `formatRupiahNumber`, `formatRupiahCompact` and `formatSignedRupiah` (`frontend/src/lib/money.ts`) — every money figure goes through them, so the whole app changed at once |
+
+The sign says which way the money went. Written after the currency it was the one character nobody read — and a
+ledger showed its change as *−Rp 4.500* beside a balance of *Rp -30.500*, two formats for one kind of number.
 
 ## Recorded elsewhere
 

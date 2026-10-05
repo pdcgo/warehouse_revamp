@@ -2262,16 +2262,16 @@
     "openReport": "Laporan",
     "selectTeam": "Pilih tim untuk melihat laporan penyelesaiannya.",
     "rangeInvalid": "Pilih tanggal awal dan akhir — laporan membutuhkan keduanya.",
-    "sales": "Terjual",
+    "sales": "Harga jual",
     "salesHint": "Yang dibayar pembeli, setelah pembatalan",
     "received": "Diterima",
     "receivedHint": "Yang dipindahkan marketplace, termasuk biaya yang tercatat",
     "withdrawn": "Ditarik",
     "withdrawnHint": "Dipindahkan dari dompet marketplace ke bank — bukan bagian dari yang diterima",
     "gap": "Selisih",
-    "gapHint": "Dari penjualan periode ini, tidak pernah sampai",
+    "gapHint": "Dari harga jual periode ini, tidak pernah sampai",
     "takeRate": "Potongan",
-    "takeRateValue": "{{rate}}% dari penjualan",
+    "takeRateValue": "{{rate}}% dari harga jual",
     "positionToDate": "Posisi s.d. kini",
     "positionToDateHint": "Yang dibayar pembeli, dikurangi semua yang dipindahkan platform — termasuk penarikan",
     "overTime": "Dari waktu ke waktu",
@@ -2284,7 +2284,7 @@
       "period": "Periode",
       "shop": "Toko",
       "user": "Orang",
-      "sales": "Terjual",
+      "sales": "Harga jual",
       "received": "Diterima",
       "withdrawn": "Ditarik",
       "gap": "Selisih",
@@ -2294,22 +2294,20 @@
   },
   "orderSettlement": {
     "tab": "Settlement",
-    "initialTotalWarning": "⚠ Ini menulis ulang nilai penjualan yang jadi dasar semua perhitungan rugi order ini. Tidak bisa diedit atau dihapus — hanya bisa diimbangi.",
+    "initialTotalWarning": "⚠ Ini menulis ulang harga jual yang jadi dasar semua perhitungan rugi order ini. Tidak bisa diedit atau dihapus — hanya bisa diimbangi.",
     "panelTitle": "Buku settlement",
     "addEntry": "Tambah Entri",
-    "rowActions": "Aksi baris",
     "reverse": "Balikkan",
     "reverseTitle": "Balikkan Entri Ini",
-    "reverseBody": "Ini membuat entri baru sebesar {{amount}} dengan arah berlawanan. Entri asli tetap ada — entri tidak pernah diubah atau dihapus.",
+    "reverseBody": "Ini membuat entri {{amount}} dengan arah berlawanan, membalikkan {{type}} tanggal {{date}}. Entri asli tetap ada — entri tidak pernah diubah atau dihapus.",
     "reverseConfirm": "Buat Pembalikan",
-    "reversalOf": "membalikkan entri sebelumnya",
     "appendOnlyNotice": "Entri tidak bisa diubah atau dihapus. Koreksi dibuat sebagai entri baru, agar buku tetap menjadi catatan apa yang terjadi.",
     "postedOn": "diketahui {{date}}",
-    "estimate": "Terjual",
+    "estimate": "Harga jual",
     "received": "Diterima",
     "lost": "Penyesuaian",
+    "estimatedMargin": "Estimasi margin",
     "trueMargin": "Margin riil",
-    "lossHint": "potongan {{hidden}} · dirinci {{named}}",
     "noEstimateTitle": "Harga jual marketplace tidak tercatat untuk pesanan ini",
     "noEstimateBody": "Semua angka di sini membandingkan yang sampai ke kita dengan yang dibayar pembeli. Tanpa angka itu tidak ada pembanding — pesanan lewat telepon tidak punya harga jual marketplace.",
     "listTitle": "Settlement",
@@ -2319,13 +2317,17 @@
     "lastMoved": "Terakhir bergerak",
     "stat": {
       "orders": "Order",
-      "sold": "Terjual",
+      "sold": "Harga jual",
       "received": "Diterima",
       "lost": "Penyesuaian",
-      "ofSales": "{{pct}}% dari penjualan",
+      "ofSales": "{{pct}}% dari harga jual",
       "unrecorded": "{{count}} tanpa harga jual marketplace",
       "allRecorded": "semua harga jual tercatat",
-      "soldLine": "dari {{count}} order"
+      "soldLine": "dari {{count}} order",
+      "soldDetailLine": "dari marketplace",
+      "marginNote": "diterima − total beli",
+      "entryCount_other": "dari {{count}} entri",
+      "estimatedMarginNote": "harga jual − total beli"
     },
     "sortBy": "Urutkan menurut {{column}}",
     "sortLabel": "Urutkan",
@@ -2335,8 +2337,8 @@
         "asc": "Penyesuaian paling plus"
       },
       "sold": {
-        "desc": "Terjual terbesar",
-        "asc": "Terjual terkecil"
+        "desc": "Harga jual terbesar",
+        "asc": "Harga jual terkecil"
       },
       "received": {
         "desc": "Diterima terbesar",
@@ -2350,16 +2352,16 @@
     "noRef": "(tanpa referensi)",
     "rowNoEstimate": "Harga jual marketplace tidak tercatat — tidak ada pembanding",
     "col": {
-      "when": "Kapan",
-      "type": "Jenis",
-      "detail": "Detail",
+      "when": "Tanggal",
+      "type": "Sumber",
       "change": "Perubahan",
       "balance": "Saldo",
       "order": "Pesanan",
       "shop": "Toko",
-      "estimate": "Terjual",
+      "estimate": "Harga jual",
       "received": "Diterima",
-      "lost": "Penyesuaian"
+      "lost": "Penyesuaian",
+      "detail": "Detail"
     },
     "type": {
       "initial_total": "Estimasi",
@@ -2394,6 +2396,16 @@
       "importer": "Impor",
       "manual": "Manual",
       "order": "Order"
+    },
+    "reversalOf": "membalikkan {{amount}} tanggal {{date}}",
+    "reversalOfUnknown": "membalikkan entri sebelumnya",
+    "balanceShort": "saldo",
+    "breakdown": {
+      "title": "Rincian Margin",
+      "open": "Rincian",
+      "totalBeli": "Total beli",
+      "difference": "Selisih = penyesuaian",
+      "deducted": "Potongan saat cair"
     }
   },
   "terms": {

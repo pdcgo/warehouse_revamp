@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { OrderLedgerPanel } from "./components/OrderLedgerPanel";
 import { ahead, awaiting, correctedByHand, lateFee, noEstimate, worked } from "./fixtures";
-import { hiddenCost, loss, netReceived, trueMargin } from "./model";
+import { hiddenCost, loss, netReceived } from "./model";
 import type { OrderSettlement, SettlementEntry } from "./model";
 
 // ONE ORDER'S SETTLEMENT LEDGER — and the argument for the whole design.
@@ -25,9 +25,23 @@ import type { OrderSettlement, SettlementEntry } from "./model";
 //   | CameOutAhead   | a positive balance renders as a GAIN, not a smaller loss                  |
 //   | NoEstimate     | zero means "not recorded" — the panel refuses rather than inventing       |
 //   | ReadOnly       | without posting rights there is no Add and no Reverse                     |
+//   | TheDetailLeadsWithTheSource          | Detail: the source badge first, then the note          |
+//   | AReversalSaysWhatItUndoes            | a reversal names the amount and the day it undoes        |
+//   | TheCardsSayHowManyEntries            | Received and the adjustment count the rows after the sale |
+//   | NoTotalBeliNoMargins                 | without the host's total beli, no margin card at all     |
+//   | TwoMarginsDifferByTheAdjustment      | estimated and true margin, apart by exactly the adjustment |
+//   | TheMarginsSayWhereTheyComeFrom       | each margin's note names its formula                     |
+//   | TheBalanceReadsLikeTheChange         | the balance is signed like the change, and bold          |
+//   | TheMarginOpensItsBreakdown           | "Rincian ›" opens how the true margin adds up             |
+//   | Mobile                               | the panel at phone width — review in the workbench        |
+//
+// ⚠ EVERY STORY GETS A `totalBeli` BY DEFAULT (owner) — 80.000, what the order cost us all in — so the two
+// margin cards are on screen as the order detail shows them. `NoTotalBeliNoMargins` is the one that
+// leaves it out, to show what the panel does without it.
 const meta = {
   title: "Pages/Order Settlement/Ledger Panel",
   component: OrderLedgerPanel,
+  args: { totalBeli: 80_000n },
 } satisfies Meta<typeof OrderLedgerPanel>;
 
 export default meta;
@@ -48,14 +62,12 @@ export const WorkedExample: Story = {
 
     // The doc's four rows, and the doc's final balance.
     await expect(canvas.getAllByTestId(/^entry-/)).toHaveLength(4);
-    await expect(canvas.getByTestId("ledger-table")).toHaveTextContent("Rp -10.000");
+    await expect(canvas.getByTestId("ledger-table")).toHaveTextContent("−Rp 10.000");
 
     // 120.000 − 100.000 = 20.000 kept and never explained. −10.000 + 20.000 = +10.000 named.
     await expect(hiddenCost(worked)).toBe(20_000n);
     await expect(netReceived(worked)).toBe(110_000n);
     await expect(loss(worked)).toBe(10_000n);
-    // The number no service in this system could produce before settlement existed.
-    await expect(trueMargin(worked)).toBe(40_000n);
 
     // ⚠ The word is LOST. `a-residual-balance-is-normal` means nobody is collecting this, so any
     // label implying a debt — "outstanding", "unpaid", "due" — would be wrong on every order.
@@ -118,8 +130,9 @@ export const ManualAndReversal: Story = {
     await expect(canvas.getAllByTestId("source-badge-manual")).toHaveLength(3);
     await expect(canvas.getAllByTestId("source-badge-manual")[0]).toHaveTextContent("Budi");
 
-    // The mistake is still there.
+    // The mistake is still there — and the row that undid it says which row that was.
     await expect(canvas.getByTestId("entry-typo")).toBeInTheDocument();
+    await expect(canvas.getAllByTestId(/^ledger-reversal-/)).toHaveLength(1);
 
     // And the screen says why there is no delete button, rather than only enforcing it server-side.
     await expect(canvas.getByTestId("append-only-notice")).toHaveTextContent(
@@ -143,12 +156,9 @@ export const ReverseConfirms: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const menus = canvas.getAllByRole("button", { name: /row actions/i });
-    await userEvent.click(menus[menus.length - 1]);
-
-    const item = await waitFor(() => document.body.querySelector('[data-value="reverse"]'));
-    await expect(item).not.toBeNull();
-    await userEvent.click(item as Element);
+    // ONE action, so it is the button on the row itself — no `⋯` to open first.
+    const last = worked.entries[worked.entries.length - 1]!;
+    await userEvent.click(canvas.getByTestId(`ledger-reverse-${last.id}`));
 
     // A dialog, not an immediate post — CLAUDE.md: anything not trivially reversible confirms.
     const confirm = await waitFor(() =>
@@ -205,7 +215,7 @@ export const ReadOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByTestId("add-entry")).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: /row actions/i })).not.toBeInTheDocument();
+    await expect(canvas.queryAllByTestId(/^ledger-reverse-/)).toHaveLength(0);
     // Attribution stays visible — reading who typed what is not a posting right.
     await expect(canvas.getAllByTestId("source-badge-manual").length).toBeGreaterThan(0);
   },
@@ -213,3 +223,135 @@ export const ReadOnly: Story = {
 
 const _typecheck: OrderSettlement = worked;
 void _typecheck;
+
+/**
+ * NO TOTAL BELI, NO MARGINS (owner) — the panel takes the cost from its host, and with none it shows the
+ * three cards it can stand behind. A margin with no cost would be the whole payout passed off as earned.
+ */
+export const NoTotalBeliNoMargins: Story = {
+  // The example WITHOUT it — every other story has the default 80.000.
+  args: { settlement: worked, canPost: true, totalBeli: undefined },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByTestId("estimated-margin")).toBeNull();
+    await expect(canvas.queryByTestId("margin")).toBeNull();
+    await expect(within(canvas.getByTestId("settlement-summary")).getAllByTestId(/^(sold|received|loss)$/)).toHaveLength(3);
+  },
+};
+
+/**
+ * TWO MARGINS, APART BY THE ADJUSTMENT (owner). Sold 120.000, received 110.000, everything the order cost
+ * 80.000: estimated 40.000 (33.33%), true 30.000 (25.00%) — and 30.000 − 40.000 is the −10.000 beside them.
+ */
+export const TwoMarginsDifferByTheAdjustment: Story = {
+  args: { settlement: worked, canPost: true, totalBeli: 80_000n },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("estimated-margin-value")).toHaveTextContent("Rp 40.000");
+    await expect(canvas.getByTestId("estimated-margin")).toHaveTextContent("33.33% of the selling price");
+    await expect(canvas.getByTestId("margin-value")).toHaveTextContent("Rp 30.000");
+    await expect(canvas.getByTestId("margin")).toHaveTextContent("25.00% of the selling price");
+    await expect(canvas.getByTestId("loss-value")).toHaveTextContent("−Rp 10.000");
+  },
+};
+
+/** Each margin says how it is made, under its share — no tooltip. */
+export const TheMarginsSayWhereTheyComeFrom: Story = {
+  args: { settlement: worked, canPost: true, totalBeli: 80_000n },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("estimated-margin-note")).toHaveTextContent("selling price − total cost");
+    await expect(canvas.getByTestId("margin-note")).toHaveTextContent("received − total cost");
+    await expect(canvas.getByTestId("add-entry")).toHaveTextContent("Add Entry");
+  },
+};
+
+/**
+ * THE BALANCE READS LIKE THE CHANGE (owner) — the sign before "Rp", on every money figure — and stands
+ * out from it: bold, where the change is plain.
+ */
+export const TheBalanceReadsLikeTheChange: Story = {
+  args: { settlement: worked, canPost: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const last = worked.entries[worked.entries.length - 1]!;
+    await expect(canvas.getByTestId(`ledger-balance-${last.id}`)).toHaveTextContent("−Rp 10.000");
+    await expect(canvas.getByTestId("ledger-table")).not.toHaveTextContent("Rp -");
+  },
+};
+
+/** DETAIL LEADS WITH THE SOURCE (owner): the badge, then the note that used to be the whole column. */
+export const TheDetailLeadsWithTheSource: Story = {
+  args: { settlement: correctedByHand, canPost: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const typo = canvas.getByTestId("ledger-detail-typo");
+    const badge = within(typo).getByTestId("source-badge-manual");
+    await expect(typo).toHaveTextContent("voucher clawback");
+    // The badge comes first.
+    await expect(typo.textContent!.indexOf("Budi")).toBeLessThan(typo.textContent!.indexOf("voucher"));
+    await expect(badge).toBeInTheDocument();
+    await expect(canvas.getByTestId("ledger-table")).toHaveTextContent("Source");
+  },
+};
+
+/** A REVERSAL SAYS WHAT IT UNDOES (owner) — the amount and the day of the row it reverses. */
+export const AReversalSaysWhatItUndoes: Story = {
+  args: { settlement: correctedByHand, canPost: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const reversal = correctedByHand.entries.find((e) => e.reversesId)!;
+    const original = correctedByHand.entries.find((e) => e.id === reversal.reversesId)!;
+    await expect(canvas.getByTestId(`ledger-reversal-${reversal.id}`)).toHaveTextContent(
+      `reverses −Rp 45.000 of ${original.occurredOn}`,
+    );
+  },
+};
+
+/**
+ * RECEIVED AND THE ADJUSTMENT SAY HOW MANY ENTRIES (owner) — the rows after the sale: the worked example's
+ * payout, ads fee and reimbursement. Received carries it under its share; the adjustment as its only line.
+ */
+export const TheCardsSayHowManyEntries: Story = {
+  args: { settlement: worked, canPost: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("received-note")).toHaveTextContent("from 3 entries");
+    // The same note, in the same grey, on both cards.
+    await expect(canvas.getByTestId("loss-note")).toHaveTextContent("from 3 entries");
+  },
+};
+
+/**
+ * "RINCIAN ›" OPENS HOW THE TRUE MARGIN ADDS UP (owner) — the entries after the sale, per type, to Received;
+ * less the total cost, to the true margin; and under it the estimate, the difference (the adjustment), and
+ * the deduction kept before the payout.
+ */
+export const TheMarginOpensItsBreakdown: Story = {
+  args: { settlement: worked, canPost: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByTestId("margin-breakdown-open"));
+
+    const dialog = await screen.findByTestId("margin-breakdown-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    const body = within(dialog);
+    await expect(body.getByTestId("breakdown-fund")).toHaveTextContent("+Rp 100.000");
+    await expect(body.getByTestId("breakdown-received")).toHaveTextContent("Rp 110.000");
+    await expect(body.getByTestId("breakdown-margin")).toHaveTextContent("Rp 30.000");
+    await expect(body.getByTestId("breakdown-difference")).toHaveTextContent("−Rp 10.000");
+    await expect(body.getByTestId("breakdown-deducted")).toHaveTextContent("Rp 20.000");
+  },
+};
+
+/**
+ * THE PANEL ON A PHONE (owner). A typo, its reversal and the right row, with both margins — the richest
+ * ledger the fixtures have.
+ *
+ * ⚠ NO `play()`, DELIBERATELY: the `viewport` global resizes the WORKBENCH canvas only — the story runner
+ * has one fixed desktop viewport (see MobileLayout.stories). Review it in Storybook.
+ */
+export const Mobile: Story = {
+  args: { settlement: correctedByHand, canPost: true },
+  globals: { viewport: { value: "mobile2" } },
+};

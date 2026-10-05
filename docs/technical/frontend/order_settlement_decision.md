@@ -18,6 +18,18 @@ and moved here on 2026-10-02; each old heading there now points here.
 | [the-unitemised-take-is-a-deduction](#the-unitemised-take-is-a-deduction) | the selling price less every payout is **Potongan** (EN *Deductions*) — not *Tidak dirinci* |
 | [the-source-is-a-badge](#the-source-is-a-badge) | an entry's source — Import · Manual · Order — is a badge in the ledger; the list row shows none |
 | [order-detail-manages-the-ledger](#order-detail-manages-the-ledger) | the order page MANAGES settlement — read, add, reverse — as a third tab. ⚠ widens the verbs, not the guarantees: append-only stands |
+| [the-ledger-reads-tanggal-and-its-balance-is-full-strength](#the-ledger-reads-tanggal-and-its-balance-is-full-strength) | the ledger's columns are Tanggal · Jenis · Sumber · Detail · Perubahan · Saldo; the balance is never muted; the source stacks when cramped |
+| [the-ledger-summary-is-the-order-lists-cards](#the-ledger-summary-is-the-order-lists-cards) | the ledger's four figures are the order list's cards; a margin with no recorded cost is "—" |
+| [the-ledger-margin-leads-and-says-where-it-comes-from](#the-ledger-margin-leads-and-says-where-it-comes-from) | the true margin is the lead card, a note under its share naming its formula; a ledger row lights up under the pointer |
+| [the-add-action-stays-tambah-entri](#the-add-action-stays-tambah-entri) | the ledger's add action stays **Tambah Entri** — *Tambah Penyesuaian* was tried and reverted |
+| [the-ledger-shows-no-note-and-reverses-inline](#the-ledger-shows-no-note-and-reverses-inline) | the ledger drops its Detail column; a reversal is tagged on its type; **Balikkan** is a button on the row, not a `⋯` menu |
+| [the-ledger-type-column-reads-sumber](#the-ledger-type-column-reads-sumber) | the type column is headed **Sumber**; **Detail** is the source badge then the note; a reversal names the amount and day it undoes |
+| [the-ledger-cards-count-their-entries](#the-ledger-cards-count-their-entries) | Diterima and Penyesuaian say how many entries make them — every row but the sale's own |
+| [the-ledger-margins-need-the-hosts-total-beli](#the-ledger-margins-need-the-hosts-total-beli) | the ledger shows Estimasi margin and Margin riil only when its host hands in `totalBeli`, taken as complete |
+| [the-ledger-is-blocks-on-a-phone](#the-ledger-is-blocks-on-a-phone) | on a phone each entry is a three-line block, and Margin riil spans the strip |
+| [the-sale-reads-harga-jual-everywhere](#the-sale-reads-harga-jual-everywhere) | the sale is labelled **Harga jual** on the list, the ledger and the report — *Terjual* is gone |
+| [the-margin-breakdown-opens-from-rincian](#the-margin-breakdown-opens-from-rincian) | **Rincian ›** at the end of Margin riil's label opens how it adds up — a dialog, a bottom sheet on a phone |
+| [every-penjualan-reads-harga-jual](#every-penjualan-reads-harga-jual) | a share reads **dari harga jual**, never *dari penjualan*; in the breakdown it sits under the margin |
 
 ## the-settlement-list-always-shows-its-pager
 
@@ -284,3 +296,284 @@ would show invented money on real orders. **On acceptance the tab moves into the
 preview shell is deleted.**
 
 ---
+
+## the-ledger-reads-tanggal-and-its-balance-is-full-strength
+
+> Owner, in chat (2026-10-03), going through the ledger's columns: *"kapan jadi tanggal saja, jenis oke, sumber pun
+> oke, detail oke, change oke, balance itu harusnya tidak pudar warnanya"* — and the column rule for Jenis and Sumber.
+
+*Applies [a-badge-stacks-under-its-text-when-the-table-is-cramped](context_decision.md#a-badge-stacks-under-its-text-when-the-table-is-cramped).*
+
+```
+roomy     Tanggal   Jenis                    Sumber          Detail            Perubahan     Saldo        ⋯
+          08-01-2026 Penyesuaian marketplace [Manual · Budi] voucher clawback  −Rp 4.500     Rp -30.500
+
+cramped   Tanggal   Jenis                    Detail            Perubahan     Saldo        ⋯
+          08-01-2026 Penyesuaian marketplace  voucher clawback  −Rp 4.500     Rp -30.500
+                     [Manual · Budi]
+```
+
+| column | was | now |
+| --- | --- | --- |
+| date | *Kapan* | **Tanggal** (EN *Date*); a late entry keeps its *diketahui …* line under it |
+| type · source | the badge beside the type, in one cell | its own **Sumber** column while there is room; under the type when cramped, and on a phone |
+| detail · change | — | unchanged |
+| balance | muted grey | **full strength** — a running figure read down the page, not a footnote |
+
+> Then (2026-10-05): *"aku ingin saldo tabel lebih kuat untuk membedakan dengan perubahan"* — the balance is **bold**
+> and the change plain, and the balance is written in the change's format, **−Rp 30.500** / **+Rp 4.000**
+> ([a-negative-amount-puts-its-minus-before-rp](context_decision.md#a-negative-amount-puts-its-minus-before-rp)).
+
+## the-ledger-summary-is-the-order-lists-cards
+
+> Owner, in chat (2026-10-03), on the ledger on the order detail: *"perbaiki design statisticnya"*.
+
+*Applies [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip).*
+
+```mermaid
+flowchart LR
+  A["Terjual — harga jual marketplace"] --- B["Diterima — % dari penjualan"]
+  B --- C["Penyesuaian — potongan · dirinci"]
+  C --- D["Margin riil — setelah HPP"]
+```
+
+| card | figure | quiet line |
+| --- | --- | --- |
+| Terjual | `initial_total` | *harga jual marketplace* |
+| Diterima | saldo + terjual | *% dari penjualan* |
+| Penyesuaian | the balance, signed — red short, green ahead | **none** |
+| Margin riil | diterima − HPP | *% dari penjualan*, like Diterima — and with **no recorded cost** (0) the figure is **"—"**, the line *HPP belum tercatat*: the order list's own rule, a cost of 0 is not free goods |
+
+> Then, the same day: *"penyesuaian dan margin rill tidak perlu subtitle, tapi margin rill mungkin bisa seperti
+> diterima, pakai persentase"* — the table above is that answer.
+
+⚠ With the adjustment's line gone, **Potongan is no longer on any screen** — it was shown only there
+([the-unitemised-take-is-a-deduction](#the-unitemised-take-is-a-deduction) named that line as its one place).
+
+The figures were a loose row of plain text; they are now the same cards as the order list and the settlement list.
+
+## the-ledger-margin-leads-and-says-where-it-comes-from
+
+> Owner, in chat (2026-10-03): *"buat margin riil sedikit lebih menonjol · margin riil kasih tooltips i, darimana dia
+> didapat atau rumus · table hover → background"*.
+
+*Applies [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border).*
+
+| | |
+| --- | --- |
+| Margin riil | the strip's lead card (`emphasis`) — unless the cost is unknown, when it is "—" and leads nothing |
+| how it is made | a second quiet line under the share (`SummaryCard note`): **diterima − HPP** — no tooltip (owner, 2026-10-05: *"tooltipsnya hilangkan saja, kasih deskripsi singkat nilai didapat dari mana di bawah persentase"*); an ⓘ was tried the same week and removed |
+| a ledger row | lights up under the pointer (`Table interactive`) — read across, nothing clicked |
+
+## the-add-action-stays-tambah-entri
+
+> Owner, in chat (2026-10-03): *"tambah entry konteksnya pasti penyesuaian? jadi ganti istilah"* — renamed to *Tambah
+> Penyesuaian*; then (2026-10-05): *"tambah penyesuaian ganti dengan tambah entri"*.
+
+| | |
+| --- | --- |
+| the button | **Tambah Entri** · *Add Entry* |
+| the dialog's title | **Tambah Entri Settlement** · *Add Settlement Entry* |
+| its confirm | **Buat Entri** · *Post Entry* |
+
+⚠ Recorded as the verdict it ended on, and renamed from *adding-to-the-ledger-is-an-adjustment* (RULE 12) — that
+name read as the opposite of what holds.
+
+## the-ledger-shows-no-note-and-reverses-inline
+
+> Owner, in chat (2026-10-05): *"jenis bisa jadi dari saja? · sumber masuk ke detail?"*, then, on the answer: *"kalau
+> gitu jadi sumber saja · ya ke detail, kurasa catatan itu bisa dihapus saja dulu · sama actionnya tidak perlu …,
+> karena cuma 1, keluarkan saja"*.
+
+```
+Tanggal  Jenis                                Sumber           Perubahan     Saldo
+08-01    Penyesuaian marketplace · pembalikan [Manual · Budi]  +Rp 45.000    −Rp 26.000
+08-01    Penyesuaian marketplace              [Manual · Budi]  −Rp 4.500     −Rp 30.500   ↶ Balikkan
+```
+
+| | was | now |
+| --- | --- | --- |
+| columns | Tanggal · Jenis · Sumber · Detail · Perubahan · Saldo · `⋯` | **Tanggal · Jenis · Sumber · Perubahan · Saldo · Balikkan** |
+| the note | the Detail column | **not shown, for now** — the column held only the note once the source took its own column |
+| a reversal | *"membalikkan entri sebelumnya"* in Detail | **· pembalikan** after the type, muted — a +45.000 with nothing beside it would read as a fresh adjustment |
+| the action | a `⋯` menu with one item | the **Balikkan** button itself (`Undo2` icon) — one action stays inline |
+| Sumber | — | its own column; under the type when cramped ([a-badge-stacks-under-its-text-when-the-table-is-cramped](context_decision.md#a-badge-stacks-under-its-text-when-the-table-is-cramped)) |
+
+The word stays **Balikkan** (*Reverse*): it is the bookkeeping word for posting the opposite of a row, and neither
+*Batalkan* (reads as deleting) nor *Koreksi* (reads as editing) says what the button does.
+
+## the-ledger-type-column-reads-sumber
+
+> Owner, in chat (2026-10-05), the same day as the entry above: *"Jenis jadi sumber · detail ada sumber atau source badge
+> lalu diikuti detail sebelumnya · balikan kasih sedikit tambahan biar jelas apa yang di balikkan"*.
+
+```
+Tanggal     Sumber                   Detail                                       Perubahan     Saldo
+2026-01-08  Penyesuaian marketplace  [Manual · Budi] voucher clawback             −Rp 45.000    −Rp 71.000
+2026-01-08  Penyesuaian marketplace  [Manual · Budi] membalikkan −Rp 45.000 tanggal 2026-01-08   +Rp 45.000   −Rp 26.000
+```
+
+| | now |
+| --- | --- |
+| the type column | headed **Sumber** (EN *Source*) — what the money is: the sale, a payout, a fee. Its content is unchanged |
+| Detail | **back**: the source badge first (Order · Impor · Manual · *who*), then the note |
+| a reversal | Detail says **which** row it undoes — *membalikkan −Rp 45.000 tanggal 2026-01-08*; the confirm dialog names it too (*… membalikkan Penyesuaian marketplace tanggal 2026-01-08*) |
+| the cramped rule | no longer used here — the badge lives in Detail, never in a column of its own |
+
+It supersedes two parts of [the-ledger-shows-no-note-and-reverses-inline](#the-ledger-shows-no-note-and-reverses-inline):
+the note is shown again, and the *· pembalikan* tag after the type is replaced by the Detail line. The inline
+**Balikkan** button stands.
+
+## the-ledger-cards-count-their-entries
+
+> Owner, in chat (2026-10-05): *"diterima dan penyesuaian kasih keterangan ada berapa entri, kalau diterima berarti di
+> bawah persentase"*.
+
+| card | lines |
+| --- | --- |
+| Diterima | *91,67% dari penjualan* · **dari 3 entri** (the second line, `SummaryCard note`) |
+| Penyesuaian | **dari 3 entri** — a note too, so it is the same quieter grey as under Diterima (owner: *"yang entri penyesuaian warnanya sesuaikan"*) |
+
+**What is counted:** every entry but the sale's own row — `initial_total` and its cancel. The sale is the line the
+others are measured against, not a movement: Diterima is the sale plus every other row, and Penyesuaian is those rows
+alone, so both cards count the same rows. A reversal and the row it undid are two entries, as they are two rows.
+
+## the-ledger-margins-need-the-hosts-total-beli
+
+> Owner, in chat (2026-10-05), after *"margin rill kok diterima − HPP?"*: *"komponen ini menerima props subtotal opsional,
+> lalu kita tampilkan estimasi margin dari subtotal jika ada nilainya, margin rill sendiri juga muncul saat subtotalnya
+> ada"* — then: the prop is **`totalBeli`**, it *"dianggap sudah include semuanya"*, five cards, and no ⚠.
+
+```mermaid
+flowchart LR
+  H["host page — its own total sistem"] -->|"totalBeli"| P["OrderLedgerPanel"]
+  P --> E["Estimasi margin = harga jual − total beli"]
+  P --> R["Margin riil = diterima − total beli"]
+  E -.->|"differ by"| A["Penyesuaian"]
+  R -.-> A
+```
+
+```
+Terjual      Diterima      Penyesuaian    Estimasi margin          Margin riil
+Rp 120.000   Rp 110.000    −Rp 10.000     Rp 40.000                Rp 30.000
+             91,67% …      dari 3 entri   33,33% dari penjualan    25,00% dari penjualan
+             dari 3 entri                 harga jual − total beli  diterima − total beli
+```
+
+| | |
+| --- | --- |
+| the prop | `totalBeli?: bigint` on `OrderLedgerPanel` (and `SettlementTab`) — what the order cost, **everything included**; the panel splits it into nothing |
+| who passes it | the seller's order detail: the same *total sistem* its money section shows (`orderSpend(productCost, fees, …)`), so the two pages' margins cannot disagree. The warehouse's detail passes none |
+| with it | five cards: Terjual · Diterima · Penyesuaian · **Estimasi margin** · **Margin riil** (the lead card) |
+| without it, or 0 | three cards — no margin at all, rather than a payout passed off as earned |
+| shares | both margins as a share of the selling price, like the order list's |
+| marks | none — the figure is the host's, and marking it is the host's business |
+
+The two margins differ by exactly the Penyesuaian beside them: *margin riil = estimasi margin + penyesuaian*.
+
+⚠ It supersedes the margin of [the-ledger-summary-is-the-order-lists-cards](#the-ledger-summary-is-the-order-lists-cards)
+and [the-ledger-margin-leads-and-says-where-it-comes-from](#the-ledger-margin-leads-and-says-where-it-comes-from):
+*diterima − HPP*, with HPP alone, left the warehouse fee out — overstating every order by it, the trap
+[the-margin-is-mp-minus-total-beli](order_list_decision.md#the-margin-is-mp-minus-total-beli) names.
+
+## the-ledger-is-blocks-on-a-phone
+
+> Owner, in chat (2026-10-05), on the Mobile story's scrolled table and the lead card left alone in half a row:
+> *"di on order detail juga, mobile iya"*.
+
+*Applies [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block).*
+
+```
+Penyesuaian marketplace                −Rp 4.500
+2026-01-08 · [Manual · Budi]    saldo −Rp 30.500
+voucher clawback                      ↶ Balikkan
+```
+
+| | |
+| --- | --- |
+| an entry | line 1 the Sumber (the type) and the change, signed and coloured · line 2 the date (and *diketahui …* when late) with the source badge, and **saldo** bold on the right · line 3 the note or what a reversal undoes, with **Balikkan** on the right |
+| a reversed entry | the whole block dimmed, as the row is |
+| the cards | two columns; **Margin riil spans the strip** (`SummaryCard wide`) instead of sitting alone in half a row |
+| how | `useIsMobile` — a JS breakpoint, never CSS hiding |
+
+The stories carry it: every Ledger Panel and On Order Detail story gets a default `totalBeli` (80.000), one story
+on each leaves it out, and each has a **Mobile** story (workbench only — the runner is a desktop viewport). The
+On Order Detail preview's tabs go across the top on a phone, so the ledger is not squeezed beside them.
+
+## the-sale-reads-harga-jual-everywhere
+
+> Owner, in chat (2026-10-05), on the margin notes reading *harga jual − total beli* beside a card labelled *Terjual*:
+> *"harga jual itu apa terjual? jika iya, sesuaikan saja"*.
+
+It closes what [the-sale-is-the-marketplace-selling-price](#the-sale-is-the-marketplace-selling-price) left *unchanged
+until decided*: `initial_total` has ONE name.
+
+| where | was | now |
+| --- | --- | --- |
+| list column · list card · ledger card | Terjual · *Sold for* | **Harga jual** · *Selling price* |
+| the ledger card's line | harga jual marketplace | **dari marketplace** — the label already says *harga jual* |
+| the phone's sort | Terjual terbesar / terkecil | **Harga jual terbesar / terkecil** |
+| the settlement report | Terjual | **Harga jual** — the same field, summed over the window |
+
+Still open: the entry types *Estimasi* and *Estimasi dibatalkan* name the same figure a third way.
+
+## the-margin-breakdown-opens-from-rincian
+
+> Owner, in chat (2026-10-05): *"margin rill kasih opsi untuk mendetailkannya ke modal"* — and of five previewed
+> triggers (an icon beside the label, a formula link, a ghost button, a full-width button, a text link at the end),
+> chose **"Text Link At the End"**. An icon beside the label was *"kurang bisa dilihat"*.
+
+```mermaid
+flowchart LR
+  C["Margin riil card — Rincian ›"] -->|"desktop"| D["Dialog, size sm"]
+  C -->|"phone"| S["bottom sheet"]
+  D --> B["the breakdown"]
+  S --> B
+```
+
+```
+Dana cair                  +Rp 100.000     ← every entry after the sale, summed per type (count when > 1)
+Biaya iklan                 −Rp 10.000
+Penyesuaian marketplace     +Rp 20.000
+= Diterima                  Rp 110.000
+Total beli                  −Rp 80.000
+= Margin riil                Rp 30.000   25,00% dari harga jual
+- - - - - - - - - - - - - - - - - - - -
+Harga jual                  Rp 120.000
+Estimasi margin              Rp 40.000
+Selisih = penyesuaian       −Rp 10.000
+Potongan saat cair           Rp 20.000     ← only once a payout (Dana cair) has arrived
+```
+
+| | |
+| --- | --- |
+| the trigger | **Rincian ›** — bold, `lead.fg`, at the far right of the card's label row (`SummaryCard mark`). Only the word is pressed; the card stays a card |
+| when | only when Margin riil is shown — the host handed in a `totalBeli` above 0 ([the-ledger-margins-need-the-hosts-total-beli](#the-ledger-margins-need-the-hosts-total-beli)) |
+| desktop · phone | a `Dialog` (`sm`) · a bottom `Drawer` — a modal squeezed to 390px reads as a cramped popup |
+| the lines | built FROM THE ENTRIES: every row but the sale's own, summed per type, to **= Diterima**; less total beli, to **= Margin riil** and its share of the selling price |
+| the footer | the selling price, Estimasi margin, and their **difference — which is the Penyesuaian card**, so the two margins visibly reconcile |
+| Potongan saat cair | harga jual − the payouts, **only beside a real payout**. Before one arrives the gap is money still to come, not a deduction — which is why [the-unitemised-take-is-a-deduction](#the-unitemised-take-is-a-deduction)'s figure left the cards and lives only here |
+
+## every-penjualan-reads-harga-jual
+
+> Owner, in chat (2026-10-05), on the breakdown: *"persentase di bawah nilai margin"* — then *"penjualan itu harga
+> jual, sesuaikan semuanya"*.
+
+It finishes [the-sale-reads-harga-jual-everywhere](#the-sale-reads-harga-jual-everywhere): where *penjualan* meant
+the `initial_total` figure, it now says so.
+
+| where | was | now |
+| --- | --- | --- |
+| every share — Diterima, Penyesuaian, both margins, the list's cards, the breakdown | 25,00% dari penjualan · *of sales* | **25,00% dari harga jual** · *of the selling price* |
+| the report's take rate | 3,20% dari penjualan | **3,20% dari harga jual** |
+| the report's gap hint | Dari penjualan periode ini, … | **Dari harga jual periode ini, …** |
+| the *Harga jual* entry's warning | menulis ulang nilai penjualan … | **menulis ulang harga jual …** |
+| the breakdown's margin line | the share beside the figure | the share **under** the figure, as on the card |
+
+```
+= Margin riil              Rp 30.000
+                25,00% dari harga jual
+```
+
+Left alone, because there *penjualan* is the act of selling, not the figure: the product's *penjualan terakhir* (its
+last sale) and the team page's *Penjualan* tab.
