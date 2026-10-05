@@ -152,7 +152,12 @@ Three phases currently have no bearer, and each of them is a real event that hap
 
 ## Question
 
-1. **Is the flow's step order deliberate — `Calculate Unit Price` BEFORE the shortfall is known?** As
+1. ⚠ **Revisited 2026-09-29, from [stock_thoni](../stock_thoni/context_clarify.md#usulan-penerimaan-sebagian):
+   the recommendation below holds ONLY if receiving losses are absorbed into the surviving units.** If each lost or
+   broken unit is recorded as a loss line at the same unit price, dividing by the **shipped** quantity is correct — the
+   missing units' cost is not lost, it IS the loss — and the drawn order stands. It also stops a borrowing team paying
+   markup on a cost inflated by the owner's receiving loss.
+   **Is the flow's step order deliberate — `Calculate Unit Price` BEFORE the shortfall is known?** As
    drawn, freight and the warehouse fee are divided by the **expected** quantity, so units that never
    arrived carry cost and the ones that did are under-priced. ([Critique 9](#critique))
    **→ I recommend moving it after `Calculate valid Qty`. One arrow — but a diagram is not prose, so this

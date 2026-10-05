@@ -14,6 +14,37 @@ is mine. Answered points are **deleted**, so this is always the current open set
 
 # Contradiction
 
+## The business proposal decided one row per pile
+
+> [stock_thoni/model.md](../../business/stock_thoni/model.md) — `SKU_SLOT`: **one row per pile** — one restock,
+> one warehouse, one rack, with its own `price` and `supplier_id`, created when the goods arrive. **Decided** as
+> [slot-lahir-saat-barang-tiba](../../business/stock_thoni/context_decision.md#slot-lahir-saat-barang-tiba) and
+> [harga-dan-supplier-per-slot](../../business/stock_thoni/context_decision.md#harga-dan-supplier-per-slot) (2026-09-28).
+> This doc — `batches` carry the cost, `product_placements` carry the shelf, and nothing ties a unit's cost to the
+> shelf it is picked from.
+
+**Which is wrong: this doc, I think** — and it removes the contradiction above it, *the two ledgers must agree and
+nothing says so*, by leaving one ledger instead of two.
+
+| | one row per pile | batch + placement, split |
+| --- | --- | --- |
+| cost of the unit picked | the pile picked — cost and goods are one row | FIFO batch and shelf are cut independently |
+| pick instruction for an order | the take chooses a pile, the shelf comes with it | needs a second rule to choose a shelf |
+| cross-ledger invariant | none needed — one ledger | `sum(batches) == sum(placements)`, unstated |
+| moving 20 units between shelves | splits a pile into two rows, provenance kept | a placement movement, no batch entry |
+
+**→ Recommend** the technical design follows the pile. ⚠ **Not settled by the business decision alone**: the two
+proposals are Toni's (stock_thoni) and this one, and who breaks a tie between proposals is still open in
+[member_clarify Q4](../../business/project/member_clarify.md#question). Stock & Inventory is Toni's per
+[member.md](../../business/project/member.md), which is the argument for the pile.
+
+```mermaid
+flowchart LR
+  B["stock_thoni — one row per pile, decided"] --> Q{"member_clarify Q4"}
+  T["this doc — batches and placements"] --> Q
+  Q -->|"stock is Toni's"| F["this doc follows the pile"]
+```
+
 ## `float64` is a worse answer to division, not a better one
 
 > *"The reason valuation used `float64` is because later in cogs Price there is additional price that

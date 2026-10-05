@@ -1,76 +1,58 @@
 # Proposal Mekanisme Stok Gudang
 
-Servis ini menangani segala pencatatan terkait Inventory / SKU. Servis ini akan diperlukan oleh servis yang lain antara lain:
-- Order service, berikut constraint terkait [`OrderCreation`](../order/order_creation.md)
+Service ini bernama `Inventory Service`,
+service ini memerlukan:
 
+- [Product Service](../product/context.md)
+- [Balance Service](../balance/context.md)
+- [User Service](../user/context.md)
+- [Team Service](../teams/context.md)
+- dan `Supplier Service` (ini belum dibuat).
 
-## SKU / Inventory
+Padanan konteks kata:
 
-SKU adalah sebuah domain yang merepresentasikan sebuah produk yang akan dikelola oleh sistem ini.
+- Product = SKU
 
-Di dalam sudut pandang bisnis, sebuah SKU akan memiliki beberapa atribut penting seperti:
+> Untuk data pendukung saya menggambar relasi ERD sementara [di sini](./model.md)
 
-- Siapa pemilik barang ini?
-- Berapa harganya
-- Dimana letaknya (Digudang mana?, di Rak mana?)
-- Siapa suppliernya
-- berapa stok ready
-- berapa stok on the way
+Service ini menangani segala pencatatan terkait Inventory / SKU. Service ini akan diperlukan oleh service yang lain antara lain:
 
-Tentunya, penambahan atau pengurangan stok akan di pengaruhi oleh [transaksi](#transaction)
+- Order service, berikut constraint terkait [OrderCreation](../order/order_creation.md)
 
-## Transaction
+Beberapa tanggung jawab service ini antara lain:
 
-Transaksi merupakan segala aktivitas yang mempunyai tujuan utama yaitu memutasi stok sebuah [SKU](#sku--inventory).
+- Menangani proses Restock, [Lihat Selengkapnya](#proses-restock)
+- Menangani proses Return, [Lihat Selengkapnya](#proses-restock)
+- Menyediakan data yang diperlukan saat [OrderCreation](../order/order_creation.md)
 
-Dengan definisi di atas, kemungkinan transaksi akan dibagi menjadi 3 jenis:
+### Batasan Service
 
-- Restock / Inbound
-- Order / Outbound
-- Adjustment, transaksi ini mungkin terjadi ketika proses opname stok, lain dengan 2 transaksi diatas, adjustment ini bisa dibilang transaksi mutlak yang harus dipatuhi.
+- service ini cuma mencatat tagihan. Untuk penagihan akan diurus oleh service lain di luar service ini.
 
-Setiap transaksi tentunya akan membawa informasi SKU mana saja yang terlibat. Nantinya setiap transaksi akan di-log agar nantinya bisa di audit. Berikut kemungkinan 3 transaksi diatas akan dibagi jadi beberapa status:
+### Proses Restock
 
-- Restock: `pending`, `cancel`, `approved` / `completed`
-- Order: `pending`, `processing`, `picking`, `picking_completed`, `packing_completed`, `completed`, `cancel`, `return`
-- Adjustment: `broken`, `lost`, `found_back`, dan mungkin status lain
+Pemilik SKU membuat transaksi restock, kemudian mengisi field yang dibutuhkan:
 
-Status `order` dibangun berdasarkan istilah `status kerja gudang`.
+- pilih gudang target
+- jasa kirim
+- metode pembayaran (ketika belanja barang yang akan di restock)
+- resi
+- order id (opsional)
+- ongkir (opsional)
+- catatan (opsional)
+- list SKU
 
-## Ketentuan Stok
+setiap SKU membawa data:
 
-Kapan stok bertambah?
-- Saat `Restock - completed`
-- Saat `Order - cancel`
-- Saat `Order - return`
-- Saat adjustment yang sifatnya menambah
+- supplier nya siapa.
+- harganya berapa
+- dan berapa jumlahnya
 
-Kapan stok berkurang?
-- Saat `Order - pending`
-- Saat adjustment yang sifatnya mengurangi
+Berikut alur `restock`: [Lihat](./restock_flow.md)
 
-## Ketentuan Transaksi
+Notes:
+1 `transaction` hanya boleh melewati status `ongoing`, `cancelled`, dan `approved` secara urut, tidak boleh status log nya double, misal jika sudah `approved` dia sudah tidak bisa di apa-apakan. transaction yang sudah diterima tidak bisa di cancel. `cancelled` juga termasuk final status, artinya `cancelled` tidak bisa jadi `approved`.
 
-### Ketentuan Transaksi - Restock atau Inbound
-Transaksi ini dibuat oleh pemilik SKU (dalam banyak kasus SKU dimiliki oleh CustomerService/UserGudang), alurnya:
+### Penyediaan data OrderCreation
 
-```mermaid
-
-flowchart TB
-
-a["Restock dibuat <a href='#restock-dibuat'>Lihat Selengkapnya</a>"] -->
-b["Server mencatat transaksi <a href='#server-mencatat-transaksi-restock-yang-baru-dibuat'>Lihat Selengkapnya</a>"]
-b --diproses--> y["`Gudang menempatkan barang di rack, kemudian melakukan action **TERIMA** <a href='#gudang-menerima-restock'>Lihat Selengkapnya</a>`"]
-b --dibatalkan--> n["tolak"]
-
-```
-
-#### Restock Dibuat
-Ketika restock di buat, terlebih dahulu pemilik SKU memilih Gudang mana yang dituju,
-kemudian barang/sku apa saja yang dipilih, tiap-tiap SKU memiliki field: `supplier`, `price`, `count`
-
-#### Server Mencatat Transaksi Restock Yang Baru Dibuat
-Server akan mencatat transaksi yang baru saja dibuat, saya menyarankan pembagian table nya `transactions`, `transaction_status_logs`, `transaction_items`. Maka dengan beberapa table tersebut maka alurnya adalah setelah transaksi dibuat di table `transactions` dengan type `restock` kemudian lanjut mencatat status-nya ke `transaction_status_logs` dengan status `pending`, lanjut ke `transaction_items` yang berisi relasi `tx_id` dan `sku_id`, tentunya di table `transaction_status_logs` akan dicatat juga siapa PIC-nya.
-
-#### Gudang Menerima Restock
-Petugas gudang menerima transaksi Restock lantas meletakkan di rak yang dipilih, kemudian data penerimaan dikirim ke server. Saat server menerima data transaksi beserta penempatannya di rak mana saja, maka di buat record baru di table `transaction_status_logs` dengan tx_id terkait dan status-nya `approved` / `completed` 
+Berikut merupakan alur penyediaan data untuk Order Creation, [Lihat Selengkapnya](./order_creation_provide.md)

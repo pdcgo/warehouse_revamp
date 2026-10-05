@@ -210,8 +210,16 @@ borrowing team's part, and what else does the clone inherit — price, categorie
 ### a-short-delivered-parcel-has-no-home
 *(successor to [a-return-is-never-partial](./context_decision.md#a-return-is-never-partial))* A parcel comes back
 with two of its three items. It is not a return, because a return is the whole order — and it is not `completed`
-either. **→ `problem`**, which already exists and already means *"something went wrong in transit"*, with the
-missing goods written off rather than returned to stock. Is that where it goes, or does it need its own path?
+either. Is that where it goes, or does it need its own path?
+
+🔄 **Recommendation revised 2026-09-29** — it was `problem`, with the missing goods written off. That fails the two
+items that **did** arrive: they must go back to stock, and `problem` has no path to stock. **→ The order becomes
+`return_completed` as usual — the ORDER was returned whole — and the shortfall is recorded one layer down, on
+inventory's receipt**: per line `qty_baik`, `qty_rusak`, `qty_hilang`, summing to what was sent
+([stock_thoni: usulan-penerimaan-sebagian](../stock_thoni/context_clarify.md#usulan-penerimaan-sebagian)). That keeps
+[a-return-is-never-partial](./context_decision.md#a-return-is-never-partial) true — the order carries no per-line
+quantity — and gives the discrepancy the home this question asked for. The loss is the returning team's
+([selling-team-bears-the-receiving-loss](../inventory/context_clarify.md#selling-team-bears-the-receiving-loss)).
 
 ### return_user_id-is-unread
 `team_infos.return_user_id` sits beside the warehouse column, written by nobody and read by nobody. Is a return

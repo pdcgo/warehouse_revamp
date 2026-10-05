@@ -269,6 +269,11 @@ flowchart LR
    and is genuinely part of what the goods cost. A tip is unpredictable, small, and — because
    `freightPerUnit` floors — frequently contributes **0 per unit** while being charged in full on the
    balance. That is the worst possible input to a permanently frozen number.
+   🔄 **2026-09-30 — I withdraw this recommendation.** The floor is a defect of the code's integer division, not a
+   reason to move the money: `stock_thoni`'s proposal keeps it in its own per-unit column, `float`, beside price and
+   freight. And a reimbursement is how the cash returns to the warehouse, not evidence that it is not part of what the
+   goods cost. **Leave it IN, as a separate component** — which is what §Unit Price Components already says
+   ([satu-ongkir-tambahan-tiga-nama](../stock_thoni/context_clarify.md#satu-ongkir-tambahan-tiga-nama)).
 
 7. **Is `product_code` the real field name?** ([Critique 13](#critique))
    🔄 **→ I now recommend RENAMING `sku` → `product_code`, reversing what I said last round.** *Globally unique*
