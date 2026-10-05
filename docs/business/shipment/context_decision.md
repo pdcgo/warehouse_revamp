@@ -409,7 +409,7 @@ flowchart LR
 | --- | --- |
 | host | `shipment_service`, not order_service as I had recommended |
 | name | `ReceiptCheck`, replacing `ReceiptScan` |
-| engine | `backend/pkgs/san_receipt_readers`: a package, and this RPC is its only caller |
+| engine | `backend/packages/san_receipt_readers`: a package, and this RPC is its only caller |
 | still open | who may call it, read or verify, bytes or a stored document: [the clarify](./context_clarify.md#question) |
 
 **Why I now agree.** A receipt is the courier's number for one parcel. Shipment already owns two deferred jobs, the

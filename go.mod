@@ -22,6 +22,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
+	github.com/pdcgo/san_receipt_readers v0.0.0-00010101000000-000000000000
 	github.com/pressly/goose/v3 v3.27.2
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/rs/cors v1.11.1
@@ -49,7 +50,9 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/ledongthuc/pdf v0.0.0-20260907135840-6c8c28e0e8a0 // indirect
 	github.com/lib/pq v1.12.3 // indirect
+	github.com/makiuchi-d/gozxing v0.1.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/richardlehane/mscfb v1.0.7 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
@@ -61,6 +64,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
 require (
@@ -124,3 +128,8 @@ tool (
 	github.com/google/wire/cmd/wire
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )
+
+// san_receipt_readers is its own repo, checked out here as a git submodule
+// (backend/packages/san_receipt_readers). The replace builds against that checkout, so an edit there is
+// seen here at once, without a tag.
+replace github.com/pdcgo/san_receipt_readers => ./backend/packages/san_receipt_readers

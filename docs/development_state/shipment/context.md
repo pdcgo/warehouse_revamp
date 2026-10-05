@@ -27,7 +27,7 @@ audit), and then the pending mark comes off.
 
 ⚠ **The engine's import path is moving.** The owner's receipt_readers doc now says the package has its own repo as a
 submodule (`github.com/pdcgo/san_receipt_readers`), so the handler imports it from there, not from
-`backend/pkgs/san_receipt_readers`.
+`backend/packages/san_receipt_readers`.
 
 ⚠ **Read and not used:** the label's recipient (name, phone, address). Whether it may fill the customer card is the
 order form's question, and it has not been raised yet.

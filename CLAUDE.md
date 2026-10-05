@@ -51,6 +51,8 @@ backend/
   cmd/app_development/       the dev server — wires services into the mux
   gen/                       generated code (never hand-edited)
   pkgs/                      shared, non-service packages (e.g. san_config, san_testdb)
+  packages/                  OTHER REPOS, checked out as git submodules, each its own Go module
+                             (san_receipt_readers) — the root go.mod `replace`s them with these folders
   services/
     team_service/            ← one dir per service (folder ends in _service)
       team_v1/               handler sub-package (matches warehouse.team.v1)
@@ -616,6 +618,7 @@ it once a real domain service replaces it.
 | Regenerate Go + TS | `cd proto && buf generate` — needs Go and `frontend/node_modules`; **no Buf account** |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
+| Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/packages/<name> && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |
 | Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
 | Create the event topics + subscriptions | `go run ./tools/san pubsub ensure --project warehouse-dev --emulator` — **nothing else creates them** |

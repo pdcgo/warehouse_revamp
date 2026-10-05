@@ -142,7 +142,7 @@ export const ReceiptCheckResultSchema: GenEnum<ReceiptCheckResult> = /*@__PURE__
 
 /**
  * ReceiptService reads an uploaded shipping label (receipt-check-is-shipments, in
- * docs/business/shipment/context_decision.md). It runs backend/pkgs/san_receipt_readers and stores
+ * docs/business/shipment/context_decision.md). It runs backend/packages/san_receipt_readers and stores
  * nothing: the order form sends the file's bytes while it uploads the same file to storage
  * (receipt-check-takes-the-file-bytes), and fills only the boxes that are still empty.
  *

@@ -14,10 +14,246 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**158 open questions across 29 files.** The seven below are shown; **151 are not** — they are not
+**170 open questions across 30 files.** The seven below are shown; **163 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▲ **+3 this round — the user prototype is built, and asks three things** (2026-10-02):
+± **0 this round — the receipt reader is its own repo** (2026-10-05): the owner's new §General puts
+`san_receipt_readers` in the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`. Asked as
+receipt_readers Q18 (its own Go module, the folder, CI, a `*.pdf` gitignore) and answered in the same round
+([the-reader-is-a-submodule-with-its-own-module](technical/packages/receipt_readers/context_decision.md#the-reader-is-a-submodule-with-its-own-module)).
+None of the seven moves.
+
+± **0 the round before — `ReceiptCheck`'s critiques accepted, the prototype built** (2026-10-05): the owner accepted all
+three (a `result` in a successful response · a 3 MB read cap on this handler · log the result only), now decisions in
+[shipment](business/shipment/context_decision.md#a-label-outcome-is-a-result-not-an-error). Critiques are not counted
+here, so no number moves. The prototype (the contract, and the order form calling it, stubbed in Storybook) waits at
+`design_accept`.
+
+▼ **−3 the round before — `ReceiptCheck`'s shape answered** (2026-10-05): shipment Q2–Q4 closed, each as recommended.
+Signed-in callers only, no team scope ([receipt-check-needs-a-login](business/shipment/context_decision.md#receipt-check-needs-a-login)) · it reads and
+returns `Extract`'s `ReceiptData`, with no verdict ([receipt-check-returns-what-the-library-reads](business/shipment/context_decision.md#receipt-check-returns-what-the-library-reads)) ·
+the file's bytes, sent beside the upload ([receipt-check-takes-the-file-bytes](business/shipment/context_decision.md#receipt-check-takes-the-file-bytes)).
+Shipment is back to Q1, the eight couriers. None of the seven moves.
+
+▲ **+1 the round before — `ReceiptCheck` is shipment's** (2026-10-05): the owner put the shipping-label reader's RPC
+in shipment_service as `ReceiptCheck`
+([receipt-check-is-shipments](business/shipment/context_decision.md#receipt-check-is-shipments)), which answers
+receipt_readers Q3 (I had recommended order_service). Three questions open in
+[shipment Q2–Q4](business/shipment/context_clarify.md#question): who may call it (recommend signed in, not no-login like
+the channel list, because it parses a caller's file) · read or verify (recommend read: five clean reads still differ from
+their stored receipts) · bytes or a stored document (receipt_readers Q2 re-routed, recommend bytes). Net +1 (shipment +3,
+receipt_readers −2). None outranks the seven.
+
+± **0 the round before — a note with no tracking number is not a label** (2026-10-05): a cross-team order note designed in
+Canva over a background picture, filed by the owner as a non-label. No barcode and no word shaped like a tracking
+number is now `ErrNotShippingLabel` too
+([a-note-with-no-tracking-number-is-not-a-label](technical/packages/receipt_readers/context_decision.md#a-note-with-no-tracking-number-is-not-a-label)).
+No question opened or closed.
+
+▼ **−1 the round before — the Lazada receipt reversed, and Q12 answered** (2026-10-05): the owner withdrew the value the
+"Lazada receipt is its order number" decision rested on. A Lazada label's receipt is the courier's tracking number and
+its order id the 16-digit order number, as first built
+([a-lazada-receipt-is-its-tracking-number](technical/packages/receipt_readers/context_decision.md#a-lazada-receipt-is-its-tracking-number)),
+which answers receipt_readers Q12. `lazada_lex_02`'s mismatch is back in Q17. None of the seven moves.
+
+▼ **−1 the round before — receipt_readers Q7 answered: barcode-confirmed** (2026-10-05): a Shopee label no courier layout
+knows is now read from its Resi box when a barcode on the page says the same
+([a-shopee-resi-is-confirmed-by-its-barcode](technical/packages/receipt_readers/context_decision.md#a-shopee-resi-is-confirmed-by-its-barcode)).
+Run alone, it reads all eighteen Shopee samples with a Resi box exactly as the courier layouts do, including the
+eleven that each cost a round. None of the seven moves.
+
+± **0 the round before — a fifth SiCepat logo** (2026-10-05): a SiCepat `REG` label printed on a larger page, its logo at a
+new size (136×45). Another round [receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)
+would remove. No question opened or closed.
+
+± **0 the round before — a Lazada receipt is its order number** (2026-10-05): the owner said a Lazada label's receipt is its
+16-digit order number, not the courier's tracking number
+([a-lazada-receipt-is-its-order-number](technical/packages/receipt_readers/context_decision.md#a-lazada-receipt-is-its-order-number)).
+That explains one of Q17's mismatches, and reframes
+[receipt_readers Q12](technical/packages/receipt_readers/context_clarify.md#question) to what a Lazada label's order id is
+now (built: empty). No question opened or closed.
+
+± **0 the round before — a Shopee Pos Indonesia label** (2026-10-05): an eighth Shopee number shape (`SHPE` and eighteen
+characters), now read. Pos Indonesia joins [shipment Q1](business/shipment/context_clarify.md#question). No question
+opened or closed.
+
+± **0 the round before — a Shopee ID Express label** (2026-10-05): a seventh Shopee number shape (`IDS` and thirteen
+digits), now read. No question opened or closed.
+
+▲ **+1 the round before — five clean reads that don't match their orders** (2026-10-05): a TikTok / Tokopedia AnterAja label
+now reads (`TSA-…`, `Order ID：` with no `TT`). And two more labels the owner's tool saved read cleanly, so five orders
+store a receipt other than the one their label prints. [receipt_readers Q17](technical/packages/receipt_readers/context_clarify.md#question)
+asks what they store; one is an instant order, which tests the pickup-code decision. A fourth Shopee instant
+header (`Instant`, GoSend) joins the list. None outranks the seven.
+
+± **0 the round before — a Lazada label in J&T's own number format** (2026-10-05): Lazada prints each partner courier's
+format (`JZ…` here), so its rule accepts J&T's shape beside the four-capitals-dash one. No question opened or closed.
+
+± **0 the round before — a Shopee J&T Cargo label, and an order number cut short** (2026-10-05): J&T Cargo on Shopee, told
+apart from SiCepat (same twelve digits) by its logo. Its order number was cut short with an ellipsis, and the stump
+would have been read as the order id with no error; it is now read whole from the label's `Pesan:` line. A third label
+read cleanly but mismatched the stored receipt. No question opened or closed.
+
+± **0 the round before — a second Lazada tracking prefix** (2026-10-05): `JNAP-` beside `LXAD-`, one shape, so the reader
+checks the shape. The label's page 2 captions page 1's 16-digit number `Nomor Order :`, which settles
+[receipt_readers Q12](technical/packages/receipt_readers/context_clarify.md#question); recommended closed, awaiting
+the owner's word. No question opened or closed.
+
+± **0 the round before — a SiCepat logo at a third size** (2026-10-05): a Shopee `REG` label that failed only on its
+logo (140×40), now in the logo table. One more round the logo gate of
+[receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question) cost. No question opened or closed.
+
+± **0 the round before — a TikTok Shop instant label** (2026-10-05): no tracking number, a pickup code under
+`Kode Pengambilan`, the order id after `Nomor Order:`. Its receipt is the pickup code, the Shopee instant decision
+carried over as the default; the owner's tool will show whether TikTok orders store it. No question opened or closed.
+
+± **0 the round before — a screenshot is not a label either** (2026-10-05): the owner filed non-labels in a `pdc_samples/`
+folder, and one, a screenshot of a manual order's note, had an image and slipped through as an unknown label. No text
+and no readable barcode or QR is now `ErrNotShippingLabel` too
+([a-picture-with-no-code-is-not-a-label](technical/packages/receipt_readers/context_decision.md#a-picture-with-no-code-is-not-a-label)).
+No question opened or closed.
+
+▼ **−1 the round before — receipt_readers Q16 answered** (2026-10-05): the owner asked for a separate error for a file that
+is not a shipping label, then split it from "cannot read"
+([a-non-label-gets-its-own-error](technical/packages/receipt_readers/context_decision.md#a-non-label-gets-its-own-error),
+[unreadable-and-not-a-label-are-two-errors](technical/packages/receipt_readers/context_decision.md#unreadable-and-not-a-label-are-two-errors)).
+Two exported errors that never overlap: `ErrUnreadable` and `ErrNotShippingLabel`. None of the seven moves.
+
+± **0 the round before — spam gets its own error, built as Q16 recommends** (2026-10-05): the same Canva file came back
+attached to a third order. A file matching no layout with no image on any page is now `ErrNotShippingLabel` (still the
+unknown-layout refusal), so the owner's iterate tool can skip spam. Q16 stays open for the owner to confirm.
+
+± **0 the round before — Q15 answered, Q16 opened** (2026-10-05): the owner called the Canva-made label spam, so it is
+refused and the layout that read it is gone
+([a-file-that-is-not-a-courier-label-is-refused](technical/packages/receipt_readers/context_decision.md#a-file-that-is-not-a-courier-label-is-refused)).
+[receipt_readers Q16](technical/packages/receipt_readers/context_clarify.md#question) asks how to tell spam from a courier
+label we don't know yet. Recommend rules, not image recognition: every real label carries an image and a tracking
+number, and the spam carries neither. None outranks the seven.
+
+▲ **+1 the round before — a label the seller made** (2026-10-05): designed in Canva, captions and values, no courier,
+tracking number or order id. Built: its recipient is read (the phone in full). [receipt_readers Q15](technical/packages/receipt_readers/context_clarify.md#question)
+asks whether such a label should be read at all, and what its order stores as a receipt. None outranks the seven.
+
+± **0 the round before — a Shopee JNE Trucking label** (2026-10-05): `JTR`, a sixth Shopee number shape (`JT` and eleven
+digits, JNE's despite the prefix), read by its exact shape and confirmed by its barcode. Fixed: a recipient's name
+that runs into the `Pengirim:` caption kept its last letters. No question opened or closed.
+
+± **0 the round before — a Shopee SPX label printed as pictures** (2026-10-05, `shopee_std_01.pdf`): printed through
+Microsoft Print To PDF, so every word is outlines and each graphic its own JPEG. The reader now scans every image of a
+text-less page, not the largest, and finds a JPEG in the file's bytes, since the PDF library has no JPEG filter. Its
+barcodes give the tracking number **and** the order number, so
+[receipt_readers Q13](technical/packages/receipt_readers/context_clarify.md#question)'s OCR option would add only the
+recipient here. No question opened or closed.
+
+± **0 the round before — a Shopee same-day label carried by GoSend** (2026-10-05): the instant template with a third
+header wording, `SAMEDAY` alone, now in the header list. Its receipt is its pickup code, as decided. GoSend joins
+[shipment Q1](business/shipment/context_clarify.md#question). No question opened or closed.
+
+± **0 the round before — a TikTok J&T Cargo label** (2026-10-05): the known template, its logo a size smaller (680×156
+against 683×157), now a second row in the logo table. The first two-page label: page 2 only continues the product list.
+No question opened or closed.
+
+🔄 **±0 the round before — user Q21 elaborated** (2026-10-05) into three parts, checked against the build
+([user Q21](business/user/context_clarify.md#question)). The question is wider than the restock pages: every "who"
+filter (restocks on both sides, and the orders page) asks a manager-only user search, so **Customer Service and Staff
+are refused on four of six filters today**, and a selling Owner on *accepted by* once a warehouse is picked.
+Recommend: a who filter lists the people on the list's own rows, open to whoever may read the list, former and
+suspended people included. None outranks the seven.
+
+▲ **+1 the round before — a Shopee reservation label** (2026-10-05): an SPX parcel to an SPX hub, which prints
+`No.Reservasi:` instead of `No. Pesanan:`. [receipt_readers Q14](technical/packages/receipt_readers/context_clarify.md#question)
+asks whether the reservation number is the order id (built: yes), and whether such an order belongs in the order
+list at all. Fixed: an address block now ends at a line set further down than its own spacing. None outranks the seven.
+
+± **0 the round before — a Shopee `NEXT DAY` label** (2026-10-05): SiCepat's `BEST`, named only by a third SiCepat logo,
+now in the logo table. The third label in a row that
+[receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)'s barcode-confirmed mode would
+have read with no round. Corrected: the `CM` label is "probably JNE" by its prefix only; its sort code's shape is
+Shopee's.
+
+± **0 an earlier round today — a Shopee AnterAja label** (2026-10-05, restored: a concurrent rewrite of this file
+dropped it): a fifth Shopee number shape (fourteen digits), read by its exact shape and confirmed by its barcode.
+AnterAja joins [shipment Q1](business/shipment/context_clarify.md#question). Fixed: an address tag (`HOME`) in the
+address's own size was read as the whole address.
+
+▼ **−1 the round before — user Q24 closed: the owner cancelled short_code** (2026-10-05). It is gone from §General Data
+([a-user-has-no-short-code](business/user/context_decision.md#a-user-has-no-short-code)), and the alias decision of
+minutes earlier is superseded. The user design_accept (Q23) no longer waits on it. Q25 (is the phone kept) stays open.
+
+± **0 the round before — user Q24 answered in part: short_code is a unique alias** (2026-10-05)
+([superseded-short-code-is-a-unique-alias](business/user/context_decision.md#superseded-short-code-is-a-unique-alias)), not the paper mark I
+read it as. [User Q24](business/user/context_clarify.md#question) narrows to four parts: does it replace the per-team
+`alias`, is it required, its format and who changes it, and does the Add Member popup search by it (recommend not, since a
+short code is easy to guess). It still comes before the user design_accept. None outranks the seven.
+
+▲ **+2 the round before — the user doc lists a user's fields, and one of them is new** (2026-10-05): §General Data In Users
+says name, username, email, **short_code**. Nothing in the requirement set or the build reads a short_code, so
+[user Q24](business/user/context_clarify.md#question) asks what it is for. I recommend reading it as the *who did this*
+mark on slips, unique system-wide, never changed. [User Q25](business/user/context_clarify.md#question): the list has no
+phone, which the OTP reset and four decisions use. Q24 now comes before the user design_accept (Q23), because a required
+code adds a field to both create forms. None outranks the seven.
+
+± **0 the round before — a Shopee `Reguler` label** (2026-10-05): a fourth Shopee number shape (`CM` and eleven digits,
+probably JNE), with no courier named anywhere on the label. Read by its exact shape. Its barcode decodes to the same
+number as its `No. Resi:` box, so [receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)
+now offers a lenient mode that is safe: read the box only when the barcode agrees. No question opened or closed.
+
+▲ **+1 the round before — a J&T label printed as a picture** (2026-10-05): the page has no text at all. Its QR code
+carries the tracking number, so the reader now decodes barcodes on a text-less page and reads the receipt;
+[receipt_readers Q13](technical/packages/receipt_readers/context_clarify.md#question) asks whether the rest (order
+id, recipient) is worth OCR. Recommend not yet. None outranks the seven.
+
+▲ **+1 the round before — a Lazada label** (2026-10-02): it read as an empty page, because the label draws its whole
+face as one form and the PDF library never reads inside one; the reader now follows forms itself. Its order id is
+printed with **no caption**, so [receipt_readers Q12](technical/packages/receipt_readers/context_clarify.md#question)
+asks to confirm the 16-digit number is it (built: read). LEX joins
+[shipment Q1](business/shipment/context_clarify.md#question). None outranks the seven.
+
+▼ **−1 the round before — the owner's data answered a receipt question** (2026-10-02): a second GrabExpress label
+read, but its order stores a four-character code as the receipt: the label's pickup code (`Kode Pengambilan`). So an
+instant / same-day order's receipt is its pickup code
+([the-pickup-code-is-the-receipt](technical/packages/receipt_readers/context_decision.md#the-pickup-code-is-the-receipt)),
+and receipt_readers Q6 closes. None of the seven moves.
+
+▲ **+1 the round before — a KiriminAja label** (2026-10-02): an aggregator's label, here for ID Express, read by
+its captions (the tracking number sits under `AWB`). It prints **no marketplace order id**, only KiriminAja's own
+booking number, so [receipt_readers Q11](technical/packages/receipt_readers/context_clarify.md#question) asks
+whether that counts (recommend `""`, unless the orders store it). It is also the first label to print the
+**recipient's phone** in full (Q8 gains the evidence), and ID Express joins
+[shipment Q1](business/shipment/context_clarify.md#question). None outranks the seven.
+
+▲ **+2 the round before — the owner changed the receipt contract** (2026-10-02): no `Courier` ("too hard to
+extract"), and the recipient added (`Phone`, `CustomerName`, `Address`). Built and read on all nine samples.
+The HALU question closes as moot (−1), and three open (+3) in
+[receipt_readers Q8–Q10](technical/packages/receipt_readers/context_clarify.md#question): **no sample prints the
+recipient's phone** (Shopee prints only the sender's, TikTok masks it) · masked values come back empty · the
+address is one string, with words the box wrapped left split. None outranks the seven.
+
+▲ **+1 the round before — a SiCepat `REG` label, named only by its logo** (2026-10-02):
+[receipt_readers Q8](technical/packages/receipt_readers/context_clarify.md#question) asks whether a Shopee label
+from a courier the reader doesn't know should FAIL (built: that's how the owner's iterate tool finds samples) or
+be read with an empty courier (more useful in the order form). Recommend strict while iterating, lenient before
+`ReceiptScan` ships. None outranks the seven.
+
+▲ **+1 the round before — a Shopee `HALU` label** (2026-10-02): its text never names a courier, and the reader
+reads it as **SiCepat** by the service name. [receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)
+asks the owner to confirm the mapping. None outranks the seven.
+
+▲ **+2 the round before — the first live receipt the reader could not read** (2026-10-02): an **SPX** Shopee Instant
+label, saved by the owner's iterate tool. It prints **no tracking number anywhere** (the text, the barcode and the QR
+all carry the order number), so [receipt_readers Q6](technical/packages/receipt_readers/context_clarify.md#question)
+asks what its receipt is. And SPX is not a shipment channel, so
+[shipment Q1](business/shipment/context_clarify.md#question) asks to add it. Built the same round: a second layout,
+and a fix for a silent id truncation (the PDF library reads no Type0 widths).
+
+▲ **+5 the round before — a new package, `receipt_readers`, first pass** (2026-10-02):
+[receipt_readers Q1–Q5](technical/packages/receipt_readers/context_clarify.md#question). Go reads the J&T sample
+(pure Go, 7–9 ms, all three contract fields). Open: which app generated the label (it is `wkhtmltopdf` output, not
+J&T's) · the caller flow, A/B/C · which service hosts the scan · PDFs only or photos too · keeping the sample PDFs
+(a buyer's street address) out of this public repo. None outranks the seven: the order form already runs on a
+stand-in.
+
+▲ **+3 the round before — the user prototype is built, and asks three things** (2026-10-02):
 [user Q21–Q23](business/user/context_clarify.md#question). Do the restock filters stop using `SearchUser` (the decided
 rules would refuse Staff and Customer Service there) · an Admin changes nobody's role, since a team has one role below
 Admin · **design_accept**, which blocks the user pass. None outranks the seven: they block one context's next phase,
@@ -1959,13 +2195,13 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 151 are
+## Where the other 163 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **158**, the whole set, not to 151. Previous rounds left
+*from* these files, so the column sums to **170**, the whole set, not to 163. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 155 last round, ▲ +3 (user Q21–Q23): **158** across 29 files, and the column below sums to it.
+are counted as a DELTA this round, not recounted — 173 last round, ▼ −3 (shipment Q2–Q4 answered, `ReceiptCheck`'s shape): **170** across 30 files, and the column below sums to it.
 
 | File | Open | |
 | --- | ---: | --- |
@@ -1974,7 +2210,7 @@ are counted as a DELTA this round, not recounted — 155 last round, ▲ +3 (use
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-21)** what `return` means — it is a CLAIM, and the owner added a ninth status `return_completed` for the receipt · ▼ −1 the half-finished order is NOT tracked (owner, 2026-09-17) · ▼ −6 pruned 2026-09-17, overtaken by the day's decisions (draft pre-checks, SKU mapping, review reject, the synchronous take, the cross line's cost, what placement means) · ▲ +1 re-routed from shipment: an order cannot be created without a channel. ▲ was 14 — rewritten after the owner's 2026-09-15 edits: six decisions recorded, −2 closed, +4 opened. ⚠ **Counted as `###` headings now** — its questions are named, not numbered |
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 1 | ▼ was 5 — four answered 2026-09-17: a take reduces stock and placement (its shelf half re-routed to inventory Q11) · rupiah is `double` · the take is never retried · inventory computes the markup. Left: which team `team_id` is |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | ▲ **+13 (2026-09-21)**, ▼ **−10 decided the same day** — incl. ✅ the own-line branch FIXED in two passes (the first left a junk map write that read as a fix) and ✅ a ninth status `return_completed`, which superseded the eight-status decision (the map’s key · written once · never partial · a return may land in another warehouse · **the return warehouse is per TEAM** · **it is read when the return happens, not frozen on the order** — the last two both reversed my recommendations, and together they mean the whole configuration is a column that already ships and the order carries nothing about returns). ✅ **The whole return-warehouse cluster is now CLOSED** — five decisions, three of which reversed my recommendation, and what is left to build is an **editor** and a **reader** for a column that already ships. ⛔ The open successor is **who creates the return** — CS from an office or the receiving warehouse — which decides the screen and decided the last argument — incl. ⛔ **the return warehouse is a SECOND warehouse**: stock is keyed `(warehouse_id, product_id)`, so a unit taken from the fulfilling warehouse returns onto a DIFFERENT pile, and nothing moves it back, ▼ **−3 decided the same day** — the map’s key and its stale `to_product_id` · a map is written once · **a return is never partial** (which reversed my own recommendation and made the owner’s qty-less flow correct as drawn). ▲ +1 successor: a short-delivered parcel is now neither a return nor completed. — the owner added `## Order Return Flow.` and a second table, `product_return_maps`. ✅ Its diagram **parses**. ⛔ The own-product branch routes through the cross-product map and ends in `Clone Product`, so a team **duplicates its own catalogue** on every return · the map's uniqueness names `to_product_id`, **not a column** · the warehouse is read twice, two ways, in one picture · a clone needs a `product_code` nobody generates now that the code is composed · no line carries a returned **quantity**. ⛔ **And `team_return_configurations` already exists as `team_infos.return_warehouse_id`** in another service, unread and with no editor. **See #6** |
-| [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 0 | ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
+| [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 1 | ▼ **−3 (2026-10-05, later)** Q2–Q4 answered as recommended: signed in, read not verify, the bytes. Before that: ▲ **+3 (2026-10-05, `ReceiptCheck`)** Q2–Q4 — the owner put the label reader's RPC here ([receipt-check-is-shipments](business/shipment/context_decision.md#receipt-check-is-shipments)): who may call it (recommend signed in) · read or verify (recommend read) · bytes or a stored document (re-routed receipt_readers Q2, recommend bytes). Before that: ▲ **+1 (2026-10-02)** Q1 — **are SPX, GrabExpress, J&T Cargo, ID Express, LEX, AnterAja, GoSend and Pos Indonesia channels?** (GrabExpress, J&T Cargo, ID Express, LEX, AnterAja and GoSend joined since, ID Express via a KiriminAja label, and KiriminAja itself is an aggregator, not a channel) A live order's receipt is an SPX Shopee Instant label, and the channel list is jne, jnt, sicepat. Recommend adding `spx` (a row root creates). Found by the receipt reader. Before that: ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-28)** Q6 — where a shop lives — moved to [shop Q2](business/shop/context_clarify.md#question), ✅ answered 2026-09-29 — its own `shop_service`. Before that: ▼ **−1 (2026-09-26)** Q7 — where a withdrawal lives, answered by settlement's type list. Before that: ⚠ **counted 10 here last round and 11 mechanically** — the row said "count unchanged" while one had been added. 🔄 2026-09-17: re-examined against the built shipment context — every `shipping_service` proposal rewritten, Q8 (region) reworded to *does region_service stay separate*, +1 Contradiction: its line 13 still describes the old shipping service. Count unchanged. ▼ was 11 — Q2 became a pointer to order's half-finished-orders question. What stayed is a contradiction, not a question |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 | ▼ **−1 (2026-10-01)** Q11 answered — an accepted payment is final, the reverse is removed. Before that: ▼ was 9 — `found` needs no handshake |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 12 | ▲ **+1 (2026-10-02)** Q12 moved from user Q3 — who confirms a count or a loss, five parts. Before that: ▲ +1 re-routed from order_creation: a stock count between create and pick re-adds a taken unit · ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |
@@ -1982,7 +2218,7 @@ are counted as a DELTA this round, not recounted — 155 last round, ▲ +3 (use
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ which markup does the ledger charge from |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 12 | +6 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
-| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 3 | ▲ **+3 (2026-10-02)** Q21–Q23 from the prototype — the restock filters' search, an Admin changes no role, design_accept. Before that: ✅ nothing open — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
+| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 4 | 🔄 **±0 (2026-10-05)** Q21 elaborated: every who filter, three parts; the floor roles are refused on four of six today. Before that: ▼ **−1 (2026-10-05)** Q24 closed, short_code cancelled. Q21–Q23 and Q25 open. Before that: ± **0 (2026-10-05)** Q24 answered in part: short_code is a unique alias, four rules left. Before that: ▲ **+2 (2026-10-05)** Q24–Q25 from §General Data: what short_code is for, and whether the phone stays. Before that: ▲ **+3 (2026-10-02)** Q21–Q23 from the prototype — the restock filters' search, an Admin changes no role, design_accept. Before that: ✅ nothing open — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | 🔄 **Q2 now holds #2** (2026-09-28) — the settlement report's check was declined, so whether any report can heal a lost event is the open decision. See **#2**. Before that: ▲ the `### Why` section landed — it argues the pattern's case but names the wrong coupling, and it opens a structural one: is `analytic` a LIBRARY or a SERVICE |
 | [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 4 | 🆕 counted for the first time |
 | [business/project/member_clarify.md](business/project/member_clarify.md#question) | 5 | 🆕 who DECIDES, rather than what the system does. ▼ progress reporting is settled |
@@ -1996,6 +2232,7 @@ are counted as a DELTA this round, not recounted — 155 last round, ▲ +3 (use
 | [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 0 | ▼ was 1 — ✅ **every question closed**: Q6, Q14 and Q15 all decided part by part, on top of Q1–Q13. **Twenty-three decisions**, the newest being the required `oneof`, one decoder, breaking the old protos accepted, `identity` settled in four parts, and CI on `dev` with `buf breaking` — applied. ⛔ **What blocks the first event here is a contradiction, not a question** — the shipped library cannot publish the decided envelope, and `context.md` lags its own decisions. See **#6** |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
 | [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 7 | ▲ **+1 (2026-09-24)** Q7 — a fourth TikTok layout renamed the item's headers; the reader is fixed, but whether keys survive the switchover is unmeasured, and 18 of 22 sample adjustments carry a `Type` the new layout respells or drops. Before that: 🆕 **a new technical package, first pass** — the Shopee/TikTok settlement file reader, measured against all 25 sample workbooks rather than read off the spec. ⛔ **Two findings are load-bearing beyond this package**: TikTok's column set is **not fixed** (three layouts across 13 files — `Flat fee` and `Sales fee` vanish, `GMV Max ad fee` appears), and **neither platform gives a per-row unique key**, which contradicts settlement's `hash(date + order_ref_id)`. ▼ **The Shopee half of that closed the same day** — the owner added a `### Shopee Contract` with a `GenerateUniqueID` (md5 over six fields), and it survived testing: **0 collisions in 3788 rows** across 12 files, both duplicate-row pairs distinct, and **141/141 stable** across a re-save through another tool. What is left is TikTok, whose `Order/adjustment ID` repeats. ⚠ The new contract opened three of its own, all about that hash being taken over `json.Marshal` of a struct that will change — and it **corrected one of my recommendations into a recorded contradiction**: I proposed `int64` rupiah in a `technical/` doc against [rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point), which was decided system-wide in the *order* tree and had already rejected that same recommendation once. The other five are scope and typing: verbatim strings or an enum · is Tokopedia a *format* or a *column* · fixtures or real values (`wderror`, `x`) · what timezone is stored · does the package read only settlement reports. ⚠ Also non-design: **`examples/` is untracked and not gitignored**, and the workbooks carry real seller usernames and revenue into a PUBLIC repo. ▼ **−1 and SHIPPED (2026-09-24)** — three decisions recorded ([hash-the-whole-struct](technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) · [jakarta-is-the-clock](technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock) · [dash-is-not-a-reference](technical/packages/excel_readers/context_decision.md#dash-is-not-a-reference)), and `backend/pkgs/san_excel_readers/shopee.go` is built and green over all 12 sample workbooks. The timezone question closed by being decided. ⛔ **The remaining six are TikTok-shaped or unresolvable at item level**: the item is capped at six fields forever, so the recovered order ref and the reversal flag have nowhere to live but the document |
+| [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 | ▼ **−2 (2026-10-05, `ReceiptCheck`)** — Q3 answered (shipment hosts it), Q2 moved to [shipment Q4](business/shipment/context_clarify.md#question). Before that: ± **0 (2026-10-05, a note with no tracking number)** — a third non-label rule. Before that: ▼ **−1 (2026-10-05, Q12 answered)** — the Lazada receipt reversed back to the tracking number, the order number is the order id. Before that: ▼ **−1 (2026-10-05, Q7 answered: barcode-confirmed)** — a Shopee label no courier layout knows is read when its barcode confirms its Resi box. Before that: ± **0 (2026-10-05, a fifth SiCepat logo)** — 136×45. Before that: ± **0 (2026-10-05, a Lazada receipt is its order number)** — decided; Q12 reframed to the Lazada order id, Q17 down to four mismatches. Before that: ± **0 (2026-10-05, a Shopee Pos Indonesia label)** — `SHPE…`, an eighth Shopee shape. Before that: ± **0 (2026-10-05, a Shopee ID Express label)** — `IDS…`, a seventh Shopee shape. Before that: ▲ **+1 (2026-10-05, Q17)** — five labels read cleanly but mismatch their orders' stored receipts: what do they store? A TikTok AnterAja label reads (`TSA-…`). Before that: ± **0 (2026-10-05, a Lazada label in J&T's format)** — `JZ…` accepted beside `LXAD-…`. Before that: ± **0 (2026-10-05, Shopee J&T Cargo, a cut order number)** — read whole from `Pesan:`, never the stump. Before that: ± **0 (2026-10-05, a second Lazada prefix)** — `JNAP-`; Q12 settled by the label itself, awaiting confirmation. Before that: ± **0 (2026-10-05, a SiCepat logo at a third size)** — one row in the logo table. Before that: ± **0 (2026-10-05, a TikTok Shop instant label)** — the pickup code is its receipt by default. Before that: ± **0 (2026-10-05, a screenshot is not a label)** — no text and no readable code is `ErrNotShippingLabel` too. Before that: ▼ **−1 (2026-10-05, Q16 answered)** — `ErrUnreadable` and `ErrNotShippingLabel`, two exported errors that never overlap. Before that: ± **0 (2026-10-05, spam built as Q16 recommends)** — `ErrNotShippingLabel` for a file with no layout and no image; Q16 awaits the owner's confirmation. Before that: ± **0 (2026-10-05, Q15 answered, Q16 opened)** — the Canva label is spam and refused; Q16: tell spam from an unknown courier label, by rules (recommended) or image recognition. Before that: ▲ **+1 (2026-10-05, a label the seller made)** Q15 — no courier, tracking number or order id: read its recipient (built) or refuse it, and what does its order store as a receipt? Before that: ± **0 (2026-10-05, a Shopee JNE Trucking label)** — `JT` and eleven digits by exact shape; a name fused to the sender caption keeps its end. Before that: ± **0 (2026-10-05, an SPX label printed as pictures)** — every image scanned, JPEGs read, the order id from a barcode. Before that: ± **0 (2026-10-05, a Shopee same-day label, GoSend)** — a third instant header, `SAMEDAY`. Before that: ± **0 (2026-10-05, a TikTok J&T Cargo label)** — a second J&T Cargo logo size; Q7 notes the barcode check reaches Shopee only. Before that: ▲ **+1 (2026-10-05, a Shopee reservation label)** Q14 — `No.Reservasi:` instead of `No. Pesanan:`: is the reservation number the order id (built: yes), and does a parcel to an SPX hub belong in the order list? Before that: ± **0 (2026-10-05, a Shopee NEXT DAY label)** — SiCepat BEST, a third SiCepat logo added; Q7's barcode mode would have skipped this round too. Before that: ± **0 (2026-10-05, a Shopee AnterAja label)** — fourteen digits by exact shape; Q7's barcode-confirmed option would have read this and the Reguler label with no round. An address tag no longer becomes the address. Before that: ± **0 (2026-10-05, a Shopee Reguler label)** — a `CM…` number (probably JNE) read by its exact shape; Q7 gains a third option, lenient but confirmed by the barcode. Before that: ▲ **+1 (2026-10-05, a J&T label printed as a picture)** Q13 — no text at all: the receipt is decoded from its QR code (built, `gozxing`), and the order id and recipient would need OCR. Recommend not yet. The contradiction about the form's `JP` rule gains a second real prefix, `JX`. Before that: ▲ **+1 (2026-10-02, a Lazada label)** Q12 — its order id is printed with no caption: is the 16-digit number it? Built: read. The label is one Form XObject the library never opened (the reader now follows forms), and subset-font widths had never been found (fixed). Before that: ▼ **−1 (2026-10-02, the owner's data)** Q6 closes: an instant / same-day order stores its pickup code (`Kode Pengambilan`) as the receipt, so the reader now returns it ([the-pickup-code-is-the-receipt](technical/packages/receipt_readers/context_decision.md#the-pickup-code-is-the-receipt)). Q7–Q11 keep their numbers. Before that: ▲ **+1 (2026-10-02, a KiriminAja label)** Q11 — it prints no marketplace order id, only KiriminAja's `OID-…` booking number: is that the order id? Recommend `""` (built) unless the orders store it. Read by caption (`AWB`), any courier KiriminAja books. First label to print the recipient's phone. Its bold is drawn twice (doubled glyphs, now dropped). Before that: ▲ **+2 (2026-10-02, the contract edit)** — no `Courier`, the recipient added. HALU closes (moot), and Q8–Q10 open: no sample prints the recipient's phone · masked → empty · the address joins wrapped lines. A ninth sample, TikTok J&T Cargo, reads too (logo gate, fingerprint now covers the alpha mask). Before that: ± **0 (2026-10-02, after SiCepat REG)** — an OLDER SiCepat print: number printed once (read from its `Resi:` box, safe because 12 digits cut short fail), and the SiCepat logo at a second size (145×40). Q8 gains the evidence: an exact-match logo table grows one entry per render size. Before that: ▲ **+1 (2026-10-02, after GrabExpress)** Q8 — a SiCepat `REG` label is named only by its logo (`REG` is also JNE's), so logos now CONFIRM a courier where the text names none: fail or read-without-courier when nothing does? Before that: ± **0 (2026-10-02, after HALU)** — a **GrabExpress** `Same-day` label: the Shopee instant template with another header and logo. Read now (no tracking number, courier from a table of known logos). Folds into Q6 and [shipment Q1](business/shipment/context_clarify.md#question), which now asks for `spx` and `grabexpress`. Before that: ▲ **+1 (2026-10-02, newest)** Q7 — a Shopee `HALU` label names no courier in its text, read as SiCepat by the service name: confirm? Read with the same most-printed rule, now shared (`mostPrinted`). Before that: ± **0 (2026-10-02, last)** — a fourth sample, **SPX `ECO`** (`spx_03.pdf`): its Resi box wraps the number and its caption is `Resi:`, so the SPX number is now read as the `SPXID` token printed most often (≥ 2×, no tie), never from the box. Before that: ± **0** — a third sample, **SPX standard** (`spx_02.pdf`), prints `No. Resi: SPXID…` and reads now. It also **reversed my logo match**: the same SPX logo was a different image (68×27 → 77×24), so the courier comes from text (`SPXID`), and on the instant label the logo is only a hint. Q6 widens to the instant label's courier too. Also fixed: rotated text reporting a 3.7e-16 size leaked into lines. Before that: ▲ **+1 (2026-10-02, later)** Q6 — the owner's iterate tool hit an **SPX** Shopee Instant label: it prints **no tracking number** anywhere, so what is its receipt? Recommend `""` (built), since the order number again would trip the form's refs-distinct error. Built the same round: an SPX instant layout (named only by its logo, matched by pixel hash), and a fix for a **silent id truncation** (the library reads no Type0 widths, so kerning split words). Before that: 🆕 **(2026-10-02) a new technical package, first pass**: the shipping-label (resi) reader the order form's `scanReceipt` stand-in is waiting for. **Proven doable, and ✅ BUILT to the owner's contract the same day** (`backend/packages/san_receipt_readers/`, 10 tests on synthetic PDFs + `TestSamples` over the real ones): pure-Go `ledongthuc/pdf` reads the J&T sample in 7–9 ms, once the package groups glyphs into lines itself (the library's own row grouping returned the whole page as one row). No caller is built. Two decisions recorded ([three-fields-only](technical/packages/receipt_readers/context_decision.md#three-fields-only) · [the-reader-finds-the-courier](technical/packages/receipt_readers/context_decision.md#the-reader-finds-the-courier)). Open: which app generated the label (`wkhtmltopdf`, not J&T) · caller flow A/B/C · host service · PDFs only · sample privacy (a buyer's street address, public repo). ⚠ A contradiction found in code: the form's J&T rule is `JP…`, and the real label is `JY…` |
 | [business/mcp/context_clarify.md](business/mcp/context_clarify.md#question) | 6 | ⛔ **±0 (2026-09-29, later)** Q2 answered — A, and ChatGPT and Claude — and the two conflict: Q8 opens, since ChatGPT cannot reach the shipped app ([Contradiction](business/mcp/context_clarify.md#the-shipped-app-cannot-reach-chatgpt)). Before that: 🔄 **±0 (2026-09-29)** the owner's §General 3 names the Go SDK ([the-mcp-uses-the-official-go-sdk](business/mcp/context_decision.md#the-mcp-uses-the-official-go-sdk)) — it builds every option Q2 weighs · Q2 reworded into 2a, which protocol crosses to us, and 2b, which agents. Before that: ▼ **−1 (2026-09-29)** Q1 answered — the agent only reads, for now, and the server refuses any write ([an-agent-only-reads-for-now](business/mcp/context_decision.md#an-agent-only-reads-for-now)); it rules out the session token as the agent's credential. Before that: 🆕 **a new context, first pass (2026-09-29)** — a local MCP app shipped to users, so their own AI agent reads and analyzes their data through the RPC API. Nothing is built and nothing waits on it, so none of the seven enters the list above. ⛔ Two belong before the first line of code: may the agent act or only read (Q1) — it acts on text a buyer typed — and does a key carry the root bypass (Q4), which would hand every team's data to a third-party AI. The other five: where the tools live and which agents must be reached · how an account connects · who may send a team's data out · which data first · whether a buyer's name, phone and address may leave |
 | [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 0 | ✅ **(2026-10-01) BUILT** — design_accept passed, and the service, the withdrawal listener and its screens are implemented, tested and audited ([state report](development_state/financial_account/context.md)). Before that: 🔨 **(2026-10-01) the prototype is built**. Before that: ▼ **−3 (2026-10-01)** Q15–Q17 answered as recommended, critique 9 adopted · **nothing left open**. Before that: ▲ **+3 (2026-10-01)** the analytics section — Q15 which day a row counts in, Q16 the daily row's grain, Q17 how it is computed. Before that: ▼ **−1 (2026-10-01)** Q9 answered — where to pay is the team's description · **nothing left open**. Before that: ▼ **−1 (2026-10-01)** Q14 answered — there is no reversal to hear. Before that: ▲ **+1 (2026-09-30)** Q14 opened — a payment accepted, then reversed; team payments post on acceptance only. Before that: ± **0 (2026-09-30)** critiques 1 and 2 decided — no critique left, only Q9. Before that: ± **0 (2026-09-30)** critiques 4 and 8 adopted — two critiques left. Before that: ± **0 (2026-09-30)** `provider`, `name` + `holder_name`, `occurred_at` adopted — four critiques left. Before that: ± **0 (2026-09-30)** the log names its account — no contradiction left. Before that: ± **0 (2026-09-30)** the team record's bank dropped, not copied; Q9 narrows to where a team is paid. Before that: ± **0 (2026-09-30)** `shop_id` unique — the shop-key contradiction closes; one contradiction left, the log's account. Before that: ▼ **−1 (2026-09-30)** Q13 answered — settlement's ads and the accounts are independent; `ads_expense` joins the types. Before that: ▼ **−2 (2026-09-30)** Q2 and Q3 answered — a restock and an expense must name the account that paid, required against my *optional*; Q12 answered — an unknown account is filled in or moved in; Q13 opened — an ads charge from the seller balance. Before that: ± **0 (2026-09-30)** Q11 answered — an `unknown` account; Q12 opened — how it becomes the real one. Before that: ± **0 (2026-09-30)** Q1 answered — `shop_accounts`; Q11 opened — a shop with no row; `operational_accounts` narrows Q2; ⛔ a second contradiction — both new keys allow several accounts. Before that: ± **0 (2026-09-29)** Q1 narrowed — `revenue_fund` is `withdrawal`, revenue stays in settlement; where it lands is left. Before that: ▼ **−1 (2026-09-29)** Q8 answered — the whole team sees, admin and up move the money (seeing against my recommendation). Before that: ▼ **−1 (2026-09-29)** Q10 answered — one way in per type; Q1 and Q3 narrow to which account a withdrawal and an expense name. Before that: ± **0 (2026-09-29)** Q10 narrowed — `restock` is never typed by hand; `expense`, `revenue_fund`, `team_payment` left. Before that: ▼ **−1 (2026-09-29)** Q4 answered — an adjustment is only a reconcile's difference; `balance_after` adopted from critique 5 · ⚠ the log still has no account column. Before that: ± **0 (2026-09-29, the owner's second and third edits)** `opening_balance`, `transfer`, `team_payment`, then `capital`, joined the list — Q4 narrows to whether `adjustment` is for reconciling only. Before that: ▼ **−3 (2026-09-29)** Q5, Q6, Q7 answered as recommended — the team's e-wallet · a real account recorded once (closes the cash-number contradiction; ⚠ ripples into Q9) · below zero warned, never refused. Before that: ▲ **+1 (2026-09-29, the owner's first edit)** Q10 — which way each type comes in; two decisions recorded (one ledger · by hand or from the broker), and the log's missing account is now a contradiction. Before that: 🆕 **a new context, first pass (2026-09-29)** — a team's bank, ShopeePay and cash accounts, each with a balance and a log. Nothing is built and nothing waits on it, so none of the nine enters the list above. ⛔ The log names neither its account nor its cause (critique 1), `adjustment` is the only type for anything off the list, and `account_number` is unique while a cash box has none (a contradiction). Four questions reach built services: the restock's payment picker (Q2), the expense form (Q3), team payments (Q4), the team record's bank fields (Q9). **Q4 and Q8 first** — which forms exist, and which screens show a balance |
 

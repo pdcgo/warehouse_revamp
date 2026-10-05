@@ -135,12 +135,33 @@ sequenceDiagram
 
 > Re-routed: *an order with an unknown courier* → [order](../order/context_clarify.md#an-order-cannot-be-created-without-a-channel).
 
+1. **Are SPX, GrabExpress, J&T Cargo, ID Express, LEX, AnterAja, GoSend and Pos Indonesia channels?** (2026-10-02) §Shipment Channel That Exists lists `jne`,
+   `jnt` and `sicepat`. But live orders' receipts, read by the [receipt reader](../../technical/packages/receipt_readers/context_clarify.md),
+   include **SPX** labels (instant, `STD` and `ECO`), a **GrabExpress** same-day label, a TikTok **J&T Cargo**
+   label (J&T's freight brand, not J&T Express), an **ID Express** label booked through KiriminAja, a Lazada
+   label carried by **LEX**, Lazada's own courier, and Shopee labels carried by **AnterAja**, by **GoSend** (same-day) and by **Pos Indonesia**. Under
+   [a-channel-is-a-courier](./context_decision.md#a-channel-is-a-courier), those orders have no channel to point
+   at. (A Shopee `HALU` label reads as `sicepat`, a Shopee `CM…` label is probably `jne` by its prefix, and a Shopee `JTR` label is JNE Trucking by its logo; both are already listed.)
+   **→ Recommend adding `spx`, `grabexpress`, `jntcargo`, `idexpress`, `lex`, `anteraja`, `gosend` and `pos`.** They're rows root creates, not a schema
+   change. The reader no longer returns a courier, so this stands on the orders alone: live orders ship by all eight.
+   ⚠ **KiriminAja is not a channel.** It's an aggregator: the seller books a courier through it, and the parcel is
+   carried by that courier. Then treat the list as "what live orders ship by", checked against the receipts,
+   rather than as a fixed three.
+
+   ```mermaid
+   flowchart LR
+     R["live receipts, SPX, GrabExpress, J and T Cargo, ID Express, LEX, AnterAja, GoSend, Pos"] --> C{"shipment_channels.code"}
+     C -->|"jne, jnt, sicepat"| N["no match, no channel for the order"]
+     C -->|"after adding the eight"| Y["each order points at its courier"]
+     KA["a KiriminAja label"] -->|"the courier it booked"| C
+   ```
+
 > ✅ **Answered and deleted (2026-10-05): Q2–Q4**, `ReceiptCheck`'s shape. Who may call it:
 > [receipt-check-needs-a-login](./context_decision.md#receipt-check-needs-a-login). Read or verify:
 > [receipt-check-returns-what-the-library-reads](./context_decision.md#receipt-check-returns-what-the-library-reads). Bytes or a
 > document: [receipt-check-takes-the-file-bytes](./context_decision.md#receipt-check-takes-the-file-bytes).
 
-*No open question.* Deferred with their own design pass: tracking, the handover.
+Deferred with their own design pass: tracking, the handover.
 
 ---
 
