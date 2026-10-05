@@ -30,6 +30,7 @@ points are **deleted**, so this file is always the current open set.
 > | *(you asked)* elaborate Q21 | 🔄 **Q21** split into three parts, checked against the build: the orders page's creator filter is a third site · ⚠ the floor roles are refused on four of six who filters **today**, and a selling Owner on *accepted by* once a warehouse is picked · ⚠ the suspended rule, as specified, would hide former staff from every filter |
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
+> | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
 > | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
 > | the member-flow heading now names the Admin | ✅ [the-member-flow-leaves-out-the-admins](#the-member-flow-leaves-out-the-admins) resolved · your diagram parses |
@@ -184,91 +185,22 @@ made ([an-account-is-made-only-from-the-member-search](./context_decision.md#an-
 Next is backend analysis, which builds the decided-not-built list in the
 [state report](../../development_state/user/context.md).
 
-### Build order — proposed
+### Build order — decided
 
-[Q26](#question). The rename is two changes, so step 1 is two steps. Both come before step 2, because step 2 is the
-code that compares roles.
-
-```mermaid
-flowchart LR
-  A["1a — add admin_owner, admin_administrator"] --> R["1b — rename four roles"]
-  R --> U["2 — user_service rules"]
-  U --> O["3 — the other services"]
-  A --> T["the admin team reads every team · the two labels"]
-```
-
-| step | what | items in the state report |
-| --- | --- | --- |
-| 1a | add `ROLE_ADMIN_OWNER` and `ROLE_ADMIN_ADMINISTRATOR`; an admin-type team's creator gets `admin_owner`; the admin team's reads; the labels | 1 (the new roles) · 12 · 15 |
-| 1b | rename `TEAM_OWNER` → `SELLING_OWNER`, `TEAM_ADMIN` → `SELLING_ADMIN`, `TEAM_CUSTOMER_SERVICE` → `SELLING_CS`, `ADMIN` → `ADMINISTRATOR`, every number kept | 1 (the rename) |
-| 2 | grant checks, the search, one account per phone or email, suspend by role, no delete, erase, the username, the dev root, `san` adds and removes a Root, the membership log, removal, the record | 2–11 · 13 · 16 · 19 |
-| 3 | the override stamp, the warehouse Admin's money limits, the who filters in inventory and selling | 14 · 17 · 18 |
+1a add `admin_owner` and `admin_administrator` · 1b rename four roles · 2 user_service rules · 3 the other services —
+[rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks).
 
 ---
 
 ## Critique
 
-Two open: 27 from design_accept, 28 found after it. Critiques 23, 24 and 26 were answered with Q21, Q22 and Q25 on
-2026-10-05.
-
-### Critique 27 — the build starts, and the step it starts with is on hold
-
-*(Elaborated 2026-10-05, checked against the build.)* "The rename" is two changes of different risk, and only one of
-them blocks anything.
-
-| | 1a — add two roles | 1b — rename four roles |
-| --- | --- | --- |
-| what | `ROLE_ADMIN_OWNER`, `ROLE_ADMIN_ADMINISTRATOR`, new numbers | `ROLE_TEAM_OWNER` → `ROLE_SELLING_OWNER` · `ROLE_TEAM_ADMIN` → `ROLE_SELLING_ADMIN` · `ROLE_TEAM_CUSTOMER_SERVICE` → `ROLE_SELLING_CS` · `ROLE_ADMIN` → `ROLE_ADMINISTRATOR`, numbers kept |
-| touches | the enum, `ownerRoleFor`, the team-info and member policies, the role labels | 444 policy lines in 19 protos · 31 Go references · 76 TypeScript references in 11 files · CLAUDE.md's roling section, two FAQ pages, `database-schema.md`, team_service's `rpc.md` |
-| stored data | an admin-type team's members move to the new roles. Dev has none | none: every number is kept |
-| blocks | the admin team reading every team, the *Admin Team Admin* label, keeping the admin team's Admin out of member management | nothing: step 2 can be written on the old names |
-| clashes with other branches | none, it only adds | any branch that edits a policy. Today none is open: `hfrada` merged at 17:29, and `thoni` changes no proto |
-
-Three finds:
-
-| | the find | → Recommend |
-| --- | --- | --- |
-| **a** | ⚠ **the old name has already misled the code once.** `ownerRoleFor` ([mapper.go:59](../../../backend/services/team_service/team_v1/mapper.go#L59)) gives an admin-type team's creator `ROLE_TEAM_OWNER`, which is the **selling** Owner. Read as "a team's owner" it looks right, and it breaks [admin-team-roles-manage-only-their-team](./context_decision.md#admin-team-roles-manage-only-their-team): that Owner may call every selling RPC inside its own team. Dev has no admin-type team, so the next one created is the first to get it | 1a, which gives it `admin_owner` |
-| **b** | step 2's grant checks are about "an Owner" and "an Admin": never make another Owner, never another Admin, only below your own. There are three Owner roles, one of them called `TEAM_OWNER`, so a check written `role == ROLE_TEAM_OWNER` reads as complete and misses the warehouse Owner. Find **a** is that mistake already made once | 1b before step 2, so the code that compares roles is written once, under names that say which team |
-| **c** | the UI talks JSON, so role **names** travel on the wire. After 1b a browser tab still running the old bundle sends `ROLE_TEAM_OWNER` and is refused until it reloads. An alias would cover it, but buf's `STANDARD` lint forbids `allow_alias` | no alias: a reload is enough. If a deployed build is already in daily use, say so and 1b keeps the old names as aliases for one release, with a lint exception |
-
-**→ Recommend:** lift the hold on both, 1a then 1b, before step 2. 1a because it blocks three decisions and fixes find
-**a**. 1b because the old names have already caused one bug, and step 2 is where they would cause more. Today is the
-cheapest day for 1b, because no open branch edits a policy. [Q26](#question).
-
-### Critique 28 — a new team's first Owner is whoever created it
-
-[team_create.go:24](../../../backend/services/team_service/team_v1/team_create.go#L24) grants the **caller** the Owner
-role. Only Root and the Administrator create teams, so:
-
-| | what follows |
-| --- | --- |
-| the Administrator | becomes the Owner of every team they create, and stays one until Root removes them, since nobody changes their own role |
-| the team's real owner (the seller, the warehouse manager) | has to be added as a **second** Owner, by Root or the Administrator |
-| every team's member list | shows the Administrator as an Owner, though they already act in every team without being a member ([the-administrator-can-do-anything](./context_decision.md#the-administrator-can-do-anything)) |
-
-[an-owner-never-makes-another-owner](./context_decision.md#an-owner-never-makes-another-owner) says *"a team's first
-Owner comes with the team"*, and does not say who that person is.
-
-```mermaid
-flowchart LR
-  subgraph "today"
-    A1["the Administrator creates Toko Melati"] --> O1["the Administrator is its Owner"]
-  end
-  subgraph "proposed"
-    A2["the Administrator creates Toko Melati"] --> F["the form names Ani, found or created"]
-    F --> O2["Ani is its Owner"]
-  end
-```
-
-**→ Recommend:** the Create Team form names the first Owner, found with the same search as Add Member (and created if
-missing), and the person creating the team is not made a member. [Q27](#question).
+None open. Critiques 27 and 28 were answered with Q26 and Q27 on 2026-10-05; 23, 24 and 26 with Q21, Q22 and Q25.
 
 ---
 
 ## Question
 
-**Two open**: Q26 from design_accept, Q27 found after it. Q3–Q25 are answered and recorded in [context_decision.md](./context_decision.md).
+**None open.** Q3–Q27 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -302,21 +234,21 @@ missing), and the person creating the team is not made a member. [Q27](#question
     unique alias, now [superseded-short-code-is-a-unique-alias](./context_decision.md#superseded-short-code-is-a-unique-alias).
 25. ✅ **Answered** (2026-10-05): name, username, email, phone and photo; name and username required; the per-team `alias`
     removed — [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo), [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required).
-26. 🔄 **Elaborated** (2026-10-05): the rename on hold since 2026-10-02 is two changes, and only one blocks anything
-    ([Critique 27](#critique), [build order](#build-order--proposed)).
-    - **a.** Add `admin_owner` and `admin_administrator` now, and give an admin-type team's creator `admin_owner`.
-      **→ Recommend: yes.** It only adds, clashes with no branch, unblocks three decisions, and fixes find **a**.
-    - **b.** Rename the four roles now, before step 2's grant checks. **→ Recommend: yes.** The old names have already
-      caused one wrong grant, and no open branch edits a policy today.
-    - **c.** No alias for the old names: a browser tab on the old bundle reloads once. **→ Recommend: yes**, unless a
-      deployed build is already in daily use.
-27. **When a team is created, who is its first Owner: a person the form names, or whoever created it?** ([Critique 28](#critique))
-    **→ Recommend: a person the form names**, found with the Add Member search and created if missing. The creator is
-    not made a member, because Root and the Administrator already act in every team.
+26. ✅ **Answered** (2026-10-05): all three parts — add the two admin-team roles first, rename the four before the grant
+    checks, no alias — [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first), [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names).
+27. ✅ **Answered** (2026-10-05): the Create Team form names the first Owner, and the creator is not made a member —
+    [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner).
+
 
 ---
 
 # Contradiction
+
+**Re-checked after Q26 and Q27 (2026-10-05): none between docs.** Two of my own sites went stale and each now carries a
+🔄: [the-role-names-are-the-codes-names](./context_decision.md#the-role-names-are-the-codes-names) counted 284 policy lines (now 444), and
+[an-owner-never-makes-another-owner](./context_decision.md#an-owner-never-makes-another-owner) never said who the first Owner is. team_service's
+[rpc.md](../../services/team_service/rpc.md) describes `TeamCreate` granting the caller, which stays true until
+[the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner) is built; that commit updates it.
 
 **Re-checked after Q21, Q22, Q23 and Q25 (2026-10-05): one, between your doc and the decisions** —
 [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). Two of my own decisions were read narrower and
@@ -581,5 +513,5 @@ flowchart LR
 
 # Awaiting
 
-**Your answers to [Q26 and Q27](#question).** Q26 decides where backend analysis starts. design_accept passed on 2026-10-05
+**Nothing asked of you**, except your §General Data line, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). design_accept passed on 2026-10-05
 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.

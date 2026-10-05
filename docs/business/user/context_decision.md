@@ -60,6 +60,10 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [an-account-is-made-only-from-the-member-search](#an-account-is-made-only-from-the-member-search) | one way to make an account: the Add Member popup's Create. New User is removed | owner, 2026-10-05 |
 | [a-user-is-name-username-email-phone-and-photo](#a-user-is-name-username-email-phone-and-photo) | the whole user record is name, username, email, phone and photo; the per-team `alias` is removed | owner, 2026-10-05 |
 | [only-name-and-username-are-required](#only-name-and-username-are-required) | name and username are required; email and phone are optional, unique when given | owner, 2026-10-05 |
+| [the-admin-team-roles-are-added-first](#the-admin-team-roles-are-added-first) | `admin_owner` and `admin_administrator` are added first; an admin-type team's Owner stops getting the selling Owner role | owner, 2026-10-05 |
+| [rename-the-roles-before-the-grant-checks](#rename-the-roles-before-the-grant-checks) | the hold is lifted: the four roles are renamed now, before the code that compares roles | owner, 2026-10-05 |
+| [no-alias-for-the-old-role-names](#no-alias-for-the-old-role-names) | the old role names are not kept as aliases; a tab on the old app reloads once | owner, 2026-10-05 |
+| [the-create-team-form-names-the-first-owner](#the-create-team-form-names-the-first-owner) | a new team's first Owner is the person the Create Team form names; the creator is not made a member | owner, 2026-10-05 |
 
 ## warehouse-staff-is-the-whole-floor-job
 
@@ -563,6 +567,9 @@ and Admin, in their own team. Whether a warehouse writes products at all is prod
 > `context.md` §warehouse team, §selling team, §admin team *(owner, 2026-10-02)*: *"Owner can't create another owner"*,
 > under each team's Owner. It answers half of [Q5](./context_clarify.md#question), as recommended.
 
+> 🔄 *(2026-10-05)* The first Owner is the person the Create Team form names, not whoever created the team —
+> [the-create-team-form-names-the-first-owner](#the-create-team-form-names-the-first-owner).
+
 **The verdict.** No Owner gives the Owner role, in any team. A team's first Owner comes with the team, which the
 Administrator creates. A second Owner is made by Root or the Administrator.
 
@@ -672,6 +679,9 @@ exceptions are not built — each is listed in its own decision. The dev fixture
 
 > 🔄 *(2026-10-02, later)* What the two new admin-team roles may call is decided — [admin-team-roles-manage-only-their-team](#admin-team-roles-manage-only-their-team). The rename itself is
 > **not built yet**, on the owner's word: the proto still has the old names.
+
+> 🔄 *(2026-10-05)* The hold is lifted: the rename comes before the grant checks, with no alias —
+> [rename-the-roles-before-the-grant-checks](#rename-the-roles-before-the-grant-checks), [no-alias-for-the-old-role-names](#no-alias-for-the-old-role-names). The policy count is now 444 lines in 19 protos, not 284.
 
 **The verdict.** Each role has one name, from the doc to the proto to the screen.
 [every-role-has-a-code-name](#every-role-has-a-code-name)'s ten names become the proto's `ROLE_` names.
@@ -1387,3 +1397,103 @@ flowchart LR
 **The spec.** The prototype's create form marks the name required and refuses a blank one. ⚠ **The server is not
 built**: `CreateUserRequest.name` has a maximum length and no minimum, so it accepts a blank name, and `UpdateUser` may
 blank one. Both gain a minimum length of one.
+
+## the-admin-team-roles-are-added-first
+
+> Owner, in chat *(2026-10-05)*: *"yes"*, confirmed as Q26 and Q27. It answers [Q26a](./context_clarify.md#question),
+> as recommended.
+
+**The verdict.** `admin_owner` and `admin_administrator` are added **first**, before any other user build step. They
+only add, so they clash with no branch, and three decisions wait on them.
+
+```mermaid
+flowchart LR
+  A["add admin_owner, admin_administrator"] --> R["the admin team reads every team"]
+  A --> L["the label Admin Team Admin"]
+  A --> M["the admin team's Admin kept out of member management"]
+  A --> F["an admin-type team's Owner is admin_owner, not the selling Owner"]
+```
+
+**The spec.** ⚠ **Not built.**
+
+| | |
+| --- | --- |
+| the enum | `ROLE_ADMIN_OWNER` and `ROLE_ADMIN_ADMINISTRATOR`, the next free numbers (7 is reserved, 10 is `ROLE_SYSTEM`) |
+| what they may call | the team-info and member policies only, never a selling one — [admin-team-roles-manage-only-their-team](#admin-team-roles-manage-only-their-team). `admin_administrator` joins team-info only — [the-admin-team-admin-alone-does-not-manage-members](#the-admin-team-admin-alone-does-not-manage-members) |
+| the Owner grant | an admin-type team's Owner gets `admin_owner`. Today `ownerRoleFor` (team_service `mapper.go`) gives it `ROLE_TEAM_OWNER`, the selling Owner |
+| built with it | the admin team reads every team ([the-admin-team-monitors-all-and-manages-its-own](#the-admin-team-monitors-all-and-manages-its-own)) and the two labels ([the-two-administrators-have-distinct-labels](#the-two-administrators-have-distinct-labels)) |
+| stored data | an admin-type team's members move onto the new roles. Dev has none |
+
+## rename-the-roles-before-the-grant-checks
+
+> Owner, in chat *(2026-10-05)*. It answers [Q26b](./context_clarify.md#question), as recommended, and **lifts the hold**
+> of 2026-10-02 on [the-role-names-are-the-codes-names](#the-role-names-are-the-codes-names).
+
+**The verdict.** The four roles are renamed **now**, before the code that compares roles is written. The old name has
+already misled the code once (`ownerRoleFor` read `ROLE_TEAM_OWNER` as "a team's owner"), and the grant checks are
+where it would mislead it again. No open branch edits a policy today.
+
+```mermaid
+flowchart LR
+  A["1a — add admin_owner, admin_administrator"] --> R["1b — rename four roles"]
+  R --> U["2 — user_service rules"]
+  U --> O["3 — the other services"]
+```
+
+**The spec.** ⚠ **Not built.** The names are [the-role-names-are-the-codes-names](#the-role-names-are-the-codes-names)'s
+table, every number kept.
+
+| step | what | items in the state report |
+| --- | --- | --- |
+| 1a | [the-admin-team-roles-are-added-first](#the-admin-team-roles-are-added-first), with the admin team's reads and the labels | 1 (the new roles) · 12 · 15 |
+| 1b | `ROLE_TEAM_OWNER` → `ROLE_SELLING_OWNER`, `ROLE_TEAM_ADMIN` → `ROLE_SELLING_ADMIN`, `ROLE_TEAM_CUSTOMER_SERVICE` → `ROLE_SELLING_CS`, `ROLE_ADMIN` → `ROLE_ADMINISTRATOR` | 1 (the rename) |
+| 2 | grant checks, the search, one account per phone or email, suspend by role, no delete, erase, the username, the dev root, `san` adds and removes a Root, the membership log, removal, the record | 2–11 · 13 · 16 · 19 |
+| 3 | the override stamp, the warehouse Admin's money limits, the who filters in inventory and selling | 14 · 17 · 18 |
+
+1a and 1b may land in either order; both come before step 2. One change rewrites the proto policies, both generated
+sides, the Go and TypeScript references, CLAUDE.md's roling section and every live doc that names the old roles.
+`_decision.md` files keep the names they were written with.
+
+## no-alias-for-the-old-role-names
+
+> Owner, in chat *(2026-10-05)*. It answers [Q26c](./context_clarify.md#question), as recommended.
+
+**The verdict.** The old role names are **not** kept as aliases. Stored roles are numbers, so nothing stored changes;
+only a browser tab still running the old app sends an old name, and it is refused until it reloads.
+
+```mermaid
+flowchart LR
+  D["the database, the cache, the token"] -->|"numbers — unaffected"| OK["nothing to migrate"]
+  T["a tab on the old app"] -->|"sends ROLE_TEAM_OWNER"| X["refused"]
+  X -->|"reload"| N["the new app — ROLE_SELLING_OWNER"]
+```
+
+**The spec.** No `allow_alias`, which buf's `STANDARD` lint forbids anyway. If a deployed build ever has daily users
+when the rename ships, this is revisited before it ships, not after.
+
+## the-create-team-form-names-the-first-owner
+
+> Owner, in chat *(2026-10-05)*. It answers [Q27](./context_clarify.md#question), as recommended, and says who
+> [an-owner-never-makes-another-owner](#an-owner-never-makes-another-owner)'s *"first Owner"* is.
+
+**The verdict.** A new team's first Owner is **a person the Create Team form names**, found with the Add Member search
+and created if missing. Whoever creates the team is **not** made a member: Root and the Administrator already act in
+every team.
+
+```mermaid
+flowchart LR
+  A["Root or the Administrator — Create Team"] --> F["the form names Ani — found, or created"]
+  F --> T["the team"]
+  T --> O["Ani — its Owner"]
+  A -.->|"not a member"| T
+```
+
+**The spec.** ⚠ **Not built.** Today `TeamCreate` grants the **caller** the Owner role
+([team_create.go](../../../backend/services/team_service/team_v1/team_create.go)).
+
+| | |
+| --- | --- |
+| the contract | `TeamCreateRequest` names the Owner. The saga grants **that** user the team type's Owner role, and still soft-deletes the team if the grant fails |
+| the role | the team type's Owner: `warehouse_owner`, `selling_owner` or `admin_owner` ([the-admin-team-roles-are-added-first](#the-admin-team-roles-are-added-first)) |
+| the screen | the Create Team form gains an Owner field, using the Add Member search |
+| the lifecycle | a contract and a screen changed after design_accept, so this is **its own prototype pass**, previewed and accepted on its own ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)) |

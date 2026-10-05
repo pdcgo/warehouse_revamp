@@ -14,10 +14,16 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**171 open questions across 30 files.** The seven below are shown; **164 are not** — they are not
+**169 open questions across 30 files.** The seven below are shown; **162 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▲ **+1 this round — user Q26 elaborated, and Q27 opened** (2026-10-05). Checked against the build, the rename on hold is
+▼ **−2 this round — user Q26 and Q27 answered, as recommended** (2026-10-05): the hold on the role rename is lifted. Add
+`admin_owner` and `admin_administrator` first, rename the four roles before the grant checks, no alias
+([rename-the-roles-before-the-grant-checks](business/user/context_decision.md#rename-the-roles-before-the-grant-checks)). A new team's first Owner is
+the person the Create Team form names ([the-create-team-form-names-the-first-owner](business/user/context_decision.md#the-create-team-form-names-the-first-owner)), a
+prototype pass of its own. The user context has no open question. None of the seven moves.
+
+▲ **+1 the round before — user Q26 elaborated, and Q27 opened** (2026-10-05). Checked against the build, the rename on hold is
 two changes: adding `admin_owner` and `admin_administrator` blocks three decisions and clashes with nothing, renaming four
 roles blocks nothing but has already misled the code once (`ownerRoleFor` gives an admin-type team's creator the selling
 Owner role). Recommend both now, before the grant checks, with no alias
@@ -2220,13 +2226,13 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 164 are
+## Where the other 162 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **171**, the whole set, not to 164. Previous rounds left
+*from* these files, so the column sums to **169**, the whole set, not to 162. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 170 last round, ▲ +1 (user Q27 opened): **171** across 30 files, and the column below sums to it.
+are counted as a DELTA this round, not recounted — 171 last round, ▼ −2 (user Q26, Q27 answered): **169** across 30 files, and the column below sums to it.
 
 | File | Open | |
 | --- | ---: | --- |
@@ -2243,7 +2249,7 @@ are counted as a DELTA this round, not recounted — 170 last round, ▲ +1 (use
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ which markup does the ledger charge from |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 12 | +6 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
-| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 2 | ▲ **+1 (2026-10-05, latest)** Q26 elaborated into three parts; Q27 opened, a new team's first Owner. Before that: ▼ **−3 (2026-10-05, later)** Q21, Q22, Q23, Q25 answered as recommended, design_accept passed; Q26 opened, is the role rename still on hold. Before that: 🔄 **±0** Q21 elaborated: every who filter, three parts; the floor roles are refused on four of six today. Before that: ▼ **−1 (2026-10-05)** Q24 closed, short_code cancelled. Q21–Q23 and Q25 open. Before that: ± **0 (2026-10-05)** Q24 answered in part: short_code is a unique alias, four rules left. Before that: ▲ **+2 (2026-10-05)** Q24–Q25 from §General Data: what short_code is for, and whether the phone stays. Before that: ▲ **+3 (2026-10-02)** Q21–Q23 from the prototype — the restock filters' search, an Admin changes no role, design_accept. Before that: ✅ nothing open — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
+| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 | ✅ **−2 (2026-10-05, last)** Q26 and Q27 answered; nothing open. Before that: ▲ **+1** Q26 elaborated into three parts; Q27 opened, a new team's first Owner. Before that: ▼ **−3 (2026-10-05, later)** Q21, Q22, Q23, Q25 answered as recommended, design_accept passed; Q26 opened, is the role rename still on hold. Before that: 🔄 **±0** Q21 elaborated: every who filter, three parts; the floor roles are refused on four of six today. Before that: ▼ **−1 (2026-10-05)** Q24 closed, short_code cancelled. Q21–Q23 and Q25 open. Before that: ± **0 (2026-10-05)** Q24 answered in part: short_code is a unique alias, four rules left. Before that: ▲ **+2 (2026-10-05)** Q24–Q25 from §General Data: what short_code is for, and whether the phone stays. Before that: ▲ **+3 (2026-10-02)** Q21–Q23 from the prototype — the restock filters' search, an Admin changes no role, design_accept. Before that: ✅ nothing open — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | 🔄 **Q2 now holds #2** (2026-09-28) — the settlement report's check was declined, so whether any report can heal a lost event is the open decision. See **#2**. Before that: ▲ the `### Why` section landed — it argues the pattern's case but names the wrong coupling, and it opens a structural one: is `analytic` a LIBRARY or a SERVICE |
 | [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 4 | 🆕 counted for the first time |
 | [business/project/member_clarify.md](business/project/member_clarify.md#question) | 5 | 🆕 who DECIDES, rather than what the system does. ▼ progress reporting is settled |

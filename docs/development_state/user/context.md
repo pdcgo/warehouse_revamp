@@ -1,10 +1,10 @@
 # Development state — user
 
 **Pass:** design_accept **passed** 2026-10-05 ([the-user-prototype-is-accepted](../../business/user/context_decision.md#the-user-prototype-is-accepted)).
-**Next: backend analysis**, and where it starts waits on [Q26](../../business/user/context_clarify.md#question): is the role
-rename still on hold (elaborated: add two roles, then rename four, both before the grant checks). Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
-Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **two open** (Q26, Q27). Q3–Q25 are
-answered, Q21–Q25 on 2026-10-05. Decisions: [context_decision.md](../../business/user/context_decision.md) — **54 recorded, 3
+**Next: backend analysis and the build**, in the decided order ([rename-the-roles-before-the-grant-checks](../../business/user/context_decision.md#rename-the-roles-before-the-grant-checks)):
+1a add `admin_owner` and `admin_administrator`, 1b rename four roles, then the user_service rules, then the other services. Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
+Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **none open**. Q3–Q27 are
+answered, Q21–Q27 on 2026-10-05. Decisions: [context_decision.md](../../business/user/context_decision.md) — **58 recorded, 3
 of them superseded**. One question was re-routed: who confirms a stock count is
 [inventory Q12](../../business/inventory/context_clarify.md#question).
 
@@ -40,7 +40,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 
 ## Decided, not built
 
-Grouped by what changes. **Do the rename first** — every later item names roles. ⚠ It is on hold by the owner; [Q26](../../business/user/context_clarify.md#question) asks whether it still is. The proposed order is [build order](../../business/user/context_clarify.md#build-order--proposed): 1a add `admin_owner` and `admin_administrator` (with 12 · 15), 1b rename four roles, then 2–11 · 13 · 16 · 19, then 14 · 17 · 18. ⚠ Found: `ownerRoleFor` (team_service `mapper.go`) gives an admin-type team's creator `ROLE_TEAM_OWNER`, the selling Owner; 1a fixes it.
+Grouped by what changes. **Do the rename first** — every later item names roles. The hold is lifted ([rename-the-roles-before-the-grant-checks](../../business/user/context_decision.md#rename-the-roles-before-the-grant-checks), no alias: [no-alias-for-the-old-role-names](../../business/user/context_decision.md#no-alias-for-the-old-role-names)). The order is [build order](../../business/user/context_clarify.md#build-order--proposed): 1a add `admin_owner` and `admin_administrator` (with 12 · 15), 1b rename four roles, then 2–11 · 13 · 16 · 19, then 14 · 17 · 18. ⚠ Found: `ownerRoleFor` (team_service `mapper.go`) gives an admin-type team's creator `ROLE_TEAM_OWNER`, the selling Owner; 1a fixes it.
 
 | # | change | decisions |
 | --- | --- | --- |
@@ -63,11 +63,11 @@ Grouped by what changes. **Do the rename first** — every later item names role
 | 17 | **Warehouse Admin money limits**: `LiabilityTermsSet`, `LiabilityTermsDelete`, `FinancialAccountTransfer`, `FinancialAccountCapital` lose `ROLE_WAREHOUSE_ADMIN` | [the-warehouse-admin-equals-the-owner-except-money](../../business/user/context_decision.md#the-warehouse-admin-equals-the-owner-except-money) |
 | 18 | **Who filters**: inventory_service (both restock lists) and selling_service (orders) each answer *who appears on the rows I may show*, under the list's own policy, suspended people badged. The pickers stop calling `UserList` and `SearchUser` for this | [a-who-filter-lists-the-people-on-its-rows](../../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](../../business/user/context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](../../business/user/context_decision.md#a-filter-keeps-former-and-suspended-people) |
 | 19 | **The record**: drop `UserTeamRole.Alias` (a user_service migration, `docs/database-schema.md`) and reserve its four proto fields; `CreateUser` and `UpdateUser` refuse a blank name | [a-user-is-name-username-email-phone-and-photo](../../business/user/context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](../../business/user/context_decision.md#only-name-and-username-are-required) |
+| 20 | **The first Owner** — a prototype pass of its own, since it changes a screen and the contract after design_accept: the Create Team form names the Owner (the Add Member search, create if missing); `TeamCreate` grants that person the team type's Owner role, not the caller; team_service's `rpc.md` updated with it | [the-create-team-form-names-the-first-owner](../../business/user/context_decision.md#the-create-team-form-names-the-first-owner) |
 
 ## Not decided
 
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
-| is the role rename still on hold: add two roles, rename four, no alias | [user Q26](../../business/user/context_clarify.md#question) |
-| a new team's first Owner: a person the form names, or whoever created it (today: the creator) | [user Q27](../../business/user/context_clarify.md#question) |
+
