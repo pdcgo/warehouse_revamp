@@ -85,6 +85,23 @@ export const PickingADayEmitsTheIsoString: Story = {
 
 // ⚠ AND A TIME, WHEN ASKED FOR ONE. `withTime` is what `DateTimePicker` is: the value grows its
 // `Thh:mm` tail and the popover grows a time input — one calendar, two value shapes.
+/**
+ * THE CHOSEN DAY IS IN THE MAIN TONE — ROSE (owner, `a-chosen-option-is-in-the-main-tone`). Set on the calendar's
+ * CONTENT in theme.ts, because the calendar portals out of the root and a palette is inherited down the DOM.
+ */
+export const TheChosenDayIsInTheMainTone: Story = {
+  args: { value: "2026-08-15" },
+  play: async () => {
+    await userEvent.click(screen.getByTestId("date"));
+    const content = await screen.findByTestId("date-content");
+    await waitFor(() => expect(content).toBeVisible());
+
+    const chosen = dayCell(content, "2026-08-15");
+    await expect(chosen).toHaveAttribute("data-selected");
+    await expect(getComputedStyle(chosen).backgroundColor).toBe("rgb(225, 29, 72)");
+  },
+};
+
 export const WithTimeHoldsTheClockToo: Story = {
   args: { value: "2026-08-15T09:30", withTime: true },
   play: async ({ args, canvasElement }) => {

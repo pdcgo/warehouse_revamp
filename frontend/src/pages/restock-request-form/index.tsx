@@ -615,7 +615,6 @@ export function RestockRequestFormPage() {
                       <Field.Label>{t("restock.form.shippingCost")}</Field.Label>
                       <CurrencyInput
                         value={shippingCost}
-                        placeholder="0"
                         data-testid="restock-shipping-cost"
                         onChange={setShippingCost}
                       />

@@ -617,7 +617,6 @@ function MakePaymentDialog({
                       value={amount}
                       onChange={setAmount}
                       disabled={busy}
-                      placeholder="0"
                       data-testid="record-amount"
                     />
                   </Field.Root>

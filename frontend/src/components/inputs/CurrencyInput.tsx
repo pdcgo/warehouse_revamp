@@ -55,10 +55,14 @@ export interface CurrencyInputProps extends Omit<InputProps, "value" | "onChange
 // It is drawn OVER a bare `<Input>` — the same trick PasswordInput and DatePicker use — because
 // wrapping the input in Chakra's `InputGroup` would sever the surrounding Field's label/required/
 // aria wiring. `pointerEvents="none"` keeps the click going to the field under it.
+//
+// A PLACEHOLDER OF "0" BY DEFAULT (owner, `a-money-field-shows-0-until-typed`): an empty money field
+// reads as "Rp 0" in the quiet placeholder ink, so it says it holds an amount — while the VALUE stays ""
+// and nothing is answered on the person's behalf (see `toDigits`). A caller may still pass its own.
 export const description =
-  "Money field with an \"Rp\" addon that formats as you type (20000 → 20.000, id-ID grouping) and drops leading zeros. The caller holds raw digits and never sees the prefix or a separator.";
+  "Money field with an \"Rp\" addon that formats as you type (20000 → 20.000, id-ID grouping) and drops leading zeros. Shows a \"0\" placeholder until something is typed. The caller holds raw digits and never sees the prefix or a separator.";
 
-export function CurrencyInput({ value, onChange, ...rest }: CurrencyInputProps) {
+export function CurrencyInput({ value, onChange, placeholder = "0", ...rest }: CurrencyInputProps) {
   return (
     <Box position="relative" w="full">
       <Span
@@ -75,6 +79,7 @@ export function CurrencyInput({ value, onChange, ...rest }: CurrencyInputProps) 
       </Span>
       <Input
         {...rest}
+        placeholder={placeholder}
         // inputMode brings up the numeric keypad on a phone without the type="number" behaviour that
         // would reject the grouped text.
         inputMode="numeric"

@@ -30,6 +30,10 @@ and moved here on 2026-10-02; each old heading there now points here.
 | [the-sale-reads-harga-jual-everywhere](#the-sale-reads-harga-jual-everywhere) | the sale is labelled **Harga jual** on the list, the ledger and the report — *Terjual* is gone |
 | [the-margin-breakdown-opens-from-rincian](#the-margin-breakdown-opens-from-rincian) | **Rincian ›** at the end of Margin riil's label opens how it adds up — a dialog, a bottom sheet on a phone |
 | [every-penjualan-reads-harga-jual](#every-penjualan-reads-harga-jual) | a share reads **dari harga jual**, never *dari penjualan*; in the breakdown it sits under the margin |
+| [the-add-entry-form-picks-with-chakra-controls](#the-add-entry-form-picks-with-chakra-controls) | the add-entry type is a Chakra `Select`, the direction two radio cards — the pick in rose, like the submit |
+| [the-add-entry-note-is-a-textarea](#the-add-entry-note-is-a-textarea) | the add-entry note is a three-row `Textarea`, not a one-line input |
+| [the-post-entry-button-is-in-the-main-tone](#the-post-entry-button-is-in-the-main-tone) | **Buat Entri** is filled in the main tone, rose, like every other form's submit |
+| [the-direction-drops-uang](#the-direction-drops-uang) | the direction reads **Masuk ke kita** / **Diambil dari kita** — *Uang* in front made both cards run long |
 
 ## the-settlement-list-always-shows-its-pager
 
@@ -577,3 +581,60 @@ the `initial_total` figure, it now says so.
 
 Left alone, because there *penjualan* is the act of selling, not the figure: the product's *penjualan terakhir* (its
 last sale) and the team page's *Penjualan* tab.
+
+## the-add-entry-form-picks-with-chakra-controls
+
+> Owner, in chat (2026-10-05), on the add-entry dialog: *"select harus cakra, radio select juga, warnanya buat biru
+> atau mungkin ada rekomendasi, karena warna utamaku rose, untuk theme tanggalnya juga sesuaikan warnanya"*.
+
+*Applies [a-chosen-option-is-in-the-main-tone](context_decision.md#a-chosen-option-is-in-the-main-tone).*
+
+```
+Jenis
+[ Penyesuaian marketplace              ⌄ ]      ← Chakra Select, opens a list
+Arah
+┌──────────────────────────┐ ┌──────────────────────────┐
+│ ↙ Masuk ke kita        ○ │ │ ↗ Diambil dari kita      ◉│  ← the chosen card in rose
+└──────────────────────────┘ └──────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the type | Chakra's composable `Select`, not `NativeSelect` — a static, small list, so a plain list rather than a search. Inline, not portalled: inside a modal a portalled list is inert |
+| the direction | a `RadioCard` pair, half the width each, an arrow before the words; was two buttons toggling solid and outline |
+| the colours | the chosen card, and the chosen day in **Berlaku pada**'s calendar, in the main tone — rose, like **Buat Entri** |
+| unchanged | which types are offered (`manualTypesFor`), the amount, the date, the preview line and its warnings |
+
+## the-add-entry-note-is-a-textarea
+
+> Owner, in chat (2026-10-05): *"catatan textarea"*.
+
+*Applies [chakra-first-whenever-it-has-the-component](context_decision.md#chakra-first-whenever-it-has-the-component).*
+
+| | |
+| --- | --- |
+| **Catatan** | a Chakra `Textarea`, three rows, resizable downwards; still at most 200 characters |
+| was | a one-line `Input` — a reason for a fee is a sentence, and one line hid most of it |
+
+## the-post-entry-button-is-in-the-main-tone
+
+> Owner, in chat (2026-10-05): *"button buatnya juga, theme nya"*.
+
+| | |
+| --- | --- |
+| **Buat Entri** | `colorPalette="brand"` — filled rose, the main tone, as every other dialog's submit already is |
+| was | the default palette — a near-black fill, the one submit in the app not in the theme |
+| **Batal** | unchanged — outline, plain |
+| the colours on the form | the action and the chosen option both in the main tone, rose — [a-chosen-option-is-in-the-main-tone](context_decision.md#a-chosen-option-is-in-the-main-tone) |
+
+## the-direction-drops-uang
+
+> Owner, in chat (2026-10-05): *"Uang di arah tidak perlu, karena membuat terlalu panjang"*.
+
+| | was | now |
+| --- | --- | --- |
+| in | Uang masuk ke kita · *Money reached us* | **Masuk ke kita** · *Reached us* |
+| out | Uang diambil dari kita · *Money taken from us* | **Diambil dari kita** · *Taken from us* |
+
+The field is already labelled **Arah**, and the amount under it is the money — the word said nothing the form did
+not, and on a phone it wrapped both cards to two lines.

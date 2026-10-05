@@ -20,7 +20,8 @@ import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react";
 // Seven TONES, each one a Tailwind colour (owner):
 //
 //   tone      Tailwind   colorPalette
-//   main      rose       brand      the app's own accent — buttons, spinners, the active nav item
+//   main      rose       brand      the app's own accent — buttons, spinners, the active nav item, a
+//                                  CHOSEN option: the radio, the calendar's day (see A CHOSEN OPTION)
 //   primary   indigo     primary
 //   success   emerald    success
 //   warning   amber      warning
@@ -305,8 +306,21 @@ const customConfig = defineConfig({
             color: "fg",
             ...FIELD_OUTLINE,
           },
+          // The chosen day, today's underline and a hovered day — see A CHOSEN OPTION, below.
+          content: { colorPalette: "brand" },
         },
       },
+      // ── A CHOSEN OPTION IS IN THE MAIN TONE — ROSE (owner, `a-chosen-option-is-in-the-main-tone`) ──
+      //
+      // Chakra marks a pick in the root palette, which here is gray — so a chosen radio and the calendar's
+      // chosen day were near-black. Rose, the same as the form's own button, so a form has ONE accent.
+      // Indigo was tried first and reversed the same day: a rose submit beside an indigo pick read as two.
+      //
+      // ⚠ THE CALENDAR IS SET ON ITS CONTENT, NOT ITS ROOT. A palette is a set of CSS variables, inherited
+      // down the DOM — and the calendar opens in a portal, outside the root, where the root's palette
+      // never reaches.
+      radioGroup: { base: { root: { colorPalette: "brand" } } },
+      radioCard: { base: { root: { colorPalette: "brand" } } },
       status: { defaultVariants: { size: "sm" } },
       // ── A TABLE ROW TAKES THE SURFACE IT SITS ON (owner) ────────────────────────────────────────
       //

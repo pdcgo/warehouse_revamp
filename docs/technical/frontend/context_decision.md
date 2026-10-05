@@ -18,6 +18,9 @@ when it applies one of these.
 | [a-badge-stacks-under-its-text-when-the-table-is-cramped](#a-badge-stacks-under-its-text-when-the-table-is-cramped) | a badge column (an entry's source) sits under its text (the type) when the table would scroll, and on a phone; its own column when there is room | [settlement ledger](order_settlement_decision.md#the-ledger-reads-tanggal-and-its-balance-is-full-strength) |
 | [a-summary-card-is-grey-with-a-thin-border](#a-summary-card-is-grey-with-a-thin-border) | every summary card sits on a grey ground with a thin line; one card per strip may lead, in pale blue | [settlement ledger](order_settlement_decision.md#the-ledger-margin-leads-and-says-where-it-comes-from) |
 | [a-negative-amount-puts-its-minus-before-rp](#a-negative-amount-puts-its-minus-before-rp) | every negative amount reads **−Rp 10.000**, never *Rp -10.000*; a change or a running balance carries its + too | [settlement ledger](order_settlement_decision.md#the-ledger-reads-tanggal-and-its-balance-is-full-strength) |
+| [a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone) | a chosen radio and the calendar's chosen day are drawn in the main tone, rose — the form's button colour, never the default near-black | [settlement add entry](order_settlement_decision.md#the-add-entry-form-picks-with-chakra-controls) |
+| [chakra-first-whenever-it-has-the-component](#chakra-first-whenever-it-has-the-component) | when Chakra has the component, the screen uses it — its full one, not a native element dressed up | [settlement add entry](order_settlement_decision.md#the-add-entry-form-picks-with-chakra-controls) |
+| [a-money-field-shows-0-until-typed](#a-money-field-shows-0-until-typed) | every money field shows a **0** placeholder until something is typed — the placeholder, never the value | every `CurrencyInput` |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -351,6 +354,68 @@ flowchart LR
 
 The sign says which way the money went. Written after the currency it was the one character nobody read — and a
 ledger showed its change as *−Rp 4.500* beside a balance of *Rp -30.500*, two formats for one kind of number.
+
+## a-chosen-option-is-in-the-main-tone
+
+> Owner, in chat (2026-10-05), on the add-entry dialog: *"select harus cakra, radio select juga, warnanya buat biru
+> atau mungkin ada rekomendasi, karena warna utamaku rose, untuk theme tanggalnya juga sesuaikan warnanya"* — then,
+> once the submit was rose beside an indigo pick: *"Arah warnanya merah saja kalau gitu, samakan"*.
+
+```mermaid
+flowchart LR
+  T["theme.ts"] --> R["radioGroup, radioCard — on the root"]
+  T --> C["datePicker — on the CONTENT"]
+  R --> P["brand palette — rose"]
+  C --> P
+  B["a form's submit button"] --> P
+```
+
+| | |
+| --- | --- |
+| a chosen radio · radio card | its mark and its card's line in **brand** (rose-600) — the colour of the form's submit beside it |
+| the calendar | the chosen day filled in rose; today's underline and a hovered day in its pale steps |
+| why | one accent per form: the action and the pick in the same colour. The default palette drew both near-black |
+| tried first | indigo (`primary`), recommended to keep rose for actions — reversed the same day: a rose submit beside an indigo pick read as two accents |
+| where | `theme.ts` only. ⚠ the calendar's palette is set on its **content**: it opens in a portal, outside the root, and a palette is inherited down the DOM |
+| not yet | a checkbox and a switch still use the default palette — not asked |
+
+## chakra-first-whenever-it-has-the-component
+
+> Owner, in chat (2026-10-05), on the add-entry dialog: *"catatan textarea, komponen kalau ada kita akan pakai cakra,
+> catat itu saja"*.
+
+```mermaid
+flowchart LR
+  N["a control is needed"] --> Q{"does Chakra have it?"}
+  Q -->|"yes"| C["Chakra's own component"]
+  Q -->|"no"| A["ask first, then a native element"]
+```
+
+| the need | Chakra's component | not |
+| --- | --- | --- |
+| pick one of a list | `Select` (composable) — `Combobox` when the set grows | `NativeSelect`, `<select>` |
+| one of two or three choices | `RadioCard` / `RadioGroup` | two buttons toggling solid and outline |
+| a sentence of text | `Textarea` | a one-line `Input` |
+| a date | `DatePicker` (ours, on Chakra's) | `<input type="date">` |
+
+It sharpens what CLAUDE.md already says ("build UI from Chakra UI v3 components"): a Chakra component that only
+wraps the native element — `NativeSelect` — does not count when Chakra has the full one.
+
+## a-money-field-shows-0-until-typed
+
+> Owner, in chat (2026-10-05), on the add-entry dialog's amount: *"input price ada placeholder 0 secara default"*.
+
+```
+Jumlah
+[ Rp  0              ]   ← the placeholder, in the quiet ink — the value is still ""
+[ Rp  45.000         ]   ← once typed
+```
+
+| | |
+| --- | --- |
+| where | `CurrencyInput`'s default `placeholder` — so every money field gets it, and a caller may still pass its own |
+| the value | stays `""` until a digit is typed: an empty field is a person who has not answered, not a zero |
+| was | an empty box on most forms; four forms typed `placeholder="0"` by hand, now removed as the default |
 
 ## Recorded elsewhere
 

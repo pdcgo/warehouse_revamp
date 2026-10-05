@@ -164,7 +164,6 @@ export function RecordExpenseDialog({ teamId, editing, onClose }: RecordCostDial
                       value={amount}
                       onChange={setAmount}
                       disabled={busy}
-                      placeholder="0"
                       data-testid="expense-amount"
                     />
                   </Field.Root>
