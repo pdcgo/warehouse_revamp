@@ -25,3 +25,7 @@
 
 ## What Exposed to Public.
 1. shipment channel list, its used to frontend. rpc named `ShipmentChannelList` & `ShipmentChannelByIDs`
+2. provide tool for check receipt that named `ReceiptCheck`
+
+## `ReceiptCheck` rpc
+1. its use [receipt reader](../../technical/packages/receipt_readers/context.md)
