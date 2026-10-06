@@ -210,6 +210,8 @@ flowchart LR
   C -->|"passes"| OK["create, every reset, and san seed root accept it"]
 ```
 
+> 🔄 *(2026-10-06, built)* By migration `00010` — [the-migration-writes-the-dev-root-password](#the-migration-writes-the-dev-root-password). The FAQ's login table has a `root` row.
+
 **The spec.** ⚠ **Not built yet.**
 
 | | today | after |
@@ -250,6 +252,11 @@ flowchart LR
 
 ⚠ **Accepted risk.** A **fresh** production database starts with a Root whose password is public in this repo, and
 Root can do anything, until the operator runs `san seed root`.
+
+> 🔄 *(2026-10-06, built)* user_service `00010`: a bcrypt hash (cost 10), written `WHERE id = 1 AND password = ''`; the
+> email only while it is `root@system.local`; Down undoes only its own values. Tested: a fresh database opens with
+> `root1234`, and the Up re-run over a root that has a password leaves it. The FAQ, `san seed root`'s description and
+> docs/tools/san.md were rewritten in the same commit.
 
 ## a-user-is-never-deleted
 

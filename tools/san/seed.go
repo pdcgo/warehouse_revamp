@@ -26,10 +26,11 @@ func seedCommand() *cli.Command {
 				Name:      "root",
 				Usage:     "set the root account's password",
 				ArgsUsage: " ",
-				Description: "The root account (user 1, ROLE_ROOT in team 1) is created by a migration with\n" +
-					"an EMPTY password, which bcrypt can never match — so a freshly migrated system\n" +
-					"has a root user that cannot log in. This sets its password.\n\n" +
-					"A default password in the migration would ship to production. This cannot.",
+				Description: "The root account (user 1, ROLE_ROOT in team 1) is given the DEVELOPMENT password\n" +
+					"root1234 by a migration (00010), and only while it has none — so a fresh clone logs in\n" +
+					"as root with no extra step (the-migration-writes-the-dev-root-password).\n\n" +
+					"That password is public in the repository, so a PRODUCTION database runs this right after\n" +
+					"its first migration. This sets the password you give it.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "password",

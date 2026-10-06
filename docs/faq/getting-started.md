@@ -44,14 +44,17 @@ Open <http://localhost:5174> and log in as `dev` / `devpassword123`.
 
 ## How do I log in? The database has no users.
 
-A fresh migration creates the root account with an **empty password**, which bcrypt can never
-match — deliberately, so no default password can ever ship to production. Give it one, or seed the
-development fixture:
+A fresh database logs in as **`root` / `root1234`** (email `root@pdc.com`): a migration writes that password
+while root has none ([the-migration-writes-the-dev-root-password](../business/user/context_decision.md#the-migration-writes-the-dev-root-password)). Seed the development fixture for the other
+accounts, or give root another password:
 
 ```sh
-go run ./tools/san seed root --password <yours>   # just the root account
 go run ./tools/san seed dev                       # teams + several accounts (recommended)
+go run ./tools/san seed root --password <yours>   # root's password — RUN THIS on a production database
 ```
+
+⚠ `root1234` is public in this repository. A production database gets a real one with `seed root` right after its
+first migration.
 
 [`dev setup`](../tools/san.md#dev-setup) already runs `seed dev`, so after it you can log in.
 
@@ -59,11 +62,12 @@ go run ./tools/san seed dev                       # teams + several accounts (re
 
 | Username | Role | Team |
 | --- | --- | --- |
+| `root` | Root — from the migration, password `root1234` | the root team |
 | `dev` | ADMIN in the root team, owner in both sample teams | all |
 | `wh_owner` / `wh_staff` | warehouse owner / staff | Dev Warehouse |
 | `seller` | team owner | Dev Selling |
 
-Password for all of them: `devpassword123`, or whatever you pass to `--password`.
+Password for the seeded ones: `devpassword123`, or whatever you pass to `--password`. Root's is `root1234`.
 
 To change a password later, use the operations CLI:
 `go run ./tools/san user reset-password --username dev`.

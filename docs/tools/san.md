@@ -196,7 +196,8 @@ produces a role pointing at a team that does not exist yet.
 ## `seed`
 
 Development fixtures. **Never production data**, and deliberately not a migration — a migration runs
-everywhere, including production, and anything inside one *will* eventually execute there.
+everywhere, including production, and anything inside one *will* eventually execute there. ⚠ The one exception is
+decided: root's development password is written by a migration, and production replaces it with `seed root`.
 
 ```sh
 go run ./tools/san seed root --password <secret>   # the root account, nothing else
@@ -207,7 +208,7 @@ go run ./tools/san seed categories -f other.json
 
 | Sub-command | | |
 | --- | --- | --- |
-| `root` | Sets the root account's password | The migration creates root with an **empty** password, which bcrypt can never match — so the account exists and cannot log in until this runs. That is the point |
+| `root` | Sets the root account's password | A migration (`00010`) gives root the **development** password `root1234` while it has none ([the-migration-writes-the-dev-root-password](../business/user/context_decision.md#the-migration-writes-the-dev-root-password)). It is public in this repository, so **a production database runs this right after its first migration** |
 | `dev` | Teams and several logins | Development only |
 | `categories` | The product taxonomy from JSON | `-f` to point at another file |
 
