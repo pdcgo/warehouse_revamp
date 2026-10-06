@@ -244,6 +244,8 @@ Root can do anything, until the operator runs `san seed root`.
 > Owner, in chat *(2026-10-02)*: *"for 7a, 7b, i follow your recomend"*. It answers [Q7a](./context_clarify.md#question),
 > as recommended.
 
+> 🔄 *(2026-10-06, built)* `DeleteUser` is gone — the RPC, its two messages, the handler and its test. No screen offered it.
+
 **The verdict.** No user is ever deleted. A person who leaves is suspended, and every record they made keeps their
 name.
 
@@ -265,6 +267,9 @@ stateDiagram-v2
 
 > Owner, in chat *(2026-10-02)*: *"for 7a, 7b, i follow your recomend"*. It answers [Q7b](./context_clarify.md#question),
 > as recommended.
+
+> 🔄 *(2026-10-06, built)* `UpdateUser` takes the optional `username`: lowercased like create, a taken name is `already_exists`,
+> user 1 keeps `root` (`failed_precondition`). The Edit dialog's *thrown away* mark is retired.
 
 **The verdict.** Editing a user may change their username. A typo is fixed in place, never by deleting and making the
 account again.

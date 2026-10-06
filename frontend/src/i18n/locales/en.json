@@ -1730,10 +1730,6 @@
         "label": "Erase Personal Data",
         "reason": "the server answers that it is not built yet"
       },
-      "username": {
-        "label": "A new username",
-        "reason": "the server ignores it, so the old one stays"
-      },
       "memberLog": {
         "label": "Membership history",
         "reason": "nothing records who added, changed or removed whom yet"

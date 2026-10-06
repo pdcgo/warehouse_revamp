@@ -87,7 +87,7 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 		}
 
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already in use"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("username or email already in use"))
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, err)

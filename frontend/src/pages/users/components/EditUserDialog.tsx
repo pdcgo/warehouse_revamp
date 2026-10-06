@@ -19,8 +19,6 @@ import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../../../features/auth/AuthContext";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveUser } from "../../../features/users/queries";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { USERS_PENDING } from "../pending";
 
 // User 1 is the system's first Root and keeps the name `root` (the-username-is-editable).
 const ROOT_USER_ID = 1n;
@@ -143,10 +141,7 @@ export function EditUserDialog({
 
                   {!isSelf && (
                     <Field.Root disabled={usernameLocked}>
-                      <Field.Label>
-                        {t("users.field.username")}
-                        <NotImplemented list={USERS_PENDING} id="username" />
-                      </Field.Label>
+                      <Field.Label>{t("users.field.username")}</Field.Label>
                       <Input
                         value={username}
                         data-testid="edit-username"

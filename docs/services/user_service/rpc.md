@@ -1,7 +1,8 @@
 # user_service — complex RPC flows
 
 Only RPCs with a non-trivial flow or a cross-service dependency are here (HARD RULE 3). The plain
-CRUD (`UpdateUser`, `DeleteUser`, `UserList`, `SearchUser`, …) is single-table and needs no diagram.
+CRUD (`UpdateUser`, `UserList`, `SearchUser`, …) is single-table and needs no diagram. There is no
+`DeleteUser`: a user is never deleted (docs/business/user/context_decision.md — `a-user-is-never-deleted`).
 
 ## TeamUserUpdate, CreateUser, SuspendUser — a grant is CHECKED, and fails CLOSED
 

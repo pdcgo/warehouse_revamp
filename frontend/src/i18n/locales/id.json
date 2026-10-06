@@ -1725,10 +1725,6 @@
         "label": "Hapus Data Pribadi",
         "reason": "server menjawab bahwa fitur ini belum dibangun"
       },
-      "username": {
-        "label": "Nama pengguna baru",
-        "reason": "server mengabaikannya, jadi yang lama tetap dipakai"
-      },
       "memberLog": {
         "label": "Riwayat keanggotaan",
         "reason": "belum ada yang mencatat siapa menambah, mengubah atau mengeluarkan siapa"

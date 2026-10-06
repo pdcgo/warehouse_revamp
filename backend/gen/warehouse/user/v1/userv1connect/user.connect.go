@@ -72,8 +72,6 @@ const (
 	UserServiceUpdateUserProcedure = "/warehouse.user.v1.UserService/UpdateUser"
 	// UserServiceSuspendUserProcedure is the fully-qualified name of the UserService's SuspendUser RPC.
 	UserServiceSuspendUserProcedure = "/warehouse.user.v1.UserService/SuspendUser"
-	// UserServiceDeleteUserProcedure is the fully-qualified name of the UserService's DeleteUser RPC.
-	UserServiceDeleteUserProcedure = "/warehouse.user.v1.UserService/DeleteUser"
 	// UserServiceUserEraseProcedure is the fully-qualified name of the UserService's UserErase RPC.
 	UserServiceUserEraseProcedure = "/warehouse.user.v1.UserService/UserErase"
 	// UserServiceTeamMemberLogListProcedure is the fully-qualified name of the UserService's
@@ -292,13 +290,6 @@ type UserServiceClient interface {
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
 	SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error)
-	// DeleteUser removes an account and, by FK cascade, all of its memberships.
-	//
-	// ⚠ DEPRECATED by a-user-is-never-deleted (docs/business/user/context_decision.md): no screen
-	// offers it any more. It is removed — RPC, handler, test — when the user decisions are built.
-	//
-	// Deprecated: do not use.
-	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
 	// UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
 	// they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
 	// Administrator, and never a Root or another Administrator.
@@ -390,12 +381,6 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("SuspendUser")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteUser: connect.NewClient[v1.DeleteUserRequest, v1.DeleteUserResponse](
-			httpClient,
-			baseURL+UserServiceDeleteUserProcedure,
-			connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
-			connect.WithClientOptions(opts...),
-		),
 		userErase: connect.NewClient[v1.UserEraseRequest, v1.UserEraseResponse](
 			httpClient,
 			baseURL+UserServiceUserEraseProcedure,
@@ -441,7 +426,6 @@ type userServiceClient struct {
 	updateProfile      *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 	updateUser         *connect.Client[v1.UpdateUserRequest, v1.UpdateUserResponse]
 	suspendUser        *connect.Client[v1.SuspendUserRequest, v1.SuspendUserResponse]
-	deleteUser         *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
 	userErase          *connect.Client[v1.UserEraseRequest, v1.UserEraseResponse]
 	teamMemberLogList  *connect.Client[v1.TeamMemberLogListRequest, v1.TeamMemberLogListResponse]
 	userList           *connect.Client[v1.UserListRequest, v1.UserListResponse]
@@ -499,13 +483,6 @@ func (c *userServiceClient) SuspendUser(ctx context.Context, req *connect.Reques
 	return c.suspendUser.CallUnary(ctx, req)
 }
 
-// DeleteUser calls warehouse.user.v1.UserService.DeleteUser.
-//
-// Deprecated: do not use.
-func (c *userServiceClient) DeleteUser(ctx context.Context, req *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
-	return c.deleteUser.CallUnary(ctx, req)
-}
-
 // UserErase calls warehouse.user.v1.UserService.UserErase.
 func (c *userServiceClient) UserErase(ctx context.Context, req *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error) {
 	return c.userErase.CallUnary(ctx, req)
@@ -558,13 +535,6 @@ type UserServiceHandler interface {
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
 	SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error)
-	// DeleteUser removes an account and, by FK cascade, all of its memberships.
-	//
-	// ⚠ DEPRECATED by a-user-is-never-deleted (docs/business/user/context_decision.md): no screen
-	// offers it any more. It is removed — RPC, handler, test — when the user decisions are built.
-	//
-	// Deprecated: do not use.
-	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
 	// UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
 	// they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
 	// Administrator, and never a Root or another Administrator.
@@ -652,12 +622,6 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("SuspendUser")),
 		connect.WithHandlerOptions(opts...),
 	)
-	userServiceDeleteUserHandler := connect.NewUnaryHandler(
-		UserServiceDeleteUserProcedure,
-		svc.DeleteUser,
-		connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
-		connect.WithHandlerOptions(opts...),
-	)
 	userServiceUserEraseHandler := connect.NewUnaryHandler(
 		UserServiceUserEraseProcedure,
 		svc.UserErase,
@@ -710,8 +674,6 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceUpdateUserHandler.ServeHTTP(w, r)
 		case UserServiceSuspendUserProcedure:
 			userServiceSuspendUserHandler.ServeHTTP(w, r)
-		case UserServiceDeleteUserProcedure:
-			userServiceDeleteUserHandler.ServeHTTP(w, r)
 		case UserServiceUserEraseProcedure:
 			userServiceUserEraseHandler.ServeHTTP(w, r)
 		case UserServiceTeamMemberLogListProcedure:
@@ -769,10 +731,6 @@ func (UnimplementedUserServiceHandler) UpdateUser(context.Context, *connect.Requ
 
 func (UnimplementedUserServiceHandler) SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.SuspendUser is not implemented"))
-}
-
-func (UnimplementedUserServiceHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.DeleteUser is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error) {

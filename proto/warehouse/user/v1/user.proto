@@ -62,14 +62,6 @@ service UserService {
   // SuspendUser blocks (or unblocks) an account.
   rpc SuspendUser(SuspendUserRequest) returns (SuspendUserResponse);
 
-  // DeleteUser removes an account and, by FK cascade, all of its memberships.
-  //
-  // ⚠ DEPRECATED by a-user-is-never-deleted (docs/business/user/context_decision.md): no screen
-  // offers it any more. It is removed — RPC, handler, test — when the user decisions are built.
-  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
-    option deprecated = true;
-  }
-
   // UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
   // they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
   // Administrator, and never a Root or another Administrator.
@@ -149,8 +141,6 @@ message UpdateUserRequest {
 
   // A typo in a username is fixed in place (the-username-is-editable): the same rule as at create,
   // and still unique. User 1 keeps `root`.
-  //
-  // ⚠ CONTRACT ONLY until the user decisions are built — the server ignores it today.
   optional string username = 5 [(buf.validate.field).string = {
     min_len: 3
     max_len: 100
@@ -178,19 +168,6 @@ message SuspendUserRequest {
 }
 
 message SuspendUserResponse {}
-
-message DeleteUserRequest {
-  option (warehouse.role_base.v1.request_policy) = {
-    roles: [
-      ROLE_ROOT,
-      ROLE_ADMINISTRATOR
-    ]
-  };
-
-  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
-}
-
-message DeleteUserResponse {}
 
 message UserEraseRequest {
   // Unscoped roles-policy = Root and the Administrator, as for SuspendUser — an account spans teams.

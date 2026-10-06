@@ -130,3 +130,15 @@ func TestPerf_CreateUser(t *testing.T) {
 	})
 }
 
+
+func TestPerf_UpdateUserUsername(t *testing.T) {
+	_, svc, probe, _, root, target := seedGrantVolume(t)
+
+	measure(t, probe, "UpdateUser", func(i int) error {
+		name := fmt.Sprintf("renamed%d", i+1)
+
+		_, err := svc.UpdateUser(root, connect.NewRequest(&userv1.UpdateUserRequest{UserId: target, Username: &name}))
+
+		return err
+	})
+}

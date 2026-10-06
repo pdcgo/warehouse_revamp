@@ -15,7 +15,7 @@ interleaved: **safe**.
 | `TeamUserUpdate` (remove) | `users` (1, the target) → `user_team_roles` (delete) | same check, same lock |
 | `SuspendUser` | `users` (1, the target) → reads the target's ROOT-team role → `users` update | judged by role under the lock, so the target cannot be made an Administrator between the read and the suspend |
 | `CreateUser` | *(team type — outside)* → new `users` row → new `user_team_roles` row | a new person cannot be contended; the unique indexes refuse a racing duplicate username or email |
-| `DeleteUser` *(deprecated, being removed)* | `users` (delete, cascades to `user_team_roles`) | its row delete waits on the same `users` lock |
+| `UpdateUser` | `users` (1, update) | a username taken by a racing rename is refused by the unique index on `LOWER(username)`, as `already_exists` |
 
 Every other writer of `user_team_roles` is `tools/san seed`, a development tool that writes directly.
 
@@ -34,3 +34,4 @@ RPC in the system, not a property of this handler.
 | History | |
 | --- | --- |
 | 2026-10-05 | first matrix — `TeamUserUpdate` gained its role checks and the `users` row lock; `SuspendUser` judges by role under the same lock |
+| 2026-10-06 | `DeleteUser` removed; `UpdateUser` may change the username |
