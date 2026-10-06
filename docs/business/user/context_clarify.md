@@ -31,6 +31,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
+> | *"can we implement now?"* — the who filters, then the search | ✅ built: [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · [only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search) · [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) · [a-result-shows-the-phones-last-four-digits](./context_decision.md#a-result-shows-the-phones-last-four-digits) · the popup's Change Role · 🔄 **Q31** narrowed: Q20d had already said how numbers compare, and the search now does it, so Q31 asks only whether a number is rewritten when saved — my recommendation moves to **c** · ⚠ my Q31 offered an option Q20d had closed, [q31-offered-what-q20d-had-closed](#q31-offered-what-q20d-had-closed) |
 > | *"continue"* — building one account per phone | ▲ **Q31** how two phone numbers are compared: nothing normalises them today, so `0812…` and `+62 812…` would be two accounts' numbers. The scoped search waits on the who filters first, item 18 |
 > | *"for q30 yes"*, confirmed as all three | ✅ **Q30** [an-erased-account-is-final](./context_decision.md#an-erased-account-is-final) · [erased-usernames-are-reserved](./context_decision.md#erased-usernames-are-reserved) · [erase-deletes-the-photo-file](./context_decision.md#erase-deletes-the-photo-file). **No question is open in this context** |
 > | *"can we implement it?"* — the role column, the membership log, erase | ▲ **Q30** three things erase leaves open, found building it: *Erased* is not final, `erased<id>` can be taken first, the photo file stays in storage |
@@ -269,25 +270,63 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
     [an-erased-account-is-final](./context_decision.md#an-erased-account-is-final),
     [erased-usernames-are-reserved](./context_decision.md#erased-usernames-are-reserved),
     [erase-deletes-the-photo-file](./context_decision.md#erase-deletes-the-photo-file).
-31. **How are two phone numbers compared?** [a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account)
-    needs it before its index can be built. Today a number is stored exactly as typed and nothing compares numbers;
-    development holds `0811` and `+15551234567`. The reset code is texted to the stored text as it is.
+31. **Is a phone number rewritten into one form when it is saved?** 🔄 *(2026-10-06, narrowed)*
+    [a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account) needs a unique
+    index on the phone. How two numbers compare was **already answered by Q20d** — *"a phone matches however it is
+    written"* — and is now built for the search: `user_phone_key` reads the digits, a leading `0` as `62` (migration
+    `00007`). So `0812-3456-7890` and `+62 812 3456 7890` are one number either way. What is left is what the column holds.
 
-    | written | a. digits only | b. international, Indonesia by default |
+    | | b. rewrite to international on save | c. keep as typed, unique on the key |
     | --- | --- | --- |
-    | `0812-3456-7890` | `081234567890` | `+6281234567890` |
-    | `0812 3456 7890` | `081234567890` — the same | `+6281234567890` — the same |
-    | `+62 812 3456 7890` | `6281234567890` — **a second account** | `+6281234567890` — the same |
+    | stored | `+6281234567890` | `0812-3456-7890`, as typed |
+    | the unique index | on `phone_number` | on `user_phone_key(phone_number)` — the search's index, made unique |
+    | a number that cannot be read (`0811`) | refused when typed | kept |
+    | the reset-code SMS | sends what is stored | sends `+` and the key |
+    | numbers already stored | rewritten once | untouched |
 
-    - **a. Compare the digits only**, store as typed. Small, but the same phone written with `+62` passes as another.
-    - **b. Store every number in international form**, a number starting with `0` read as Indonesian; refuse what
-      cannot be read as a phone. One phone is one value however it is written, and the SMS provider gets the form it
-      needs. Numbers already stored that cannot be read (`0811`) stay as they are and count as nobody's duplicate.
-      **→ Recommend: b.**
+    ```mermaid
+    flowchart LR
+      T["typed: 0812-3456-7890"] --> K["user_phone_key: 6281234567890"]
+      K --> S["the search — built"]
+      K --> U{"the unique index"}
+      U -->|"b"| B["on the rewritten column"]
+      U -->|"c"| C["on the key itself"]
+    ```
+
+    Either way, duplicates already stored are resolved before the index, as the decision says.
+    - **b.** One stored form everywhere, and a bad number refused when typed. Rewrites every stored number once.
+    - **c.** Nothing stored changes; the index is one line on a key that already exists.
+      **→ Recommend: c** *(was b)*. The key is already how numbers compare, so the duplicate check and the search can
+      never disagree. Refusing an unreadable number is a separate rule and can be added to c later.
 
 ---
 
 # Contradiction
+
+**Re-checked after building the who filters and the search (2026-10-06): one, in my own question** —
+[q31-offered-what-q20d-had-closed](#q31-offered-what-q20d-had-closed). None between docs.
+
+## q31-offered-what-q20d-had-closed
+
+**The example.** Q31 offered, as option a, a comparison that Q20d had already ruled out:
+
+> Q20d, confirmed 2026-10-02: *"a phone matches however it is written"* — so `0812…` and `+62812…` are the same number.
+>
+> Q31 (2026-10-06), option a: *"Compare the digits only … the same phone written with `+62` passes as another."*
+
+Q20d is the decision and stands. I wrote Q31 from the code, which compared nothing, and did not re-read the search's
+decision. Q31 is narrowed to what Q20d leaves open — whether a number is rewritten when saved — and option a is gone.
+
+**→ Recommend** (what stops it recurring): before opening a question about a rule, grep the decision file for the rule's
+nouns (here, *phone*), not only for the decision the question is about. A confirmation recorded inside another decision
+does not show up as a heading.
+
+```mermaid
+flowchart LR
+  Q20["Q20d — a phone matches however it is written"] -.->|"already settled"| A["Q31 option a — +62 is another number"]
+  Q20 --> K["built: user_phone_key, the search"]
+  K --> Q31["Q31 narrowed — rewrite on save, b or c"]
+```
 
 **Re-checked after Q28 (2026-10-06): none between docs.** Two of my decisions gained a 🔄: Q27's is no longer waiting, and the
 admin team's *monitor all* now has its screen.
@@ -565,7 +604,7 @@ flowchart LR
 
 # Awaiting
 
-**[Q31](#question)** — how two phone numbers are compared — and your §General Data line,
+**[Q31](#question)** — whether a phone is rewritten when saved — and your §General Data line,
 [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). Pass 1 passed design_accept on 2026-10-06
 ([the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted)). design_accept passed on 2026-10-05
 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.
