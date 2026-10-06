@@ -14,10 +14,20 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**169 open questions across 30 files.** The seven below are shown; **162 are not** — they are not
+**175 open questions across 31 files.** The seven below are shown; **168 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▼ **−1 this round — user Q30 answered: all three, as recommended** (2026-10-06): an erased account is final, `erased`
+▲ **+6 this round — a new context, supplier, first pass** (2026-10-06): your new
+[supplier/context.md](business/supplier/context.md) adds *"selling team can discover / search other team suppliers"* and
+`created_by_team_id`. Those turn a team's private address book into one company-wide directory, and the build is strictly
+team-scoped. Six questions ([supplier Q1–Q6](business/supplier/context_clarify.md#question)): shared row or copy (recommend
+shared, plus each team's own list) · who edits, and delete removes it from MY list only · what another team sees (the record,
+never their prices) · drop `code` · a one-off link is not a supplier · its own `supplier_service`. Two contradictions: the
+supplier has three homes in your docs, and [restock.md](business/inventory/restock.md)'s tables have no supplier. Architecture's
+row 10 now points to supplier Q6. They block the supplier context's own next step, and no other context's, so none of the seven
+moves.
+
+▼ **−1 the round before — user Q30 answered: all three, as recommended** (2026-10-06): an erased account is final, `erased`
 and digits are reserved, and erase deletes the photo files
 ([an-erased-account-is-final](business/user/context_decision.md#an-erased-account-is-final)). None of the seven moves.
 
@@ -2263,16 +2273,17 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 162 are
+## Where the other 168 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **169**, the whole set, not to 162. Previous rounds left
+*from* these files, so the column sums to **175**, the whole set, not to 168. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 170 last round, ▼ −1 (user Q30 answered): **169** across 30 files, and the column below sums to it.
+are counted as a DELTA this round, not recounted — 169 last round, ▲ +6 (supplier, first pass): **175** across 31 files, and the column below sums to it.
 
 | File | Open | |
 | --- | ---: | --- |
+| [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 6 | 🆕 **a new context, first pass (2026-10-06)** — §Responsbility 1 is built in `inventory_service`. §2, *discover other teams' suppliers*, makes the supplier a company-wide directory, which the build forbids. Q1 shared row or copy comes first; Q6 its own `supplier_service` |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 14 | 🆕 **a new context, first pass** — three of its four asks are already built elsewhere: the location + both weekly grids are `team_service.warehouse_infos` (and the grids have **no reader**), the fee is `liability_terms.handling_fee`, **flat** and live. ▲ **+3 the same day**, from the `WarehouseFeeCalculate` payload the owner then added: money as `double` · no selling team in the request · one warehouse per call. See **#7** |
 | [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 18 | ▲ **+3 (2026-10-05, merged from `hfrada`)** Q16–Q18 — the warehouse order list: what its row carries, what it filters by, what the workbench needs from the contract. Before that: ▲ +1 (2026-09-30): should a draft carry a sell price from the start. Before that: ▲ +1 (2026-09-30): what a draft line maps to — a product, a bundle with its fills, or a split — now that the draft page offers all three and the draft can store only the first. Waits on a bundle contract. Before that: ▲ +1 (2026-09-30): where a draft's pushing app goes on the row, now that the draft list is the Drafts tab (`the-draft-list-is-the-drafts-tab`). +1 contradiction in [business/order/context_clarify.md](business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server): the build lets a person draft and promotes on the server, against two business decisions. Before that: ▼ −1 (2026-09-30): the owner answered *is withdrawal & penyesuaian the settlement ledger?* — the order detail shows the settlement ledger and the invented withdrawal section is gone (`settlement-replaces-withdrawal-on-the-order`). Where a wallet → bank withdrawal lives (Q2) is NOT settled by it. +1 contradiction: two earlier decisions still describe the removed section. Before that: ▼ −3 (2026-09-29): the owner APPROVED the order-detail preview, which settles the line price (harga beli), the margin's direction (MP − sistem) and sections-over-tabs — recorded as decisions. Before that: ▲ +1 (2026-09-29): who may edit a note, may it be deleted, and are system notes the timeline. Before that: ▲ +2 (2026-09-29): does promote keep the marketplace product title · what a return shipment is. Before that: ▲ **+4 from the order DETAIL preview** (2026-09-29): is the line price what we paid or charged · the margin subtraction written the other way up · sections or the built page’s tabs · is withdrawal & penyesuaian the settlement ledger (the same fork as Q2, seen from one order). Before that: ▲ **+4 from the order LIST's row and its actions** (2026-09-28): is *sudah diserahkan* a status or the absence of one (it gates three row actions and falls back to `PACKED`) · is Edit Resi the seller's or the warehouse's · ⛔ **can a root reader see the list at all** — the owner decided the Team column appears above selling level and `scopedOrders` has no root bypass, so the column is correct and the table is empty · does a row's date show the year, and whose clock formats it. 🆕 **One contradiction, four sites, one cause**: the owner redefined an order's total as goods + fulfilment, which the proto's `total = subtotal + shipping_cost` and the create screen's shipping field both predate. The margin was CHECKED and does not ripple. ⚠ **Then the owner corrected the money outright and THREE of those decisions reversed in one round** — total beli is the COST side (`cogs` + fees), and margin is `harga MP − total beli`, measured against the platform's price rather than ours. +2: what the revenue of an unpriced order is, and where the deadline bands come from. Recorded as one contradiction with three sites, because it is one misreading. Earlier: 🆕 **the order LIST's summary** (2026-09-24) — the owner named the fifteen figures the old system showed and the split was argued: volume, value and gross margin stay over the work queue, the settlement-clock figures move. All three questions are **already open elsewhere and blocked there**: the report's home · where a wallet→bank withdrawal lives ([settlement Q1](business/settlement/context_clarify.md#question) · [architecture Q7](technical/architecture/context_clarify.md#question)) · whether one order's warehouse fee is readable ([balance Q9](business/balance/context_clarify.md#question)). ✅ One thing it CLOSES: the owner settled which sense "withdrawal" is — wallet→bank, not settlement's `fund` |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-21)** what `return` means — it is a CLAIM, and the owner added a ninth status `return_completed` for the receipt · ▼ −1 the half-finished order is NOT tracked (owner, 2026-09-17) · ▼ −6 pruned 2026-09-17, overtaken by the day's decisions (draft pre-checks, SKU mapping, review reject, the synchronous take, the cross line's cost, what placement means) · ▲ +1 re-routed from shipment: an order cannot be created without a channel. ▲ was 14 — rewritten after the owner's 2026-09-15 edits: six decisions recorded, −2 closed, +4 opened. ⚠ **Counted as `###` headings now** — its questions are named, not numbered |
