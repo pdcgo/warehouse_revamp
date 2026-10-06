@@ -115,6 +115,7 @@ erDiagram
         boolean     is_suspended        "default false"
         text        avatar_url          "profile picture thumbnail url"
         timestamptz last_password_reset "nullable"
+        timestamptz erased_at           "nullable, set once by UserErase"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -145,7 +146,9 @@ erDiagram
 
 - **`users`** — the identity table. An empty `password` is a deliberate "cannot log in" marker
   (bcrypt never matches an empty hash), used by the seeded root account until a password is set.
-  Case-insensitive uniqueness on both `username` and (non-empty) `email`.
+  Case-insensitive uniqueness on both `username` and (non-empty) `email`. `erased_at` marks an account erased on
+  request ([an-erased-account-is-final](business/user/context_decision.md#an-erased-account-is-final)): set once, never
+  cleared, and a CHECK (`users_erased_is_suspended`) keeps such an account suspended for good.
 - **`user_team_roles`** — a user's role within a team. `role` stores the raw proto `Role` enum
   *number* (not a Postgres enum — proto enums are open). `UNIQUE (team_id, user_id)` is load-bearing:
   the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`

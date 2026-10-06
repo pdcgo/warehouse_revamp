@@ -12,6 +12,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
+	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
 func erase(userID uint64) *connect.Request[userv1.UserEraseRequest] {
@@ -115,5 +116,94 @@ func TestUserErase_UnknownIsNotFound(t *testing.T) {
 	_, err := svc.UserErase(asRoot(t, db), erase(9_999_999))
 	if connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))
+	}
+}
+
+// erasedAccount makes a member of whTeam, suspends and erases them as Root, and returns their id.
+func erasedAccount(t *testing.T, db *gorm.DB, svc *user_v1.Service, username string) uint64 {
+	t.Helper()
+
+	id := memberOf(t, db, username, whTeam, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
+	db.Model(&user_service_models.User{}).Where("id = ?", id).Update("is_suspended", true)
+
+	_, err := svc.UserErase(asRoot(t, db), erase(id))
+	if err != nil {
+		t.Fatalf("UserErase: %v", err)
+	}
+
+	return id
+}
+
+// an-erased-account-is-final: the account is marked, and nothing brings it or its data back — not an unsuspend, not
+// a password, not a team, not an edit. Only Root asks here, who may do all of those to a live account.
+func TestUserErase_AnErasedAccountIsFinal(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	root := asRoot(t, db)
+
+	gone := erasedAccount(t, db, svc, "finalgone")
+
+	if readUser(t, db, gone).ErasedAt == nil {
+		t.Fatal("erased_at not set — the account would be known as erased only by its name")
+	}
+
+	name := "Back Again"
+	refused := map[string]error{}
+
+	_, refused["unsuspend"] = svc.SuspendUser(root, connect.NewRequest(&userv1.SuspendUserRequest{UserId: gone, Suspended: false}))
+	_, refused["a password"] = svc.AdminResetPassword(root, connect.NewRequest(&userv1.AdminResetPasswordRequest{UserId: gone, NewPassword: "newpassword1"}))
+	_, refused["an edit"] = svc.UpdateUser(root, connect.NewRequest(&userv1.UpdateUserRequest{UserId: gone, Name: &name}))
+	_, refused["a team"] = svc.TeamUserUpdate(root, add(sellTeam, gone, role_basev1.Role_ROLE_SELLING_CS))
+
+	for what, err := range refused {
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Errorf("%s for an erased account: code = %v, want FailedPrecondition", what, connect.CodeOf(err))
+		}
+	}
+
+	u := readUser(t, db, gone)
+	if !u.IsSuspended || u.Password != "" || u.Name != "" {
+		t.Errorf("an erased account came back: suspended %v, password set %v, name %q", u.IsSuspended, u.Password != "", u.Name)
+	}
+
+	// Still allowed: taking a former member out of a team, and erasing again (which retries the photos).
+	_, err := svc.TeamUserUpdate(root, remove(whTeam, gone))
+	if err != nil {
+		t.Errorf("removing an erased member: %v", err)
+	}
+
+	_, err = svc.UserErase(root, erase(gone))
+	if err != nil {
+		t.Errorf("erasing again: %v", err)
+	}
+}
+
+// erased-usernames-are-reserved: erased and digits is erase's name and nobody else's — refused at create and at
+// rename; a name that only starts with "erased" is fine.
+func TestUserErase_ErasedUsernamesAreReserved(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	root := asRoot(t, db)
+
+	_, err := svc.CreateUser(root, connect.NewRequest(&userv1.CreateUserRequest{
+		Username: "erased57", Password: "pw12345678", Name: "Squatter",
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("creating erased57: code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+
+	ani := insertUser(t, db, "reservedani", "pw12345678")
+	rename := "erased12"
+
+	_, err = svc.UpdateUser(root, connect.NewRequest(&userv1.UpdateUserRequest{UserId: ani, Username: &rename}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("renaming to erased12: code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+
+	fine := "erasedani"
+
+	_, err = svc.UpdateUser(root, connect.NewRequest(&userv1.UpdateUserRequest{UserId: ani, Username: &fine}))
+	if err != nil {
+		t.Errorf("renaming to erasedani: %v", err)
 	}
 }

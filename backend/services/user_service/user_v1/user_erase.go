@@ -48,6 +48,12 @@ func (s *Service) UserErase(
 			return err
 		}
 
+		// Already erased: nothing left to blank. Erasing again is not an error — it is how a failed photo
+		// deletion is retried (erase-deletes-the-photo-file).
+		if target.erased {
+			return nil
+		}
+
 		if !target.suspended {
 			return connect.NewError(connect.CodeFailedPrecondition,
 				errors.New("only a suspended account is erased — suspend it first (erase-keeps-the-row)"))
@@ -66,6 +72,7 @@ func (s *Service) UserErase(
 				"avatar_url":          "",
 				"password":            "",
 				"last_password_reset": now,
+				"erased_at":           now,
 				"updated_at":          now,
 			}).
 			Error

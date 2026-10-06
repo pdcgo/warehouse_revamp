@@ -1585,7 +1585,8 @@
     },
     "status": {
       "suspended": "Suspended",
-      "active": "Active"
+      "active": "Active",
+      "erased": "Erased"
     },
     "action": {
       "edit": "Edit",

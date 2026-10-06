@@ -69,6 +69,11 @@ func (s *Service) CreateUser(
 	username := strings.ToLower(strings.TrimSpace(req.Msg.GetUsername()))
 	email := strings.ToLower(strings.TrimSpace(req.Msg.GetEmail()))
 
+	err = refuseReservedUsername(username)
+	if err != nil {
+		return nil, err
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Msg.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

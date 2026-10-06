@@ -2,6 +2,7 @@ package user_v1
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -43,6 +44,13 @@ func (s *Service) SuspendUser(
 		err = checkSuspend(caller, userID, target.role)
 		if err != nil {
 			return err
+		}
+
+		// Erased has no way out (an-erased-account-is-final). The users_erased_is_suspended CHECK refuses it too;
+		// this says why.
+		if target.erased && !req.Msg.GetSuspended() {
+			return connect.NewError(connect.CodeFailedPrecondition,
+				errors.New("an erased account is never unsuspended (an-erased-account-is-final)"))
 		}
 
 		err = tx.

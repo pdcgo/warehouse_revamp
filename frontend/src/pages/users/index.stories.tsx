@@ -229,6 +229,16 @@ export const EraseKeepsTheRow: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("user-row-erased63")).toBeInTheDocument());
     await expect(canvas.queryByTestId("user-row-citra")).toBeNull();
+
+    // A former user reads as one, and is marked Erased rather than Suspended.
+    await expect(canvas.getByTestId("user-row-erased63")).toHaveTextContent("Former user #63");
+    await expect(canvas.getByTestId("erased-erased63")).toBeInTheDocument();
+
+    // an-erased-account-is-final: nothing on its menu brings it, or its data, back.
+    const actions = await rowActions(canvas, "erased63");
+    for (const gone of ["edit-erased63", "reset-password-erased63", "suspend-erased63", "erase-erased63"]) {
+      await expect(actions).not.toContain(gone);
+    }
   },
 };
 

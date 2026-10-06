@@ -32,6 +32,11 @@ func (s *Service) UpdateUser(
 				errors.New("user 1 keeps the username root (the-username-is-editable)"))
 		}
 
+		err := refuseReservedUsername(username)
+		if err != nil {
+			return nil, err
+		}
+
 		updates["username"] = username
 	}
 

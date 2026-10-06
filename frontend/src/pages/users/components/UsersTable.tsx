@@ -26,6 +26,7 @@ import { useTeam } from "../../../features/team/TeamContext";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { UserItem } from "../../../components/entity/UserItem";
+import { formerUserId } from "../../../lib/users";
 import { Pagination } from "../../../components/chrome/Pagination";
 import { toaster } from "../../../components/feedback/Toaster";
 import {
@@ -246,14 +247,21 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
 
                   const roleChangeable = manageable && grantable.some((r) => r !== role);
 
+                  // An erased account is final (an-erased-account-is-final): no edit, no password, no restore, and
+                  // nothing left to erase. It can still be taken out of a team.
+                  const former = formerUserId(user) !== undefined;
+
                   const platformRole = platformRoleOf(user);
-                  const suspendable = canSuspendUser({ caller: current?.role, target: platformRole, isSelf });
-                  const erasable = canEraseUser({
-                    caller: current?.role,
-                    target: platformRole,
-                    isSelf,
-                    suspended: user.isSuspended,
-                  });
+                  const suspendable =
+                    !former && canSuspendUser({ caller: current?.role, target: platformRole, isSelf });
+                  const erasable =
+                    !former &&
+                    canEraseUser({
+                      caller: current?.role,
+                      target: platformRole,
+                      isSelf,
+                      suspended: user.isSuspended,
+                    });
 
                   return (
                     <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>
@@ -275,7 +283,11 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                       </Table.Cell>
                       <Table.Cell>{user.email}</Table.Cell>
                       <Table.Cell>
-                        {user.isSuspended ? (
+                        {former ? (
+                          <Badge colorPalette="gray" data-testid={`erased-${user.username}`}>
+                            {t("users.status.erased")}
+                          </Badge>
+                        ) : user.isSuspended ? (
                           <Badge colorPalette="error" data-testid={`suspended-${user.username}`}>
                             {t("users.status.suspended")}
                           </Badge>
@@ -300,14 +312,16 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                           <Portal>
                             <Menu.Positioner>
                               <Menu.Content>
-                                <Menu.Item
-                                  value="edit"
-                                  data-testid={`edit-${user.username}`}
-                                  onClick={() => setDialog({ kind: "edit", user })}
-                                >
-                                  <Icon as={Pencil} boxSize="4" />
-                                  {t("users.action.edit")}
-                                </Menu.Item>
+                                {!former && (
+                                  <Menu.Item
+                                    value="edit"
+                                    data-testid={`edit-${user.username}`}
+                                    onClick={() => setDialog({ kind: "edit", user })}
+                                  >
+                                    <Icon as={Pencil} boxSize="4" />
+                                    {t("users.action.edit")}
+                                  </Menu.Item>
+                                )}
 
                                 {globalAdmin && (
                                   <Menu.Item
@@ -344,7 +358,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                                   </>
                                 )}
 
-                                {globalAdmin && !isSelf && (
+                                {globalAdmin && !isSelf && !former && (
                                   // An admin sets a password without knowing the old one — exactly the
                                   // situation when someone is locked out.
                                   <Menu.Item

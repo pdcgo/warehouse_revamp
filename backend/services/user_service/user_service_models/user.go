@@ -17,8 +17,12 @@ type User struct {
 	IsSuspended       bool
 	AvatarURL         string
 	LastPasswordReset *time.Time
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+
+	// Set once by UserErase, never cleared (an-erased-account-is-final). Nil for every live account.
+	ErasedAt *time.Time
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (User) TableName() string {

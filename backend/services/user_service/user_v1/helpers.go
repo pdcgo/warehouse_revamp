@@ -3,7 +3,9 @@ package user_v1
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -69,13 +71,18 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 		if len(updates) > 0 {
 			updates["updated_at"] = gorm.Expr("NOW()")
 
-			err = tx.
+			// Only a live account: an erased one is never edited (an-erased-account-is-final). The condition is in
+			// the UPDATE itself, so an erase that commits while this waits for the row is seen, not overwritten.
+			res := tx.
 				Model(&user_service_models.User{}).
-				Where("id = ?", userID).
-				Updates(updates).
-				Error
-			if err != nil {
-				return err
+				Where("id = ? AND erased_at IS NULL", userID).
+				Updates(updates)
+			if res.Error != nil {
+				return res.Error
+			}
+
+			if res.RowsAffected == 0 {
+				return errErased("is never edited")
 			}
 		}
 
@@ -84,6 +91,11 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 	if err != nil {
 		if errors.Is(err, errUserMissing) {
 			return nil, connect.NewError(connect.CodeNotFound, errUserMissing)
+		}
+
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return nil, connectErr
 		}
 
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -142,22 +154,45 @@ func writePassword(
 		return err
 	}
 
-	err = db.
+	res := db.
 		WithContext(ctx).
 		Model(&user_service_models.User{}).
-		Where("id = ?", userID).
+		Where("id = ? AND erased_at IS NULL", userID).
 		Updates(map[string]any{
 			"password":            string(hash),
 			"last_password_reset": now,
 			"updated_at":          gorm.Expr("NOW()"),
-		}).
-		Error
-	if err != nil {
-		return err
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+
+	// The account was found by the caller, so no row means it is erased — and stays without a password.
+	if res.RowsAffected == 0 {
+		return errErased("is never given a password")
 	}
 
 	// A password change is a security event — drop cached roles so nothing stale survives it.
 	_ = resolver.Invalidate(ctx, userID)
+
+	return nil
+}
+
+// errErased refuses an act on an erased account (an-erased-account-is-final), saying which.
+func errErased(what string) error {
+	return connect.NewError(connect.CodeFailedPrecondition,
+		fmt.Errorf("an erased account %s (an-erased-account-is-final)", what))
+}
+
+// reservedUsername: `erased` and digits names an erased account and nothing else (erased-usernames-are-reserved), so
+// erasing user 57 can never collide with somebody already called erased57.
+var reservedUsernamePattern = regexp.MustCompile(`^erased[0-9]+$`)
+
+func refuseReservedUsername(username string) error {
+	if reservedUsernamePattern.MatchString(username) {
+		return connect.NewError(connect.CodeInvalidArgument,
+			errors.New("a username of erased and digits is kept for erased accounts (erased-usernames-are-reserved)"))
+	}
 
 	return nil
 }

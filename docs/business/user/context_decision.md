@@ -237,7 +237,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00006`**: `00005` went to the membership log first, and goose refuses a lower number added after a higher one has run |
+| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run |
 | the password | a bcrypt hash of `root1234`, never the plain text |
 | ⚠ only while empty | `WHERE id = 1 AND password = ''`: a database whose root password was already set keeps it. Without this, a new migration would **reset** a production root password back to the public one |
 | the email | `root@pdc.com`, only while it is still `root@system.local` |
@@ -1726,6 +1726,12 @@ stateDiagram-v2
   note right of Erased : no unsuspend, no new password, no team, no edit
 ```
 
+> 🔄 *(2026-10-06, built)* `users.erased_at` (migration `00006`, with a CHECK that an erased account stays suspended).
+> `lockMembership` reads it under the row lock; `SuspendUser` refuses an unsuspend, both password writers and
+> `applyUserUpdates` put `erased_at IS NULL` in the UPDATE itself (so an erase landing while they wait is seen, not
+> overwritten), and `TeamUserUpdate` refuses an erased newcomer. Erasing again succeeds and does nothing more yet. The
+> Users screen shows the row as *Erased* and offers no edit, password, restore or erase on it.
+
 **The spec.**
 
 | | |
@@ -1746,7 +1752,7 @@ to one is refused, so erasing user 57 can never collide with somebody already ca
 
 | | |
 | --- | --- |
-| refused | `CreateUser` and `UpdateUser` with a username matching `erased` + one or more digits |
+| refused | `CreateUser` and `UpdateUser` with a username matching `erased` + one or more digits. 🔄 *(2026-10-06, built: `refuseReservedUsername`, `invalid_argument`)* |
 | allowed | `erasedani`, `erased`, `ani57erased` — only the exact shape erase uses is kept |
 
 ## erase-deletes-the-photo-file

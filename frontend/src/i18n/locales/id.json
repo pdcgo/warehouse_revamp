@@ -1580,7 +1580,8 @@
     },
     "status": {
       "suspended": "Ditangguhkan",
-      "active": "Aktif"
+      "active": "Aktif",
+      "erased": "Dihapus"
     },
     "action": {
       "edit": "Ubah",

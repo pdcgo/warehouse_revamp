@@ -39,4 +39,5 @@ RPC in the system, not a property of this handler.
 | 2026-10-05 | first matrix — `TeamUserUpdate` gained its role checks and the `users` row lock; `SuspendUser` judges by role under the same lock |
 | 2026-10-06 | `DeleteUser` removed; `UpdateUser` may change the username |
 | 2026-10-06, later | `TeamUserUpdate` refuses a suspended newcomer, read under the existing lock; `TeamCreate` grants through it |
+| 2026-10-06, erase final | `lockMembership` reads `erased_at` too. The password writers and `applyUserUpdates` refuse an erased account in the UPDATE's own WHERE, so under READ COMMITTED an erase they waited behind is re-evaluated and refuses them — no new lock. Re-ran every Interleave |
 | 2026-10-06, last | the membership log: an INSERT in each membership transaction, no new lock (a log row is new, so nobody contends for it). `lockMembership` reads `is_suspended` in its locking query; the suspend-vs-add Interleave re-run on it — the blocked lock returns the row's newest version, and the add refuses |

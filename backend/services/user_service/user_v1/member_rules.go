@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -224,7 +225,7 @@ func lockMembership(tx *gorm.DB, userID, teamID uint64) (lockedMember, error) {
 	err := tx.
 		Model(&user_service_models.User{}).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Select("id", "is_suspended").
+		Select("id", "is_suspended", "erased_at").
 		Where("id = ?", userID).
 		Find(&people).
 		Error
@@ -250,19 +251,25 @@ func lockMembership(tx *gorm.DB, userID, teamID uint64) (lockedMember, error) {
 		return lockedMember{}, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return lockedMember{role: role_basev1.Role(row.Role), suspended: people[0].IsSuspended}, nil
+	return lockedMember{
+		role:      role_basev1.Role(row.Role),
+		suspended: people[0].IsSuspended,
+		erased:    people[0].ErasedAt != nil,
+	}, nil
 }
 
 // lockedMember is what lockMembership read under the lock: the person's role in the team (UNSPECIFIED = not a
-// member) and whether their account is suspended.
+// member), and whether their account is suspended, or erased for good (an-erased-account-is-final).
 type lockedMember struct {
 	role      role_basev1.Role
 	suspended bool
+	erased    bool
 }
 
 type personRow struct {
 	ID          uint64
 	IsSuspended bool
+	ErasedAt    *time.Time
 }
 
 type roleRow struct {
@@ -273,6 +280,11 @@ type roleRow struct {
 // (a-suspended-user-is-never-picked) — so never added to a team, including as a new team's first Owner.
 // A suspended MEMBER keeps their membership and may still be changed or removed.
 func refuseSuspendedNewcomer(locked lockedMember) error {
+	if locked.role == role_basev1.Role_ROLE_UNSPECIFIED && locked.erased {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("an erased account joins no team (an-erased-account-is-final)"))
+	}
+
 	if locked.role == role_basev1.Role_ROLE_UNSPECIFIED && locked.suspended {
 		return connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("a suspended user cannot be added to a team (a-suspended-user-is-never-picked)"))
