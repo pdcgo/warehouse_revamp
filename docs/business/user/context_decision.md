@@ -68,6 +68,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-non-member-root-acts-under-a-strip](#a-non-member-root-acts-under-a-strip) | in a team they are not in, Root and the Administrator act with their platform role under a *not a member* strip, each write an override | owner, 2026-10-06 |
 | [the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only) | in a team it monitors, the admin team sees no write control, and the server lets only marked reads through | owner, 2026-10-06 |
 | [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form) | pass 1 now: *All teams* for Root and the Administrator, their strip, and Create Team's Owner field · pass 2 after: the admin team read-only | owner, 2026-10-06 |
+| [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted) | design_accept of pass 1: the switcher's *All teams*, the strip, Create Team's required Owner and `owner_user_id`, with the five choices made in the prototype | owner, 2026-10-06 |
 
 ## warehouse-staff-is-the-whole-floor-job
 
@@ -1642,3 +1643,36 @@ flowchart LR
 **The spec.** Pass 1 needs only the screens and one contract change (`TeamCreateRequest` names the Owner); the
 server already lets Root and the Administrator into every team. Pass 2 is the proto marking, the access-check change
 and the read-only mode.
+
+## the-pass-1-prototype-is-accepted
+
+> Owner, in chat *(2026-10-06)*: *"okay, remember decision and do it for me"*, after the recommendation to accept both
+> parts. It answers [Q29a and Q29b](./context_clarify.md#question), as recommended.
+
+**The verdict.** Pass 1 of [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form)
+is the design to build, as previewed: the switcher's *All teams* for Root and the Administrator, the *not a member*
+strip, a team you are not in restored on a reload, and Create Team's **required Owner**, with its contract
+`TeamCreateRequest.owner_user_id`. The five choices made in the prototype are accepted with it.
+
+```mermaid
+flowchart LR
+  F["Create Team — Owner: Ani, found or created"] --> T["TeamCreate — owner_user_id required"]
+  T --> G["user_service — Ani gets the team type's Owner role"]
+  T -.->|"not a member"| C["the creator — Root or the Administrator"]
+  C --> A["reaches the team from All teams, under the strip"]
+```
+
+**The spec — the choices accepted with it.**
+
+| choice | why |
+| --- | --- |
+| a new Owner is made first, as an account with no team, then the team. If the team is refused, the new person **stays picked**, so Create again reuses them | never two accounts for one person; users are never deleted, and the next search finds them |
+| the Owner field uses the shared user search, not Add Member's exact match | only Root and the Administrator create teams, and they search broadly |
+| *All teams* lists the first 20 before anything is typed | a page caps it; typing narrows it |
+| the strip does not say *"recorded as an override"* | not until [an-override-is-stamped-in-every-service](#an-override-is-stamped-in-every-service) is built |
+| the admin team's read-only half is not in this pass | pass 2 |
+
+**The backend it unlocks** is [the-create-team-form-names-the-first-owner](#the-create-team-form-names-the-first-owner)'s
+spec: `owner_user_id` required, that person granted the team type's Owner role, the creator not made a member. A
+suspended person is refused as the Owner, because [a-suspended-user-is-never-picked](#a-suspended-user-is-never-picked)
+says a suspended user *"cannot be newly given anything"*.

@@ -31,7 +31,8 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
-> | *"continue"* — pass 1 prototype built | ▲ **Q29** design_accept: the switcher's *All teams* and the strip (both work in the running app now), and Create Team's Owner (the server ignores it until the backend pass). [What accepting it accepts](#pass-1-prototype--what-accepting-it-accepts) |
+> | *"okay, remember decision and do it for me"* — Q29 | ✅ **Q29** design_accept of pass 1, both parts as recommended: [the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted). **No question is open in this context** |
+> | *"continue"* — pass 1 prototype built | ▲ **Q29** design_accept: the switcher's *All teams* and the strip (both work in the running app now), and Create Team's Owner (the server ignores it until the backend pass). What accepting it accepted is in [the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted) |
 > | *"i follow your recomendation"* — Q28 | ✅ all five parts: [the-switcher-offers-every-team](./context_decision.md#the-switcher-offers-every-team) · [a-non-member-root-acts-under-a-strip](./context_decision.md#a-non-member-root-acts-under-a-strip) · [the-admin-team-monitors-read-only](./context_decision.md#the-admin-team-monitors-read-only) · [the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form) · Critique 29 deleted. **No question is open in this context** |
 > | *(you asked)* elaborate Q28 | 🔄 **Q28** split into five parts, checked against the build: the switcher already searches but only your memberships · `TeamList` already pages and searches every team · 21 screens read the current role · a reload restores only memberships · the admin team's reads mean marking 142 team-scoped requests by hand · recommend Root's and the Administrator's half with Q27 now, the admin team's half as its own pass |
 > | *"continue"* — step 1a built | ✅ the two admin-team roles, their six policies, the labels, the Owner grant · ▲ **Q28** the switcher lists memberships only, so Q27 would cut Root and the Administrator off from the teams they create, and the admin team's reads have no screen (Critique 29) |
@@ -200,46 +201,11 @@ Next is backend analysis, which builds the decided-not-built list in the
 [the-switcher-offers-every-team](./context_decision.md#the-switcher-offers-every-team),
 [the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form).
 
-### Pass 1 prototype — what accepting it accepts
+### Pass 1 prototype — accepted
 
-Built 2026-10-06 ([the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form), pass 1).
-**Preview it in Storybook** (`cd frontend && npm run storybook`): `Layouts/TeamSwitcher`, `Layouts/Desktop/AppShell` and
-`Layouts/Mobile/AppShell` (*Root In A Team They Are Not In*), `Pages/Teams/CreateTeamDialog`. Each story's `play()` is one
-rule. [Q29](#question).
-
-```mermaid
-flowchart LR
-  subgraph "the screens — built"
-    S["the switcher — My teams, and All teams for Root and the Administrator"]
-    N["the strip — Not a member, acting as Root"]
-    C["Create Team — a required Owner, found or created"]
-  end
-  subgraph "the server"
-    L["TeamList, TeamByIds — already serve the switcher"]
-    T["TeamCreate — ignores the Owner, still grants the caller"]
-  end
-  S --> L
-  N --> L
-  C --> T
-```
-
-| part | what it is | in the running app today |
-| --- | --- | --- |
-| **switcher** | *My teams*; for Root and the Administrator *All teams* under it, searched on the server. A team you are not in is marked *Not a member*, also while selected | ✅ works now |
-| **strip** | on every page of both shells: *Not a member of this team — acting as Root* (or *as the System Administrator*) | ✅ works now |
-| **a reload** | a team you are not in is restored by id | ✅ works now |
-| **Create Team** | a required **Owner**: the shared user search, or *Create a New User* in the form (username, password, name, phone) | ⚠ the server ignores the Owner and still makes you the Owner — marked on the form |
-| **contract** | `TeamCreateRequest.owner_user_id`, optional until the backend pass makes it required | ignored |
-
-**Choices I made, which you accept with it.** Say so if one is wrong.
-
-| choice | why |
-| --- | --- |
-| a new Owner is made first, as an account with no team, then the team. If the team is refused (a taken code), the new person **stays picked**, so pressing Create again reuses them | never two accounts for one person; users are never deleted, and a person with no team is found by the next search |
-| the Owner field uses the shared user search, not Add Member's exact match | only Root and the Administrator create teams, and they search broadly anyway |
-| *All teams* lists the first 20 before anything is typed | a page caps it; typing narrows it |
-| the strip does **not** say *"recorded as an override"* | stamping overrides in every service is its own item ([an-override-is-stamped-in-every-service](./context_decision.md#an-override-is-stamped-in-every-service)); a screen must not promise what the system does not do yet |
-| the admin team's read-only half is not in this pass | [the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form): pass 2 |
+design_accept passed on 2026-10-06 ([the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted)):
+the switcher's *All teams*, the *not a member* strip and Create Team's required Owner, with the five choices made in the
+prototype. Next is its backend, [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner).
 
 ---
 
@@ -251,7 +217,7 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
 
 ## Question
 
-**One open**, Q29, the design_accept of pass 1. Q3–Q28 are answered and recorded in [context_decision.md](./context_decision.md).
+**None open.** Q3–Q29 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -294,12 +260,8 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
     [the-switcher-offers-every-team](./context_decision.md#the-switcher-offers-every-team), [a-non-member-root-acts-under-a-strip](./context_decision.md#a-non-member-root-acts-under-a-strip),
     [the-admin-team-monitors-read-only](./context_decision.md#the-admin-team-monitors-read-only), [the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form).
 
-29. **design_accept — do you accept the pass 1 prototype?** Preview it in Storybook: `Layouts/TeamSwitcher`,
-    `Layouts/*/AppShell` (*Root In A Team They Are Not In*), `Pages/Teams/CreateTeamDialog`. See
-    [what accepting it accepts](#pass-1-prototype--what-accepting-it-accepts).
-    - **a.** The screens and the contract addition, as the design to build. **→ Recommend: yes**, then the backend:
-      `TeamCreate` grants the named Owner, not the caller, and `owner_user_id` becomes required.
-    - **b.** The choices listed there. **→ Recommend: yes.**
+29. ✅ **Answered** (2026-10-06): design_accept of pass 1, both parts —
+    [the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted).
 
 ---
 
@@ -581,6 +543,7 @@ flowchart LR
 
 # Awaiting
 
-**Your design_accept, [Q29](#question)**, of the pass 1 prototype — and your §General Data line,
-[phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). design_accept passed on 2026-10-05
+**Nothing asked of you**, except your §General Data line,
+[phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). Pass 1 passed design_accept on 2026-10-06
+([the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted)). design_accept passed on 2026-10-05
 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.

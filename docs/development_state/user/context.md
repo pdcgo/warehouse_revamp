@@ -3,8 +3,8 @@
 **Pass:** design_accept **passed** 2026-10-05 ([the-user-prototype-is-accepted](../../business/user/context_decision.md#the-user-prototype-is-accepted)).
 **Next: backend analysis and the build**, in the decided order ([rename-the-roles-before-the-grant-checks](../../business/user/context_decision.md#rename-the-roles-before-the-grant-checks)):
 1a add `admin_owner` and `admin_administrator`, 1b rename four roles, then the user_service rules, then the other services. Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
-Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **one open** (Q29, design_accept of pass 1). Q3–Q28 are
-answered, Q28 on 2026-10-06. Decisions: [context_decision.md](../../business/user/context_decision.md) — **58 recorded, 3
+Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **none open**. Q3–Q29 are
+answered, Q29 on 2026-10-06. Decisions: [context_decision.md](../../business/user/context_decision.md) — **63 recorded, 3
 of them superseded**. One question was re-routed: who confirms a stock count is
 [inventory Q12](../../business/inventory/context_clarify.md#question).
 
@@ -70,5 +70,4 @@ Grouped by what changes, in the decided order ([rename-the-roles-before-the-gran
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
-| design_accept of the pass 1 prototype — the switcher, the strip, Create Team's Owner | [user Q29](../../business/user/context_clarify.md#question) |
 
