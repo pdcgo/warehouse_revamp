@@ -9,25 +9,27 @@ import {
   Field,
   Icon,
   Input,
-  NativeSelect,
   Portal,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
 import { Plus } from "lucide-react";
 import { rpcError } from "../../../api/clients";
-import type { SupplierChannel } from "../../../gen/warehouse/inventory/v1/supplier_channel_pb";
-import { SupplierChannelType } from "../../../gen/warehouse/inventory/v1/supplier_channel_pb";
+import type { SupplierChannelRecord } from "../../../features/suppliers/adapt";
 import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useTeam } from "../../../features/team/TeamContext";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { MarketplaceSelect } from "../../../components/pickers/MarketplaceSelect";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveSupplierChannel } from "../../../features/suppliers/queries";
+import { SUPPLIER_DETAIL_PENDING } from "../pending";
 
-// SupplierChannelFormDialog creates OR edits a channel of one supplier (#120) — the way a team reaches
-// that vendor. Two shapes, one form, chosen by the Type toggle:
-//  - ONLINE  — a store on a marketplace: a marketplace (required) + a name + an optional url.
-//  - OFFLINE — a physical shop: a name (required) + a contact + a location.
+// SupplierChannelFormDialog creates OR edits one CHANNEL of a supplier — one store it sells through
+// (the-supplier-lists-only-its-online-stores): a channel type, a name, a link and a description. There is
+// no online/offline switch any more — a physical vendor is reached through the supplier's own contact and
+// address. The type is the shared marketplace list (channel-type-is-the-marketplace-list); the owner's
+// `custom` is its Other.
 //
 // The team is the scope: it travels in the message body (the backend's use_scope reads it there,
 // never a header). The supplier is fixed by the page the dialog opens from.
@@ -42,7 +44,7 @@ export function SupplierChannelFormDialog({
   onOpenChange,
 }: {
   supplierId: bigint;
-  channel?: SupplierChannel;
+  channel?: SupplierChannelRecord;
   open?: boolean;
   /**
    * The dialog's open state changed — including the close that follows a successful save.
@@ -77,16 +79,13 @@ export function SupplierChannelFormDialog({
   const save = useSaveSupplierChannel();
   const busy = save.isPending;
 
-  // Default to ONLINE — a marketplace store is the common case for these teams.
-  const [online, setOnline] = useState(channel ? channel.type !== SupplierChannelType.OFFLINE : true);
-  const [marketplace, setMarketplace] = useState<Marketplace>(channel?.marketplace ?? Marketplace.UNSPECIFIED);
+  const [channelType, setChannelType] = useState<Marketplace>(channel?.channelType ?? Marketplace.UNSPECIFIED);
   const [name, setName] = useState(channel?.name ?? "");
-  const [url, setUrl] = useState(channel?.url ?? "");
-  const [contact, setContact] = useState(channel?.contact ?? "");
-  const [location, setLocation] = useState(channel?.location ?? "");
+  const [uri, setUri] = useState(channel?.uri ?? "");
+  const [description, setDescription] = useState(channel?.description ?? "");
 
-  // Name is always required; an online channel additionally needs a marketplace picked.
-  const canSave = name.trim() !== "" && (!online || marketplace !== Marketplace.UNSPECIFIED);
+  // A channel needs its type and its name; the link and the description are optional.
+  const canSave = name.trim() !== "" && channelType !== Marketplace.UNSPECIFIED;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -97,10 +96,6 @@ export function SupplierChannelFormDialog({
 
     setError("");
 
-    // A channel is one shape or the other: never send an offline channel a marketplace, and never
-    // send an online one a location. The backend enforces the same pairing.
-    const type = online ? SupplierChannelType.ONLINE : SupplierChannelType.OFFLINE;
-
     save.mutate(
       {
         teamId: current.teamId,
@@ -108,12 +103,10 @@ export function SupplierChannelFormDialog({
         // hook picks the RPC by whether there is a channel to correct.
         supplierId,
         channelId: channel?.id,
-        type,
-        marketplace: online ? marketplace : Marketplace.UNSPECIFIED,
+        channelType,
         name,
-        url: online ? url : "",
-        contact,
-        location: online ? "" : location,
+        uri,
+        description,
       },
       {
         onSuccess: () => {
@@ -124,12 +117,10 @@ export function SupplierChannelFormDialog({
 
             // Only after a CREATE: the trigger stays on screen, so the next "Add Channel" must open
             // an empty form rather than the channel that was just added.
-            setOnline(true);
-            setMarketplace(Marketplace.UNSPECIFIED);
+            setChannelType(Marketplace.UNSPECIFIED);
             setName("");
-            setUrl("");
-            setContact("");
-            setLocation("");
+            setUri("");
+            setDescription("");
           }
 
           // Closing is what tells the parent the dialog is gone — in edit mode that is what clears
@@ -171,65 +162,51 @@ export function SupplierChannelFormDialog({
                     </Text>
                   )}
 
-                  <Field.Root>
-                    <Field.Label>{t("supplierChannel.form.type")}</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        value={online ? "online" : "offline"}
-                        data-testid="channel-type"
-                        onChange={(e) => setOnline(e.currentTarget.value === "online")}
-                      >
-                        <option value="online">{t("supplierChannel.type.online")}</option>
-                        <option value="offline">{t("supplierChannel.type.offline")}</option>
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
+                  <Field.Root required>
+                    <Field.Label>
+                      {t("supplierChannel.form.channelType")}
+                      <Field.RequiredIndicator />
+                    </Field.Label>
+                    <Box w="full" data-testid="channel-type">
+                      <MarketplaceSelect
+                        value={channelType}
+                        onChange={setChannelType}
+                        placeholder={t("supplierChannel.form.channelTypePlaceholder")}
+                      />
+                    </Box>
                   </Field.Root>
-
-                  {online && (
-                    <Field.Root required>
-                      <Field.Label>{t("supplierChannel.form.marketplace")}</Field.Label>
-                      <Box w="full" data-testid="channel-marketplace">
-                        <MarketplaceSelect value={marketplace} onChange={setMarketplace} />
-                      </Box>
-                    </Field.Root>
-                  )}
 
                   <Field.Root required>
-                    <Field.Label>{t("supplierChannel.form.name")}</Field.Label>
+                    <Field.Label>
+                      {t("supplierChannel.form.name")}
+                      <Field.RequiredIndicator />
+                    </Field.Label>
                     <Input value={name} data-testid="channel-name" onChange={(e) => setName(e.target.value)} />
+                    <Field.HelperText>{t("supplierChannel.form.nameHelp")}</Field.HelperText>
                   </Field.Root>
 
-                  {online ? (
-                    <Field.Root>
-                      <Field.Label>{t("supplierChannel.form.url")}</Field.Label>
-                      <Input
-                        value={url}
-                        data-testid="channel-url"
-                        onChange={(e) => setUrl(e.target.value)}
-                      />
-                    </Field.Root>
-                  ) : (
-                    <>
-                      <Field.Root>
-                        <Field.Label>{t("supplierChannel.form.contact")}</Field.Label>
-                        <Input
-                          value={contact}
-                          data-testid="channel-contact"
-                          onChange={(e) => setContact(e.target.value)}
-                        />
-                      </Field.Root>
+                  <Field.Root>
+                    <Field.Label>{t("supplierChannel.form.uri")}</Field.Label>
+                    <Input
+                      value={uri}
+                      placeholder="https://"
+                      data-testid="channel-uri"
+                      onChange={(e) => setUri(e.target.value)}
+                    />
+                  </Field.Root>
 
-                      <Field.Root>
-                        <Field.Label>{t("supplierChannel.form.location")}</Field.Label>
-                        <Input
-                          value={location}
-                          data-testid="channel-location"
-                          onChange={(e) => setLocation(e.target.value)}
-                        />
-                      </Field.Root>
-                    </>
-                  )}
+                  <Field.Root>
+                    <Field.Label>
+                      {t("supplierChannel.form.description")}
+                      <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="channelDescription" />
+                    </Field.Label>
+                    <Textarea
+                      value={description}
+                      rows={2}
+                      data-testid="channel-description"
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </Field.Root>
                 </Stack>
               </Dialog.Body>
 

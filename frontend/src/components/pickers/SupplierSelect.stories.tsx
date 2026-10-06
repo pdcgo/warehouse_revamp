@@ -3,8 +3,14 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { suppliers } from "../../../.storybook/fixtures";
+import { supplierFixtures } from "../../../.storybook/supplierFixtures";
 import { SupplierSelect, description } from "./SupplierSelect";
+
+// Team 12 is a selling team — only a selling team has suppliers (only-a-selling-team-has-suppliers). Team
+// 13's supplier is in the fixtures too, and must never be offered here.
+const TEAM = 12n;
+const suppliers = supplierFixtures.filter((s) => s.teamId === TEAM);
+const otherTeams = supplierFixtures.filter((s) => s.teamId !== TEAM);
 
 const meta = {
   title: "Components/Pickers/SupplierSelect",
@@ -12,7 +18,7 @@ const meta = {
   parameters: {
     docs: { description: { component: description } },
   },
-  args: { teamId: 11n, onChange: fn() },
+  args: { teamId: TEAM, onChange: fn() },
 } satisfies Meta<typeof SupplierSelect>;
 
 export default meta;
@@ -37,18 +43,20 @@ export const OpensOnClickWithTheWholeList: Story = {
       const option = await screen.findByTestId(`supplier-select-option-${supplier.id}`);
       await waitFor(() => expect(option).toBeVisible());
     }
+    for (const supplier of otherTeams) {
+      await expect(screen.queryByTestId(`supplier-select-option-${supplier.id}`)).toBeNull();
+    }
   },
 };
 
-// Matches on name OR code — the combobox's default matcher only sees the label, so this is a custom
-// filter and worth pinning.
-export const SearchesByNameOrCode: Story = {
+// Matches on the NAME — a supplier has no code any more (the-supplier-has-no-code).
+export const SearchesByName: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByRole("combobox");
 
     await userEvent.click(input);
-    await userEvent.type(input, suppliers[1]!.code);
+    await userEvent.type(input, "Cahaya", { delay: 40 });
 
     await expect(await screen.findByTestId(`supplier-select-option-${suppliers[1]!.id}`)).toBeVisible();
     await expect(screen.queryByTestId(`supplier-select-option-${suppliers[0]!.id}`)).toBeNull();
@@ -89,19 +97,10 @@ export const PrefilledValueShowsItsName: Story = {
 // BLANK.
 //
 // The selection was always correct — `onChange` fired with the right id — but the DISPLAY TEXT
-// vanished, because two props disagreed:
-//
-//   itemToString → `${name} (${code})`      e.g. "PT Sumber Makmur (SUP-A)"
-//   filter       → name.includes(q) || code.includes(q)      ← never looked at the label
-//
-// On selection the combobox writes itemToString back into the input, which re-runs the filter with
-// the WHOLE label as the query. No supplier's name contains "PT Sumber Makmur (SUP-A)" and no code
-// does either, so the collection emptied and the selected id no longer resolved to a label — a field
-// reading blank while a supplier was in fact selected, the same symptom as #131. TeamSelect escaped
-// it only by accident: its label is the bare name, which its filter does match.
-//
-// The filter now matches `itemText` as well, so this story asserts BOTH halves: the value round-trips
-// AND the name is on screen. Asserting only the value is what let the bug exist in the first place.
+// vanished: on selection the combobox writes itemToString back into the input, which re-runs the filter
+// with the WHOLE label as the query, and the filter of the day did not match the label. The label is now
+// the bare name and the filter matches `itemText`, so this story asserts BOTH halves: the value
+// round-trips AND the name is on screen. Asserting only the value is what let the bug exist.
 export const Interactive: Story = {
   render: (args) => {
     const [value, setValue] = useState(0n);
@@ -125,7 +124,7 @@ export const Interactive: Story = {
     await waitFor(() => expect(canvas.getByTestId("picked")).toHaveTextContent(suppliers[0]!.id.toString()));
     // … and the picked supplier is READABLE in the field, which is the half that used to break.
     await waitFor(() =>
-      expect(canvas.getByRole("combobox")).toHaveValue(`${suppliers[0]!.name} (${suppliers[0]!.code})`),
+      expect(canvas.getByRole("combobox")).toHaveValue(suppliers[0]!.name),
     );
   },
 };

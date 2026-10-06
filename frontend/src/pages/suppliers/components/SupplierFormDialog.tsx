@@ -10,15 +10,20 @@ import {
   Portal,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
 import { rpcError } from "../../../api/clients";
-import type { Supplier } from "../../../gen/warehouse/inventory/v1/supplier_pb";
+import type { SupplierRecord } from "../../../features/suppliers/adapt";
 import { useTeam } from "../../../features/team/TeamContext";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveSupplier } from "../../../features/suppliers/queries";
 
 // SupplierFormDialog creates OR edits a supplier in the CURRENT team. The team is the scope: it
 // travels in the message body (the backend's use_scope reads it there, never a header).
+//
+// The DECIDED fields only — a name, a contact, an address, a description. No code
+// (the-supplier-has-no-code), no province or city (no-province-city-or-soft-delete): an old supplier's
+// city and province arrive already folded into its address, and saving keeps them there.
 //
 // Two modes, one form:
 //  - create — `supplier` undefined; the dialog renders its own "New Supplier" trigger.
@@ -29,7 +34,7 @@ export function SupplierFormDialog({
   open: openProp,
   onOpenChange,
 }: {
-  supplier?: Supplier;
+  supplier?: SupplierRecord;
   open?: boolean;
   /**
    * The dialog's open state changed — including the close that follows a successful save.
@@ -64,15 +69,12 @@ export function SupplierFormDialog({
   const save = useSaveSupplier();
   const busy = save.isPending;
 
-  const [code, setCode] = useState(supplier?.code ?? "");
   const [name, setName] = useState(supplier?.name ?? "");
   const [contact, setContact] = useState(supplier?.contact ?? "");
-  const [province, setProvince] = useState(supplier?.province ?? "");
-  const [city, setCity] = useState(supplier?.city ?? "");
   const [address, setAddress] = useState(supplier?.address ?? "");
   const [description, setDescription] = useState(supplier?.description ?? "");
 
-  const canSave = code.trim() !== "" && name.trim() !== "";
+  const canSave = name.trim() !== "";
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -87,11 +89,8 @@ export function SupplierFormDialog({
       {
         teamId: current.teamId,
         supplierId: supplier?.id,
-        code,
         name,
         contact,
-        province,
-        city,
         address,
         description,
       },
@@ -104,11 +103,8 @@ export function SupplierFormDialog({
 
             // Only after a CREATE: the trigger stays on screen, so the next "New Supplier" must open
             // an empty form rather than the vendor that was just added.
-            setCode("");
             setName("");
             setContact("");
-            setProvince("");
-            setCity("");
             setAddress("");
             setDescription("");
           }
@@ -152,13 +148,10 @@ export function SupplierFormDialog({
                   )}
 
                   <Field.Root required>
-                    <Field.Label>{t("suppliers.form.code")}</Field.Label>
-                    <Input value={code} data-testid="supplier-code" onChange={(e) => setCode(e.target.value)} />
-                    <Field.HelperText>{t("suppliers.form.codeHelp")}</Field.HelperText>
-                  </Field.Root>
-
-                  <Field.Root required>
-                    <Field.Label>{t("suppliers.form.name")}</Field.Label>
+                    <Field.Label>
+                      {t("suppliers.form.name")}
+                      <Field.RequiredIndicator />
+                    </Field.Label>
                     <Input value={name} data-testid="supplier-name" onChange={(e) => setName(e.target.value)} />
                   </Field.Root>
 
@@ -169,26 +162,14 @@ export function SupplierFormDialog({
                       data-testid="supplier-contact"
                       onChange={(e) => setContact(e.target.value)}
                     />
-                  </Field.Root>
-
-                  <Field.Root>
-                    <Field.Label>{t("suppliers.form.province")}</Field.Label>
-                    <Input
-                      value={province}
-                      data-testid="supplier-province"
-                      onChange={(e) => setProvince(e.target.value)}
-                    />
-                  </Field.Root>
-
-                  <Field.Root>
-                    <Field.Label>{t("suppliers.form.city")}</Field.Label>
-                    <Input value={city} data-testid="supplier-city" onChange={(e) => setCity(e.target.value)} />
+                    <Field.HelperText>{t("suppliers.form.contactHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.address")}</Field.Label>
-                    <Input
+                    <Textarea
                       value={address}
+                      rows={2}
                       data-testid="supplier-address"
                       onChange={(e) => setAddress(e.target.value)}
                     />
@@ -196,8 +177,9 @@ export function SupplierFormDialog({
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.description")}</Field.Label>
-                    <Input
+                    <Textarea
                       value={description}
+                      rows={2}
                       data-testid="supplier-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />

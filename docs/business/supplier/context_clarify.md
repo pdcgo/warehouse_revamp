@@ -3,7 +3,8 @@
 What I read out of [context.md](./context.md), and what has to be settled beside it. **That doc is yours — this
 one is mine.** An answered point is deleted; what you settled is in [context_decision.md](./context_decision.md).
 
-✅ **Nothing open (2026-10-06).** The CRUD pass is fully specified — see [Proposed Design](#proposed-design).
+🔨 **The CRUD prototype is built (2026-10-06) and waits on your design_accept** — [Q10](#question). Preview it in
+Storybook: **Pages/Suppliers/Suppliers**, **Pages/Suppliers/SupplierDetail**, **Components/Pickers/SupplierSelect**.
 
 | | |
 | --- | --- |
@@ -11,6 +12,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 | ➡ moved | [Q2](#question) and the contradiction *restock-has-no-supplier* → [restock clarify](../inventory/restock_clarify.md#question) — *"for 2 we talk further in restock context"* |
 | ✅ resolved | the contradiction *two-lists-of-marketplaces* — by your Q7 edit |
 | ⏸ deferred | statistics, and seeding `supplier_channel_products` — your §Whats defer · [parked](#parked--talk-later) |
+| 🆕 +1 (2026-10-06) | [Q10](#question) — the design_accept of the CRUD prototype, with the two nods left over: the move, and *Other* vs *Custom* |
 | ⛔ still stale | your [technical/architecture/context.md:7](../../technical/architecture/context.md) puts the supplier in `product_service` — [where-the-supplier-lives](#where-the-supplier-lives) |
 
 ## Proposed Design
@@ -129,6 +131,27 @@ flowchart LR
    [products-hang-off-a-channel](./context_decision.md#products-hang-off-a-channel).
 
 Kept as lines so the numbers hold.
+
+10. 🆕 **design_accept — the CRUD prototype.** Built to the [Proposed Design](#proposed-design), in Storybook, and wired
+    to the RUNNING app through a translation step (`features/suppliers/adapt.ts`): the screens speak the decided shape,
+    and the step makes up the code and the online type today's server still demands. It is deleted when
+    `supplier_service` lands — the screens do not change then.
+
+    | story | what to look at |
+    | --- | --- |
+    | Pages/Suppliers/Suppliers — *Default*, *AWarehouseTeam* | Name · Contact · Address, no Code or City · an old city folded into the address · New Supplier for a selling team only |
+    | Pages/Suppliers/SupplierDetail — *Default*, *AWebsiteOnly*, *NoChannelsYet* | the channels by marketplace badge · an old offline shop reads as *Other* · the ⚠ 1 mark |
+    | Components/Pickers/SupplierSelect | the name alone, searched by name |
+
+    ⚠ **One mark, one loss:** a channel's description is typed and thrown away — the old server has no field for it.
+    Delete removes the supplier from every screen, though today's server still keeps the row underneath; the move does
+    not carry it.
+
+    | | the question | → Recommend |
+    | --- | --- | --- |
+    | **10a** | accept the screens? | **Yes**, then build `supplier_service` |
+    | **10b** | the move of the existing suppliers — a one-shot `san` command copying rows **with their ids**, then `inventory_service` drops its tables ([Moving what exists](#moving-what-exists---my-proposal)) | **Yes** — restocks and batches hold those ids |
+    | **10c** | the label on `custom`: the shared list says **Other** | **Keep Other** — one word for one value, on shops and suppliers alike |
 
 ## Parked — talk later
 

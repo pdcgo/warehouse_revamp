@@ -1,10 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierChannelClient, supplierClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
-import type { SupplierChannelType } from "../../gen/warehouse/inventory/v1/supplier_channel_pb";
-import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { key, listQuery } from "../../api/queryClient";
 import {
+  type ChannelFields,
+  type SupplierFields,
+  channelCreateRequest,
+  channelUpdateRequest,
   channelsFromList,
+  supplierCreateRequest,
+  supplierRecord,
+  supplierUpdateRequest,
   suppliersFromByIds,
   suppliersFromList,
   supplierByIdsRowData,
@@ -12,7 +17,8 @@ import {
   supplierListRowData,
 } from "./adapt";
 
-// The supplier screens' reads (#176).
+// The supplier screens' reads (#176). Every one returns the DECIDED shape — `SupplierRecord`,
+// `SupplierChannelRecord` — through the translation step in adapt.ts, so no screen sees the old proto.
 
 export function useSuppliers(args: {
   teamId: bigint | undefined;
@@ -23,6 +29,9 @@ export function useSuppliers(args: {
   const { teamId, q, page, pageSize } = args;
 
   return useQuery({
+    // A search and a page refine the same question, so the previous rows stay up while it runs
+    // (HARD RULE 10). The page wraps its table in a RefreshOverlay for the same reason.
+    ...listQuery,
     queryKey: key.suppliers(teamId, { q, page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
@@ -79,7 +88,7 @@ export function useSupplier(args: { teamId: bigint | undefined; supplierId: bigi
     queryFn: async () => {
       const res = await supplierClient.supplierDetail({ teamId: teamId!, supplierId });
 
-      return res.supplier ?? null;
+      return res.supplier ? supplierRecord(res.supplier) : null;
     },
   });
 }
@@ -142,17 +151,10 @@ export function useInvalidateSuppliers() {
 // the channels are read as part of the supplier: the detail page's two queries share the prefix, and
 // splitting the invalidation would buy one avoided refetch in exchange for a rule to remember.
 
-interface SaveSupplierVars {
+interface SaveSupplierVars extends SupplierFields {
   teamId: bigint;
   /** Set to correct an existing supplier; omitted to add one. */
   supplierId?: bigint;
-  code: string;
-  name: string;
-  contact: string;
-  province: string;
-  city: string;
-  address: string;
-  description: string;
 }
 
 // Add or correct a supplier. One hook for both, because the edit form IS the record re-opened — the
@@ -161,10 +163,10 @@ export function useSaveSupplier() {
   const invalidate = useInvalidateSuppliers();
 
   return useMutation({
-    mutationFn: async ({ supplierId, ...vars }: SaveSupplierVars) =>
+    mutationFn: async ({ teamId, supplierId, ...fields }: SaveSupplierVars) =>
       supplierId === undefined
-        ? await supplierClient.supplierCreate(vars)
-        : await supplierClient.supplierUpdate({ ...vars, supplierId }),
+        ? await supplierClient.supplierCreate(supplierCreateRequest(teamId, fields))
+        : await supplierClient.supplierUpdate(supplierUpdateRequest(teamId, supplierId, fields)),
     onSuccess: () => invalidate(),
   });
 }
@@ -178,7 +180,7 @@ export function useDeleteSupplier() {
   });
 }
 
-interface SaveSupplierChannelVars {
+interface SaveSupplierChannelVars extends ChannelFields {
   teamId: bigint;
   /**
    * The supplier the channel hangs off. Only sent on CREATE — an update names the channel directly,
@@ -187,22 +189,16 @@ interface SaveSupplierChannelVars {
   supplierId: bigint;
   /** Set to correct an existing channel; omitted to add one. */
   channelId?: bigint;
-  type: SupplierChannelType;
-  marketplace: Marketplace;
-  name: string;
-  url: string;
-  contact: string;
-  location: string;
 }
 
 export function useSaveSupplierChannel() {
   const invalidate = useInvalidateSuppliers();
 
   return useMutation({
-    mutationFn: async ({ channelId, supplierId, ...vars }: SaveSupplierChannelVars) =>
+    mutationFn: async ({ teamId, channelId, supplierId, ...fields }: SaveSupplierChannelVars) =>
       channelId === undefined
-        ? await supplierChannelClient.supplierChannelCreate({ ...vars, supplierId })
-        : await supplierChannelClient.supplierChannelUpdate({ ...vars, channelId }),
+        ? await supplierChannelClient.supplierChannelCreate(channelCreateRequest(teamId, supplierId, fields))
+        : await supplierChannelClient.supplierChannelUpdate(channelUpdateRequest(teamId, channelId, fields)),
     onSuccess: () => invalidate(),
   });
 }

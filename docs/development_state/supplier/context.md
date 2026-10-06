@@ -2,8 +2,9 @@
 
 **Pass:** business analysis on the owner's [supplier/context.md](../../business/supplier/context.md), written and
 revised five times on 2026-10-06. Questions: [context_clarify.md](../../business/supplier/context_clarify.md) —
-**nothing open**. Decisions: [context_decision.md](../../business/supplier/context_decision.md) — eleven, one reversed.
-The lifecycle is at **ready for the CRUD prototype**: no Storybook work yet, and no backend change yet.
+**Q10 open: the design_accept**. Decisions: [context_decision.md](../../business/supplier/context_decision.md) — eleven,
+one reversed. The lifecycle is at **design_accept**: the CRUD prototype is built and wired to the running app; no
+backend change yet.
 
 ## Decided
 
@@ -25,13 +26,23 @@ The lifecycle is at **ready for the CRUD prototype**: no Storybook work yet, and
 | tables | `suppliers` (with code, province, city, deleted) · `supplier_channels` (online/offline) · `restock_requests.supplier_id` a real FK, `ON DELETE SET NULL` |
 | frontend | `pages/suppliers`, `pages/supplier-detail`, `components/pickers/SupplierSelect` · routes `/inventories/suppliers[/:id]` |
 
+## The CRUD prototype — built 2026-10-06
+
+| | |
+| --- | --- |
+| the translation step | `features/suppliers/adapt.ts` — pages read and write `SupplierRecord` / `SupplierChannelRecord` (the decided shape) and never the proto. It makes up a code (`generatedSupplierCode`), folds city + province into the address and clears them on save, sends every channel as ONLINE with `channel_type` as its marketplace, reads an old offline row as OTHER with contact · location as its description, and leaves contact/location ABSENT on a channel update so that description survives. **Delete it when supplier_service lands** — the pages do not change |
+| pages | `pages/suppliers` (Name · Contact · Address, phone blocks, RefreshOverlay + `listQuery`, New/Edit/Delete for a SELLING team only) · `pages/supplier-detail` (contact, address, description; channels by `MarketplaceBadge`; `pending.ts` — one `dropped` mark, the channel description) · `SupplierSelect` (name only) |
+| Storybook | `.storybook/supplierStub.ts` + `supplierFixtures.ts` — writeable, TODAY's wire shape (code required, online/offline), plus two decided rules (selling team only, hard delete); reset in `preview.tsx`. Stories: `Pages/Suppliers/Suppliers` (8), `Pages/Suppliers/SupplierDetail` (12), `SupplierSelect` (8) |
+| tests | all 949 story tests green · `e2e/suppliers.spec.ts` + `supplier_channels.spec.ts` green against the real server — each makes its own SELLING team (Root as Owner) and switches to it |
+| fixtures | suppliers moved out of `fixtures.ts` to team **12** (selling); team 13 holds one supplier that team 12 must never list |
+
 ## Next
 
-1. **The CRUD prototype in Storybook** — the manage page, the supplier form, the channel form, the detail page, to the
-   decided shape ([Proposed Design](../../business/supplier/context_clarify.md#proposed-design)). Then `design_accept`.
-2. **`supplier_service`** — migrations, proto, RPCs with a unit test each, the performance and concurrency audits.
-3. **The move** — ⚠ my proposal, not decided: a one-shot `san` command copies rows keeping their ids, then an
-   `inventory_service` migration drops the old tables and the FK.
+1. **design_accept** — [Q10](../../business/supplier/context_clarify.md#question): 10a the screens, 10b the move, 10c *Other*.
+2. **`supplier_service`** — migrations, proto `warehouse.supplier.v1`, RPCs with a unit test each, the performance and
+   concurrency audits. Then point `adapt.ts` at it and delete the translation step.
+3. **The move** — if 10b: a one-shot `san` command copies rows keeping their ids, then an `inventory_service`
+   migration drops the old tables and the FK.
 
 ## Elsewhere
 

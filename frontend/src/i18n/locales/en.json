@@ -1395,18 +1395,17 @@
   "suppliers": {
     "title": "Suppliers",
     "selectTeam": "Select a team to manage its suppliers.",
-    "searchPlaceholder": "Search name or code",
+    "searchPlaceholder": "Search by name",
     "deleted": "Supplier \"{{name}}\" deleted",
     "deleteFailed": "Delete failed",
     "deleteSupplier": "Delete Supplier",
-    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
+    "deleteConfirm": "Delete \"{{name}}\" and its channels? It is removed for good.",
     "delete": "Delete",
     "empty": "No suppliers found.",
     "table": {
-      "code": "Code",
       "name": "Name",
       "contact": "Contact",
-      "city": "City",
+      "address": "Address",
       "actions": "Actions"
     },
     "form": {
@@ -1415,23 +1414,22 @@
       "newSupplier": "New Supplier",
       "editTitle": "Edit Supplier",
       "createTitle": "New Supplier",
-      "code": "Code",
-      "codeHelp": "Unique within the team, up to 32 characters.",
       "name": "Name",
       "contact": "Contact",
-      "province": "Province",
-      "city": "City",
       "address": "Address",
       "description": "Description",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create"
+      "create": "Create",
+      "contactHelp": "A phone or WhatsApp number."
     },
     "select": {
       "placeholder": "Select a supplier",
       "unavailable": "Suppliers unavailable",
       "empty": "No suppliers found"
-    }
+    },
+    "sellingOnly": "Only a selling team has suppliers.",
+    "edit": "Edit supplier"
   },
   "supplierChannel": {
     "deleted": "Channel \"{{name}}\" deleted",
@@ -1439,18 +1437,14 @@
     "deleteTitle": "Delete Channel",
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
     "delete": "Delete",
-    "type": {
-      "online": "Online",
-      "offline": "Offline"
-    },
     "section": {
       "title": "Channels",
       "empty": "No channels yet."
     },
     "table": {
-      "type": "Type",
       "channel": "Channel",
-      "details": "Details",
+      "uri": "Link",
+      "description": "Description",
       "actions": "Actions"
     },
     "detail": {
@@ -1459,10 +1453,7 @@
       "back": "Back to Suppliers",
       "notFound": "Supplier not found.",
       "title": "Supplier Details",
-      "code": "Code",
       "contact": "Contact",
-      "province": "Province",
-      "city": "City",
       "address": "Address",
       "description": "Description"
     },
@@ -1472,15 +1463,22 @@
       "addChannel": "Add Channel",
       "editTitle": "Edit Channel",
       "createTitle": "Add Channel",
-      "type": "Type",
-      "marketplace": "Marketplace",
       "name": "Name",
-      "url": "URL",
-      "contact": "Contact",
-      "location": "Location",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Add"
+      "create": "Add",
+      "channelType": "Channel type",
+      "channelTypePlaceholder": "Select a channel type",
+      "nameHelp": "The store's name on that channel.",
+      "uri": "Link",
+      "description": "Description"
+    },
+    "edit": "Edit channel",
+    "pending": {
+      "channelDescription": {
+        "label": "Channel description",
+        "reason": "the current server has no field for it, so it is thrown away until supplier_service is built"
+      }
     }
   },
   "teams": {

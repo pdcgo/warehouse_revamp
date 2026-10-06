@@ -56,10 +56,7 @@ export const shops = [
 ];
 
 // ── Suppliers ───────────────────────────────────────────────────────────────────────────────────
-export const suppliers = [
-  { id: 31n, teamId: 11n, code: "SUP-A", name: "PT Sumber Makmur", contact: "0812-1111", province: "Jawa Barat", city: "Bandung", address: "", description: "", deleted: false },
-  { id: 32n, teamId: 11n, code: "SUP-B", name: "CV Cahaya Abadi", contact: "0812-2222", province: "Jawa Timur", city: "Surabaya", address: "", description: "", deleted: false },
-];
+// In supplierFixtures.ts, beside the writeable stub that serves them (supplierStub.ts).
 
 // ── Racks ───────────────────────────────────────────────────────────────────────────────────────
 export const racks = [

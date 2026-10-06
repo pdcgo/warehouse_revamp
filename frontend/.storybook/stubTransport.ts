@@ -22,6 +22,7 @@ import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/exp
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
 import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
+import { SupplierChannelService } from "../src/gen/warehouse/inventory/v1/supplier_channel_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
 import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
@@ -57,6 +58,7 @@ import {
   FinancialAccountService,
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
+import { supplierChannelService, supplierService } from "./supplierStub";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -112,7 +114,6 @@ import {
   liabilityTerms,
   liabilityTermsChanges,
   receiptLabel,
-  suppliers,
   teams,
   users,
   warehouseStock,
@@ -745,9 +746,9 @@ export const transport = createRouterTransport(({ service }) => {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
   });
 
-  service(SupplierService, {
-    supplierList: (req) => columnar("supplier", suppliers.filter((s) => match(req.filter?.q, s.name, s.code))),
-  });
+  // The supplier CRUD prototype — supplierStub.ts plays today's server and the decided rules.
+  service(SupplierService, supplierService);
+  service(SupplierChannelService, supplierChannelService);
 
   service(RackService, {
     rackList: () => columnar("rack", racks),

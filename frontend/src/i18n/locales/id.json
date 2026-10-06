@@ -1390,18 +1390,17 @@
   "suppliers": {
     "title": "Pemasok",
     "selectTeam": "Pilih tim untuk mengelola pemasoknya.",
-    "searchPlaceholder": "Cari nama atau kode",
+    "searchPlaceholder": "Cari berdasarkan nama",
     "deleted": "Pemasok \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
     "deleteSupplier": "Hapus Pemasok",
-    "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "deleteConfirm": "Hapus \"{{name}}\" beserta salurannya? Pemasok dihapus permanen.",
     "delete": "Hapus",
     "empty": "Tidak ada pemasok ditemukan.",
     "table": {
-      "code": "Kode",
       "name": "Nama",
       "contact": "Kontak",
-      "city": "Kota",
+      "address": "Alamat",
       "actions": "Aksi"
     },
     "form": {
@@ -1410,23 +1409,22 @@
       "newSupplier": "Pemasok Baru",
       "editTitle": "Ubah Pemasok",
       "createTitle": "Pemasok Baru",
-      "code": "Kode",
-      "codeHelp": "Unik dalam tim, maksimal 32 karakter.",
       "name": "Nama",
       "contact": "Kontak",
-      "province": "Provinsi",
-      "city": "Kota",
       "address": "Alamat",
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat"
+      "create": "Buat",
+      "contactHelp": "Nomor telepon atau WhatsApp."
     },
     "select": {
       "placeholder": "Pilih pemasok",
       "unavailable": "Pemasok tidak tersedia",
       "empty": "Pemasok tidak ditemukan"
-    }
+    },
+    "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
+    "edit": "Ubah pemasok"
   },
   "supplierChannel": {
     "deleted": "Saluran \"{{name}}\" dihapus",
@@ -1434,18 +1432,14 @@
     "deleteTitle": "Hapus Saluran",
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
-    "type": {
-      "online": "Online",
-      "offline": "Offline"
-    },
     "section": {
       "title": "Saluran",
       "empty": "Belum ada saluran."
     },
     "table": {
-      "type": "Tipe",
       "channel": "Saluran",
-      "details": "Detail",
+      "uri": "Tautan",
+      "description": "Deskripsi",
       "actions": "Aksi"
     },
     "detail": {
@@ -1454,10 +1448,7 @@
       "back": "Kembali ke Pemasok",
       "notFound": "Pemasok tidak ditemukan.",
       "title": "Detail Pemasok",
-      "code": "Kode",
       "contact": "Kontak",
-      "province": "Provinsi",
-      "city": "Kota",
       "address": "Alamat",
       "description": "Deskripsi"
     },
@@ -1467,15 +1458,22 @@
       "addChannel": "Tambah Saluran",
       "editTitle": "Ubah Saluran",
       "createTitle": "Tambah Saluran",
-      "type": "Tipe",
-      "marketplace": "Marketplace",
       "name": "Nama",
-      "url": "URL",
-      "contact": "Kontak",
-      "location": "Lokasi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Tambah"
+      "create": "Tambah",
+      "channelType": "Jenis saluran",
+      "channelTypePlaceholder": "Pilih jenis saluran",
+      "nameHelp": "Nama toko di saluran tersebut.",
+      "uri": "Tautan",
+      "description": "Deskripsi"
+    },
+    "edit": "Ubah saluran",
+    "pending": {
+      "channelDescription": {
+        "label": "Deskripsi saluran",
+        "reason": "server saat ini belum punya kolomnya, jadi dibuang sampai supplier_service dibangun"
+      }
     }
   },
   "teams": {
