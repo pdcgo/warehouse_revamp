@@ -7,8 +7,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 // This exists because of a bug found while MEASURING something else (#178): a team you had just
 // created was missing from the switcher until you reloaded the page. Two different caches — the team
 // LIST is a query, the caller's MEMBERSHIPS are TeamContext — and creating a team refreshed only the
-// first. It bit precisely where it was least wanted, because TeamCreate makes the caller the new
-// team's OWNER, so switching into it is the obvious next thing to do.
+// first. It bit precisely where it was least wanted: a creator who names THEMSELVES the new team's Owner
+// switches into it next.
 
 const SUFFIX = Date.now().toString().slice(-6);
 const WH_NAME = `Switch WH ${SUFFIX}`;
@@ -36,8 +36,8 @@ test("a team you just created is switchable WITHOUT a reload", async ({ page }) 
   await page.getByTestId("new-team-name").fill(WH_NAME);
   await page.getByTestId("new-team-code").fill(WH_CODE);
 
-  // The form names the team's Owner (the-create-team-form-names-the-first-owner); the server still makes the
-  // caller the Owner until the backend pass, so the pick changes nothing downstream.
+  // The form names the team's Owner (the-create-team-form-names-the-first-owner) — root itself, so the new
+  // team is one of root's memberships.
   await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
   await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
   await page.getByTestId("submit-create-team").click();

@@ -19,12 +19,9 @@ import { toaster } from "../../../components/feedback/Toaster";
 import { PasswordInput } from "../../../components/inputs/PasswordInput";
 import { TeamTypeSelect, teamTypeLabel } from "../../../components/pickers/TeamTypeSelect";
 import { UserSelect } from "../../../components/pickers/UserSelect";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../../features/pending/NotImplementedSummary";
 import { useCreateTeam } from "../../../features/teams/queries";
 import { useTeam } from "../../../features/team/TeamContext";
 import { useCreateUser } from "../../../features/users/queries";
-import { TEAMS_PENDING } from "../pending";
 
 const NEW_OWNER = { username: "", password: "", name: "", phone: "" };
 
@@ -144,9 +141,9 @@ export function CreateTeamDialog({
         onSuccess: () => {
           toaster.create({ type: "success", title: t("teams.teamCreated", { name }) });
 
-          // Refresh the caller's MEMBERSHIPS as well as the team list. Until the backend pass the server
-          // still makes the CALLER the Owner (the pending mark says so), and TeamContext — which backs the
-          // switcher — holds memberships in its own state, not in the query cache the hook invalidates.
+          // Refresh the caller's MEMBERSHIPS as well as the team list: the caller is not made a member, but
+          // may have named THEMSELVES as the Owner, and TeamContext — which backs the switcher — holds
+          // memberships in its own state, not in the query cache the hook invalidates.
           void refresh();
 
           reset();
@@ -188,8 +185,6 @@ export function CreateTeamDialog({
 
               <Dialog.Body>
                 <Stack gap="card">
-                  <NotImplementedSummary list={TEAMS_PENDING} />
-
                   {error && (
                     <Text color="error.fg" data-testid="create-team-error">
                       {error}
@@ -233,10 +228,7 @@ export function CreateTeamDialog({
                   </Field.Root>
 
                   <Field.Root required>
-                    <Field.Label>
-                      {t("teams.owner")}
-                      <NotImplemented list={TEAMS_PENDING} id="owner" />
-                    </Field.Label>
+                    <Field.Label>{t("teams.owner")}</Field.Label>
 
                     {creatingOwner ? (
                       <Stack gap="field" w="full" data-testid="new-team-owner-create">

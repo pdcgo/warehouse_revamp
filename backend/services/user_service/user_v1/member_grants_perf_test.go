@@ -142,3 +142,28 @@ func TestPerf_UpdateUserUsername(t *testing.T) {
 		return err
 	})
 }
+
+// TeamCreate's grant: Root adds a NEW person as a team's Owner — a new person each call, so every call
+// takes the newcomer path and its suspended check (refuseSuspendedNewcomer), not the change-role path the
+// test above settles into after its warm-up.
+func TestPerf_TeamUserUpdateNewOwner(t *testing.T) {
+	db, svc, probe, _, root, _ := seedGrantVolume(t)
+
+	var ids []uint64
+
+	err := db.Model(&user_service_models.User{}).Where("username LIKE ?", "perfuser7%").Order("id").Limit(10).Pluck("id", &ids).Error
+	if err != nil || len(ids) < 6 {
+		t.Fatalf("newcomers: %v (%d)", err, len(ids))
+	}
+
+	measure(t, probe, "TeamUserUpdate (new Owner)", func(i int) error {
+		_, err := svc.TeamUserUpdate(root, connect.NewRequest(&userv1.TeamUserUpdateRequest{
+			TeamId: whTeam,
+			Action: &userv1.TeamUserUpdateRequest_Add{Add: &userv1.AddTeamUser{UserId: ids[i+1], Role: role_basev1.Role_ROLE_WAREHOUSE_OWNER}},
+		}))
+
+		return err
+	})
+
+	t.Log(san_perf.Explain(t, db, fmt.Sprintf(`SELECT "is_suspended" FROM "users" WHERE id = %d`, ids[1])))
+}

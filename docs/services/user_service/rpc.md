@@ -27,6 +27,7 @@ sequenceDiagram
         U->>U: BEGIN, lock the person's users row FOR UPDATE
         U->>U: read their current role in the team
         U->>U: check — current and next both below the caller, next of the team's type
+        U->>U: a NEW member — refused if suspended, read under the same lock
         U->>U: upsert or delete the membership, COMMIT
         U->>U: evict the person's cached roles
         U-->>C: ok
@@ -39,9 +40,13 @@ sequenceDiagram
 - **The lock is on the person, not the membership.** Every membership write and every suspend for one
   person queues on their `users` row, so a role read under it cannot be overtaken — proved in
   [the lock-order matrix](../../../audits/services/user_service/concurrency/lock-order.md).
-- **`TeamCreate` calls this** with the creator's token to grant the new team's Owner. That is why Root
-  and the Administrator may add **themselves** to a team they are not in, while nobody changes a
-  membership they already hold.
+- **`TeamCreate` calls this** with the creator's token to grant the **named** Owner — the creator is not
+  made a member ([the-create-team-form-names-the-first-owner](../../business/user/context_decision.md#the-create-team-form-names-the-first-owner)).
+  Root and the Administrator may still add **themselves** to a team they are not in (the form may name
+  them), while nobody changes a membership they already hold.
+- **A suspended person is never added** ([a-suspended-user-is-never-picked](../../business/user/context_decision.md#a-suspended-user-is-never-picked)):
+  `failed_precondition`, read under the lock `SuspendUser` also takes. A suspended **member** keeps their
+  membership and may still be changed or removed.
 - `CreateUser` checks the new person's role the same way (a new person holds none), and `SuspendUser`
   locks the same row and judges the target by its **root-team role**, never its id.
 

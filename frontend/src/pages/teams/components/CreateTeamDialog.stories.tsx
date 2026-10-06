@@ -10,7 +10,7 @@ import { CreateTeamDialog } from "./CreateTeamDialog";
 // with the user search, or created right here when the search finds nobody. The person creating it — Root or
 // the System Administrator — is not made a member; they reach it from the switcher's All teams.
 //
-// ⚠ The server does not yet honour the Owner (the form says so with a pending mark); these stories pin what
+// The server grants the named person the Owner role (the-pass-1-prototype-is-accepted); these stories pin what
 // the form SENDS, read back from the stub (teamCreateScenario).
 
 const BUDI = users[1]!; // budi (62)

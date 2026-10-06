@@ -1566,13 +1566,7 @@
     "ownerPlaceholder": "Search a person by name, username or phone",
     "ownerRequired": "Pick the team's owner, or create them.",
     "createOwner": "Create a New User",
-    "backToOwnerSearch": "Back to Search",
-    "pending": {
-      "owner": {
-        "label": "The owner named here",
-        "reason": "the server still makes you the owner and ignores the person named"
-      }
-    }
+    "backToOwnerSearch": "Back to Search"
   },
   "users": {
     "title": "Users",

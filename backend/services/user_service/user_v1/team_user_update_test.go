@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
@@ -168,8 +169,8 @@ func TestTeamUserUpdate_AnUncheckableTeamIsRefused(t *testing.T) {
 	}
 }
 
-// TeamCreate grants the creator the new team's Owner role, so Root and the Administrator may add
-// THEMSELVES to a team they are not in — and nobody may change a membership they already hold.
+// Root and the Administrator may add THEMSELVES to a team they are not in — the Create Team form may
+// name them as its Owner — and nobody may change a membership they already hold.
 func TestTeamUserUpdate_SelfOnlyToJoin(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -185,5 +186,52 @@ func TestTeamUserUpdate_SelfOnlyToJoin(t *testing.T) {
 	_, err = svc.TeamUserUpdate(root, remove(sellTeam, rootID))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("Root removing their own membership: code = %v, want PermissionDenied", connect.CodeOf(err))
+	}
+}
+
+// a-suspended-user-is-never-picked: a suspended user cannot be newly given anything, so they are never
+// added to a team — not even by Root, and not as a new team's first Owner (TeamCreate grants through
+// here). Refused before anything is written, so team_service can free the team's code.
+func TestTeamUserUpdate_ASuspendedUserIsNeverAdded(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	uid := insertUser(t, db, "suspended", "pw12345678")
+	markSuspended(t, db, uid)
+
+	_, err := svc.TeamUserUpdate(asRoot(t, db), add(sellTeam, uid, role_basev1.Role_ROLE_SELLING_OWNER))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("code = %v, want FailedPrecondition", connect.CodeOf(err))
+	}
+
+	if role := roleOf(t, db, sellTeam, uid); role != role_basev1.Role_ROLE_UNSPECIFIED {
+		t.Errorf("a refused add wrote a membership: %v", role)
+	}
+}
+
+// Suspension is not a new grant: a suspended MEMBER keeps their place and may still be changed.
+func TestTeamUserUpdate_ASuspendedMemberMayStillBeChanged(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	uid := memberOf(t, db, "suspendedstaff", whTeam, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
+	markSuspended(t, db, uid)
+
+	_, err := svc.TeamUserUpdate(asRoot(t, db), add(whTeam, uid, role_basev1.Role_ROLE_WAREHOUSE_ADMIN))
+	if err != nil {
+		t.Fatalf("changing a suspended member's role: %v", err)
+	}
+
+	if role := roleOf(t, db, whTeam, uid); role != role_basev1.Role_ROLE_WAREHOUSE_ADMIN {
+		t.Errorf("role = %v, want WAREHOUSE_ADMIN", role)
+	}
+}
+
+func markSuspended(t *testing.T, db *gorm.DB, userID uint64) {
+	t.Helper()
+
+	err := db.Model(&user_service_models.User{}).Where("id = ?", userID).Update("is_suspended", true).Error
+	if err != nil {
+		t.Fatalf("suspend: %v", err)
 	}
 }

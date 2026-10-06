@@ -15,6 +15,11 @@ import { ensurePubsubTopicsCommand, requirePubsubEmulator } from "./pubsub";
 export const ROOT_USERNAME = "root";
 export const ROOT_PASSWORD = "rootpassword123";
 
+// Root is seeded as user 1 (user_service 00003_seed_root_user.sql). A spec that creates a team through the API
+// names it as the Owner: TeamCreate makes the NAMED person the Owner, never the caller
+// (the-create-team-form-names-the-first-owner).
+export const ROOT_USER_ID = "1";
+
 // The services whose migrations run, DISCOVERED FROM THE FILESYSTEM rather than listed.
 //
 // This used to be a hand-maintained list, and it went stale exactly as you would expect: revenue_service

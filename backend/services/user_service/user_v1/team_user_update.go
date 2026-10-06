@@ -92,6 +92,13 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 			return err
 		}
 
+		if current == role_basev1.Role_ROLE_UNSPECIFIED {
+			err = refuseSuspendedNewcomer(tx, add.GetUserId())
+			if err != nil {
+				return err
+			}
+		}
+
 		membership := user_service_models.UserTeamRole{
 			TeamID: teamID,
 			UserID: add.GetUserId(),

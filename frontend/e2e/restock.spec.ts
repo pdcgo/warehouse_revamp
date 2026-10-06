@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 
 // #105 — Restock requests (a selling team asks a warehouse to restock a product; the warehouse
 // fulfils). The list-page render check came first; the CREATE FORM had no coverage at all until #165
@@ -50,7 +50,7 @@ async function seed(page: Page, tag: string) {
   const { whCode, whName, category, skuA, skuB } = names(tag);
 
   await page.evaluate(
-    async ([whCode, whName, category, skuA, skuB]) => {
+    async ([whCode, whName, category, skuA, skuB, ownerId]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
@@ -70,6 +70,7 @@ async function seed(page: Page, tag: string) {
         type: 3,
         name: whName,
         teamCode: whCode,
+        ownerUserId: ownerId,
       });
 
       // Categories are their own service and DELIBERATELY unscoped — the taxonomy is shared, so there
@@ -95,7 +96,7 @@ async function seed(page: Page, tag: string) {
         });
       }
     },
-    [whCode, whName, category, skuA, skuB] as const,
+    [whCode, whName, category, skuA, skuB, ROOT_USER_ID] as const,
   );
 
   return { whCode, whName, skuA, skuB };
@@ -349,7 +350,7 @@ test("Restock detail: lost and broken show with their reasons (#154)", async ({ 
   const { whCode, whName, category, skuA } = names(tag);
 
   const seeded = await page.evaluate(
-    async ([whCode, whName, category, skuA]) => {
+    async ([whCode, whName, category, skuA, ownerId]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
@@ -368,6 +369,7 @@ test("Restock detail: lost and broken show with their reasons (#154)", async ({ 
         type: 3,
         name: whName,
         teamCode: whCode,
+        ownerUserId: ownerId,
       });
       const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
       const product = await call("product.v1.ProductService/ProductCreate", {
@@ -411,7 +413,7 @@ test("Restock detail: lost and broken show with their reasons (#154)", async ({ 
         warehouseId: wh.team.id,
       };
     },
-    [whCode, whName, category, skuA] as const,
+    [whCode, whName, category, skuA, ROOT_USER_ID] as const,
   );
 
   await page.goto(`/inventories/restock/${seeded.requestId}`);
@@ -492,7 +494,7 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
   const { whCode, whName, category, skuA } = names(tag);
 
   const seeded = await page.evaluate(
-    async ([whCode, whName, category, skuA]) => {
+    async ([whCode, whName, category, skuA, ownerId]) => {
       const token =
         window.sessionStorage.getItem("warehouse_revamp.token") ??
         window.localStorage.getItem("warehouse_revamp.token");
@@ -511,6 +513,7 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
         type: 3,
         name: whName,
         teamCode: whCode,
+        ownerUserId: ownerId,
       });
       const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
       const product = await call("product.v1.ProductService/ProductCreate", {
@@ -557,7 +560,7 @@ test("Restock detail: a COD fee shows in the total and as its own timeline step 
 
       return { requestId: created.request.id };
     },
-    [whCode, whName, category, skuA] as const,
+    [whCode, whName, category, skuA, ROOT_USER_ID] as const,
   );
 
   await page.goto(`/inventories/restock/${seeded.requestId}`);

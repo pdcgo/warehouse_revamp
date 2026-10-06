@@ -354,7 +354,10 @@ flowchart LR
   S -->|"shown by name"| R["every record they made"]
 ```
 
-**The spec.** ⚠ **Not built. Today a suspended user is offered everywhere.**
+> 🔄 *(2026-10-06)* **The server half is built**: `TeamUserUpdate` refuses to add a suspended person to a team
+> (`failed_precondition`), which also refuses one as a new team's first Owner. The search half is not.
+
+**The spec.** ⚠ **The search is not built: a suspended user is still offered by the pickers.**
 
 | | |
 | --- | --- |
@@ -1538,7 +1541,13 @@ flowchart LR
   A -.->|"not a member"| T
 ```
 
-**The spec.** ⚠ **Not built.** Today `TeamCreate` grants the **caller** the Owner role
+> 🔄 *(2026-10-06, built)* After [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted).
+> `owner_user_id` is required; `TeamCreate` grants that person the team type's Owner role and the caller is not made
+> a member. Built with it: a **refused** Owner (unknown, suspended) **hard-deletes** the team so its code stays free —
+> `team_code` is unique across deleted teams too — while an unknown outcome still soft-deletes
+> ([team_service rpc.md](../../services/team_service/rpc.md)).
+
+**The spec.** ✅ **Built** (2026-10-06). It was: `TeamCreate` granted the **caller** the Owner role
 ([team_create.go](../../../backend/services/team_service/team_v1/team_create.go)).
 
 | | |

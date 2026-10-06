@@ -273,3 +273,100 @@ func TestInterleave_SuspendUser_WaitsForAPromotion(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// a-suspended-user-is-never-picked, under concurrency: Root suspends Ani while someone adds her to a team.
+// Both serial orders are legal — added then suspended leaves a suspended MEMBER, suspended then added is
+// refused — and they end in the same rows, so no final state tells a stale read apart. The Interleave
+// below is the proof; this Race only shows the pair never deadlocks or fails any other way.
+func TestRace_TeamUserUpdate_AddWhileSuspended(t *testing.T) {
+	h := san_race.New(t)
+	db := h.DB()
+	cast := seedCast(t, db)
+
+	svc := NewService(db, nil,
+		access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager()),
+		raceTeams{}, san_caches.NewSkipCacheManager())
+
+	const rounds = 40
+
+	refused := 0
+
+	for round := 0; round < rounds; round++ {
+		db.Where("team_id = ? AND user_id = ?", raceTeam, cast.ani).Delete(&user_service_models.UserTeamRole{})
+		db.Model(&user_service_models.User{}).Where("id = ?", cast.ani).Update("is_suspended", false)
+
+		res := h.Race(t, 2, func(i int) error {
+			if i == 0 {
+				_, err := svc.SuspendUser(signedIn(cast.root), connect.NewRequest(&userv1.SuspendUserRequest{
+					UserId: cast.ani, Suspended: true,
+				}))
+				return err
+			}
+
+			_, err := svc.TeamUserUpdate(signedIn(cast.root), connect.NewRequest(&userv1.TeamUserUpdateRequest{
+				TeamId: raceTeam,
+				Action: &userv1.TeamUserUpdateRequest_Add{Add: &userv1.AddTeamUser{UserId: cast.ani, Role: role_basev1.Role_ROLE_WAREHOUSE_STAFF}},
+			}))
+			if connect.CodeOf(err) == connect.CodeFailedPrecondition {
+				refused++ // the suspend landed first — the legal refusal
+				return nil
+			}
+			return err
+		})
+
+		if round == 0 {
+			res.Report(t)
+		}
+
+		if res.Failed() > 0 {
+			res.Report(t)
+			t.Fatalf("round %d: a call failed in a way neither serial order allows", round)
+		}
+	}
+
+	t.Logf("%d rounds, no deadlock, no unexpected error; the suspend landed first in %d", rounds, refused)
+}
+
+// Interleave: the suspend holds Ani's row and sets her suspended; the add's lock MUST wait, and once it
+// has it the add must read the suspension and refuse. A suspended check made before the lock — or from
+// the snapshot the lock waited behind — would add a suspended person.
+func TestInterleave_TeamUserUpdate_TheAddWaitsThenSeesTheSuspension(t *testing.T) {
+	h := san_race.New(t)
+	db := h.DB()
+	cast := seedCast(t, db)
+
+	db.Where("team_id = ? AND user_id = ?", raceTeam, cast.ani).Delete(&user_service_models.UserTeamRole{})
+
+	sched := h.Interleave(t,
+		san_race.Do("SUSPEND", "the suspend locks Ani's user row", func(tx *gorm.DB) error {
+			_, err := lockMembership(tx, cast.ani, san_auth.RootTeamID)
+			return err
+		}),
+		san_race.Do("SUSPEND", "the suspend marks Ani suspended", func(tx *gorm.DB) error {
+			return tx.Model(&user_service_models.User{}).Where("id = ?", cast.ani).Update("is_suspended", true).Error
+		}),
+		san_race.Block("ADD", "the add locks Ani's user row", func(tx *gorm.DB) error {
+			_, err := lockMembership(tx, cast.ani, raceTeam)
+			return err
+		}),
+		san_race.Commit("SUSPEND"),
+		san_race.Do("ADD", "the add reads the suspension under the lock", func(tx *gorm.DB) error {
+			err := refuseSuspendedNewcomer(tx, cast.ani)
+			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+				return fmt.Errorf("a suspended person was let into a team (err = %v)", err)
+			}
+			return nil
+		}),
+		san_race.Rollback("ADD"),
+	)
+	sched.Report(t)
+
+	lock := sched.Get("the add locks Ani's user row")
+	if !lock.Blocked || !lock.Released {
+		t.Fatalf("the add did not wait for the suspend (blocked=%v released=%v) — the row lock is not held", lock.Blocked, lock.Released)
+	}
+
+	if err := sched.Get("the add reads the suspension under the lock").Err; err != nil {
+		t.Fatal(err)
+	}
+}

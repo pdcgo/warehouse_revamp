@@ -134,8 +134,9 @@ func checkMemberWrite(caller callerReach, w memberWrite) error {
 	}
 
 	// Nobody changes or removes their own membership. Adding yourself to a team you are not in is
-	// left to Root and the Administrator below: TeamCreate grants the creator its Owner role, until
-	// the-create-team-form-names-the-first-owner is built.
+	// left to Root and the Administrator below — TeamCreate no longer adds the creator
+	// (the-create-team-form-names-the-first-owner), but the form may still name them as the Owner, and
+	// no decision refuses that.
 	if w.target == caller.id && w.current != role_basev1.Role_ROLE_UNSPECIFIED {
 		return refuse("change-role-only-below-your-own", "nobody changes their own membership")
 	}
@@ -250,6 +251,32 @@ func lockMembership(tx *gorm.DB, userID, teamID uint64) (role_basev1.Role, error
 
 type roleRow struct {
 	Role int32
+}
+
+// refuseSuspendedNewcomer: a suspended user cannot be newly given anything
+// (a-suspended-user-is-never-picked) — so never added to a team, including as a new team's first Owner.
+// A suspended MEMBER keeps their membership and may still be changed or removed.
+//
+// Read inside tx, after lockMembership locked the person's row. SuspendUser takes the same lock, so a
+// suspend and an add of one person queue instead of interleaving.
+func refuseSuspendedNewcomer(tx *gorm.DB, userID uint64) error {
+	var suspended []bool
+
+	err := tx.
+		Model(&user_service_models.User{}).
+		Where("id = ?", userID).
+		Pluck("is_suspended", &suspended).
+		Error
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	if len(suspended) > 0 && suspended[0] {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("a suspended user cannot be added to a team (a-suspended-user-is-never-picked)"))
+	}
+
+	return nil
 }
 
 // checkSuspend decides a suspend or an unsuspend (only-root-and-the-administrator-suspend). The target is

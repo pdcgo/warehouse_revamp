@@ -1561,13 +1561,7 @@
     "ownerPlaceholder": "Cari orang berdasarkan nama, nama pengguna, atau telepon",
     "ownerRequired": "Pilih pemilik tim, atau buat pengguna baru.",
     "createOwner": "Buat Pengguna Baru",
-    "backToOwnerSearch": "Kembali ke Pencarian",
-    "pending": {
-      "owner": {
-        "label": "Pemilik yang dipilih di sini",
-        "reason": "server masih menjadikan Anda pemilik dan mengabaikan orang yang dipilih"
-      }
-    }
+    "backToOwnerSearch": "Kembali ke Pencarian"
   },
   "users": {
     "title": "Pengguna",
