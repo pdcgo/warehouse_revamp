@@ -5,39 +5,42 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| 🔄 your edit (2026-10-06) | §Table Must Have — `team_id` replaces `created_by_team_id`, the supplier gains its fields, and `supplier_marketplaces` replaces the channels |
-| ✅ answered by it | [Q4](#question) — the code stays: [the-supplier-keeps-its-code](./context_decision.md#the-supplier-keeps-its-code) · [Q5](#question) — a website is a `custom` marketplace: [the-supplier-lists-only-its-online-stores](./context_decision.md#the-supplier-lists-only-its-online-stores) |
-| 🔄 re-asked | [Q1](#question) — `team_id` makes each supplier one team's, so the question is now **copy or reference**, and Q2 (edit rights) folds into it. **My recommendation changes to copy** |
-| 🔄 revised | [Q6](#question) — under a copy, *Supplier Service* is best read as the `SupplierService` already in `inventory_service` |
-| 🆕 +2 | [Q7](#question) your marketplace list vs the shared one · [Q8](#question) three built fields not on your list |
+| 🔄 your edit (2026-10-06, third) | §General 3 and 4, and §What Frontend Expected |
+| ✅ answered by it | [Q1](#question) — B uses A's row, no copy, **against my recommendation**: [a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier) · [only-a-selling-team-has-suppliers](./context_decision.md#only-a-selling-team-has-suppliers) · [manage-and-discover-are-two-pages](./context_decision.md#manage-and-discover-are-two-pages) |
+| 🔄 re-opened | [Q2](#question) — with A's row on B's restock, A's edit and delete reach B, and B's restock form has to find A's supplier |
+| 🔄 revised | [Q6](#question) — *"frontend use this service"* reads as the `SupplierService` the pages call |
+| ✅ earlier | [Q4](#question) the code stays · [Q5](#question) a website is a `custom` marketplace |
 
 ## What already exists
 
-Built in `inventory_service` (#103, #120): the `/suppliers` list, the supplier detail page, `SupplierSelect`.
+Built in `inventory_service` (#103, #120): the manage page, the supplier detail page, `SupplierSelect`.
 
 | your doc | built | |
 | --- | --- | --- |
-| create · update · delete | `SupplierCreate` · `SupplierUpdate` · `SupplierDelete` (soft) — selling Owner, Admin | ✅ |
-| use it in restock | `restock_requests.supplier_id` — optional, **the requesting team's own suppliers only**; copied onto every batch received from it | ✅ |
-| discover / search other teams' suppliers | every read filters `team_id = the caller's team`. `SupplierByIds` crosses teams only for an id you already hold | ❌ |
-| `suppliers` — `team_id`, `name`, `code`, `contact`, `address`, `description` | all built — plus `province`, `city`, `deleted` ([Q8](#question)) | ✅ |
-| `supplier_marketplaces` | `supplier_channels` — its online rows match; offline rows fold into the supplier ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) | 🔄 |
-| `marketplace_type` — 5 values | the shared `Marketplace` list — 7 values ([Q7](#question)) | 🔄 |
+| §General 1 — create · update · delete · use in restock | ✅ — but only the team's **own** suppliers on its restock | ✅ |
+| §General 2 — discover other teams' suppliers | every read filters by the caller's team. `SupplierByIds` crosses teams only for an id you already hold | ❌ |
+| §General 3 — use another team's supplier on my restock | [restock_request_create.go:16](../../../backend/services/inventory_service/inventory_v1/restock_request_create.go#L16) refuses it | ❌ |
+| §General 4 — only a selling team has suppliers | `SupplierCreate` writes into any team — Root and the Administrator can create one in a warehouse team | ⚠ |
+| page 1 — manage | `/inventories/suppliers` | ✅ |
+| page 2 — discover | — | ❌ |
+| §Table Must Have | the fields, plus `province`, `city`, `deleted` ([Q8](#question)) · channels, not marketplaces ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) | 🔄 |
 
 ## Critique
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **`team_id` makes a supplier one team's, and §2 still lets every other team find it — what they DO with it is unsaid.** If team B picks A's row on B's restock, A's edit rewrites B's records and A's delete empties B's picker. | **B copies it into its own list** — [Q1](#question). |
-| **2** | **What another team SEES is not said.** A vendor's name, contact and stores are facts about the vendor. What team A *paid* there is A's business. ⚠ The built `SupplierService` says *"one team can never read another team's supplier"* — your §2 reverses it. | **The supplier and its stores, plus who owns it; never another team's restocks or prices** — [Q3](#question). |
-| **3** | ***Supplier Service* — and your architecture doc puts the supplier in `product_service`** — see [where-the-supplier-lives](#where-the-supplier-lives). | **Stay in `inventory_service`**, if Q1 is copy — [Q6](#question). |
-| **4** | 🆕 **`marketplace_type` is a second list of marketplaces.** The shared `Marketplace` list has 7 — Blibli, Bukalapak and *Other* are not on yours, and *Other* is your `custom` — see [two-lists-of-marketplaces](#two-lists-of-marketplaces). | **One list: the shared one, with `custom` as its *Other*** — [Q7](#question). |
-| **5** | 🆕 **Three built fields are not on your list.** `deleted` carries §1's delete; `province` and `city` are what an area search filters on. | **Keep all three** — [Q8](#question). |
+| **1** | **A's row on B's restock means A's edit and delete reach B.** A rename changes the name on B's past restocks. A delete today hides the row from every read, so it disappears from B's picker while B still buys there. | **Accept it, with delete kept soft** — [Q2a](#question). |
+| **2** | **How B's restock form finds A's supplier is not said.** The discover page *finds* it, but the restock form's picker is where it is *used*, and today that picker shows B's own only. | **The picker searches every selling team's, B's own first** — [Q2b](#question). |
+| **3** | **What another team sees on the discover page is not said.** A vendor's name, contact and stores are facts about the vendor. What A *paid* there is A's business. | **The supplier and its stores, plus the owning team — never A's restocks or prices** — [Q3](#question). |
+| **4** | ***Supplier Service* — your architecture doc puts the supplier in `product_service`** — see [where-the-supplier-lives](#where-the-supplier-lives). | **Stay in `inventory_service`** — [Q6](#question). |
+| **5** | **`marketplace_type` is a second list of marketplaces** — see [two-lists-of-marketplaces](#two-lists-of-marketplaces). | **One list, with `custom` as its *Other*** — [Q7](#question). |
+| **6** | **Three built fields are not on your list** — `province`, `city`, `deleted`. | **Keep all three** — [Q8](#question). |
 
 ## Recommendation
 
-**Copy.** It keeps every built rule — one team's row, the team's own edit and delete, the restock's own-team check —
-and adds only two things: a search across teams, and *Add to My Suppliers*. Q1 first, because Q3 and Q6 follow it.
+**Q2 first** — it decides what the restock form's picker shows and what a delete does to another team. The rest of the
+build follows from the three decisions already made: the discover page, opening the reads across teams, relaxing the
+restock's check, and enforcing §General 4.
 
 ## Proposed Design
 
@@ -45,20 +48,26 @@ and adds only two things: a search across teams, and *Add to My Suppliers*. Q1 f
 
 | who | does | how often |
 | --- | --- | --- |
-| selling Owner, Admin | add a vendor · fix its details · add another team's vendor to their own list | weekly |
-| selling Owner, Admin, CS | find a vendor before buying — first in the team's list, then in everyone's | weekly |
-| selling CS | pick the vendor on a restock request | daily |
+| selling Owner, Admin | add a vendor · fix its details · delete one the team stopped using | weekly |
+| selling Owner, Admin, CS | look for a vendor other teams already buy from | weekly |
+| selling CS | pick the vendor on a restock request — ours or another team's | daily |
 | warehouse crew | read the vendor's name on the delivery in their hands | daily |
 
-### Finding a vendor
+### Using another team's supplier
 
 ```mermaid
-flowchart TD
-  need["the selling team is about to buy"] --> mine{"in My Suppliers?"}
-  mine -->|"yes"| pick["pick it on the restock"]
-  mine -->|"no"| all{"in All Suppliers?"}
-  all -->|"yes"| copy["Add to My Suppliers — a copy, code editable"] --> pick
-  all -->|"no"| create["New Supplier"] --> pick
+sequenceDiagram
+  actor CS as team B's CS
+  participant P as restock form picker
+  participant S as SupplierService
+  participant R as RestockRequestCreate
+  CS->>P: types "melati"
+  P->>S: SupplierList scope ALL, q melati, own first
+  S-->>P: B's own matches, then A's Toko Melati with team A's name
+  CS->>P: picks A's Toko Melati
+  P->>R: supplier_id = A's row
+  R->>R: a live supplier of a selling team? yes
+  R-->>CS: restock saved, naming A's supplier
 ```
 
 ### The data
@@ -66,10 +75,10 @@ flowchart TD
 ```mermaid
 erDiagram
   suppliers ||--o{ supplier_marketplaces : "sells through"
-  suppliers |o--o{ suppliers : "copied from"
+  suppliers ||--o{ restock_requests : "named on, by any selling team"
   suppliers {
     bigint id PK
-    bigint team_id "the owning team"
+    bigint team_id "the owning team, always a selling team"
     text name
     text code "unique per team among live suppliers"
     text contact
@@ -77,7 +86,6 @@ erDiagram
     text city "Q8"
     text address
     text description
-    bigint copied_from_supplier_id "mine - null when created fresh"
     boolean deleted "Q8"
     timestamptz created_at
     timestamptz updated_at
@@ -92,53 +100,53 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
   }
+  restock_requests {
+    bigint id PK
+    bigint team_id "the requesting team"
+    bigint supplier_id FK "any selling team's supplier"
+  }
 ```
-
-`copied_from_supplier_id` is my addition. It lets *All Suppliers* mark a vendor *Added* instead of offering it twice,
-and lets a report count one vendor across the teams that copied it.
 
 ### The contract
 
 | RPC | who | change |
 | --- | --- | --- |
-| `SupplierCreate` · `SupplierUpdate` · `SupplierDelete` | selling Owner, Admin | none — own team only |
-| `SupplierList` | the team | + filter `scope`: `MINE` (today's) or `ALL` — every other team's live suppliers, searched on name, code and store name, with the owning team |
-| `SupplierCopy` | selling Owner, Admin | 🆕 copies another team's supplier and its stores into mine. Takes the `code`, prefilled with theirs, because it may clash with one of mine |
-| `SupplierMarketplace*` | Owner, Admin write · the team reads | replaces `SupplierChannel*` ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) |
-| `SupplierByIds` · `SupplierDetail` | as today | none |
+| `SupplierCreate` | selling Owner, Admin | + refuses a team that is not SELLING |
+| `SupplierUpdate` · `SupplierDelete` | the **owning** team's Owner, Admin | none |
+| `SupplierList` | the team | + filter `scope`: `MINE` (manage page) · `OTHERS` (discover page) · `ALL`, own first (the restock picker). Every row carries its `team_id`; the team's name comes from `team_service`, as elsewhere |
+| `SupplierDetail` · `SupplierMarketplaceList` | the team | + answer for another team's supplier, instead of `NotFound` |
+| `SupplierMarketplace*` writes | the owning team's Owner, Admin | replaces `SupplierChannel*` ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) |
+| `RestockRequestCreate` · `RestockRequestUpdate` | as today | the supplier check: a live supplier of **any selling team** |
 
 ### The screens
 
-- **`/suppliers`** — two tabs, **My Suppliers** (today's list) and **All Suppliers**. A row on *All* shows the owning
-  team and offers *Add to My Suppliers*, or *Added* when it is already copied.
-- **The restock form's picker** — My Suppliers only, as today. When nothing matches, the empty state links to
-  *All Suppliers*.
+- **Suppliers** (`/inventories/suppliers`) — as built, my team's.
+- **Discover Suppliers** (`/inventories/suppliers/discover`) — a search, the marketplace filter, and rows of name ·
+  owning team · stores · city. A row opens the detail page.
+- **Supplier detail** — another team's supplier opens **read-only**: no Edit or Delete, and the owning team is shown.
+- **`SupplierSelect`** in the restock form — two groups, *Our suppliers* then *Other teams*, each row of the second
+  carrying its team.
 
 ## Question
 
-1. **When team B finds team A's supplier, does B copy it or use A's row?** Critique 1.
-   **→ Recommend: copy.** Last round I said one shared row. Your `team_id` changed my mind: with an owner on every
-   row, sharing it means one team's edit and delete reach into another team's restocks.
+1. ✅ **Answered 2026-10-06 — B uses A's row**:
+   [a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier).
+   Kept as a line so the numbers hold.
 
-   | | **copy** — recommend | **use A's row** |
+2. 🔄 **Re-opened by Q1's answer: what reaches B from A, and how B finds it.** Critiques 1 and 2.
+
+   | | the question | → Recommend |
    | --- | --- | --- |
-   | B's restock names | B's own row | A's row |
-   | A edits or deletes it | B is untouched | B's records change, and B's picker loses it |
-   | a wrong address | each team fixes its own | only A can fix it |
-   | one vendor across teams | through `copied_from_supplier_id` | one row |
-   | what changes in the build | a search and a copy | edit rights, delete, and the restock's own-team check |
+   | **2a** | A's edit and delete reach B's restocks — accept? | **Accept, with delete soft.** Only A's Owner and Admin (and Root, the Administrator) edit. A delete takes it out of every picker and the discover page, and every restock that named it keeps showing it — `SupplierByIds` already returns deleted rows. Refusing A's delete while B still buys there would mean tracking who uses what across teams, for a rare case. B can always create its own |
+   | **2b** | how does B's restock form find A's supplier? | **The picker searches every selling team's live suppliers, B's own listed first**, another team's with that team's name. The discover page is for looking before buying; the picker is where the buying happens, and B should not have to go to another page first. The alternative, B saving a discovered supplier to a list, needs a table of its own |
 
-   *What breaks?* A correction A makes never reaches B's copy. I think that is the right price — B chose to own its
-   copy.
+   *What breaks?* A could rename a row into a different vendor, and B's past restocks would follow it. I think that
+   is misuse, not a design case. If you disagree, the restock would have to keep its own copy of the name.
 
-2. ➡ **Folded into Q1** (2026-10-06) — who edits a shared row only arises if the answer is *use A's row*. Kept as a
-   line so the numbers hold.
-
-3. **What does a team see of another team's supplier?** Critique 2.
+3. **What does a team see of another team's supplier?** Critique 3.
    **→ Recommend: the supplier and its stores in full, and the owning team's name — never that team's restocks,
-   prices or quantities.** A vendor's phone number is not a secret, and the owning team's name tells B who to ask.
-   What A paid is A's business. *"Who sells shoes, judging by what other teams bought"* exposes purchases — leave it
-   out until you ask for it.
+   prices or quantities.** The owning team's name tells B who to ask. What A paid is A's business.
+   *"Who sells shoes, judging by what other teams bought"* exposes purchases — leave it out until you ask for it.
 
 4. ✅ **Answered by your edit** — the code stays: [the-supplier-keeps-its-code](./context_decision.md#the-supplier-keeps-its-code).
 
@@ -146,23 +154,27 @@ and lets a report count one vendor across the teams that copied it.
    [the-supplier-lists-only-its-online-stores](./context_decision.md#the-supplier-lists-only-its-online-stores).
 
 6. **Does *Supplier Service* mean its own backend service, or the `SupplierService` already in `inventory_service`?**
-   Critique 3.
-   **→ Recommend: the one already built, if Q1 is copy.** Under a copy, every write stays inside one team, and
-   `restock_requests.supplier_id` stays a real foreign key in the same service. A separate service pays for a move
-   and makes that key unenforced, for nothing a copy needs. I recommended a service of its own last round only
-   because one shared row would have been read company-wide.
+   Critique 4.
+   **→ Recommend: the one already built.** Your §What Frontend Expected says the two pages *"use this service"* — what
+   a page calls is the RPC service, and that is `SupplierService`. Staying keeps `restock_requests.supplier_id` a real
+   foreign key, and nothing in your doc needs a separate service. Moving costs two tables and that foreign key.
 
-7. 🆕 **Is `marketplace_type` its own list, or the shared `Marketplace` list?** Critique 4.
+7. **Is `marketplace_type` its own list, or the shared `Marketplace` list?** Critique 5.
    **→ Recommend: the shared list** (`warehouse.marketplace.v1`), with your `custom` as its *Other*. A platform is
    then added once for shops and suppliers alike, and a team can buy from a Blibli or Bukalapak store as easily as it
    sells on one. If you are deliberately limiting supplier stores to the four, say so and I will record that.
 
-8. 🆕 **Three built fields are not on your list: `province`, `city`, `deleted`. Drop them?** Critique 5.
-   **→ Recommend: keep all three.** `deleted` is how §1's delete works: restocks and batches name the supplier
-   forever, so a hard delete would orphan them. `province` and `city` are what *All Suppliers* filters on — *"a
-   vendor in Bandung"* cannot be filtered out of a free-text address.
+8. **Three built fields are not on your list: `province`, `city`, `deleted`. Drop them?** Critique 6.
+   **→ Recommend: keep all three.** `deleted` is what makes [Q2a](#question)'s soft delete possible: restocks and
+   batches name the supplier forever, so a hard delete would orphan them — and now across teams. `province` and `city`
+   are what the discover page filters on — *"a vendor in Bandung"* cannot be filtered out of a free-text address.
 
 # Contradiction
+
+**Re-examined after the third edit: nothing new in your doc.** §General 3 changes the build's rule that a team sees only
+its own suppliers; that is recorded as a decision with the sites it changes
+([a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier)), not a
+contradiction. Three stand from before.
 
 ## where-the-supplier-lives
 
@@ -189,7 +201,7 @@ flowchart LR
 
 | where | says |
 | --- | --- |
-| [context.md:8](./context.md) | a supplier is for *"use it in restock"* |
+| [context.md](./context.md) §General 1 and 3 | a supplier is for *"use it in restock"* — now any selling team's |
 | [inventory/restock.md](../inventory/restock.md) §Table Should We Have | `restocks` and `restock_items` have **no supplier field** |
 
 The build has one: `restock_requests.supplier_id`, copied onto every batch received from it.
