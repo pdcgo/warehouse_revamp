@@ -31,6 +31,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
+> | *(you asked)* elaborate Q28 | 🔄 **Q28** split into five parts, checked against the build: the switcher already searches but only your memberships · `TeamList` already pages and searches every team · 21 screens read the current role · a reload restores only memberships · the admin team's reads mean marking 142 team-scoped requests by hand · recommend Root's and the Administrator's half with Q27 now, the admin team's half as its own pass |
 > | *"continue"* — step 1a built | ✅ the two admin-team roles, their six policies, the labels, the Owner grant · ▲ **Q28** the switcher lists memberships only, so Q27 would cut Root and the Administrator off from the teams they create, and the admin team's reads have no screen (Critique 29) |
 > | *"commit … and continue"* — the prototype built | ▲ **Q23** design_accept, [what accepting it accepts](#the-prototype--what-accepting-it-accepts) · ▲ **Q21** the restock filters lose their search (Critique 23) · ▲ **Q22** an Admin never changes a role (Critique 24) |
 > | *"for q17, q19 i follow your recomendation, for q18 settlement is customer service too"* | ✅ [removing-a-member-drops-their-shop-access](./context_decision.md#removing-a-member-drops-their-shop-access) · ✅ [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements), against my recommendation on settlements · ✅ [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · Critique 21 deleted · only **Q20** left |
@@ -191,6 +192,30 @@ Next is backend analysis, which builds the decided-not-built list in the
 1a add `admin_owner` and `admin_administrator` · 1b rename four roles · 2 user_service rules · 3 the other services —
 [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks).
 
+### The team switcher — proposed
+
+[Q28](#question). *My teams* stays as it is; *All teams* is added under it for those who reach every team.
+
+```mermaid
+flowchart TB
+  O["open the switcher"] --> M["My teams — your memberships, as now"]
+  O --> Q{"Root, the Administrator, or the admin team?"}
+  Q -->|"yes"| A["All teams — searched on the server, paged"]
+  A --> P["pick Toko Melati"]
+  P --> R{"who is picking"}
+  R -->|"Root or the Administrator"| F["full reach — strip: Not a member, acting as Root"]
+  R -->|"the admin team"| RO["read-only — strip: Monitoring, read-only"]
+```
+
+| | Root, the Administrator | the admin team's two roles |
+| --- | --- | --- |
+| who appears in *All teams* | every team | every warehouse and selling team |
+| found by | a search box over `TeamList`, by name or code | the same |
+| what the screens offer | what their platform role may do — everything the server allows them | the team type's screens, **no write control** |
+| what the server does | already lets them in; each write is stamped as an override ([an-override-is-stamped-in-every-service](./context_decision.md#an-override-is-stamped-in-every-service)) | lets a request marked a read through, refuses every write (item 12) |
+| after a reload | the team is restored by id, not looked up in your memberships | the same |
+| the strip on every page | *Not a member — acting as Root* (or *as the System Administrator*) | *Monitoring — read-only* |
+
 ---
 
 ## Critique
@@ -199,8 +224,8 @@ One open, found while building step 1a (29). Critiques 23–28 are answered.
 
 ### Critique 29 — "acts in every team" has no way in
 
-*(Found 2026-10-05, building [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first).)*
-The team switcher lists **your memberships**, for everyone, Root included
+*(Found 2026-10-05, building [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first). Elaborated 2026-10-06,
+checked against the build.)* The team switcher lists **your memberships**, for everyone, Root included
 ([team_access_list.go](../../../backend/services/user_service/user_v1/team_access_list.go)). The access check lets Root and
 the Administrator into every team, but no screen lets them pick a team they are not in.
 
@@ -211,27 +236,27 @@ the Administrator into every team, but no screen lets them pick a team they are 
 | the admin team, [the-admin-team-monitors-all-and-manages-its-own](./context_decision.md#the-admin-team-monitors-all-and-manages-its-own) | not built: it needs a "this request is a read" mark and an access-check change | ⛔ nothing to pick a team with, so the reads would have no screen to serve |
 
 My Q27 recommendation leaned on *"Root and the Administrator already act in every team"*. That is true of the API and
-false of the screens. Building it alone would cut them off.
+false of the screens.
 
-```mermaid
-flowchart LR
-  S["the team switcher"] -->|"lists"| M["your memberships"]
-  R["Root, the Administrator"] -.->|"not a member — no way in"| T["a team they created, after Q27"]
-  A["the admin team"] -.->|"not a member — no way in"| W["every team it monitors"]
-  P["proposed — the switcher also lists every team"] --> T
-  P -->|"read-only"| W
-```
+Five finds in the build:
 
-**→ Recommend:** the switcher lists **every team** to Root and the Administrator, and to the admin team's two roles
-**read-only**. A team you are not a member of is marked *not a member*, and the menu is the team type's menu at the
-reach you have. It goes in the same prototype pass as Q27's Create Team form, and Q27 is built only with it. The
-admin team's reads (item 12) are built then too, since only then do they have a screen. [Q28](#question).
+| | the find | → Recommend |
+| --- | --- | --- |
+| **a** | the switcher already has a search box, but it filters **your memberships**, in the browser ([TeamSwitcher.tsx](../../../frontend/src/layouts/TeamSwitcher.tsx)). Every team is a set that grows with each seller | keep it for *My teams*, and add *All teams* below it, searched on the server through `TeamList` — which already pages, searches by name, and any signed-in user may call |
+| **b** | the current team carries a **role**, and 21 screens read it to decide what to offer. In a team you are not in, you hold none | Root and the Administrator: the screens use their **platform role**, which every role helper already treats as reaching everything. The admin team: a **read-only flag**, not a role |
+| **c** | a reload restores the current team **only from your memberships** ([TeamContext.tsx](../../../frontend/src/features/team/TeamContext.tsx)), so a picked non-member team falls back to your first team | restore it by id through `TeamByIds`, flag and all |
+| **d** | the admin team's reads need every team-scoped request marked read or not: **142** of them, about **59** look like reads by their name — but [the-admin-team-monitors-all-and-manages-its-own](./context_decision.md#the-admin-team-monitors-all-and-manages-its-own) says a read is never inferred from a name | mark them one by one, as their own pass |
+| **e** | the override is already visible to the server: a write by someone with no role in the team reaches the handler with *no role*, which is what [an-override-is-stamped-in-every-service](./context_decision.md#an-override-is-stamped-in-every-service) stamps | say it on screen too — a strip on every page while you act in a team you are not in |
+
+**→ Recommend:** the switcher lists every team to Root and the Administrator (full reach) and to the admin team
+(read-only), as in [the team switcher](#the-team-switcher--proposed). Root's and the Administrator's half goes with Q27 in
+one prototype pass. The admin team's half is its own pass, because of find **d**. [Q28](#question).
 
 ---
 
 ## Question
 
-**One open**, Q28, found while building step 1a. Q3–Q27 are answered and recorded in [context_decision.md](./context_decision.md).
+**One open**, Q28, found while building step 1a and elaborated into five parts. Q3–Q27 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -269,10 +294,20 @@ admin team's reads (item 12) are built then too, since only then do they have a 
     checks, no alias — [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first), [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names).
 27. ✅ **Answered** (2026-10-05): the Create Team form names the first Owner, and the creator is not made a member —
     [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner).
-28. **Should the team switcher list every team to Root and the Administrator, and to the admin team read-only?**
-    ([Critique 29](#critique)) **→ Recommend: yes**, marked *not a member*, in the same prototype pass as Q27's Create
-    Team form. Without it, Q27 cuts Root and the Administrator off from the teams they create, and the admin team's reads
-    have no screen.
+28. 🔄 **Elaborated** (2026-10-06): the team switcher lists only your memberships, so Root and the Administrator lose the
+    way into the teams they create once Q27 is built, and the admin team has no way into a team it monitors
+    ([Critique 29](#critique), [the team switcher](#the-team-switcher--proposed)).
+    - **a.** *All teams* is offered to Root and the Administrator, with full reach, and to the admin team's two roles,
+      read-only over every warehouse and selling team. **→ Recommend: yes.**
+    - **b.** It sits under *My teams* in the same switcher, and searches every team on the server, paged.
+      **→ Recommend: yes** — the set grows with every seller.
+    - **c.** In a team they are not in, Root and the Administrator are offered what their platform role may do, under a
+      *Not a member — acting as Root* strip, and each write is stamped as an override. **→ Recommend: yes.**
+    - **d.** In a team it monitors, the admin team sees the team type's screens with no write control, under a
+      *Monitoring — read-only* strip, and the server refuses its writes. **→ Recommend: yes.**
+    - **e.** **a–c are built with Q27** in one prototype pass now: the server already lets Root and the Administrator in.
+      **d is its own pass after**: each of 142 team-scoped requests is marked read or not by hand, the access check
+      changes, and 21 screens that read the role gain a read-only mode. **→ Recommend: split.**
 
 
 ---

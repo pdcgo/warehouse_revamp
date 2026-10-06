@@ -70,5 +70,5 @@ Grouped by what changes, in the decided order ([rename-the-roles-before-the-gran
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
-| does the team switcher list every team to Root, the Administrator and (read-only) the admin team | [user Q28](../../business/user/context_clarify.md#question) |
+| does the team switcher list every team to Root, the Administrator and (read-only) the admin team — elaborated into five parts; recommended: Root's and the Administrator's half with Q27 now, the admin team's read-only half as its own pass (142 team-scoped requests to mark) | [user Q28](../../business/user/context_clarify.md#question) |
 
