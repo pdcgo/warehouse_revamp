@@ -35,6 +35,11 @@ test("CreateTeam: a new team appears in the list", async ({ page }) => {
   await page.getByTestId("new-team-name").fill(NAME);
   await page.getByTestId("new-team-code").fill(CODE);
   await page.getByTestId("new-team-description").fill("created by e2e");
+
+  // The form names the team's Owner (the-create-team-form-names-the-first-owner); the server still makes the
+  // caller the Owner until the backend pass, so the pick changes nothing downstream.
+  await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
   await page.getByTestId("submit-create-team").click();
 
   await expect(page.getByTestId(`team-row-${CODE}`)).toBeVisible();

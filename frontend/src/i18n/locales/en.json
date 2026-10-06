@@ -44,7 +44,14 @@
     "openMenu": "Open menu",
     "search": "Search…",
     "notifications": "Notifications",
-    "menu": "Menu"
+    "menu": "Menu",
+    "notMember": "Not a member of this team — acting as {{role}}.",
+    "switchTeam": "Switch Team",
+    "searchTeams": "Search teams",
+    "noTeams": "No teams found.",
+    "myTeams": "My teams",
+    "allTeams": "All teams",
+    "notMemberBadge": "Not a member"
   },
   "liability": {
     "title": "Liability",
@@ -1553,7 +1560,19 @@
     "to": "to",
     "editWarehouseTitle": "Edit Warehouse",
     "warehouseAddressHelp": "The warehouse's physical address.",
-    "warehouseSaved": "Warehouse saved"
+    "warehouseSaved": "Warehouse saved",
+    "owner": "Owner",
+    "ownerHelp": "The person who owns this team. You are not made a member — you reach it from All teams.",
+    "ownerPlaceholder": "Search a person by name, username or phone",
+    "ownerRequired": "Pick the team's owner, or create them.",
+    "createOwner": "Create a New User",
+    "backToOwnerSearch": "Back to Search",
+    "pending": {
+      "owner": {
+        "label": "The owner named here",
+        "reason": "the server still makes you the owner and ignores the person named"
+      }
+    }
   },
   "users": {
     "title": "Users",

@@ -205,6 +205,14 @@ message TeamCreateRequest {
     max_len: 10
   }];
   string description = 4 [(buf.validate.field).string = {max_len: 300}];
+
+  // The person who becomes the team's first Owner, picked or created on the Create Team form. The person
+  // creating the team is NOT made a member: Root and the Administrator reach every team from the
+  // switcher's All teams (the-create-team-form-names-the-first-owner, the-switcher-offers-every-team).
+  //
+  // ⚠ CONTRACT ONLY until the backend pass — the server still grants the CALLER the Owner role and ignores
+  // this. It becomes required (> 0) when that lands.
+  uint64 owner_user_id = 5;
 }
 
 message TeamCreateResponse {

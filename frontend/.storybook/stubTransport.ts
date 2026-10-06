@@ -36,7 +36,8 @@ import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
 import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
+import { TeamService, TeamType } from "../src/gen/warehouse/team/v1/team_pb";
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import {
@@ -49,7 +50,7 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
-import { sessionScenario } from "./sessionScenario";
+import { sessionScenario, teamCreateScenario } from "./sessionScenario";
 import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
@@ -665,6 +666,14 @@ export const transport = createRouterTransport(({ service }) => {
     // Every fixture team names the warehouse team as its default, so the form opens pre-filled —
     // the state the page is actually in for the people using it, rather than an empty select
     // nobody ever really sees.
+    // Records what the Create Team form sent — the Owner it names (the-create-team-form-names-the-first-owner).
+    teamCreate: (req) => {
+      teamCreateScenario.last = { name: req.name, ownerUserId: req.ownerUserId };
+
+      return {
+        team: { id: 99n, type: req.type, name: req.name, teamCode: req.teamCode, description: req.description, deleted: false, imageUrl: "" },
+      };
+    },
     teamDetail: (req) => ({
       team: {
         ...teams.find((t) => t.id === req.teamId),
@@ -686,33 +695,45 @@ export const transport = createRouterTransport(({ service }) => {
   service(UserService, {
     // The caller's memberships — what TeamProvider loads, and therefore what `useTeam().current`
     // resolves to. The warehouse team is first so it becomes the default selection.
-    teamAccessList: () => ({
-      items: [
-        {
-          d: {
-            case: "teamAccess" as const,
-            value: {
-              mapData: Object.fromEntries(
-                teams.map((t) => [
-                  t.id.toString(),
-                  {
-                    teamId: t.id,
-                    // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
-                    role: sessionScenario.role,
-                    alias: "",
-                    teamName: t.name,
-                    teamType: t.type,
-                    imageUrl: "",
-                  },
-                ]),
-              ),
+    teamAccessList: () => {
+      // Every fixture team, unless a story narrows it (sessionScenario.memberOf) — then those teams, plus the
+      // root team for Root or the Administrator, whose reach comes from there.
+      const mine = sessionScenario.memberOf === null ? teams : teams.filter((t) => sessionScenario.memberOf!.includes(t.id));
+      const platform = sessionScenario.role === Role.ROOT || sessionScenario.role === Role.ADMINISTRATOR;
+      const rows = mine.map((t) => ({ teamId: t.id, teamName: t.name, teamType: t.type }));
+
+      if (sessionScenario.memberOf !== null && platform) {
+        rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });
+      }
+
+      return {
+        items: [
+          {
+            d: {
+              case: "teamAccess" as const,
+              value: {
+                mapData: Object.fromEntries(
+                  rows.map((t) => [
+                    t.teamId.toString(),
+                    {
+                      teamId: t.teamId,
+                      // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
+                      role: sessionScenario.role,
+                      alias: "",
+                      teamName: t.teamName,
+                      teamType: t.teamType,
+                      imageUrl: "",
+                    },
+                  ]),
+                ),
+              },
             },
           },
-        },
-      ],
-      ids: teams.map((t) => t.id),
-      pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(teams.length) },
-    }),
+        ],
+        ids: rows.map((t) => t.teamId),
+        pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(rows.length) },
+      };
+    },
     // Everything else — the member list, the search, the membership writes, the history — is the
     // writeable stub in userStub.ts, which plays the user decisions (docs/business/user).
     ...userStub,

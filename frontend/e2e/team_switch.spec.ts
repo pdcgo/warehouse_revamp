@@ -35,6 +35,11 @@ test("a team you just created is switchable WITHOUT a reload", async ({ page }) 
   await page.getByTestId("open-create-warehouse").click();
   await page.getByTestId("new-team-name").fill(WH_NAME);
   await page.getByTestId("new-team-code").fill(WH_CODE);
+
+  // The form names the team's Owner (the-create-team-form-names-the-first-owner); the server still makes the
+  // caller the Owner until the backend pass, so the pick changes nothing downstream.
+  await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
   await page.getByTestId("submit-create-team").click();
   await expect(page.getByTestId(`team-row-${WH_CODE}`)).toBeVisible();
 

@@ -59,6 +59,26 @@ export function useTeams({ teamType, page, pageSize, enabled = true, reference =
   });
 }
 
+// EVERY TEAM, searched by name or code — the switcher's *All teams* for Root and the Administrator
+// (the-switcher-offers-every-team). The set grows with every seller, so the server searches and a page caps it;
+// the person types to narrow it. `referenceQuery`: it is a picker feed, read to choose a team, not worked from.
+export function useTeamSearch({ q, enabled = true }: { q: string; enabled?: boolean }) {
+  return useQuery({
+    queryKey: key.teams(undefined, { search: q, page: 1, pageSize: 20 }),
+    ...referenceQuery,
+    enabled,
+    queryFn: async () => {
+      const res = await teamClient.teamList({
+        filter: { q },
+        dataRequest: teamListRowData(),
+        page: { page: 1, limit: 20 },
+      });
+
+      return teamsFromList(res.items, res.ids);
+    },
+  });
+}
+
 // WHICH TEAMS CARRY THE PRIORITY-PRODUCT FEATURE — the ids, and nothing else.
 //
 // Root grants the feature to a TEAM, and it makes that team's whole catalogue priority (owner). The
@@ -155,11 +175,11 @@ export function useCreateTeam() {
   const invalidateUsers = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: (vars: { type: TeamType; name: string; teamCode: string; description: string }) =>
+    mutationFn: (vars: { type: TeamType; name: string; teamCode: string; description: string; ownerUserId: bigint }) =>
       teamClient.teamCreate(vars),
-    // Users too: TeamCreate makes the CALLER the new team's owner, server-side, so the person who
-    // pressed the button has a membership they did not have a moment ago. Their user-detail page
-    // lists it.
+    // Users too: the new team has an Owner, a membership that did not exist a moment ago, and their
+    // user-detail page lists it. (Until the backend pass that Owner is still the CALLER, not the person
+    // named — the-create-team-form-names-the-first-owner.)
     onSuccess: () => Promise.all([invalidateTeams(), invalidateUsers()]),
   });
 }

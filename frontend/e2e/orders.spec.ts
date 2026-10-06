@@ -147,6 +147,12 @@ test("setup: a warehouse for the order to ship from (#72)", async ({ page }) => 
   await page.getByTestId("open-create-warehouse").click();
   await page.getByTestId("new-team-name").fill(WH_NAME);
   await page.getByTestId("new-team-code").fill(WH_CODE);
+
+  // The form names the team's Owner (the-create-team-form-names-the-first-owner). Until the backend pass the
+  // server still makes the caller the Owner, so which person is picked here changes nothing downstream.
+  await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
+
   await page.getByTestId("submit-create-team").click();
   await expect(page.getByTestId(`team-row-${WH_CODE}`)).toBeVisible();
 });

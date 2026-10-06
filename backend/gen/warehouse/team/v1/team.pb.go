@@ -857,11 +857,18 @@ func (x *Team) GetPriorityProduct() bool {
 }
 
 type TeamCreateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	TeamCode      string                 `protobuf:"bytes,3,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Type        TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	TeamCode    string                 `protobuf:"bytes,3,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// The person who becomes the team's first Owner, picked or created on the Create Team form. The person
+	// creating the team is NOT made a member: Root and the Administrator reach every team from the
+	// switcher's All teams (the-create-team-form-names-the-first-owner, the-switcher-offers-every-team).
+	//
+	// ⚠ CONTRACT ONLY until the backend pass — the server still grants the CALLER the Owner role and ignores
+	// this. It becomes required (> 0) when that lands.
+	OwnerUserId   uint64 `protobuf:"varint,5,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -922,6 +929,13 @@ func (x *TeamCreateRequest) GetDescription() string {
 		return x.Description
 	}
 	return ""
+}
+
+func (x *TeamCreateRequest) GetOwnerUserId() uint64 {
+	if x != nil {
+		return x.OwnerUserId
+	}
+	return 0
 }
 
 type TeamCreateResponse struct {
@@ -2208,14 +2222,15 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\adeleted\x18\x06 \x01(\bR\adeleted\x12/\n" +
 	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\x12\x1b\n" +
 	"\timage_url\x18\b \x01(\tR\bimageUrl\x12)\n" +
-	"\x10priority_product\x18\t \x01(\bR\x0fpriorityProduct\"\xd0\x01\n" +
+	"\x10priority_product\x18\t \x01(\bR\x0fpriorityProduct\"\xf4\x01\n" +
 	"\x11TeamCreateRequest\x12=\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\x04type\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x04\x18\x80\x01R\x04name\x12&\n" +
 	"\tteam_code\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\n" +
 	"R\bteamCode\x12*\n" +
-	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02R\vdescription:\b\x92\xb5\x18\x04\n" +
+	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02R\vdescription\x12\"\n" +
+	"\rowner_user_id\x18\x05 \x01(\x04R\vownerUserId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"A\n" +
 	"\x12TeamCreateResponse\x12+\n" +
 	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xf2\x01\n" +

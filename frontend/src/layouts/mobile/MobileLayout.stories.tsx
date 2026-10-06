@@ -5,6 +5,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
+import { asPlatformOnly } from "../../../.storybook/sessionScenario";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { MobileLayout } from "./MobileLayout";
 
 // THE MOBILE APP SHELL — a compact top bar, the page, and a bottom tab bar.
@@ -169,5 +171,32 @@ export const ThePageCanvasIsChosenByTheShell: Story = {
     const main = canvas.getByRole("main");
     // gray.100 — GREY_CANVAS in shell.ts.
     await expect(window.getComputedStyle(main).backgroundColor).toBe("rgb(243, 244, 246)");
+  },
+};
+
+// a-non-member-root-acts-under-a-strip — Root, a member of the root team only, picked Toko Melati from the
+// switcher's All teams. The team is restored BY ID (it is not a membership), and every page says whose reach
+// this is: a write here is an override, and must never look like ordinary membership.
+export const RootInATeamTheyAreNotIn: Story = {
+  beforeEach: () => {
+    asPlatformOnly(Role.ROOT)();
+    asTeam(SELLING.id)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const strip = await canvas.findByTestId("not-member-strip", {}, { timeout: 4000 });
+    await expect(strip).toHaveTextContent("acting as Root");
+  },
+};
+
+// …and a member sees no strip: it is said only when it is true.
+export const AMemberSeesNoStrip: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The switcher renders once the memberships have loaded — only then is "no strip" an answer.
+    await canvas.findByTestId("team-switcher", {}, { timeout: 4000 });
+    await expect(canvas.queryByTestId("not-member-strip")).toBeNull();
   },
 };

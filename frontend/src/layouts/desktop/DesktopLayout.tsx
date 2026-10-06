@@ -12,6 +12,7 @@ import {
 } from "@chakra-ui/react";
 import { Bell, Menu as MenuIcon, Search } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
+import { NotMemberStrip } from "../NotMemberStrip";
 import { useTranslation } from "react-i18next";
 
 import { useTeam } from "../../features/team/TeamContext";
@@ -132,6 +133,9 @@ export function DesktopLayout() {
             />
           </Box>
         </Flex>
+
+        {/* Root or the Administrator acting in a team they are not in (a-non-member-root-acts-under-a-strip). */}
+        <NotMemberStrip />
 
         {/* The content area stays WHITE by default (so a freshly-built component isn't tinted grey);
             a page opts INTO the grey canvas by route — see `usesGreyCanvas`. */}

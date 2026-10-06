@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import {
+  Box,
   Button,
   CloseButton,
   Dialog,
@@ -12,12 +13,25 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../../api/clients";
+import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../../../components/feedback/Toaster";
+import { PasswordInput } from "../../../components/inputs/PasswordInput";
 import { TeamTypeSelect, teamTypeLabel } from "../../../components/pickers/TeamTypeSelect";
+import { UserSelect } from "../../../components/pickers/UserSelect";
+import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../../features/pending/NotImplementedSummary";
 import { useCreateTeam } from "../../../features/teams/queries";
 import { useTeam } from "../../../features/team/TeamContext";
+import { useCreateUser } from "../../../features/users/queries";
+import { TEAMS_PENDING } from "../pending";
 
+const NEW_OWNER = { username: "", password: "", name: "", phone: "" };
+
+// The Create Team form names the team's first OWNER (the-create-team-form-names-the-first-owner): found with
+// the user search, or created right here when the search finds nobody — the same two ways in as Add Member.
+// The person creating the team is NOT made a member; Root and the Administrator reach it from the switcher's
+// All teams (the-switcher-offers-every-team).
 export function CreateTeamDialog({
   fixedType,
 }: {
@@ -34,8 +48,9 @@ export function CreateTeamDialog({
   // team list's fetching. `busy` is gone for the same kind of reason, the mutation already knows
   // whether it is in flight, and a second flag beside it can disagree with the first.
   const save = useCreateTeam();
+  const createUser = useCreateUser();
   const { refresh } = useTeam();
-  const busy = save.isPending;
+  const busy = save.isPending || createUser.isPending;
 
   const [type, setType] = useState<TeamType>(fixedType ?? TeamType.WAREHOUSE);
 
@@ -45,35 +60,96 @@ export function CreateTeamDialog({
   const [teamCode, setTeamCode] = useState("");
   const [description, setDescription] = useState("");
 
-  function submit(event: FormEvent) {
+  // The owner: an existing person's id, or — while `creatingOwner` — a new person typed in below.
+  const [ownerId, setOwnerId] = useState<bigint | undefined>(undefined);
+  const [creatingOwner, setCreatingOwner] = useState(false);
+  const [newOwner, setNewOwner] = useState(NEW_OWNER);
+
+  function reset() {
+    setName("");
+    setTeamCode("");
+    setDescription("");
+    setOwnerId(undefined);
+    setCreatingOwner(false);
+    setNewOwner(NEW_OWNER);
+    setError("");
+  }
+
+  async function ownerFor(): Promise<bigint | undefined> {
+    if (!creatingOwner) {
+      return ownerId;
+    }
+
+    // Username is lowercase alphanumeric only (#87), and a name is required
+    // (only-name-and-username-are-required) — the same rules as Add Member's Create.
+    if (!/^[a-z0-9]+$/.test(newOwner.username)) {
+      setError(t("users.create.usernameError"));
+      return undefined;
+    }
+
+    if (newOwner.name.trim() === "") {
+      setError(t("users.create.nameRequired"));
+      return undefined;
+    }
+
+    // A person with no team yet: team 0 is Root and the Administrator only, which is who creates teams.
+    const res = await createUser.mutateAsync({
+      teamId: 0n,
+      username: newOwner.username,
+      password: newOwner.password,
+      name: newOwner.name,
+      email: "",
+      phoneNumber: newOwner.phone,
+      role: Role.UNSPECIFIED,
+      alias: "",
+    });
+
+    const id = res.user?.id;
+
+    // From here on the new person is simply the PICKED owner: if the team itself is then refused (a taken
+    // code, say), pressing Create again reuses them instead of making a second account.
+    setOwnerId(id);
+    setCreatingOwner(false);
+    setNewOwner(NEW_OWNER);
+
+    return id;
+  }
+
+  async function submit(event: FormEvent) {
     event.preventDefault();
 
     setError("");
 
-    // TeamCreate also grants the caller ownership of the new team, server-side, via a compensating
-    // RPC — so a fresh team is never ownerless. That ownership is why the hook invalidates the USERS
-    // cache as well as the teams one.
+    if (!creatingOwner && (ownerId === undefined || ownerId === 0n)) {
+      setError(t("teams.ownerRequired"));
+      return;
+    }
+
+    let owner: bigint | undefined;
+
+    try {
+      owner = await ownerFor();
+    } catch (err) {
+      setError(rpcError(err));
+      return;
+    }
+
+    if (owner === undefined) {
+      return;
+    }
+
     save.mutate(
-      { type, name, teamCode, description },
+      { type, name, teamCode, description, ownerUserId: owner },
       {
         onSuccess: () => {
           toaster.create({ type: "success", title: t("teams.teamCreated", { name }) });
 
-          // Refresh the caller's MEMBERSHIPS as well as the team list, or the team just created is
-          // missing from the switcher until the page is reloaded.
-          //
-          // The two are different caches. `useCreateTeam` invalidates the `teams` and `users`
-          // QUERIES, which is what the list on this page reads — but the switcher reads TeamContext,
-          // which fetches memberships once per identity and is not a query. Nothing connected them.
-          //
-          // It bites precisely when it is least wanted: TeamCreate makes the caller the new team's
-          // OWNER, so the one thing somebody wants next is to switch into it, and that is the one
-          // thing they could not do.
+          // Refresh the caller's MEMBERSHIPS as well as the team list. Until the backend pass the server
+          // still makes the CALLER the Owner (the pending mark says so), and TeamContext — which backs the
+          // switcher — holds memberships in its own state, not in the query cache the hook invalidates.
           void refresh();
 
-          setName("");
-          setTeamCode("");
-          setDescription("");
+          reset();
           setOpen(false);
         },
         onError: (err) => setError(rpcError(err)),
@@ -82,7 +158,13 @@ export function CreateTeamDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(e) => {
+        setOpen(e.open);
+        if (!e.open) reset();
+      }}
+    >
       <Dialog.Trigger asChild>
         <Button
           size="xs"
@@ -106,6 +188,8 @@ export function CreateTeamDialog({
 
               <Dialog.Body>
                 <Stack gap="card">
+                  <NotImplementedSummary list={TEAMS_PENDING} />
+
                   {error && (
                     <Text color="error.fg" data-testid="create-team-error">
                       {error}
@@ -146,6 +230,86 @@ export function CreateTeamDialog({
                       onChange={(e) => setTeamCode(e.target.value)}
                     />
                     <Field.HelperText>{t("teams.teamCodeHelp")}</Field.HelperText>
+                  </Field.Root>
+
+                  <Field.Root required>
+                    <Field.Label>
+                      {t("teams.owner")}
+                      <NotImplemented list={TEAMS_PENDING} id="owner" />
+                    </Field.Label>
+
+                    {creatingOwner ? (
+                      <Stack gap="field" w="full" data-testid="new-team-owner-create">
+                        <Field.Root required>
+                          <Field.Label>{t("users.field.username")}</Field.Label>
+                          <Input
+                            value={newOwner.username}
+                            data-testid="new-owner-username"
+                            onChange={(e) => setNewOwner({ ...newOwner, username: e.target.value })}
+                          />
+                          <Field.HelperText>{t("users.helper.usernameRule")}</Field.HelperText>
+                        </Field.Root>
+
+                        <Field.Root required>
+                          <Field.Label>{t("users.field.password")}</Field.Label>
+                          <PasswordInput
+                            value={newOwner.password}
+                            data-testid="new-owner-password"
+                            onChange={(e) => setNewOwner({ ...newOwner, password: e.target.value })}
+                          />
+                          <Field.HelperText>{t("users.helper.min8")}</Field.HelperText>
+                        </Field.Root>
+
+                        <Field.Root required>
+                          <Field.Label>{t("users.field.name")}</Field.Label>
+                          <Input
+                            value={newOwner.name}
+                            data-testid="new-owner-name"
+                            onChange={(e) => setNewOwner({ ...newOwner, name: e.target.value })}
+                          />
+                        </Field.Root>
+
+                        <Field.Root>
+                          <Field.Label>{t("users.field.phone")}</Field.Label>
+                          <Input
+                            value={newOwner.phone}
+                            data-testid="new-owner-phone"
+                            onChange={(e) => setNewOwner({ ...newOwner, phone: e.target.value })}
+                          />
+                        </Field.Root>
+
+                        <Box>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            data-testid="new-owner-back"
+                            onClick={() => setCreatingOwner(false)}
+                          >
+                            {t("teams.backToOwnerSearch")}
+                          </Button>
+                        </Box>
+                      </Stack>
+                    ) : (
+                      <Stack gap="2" w="full" data-testid="new-team-owner">
+                        <UserSelect
+                          value={ownerId}
+                          onChange={setOwnerId}
+                          placeholder={t("teams.ownerPlaceholder")}
+                        />
+                        <Box>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            data-testid="new-owner-create"
+                            onClick={() => setCreatingOwner(true)}
+                          >
+                            {t("teams.createOwner")}
+                          </Button>
+                        </Box>
+                      </Stack>
+                    )}
+
+                    <Field.HelperText>{t("teams.ownerHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root>
