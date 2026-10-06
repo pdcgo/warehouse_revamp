@@ -71,6 +71,10 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [an-erased-account-is-final](#an-erased-account-is-final) | nothing brings an erased account or its data back: no unsuspend, no new password, no joining a team, no edit | owner, 2026-10-06 |
 | [erased-usernames-are-reserved](#erased-usernames-are-reserved) | no account may be named `erased` followed by digits, except by erase itself | owner, 2026-10-06 |
 | [erase-deletes-the-photo-file](#erase-deletes-the-photo-file) | erase deletes every profile picture the person uploaded — the stored files and their rows | owner, 2026-10-06 |
+| [a-phone-is-saved-in-international-form](#a-phone-is-saved-in-international-form) | a phone is rewritten on save into one form, `+` and the country code — `0812…` becomes `+62812…` | owner, 2026-10-06 |
+| [a-phone-has-8-to-15-digits](#a-phone-has-8-to-15-digits) | a phone is digits with spaces, dashes, dots or brackets, 8 to 15 digits, a `+` only at the start; anything else is refused | owner, 2026-10-06 |
+| [a-phone-starts-with-0-or-a-country-code](#a-phone-starts-with-0-or-a-country-code) | a number with neither a leading `0` nor `+` and a country code (nor `62`) is refused, never guessed | owner, 2026-10-06 |
+| [stored-phones-are-rewritten-once](#stored-phones-are-rewritten-once) | the migration rewrites every readable stored phone, leaves an unreadable one, and stops if two accounts share a number | owner, 2026-10-06 |
 | [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted) | design_accept of pass 1: the switcher's *All teams*, the strip, Create Team's required Owner and `owner_user_id`, with the five choices made in the prototype | owner, 2026-10-06 |
 
 ## warehouse-staff-is-the-whole-floor-job
@@ -1818,3 +1822,94 @@ sequenceDiagram
 | which files | every `PROFILE_PICTURE` document the person uploaded — older photos they replaced too, which are as personal as the current one |
 | when | after the account is blanked and committed, never inside that transaction — a network call holds no lock |
 | if it fails | the account stays erased, and erasing it again retries only the photos |
+
+## a-phone-is-saved-in-international-form
+
+> Owner, in chat *(2026-10-06)*: *"follow your recomendation"*, after *"elaborate q31"*. It answers [Q31a](./context_clarify.md#question),
+> as recommended: **b**.
+
+**The verdict.** A phone is rewritten when it is saved into ONE form: `+`, the country code, the number. `0812-3456-7890`
+is stored as `+6281234567890`. Every reader — the duplicate check, the search, the forgot-password code — reads that one
+value.
+
+```mermaid
+flowchart LR
+  T1["0812-3456-7890"] --> N["normalizePhone"]
+  T2["+62 812 3456 7890"] --> N
+  T3["62-812-3456-7890"] --> N
+  N --> S["stored: +6281234567890"]
+  S --> U["the unique index"]
+  S --> Q["the search"]
+  S --> O["the forgot-password code"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | `normalizePhone` (`user_v1/phone.go`), called by `CreateUser`, `UpdateUser` and `UpdateProfile` |
+| the rule | `+` → `+` and the digits · a leading `0` → `+62` and the rest · a leading `62` → `+` and the digits |
+| one account per number | a unique index on `phone_number` (when set); the handlers check first, so the refusal names the phone |
+| the search | normalises what is typed the same way and compares it to the column — `user_phone_key` and its index go |
+| the code SMS | is sent to the stored value, which is the form the SMS provider expects |
+
+It reverses my own interim recommendation (c, keep as typed): the code SMS needs the international form anyway, and c
+kept two forms of every number for each new feature to choose between.
+
+## a-phone-has-8-to-15-digits
+
+> Owner, in chat *(2026-10-06)*: *"follow your recomendation"*. It answers [Q31b](./context_clarify.md#question), as recommended: **ii**.
+
+**The verdict.** A phone is digits, optionally separated by spaces, dashes, dots or brackets, with a `+` only at the
+start, and **8 to 15 digits** — before and after the rewrite. Anything else is refused when it is typed, with what is wrong.
+
+```mermaid
+flowchart LR
+  A["0812-3456-7890"] -->|"12 digits"| OK["saved"]
+  B["021-1234567"] -->|"10 digits, a Jakarta landline"| OK
+  C["0811"] -->|"4 digits"| X["refused"]
+  D["abc"] -->|"not digits"| X
+```
+
+**The spec.** `InvalidArgument`, naming this decision. 15 is the international maximum (E.164); 8 lets a landline through.
+An empty phone is still allowed — a phone is optional ([only-name-and-username-are-required](#only-name-and-username-are-required)).
+
+## a-phone-starts-with-0-or-a-country-code
+
+> Owner, in chat *(2026-10-06)*: *"follow your recomendation"*. It answers [Q31c](./context_clarify.md#question), as recommended: **ii**.
+
+**The verdict.** A number must start with `0` (read as Indonesian), with `+` and a country code, or with `62`. A number
+like `812-3456-7890` — the 0 dropped — is refused with *start with 0, or with + and the country code*, never guessed: a
+guess can send someone's reset code to a stranger abroad.
+
+```mermaid
+flowchart LR
+  P["typed"] --> Z{"starts with"}
+  Z -->|"0"| ID["+62…"]
+  Z -->|"+ and a country code"| INT["kept"]
+  Z -->|"62"| ID2["+62…"]
+  Z -->|"anything else"| R["refused"]
+```
+
+**The spec.** `InvalidArgument`. `+0…` is refused too: no country code starts with 0.
+
+## stored-phones-are-rewritten-once
+
+> Owner, in chat *(2026-10-06)*: *"follow your recomendation"*. It answers [Q31d](./context_clarify.md#question), as recommended.
+
+**The verdict.** The migration that adds the unique index rewrites every stored phone it can read into the international
+form, **leaves one it cannot read as it is** (refused only when someone next edits it — blanking it would quietly take a
+phone away), and **stops, naming both accounts, when two share a number**, for a person to resolve
+([a-phone-or-email-belongs-to-one-account](#a-phone-or-email-belongs-to-one-account)).
+
+```mermaid
+flowchart TD
+  M["migration 00008"] --> R["rewrite every readable phone"]
+  R --> D{"two accounts on one number?"}
+  D -->|"yes"| STOP["stop — name both, nothing changed"]
+  D -->|"no"| U["the unique index"]
+  U --> G["user_phone_key and its index dropped"]
+```
+
+**The spec.** user_service `00008`. The rewrite is `user_phone_international(text)`, an SQL twin of `normalizePhone`; a
+test asserts the two agree on every case. Development held `0811` (left) and `+15551234567` (already the form), no pair.
