@@ -14,6 +14,7 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
@@ -390,21 +391,63 @@ func ensureSubscription(
 		return err
 	}
 
+	paths := changedSubscriptionFields(existing, want)
+	if len(paths) == 0 {
+		return grantDeadLetterAccess(ctx, client, sub, opts)
+	}
+
 	_, err = client.SubscriptionAdminClient.UpdateSubscription(ctx, &pubsubpb.UpdateSubscriptionRequest{
 		Subscription: want,
-		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{
-			"ack_deadline_seconds",
-			"dead_letter_policy",
-			"expiration_policy",
-			"push_config",
-			"retry_policy",
-		}},
+		UpdateMask:   &fieldmaskpb.FieldMask{Paths: paths},
 	})
 	if err != nil {
 		return fmt.Errorf("event_source: updating subscription %s: %w", sub.ID, err)
 	}
 
 	return grantDeadLetterAccess(ctx, client, sub, opts)
+}
+
+// changedSubscriptionFields is the update mask: the settings Pub/Sub lets change, and only those that
+// DIFFER — like ensureTopic, which updates retention only when it moved.
+//
+// ⚠ Sending all five on every run made ensure fail the SECOND time against the emulator, which refuses
+// any update naming expiration_policy, even one that changes nothing. That broke every re-run: the
+// e2e setup and `san dev run` ensure on each start. An unchanged subscription now gets no write at all.
+func changedSubscriptionFields(existing, want *pubsubpb.Subscription) []string {
+	var paths []string
+
+	if existing.GetAckDeadlineSeconds() != want.GetAckDeadlineSeconds() {
+		paths = append(paths, "ack_deadline_seconds")
+	}
+
+	if !proto.Equal(existing.GetDeadLetterPolicy(), want.GetDeadLetterPolicy()) {
+		paths = append(paths, "dead_letter_policy")
+	}
+
+	if !proto.Equal(existing.GetExpirationPolicy(), want.GetExpirationPolicy()) {
+		paths = append(paths, "expiration_policy")
+	}
+
+	if !proto.Equal(pushConfigOf(existing), pushConfigOf(want)) {
+		paths = append(paths, "push_config")
+	}
+
+	if !proto.Equal(existing.GetRetryPolicy(), want.GetRetryPolicy()) {
+		paths = append(paths, "retry_policy")
+	}
+
+	return paths
+}
+
+// pushConfigOf reads a missing push config as an EMPTY one. Both mean a pull subscription, and Pub/Sub
+// answers the empty one for a subscription created with none — compared raw, every pull subscription
+// would look changed on every run.
+func pushConfigOf(sub *pubsubpb.Subscription) *pubsubpb.PushConfig {
+	if sub.GetPushConfig() == nil {
+		return &pubsubpb.PushConfig{}
+	}
+
+	return sub.GetPushConfig()
 }
 
 func desiredSubscription(sub Subscription, opts SubscriberOptions) *pubsubpb.Subscription {

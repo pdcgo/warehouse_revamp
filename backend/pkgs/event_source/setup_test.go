@@ -4,6 +4,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 )
@@ -160,5 +164,41 @@ func TestRefuseImmutableChangesAllowsAnUnchangedSubscription(t *testing.T) {
 	err := refuseImmutableChanges(sub, desiredSubscription(sub, opts), want)
 	if err != nil {
 		t.Errorf("nothing changed, so nothing should be refused: %v", err)
+	}
+}
+
+// An unchanged subscription gets NO update. The emulator refuses any update naming expiration_policy,
+// so a mask of all five made every second `pubsub ensure` fail — the e2e setup and `san dev run` among
+// them. The existing one is read back the way Pub/Sub answers a pull subscription: an EMPTY push config.
+func TestChangedSubscriptionFieldsIsEmptyWhenNothingChanged(t *testing.T) {
+	sub := Subscription{ID: "liability-order-placed", Topic: "order-placed", Filter: "f"}
+	opts := SubscriberOptions{ProjectID: "p"}.withDefaults()
+
+	existing := desiredSubscription(sub, opts)
+	existing.PushConfig = &pubsubpb.PushConfig{}
+
+	paths := changedSubscriptionFields(existing, desiredSubscription(sub, opts))
+	if len(paths) != 0 {
+		t.Errorf("nothing changed, so nothing should be updated, got %v", paths)
+	}
+}
+
+func TestChangedSubscriptionFieldsNamesOnlyWhatMoved(t *testing.T) {
+	sub := Subscription{ID: "liability-order-placed", Topic: "order-placed", Filter: "f"}
+	opts := SubscriberOptions{ProjectID: "p"}.withDefaults()
+
+	existing := desiredSubscription(sub, opts)
+	existing.RetryPolicy = &pubsubpb.RetryPolicy{MinimumBackoff: durationpb.New(time.Second)}
+
+	paths := changedSubscriptionFields(existing, desiredSubscription(sub, opts))
+	if !slices.Equal(paths, []string{"retry_policy"}) {
+		t.Errorf("paths = %v, want only retry_policy", paths)
+	}
+
+	pushed := desiredSubscription(sub, SubscriberOptions{ProjectID: "p", PushBaseURL: "https://api.example.com"}.withDefaults())
+
+	paths = changedSubscriptionFields(existing, pushed)
+	if !slices.Contains(paths, "push_config") {
+		t.Errorf("pull to push must update push_config, got %v", paths)
 	}
 }

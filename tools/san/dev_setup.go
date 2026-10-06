@@ -65,11 +65,9 @@ func devSetupCommand() *cli.Command {
 				return err
 			}
 
-			if !cmd.Bool("no-docker") {
-				err = composeUp(ctx, root, os.Stdout)
-				if err != nil {
-					return err
-				}
+			err = devDocker(ctx, root, os.Stdout, cmd.Bool("no-docker"))
+			if err != nil {
+				return err
 			}
 
 			db, err := openDatabase(ctx, localDSN(), targetLocal)

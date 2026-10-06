@@ -92,7 +92,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
 **`remote`, `pubsub` and `dev run` touch no database**, so they never ask Local/Production and need
-no Postgres running (`dev run` starts the container, and that is all). `--dsn` is meaningless to all
+no Postgres running (`dev run` starts the containers, and that is all). `--dsn` is meaningless to all
 three. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker.
 
 **`dev setup` touches only the local one, and never asks.** It refuses to run at all when `--dsn` or
@@ -280,25 +280,27 @@ idempotent, so there is no separate "update" command.
 
 ```sh
 go run ./tools/san dev setup               # all of it
-go run ./tools/san dev setup --no-docker   # Postgres is already up
+go run ./tools/san dev setup --no-docker   # the containers are already up
 ```
 
 | | Step | The same as |
 | --- | --- | --- |
 | 1 | check out a submodule a plain `git clone` left empty | `git submodule update --init` |
-| 2 | `docker compose up -d --wait` | |
-| 3 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
-| 4 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller` | [`seed dev`](#seed) |
-| 5 | the product-category tree | [`seed categories`](#seed) |
-| 6 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
-| 7 | `npm install` in `frontend/` | |
+| 2 | `docker compose --profile pubsub up -d --wait` — Postgres, Redis and the Pub/Sub emulator | |
+| 3 | the emulator's topics and subscriptions | [`pubsub ensure --project warehouse-dev --emulator`](#pubsub-ensure) |
+| 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
+| 5 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller` | [`seed dev`](#seed) |
+| 6 | the product-category tree | [`seed categories`](#seed) |
+| 7 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
+| 8 | `npm install` in `frontend/` | |
 
-Steps 3–6 call **the same function** as their own command, so setup cannot drift from running them
-one at a time.
+Steps 3–7 call **the same function** as their own command, so setup cannot drift from running them
+one at a time. Steps 2 and 3 are the same ones [`dev run`](#dev-run) starts with — see
+[the emulator and its topics](#the-emulator-and-its-topics).
 
 | Flag | |
 | --- | --- |
-| `--no-docker` | Skip `docker compose up` |
+| `--no-docker` | Skip `docker compose up`. The topics are still made if the emulator answers, and a missing one is only a warning |
 | `--password` | The password of every dev account. Default `devpassword123`, env `DEV_PASSWORD` |
 
 ```mermaid
@@ -306,8 +308,9 @@ flowchart TD
     G{"--dsn or DATABASE_URL set?"} -->|"yes"| X["refuse — nothing has run"]
     G -->|"no"| R["read the seed files"]
     R --> S["submodules — only an EMPTY one"]
-    S --> D["docker compose up -d --wait"]
-    D --> M["migrate up-all"]
+    S --> D["docker compose --profile pubsub up -d --wait"]
+    D --> E["pubsub ensure — the emulator's topics"]
+    E --> M["migrate up-all"]
     M --> SD["seed dev"]
     SD --> SC["seed categories"]
     SC --> RG["region load-seed"]
@@ -331,7 +334,8 @@ set up a different database, run the steps one by one against it.
 back to the commit this repo records, under somebody who is working in it. Neither `san` nor the dev
 servers import a submodule. Step 1 is for `go build ./...` and `go test ./...`, which do.
 
-A re-run takes about 15 s on a warm machine. Most of it is the regions upsert, about 5 s.
+A re-run takes about 15 s on a warm machine. Most of it is the regions upsert, about 5 s. The **first** run
+also pulls the emulator's image, about 1.1 GB.
 
 ### Errors you should expect
 
@@ -340,6 +344,8 @@ A re-run takes about 15 s on a warm machine. Most of it is the regions upsert, a
 | `dev setup acts only on the local docker database` | `--dsn` or `DATABASE_URL` is set. Unset it, or run the steps by hand |
 | `the dev password must be at least 8 characters` | `--password` is too short |
 | `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
+| `the Pub/Sub emulator is not answering on localhost:8085 although docker started it` | The container is up but not serving. `docker compose logs pubsub` says why |
+| `pubsub ensure: …` | The emulator refused a topic or subscription. Same causes as [`pubsub ensure`](#pubsub-ensure)'s errors |
 | `connecting to Database Local: …` | Postgres is not up. Drop `--no-docker`, or start it |
 | `migrating <service>: …` | A broken migration. The services before it are applied, so re-run once it is fixed |
 | `npm install: … is Node installed?` | Node is not installed or not on `PATH` |
@@ -352,12 +358,15 @@ The whole local stack in **one terminal**, replacing the two terminals in the ge
 Every line of output is prefixed with the process that wrote it.
 
 ```sh
-go run ./tools/san dev run               # docker compose up, then the API and the UI
-go run ./tools/san dev run --no-docker   # Postgres is already up
+go run ./tools/san dev run               # the containers and the emulator's topics, then the API and the UI
+go run ./tools/san dev run --no-docker   # the containers are already up
 ```
 
 ```
-→ docker compose up -d --wait
+→ docker compose --profile pubsub up -d --wait
+→ pubsub ensure --project warehouse-dev --emulator
+topics ensured
+subscriptions ensured
 → api  go run ./cmd/app_development   (in backend)
 → ui   npm run dev   (in frontend)
 ui  |   VITE v6.4.3  ready in 401 ms
@@ -367,7 +376,7 @@ api | … listening on localhost:8080
 
 | Flag | |
 | --- | --- |
-| `--no-docker` | Skip `docker compose up`, because the database is already running |
+| `--no-docker` | Skip `docker compose up`, because the containers are already running. The topics are still made if the emulator answers; a missing emulator is a warning, not an error |
 
 It is a **machine** command ([two shapes](#two-shapes-and-which-rules-apply)): it picks no database
 and builds no Wire graph. Each server runs in the directory a person would `cd` into, so the API
@@ -380,12 +389,15 @@ sequenceDiagram
     actor P as you
     participant S as san dev run
     participant D as docker compose
+    participant E as the emulator
     participant A as api, go run
     participant U as ui, npm run dev
     P->>S: go run ./tools/san dev run
     S->>S: frontend/node_modules present?
-    S->>D: up -d --wait
-    D-->>S: postgres + redis healthy
+    S->>D: --profile pubsub up -d --wait
+    D-->>S: postgres, redis and the emulator healthy
+    S->>E: pubsub ensure — on every start, it forgets them
+    E-->>S: topics and subscriptions ensured
     par
         S->>A: start, in backend/
     and
@@ -417,12 +429,27 @@ means Ctrl-C reaches only `san`. On Windows that keeps cmd.exe from stopping at 
 
 The stop is a **hard kill**. The API does not drain its requests, which is fine for a dev server.
 
+### The emulator and its topics
+
+The dev server publishes to the Pub/Sub emulator
+([dev-runs-the-emulator](../technical/event_architecture/context_decision.md#dev-runs-the-emulator)), and
+without it a publish does not fail — it **waits about a minute**, so placing an order hangs on a form with
+nothing wrong with it. So `dev run` and `dev setup` both:
+
+| | why |
+| --- | --- |
+| turn on the compose `pubsub` profile | the emulator is behind it, so a plain `docker compose up` leaves it out |
+| wait for it to be **healthy** | its healthcheck asks it to answer. Running is not enough: the JVM starts seconds before it serves |
+| run [`pubsub ensure`](#pubsub-ensure) on **every** start | ⚠ the emulator keeps topics in MEMORY. A restarted container (Docker Desktop restarting is enough) has none, and a publish to a missing topic hangs the same way. Ensuring is idempotent and takes a second |
+
+Under `--no-docker` it still makes the topics when the emulator answers, and only **warns** when it does not:
+every screen but placing an order works without it.
+
 ### What it does NOT do
 
 | | Do it yourself |
 | --- | --- |
 | Migrate, seed the logins, `npm install` | [`dev setup`](#dev-setup). `dev run` never changes the database you review on |
-| Start the Pub/Sub emulator | `docker compose --profile pubsub up -d` and then [`pubsub ensure`](#pubsub-ensure). Without them, placing an order [waits about a minute](../faq/troubleshooting.md#an-import-or-placing-an-order-hangs-for-about-a-minute) |
 | Survive `kill -9` / `taskkill /F` of `san` itself | Cannot. The servers outlive it. Stop it with Ctrl-C |
 
 ### Errors you should expect
@@ -430,6 +457,8 @@ The stop is a **hard kill**. The API does not drain its requests, which is fine 
 | Message | Cause |
 | --- | --- |
 | `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
+| `the Pub/Sub emulator is not answering on localhost:8085 although docker started it` | The container is up but not serving. `docker compose logs pubsub` says why |
+| `⚠ the Pub/Sub emulator is not answering …` | Not an error — `--no-docker` with no emulator. The stack starts. Start the emulator before placing an order |
 | `frontend/node_modules is missing` | Run [`dev setup`](#dev-setup), or `cd frontend && npm install` |
 | `api exited (exit status 1) — stopped the rest` | Read the `api \|` lines above it. `failed to connect … :5433` means Postgres is down. A bind error on :8080 means the stack is already running somewhere |
 | `ui exited (exit status 1) — stopped the rest` | Read the `ui \|` lines. `Port 5174 is already in use` comes from vite's `strictPort` |
@@ -523,7 +552,7 @@ The database label is always in the line, so the record of what happened says **
 ## `pubsub ensure`
 
 ```sh
-# dev, against the local emulator (docker compose --profile pubsub up -d)
+# dev, against the local emulator — dev run, dev setup and the e2e setup run this for you
 go run ./tools/san pubsub ensure --project warehouse-dev --emulator
 
 # production: the grants need the NUMERIC project id, and push needs the base URL
@@ -538,6 +567,10 @@ subscription nobody created receives nothing and says nothing.
 **It ENSURES, so run it as often as you like** — creating what is missing, updating what may change, and
 REFUSING what Pub/Sub cannot change. It never deletes
 ([setup-ensures-safe-defaults-never-deletes](../technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes)).
+
+**An unchanged subscription gets no write.** Only the settings that DIFFER go in the update. It used to send
+all five every run, and the emulator refuses any update naming `expiration_policy` — so every SECOND run
+failed, which is exactly what `dev run` and the e2e setup do on each start.
 
 **The topics come from the PROTO**, not from a list here: every variant of `warehouse.events.v1.Event`
 declares its own topic, and the command walks the descriptor. Add a variant, re-run, and its topic

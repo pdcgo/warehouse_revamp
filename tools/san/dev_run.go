@@ -46,8 +46,9 @@ func devStack(root string) []devProc {
 // screen failing, and nothing on screen says the server is gone.
 func devRunCommand() *cli.Command {
 	return &cli.Command{
-		Name:  "run",
-		Usage: "start postgres + redis, the API (:8080) and the UI (:5174) in one terminal — Ctrl-C stops all of it",
+		Name: "run",
+		Usage: "start postgres, redis and the Pub/Sub emulator, the API (:8080) and the UI (:5174) in one terminal — " +
+			"Ctrl-C stops all of it",
 		Flags: []cli.Flag{
 			noDockerFlag(),
 		},
@@ -73,11 +74,9 @@ func devRunCommand() *cli.Command {
 				return err
 			}
 
-			if !cmd.Bool("no-docker") {
-				err = composeUp(ctx, root, os.Stdout)
-				if err != nil {
-					return err
-				}
+			err = devDocker(ctx, root, os.Stdout, cmd.Bool("no-docker"))
+			if err != nil {
+				return err
 			}
 
 			return superviseDev(ctx, os.Stdout, devStack(root))
