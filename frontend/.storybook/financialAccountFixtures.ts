@@ -62,7 +62,8 @@ export const financialAccounts: AccountFixture[] = [
     id: 1301n, teamId: 12n, type: FinancialAccountType.BANK_ACCOUNT, provider: P.BCA, status: ACTIVE,
     accountNumber: "1234567890", name: "BCA Operasional", holderName: "PT Melati Sejahtera",
     description: "Withdrawals land here. Pay Toko Melati's fees into BCA 1234567890.", operational: true,
-    shopIds: [21n, 22n], reconciledAgo: 1,
+    // Three shops and Operasional — four links, one past the column's three (the-linked-column-shows-three-then-more).
+    shopIds: [21n, 22n, 23n], reconciledAgo: 1,
   },
   {
     // Payroll only. Never reconciled — "never checked" is the state worth seeing.
@@ -120,6 +121,14 @@ export const financialAccounts: AccountFixture[] = [
     accountNumber: "", name: "Kas Melati", holderName: "", description: "The petty-cash box at the counter.",
     operational: false, shopIds: [], reconciledAgo: 5,
   },
+  {
+    // AN ACCOUNT OUTSIDE THE LIST — Mandiri, registered by hand as type Lainnya, provider Lainnya
+    // (the-type-decides-the-provider). It holds no shop's withdrawals, so its row carries no warning. Demo only:
+    // the real server does not accept the type yet. Empty — opened at zero before the report's window.
+    id: 1310n, teamId: 12n, type: FinancialAccountType.UNKNOWN, provider: P.UNKNOWN, status: ACTIVE,
+    accountNumber: "1370012345678", name: "Mandiri Usaha", holderName: "PT Melati Sejahtera",
+    description: "Mandiri — a bank outside the provider list.", operational: false, shopIds: [], reconciledAgo: 6,
+  },
 ];
 
 // ── The rows ────────────────────────────────────────────────────────────────────────────────────
@@ -162,6 +171,7 @@ export const financialAccountLogs: LogFixture[] = [
 
   // Kas Melati — appended, so it opens on day 40 with an id after everything else
   { id: 1429n, accountId: 1309n, changeType: T.OPENING_BALANCE, change: 350_000, description: "Opening balance", actorId: ANI, ago: 40 },
+  { id: 1430n, accountId: 1310n, changeType: T.OPENING_BALANCE, change: 0, description: "Opening balance", actorId: ANI, ago: 40 },
 ];
 
 // ── What the book adds up to — the numbers the stories assert ───────────────────────────────────
@@ -175,6 +185,7 @@ export const expectedBalance: Record<string, number> = {
   "1307": 25_000_000,
   "1308": 750_000,
   "1309": 350_000,
+  "1310": 0,
 };
 
 /** The fixture account named `name` — by name, so a story reads like the screen does. */

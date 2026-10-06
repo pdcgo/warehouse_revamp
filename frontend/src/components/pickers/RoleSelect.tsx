@@ -3,6 +3,7 @@ import { Combobox, Portal, useListCollection } from "@chakra-ui/react";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { roleLabel, rolesFor } from "../../lib/roles";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 // Every assignable role, for the "all" case — excludes UNSPECIFIED and the internal SYSTEM role.
 const ALL_ROLES: Role[] = [
@@ -78,7 +79,8 @@ export function RoleSelect({
         const picked = e.value[0];
         onChange?.(picked !== undefined ? (Number(picked) as Role) : Role.UNSPECIFIED);
       }}
-      onInputValueChange={(e) => setInput(e.inputValue)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      {...searchOnlyWhatIsTyped(setInput)}
       data-testid="role-select"
     >
       <Combobox.Control>

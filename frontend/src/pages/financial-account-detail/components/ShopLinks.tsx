@@ -9,7 +9,7 @@ import { ShopSelect } from "../../../components/pickers/ShopSelect";
 import type { FinancialAccount } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { FormDialog } from "../../../features/financialAccount/FormDialog";
 import { useAccountOfShop, useShopSet } from "../../../features/financialAccount/queries";
-import { withShopNames } from "../../../features/financialAccount/vocab";
+import { accountName } from "../../../features/financialAccount/vocab";
 
 // The shops that WITHDRAW INTO this account — their `shop_accounts` rows
 // (a-shop-names-the-account-it-withdraws-into).
@@ -121,7 +121,7 @@ function ShopSetDialog({
     >
       <Field.Root required>
         <Field.Label>{t("financialAccounts.shops.shop")}</Field.Label>
-        <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} />
+        <ShopSelect teamId={teamId} value={shopId} onChange={setShopId} placeholder={t("financialAccounts.shops.shopPlaceholder")} />
       </Field.Root>
 
       {shopId > 0n && current.isSuccess && (
@@ -129,7 +129,7 @@ function ShopSetDialog({
           {already
             ? t("financialAccounts.shops.already", { shop: shopName(shopId) })
             : current.data
-              ? t("financialAccounts.shops.moves", { shop: shopName(shopId), from: withShopNames(current.data.name, nameOf), to: account.name })
+              ? t("financialAccounts.shops.moves", { shop: shopName(shopId), from: accountName(current.data, nameOf), to: account.name })
               : t("financialAccounts.shops.first", { shop: shopName(shopId) })}
         </Text>
       )}

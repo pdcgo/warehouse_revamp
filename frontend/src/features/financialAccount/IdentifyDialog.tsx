@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, Input, SegmentGroup, Text } from "@chakra-ui/react";
+import { Field, Input, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
+import { RadioPills } from "../../components/inputs/RadioPills";
 import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
 import {
   type FinancialAccount,
@@ -13,6 +14,7 @@ import {
 import { formatRupiahNumber } from "../../lib/money";
 import { FormDialog } from "./FormDialog";
 import { ProviderPicker, TypeSegment } from "./fields";
+import { IDENTIFIABLE_TYPES, PROVIDERS_BY_TYPE, fixedProvider, providerFor } from "./vocab";
 import { useIdentifyAccount } from "./queries";
 
 type Mode = "fill" | "move";
@@ -56,6 +58,10 @@ export function IdentifyDialog({
   const [into, setInto] = useState(0n);
 
   const needsNumber = type !== FinancialAccountType.CASH;
+  const pickType = (next: FinancialAccountType) => {
+    setType(next);
+    setProvider(providerFor(next, provider));
+  };
   const canSave =
     mode === "fill"
       ? name.trim() !== "" && provider !== FinancialAccountProvider.UNSPECIFIED && (!needsNumber || accountNumber.trim() !== "")
@@ -104,39 +110,38 @@ export function IdentifyDialog({
         {t("financialAccounts.identify.intro", { shops, amount: balance === undefined ? "—" : formatRupiahNumber(balance) })}
       </Text>
 
-      <SegmentGroup.Root
+      <RadioPills<Mode>
         value={mode}
-        onValueChange={(e) => setMode((e.value as Mode | null) ?? mode)}
-        aria-label={t("financialAccounts.identify.title")}
-        data-testid="identify-mode"
-      >
-        <SegmentGroup.Indicator />
-        <SegmentGroup.Item value="fill" data-testid="identify-fill">
-          <SegmentGroup.ItemText>{t("financialAccounts.identify.fill")}</SegmentGroup.ItemText>
-          <SegmentGroup.ItemHiddenInput />
-        </SegmentGroup.Item>
-        <SegmentGroup.Item value="move" data-testid="identify-move">
-          <SegmentGroup.ItemText>{t("financialAccounts.identify.move")}</SegmentGroup.ItemText>
-          <SegmentGroup.ItemHiddenInput />
-        </SegmentGroup.Item>
-      </SegmentGroup.Root>
+        onChange={setMode}
+        ariaLabel={t("financialAccounts.identify.title")}
+        testId="identify-mode"
+        options={[
+          { value: "fill", label: t("financialAccounts.identify.fill"), testId: "identify-fill" },
+          { value: "move", label: t("financialAccounts.identify.move"), testId: "identify-move" },
+        ]}
+      />
 
       {mode === "fill" ? (
         <>
           <Field.Root required>
             <Field.Label>{t("financialAccounts.form.type")}</Field.Label>
-            <TypeSegment value={type} onChange={setType} testId="identify-type" />
+            <TypeSegment value={type} onChange={pickType} types={IDENTIFIABLE_TYPES} testId="identify-type" />
           </Field.Root>
-          <Field.Root required>
-            <Field.Label>{t("financialAccounts.form.provider")}</Field.Label>
-            <ProviderPicker value={provider} onChange={setProvider} testId="identify-provider" />
-          </Field.Root>
+          {/* NO PROVIDER FIELD WHERE THE TYPE SETS IT (owner, `kas-and-lainnya-ask-no-provider`) — a cash box is Kas,
+              type Lainnya is Lainnya, and a field with nothing to choose is only noise. A wallet keeps its picker. */}
+          {fixedProvider(type) === undefined && (
+            <Field.Root required>
+              <Field.Label>{t("financialAccounts.form.provider")}</Field.Label>
+              <ProviderPicker value={provider} onChange={setProvider} options={PROVIDERS_BY_TYPE[type] ?? []} testId="identify-provider" />
+            </Field.Root>
+          )}
           {needsNumber && (
             <Field.Root required>
               <Field.Label>{t("financialAccounts.form.number")}</Field.Label>
               <Input
                 value={accountNumber}
                 inputMode="numeric"
+                placeholder={t("financialAccounts.form.numberPlaceholder")}
                 data-testid="identify-number"
                 onChange={(e) => setAccountNumber(e.target.value.replace(/\s/g, ""))}
               />
@@ -144,11 +149,16 @@ export function IdentifyDialog({
           )}
           <Field.Root>
             <Field.Label>{t("financialAccounts.form.holder")}</Field.Label>
-            <Input value={holderName} data-testid="identify-holder" onChange={(e) => setHolderName(e.target.value)} />
+            <Input
+              value={holderName}
+              placeholder={t("financialAccounts.form.holderPlaceholder")}
+              data-testid="identify-holder"
+              onChange={(e) => setHolderName(e.target.value)}
+            />
           </Field.Root>
           <Field.Root required>
             <Field.Label>{t("financialAccounts.form.name")}</Field.Label>
-            <Input value={name} placeholder="BCA TikTok" data-testid="identify-name" onChange={(e) => setName(e.target.value)} />
+            <Input value={name} placeholder={t("financialAccounts.identify.namePlaceholder")} data-testid="identify-name" onChange={(e) => setName(e.target.value)} />
           </Field.Root>
           <Text fontSize="sm" color="fg.muted">
             {t("financialAccounts.identify.fillHelp")}

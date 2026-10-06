@@ -386,11 +386,15 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
   },
 
   // Posts `opening_balance` in the same act — even at 0 (an-account-opens-with-a-log-row).
+  //
+  // ⚠ THE DEMO ACCEPTS TYPE LAINNYA (`unknown`, its provider Lainnya, its number optional) — the real server does
+  // NOT yet (owner: *"untuk lainnya buat aja dulu demonya saja … kita tidak akan mengubah api apapun"*,
+  // the-type-decides-the-provider). The screens mark it unimplemented.
   financialAccountCreate: (req) => {
-    if (req.type === FinancialAccountType.UNKNOWN || req.provider === FinancialAccountProvider.UNKNOWN) {
-      throw new ConnectError("an unknown account is made only by a withdrawal", Code.InvalidArgument);
+    if ((req.type === FinancialAccountType.UNKNOWN) !== (req.provider === FinancialAccountProvider.UNKNOWN)) {
+      throw new ConnectError("type Lainnya and provider Lainnya go together", Code.InvalidArgument);
     }
-    if (req.type !== FinancialAccountType.CASH && req.accountNumber.trim() === "") {
+    if (req.type !== FinancialAccountType.CASH && req.type !== FinancialAccountType.UNKNOWN && req.accountNumber.trim() === "") {
       throw new ConnectError("a bank account or a wallet needs its number", Code.InvalidArgument);
     }
     if (!req.name.trim()) throw new ConnectError("name the account", Code.InvalidArgument);

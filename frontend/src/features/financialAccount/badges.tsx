@@ -52,10 +52,13 @@ export function BalanceText({
   size = "sm",
   testId,
   hint,
+  bold = false,
 }: {
   balance: number | undefined;
   size?: "sm" | "md" | "lg" | "2xl";
   testId?: string;
+  /** The figure in bold — a list's balance column, the number the row is read for. */
+  bold?: boolean;
   /**
    * Below zero, put the ⚠ on a line UNDER the figure with these words, instead of beside it (owner,
    * `a-balance-below-zero-says-to-check-the-bank`) — the figure stays a clean column of numbers.
@@ -79,7 +82,7 @@ export function BalanceText({
   if (below && hint) {
     return (
       <Box display="inline-block" data-testid={testId} data-below-zero>
-        <Text fontSize={size} fontWeight={size === "sm" ? undefined : "semibold"} color="fg.error">
+        <Text fontSize={size} fontWeight={bold ? "bold" : size === "sm" ? undefined : "semibold"} color="fg.error">
           {formatRupiahNumber(balance)}
         </Text>
         <Text
@@ -106,7 +109,7 @@ export function BalanceText({
           data-testid={testId ? `${testId}-below-zero` : undefined}
         />
       )}
-      <Text fontSize={size} fontWeight={size === "sm" ? undefined : "semibold"} color={below ? "fg.error" : undefined}>
+      <Text fontSize={size} fontWeight={bold ? "bold" : size === "sm" ? undefined : "semibold"} color={below ? "fg.error" : undefined}>
         {formatRupiahNumber(balance)}
       </Text>
     </HStack>

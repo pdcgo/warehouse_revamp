@@ -62,9 +62,13 @@ async function createAccount(page: Page, args: { name: string; cash?: boolean; p
   await expect(form).toBeVisible();
 
   await form.getByTestId("account-name").fill(args.name);
-  if (args.cash) await form.getByTestId("account-type-3").click();
-  await form.getByTestId("account-provider").click();
-  await form.getByRole("option", { name: args.provider, exact: true }).click();
+  if (args.cash) {
+    // A cash box's provider is Kas by itself (the-type-decides-the-provider) — nothing to pick.
+    await form.getByTestId("account-type-3").click();
+  } else {
+    await form.getByTestId("account-provider").click();
+    await form.getByRole("option", { name: args.provider, exact: true }).click();
+  }
   if (args.number) await form.getByTestId("account-number").fill(args.number);
   await form.getByTestId("account-opening").fill(args.opening);
   await form.getByTestId("account-form-save").click();
@@ -73,8 +77,8 @@ async function createAccount(page: Page, args: { name: string; cash?: boolean; p
 }
 
 async function transfer(page: Page, from: string, to: string, amount: string) {
-  await openMenu(page, from);
-  await page.getByRole("menuitem", { name: "Transfer" }).click();
+  // A button on the row now, not a menu item (transfer-and-reconcile-sit-on-the-row).
+  await accountRow(page, from).getByRole("button", { name: "Transfer", exact: true }).click();
 
   const dialog = page.getByTestId("transfer");
   await expect(dialog).toBeVisible();
@@ -245,7 +249,8 @@ test("A withdrawal from a shop with no account makes an unknown one, once", asyn
   await gotoAccounts(page);
 
   const row = accountRow(page, `shop #${ORPHAN_SHOP}`);
-  await expect(row).toContainText("Bank not named");
+  // No badge any more — its provider reads Other (the-unknown-account-reads-lainnya).
+  await expect(row).toContainText("Other");
   await expect(balanceOf(row)).toHaveText(rp(150_000));
   // Its own totals card says it — the banner is gone (the-accounts-page-has-no-banners). 4 = UNKNOWN.
   await expect(page.getByTestId("account-total-4")).toBeVisible();
@@ -259,7 +264,9 @@ test("The unknown account is moved into the real one", async ({ page }) => {
   await accountRow(page, `shop #${ORPHAN_SHOP}`).getByText(`shop #${ORPHAN_SHOP}`).click();
   await expect(page.getByTestId("account-unknown-explained")).toBeVisible();
 
-  await page.locator('[data-testid^="account-identify-button-"]').click();
+  // Set account is in the menu now (the-unknown-row-warns-and-sets-from-the-menu).
+  await page.locator('[data-testid^="account-actions-"]').click();
+  await page.locator('[data-testid^="account-identify-"]').click();
   const dialog = page.getByTestId("identify");
   await expect(dialog).toBeVisible();
   await dialog.getByTestId("identify-move").click();

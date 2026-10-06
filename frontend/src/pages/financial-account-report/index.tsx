@@ -29,7 +29,7 @@ import {
   useAccountReportSummary,
 } from "../../features/financialAccount/analytics";
 import { useFinancialAccounts } from "../../features/financialAccount/queries";
-import { withShopNames } from "../../features/financialAccount/vocab";
+import { accountName } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { toDateInputValue } from "../../lib/datetime";
@@ -82,7 +82,7 @@ export function FinancialAccountReportPage() {
   const shops = useShopOptions({ teamId: teamId ?? 0n });
   const nameOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name;
   // An unknown account is named after its shop by id — shown by the shop's name.
-  const shownAccounts = (accounts.data?.accounts ?? []).map((a) => ({ ...a, name: withShopNames(a.name, nameOf) }));
+  const shownAccounts = (accounts.data?.accounts ?? []).map((a) => ({ ...a, name: accountName(a, nameOf) }));
   const accountOf = (id: bigint) => shownAccounts.find((a) => a.id === id);
 
   const summary = useAccountReportSummary({ teamId, from, to, valid, accountId });

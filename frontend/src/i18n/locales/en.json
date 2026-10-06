@@ -163,7 +163,10 @@
     "copyFailed": "Could not copy — select the text and copy it by hand",
     "filters": "Filters",
     "done": "Done",
-    "sortBy": "Sort by {{column}}"
+    "sortBy": "Sort by {{column}}",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "goToPage": "Go to page {{page}}"
   },
   "dateRange": {
     "all": "All dates",
@@ -3062,11 +3065,10 @@
     "newAccount": "New Account",
     "searchPlaceholder": "Search a name, holder or number",
     "allTypes": "All",
-    "showArchived": "Show archived accounts",
     "archived": "Archived",
     "operational": "Operational",
-    "bankNotNamed": "Bank not named",
     "neverChecked": "Never checked",
+    "accountNotSet": "No account set yet",
     "noStatement": "No statement to check",
     "notFound": "This account is not in this team.",
     "empty": "No accounts yet. An admin adds the team's bank, wallet and cash accounts here.",
@@ -3084,17 +3086,16 @@
     "col": {
       "account": "Account",
       "provider": "Provider",
-      "number": "Number",
       "balance": "Balance",
       "lastChecked": "Last checked",
-      "usedFor": "Used for",
+      "linkedTo": "Linked to",
       "actions": "Actions"
     },
     "totals": {
       "bank": "Bank accounts",
-      "wallet": "Wallets",
+      "wallet": "Digital wallets",
       "cash": "Cash",
-      "unknown": "Bank not named",
+      "unknown": "Other",
       "team": "Total balance",
       "accounts_one": "{{count}} account",
       "accounts_other": "{{count}} accounts",
@@ -3107,13 +3108,13 @@
       "bni": "BNI",
       "jago": "Jago",
       "shopeepay": "ShopeePay",
-      "unknown": "Unknown"
+      "unknown": "Other"
     },
     "type": {
-      "wallet": "Wallet",
+      "wallet": "Digital wallet",
       "bankAccount": "Bank account",
       "cash": "Cash",
-      "unknown": "Unknown"
+      "unknown": "Other"
     },
     "changeType": {
       "unspecified": "—",
@@ -3149,7 +3150,12 @@
       "opening": "Opening balance (Rp)",
       "openingHelp": "Posted as the account's first row — 0 is fine.",
       "openingOn": "True on",
-      "fixedHelp": "fixed: another number is another account"
+      "fixedHelp": "fixed: another number is another account",
+      "namePlaceholder": "e.g. BCA Operasional",
+      "numberPlaceholder": "e.g. 1234567890",
+      "holderPlaceholder": "e.g. PT Melati Sejahtera",
+      "descriptionPlaceholder": "e.g. Takes the shops' withdrawals and pays restocks",
+      "otherTypeWarning": "The server does not accept type Other yet — saving this account will be refused."
     },
     "transfer": {
       "title": "Transfer From {{name}}",
@@ -3160,14 +3166,15 @@
       "save": "Transfer"
     },
     "capital": {
-      "title": "Capital — {{name}}",
+      "title": "Add / Withdraw Capital — {{name}}",
       "direction": "Direction",
-      "in": "Money in",
-      "out": "Money out",
-      "help": "The business owner's own money, put in or taken out."
+      "in": "Add capital",
+      "out": "Withdraw capital",
+      "help": "The business owner's own money, put in or taken out.",
+      "notePlaceholder": "e.g. monthly top-up from the owner"
     },
     "reconcile": {
-      "title": "Reconcile {{name}}",
+      "title": "Match Balance — {{name}}",
       "books": "The books say",
       "shows": "What does the bank app show? (Rp)",
       "counted": "What does the box count? (Rp)",
@@ -3177,28 +3184,30 @@
       "why": "Why do they differ?",
       "whyPlaceholder": "e.g. bank fee",
       "whyHelp": "Needed when there is a difference — it is the one row that can hide missing cash.",
-      "save": "Reconcile"
+      "save": "Match",
+      "description": "Reconciliation: match the books against what the bank app shows, or what the cash box counts. Any difference is posted as an adjustment."
     },
     "identify": {
-      "title": "Which Account Is This?",
+      "title": "Set Account",
       "intro": "{{amount}} came in from {{shops}} before its bank was named.",
       "itsShop": "its shop",
       "fill": "Not recorded yet — fill it in",
       "move": "It is one we already have",
       "fillHelp": "This account becomes it — its rows stay, each withdrawal on its own day.",
       "into": "Move the money into",
-      "moveHelp": "{{amount}} moves into it, {{shops}} withdraws there from now on, and this account is archived."
+      "moveHelp": "{{amount}} moves into it, {{shops}} withdraws there from now on, and this account is archived.",
+      "namePlaceholder": "e.g. BCA TikTok"
     },
     "actions": {
       "label": "Account actions",
       "transfer": "Transfer",
-      "transferOut": "Transfer out",
-      "reconcile": "Reconcile",
-      "capital": "Capital in / out",
+      "transferOut": "Transfer Out",
+      "reconcile": "Match Balance",
+      "capital": "Add / Withdraw Capital",
       "edit": "Edit",
-      "markOperational": "Mark operational",
-      "unmarkOperational": "Unmark operational",
-      "identify": "Which account is this?",
+      "markOperational": "Mark Operational",
+      "unmarkOperational": "Unmark Operational",
+      "identify": "Set Account",
       "archive": "Archive",
       "archiveOnlyAtZero": "only at zero",
       "restore": "Restore"
@@ -3231,7 +3240,8 @@
       "shop": "Shop",
       "already": "{{shop}} already withdraws here.",
       "moves": "{{shop}} withdraws into {{from}} now — it moves to {{to}}.",
-      "first": "{{shop}} names no account yet — its withdrawals start landing here."
+      "first": "{{shop}} names no account yet — its withdrawals start landing here.",
+      "shopPlaceholder": "Choose a shop"
     },
     "log": {
       "title": "Statement",
@@ -3259,6 +3269,32 @@
         "asc": "Provider A–Z",
         "desc": "Provider Z–A"
       }
+    },
+    "links": {
+      "showAll": "Show everything this account is linked to",
+      "operationalHelp": "Marked operational — a restock or an expense may be paid from it."
+    },
+    "archivedView": {
+      "open": "Archive",
+      "title": "Archived Accounts",
+      "subtitle": "Accounts closed at zero. Restore one to use it again.",
+      "back": "Active Accounts"
+    },
+    "pending": {
+      "archivedOnly": {
+        "label": "The archive list",
+        "reason": "The contract can only add archived accounts to the active ones, not list the archived alone — so this view asks for the first 200 accounts and keeps the archived itself. Past 200 accounts some are missed, and the counts and pages here are worked out on screen."
+      },
+      "otherType": {
+        "label": "Type Other",
+        "reason": "New Account offers type Other — its provider Other, its number optional — but the contract and the server still refuse type and provider Other, so saving one is refused until the backend allows it. The Storybook demo accepts it."
+      }
+    },
+    "operationalDialog": {
+      "markTitle": "Mark {{name}} as Operational",
+      "markMessage": "{{name}} can then be picked to pay restocks and expenses.",
+      "unmarkTitle": "Unmark {{name}} as Operational",
+      "unmarkMessage": "{{name}} will no longer be offered to pay restocks and expenses."
     }
   }
 }

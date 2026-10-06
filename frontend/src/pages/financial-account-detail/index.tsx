@@ -14,7 +14,7 @@ import {
 import { AccountActions } from "../../features/financialAccount/AccountActions";
 import { BalanceText, ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useAccountLogs, useFinancialAccount } from "../../features/financialAccount/queries";
-import { TYPE_KEY, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
+import { TYPE_KEY, accountName, isUnknown, withShopNames } from "../../features/financialAccount/vocab";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
@@ -98,7 +98,7 @@ export function FinancialAccountDetailPage() {
   const nameOf = (shopId: bigint) => shops.data?.find((s) => s.id === shopId)?.name;
   const shopName = (shopId: bigint) => nameOf(shopId) ?? `#${shopId}`;
   // An unknown account is named after its shop by id — shown by the shop's name.
-  const shown = { ...account, name: withShopNames(account.name, nameOf) };
+  const shown = { ...account, name: accountName(account, nameOf) };
   const actorName = (actorId: bigint) => actors.data?.get(actorId.toString())?.name ?? `#${actorId}`;
 
   return (

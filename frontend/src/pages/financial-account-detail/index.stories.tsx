@@ -128,9 +128,14 @@ export const AReconcilePostsTheDifference: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
 
+    // Named the way a person says it, "reconciliation" kept as the dialog's description
+    // (reconcile-reads-cocokkan-saldo). The note is a textarea (an-account-note-is-a-textarea).
+    await expect(canvas.getByTestId(`account-reconcile-button-${BCA_OPS.id}`)).toHaveTextContent("Match Balance");
     await userEvent.click(canvas.getByTestId(`account-reconcile-button-${BCA_OPS.id}`));
     const actual = await screen.findByTestId("reconcile-actual");
     await waitFor(() => expect(actual).toBeVisible());
+    await expect(screen.getByTestId("reconcile-description")).toHaveTextContent(/^Reconciliation:/);
+    await expect(screen.getByTestId("reconcile-note").tagName).toBe("TEXTAREA");
     await userEvent.type(actual, "11400000", { delay: 20 });
 
     await expect(screen.getByTestId("reconcile-difference")).toHaveTextContent(`−${rp(43_500)}`);
@@ -198,16 +203,26 @@ export const BelowZeroIsExplained: Story = {
   },
 };
 
-// a-shop-with-no-account-gets-an-unknown-one: the page says how it came to be, offers Which account is
-// this? — and no reconcile, since there is no statement to read.
+/** Set account — in the menu, not a button (the-unknown-row-warns-and-sets-from-the-menu). */
+async function openSetAccount(canvas: ReturnType<typeof within>) {
+  await userEvent.click(canvas.getByTestId(`account-actions-${UNKNOWN.id}`));
+  const item = await screen.findByTestId(`account-identify-${UNKNOWN.id}`);
+  await waitFor(() => expect(item).toBeVisible());
+  await expect(item).toHaveTextContent("Set Account");
+  await userEvent.click(item);
+}
+
+// a-shop-with-no-account-gets-an-unknown-one: the page says how it came to be, offers Set account in its menu
+// (the-unknown-row-warns-and-sets-from-the-menu) — and no reconcile, since there is no statement to read.
 export const AnUnknownAccountExplainsItself: Story = {
   render: () => <AtUnknown />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1304"]!);
 
     await expect(canvas.getByTestId("account-unknown-explained")).toHaveTextContent("Melati TikTok");
-    await expect(canvas.getByTestId("account-name-heading")).toHaveTextContent("Unknown — Melati TikTok");
-    await expect(canvas.getByTestId(`account-identify-button-${UNKNOWN.id}`)).toBeVisible();
+    // Shown by its shop's name, no "Unknown —" (the-unknown-account-reads-lainnya).
+    await expect(canvas.getByTestId("account-name-heading")).toHaveTextContent(/^Melati TikTok$/);
+    await openSetAccount(canvas);
     await expect(canvas.queryByTestId(`account-reconcile-button-${UNKNOWN.id}`)).toBeNull();
     await expect(canvas.getByTestId("account-detail-checked")).toHaveTextContent("No statement to check");
   },
@@ -219,7 +234,7 @@ export const FillInTheUnknownAccount: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1304"]!);
 
-    await userEvent.click(canvas.getByTestId(`account-identify-button-${UNKNOWN.id}`));
+    await openSetAccount(canvas);
     const provider = await screen.findByTestId("identify-provider");
     await waitFor(() => expect(provider).toBeVisible());
     await userEvent.click(provider);
@@ -243,7 +258,7 @@ export const FillingInARecordedNumberIsRefused: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1304"]!);
 
-    await userEvent.click(canvas.getByTestId(`account-identify-button-${UNKNOWN.id}`));
+    await openSetAccount(canvas);
     const provider = await screen.findByTestId("identify-provider");
     await waitFor(() => expect(provider).toBeVisible());
     await userEvent.click(provider);
@@ -264,7 +279,7 @@ export const MoveTheUnknownAccountIn: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1304"]!);
 
-    await userEvent.click(canvas.getByTestId(`account-identify-button-${UNKNOWN.id}`));
+    await openSetAccount(canvas);
     const move = await screen.findByTestId("identify-move");
     await waitFor(() => expect(move).toBeVisible());
     await userEvent.click(move);

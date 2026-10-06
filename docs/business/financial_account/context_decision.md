@@ -46,6 +46,8 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [settlement-ads-and-accounts-are-independent](#settlement-ads-and-accounts-are-independent) | settlement's ads and a financial account never connect — an ad reaches an account only as an `ADS` expense naming the account that paid, and nothing syncs | owner | — |
 | [ads-expense-joins-the-types](#ads-expense-joins-the-types) | ads paid from an account post as `ads_expense`, a type of their own beside `expense` | owner | ⚠ my reading: from the expense event when its kind is `ADS` |
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
+| [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) | a bank outside the provider list is registered by hand with provider **Lainnya** (`unknown`), its type still bank / wallet / cash — an ordinary account | owner | ⚠ the contract and the server still refuse it — marked unimplemented on screen |
+| [the-type-decides-the-provider](#the-type-decides-the-provider) | the type is picked first and decides the provider: bank → BCA · BNI · Jago, digital wallet → ShopeePay, cash → Kas by itself, **Lainnya** → provider Lainnya by itself, its number optional | owner | ⚠ type and provider Lainnya are refused by the server — demo only, marked unimplemented |
 
 ## the-accounts-are-one-ledger
 
@@ -1273,3 +1275,67 @@ flowchart LR
 | my proposals in it | `group_id` and `counter_account_id` on a log row · `reconciled_at` · a note on a non-zero reconcile, none posted on a zero one · a picked day never in the future · an opening balance even at 0 · a name unique in the team · an unknown account only from the listener, transfer out only · the typed `AnalyticGroupKey` · the team's headline as the sum of its providers · Overview without sort or page · the shops on the account's page · money as `double` |
 | the build | the service, its five tables and the daily report written in the log row's transaction · every RPC with a unit test · the **withdrawal listener** on `settlement-log-posted` — its event already exists |
 | not in the build | *Paid from* on a restock and an expense, and the team payment's accept — each needs another service's new event first ([one-way-in-per-type](#one-way-in-per-type)): they are the next passes, in the build order |
+
+## another-bank-is-provider-lainnya
+
+> In chat *(owner, 2026-10-06)* — *"akun baru bisa buat akun unknown"*, meaning, when asked, a **provider *Lainnya*
+> for a bank outside the list** (a Mandiri, a BRI) — then, told what the backend lacks: *"oke buat dengan warning
+> saja"*. Against two of my specs: *a new bank is an append to the list, never free text*
+> ([provider-replaces-account-type](#provider-replaces-account-type)) and *an unknown account only from the listener*
+> ([the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted)) — for the PROVIDER only.
+
+```mermaid
+flowchart LR
+  N["New Account — a Mandiri account"] --> P["provider Lainnya (unknown)"]
+  N --> T["type Rekening bank"]
+  P --> A["an ordinary account — reconciled, operational, no warning"]
+  T --> A
+  U["a withdrawal from a shop with no account"] --> X["type unknown — the listener's, Tentukan Rekening"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| who picks it | a person, on New Account and on Tentukan Rekening's *isi data* — Lainnya last in the provider list |
+| the type | still picked from bank / wallet / cash — so it is NOT an unknown account: `isUnknown` reads the type, and only the listener makes type `unknown` |
+| the bank's name | lives in the account's name — *Mandiri Operasional* — the provider says only *Lainnya* |
+| ⚠ one real account, once | the number is unique per provider ([a-real-account-is-recorded-once](#a-real-account-is-recorded-once)) — every bank outside the list shares *Lainnya*, so a Mandiri and a BRI account with the same number would collide. Rare; appending a bank to the list removes it for that bank |
+| ⚠ not built | the contract's `FinancialAccountCreateRequest.provider` allows 1–5 and `checkIdentity` refuses `unknown` — the screens offer it with a pending mark and a warning, and saving one is refused. The backend is not changed (owner) |
+
+## the-type-decides-the-provider
+
+> In chat *(owner, 2026-10-06)* — *"gini aja, tambah jenis lainnya, penyedianya jelas lainnya, no rekening tidak wajib ·
+> bank penyedia hanya yang bank, bca, bni, jago · dompet digital bisa pilih, tapi opsinya masih shopeepay · kas penyedia
+> otomatis kas"* — after *Lainnya* had come to mean two things, a type (the listener's account) and a provider (a bank
+> outside the list). No API changes (*"kita tidak akan mengubah api apapun"*).
+
+```mermaid
+flowchart LR
+  T{"type"} -->|"Rekening bank"| B["BCA · BNI · Jago — picked"]
+  T -->|"Dompet digital"| W["ShopeePay — picked, the only one for now"]
+  T -->|"Kas"| K["Kas — set by itself, no number"]
+  T -->|"Lainnya"| L["Lainnya — set by itself, number optional"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the order | the TYPE first; the provider follows from it |
+| bank account | provider picked from **BCA · BNI · Jago** · number required |
+| digital wallet | provider picked from **ShopeePay** (the only one for now) · number required |
+| cash | provider **Kas**, set by the type · no number |
+| **Lainnya** | a type a person may now pick, for an account outside the three — provider **Lainnya**, set by the type · number optional |
+| a Lainnya account a person opens | no shop's withdrawals land in it, so it carries no *Rekening belum ditentukan* warning — that warning stays on the listener's accounts, which hold a shop |
+| what the server allows a Lainnya account | what it allows any `unknown` one: no reconcile, no operational mark, *Tentukan Rekening* to make it a real one |
+| ⚠ not built | the contract allows types 1–3 and providers 1–5, and `checkIdentity` refuses `unknown` — creating a Lainnya account is refused. The Storybook demo accepts it; the screens carry the pending mark and a warning |
+
+### What it replaces
+
+- ⚠ [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart) — on the screens the two are no longer
+  apart: the type narrows the provider, and two of them set it. The server still takes any pair.
+- ⚠ [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) — a bank outside the list is now **type**
+  Lainnya, not a bank account with provider Lainnya. Its number-collision caveat moves with it: every Lainnya account
+  shares provider *Lainnya*, so the same number at two banks outside the list would collide — a number is optional
+  there, which lessens it.

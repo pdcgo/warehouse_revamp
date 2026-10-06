@@ -3,6 +3,7 @@ import { Combobox, HStack, Span, useListCollection } from "@chakra-ui/react";
 import { useShopOptions } from "../../features/shops/queries";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { MarketplaceBadge, marketplaceLabel } from "../badges/MarketplaceBadge";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 export interface ShopSelectProps {
   /** The selling team whose shops to list — a shop is team-scoped, so this is required. */
@@ -160,7 +161,8 @@ export function ShopSelect({
       key={filled ? "ready" : "loading"}
       collection={collection}
       disabled={disabled}
-      onInputValueChange={(e) => filter(e.inputValue)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      {...searchOnlyWhatIsTyped(filter)}
       // A pick REPLACES what was typed with the shop's name, so the closed field reads as the
       // selection rather than as the search that found it.
       selectionBehavior="replace"

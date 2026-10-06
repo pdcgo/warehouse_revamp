@@ -118,24 +118,32 @@ export const BelowZeroIsWarnedNeverRefused: Story = {
   },
 };
 
-// a-shop-with-no-account-gets-an-unknown-one: warned "bank not named" · its menu offers Which account is
-// this? and Transfer out — no reconcile (no statement to read), never operational.
+// a-shop-with-no-account-gets-an-unknown-one, read as LAINNYA (owner, `the-unknown-account-reads-lainnya`): shown
+// by its shop's name — no "Unknown —", no badge — its provider badge and card saying *Other*, and a warning
+// where the holder would be. On the row, Transfer out; in the menu, Set account and Archive
+// (`the-unknown-row-warns-and-sets-from-the-menu`) — no reconcile, never operational.
 export const AnUnknownAccountIsWarned: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
+    const row = canvas.getByTestId(`account-row-${UNKNOWN.id}`);
 
-    await expect(canvas.getByTestId(`account-unknown-${UNKNOWN.id}`)).toHaveTextContent("Bank not named");
-    // The server names it by the shop's id; the row shows the shop's name.
-    await expect(canvas.getByTestId(`account-row-${UNKNOWN.id}`)).toHaveTextContent("Unknown — Melati TikTok");
-    // Its own card says it, not a banner (the-accounts-page-has-no-banners).
-    await expect(canvas.getByTestId(`account-total-${FinancialAccountType.UNKNOWN}`)).toBeVisible();
-    await expect(canvas.queryByTestId("unknown-warning")).toBeNull();
+    // The server names it by the shop's id; the row shows only the shop's name.
+    await expect(row).toHaveTextContent("Melati TikTok");
+    await expect(row).not.toHaveTextContent("Unknown");
+    await expect(row).not.toHaveTextContent("Bank not named");
+    await expect(row).toHaveTextContent("Other");
+    await expect(canvas.getByTestId(`account-total-${FinancialAccountType.UNKNOWN}`)).toHaveTextContent("Other");
     await expect(canvas.getByTestId(`account-shop-${UNKNOWN.id}-25`)).toHaveTextContent("Melati TikTok");
 
+    await expect(canvas.getByTestId(`account-not-set-${UNKNOWN.id}`)).toHaveTextContent("No account set yet");
+    await expect(canvas.queryByTestId(`account-not-set-${BCA_OPS.id}`)).toBeNull();
+    await expect(canvas.queryByTestId(`account-identify-button-${UNKNOWN.id}`)).toBeNull();
+    await expect(canvas.getByTestId(`account-transfer-button-${UNKNOWN.id}`)).toHaveTextContent("Transfer Out");
+    await expect(canvas.queryByTestId(`account-reconcile-button-${UNKNOWN.id}`)).toBeNull();
+
     await openMenu(canvas, UNKNOWN.id);
-    await expect(screen.getByTestId(`account-identify-${UNKNOWN.id}`)).toBeVisible();
-    await expect(screen.getByTestId(`account-transfer-${UNKNOWN.id}`)).toBeVisible();
-    await expect(screen.queryByTestId(`account-reconcile-${UNKNOWN.id}`)).toBeNull();
+    await expect(screen.getByTestId(`account-archive-${UNKNOWN.id}`)).toBeVisible();
+    await expect(screen.getByTestId(`account-identify-${UNKNOWN.id}`)).toHaveTextContent("Set Account");
     await expect(screen.queryByTestId(`account-mark-operational-${UNKNOWN.id}`)).toBeNull();
   },
 };
@@ -189,8 +197,14 @@ export const EveryFilterTheContractHas: Story = {
     await expect(canvas.getByTestId("account-type-tabs")).toBeVisible();
     await expect(canvas.getByTestId("account-shop-filter")).toBeVisible();
 
-    await userEvent.click(canvas.getByText("Operational only"));
+    // Operational only and archived live in ONE panel behind its own trigger
+    // (operational-and-archived-share-one-filter-panel).
+    await userEvent.click(canvas.getByTestId("account-options-trigger"));
+    const operational = await screen.findByText("Operational only");
+    await waitFor(() => expect(operational).toBeVisible());
+    await userEvent.click(operational);
     await waitFor(() => expect(canvas.queryByTestId(`account-row-${BCA_GAJI.id}`)).toBeNull());
+    await expect(canvas.getByTestId("account-options-count")).toHaveTextContent("1");
     for (const id of rowIds(canvas)) {
       await expect(canvas.getByTestId(`account-operational-${id}`)).toBeVisible();
     }
@@ -218,6 +232,34 @@ export const SortsFromItsHeadings: Story = {
     await waitFor(() => expect(rowIds(canvas)[0]).toBe(UNKNOWN.id.toString()));
 
     await expect(canvas.getByRole("columnheader", { name: "Balance" }).querySelector("button")).toBeNull();
+
+    // Penyedia — the provider's stored word, A to Z: bca first; flipped, "unknown" first — Mandiri Usaha (provider
+    // Lainnya) before the Melati TikTok account, the name breaking the tie A to Z as the server does.
+    const byProvider = canvas.getByTestId("account-sort-provider");
+    await userEvent.click(byProvider);
+    await waitFor(() => expect(rowIds(canvas)[0]).toBe(BCA_GAJI.id.toString()));
+    await userEvent.click(byProvider);
+    await waitFor(() => expect(rowIds(canvas)[0]).toBe(account("Mandiri Usaha").id.toString()));
+  },
+};
+
+/**
+ * THE PROVIDER CELL CARRIES THE NUMBER, AND THE BALANCE IS BOLD (owner, `the-provider-cell-carries-the-number`,
+ * `a-balance-is-bold`) — one column for where the money is, the figure the row is read for in bold.
+ */
+export const TheProviderCellCarriesTheNumber: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByRole("columnheader", { name: "Number" })).toBeNull();
+    const number = canvas.getByTestId(`account-number-${BCA_OPS.id}`);
+    await expect(number).toHaveTextContent("1234567890");
+    await expect(number.closest("td")).toHaveTextContent("BCA");
+    // A cash box has no number — the cell is the badge alone.
+    await expect(canvas.queryByTestId(`account-number-${account("Kas Melati").id}`)).toBeNull();
+
+    const figure = canvas.getByTestId(`account-balance-${BCA_OPS.id}`).querySelector("p")!;
+    await expect(getComputedStyle(figure).fontWeight).toBe("700");
   },
 };
 
@@ -230,19 +272,37 @@ export const LastCheckedIsAlwaysSaid: Story = {
   },
 };
 
-// Archived accounts are hidden until asked — they are restored from here, and an archived row offers
-// Restore and nothing else.
+/**
+ * THE ARCHIVE IS ITS OWN VIEW (owner, `the-archive-is-its-own-view`) — the Archive button beside New Account turns
+ * this screen into the archived list: no totals, no Filter panel, the search, the shop and the type tabs, and the
+ * pending mark saying the contract cannot list archived accounts alone. An archived row offers Restore and
+ * nothing else. Active Accounts goes back.
+ */
 export const ArchivedAccountsAreHiddenUntilAsked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.queryByTestId(`account-row-${BNI.id}`)).toBeNull();
-    await userEvent.click(canvas.getByText("Show archived accounts"));
-    await canvas.findByTestId(`account-archived-${BNI.id}`);
+    await userEvent.click(canvas.getByTestId("open-archived-accounts"));
 
-    await openMenu(canvas, BNI.id);
-    await expect(screen.getByTestId(`account-restore-${BNI.id}`)).toBeVisible();
-    await expect(screen.queryByTestId(`account-transfer-${BNI.id}`)).toBeNull();
+    await canvas.findByTestId(`account-archived-${BNI.id}`);
+    await expect(canvas.getByTestId("financial-accounts-heading")).toHaveTextContent("Archived Accounts");
+    await expect(canvas.queryByTestId(`account-row-${BCA_OPS.id}`)).toBeNull();
+    await expect(canvas.queryByTestId("account-totals")).toBeNull();
+    await expect(canvas.queryByTestId("account-options-trigger")).toBeNull();
+    await expect(canvas.getByTestId("account-search")).toBeVisible();
+    await expect(canvas.getByTestId("account-type-tab-all")).toHaveTextContent("1");
+    await expect(canvas.getByLabelText(/Not implemented, number 1/)).toBeVisible();
+
+    // Restore is the only thing an archived account offers — a button, and no menu.
+    await expect(canvas.getByTestId(`account-restore-button-${BNI.id}`)).toBeVisible();
+    await expect(canvas.queryByTestId(`account-actions-${BNI.id}`)).toBeNull();
+    await expect(canvas.queryByTestId(`account-transfer-button-${BNI.id}`)).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("back-to-active-accounts"));
+    await waitFor(() => expect(canvas.getByTestId(`account-row-${BCA_OPS.id}`)).toBeVisible());
+    await expect(canvas.queryByTestId(`account-row-${BNI.id}`)).toBeNull();
+    await expect(canvas.getByTestId("account-totals")).toBeVisible();
   },
 };
 
@@ -256,8 +316,9 @@ export const ArchiveOnlyAtZero: Story = {
     const archive = screen.getByTestId(`account-archive-${BCA_GAJI.id}`);
     await expect(archive).toHaveAttribute("data-disabled");
     await expect(archive).toHaveTextContent("only at zero");
+    await userEvent.keyboard("{Escape}");
 
-    await userEvent.click(screen.getByTestId(`account-transfer-${BCA_GAJI.id}`));
+    await userEvent.click(canvas.getByTestId(`account-transfer-button-${BCA_GAJI.id}`));
     const to = await screen.findByTestId("transfer-to");
     await waitFor(() => expect(to).toBeVisible());
     await userEvent.click(to);
@@ -287,8 +348,7 @@ export const ATransferMovesBothBalancesNotTheTotal: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await openMenu(canvas, BCA_OPS.id);
-    await userEvent.click(screen.getByTestId(`account-transfer-${BCA_OPS.id}`));
+    await userEvent.click(canvas.getByTestId(`account-transfer-button-${BCA_OPS.id}`));
 
     const to = await screen.findByTestId("transfer-to");
     await waitFor(() => expect(to).toBeVisible());
@@ -313,8 +373,7 @@ export const ATransferBelowZeroIsWarnedNotBlocked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await openMenu(canvas, BCA_GAJI.id);
-    await userEvent.click(screen.getByTestId(`account-transfer-${BCA_GAJI.id}`));
+    await userEvent.click(canvas.getByTestId(`account-transfer-button-${BCA_GAJI.id}`));
     const to = await screen.findByTestId("transfer-to");
     await waitFor(() => expect(to).toBeVisible());
     await userEvent.click(to);
@@ -331,6 +390,65 @@ export const ATransferBelowZeroIsWarnedNotBlocked: Story = {
   },
 };
 
+/**
+ * TERHUBUNG KE — THREE, THEN "+N" (owner, `the-linked-column-shows-three-then-more`). BCA Operasional is
+ * operational and three shops withdraw into it: three badges, a +1, and the dialog lists all four.
+ */
+export const TheLinkedColumnShowsThreeThenMore: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByRole("columnheader", { name: "Linked to" })).toBeVisible();
+    await expect(canvas.getByTestId(`account-operational-${BCA_OPS.id}`)).toBeVisible();
+    await expect(canvas.getByTestId(`account-shop-${BCA_OPS.id}-22`)).toBeVisible();
+    await expect(canvas.queryByTestId(`account-shop-${BCA_OPS.id}-23`)).toBeNull();
+
+    const more = canvas.getByTestId(`account-links-more-${BCA_OPS.id}`);
+    await expect(more).toHaveTextContent("+1");
+    await userEvent.click(more);
+
+    const dialog = await screen.findByTestId(`account-links-dialog-${BCA_OPS.id}`);
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(within(dialog).getByTestId("account-links-shop-23")).toHaveTextContent("Melati Grosir");
+    await expect(dialog).toHaveTextContent("Operational");
+    // The row did not open the account's page underneath.
+    await expect(canvas.queryByTestId("at-account-detail")).toBeNull();
+  },
+};
+
+/**
+ * TRANSFER AND RECONCILE SIT ON THE ROW (owner, `transfer-and-reconcile-sit-on-the-row`) — the menu holds the
+ * rest, never a second copy of either.
+ */
+export const TransferAndReconcileSitOnTheRow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId(`account-transfer-button-${BCA_OPS.id}`)).toBeVisible();
+    await expect(canvas.getByTestId(`account-reconcile-button-${BCA_OPS.id}`)).toBeVisible();
+
+    await openMenu(canvas, BCA_OPS.id);
+    await expect(screen.getByTestId(`account-capital-${BCA_OPS.id}`)).toBeVisible();
+    await expect(screen.queryByTestId(`account-transfer-${BCA_OPS.id}`)).toBeNull();
+    await expect(screen.queryByTestId(`account-reconcile-${BCA_OPS.id}`)).toBeNull();
+  },
+};
+
+/**
+ * THE PAGER GROWS WITH THE PAGES OPENED (owner, `the-accounts-pager-grows-with-the-pages-opened`) — five accounts
+ * are one page: ‹ [1] ›, both arrows off, still on screen.
+ */
+export const ThePagerGrowsWithThePagesOpened: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("account-pager-page-1")).toBeVisible();
+    await expect(canvas.queryByTestId("account-pager-page-2")).toBeNull();
+    await expect(canvas.getByTestId("account-pager-prev")).toBeDisabled();
+    await expect(canvas.getByTestId("account-pager-next")).toBeDisabled();
+  },
+};
+
 // an-account-opens-with-a-log-row: a new account appears with its opening balance — posted as its first row.
 export const ANewAccountOpensWithItsBalance: Story = {
   play: async ({ canvasElement }) => {
@@ -341,10 +459,8 @@ export const ANewAccountOpensWithItsBalance: Story = {
     await waitFor(() => expect(name).toBeVisible());
     await userEvent.type(name, "Kas Toko", { delay: 20 });
     await userEvent.click(screen.getByTestId(`account-type-${FinancialAccountType.CASH}`));
-    await userEvent.click(screen.getByTestId("account-provider"));
-    const cash = await screen.findByTestId("account-provider-option-1");
-    await waitFor(() => expect(cash).toBeVisible());
-    await userEvent.click(cash);
+    // A cash box's provider is Kas by itself (the-type-decides-the-provider) — no provider field at all.
+    await waitFor(() => expect(screen.queryByTestId("account-provider")).toBeNull());
     // A cash box has no number to ask for.
     await expect(screen.queryByTestId("account-number")).toBeNull();
     const opening = screen.getByTestId("account-opening");
@@ -355,6 +471,68 @@ export const ANewAccountOpensWithItsBalance: Story = {
     const row = await canvas.findByText("Kas Toko");
     await waitFor(() => expect(row).toBeVisible());
     await waitFor(() => expect(canvas.getByTestId("account-total-team-value")).toHaveTextContent(rp(16_693_500)));
+  },
+};
+
+/**
+ * THE TYPE DECIDES THE PROVIDER (owner, `the-type-decides-the-provider`) — a bank account picks among BCA, BNI and
+ * Jago; a digital wallet among ShopeePay; a cash box is Kas by itself; type Lainnya is Lainnya by itself, its number
+ * optional — and marked unimplemented, the server refusing it.
+ */
+export const TheTypeDecidesTheProvider: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("open-create-account"));
+    await userEvent.click(await screen.findByTestId("account-provider"));
+    await waitFor(() => expect(screen.getByTestId("account-provider-option-2")).toBeVisible());
+    // A bank account: the banks only.
+    await expect(screen.queryByTestId("account-provider-option-5")).toBeNull();
+    await expect(screen.queryByTestId("account-provider-option-6")).toBeNull();
+    await userEvent.keyboard("{Escape}");
+
+    // A digital wallet keeps its picker, ShopeePay already picked — the only one there is.
+    await userEvent.click(screen.getByTestId(`account-type-${FinancialAccountType.WALLET}`));
+    await waitFor(() => expect(screen.getByTestId("account-provider")).toHaveTextContent("ShopeePay"));
+
+    // Kas and Lainnya set their own provider — no field (kas-and-lainnya-ask-no-provider).
+    await userEvent.click(screen.getByTestId(`account-type-${FinancialAccountType.CASH}`));
+    await waitFor(() => expect(screen.queryByTestId("account-provider")).toBeNull());
+    await expect(screen.queryByTestId("account-number")).toBeNull();
+
+    await userEvent.click(screen.getByTestId(`account-type-${FinancialAccountType.UNKNOWN}`));
+    await expect(screen.queryByTestId("account-provider")).toBeNull();
+    await expect(screen.getByTestId("account-number")).toBeVisible();
+    const warning = screen.getByTestId("account-other-type-warning");
+    await expect(warning).toHaveTextContent("does not accept type Other yet");
+    await expect(within(warning).getByLabelText(/Not implemented, number 2/)).toBeInTheDocument();
+  },
+};
+
+/**
+ * THE DEMO OF LAINNYA (owner: *"untuk lainnya buat aja dulu demonya saja"*) — Mandiri Usaha, type Lainnya, provider
+ * Lainnya: shown by its own name with its holder under it, no warning (it holds no shop's withdrawals), counted
+ * under Other. And in the demo a new one saves without a number — the real server does not accept it yet.
+ */
+export const AnotherBankReadsOtherInTheDemo: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const mandiri = account("Mandiri Usaha");
+    const row = canvas.getByTestId(`account-row-${mandiri.id}`);
+
+    await expect(row).toHaveTextContent("Mandiri Usaha");
+    await expect(row).toHaveTextContent("PT Melati Sejahtera");
+    await expect(row).toHaveTextContent("Other");
+    await expect(canvas.queryByTestId(`account-not-set-${mandiri.id}`)).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("open-create-account"));
+    const name = await screen.findByTestId("account-name");
+    await waitFor(() => expect(name).toBeVisible());
+    await userEvent.type(name, "BRI Usaha", { delay: 20 });
+    await userEvent.click(screen.getByTestId(`account-type-${FinancialAccountType.UNKNOWN}`));
+    await userEvent.click(screen.getByTestId("account-form-save"));
+
+    await waitFor(() => expect(canvas.getByText("BRI Usaha")).toBeVisible());
   },
 };
 
@@ -379,7 +557,8 @@ export const ARecordedNumberIsRefused: Story = {
   },
 };
 
-// operational-accounts-pay-for-operations: marking an account adds it to a restock's Paid from.
+// operational-accounts-pay-for-operations: marking an account adds it to a restock's Paid from — and it asks
+// first (owner, `operational-asks-before-it-changes`), saying what the mark does.
 export const MarkAnAccountOperational: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -387,6 +566,13 @@ export const MarkAnAccountOperational: Story = {
     await expect(canvas.queryByTestId(`account-operational-${BCA_GAJI.id}`)).toBeNull();
     await openMenu(canvas, BCA_GAJI.id);
     await userEvent.click(screen.getByTestId(`account-mark-operational-${BCA_GAJI.id}`));
+
+    // Nothing changes until it is confirmed.
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await expect(canvas.queryByTestId(`account-operational-${BCA_GAJI.id}`)).toBeNull();
+    await expect(screen.getByText(/can then be picked to pay restocks and expenses/)).toBeVisible();
+    await userEvent.click(confirm);
 
     await canvas.findByTestId(`account-operational-${BCA_GAJI.id}`);
   },

@@ -900,6 +900,10 @@ list, because searching seven options you can already see in full is a keystroke
   the list is still in flight resolves against an empty collection and never recovers. Both search
   selects fix it the same way: `key={filled ? "ready" : "loading"}` on the Root, remounting once when
   the list lands. Copy that with the list, not the day it breaks.
+- ⚠ **A search select searches ONLY what is typed** — spread `searchOnlyWhatIsTyped(filter)`
+  ([lib/comboboxSearch.ts](frontend/src/lib/comboboxSearch.ts)) on the Root. Filtering on every `onInputValueChange`
+  also filters on the picked label the machine writes into the field, so the panel reopens with one option
+  ([a-search-select-reopens-whole](docs/technical/frontend/context_decision.md#a-search-select-reopens-whole)).
 - **Clearing emits the "none" sentinel** (`0n`, or `undefined`) — never nothing. #131 again: a field
   that empties while the parent still holds the old id filters on a shop the screen no longer shows.
 

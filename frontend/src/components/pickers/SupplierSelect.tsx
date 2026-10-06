@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { rpcError, supplierClient } from "../../api/clients";
 import { suppliersFromList, supplierListRowData } from "../../features/suppliers/adapt";
 import type { Supplier } from "../../gen/warehouse/inventory/v1/supplier_pb";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 // How many suppliers are loaded. A team buys from a handful — dozens at most — so the whole list is
 // fetched and filtered in the browser.
@@ -136,7 +137,8 @@ export function SupplierSelect({
 
         onChange?.(picked === undefined || picked === "" ? 0n : BigInt(picked));
       }}
-      onInputValueChange={(e) => filter(e.inputValue)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      {...searchOnlyWhatIsTyped(filter)}
       data-testid="supplier-select"
     >
       <Combobox.Control>

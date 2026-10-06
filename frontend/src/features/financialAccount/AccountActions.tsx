@@ -27,10 +27,17 @@ import { TransferDialog } from "./TransferDialog";
 import { useArchiveAccount, useOperationalSet, useRestoreAccount } from "./queries";
 import { isUnknown } from "./vocab";
 
-type DialogName = "edit" | "transfer" | "capital" | "reconcile" | "identify" | "archive";
+type DialogName = "edit" | "transfer" | "capital" | "reconcile" | "identify" | "archive" | "operational";
 
-// What can be DONE to one account, and the dialogs that do it — shared by the accounts list (a row's
-// overflow menu) and the account's page (the same menu, plus Transfer and Reconcile as buttons).
+// What can be DONE to one account, and the dialogs that do it — shared by the accounts list (a row) and the
+// account's page.
+//
+// WITH `buttons` THE TWO MOST USED ARE ON THE ROW (owner, `transfer-and-reconcile-sit-on-the-row`) and the menu
+// holds only the rest — never both, so a menu item is never a second copy of the button beside it:
+//
+//   active     [Transfer] [Rekonsiliasi]           ⋯ Capital · Edit · Mark / Unmark operational · Archive
+//   unknown    [Transfer out]                       ⋯ Set account · Archive  (`the-unknown-row-warns-and-sets-from-the-menu`)
+//   archived   [Restore]                            — no menu, nothing else to do
 //
 // Shown only to admin and up — the caller decides, since a member sees the page but moves nothing
 // (seeing-is-team-wide-moving-is-admin-and-up).
@@ -57,7 +64,7 @@ export function AccountActions({
   account: FinancialAccount;
   balance: number | undefined;
   shopNames?: string[];
-  /** Also show Transfer and Reconcile as buttons — the account's page. */
+  /** The two most used as buttons, the rest in the menu — the list's rows and the account's page. */
   buttons?: boolean;
 }) {
   const { t } = useTranslation();
@@ -90,21 +97,22 @@ export function AccountActions({
     );
   }
 
-  // No confirm either: marking changes what a restock's Paid from offers, and unmarking undoes it.
-  function doOperational(next: boolean) {
-    operational.mutate(
-      { teamId, accountId: account.id, operational: next },
-      {
-        onSuccess: () =>
-          toaster.create({
-            type: "success",
-            title: t(next ? "financialAccounts.toast.markedOperational" : "financialAccounts.toast.unmarkedOperational", {
-              name: account.name,
-            }),
-          }),
-        onError: fail,
-      },
-    );
+  // IT ASKS FIRST (owner, `operational-asks-before-it-changes`) — marking changes what a restock's and an
+  // expense's Paid from offers, for everybody on the team; the dialog says which way it goes.
+  async function doOperational() {
+    const next = !account.operational;
+    try {
+      await operational.mutateAsync({ teamId, accountId: account.id, operational: next });
+      toaster.create({
+        type: "success",
+        title: t(next ? "financialAccounts.toast.markedOperational" : "financialAccounts.toast.unmarkedOperational", {
+          name: account.name,
+        }),
+      });
+    } catch (err) {
+      // Toasted, not rethrown — ConfirmDialog awaits this with no catch of its own.
+      fail(err);
+    }
   }
 
   async function doArchive() {
@@ -143,60 +151,66 @@ export function AccountActions({
 
   return (
     <HStack gap="1" justify="end" onClick={(e) => e.stopPropagation()}>
-      {buttons && !archived && (
+      {buttons && archived && (
+        <Button size="xs" variant="outline" data-testid={`account-restore-button-${id}`} onClick={doRestore}>
+          <Icon as={ArchiveRestore} boxSize="4" />
+          {t("financialAccounts.actions.restore")}
+        </Button>
+      )}
+      {buttons && !archived && unknown && (
+        <Button size="xs" variant="outline" data-testid={`account-transfer-button-${id}`} onClick={() => setDialog("transfer")}>
+          <Icon as={ArrowLeftRight} boxSize="4" />
+          {t("financialAccounts.actions.transferOut")}
+        </Button>
+      )}
+      {buttons && !archived && !unknown && (
         <>
           <Button size="xs" variant="outline" data-testid={`account-transfer-button-${id}`} onClick={() => setDialog("transfer")}>
             <Icon as={ArrowLeftRight} boxSize="4" />
             {t("financialAccounts.actions.transfer")}
           </Button>
-          {!unknown && (
-            <Button size="xs" variant="outline" data-testid={`account-reconcile-button-${id}`} onClick={() => setDialog("reconcile")}>
-              <Icon as={Scale} boxSize="4" />
-              {t("financialAccounts.actions.reconcile")}
-            </Button>
-          )}
-          {unknown && (
-            <Button size="xs" colorPalette="brand" data-testid={`account-identify-button-${id}`} onClick={() => setDialog("identify")}>
-              <Icon as={SearchCheck} boxSize="4" />
-              {t("financialAccounts.actions.identify")}
-            </Button>
-          )}
+          <Button size="xs" variant="outline" data-testid={`account-reconcile-button-${id}`} onClick={() => setDialog("reconcile")}>
+            <Icon as={Scale} boxSize="4" />
+            {t("financialAccounts.actions.reconcile")}
+          </Button>
         </>
       )}
 
-      <Menu.Root>
-        <Menu.Trigger asChild>
-          <IconButton size="xs" variant="ghost" aria-label={t("financialAccounts.actions.label")} data-testid={`account-actions-${id}`}>
-            <Icon as={MoreHorizontal} boxSize="4" />
-          </IconButton>
-        </Menu.Trigger>
-        <Portal>
-          <Menu.Positioner>
-            <Menu.Content minW="16rem">
-              {archived ? (
-                item("restore", ArchiveRestore, t("financialAccounts.actions.restore"), doRestore)
-              ) : unknown ? (
-                <>
-                  {item("identify", SearchCheck, t("financialAccounts.actions.identify"), () => setDialog("identify"))}
-                  {item("transfer", ArrowLeftRight, t("financialAccounts.actions.transferOut"), () => setDialog("transfer"))}
-                  {archiveItem}
-                </>
-              ) : (
-                <>
-                  {item("transfer", ArrowLeftRight, t("financialAccounts.actions.transfer"), () => setDialog("transfer"))}
-                  {item("reconcile", Scale, t("financialAccounts.actions.reconcile"), () => setDialog("reconcile"))}
-                  {item("capital", HandCoins, t("financialAccounts.actions.capital"), () => setDialog("capital"))}
-                  {item("edit", Pencil, t("financialAccounts.actions.edit"), () => setDialog("edit"))}
-                  {account.operational
-                    ? item("unmark-operational", BadgeMinus, t("financialAccounts.actions.unmarkOperational"), () => doOperational(false))
-                    : item("mark-operational", BadgeCheck, t("financialAccounts.actions.markOperational"), () => doOperational(true))}
-                  {archiveItem}
-                </>
-              )}
-            </Menu.Content>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
+      {!(buttons && archived) && (
+        <Menu.Root>
+          <Menu.Trigger asChild>
+            <IconButton size="xs" variant="ghost" aria-label={t("financialAccounts.actions.label")} data-testid={`account-actions-${id}`}>
+              <Icon as={MoreHorizontal} boxSize="4" />
+            </IconButton>
+          </Menu.Trigger>
+          <Portal>
+            <Menu.Positioner>
+              <Menu.Content minW="16rem">
+                {archived ? (
+                  item("restore", ArchiveRestore, t("financialAccounts.actions.restore"), doRestore)
+                ) : unknown ? (
+                  <>
+                    {item("identify", SearchCheck, t("financialAccounts.actions.identify"), () => setDialog("identify"))}
+                    {!buttons && item("transfer", ArrowLeftRight, t("financialAccounts.actions.transferOut"), () => setDialog("transfer"))}
+                    {archiveItem}
+                  </>
+                ) : (
+                  <>
+                    {!buttons && item("transfer", ArrowLeftRight, t("financialAccounts.actions.transfer"), () => setDialog("transfer"))}
+                    {!buttons && item("reconcile", Scale, t("financialAccounts.actions.reconcile"), () => setDialog("reconcile"))}
+                    {item("capital", HandCoins, t("financialAccounts.actions.capital"), () => setDialog("capital"))}
+                    {item("edit", Pencil, t("financialAccounts.actions.edit"), () => setDialog("edit"))}
+                    {account.operational
+                      ? item("unmark-operational", BadgeMinus, t("financialAccounts.actions.unmarkOperational"), () => setDialog("operational"))
+                      : item("mark-operational", BadgeCheck, t("financialAccounts.actions.markOperational"), () => setDialog("operational"))}
+                    {archiveItem}
+                  </>
+                )}
+              </Menu.Content>
+            </Menu.Positioner>
+          </Portal>
+        </Menu.Root>
+      )}
 
       {dialog === "edit" && <AccountFormDialog teamId={teamId} account={account} open onOpenChange={close} />}
       {dialog === "transfer" && <TransferDialog teamId={teamId} from={account} balance={balance} open onOpenChange={close} />}
@@ -204,6 +218,21 @@ export function AccountActions({
       {dialog === "reconcile" && <ReconcileDialog teamId={teamId} account={account} balance={balance} open onOpenChange={close} />}
       {dialog === "identify" && (
         <IdentifyDialog teamId={teamId} account={account} balance={balance} shopNames={shopNames} open onOpenChange={close} />
+      )}
+      {dialog === "operational" && (
+        <ConfirmDialog
+          open
+          onOpenChange={close}
+          title={t(account.operational ? "financialAccounts.operationalDialog.unmarkTitle" : "financialAccounts.operationalDialog.markTitle", {
+            name: account.name,
+          })}
+          message={t(
+            account.operational ? "financialAccounts.operationalDialog.unmarkMessage" : "financialAccounts.operationalDialog.markMessage",
+            { name: account.name },
+          )}
+          confirmLabel={t(account.operational ? "financialAccounts.actions.unmarkOperational" : "financialAccounts.actions.markOperational")}
+          onConfirm={doOperational}
+        />
       )}
       {dialog === "archive" && (
         <ConfirmDialog

@@ -321,6 +321,9 @@ const customConfig = defineConfig({
       // never reaches.
       radioGroup: { base: { root: { colorPalette: "brand" } } },
       radioCard: { base: { root: { colorPalette: "brand" } } },
+      // A ticked box is a chosen option too (owner, `a-checked-box-is-in-the-main-tone`) — it was the default
+      // near-black beside rose radios.
+      checkbox: { base: { root: { colorPalette: "brand" } } },
       status: { defaultVariants: { size: "sm" } },
       // ── A TABLE ROW TAKES THE SURFACE IT SITS ON (owner) ────────────────────────────────────────
       //

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
 import { useShippingCatalogue } from "../../features/shipping/catalogue";
 import { ShippingBadge } from "../badges/ShippingBadge";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 export interface ShippingSelectProps {
   /** Selected courier CODE (Shipping.code — the stable key a shipment stores, not the name). */
@@ -91,7 +92,8 @@ export function ShippingSelect({
         // the contract allowed it. The same mistake is one `if (picked !== undefined)` away.
         onChange?.(e.value[0] ?? "");
       }}
-      onInputValueChange={(e) => filter(e.inputValue)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      {...searchOnlyWhatIsTyped(filter)}
       data-testid="shipping-select"
     >
       <Combobox.Control>

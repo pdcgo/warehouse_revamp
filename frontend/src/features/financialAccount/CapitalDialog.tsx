@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, Input, SegmentGroup } from "@chakra-ui/react";
+import { Field, Textarea } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
 import { DatePicker } from "../../components/datetime/DatePicker";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
+import { RadioPills } from "../../components/inputs/RadioPills";
 import { CapitalDirection, type FinancialAccount } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { toDateInputValue } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { FormDialog } from "./FormDialog";
 import { useCapital } from "./queries";
 
-// Capital — the business owner's own money, put in or taken out (capital-joins-the-types).
+// Setor / Tarik Modal — the business owner's own money, put in or taken out (capital-joins-the-types; the
+// action's name, `capital-reads-setor-tarik-modal`).
 //
 // The person picks a DIRECTION and types a positive amount; the sign is the server's to apply. Nobody
 // types a minus into a money field here.
@@ -71,22 +73,16 @@ export function CapitalDialog({
       testId="capital"
       onSubmit={submit}
     >
-      <SegmentGroup.Root
+      <RadioPills
         value={String(direction)}
-        onValueChange={(e) => setDirection(e.value ? (Number(e.value) as CapitalDirection) : direction)}
-        aria-label={t("financialAccounts.capital.direction")}
-        data-testid="capital-direction"
-      >
-        <SegmentGroup.Indicator />
-        <SegmentGroup.Item value={String(CapitalDirection.IN)} data-testid="capital-in">
-          <SegmentGroup.ItemText>{t("financialAccounts.capital.in")}</SegmentGroup.ItemText>
-          <SegmentGroup.ItemHiddenInput />
-        </SegmentGroup.Item>
-        <SegmentGroup.Item value={String(CapitalDirection.OUT)} data-testid="capital-out">
-          <SegmentGroup.ItemText>{t("financialAccounts.capital.out")}</SegmentGroup.ItemText>
-          <SegmentGroup.ItemHiddenInput />
-        </SegmentGroup.Item>
-      </SegmentGroup.Root>
+        onChange={(v) => setDirection(Number(v) as CapitalDirection)}
+        ariaLabel={t("financialAccounts.capital.direction")}
+        testId="capital-direction"
+        options={[
+          { value: String(CapitalDirection.IN), label: t("financialAccounts.capital.in"), testId: "capital-in" },
+          { value: String(CapitalDirection.OUT), label: t("financialAccounts.capital.out"), testId: "capital-out" },
+        ]}
+      />
 
       <Field.Root required>
         <Field.Label>{t("financialAccounts.amount")}</Field.Label>
@@ -101,7 +97,14 @@ export function CapitalDialog({
 
       <Field.Root>
         <Field.Label>{t("financialAccounts.note")}</Field.Label>
-        <Input value={note} data-testid="capital-note" onChange={(e) => setNote(e.target.value)} />
+        <Textarea
+          value={note}
+          rows={3}
+          resize="vertical"
+          placeholder={t("financialAccounts.capital.notePlaceholder")}
+          data-testid="capital-note"
+          onChange={(e) => setNote(e.target.value)}
+        />
       </Field.Root>
     </FormDialog>
   );

@@ -23,6 +23,8 @@ when it applies one of these.
 | [a-money-field-shows-0-until-typed](#a-money-field-shows-0-until-typed) | every money field shows a **0** placeholder until something is typed — the placeholder, never the value | every `CurrencyInput` |
 | [clear-filters-is-red-and-bold](#clear-filters-is-red-and-bold) | **Hapus filter** is red and bold — on every list, in the row and in the phone's sheet | [financial accounts](financial_accounts_decision.md#the-accounts-list-has-every-filter-the-contract-has) |
 | [a-selected-tab-is-in-the-main-tone](#a-selected-tab-is-in-the-main-tone) | the picked tab's text and underline are rose, on every tab row | [financial accounts](financial_accounts_decision.md#the-accounts-type-is-a-tab-row) |
+| [a-search-select-reopens-whole](#a-search-select-reopens-whole) | a search select searches only what is typed — opened again after a pick, it shows every option | every search select |
+| [a-checked-box-is-in-the-main-tone](#a-checked-box-is-in-the-main-tone) | a ticked checkbox is rose, as a chosen radio is — on every screen | [financial accounts](financial_accounts_decision.md#a-dialog-choice-is-a-radio-pill) |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -451,6 +453,40 @@ Jumlah
 | the others | unchanged — `fg.muted`, no underline |
 | where | `theme.ts`, the `line` variant — every tab row in the app, the order list's status tabs and the vertical detail tabs included |
 | the count badge | stays grey — the colour is set by token on the trigger, not as a palette the badge would inherit |
+
+## a-search-select-reopens-whole
+
+> Owner, in chat (2026-10-05), on `ShopSelect`: *"ada 1 permasalah, dimana saat sudah select data, ketika panel dibuka
+> lagi, dia cuma ada 1 opsi"*.
+
+```mermaid
+sequenceDiagram
+  participant P as person
+  participant C as the search select
+  P->>C: picks Melati Store
+  C->>C: the field reads Melati Store — a label, not a search
+  P->>C: opens it again
+  C-->>P: every shop, Melati Store ticked
+```
+
+| | |
+| --- | --- |
+| what searches | a keystroke only — `reason === "input-change"` |
+| what starts over | a pick, a blur, a clear, and opening the panel by a click or an arrow key |
+| why the open half too | typing *Warehouse Admin* and picking *Warehouse Admin* leaves the field's text unchanged, so no pick-change ever fires — the typed search would stay |
+| where | `searchOnlyWhatIsTyped(filter)` in `frontend/src/lib/comboboxSearch.ts`, spread on the `Combobox.Root` of every search select that filters in the browser: Shop, Supplier, Shipping, ShipmentChannel, Team, Role · AddressPicker already did it inline |
+| not changed | the server-search ones (User, Product): their list IS the answer to what is typed, and a blank term asks for nothing |
+
+## a-checked-box-is-in-the-main-tone
+
+> Owner, in chat (2026-10-06): *"theme checkbox sesuaikan"*.
+
+*The checkbox's twin of [a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone).*
+
+| | |
+| --- | --- |
+| the box | ticked: filled `brand.solid`, rose — was the default near-black beside rose radios |
+| where | `theme.ts`, `checkbox` on its root — every checkbox in the app |
 
 ## Recorded elsewhere
 

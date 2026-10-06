@@ -97,8 +97,9 @@ export const GroupedByAccount: Story = {
 
     const table = await canvas.findByTestId("account-report-groups");
     const rows = within(table).getAllByRole("row");
-    // Named by its shop — the server writes "shop #25", the screen shows Melati TikTok.
-    await expect(rows[1]).toHaveTextContent("Unknown — Melati TikTok");
+    // Named by its shop — the server writes "Unknown — shop #25", the screen shows Melati TikTok.
+    await expect(rows[1]).toHaveTextContent("Melati TikTok");
+    await expect(rows[1]).not.toHaveTextContent("Unknown");
     await expect(canvas.getByTestId(`account-report-group-accountId-${BNI.id}`)).toHaveTextContent("Archived");
   },
 };

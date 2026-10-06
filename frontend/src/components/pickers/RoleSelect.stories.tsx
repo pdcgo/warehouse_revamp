@@ -124,3 +124,27 @@ export const Interactive: Story = {
     await waitFor(() => expect(input).toHaveValue("Team Admin"));
   },
 };
+
+/** Opened again after a pick, every offered role is there — the picked label is not a search (owner). */
+export const ReopeningAfterAPickShowsEveryRole: Story = {
+  args: { teamType: TeamType.WAREHOUSE },
+  render: (args) => {
+    const [value, setValue] = useState<Role | undefined>(undefined);
+
+    return <RoleSelect {...args} value={value} onChange={setValue} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "Warehouse Admin");
+    const option = await screen.findByTestId(`role-select-option-${Role.WAREHOUSE_ADMIN}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(input).toHaveValue("Warehouse Admin"));
+
+    await userEvent.click(canvas.getByRole("button", { name: /toggle/i }));
+    await waitFor(() => expect(screen.getByTestId(`role-select-option-${Role.WAREHOUSE_STAFF}`)).toBeVisible());
+  },
+};

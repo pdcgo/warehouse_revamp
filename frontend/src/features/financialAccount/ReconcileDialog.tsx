@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Field, Input, Text } from "@chakra-ui/react";
+import { Box, Field, Text, Textarea } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
@@ -12,7 +12,8 @@ import { formatRupiahNumber } from "../../lib/money";
 import { FormDialog } from "./FormDialog";
 import { useReconcile } from "./queries";
 
-// Reconcile — the manager types what the bank app SHOWS (or what the cash box COUNTS), and the
+// Cocokkan Saldo — the reconcile, named the way a person says it, with "rekonsiliasi" kept as the dialog's
+// description (owner, `reconcile-reads-cocokkan-saldo`). The manager types what the bank app SHOWS (or what the cash box COUNTS), and the
 // difference posts as an `adjustment` (adjustment-is-for-reconciling-only). Nobody types an adjustment's
 // amount or its sign: the screen works it out, live, as the figure is typed.
 //
@@ -76,6 +77,7 @@ export function ReconcileDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={t("financialAccounts.reconcile.title", { name: account.name })}
+      description={t("financialAccounts.reconcile.description")}
       error={error}
       busy={reconcile.isPending}
       canSave={canSave}
@@ -118,8 +120,10 @@ export function ReconcileDialog({
 
       <Field.Root required={needsNote}>
         <Field.Label>{t("financialAccounts.reconcile.why")}</Field.Label>
-        <Input
+        <Textarea
           value={note}
+          rows={3}
+          resize="vertical"
           placeholder={t("financialAccounts.reconcile.whyPlaceholder")}
           data-testid="reconcile-note"
           onChange={(e) => setNote(e.target.value)}

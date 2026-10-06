@@ -11,6 +11,7 @@ export function FormDialog({
   open,
   onOpenChange,
   title,
+  description,
   error,
   busy,
   canSave,
@@ -22,6 +23,8 @@ export function FormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** A line under the title — what the dialog does, in the business's own word. */
+  description?: string;
   error: string;
   busy: boolean;
   canSave: boolean;
@@ -45,7 +48,10 @@ export function FormDialog({
           <Dialog.Content data-testid={testId}>
             <form onSubmit={submit}>
               <Dialog.Header>
-                <Dialog.Title>{title}</Dialog.Title>
+                <Stack gap="1">
+                  <Dialog.Title>{title}</Dialog.Title>
+                  {description && <Dialog.Description data-testid={`${testId}-description`}>{description}</Dialog.Description>}
+                </Stack>
               </Dialog.Header>
 
               <Dialog.Body>
