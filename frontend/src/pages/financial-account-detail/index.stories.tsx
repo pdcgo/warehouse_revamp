@@ -41,7 +41,11 @@ const meta = {
   title: "Pages/FinancialAccount/Account",
   component: routedAt(BCA_OPS.id),
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
-  beforeEach: asTeam(12n),
+  // Toko Melati's Admin — a selling team's, who moves its money.
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_ADMIN)();
+  },
 } satisfies Meta;
 
 export default meta;

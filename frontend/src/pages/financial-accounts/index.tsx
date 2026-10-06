@@ -33,7 +33,7 @@ import { TYPE_KEY, isUnknown, withShopNames } from "../../features/financialAcco
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { formatUnixRelative } from "../../lib/datetime";
-import { canMoveAccountMoney } from "../../lib/roles";
+import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
 import { TypeTotals } from "./components/TypeTotals";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -259,6 +259,7 @@ export function FinancialAccountsPage() {
                             account={shown}
                             balance={b?.balance}
                             shopNames={account.shopIds.map(shopName)}
+                            canTransfer={canTransferMoney(current.role)}
                           />
                         </Table.Cell>
                       )}

@@ -1220,6 +1220,12 @@ flowchart LR
   A -.->|"never"| M
 ```
 
+> 🔄 *(2026-10-06, built)* The four policies no longer name `ROLE_WAREHOUSE_ADMIN`;
+> `warehouse_admin_money_test.go` pins it, and that payments and reconciling stay open to the Admin. The screens follow:
+> `canTransferMoney` hides Transfer and Capital, `canSetLiabilityTerms` hides Set, Remove and Default Terms. Two earlier
+> decisions in other contexts said the Admin does these, and now carry a 🔄 pointer here —
+> [the-warehouse-admin-lost-three-money-acts-elsewhere](./context_clarify.md#the-warehouse-admin-lost-three-money-acts-elsewhere).
+
 **The spec.** ⚠ **Not built.** `LiabilityTermsSet`, `LiabilityTermsDelete`, `FinancialAccountTransfer` and
 `FinancialAccountCapital` lose `ROLE_WAREHOUSE_ADMIN`. Recording, confirming and rejecting a payment, and reconciling,
 stay open to the Admin. The **selling** Admin is not covered by this decision: those calls are open to it today, and

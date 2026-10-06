@@ -19,7 +19,7 @@ import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import { formatUnixRelative, toDateInputValue } from "../../lib/datetime";
-import { canMoveAccountMoney } from "../../lib/roles";
+import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
 import { AccountLogTable } from "./components/AccountLogTable";
 import { ChangeTypeFilter } from "./components/ChangeTypeFilter";
 import { ShopLinks } from "./components/ShopLinks";
@@ -136,6 +136,7 @@ export function FinancialAccountDetailPage() {
             balance={b?.balance}
             shopNames={account.shopIds.map(shopName)}
             buttons
+            canTransfer={canTransferMoney(current.role)}
           />
         )}
       </Flex>

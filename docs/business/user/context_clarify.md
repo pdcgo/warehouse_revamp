@@ -31,6 +31,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
+> | *"continue"* — item 17 | ✅ built: [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) · ⚠ two earlier decisions in other contexts still gave the warehouse Admin those acts, [the-warehouse-admin-lost-three-money-acts-elsewhere](#the-warehouse-admin-lost-three-money-acts-elsewhere) |
 > | *"follow your recomendation"* — Q31 | ✅ **Q31** all four parts: [a-phone-is-saved-in-international-form](./context_decision.md#a-phone-is-saved-in-international-form) · [a-phone-has-8-to-15-digits](./context_decision.md#a-phone-has-8-to-15-digits) · [a-phone-starts-with-0-or-a-country-code](./context_decision.md#a-phone-starts-with-0-or-a-country-code) · [stored-phones-are-rewritten-once](./context_decision.md#stored-phones-are-rewritten-once). **No question is open in this context** |
 > | *"elaborate q31"* | 🔄 **Q31** split into four parts, checked against the build: **31a** rewrite on save (recommend **b**, back from c) · **31b** refuse what is not a phone · **31c** a number with no 0 or +62 · **31d** numbers already stored. ⚠ Found: the forgot-password code is sent to the number as typed, and the SMS provider expects `+62…` |
 > | *"can we implement now?"* — the who filters, then the search | ✅ built: [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · [only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search) · [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) · [a-result-shows-the-phones-last-four-digits](./context_decision.md#a-result-shows-the-phones-last-four-digits) · the popup's Change Role · 🔄 **Q31** narrowed: Q20d had already said how numbers compare, and the search now does it, so Q31 asks only whether a number is rewritten when saved — my recommendation moves to **c** · ⚠ my Q31 offered an option Q20d had closed, [q31-offered-what-q20d-had-closed](#q31-offered-what-q20d-had-closed) |
@@ -152,7 +153,7 @@ Every request message names who may call it, so the build has an answer your doc
 | --- | --- | --- | --- |
 | `selling_cs` | nothing | **62 calls** | create and cancel a restock request · post a settlement · import a settlement file · create and cancel an order — ✅ all of it, [customer-service-runs-orders-restock-requests-and-settlements](./context_decision.md#customer-service-runs-orders-restock-requests-and-settlements) |
 | `warehouse_owner` | manage member | **85 calls** | set the liability terms (what a selling team pays) · record and confirm a payment · move money between financial accounts, add capital, reconcile |
-| `warehouse_admin` | manage member | **the same 85** | the same today — ✅ minus liability terms, transfer and capital, [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) |
+| `warehouse_admin` | manage member | **81** | ✅ the Owner's 85 minus liability terms (set, delete), transfer and capital — built 2026-10-06, [the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money) |
 
 Couriers and suppliers, which the old Awaiting list named: handing over to the courier is Staff's
 ([warehouse-staff-is-the-whole-floor-job](./context_decision.md#warehouse-staff-is-the-whole-floor-job)). The supplier
@@ -281,6 +282,34 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
 ---
 
 # Contradiction
+
+**Re-checked after building item 17 (2026-10-06): one, between docs** —
+[the-warehouse-admin-lost-three-money-acts-elsewhere](#the-warehouse-admin-lost-three-money-acts-elsewhere).
+
+## the-warehouse-admin-lost-three-money-acts-elsewhere
+
+**The example.** Two earlier decisions in other contexts give the warehouse Admin what
+[the-warehouse-admin-equals-the-owner-except-money](./context_decision.md#the-warehouse-admin-equals-the-owner-except-money)
+(2026-10-02) keeps for the Owner:
+
+> financial_account, [seeing-is-team-wide-moving-is-admin-and-up](../financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up) (2026-09-29): *"a transfer · capital · a reconcile | admin and up"*, `WAREHOUSE_ADMIN` among them.
+>
+> balance, [warehouse-roles-count-as-their-own-team](../balance/context_decision.md#warehouse-roles-count-as-their-own-team): *"A warehouse's owner and admin set their warehouse's terms"*.
+
+The user decision is later and narrower, and it is the one built. Each earlier one now carries a 🔄 pointer to it; so do
+my own two sites, the financial-account `rpc.md` and its state report. Nothing for you to resolve — unless you meant
+the narrowing for the selling Admin too, which the decision says it does not.
+
+**→ Recommend** (what stops it recurring): a decision that changes who may call an RPC names, in its spec, every other
+context's decision that grants that RPC — found by grepping the request names, not the role.
+
+```mermaid
+flowchart LR
+  U["user — the warehouse Admin equals the Owner except money (later)"] --> F["financial_account — admin and up transfer and capital"]
+  U --> B["balance — a warehouse's owner and admin set its terms"]
+  F --> P1["🔄 pointer"]
+  B --> P2["🔄 pointer"]
+```
 
 **Re-checked after building the who filters and the search (2026-10-06): one, in my own question** —
 [q31-offered-what-q20d-had-closed](#q31-offered-what-q20d-had-closed). None between docs.

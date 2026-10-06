@@ -5048,7 +5048,7 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"account_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\taccountId:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"m\n" +
 	"\x1fFinancialAccountRestoreResponse\x12J\n" +
-	"\aaccount\x18\x01 \x01(\v20.warehouse.financial_account.v1.FinancialAccountR\aaccount\"\xc1\x02\n" +
+	"\aaccount\x18\x01 \x01(\v20.warehouse.financial_account.v1.FinancialAccountR\aaccount\"\xc0\x02\n" +
 	"\x1fFinancialAccountTransferRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12/\n" +
 	"\x0ffrom_account_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\rfromAccountId\x12+\n" +
@@ -5056,10 +5056,10 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x06amount\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01!\x00\x00\x00\x00\x00\x00\x00\x00R\x06amount\x12D\n" +
 	"\voccurred_on\x18\x05 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredOn\x12\x1c\n" +
-	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"k\n" +
+	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x06\"k\n" +
 	" FinancialAccountTransferResponse\x12G\n" +
-	"\x04logs\x18\x01 \x03(\v23.warehouse.financial_account.v1.FinancialAccountLogR\x04logs\"\xe6\x02\n" +
+	"\x04logs\x18\x01 \x03(\v23.warehouse.financial_account.v1.FinancialAccountLogR\x04logs\"\xe5\x02\n" +
 	"\x1eFinancialAccountCapitalRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
@@ -5069,8 +5069,8 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x06amount\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01!\x00\x00\x00\x00\x00\x00\x00\x00R\x06amount\x12D\n" +
 	"\voccurred_on\x18\x05 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredOn\x12\x1c\n" +
-	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\t\"h\n" +
+	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x06\"h\n" +
 	"\x1fFinancialAccountCapitalResponse\x12E\n" +
 	"\x03log\x18\x01 \x01(\v23.warehouse.financial_account.v1.FinancialAccountLogR\x03log\"\x86\x02\n" +
 	" FinancialAccountReconcileRequest\x12$\n" +

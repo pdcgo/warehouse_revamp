@@ -473,6 +473,10 @@ movements, but its people hold `ROLE_WAREHOUSE_*`, which is a different enum val
 > The owner, in chat — *"yes, but we separate to warehouse owner and team owner because its different
 > access for warehouse and selling."*
 
+> 🔄 *(2026-10-06)* **A warehouse's terms are its Owner's alone now** — the warehouse Admin was taken off
+> `LiabilityTermsSet` and `LiabilityTermsDelete` by [the-warehouse-admin-equals-the-owner-except-money](../user/context_decision.md#the-warehouse-admin-equals-the-owner-except-money), which
+> is later and narrower. A selling team's Owner and Admin both still set theirs.
+
 **The verdict.** *"A team's own people"* means **the role family matching that team's TYPE**. A
 warehouse's owner and admin set their warehouse's terms exactly as a selling team's owner and admin
 set theirs — and the two families stay **separate roles**, because warehouse access and selling access

@@ -439,7 +439,7 @@ flowchart LR
 | --- | --- |
 | see the accounts, their balances and their rows | every member of the team · root and admin, every team's |
 | open, archive, restore an account | admin and up |
-| a transfer · capital · a reconcile | admin and up |
+| a transfer · capital · a reconcile | admin and up. 🔄 *(2026-10-06)* **In a warehouse, a transfer and capital are the Owner's alone** — [the-warehouse-admin-equals-the-owner-except-money](../user/context_decision.md#the-warehouse-admin-equals-the-owner-except-money), later and narrower; the warehouse Admin still reconciles |
 | name an account on another service's form | that form's own roles — ⚠ my reading: a CS raising a restock names the account that paid. That records a payment, heard from the broker; it moves nothing by hand |
 | see where another team is paid | [Q9](./context_clarify.md#question) |
 

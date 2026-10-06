@@ -825,14 +825,15 @@ message LiabilityTermsListResponse {
 }
 
 message LiabilityTermsSetRequest {
+  // The warehouse Admin is left out: setting the terms — what a selling team pays this warehouse — stays the warehouse Owner's
+  // (the-warehouse-admin-equals-the-owner-except-money). The selling Admin is not covered by that decision.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_OWNER
     ]
   };
 
@@ -865,14 +866,15 @@ message LiabilityTermsSetResponse {
 // Removing terms is a DELETE, and that is the point: it is the only way to express "unlimited"
 // once a limit has been set, because 0 already means the opposite.
 message LiabilityTermsDeleteRequest {
+  // The warehouse Admin is left out: deleting the terms stays the warehouse Owner's
+  // (the-warehouse-admin-equals-the-owner-except-money). The selling Admin is not covered by that decision.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
       ROLE_ADMINISTRATOR,
       ROLE_SELLING_OWNER,
       ROLE_SELLING_ADMIN,
-      ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_OWNER
     ]
   };
 

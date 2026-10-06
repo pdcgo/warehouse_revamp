@@ -244,6 +244,36 @@ export function canMoveAccountMoney(role: Role | undefined): boolean {
   return isTeamManager(role) && role !== Role.ADMIN_OWNER && role !== Role.ADMIN_ADMINISTRATOR;
 }
 
+// canTransferMoney mirrors FinancialAccountTransfer and FinancialAccountCapital: canMoveAccountMoney minus the
+// warehouse Admin — moving money between accounts and capital stay the warehouse Owner's
+// (the-warehouse-admin-equals-the-owner-except-money). The warehouse Admin still reconciles and keeps the accounts.
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canTransferMoney(role: Role | undefined): boolean {
+  return canMoveAccountMoney(role) && role !== Role.WAREHOUSE_ADMIN;
+}
+
+// canSetLiabilityTerms mirrors LiabilityTermsSet and LiabilityTermsDelete: Root, the Administrator, the selling Owner
+// and Admin, and the warehouse OWNER — what a selling team pays a warehouse is the Owner's to set
+// (the-warehouse-admin-equals-the-owner-except-money).
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canSetLiabilityTerms(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.SELLING_OWNER:
+    case Role.SELLING_ADMIN:
+    case Role.WAREHOUSE_OWNER:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 // isGlobalAdmin: only root/admin may act outside a team (list all users, delete, suspend).
 export function isGlobalAdmin(role: Role | undefined): boolean {
   return role === Role.ROOT || role === Role.ADMINISTRATOR;

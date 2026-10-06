@@ -37,7 +37,11 @@ const meta = {
   title: "Pages/FinancialAccount/Accounts",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
-  beforeEach: asTeam(12n),
+  // Toko Melati's Admin — a selling team's, who moves its money.
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_ADMIN)();
+  },
 } satisfies Meta<typeof Routed>;
 
 export default meta;
@@ -62,7 +66,30 @@ async function openMenu(canvas: ReturnType<typeof within>, id: bigint) {
 
 export const Default: Story = {};
 
-export const AsAWarehouse: Story = { beforeEach: asTeam(11n) };
+export const AsAWarehouse: Story = {
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
+};
+
+// the-warehouse-admin-equals-the-owner-except-money: the warehouse Admin keeps and reconciles the accounts, and moves
+// no money between them — no Transfer, no Capital.
+export const TheWarehouseAdminNeitherTransfersNorAddsCapital: Story = {
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_ADMIN)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByTestId("account-actions-1307", {}, { timeout: 4000 }));
+    await waitFor(() => expect(screen.getByTestId("account-reconcile-1307")).toBeVisible());
+
+    await expect(screen.queryByTestId("account-transfer-1307")).toBeNull();
+    await expect(screen.queryByTestId("account-capital-1307")).toBeNull();
+    await expect(screen.getByTestId("account-edit-1307")).toBeInTheDocument();
+  },
+};
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 

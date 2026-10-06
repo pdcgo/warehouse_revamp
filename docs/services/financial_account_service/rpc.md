@@ -22,7 +22,9 @@ that moves only with a log row ([context_decision.md](../../business/financial_a
 | *(push route)* | `/event/financial-account-withdrawal/push` | settlement's `withdrawal` rows into the shop's account |
 
 Every member of the team **sees**; admin and up **moves** the money
-([seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up)).
+([seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up)) —
+except `Transfer` and `Capital`, which a warehouse leaves to its Owner
+([the-warehouse-admin-equals-the-owner-except-money](../../business/user/context_decision.md#the-warehouse-admin-equals-the-owner-except-money)).
 Other services never call a write — they publish, and this service listens
 ([a-row-comes-by-hand-or-from-the-broker](../../business/financial_account/context_decision.md#a-row-comes-by-hand-or-from-the-broker)).
 
