@@ -77,10 +77,12 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		current, err := lockMembership(tx, add.GetUserId(), teamID)
+		locked, err := lockMembership(tx, add.GetUserId(), teamID)
 		if err != nil {
 			return err
 		}
+
+		current := locked.role
 
 		err = checkMemberWrite(caller, memberWrite{
 			teamType: teamType,
@@ -92,11 +94,9 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 			return err
 		}
 
-		if current == role_basev1.Role_ROLE_UNSPECIFIED {
-			err = refuseSuspendedNewcomer(tx, add.GetUserId())
-			if err != nil {
-				return err
-			}
+		err = refuseSuspendedNewcomer(locked)
+		if err != nil {
+			return err
 		}
 
 		membership := user_service_models.UserTeamRole{
@@ -123,16 +123,18 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 			return connect.NewError(connect.CodeInternal, err)
 		}
 
-		return nil
+		return logMembership(tx, caller, teamID, add.GetUserId(), current, add.GetRole())
 	})
 }
 
 func (s *Service) removeMember(ctx context.Context, caller callerReach, teamID, userID uint64) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		current, err := lockMembership(tx, userID, teamID)
+		locked, err := lockMembership(tx, userID, teamID)
 		if err != nil {
 			return err
 		}
+
+		current := locked.role
 
 		// Removing a membership that is not there is a no-op, not an error — the caller's intent
 		// ("this user is not in this team") is satisfied either way.
@@ -159,6 +161,6 @@ func (s *Service) removeMember(ctx context.Context, caller callerReach, teamID, 
 			return connect.NewError(connect.CodeInternal, err)
 		}
 
-		return nil
+		return logMembership(tx, caller, teamID, userID, current, role_basev1.Role_ROLE_UNSPECIFIED)
 	})
 }

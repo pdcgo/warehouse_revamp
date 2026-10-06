@@ -192,8 +192,8 @@ func TestInterleave_TeamUserUpdate_TheOwnerWaitsThenSeesTheOwner(t *testing.T) {
 				Update("role", int32(role_basev1.Role_ROLE_WAREHOUSE_OWNER)).Error
 		}),
 		san_race.Block("OWNER", "the Owner locks Ani's user row", func(tx *gorm.DB) error {
-			role, err := lockMembership(tx, cast.ani, raceTeam)
-			seenByOwner = role
+			locked, err := lockMembership(tx, cast.ani, raceTeam)
+			seenByOwner = locked.role
 			return err
 		}),
 		san_race.Commit("ROOT"),
@@ -249,8 +249,8 @@ func TestInterleave_SuspendUser_WaitsForAPromotion(t *testing.T) {
 			}).Error
 		}),
 		san_race.Block("ADMIN", "the suspend locks Ani's user row", func(tx *gorm.DB) error {
-			role, err := lockMembership(tx, cast.ani, san_auth.RootTeamID)
-			seen = role
+			locked, err := lockMembership(tx, cast.ani, san_auth.RootTeamID)
+			seen = locked.role
 			return err
 		}),
 		san_race.Commit("ROOT"),
@@ -327,15 +327,17 @@ func TestRace_TeamUserUpdate_AddWhileSuspended(t *testing.T) {
 	t.Logf("%d rounds, no deadlock, no unexpected error; the suspend landed first in %d", rounds, refused)
 }
 
-// Interleave: the suspend holds Ani's row and sets her suspended; the add's lock MUST wait, and once it
-// has it the add must read the suspension and refuse. A suspended check made before the lock — or from
-// the snapshot the lock waited behind — would add a suspended person.
+// Interleave: the suspend holds Ani's row and sets her suspended; the add's lock MUST wait, and the locking
+// read must then return the suspension it waited behind (Postgres hands a blocked FOR UPDATE the row's newest
+// version), so the add refuses. A suspended check made before the lock would add a suspended person.
 func TestInterleave_TeamUserUpdate_TheAddWaitsThenSeesTheSuspension(t *testing.T) {
 	h := san_race.New(t)
 	db := h.DB()
 	cast := seedCast(t, db)
 
 	db.Where("team_id = ? AND user_id = ?", raceTeam, cast.ani).Delete(&user_service_models.UserTeamRole{})
+
+	var seenByAdd lockedMember
 
 	sched := h.Interleave(t,
 		san_race.Do("SUSPEND", "the suspend locks Ani's user row", func(tx *gorm.DB) error {
@@ -346,12 +348,13 @@ func TestInterleave_TeamUserUpdate_TheAddWaitsThenSeesTheSuspension(t *testing.T
 			return tx.Model(&user_service_models.User{}).Where("id = ?", cast.ani).Update("is_suspended", true).Error
 		}),
 		san_race.Block("ADD", "the add locks Ani's user row", func(tx *gorm.DB) error {
-			_, err := lockMembership(tx, cast.ani, raceTeam)
+			locked, err := lockMembership(tx, cast.ani, raceTeam)
+			seenByAdd = locked
 			return err
 		}),
 		san_race.Commit("SUSPEND"),
 		san_race.Do("ADD", "the add reads the suspension under the lock", func(tx *gorm.DB) error {
-			err := refuseSuspendedNewcomer(tx, cast.ani)
+			err := refuseSuspendedNewcomer(seenByAdd)
 			if connect.CodeOf(err) != connect.CodeFailedPrecondition {
 				return fmt.Errorf("a suspended person was let into a team (err = %v)", err)
 			}

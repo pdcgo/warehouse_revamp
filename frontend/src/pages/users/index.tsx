@@ -4,7 +4,6 @@ import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin, managesMembers } from "../../lib/roles";
 import { AddMemberDialog } from "../../features/users/AddMemberDialog";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { USERS_PENDING } from "./pending";
 import { MemberLog } from "./components/MemberLog";
@@ -62,7 +61,6 @@ export function UsersPage() {
           </Tabs.Trigger>
           <Tabs.Trigger value="history" data-testid="users-tab-history">
             {t("users.log.title")}
-            <NotImplemented list={USERS_PENDING} id="memberLog" />
           </Tabs.Trigger>
           {globalAdmin && (
             <Tabs.Trigger value="all" data-testid="users-tab-all">

@@ -35,12 +35,12 @@ func (s *Service) SuspendUser(
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// The same lock as a membership write, so the target cannot be made an Administrator (or a
 		// Root, through san) between the role read and the suspend.
-		targetRoot, err := lockMembership(tx, userID, san_auth.RootTeamID)
+		target, err := lockMembership(tx, userID, san_auth.RootTeamID)
 		if err != nil {
 			return err
 		}
 
-		err = checkSuspend(caller, userID, targetRoot)
+		err = checkSuspend(caller, userID, target.role)
 		if err != nil {
 			return err
 		}

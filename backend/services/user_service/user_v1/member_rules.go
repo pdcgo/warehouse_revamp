@@ -215,21 +215,25 @@ func (s *Service) teamTypeOf(ctx context.Context, teamID uint64) (teamv1.TeamTyp
 // "Admin", Root could make that person an Owner, and the Owner's write would then demote an Owner.
 // Every membership write for one person goes through this row, so they queue instead of interleaving.
 // It also proves the user exists.
-func lockMembership(tx *gorm.DB, userID, teamID uint64) (role_basev1.Role, error) {
-	var ids []uint64
+//
+// The locking read returns the person's suspension too: it is the same row, so reading it there costs
+// nothing, and it is read under the lock SuspendUser also takes — a suspend and an add of one person queue.
+func lockMembership(tx *gorm.DB, userID, teamID uint64) (lockedMember, error) {
+	var people []personRow
 
 	err := tx.
 		Model(&user_service_models.User{}).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Select("id", "is_suspended").
 		Where("id = ?", userID).
-		Pluck("id", &ids).
+		Find(&people).
 		Error
 	if err != nil {
-		return 0, connect.NewError(connect.CodeInternal, err)
+		return lockedMember{}, connect.NewError(connect.CodeInternal, err)
 	}
 
-	if len(ids) == 0 {
-		return 0, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+	if len(people) == 0 {
+		return lockedMember{}, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 	}
 
 	var row roleRow
@@ -243,10 +247,22 @@ func lockMembership(tx *gorm.DB, userID, teamID uint64) (role_basev1.Role, error
 		Find(&row).
 		Error
 	if err != nil {
-		return 0, connect.NewError(connect.CodeInternal, err)
+		return lockedMember{}, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return role_basev1.Role(row.Role), nil
+	return lockedMember{role: role_basev1.Role(row.Role), suspended: people[0].IsSuspended}, nil
+}
+
+// lockedMember is what lockMembership read under the lock: the person's role in the team (UNSPECIFIED = not a
+// member) and whether their account is suspended.
+type lockedMember struct {
+	role      role_basev1.Role
+	suspended bool
+}
+
+type personRow struct {
+	ID          uint64
+	IsSuspended bool
 }
 
 type roleRow struct {
@@ -256,22 +272,8 @@ type roleRow struct {
 // refuseSuspendedNewcomer: a suspended user cannot be newly given anything
 // (a-suspended-user-is-never-picked) — so never added to a team, including as a new team's first Owner.
 // A suspended MEMBER keeps their membership and may still be changed or removed.
-//
-// Read inside tx, after lockMembership locked the person's row. SuspendUser takes the same lock, so a
-// suspend and an add of one person queue instead of interleaving.
-func refuseSuspendedNewcomer(tx *gorm.DB, userID uint64) error {
-	var suspended []bool
-
-	err := tx.
-		Model(&user_service_models.User{}).
-		Where("id = ?", userID).
-		Pluck("is_suspended", &suspended).
-		Error
-	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
-	}
-
-	if len(suspended) > 0 && suspended[0] {
+func refuseSuspendedNewcomer(locked lockedMember) error {
+	if locked.role == role_basev1.Role_ROLE_UNSPECIFIED && locked.suspended {
 		return connect.NewError(connect.CodeFailedPrecondition,
 			errors.New("a suspended user cannot be added to a team (a-suspended-user-is-never-picked)"))
 	}

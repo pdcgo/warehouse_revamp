@@ -1730,7 +1730,6 @@
       "system": "the system",
       "userRef": "user #{{id}}",
       "override": "override",
-      "notBuilt": "The membership history is not recorded yet.",
       "failed": "The membership history could not be loaded.",
       "empty": "No one has joined, left or changed role yet."
     },
@@ -1738,10 +1737,6 @@
       "erase": {
         "label": "Erase Personal Data",
         "reason": "the server answers that it is not built yet"
-      },
-      "memberLog": {
-        "label": "Membership history",
-        "reason": "nothing records who added, changed or removed whom yet"
       }
     }
   },

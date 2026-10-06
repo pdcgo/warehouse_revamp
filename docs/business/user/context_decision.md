@@ -234,7 +234,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited |
+| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00006`**: `00005` went to the membership log first, and goose refuses a lower number added after a higher one has run |
 | the password | a bcrypt hash of `root1234`, never the plain text |
 | ⚠ only while empty | `WHERE id = 1 AND password = ''`: a database whose root password was already set keeps it. Without this, a new migration would **reset** a production root password back to the public one |
 | the email | `root@pdc.com`, only while it is still `root@system.local` |
@@ -1027,7 +1027,15 @@ flowchart LR
   LOG --> P["the team's member page"]
 ```
 
-**The spec.** ⚠ **Not built.** Today a membership is one row that a change overwrites and a removal deletes.
+> 🔄 *(2026-10-06, built)* `team_member_logs` (user_service migration `00005`), written by `TeamUserUpdate` and
+> `CreateUser` in the transaction of the change; `TeamMemberLogList` reads it, newest first, optionally one person's.
+> A repeated grant of the role a person already holds is not a change and writes nothing. Each row carries the override
+> flag ([an-override-is-stamped-in-every-service](#an-override-is-stamped-in-every-service)). **Not built:** the
+> `tools/san` row — there is no `san` command that adds or removes a Root yet
+> ([root-can-be-several](#root-can-be-several)); when there is, it writes one with the developer as the agent.
+
+**The spec.** ✅ **Built** (2026-10-06), but for the `tools/san` row. It was: a membership is one row that a change
+overwrites and a removal deletes.
 
 | | |
 | --- | --- |
@@ -1051,7 +1059,10 @@ flowchart LR
   W2 --> N["not marked"]
 ```
 
-**The spec.** ⚠ **Not built, except in liability's terms log.** The access check already tells a handler that the
+> 🔄 *(2026-10-06)* The membership log stamps it too: Root or the Administrator adding, changing or removing a member of
+> a team they hold no role in.
+
+**The spec.** ⚠ **Not built, except in liability's terms log and user_service's membership log.** The access check already tells a handler that the
 caller got in this way. Each service's write that records who acted also records that it was an override. One rule for
 every service, so it cannot exist in one and be forgotten in the next. Counts and losses:
 [inventory Q12d](../inventory/context_clarify.md#question).

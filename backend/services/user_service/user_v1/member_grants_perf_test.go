@@ -189,3 +189,51 @@ func TestPerf_UserListMembership(t *testing.T) {
 		})
 	}
 }
+
+// TeamMemberLogList — the Users screen's History tab. The log is a TRANSACTION table, so 50 000 rows over the
+// 300 seeded teams plus one busy team; measured at two page sizes, and filtered to one person.
+func TestPerf_TeamMemberLogList(t *testing.T) {
+	db, svc, probe, _, root, target := seedGrantVolume(t)
+
+	actor := identityIn(t, root)
+	logs := make([]user_service_models.TeamMemberLog, 50_000)
+
+	for i := range logs {
+		team := uint64(1000 + i%300)
+		if i%5 == 0 {
+			team = whTeam // a busy team: 10 000 rows
+		}
+
+		logs[i] = user_service_models.TeamMemberLog{
+			TeamID:      team,
+			ActorUserID: &actor,
+			UserID:      target,
+			Action:      int16(userv1.TeamMemberLogAction_TEAM_MEMBER_LOG_ACTION_ADD),
+			RoleAfter:   int32(role_basev1.Role_ROLE_WAREHOUSE_STAFF),
+		}
+	}
+	san_perf.SeedRows(t, db, &logs)
+
+	for _, tc := range []struct {
+		name   string
+		limit  uint32
+		person uint64
+	}{
+		{"limit=20", 20, 0},
+		{"limit=200", 200, 0},
+		{"one person, limit=20", 20, target},
+	} {
+		measure(t, probe, "TeamMemberLogList "+tc.name, func(int) error {
+			_, err := svc.TeamMemberLogList(root, connect.NewRequest(&userv1.TeamMemberLogListRequest{
+				TeamId: whTeam,
+				Filter: &userv1.TeamMemberLogListFilter{UserId: tc.person},
+				Page:   &commonv1.CommonPagination{Page: 1, Limit: tc.limit},
+			}))
+
+			return err
+		})
+	}
+
+	t.Log(san_perf.Explain(t, db, fmt.Sprintf(`SELECT * FROM "team_member_logs" WHERE team_id = %d ORDER BY id DESC LIMIT 20`, whTeam)))
+	t.Log(san_perf.Explain(t, db, fmt.Sprintf(`SELECT count(*) FROM "team_member_logs" WHERE team_id = %d`, whTeam)))
+}

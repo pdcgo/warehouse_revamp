@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Code, ConnectError } from "@connectrpc/connect";
 import { Badge, HStack, Spinner, Stack, Text } from "@chakra-ui/react";
 import {
   type TeamMemberLogEntry,
@@ -19,13 +18,10 @@ const PAGE_SIZE = 10;
 // (every-role-change-is-logged). Newest first.
 //
 // It is the Users page's own tab, beside the members (the-history-is-a-tab-beside-the-members) — so it
-// draws no heading: the tab is its title, and carries its "not built" mark.
+// draws no heading: the tab is its title.
 //
 // A row is a SENTENCE, not a grid: "ani01 changed budi from Customer Service to Admin". The four facts
 // only mean something together, and a table of them makes the reader assemble the sentence.
-//
-// ⚠ The server answers Unimplemented until the log table exists. That is shown as "not built yet" with
-// its mark, never as an error — nothing failed, there is simply nothing to read.
 export function MemberLog({ teamId, teamType }: { teamId: bigint; teamType?: TeamType }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
@@ -33,8 +29,6 @@ export function MemberLog({ teamId, teamType }: { teamId: bigint; teamType?: Tea
   const query = useTeamMemberLog({ teamId, page, pageSize: PAGE_SIZE });
   const entries = query.data?.entries ?? [];
   const actors = useActors(entries.flatMap((e) => [e.actorUserId, e.userId]));
-
-  const notBuilt = query.isError && ConnectError.from(query.error).code === Code.Unimplemented;
 
   function who(id: bigint, agent?: string): string {
     if (id === 0n) return agent || t("users.log.system");
@@ -67,10 +61,6 @@ export function MemberLog({ teamId, teamType }: { teamId: bigint; teamType?: Tea
     <Stack gap="card" data-testid="member-log">
       {query.isPending ? (
         <Spinner colorPalette="brand" />
-      ) : notBuilt ? (
-        <Text color="fg.muted" data-testid="member-log-not-built">
-          {t("users.log.notBuilt")}
-        </Text>
       ) : query.isError ? (
         <Text color="error.fg">{t("users.log.failed")}</Text>
       ) : entries.length === 0 ? (

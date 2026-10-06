@@ -123,6 +123,18 @@ test("CreateUser: a new user appears, and can immediately sign in", async ({ pag
   await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
 });
 
+// The role column (UserList's MEMBERSHIP slice) and the membership log (every-role-change-is-logged) both come
+// from the running server: the member made above shows their role, and the team's history has the add.
+test("Members: the row shows the role, and the history records the add", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await expect(page.getByTestId(`role-${NEW_USER}`)).toContainText("Administrator");
+
+  await page.getByTestId("users-tab-history").click();
+  await expect(page.getByTestId("member-log")).toContainText(`${ROOT_USERNAME} added ${NEW_USER} as`);
+});
+
 test("UpdateUser: an admin edits another user's name", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);

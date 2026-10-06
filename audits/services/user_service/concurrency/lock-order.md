@@ -11,10 +11,10 @@ interleaved: **safe**.
 
 | Handler | Lock order | Notes |
 | --- | --- | --- |
-| `TeamUserUpdate` (add, change) | *(team type from team_service — outside)* → `users` (1, the target) → `user_team_roles` (upsert on `team_id, user_id`) | the target's role is read **after** the lock, in a fresh statement, so it sees any change committed while waiting. A NEW member's `is_suspended` is read the same way, under the same lock — no second lock |
-| `TeamUserUpdate` (remove) | `users` (1, the target) → `user_team_roles` (delete) | same check, same lock |
+| `TeamUserUpdate` (add, change) | *(team type from team_service — outside)* → `users` (1, the target) → `user_team_roles` (upsert on `team_id, user_id`) → `team_member_logs` (insert) | the target's role is read **after** the lock, in a fresh statement, so it sees any change committed while waiting. A NEW member's `is_suspended` is read the same way, under the same lock — no second lock |
+| `TeamUserUpdate` (remove) | `users` (1, the target) → `user_team_roles` (delete) → `team_member_logs` (insert) | same check, same lock |
 | `SuspendUser` | `users` (1, the target) → reads the target's ROOT-team role → `users` update | judged by role under the lock, so the target cannot be made an Administrator between the read and the suspend |
-| `CreateUser` | *(team type — outside)* → new `users` row → new `user_team_roles` row | a new person cannot be contended; the unique indexes refuse a racing duplicate username or email |
+| `CreateUser` | *(team type — outside)* → new `users` row → new `user_team_roles` row → `team_member_logs` (insert) | a new person cannot be contended; the unique indexes refuse a racing duplicate username or email |
 | `UpdateUser` | `users` (1, update) | a username taken by a racing rename is refused by the unique index on `LOWER(username)`, as `already_exists` |
 
 Every other writer of `user_team_roles` is `tools/san seed`, a development tool that writes directly.
@@ -37,3 +37,4 @@ RPC in the system, not a property of this handler.
 | 2026-10-05 | first matrix — `TeamUserUpdate` gained its role checks and the `users` row lock; `SuspendUser` judges by role under the same lock |
 | 2026-10-06 | `DeleteUser` removed; `UpdateUser` may change the username |
 | 2026-10-06, later | `TeamUserUpdate` refuses a suspended newcomer, read under the existing lock; `TeamCreate` grants through it |
+| 2026-10-06, last | the membership log: an INSERT in each membership transaction, no new lock (a log row is new, so nobody contends for it). `lockMembership` reads `is_suspended` in its locking query; the suspend-vs-add Interleave re-run on it — the blocked lock returns the row's newest version, and the add refuses |

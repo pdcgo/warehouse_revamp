@@ -102,6 +102,8 @@ erDiagram
 ```mermaid
 erDiagram
     users ||--o{ user_team_roles : "member of"
+    users ||--o{ team_member_logs : "whose membership changed"
+    users |o--o{ team_member_logs : "who changed it"
 
     users {
         bigserial   id                  PK
@@ -126,6 +128,19 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+
+    team_member_logs {
+        bigserial   id            PK
+        bigint      team_id       "opaque cross-service id, no FK to teams"
+        bigint      actor_user_id FK "nullable, null when actor_agent is set"
+        text        actor_agent   "a tools/san developer, else empty"
+        bigint      user_id       FK
+        smallint    action        "1 add, 2 change role, 3 remove"
+        bigint      role_before   "0 before an add"
+        bigint      role_after    "0 after a removal"
+        boolean     is_override   "Root or the Administrator, not a member"
+        timestamptz created_at
+    }
 ```
 
 - **`users`** — the identity table. An empty `password` is a deliberate "cannot log in" marker
@@ -136,6 +151,13 @@ erDiagram
   the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`
   is opaque — **no FK to `team_service.teams`** (that would couple the two services' databases);
   team display data is resolved over RPC, never joined.
+- **`team_member_logs`** — the membership log
+  ([every-role-change-is-logged](business/user/context_decision.md#every-role-change-is-logged)): one row per add,
+  role change and removal, written in the **same transaction** as the `user_team_roles` change, so a membership
+  never changes without its row. **Append-only** — never updated, never deleted. A CHECK makes each row a real
+  change (an add has no role before it, a removal none after, a role change two different roles); nothing
+  changing writes nothing. Read newest first per team, and per person within a team — indexes
+  `(team_id, id DESC)` and `(team_id, user_id, id DESC)`.
 
 ---
 

@@ -3,7 +3,6 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
-import { memberLogNotBuilt } from "../../../.storybook/userScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { UsersPage } from "./index";
 
@@ -74,20 +73,6 @@ export const AsASellingOwner: Story = {
 };
 
 export const AsRoot: Story = { beforeEach: asRole(Role.ROOT) };
-
-// What the running app shows until the log table exists — "not recorded yet", never an error.
-export const TheHistoryIsNotBuiltYet: Story = {
-  beforeEach: () => {
-    asRole(Role.WAREHOUSE_OWNER)();
-    memberLogNotBuilt();
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await history(canvas);
-
-    await expect(await canvas.findByTestId("member-log-not-built")).toBeInTheDocument();
-  },
-};
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 

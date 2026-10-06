@@ -18,7 +18,6 @@ import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 import { TeamMemberLogAction, UserListDataType } from "../src/gen/warehouse/user/v1/user_pb";
 import { teams, users as userFixtures } from "./fixtures";
 import { sessionScenario } from "./sessionScenario";
-import { userScenario } from "./userScenario";
 
 // ── The tables ──────────────────────────────────────────────────────────────────────────────────
 
@@ -440,10 +439,6 @@ export const userStub = {
   adminResetPassword: () => ({}),
 
   teamMemberLogList: (req: { teamId: bigint; page?: { page?: bigint; limit?: bigint } }) => {
-    if (userScenario.memberLogNotBuilt) {
-      throw new ConnectError("TeamMemberLogList is not built yet", Code.Unimplemented);
-    }
-
     const rows = log.filter((e) => e.teamId === req.teamId).reverse(); // newest first
     const { window, pageInfo } = paged(rows, req.page);
 

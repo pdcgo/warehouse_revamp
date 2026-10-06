@@ -222,9 +222,6 @@ export function useMemberSearch(args: { teamId: bigint | undefined; q: string })
 }
 
 // One team's membership history, newest first (every-role-change-is-logged).
-//
-// ⚠ The server answers Unimplemented until the log table exists; the panel reads that as "not built
-// yet", not as a failure — so a failure is not retried.
 export function useTeamMemberLog(args: { teamId: bigint | undefined; page: number; pageSize: number }) {
   const { teamId, page, pageSize } = args;
 

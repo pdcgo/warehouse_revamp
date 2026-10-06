@@ -24,11 +24,12 @@ sequenceDiagram
     alt type unknown, or team_service down
         U-->>C: failed_precondition — a grant is never made on an unchecked type
     else type known
-        U->>U: BEGIN, lock the person's users row FOR UPDATE
+        U->>U: BEGIN, lock the person's users row FOR UPDATE, reading is_suspended with it
         U->>U: read their current role in the team
         U->>U: check — current and next both below the caller, next of the team's type
-        U->>U: a NEW member — refused if suspended, read under the same lock
-        U->>U: upsert or delete the membership, COMMIT
+        U->>U: a NEW member — refused if suspended
+        U->>U: upsert or delete the membership
+        U->>U: write the membership log row, unless nothing changed — COMMIT
         U->>U: evict the person's cached roles
         U-->>C: ok
     end
@@ -47,6 +48,10 @@ sequenceDiagram
 - **A suspended person is never added** ([a-suspended-user-is-never-picked](../../business/user/context_decision.md#a-suspended-user-is-never-picked)):
   `failed_precondition`, read under the lock `SuspendUser` also takes. A suspended **member** keeps their
   membership and may still be changed or removed.
+- **The membership log is written in the same transaction**
+  ([every-role-change-is-logged](../../business/user/context_decision.md#every-role-change-is-logged)), so a
+  membership never changes without its row, and a refused or rolled-back change leaves none. `CreateUser` logs its
+  membership the same way.
 - `CreateUser` checks the new person's role the same way (a new person holds none), and `SuspendUser`
   locks the same row and judges the target by its **root-team role**, never its id.
 

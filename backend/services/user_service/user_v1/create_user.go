@@ -41,8 +41,13 @@ func (s *Service) CreateUser(
 	// only by Root, only a role below the caller's own, and only a role of this team's type — which
 	// also covers the old "Root and the Administrator only in the root team" check. A new person holds
 	// no role yet, so `current` is none.
+	var (
+		caller callerReach
+		err    error
+	)
+
 	if teamID > 0 {
-		caller, err := s.callerIn(ctx, teamID)
+		caller, err = s.callerIn(ctx, teamID)
 		if err != nil {
 			return nil, err
 		}
@@ -87,12 +92,17 @@ func (s *Service) CreateUser(
 			return nil
 		}
 
-		return tx.Create(&user_service_models.UserTeamRole{
+		err = tx.Create(&user_service_models.UserTeamRole{
 			TeamID: teamID,
 			UserID: user.ID,
 			Role:   int32(role),
 			Alias:  req.Msg.GetAlias(),
 		}).Error
+		if err != nil {
+			return err
+		}
+
+		return logMembership(tx, caller, teamID, user.ID, role_basev1.Role_ROLE_UNSPECIFIED, role)
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
