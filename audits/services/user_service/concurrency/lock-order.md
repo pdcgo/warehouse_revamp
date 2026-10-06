@@ -16,6 +16,7 @@ interleaved: **safe**.
 | `UserErase` | `users` (1, the target) → reads the target's ROOT-team role and suspension → `users` update | the suspend rule, and suspended-only, both judged under the lock — an unsuspend racing it queues, and the erase then refuses |
 | `SuspendUser` | `users` (1, the target) → reads the target's ROOT-team role → `users` update | judged by role under the lock, so the target cannot be made an Administrator between the read and the suspend |
 | `CreateUser` | *(team type — outside)* → new `users` row → new `user_team_roles` row → `team_member_logs` (insert) | a new person cannot be contended; the unique indexes refuse a racing duplicate username, email or phone (`users_phone_unique`, 00008) — `refuseTakenContact` reads first only to name the field |
+| `GrantRoot` / `RevokeRoot` *(san only, no RPC)* | the account's `users` row (`lockMembership`) → **every Root's `user_team_roles` row, `ORDER BY user_id`** (RevokeRoot) → delete or upsert one membership → `team_member_logs` (insert) | the same first lock as every membership write, so it orders with `TeamUserUpdate`; the Root rows are taken in id order, so two removals cannot deadlock |
 | `UpdateUser` | `users` (1, update) | a username taken by a racing rename is refused by the unique index on `LOWER(username)`, as `already_exists` |
 
 Every other writer of `user_team_roles` is `tools/san seed`, a development tool that writes directly.
@@ -30,6 +31,7 @@ Evidence: [`team_user_update_race_test.go`](../../../../backend/services/user_se
 | an erase never blanks an account that was just unsuspended | **Interleave: the erase BLOCKS** until the unsuspend commits, then reads *not suspended* and refuses |
 | a person being suspended is never added to a team ([a-suspended-user-is-never-picked](../../../../docs/business/user/context_decision.md#a-suspended-user-is-never-picked)) | **Interleave: the add BLOCKS** (309 ms) until the suspend commits, then reads *suspended* and is refused. 40 rounds of *Root suspends Ani* ‖ *Root adds Ani* → no deadlock, no unexpected error (the suspend landed first in 39) |
 | one phone, one account ([a-phone-or-email-belongs-to-one-account](../../../../docs/business/user/context_decision.md#a-phone-or-email-belongs-to-one-account)) — a phantom insert: two saves can both read *nobody has it* | 20 rounds of eight creates at once, one number written eight ways → one account holds it every round. **Interleave: the second insert BLOCKS** (302 ms) on the unique index until the first commits, then fails with a unique violation (AlreadyExists to the caller). `phone_race_test.go` |
+| the last Root is never removed ([root-can-be-several](../../../../docs/business/user/context_decision.md#root-can-be-several)) — a count, so a check-then-act | **Interleave: the second removal's count BLOCKS** (304 ms) on the first's lock, then sees one Root fewer. 20 rounds of two removals at once → no deadlock, no error, user 1 still Root. `root_grants_race_test.go` |
 
 **Not proved here:** the CALLER's own role is the interceptor's cached decision, read before the transaction. An
 Owner demoted at the same second they act still acts as an Owner — the same window `RoleCacheTTL` bounds for every
@@ -44,3 +46,4 @@ RPC in the system, not a property of this handler.
 | 2026-10-06, last | the membership log: an INSERT in each membership transaction, no new lock (a log row is new, so nobody contends for it). `lockMembership` reads `is_suspended` in its locking query; the suspend-vs-add Interleave re-run on it — the blocked lock returns the row's newest version, and the add refuses |
 | 2026-10-06, phones | one account per phone: a check before the write names the field, and `users_phone_unique` (00008) is the guarantee — raced and interleaved. No row lock added |
 | 2026-10-06, removal announced | `TeamUserUpdate`'s removal publishes `MemberRemoved` AFTER its commit — no lock is held across the publish, nothing else changed |
+| 2026-10-06, Roots | `GrantRoot` / `RevokeRoot` for `san user root`: the users-row lock, then every Root's row in id order — raced and interleaved |

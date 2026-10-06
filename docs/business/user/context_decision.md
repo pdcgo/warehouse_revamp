@@ -512,9 +512,9 @@ flowchart LR
 
 | | |
 | --- | --- |
-| `tools/san` | a command to add a Root and to remove one |
+| `tools/san` | a command to add a Root and to remove one. 🔄 *(2026-10-06, built)* `san user root add` / `remove`, through `user_v1`'s `GrantRoot` / `RevokeRoot` — in-process, no RPC — under the account's row lock, logged with actor `san` |
 | suspend | already refuses user 1 only, by id. With several Roots it must refuse by role ([only-root-and-the-administrator-suspend](#only-root-and-the-administrator-suspend)) |
-| the last Root | ✅ confirmed (Q20c): removing the last Root is refused, so the system is never left with nobody who can do anything |
+| the last Root | ✅ confirmed (Q20c): removing the last Root is refused, so the system is never left with nobody who can do anything. 🔄 *(2026-10-06, built)* counted under a lock on every Root's row — interleaved: a second removal waits, then counts one fewer |
 
 ## root-grants-the-administrator
 

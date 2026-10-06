@@ -17,6 +17,7 @@ func userCommand() *cli.Command {
 		Usage: "act on a user account",
 		Commands: []*cli.Command{
 			userResetPasswordCommand(),
+			userRootCommand(),
 		},
 	}
 }

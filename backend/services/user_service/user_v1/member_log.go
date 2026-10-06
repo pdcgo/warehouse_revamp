@@ -37,16 +37,21 @@ func logMembership(
 		action = userv1.TeamMemberLogAction_TEAM_MEMBER_LOG_ACTION_REMOVE
 	}
 
-	actor := caller.id
-
 	row := user_service_models.TeamMemberLog{
-		TeamID:      teamID,
-		ActorUserID: &actor,
-		UserID:      userID,
-		Action:      int16(action),
-		RoleBefore:  int32(before),
-		RoleAfter:   int32(after),
-		IsOverride:  caller.isOverride(),
+		TeamID:     teamID,
+		UserID:     userID,
+		Action:     int16(action),
+		RoleBefore: int32(before),
+		RoleAfter:  int32(after),
+		IsOverride: caller.isOverride(),
+	}
+
+	// A developer through tools/san is recorded as such, with no user (the table's CHECK wants one or the other).
+	if caller.agent != "" {
+		row.ActorAgent = caller.agent
+	} else {
+		actor := caller.id
+		row.ActorUserID = &actor
 	}
 
 	err := tx.Create(&row).Error
@@ -60,5 +65,5 @@ func logMembership(
 // isOverride: Root or the Administrator acting in a team they hold no role in — through the root-team bypass,
 // not a membership (an-override-is-stamped-in-every-service). A Root who IS a member of the team acts as that member.
 func (c callerReach) isOverride() bool {
-	return (c.isRoot() || c.isAdministrator()) && c.inTeam == role_basev1.Role_ROLE_UNSPECIFIED
+	return c.agent == "" && (c.isRoot() || c.isAdministrator()) && c.inTeam == role_basev1.Role_ROLE_UNSPECIFIED
 }

@@ -22,7 +22,7 @@ go run ./tools/san user reset-password --username ani
 | --- | --- | --- |
 | **the schema** | [`migrate`](#migrate) | goose, per service (HARD RULE 3) |
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
-| **operations** | [`user reset-password`](#user-reset-password) | acts on real data, through the real services |
+| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
 
@@ -31,7 +31,7 @@ flowchart LR
     subgraph san["tools/san — one binary"]
         M["migrate"]
         S["seed · db · region"]
-        U["user reset-password"]
+        U["user reset-password · user root"]
         R["remote · remote mcp · refresh-token"]
         V["dev setup · dev run"]
     end
@@ -81,6 +81,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`dev setup`](#dev-setup) | Make a checkout runnable: submodules, containers, every migration, the dev logins, categories, regions, `npm install`. Safe to re-run |
 | [`dev run`](#dev-run) | Start the containers, the API and the UI in one terminal — Ctrl-C stops all of it |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
+| [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
@@ -549,6 +550,62 @@ The database label is always in the line, so the record of what happened says **
 | `validation error: new_password: must be at least 8 characters` | The **proto's** rule, applied by the CLI |
 
 ---
+
+## `user root add` / `remove`
+
+Adds and removes a **Root** ([root-can-be-several](../business/user/context_decision.md#root-can-be-several)). This is the only way:
+no RPC gives or takes Root ([root-is-granted-only-through-san](../business/user/context_decision.md#root-is-granted-only-through-san)), and the app's own
+membership write refuses to.
+
+```sh
+go run ./tools/san user root add    --username fajar
+go run ./tools/san user root remove --user-id 66 --dsn "$DSN"
+```
+
+| Flag | Notes |
+| --- | --- |
+| `--username` · `--email` · `--user-id` | **Exactly one**, as for `user reset-password` |
+
+### What actually happens
+
+```mermaid
+sequenceDiagram
+    actor Op as Operator
+    participant CLI as san
+    participant Svc as user_v1.GrantRoot or RevokeRoot
+    participant DB as Postgres
+    participant Cache as role cache
+
+    Op->>CLI: user root remove --username fajar
+    CLI->>CLI: the database chosen — Local, or Production after typing production
+    CLI->>DB: find the ONE account matching the selector
+    CLI->>Svc: RevokeRoot(user, agent san)
+    Svc->>DB: BEGIN, lock the account's users row
+    Svc->>DB: lock EVERY Root's membership row, then count them
+    alt the last Root
+        Svc-->>CLI: refused — add another first
+    else another Root remains
+        Svc->>DB: delete the root-team membership, log it with actor san, COMMIT
+        Svc->>Cache: invalidate the account's cached roles
+        Svc-->>CLI: ok
+    end
+```
+
+- **The lock and the history live in user_service**, not here: `GrantRoot` and `RevokeRoot` are in-process methods of
+  `user_v1.Service` with no RPC in front of them. The history row names `san` as who did it
+  ([every-role-change-is-logged](../business/user/context_decision.md#every-role-change-is-logged)).
+- **"The last" is counted under a lock on every Root's row**, so two removals of the last two Roots run one after the
+  other and the second is refused — proved by `TestInterleave_RevokeRoot_TheSecondCountsAfterTheFirst`.
+- `add` turns a System Administrator into Root (one role per team) and changes nothing for an existing Root.
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `the last Root is never removed — add another first` | `remove` on the only Root |
+| `this account is not a Root` | `remove` on anybody else |
+| `a suspended or erased account is never made Root` | `add` on a suspended or erased account |
+| `name the account: --username, --email or --user-id` | No selector, or more than one |
 
 ## `pubsub ensure`
 

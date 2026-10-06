@@ -27,6 +27,9 @@ type callerReach struct {
 	id     uint64
 	root   role_basev1.Role
 	inTeam role_basev1.Role
+
+	// agent is a developer through tools/san — no user, no role; set only by the san-only methods (root_grants.go).
+	agent string
 }
 
 func (c callerReach) isRoot() bool {
