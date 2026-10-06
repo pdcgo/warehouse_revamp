@@ -84,6 +84,20 @@ export const TheDecidedFields: Story = {
   },
 };
 
+// channels-are-a-horizontal-tab: the channels sit under a HORIZONTAL Channels tab, open on arrival — the tab
+// row is where the parked products and statistics land later.
+export const TheChannelsAreAHorizontalTab: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const tab = canvas.getByTestId("supplier-tab-channels");
+    await expect(tab).toHaveTextContent("Channels");
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByRole("tablist")).toHaveAttribute("aria-orientation", "horizontal");
+    await expect(within(canvas.getByTestId("channels-section")).getByTestId("channels-table")).toBeVisible();
+  },
+};
+
 // channel-type-is-the-marketplace-list: each store wears its marketplace's badge.
 export const ChannelsAreTypedOffTheMarketplaceList: Story = {
   play: async ({ canvasElement }) => {

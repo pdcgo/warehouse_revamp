@@ -17,7 +17,9 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 **173 open questions across 32 files.** The seven below are shown; **166 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▲ **+1 this round — supplier Q10, the design_accept of the CRUD prototype** (2026-10-06): the supplier screens are built to the decided shape and wired to the running app through a translation step that makes up the code and the online type today's server still wants ([supplier Q10](business/supplier/context_clarify.md#question)). Preview in Storybook: Pages/Suppliers/Suppliers, Pages/Suppliers/SupplierDetail. Three parts — the screens, the move of the existing rows, *Other* vs *Custom*. It blocks the supplier context's backend only, so none of the seven moves.
+🔄 **±0 this round — the supplier prototype, your first preview note** (2026-10-06): the channels move under a horizontal **Channels** tab ([channels-are-a-horizontal-tab](business/supplier/context_decision.md#channels-are-a-horizontal-tab)), built. Supplier Q10 stays open. None of the seven moves.
+
+▲ **+1 the round before — supplier Q10, the design_accept of the CRUD prototype** (2026-10-06): the supplier screens are built to the decided shape and wired to the running app through a translation step that makes up the code and the online type today's server still wants ([supplier Q10](business/supplier/context_clarify.md#question)). Preview in Storybook: Pages/Suppliers/Suppliers, Pages/Suppliers/SupplierDetail. Three parts — the screens, the move of the existing rows, *Other* vs *Custom*. It blocks the supplier context's backend only, so none of the seven moves.
 
 🔄 **±0 the round before — user Q31 elaborated into four parts** (2026-10-06): rewrite a phone on save (recommend yes,
 international form — back from *keep as typed*), refuse what is not a phone, a number with no 0 or +62 (recommend

@@ -19,6 +19,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [channel-type-is-the-marketplace-list](#channel-type-is-the-marketplace-list) | `channel_type` is the shared marketplace list; `custom` is its *Other* | your edit, 2026-10-06 — answers Q7, as recommended |
 | [no-province-city-or-soft-delete](#no-province-city-or-soft-delete) | a supplier is exactly your listed fields; delete is a hard delete | in chat, 2026-10-06 — answers Q8, against my *keep all three* |
 | [the-supplier-gets-its-own-service](#the-supplier-gets-its-own-service) | suppliers and channels move to their own `supplier_service` | in chat, 2026-10-06 — answers Q6, against my *stay in inventory_service* |
+| [channels-are-a-horizontal-tab](#channels-are-a-horizontal-tab) | on the supplier detail page the channels sit under a horizontal **Channels** tab; the supplier's own fields stay above it | in chat, 2026-10-06 — against my *vertical tabs, Info and Channels* |
 
 ## reversed-the-supplier-keeps-its-code
 
@@ -388,3 +389,24 @@ batches hold them), then `inventory_service` dropping its tables. A technical it
 the [clarify](./context_clarify.md#proposed-design). And your
 [technical/architecture/context.md](../../technical/architecture/context.md) service list still puts the supplier in
 `product_service` — your edit.
+
+## channels-are-a-horizontal-tab
+
+> Owner, in chat *(2026-10-06)*, previewing the CRUD prototype: *"no just add hrizontal tab channel"* — against my
+> recommendation, which was rack detail's vertical tabs with the supplier's fields moved into an *Info* tab.
+
+**The verdict.** The supplier's own fields stay where they are, at the top of the page. Below them, the channels sit
+under a **horizontal** tab row, with **Channels** as its first and, for now, only tab. That row is where the parked
+products per channel and the statistics land later
+([linking-products-is-deferred](#linking-products-is-deferred), [statistics-are-deferred](#statistics-are-deferred)).
+
+```mermaid
+flowchart TD
+  H["the supplier — name, contact, address, description"] --> T["tabs, horizontal"]
+  T --> C["Channels — Add Channel, the channel table"]
+  T -.->|"later"| P["Products, Statistics"]
+```
+
+**The spec.** Built in the prototype: `Tabs.Root` with the default horizontal orientation, as team detail uses; the
+**Channels** tab is open on arrival and holds Add Channel and the table. Story:
+`Pages/Suppliers/SupplierDetail — TheChannelsAreAHorizontalTab`.

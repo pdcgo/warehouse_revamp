@@ -12,6 +12,7 @@ Storybook: **Pages/Suppliers/Suppliers**, **Pages/Suppliers/SupplierDetail**, **
 | ➡ moved | [Q2](#question) and the contradiction *restock-has-no-supplier* → [restock clarify](../inventory/restock_clarify.md#question) — *"for 2 we talk further in restock context"* |
 | ✅ resolved | the contradiction *two-lists-of-marketplaces* — by your Q7 edit |
 | ⏸ deferred | statistics, and seeding `supplier_channel_products` — your §Whats defer · [parked](#parked--talk-later) |
+| ✅ your preview (2026-10-06) | the channels under a horizontal **Channels** tab — [channels-are-a-horizontal-tab](./context_decision.md#channels-are-a-horizontal-tab), built |
 | 🆕 +1 (2026-10-06) | [Q10](#question) — the design_accept of the CRUD prototype, with the two nods left over: the move, and *Other* vs *Custom* |
 | ⛔ still stale | your [technical/architecture/context.md:7](../../technical/architecture/context.md) puts the supplier in `product_service` — [where-the-supplier-lives](#where-the-supplier-lives) |
 
@@ -95,6 +96,8 @@ RULE 3).
 - **Suppliers** (`/inventories/suppliers`) — the Code column goes. Delete confirms, and says the supplier is removed
   for good.
 - **Supplier form** — name, contact, address, description.
+- **Supplier detail** — the supplier's fields on top; the channels under a horizontal **Channels** tab
+  ([channels-are-a-horizontal-tab](./context_decision.md#channels-are-a-horizontal-tab)).
 - **Channel form** — channel type (`MarketplaceSelect`), name, link, description. No online/offline switch.
 - **`SupplierSelect`** — shows and searches the name.
 
@@ -140,7 +143,7 @@ Kept as lines so the numbers hold.
     | story | what to look at |
     | --- | --- |
     | Pages/Suppliers/Suppliers — *Default*, *AWarehouseTeam* | Name · Contact · Address, no Code or City · an old city folded into the address · New Supplier for a selling team only |
-    | Pages/Suppliers/SupplierDetail — *Default*, *AWebsiteOnly*, *NoChannelsYet* | the channels by marketplace badge · an old offline shop reads as *Other* · the ⚠ 1 mark |
+    | Pages/Suppliers/SupplierDetail — *Default*, *AWebsiteOnly*, *NoChannelsYet* | the horizontal **Channels** tab · the channels by marketplace badge · an old offline shop reads as *Other* · the ⚠ 1 mark |
     | Components/Pickers/SupplierSelect | the name alone, searched by name |
 
     ⚠ **One mark, one loss:** a channel's description is typed and thrown away — the old server has no field for it.

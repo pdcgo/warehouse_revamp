@@ -15,6 +15,7 @@ import {
   Spinner,
   Stack,
   Table,
+  Tabs,
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, ExternalLink, Pencil, Trash2 } from "lucide-react";
@@ -70,9 +71,10 @@ function ChannelLink({ uri }: { uri: string }) {
 }
 
 // SupplierDetailPage is the dedicated detail route for a supplier — a PAGE, not a dialog. It shows the
-// supplier (a name, a contact, an address, a description) and its CHANNELS: the stores it sells through,
-// each typed off the shared marketplace list (the-supplier-lists-only-its-online-stores,
-// channel-type-is-the-marketplace-list). Reached by clicking a supplier row.
+// supplier (a name, a contact, an address, a description) and, under a horizontal CHANNELS tab
+// (channels-are-a-horizontal-tab), the stores it sells through, each typed off the shared marketplace list
+// (the-supplier-lists-only-its-online-stores, channel-type-is-the-marketplace-list). The tab row is where
+// what is parked — the products per channel, the statistics — lands later. Reached by clicking a supplier row.
 export function SupplierDetailPage() {
   const { supplierId } = useParams();
   const navigate = useNavigate();
@@ -228,14 +230,21 @@ export function SupplierDetailPage() {
         </Card.Body>
       </Card.Root>
 
-      <Card.Root data-testid="channels-section">
-        <Card.Body>
+      <Tabs.Root defaultValue="channels" data-testid="supplier-tabs">
+        <Tabs.List>
+          <Tabs.Trigger value="channels" data-testid="supplier-tab-channels">
+            {t("supplierChannel.section.title")}
+          </Tabs.Trigger>
+        </Tabs.List>
+
+        <Tabs.Content value="channels" data-testid="channels-section">
           <Stack gap="card">
-            <Flex align="center" gap="card">
-              <Heading size="sm">{t("supplierChannel.section.title")}</Heading>
-              <Spacer />
-              {canManage && <SupplierChannelFormDialog supplierId={supplier.id} />}
-            </Flex>
+            {canManage && (
+              <Flex align="center" gap="card">
+                <Spacer />
+                <SupplierChannelFormDialog supplierId={supplier.id} />
+              </Flex>
+            )}
 
             {channelsError && (
               <Text color="error.fg" data-testid="channels-error">
@@ -322,8 +331,8 @@ export function SupplierDetailPage() {
               </Table.Root>
             )}
           </Stack>
-        </Card.Body>
-      </Card.Root>
+        </Tabs.Content>
+      </Tabs.Root>
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per channel. */}
       {editing && (
