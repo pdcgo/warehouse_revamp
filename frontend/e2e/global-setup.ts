@@ -2,9 +2,11 @@ import { execSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { ADMIN_DSN, TEST_DSN } from "./db";
 import { acquireRunLock } from "./lock";
+import { ensurePubsubTopicsCommand, requirePubsubEmulator } from "./pubsub";
 
 // The e2e drives the REAL backend against a REAL database — but the DEDICATED test database
-// (warehouse_test), never the dev one. Requires `docker compose up -d` (postgres on :5433).
+// (warehouse_test), never the dev one. Requires `docker compose up -d` (postgres on :5433) AND the Pub/Sub
+// emulator, `docker compose --profile pubsub up -d pubsub` (:8085) — checked first, see e2e/pubsub.ts.
 //
 // Migration order is a CONTRACT, not a preference: team_service seeds team 1, and user_service's
 // root-user seed puts ROLE_ROOT *in team 1*. There is no cross-service foreign key to enforce it,
@@ -36,14 +38,21 @@ function servicesToMigrate(): string[] {
   return [...seededFirst, ...discovered];
 }
 
-export default function globalSetup(): void {
-  // FIRST, before anything destructive: refuse to start if another run is already going. The next
+export default async function globalSetup(): Promise<void> {
+  // Before ANYTHING: is the Pub/Sub emulator up? Without it the suite fails slowly and far from the cause
+  // (e2e/pubsub.ts). Nothing has been touched yet, so stopping here costs nothing.
+  await requirePubsubEmulator();
+
+  // Then, before anything destructive: refuse to start if another run is already going. The next
   // line drops the shared database, and doing that under a live run is what made this suite look
   // flaky for a whole session. See e2e/lock.ts.
   acquireRunLock();
 
   const run = (cmd: string) =>
     execSync(cmd, { cwd: "../backend", stdio: "inherit", env: { ...process.env } });
+
+  // The topics live in the emulator's memory, so a restarted emulator has none. Idempotent.
+  run(ensurePubsubTopicsCommand());
 
   // Start from a fresh, EMPTY test database every run — the dev database is never touched.
   run(`go run ../tools/san db reset-test --admin-dsn "${ADMIN_DSN}"`);

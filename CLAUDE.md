@@ -629,7 +629,7 @@ it once a real domain service replaces it.
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
-| E2E (starts both servers) | `cd frontend && npm run e2e` |
+| E2E (starts both servers) | `cd frontend && npm run e2e` — needs Postgres **and** the Pub/Sub emulator (`docker compose --profile pubsub up -d`); its setup refuses to start without it and creates the topics itself |
 | Component workbench (`:6006`) | `cd frontend && npm run storybook` |
 | Run every story's `play()` as a test | `cd frontend && npm run test:stories` |
 | Build the static Storybook | `cd frontend && npm run build-storybook` |

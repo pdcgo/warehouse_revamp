@@ -186,6 +186,15 @@ order placed, and a minute per row of a settlement statement, because each row i
 ([event_sender.go](../../backend/cmd/app_development/event_sender.go)). The e2e needs one too, and CI
 starts it before the e2e.
 
+**In the e2e it used to look like something else entirely:** the first test that places an order timed out after
+10 s on the order form, its *Create Order* button stuck in its loading state, which reads as a form that never became
+valid. Now the e2e setup checks first ([e2e/pubsub.ts](../../frontend/e2e/pubsub.ts)): with no emulator it stops in
+a few seconds with *"The Pub/Sub emulator is not answering on localhost:8085"* and the command above, and with one it
+runs `san pubsub ensure` itself — the topics live in the emulator's memory, so a restarted emulator has none.
+
+⚠ `go run ./tools/san dev run` and `dev setup` start Postgres and Redis but **not** the emulator (no `pubsub` profile),
+so the running dev app has the same minute-long wait until you start it.
+
 ---
 
 ## My MCP endpoint answers 403 to everything, but only through the tunnel
