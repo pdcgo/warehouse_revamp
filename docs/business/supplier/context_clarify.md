@@ -5,6 +5,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| 🔄 your fifth edit (2026-10-06) | 🆕 §Whats defer — *defining statistic* and *how we seed `supplier_channel_products`*: recorded as [statistics-are-deferred](./context_decision.md#statistics-are-deferred); the seeding is [linking-products-is-deferred](./context_decision.md#linking-products-is-deferred), now in your doc too. No question opens or closes |
 | 🔄 your fourth edit (2026-10-06) | `code` removed · the channels table keeps the name `supplier_channels`, with `channel_type` · 🆕 `supplier_channel_products` |
 | ✅ recorded | [the-supplier-has-no-code](./context_decision.md#the-supplier-has-no-code) — reverses Q4's earlier answer · [products-hang-off-a-channel](./context_decision.md#products-hang-off-a-channel) — closes [Q9](#question) · [linking-products-is-deferred](./context_decision.md#linking-products-is-deferred) — in chat: *"we talk later … focus basic crud first"* |
 | 🎯 focus | **Basic CRUD of suppliers and channels.** Three questions decide its shape — [Q8](#question), [Q7](#question), [Q6](#question) — and [Q2a](#question) decides its delete. The linking is [parked](#parked--talk-later) |
@@ -173,6 +174,7 @@ down only so the later conversation starts from here:
 | what the discover page shows | the product's name and picture — and a price, which the link table does not have? |
 | search by product | *"who sells this item?"* — does the discover search reach the linked products? |
 | a restock's channel | a restock names a supplier, not a channel. Linking per channel may need the restock to say which store it was bought from |
+| statistics | your §Whats defer — what a supplier's figures are (the analytic doc's *Daily Supplier Report*), and whether another team sees them under [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier) |
 
 # Contradiction
 

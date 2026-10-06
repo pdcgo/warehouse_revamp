@@ -15,6 +15,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [the-supplier-has-no-code](#the-supplier-has-no-code) | `suppliers` has no `code` | your fourth edit, 2026-10-06 — reverses [reversed-the-supplier-keeps-its-code](#reversed-the-supplier-keeps-its-code) |
 | [products-hang-off-a-channel](#products-hang-off-a-channel) | a supplier's products are stored, one row per product per channel — not derived from restocks | your fourth edit, 2026-10-06 — closes Q9 |
 | [linking-products-is-deferred](#linking-products-is-deferred) | how a product gets linked to a channel is talked about later; the next pass is basic CRUD | in chat, 2026-10-06 |
+| [statistics-are-deferred](#statistics-are-deferred) | a supplier's statistics are defined later, not in the CRUD pass | your §Whats defer, 2026-10-06 |
 
 ## reversed-the-supplier-keeps-its-code
 
@@ -273,3 +274,21 @@ flowchart LR
   A table with nothing writing to it has nothing to test.
 - What is parked is listed in the clarify's [Parked](./context_clarify.md#parked--talk-later) section, so the later
   conversation starts from it rather than from nothing. None of it is counted as open.
+
+## statistics-are-deferred
+
+> Owner, in [context.md](./context.md) §Whats defer *(2026-10-06, the fifth edit)*: *"defining statistic"* and
+> *"defining how we seed `supplier_channel_products`"*. The second is
+> [linking-products-is-deferred](#linking-products-is-deferred), now written into your doc as well.
+
+**The verdict.** What a supplier's **statistics** are is defined **later**. The CRUD pass builds no figures.
+
+```mermaid
+flowchart LR
+  CRUD["the CRUD pass — suppliers, channels"] --> LATER["later — statistics, seeding supplier_channel_products"]
+  LATER -.-> AN["analytic — Daily Supplier Report"]
+```
+
+**The spec.** Nothing is built for it now. The analytic doc already names a *Daily Supplier Report Table*; its grain is
+an open question in [analytic's clarify](../analytic/context_clarify.md#question), and the supplier's statistics are
+defined against it when this is picked up.
