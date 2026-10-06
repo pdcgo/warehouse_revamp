@@ -146,7 +146,7 @@ oversight I routed around: four things the business plainly needs are in no requ
 | 7 | reserved stock **number** | `product_context.md:61` | `product_service` | policy, not quantity |
 | 8 | reserved stock **check** | `product_context.md:61` | `inventory_service` | only the holder of the quantity can compare atomically |
 | 9 | shared lock | `product_context.md:62` | `product_service` | the owner's consent switch |
-| 10 | supplier | `business_level.md:70,186` | ➡ **asked in [supplier Q6](../../business/supplier/context_clarify.md#question)** (2026-10-06) — your new [supplier/context.md](../../business/supplier/context.md) is titled *Supplier Service*, and recommends its own `supplier_service` | was `product_service`, per `architecture_context.md:7` ⚠ the tree puts it in inventory |
+| 10 | supplier | `business_level.md:70,186` | ➡ **asked in [supplier Q6](../../business/supplier/context_clarify.md#question)** (2026-10-06) — your new [supplier/context.md](../../business/supplier/context.md) is titled *Supplier Service*. 🔄 Recommends staying in `inventory_service` if a team COPIES another team's supplier (supplier Q1) | was `product_service`, per `architecture_context.md:7` ⚠ the tree puts it in inventory |
 | 11 | product LinkMap (return ownership) | `order_context.md:233-235` | `product_service` | it maps a **product** to a product — catalogue identity, not stock |
 | 12 | batches / FIFO layers, unit price | `product_context.md:27,33-41` | `inventory_service` | the layer is stock, and it is where the amount freezes |
 | 13 | placement / racks | `business_level.md:62` | `inventory_service` | [warehouse-manages-placements](../../business/business_level_clarify.md#warehouse-manages-placements) |
