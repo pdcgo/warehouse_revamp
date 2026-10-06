@@ -5,6 +5,8 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
+| ✅ answered in chat (2026-10-06) | [Q3](#question) — another team sees everything: the supplier, its stores and its products, **against my recommendation**: [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier) |
+| 🆕 +1 | [Q9](#question) — what *its products* means: which restocks count, whether the price shows, and whether the discover search finds a product |
 | 🔄 your edit (2026-10-06, third) | §General 3 and 4, and §What Frontend Expected |
 | ✅ answered by it | [Q1](#question) — B uses A's row, no copy, **against my recommendation**: [a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier) · [only-a-selling-team-has-suppliers](./context_decision.md#only-a-selling-team-has-suppliers) · [manage-and-discover-are-two-pages](./context_decision.md#manage-and-discover-are-two-pages) |
 | 🔄 re-opened | [Q2](#question) — with A's row on B's restock, A's edit and delete reach B, and B's restock form has to find A's supplier |
@@ -21,6 +23,7 @@ Built in `inventory_service` (#103, #120): the manage page, the supplier detail 
 | §General 2 — discover other teams' suppliers | every read filters by the caller's team. `SupplierByIds` crosses teams only for an id you already hold | ❌ |
 | §General 3 — use another team's supplier on my restock | [restock_request_create.go:16](../../../backend/services/inventory_service/inventory_v1/restock_request_create.go#L16) refuses it | ❌ |
 | §General 4 — only a selling team has suppliers | `SupplierCreate` writes into any team — Root and the Administrator can create one in a warehouse team | ⚠ |
+| a supplier's products ([decided](./context_decision.md#another-team-sees-everything-of-a-supplier)) | the data exists — every restock line keeps product, sku, name and price, under a restock naming the supplier — but nothing reads it per supplier | ❌ |
 | page 1 — manage | `/inventories/suppliers` | ✅ |
 | page 2 — discover | — | ❌ |
 | §Table Must Have | the fields, plus `province`, `city`, `deleted` ([Q8](#question)) · channels, not marketplaces ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) | 🔄 |
@@ -31,7 +34,7 @@ Built in `inventory_service` (#103, #120): the manage page, the supplier detail 
 | --- | --- | --- |
 | **1** | **A's row on B's restock means A's edit and delete reach B.** A rename changes the name on B's past restocks. A delete today hides the row from every read, so it disappears from B's picker while B still buys there. | **Accept it, with delete kept soft** — [Q2a](#question). |
 | **2** | **How B's restock form finds A's supplier is not said.** The discover page *finds* it, but the restock form's picker is where it is *used*, and today that picker shows B's own only. | **The picker searches every selling team's, B's own first** — [Q2b](#question). |
-| **3** | **What another team sees on the discover page is not said.** A vendor's name, contact and stores are facts about the vendor. What A *paid* there is A's business. | **The supplier and its stores, plus the owning team — never A's restocks or prices** — [Q3](#question). |
+| **3** | ✅ **Decided — [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier).** 🆕 **But *products* has no table behind it.** The only link between a supplier and a product is a restock line, and a line carries a price and a quantity as well as the product. So *"see the products"* leaves three things unsaid: which restocks count, whether the price comes with the product, and whether a team can search by product. | **Only accepted restocks · the last price per unit, without quantities · the search reaches product names** — [Q9](#question). |
 | **4** | ***Supplier Service* — your architecture doc puts the supplier in `product_service`** — see [where-the-supplier-lives](#where-the-supplier-lives). | **Stay in `inventory_service`** — [Q6](#question). |
 | **5** | **`marketplace_type` is a second list of marketplaces** — see [two-lists-of-marketplaces](#two-lists-of-marketplaces). | **One list, with `custom` as its *Other*** — [Q7](#question). |
 | **6** | **Three built fields are not on your list** — `province`, `city`, `deleted`. | **Keep all three** — [Q8](#question). |
@@ -49,7 +52,7 @@ restock's check, and enforcing §General 4.
 | who | does | how often |
 | --- | --- | --- |
 | selling Owner, Admin | add a vendor · fix its details · delete one the team stopped using | weekly |
-| selling Owner, Admin, CS | look for a vendor other teams already buy from | weekly |
+| selling Owner, Admin, CS | look for a vendor other teams already buy from — or for *who sells this item* | weekly |
 | selling CS | pick the vendor on a restock request — ours or another team's | daily |
 | warehouse crew | read the vendor's name on the delivery in their hands | daily |
 
@@ -100,11 +103,30 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
   }
+  restock_requests ||--o{ restock_request_items : "lines"
   restock_requests {
     bigint id PK
     bigint team_id "the requesting team"
     bigint supplier_id FK "any selling team's supplier"
   }
+  restock_request_items {
+    bigint id PK
+    bigint product_id "opaque, product_service"
+    text sku "snapshot"
+    text name "snapshot - what the discover search reads"
+    bigint price "per unit, whole rupiah"
+    bigint quantity
+  }
+```
+
+**A supplier's products are DERIVED, not stored** ([decided](./context_decision.md#another-team-sees-everything-of-a-supplier)) —
+the distinct products on the lines of restocks that named it:
+
+```mermaid
+flowchart LR
+  S["supplier X"] --> R["restocks naming X — every team, accepted only (Q9a)"]
+  R --> L["their lines"]
+  L --> P["one row per product — sku, name, owning team, last price per unit (Q9b)"]
 ```
 
 ### The contract
@@ -115,15 +137,19 @@ erDiagram
 | `SupplierUpdate` · `SupplierDelete` | the **owning** team's Owner, Admin | none |
 | `SupplierList` | the team | + filter `scope`: `MINE` (manage page) · `OTHERS` (discover page) · `ALL`, own first (the restock picker). Every row carries its `team_id`; the team's name comes from `team_service`, as elsewhere |
 | `SupplierDetail` · `SupplierMarketplaceList` | the team | + answer for another team's supplier, instead of `NotFound` |
+| `SupplierProductList` | any selling role | 🆕 paginated, `filter.supplier_id` — one row per product: sku, name, the team that bought it, and (Q9b) the last price per unit with its date |
+| `SupplierList` `q` | | + matches a product name on the supplier's restock lines (Q9c) |
 | `SupplierMarketplace*` writes | the owning team's Owner, Admin | replaces `SupplierChannel*` ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) |
 | `RestockRequestCreate` · `RestockRequestUpdate` | as today | the supplier check: a live supplier of **any selling team** |
 
 ### The screens
 
 - **Suppliers** (`/inventories/suppliers`) — as built, my team's.
-- **Discover Suppliers** (`/inventories/suppliers/discover`) — a search, the marketplace filter, and rows of name ·
-  owning team · stores · city. A row opens the detail page.
+- **Discover Suppliers** (`/inventories/suppliers/discover`) — a search that finds a supplier by its name or by a
+  product bought from it, the marketplace filter, and rows of name · owning team · stores · city · how many products.
+  A row opens the detail page.
 - **Supplier detail** — another team's supplier opens **read-only**: no Edit or Delete, and the owning team is shown.
+  A new **Products** section lists what has been bought from it, paginated, for my team's supplier and another's alike.
 - **`SupplierSelect`** in the restock form — two groups, *Our suppliers* then *Other teams*, each row of the second
   carrying its team.
 
@@ -143,10 +169,9 @@ erDiagram
    *What breaks?* A could rename a row into a different vendor, and B's past restocks would follow it. I think that
    is misuse, not a design case. If you disagree, the restock would have to keep its own copy of the name.
 
-3. **What does a team see of another team's supplier?** Critique 3.
-   **→ Recommend: the supplier and its stores in full, and the owning team's name — never that team's restocks,
-   prices or quantities.** The owning team's name tells B who to ask. What A paid is A's business.
-   *"Who sells shoes, judging by what other teams bought"* exposes purchases — leave it out until you ask for it.
+3. ✅ **Answered 2026-10-06 — another team sees everything: the supplier, its stores and its products**:
+   [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier). What
+   *products* means is [Q9](#question). Kept as a line so the numbers hold.
 
 4. ✅ **Answered by your edit** — the code stays: [the-supplier-keeps-its-code](./context_decision.md#the-supplier-keeps-its-code).
 
@@ -168,6 +193,18 @@ erDiagram
    **→ Recommend: keep all three.** `deleted` is what makes [Q2a](#question)'s soft delete possible: restocks and
    batches name the supplier forever, so a hard delete would orphan them — and now across teams. `province` and `city`
    are what the discover page filters on — *"a vendor in Bandung"* cannot be filtered out of a free-text address.
+
+9. 🆕 **What are a supplier's *products*?** Critique 3 — opened by Q3's answer. A supplier's products come from
+   restock lines, and a line carries more than the product.
+
+   | | the question | → Recommend |
+   | --- | --- | --- |
+   | **9a** | which restocks count? | **Only accepted ones.** A cancelled or lost restock proves nothing about the supplier — what *arrived* is what it actually supplies |
+   | **9b** | does *"see all"* include the price and the quantity? | **The last price per unit and its date, and no quantities.** 🔄 Your *"see all"* says the selling teams are open with each other, so I am dropping my *prices are private*. The price is what tells B whether a source is worth it, which is the point of discovering it. A quantity only tells B how much A sells, which says nothing about the supplier |
+   | **9c** | can the discover search find a supplier by a product? | **Yes.** B usually starts with *"who sells this item?"*, not with a vendor's name. The line's own name snapshot makes this a search inside `inventory_service`, with no call to `product_service` |
+
+   *What breaks?* The price is A's buying price for A's product, and a supplier's price moves — so the date beside it
+   is what keeps a year-old price from reading as today's.
 
 # Contradiction
 

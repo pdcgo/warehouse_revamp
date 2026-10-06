@@ -11,6 +11,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-team-restocks-from-another-teams-supplier](#a-team-restocks-from-another-teams-supplier) | team B names team A's supplier on B's own restock — one row per vendor, no copy | your §General 3, 2026-10-06 — answers Q1, against my *copy* |
 | [only-a-selling-team-has-suppliers](#only-a-selling-team-has-suppliers) | a supplier's `team_id` is always a selling team | your §General 4, 2026-10-06 |
 | [manage-and-discover-are-two-pages](#manage-and-discover-are-two-pages) | one page manages my team's suppliers, another searches every other team's | your §What Frontend Expected, 2026-10-06 |
+| [another-team-sees-everything-of-a-supplier](#another-team-sees-everything-of-a-supplier) | every selling team sees a supplier's record, its stores, and the products bought from it | in chat, 2026-10-06 — answers Q3, against my *never their purchases* |
 
 ## the-supplier-keeps-its-code
 
@@ -154,3 +155,33 @@ flowchart LR
 | manage | `/inventories/suppliers` — `pages/suppliers/` | ✅ as is |
 | discover | `/inventories/suppliers/discover` — 🆕 `pages/supplier-discover/` | ❌ |
 | detail | `/inventories/suppliers/:supplierId` — `pages/supplier-detail/` | ✅ for my team's · ❌ another team's answers `NotFound` today |
+
+## another-team-sees-everything-of-a-supplier
+
+> Owner, in chat *(2026-10-06)*: *"for q3, other team see all, supplier, channel and product"*. It answers
+> [Q3](./context_clarify.md#question), **against my recommendation**: I had said another team sees the supplier and
+> its stores, but never what the owning team bought there.
+
+**The verdict.** Nothing about a supplier is private to the team that owns it. Every selling team sees its
+**record**, its **stores** (`supplier_marketplaces`) and its **products**, meaning what has been bought from it.
+
+```mermaid
+flowchart LR
+  S["supplier"] --> R["the record — name, code, contact, address, description"]
+  S --> M["its stores — supplier_marketplaces"]
+  S --> P["its products — from the restock lines that named it"]
+  R --> V["seen by every selling team"]
+  M --> V
+  P --> V
+```
+
+**The spec.**
+
+- **The products come from the restocks.** There is no supplier-to-product table, and none is needed: a restock
+  line already keeps `product_id`, `sku`, a snapshot of the product's `name` and the unit `price`
+  ([00005_restock_request_items.sql](../../../backend/services/inventory_service/db_migrations/00005_restock_request_items.sql)),
+  and its restock names the supplier. A supplier's products are the distinct products on those lines, from every team.
+- **Its own read, paginated.** A supplier that has supplied for years has a long product list, so it is a list RPC
+  with a page filter (HARD RULE 9), not a field on the supplier.
+- **Still open:** which restocks count, whether the price shows, and whether the discover search reaches product
+  names — [Q9](./context_clarify.md#question).
