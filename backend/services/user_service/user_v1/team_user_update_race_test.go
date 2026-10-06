@@ -373,3 +373,49 @@ func TestInterleave_TeamUserUpdate_TheAddWaitsThenSeesTheSuspension(t *testing.T
 		t.Fatal(err)
 	}
 }
+
+// erase-keeps-the-row, under concurrency: Root unsuspends Ani while the Administrator erases her. The erase is for a
+// FORMER user only, so it must wait for the unsuspend, then see an active account and refuse — never blank the data
+// of an account that was just given back.
+func TestInterleave_UserErase_WaitsForAnUnsuspend(t *testing.T) {
+	h := san_race.New(t)
+	db := h.DB()
+	cast := seedCast(t, db)
+
+	db.Model(&user_service_models.User{}).Where("id = ?", cast.ani).Update("is_suspended", true)
+
+	var seenByErase lockedMember
+
+	sched := h.Interleave(t,
+		san_race.Do("UNSUSPEND", "the unsuspend locks Ani's user row", func(tx *gorm.DB) error {
+			_, err := lockMembership(tx, cast.ani, san_auth.RootTeamID)
+			return err
+		}),
+		san_race.Do("UNSUSPEND", "the unsuspend gives Ani her account back", func(tx *gorm.DB) error {
+			return tx.Model(&user_service_models.User{}).Where("id = ?", cast.ani).Update("is_suspended", false).Error
+		}),
+		san_race.Block("ERASE", "the erase locks Ani's user row", func(tx *gorm.DB) error {
+			locked, err := lockMembership(tx, cast.ani, san_auth.RootTeamID)
+			seenByErase = locked
+			return err
+		}),
+		san_race.Commit("UNSUSPEND"),
+		san_race.Do("ERASE", "the erase reads the account under the lock", func(*gorm.DB) error {
+			if seenByErase.suspended {
+				return errors.New("the erase read Ani as suspended after she was given her account back")
+			}
+			return nil
+		}),
+		san_race.Rollback("ERASE"),
+	)
+	sched.Report(t)
+
+	lock := sched.Get("the erase locks Ani's user row")
+	if !lock.Blocked || !lock.Released {
+		t.Fatalf("the erase did not wait for the unsuspend (blocked=%v released=%v)", lock.Blocked, lock.Released)
+	}
+
+	if err := sched.Get("the erase reads the account under the lock").Err; err != nil {
+		t.Fatal(err)
+	}
+}

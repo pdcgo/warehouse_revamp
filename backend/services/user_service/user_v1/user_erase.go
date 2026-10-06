@@ -3,21 +3,97 @@ package user_v1
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
 
 // UserErase implements [userv1connect.UserServiceHandler].
 //
-// ⚠ NOT BUILT. The RPC is part of the user prototype's contract, which waits on the owner's
-// design_accept; until then it only exists so the handler interface compiles. What it will do is
-// erase-keeps-the-row in docs/business/user/context_decision.md.
+// erase-keeps-the-row: a FORMER user's personal data is blanked on request, and the row and its id stay, so every
+// record they made still has someone behind it. Only an account already suspended, and only by those who may
+// suspend it — nobody themselves, a Root never, an Administrator only by Root. There is no undo.
+//
+// Blanked: the name, email, phone and photo. The password is cleared — an empty hash never matches, so the account
+// can never sign in again — and last_password_reset is stamped, which kills any token it still holds. The username
+// becomes erased<id>, so the old one is free for somebody else. Memberships stay: a former member is still the
+// person behind that team's history.
 func (s *Service) UserErase(
-	_ context.Context,
-	_ *connect.Request[userv1.UserEraseRequest],
+	ctx context.Context,
+	req *connect.Request[userv1.UserEraseRequest],
 ) (*connect.Response[userv1.UserEraseResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented,
-		errors.New("erasing a user is not built yet"))
+	userID := req.Msg.GetUserId()
+
+	caller, err := s.callerIn(ctx, san_auth.RootTeamID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// The lock SuspendUser takes: an unsuspend racing the erase queues behind it, and the suspension
+		// read here is the one in force when the data is blanked.
+		target, err := lockMembership(tx, userID, san_auth.RootTeamID)
+		if err != nil {
+			return err
+		}
+
+		err = checkSuspend(caller, userID, target.role)
+		if err != nil {
+			return err
+		}
+
+		if !target.suspended {
+			return connect.NewError(connect.CodeFailedPrecondition,
+				errors.New("only a suspended account is erased — suspend it first (erase-keeps-the-row)"))
+		}
+
+		now := time.Now()
+
+		err = tx.
+			Model(&user_service_models.User{}).
+			Where("id = ?", userID).
+			Updates(map[string]any{
+				"username":            erasedUsername(userID),
+				"name":                "",
+				"email":               "",
+				"phone_number":        "",
+				"avatar_url":          "",
+				"password":            "",
+				"last_password_reset": now,
+				"updated_at":          now,
+			}).
+			Error
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return connect.NewError(connect.CodeAlreadyExists,
+				fmt.Errorf("another account already holds the username %s — rename it, then erase again", erasedUsername(userID)))
+		}
+
+		if err != nil {
+			return connect.NewError(connect.CodeInternal, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// A suspended account's access was already refused; evicting makes nothing about it linger in the cache.
+	err = s.resolver.Invalidate(ctx, userID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&userv1.UserEraseResponse{}), nil
+}
+
+// erasedUsername is what an erased account is called: unique by its id, and still a valid username.
+func erasedUsername(userID uint64) string {
+	return fmt.Sprintf("erased%d", userID)
 }

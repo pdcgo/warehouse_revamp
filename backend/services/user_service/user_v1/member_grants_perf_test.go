@@ -237,3 +237,23 @@ func TestPerf_TeamMemberLogList(t *testing.T) {
 	t.Log(san_perf.Explain(t, db, fmt.Sprintf(`SELECT * FROM "team_member_logs" WHERE team_id = %d ORDER BY id DESC LIMIT 20`, whTeam)))
 	t.Log(san_perf.Explain(t, db, fmt.Sprintf(`SELECT count(*) FROM "team_member_logs" WHERE team_id = %d`, whTeam)))
 }
+
+// UserErase — one suspended account per call, so every call does the whole erase.
+func TestPerf_UserErase(t *testing.T) {
+	db, svc, probe, _, root, _ := seedGrantVolume(t)
+
+	var ids []uint64
+
+	err := db.Model(&user_service_models.User{}).Where("username LIKE ?", "perfuser8%").Order("id").Limit(10).Pluck("id", &ids).Error
+	if err != nil || len(ids) < 6 {
+		t.Fatalf("former users: %v (%d)", err, len(ids))
+	}
+
+	db.Model(&user_service_models.User{}).Where("id IN ?", ids).Update("is_suspended", true)
+
+	measure(t, probe, "UserErase", func(i int) error {
+		_, err := svc.UserErase(root, connect.NewRequest(&userv1.UserEraseRequest{UserId: ids[i+1]}))
+
+		return err
+	})
+}

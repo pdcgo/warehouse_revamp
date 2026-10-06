@@ -31,6 +31,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
+> | *"can we implement it?"* — the role column, the membership log, erase | ▲ **Q30** three things erase leaves open, found building it: *Erased* is not final, `erased<id>` can be taken first, the photo file stays in storage |
 > | *"okay, remember decision and do it for me"* — Q29 | ✅ **Q29** design_accept of pass 1, both parts as recommended: [the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted). **No question is open in this context** |
 > | *"continue"* — pass 1 prototype built | ▲ **Q29** design_accept: the switcher's *All teams* and the strip (both work in the running app now), and Create Team's Owner (the server ignores it until the backend pass). What accepting it accepted is in [the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted) |
 > | *"i follow your recomendation"* — Q28 | ✅ all five parts: [the-switcher-offers-every-team](./context_decision.md#the-switcher-offers-every-team) · [a-non-member-root-acts-under-a-strip](./context_decision.md#a-non-member-root-acts-under-a-strip) · [the-admin-team-monitors-read-only](./context_decision.md#the-admin-team-monitors-read-only) · [the-switcher-ships-with-the-create-team-form](./context_decision.md#the-switcher-ships-with-the-create-team-form) · Critique 29 deleted. **No question is open in this context** |
@@ -217,7 +218,7 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
 
 ## Question
 
-**None open.** Q3–Q29 are answered and recorded in [context_decision.md](./context_decision.md).
+**One open**, Q30, found building erase. Q3–Q29 are answered and recorded in [context_decision.md](./context_decision.md).
 
 3. ➡ **Moved to [inventory Q12](../inventory/context_clarify.md#question)** (2026-10-02). Who confirms a stock count
    or a loss is inventory's to decide, not the user context's. Its root-team part follows [Q5](#question).
@@ -262,6 +263,26 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
 
 29. ✅ **Answered** (2026-10-06): design_accept of pass 1, both parts —
     [the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted).
+30. **Erase leaves three things open** — found building [erase-keeps-the-row](./context_decision.md#erase-keeps-the-row),
+    which is built to its spec.
+
+    ```mermaid
+    stateDiagram-v2
+      Active --> Suspended : suspend
+      Suspended --> Active : unsuspend
+      Suspended --> Erased : erase
+      Erased --> Active : today, unsuspend and a new password still work
+    ```
+
+    - **a. Is *Erased* final?** The decision's diagram has no way out of it, but the server knows an erased account only
+      by its name. Root can still unsuspend it, set a password, and add it to a team — a live account called
+      `erased57`. **→ Recommend:** a `users.erased_at` column, and refuse unsuspend, a password reset and joining a team
+      once it is set.
+    - **b. May anyone else hold `erased<number>`?** Usernames are lowercase letters and digits, so somebody can be
+      named `erased57` first, and erasing user 57 then fails until that account is renamed. **→ Recommend:** create
+      and rename refuse `erased` followed by digits.
+    - **c. The photo file.** Erase clears the account's link to its photo, but the image stays in document storage at
+      its public address. **→ Recommend:** erase deletes the stored file too.
 
 ---
 
@@ -543,7 +564,7 @@ flowchart LR
 
 # Awaiting
 
-**Nothing asked of you**, except your §General Data line,
+**[Q30](#question)** — what erase leaves open — and your §General Data line,
 [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). Pass 1 passed design_accept on 2026-10-06
 ([the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted)). design_accept passed on 2026-10-05
 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.

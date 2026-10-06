@@ -1733,12 +1733,7 @@
       "failed": "The membership history could not be loaded.",
       "empty": "No one has joined, left or changed role yet."
     },
-    "pending": {
-      "erase": {
-        "label": "Erase Personal Data",
-        "reason": "the server answers that it is not built yet"
-      }
-    }
+    "formerUser": "Former user #{{id}}"
   },
   "inventory": {
     "title": "Inventory",

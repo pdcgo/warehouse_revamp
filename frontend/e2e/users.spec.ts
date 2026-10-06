@@ -313,3 +313,27 @@ test("a user is never deleted: the row offers no Delete", async ({ page }) => {
   await expect(page.getByTestId(`edit-${NEW_USER}`)).toBeVisible();
   await expect(page.getByTestId(`delete-${NEW_USER}`)).toHaveCount(0);
 });
+
+// erase-keeps-the-row: a FORMER user — suspended first — is erased on request. The row stays and reads "Former user
+// #…", the old username is free again, and the account can never sign in. Last, because it ends the account.
+test("UserErase: a suspended account is erased, and its row becomes a former user", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  // Erase is offered only once the account is suspended.
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
+  await expect(page.getByTestId(`erase-${NEW_USER}`)).toHaveCount(0);
+  await page.getByTestId(`suspend-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId(`suspended-${NEW_USER}`)).toBeVisible();
+
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
+  await page.getByTestId(`erase-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+
+  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+  await expect(page.getByTestId("users-table")).toContainText("Former user #");
+
+  await loginExpectingFailure(page, NEW_USER, "otp-recovered-1");
+  await expect(page.getByTestId("login-error")).toBeVisible();
+});

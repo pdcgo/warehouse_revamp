@@ -13,6 +13,7 @@ interleaved: **safe**.
 | --- | --- | --- |
 | `TeamUserUpdate` (add, change) | *(team type from team_service — outside)* → `users` (1, the target) → `user_team_roles` (upsert on `team_id, user_id`) → `team_member_logs` (insert) | the target's role is read **after** the lock, in a fresh statement, so it sees any change committed while waiting. A NEW member's `is_suspended` is read the same way, under the same lock — no second lock |
 | `TeamUserUpdate` (remove) | `users` (1, the target) → `user_team_roles` (delete) → `team_member_logs` (insert) | same check, same lock |
+| `UserErase` | `users` (1, the target) → reads the target's ROOT-team role and suspension → `users` update | the suspend rule, and suspended-only, both judged under the lock — an unsuspend racing it queues, and the erase then refuses |
 | `SuspendUser` | `users` (1, the target) → reads the target's ROOT-team role → `users` update | judged by role under the lock, so the target cannot be made an Administrator between the read and the suspend |
 | `CreateUser` | *(team type — outside)* → new `users` row → new `user_team_roles` row → `team_member_logs` (insert) | a new person cannot be contended; the unique indexes refuse a racing duplicate username or email |
 | `UpdateUser` | `users` (1, update) | a username taken by a racing rename is refused by the unique index on `LOWER(username)`, as `already_exists` |
@@ -26,6 +27,7 @@ Evidence: [`team_user_update_race_test.go`](../../../../backend/services/user_se
 | an Owner never demotes a person Root is promoting | 40 rounds of *the Owner demotes Ani* ‖ *Root promotes Ani* → Ani always ends an Owner; both orders occurred (the demotion landed first in 23) |
 | the lock holds, and the check uses what it read under it | **Interleave: the Owner's lock BLOCKS** until Root commits, then reads *Owner* and is refused |
 | the Administrator never suspends a person Root is making an Administrator | **Interleave: the suspend BLOCKS** until Root commits, then reads *Administrator* and is refused |
+| an erase never blanks an account that was just unsuspended | **Interleave: the erase BLOCKS** until the unsuspend commits, then reads *not suspended* and refuses |
 | a person being suspended is never added to a team ([a-suspended-user-is-never-picked](../../../../docs/business/user/context_decision.md#a-suspended-user-is-never-picked)) | **Interleave: the add BLOCKS** (309 ms) until the suspend commits, then reads *suspended* and is refused. 40 rounds of *Root suspends Ani* ‖ *Root adds Ani* → no deadlock, no unexpected error (the suspend landed first in 39) |
 
 **Not proved here:** the CALLER's own role is the interceptor's cached decision, read before the transaction. An

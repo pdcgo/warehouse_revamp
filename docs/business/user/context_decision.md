@@ -394,6 +394,14 @@ stateDiagram-v2
 | what a record shows | *"Former user #57"* |
 | undo | none, so the screen confirms it, as every destructive action does |
 
+> 🔄 *(2026-10-06, built)* `UserErase` (`user_v1/user_erase.go`): under the `users`-row lock `SuspendUser` takes, by the
+> people who may suspend the account (nobody themselves, a Root never, an Administrator only by Root), and only while
+> it is suspended. Blanks the name, email, phone and photo link, clears the password and stamps
+> `last_password_reset`; the username becomes `erased<id>`; memberships stay. The screen shows such a person as
+> *"Former user #57"* — `UserItem` and the membership history (`lib/users.ts` `formerUserId`). Three things the spec
+> does not settle are [Q30](./context_clarify.md#question): whether *Erased* is final, the `erased<id>` name, and the
+> photo file.
+
 ## only-root-and-the-administrator-suspend
 
 > `context.md` §Suspend Users 1–4 *(owner, 2026-10-02)*: *"no user can be deleted in our system. we just do suspend."* ·

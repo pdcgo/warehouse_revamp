@@ -3,7 +3,7 @@
 **Pass:** design_accept **passed** 2026-10-05 ([the-user-prototype-is-accepted](../../business/user/context_decision.md#the-user-prototype-is-accepted)).
 **Next: backend analysis and the build**, in the decided order ([rename-the-roles-before-the-grant-checks](../../business/user/context_decision.md#rename-the-roles-before-the-grant-checks)):
 1a add `admin_owner` and `admin_administrator`, 1b rename four roles, then the user_service rules, then the other services. Before it: business analysis on the owner's [user/context.md](../../business/user/context.md), then the
-Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **none open**. Q3–Q29 are
+Storybook prototype. Questions: [context_clarify.md](../../business/user/context_clarify.md), **one open** (Q30, what erase leaves open). Q3–Q29 are
 answered, Q29 on 2026-10-06. Decisions: [context_decision.md](../../business/user/context_decision.md) — **63 recorded, 3
 of them superseded**. One question was re-routed: who confirms a stock count is
 [inventory Q12](../../business/inventory/context_clarify.md#question).
@@ -20,7 +20,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 
 | | |
 | --- | --- |
-| contract (additive) | `UserList` MEMBERSHIP slice (built 2026-10-06: one query per page, the role in the scoped team, the root team at `team_id = 0`; 3 queries 2.8 ms at 100 rows — the Users screen's role column mark is gone) · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` (built) · `UserErase` · `TeamMemberLogList` (built 2026-10-06) · `DeleteUser` removed. Placeholder `user_erase.go` answers `Unimplemented`, with a test |
+| contract (additive) | `UserList` MEMBERSHIP slice (built 2026-10-06: one query per page, the role in the scoped team, the root team at `team_id = 0`; 3 queries 2.8 ms at 100 rows — the Users screen's role column mark is gone) · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` (built) · `UserErase` · `TeamMemberLogList` (built 2026-10-06) · `DeleteUser` removed. `UserErase` built 2026-10-06 — no placeholders left |
 | screen rules | `lib/roles.ts`: `roleRank`, `managesMembers`, `grantableRoles`, `canManageMember`, `canSuspendUser`, `canEraseUser`, `defaultGrant` (no role preselected in the root team) |
 | Users page | tabs: My Team User · Membership History · All User (Root and the Administrator only). Role column, rank-gated ⋯ menu, Change Role dialog, Erase, no Delete. Add Member only for member managers. **No New User** (removed 2026-10-05, [an-account-is-made-only-from-the-member-search](../../business/user/context_decision.md#an-account-is-made-only-from-the-member-search)) |
 | Add Member popup | `features/users/AddMemberDialog.tsx` rewritten: search list → Select Role / Change Role / Create and Add. The only way an account is made. Its create form requires a name ([only-name-and-username-are-required](../../business/user/context_decision.md#only-name-and-username-are-required)) |
@@ -51,7 +51,7 @@ Grouped by what changes, in the decided order ([rename-the-roles-before-the-gran
 | 5 | **One account per phone or email**: a unique phone index (resolve stored duplicates first); create and edit refuse a taken one | [a-phone-or-email-belongs-to-one-account](../../business/user/context_decision.md#a-phone-or-email-belongs-to-one-account) |
 | 6 | ✅ **Built** (2026-10-05): `checkSuspend`, under the same lock; the Users screen's *who may act on whom* mark is retired. **Suspend by role, not id**: refuse a Root target always, an Administrator target unless the caller is Root. Suspend offered only where allowed | [only-root-and-the-administrator-suspend](../../business/user/context_decision.md#only-root-and-the-administrator-suspend) |
 | 7 | ✅ **Built** (2026-10-06): the RPC, its messages, handler and test removed. **No delete**: remove `DeleteUser`, its handler, test, and the Users screen's Delete action | [a-user-is-never-deleted](../../business/user/context_decision.md#a-user-is-never-deleted) |
-| 8 | **Erase**: blank name, email, phone, photo, password; username → `erased<id>`; suspended accounts only; Root and the Administrator | [erase-keeps-the-row](../../business/user/context_decision.md#erase-keeps-the-row) |
+| 8 | ✅ **Built** (2026-10-06): `UserErase` under the `users`-row lock, by the suspend rule (`checkSuspend`), suspended accounts only; blanks name, email, phone, photo link and password, stamps `last_password_reset`, username → `erased<id>`, memberships kept. Frontend: `lib/users.ts` `formerUserId`; `UserItem` and the history show *Former user #57*. The Users screen has **no pending marks left** (`pages/users/pending.ts` deleted). Interleave: an erase waits for an unsuspend and refuses. 3 statements, 1.1 ms. e2e: `users.spec` suspends, erases, and finds *Former user*. **Open: [Q30](../../business/user/context_clarify.md#question)** — *Erased* is not final, `erased<id>` can be squatted, the photo file stays | [erase-keeps-the-row](../../business/user/context_decision.md#erase-keeps-the-row) |
 | 9 | ✅ **Built** (2026-10-06); the Edit dialog's mark retired. **Editable username**: `UpdateUser` takes an optional username, same rule as create, still unique; user 1 keeps `root` | [the-username-is-editable](../../business/user/context_decision.md#the-username-is-editable) |
 | 10 | **Dev root**: migration `00006` (00005 is the membership log) sets `root1234` and `root@pdc.com` only while root's password is empty / email is the old one; rewrite the FAQ, `san seed root`'s description and docs/tools/san.md in the same commit | [the-migration-writes-the-dev-root-password](../../business/user/context_decision.md#the-migration-writes-the-dev-root-password) · [dev-root-password-is-root1234](../../business/user/context_decision.md#dev-root-password-is-root1234) |
 | 11 | **`tools/san` adds and removes a Root**; it refuses to remove the last one (confirmed, Q20c) | [root-can-be-several](../../business/user/context_decision.md#root-can-be-several) |
@@ -70,4 +70,5 @@ Grouped by what changes, in the decided order ([rename-the-roles-before-the-gran
 | | |
 | --- | --- |
 | who confirms a count or a loss | [inventory Q12](../../business/inventory/context_clarify.md#question) |
+| whether *Erased* is final, the `erased<id>` name, the photo file | [user Q30](../../business/user/context_clarify.md#question) |
 

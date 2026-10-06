@@ -23,7 +23,6 @@ import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { User } from "../../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../../../features/auth/AuthContext";
 import { useTeam } from "../../../features/team/TeamContext";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { UserItem } from "../../../components/entity/UserItem";
@@ -42,7 +41,6 @@ import { EditUserDialog } from "./EditUserDialog";
 import { AdminResetPasswordDialog } from "./AdminResetPasswordDialog";
 import { ChangeRoleDialog } from "./ChangeRoleDialog";
 import { useEraseUser, useRemoveTeamMember, useSuspendUser, useUsers } from "../../../features/users/queries";
-import { USERS_PENDING } from "../pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -379,7 +377,6 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
                                   >
                                     <Icon as={Eraser} boxSize="4" />
                                     {t("users.action.erase")}
-                                    <NotImplemented list={USERS_PENDING} id="erase" />
                                   </Menu.Item>
                                 )}
                               </Menu.Content>

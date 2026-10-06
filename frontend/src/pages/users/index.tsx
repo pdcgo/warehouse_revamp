@@ -4,8 +4,6 @@ import { Badge, Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin, managesMembers } from "../../lib/roles";
 import { AddMemberDialog } from "../../features/users/AddMemberDialog";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
-import { USERS_PENDING } from "./pending";
 import { MemberLog } from "./components/MemberLog";
 import { UsersTable } from "./components/UsersTable";
 
@@ -49,8 +47,6 @@ export function UsersPage() {
         <Spacer />
         {manager && teamScoped && <AddMemberDialog />}
       </Flex>
-
-      <NotImplementedSummary list={USERS_PENDING} />
 
       {/* lazyMount + unmountOnExit: only the visible tab is mounted, so exactly one list is fetched and
           the shared `users-table` testid is never duplicated. The history loads only when opened. */}

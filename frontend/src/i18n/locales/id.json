@@ -1728,12 +1728,7 @@
       "failed": "Riwayat keanggotaan gagal dimuat.",
       "empty": "Belum ada yang bergabung, keluar, atau berganti peran."
     },
-    "pending": {
-      "erase": {
-        "label": "Hapus Data Pribadi",
-        "reason": "server menjawab bahwa fitur ini belum dibangun"
-      }
-    }
+    "formerUser": "Mantan pengguna #{{id}}"
   },
   "inventory": {
     "title": "Inventaris",

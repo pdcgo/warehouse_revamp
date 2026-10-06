@@ -11,6 +11,7 @@ import { Pagination } from "../../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { formatUnixDateTime } from "../../../lib/datetime";
 import { roleLabel } from "../../../lib/roles";
+import { formerUserId } from "../../../lib/users";
 
 const PAGE_SIZE = 10;
 
@@ -34,7 +35,11 @@ export function MemberLog({ teamId, teamType }: { teamId: bigint; teamType?: Tea
     if (id === 0n) return agent || t("users.log.system");
     const person = actors.data?.get(id.toString());
 
-    return person ? person.username : t("users.log.userRef", { id: id.toString() });
+    if (!person) return t("users.log.userRef", { id: id.toString() });
+
+    const formerId = formerUserId(person);
+
+    return formerId ? t("users.formerUser", { id: formerId }) : person.username;
   }
 
   function sentence(e: TeamMemberLogEntry): string {
