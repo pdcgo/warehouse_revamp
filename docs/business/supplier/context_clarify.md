@@ -5,13 +5,10 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 
 | | |
 | --- | --- |
-| ✅ answered in chat (2026-10-06) | [Q3](#question) — another team sees everything: the supplier, its stores and its products, **against my recommendation**: [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier) |
-| 🆕 +1 | [Q9](#question) — what *its products* means: which restocks count, whether the price shows, and whether the discover search finds a product |
-| 🔄 your edit (2026-10-06, third) | §General 3 and 4, and §What Frontend Expected |
-| ✅ answered by it | [Q1](#question) — B uses A's row, no copy, **against my recommendation**: [a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier) · [only-a-selling-team-has-suppliers](./context_decision.md#only-a-selling-team-has-suppliers) · [manage-and-discover-are-two-pages](./context_decision.md#manage-and-discover-are-two-pages) |
-| 🔄 re-opened | [Q2](#question) — with A's row on B's restock, A's edit and delete reach B, and B's restock form has to find A's supplier |
-| 🔄 revised | [Q6](#question) — *"frontend use this service"* reads as the `SupplierService` the pages call |
-| ✅ earlier | [Q4](#question) the code stays · [Q5](#question) a website is a `custom` marketplace |
+| 🔄 your fourth edit (2026-10-06) | `code` removed · the channels table keeps the name `supplier_channels`, with `channel_type` · 🆕 `supplier_channel_products` |
+| ✅ recorded | [the-supplier-has-no-code](./context_decision.md#the-supplier-has-no-code) — reverses Q4's earlier answer · [products-hang-off-a-channel](./context_decision.md#products-hang-off-a-channel) — closes [Q9](#question) · [linking-products-is-deferred](./context_decision.md#linking-products-is-deferred) — in chat: *"we talk later … focus basic crud first"* |
+| 🎯 focus | **Basic CRUD of suppliers and channels.** Three questions decide its shape — [Q8](#question), [Q7](#question), [Q6](#question) — and [Q2a](#question) decides its delete. The linking is [parked](#parked--talk-later) |
+| ✅ earlier | [Q1](#question) B uses A's row · [Q3](#question) another team sees everything · [Q5](#question) a website is a `custom` channel |
 
 ## What already exists
 
@@ -19,71 +16,64 @@ Built in `inventory_service` (#103, #120): the manage page, the supplier detail 
 
 | your doc | built | |
 | --- | --- | --- |
-| §General 1 — create · update · delete · use in restock | ✅ — but only the team's **own** suppliers on its restock | ✅ |
-| §General 2 — discover other teams' suppliers | every read filters by the caller's team. `SupplierByIds` crosses teams only for an id you already hold | ❌ |
-| §General 3 — use another team's supplier on my restock | [restock_request_create.go:16](../../../backend/services/inventory_service/inventory_v1/restock_request_create.go#L16) refuses it | ❌ |
-| §General 4 — only a selling team has suppliers | `SupplierCreate` writes into any team — Root and the Administrator can create one in a warehouse team | ⚠ |
-| a supplier's products ([decided](./context_decision.md#another-team-sees-everything-of-a-supplier)) | the data exists — every restock line keeps product, sku, name and price, under a restock naming the supplier — but nothing reads it per supplier | ❌ |
-| page 1 — manage | `/inventories/suppliers` | ✅ |
-| page 2 — discover | — | ❌ |
-| §Table Must Have | the fields, plus `province`, `city`, `deleted` ([Q8](#question)) · channels, not marketplaces ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) | 🔄 |
+| §General 1 — create · update · delete | ✅ — `SupplierCreate` · `SupplierUpdate` · `SupplierDelete` (soft) | ✅ |
+| §General 1, 3 — use in restock, any team's | own team's only — [restock_request_create.go:16](../../../backend/services/inventory_service/inventory_v1/restock_request_create.go#L16) | ❌ |
+| §General 2 — discover | every read filters by the caller's team | ❌ |
+| §General 4 — only a selling team | `SupplierCreate` writes into any team | ⚠ |
+| `suppliers` | `name`, `contact`, `address`, `description` ✅ · `code` — to drop · `province`, `city`, `deleted` — not on your list ([Q8](#question)) | 🔄 |
+| `supplier_channels` | the name matches · `type` online/offline, `marketplace`, `url`, `contact`, `location` → `channel_type`, `uri`, `description` ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) | 🔄 |
+| `supplier_channel_products` | — | [parked](#parked--talk-later) |
 
 ## Critique
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **A's row on B's restock means A's edit and delete reach B.** A rename changes the name on B's past restocks. A delete today hides the row from every read, so it disappears from B's picker while B still buys there. | **Accept it, with delete kept soft** — [Q2a](#question). |
-| **2** | **How B's restock form finds A's supplier is not said.** The discover page *finds* it, but the restock form's picker is where it is *used*, and today that picker shows B's own only. | **The picker searches every selling team's, B's own first** — [Q2b](#question). |
-| **3** | ✅ **Decided — [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier).** 🆕 **But *products* has no table behind it.** The only link between a supplier and a product is a restock line, and a line carries a price and a quantity as well as the product. So *"see the products"* leaves three things unsaid: which restocks count, whether the price comes with the product, and whether a team can search by product. | **Only accepted restocks · the last price per unit, without quantities · the search reaches product names** — [Q9](#question). |
-| **4** | ***Supplier Service* — your architecture doc puts the supplier in `product_service`** — see [where-the-supplier-lives](#where-the-supplier-lives). | **Stay in `inventory_service`** — [Q6](#question). |
-| **5** | **`marketplace_type` is a second list of marketplaces** — see [two-lists-of-marketplaces](#two-lists-of-marketplaces). | **One list, with `custom` as its *Other*** — [Q7](#question). |
-| **6** | **Three built fields are not on your list** — `province`, `city`, `deleted`. | **Keep all three** — [Q8](#question). |
+| **1** | **A's row on B's restock means A's edit and delete reach B.** A rename changes the name on B's past restocks; a delete takes it out of B's picker while B still buys there. | **Accept it, with delete kept soft** — [Q2a](#question). |
+| **2** | **How B's restock form finds A's supplier is not said.** Not CRUD — it comes with §General 3. | **The picker searches every selling team's, B's own first** — [Q2b](#question). |
+| **3** | ***Supplier Service* — your architecture doc puts the supplier in `product_service`** — see [where-the-supplier-lives](#where-the-supplier-lives). It matters NOW: the CRUD pass rewrites the tables, and it should do so in the service they will stay in. | **Stay in `inventory_service`** — [Q6](#question). |
+| **4** | **`channel_type` is a second list of marketplaces** — see [two-lists-of-marketplaces](#two-lists-of-marketplaces). The CRUD pass writes it into the proto. | **One list, with `custom` as its *Other*** — [Q7](#question). |
+| **5** | **Three built fields are not on your list** — `province`, `city`, `deleted`. The CRUD pass's migration either drops them or keeps them. | **Keep all three** — [Q8](#question). |
 
 ## Recommendation
 
-**Q2 first** — it decides what the restock form's picker shows and what a delete does to another team. The rest of the
-build follows from the three decisions already made: the discover page, opening the reads across teams, relaxing the
-restock's check, and enforcing §General 4.
+**Answer Q8, Q7 and Q6, and the CRUD pass can start** — they fix its table, its proto and its home. Q2a fixes what its
+delete does. Q2b waits for the restock side of §General 3.
 
 ## Proposed Design
 
-### The jobs
+### The CRUD pass — what changes from the build
 
-| who | does | how often |
-| --- | --- | --- |
-| selling Owner, Admin | add a vendor · fix its details · delete one the team stopped using | weekly |
-| selling Owner, Admin, CS | look for a vendor other teams already buy from — or for *who sells this item* | weekly |
-| selling CS | pick the vendor on a restock request — ours or another team's | daily |
-| warehouse crew | read the vendor's name on the delivery in their hands | daily |
+| | built | becomes | why |
+| --- | --- | --- | --- |
+| `suppliers.code` | required, unique per team | dropped | [the-supplier-has-no-code](./context_decision.md#the-supplier-has-no-code) |
+| `suppliers.province`, `city` | optional | kept, if Q8 | [Q8](#question) |
+| `suppliers.deleted` | soft delete | kept, if Q8 and Q2a | [Q2a](#question), [Q8](#question) |
+| `SupplierCreate` | any team | refuses a team that is not SELLING | [only-a-selling-team-has-suppliers](./context_decision.md#only-a-selling-team-has-suppliers) |
+| `supplier_channels.type` | online · offline | dropped — every channel is a store | [the-supplier-lists-only-its-online-stores](./context_decision.md#the-supplier-lists-only-its-online-stores) |
+| `supplier_channels.marketplace` | the shared list of 7 | `channel_type` — which list is Q7 | [Q7](#question) |
+| `supplier_channels.url` | optional | `uri` | decided |
+| `supplier_channels.contact`, `location` | offline only | dropped — folded into the supplier on migration | decided |
+| `supplier_channels.description` | — | 🆕 | decided |
 
-### Using another team's supplier
+Frontend-first, as every pass is:
 
 ```mermaid
-sequenceDiagram
-  actor CS as team B's CS
-  participant P as restock form picker
-  participant S as SupplierService
-  participant R as RestockRequestCreate
-  CS->>P: types "melati"
-  P->>S: SupplierList scope ALL, q melati, own first
-  S-->>P: B's own matches, then A's Toko Melati with team A's name
-  CS->>P: picks A's Toko Melati
-  P->>R: supplier_id = A's row
-  R->>R: a live supplier of a selling team? yes
-  R-->>CS: restock saved, naming A's supplier
+flowchart LR
+  Q["Q8, Q7, Q6 answered"] --> P["prototype in Storybook — the manage page, the supplier form, the channel form, the detail page"]
+  P --> A{"design_accept"}
+  A -->|"yes"| B["migration, proto, RPCs, a unit test per RPC, the audits"]
+  A -->|"no"| P
 ```
 
-### The data
+### The data — after the CRUD pass
 
 ```mermaid
 erDiagram
-  suppliers ||--o{ supplier_marketplaces : "sells through"
-  suppliers ||--o{ restock_requests : "named on, by any selling team"
+  suppliers ||--o{ supplier_channels : "sells through"
   suppliers {
     bigint id PK
     bigint team_id "the owning team, always a selling team"
     text name
-    text code "unique per team among live suppliers"
     text contact
     text province "Q8"
     text city "Q8"
@@ -93,65 +83,39 @@ erDiagram
     timestamptz created_at
     timestamptz updated_at
   }
-  supplier_marketplaces {
+  supplier_channels {
     bigint id PK
     bigint supplier_id FK
-    text marketplace_type "Q7"
+    text channel_type "Q7"
     text name
     text uri
     text description
     timestamptz created_at
     timestamptz updated_at
   }
-  restock_requests ||--o{ restock_request_items : "lines"
-  restock_requests {
-    bigint id PK
-    bigint team_id "the requesting team"
-    bigint supplier_id FK "any selling team's supplier"
-  }
-  restock_request_items {
-    bigint id PK
-    bigint product_id "opaque, product_service"
-    text sku "snapshot"
-    text name "snapshot - what the discover search reads"
-    bigint price "per unit, whole rupiah"
-    bigint quantity
-  }
 ```
 
-**A supplier's products are DERIVED, not stored** ([decided](./context_decision.md#another-team-sees-everything-of-a-supplier)) —
-the distinct products on the lines of restocks that named it:
-
-```mermaid
-flowchart LR
-  S["supplier X"] --> R["restocks naming X — every team, accepted only (Q9a)"]
-  R --> L["their lines"]
-  L --> P["one row per product — sku, name, owning team, last price per unit (Q9b)"]
-```
-
-### The contract
+### The contract — the CRUD pass
 
 | RPC | who | change |
 | --- | --- | --- |
-| `SupplierCreate` | selling Owner, Admin | + refuses a team that is not SELLING |
-| `SupplierUpdate` · `SupplierDelete` | the **owning** team's Owner, Admin | none |
-| `SupplierList` | the team | + filter `scope`: `MINE` (manage page) · `OTHERS` (discover page) · `ALL`, own first (the restock picker). Every row carries its `team_id`; the team's name comes from `team_service`, as elsewhere |
-| `SupplierDetail` · `SupplierMarketplaceList` | the team | + answer for another team's supplier, instead of `NotFound` |
-| `SupplierProductList` | any selling role | 🆕 paginated, `filter.supplier_id` — one row per product: sku, name, the team that bought it, and (Q9b) the last price per unit with its date |
-| `SupplierList` `q` | | + matches a product name on the supplier's restock lines (Q9c) |
-| `SupplierMarketplace*` writes | the owning team's Owner, Admin | replaces `SupplierChannel*` ([decided](./context_decision.md#the-supplier-lists-only-its-online-stores)) |
-| `RestockRequestCreate` · `RestockRequestUpdate` | as today | the supplier check: a live supplier of **any selling team** |
+| `SupplierCreate` · `SupplierUpdate` | selling Owner, Admin | − `code` · Create refuses a non-selling team |
+| `SupplierDelete` | selling Owner, Admin | none — soft, if Q2a |
+| `SupplierList` · `SupplierDetail` · `SupplierByIds` | as today | − `code`, and the code sort |
+| `SupplierChannelCreate` · `Update` | selling Owner, Admin | `channel_type`, `name`, `uri`, `description` — − `type`, `contact`, `location` |
+| `SupplierChannelList` · `Delete` | as today | none |
 
-### The screens
+**After the CRUD pass, not in it:** the discover page and the cross-team reads
+([manage-and-discover-are-two-pages](./context_decision.md#manage-and-discover-are-two-pages)), the restock's
+any-team check ([a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier)),
+and everything [parked](#parked--talk-later).
 
-- **Suppliers** (`/inventories/suppliers`) — as built, my team's.
-- **Discover Suppliers** (`/inventories/suppliers/discover`) — a search that finds a supplier by its name or by a
-  product bought from it, the marketplace filter, and rows of name · owning team · stores · city · how many products.
-  A row opens the detail page.
-- **Supplier detail** — another team's supplier opens **read-only**: no Edit or Delete, and the owning team is shown.
-  A new **Products** section lists what has been bought from it, paginated, for my team's supplier and another's alike.
-- **`SupplierSelect`** in the restock form — two groups, *Our suppliers* then *Other teams*, each row of the second
-  carrying its team.
+### The screens — the CRUD pass
+
+- **Suppliers** (`/inventories/suppliers`) — the Code column goes; rows are keyed by name.
+- **Supplier form** — name, contact, address, description (and province, city, if Q8). No code.
+- **Channel form** — channel type, name, link, description. No online/offline switch, no contact or location.
+- **`SupplierSelect`** — shows and searches the name.
 
 ## Question
 
@@ -159,59 +123,61 @@ flowchart LR
    [a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier).
    Kept as a line so the numbers hold.
 
-2. 🔄 **Re-opened by Q1's answer: what reaches B from A, and how B finds it.** Critiques 1 and 2.
+2. **What reaches B from A, and how B finds it.** Critiques 1 and 2.
 
    | | the question | → Recommend |
    | --- | --- | --- |
-   | **2a** | A's edit and delete reach B's restocks — accept? | **Accept, with delete soft.** Only A's Owner and Admin (and Root, the Administrator) edit. A delete takes it out of every picker and the discover page, and every restock that named it keeps showing it — `SupplierByIds` already returns deleted rows. Refusing A's delete while B still buys there would mean tracking who uses what across teams, for a rare case. B can always create its own |
-   | **2b** | how does B's restock form find A's supplier? | **The picker searches every selling team's live suppliers, B's own listed first**, another team's with that team's name. The discover page is for looking before buying; the picker is where the buying happens, and B should not have to go to another page first. The alternative, B saving a discovered supplier to a list, needs a table of its own |
+   | **2a** | A's edit and delete reach B's restocks — accept? | **Accept, with delete soft.** Only A's Owner and Admin (and Root, the Administrator) edit. A delete takes it out of every picker and the discover page, and every restock that named it keeps showing it — `SupplierByIds` already returns deleted rows. Refusing A's delete while B still buys there would mean tracking who uses what across teams, for a rare case |
+   | **2b** | how does B's restock form find A's supplier? | **The picker searches every selling team's live suppliers, B's own listed first**, another team's with that team's name. B should not have to visit the discover page before every restock. *Not CRUD — it can wait for the restock side of §General 3* |
 
-   *What breaks?* A could rename a row into a different vendor, and B's past restocks would follow it. I think that
-   is misuse, not a design case. If you disagree, the restock would have to keep its own copy of the name.
+3. ✅ **Answered 2026-10-06 — another team sees everything**:
+   [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier).
+   Kept as a line so the numbers hold.
 
-3. ✅ **Answered 2026-10-06 — another team sees everything: the supplier, its stores and its products**:
-   [another-team-sees-everything-of-a-supplier](./context_decision.md#another-team-sees-everything-of-a-supplier). What
-   *products* means is [Q9](#question). Kept as a line so the numbers hold.
+4. ✅ **Answered by your fourth edit — no code**: [the-supplier-has-no-code](./context_decision.md#the-supplier-has-no-code),
+   which reverses the earlier *keep it*. Kept as a line so the numbers hold.
 
-4. ✅ **Answered by your edit** — the code stays: [the-supplier-keeps-its-code](./context_decision.md#the-supplier-keeps-its-code).
-
-5. ✅ **Answered by your edit** — a website is a `custom` marketplace on a supplier:
+5. ✅ **Answered by your edit** — a website is a `custom` channel on a supplier:
    [the-supplier-lists-only-its-online-stores](./context_decision.md#the-supplier-lists-only-its-online-stores).
 
 6. **Does *Supplier Service* mean its own backend service, or the `SupplierService` already in `inventory_service`?**
-   Critique 4.
+   Critique 3.
    **→ Recommend: the one already built.** Your §What Frontend Expected says the two pages *"use this service"* — what
    a page calls is the RPC service, and that is `SupplierService`. Staying keeps `restock_requests.supplier_id` a real
-   foreign key, and nothing in your doc needs a separate service. Moving costs two tables and that foreign key.
+   foreign key, and nothing in your doc needs a separate service. Moving costs two tables and that foreign key — and
+   if it is going to move, the CRUD pass is the cheapest moment, because it rewrites the tables anyway.
 
-7. **Is `marketplace_type` its own list, or the shared `Marketplace` list?** Critique 5.
+7. **Is `channel_type` its own list, or the shared `Marketplace` list?** Critique 4.
    **→ Recommend: the shared list** (`warehouse.marketplace.v1`), with your `custom` as its *Other*. A platform is
    then added once for shops and suppliers alike, and a team can buy from a Blibli or Bukalapak store as easily as it
-   sells on one. If you are deliberately limiting supplier stores to the four, say so and I will record that.
+   sells on one. If you are deliberately limiting supplier channels to the four, say so and I will record that.
 
-8. **Three built fields are not on your list: `province`, `city`, `deleted`. Drop them?** Critique 6.
+8. **Three built fields are not on your list: `province`, `city`, `deleted`. Drop them?** Critique 5.
    **→ Recommend: keep all three.** `deleted` is what makes [Q2a](#question)'s soft delete possible: restocks and
    batches name the supplier forever, so a hard delete would orphan them — and now across teams. `province` and `city`
-   are what the discover page filters on — *"a vendor in Bandung"* cannot be filtered out of a free-text address.
+   are what the discover page will filter on — *"a vendor in Bandung"* cannot be filtered out of a free-text address.
 
-9. 🆕 **What are a supplier's *products*?** Critique 3 — opened by Q3's answer. A supplier's products come from
-   restock lines, and a line carries more than the product.
+9. ✅ **Closed by your fourth edit** — products are stored per channel, not derived from restocks:
+   [products-hang-off-a-channel](./context_decision.md#products-hang-off-a-channel). What was left of it is
+   [parked](#parked--talk-later). Kept as a line so the numbers hold.
 
-   | | the question | → Recommend |
-   | --- | --- | --- |
-   | **9a** | which restocks count? | **Only accepted ones.** A cancelled or lost restock proves nothing about the supplier — what *arrived* is what it actually supplies |
-   | **9b** | does *"see all"* include the price and the quantity? | **The last price per unit and its date, and no quantities.** 🔄 Your *"see all"* says the selling teams are open with each other, so I am dropping my *prices are private*. The price is what tells B whether a source is worth it, which is the point of discovering it. A quantity only tells B how much A sells, which says nothing about the supplier |
-   | **9c** | can the discover search find a supplier by a product? | **Yes.** B usually starts with *"who sells this item?"*, not with a vendor's name. The line's own name snapshot makes this a search inside `inventory_service`, with no call to `product_service` |
+## Parked — talk later
 
-   *What breaks?* The price is A's buying price for A's product, and a supplier's price moves — so the date beside it
-   is what keeps a year-old price from reading as today's.
+[linking-products-is-deferred](./context_decision.md#linking-products-is-deferred). **Not counted as open.** Written
+down only so the later conversation starts from here:
+
+| | the point |
+| --- | --- |
+| who writes a link | the owning team, by hand — or a restock line, automatically, once a product arrives from that channel? |
+| whose product | `product_id` is a product in one team's catalogue. When team B restocks a product from A's channel, is it B's product that is linked, A's, or both? |
+| what the discover page shows | the product's name and picture — and a price, which the link table does not have? |
+| search by product | *"who sells this item?"* — does the discover search reach the linked products? |
+| a restock's channel | a restock names a supplier, not a channel. Linking per channel may need the restock to say which store it was bought from |
 
 # Contradiction
 
-**Re-examined after the third edit: nothing new in your doc.** §General 3 changes the build's rule that a team sees only
-its own suppliers; that is recorded as a decision with the sites it changes
-([a-team-restocks-from-another-teams-supplier](./context_decision.md#a-team-restocks-from-another-teams-supplier)), not a
-contradiction. Three stand from before.
+**Re-examined after the fourth edit:** nothing new. `code` and `supplier_channel_products` each replace a decision, and
+both are recorded as decisions rather than contradictions. Three stand from before.
 
 ## where-the-supplier-lives
 
@@ -243,8 +209,8 @@ flowchart LR
 
 The build has one: `restock_requests.supplier_id`, copied onto every batch received from it.
 **→ Recommend:** `restocks.supplier_id`, one supplier per restock, because one parcel has one sender. Whether it is
-required, and whether a one-off product link goes on the restock line, are restock.md's to answer. They move to its
-clarify when that doc gets its pass.
+required, and whether it should name a channel as well ([Parked](#parked--talk-later)), are restock.md's to answer.
+They move to its clarify when that doc gets its pass.
 
 ```mermaid
 flowchart LR
@@ -257,7 +223,7 @@ flowchart LR
 
 | where | says |
 | --- | --- |
-| [context.md](./context.md) §Table Must Have 2 | `marketplace_type` — `shopee` · `lazada` · `tiktok` · `tokopedia` · `custom` |
+| [context.md](./context.md) §Table Must Have 2 | `channel_type` — `shopee` · `lazada` · `tiktok` · `tokopedia` · `custom` |
 | [a-shop-is-a-name-a-code-and-a-marketplace](../shop/context_decision.md#a-shop-is-a-name-a-code-and-a-marketplace) | one list of seven, *"shared with supplier channels"* — adds Blibli and Bukalapak, and calls the rest *Other* |
 
 **→ Recommend:** one list ([Q7](#question)). Two lists drift: a platform added for shops is missing for suppliers,
@@ -266,6 +232,6 @@ and *Other* and `custom` become two words for one thing.
 ```mermaid
 flowchart LR
   E["warehouse.marketplace.v1 — 7 values"] --> SH["shops"]
-  E --> SU["supplier stores — today"]
-  N["your marketplace_type — 5 values"] -.->|"a second list"| SU
+  E --> SU["supplier channels — today"]
+  N["your channel_type — 5 values"] -.->|"a second list"| SU
 ```

@@ -6,14 +6,19 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 
 | decision | says | from |
 | --- | --- | --- |
-| [the-supplier-keeps-its-code](#the-supplier-keeps-its-code) | a supplier is one team's row: name, code, contact, address, description | your §Table Must Have edit, 2026-10-06 — answers Q4, against my *drop `code`* |
-| [the-supplier-lists-only-its-online-stores](#the-supplier-lists-only-its-online-stores) | `supplier_marketplaces` replace `supplier_channels`; a physical vendor is reached through the supplier's own contact and address | the same edit — answers Q5 |
+| ⛔ [reversed-the-supplier-keeps-its-code](#reversed-the-supplier-keeps-its-code) | ~~a supplier carries a code~~ — reversed by [the-supplier-has-no-code](#the-supplier-has-no-code) | your §Table Must Have edit, 2026-10-06 |
+| [the-supplier-lists-only-its-online-stores](#the-supplier-lists-only-its-online-stores) | every `supplier_channels` row is an online store, typed by `channel_type`; a physical vendor is reached through the supplier's own contact and address | the same edit — answers Q5 · 🔄 table name settled by your fourth edit |
 | [a-team-restocks-from-another-teams-supplier](#a-team-restocks-from-another-teams-supplier) | team B names team A's supplier on B's own restock — one row per vendor, no copy | your §General 3, 2026-10-06 — answers Q1, against my *copy* |
 | [only-a-selling-team-has-suppliers](#only-a-selling-team-has-suppliers) | a supplier's `team_id` is always a selling team | your §General 4, 2026-10-06 |
 | [manage-and-discover-are-two-pages](#manage-and-discover-are-two-pages) | one page manages my team's suppliers, another searches every other team's | your §What Frontend Expected, 2026-10-06 |
-| [another-team-sees-everything-of-a-supplier](#another-team-sees-everything-of-a-supplier) | every selling team sees a supplier's record, its stores, and the products bought from it | in chat, 2026-10-06 — answers Q3, against my *never their purchases* |
+| [another-team-sees-everything-of-a-supplier](#another-team-sees-everything-of-a-supplier) | every selling team sees a supplier's record, its channels, and its products | in chat, 2026-10-06 — answers Q3, against my *never their purchases* |
+| [the-supplier-has-no-code](#the-supplier-has-no-code) | `suppliers` has no `code` | your fourth edit, 2026-10-06 — reverses [reversed-the-supplier-keeps-its-code](#reversed-the-supplier-keeps-its-code) |
+| [products-hang-off-a-channel](#products-hang-off-a-channel) | a supplier's products are stored, one row per product per channel — not derived from restocks | your fourth edit, 2026-10-06 — closes Q9 |
+| [linking-products-is-deferred](#linking-products-is-deferred) | how a product gets linked to a channel is talked about later; the next pass is basic CRUD | in chat, 2026-10-06 |
 
-## the-supplier-keeps-its-code
+## reversed-the-supplier-keeps-its-code
+
+⛔ **Reversed 2026-10-06** by [the-supplier-has-no-code](#the-supplier-has-no-code) — your next edit removed `code`. Renamed per RULE 12; kept below as it was decided.
 
 > Owner, in [context.md](./context.md) §Table Must Have *(2026-10-06)*: `suppliers` — `id`, `team_id`, `name`, `code`,
 > `contact`, `address`, `description`, `updated_at`, `created_at`. It replaces the first draft's `created_by_team_id`.
@@ -45,6 +50,8 @@ on your list — `province`, `city`, `deleted` — and stay until [Q8](./context
 Whether another team USES this row or copies it is still [Q1](./context_clarify.md#question).
 
 ## the-supplier-lists-only-its-online-stores
+
+🔄 **Renamed by your fourth edit (2026-10-06):** the table keeps the built name **`supplier_channels`**, and `marketplace_type` is **`channel_type`**. The verdict holds. Below, read `supplier_marketplaces` as `supplier_channels` — and `SupplierChannel*` keeps its name.
 
 > Owner, in [context.md](./context.md) §Table Must Have *(2026-10-06)*: `supplier_marketplaces` — `id`, `supplier_id`,
 > `marketplace_type` (`shopee` · `lazada` · `tiktok` · `tokopedia` · `custom`), `name`, `uri`, `description`,
@@ -158,6 +165,8 @@ flowchart LR
 
 ## another-team-sees-everything-of-a-supplier
 
+🔄 **Its spec is superseded (2026-10-06)** by [products-hang-off-a-channel](#products-hang-off-a-channel): your `supplier_channel_products` table stores the link, so the products no longer come from restock lines, and Q9 closes. The verdict holds — another team sees everything.
+
 > Owner, in chat *(2026-10-06)*: *"for q3, other team see all, supplier, channel and product"*. It answers
 > [Q3](./context_clarify.md#question), **against my recommendation**: I had said another team sees the supplier and
 > its stores, but never what the owning team bought there.
@@ -185,3 +194,82 @@ flowchart LR
   with a page filter (HARD RULE 9), not a field on the supplier.
 - **Still open:** which restocks count, whether the price shows, and whether the discover search reaches product
   names — [Q9](./context_clarify.md#question).
+
+## the-supplier-has-no-code
+
+> Owner, in [context.md](./context.md) §Table Must Have 1 *(2026-10-06, the fourth edit)*: `suppliers` — `id`, `team_id`,
+> `name`, `contact`, `address`, `description`, `updated_at`, `created_at`. `code` is gone. It reverses
+> [reversed-the-supplier-keeps-its-code](#reversed-the-supplier-keeps-its-code), and lands where my first pass's Q4 began.
+
+**The verdict.** A supplier has **no code**. People find it by its name, its owning team and its channels.
+
+```mermaid
+flowchart LR
+  subgraph "built"
+    B["name (code) — TM01, unique per team"]
+  end
+  subgraph "decided"
+    D["name — with the owning team and its channels beside it"]
+  end
+  B -->|"drop the code"| D
+```
+
+**The spec.** Every site that carries the code loses it:
+
+| site | change |
+| --- | --- |
+| `suppliers.code` and `suppliers_team_code_active_unique` | dropped by a migration |
+| `Supplier.code`, `SupplierCreateRequest.code`, `SupplierUpdateRequest.code`, `SUPPLIER_ROW_SORT_CODE` | removed, numbers reserved |
+| the form dialog, the list's Code column, the detail page's badge | removed |
+| `SupplierSelect` — shows `name (code)`, searches the code | shows the name, searches the name |
+| e2e and story test ids — `supplier-row-${code}` | keyed by id |
+
+Nothing takes over the code's uniqueness: as built, two suppliers in one team may share a name.
+
+## products-hang-off-a-channel
+
+> Owner, in [context.md](./context.md) §Table Must Have 3 *(2026-10-06, the fourth edit)*: `supplier_channel_products` —
+> `id`, `channel_id`, `product_id` (unique with `channel_id`), `created_at` — *"use for reference product in discover
+> supplier frontend page."* It supersedes the derived-from-restocks spec of
+> [another-team-sees-everything-of-a-supplier](#another-team-sees-everything-of-a-supplier), and closes
+> [Q9](./context_clarify.md#question): which restocks count and whether a price shows were questions about the
+> derived list, which no longer exists.
+
+**The verdict.** A supplier's products are **stored**: one row per product **per channel**, so the discover page can
+show what each store sells. A product is listed once per channel.
+
+```mermaid
+erDiagram
+  suppliers ||--o{ supplier_channels : "sells through"
+  supplier_channels ||--o{ supplier_channel_products : "lists"
+  supplier_channel_products {
+    bigint id PK
+    bigint channel_id FK
+    bigint product_id "opaque, product_service - unique with channel_id"
+    timestamptz created_at
+  }
+```
+
+**The spec.** The table as written. How a row gets written is
+[linking-products-is-deferred](#linking-products-is-deferred).
+
+## linking-products-is-deferred
+
+> Owner, in chat *(2026-10-06)*: *"for how we linked to supplier_channel_products we talk later, its complex, we are
+> focus basic crud first"*.
+
+**The verdict.** The next pass is **basic CRUD** of suppliers and their channels. How a product gets linked to a
+channel is **talked about later**, along with everything that depends on it.
+
+```mermaid
+flowchart LR
+  NOW["now — CRUD: suppliers, supplier_channels"] --> LATER["later — supplier_channel_products: who links, when, whose product"]
+  LATER --> DISC["the discover page's products"]
+```
+
+**The spec.**
+
+- `supplier_channel_products` is **created with the linking pass, not now** — my reading of *focus basic CRUD first*.
+  A table with nothing writing to it has nothing to test.
+- What is parked is listed in the clarify's [Parked](./context_clarify.md#parked--talk-later) section, so the later
+  conversation starts from it rather than from nothing. None of it is counted as open.
