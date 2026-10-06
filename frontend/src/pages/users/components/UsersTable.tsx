@@ -247,21 +247,20 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
 
                   const roleChangeable = manageable && grantable.some((r) => r !== role);
 
-                  // An erased account is final (an-erased-account-is-final): no edit, no password, no restore, and
-                  // nothing left to erase. It can still be taken out of a team.
+                  // An erased account is final (an-erased-account-is-final): no edit, no password, no restore. It can
+                  // still be taken out of a team, and erased again — which retries deleting its photos if that failed
+                  // (erase-deletes-the-photo-file).
                   const former = formerUserId(user) !== undefined;
 
                   const platformRole = platformRoleOf(user);
                   const suspendable =
                     !former && canSuspendUser({ caller: current?.role, target: platformRole, isSelf });
-                  const erasable =
-                    !former &&
-                    canEraseUser({
-                      caller: current?.role,
-                      target: platformRole,
-                      isSelf,
-                      suspended: user.isSuspended,
-                    });
+                  const erasable = canEraseUser({
+                    caller: current?.role,
+                    target: platformRole,
+                    isSelf,
+                    suspended: user.isSuspended,
+                  });
 
                   return (
                     <Table.Row key={user.id.toString()} data-testid={`user-row-${user.username}`}>

@@ -234,11 +234,13 @@ export const EraseKeepsTheRow: Story = {
     await expect(canvas.getByTestId("user-row-erased63")).toHaveTextContent("Former user #63");
     await expect(canvas.getByTestId("erased-erased63")).toBeInTheDocument();
 
-    // an-erased-account-is-final: nothing on its menu brings it, or its data, back.
+    // an-erased-account-is-final: nothing on its menu brings it, or its data, back. Erase stays — erasing again
+    // retries deleting the photos (erase-deletes-the-photo-file).
     const actions = await rowActions(canvas, "erased63");
-    for (const gone of ["edit-erased63", "reset-password-erased63", "suspend-erased63", "erase-erased63"]) {
+    for (const gone of ["edit-erased63", "reset-password-erased63", "suspend-erased63"]) {
       await expect(actions).not.toContain(gone);
     }
+    await expect(actions).toContain("erase-erased63");
   },
 };
 

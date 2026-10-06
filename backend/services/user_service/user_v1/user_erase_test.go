@@ -1,6 +1,7 @@
 package user_v1_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -10,7 +11,9 @@ import (
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
@@ -205,5 +208,45 @@ func TestUserErase_ErasedUsernamesAreReserved(t *testing.T) {
 	_, err = svc.UpdateUser(root, connect.NewRequest(&userv1.UpdateUserRequest{UserId: ani, Username: &fine}))
 	if err != nil {
 		t.Errorf("renaming to erasedani: %v", err)
+	}
+}
+
+func newServiceWithPhotos(t *testing.T, db *gorm.DB, photos *fakePhotos) *user_v1.Service {
+	t.Helper()
+
+	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
+
+	return user_v1.NewService(db, testSigner(), resolver, testTeams(), photos, san_caches.NewSkipCacheManager())
+}
+
+// erase-deletes-the-photo-file: the erase asks document_service to delete the person's photos. When that fails the
+// account is erased all the same — and erasing it again retries only the photos.
+func TestUserErase_DeletesThePhotosAndRetries(t *testing.T) {
+	db := san_testdb.DB(t)
+	photos := &fakePhotos{err: connect.NewError(connect.CodeUnavailable, errors.New("document_service is down"))}
+	svc := newServiceWithPhotos(t, db, photos)
+	root := asRoot(t, db)
+
+	ani := memberOf(t, db, "photoani", whTeam, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
+	db.Model(&user_service_models.User{}).Where("id = ?", ani).Update("is_suspended", true)
+
+	_, err := svc.UserErase(root, erase(ani))
+	if connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("code = %v, want the photo step's own Unavailable", connect.CodeOf(err))
+	}
+
+	if readUser(t, db, ani).ErasedAt == nil {
+		t.Fatal("a failed photo step undid the erase — the account must stay erased")
+	}
+
+	photos.err = nil
+
+	_, err = svc.UserErase(root, erase(ani))
+	if err != nil {
+		t.Fatalf("erasing again: %v", err)
+	}
+
+	if len(photos.erased) != 2 || photos.erased[0] != ani || photos.erased[1] != ani {
+		t.Errorf("photo deletions asked for = %v, want Ani's twice (the failure, then the retry)", photos.erased)
 	}
 }

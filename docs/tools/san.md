@@ -1258,7 +1258,7 @@ this document in the same commit.
 | [`main.go`](../../tools/san/main.go) | the root command and `--dsn` |
 | [`san.go`](../../tools/san/san.go) | `San` — what every command is handed — and `withSan` |
 | [`wire.go`](../../tools/san/wire.go) | the composition root (`wire_gen.go` is generated) |
-| [`deps.go`](../../tools/san/deps.go) | the providers: db, cache, signer, role resolver |
+| [`deps.go`](../../tools/san/deps.go) | the providers: db, cache, signer, role resolver, and the team and document clients `user_v1` is built with |
 | [`config.go`](../../tools/san/config.go) | env/yaml configuration |
 | [`user.go`](../../tools/san/user.go) | the `user` group and the account selector |
 | [`user_reset_password.go`](../../tools/san/user_reset_password.go) | the command |

@@ -56,7 +56,7 @@ func seedGrantVolume(t *testing.T) (*gorm.DB, *user_v1.Service, *san_perf.Probe,
 
 	cache := san_caches.NewMemoryCacheManager()
 	resolver := access_interceptors.NewDBRoleResolver(db, cache)
-	svc := user_v1.NewService(db, testSigner(), resolver, testTeams(), cache)
+	svc := user_v1.NewService(db, testSigner(), resolver, testTeams(), &fakePhotos{}, cache)
 
 	root := asRoot(t, db)
 	owner, ownerID := asMember(t, db, "perfowner", whTeam, role_basev1.Role_ROLE_WAREHOUSE_OWNER)

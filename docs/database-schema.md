@@ -583,7 +583,7 @@ erDiagram
 
     document_shares {
         bigserial   id          PK
-        text        document_id FK "-> documents(id) ON DELETE RESTRICT — a shared file cannot be deleted"
+        text        document_id FK "-> documents(id) ON DELETE RESTRICT — a shared file cannot be deleted by accident"
         bigint      team_id     "the team that may now read it, opaque, no FK"
         bigint      granted_by  "who granted it, opaque user id"
         timestamptz created_at
@@ -599,7 +599,10 @@ erDiagram
   signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
   transfer slip names an account number. And `settlement_statement` (`00006`) — the .xlsx the settlement
   importer stores under the hash of its bytes before it reads it: it lists every order and what the
-  platform took.
+  platform took. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
+  `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
+  which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
+  would otherwise refuse it.
 
 - **`document_shares`** — the ONE way a document is readable outside the team that owns it
   ([a-payment-must-carry-proof](business/balance/context_decision.md#a-payment-must-carry-proof)).

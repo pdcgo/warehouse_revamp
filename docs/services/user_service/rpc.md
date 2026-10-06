@@ -55,6 +55,40 @@ sequenceDiagram
 - `CreateUser` checks the new person's role the same way (a new person holds none), and `SuspendUser`
   locks the same row and judges the target by its **root-team role**, never its id.
 
+## UserErase — blank the account, then delete its photos
+
+[erase-keeps-the-row](../../business/user/context_decision.md#erase-keeps-the-row): a former user's personal data is
+blanked and the row stays. Since [erase-deletes-the-photo-file](../../business/user/context_decision.md#erase-deletes-the-photo-file)
+it reaches document_service too — **after** its own transaction commits.
+
+```mermaid
+sequenceDiagram
+    participant C as Root or the Administrator
+    participant U as user_service
+    participant D as document_service
+    C->>U: UserErase(user_id)
+    U->>U: BEGIN, lock the person's users row, reading their root-team role, suspension and erased_at
+    alt already erased
+        U->>U: nothing to blank — COMMIT
+    else suspended, and the caller may suspend them
+        U->>U: blank name, email, phone, photo link, password - username erased + id - erased_at now - COMMIT
+    end
+    U->>D: ProfilePictureErase(user_id), with the caller's bearer
+    alt deleted
+        D-->>U: how many
+        U-->>C: ok
+    else failed
+        D--xU: error
+        U-->>C: the account is erased, the photos are not - erase it again to retry
+    end
+```
+
+- **The network call is outside the transaction**, so no lock is held across it. A failure therefore cannot undo the
+  erase — it is reported, and erasing again skips straight to the photos.
+- [an-erased-account-is-final](../../business/user/context_decision.md#an-erased-account-is-final): once `erased_at`
+  is set, `SuspendUser` refuses to unsuspend, both password writers and `applyUserUpdates` refuse in their UPDATE's
+  own WHERE, and `TeamUserUpdate` refuses to add the person.
+
 ## TeamAccessList — a cross-service read that DEGRADES, never fails
 
 `TeamAccessList` returns the teams the caller belongs to, each with a display name and type. The

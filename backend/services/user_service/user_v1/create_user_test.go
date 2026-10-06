@@ -29,6 +29,7 @@ func newService(t *testing.T, db *gorm.DB) *user_v1.Service {
 		san_auth.NewSigner("test-secret", time.Hour),
 		resolver,
 		testTeams(),
+		&fakePhotos{},
 		san_caches.NewSkipCacheManager(),
 	)
 }

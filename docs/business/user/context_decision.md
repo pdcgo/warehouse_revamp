@@ -1774,6 +1774,11 @@ sequenceDiagram
 
 | | |
 | --- | --- |
+> 🔄 *(2026-10-06, built)* `DocumentService.ProfilePictureErase` (files first, then the shares and rows in one
+> transaction; a partial index on `created_by_id`, document_service `00007`), called by `UserErase` after its commit with
+> the caller's bearer. Erasing an erased account again retries it. The local file store retries a delete that Windows
+> refuses while another is finishing, which two simultaneous erases hit.
+
 | which files | every `PROFILE_PICTURE` document the person uploaded — older photos they replaced too, which are as personal as the current one |
 | when | after the account is blanked and committed, never inside that transaction — a network call holds no lock |
 | if it fails | the account stays erased, and erasing it again retries only the photos |

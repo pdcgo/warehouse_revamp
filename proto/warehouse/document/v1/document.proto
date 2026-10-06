@@ -20,6 +20,10 @@ service DocumentService {
 
   // Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
   rpc ShareDocument(ShareDocumentRequest) returns (ShareDocumentResponse);
+
+  // Delete every profile picture one person uploaded — the stored files and their rows
+  // (erase-deletes-the-photo-file). Called by user_service's UserErase, with the caller's own bearer.
+  rpc ProfilePictureErase(ProfilePictureEraseRequest) returns (ProfilePictureEraseResponse);
 }
 
 // DocumentResourceType drives the public-vs-private split. PUBLIC types are images served at a
@@ -205,3 +209,21 @@ message ShareDocumentRequest {
 }
 
 message ShareDocumentResponse {}
+
+message ProfilePictureEraseRequest {
+  // Unscoped roles-policy = Root and the Administrator: the people who erase an account (erase-keeps-the-row).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  // The person whose photos go: every PROFILE_PICTURE document they uploaded, older ones they replaced too.
+  uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProfilePictureEraseResponse {
+  // How many were deleted. 0 when there were none — or when a retry finds them already gone.
+  uint32 erased = 1;
+}

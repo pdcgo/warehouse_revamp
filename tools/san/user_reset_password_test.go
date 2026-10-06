@@ -25,7 +25,7 @@ func newTestSan(t *testing.T, db *gorm.DB) *San {
 	t.Helper()
 
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
-	users := user_v1.NewService(db, san_auth.NewSigner("test-secret", time.Hour), resolver, nil, san_caches.NewSkipCacheManager())
+	users := user_v1.NewService(db, san_auth.NewSigner("test-secret", time.Hour), resolver, nil, nil, san_caches.NewSkipCacheManager())
 
 	return &San{db: db, users: users, target: "test"}
 }

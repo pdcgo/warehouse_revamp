@@ -9,6 +9,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	documentv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
@@ -49,7 +50,7 @@ func (s *Service) UserErase(
 		}
 
 		// Already erased: nothing left to blank. Erasing again is not an error — it is how a failed photo
-		// deletion is retried (erase-deletes-the-photo-file).
+		// deletion is retried (erase-deletes-the-photo-file), after the transaction.
 		if target.erased {
 			return nil
 		}
@@ -97,10 +98,28 @@ func (s *Service) UserErase(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	// erase-deletes-the-photo-file — AFTER the commit, never inside it: a network call must not hold the row lock.
+	// If it fails the account is erased all the same, and erasing it again comes straight here.
+	_, err = s.documents.ProfilePictureErase(ctx, connect.NewRequest(&documentv1.ProfilePictureEraseRequest{UserId: userID}))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeOf(err),
+			fmt.Errorf("the account is erased, but deleting its photos failed — erase it again to retry: %s", errorMessage(err)))
+	}
+
 	return connect.NewResponse(&userv1.UserEraseResponse{}), nil
 }
 
 // erasedUsername is what an erased account is called: unique by its id, and still a valid username.
 func erasedUsername(userID uint64) string {
 	return fmt.Sprintf("erased%d", userID)
+}
+
+// errorMessage is an error's own message, without connect's "code: " prefix — the code travels separately.
+func errorMessage(err error) string {
+	var connectErr *connect.Error
+	if errors.As(err, &connectErr) {
+		return connectErr.Message()
+	}
+
+	return err.Error()
 }

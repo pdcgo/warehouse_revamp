@@ -124,7 +124,7 @@ func TestRace_TeamUserUpdate_DemoteWhilePromoted(t *testing.T) {
 
 	svc := NewService(db, nil,
 		access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager()),
-		raceTeams{}, san_caches.NewSkipCacheManager())
+		raceTeams{}, nil, san_caches.NewSkipCacheManager())
 
 	addAni := func(role role_basev1.Role) *connect.Request[userv1.TeamUserUpdateRequest] {
 		return connect.NewRequest(&userv1.TeamUserUpdateRequest{
@@ -285,7 +285,7 @@ func TestRace_TeamUserUpdate_AddWhileSuspended(t *testing.T) {
 
 	svc := NewService(db, nil,
 		access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager()),
-		raceTeams{}, san_caches.NewSkipCacheManager())
+		raceTeams{}, nil, san_caches.NewSkipCacheManager())
 
 	const rounds = 40
 
