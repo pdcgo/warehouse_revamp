@@ -3,13 +3,20 @@ package user_v1
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"strconv"
+	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
 
@@ -123,12 +130,18 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 			return connect.NewError(connect.CodeInternal, err)
 		}
 
-		return logMembership(tx, caller, teamID, add.GetUserId(), current, add.GetRole())
+		_, err = logMembership(tx, caller, teamID, add.GetUserId(), current, add.GetRole())
+
+		return err
 	})
 }
 
 func (s *Service) removeMember(ctx context.Context, caller callerReach, teamID, userID uint64) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// The log row of the removal, once committed — what the shop side is told about. nil when there was nothing to
+	// remove.
+	var removed *user_service_models.TeamMemberLog
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		locked, err := lockMembership(tx, userID, teamID)
 		if err != nil {
 			return err
@@ -161,6 +174,62 @@ func (s *Service) removeMember(ctx context.Context, caller callerReach, teamID, 
 			return connect.NewError(connect.CodeInternal, err)
 		}
 
-		return logMembership(tx, caller, teamID, userID, current, role_basev1.Role_ROLE_UNSPECIFIED)
+		removed, err = logMembership(tx, caller, teamID, userID, current, role_basev1.Role_ROLE_UNSPECIFIED)
+
+		return err
 	})
+	if err != nil {
+		return err
+	}
+
+	if removed != nil {
+		s.announceRemoval(ctx, removed)
+	}
+
+	return nil
+}
+
+// announceRemoval tells the shop side that a person left a team (removing-a-member-drops-their-shop-access): it drops
+// their grants on that team's shops, and a primary Customer Service flag with them.
+//
+// AFTER THE COMMIT, AND NOT FATAL — as every publisher here: a removal rolled back because a broker was down would
+// leave a person in a team they were taken out of, and holding no lock across a network call keeps the removal fast.
+// A lost publish leaves grants that a person removes by hand; the log line says which.
+//
+// The event id is DERIVED from the membership-log row, so a redelivery and a replay collide; occurred_at is the row's
+// own time, which is what the shop side compares its grants against.
+func (s *Service) announceRemoval(ctx context.Context, row *user_service_models.TeamMemberLog) {
+	var actor uint64
+	if row.ActorUserID != nil {
+		actor = *row.ActorUserID
+	}
+
+	err := s.events(ctx, eventIdentity(ctx), &eventsv1.Event{
+		EventId: "team-member-log:" + strconv.FormatUint(row.ID, 10),
+		// To the microsecond, as Postgres stores it — the event names the same instant the row does.
+		OccurredAt:  timestamppb.New(row.CreatedAt.Truncate(time.Microsecond)),
+		AggregateId: "team:" + strconv.FormatUint(row.TeamID, 10),
+		Message: &eventsv1.Event_MemberRemoved{
+			MemberRemoved: &eventsv1.MemberRemoved{TeamId: row.TeamID, UserId: row.UserID, ActorId: actor},
+		},
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "member removed but its MemberRemoved event was not published — "+
+			"their shop grants in the team stay until removed by hand",
+			"team_id", row.TeamID,
+			"user_id", row.UserID,
+			"error", err,
+		)
+	}
+}
+
+// eventIdentity is what the sender's identity PARAMETER takes (identity-is-a-sender-parameter): the caller's when
+// the access interceptor put one on the ctx, an explicit system identity when it did not.
+func eventIdentity(ctx context.Context) *role_basev1.Identity {
+	identity, err := san_auth.GetIdentity(ctx)
+	if err != nil {
+		return event_source.SystemIdentity("user_service")
+	}
+
+	return identity
 }

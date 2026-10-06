@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/events/v1/event.proto.
  */
 export const file_warehouse_events_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIo0ECgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjkKDG9yZGVyX3BsYWNlZBjIASABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkSAASPwoPb3JkZXJfY2FuY2VsbGVkGMkBIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJDYW5jZWxsZWRIABJKChVzZXR0bGVtZW50X2xvZ19wb3N0ZWQYrAIgASgLMigud2FyZWhvdXNlLmV2ZW50cy52MS5TZXR0bGVtZW50TG9nUG9zdGVkSAAaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQhAKB21lc3NhZ2USBbpIAggBIrYDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIusBCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEg8KB3JldmVudWUYAyABKAMSDAoEY29ncxgEIAEoAxIVCg1zaGlwcGluZ19jb3N0GAUgASgDEhIKCmNvc3Rfa25vd24YBiABKAgSFAoMd2FyZWhvdXNlX2lkGAcgASgEEjMKBWxpbmVzGAggAygLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlclBsYWNlZExpbmUSEAoIYWN0b3JfaWQYCSABKAQ6Eoq1GA4KDG9yZGVyLXBsYWNlZCJiCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAMiXAoOT3JkZXJDYW5jZWxsZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBDoVirUYEQoPb3JkZXItY2FuY2VsbGVkOmYKDGV2ZW50X2NvbmZpZxIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxjRhgMgASgLMiAud2FyZWhvdXNlLmV2ZW50cy52MS5FdmVudENvbmZpZ1ILZXZlbnRDb25maWdCTFpKZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9ldmVudHMvdjE7ZXZlbnRzdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
+  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIssECgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEiWQoNTWVtYmVyUmVtb3ZlZBIPCgd0ZWFtX2lkGAEgASgEEg8KB3VzZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FIq1GBAKDm1lbWJlci1yZW1vdmVkIrYDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIusBCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEg8KB3JldmVudWUYAyABKAMSDAoEY29ncxgEIAEoAxIVCg1zaGlwcGluZ19jb3N0GAUgASgDEhIKCmNvc3Rfa25vd24YBiABKAgSFAoMd2FyZWhvdXNlX2lkGAcgASgEEjMKBWxpbmVzGAggAygLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlclBsYWNlZExpbmUSEAoIYWN0b3JfaWQYCSABKAQ6Eoq1GA4KDG9yZGVyLXBsYWNlZCJiCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAMiXAoOT3JkZXJDYW5jZWxsZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBDoVirUYEQoPb3JkZXItY2FuY2VsbGVkOmYKDGV2ZW50X2NvbmZpZxIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxjRhgMgASgLMiAud2FyZWhvdXNlLmV2ZW50cy52MS5FdmVudENvbmZpZ1ILZXZlbnRDb25maWdCTFpKZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9ldmVudHMvdjE7ZXZlbnRzdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
 
 /**
  * EventConfig declares, ON THE VARIANT ITSELF, which Pub/Sub topic that event belongs to. The topic
@@ -124,8 +124,14 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
    */
   message: {
     /**
-     * Variants are numbered in a block per context: selling 200–299, settlement 300–399.
+     * Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399.
      *
+     * @generated from field: warehouse.events.v1.MemberRemoved member_removed = 100;
+     */
+    value: MemberRemoved;
+    case: "memberRemoved";
+  } | {
+    /**
      * @generated from field: warehouse.events.v1.OrderPlaced order_placed = 200;
      */
     value: OrderPlaced;
@@ -151,6 +157,46 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
  */
 export const EventSchema: GenMessage<Event> = /*@__PURE__*/
   messageDesc(file_warehouse_events_v1_event, 1);
+
+/**
+ * MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
+ *
+ * Published by user_service after TeamUserUpdate's removal commits, one per membership-log row. The shop side drops
+ * the person's grants on that team's shops — a primary Customer Service flag is on a grant, so it goes with it. The
+ * person keeps their account and their other teams, so nothing else listens.
+ *
+ * It carries only ids: "this person is no longer in this team" is the whole fact. The envelope's occurred_at is when
+ * the removal happened — a consumer drops only what was granted BEFORE it, so a late redelivery never undoes a grant
+ * made after the person was added back.
+ *
+ * @generated from message warehouse.events.v1.MemberRemoved
+ */
+export type MemberRemoved = Message<"warehouse.events.v1.MemberRemoved"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 user_id = 2;
+   */
+  userId: bigint;
+
+  /**
+   * WHO REMOVED THEM — from the membership log row, a record (every-role-change-is-logged). 0 when it was a
+   * developer through tools/san.
+   *
+   * @generated from field: uint64 actor_id = 3;
+   */
+  actorId: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.MemberRemoved.
+ * Use `create(MemberRemovedSchema)` to create a new message.
+ */
+export const MemberRemovedSchema: GenMessage<MemberRemoved> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 2);
 
 /**
  * SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md
@@ -281,7 +327,7 @@ export type SettlementLogPosted = Message<"warehouse.events.v1.SettlementLogPost
  * Use `create(SettlementLogPostedSchema)` to create a new message.
  */
 export const SettlementLogPostedSchema: GenMessage<SettlementLogPosted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 2);
+  messageDesc(file_warehouse_events_v1_event, 3);
 
 /**
  * OrderPlaced announces that an order was placed and COMMITTED (#153).
@@ -378,7 +424,7 @@ export type OrderPlaced = Message<"warehouse.events.v1.OrderPlaced"> & {
  * Use `create(OrderPlacedSchema)` to create a new message.
  */
 export const OrderPlacedSchema: GenMessage<OrderPlaced> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 3);
+  messageDesc(file_warehouse_events_v1_event, 4);
 
 /**
  * One line of a placed order, as liability_service needs it (#186).
@@ -429,7 +475,7 @@ export type OrderPlacedLine = Message<"warehouse.events.v1.OrderPlacedLine"> & {
  * Use `create(OrderPlacedLineSchema)` to create a new message.
  */
 export const OrderPlacedLineSchema: GenMessage<OrderPlacedLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 4);
+  messageDesc(file_warehouse_events_v1_event, 5);
 
 /**
  * OrderCancelled announces that an order was cancelled (#164).
@@ -469,7 +515,7 @@ export type OrderCancelled = Message<"warehouse.events.v1.OrderCancelled"> & {
  * Use `create(OrderCancelledSchema)` to create a new message.
  */
 export const OrderCancelledSchema: GenMessage<OrderCancelled> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 5);
+  messageDesc(file_warehouse_events_v1_event, 6);
 
 /**
  * 50001 — the number warehouse.event_base.v1 held before it was removed

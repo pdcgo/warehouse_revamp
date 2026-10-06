@@ -119,7 +119,9 @@ func (s *Service) CreateUser(
 			return err
 		}
 
-		return logMembership(tx, caller, teamID, user.ID, role_basev1.Role_ROLE_UNSPECIFIED, role)
+		_, err = logMembership(tx, caller, teamID, user.ID, role_basev1.Role_ROLE_UNSPECIFIED, role)
+
+		return err
 	})
 	if err != nil {
 		var connectErr *connect.Error

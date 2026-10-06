@@ -55,6 +55,30 @@ sequenceDiagram
 - `CreateUser` checks the new person's role the same way (a new person holds none), and `SuspendUser`
   locks the same row and judges the target by its **root-team role**, never its id.
 
+## TeamUserUpdate's removal — announced to the shops
+
+[removing-a-member-drops-their-shop-access](../../business/user/context_decision.md#removing-a-member-drops-their-shop-access): a person removed from a team loses that team's shop
+access. user_service does not own the grants, so it announces the removal and selling_service drops them.
+
+```mermaid
+sequenceDiagram
+    participant C as the Owner, an Admin, Root
+    participant U as user_service
+    participant P as Pub/Sub, member-removed
+    participant S as selling_service
+    C->>U: TeamUserUpdate remove(user)
+    U->>U: BEGIN, lock the person's users row, check the rank, delete the membership, log the row, COMMIT
+    U->>P: MemberRemoved(team, user, actor) — id team-member-log:<id>, dated by the row
+    U-->>C: ok — a failed publish is logged, never undoes the removal
+    P->>S: push /event/selling-member-removed/push
+    S->>S: delete their grants on the team's shops made before the removal — the primary flag goes with them
+```
+
+- **After the commit.** No lock is held across the publish, and a broker that is down does not keep a person in a team.
+  A lost publish leaves their grants; the log line names the team and the person.
+- **Only grants older than the removal.** Delivery is at least once, in any order: a late one must not take a grant made
+  after the person was added back.
+
 ## UserErase — blank the account, then delete its photos
 
 [erase-keeps-the-row](../../business/user/context_decision.md#erase-keeps-the-row): a former user's personal data is

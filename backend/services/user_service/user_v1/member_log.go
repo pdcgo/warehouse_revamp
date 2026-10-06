@@ -16,9 +16,16 @@ import (
 // `before` and `after` are the person's role in the team on either side (UNSPECIFIED = not a member). Nothing
 // changing writes nothing: an add that repeats the role a person already holds — a retried grant — is not a
 // change, and the log is a record of changes.
-func logMembership(tx *gorm.DB, caller callerReach, teamID, userID uint64, before, after role_basev1.Role) error {
+//
+// It returns the row it wrote — nil when nothing changed — so a removal can announce it after the commit.
+func logMembership(
+	tx *gorm.DB,
+	caller callerReach,
+	teamID, userID uint64,
+	before, after role_basev1.Role,
+) (*user_service_models.TeamMemberLog, error) {
 	if before == after {
-		return nil
+		return nil, nil
 	}
 
 	action := userv1.TeamMemberLogAction_TEAM_MEMBER_LOG_ACTION_CHANGE_ROLE
@@ -44,10 +51,10 @@ func logMembership(tx *gorm.DB, caller callerReach, teamID, userID uint64, befor
 
 	err := tx.Create(&row).Error
 	if err != nil {
-		return connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return nil
+	return &row, nil
 }
 
 // isOverride: Root or the Administrator acting in a team they hold no role in — through the root-team bypass,

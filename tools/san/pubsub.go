@@ -226,6 +226,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "settlement-log-posted",
 			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
 		},
+		// selling_service's shop-access listener — mirrors selling_service.MemberRemovedSubscription
+		// (removing-a-member-drops-their-shop-access).
+		{
+			ID:     "selling-member-removed",
+			Topic:  "member-removed",
+			Filter: `attributes.event_type = "warehouse.events.v1.MemberRemoved"`,
+		},
 		// financial_account_service's withdrawal listener — mirrors financial_account_service.WithdrawalSubscription.
 		// The SAME topic as settlement's fold, its OWN subscription: each consumer keeps its own delivery state.
 		{

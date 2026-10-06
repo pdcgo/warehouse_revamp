@@ -8,6 +8,7 @@ import (
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -31,6 +32,7 @@ func newService(t *testing.T, db *gorm.DB) *user_v1.Service {
 		testTeams(),
 		&fakePhotos{},
 		san_caches.NewSkipCacheManager(),
+		event_source.EmptySender,
 	)
 }
 

@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -25,7 +26,7 @@ func newTestSan(t *testing.T, db *gorm.DB) *San {
 	t.Helper()
 
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
-	users := user_v1.NewService(db, san_auth.NewSigner("test-secret", time.Hour), resolver, nil, nil, san_caches.NewSkipCacheManager())
+	users := user_v1.NewService(db, san_auth.NewSigner("test-secret", time.Hour), resolver, nil, nil, san_caches.NewSkipCacheManager(), event_source.EmptySender)
 
 	return &San{db: db, users: users, target: "test"}
 }

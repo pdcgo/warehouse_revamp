@@ -608,6 +608,7 @@ constant beside the handler that serves it):
 | `liability-order-cancelled` | `order-cancelled` | liability reverses them |
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
+| `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
 
 ⚠ **`settlement-fold` is SEEKED by `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other

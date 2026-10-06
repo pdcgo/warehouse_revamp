@@ -10,6 +10,7 @@ import (
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -216,7 +217,7 @@ func newServiceWithPhotos(t *testing.T, db *gorm.DB, photos *fakePhotos) *user_v
 
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
 
-	return user_v1.NewService(db, testSigner(), resolver, testTeams(), photos, san_caches.NewSkipCacheManager())
+	return user_v1.NewService(db, testSigner(), resolver, testTeams(), photos, san_caches.NewSkipCacheManager(), event_source.EmptySender)
 }
 
 // erase-deletes-the-photo-file: the erase asks document_service to delete the person's photos. When that fails the

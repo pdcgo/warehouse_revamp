@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_race"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
@@ -37,7 +38,7 @@ func TestRace_CreateUser_OnePhoneOneAccount(t *testing.T) {
 
 	svc := NewService(db, nil,
 		access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager()),
-		raceTeams{}, nil, san_caches.NewSkipCacheManager())
+		raceTeams{}, nil, san_caches.NewSkipCacheManager(), event_source.EmptySender)
 
 	written := []string{
 		"0812-7000-1000", "0812 7000 1000", "+62 812 7000 1000", "62-812-7000-1000",

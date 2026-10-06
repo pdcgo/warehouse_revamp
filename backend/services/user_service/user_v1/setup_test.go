@@ -15,6 +15,7 @@ import (
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
@@ -54,7 +55,7 @@ func newServiceWithTeams(t *testing.T, db *gorm.DB, teams *fakeTeamClient) *user
 
 	resolver := access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager())
 
-	return user_v1.NewService(db, testSigner(), resolver, teams, &fakePhotos{}, san_caches.NewSkipCacheManager())
+	return user_v1.NewService(db, testSigner(), resolver, teams, &fakePhotos{}, san_caches.NewSkipCacheManager(), event_source.EmptySender)
 }
 
 // insertUser inserts a user with a bcrypt-hashed password and returns its id.

@@ -91,12 +91,34 @@ message Event {
     // row a human can read.
     option (buf.validate.oneof).required = true;
 
-    // Variants are numbered in a block per context: selling 200–299, settlement 300–399.
+    // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399.
+    MemberRemoved member_removed = 100;
+
     OrderPlaced order_placed = 200;
     OrderCancelled order_cancelled = 201;
 
     SettlementLogPosted settlement_log_posted = 300;
   }
+}
+
+// MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
+//
+// Published by user_service after TeamUserUpdate's removal commits, one per membership-log row. The shop side drops
+// the person's grants on that team's shops — a primary Customer Service flag is on a grant, so it goes with it. The
+// person keeps their account and their other teams, so nothing else listens.
+//
+// It carries only ids: "this person is no longer in this team" is the whole fact. The envelope's occurred_at is when
+// the removal happened — a consumer drops only what was granted BEFORE it, so a late redelivery never undoes a grant
+// made after the person was added back.
+message MemberRemoved {
+  option (event_config).topic = "member-removed";
+
+  uint64 team_id = 1;
+  uint64 user_id = 2;
+
+  // WHO REMOVED THEM — from the membership log row, a record (every-role-change-is-logged). 0 when it was a
+  // developer through tools/san.
+  uint64 actor_id = 3;
 }
 
 // SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md

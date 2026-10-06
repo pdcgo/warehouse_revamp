@@ -600,6 +600,8 @@ stateDiagram-v2
 ### What it does NOT settle
 
 - **A primary who leaves the team** keeps the flag — nothing ends a grant then ([Q6](./context_clarify.md#question)).
+  🔄 *(2026-10-06)* Settled since, in the user context: leaving ends every grant in the team, and the flag with it —
+  [removing-a-member-drops-their-shop-access](../user/context_decision.md#removing-a-member-drops-their-shop-access), built.
 
 ## the-shop-gets-its-own-service
 

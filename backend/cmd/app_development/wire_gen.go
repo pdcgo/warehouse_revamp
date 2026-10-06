@@ -45,7 +45,12 @@ func InitializeApp() (*App, error) {
 	mainInternalHTTPClient := NewInternalHTTPClient()
 	teamServiceClient := NewTeamClient(config, mainInternalHTTPClient)
 	documentServiceClient := NewDocumentClient(config, mainInternalHTTPClient)
-	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, documentServiceClient, cacheManager)
+	client, err := NewPubsubClient()
+	if err != nil {
+		return nil, err
+	}
+	eventSender := NewEventSender(client)
+	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, documentServiceClient, cacheManager, eventSender)
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
 	team_v1Service := team_v1.NewService(db, userServiceClient)
 	shipment_v1Service := shipment_v1.NewService(db)
@@ -56,11 +61,6 @@ func InitializeApp() (*App, error) {
 	inventory_v1ExpensePoster := NewExpensePoster(expense_v1Service)
 	inventory_v1Service := inventory_v1.NewService(db, inventory_v1LiabilityPoster, inventory_v1ExpensePoster)
 	selling_v1StockPicker := NewStockPicker(inventory_v1Service)
-	client, err := NewPubsubClient()
-	if err != nil {
-		return nil, err
-	}
-	eventSender := NewEventSender(client)
 	selling_v1ProductCatalog := NewProductCatalog(product_v1Service)
 	selling_v1CreditChecker := NewCreditChecker(liability_v1Service)
 	settlement_v1ReplayBroker := NewReplayBroker(client)

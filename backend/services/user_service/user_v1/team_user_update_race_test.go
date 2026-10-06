@@ -17,6 +17,7 @@ import (
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_race"
@@ -124,7 +125,7 @@ func TestRace_TeamUserUpdate_DemoteWhilePromoted(t *testing.T) {
 
 	svc := NewService(db, nil,
 		access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager()),
-		raceTeams{}, nil, san_caches.NewSkipCacheManager())
+		raceTeams{}, nil, san_caches.NewSkipCacheManager(), event_source.EmptySender)
 
 	addAni := func(role role_basev1.Role) *connect.Request[userv1.TeamUserUpdateRequest] {
 		return connect.NewRequest(&userv1.TeamUserUpdateRequest{
@@ -285,7 +286,7 @@ func TestRace_TeamUserUpdate_AddWhileSuspended(t *testing.T) {
 
 	svc := NewService(db, nil,
 		access_interceptors.NewDBRoleResolver(db, san_caches.NewSkipCacheManager()),
-		raceTeams{}, nil, san_caches.NewSkipCacheManager())
+		raceTeams{}, nil, san_caches.NewSkipCacheManager(), event_source.EmptySender)
 
 	const rounds = 40
 

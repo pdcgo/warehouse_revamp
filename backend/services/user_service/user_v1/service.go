@@ -7,6 +7,7 @@ import (
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1/userv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
@@ -52,6 +53,9 @@ type Service struct {
 	// documents deletes an erased person's photos (erase-deletes-the-photo-file). The caller's bearer is forwarded,
 	// so document_service applies the caller's permissions, not ours.
 	documents documentv1connect.DocumentServiceClient
+
+	// events announces a removal to the shop side (removing-a-member-drops-their-shop-access).
+	events event_source.EventSender
 }
 
 var _ userv1connect.UserServiceHandler = (*Service)(nil)
@@ -63,6 +67,7 @@ func NewService(
 	teamClient teamv1connect.TeamServiceClient,
 	documentClient documentv1connect.DocumentServiceClient,
 	cache san_caches.CacheManager,
+	events event_source.EventSender,
 ) *Service {
 	return &Service{
 		db:        db,
@@ -70,6 +75,7 @@ func NewService(
 		resolver:  resolver,
 		teams:     newTeamResolver(teamClient, cache),
 		documents: documentClient,
+		events:    events,
 	}
 }
 

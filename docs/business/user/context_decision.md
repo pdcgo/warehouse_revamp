@@ -1170,6 +1170,13 @@ flowchart TD
   EV --> G["their shop grants in this team are dropped, a primary CS flag is cleared"]
 ```
 
+> 🔄 *(2026-10-06, built)* The rank check and the log row were built with items 2 and 13. Now the announcement:
+> `TeamUserUpdate`'s removal publishes **`MemberRemoved`** (team, person, who) after its commit — keyed and dated by the
+> membership-log row, never fatal (a lost publish is logged). selling_service's listener (`selling-member-removed`,
+> `/event/selling-member-removed/push`) deletes the person's grants on that team's shops **made before the removal**, so a
+> late redelivery never undoes a grant made after they were added back; the primary flag is on a grant and goes with it.
+> Shop Q6's *leaving ends it* half is this decision; its other half — *a grant only to a member* — stays shop's.
+
 **The spec.** ⚠ **Not built.** Today a removal deletes one row, checks no role, and tells no other service.
 
 | | |

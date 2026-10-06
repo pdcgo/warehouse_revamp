@@ -15,6 +15,7 @@ import (
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_perf"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -59,7 +60,7 @@ func seedGrantVolume(t *testing.T) (*gorm.DB, *user_v1.Service, *san_perf.Probe,
 
 	cache := san_caches.NewMemoryCacheManager()
 	resolver := access_interceptors.NewDBRoleResolver(db, cache)
-	svc := user_v1.NewService(db, testSigner(), resolver, testTeams(), &fakePhotos{}, cache)
+	svc := user_v1.NewService(db, testSigner(), resolver, testTeams(), &fakePhotos{}, cache, event_source.EmptySender)
 
 	root := asRoot(t, db)
 	owner, ownerID := asMember(t, db, "perfowner", whTeam, role_basev1.Role_ROLE_WAREHOUSE_OWNER)

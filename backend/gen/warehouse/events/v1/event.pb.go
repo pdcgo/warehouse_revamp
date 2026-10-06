@@ -126,6 +126,7 @@ type Event struct {
 	//
 	// Types that are valid to be assigned to Message:
 	//
+	//	*Event_MemberRemoved
 	//	*Event_OrderPlaced
 	//	*Event_OrderCancelled
 	//	*Event_SettlementLogPosted
@@ -206,6 +207,15 @@ func (x *Event) GetMessage() isEvent_Message {
 	return nil
 }
 
+func (x *Event) GetMemberRemoved() *MemberRemoved {
+	if x != nil {
+		if x, ok := x.Message.(*Event_MemberRemoved); ok {
+			return x.MemberRemoved
+		}
+	}
+	return nil
+}
+
 func (x *Event) GetOrderPlaced() *OrderPlaced {
 	if x != nil {
 		if x, ok := x.Message.(*Event_OrderPlaced); ok {
@@ -237,8 +247,12 @@ type isEvent_Message interface {
 	isEvent_Message()
 }
 
+type Event_MemberRemoved struct {
+	// Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399.
+	MemberRemoved *MemberRemoved `protobuf:"bytes,100,opt,name=member_removed,json=memberRemoved,proto3,oneof"`
+}
+
 type Event_OrderPlaced struct {
-	// Variants are numbered in a block per context: selling 200–299, settlement 300–399.
 	OrderPlaced *OrderPlaced `protobuf:"bytes,200,opt,name=order_placed,json=orderPlaced,proto3,oneof"`
 }
 
@@ -250,11 +264,84 @@ type Event_SettlementLogPosted struct {
 	SettlementLogPosted *SettlementLogPosted `protobuf:"bytes,300,opt,name=settlement_log_posted,json=settlementLogPosted,proto3,oneof"`
 }
 
+func (*Event_MemberRemoved) isEvent_Message() {}
+
 func (*Event_OrderPlaced) isEvent_Message() {}
 
 func (*Event_OrderCancelled) isEvent_Message() {}
 
 func (*Event_SettlementLogPosted) isEvent_Message() {}
+
+// MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
+//
+// Published by user_service after TeamUserUpdate's removal commits, one per membership-log row. The shop side drops
+// the person's grants on that team's shops — a primary Customer Service flag is on a grant, so it goes with it. The
+// person keeps their account and their other teams, so nothing else listens.
+//
+// It carries only ids: "this person is no longer in this team" is the whole fact. The envelope's occurred_at is when
+// the removal happened — a consumer drops only what was granted BEFORE it, so a late redelivery never undoes a grant
+// made after the person was added back.
+type MemberRemoved struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	UserId uint64                 `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// WHO REMOVED THEM — from the membership log row, a record (every-role-change-is-logged). 0 when it was a
+	// developer through tools/san.
+	ActorId       uint64 `protobuf:"varint,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MemberRemoved) Reset() {
+	*x = MemberRemoved{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemberRemoved) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemberRemoved) ProtoMessage() {}
+
+func (x *MemberRemoved) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemberRemoved.ProtoReflect.Descriptor instead.
+func (*MemberRemoved) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *MemberRemoved) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *MemberRemoved) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *MemberRemoved) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
 
 // SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md
 // §General Brief 2 — "Settlement Log … publish to the broker").
@@ -308,7 +395,7 @@ type SettlementLogPosted struct {
 
 func (x *SettlementLogPosted) Reset() {
 	*x = SettlementLogPosted{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -320,7 +407,7 @@ func (x *SettlementLogPosted) String() string {
 func (*SettlementLogPosted) ProtoMessage() {}
 
 func (x *SettlementLogPosted) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[2]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +420,7 @@ func (x *SettlementLogPosted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettlementLogPosted.ProtoReflect.Descriptor instead.
 func (*SettlementLogPosted) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SettlementLogPosted) GetLogId() uint64 {
@@ -498,7 +585,7 @@ type OrderPlaced struct {
 
 func (x *OrderPlaced) Reset() {
 	*x = OrderPlaced{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -510,7 +597,7 @@ func (x *OrderPlaced) String() string {
 func (*OrderPlaced) ProtoMessage() {}
 
 func (x *OrderPlaced) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[3]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -523,7 +610,7 @@ func (x *OrderPlaced) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderPlaced.ProtoReflect.Descriptor instead.
 func (*OrderPlaced) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *OrderPlaced) GetTeamId() uint64 {
@@ -617,7 +704,7 @@ type OrderPlacedLine struct {
 
 func (x *OrderPlacedLine) Reset() {
 	*x = OrderPlacedLine{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -629,7 +716,7 @@ func (x *OrderPlacedLine) String() string {
 func (*OrderPlacedLine) ProtoMessage() {}
 
 func (x *OrderPlacedLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[4]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -642,7 +729,7 @@ func (x *OrderPlacedLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderPlacedLine.ProtoReflect.Descriptor instead.
 func (*OrderPlacedLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{4}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *OrderPlacedLine) GetProductId() uint64 {
@@ -695,7 +782,7 @@ type OrderCancelled struct {
 
 func (x *OrderCancelled) Reset() {
 	*x = OrderCancelled{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[5]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -707,7 +794,7 @@ func (x *OrderCancelled) String() string {
 func (*OrderCancelled) ProtoMessage() {}
 
 func (x *OrderCancelled) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[5]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +807,7 @@ func (x *OrderCancelled) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderCancelled.ProtoReflect.Descriptor instead.
 func (*OrderCancelled) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{5}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *OrderCancelled) GetTeamId() uint64 {
@@ -771,21 +858,27 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\n" +
 	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
 	"\vEventConfig\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"\x81\x05\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"\xce\x05\n" +
 	"\x05Event\x12\"\n" +
 	"\bevent_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x12C\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"occurredAt\x12*\n" +
 	"\faggregate_id\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vaggregateId\x12\\\n" +
 	"\bmetadata\x18\x04 \x03(\v2(.warehouse.events.v1.Event.MetadataEntryB\x16\xbaH\x13\x9a\x01\x10\x10d\"\x05r\x03(\x80\x02*\x05r\x03(\x80\bR\bmetadata\x12<\n" +
-	"\bidentity\x18\x05 \x01(\v2 .warehouse.role_base.v1.IdentityR\bidentity\x12F\n" +
+	"\bidentity\x18\x05 \x01(\v2 .warehouse.role_base.v1.IdentityR\bidentity\x12K\n" +
+	"\x0emember_removed\x18d \x01(\v2\".warehouse.events.v1.MemberRemovedH\x00R\rmemberRemoved\x12F\n" +
 	"\forder_placed\x18\xc8\x01 \x01(\v2 .warehouse.events.v1.OrderPlacedH\x00R\vorderPlaced\x12O\n" +
 	"\x0forder_cancelled\x18\xc9\x01 \x01(\v2#.warehouse.events.v1.OrderCancelledH\x00R\x0eorderCancelled\x12_\n" +
 	"\x15settlement_log_posted\x18\xac\x02 \x01(\v2(.warehouse.events.v1.SettlementLogPostedH\x00R\x13settlementLogPosted\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
-	"\amessage\x12\x05\xbaH\x02\b\x01\"\xdc\x04\n" +
+	"\amessage\x12\x05\xbaH\x02\b\x01\"r\n" +
+	"\rMemberRemoved\x12\x17\n" +
+	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\x04R\x06userId\x12\x19\n" +
+	"\bactor_id\x18\x03 \x01(\x04R\aactorId:\x14\x8a\xb5\x18\x10\n" +
+	"\x0emember-removed\"\xdc\x04\n" +
 	"\x13SettlementLogPosted\x12\x15\n" +
 	"\x06log_id\x18\x01 \x01(\x04R\x05logId\x12\x1b\n" +
 	"\tunique_id\x18\x02 \x01(\tR\buniqueId\x12\x19\n" +
@@ -845,38 +938,40 @@ func file_warehouse_events_v1_event_proto_rawDescGZIP() []byte {
 	return file_warehouse_events_v1_event_proto_rawDescData
 }
 
-var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*EventConfig)(nil),                 // 0: warehouse.events.v1.EventConfig
 	(*Event)(nil),                       // 1: warehouse.events.v1.Event
-	(*SettlementLogPosted)(nil),         // 2: warehouse.events.v1.SettlementLogPosted
-	(*OrderPlaced)(nil),                 // 3: warehouse.events.v1.OrderPlaced
-	(*OrderPlacedLine)(nil),             // 4: warehouse.events.v1.OrderPlacedLine
-	(*OrderCancelled)(nil),              // 5: warehouse.events.v1.OrderCancelled
-	nil,                                 // 6: warehouse.events.v1.Event.MetadataEntry
-	(*timestamppb.Timestamp)(nil),       // 7: google.protobuf.Timestamp
-	(*v1.Identity)(nil),                 // 8: warehouse.role_base.v1.Identity
-	(v11.SettlementType)(0),             // 9: warehouse.settlement.v1.SettlementType
-	(v11.SourceType)(0),                 // 10: warehouse.settlement.v1.SourceType
-	(*descriptorpb.MessageOptions)(nil), // 11: google.protobuf.MessageOptions
+	(*MemberRemoved)(nil),               // 2: warehouse.events.v1.MemberRemoved
+	(*SettlementLogPosted)(nil),         // 3: warehouse.events.v1.SettlementLogPosted
+	(*OrderPlaced)(nil),                 // 4: warehouse.events.v1.OrderPlaced
+	(*OrderPlacedLine)(nil),             // 5: warehouse.events.v1.OrderPlacedLine
+	(*OrderCancelled)(nil),              // 6: warehouse.events.v1.OrderCancelled
+	nil,                                 // 7: warehouse.events.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil),       // 8: google.protobuf.Timestamp
+	(*v1.Identity)(nil),                 // 9: warehouse.role_base.v1.Identity
+	(v11.SettlementType)(0),             // 10: warehouse.settlement.v1.SettlementType
+	(v11.SourceType)(0),                 // 11: warehouse.settlement.v1.SourceType
+	(*descriptorpb.MessageOptions)(nil), // 12: google.protobuf.MessageOptions
 }
 var file_warehouse_events_v1_event_proto_depIdxs = []int32{
-	7,  // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	6,  // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
-	8,  // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
-	3,  // 3: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
-	5,  // 4: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
-	2,  // 5: warehouse.events.v1.Event.settlement_log_posted:type_name -> warehouse.events.v1.SettlementLogPosted
-	9,  // 6: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
-	10, // 7: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
-	4,  // 8: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
-	11, // 9: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
-	0,  // 10: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	10, // [10:11] is the sub-list for extension type_name
-	9,  // [9:10] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	8,  // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	7,  // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
+	9,  // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
+	2,  // 3: warehouse.events.v1.Event.member_removed:type_name -> warehouse.events.v1.MemberRemoved
+	4,  // 4: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
+	6,  // 5: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
+	3,  // 6: warehouse.events.v1.Event.settlement_log_posted:type_name -> warehouse.events.v1.SettlementLogPosted
+	10, // 7: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
+	11, // 8: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
+	5,  // 9: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
+	12, // 10: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
+	0,  // 11: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	11, // [11:12] is the sub-list for extension type_name
+	10, // [10:11] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_events_v1_event_proto_init() }
@@ -885,6 +980,7 @@ func file_warehouse_events_v1_event_proto_init() {
 		return
 	}
 	file_warehouse_events_v1_event_proto_msgTypes[1].OneofWrappers = []any{
+		(*Event_MemberRemoved)(nil),
 		(*Event_OrderPlaced)(nil),
 		(*Event_OrderCancelled)(nil),
 		(*Event_SettlementLogPosted)(nil),
@@ -895,7 +991,7 @@ func file_warehouse_events_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_events_v1_event_proto_rawDesc), len(file_warehouse_events_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 1,
 			NumServices:   0,
 		},
