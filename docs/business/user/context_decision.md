@@ -64,6 +64,10 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [rename-the-roles-before-the-grant-checks](#rename-the-roles-before-the-grant-checks) | the hold is lifted: the four roles are renamed now, before the code that compares roles | owner, 2026-10-05 |
 | [no-alias-for-the-old-role-names](#no-alias-for-the-old-role-names) | the old role names are not kept as aliases; a tab on the old app reloads once | owner, 2026-10-05 |
 | [the-create-team-form-names-the-first-owner](#the-create-team-form-names-the-first-owner) | a new team's first Owner is the person the Create Team form names; the creator is not made a member | owner, 2026-10-05 |
+| [the-switcher-offers-every-team](#the-switcher-offers-every-team) | the switcher adds *All teams* under *My teams*: every team for Root and the Administrator, every warehouse and selling team read-only for the admin team | owner, 2026-10-06 |
+| [a-non-member-root-acts-under-a-strip](#a-non-member-root-acts-under-a-strip) | in a team they are not in, Root and the Administrator act with their platform role under a *not a member* strip, each write an override | owner, 2026-10-06 |
+| [the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only) | in a team it monitors, the admin team sees no write control, and the server lets only marked reads through | owner, 2026-10-06 |
+| [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form) | pass 1 now: *All teams* for Root and the Administrator, their strip, and Create Team's Owner field · pass 2 after: the admin team read-only | owner, 2026-10-06 |
 
 ## warehouse-staff-is-the-whole-floor-job
 
@@ -976,6 +980,8 @@ flowchart LR
 > Owner, in chat *(2026-10-02)*: *"for q12, q13, q14, q15, 1q6 i follow your recomendation"*. It answers [Q12](./context_clarify.md#question), as recommended, and resolves
 [the-admin-team-manages-nothing-but-itself](./context_clarify.md#the-admin-team-manages-nothing-but-itself).
 
+> 🔄 *(2026-10-06)* Its screen is decided — [the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only), built as its own pass.
+
 **The verdict.** **Monitor all, manage own.** The admin team **reads** every warehouse and selling team, which is
 `business_level.md`'s *"monitoring … all resource"*. It **writes** only inside itself
 ([admin-team-roles-manage-only-their-team](#admin-team-roles-manage-only-their-team)).
@@ -1516,6 +1522,9 @@ when the rename ships, this is revisited before it ships, not after.
 > 🔄 *(2026-10-05, later)* ⚠ Built alone, this cuts Root and the Administrator off from the teams they create: the team
 > switcher lists memberships only. It waits on [Q28](./context_clarify.md#question).
 
+> 🔄 *(2026-10-06)* No longer waiting: it ships with the switcher's *All teams*, so the creator always has a way in —
+> [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form).
+
 **The verdict.** A new team's first Owner is **a person the Create Team form names**, found with the Add Member search
 and created if missing. Whoever creates the team is **not** made a member: Root and the Administrator already act in
 every team.
@@ -1537,3 +1546,99 @@ flowchart LR
 | the role | the team type's Owner: `warehouse_owner`, `selling_owner` or `admin_owner` ([the-admin-team-roles-are-added-first](#the-admin-team-roles-are-added-first)) |
 | the screen | the Create Team form gains an Owner field, using the Add Member search |
 | the lifecycle | a contract and a screen changed after design_accept, so this is **its own prototype pass**, previewed and accepted on its own ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)) |
+
+## the-switcher-offers-every-team
+
+> Owner, in chat *(2026-10-06)*: *"i follow your recomendation"*, after Q28 was elaborated into five parts. It answers
+> [Q28a and Q28b](./context_clarify.md#question), as recommended.
+
+**The verdict.** The team switcher keeps **My teams** (your memberships) and adds **All teams** under it for those who
+reach every team: Root and the System Administrator, with full reach, and the admin team's two roles, read-only over
+every warehouse and selling team. *All teams* is searched on the server and paged, because it grows with every seller.
+
+```mermaid
+flowchart TB
+  O["open the switcher"] --> M["My teams — your memberships, as now"]
+  O --> Q{"Root, the Administrator, or the admin team?"}
+  Q -->|"yes"| A["All teams — searched on the server, paged"]
+  A --> P["pick Toko Melati"]
+```
+
+**The spec.** ⚠ **Not built.**
+
+| | |
+| --- | --- |
+| who sees *All teams* | Root and the Administrator: every team · `admin_owner`, `admin_administrator`: every warehouse and selling team |
+| the search | `TeamList` — it already pages, searches by name, and any signed-in user may call it |
+| after a reload | the picked team is restored **by id** (`TeamByIds`), not looked up in your memberships |
+| a team you are in | stays under *My teams*, with your own role — *All teams* never shadows a membership |
+
+## a-non-member-root-acts-under-a-strip
+
+> Owner, in chat *(2026-10-06)*. It answers [Q28c](./context_clarify.md#question), as recommended.
+
+**The verdict.** In a team they are not in, Root and the System Administrator are offered **what their platform role
+may do** — everything the server already lets them do — under a strip on every page: *Not a member — acting as Root*
+(or *as the System Administrator*). Each write is stamped as an override
+([an-override-is-stamped-in-every-service](#an-override-is-stamped-in-every-service)).
+
+```mermaid
+flowchart LR
+  R["Root picks Toko Melati"] --> S["strip — Not a member, acting as Root"]
+  R --> F["every screen offers Root's reach"]
+  F --> W["a write — stamped as an override"]
+```
+
+**The spec.** ⚠ **Not built.** The current team's role is their **platform role** (`ROLE_ROOT`,
+`ROLE_ADMINISTRATOR`), which every role helper already treats as reaching everything, plus a *not a member* flag that
+draws the strip. The server needs nothing new: the root-team bypass already lets them in, and a caller with no role
+in the team is what an override is.
+
+## the-admin-team-monitors-read-only
+
+> Owner, in chat *(2026-10-06)*. It answers [Q28d](./context_clarify.md#question), as recommended. It is the screen
+> [the-admin-team-monitors-all-and-manages-its-own](#the-admin-team-monitors-all-and-manages-its-own) had none of.
+
+**The verdict.** In a team it monitors, the admin team sees the team type's screens with **no write control**, under a
+*Monitoring — read-only* strip. The server refuses its writes; a request passes only when the proto marks it a read.
+
+```mermaid
+flowchart LR
+  A["admin_owner picks Gudang Pusat"] --> S["strip — Monitoring, read-only"]
+  A --> R["a read — marked a read in the proto — passes"]
+  A -.->|"refused"| W["a write"]
+```
+
+**The spec.** ⚠ **Not built — its own pass** ([the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form)).
+
+| | |
+| --- | --- |
+| the proto | each of the 142 team-scoped request messages is marked a read or not, by hand. About 59 look like reads by name; a name decides nothing |
+| the access check | a member of an admin-type team passes another team's scope for a marked read, and only for that. Roles 11 and 12 exist only in admin-type teams, since a role must be of its team's type |
+| the screens | a read-only flag on the current team hides every write control — the 21 screens that read the role, and any write offered to *any member* |
+
+## the-switcher-ships-with-the-create-team-form
+
+> Owner, in chat *(2026-10-06)*. It answers [Q28e](./context_clarify.md#question), as recommended.
+
+**The verdict.** Two passes. **Now**, one prototype: the switcher's *All teams* for Root and the Administrator, their
+*not a member* strip, and the Create Team form's Owner field
+([the-create-team-form-names-the-first-owner](#the-create-team-form-names-the-first-owner)) — built together, so the
+creator is never cut off. **After**, the admin team's read-only half, as its own pass.
+
+```mermaid
+flowchart LR
+  subgraph "pass 1 — now"
+    S["All teams for Root and the Administrator"]
+    N["the not-a-member strip"]
+    C["Create Team names its Owner"]
+  end
+  subgraph "pass 2 — after"
+    R["the admin team, read-only"]
+  end
+  S --> R
+```
+
+**The spec.** Pass 1 needs only the screens and one contract change (`TeamCreateRequest` names the Owner); the
+server already lets Root and the Administrator into every team. Pass 2 is the proto marking, the access-check change
+and the read-only mode.
