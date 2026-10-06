@@ -16,6 +16,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [products-hang-off-a-channel](#products-hang-off-a-channel) | a supplier's products are stored, one row per product per channel — not derived from restocks | your fourth edit, 2026-10-06 — closes Q9 |
 | [linking-products-is-deferred](#linking-products-is-deferred) | how a product gets linked to a channel is talked about later; the next pass is basic CRUD | in chat, 2026-10-06 |
 | [statistics-are-deferred](#statistics-are-deferred) | a supplier's statistics are defined later, not in the CRUD pass | your §Whats defer, 2026-10-06 |
+| [channel-type-is-the-marketplace-list](#channel-type-is-the-marketplace-list) | `channel_type` is the shared marketplace list; `custom` is its *Other* | your edit, 2026-10-06 — answers Q7, as recommended |
+| [no-province-city-or-soft-delete](#no-province-city-or-soft-delete) | a supplier is exactly your listed fields; delete is a hard delete | in chat, 2026-10-06 — answers Q8, against my *keep all three* |
+| [the-supplier-gets-its-own-service](#the-supplier-gets-its-own-service) | suppliers and channels move to their own `supplier_service` | in chat, 2026-10-06 — answers Q6, against my *stay in inventory_service* |
 
 ## reversed-the-supplier-keeps-its-code
 
@@ -117,7 +120,7 @@ flowchart LR
 | --- | --- | --- |
 | [restock_request_create.go:16](../../../backend/services/inventory_service/inventory_v1/restock_request_create.go#L16) and the update | the supplier must belong to the **requesting** team, or `NotFound` | a **live supplier of any selling team** |
 | `SupplierService`'s comment, `RestockRequest.supplier_id`'s comment | *"one team can never read another team's supplier"* | rewritten — `SupplierByIds` is no longer the one exception |
-| `restock_requests.supplier_id` | a real FK to `suppliers` | unchanged — a foreign key does not care which team owns the row |
+| `restock_requests.supplier_id` | a real FK to `suppliers` | unchanged — a foreign key does not care which team owns the row · 🔄 **removed by [the-supplier-gets-its-own-service](#the-supplier-gets-its-own-service)** |
 
 What it leaves open: what A's edit and delete do to B's restocks, and how B's restock form finds A's supplier —
 [Q2](./context_clarify.md#question).
@@ -292,3 +295,96 @@ flowchart LR
 **The spec.** Nothing is built for it now. The analytic doc already names a *Daily Supplier Report Table*; its grain is
 an open question in [analytic's clarify](../analytic/context_clarify.md#question), and the supplier's statistics are
 defined against it when this is picked up.
+
+## channel-type-is-the-marketplace-list
+
+> Owner, in chat *(2026-10-06)*: *"for 7 im edited again"* — and [context.md](./context.md) §Table Must Have 2 now lists
+> `shopee` · `lazada` · `tiktok` · `tokopedia` · `bukalapak` · `blibli` · `custom`. It answers
+> [Q7](./context_clarify.md#question), as recommended: the seven are the shared list's seven, with `custom` as its
+> *Other*. It resolves the contradiction *two-lists-of-marketplaces*.
+
+**The verdict.** A channel's type is the **shared marketplace list** — the one shops use. A platform added for shops
+is there for suppliers too.
+
+```mermaid
+flowchart LR
+  E["warehouse.marketplace.v1 — 7 values"] --> SH["shops — marketplace"]
+  E --> SU["supplier_channels — channel_type"]
+```
+
+**The spec.** `SupplierChannel.channel_type` is a `warehouse.marketplace.v1.Marketplace`; your `custom` is
+`MARKETPLACE_OTHER`, stored as the shared code `other` by
+[san_marketplace](../../../backend/pkgs/san_marketplace/marketplace.go). The channel form reuses `MarketplaceSelect`.
+⚠ If you want the word *Custom* rather than *Other* on a supplier channel, say so: it is a label, not a new value.
+
+## no-province-city-or-soft-delete
+
+> Owner, in chat *(2026-10-06)*: *"for q8, yes"*, confirmed the same day as **drop all three**. It answers
+> [Q8](./context_clarify.md#question), **against my recommendation**, which was to keep `province`, `city` and
+> `deleted`.
+
+**The verdict.** A supplier is **exactly the fields on your list**. There is no province or city, and **delete is a
+hard delete**: the row is gone, and its channels with it.
+
+```mermaid
+flowchart LR
+  D["SupplierDelete"] --> G["the supplier row — removed"]
+  G --> C["its supplier_channels — removed with it"]
+  G -.->|"a restock that named it keeps an id with nothing behind it"| R["restock Q1"]
+```
+
+**The spec.**
+
+| site | change |
+| --- | --- |
+| `province`, `city` | not in `supplier_service`'s table. On the move, a non-empty city or province is appended to `address`, so nothing typed is lost |
+| `deleted` | not in the table. Rows already soft-deleted are not moved |
+| `SupplierDelete` | deletes the row; `supplier_channels` cascade |
+| `SupplierByIds` | a deleted supplier is simply absent, as its contract already allows for an unknown id |
+
+**What it does NOT settle:** what a restock shows once its supplier is deleted, and whether A may delete a supplier B's
+restocks name. Both are the restock's questions — moved there with Q2
+([restock clarify](../inventory/restock_clarify.md#question)).
+
+## the-supplier-gets-its-own-service
+
+> Owner, in chat *(2026-10-06)*: *"for 6 yes"*, confirmed the same day as **its own `supplier_service`**. It answers
+> [Q6](./context_clarify.md#question), **against my recommendation**, which was to stay in `inventory_service`. It
+> settles the contradiction *where-the-supplier-lives* — except that your architecture doc still says
+> `product_service`.
+
+**The verdict.** Suppliers and their channels leave `inventory_service` for a service of their own,
+**`supplier_service`**. Restocks name a supplier by an opaque id, as an order names a shop.
+
+```mermaid
+flowchart LR
+  subgraph "before"
+    INV1["inventory_service — suppliers, supplier_channels, restocks"]
+  end
+  subgraph "after"
+    SUP["supplier_service — suppliers, supplier_channels"]
+    INV2["inventory_service — restocks, supplier_id opaque"]
+    INV2 -->|"is this a supplier, and its name"| SUP
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the service | `backend/services/supplier_service/` — `supplier_v1/` (one file per RPC, a unit test beside each), `supplier_service_models/`, `db_migrations/`, a `register.go` and a Wire provider (HARD RULE 2) |
+| it owns | `suppliers` · `supplier_channels` · later `supplier_channel_products` ([linking-products-is-deferred](#linking-products-is-deferred)) |
+| its contract | ⚠ my spec: `proto/warehouse/supplier/v1/`, package `warehouse.supplier.v1` — `SupplierService` and `SupplierChannelService` move there. A breaking move for the frontend's two clients |
+| `restock_requests.supplier_id` | loses its foreign key — an opaque id. The restock's check of it becomes a call to `supplier_service`, designed with the restock ([restock clarify](../inventory/restock_clarify.md#question)) |
+| what it calls | `team_service` — is the team a selling team ([only-a-selling-team-has-suppliers](#only-a-selling-team-has-suppliers)) |
+| who calls it | `inventory_service` for a restock's supplier · the frontend's two pages and `SupplierSelect` |
+| docs | `docs/database-schema.md` gains a `supplier_service` section; `docs/services/supplier_service/rpc.md` if a flow crosses services |
+
+🔄 It changes [a-team-restocks-from-another-teams-supplier](#a-team-restocks-from-another-teams-supplier)'s last spec row:
+the foreign key it called *unchanged* is the one this removes.
+
+**What it does NOT settle:** ⚠ **moving the suppliers that exist** — copying the rows with their ids (restocks and
+batches hold them), then `inventory_service` dropping its tables. A technical item, as the shop's move was; proposed in
+the [clarify](./context_clarify.md#proposed-design). And your
+[technical/architecture/context.md](../../technical/architecture/context.md) service list still puts the supplier in
+`product_service` — your edit.
