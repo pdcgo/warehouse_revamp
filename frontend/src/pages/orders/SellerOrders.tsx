@@ -21,7 +21,7 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
-import { useOrders, useOrderStat } from "../../features/orders/queries";
+import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
 import type { OrderFilters } from "../../features/orders/queries";
 import {
   orderSummaryRows,
@@ -67,7 +67,8 @@ import {
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
-import { UserSelect } from "../../components/pickers/UserSelect";
+import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
+import { useTypists } from "../../features/orders/typists";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import {
   ALL_DATES,
@@ -80,7 +81,6 @@ import { useDebounced } from "../../lib/useDebounced";
 import { OrderSummary } from "../../features/orders/OrderSummary";
 import { withSampleCosts } from "./summaryMock";
 import {
-  mockCreator,
   mockMarketplaceCreated,
   mockReceiptCode,
   mockStageOffset,
@@ -103,10 +103,10 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // while this is looked at; when it is accepted this page replaces it, exactly as `order-create-next`
 // became the order form. Nothing here is routed — it is reached from Storybook.
 //
-// ⚠ THREE OF THE FOUR NEW FILTERS NARROW NOTHING. `OrderListFilter` carries a status, a product, a
-// search term, a shop and a date window; there is no warehouse field, no creator field (an Order has
-// no creator AT ALL), and no marketplace field. They are on screen so the SHAPE of the bar can be
-// judged, each carrying the mark that says so — see `pending.ts`.
+// ⚠ TWO OF THE FOUR NEW FILTERS NARROW NOTHING. `OrderListFilter` carries a status, a product, a
+// search term, a shop, a date window and who typed the order in; there is no warehouse field and no
+// marketplace field. They are on screen so the SHAPE of the bar can be judged, each carrying the mark
+// that says so — see `pending.ts`.
 //
 // WHY THEY ARE SEARCH SELECTS (owner). A picker over data that grows is typed into; only a static,
 // small set stays a plain dropdown. Warehouse and creator and shop all grow, so all three search.
@@ -123,9 +123,9 @@ export function SellerOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // The filters above the tabs. The three that REACH THE SERVER are search, shop and the date window
+  // The filters above the tabs. The four that REACH THE SERVER are search, shop, the date window and the creator
   // — the list is paginated, so a client-side filter would narrow the loaded page only and leave the
-  // pager counting the whole set. The other three reach nothing at all yet.
+  // pager counting the whole set. The other two reach nothing at all yet.
   const [search, setSearch] = useState("");
   const [shopId, setShopId] = useState(0n);
   const [warehouseId, setWarehouseId] = useState(0n);
@@ -166,7 +166,7 @@ export function SellerOrdersPage() {
   const filters: OrderFilters = useMemo(() => {
     const { fromUnix, toUnix } = resolveRange(range);
 
-    // ⚠ `warehouseId`, `creatorId` and `marketplace` are deliberately NOT here. There is nowhere on
+    // ⚠ `warehouseId` and `marketplace` are deliberately NOT here. There is nowhere on
     // `OrderListFilter` to put them, and inventing a field the server ignores would make the screen
     // look wired while the rows stayed the same — the exact lie the marks are there to prevent.
     return {
@@ -174,8 +174,13 @@ export function SellerOrdersPage() {
       shopId: canFilterByShop ? shopId : 0n,
       fromUnix,
       toUnix,
+      createdByUserId: creatorId ?? 0n,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId]);
+
+  // The "created by" filter's people: everyone who typed in an order this team may list
+  // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
+  const creators = useOrderCreators({ teamId });
 
   const stage = orderStage(tab);
 
@@ -216,7 +221,7 @@ export function SellerOrdersPage() {
   // Whether ANYTHING is narrowing the list. Read off the live controls rather than off `filters`, so
   // Clear appears the moment somebody types instead of after the debounce.
   //
-  // ⚠ The three unwired pickers COUNT here, even though they narrow nothing. Clear is "put this bar
+  // ⚠ The two unwired pickers COUNT here, even though they narrow nothing. Clear is "put this bar
   // back to where it started", and a picker left holding a warehouse after Clear would be a control
   // the button visibly skipped.
   // How many controls are narrowing the list — the number on the phone's Filter button.
@@ -334,6 +339,9 @@ export function SellerOrdersPage() {
 
   const orders = query.data?.orders ?? [];
   const totalItems = query.data?.totalItems ?? 0;
+
+  // WHO TYPED EACH ROW IN — one UserByIDs for the page.
+  const typistOf = useTypists(orders);
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
@@ -463,19 +471,20 @@ export function SellerOrdersPage() {
           </Flex>
         </FilterField>
 
-        {/* WHO TYPED THE ORDER. Scoped to this team's members, which is the only population that
-            could have created one of its orders. */}
+        {/* WHO TYPED THE ORDER — the people on this team's orders, answered by selling_service
+            (a-who-filter-lists-the-people-on-its-rows): somebody who has since left still typed last
+            year's orders in, and a member who never placed one is no answer. */}
         <FilterField w="15rem" testId="orders-creator-filter">
           <Flex align="center" gap="1">
             <Box flex="1" minW="0">
-              <UserSelect
-                teamId={teamId}
+              <PersonFilterSelect
+                people={creators.data}
+                error={creators.isError}
                 value={creatorId}
                 placeholder={t("orders.creatorAll")}
                 onChange={(id) => refilter(() => setCreatorId(id))}
               />
             </Box>
-            <NotImplemented list={ORDERS_LIST_PENDING} id="creator" />
           </Flex>
         </FilterField>
 
@@ -625,8 +634,6 @@ export function SellerOrdersPage() {
                         <Table.ColumnHeader>
                           <Flex gap="1" align="center">
                             {t("orders.placed")}
-                            {/* The "oleh …" line under each date — an order records no creator. */}
-                            <NotImplemented list={ORDERS_LIST_PENDING} id="creator" />
                           </Flex>
                         </Table.ColumnHeader>
 
@@ -719,7 +726,7 @@ export function SellerOrdersPage() {
                             </Table.Cell>
 
                             <Table.Cell>
-                              <CreatedCell unix={o.createdAtUnix} by={mockCreator(o.id)} />
+                              <CreatedCell unix={o.createdAtUnix} by={typistOf(o.createdByUserId)} />
                             </Table.Cell>
 
                             {/* ⚠ BOTH HALVES ARE INVENTED, for different reasons: `mp_created` has no

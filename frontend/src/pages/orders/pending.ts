@@ -3,9 +3,9 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // WHAT THIS SCREEN CANNOT DO YET — in ONE list, the same way the order form carries its own.
 //
 // This is a PREVIEW of the orders list the owner specified: an export, a per-marketplace import, and
-// four filters. Five of the six things it adds have nothing behind them — `OrderListFilter` carries a
-// status, a product, a search term, a shop and a date window, and NOTHING ELSE, so three of the new
-// pickers narrow the list by exactly nothing; and there is no RPC on either side of a file.
+// four filters. Four of the six things it adds have nothing behind them — `OrderListFilter` carries a
+// status, a product, a search term, a shop, a date window and the creator, and NOTHING ELSE, so two of
+// the new pickers narrow the list by exactly nothing; and there is no RPC on either side of a file.
 //
 // The list shrinks by one entry each time something behind it lands. See `features/pending` for the
 // four kinds and for why the badge's number is the position in this array.
@@ -18,7 +18,6 @@ export type PendingId =
   | "export"
   | "import"
   | "warehouseFilter"
-  | "creator"
   | "mpDate"
   | "stageDate"
   | "receiptCode"
@@ -63,17 +62,9 @@ const PARTS: PendingPart<PendingId>[] = [
   // a warehouse sees what ships from it — so the value exists on the order; what is missing is a way
   // for a SELLING team to ask "only the ones leaving Gudang Pusat".
   { id: "warehouseFilter", kind: "dropped" },
-  // ⚠ AN ORDER HAS NO CREATOR AT ALL. Not a missing filter — a missing FACT: `Order` carries no user
-  // id for whoever typed it. ONE entry for BOTH symptoms (HARD RULE 11: group by cause).
-  //
-  // `sample` rather than `dropped`, now that the name is mocked: a filter that narrows nothing is
-  // annoying and instantly visible, while a NAME on screen that nobody actually typed is something a
-  // reader would act on — "ask Ani about this one". The worse half names the kind.
-  { id: "creator", kind: "sample" },
   // ⚠ THE MARKETPLACE'S OWN ORDER DATE HAS NO FIELD. `created_at_unix` is when WE wrote the row; an
-  // order taken on Saturday and typed in on Monday has two dates and the contract carries one. A
-  // separate entry from `creator` because it is a separate missing field with a separate fix —
-  // grouping them would be grouping by the CELL they share, not by cause.
+  // order taken on Saturday and typed in on Monday has two dates and the contract carries one. (Who typed
+  // it in — the cell's other line — is a real field now, `created_by_user_id`.)
   { id: "mpDate", kind: "sample" },
   // ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderEvent` is already `kind` + `at_unix`, which
   // is exactly "when did it enter this status" — but events are populated by `OrderDetail` only, so

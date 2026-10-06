@@ -563,10 +563,6 @@
         "label": "Filter gudang",
         "reason": "Filter daftar pesanan belum punya kolom gudang, jadi memilih gudang tidak mengubah tabelnya."
       },
-      "creator": {
-        "label": "Pembuat pesanan",
-        "reason": "Pesanan sama sekali belum menyimpan siapa pembuatnya — filternya tidak menyaring apa pun, dan nama di bawah tanggal itu karangan."
-      },
       "mpDate": {
         "label": "Tanggal order marketplace",
         "reason": "Pesanan hanya menyimpan kapan KITA mencatatnya; tanggal pembeli memesan di marketplace belum punya kolom, jadi baris kedua di bawah tanggal itu karangan."
@@ -1692,18 +1688,6 @@
       "submitChange": "Ubah Peran",
       "submitCreate": "Buat dan Tambah",
       "pending": {
-        "exactSearch": {
-          "label": "Pencocokan persis untuk Pemilik dan Admin",
-          "reason": "server masih mencocokkan dua huruf nama mana pun, untuk semua orang"
-        },
-        "phoneLast4": {
-          "label": "Akhiran telepon di tiap hasil",
-          "reason": "server belum mengirimnya"
-        },
-        "alreadyMember": {
-          "label": "Siapa yang sudah ada di tim ini",
-          "reason": "server tidak memberitahu, jadi anggota terbaca sebagai pendatang baru dan Tambah menimpa perannya"
-        },
         "duplicateRefusal": {
           "label": "Satu akun per telepon",
           "reason": "nomor telepon yang sudah dipakai akun lain belum ditolak"
@@ -2583,10 +2567,6 @@
         "label": "Sudah diserahkan",
         "reason": "Sudah diserahkan adalah langkah terakhir gudang, tapi kontrak belum punya statusnya — tabnya belum bisa menyaring apa pun."
       },
-      "creator": {
-        "label": "Dibuat oleh",
-        "reason": "Order tidak mencatat pembuatnya — hanya tim tempat order dibuat."
-      },
       "shop": {
         "label": "Toko seller",
         "reason": "Order hanya membawa id toko, dan gudang tidak bisa membaca toko milik seller."
@@ -3311,5 +3291,10 @@
     },
     "sellPriceTyped": "Diketik manual, bukan dari harga baris.",
     "sellPriceReset": "Pakai Harga Baris"
+  },
+  "personFilter": {
+    "empty": "Belum ada siapa pun",
+    "noMatch": "Tidak ada yang cocok",
+    "unavailable": "Daftar orang tidak tersedia"
   }
 }

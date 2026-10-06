@@ -67,6 +67,10 @@ service OrderService {
   // (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
   // (user-id-is-the-orders-creator-else-the-shops-primary-cs).
   rpc OrderByExternalRefs(OrderByExternalRefsRequest) returns (OrderByExternalRefsResponse);
+
+  // The people the list's "created by" filter offers: everyone who typed in an order this team may list
+  // (a-who-filter-lists-the-people-on-its-rows).
+  rpc OrderCreatorList(OrderCreatorListRequest) returns (OrderCreatorListResponse);
 }
 
 // Selling-side statuses only; fulfillment states (picking/packed/shipped/delivered) wait for the
@@ -310,6 +314,11 @@ message Order {
   // whether two orders may share one is an open question (see the migration), and enforcing it before
   // that is decided would refuse legitimate re-entry.
   string order_external_ref_id = 21;
+
+  // WHO TYPED IT IN — read from the authenticated caller at placement, never from the request, and never
+  // updated. An opaque user_service id; the screen resolves the name with UserByIDs. 0 = not recorded
+  // (an order placed before the creator was kept).
+  uint64 created_by_user_id = 22;
 }
 
 message OrderCreateRequest {
@@ -458,6 +467,11 @@ message OrderListFilter {
   // DateRangePicker already carries a field segment for exactly that.
   int64 created_from_unix = 5;
   int64 created_to_unix = 6;
+
+  // Only orders THIS person typed in (`created_by_user_id`). 0 = anybody. An order placed before the
+  // creator was kept matches nobody: the record does not say, and filing it under a name would invent the
+  // one fact being filtered on. The picker offers OrderCreatorList.
+  uint64 created_by_user_id = 7;
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -784,7 +798,7 @@ message OrderStatFilter {
   // 0 = no filter.
   uint64 product_id = 1;
 
-  // The mirror of OrderListFilter's search / shop / date window, and the mirroring is load-bearing
+  // The mirror of OrderListFilter's search / shop / date window / creator, and the mirroring is load-bearing
   // rather than tidy: these narrow which orders exist for the screen, so a header computed without
   // them would sit above a table describing a smaller set — "Placed 12" over four visible rows, with
   // nothing on screen explaining the gap. The server shares ONE query builder between the two RPCs so
@@ -796,6 +810,7 @@ message OrderStatFilter {
   uint64 shop_id = 3;
   int64 created_from_unix = 4;
   int64 created_to_unix = 5;
+  uint64 created_by_user_id = 6;
 }
 
 message OrderStatRequest {
@@ -927,4 +942,86 @@ message OrderByExternalRefsResponseList {
 message OrderByExternalRefsResponse {
   // Keyed by ref. A ref no order of the team carries is ABSENT.
   map<string, OrderByExternalRefsResponseList> items = 1;
+}
+
+// ── Who typed the orders in (a-who-filter-lists-the-people-on-its-rows) ──────────────────────────
+//
+// What the list's "created by" filter offers: the people who typed in an order this team may list, and
+// nobody else. Not the team's members — a person who has left still typed last year's orders in, and a
+// member who has never placed one is no answer to "whose orders are these". Every id is already on a row
+// the caller can see. Former members and suspended accounts are kept
+// (a-filter-keeps-former-and-suspended-people).
+
+enum OrderCreatorListDataType {
+  ORDER_CREATOR_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  ORDER_CREATOR_LIST_DATA_TYPE_CREATOR = 1;
+}
+
+// OrderCreatorSort is the sort selection paired with the CREATOR slice.
+enum OrderCreatorSort {
+  ORDER_CREATOR_SORT_UNSPECIFIED = 0;
+  // When they last typed one in — the default, newest first, so the people working now lead.
+  ORDER_CREATOR_SORT_LAST_AT = 1;
+}
+
+// Nothing narrows it yet: the picker offers everyone on the team's orders.
+message OrderCreatorListFilter {}
+
+message OrderCreatorListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    OrderCreatorSort creator = 2;
+  }
+}
+
+message OrderCreatorListRequest {
+  // Whoever may read the list may filter it (whoever-reads-a-list-may-filter-it): exactly OrderList's roles.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OrderCreatorListFilter filter = 2;
+  OrderCreatorListFilterSort sort = 3;
+  repeated OrderCreatorListDataType data_request = 4;
+  // It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large
+  // first page and filters in the field.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One person, and when they last typed in an order this team may list. Their name is user_service's — the
+// picker resolves it with UserByIDs.
+message OrderCreatorItem {
+  uint64 user_id = 1;
+  int64 last_at_unix = 2;
+}
+
+message OrderCreatorMapItem {
+  // Keyed by user id.
+  map<uint64, OrderCreatorItem> map_data = 1;
+}
+
+message OrderCreatorListResponseItem {
+  oneof d {
+    OrderCreatorMapItem creator = 1;
+  }
+}
+
+message OrderCreatorListResponse {
+  repeated OrderCreatorListResponseItem items = 1;
+  // User ids, in the sort's order.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }

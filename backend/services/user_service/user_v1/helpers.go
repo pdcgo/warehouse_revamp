@@ -114,17 +114,19 @@ func escapeLike(q string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q)
 }
 
-// publicUserToProto is the shape any authenticated caller may see: id, username, name.
+// publicUserToProto is the shape any authenticated caller may see: id, username, name, photo, and
+// whether the account is suspended — a "who" filter badges that (a-filter-keeps-former-and-suspended-people).
 //
 // NO email, NO phone. The source returned the full record from its bulk/search RPCs under a
 // mere allow_only_authenticated policy, so any logged-in user could harvest every colleague's
-// contact details. A picker needs a name.
+// contact details. A picker needs a name. (SearchUser adds the phone's last four digits itself.)
 func publicUserToProto(user *user_service_models.User) *userv1.PublicUser {
 	return &userv1.PublicUser{
-		Id:        user.ID,
-		Username:  user.Username,
-		Name:      user.Name,
-		AvatarUrl: user.AvatarURL,
+		Id:          user.ID,
+		Username:    user.Username,
+		Name:        user.Name,
+		AvatarUrl:   user.AvatarURL,
+		IsSuspended: user.IsSuspended,
 	}
 }
 

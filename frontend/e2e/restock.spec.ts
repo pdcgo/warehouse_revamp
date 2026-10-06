@@ -150,6 +150,71 @@ test("Restock requests page renders for root", async ({ page }) => {
   await expect(page.getByTestId("restock-requests-table")).toBeVisible();
 });
 
+// a-who-filter-lists-the-people-on-its-rows: the two "who" filters offer the people on this team's restocks —
+// inventory_service's answer (RestockActorList), never a member list — and each narrows the list to theirs.
+test("Restock list: raised-by and accepted-by offer who did it, and narrow to theirs", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  const { whCode, whName, category, skuA } = names("W");
+
+  const requestId = await page.evaluate(
+    async ([whCode, whName, category, skuA, ownerId]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const wh = await call("team.v1.TeamService/TeamCreate", { type: 3, name: whName, teamCode: whCode, ownerUserId: ownerId });
+      const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
+      const product = await call("product.v1.ProductService/ProductCreate", {
+        teamId: "1",
+        sku: skuA,
+        name: `E2E ${skuA}`,
+        categoryId: cat.category.id,
+      });
+
+      // Raised by root, and accepted by root at the warehouse it owns — so root is on the row twice.
+      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: "1",
+        warehouseId: wh.team.id,
+        shippingCode: "jne",
+        items: [{ productId: product.product.id, sku: skuA, name: `E2E ${skuA}`, quantity: 2, totalPrice: 20000 }],
+      });
+
+      await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
+        teamId: wh.team.id,
+        requestId: created.request.id,
+        lines: [{ itemId: created.request.items[0].id, receivedQuantity: 2, placements: [{ unplaced: true, quantity: 2 }] }],
+      });
+
+      return created.request.id as string;
+    },
+    [whCode, whName, category, skuA, ROOT_USER_ID] as const,
+  );
+
+  await page.goto("/inventories/restock");
+  await expect(page.getByTestId(`restock-row-${requestId}`)).toBeVisible();
+
+  for (const filter of ["restock-created-by-filter", "restock-accepted-by-filter"]) {
+    await page.getByTestId(filter).getByRole("combobox").click();
+    // Both pickers keep their lists in the page once opened, so the option is the VISIBLE one.
+    await page.getByTestId(`person-filter-option-${ROOT_USER_ID}`).filter({ visible: true }).click();
+    await expect(page.getByTestId(`restock-row-${requestId}`)).toBeVisible();
+
+    // Cleared, it is "anybody" again — the filter removed, not stuck.
+    await page.getByTestId(filter).getByRole("button", { name: /clear/i }).click();
+  }
+});
+
 // #165 (owner: "not product select but product-picker") — the create form builds its list in the
 // shared multi-select dialog, in one pass, instead of one combobox per line.
 test("Restock create: tick two products in the picker and save (#165)", async ({ page }) => {

@@ -31,9 +31,10 @@ import (
 
 // The admin team's two roles manage their own team and nothing else
 // (admin-team-roles-manage-only-their-team): both edit the team's info and read its members, and only
-// the Owner manages them (the-admin-team-admin-alone-does-not-manage-members).
+// the Owner manages them (the-admin-team-admin-alone-does-not-manage-members) — which takes the Add Member
+// search too (only-member-managers-open-the-search).
 //
-// The test is over the WHOLE contract, not the six messages: the failure it exists to catch is an admin
+// The test is over the WHOLE contract, not the seven messages: the failure it exists to catch is an admin
 // role added to a selling or warehouse policy, which a per-message test would never look at.
 func TestAdminTeamRoles_HoldOnlyTheirOwnTeamsPolicies(t *testing.T) {
 	want := map[role_basev1.Role][]string{
@@ -41,6 +42,7 @@ func TestAdminTeamRoles_HoldOnlyTheirOwnTeamsPolicies(t *testing.T) {
 			"warehouse.team.v1.TeamInfoUpdateRequest",
 			"warehouse.team.v1.TeamUpdateRequest",
 			"warehouse.user.v1.CreateUserRequest",
+			"warehouse.user.v1.SearchUserRequest",
 			"warehouse.user.v1.TeamMemberLogListRequest",
 			"warehouse.user.v1.TeamUserUpdateRequest",
 			"warehouse.user.v1.UserListRequest",

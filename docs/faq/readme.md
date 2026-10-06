@@ -119,6 +119,7 @@ second time will be slightly different. That drift is the actual cost.
 - [Do I write the component myself?](frontend.md#do-i-write-the-component-myself)
 - [Can I use a raw `<button>` / `<input>` / `<select>` / `<div>`?](frontend.md#can-i-use-a-raw-button--input--select--div)
 - [Should a picker be a search select or a plain dropdown?](frontend.md#should-a-picker-be-a-search-select-or-a-plain-dropdown)
+- [A list needs a "created by" / "accepted by" filter. Do I use `UserSelect`?](frontend.md#a-list-needs-a-created-by--accepted-by-filter-do-i-use-userselect)
 - [Where do sizes, spacing and colours come from?](frontend.md#where-do-sizes-spacing-and-colours-come-from)
 - [How do I add an icon?](frontend.md#how-do-i-add-an-icon)
 - [Why does my list flicker, or show stale numbers?](frontend.md#why-does-my-list-flicker-or-show-stale-numbers)

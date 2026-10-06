@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { inventoryClient, restockClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
-import { fetchActors, useActors } from "../users/queries";
-import type { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { fetchActors, peopleFor, useActors, WHO_FILTER_SIZE } from "../users/queries";
+import type { RestockActorRole, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { restocksFromList, restockListRowData } from "./adapt";
 
@@ -105,6 +105,31 @@ export function useRestockRequests(args: RestockListArgs) {
         actors,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
+    },
+  });
+}
+
+// WHO A RESTOCK LIST'S "WHO" FILTER OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone who raised — or
+// accepted — a restock this team may list, the latest first, named with one UserByIDs. Never a team's member list:
+// the people who counted a selling team's deliveries work at the warehouse, whose members it cannot read. Anyone who
+// may read the list may ask (whoever-reads-a-list-may-filter-it), Staff and Customer Service included.
+//
+// `referenceQuery`: it LABELS a picker, and is re-read whenever one mounts.
+export function useRestockPeople(args: { teamId: bigint | undefined; role: RestockActorRole }) {
+  const { teamId, role } = args;
+
+  return useQuery({
+    queryKey: key.restock(teamId, { people: role }),
+    ...referenceQuery,
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await restockClient.restockActorList({
+        teamId: teamId!,
+        filter: { role },
+        page: { page: 1, limit: WHO_FILTER_SIZE },
+      });
+
+      return peopleFor(res.ids);
     },
   });
 }

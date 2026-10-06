@@ -237,7 +237,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run |
+| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run. 🔄 *(2026-10-06, later)* **the next free number** — `00007` went to the phone key (`user_phone_key`); `00008` today |
 | the password | a bcrypt hash of `root1234`, never the plain text |
 | ⚠ only while empty | `WHERE id = 1 AND password = ''`: a database whose root password was already set keeps it. Without this, a new migration would **reset** a production root password back to the public one |
 | the email | `root@pdc.com`, only while it is still `root@system.local` |
@@ -359,6 +359,9 @@ flowchart LR
 
 > 🔄 *(2026-10-06)* **The server half is built**: `TeamUserUpdate` refuses to add a suspended person to a team
 > (`failed_precondition`), which also refuses one as a new team's first Owner. The search half is not.
+
+> 🔄 *(2026-10-06, built)* **The search half is built too**: `SearchUser` leaves out suspended accounts, for everyone. The
+> "who" filters keep them, with a badge ([a-filter-keeps-former-and-suspended-people](#a-filter-keeps-former-and-suspended-people)).
 
 **The spec.** ⚠ **The search is not built: a suspended user is still offered by the pickers.**
 
@@ -818,6 +821,9 @@ flowchart TD
   CR --> SUB
 ```
 
+> 🔄 *(2026-10-06, built)* `SearchUser` answers `roles_in_team` for the team being added to, so the popup shows an existing
+> member's role and the step reads *Change Role*. The server checks the rank against that role and logs it as a change.
+
 **The spec.** ⚠ **Half built.** The server already does it: an add for someone already in the team overwrites their role.
 What is missing is that it happens **silently**.
 
@@ -839,6 +845,11 @@ flowchart LR
   M["Owner, warehouse or selling Admin, Root, Administrator"] -->|"opens"| P["the search popup"]
   F["Staff, Customer Service"] -.->|"never"| P
 ```
+
+> 🔄 *(2026-10-06, built)* `SearchUser`'s `team_id` is its scope (`use_scope`), and its policy names Root, the
+> Administrator, the selling and warehouse Owners and Admins, and the admin team's Owner. At team 0 — the root team — only
+> Root and the Administrator pass: Create Team's Owner picker. Staff and Customer Service filter their lists through the
+> lists' own services ([a-who-filter-lists-the-people-on-its-rows](#a-who-filter-lists-the-people-on-its-rows)).
 
 **The spec.** ⚠ **Not built.** `SearchUser` is open to anyone signed in, and unscoped. A role list on an unscoped
 message is checked against the root team, so team roles there would never match. It gains the **team being added to**
@@ -862,6 +873,12 @@ flowchart LR
   R["Root types ani"] --> B["every Ani, up to 20"]
 ```
 
+> 🔄 *(2026-10-06, built)* An Owner or an Admin matches the whole username or email (case-blind) or the phone, compared
+> by `user_phone_key` (migration `00007`: the digits, a leading 0 read as 62) through a partial expression index. Root and
+> the Administrator keep the substring match. 2 queries, ~1 ms at 10 000 accounts; the broad search reads every account
+> on a miss, 4.5 ms ([audit](../../../audits/services/user_service/performances/SearchUser.md)). Stored numbers are not
+> rewritten — that is [Q31](./context_clarify.md#question).
+
 **The spec.** ⚠ **Not built.** Today every caller gets the partial match. Suspended accounts are left out for everyone
 ([a-suspended-user-is-never-picked](#a-suspended-user-is-never-picked)). ✅ Confirmed (Q20d): a phone matches however
 it is written, so `0812…` and `+62812…` are the same number.
@@ -878,6 +895,9 @@ flowchart LR
   A1["Ani Lestari · ani01 · phone ending 7890"]
   A2["Ani Rahma · anir · phone ending 1234"]
 ```
+
+> 🔄 *(2026-10-06, built)* `PublicUser.phone_last4`, filled by `SearchUser` only — `UserByIDs` sends none. Empty when the
+> number has four digits or fewer, since then the last four are all of it.
 
 **The spec.** ⚠ **Not built.** The result type carries id, username, name and photo. It gains the last four digits,
 computed on the server. The full number never leaves it.
@@ -963,6 +983,10 @@ the same picker lists its members. Whether the server refuses a grant to a non-m
 > 🔄 *(2026-10-05, built)* `ROLE_ADMIN_OWNER` holds `TeamInfoUpdate`, `TeamUpdate`, `UserList`, `TeamMemberLogList`, `CreateUser`
 > and `TeamUserUpdate`; `ROLE_ADMIN_ADMINISTRATOR` the first four — it reads its members and manages none, as the accepted
 > prototype shows. A test walks every request policy and fails if either role appears anywhere else.
+
+> 🔄 *(2026-10-06, built)* `ROLE_ADMIN_OWNER` also holds `SearchUser`, the Add Member popup's search, now that it is
+> limited to the people who manage members ([only-member-managers-open-the-search](#only-member-managers-open-the-search)).
+> Seven calls; the Admin's four are unchanged.
 
 **The verdict.** The admin team's roles manage **their own team** and nothing else. They get none of the selling calls
 (orders, products, shops) that they reach today by borrowing the selling roles, because the admin team does not sell.
@@ -1271,6 +1295,13 @@ flowchart LR
   F -.->|"never"| SU["SearchUser — every user"]
 ```
 
+> 🔄 *(2026-10-06, built)* `RestockActorList` (inventory_service, `role` = raised or accepted) and `OrderCreatorList`
+> (selling_service): the distinct user ids on the rows the team may list, the latest first, paged (the picker asks for
+> 200). The orders list gained the filter itself — `OrderListFilter.created_by_user_id`, mirrored on the stat — and
+> `Order.created_by_user_id` on each row, so the creator name on the orders list and the pick queue is real now. The pages
+> use `PersonFilterSelect`, which loads the set whole and filters as you type; no picker calls `UserList` or `SearchUser`
+> for this any more. 2 queries each, 5–11 ms over a team's 10 000–17 000 rows.
+
 **The spec.** ⚠ **Not built.** Three pages, each filter asking a manager tool today:
 
 | page | filter | answered by |
@@ -1303,6 +1334,8 @@ flowchart LR
   R --> F["may use its who filter"]
 ```
 
+> 🔄 *(2026-10-06, built)* Each who-list RPC carries its list's roles exactly: Customer Service and Staff included.
+
 **The spec.** ⚠ **Not built.** The filter's RPC carries **the list's own policy**, not a member-management one. Today
 Customer Service and Staff are refused on four of the six filters, and a selling Owner on *accepted by* once a warehouse
 is picked. All of that goes with [a-who-filter-lists-the-people-on-its-rows](#a-who-filter-lists-the-people-on-its-rows).
@@ -1327,6 +1360,9 @@ flowchart LR
   S["a suspended or former person"] -.->|"never offered"| G["pickers that give — add a member, grant a shop"]
   S -->|"offered, with a badge"| F["a who filter — last year's restocks are still theirs"]
 ```
+
+> 🔄 *(2026-10-06, built)* `PublicUser.is_suspended` (from `UserByIDs`), badged by `PersonFilterSelect`; a former user reads
+> as *Former user #57*.
 
 **The spec.** ⚠ **Not built.** The filter's answer carries each person's suspended state, and the picker badges it.
 Former members need nothing extra: they are on the rows, so they are in the set.

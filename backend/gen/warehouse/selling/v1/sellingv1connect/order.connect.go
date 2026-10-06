@@ -64,6 +64,9 @@ const (
 	// OrderServiceOrderByExternalRefsProcedure is the fully-qualified name of the OrderService's
 	// OrderByExternalRefs RPC.
 	OrderServiceOrderByExternalRefsProcedure = "/warehouse.selling.v1.OrderService/OrderByExternalRefs"
+	// OrderServiceOrderCreatorListProcedure is the fully-qualified name of the OrderService's
+	// OrderCreatorList RPC.
+	OrderServiceOrderCreatorListProcedure = "/warehouse.selling.v1.OrderService/OrderCreatorList"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -116,6 +119,9 @@ type OrderServiceClient interface {
 	// (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
 	// (user-id-is-the-orders-creator-else-the-shops-primary-cs).
 	OrderByExternalRefs(context.Context, *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error)
+	// The people the list's "created by" filter offers: everyone who typed in an order this team may list
+	// (a-who-filter-lists-the-people-on-its-rows).
+	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -201,6 +207,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
 			connect.WithClientOptions(opts...),
 		),
+		orderCreatorList: connect.NewClient[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse](
+			httpClient,
+			baseURL+OrderServiceOrderCreatorListProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderCreatorList")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -218,6 +230,7 @@ type orderServiceClient struct {
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
 	orderStat                 *connect.Client[v1.OrderStatRequest, v1.OrderStatResponse]
 	orderByExternalRefs       *connect.Client[v1.OrderByExternalRefsRequest, v1.OrderByExternalRefsResponse]
+	orderCreatorList          *connect.Client[v1.OrderCreatorListRequest, v1.OrderCreatorListResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -280,6 +293,11 @@ func (c *orderServiceClient) OrderByExternalRefs(ctx context.Context, req *conne
 	return c.orderByExternalRefs.CallUnary(ctx, req)
 }
 
+// OrderCreatorList calls warehouse.selling.v1.OrderService.OrderCreatorList.
+func (c *orderServiceClient) OrderCreatorList(ctx context.Context, req *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error) {
+	return c.orderCreatorList.CallUnary(ctx, req)
+}
+
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
 type OrderServiceHandler interface {
 	OrderCreate(context.Context, *connect.Request[v1.OrderCreateRequest]) (*connect.Response[v1.OrderCreateResponse], error)
@@ -330,6 +348,9 @@ type OrderServiceHandler interface {
 	// (a-file-with-another-shops-orders-is-refused) — and its creator, whom the row counts for
 	// (user-id-is-the-orders-creator-else-the-shops-primary-cs).
 	OrderByExternalRefs(context.Context, *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error)
+	// The people the list's "created by" filter offers: everyone who typed in an order this team may list
+	// (a-who-filter-lists-the-people-on-its-rows).
+	OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -411,6 +432,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderByExternalRefs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderCreatorListHandler := connect.NewUnaryHandler(
+		OrderServiceOrderCreatorListProcedure,
+		svc.OrderCreatorList,
+		connect.WithSchema(orderServiceMethods.ByName("OrderCreatorList")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -437,6 +464,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderStatHandler.ServeHTTP(w, r)
 		case OrderServiceOrderByExternalRefsProcedure:
 			orderServiceOrderByExternalRefsHandler.ServeHTTP(w, r)
+		case OrderServiceOrderCreatorListProcedure:
+			orderServiceOrderCreatorListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -492,4 +521,8 @@ func (UnimplementedOrderServiceHandler) OrderStat(context.Context, *connect.Requ
 
 func (UnimplementedOrderServiceHandler) OrderByExternalRefs(context.Context, *connect.Request[v1.OrderByExternalRefsRequest]) (*connect.Response[v1.OrderByExternalRefsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderByExternalRefs is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderCreatorList(context.Context, *connect.Request[v1.OrderCreatorListRequest]) (*connect.Response[v1.OrderCreatorListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderCreatorList is not implemented"))
 }

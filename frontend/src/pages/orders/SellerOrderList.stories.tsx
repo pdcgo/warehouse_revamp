@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
-import { orders, shops, teams } from "../../../.storybook/fixtures";
+import { orders, shops, teams, users } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
@@ -151,6 +151,39 @@ export const TheShopFilterIsOfferedAndNarrowsTheTable: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId(`order-row-${elsewhere.id}`)).toBeNull());
     for (const o of onThatShop) {
+      await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
+    }
+  },
+};
+
+// a-who-filter-lists-the-people-on-its-rows: the creator filter offers who typed THIS team's orders in — Eko, Budi,
+// and Citra, suspended and kept with a badge (a-filter-keeps-former-and-suspended-people) — and never Ani, who typed
+// only another team's. Picking one narrows the table to theirs, and each row names who typed it in.
+export const TheCreatorFilterOffersWhoTypedTheOrdersIn: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const eko = users[4]!;
+    const citra = users[2]!;
+    const ani = users[0]!;
+    const ekos = OWN.filter((o) => o.createdByUserId === eko.id);
+    const notEkos = OWN.find((o) => o.createdByUserId !== eko.id)!;
+
+    const row = await canvas.findByTestId(`order-row-${ekos[0]!.id}`);
+    await waitFor(() => expect(within(row).getByTestId("order-placed-by")).toHaveTextContent(eko.name));
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(within(controls.getByTestId("orders-creator-filter")).getByRole("combobox"));
+
+    const option = await screen.findByTestId(`person-filter-option-${eko.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(screen.getByTestId(`person-filter-suspended-${citra.id}`)).toBeInTheDocument();
+    await expect(screen.queryByTestId(`person-filter-option-${ani.id}`)).toBeNull();
+
+    await userEvent.click(option);
+
+    await waitFor(() => expect(canvas.queryByTestId(`order-row-${notEkos.id}`)).toBeNull());
+    for (const o of ekos) {
       await expect(canvas.getByTestId(`order-row-${o.id}`)).toBeInTheDocument();
     }
   },

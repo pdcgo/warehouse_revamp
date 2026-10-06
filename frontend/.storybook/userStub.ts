@@ -1,8 +1,7 @@
 // The user service as Storybook's stub — docs/business/user/context_decision.md.
 //
-// It plays the DECIDED rules, not the running server's: the server has not been changed yet, and the
-// Users screen is a prototype of what it will do. Every refusal names its decision, so a story fails
-// when a screen offers something the rules forbid.
+// It plays the DECIDED rules, which the server now enforces too. Every refusal names its decision, so a story
+// fails when a screen offers something the rules forbid.
 //
 // ⚠ THE RULES ARE WRITTEN HERE IN THEIR OWN TERMS, never imported from src/lib/roles.ts. The screen
 // decides what to OFFER from those helpers; this decides what to ACCEPT. Sharing one copy would make
@@ -212,23 +211,32 @@ function record(teamId: bigint, userId: bigint, action: TeamMemberLogAction, bef
 
 // ── The search ──────────────────────────────────────────────────────────────────────────────────
 
-// A phone matches however it is written: 0812…, +62 812…, 62-812… are one number (Q20d).
+// A phone matches however it is written: 0812…, +62 812…, 62-812… are one number (Q20d) — the server's
+// user_phone_key: the digits, a leading 0 read as Indonesia's 62.
 const normalisePhone = (p: string) => {
   const digits = p.replace(/\D/g, "");
 
-  return digits.startsWith("62") ? "0" + digits.slice(2) : digits;
+  return digits.startsWith("0") ? "62" + digits.slice(1) : digits;
 };
 
 const contains = (q: string, ...fields: string[]) => fields.some((f) => f.toLowerCase().includes(q));
 
+// What anyone signed in may read of a person: no email, no phone. Suspension is on it, for a who filter's badge.
 function publicOf(u: StubUser) {
   return {
     id: u.id,
     username: u.username,
     name: u.name,
     avatarUrl: u.avatarUrl,
-    phoneLast4: u.phoneNumber.replace(/\D/g, "").slice(-4),
+    isSuspended: u.isSuspended,
   };
+}
+
+// a-result-shows-the-phones-last-four-digits — the search alone adds them, and not when four digits are the whole number.
+function lastFour(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+
+  return digits.length > 4 ? digits.slice(-4) : "";
 }
 
 function paged<T>(rows: T[], page: { page?: bigint; limit?: bigint } | undefined) {
@@ -290,20 +298,16 @@ export const userStub = {
     return { items };
   },
 
-  // TWO searches behind one RPC, told apart by the team:
-  //  - with a team: the Add Member popup, playing the decided rules — managers only, exact for an Owner or
-  //    an Admin, suspended accounts left out, and who is already in the team said.
-  //  - without: the unscoped typeahead the restock filters and UserSelect use, as the server answers today.
+  // The Add Member popup's search, and Create Team's Owner picker at team 0 (the root team): managers only, exact
+  // for an Owner or an Admin, broad for Root and the Administrator, suspended accounts left out, and who is already
+  // in the team said.
   searchUser: (req: { q: string; limit: number; teamId: bigint }) => {
     const q = req.q.trim().toLowerCase();
     const limit = req.limit || 10;
 
-    if (req.teamId === ROOT_TEAM) {
-      return { users: people.filter((u) => contains(q, u.name, u.username)).slice(0, limit).map(publicOf), rolesInTeam: {} };
-    }
-
     const caller = sessionScenario.role;
-    if (!managesMembers(caller, teamTypeOf(req.teamId))) {
+    const allowed = req.teamId === ROOT_TEAM ? isPlatform(caller) : managesMembers(caller, teamTypeOf(req.teamId));
+    if (!allowed) {
       refuse(Code.PermissionDenied, "only-member-managers-open-the-search", "you do not manage this team's members");
     }
 
@@ -315,12 +319,12 @@ export const userStub = {
           ? contains(q, u.name, u.username)
           : u.username === q || u.email.toLowerCase() === q || (u.phoneNumber !== "" && normalisePhone(u.phoneNumber) === normalisePhone(q)),
       )
-      .slice(0, broad ? limit : 1);
+      .slice(0, limit);
 
-    const roles = rolesIn(req.teamId);
+    const roles = req.teamId === ROOT_TEAM ? new Map<bigint, Role>() : rolesIn(req.teamId);
     const rolesInTeam = Object.fromEntries(found.filter((u) => roles.has(u.id)).map((u) => [u.id.toString(), roles.get(u.id)!]));
 
-    return { users: found.map(publicOf), rolesInTeam };
+    return { users: found.map((u) => ({ ...publicOf(u), phoneLast4: lastFour(u.phoneNumber) })), rolesInTeam };
   },
 
   teamUserUpdate: (req: {

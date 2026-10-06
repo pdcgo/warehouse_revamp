@@ -100,10 +100,16 @@ message PublicUser {
 
   // The LAST FOUR digits of the phone, so two people with one name are told apart in a search
   // result without showing anyone's number (a-result-shows-the-phones-last-four-digits). Computed on
-  // the server; the full number never leaves it. Empty when there is no phone.
+  // the server; the full number never leaves it.
   //
-  // ⚠ CONTRACT ONLY until the user decisions are built — the server sends it empty today.
+  // SearchUser fills it and nothing else does: a name lookup (UserByIDs) is open to anyone signed in,
+  // and needs no help telling people apart. Empty with no phone, and when the number has four digits or
+  // fewer — then the last four would be all of it.
   string phone_last4 = 5;
+
+  // The account is suspended. A "who" filter keeps a suspended person and badges them
+  // (a-filter-keeps-former-and-suspended-people); the pickers that GIVE something never offer one.
+  bool is_suspended = 6;
 }
 
 message UpdateProfileRequest {
@@ -320,14 +326,28 @@ message UserByIDsResponse {
 }
 
 message SearchUserRequest {
-  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+  // Only those who manage members open the search (only-member-managers-open-the-search): every
+  // team's Owner, the warehouse and selling Admins, Root and the Administrator. The admin team's Admin
+  // manages no members and is left out (the-admin-team-admin-alone-does-not-manage-members). Staff and
+  // Customer Service filter their lists through each list's own "who" RPC instead
+  // (a-who-filter-lists-the-people-on-its-rows).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER
+    ]
+  };
 
-  // DELIBERATELY UNSCOPED and top-level.
-  //
-  // Unscoped because its whole purpose is finding people who are NOT in your team yet, so you
-  // can add them. Top-level because the interceptor only reads scope from top-level fields —
-  // in the source this field was NESTED, which silently made the RPC unscoped anyway. If it is
-  // going to be unscoped, say so out loud rather than by accident.
+  // What is typed. For an Owner or an Admin it must be someone's WHOLE username, email or phone
+  // (managers-search-by-exact-username-phone-or-email), so they find a person they already know and
+  // never browse other teams' people. A phone matches however it is written: 0812…, +62 812… and
+  // 62-812… are one number. Root and the Administrator match any part of a name or username.
+  // Suspended accounts are never found (a-suspended-user-is-never-picked).
   string q = 1 [(buf.validate.field).string = {
     min_len: 2
     max_len: 100
@@ -338,22 +358,21 @@ message SearchUserRequest {
     lte: 20
   }];
 
-  // The team the person is being added to. It answers who is ALREADY in it (roles_in_team), so the
-  // popup offers Change Role instead of an add (an-existing-member-gets-change-role).
+  // The team the person is being added to — the SCOPE, so the policy above is read in it. It also
+  // answers who is ALREADY in it (roles_in_team), so the popup offers Change Role instead of an add
+  // (an-existing-member-gets-change-role).
   //
-  // ⚠ It becomes the SCOPE when the user decisions are built (only-member-managers-open-the-search):
-  // tagged use_scope, with a policy naming the Owners and the warehouse and selling Admins, and the
-  // match narrowed to an exact username, phone or email for them. Untagged in the prototype so the
-  // live search keeps working.
-  uint64 team_id = 3;
+  // 0 is the root team: Root and the Administrator picking a new team's first Owner, before the team
+  // exists (the-create-team-form-names-the-first-owner).
+  uint64 team_id = 3 [(warehouse.role_base.v1.use_scope) = true];
 }
 
 message SearchUserResponse {
+  // Each with `phone_last4` filled.
   repeated PublicUser users = 1;
 
-  // For each user found, their role in `team_id`. A user who is not a member is ABSENT.
-  //
-  // ⚠ CONTRACT ONLY until the user decisions are built — the server returns it empty today.
+  // For each user found, their role in `team_id`. A user who is not a member is ABSENT; at team 0 it is
+  // empty.
   map<uint64, warehouse.role_base.v1.Role> roles_in_team = 2;
 }
 

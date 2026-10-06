@@ -25,6 +25,7 @@ import { Ban, MoreHorizontal, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
+  RestockActorRole,
   RestockDateField,
   RestockRequestStatus,
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
@@ -35,6 +36,7 @@ import { useTeams } from "../../features/teams/queries";
 import { useSuppliers } from "../../features/suppliers/queries";
 import {
   useRestockOngoing,
+  useRestockPeople,
   useRestockRequests,
   useCancelRestockRequest,
 } from "../../features/restock/queries";
@@ -51,7 +53,7 @@ import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { UserSelect } from "../../components/pickers/UserSelect";
+import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
@@ -135,6 +137,10 @@ export function RestockSellingPage() {
   const ongoing = useRestockOngoing({ teamId, warehouseId: warehouseFilter });
 
   const cancelMutation = useCancelRestockRequest();
+
+  // The two "who" filters' people — everyone on this team's restocks who raised one, and who accepted one.
+  const createdBy = useRestockPeople({ teamId, role: RestockActorRole.CREATED });
+  const acceptedBy = useRestockPeople({ teamId, role: RestockActorRole.ACCEPTED });
 
   // The two id → name lookups this screen's columns need. Both are ordinary paged lists read once
   // and turned into maps, the same way the products screen resolves its warehouses: the list RPC's
@@ -284,28 +290,26 @@ export function RestockSellingPage() {
             a manager reviewing purchasing asks whose orders these are, somebody chasing a bad
             delivery asks who was at the door. One "involved this person" box could not say which.
 
-            They are scoped to DIFFERENT TEAMS on purpose, and that is the whole reason they are not
-            one control: the author is a member of THIS selling team, while the person who counted the
-            goods works at the destination warehouse. A single team-scoped picker could never offer
-            both, and an unscoped one would offer every user in the system as a plausible filter for
-            restocks they cannot appear on.
-
-            The acceptor's picker is scoped to the WAREHOUSE FILTER when one is set, and unscoped
-            otherwise — with no destination chosen there is no single warehouse whose staff to list,
-            and pretending there is would hide the right person behind an empty search. */}
-        <Box maxW="56" w="full">
-          <UserSelect
+            Each offers the people on THIS list's rows (a-who-filter-lists-the-people-on-its-rows),
+            answered by inventory_service — not a member list. The author is one of this team's own,
+            current or former; the person who counted the goods works at a warehouse whose members
+            this team cannot read, and is offered all the same, because they are on its rows. Staff
+            and Customer Service use them too (whoever-reads-a-list-may-filter-it). */}
+        <Box maxW="56" w="full" data-testid="restock-created-by-filter">
+          <PersonFilterSelect
+            people={createdBy.data}
+            error={createdBy.isError}
             value={createdByFilter > 0n ? createdByFilter : undefined}
-            teamId={teamId}
             placeholder={t("restock.createdByAll")}
             // A cleared picker emits undefined → 0n, "everyone" — the filter is removed, not stuck.
             onChange={(id) => refilter(() => setCreatedByFilter(id ?? 0n))}
           />
         </Box>
-        <Box maxW="56" w="full">
-          <UserSelect
+        <Box maxW="56" w="full" data-testid="restock-accepted-by-filter">
+          <PersonFilterSelect
+            people={acceptedBy.data}
+            error={acceptedBy.isError}
             value={acceptedByFilter > 0n ? acceptedByFilter : undefined}
-            teamId={warehouseFilter > 0n ? warehouseFilter : undefined}
             placeholder={t("restock.acceptedByAll")}
             onChange={(id) => refilter(() => setAcceptedByFilter(id ?? 0n))}
           />

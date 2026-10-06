@@ -53,8 +53,8 @@ import {
   ShopRefCell,
 } from "../../features/orders/OrderRowCells";
 import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
+import { useTypists } from "../../features/orders/typists";
 import {
-  mockCreator,
   mockMarketplaceCreated,
   mockQuantity,
   mockReceiptCode,
@@ -193,6 +193,8 @@ export function PickQueueNextPage() {
   const teamName = (id: bigint) => teams.data?.teams.find((team) => team.id === id)?.name ?? "";
 
   const orders = query.data?.orders ?? [];
+  // Who typed each order in — one UserByIDs for the page.
+  const typistOf = useTypists(orders);
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending && warehouseId !== undefined;
   const error = query.isError ? rpcError(query.error) : "";
@@ -503,6 +505,7 @@ export function PickQueueNextPage() {
                         key={String(order.id)}
                         order={order}
                         team={teamName(order.teamId)}
+                        typist={typistOf(order.createdByUserId)}
                         selected={selected.has(String(order.id))}
                         onToggle={() => toggle(order.id)}
                         onOpen={() => navigate(`/warehouse-orders/${order.id}`)}
@@ -530,7 +533,6 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader>
                             <Flex align="center" gap="1">
                               {t("warehouseOrders.col.createdBy")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="creator" />
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader>
@@ -581,7 +583,7 @@ export function PickQueueNextPage() {
                                 <SelectBox id={order.id} checked={selected.has(String(order.id))} onToggle={() => toggle(order.id)} />
                               </Table.Cell>
                               <Table.Cell>
-                                <PersonTeamCell person={mockCreator(order.id)} team={teamName(order.teamId)} />
+                                <PersonTeamCell person={typistOf(order.createdByUserId)} team={teamName(order.teamId)} />
                               </Table.Cell>
                               <Table.Cell>
                                 <ShopRefCell shop={facts.shop} orderRefId={order.orderExternalRefId} />
@@ -689,6 +691,7 @@ function rowFacts(order: Order, team: string) {
 function OrderBlock({
   order,
   team,
+  typist,
   selected,
   onToggle,
   onOpen,
@@ -696,6 +699,8 @@ function OrderBlock({
 }: {
   order: Order;
   team: string;
+  /** Who typed it in; "" when that was never recorded. */
+  typist: string;
   selected: boolean;
   onToggle: () => void;
   onOpen: () => void;
@@ -703,7 +708,7 @@ function OrderBlock({
 }) {
   const { t } = useTranslation();
   const facts = rowFacts(order, team);
-  const mark = (id: "creator" | "shop" | "receiptCode" | "quantity" | "mpDate" | "deadline") => (
+  const mark = (id: "shop" | "receiptCode" | "quantity" | "mpDate" | "deadline") => (
     <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id={id} />
   );
 
@@ -756,10 +761,9 @@ function OrderBlock({
         </Flex>
         <Flex align="center" gap="1" wrap="wrap">
           <Text fontSize="xs" color="fg.muted">
-            {mockCreator(order.id)} · {team} · {formatUnixDateTime(order.createdAtUnix)} (
+            {typist || "—"} · {team} · {formatUnixDateTime(order.createdAtUnix)} (
             {formatUnixRelative(order.createdAtUnix)})
           </Text>
-          {mark("creator")}
         </Flex>
         {facts.mpCreated !== undefined && (
           <Flex align="center" gap="1" wrap="wrap">

@@ -337,3 +337,73 @@ test("UserErase: a suspended account is erased, and its row becomes a former use
   await loginExpectingFailure(page, NEW_USER, "otp-recovered-1");
   await expect(page.getByTestId("login-error")).toBeVisible();
 });
+
+// The Add Member search as an Owner sees it, against the running server:
+//  - managers-search-by-exact-username-phone-or-email: a fragment finds nobody; the whole username does, and so
+//    does the phone however it is written (Q20d);
+//  - a-result-shows-the-phones-last-four-digits: the result carries the ending;
+//  - an-existing-member-gets-change-role: someone already in the team reads as Change Role, with their role.
+test("SearchUser: an Owner finds only the whole handle, sees the phone ending, and a member reads as Change Role", async ({ page }) => {
+  const owner = `own${SUFFIX}`;
+  const staff = `stf${SUFFIX}`;
+  const target = `tgt${SUFFIX}`;
+  const targetPhone = `0813-77${SUFFIX.slice(0, 2)}-${SUFFIX.slice(2)}`;
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Two warehouses: the Owner's, with a Staff member in it, and another holding the person to find.
+  await page.evaluate(
+    async ([owner, staff, target, targetPhone, suffix, password]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const mine = await call("team.v1.TeamService/TeamCreate", { type: 3, name: `E2E Search A ${suffix}`, teamCode: `SA${suffix}`, ownerUserId: "1" });
+      const other = await call("team.v1.TeamService/TeamCreate", { type: 3, name: `E2E Search B ${suffix}`, teamCode: `SB${suffix}`, ownerUserId: "1" });
+
+      await call("user.v1.UserService/CreateUser", { teamId: mine.team.id, username: owner, password, name: "E2E Owner", role: "ROLE_WAREHOUSE_OWNER" });
+      await call("user.v1.UserService/CreateUser", { teamId: mine.team.id, username: staff, password, name: "E2E Staff", role: "ROLE_WAREHOUSE_STAFF" });
+      await call("user.v1.UserService/CreateUser", {
+        teamId: other.team.id,
+        username: target,
+        password,
+        name: "E2E Target",
+        phoneNumber: targetPhone,
+        role: "ROLE_WAREHOUSE_STAFF",
+      });
+    },
+    [owner, staff, target, targetPhone, SUFFIX, NEW_PASSWORD] as const,
+  );
+
+  await login(page, owner, NEW_PASSWORD);
+  await gotoUsers(page);
+  await page.getByTestId("open-add-member").click();
+
+  // A fragment is a browse, and an Owner does not browse.
+  await page.getByTestId("add-member-search").fill(target.slice(0, 5));
+  await expect(page.getByTestId("add-member-no-match")).toBeVisible();
+
+  // The whole username finds them, with the phone's last four digits.
+  await page.getByTestId("add-member-search").fill(target);
+  await expect(page.getByTestId(`add-member-result-${target}`)).toContainText(`phone ending ${SUFFIX.slice(2)}`);
+
+  // The same phone, written the international way.
+  await page.getByTestId("add-member-search").fill(`+62 813 77${SUFFIX.slice(0, 2)} ${SUFFIX.slice(2)}`);
+  await expect(page.getByTestId(`add-member-result-${target}`)).toBeVisible();
+
+  // A member of this team reads as Change Role, with the role they hold.
+  await page.getByTestId("add-member-search").fill(staff);
+  await page.getByTestId(`add-member-result-${staff}`).click();
+  await expect(page.getByTestId("add-member-current-role")).toContainText("Warehouse Staff");
+  await expect(page.getByTestId("add-member-dialog")).toContainText("Change role");
+});

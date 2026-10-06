@@ -446,10 +446,15 @@ type PublicUser struct {
 	AvatarUrl string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	// The LAST FOUR digits of the phone, so two people with one name are told apart in a search
 	// result without showing anyone's number (a-result-shows-the-phones-last-four-digits). Computed on
-	// the server; the full number never leaves it. Empty when there is no phone.
+	// the server; the full number never leaves it.
 	//
-	// ⚠ CONTRACT ONLY until the user decisions are built — the server sends it empty today.
-	PhoneLast4    string `protobuf:"bytes,5,opt,name=phone_last4,json=phoneLast4,proto3" json:"phone_last4,omitempty"`
+	// SearchUser fills it and nothing else does: a name lookup (UserByIDs) is open to anyone signed in,
+	// and needs no help telling people apart. Empty with no phone, and when the number has four digits or
+	// fewer — then the last four would be all of it.
+	PhoneLast4 string `protobuf:"bytes,5,opt,name=phone_last4,json=phoneLast4,proto3" json:"phone_last4,omitempty"`
+	// The account is suspended. A "who" filter keeps a suspended person and badges them
+	// (a-filter-keeps-former-and-suspended-people); the pickers that GIVE something never offer one.
+	IsSuspended   bool `protobuf:"varint,6,opt,name=is_suspended,json=isSuspended,proto3" json:"is_suspended,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -517,6 +522,13 @@ func (x *PublicUser) GetPhoneLast4() string {
 		return x.PhoneLast4
 	}
 	return ""
+}
+
+func (x *PublicUser) GetIsSuspended() bool {
+	if x != nil {
+		return x.IsSuspended
+	}
+	return false
 }
 
 type UpdateProfileRequest struct {
@@ -1756,21 +1768,19 @@ func (x *UserByIDsResponse) GetItems() map[uint64]*UserByIDsResponseList {
 
 type SearchUserRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// DELIBERATELY UNSCOPED and top-level.
-	//
-	// Unscoped because its whole purpose is finding people who are NOT in your team yet, so you
-	// can add them. Top-level because the interceptor only reads scope from top-level fields —
-	// in the source this field was NESTED, which silently made the RPC unscoped anyway. If it is
-	// going to be unscoped, say so out loud rather than by accident.
+	// What is typed. For an Owner or an Admin it must be someone's WHOLE username, email or phone
+	// (managers-search-by-exact-username-phone-or-email), so they find a person they already know and
+	// never browse other teams' people. A phone matches however it is written: 0812…, +62 812… and
+	// 62-812… are one number. Root and the Administrator match any part of a name or username.
+	// Suspended accounts are never found (a-suspended-user-is-never-picked).
 	Q     string `protobuf:"bytes,1,opt,name=q,proto3" json:"q,omitempty"`
 	Limit uint32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	// The team the person is being added to. It answers who is ALREADY in it (roles_in_team), so the
-	// popup offers Change Role instead of an add (an-existing-member-gets-change-role).
+	// The team the person is being added to — the SCOPE, so the policy above is read in it. It also
+	// answers who is ALREADY in it (roles_in_team), so the popup offers Change Role instead of an add
+	// (an-existing-member-gets-change-role).
 	//
-	// ⚠ It becomes the SCOPE when the user decisions are built (only-member-managers-open-the-search):
-	// tagged use_scope, with a policy naming the Owners and the warehouse and selling Admins, and the
-	// match narrowed to an exact username, phone or email for them. Untagged in the prototype so the
-	// live search keeps working.
+	// 0 is the root team: Root and the Administrator picking a new team's first Owner, before the team
+	// exists (the-create-team-form-names-the-first-owner).
 	TeamId        uint64 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1829,10 +1839,10 @@ func (x *SearchUserRequest) GetTeamId() uint64 {
 
 type SearchUserResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Users []*PublicUser          `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
-	// For each user found, their role in `team_id`. A user who is not a member is ABSENT.
-	//
-	// ⚠ CONTRACT ONLY until the user decisions are built — the server returns it empty today.
+	// Each with `phone_last4` filled.
+	Users []*PublicUser `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	// For each user found, their role in `team_id`. A user who is not a member is ABSENT; at team 0 it is
+	// empty.
 	RolesInTeam   map[uint64]v11.Role `protobuf:"bytes,2,rep,name=roles_in_team,json=rolesInTeam,proto3" json:"roles_in_team,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value,enum=warehouse.role_base.v1.Role"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4310,7 +4320,7 @@ var File_warehouse_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1cwarehouse/user/v1/user.proto\x12\x11warehouse.user.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"\x8c\x01\n" +
+	"\x1cwarehouse/user/v1/user.proto\x12\x11warehouse.user.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\x1a\x1cwarehouse/team/v1/team.proto\"\xaf\x01\n" +
 	"\n" +
 	"PublicUser\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1a\n" +
@@ -4319,7 +4329,8 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x12\x1f\n" +
 	"\vphone_last4\x18\x05 \x01(\tR\n" +
-	"phoneLast4\"\xf8\x01\n" +
+	"phoneLast4\x12!\n" +
+	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\"\xf8\x01\n" +
 	"\x14UpdateProfileRequest\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12#\n" +
 	"\x05email\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01H\x01R\x05email\x88\x01\x01\x12/\n" +
@@ -4415,11 +4426,12 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12>\n" +
-	"\x05value\x18\x02 \x01(\v2(.warehouse.user.v1.UserByIDsResponseListR\x05value:\x028\x01\"n\n" +
+	"\x05value\x18\x02 \x01(\v2(.warehouse.user.v1.UserByIDsResponseListR\x05value:\x028\x01\"{\n" +
 	"\x11SearchUserRequest\x12\x17\n" +
 	"\x01q\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x02\x18dR\x01q\x12\x1f\n" +
-	"\x05limit\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\x14(\x01R\x05limit\x12\x17\n" +
-	"\ateam_id\x18\x03 \x01(\x04R\x06teamId:\x06\x92\xb5\x18\x02 \x01\"\x83\x02\n" +
+	"\x05limit\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\x14(\x01R\x05limit\x12\x1d\n" +
+	"\ateam_id\x18\x03 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId:\r\x92\xb5\x18\t\n" +
+	"\a\x01\x02\x03\x04\x06\t\v\"\x83\x02\n" +
 	"\x12SearchUserResponse\x123\n" +
 	"\x05users\x18\x01 \x03(\v2\x1d.warehouse.user.v1.PublicUserR\x05users\x12Z\n" +
 	"\rroles_in_team\x18\x02 \x03(\v26.warehouse.user.v1.SearchUserResponse.RolesInTeamEntryR\vrolesInTeam\x1a\\\n" +

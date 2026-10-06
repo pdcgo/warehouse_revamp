@@ -21,10 +21,11 @@ export interface UserSelectProps {
   placeholder?: string;
   disabled?: boolean;
   // Scope of the search:
-  //   undefined -> ALL users (SearchUser, cross-team) — for adding someone not in a team yet.
+  //   undefined -> ALL users (SearchUser at the root team) — Root and the Administrator only, picking
+  //                a new team's Owner. Suspended accounts are never offered.
   //   a team id -> only THAT team's members (UserList, scoped) — for picking within a team.
-  // This is the "scope by team or all user" option (#56). The backend enforces the difference
-  // too: UserList is role-gated and scoped; SearchUser is any authenticated caller.
+  // This is the "scope by team or all user" option (#56). Both are role-gated on the server. A list's
+  // "who" filter is neither: it is PersonFilterSelect (a-who-filter-lists-the-people-on-its-rows).
   teamId?: bigint;
   // Drop the picker's OWN border and corner rounding so it can sit INSIDE a bordered group — a type
   // segment fused to it, the way DateRangePicker fuses its date-field segment to its trigger. Without
@@ -38,7 +39,7 @@ export interface UserSelectProps {
 // UserSelect is the shared user picker (#56): a Chakra Combobox whose options render with the
 // shared UserItem. Search is SERVER-side (min 2 characters) so it scales; it emits the selected
 // user id. Pass `teamId` to scope the search to one team's members, or omit it to search everyone.
-export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser) by default, or to one team's members when given a teamId (UserList). Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
+export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser at the root team, for Root and the Administrator) by default, or to one team's members when given a teamId (UserList). Not for a list's who filter — that is PersonFilterSelect. Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
 
 export function UserSelect({
   value,

@@ -5,6 +5,7 @@ package user_v1_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +38,9 @@ func seedGrantVolume(t *testing.T) (*gorm.DB, *user_v1.Service, *san_perf.Probe,
 		users[i] = user_service_models.User{
 			Username: fmt.Sprintf("perfuser%d", i),
 			Email:    fmt.Sprintf("perfuser%d@x.local", i),
-			Password: "x",
+			// Every one with a phone, written the way people write them, so the phone key's index has 10 000 rows.
+			PhoneNumber: fmt.Sprintf("0812-%04d-%04d", i/10_000, i%10_000),
+			Password:    "x",
 		}
 	}
 	san_perf.SeedRows(t, db, &users)
@@ -130,7 +133,6 @@ func TestPerf_CreateUser(t *testing.T) {
 		return err
 	})
 }
-
 
 func TestPerf_UpdateUserUsername(t *testing.T) {
 	_, svc, probe, _, root, target := seedGrantVolume(t)
@@ -256,4 +258,52 @@ func TestPerf_UserErase(t *testing.T) {
 
 		return err
 	})
+}
+
+// The Add Member search: an Owner's exact lookups (username, email, phone however written) and Root's broad one.
+func TestPerf_SearchUser(t *testing.T) {
+	db, svc, probe, owner, root, _ := seedGrantVolume(t)
+
+	for name, q := range map[string]string{
+		"SearchUser exact username": "perfuser5000",
+		"SearchUser exact email":    "PerfUser5000@x.local",
+		"SearchUser exact phone":    "+62 812 0000 5000",
+	} {
+		measure(t, probe, name, func(int) error {
+			_, err := svc.SearchUser(owner, connect.NewRequest(&userv1.SearchUserRequest{Q: q, Limit: 10, TeamId: whTeam}))
+
+			return err
+		})
+	}
+
+	t.Log(san_perf.Explain(t, db, probe.Queries()[0].SQL))
+
+	measure(t, probe, "SearchUser broad", func(int) error {
+		_, err := svc.SearchUser(root, connect.NewRequest(&userv1.SearchUserRequest{Q: "perfuser50", Limit: 10, TeamId: whTeam}))
+
+		return err
+	})
+
+	for _, q := range probe.Queries() {
+		if strings.Contains(q.SQL, "ILIKE") {
+			t.Log(san_perf.Explain(t, db, q.SQL))
+		}
+	}
+}
+
+// Root's broad search for a name nobody has: the worst case for a substring match, every account read.
+func TestPerf_SearchUserBroadMiss(t *testing.T) {
+	db, svc, probe, _, root, _ := seedGrantVolume(t)
+
+	measure(t, probe, "SearchUser broad miss", func(int) error {
+		_, err := svc.SearchUser(root, connect.NewRequest(&userv1.SearchUserRequest{Q: "zzqq", Limit: 10, TeamId: whTeam}))
+
+		return err
+	})
+
+	for _, q := range probe.Queries() {
+		if strings.Contains(q.SQL, "ILIKE") {
+			t.Log(san_perf.Explain(t, db, q.SQL))
+		}
+	}
 }

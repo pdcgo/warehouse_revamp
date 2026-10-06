@@ -1,8 +1,9 @@
+import { create } from "@bufbuild/protobuf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import { PublicUserSchema, type PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import {
   logEntriesFromList,
   memberListRowData,
@@ -58,6 +59,22 @@ export async function fetchActors(ids: bigint[]): Promise<Map<string, PublicUser
 
   return actors;
 }
+
+// A WHO FILTER'S PEOPLE (a-who-filter-lists-the-people-on-its-rows): the ids a list's own service says are on its
+// rows, in its order, named with one UserByIDs. Which people is the list service's answer; this only names them.
+//
+// An id user_service could not name (the lookup failed) stays in the set as "#7" rather than vanishing: a filter
+// that silently drops a person is a filter that can no longer find their rows.
+export async function peopleFor(ids: bigint[]): Promise<PublicUser[]> {
+  const actors = await fetchActors(ids);
+
+  return ids.map(
+    (id) => actors.get(id.toString()) ?? create(PublicUserSchema, { id, username: id.toString(), name: `#${id}` }),
+  );
+}
+
+/** How many people a who filter asks for: the contract's largest page. The set grows only with staff turnover. */
+export const WHO_FILTER_SIZE = 200;
 
 // The hook form: one history's people, resolved once.
 //
@@ -158,8 +175,9 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
 // The user PICKER's search (UserSelect).
 //
 // Two RPCs behind one hook, because the question differs with the scope: inside a team it is "this
-// team's members matching q" (UserList), outside it is "anyone" (SearchUser). Both are in the key,
-// so the two answers cannot share an entry.
+// team's members matching q" (UserList), outside it is "anyone" (SearchUser at the root team — Root and
+// the Administrator only, picking a new team's Owner). Both are in the key, so the two answers cannot
+// share an entry. A list's "who" filter is neither: it is PersonFilterSelect, fed by the list's own service.
 //
 // Reading through the cache buys two things a hand-rolled search does not have. A transient failure
 // RETRIES rather than silently becoming an empty result list — and deleting a character returns to a
@@ -201,8 +219,8 @@ export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
 // in it (an-existing-member-gets-change-role). A separate hook from useUserSearch because it is a
 // different question with a different answer shape — the picker only needs people.
 //
-// ⚠ Until the user decisions are built the server ignores `team_id`, matches any two letters for
-// everyone, and sends `roles_in_team` and `phone_last4` empty. The popup says so on itself.
+// The server reads the policy in `team_id` (only-member-managers-open-the-search): an Owner or an Admin gets an
+// exact match, Root and the Administrator the broad one; suspended accounts never come back.
 export function useMemberSearch(args: { teamId: bigint | undefined; q: string }) {
   const { teamId, q } = args;
 

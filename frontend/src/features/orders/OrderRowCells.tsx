@@ -150,8 +150,8 @@ export function OwnerCell({
 /**
  * WHEN WE WROTE IT DOWN, and WHO — one event, so one cell.
  *
- * ⚠ THE SYSTEM'S DATE LEADS (owner) and it is the only real thing here: `Order` records no creator at
- * all, so the second line is mocked (`rowMock`).
+ * THE SYSTEM'S DATE LEADS (owner); the second line is who typed it in — `created_by_user_id`, named by the
+ * page (`useTypists`). No line at all when that was never recorded.
  */
 export function CreatedCell({ unix, by }: { unix: bigint; by?: string }) {
   const { t } = useTranslation();
@@ -369,7 +369,7 @@ export function DeadlineCell({ unix }: { unix: bigint }) {
 /**
  * WHO WROTE THE ORDER DOWN, and for which team — one event, two lines (owner: user first, team under).
  *
- * ⚠ THE PERSON IS A SAMPLE: `Order` records no creator. The team is real (`team_id`).
+ * Both are real: the person is `created_by_user_id`, named by the page (`useTypists`), the team `team_id`.
  */
 export function PersonTeamCell({ person, team, mark }: { person: string; team: string; mark?: ReactNode }) {
   return (

@@ -111,7 +111,7 @@ erDiagram
         text        username            UK "unique on lower, required"
         text        password            "bcrypt hash, empty means cannot log in"
         text        email               UK "unique on lower when set"
-        text        phone_number
+        text        phone_number        "as typed, indexed by user_phone_key"
         boolean     is_suspended        "default false"
         text        avatar_url          "profile picture thumbnail url"
         timestamptz last_password_reset "nullable"
@@ -148,7 +148,12 @@ erDiagram
   (bcrypt never matches an empty hash), used by the seeded root account until a password is set.
   Case-insensitive uniqueness on both `username` and (non-empty) `email`. `erased_at` marks an account erased on
   request ([an-erased-account-is-final](business/user/context_decision.md#an-erased-account-is-final)): set once, never
-  cleared, and a CHECK (`users_erased_is_suspended`) keeps such an account suspended for good.
+  cleared, and a CHECK (`users_erased_is_suspended`) keeps such an account suspended for good. `phone_number` is
+  stored as typed and compared by **`user_phone_key(text)`** (`00007`, an IMMUTABLE SQL function): the digits, a
+  leading `0` read as Indonesia's `62`, so `0812-3456-7890` and `+62 812 3456 7890` are one number (Q20d). A partial
+  expression index, `users_phone_key_idx ON users (user_phone_key(phone_number)) WHERE phone_number <> ''`, serves an
+  Owner's exact search ([managers-search-by-exact-username-phone-or-email](business/user/context_decision.md#managers-search-by-exact-username-phone-or-email)).
+  Not unique: whether a number is rewritten when saved, and the unique index, are [user Q31](business/user/context_clarify.md#question).
 - **`user_team_roles`** — a user's role within a team. `role` stores the raw proto `Role` enum
   *number* (not a Postgres enum — proto enums are open). `UNIQUE (team_id, user_id)` is load-bearing:
   the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`

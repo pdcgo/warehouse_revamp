@@ -566,10 +566,6 @@
         "label": "Warehouse filter",
         "reason": "The list filter has no warehouse field, so picking one leaves the table as it was."
       },
-      "creator": {
-        "label": "Who created the order",
-        "reason": "An order records no creator at all — the filter narrows nothing, and the name under each date is invented."
-      },
       "mpDate": {
         "label": "Marketplace order date",
         "reason": "An order stores only when WE wrote it down; the date the buyer ordered on the storefront has no field, so the second line under the date is invented."
@@ -1697,18 +1693,6 @@
       "submitChange": "Change Role",
       "submitCreate": "Create and Add",
       "pending": {
-        "exactSearch": {
-          "label": "Exact match for Owners and Admins",
-          "reason": "the server still matches any two letters of a name, for everyone"
-        },
-        "phoneLast4": {
-          "label": "The phone ending on each result",
-          "reason": "the server does not send it yet"
-        },
-        "alreadyMember": {
-          "label": "Who is already in this team",
-          "reason": "the server does not say, so a member reads as a newcomer and Add overwrites their role"
-        },
         "duplicateRefusal": {
           "label": "One account per phone",
           "reason": "a phone number already on another account is not refused yet"
@@ -2594,10 +2578,6 @@
         "label": "Handed over",
         "reason": "Handed over is the warehouse's last step, but the contract has no status for it yet — its tab cannot narrow anything."
       },
-      "creator": {
-        "label": "Created by",
-        "reason": "An order records no creator — only the team it was placed for."
-      },
       "shop": {
         "label": "The seller's shop",
         "reason": "The order carries only the shop id, and a warehouse cannot read the seller's shops."
@@ -3322,5 +3302,10 @@
     },
     "sellPriceTyped": "Typed over the rows' prices.",
     "sellPriceReset": "Use the Rows' Prices"
+  },
+  "personFilter": {
+    "empty": "Nobody yet",
+    "noMatch": "No one matches",
+    "unavailable": "People unavailable"
   }
 }

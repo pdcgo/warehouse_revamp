@@ -8,7 +8,6 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 /** One unwired part of the screen. The id is also its i18n key (`warehouseOrders.pending.<id>`). */
 export type PendingId =
   | "statusSet"
-  | "creator"
   | "shop"
   | "receiptCode"
   | "quantity"
@@ -29,8 +28,6 @@ const PARTS: PendingPart<PendingId>[] = [
   // The tabs are the steps of `processed` (`the-warehouse-tabs-are-the-processed-steps`), and the last
   // one — handed over — has no status in the contract yet, so its tab is disabled.
   { id: "statusSet", kind: "missing" },
-  // `Order` records no creator — only the team it was placed for.
-  { id: "creator", kind: "sample" },
   // The order carries `shop_id` only, and `ShopList` is scoped to the SELLING team, so a warehouse
   // cannot name the seller's shop or its marketplace.
   { id: "shop", kind: "sample" },

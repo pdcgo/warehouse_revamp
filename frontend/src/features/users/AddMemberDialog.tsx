@@ -229,7 +229,6 @@ export function AddMemberDialog({
                     <Field.Root>
                       <Field.Label>
                         {t("users.addMember.findUser")}
-                        <NotImplemented list={ADD_MEMBER_PENDING} id="exactSearch" />
                       </Field.Label>
                       <Input
                         value={q}
@@ -254,7 +253,6 @@ export function AddMemberDialog({
                             <Text textStyle="xs" color="fg.muted">
                               {t("users.addMember.found", { count: results.length })}
                             </Text>
-                            <NotImplemented list={ADD_MEMBER_PENDING} id="phoneLast4" />
                           </HStack>
 
                           {results.map((user) => (
@@ -328,7 +326,6 @@ export function AddMemberDialog({
                       <Field.Root>
                         <Field.Label>
                           {isMember ? t("users.addMember.changeRole") : t("users.addMember.selectRole")}
-                          <NotImplemented list={ADD_MEMBER_PENDING} id="alreadyMember" />
                         </Field.Label>
                         <RoleSelect roles={offered} teamType={targetTeamType} value={role} onChange={setRole} />
                       </Field.Root>

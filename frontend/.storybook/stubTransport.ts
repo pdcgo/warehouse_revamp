@@ -570,7 +570,7 @@ const WAREHOUSE_ID = teams[0]!.id;
 // table, so if the two narrowed differently the tab counts would describe a different population
 // than the rows under them — and nothing on screen would explain the gap.
 type OrderScopeFilter =
-  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint }
+  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint; createdByUserId?: bigint }
   | undefined;
 
 // Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
@@ -594,6 +594,8 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     // 0 on a side is an OPEN end, so {0,0} means every date.
     .filter((o) => !filter?.createdFromUnix || o.createdAtUnix >= filter.createdFromUnix)
     .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
+    // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
+    .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
@@ -1108,6 +1110,31 @@ export const transport = createRouterTransport(({ service }) => {
     // about to click. Every OTHER filter does apply, and that is the same rule from the other side —
     // a header counting a bigger population than the rows below it is a gap nothing on screen
     // explains.
+    // The "created by" filter's feed (a-who-filter-lists-the-people-on-its-rows): everyone who typed in an order
+    // this team may list, the latest first — never a member list. 0 is nobody.
+    orderCreatorList: (req) => {
+      const last = new Map<bigint, bigint>();
+      for (const o of visibleOrders(req.teamId, undefined)) {
+        if (o.createdByUserId === 0n) continue;
+        if ((last.get(o.createdByUserId) ?? -1n) < o.createdAtUnix) last.set(o.createdByUserId, o.createdAtUnix);
+      }
+
+      const ids = [...last.keys()].sort((a, b) => (last.get(a)! < last.get(b)! ? 1 : -1));
+
+      return {
+        items: [
+          {
+            d: {
+              case: "creator" as const,
+              value: { mapData: Object.fromEntries(ids.map((id) => [id.toString(), { userId: id, lastAtUnix: last.get(id)! }])) },
+            },
+          },
+        ],
+        ids,
+        pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(ids.length) },
+      };
+    },
+
     orderStat: (req) => {
       const rows = visibleOrders(req.teamId, req.filter);
 

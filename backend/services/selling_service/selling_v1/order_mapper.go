@@ -202,6 +202,7 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		Items:              items,
 		Events:             events,
 		CreatedAtUnix:      o.CreatedAt.Unix(),
+		CreatedByUserId:    o.CreatedByUserID,
 	}
 }
 
