@@ -68,6 +68,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [a-non-member-root-acts-under-a-strip](#a-non-member-root-acts-under-a-strip) | in a team they are not in, Root and the Administrator act with their platform role under a *not a member* strip, each write an override | owner, 2026-10-06 |
 | [the-admin-team-monitors-read-only](#the-admin-team-monitors-read-only) | in a team it monitors, the admin team sees no write control, and the server lets only marked reads through | owner, 2026-10-06 |
 | [the-switcher-ships-with-the-create-team-form](#the-switcher-ships-with-the-create-team-form) | pass 1 now: *All teams* for Root and the Administrator, their strip, and Create Team's Owner field · pass 2 after: the admin team read-only | owner, 2026-10-06 |
+| [an-erased-account-is-final](#an-erased-account-is-final) | nothing brings an erased account or its data back: no unsuspend, no new password, no joining a team, no edit | owner, 2026-10-06 |
+| [erased-usernames-are-reserved](#erased-usernames-are-reserved) | no account may be named `erased` followed by digits, except by erase itself | owner, 2026-10-06 |
+| [erase-deletes-the-photo-file](#erase-deletes-the-photo-file) | erase deletes every profile picture the person uploaded — the stored files and their rows | owner, 2026-10-06 |
 | [the-pass-1-prototype-is-accepted](#the-pass-1-prototype-is-accepted) | design_accept of pass 1: the switcher's *All teams*, the strip, Create Team's required Owner and `owner_user_id`, with the five choices made in the prototype | owner, 2026-10-06 |
 
 ## warehouse-staff-is-the-whole-floor-job
@@ -1704,3 +1707,67 @@ flowchart LR
 spec: `owner_user_id` required, that person granted the team type's Owner role, the creator not made a member. A
 suspended person is refused as the Owner, because [a-suspended-user-is-never-picked](#a-suspended-user-is-never-picked)
 says a suspended user *"cannot be newly given anything"*.
+
+## an-erased-account-is-final
+
+> Owner, in chat *(2026-10-06)*: *"for q30 yes"*, confirmed as all three recommendations. It answers
+> [Q30a](./context_clarify.md#question), as recommended.
+
+**The verdict.** *Erased* has no way out, as [erase-keeps-the-row](#erase-keeps-the-row)'s diagram always drew it.
+Nothing brings an erased account, or its personal data, back.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Active : created
+  Active --> Suspended : suspend
+  Suspended --> Active : unsuspend
+  Suspended --> Erased : erase
+  Erased --> [*]
+  note right of Erased : no unsuspend, no new password, no team, no edit
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the mark | `users.erased_at`, set by `UserErase` — the account says it was erased, rather than being recognised by its name |
+| refused once set | unsuspending it, giving it a password (by an admin, by `tools/san`, by a reset code), adding it to a team, and editing its name, username, email or phone |
+| still allowed | removing it from a team, and reading it — it is still the person behind every record it made |
+
+The last refusal, editing, is my reading of *final*: an edit would bring personal data back as surely as an unsuspend
+brings the account back.
+
+## erased-usernames-are-reserved
+
+> Owner, in chat *(2026-10-06)*, as above. It answers [Q30b](./context_clarify.md#question), as recommended.
+
+**The verdict.** `erased` followed by digits names an erased account and nothing else. Creating or renaming an account
+to one is refused, so erasing user 57 can never collide with somebody already called `erased57`.
+
+| | |
+| --- | --- |
+| refused | `CreateUser` and `UpdateUser` with a username matching `erased` + one or more digits |
+| allowed | `erasedani`, `erased`, `ani57erased` — only the exact shape erase uses is kept |
+
+## erase-deletes-the-photo-file
+
+> Owner, in chat *(2026-10-06)*, as above. It answers [Q30c](./context_clarify.md#question), as recommended.
+
+**The verdict.** Erasing a person deletes the photos they uploaded, not only the link to them: every profile picture
+they ever uploaded, the original and its thumbnail, and the document rows that describe them.
+
+```mermaid
+sequenceDiagram
+  participant U as user_service
+  participant D as document_service
+  U->>U: UserErase — blank the account, COMMIT
+  U->>D: delete every profile picture this person uploaded
+  D->>D: the stored files, original and thumbnail, then their rows
+  D-->>U: how many
+```
+
+| | |
+| --- | --- |
+| which files | every `PROFILE_PICTURE` document the person uploaded — older photos they replaced too, which are as personal as the current one |
+| when | after the account is blanked and committed, never inside that transaction — a network call holds no lock |
+| if it fails | the account stays erased, and erasing it again retries only the photos |
