@@ -21,7 +21,10 @@ func (s *Service) UpdateUser(
 	req *connect.Request[userv1.UpdateUserRequest],
 ) (*connect.Response[userv1.UpdateUserResponse], error) {
 	userID := req.Msg.GetUserId()
-	updates := profileUpdates(req.Msg.Name, req.Msg.Email, req.Msg.PhoneNumber)
+	updates, err := profileUpdates(req.Msg.Name, req.Msg.Email, req.Msg.PhoneNumber)
+	if err != nil {
+		return nil, err
+	}
 
 	if req.Msg.Username != nil {
 		// Stored normalised, as at create: the unique index is on LOWER(username).
@@ -32,7 +35,7 @@ func (s *Service) UpdateUser(
 				errors.New("user 1 keeps the username root (the-username-is-editable)"))
 		}
 
-		err := refuseReservedUsername(username)
+		err = refuseReservedUsername(username)
 		if err != nil {
 			return nil, err
 		}

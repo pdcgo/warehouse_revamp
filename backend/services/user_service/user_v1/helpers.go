@@ -28,8 +28,8 @@ const rootUserID uint64 = 1
 
 // profileUpdates builds the SET map from PRESENT fields only. Absent means leave alone —
 // without presence there is no way to say "don't touch this", and a name-only edit silently
-// blanks the email.
-func profileUpdates(name, email, phone *string) map[string]any {
+// blanks the email. A phone is stored in its one form, or refused (a-phone-is-saved-in-international-form).
+func profileUpdates(name, email, phone *string) (map[string]any, error) {
 	updates := map[string]any{}
 
 	if name != nil {
@@ -43,10 +43,15 @@ func profileUpdates(name, email, phone *string) map[string]any {
 	}
 
 	if phone != nil {
-		updates["phone_number"] = *phone
+		normalized, err := normalizePhone(*phone)
+		if err != nil {
+			return nil, err
+		}
+
+		updates["phone_number"] = normalized
 	}
 
-	return updates
+	return updates, nil
 }
 
 // applyUserUpdates updates a user's row and returns the fresh record. Existence is checked
@@ -66,6 +71,15 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 
 		if count == 0 {
 			return errUserMissing
+		}
+
+		// One account per phone or email: refused by name before the write, the unique indexes behind it.
+		email, _ := updates["email"].(string)
+		phone, _ := updates["phone_number"].(string)
+
+		err = refuseTakenContact(tx, userID, email, phone)
+		if err != nil {
+			return err
 		}
 
 		if len(updates) > 0 {
@@ -99,7 +113,7 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 		}
 
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("username or email already in use"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("username, email or phone already in use"))
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, err)

@@ -38,8 +38,8 @@ func seedGrantVolume(t *testing.T) (*gorm.DB, *user_v1.Service, *san_perf.Probe,
 		users[i] = user_service_models.User{
 			Username: fmt.Sprintf("perfuser%d", i),
 			Email:    fmt.Sprintf("perfuser%d@x.local", i),
-			// Every one with a phone, written the way people write them, so the phone key's index has 10 000 rows.
-			PhoneNumber: fmt.Sprintf("0812-%04d-%04d", i/10_000, i%10_000),
+			// Every one with a phone, in its stored form, so the unique phone index has 10 000 rows.
+			PhoneNumber: fmt.Sprintf("+62812%04d%04d", i/10_000, i%10_000),
 			Password:    "x",
 		}
 	}

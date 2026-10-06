@@ -7,8 +7,7 @@ import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { AddMemberDialog } from "./AddMemberDialog";
 
 // The Add Member search popup — docs/business/user/context_decision.md#a-member-is-found-in-a-search-popup.
-// A PROTOTYPE: the stub (.storybook/userStub.ts) answers the way the decisions say; the running server
-// still matches any two letters for everyone and says nothing about who is already in the team.
+// The stub (.storybook/userStub.ts) answers the way the decisions say, as the server now does.
 //
 // Gudang Pusat (team 11): Dewi (Owner, phone 0812-3456-7890), Budi (Admin), Eko (Staff), Citra (Staff,
 // suspended). Ani Lestari (`anil`, phone ending 8888) is in no team. Every play() is one decided rule.
@@ -170,17 +169,37 @@ export const ANameIsRequired: Story = {
   },
 };
 
-// a-phone-or-email-belongs-to-one-account — a phone already on Dewi's account is refused.
-export const APhoneAlreadyTakenIsRefused: Story = {
+// a-phone-or-email-belongs-to-one-account — a phone already on Dewi's account, written another way, is refused, and
+// the popup offers to add HER instead: back to the search with the number typed in.
+export const APhoneAlreadyTakenOffersThatPerson: Story = {
   play: async ({ canvasElement }) => {
     const dialog = await search(canvasElement, "hendra");
     await userEvent.click(await within(dialog).findByTestId("add-member-create", {}, { timeout: 4000 }));
 
     await userEvent.type(within(dialog).getByTestId("add-member-new-password"), "hendra123", { delay: 20 });
     await userEvent.type(within(dialog).getByTestId("add-member-new-name"), "Hendra", { delay: 20 });
-    await userEvent.type(within(dialog).getByTestId("add-member-new-phone"), "0812 3456 7890", { delay: 20 });
+    await userEvent.type(within(dialog).getByTestId("add-member-new-phone"), "+62 812 3456 7890", { delay: 20 });
     await userEvent.click(within(dialog).getByTestId("submit-add-member"));
 
-    await waitFor(() => expect(within(dialog).getByTestId("add-member-error")).toHaveTextContent("already someone's account"));
+    await waitFor(() => expect(within(dialog).getByTestId("add-member-error")).toHaveTextContent("already another account's"));
+
+    await userEvent.click(within(dialog).getByTestId("add-member-find-taken"));
+    await waitFor(() => expect(within(dialog).getByTestId("add-member-result-dewi")).toBeInTheDocument(), { timeout: 4000 });
+  },
+};
+
+// a-phone-has-8-to-15-digits — four digits are not a phone, and nothing is made.
+export const WhatIsNotAPhoneIsRefused: Story = {
+  play: async ({ canvasElement }) => {
+    const dialog = await search(canvasElement, "hendra");
+    await userEvent.click(await within(dialog).findByTestId("add-member-create", {}, { timeout: 4000 }));
+
+    await userEvent.type(within(dialog).getByTestId("add-member-new-password"), "hendra123", { delay: 20 });
+    await userEvent.type(within(dialog).getByTestId("add-member-new-name"), "Hendra", { delay: 20 });
+    await userEvent.type(within(dialog).getByTestId("add-member-new-phone"), "0811", { delay: 20 });
+    await userEvent.click(within(dialog).getByTestId("submit-add-member"));
+
+    await waitFor(() => expect(within(dialog).getByTestId("add-member-error")).toHaveTextContent("8 to 15 digits"));
+    await expect(within(dialog).queryByTestId("add-member-find-taken")).toBeNull();
   },
 };

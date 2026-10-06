@@ -74,6 +74,12 @@ func (s *Service) CreateUser(
 		return nil, err
 	}
 
+	// One stored form, or refused (a-phone-is-saved-in-international-form).
+	phone, err := normalizePhone(req.Msg.GetPhoneNumber())
+	if err != nil {
+		return nil, err
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Msg.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -83,12 +89,18 @@ func (s *Service) CreateUser(
 		Username:    username,
 		Email:       email,
 		Name:        req.Msg.GetName(),
-		PhoneNumber: req.Msg.GetPhoneNumber(),
+		PhoneNumber: phone,
 		Password:    string(hash),
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Create(&user).Error
+		// One account per phone or email, refused by name; the unique indexes stay the guarantee.
+		err := refuseTakenContact(tx, 0, email, phone)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Create(&user).Error
 		if err != nil {
 			return err
 		}
@@ -110,9 +122,14 @@ func (s *Service) CreateUser(
 		return logMembership(tx, caller, teamID, user.ID, role_basev1.Role_ROLE_UNSPECIFIED, role)
 	})
 	if err != nil {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return nil, connectErr
+		}
+
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, connect.NewError(connect.CodeAlreadyExists,
-				errors.New("username or email already exists"))
+				errors.New("username, email or phone already exists"))
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, err)

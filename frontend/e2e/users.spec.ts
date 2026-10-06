@@ -407,3 +407,24 @@ test("SearchUser: an Owner finds only the whole handle, sees the phone ending, a
   await expect(page.getByTestId("add-member-current-role")).toContainText("Warehouse Staff");
   await expect(page.getByTestId("add-member-dialog")).toContainText("Change role");
 });
+
+// a-phone-or-email-belongs-to-one-account, against the running server: the phone of the person found above, written
+// the international way, is refused at Create — and Find That Person brings that person up instead.
+test("CreateUser: a phone already on an account is refused, and that person is offered", async ({ page }) => {
+  const target = `tgt${SUFFIX}`;
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await openCreate(page, `dup${SUFFIX}`);
+  await page.getByTestId("add-member-new-password").fill(NEW_PASSWORD);
+  await page.getByTestId("add-member-new-name").fill("E2E Duplicate");
+  await page.getByTestId("add-member-new-phone").fill(`+62 813 77${SUFFIX.slice(0, 2)} ${SUFFIX.slice(2)}`);
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
+  await page.getByTestId("submit-add-member").click();
+
+  await expect(page.getByTestId("add-member-error")).toContainText("already another account's");
+
+  await page.getByTestId("add-member-find-taken").click();
+  await expect(page.getByTestId(`add-member-result-${target}`)).toBeVisible();
+});

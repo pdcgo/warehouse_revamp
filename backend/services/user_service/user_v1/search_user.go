@@ -2,7 +2,6 @@ package user_v1
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -20,8 +19,8 @@ import (
 //
 //   - An Owner or an Admin finds a person by their WHOLE username, email or phone
 //     (managers-search-by-exact-username-phone-or-email): someone they already know, never a browse of other
-//     teams' people. A phone compares however it is written — `user_phone_key`, migration 00007.
-//   - Root and the Administrator match any part of a name or username.
+//     teams' people. A phone compares however it is written: both sides are read into one form (normalizePhone).
+//   - Root and the Administrator match any part of a name or username as well.
 //   - A suspended account is never found (a-suspended-user-is-never-picked); an erased one is suspended too.
 //
 // Each result carries the last four digits of its phone (a-result-shows-the-phones-last-four-digits), and the
@@ -54,19 +53,27 @@ func (s *Service) SearchUser(
 		Model(&user_service_models.User{}).
 		Where("NOT is_suspended")
 
-	if caller.isRoot() || caller.isAdministrator() {
-		pattern := "%" + escapeLike(q) + "%"
-		query = query.Where("(username ILIKE ? OR name ILIKE ?)", pattern, pattern)
-	} else {
-		// Each arm repeats its index's own predicate (`email <> ''`, `phone_number <> ''`), so all three are
-		// index lookups. A term with no digits has no phone key and matches no phone.
-		query = query.Where(
-			"(LOWER(username) = LOWER(@q)"+
-				" OR (email <> '' AND LOWER(email) = LOWER(@q))"+
-				" OR (phone_number <> '' AND user_phone_key(@q) <> '' AND user_phone_key(phone_number) = user_phone_key(@q)))",
-			sql.Named("q", q),
-		)
+	// The exact match — an Owner's or an Admin's whole search. Each arm repeats its index's own predicate (`email <> ''`,
+	// `phone_number <> ''`), so all three are index lookups. A phone is stored in one form
+	// (a-phone-is-saved-in-international-form), so what is typed is read into that form and compared; a term that is not
+	// a phone has no phone arm.
+	match := "LOWER(username) = LOWER(@q) OR (email <> '' AND LOWER(email) = LOWER(@q))"
+	args := map[string]any{"q": q}
+
+	phone, err := normalizePhone(q)
+	if err == nil && phone != "" {
+		match += " OR (phone_number <> '' AND phone_number = @phone)"
+		args["phone"] = phone
 	}
+
+	// Root and the Administrator also match any part of a name or username. The exact arms stay, so a phone or email
+	// refused at Create ("add that person instead") finds that person for them too.
+	if caller.isRoot() || caller.isAdministrator() {
+		match += " OR username ILIKE @pattern OR name ILIKE @pattern"
+		args["pattern"] = "%" + escapeLike(q) + "%"
+	}
+
+	query = query.Where("("+match+")", args)
 
 	var users []user_service_models.User
 

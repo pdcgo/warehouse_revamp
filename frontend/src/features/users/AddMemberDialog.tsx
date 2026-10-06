@@ -13,14 +13,13 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { rpcError } from "../../api/clients";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import type { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../auth/AuthContext";
 import { useTeam } from "../team/TeamContext";
-import { NotImplemented } from "../pending/NotImplemented";
-import { NotImplementedSummary } from "../pending/NotImplementedSummary";
 import { toaster } from "../../components/feedback/Toaster";
 import { UserItem } from "../../components/entity/UserItem";
 import { PasswordInput } from "../../components/inputs/PasswordInput";
@@ -28,7 +27,6 @@ import { RoleSelect } from "../../components/pickers/RoleSelect";
 import { canManageMember, defaultGrant, grantableRoles, isGlobalAdmin, roleLabel } from "../../lib/roles";
 import { useDebounced } from "../../lib/useDebounced";
 import { useAddTeamMember, useCreateUser, useMemberSearch } from "./queries";
-import { ADD_MEMBER_PENDING } from "./pending";
 
 const NEW_USER = { username: "", password: "", name: "", email: "", phone: "" };
 
@@ -74,6 +72,9 @@ export function AddMemberDialog({
   const [draft, setDraft] = useState(NEW_USER);
   const [role, setRole] = useState<Role>(Role.UNSPECIFIED);
   const [error, setError] = useState("");
+  // The phone or email Create was refused for, because it is already someone's account
+  // (a-phone-or-email-belongs-to-one-account) — offered as a search, so that person is added instead.
+  const [taken, setTaken] = useState("");
 
   const term = useDebounced(q.trim());
   const search = useMemberSearch({ teamId: targetTeamId, q: term });
@@ -100,6 +101,15 @@ export function AddMemberDialog({
     setCreating(false);
     setDraft(NEW_USER);
     setRole(Role.UNSPECIFIED);
+    setError("");
+    setTaken("");
+  }
+
+  // Back to the search with the taken phone or email typed in: an Owner's exact search finds that one person.
+  function findTaken() {
+    setCreating(false);
+    setQ(taken);
+    setTaken("");
     setError("");
   }
 
@@ -177,7 +187,15 @@ export function AddMemberDialog({
         },
         {
           onSuccess: () => done(t("users.toast.userCreated", { username: draft.username })),
-          onError: (err) => setError(rpcError(err)),
+          onError: (err) => {
+            setError(rpcError(err));
+
+            // The server names the field it refused — the phone is checked first.
+            if (ConnectError.from(err).code === Code.AlreadyExists) {
+              const message = rpcError(err);
+              setTaken(message.includes("phone number") ? draft.phone.trim() : message.includes("email") ? draft.email.trim() : "");
+            }
+          },
         },
       );
     }
@@ -216,12 +234,17 @@ export function AddMemberDialog({
 
             <Dialog.Body>
               <Stack gap="card">
-                <NotImplementedSummary list={ADD_MEMBER_PENDING} />
-
                 {error && (
-                  <Text color="error.fg" data-testid="add-member-error">
-                    {error}
-                  </Text>
+                  <Stack gap="2" align="start">
+                    <Text color="error.fg" data-testid="add-member-error">
+                      {error}
+                    </Text>
+                    {step === "create" && taken !== "" && (
+                      <Button size="xs" variant="outline" data-testid="add-member-find-taken" onClick={findTaken}>
+                        {t("users.addMember.findTaken")}
+                      </Button>
+                    )}
+                  </Stack>
                 )}
 
                 {step === "search" && (
@@ -384,10 +407,10 @@ export function AddMemberDialog({
                     <Field.Root>
                       <Field.Label>
                         {t("users.field.phone")}
-                        <NotImplemented list={ADD_MEMBER_PENDING} id="duplicateRefusal" />
                       </Field.Label>
                       <Input
                         value={draft.phone}
+                        placeholder={t("users.field.phonePlaceholder")}
                         data-testid="add-member-new-phone"
                         onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
                       />

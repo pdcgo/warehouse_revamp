@@ -92,3 +92,4 @@ own `ILIKE` over username, name and email would benefit too.
 | Date | Median | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-10-06 | 1.0 ms exact · 4.5 ms broad miss | 2 · 1 | first audit — scoped to managers, exact search for Owners and Admins, `users_phone_key_idx` (`00007`) |
+| 2026-10-06, later | ~1.0 ms exact phone · 1.2 ms broad | 2 | phones stored in one form (`00008`): the phone arm is `phone_number = ?` on `users_phone_unique`; Root's broad search keeps the exact arms too. The broad miss is unchanged — still a seq scan |

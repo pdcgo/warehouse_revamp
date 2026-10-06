@@ -1641,7 +1641,8 @@
       "name": "Nama",
       "email": "Email",
       "phone": "Telepon",
-      "role": "Peran"
+      "role": "Peran",
+      "phonePlaceholder": "0812-3456-7890 atau +62 812…"
     },
     "helper": {
       "usernameRule": "Hanya huruf kecil dan angka.",
@@ -1685,13 +1686,8 @@
       "backToSearch": "Kembali ke Pencarian",
       "submitChange": "Ubah Peran",
       "submitCreate": "Buat dan Tambah",
-      "pending": {
-        "duplicateRefusal": {
-          "label": "Satu akun per telepon",
-          "reason": "nomor telepon yang sudah dipakai akun lain belum ditolak"
-        }
-      },
-      "nothingToChange": "Tidak ada peran lain yang bisa Anda berikan kepadanya."
+      "nothingToChange": "Tidak ada peran lain yang bisa Anda berikan kepadanya.",
+      "findTaken": "Cari Orangnya"
     },
     "changeRole": {
       "title": "Ubah Peran untuk {{username}}",

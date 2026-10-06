@@ -219,6 +219,42 @@ const normalisePhone = (p: string) => {
   return digits.startsWith("0") ? "62" + digits.slice(1) : digits;
 };
 
+// The one stored form of a phone (a-phone-is-saved-in-international-form), refused when it is not a phone
+// (a-phone-has-8-to-15-digits, a-phone-starts-with-0-or-a-country-code) — in the stub's own terms.
+function storedPhone(typed: string): string {
+  const t = typed.trim();
+  if (t === "") return "";
+
+  if (!/^\+?[0-9 ().-]+$/.test(t)) {
+    refuse(Code.InvalidArgument, "a-phone-has-8-to-15-digits", "a phone is digits, with spaces, dashes, dots or brackets, and a + only at the start");
+  }
+
+  const d = t.replace(/\D/g, "");
+  if (d.length < 8 || d.length > 15) refuse(Code.InvalidArgument, "a-phone-has-8-to-15-digits", "a phone has 8 to 15 digits");
+
+  let out = "";
+  if (t.startsWith("+") && !d.startsWith("0")) out = "+" + d;
+  else if (!t.startsWith("+") && d.startsWith("0")) out = "+62" + d.slice(1);
+  else if (!t.startsWith("+") && d.startsWith("62")) out = "+" + d;
+  else refuse(Code.InvalidArgument, "a-phone-starts-with-0-or-a-country-code", "start with 0, or with + and the country code");
+
+  if (out.length - 1 > 15) refuse(Code.InvalidArgument, "a-phone-has-8-to-15-digits", "a phone has 8 to 15 digits with its country code");
+
+  return out;
+}
+
+// a-phone-or-email-belongs-to-one-account — on another account than `self`; the phone is checked first, as on the server.
+function refuseTaken(phone: string, email: string, self?: bigint) {
+  const others = people.filter((u) => u.id !== self);
+
+  if (phone !== "" && others.some((u) => u.phoneNumber !== "" && normalisePhone(u.phoneNumber) === normalisePhone(phone))) {
+    refuse(Code.AlreadyExists, "a-phone-or-email-belongs-to-one-account", "that phone number is already another account's — add that person instead");
+  }
+  if (email !== "" && others.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+    refuse(Code.AlreadyExists, "a-phone-or-email-belongs-to-one-account", "that email is already another account's — add that person instead");
+  }
+}
+
 const contains = (q: string, ...fields: string[]) => fields.some((f) => f.toLowerCase().includes(q));
 
 // What anyone signed in may read of a person: no email, no phone. Suspension is on it, for a who filter's badge.
@@ -372,13 +408,8 @@ export const userStub = {
     if (people.some((u) => u.username === req.username)) {
       refuse(Code.AlreadyExists, "the-username-is-editable", `the username ${req.username} is taken`);
     }
-    // a-phone-or-email-belongs-to-one-account
-    if (req.email && people.some((u) => u.email.toLowerCase() === req.email.toLowerCase())) {
-      refuse(Code.AlreadyExists, "a-phone-or-email-belongs-to-one-account", "that email is already someone's account — add them instead");
-    }
-    if (req.phoneNumber && people.some((u) => u.phoneNumber && normalisePhone(u.phoneNumber) === normalisePhone(req.phoneNumber))) {
-      refuse(Code.AlreadyExists, "a-phone-or-email-belongs-to-one-account", "that phone is already someone's account — add them instead");
-    }
+    const phone = storedPhone(req.phoneNumber);
+    refuseTaken(phone, req.email);
 
     const id = nextUserId++;
     checkMemberWrite(req.teamId, id, req.role);
@@ -388,7 +419,7 @@ export const userStub = {
       username: req.username,
       name: req.name,
       email: req.email,
-      phoneNumber: req.phoneNumber,
+      phoneNumber: phone,
       isSuspended: false,
       avatarUrl: "",
     };
@@ -411,9 +442,12 @@ export const userStub = {
       }
       u.username = req.username;
     }
+    const phone = req.phoneNumber !== undefined ? storedPhone(req.phoneNumber) : undefined;
+    refuseTaken(phone ?? "", req.email ?? "", u.id);
+
     if (req.name !== undefined) u.name = req.name;
     if (req.email !== undefined) u.email = req.email;
-    if (req.phoneNumber !== undefined) u.phoneNumber = req.phoneNumber;
+    if (phone !== undefined) u.phoneNumber = phone;
 
     return { user: u };
   },

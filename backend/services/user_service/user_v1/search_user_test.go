@@ -85,7 +85,7 @@ func TestSearchUser_AManagerFindsOnlyTheWholeHandle(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	ani := insertUser(t, db, "anilestari", "pw12345678")
-	setPhone(t, db, ani, "0812-3456-7890")
+	setPhone(t, db, ani, "+6281234567890") // stored in its one form (a-phone-is-saved-in-international-form)
 	insertUser(t, db, "anirahma", "pw12345678")
 
 	managers := map[string]role_basev1.Role{
@@ -151,9 +151,9 @@ func TestSearchUser_SaysTheLastFourAndWhoIsAlreadyIn(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	ani := insertUser(t, db, "anilestari", "pw12345678")
-	setPhone(t, db, ani, "+62 812-3456-7890")
+	setPhone(t, db, ani, "+6281234567890")
 	eko := insertUser(t, db, "ekoprasetyo", "pw12345678")
-	setPhone(t, db, eko, "0811")
+	setPhone(t, db, eko, "0811") // an unreadable number from before 00008, left as it was
 	grantRole(t, db, whTeam, eko, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
 	grantRole(t, db, sellTeam, ani, role_basev1.Role_ROLE_SELLING_CS)
 
@@ -222,5 +222,18 @@ func TestSearchUser_AtTeamZero(t *testing.T) {
 
 	if len(res.GetRolesInTeam()) != 0 {
 		t.Fatalf("team 0 reported roles %v, want none", res.GetRolesInTeam())
+	}
+}
+
+// Root's search keeps the exact arms: a phone refused at Create ("add that person instead") finds that person.
+func TestSearchUser_RootFindsByPhoneToo(t *testing.T) {
+	db := san_testdb.DB(t)
+
+	ani := insertUser(t, db, "anilestari", "pw12345678")
+	setPhone(t, db, ani, "+6281234567890")
+
+	got := foundNames(search(t, asRoot(t, db), db, whTeam, "0812 3456 7890"))
+	if len(got) != 1 || got[0] != "anilestari" {
+		t.Fatalf("Root searching the phone found %v, want anilestari", got)
 	}
 }

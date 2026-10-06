@@ -165,7 +165,12 @@ export function EditUserDialog({
 
                   <Field.Root>
                     <Field.Label>{t("users.field.phone")}</Field.Label>
-                    <Input value={phone} data-testid="edit-phone" onChange={(e) => setPhone(e.target.value)} />
+                    <Input
+                      value={phone}
+                      placeholder={t("users.field.phonePlaceholder")}
+                      data-testid="edit-phone"
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
                   </Field.Root>
                 </Stack>
               </Dialog.Body>

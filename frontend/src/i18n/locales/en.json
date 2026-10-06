@@ -1646,7 +1646,8 @@
       "name": "Name",
       "email": "Email",
       "phone": "Phone",
-      "role": "Role"
+      "role": "Role",
+      "phonePlaceholder": "0812-3456-7890 or +62 812…"
     },
     "helper": {
       "usernameRule": "Lowercase letters and numbers only.",
@@ -1690,13 +1691,8 @@
       "backToSearch": "Back to Search",
       "submitChange": "Change Role",
       "submitCreate": "Create and Add",
-      "pending": {
-        "duplicateRefusal": {
-          "label": "One account per phone",
-          "reason": "a phone number already on another account is not refused yet"
-        }
-      },
-      "nothingToChange": "There is no other role you can give them."
+      "nothingToChange": "There is no other role you can give them.",
+      "findTaken": "Find That Person"
     },
     "changeRole": {
       "title": "Change Role for {{username}}",

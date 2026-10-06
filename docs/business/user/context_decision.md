@@ -241,7 +241,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run. 🔄 *(2026-10-06, later)* **the next free number** — `00007` went to the phone key (`user_phone_key`); `00008` today |
+| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run. 🔄 *(2026-10-06, later)* **the next free number** — `00007` and `00008` went to the phone; `00009` today |
 | the password | a bcrypt hash of `root1234`, never the plain text |
 | ⚠ only while empty | `WHERE id = 1 AND password = ''`: a database whose root password was already set keeps it. Without this, a new migration would **reset** a production root password back to the public one |
 | the email | `root@pdc.com`, only while it is still `root@system.local` |
@@ -956,6 +956,13 @@ flowchart LR
   Q -->|"yes"| A["refused — add that person instead"]
   Q -->|"no"| OK["created"]
 ```
+
+> 🔄 *(2026-10-06, built)* `users_phone_unique` (migration `00008`) on the stored form
+> ([a-phone-is-saved-in-international-form](#a-phone-is-saved-in-international-form)). `CreateUser`, `UpdateUser` and
+> `UpdateProfile` check first and refuse with *that phone number / that email is already another account's — add that
+> person instead*; the unique indexes are the guarantee (raced: eight creates of one number at once, one account). The Add
+> Member popup's Create then offers **Find That Person**, which searches the taken phone or email. Its last pending mark is
+> gone.
 
 **The spec.** ⚠ **Not built.** Username is unique, and email is unique when given. Phone is not: it needs a unique index
 (when given), which a migration can add only once any duplicates already stored are resolved. `CreateUser` and
@@ -1856,6 +1863,10 @@ flowchart LR
 It reverses my own interim recommendation (c, keep as typed): the code SMS needs the international form anyway, and c
 kept two forms of every number for each new feature to choose between.
 
+> 🔄 *(2026-10-06, built)* As specified. The search normalises the term and compares the column through
+> `users_phone_unique`; Root's and the Administrator's search keeps these exact arms beside the substring match, so
+> *Find That Person* works for them too. ~1 ms at 10 000 accounts.
+
 ## a-phone-has-8-to-15-digits
 
 > Owner, in chat *(2026-10-06)*: *"follow your recomendation"*. It answers [Q31b](./context_clarify.md#question), as recommended: **ii**.
@@ -1913,3 +1924,7 @@ flowchart TD
 
 **The spec.** user_service `00008`. The rewrite is `user_phone_international(text)`, an SQL twin of `normalizePhone`; a
 test asserts the two agree on every case. Development held `0811` (left) and `+15551234567` (already the form), no pair.
+
+> 🔄 *(2026-10-06, built)* Run against a scratch database: `0812-3456-7890` → `+6281234567890`, `+1 555 123 4567` →
+> `+15551234567`, `0811` and `abc` left; with `0813-1111-2222` and `+62 813 1111 2222` on two accounts it stopped, named
+> both, and left the database at `00007` with nothing changed.
