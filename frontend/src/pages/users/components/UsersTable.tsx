@@ -230,12 +230,7 @@ export function UsersTable({ mode }: { mode: "team" | "all" }) {
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeader>{t("users.table.user")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>
-                    <HStack gap="1">
-                      {t("users.table.role")}
-                      <NotImplemented list={USERS_PENDING} id="roleColumn" />
-                    </HStack>
-                  </Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("users.table.role")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("users.table.email")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("users.table.status")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("users.table.actions")}</Table.ColumnHeader>

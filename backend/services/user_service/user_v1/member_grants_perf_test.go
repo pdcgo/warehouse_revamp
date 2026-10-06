@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
@@ -166,4 +167,25 @@ func TestPerf_TeamUserUpdateNewOwner(t *testing.T) {
 	})
 
 	t.Log(san_perf.Explain(t, db, fmt.Sprintf(`SELECT "is_suspended" FROM "users" WHERE id = %d`, ids[1])))
+}
+
+// UserList with the MEMBERSHIP slice — the Users screen's role column. Measured at two page sizes: the role
+// read must stay ONE query whatever the page holds (an N+1 here would grow with it).
+func TestPerf_UserListMembership(t *testing.T) {
+	_, svc, probe, _, root, _ := seedGrantVolume(t)
+
+	for _, limit := range []uint32{20, 100} {
+		measure(t, probe, fmt.Sprintf("UserList+MEMBERSHIP limit=%d", limit), func(int) error {
+			_, err := svc.UserList(root, connect.NewRequest(&userv1.UserListRequest{
+				TeamId: 1000, // 100 members in the seeded volume
+				DataRequest: []userv1.UserListDataType{
+					userv1.UserListDataType_USER_LIST_DATA_TYPE_USER,
+					userv1.UserListDataType_USER_LIST_DATA_TYPE_MEMBERSHIP,
+				},
+				Page: &commonv1.CommonPagination{Page: 1, Limit: limit},
+			}))
+
+			return err
+		})
+	}
 }

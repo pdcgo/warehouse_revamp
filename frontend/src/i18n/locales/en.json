@@ -1735,10 +1735,6 @@
       "empty": "No one has joined, left or changed role yet."
     },
     "pending": {
-      "roleColumn": {
-        "label": "Each member's role",
-        "reason": "the server does not send it yet, so the column reads — and the row actions cannot tell an Owner from Staff"
-      },
       "erase": {
         "label": "Erase Personal Data",
         "reason": "the server answers that it is not built yet"

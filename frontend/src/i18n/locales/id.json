@@ -1730,10 +1730,6 @@
       "empty": "Belum ada yang bergabung, keluar, atau berganti peran."
     },
     "pending": {
-      "roleColumn": {
-        "label": "Peran tiap anggota",
-        "reason": "server belum mengirimnya, jadi kolomnya berisi — dan tindakan baris tidak bisa membedakan Pemilik dari Staf"
-      },
       "erase": {
         "label": "Hapus Data Pribadi",
         "reason": "server menjawab bahwa fitur ini belum dibangun"

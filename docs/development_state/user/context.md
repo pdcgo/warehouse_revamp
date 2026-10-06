@@ -20,7 +20,7 @@ imports `lib/roles.ts`), writeable, reset per story.
 
 | | |
 | --- | --- |
-| contract (additive) | `UserList` MEMBERSHIP slice · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` (built) · `UserErase` · `TeamMemberLogList` · `DeleteUser` removed. Placeholders `user_erase.go`, `team_member_log_list.go` answer `Unimplemented`, with tests |
+| contract (additive) | `UserList` MEMBERSHIP slice (built 2026-10-06: one query per page, the role in the scoped team, the root team at `team_id = 0`; 3 queries 2.8 ms at 100 rows — the Users screen's role column mark is gone) · `SearchUser.team_id` + `roles_in_team` · `PublicUser.phone_last4` · `UpdateUserRequest.username` (built) · `UserErase` · `TeamMemberLogList` · `DeleteUser` removed. Placeholders `user_erase.go`, `team_member_log_list.go` answer `Unimplemented`, with tests |
 | screen rules | `lib/roles.ts`: `roleRank`, `managesMembers`, `grantableRoles`, `canManageMember`, `canSuspendUser`, `canEraseUser`, `defaultGrant` (no role preselected in the root team) |
 | Users page | tabs: My Team User · Membership History · All User (Root and the Administrator only). Role column, rank-gated ⋯ menu, Change Role dialog, Erase, no Delete. Add Member only for member managers. **No New User** (removed 2026-10-05, [an-account-is-made-only-from-the-member-search](../../business/user/context_decision.md#an-account-is-made-only-from-the-member-search)) |
 | Add Member popup | `features/users/AddMemberDialog.tsx` rewritten: search list → Select Role / Change Role / Create and Add. The only way an account is made. Its create form requires a name ([only-name-and-username-are-required](../../business/user/context_decision.md#only-name-and-username-are-required)) |

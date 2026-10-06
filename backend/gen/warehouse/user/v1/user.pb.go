@@ -36,8 +36,7 @@ const (
 	// MEMBERSHIP: each user's role in the SCOPED team — what a member row shows, and what decides
 	// whether the caller may change or remove them (change-role-only-below-your-own). At team_id = 0
 	// it is the role in the root team, so the all-users view can tell Root and the Administrator apart.
-	//
-	// ⚠ CONTRACT ONLY until the user decisions are built — the server returns no such slice today.
+	// A user with no role there is absent from the map.
 	UserListDataType_USER_LIST_DATA_TYPE_MEMBERSHIP UserListDataType = 3
 )
 
