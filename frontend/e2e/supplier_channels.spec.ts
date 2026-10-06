@@ -4,7 +4,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 
 // Supplier detail page + channels — the CRUD pass of docs/business/supplier. A channel is one store the
 // supplier sells through: a channel type off the shared marketplace list, a name, a link
-// (the-supplier-lists-only-its-online-stores, channel-type-is-the-marketplace-list). There is no
+// (the-supplier-lists-only-its-online-stores, channel-type-is-the-marketplace-list), listed under the
+// detail page's Channels tab (supplier-detail-has-channels-and-products-tabs). There is no
 // online/offline switch; the server still wants one, and the translation step in features/suppliers/adapt.ts
 // sends it.
 //
@@ -92,7 +93,8 @@ test("Detail + channel: create a supplier, open it, add a channel, then delete i
   await expect(page.getByTestId("supplier-detail-page")).toBeVisible();
   await expect(page.getByTestId("supplier-detail-name")).toHaveText(NAME);
 
-  // No channels yet.
+  // No channels yet — the page opens on its Channels tab.
+  await expect(page.getByTestId("supplier-tab-channels")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("channels-empty")).toBeVisible();
 
   // Add a channel: a channel type (required) + a name. No online/offline switch.
@@ -102,7 +104,8 @@ test("Detail + channel: create a supplier, open it, add a channel, then delete i
   // Submit stays disabled until a channel type is chosen and a name is filled.
   await expect(page.getByTestId("submit-channel")).toBeDisabled();
 
-  await page.getByTestId("marketplace-select").click();
+  // The dialog's own picker — the Channels tab's type filter is a second one on the page.
+  await page.getByRole("dialog").getByTestId("marketplace-select").click();
   await page.getByRole("option", { name: "Shopee" }).click();
   await page.getByTestId("channel-name").fill(CHANNEL_NAME);
   await page.getByTestId("channel-uri").fill("https://shopee.co.id/e2estore");
@@ -116,6 +119,13 @@ test("Detail + channel: create a supplier, open it, add a channel, then delete i
   await expect(channelsTable).toContainText(CHANNEL_NAME);
   await expect(channelsTable).toContainText("Shopee");
   await expect(channelsTable).toContainText("https://shopee.co.id/e2estore");
+
+  // The search finds it by name; a search for nothing says nothing matches, not "no channels".
+  await page.getByTestId("channels-search").fill(CHANNEL_NAME);
+  await expect(page.getByTestId("channels-table")).toContainText(CHANNEL_NAME);
+  await page.getByTestId("channels-search").fill("no-such-channel");
+  await expect(page.getByTestId("channels-none-match")).toBeVisible();
+  await page.getByTestId("channels-search").fill("");
 
   // Delete it through the confirm dialog — the list goes back to empty.
   await page.locator('[data-testid^="delete-channel-"]').first().click();

@@ -181,7 +181,7 @@ const PRODUCTS_GROUP: MenuGroup = {
 // "Placements" is a stub until the warehouse core / locations are designed (plan.md §1).
 //
 // The group is BUILT PER TEAM TYPE rather than being a fixed const, because the children are not
-// common to both: "Racks" (#129) is a warehouse's own, while "Supplier" and "Placements" are the
+// common to both: "Racks" (#129) is a warehouse's own, while the suppliers and "Placements" are the
 // requesting side's — a supplier belongs to the SELLING team that raises the restock, not the
 // warehouse that fulfils it. Only "Restock" and "Stock" are shared.
 //
@@ -204,7 +204,10 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   // stock-locating side. They stay for a selling team.
   if (teamType === TeamType.SELLING) {
     children.push({ to: "/inventories/placements", label: "nav.placements", icon: MapPin });
-    children.push({ to: "/inventories/suppliers", label: "nav.supplier", icon: Factory });
+    // "My Supplier" — the suppliers this team keeps — and "Discover Supplier" — every team's, searched across
+    // teams (manage-and-discover-are-two-pages). The same pair as My Product / Discover Product.
+    children.push({ to: "/inventories/suppliers", label: "nav.mySupplier", icon: Factory });
+    children.push({ to: "/inventories/suppliers/discover", label: "nav.discoverSupplier", icon: Compass });
   }
 
   // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).

@@ -42,7 +42,8 @@ import { formatMarkup } from "../../lib/markup";
 import { BatchTab } from "./components/BatchTab";
 import { HistoryTab } from "./components/HistoryTab";
 import { PriceTab } from "./components/PriceTab";
-import { Field, Stat, WhenOrNever } from "./components/parts";
+import { Field, Stat } from "../../features/products/RecordField";
+import { WhenOrNever } from "./components/parts";
 
 function parseProductId(raw: string | undefined): bigint {
   if (!raw) return 0n;

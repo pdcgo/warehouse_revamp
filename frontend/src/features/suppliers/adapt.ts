@@ -189,3 +189,31 @@ export function channelUpdateRequest(teamId: bigint, channelId: bigint, fields: 
     url: fields.uri,
   };
 }
+
+// ── The channel list's search, filter and page ──────────────────────────────────────────────────
+
+export interface ChannelQuery {
+  /** Matched against the name, the link and the description. */
+  q: string;
+  /** `UNSPECIFIED` = every type. */
+  channelType: Marketplace;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * ⚠ DONE IN THE BROWSER — part of the translation step. The old SupplierChannelList takes a supplier and a page,
+ * nothing to search or filter by, so the supplier's channels are read whole (up to the 200 one page allows) and
+ * searched, filtered and paged here, returning exactly what supplier_service's paginated list will. A supplier
+ * has a handful of stores, so the cap is not reached in practice; when supplier_service lands, this moves to the
+ * server and the screen does not change.
+ */
+export function channelPage(channels: SupplierChannelRecord[], query: ChannelQuery) {
+  const q = query.q.trim().toLowerCase();
+  const matching = channels
+    .filter((c) => query.channelType === Marketplace.UNSPECIFIED || c.channelType === query.channelType)
+    .filter((c) => !q || [c.name, c.uri, c.description].some((field) => field.toLowerCase().includes(q)));
+  const start = (query.page - 1) * query.pageSize;
+
+  return { channels: matching.slice(start, start + query.pageSize), totalItems: matching.length };
+}

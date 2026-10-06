@@ -352,6 +352,41 @@ export function useStockAvailability(args: {
   });
 }
 
+// What EACH warehouse holds of ONE product — the discover detail's "where can I get it from".
+//
+// StockAvailability answers for one building, so it is asked once per warehouse: stock is held per
+// building, and an order ships from exactly one. The fan-out is bounded by the warehouse list (a
+// handful of buildings), never by the catalogue, and the answers arrive together as one entry so the
+// table never renders half its rows.
+//
+// PRESENCE, not ownership — the figure a pick would find. OwnerStockByIds would answer 0 for a product
+// the caller does not own, which on the discover detail is every product. An absent answer stays
+// undefined (unknown), never 0.
+export function useAvailabilityByWarehouse(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseIds: bigint[];
+}) {
+  const { teamId, productId } = args;
+  const warehouses = Array.from(new Set(args.warehouseIds.map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.inventory(teamId, { availabilityOf: productId.toString(), warehouses }),
+    enabled: teamId !== undefined && productId > 0n && warehouses.length > 0,
+    queryFn: async () => {
+      const answers = await Promise.all(
+        warehouses.map((w) =>
+          inventoryClient.stockAvailability({ teamId: teamId!, warehouseId: BigInt(w), productIds: [productId] }),
+        ),
+      );
+
+      return new Map(
+        warehouses.map((w, i) => [w, answers[i]!.items.find((it) => it.productId === productId)?.available]),
+      );
+    },
+  });
+}
+
 // The HPP — what each product COST at a warehouse — for a whole set of products at once.
 //
 // The same read `OrderCreate` uses to freeze `unit_cost` on every line (#74), so what the order form

@@ -957,10 +957,14 @@ export const transport = createRouterTransport(({ service }) => {
     // that this RPC does NOT use the "absent means zero" convention: a screen deciding whether it may
     // promise goods to a buyer must not have to infer a zero from a gap, because a partial answer
     // looks identical. Filtering the zeros out here would make the stub kinder than the server.
+    //
+    // ⚠ PER WAREHOUSE. The fixture stock is one building's (WAREHOUSE_ID), so any other warehouse
+    // answers zeros. Answering every warehouse with the same shelf made a screen that lists several
+    // warehouses side by side (the discover detail) show one stock as if it were held twice.
     stockAvailability: (req) => ({
       items: req.productIds.map((id) => ({
         productId: id,
-        available: warehouseStock[id.toString()] ?? 0n,
+        available: req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n,
       })),
     }),
 

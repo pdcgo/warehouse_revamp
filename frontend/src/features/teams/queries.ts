@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { teamClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { teamListRowData, teamsFromList } from "./adapt";
+import { teamByIdsRowData, teamListRowData, teamsByIds, teamsFromList } from "./adapt";
 import { useInvalidateUsers } from "../users/queries";
 
 // The team screens' reads (#176) and writes (#177). Query hooks live beside the screens that use
@@ -56,6 +56,23 @@ export function useTeams({ teamType, page, pageSize, enabled = true, reference =
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
+  });
+}
+
+// Teams by id, as a { [id]: Team } map — to NAME a team the caller is not in (a product's owner on the
+// discover detail). One batch for the set, never one call per row. A name lookup, so it buys out of
+// always-fresh by name (referenceQuery): it labels something, and nobody works from it.
+export function useTeamsByIds({ ids }: { ids: bigint[] }) {
+  const wanted = Array.from(new Set(ids.filter((id) => id > 0n).map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.teams(undefined, { byIds: wanted.join(",") }),
+    ...referenceQuery,
+    enabled: wanted.length > 0,
+    queryFn: async () =>
+      teamsByIds(
+        await teamClient.teamByIds({ filter: { ids: wanted.map((id) => BigInt(id)) }, dataRequest: teamByIdsRowData() }),
+      ),
   });
 }
 

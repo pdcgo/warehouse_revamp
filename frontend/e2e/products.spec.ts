@@ -206,4 +206,11 @@ test("Discover: products across teams are listed (#106)", async ({ page }) => {
   await page.goto("/products/discover");
   await expect(page.getByTestId("discover-grid")).toBeVisible();
   await expect(page.getByTestId(`discover-card-${SKU_IMG}`)).toBeVisible();
+
+  // A card opens the DISCOVER detail, read through ProductByIds + StockAvailability — not the owner's
+  // ProductDetail, which would answer NotFound for any other team's product.
+  await page.getByTestId(`discover-open-${SKU_IMG}`).click();
+  await expect(page).toHaveURL(/\/products\/discover\/\d+$/);
+  await expect(page.getByTestId("discover-detail-page")).toContainText(SKU_IMG);
+  await expect(page.getByTestId("discover-detail-stock")).toBeVisible();
 });

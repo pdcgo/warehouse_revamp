@@ -97,7 +97,8 @@ export function useSupplier(args: { teamId: bigint | undefined; supplierId: bigi
 // independently before (a channel list error did not blank the supplier), and merging them would
 // make one request's failure hide the other's result.
 //
-// Channels are few per supplier, so one large page covers them all and there is no pager.
+// Channels are few per supplier, so one large page — the 200 the contract allows — reads them all. The Products
+// tab's sample rows are made from this whole list, and the Channels tab's ChannelBrowser pages it.
 export function useSupplierChannels(args: { teamId: bigint | undefined; supplierId: bigint }) {
   const { teamId, supplierId } = args;
 
@@ -109,7 +110,7 @@ export function useSupplierChannels(args: { teamId: bigint | undefined; supplier
         teamId: teamId!,
         filter: { supplierId },
         dataRequest: supplierChannelRowData(),
-        page: { page: 1, limit: 100 },
+        page: { page: 1, limit: 200 },
       });
 
       return channelsFromList(res.items, res.ids);

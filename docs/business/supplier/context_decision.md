@@ -19,7 +19,11 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [channel-type-is-the-marketplace-list](#channel-type-is-the-marketplace-list) | `channel_type` is the shared marketplace list; `custom` is its *Other* | your edit, 2026-10-06 — answers Q7, as recommended |
 | [no-province-city-or-soft-delete](#no-province-city-or-soft-delete) | a supplier is exactly your listed fields; delete is a hard delete | in chat, 2026-10-06 — answers Q8, against my *keep all three* |
 | [the-supplier-gets-its-own-service](#the-supplier-gets-its-own-service) | suppliers and channels move to their own `supplier_service` | in chat, 2026-10-06 — answers Q6, against my *stay in inventory_service* |
-| [channels-are-a-horizontal-tab](#channels-are-a-horizontal-tab) | on the supplier detail page the channels sit under a horizontal **Channels** tab; the supplier's own fields stay above it | in chat, 2026-10-06 — against my *vertical tabs, Info and Channels* |
+| ⛔ [superseded-channels-are-a-horizontal-tab](#superseded-channels-are-a-horizontal-tab) | ~~one horizontal Channels tab~~ — a MISREAD, superseded by [supplier-detail-has-channels-and-products-tabs](#supplier-detail-has-channels-and-products-tabs) | in chat, 2026-10-06 |
+| [supplier-detail-has-channels-and-products-tabs](#supplier-detail-has-channels-and-products-tabs) | the supplier detail has two horizontal tabs, **Channels** (one list, a marketplace badge per row) and **Products** (sample rows for now) | in chat, 2026-10-06 |
+| [the-channels-tab-searches-filters-and-pages](#the-channels-tab-searches-filters-and-pages) | the Channels tab has a search, a channel-type filter and a pager | in chat, 2026-10-06 |
+| [the-products-tab-searches-and-pages](#the-products-tab-searches-and-pages) | the Products tab has a search and a pager | in chat, 2026-10-06 |
+| [discover-searches-every-teams-suppliers](#discover-searches-every-teams-suppliers) | Discover Suppliers and its detail are pages of their own, searching suppliers across ALL teams; Suppliers is the list a team manages | in chat, 2026-10-06 — refines [manage-and-discover-are-two-pages](#manage-and-discover-are-two-pages) |
 
 ## reversed-the-supplier-keeps-its-code
 
@@ -146,6 +150,8 @@ The selling roles on its policy keep out a warehouse's own people, but Root and 
 they can create one in a warehouse team.
 
 ## manage-and-discover-are-two-pages
+
+🔄 **Refined 2026-10-06** by [discover-searches-every-teams-suppliers](#discover-searches-every-teams-suppliers): discover searches ALL teams' suppliers, the caller's own included — not only *other* teams'.
 
 > Owner, in [context.md](./context.md) §What Frontend Expected *(2026-10-06)*: *"frontend use this service for 2 page
 > supplier. 1. supplier managing page. 2. discover supplier. its for search other team supplier."*
@@ -390,7 +396,11 @@ the [clarify](./context_clarify.md#proposed-design). And your
 [technical/architecture/context.md](../../technical/architecture/context.md) service list still puts the supplier in
 `product_service` — your edit.
 
-## channels-are-a-horizontal-tab
+## superseded-channels-are-a-horizontal-tab
+
+⛔ **Superseded the same day — it was a MISREAD.** *"no just add hrizontal tab channel"* meant tabs BY channel type, not one
+tab named Channels; and the owner then replaced both with [supplier-detail-has-channels-and-products-tabs](#supplier-detail-has-channels-and-products-tabs).
+Renamed per RULE 12; kept below as it was recorded.
 
 > Owner, in chat *(2026-10-06)*, previewing the CRUD prototype: *"no just add hrizontal tab channel"* — against my
 > recommendation, which was rack detail's vertical tabs with the supplier's fields moved into an *Info* tab.
@@ -410,3 +420,103 @@ flowchart TD
 **The spec.** Built in the prototype: `Tabs.Root` with the default horizontal orientation, as team detail uses; the
 **Channels** tab is open on arrival and holds Add Channel and the table. Story:
 `Pages/Suppliers/SupplierDetail — TheChannelsAreAHorizontalTab`.
+
+## supplier-detail-has-channels-and-products-tabs
+
+> Owner, in chat *(2026-10-06)*, previewing the CRUD prototype: *"i mean tab shopee tokopedia tiktok and etc"*, then
+> *"i have better idea, in supplier detail we have tab "Channel" and "Products""*. Confirmed with two sketches the same
+> day: the Channels tab is **one list with badges**, and the Products tab shows **sample rows, marked sample** — both
+> as I recommended for the first, against my *empty, marked not built* for the second. It supersedes
+> [superseded-channels-are-a-horizontal-tab](#superseded-channels-are-a-horizontal-tab), and the per-marketplace tabs,
+> which were built and never recorded.
+
+**The verdict.** The supplier's own fields sit on top. Under them, two **horizontal** tabs: **Channels** — every store
+in one list, each row wearing its marketplace's badge — and **Products** — what the supplier sells, each with the
+channel it is bought from ([products-hang-off-a-channel](#products-hang-off-a-channel)).
+
+```mermaid
+flowchart TD
+  H["the supplier — name, contact, address, description"] --> T["two horizontal tabs"]
+  T --> C["Channels — Add Channel, one table, a marketplace badge per row"]
+  T --> P["Products — product, SKU, the channel it is bought from"]
+  P -.->|"sample rows until"| L["linking-products-is-deferred"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the page | `pages/supplier-detail` — `Tabs.Root` horizontal, Channels open on arrival, only the open tab mounted |
+| Channels | `components/ChannelsPanel.tsx` — Channel (badge + name) · Link · Description · actions |
+| Products | `components/ProductsPanel.tsx` — Product · SKU · Channel (badge + name). ⚠ **sample**: two invented products per real channel (`sampleProducts.ts`), and a `sample` mark on the tab and in the page's summary. Real rows wait on the linking ([linking-products-is-deferred](#linking-products-is-deferred)) |
+| stories | `Pages/Suppliers/SupplierDetail` — *ChannelsAndProductsTabs*, *ChannelsAreOneListWithBadges*, *ProductsNameTheirChannel*, *ProductsTab* |
+
+## the-channels-tab-searches-filters-and-pages
+
+> Owner, in chat *(2026-10-06)*: *"channel tab can search and filter by channel type, dont forget pagination too"*.
+
+**The verdict.** The Channels tab — on the manage detail and the discover detail alike — has a **search** (the
+channel's name, link and description), a **channel-type filter** (the shared marketplace list, empty = every type)
+and a **pager** (10 · 20 · 50).
+
+```mermaid
+flowchart LR
+  S["search — name, link, description"] --> L["the supplier's channels"]
+  F["channel type — empty = all"] --> L
+  L --> P["page of 10, 20 or 50"]
+```
+
+**The spec.** `features/suppliers/ChannelBrowser.tsx`, through the shared `FilterBar` (a bottom sheet on a phone).
+⚠ In the BROWSER for now (`channelPage` in `adapt.ts`), over the supplier's whole list: the old
+SupplierChannelList takes a supplier and a page and nothing to search or filter by. **supplier_service's
+`SupplierChannelList` takes `q`, `channel_type` and a page** — the screen does not change when it does.
+
+## the-products-tab-searches-and-pages
+
+> Owner, in chat *(2026-10-06)*: *"product tab can search, and dont forget pagination too"*.
+
+**The verdict.** The Products tab has a **search** (the product, its SKU, or the channel it is bought from) and a
+**pager** (10 · 20 · 50).
+
+```mermaid
+flowchart LR
+  S["search — product, SKU, channel"] --> L["the supplier's products"]
+  L --> P["page of 10, 20 or 50"]
+```
+
+**The spec.** `features/suppliers/ProductBrowser.tsx`. ⚠ Over SAMPLE rows until the channel-product linking is
+designed ([linking-products-is-deferred](#linking-products-is-deferred)); the real read searches and pages on the
+server.
+
+## discover-searches-every-teams-suppliers
+
+> Owner, in chat *(2026-10-06)*: *"create discover supplier page, the context is focus on search supplier across all
+> team. its independently from suppliers page. and suppliers page is list for supplier that we managed. do it for
+> detail too"*. It refines [manage-and-discover-are-two-pages](#manage-and-discover-are-two-pages), which said
+> *every OTHER team's*.
+
+**The verdict.** Two pairs of pages, independent of each other:
+
+| | list | detail |
+| --- | --- | --- |
+| **My Supplier** — what this team manages | `/inventories/suppliers` | `/inventories/suppliers/:id` — editable |
+| **Discover Supplier** — every team's, searched across teams | `/inventories/suppliers/discover` | `/inventories/suppliers/discover/:id` — read-only, names the owning team |
+
+```mermaid
+flowchart LR
+  subgraph "My Supplier — this team's"
+    M["list"] --> MD["detail — Edit, Delete, Add Channel"]
+  end
+  subgraph "Discover Supplier — every team's"
+    D["list — search, channel type, page"] --> DD["detail — read-only, the owning team"]
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the list | `pages/supplier-discover` — Supplier (name, address) · Team (`TeamItem`) · Channels (a badge per type, ×n) · Contact. Search reads the supplier, its address and contact, its team and its stores' names; the filter is "has a store of this type"; a pager of 10 · 20 · 50 |
+| the detail | `pages/supplier-discover-detail` — the supplier, the team that keeps it, and the same Channels and Products tabs as the manage detail, with no actions |
+| the menu | ⚠ my spec: **My Supplier** and **Discover Supplier** under Inventories for a selling team — the same pair as My Product and Discover Product |
+| ⚠ the data | **SAMPLE** (`features/suppliers/discover.ts`): no server searches every team's suppliers yet. supplier_service's `SupplierList` needs a cross-team scope and `SupplierDetail` / `SupplierChannelList` must answer for another team's supplier |

@@ -211,6 +211,41 @@ export function useDiscoverProducts(args: {
   });
 }
 
+// ONE product from ANOTHER team's catalogue — the discover detail (/products/discover/:id).
+//
+// ProductByIds, not ProductDetail: ProductDetail answers only the owning team (another team's product
+// reads as NotFound), while ProductByIds resolves an id whoever owns it — the same reason discovery
+// itself does not filter by team. What that gives up is the gallery: a by-ids row carries the cover,
+// not the image list.
+//
+// The category tree rides along for the reason useProductDetail fetches it: the page names the
+// category, and rendering the product before the tree lands would show a blank where a name belongs.
+//
+// `product` is null when the id resolves to nothing — ProductByIds omits it rather than failing.
+export function useDiscoverProduct(args: { teamId: bigint | undefined; productId: bigint }) {
+  const { teamId, productId } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { discover: true, productId: productId.toString() }),
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const [res, cats] = await Promise.all([
+        productClient.productByIds({
+          teamId: teamId!,
+          filter: { ids: [productId] },
+          dataRequest: productByIdsRowData(),
+        }),
+        categoryClient.categoryList({}),
+      ]);
+
+      return {
+        product: productsFromByIds(res).find((p) => p.id === productId) ?? null,
+        categories: cats.categories,
+      };
+    },
+  });
+}
+
 // One product, with the category tree it is filed against.
 //
 // Both together: the detail screen names the product's category, and rendering the product before

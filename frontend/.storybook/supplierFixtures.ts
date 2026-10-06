@@ -53,6 +53,8 @@ export const supplierFixtures: SupplierFixture[] = [
   { id: 33n, teamId: 12n, code: "SUP-C", name: "Toko Grosir Sinar", contact: "", province: "", city: "", address: "", description: "", deleted: false },
   // ANOTHER selling team's supplier — never on team 12's list.
   { id: 34n, teamId: 13n, code: "SUP-D", name: "UD Makmur Jaya", contact: "0813-4444-5555", province: "", city: "", address: "Jl. Pasar Baru 3, Jakarta", description: "", deleted: false },
+  // TWELVE channels — more than one page of ten, so the Channels and Products pagers have something to turn.
+  { id: 35n, teamId: 12n, code: "SUP-E", name: "PT Banyak Toko", contact: "0811-5555-6666", province: "", city: "", address: "Jl. Gatot Subroto 20, Jakarta", description: "", deleted: false },
 ];
 
 export const channelFixtures: ChannelFixture[] = [
@@ -63,6 +65,18 @@ export const channelFixtures: ChannelFixture[] = [
   { id: 313n, supplierId: 31n, type: SupplierChannelType.OFFLINE, marketplace: Marketplace.UNSPECIFIED, name: "Gudang Cigondewah", url: "", contact: "0812-1111-9999", location: "Jl. Cigondewah Kaler 7, Bandung" },
   // A plain website — the owner's `custom`, the shared list's Other.
   { id: 321n, supplierId: 32n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.OTHER, name: "cahayaabadi.co.id", url: "https://cahayaabadi.co.id", contact: "", location: "" },
+  { id: 351n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.SHOPEE, name: "Banyak Toko Shopee 1", url: "https://example.test/banyaktoko/1", contact: "", location: "" },
+  { id: 352n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.SHOPEE, name: "Banyak Toko Shopee 2", url: "https://example.test/banyaktoko/2", contact: "", location: "" },
+  { id: 353n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.SHOPEE, name: "Banyak Toko Shopee 3", url: "https://example.test/banyaktoko/3", contact: "", location: "" },
+  { id: 354n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.TOKOPEDIA, name: "Banyak Toko Tokopedia 1", url: "https://example.test/banyaktoko/4", contact: "", location: "" },
+  { id: 355n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.TOKOPEDIA, name: "Banyak Toko Tokopedia 2", url: "https://example.test/banyaktoko/5", contact: "", location: "" },
+  { id: 356n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.LAZADA, name: "Banyak Toko Lazada", url: "https://example.test/banyaktoko/6", contact: "", location: "" },
+  { id: 357n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.TIKTOK, name: "Banyak Toko TikTok 1", url: "https://example.test/banyaktoko/7", contact: "", location: "" },
+  { id: 358n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.TIKTOK, name: "Banyak Toko TikTok 2", url: "https://example.test/banyaktoko/8", contact: "", location: "" },
+  { id: 359n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.BLIBLI, name: "Banyak Toko Blibli", url: "https://example.test/banyaktoko/9", contact: "", location: "" },
+  { id: 360n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.BUKALAPAK, name: "Banyak Toko Bukalapak", url: "https://example.test/banyaktoko/10", contact: "", location: "" },
+  { id: 361n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.OTHER, name: "banyaktoko.id", url: "https://example.test/banyaktoko/11", contact: "", location: "" },
+  { id: 362n, supplierId: 35n, type: SupplierChannelType.ONLINE, marketplace: Marketplace.OTHER, name: "banyaktoko.com", url: "https://example.test/banyaktoko/12", contact: "", location: "" },
 ];
 
 /** A fixture supplier by name — stories read better by name than by position. */

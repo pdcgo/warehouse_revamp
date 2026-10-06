@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Flex, HStack, Heading, Input, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Link as RouterLink } from "react-router-dom";
+import { Box, Flex, HStack, Heading, Input, Link, SimpleGrid, Spinner, Stack, Text } from "@chakra-ui/react";
 import { rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { useTeam } from "../../features/team/TeamContext";
@@ -16,7 +17,9 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 //
 // It renders a GRID of ProductCard (#121) rather than a table: this is a browse, not a ledger — you
 // recognise a product by its picture, so the card puts the image first. Each card names the team that
-// owns the product, which on a cross-team page is the thing worth knowing about it.
+// owns the product, which on a cross-team page is the thing worth knowing about it. A card opens the
+// DISCOVER detail (/products/discover/:id) — never the owner's /products/:id, which answers only the
+// owning team.
 export function DiscoverProductsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -141,7 +144,20 @@ export function DiscoverProductsPage() {
             // is what a test naming a product actually knows. It is also the grid cell, so `h="full"`
             // on the Card inside has a stretched box to fill.
             <Box key={product.id.toString()} data-testid={`discover-card-${product.sku}`}>
-              <ProductCard product={product} teamName={teamNames.get(product.teamId.toString())} />
+              {/* The whole card is the link to the discover detail — a real anchor, so it opens in a
+                  new tab like any link. `h="full"` passes the stretched cell on to the card. */}
+              <Link
+                asChild
+                display="block"
+                h="full"
+                borderRadius="l3"
+                focusRing="outside"
+                _hover={{ textDecoration: "none", "& > *": { borderColor: "border.emphasized" } }}
+              >
+                <RouterLink to={`/products/discover/${product.id}`} data-testid={`discover-open-${product.sku}`}>
+                  <ProductCard product={product} teamName={teamNames.get(product.teamId.toString())} />
+                </RouterLink>
+              </Link>
             </Box>
           ))}
         </SimpleGrid>

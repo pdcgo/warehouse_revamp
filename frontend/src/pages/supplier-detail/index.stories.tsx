@@ -10,15 +10,16 @@ import { SupplierDetailPage } from "./index";
 // ⚠ PROTOTYPE for design_accept — the supplier CRUD pass
 // (docs/business/supplier/context_clarify.md#proposed-design).
 //
-// One supplier and its CHANNELS — the stores it sells through, each typed off the shared marketplace list
-// (the-supplier-lists-only-its-online-stores, channel-type-is-the-marketplace-list). The stub plays today's
-// server, which still wants an online/offline type: every channel saved below proves the translation step
-// sends one.
+// One supplier: its own fields on top, then two horizontal tabs (supplier-detail-has-channels-and-products-tabs)
+// — CHANNELS, one list with a marketplace badge per row, and PRODUCTS, sample rows until the channel-product
+// linking is designed. The stub plays today's server, which still wants an online/offline type: every channel
+// saved below proves the translation step sends one.
 
 const SUMBER = supplierFixture("PT Sumber Makmur");
 const CAHAYA = supplierFixture("CV Cahaya Abadi");
 const SINAR = supplierFixture("Toko Grosir Sinar");
 const MAKMUR_JAYA = supplierFixture("UD Makmur Jaya"); // team 13's
+const BANYAK = supplierFixture("PT Banyak Toko"); // twelve channels — more than a page
 
 const channel = (id: bigint) => channelFixtures.find((c) => c.id === id)!;
 const SHOPEE_STORE = channel(311n);
@@ -41,6 +42,7 @@ function routedAt(supplierId: bigint) {
 const AtCahaya = routedAt(CAHAYA.id);
 const AtSinar = routedAt(SINAR.id);
 const AtAnotherTeams = routedAt(MAKMUR_JAYA.id);
+const AtBanyak = routedAt(BANYAK.id);
 
 const meta = {
   title: "Pages/Suppliers/SupplierDetail",
@@ -61,13 +63,26 @@ async function loaded(canvasElement: HTMLElement) {
   return canvas;
 }
 
+async function openProducts(canvas: ReturnType<typeof within>) {
+  await userEvent.click(canvas.getByTestId("supplier-tab-products"));
+  await waitFor(() => expect(canvas.getByTestId("supplier-tab-products")).toHaveAttribute("aria-selected", "true"));
+}
+
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 export const Default: Story = {};
 
+export const ProductsTab: Story = {
+  play: async ({ canvasElement }) => {
+    await openProducts(await loaded(canvasElement));
+  },
+};
+
 export const AWebsiteOnly: Story = { render: () => <AtCahaya /> };
 
 export const NoChannelsYet: Story = { render: () => <AtSinar /> };
+
+export const ManyChannels: Story = { render: () => <AtBanyak /> };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
@@ -84,22 +99,24 @@ export const TheDecidedFields: Story = {
   },
 };
 
-// channels-are-a-horizontal-tab: the channels sit under a HORIZONTAL Channels tab, open on arrival — the tab
-// row is where the parked products and statistics land later.
-export const TheChannelsAreAHorizontalTab: Story = {
+// supplier-detail-has-channels-and-products-tabs: two HORIZONTAL tabs, Channels open on arrival.
+export const ChannelsAndProductsTabs: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    const tab = canvas.getByTestId("supplier-tab-channels");
-    await expect(tab).toHaveTextContent("Channels");
-    await expect(tab).toHaveAttribute("aria-selected", "true");
-    await expect(canvas.getByRole("tablist")).toHaveAttribute("aria-orientation", "horizontal");
-    await expect(within(canvas.getByTestId("channels-section")).getByTestId("channels-table")).toBeVisible();
+    const tablist = canvas.getByRole("tablist");
+    await expect(tablist).toHaveAttribute("aria-orientation", "horizontal");
+    await expect(within(tablist).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Channels",
+      // The Products tab carries its own sample mark, numbered as the summary numbers it.
+      "Products2",
+    ]);
+    await expect(canvas.getByTestId("supplier-tab-channels")).toHaveAttribute("aria-selected", "true");
   },
 };
 
-// channel-type-is-the-marketplace-list: each store wears its marketplace's badge.
-export const ChannelsAreTypedOffTheMarketplaceList: Story = {
+// The Channels tab is ONE list, each row wearing its marketplace's badge (channel-type-is-the-marketplace-list).
+export const ChannelsAreOneListWithBadges: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
@@ -138,14 +155,15 @@ export const AddChannel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("add-channel"));
+    await userEvent.click(await canvas.findByTestId("add-channel"));
     const name = await screen.findByTestId("channel-name");
     await waitFor(() => expect(name).toBeVisible());
 
     await expect(screen.queryByTestId("channel-location")).toBeNull();
     await expect(screen.getByTestId("submit-channel")).toBeDisabled();
 
-    await userEvent.click(screen.getByTestId("marketplace-select"));
+    // The dialog's own picker — the Channels tab's type filter is a second one on the page.
+    await userEvent.click(within(screen.getByRole("dialog")).getByTestId("marketplace-select"));
     await userEvent.click(await screen.findByRole("option", { name: "Lazada" }));
     await userEvent.type(name, "Sumber Makmur Lazada", { delay: 40 });
     await userEvent.type(screen.getByTestId("channel-uri"), "https://www.lazada.co.id/shop/sumbermakmur", {
@@ -160,24 +178,6 @@ export const AddChannel: Story = {
   },
 };
 
-// The one thing the old server cannot hold: a channel's description is typed and thrown away, and the page
-// says so — in the summary at the top and beside the field.
-export const TheChannelDescriptionIsNotSavedYet: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
-    await expect(canvas.getAllByTestId("not-implemented-channelDescription").length).toBeGreaterThan(0);
-
-    await userEvent.click(canvas.getByTestId("add-channel"));
-    const description = await screen.findByTestId("channel-description");
-    await waitFor(() => expect(description).toBeVisible());
-    await expect(
-      within(screen.getByRole("dialog")).getByTestId("not-implemented-channelDescription"),
-    ).toBeVisible();
-  },
-};
-
 export const DeleteChannelConfirms: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -189,6 +189,138 @@ export const DeleteChannelConfirms: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId(`channel-row-${TOKOPEDIA_STORE.id}`)).toBeNull());
     await expect(canvas.getByTestId(`channel-row-${SHOPEE_STORE.id}`)).toBeVisible();
+  },
+};
+
+// The two things that are not real yet, both said on the page: a channel's description is thrown away
+// (dropped), and the Products tab is invented rows (sample).
+export const WhatIsNotRealYetIsMarked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+    await expect(canvas.getAllByTestId("not-implemented-channelDescription").length).toBeGreaterThan(0);
+    await expect(
+      within(canvas.getByTestId("supplier-tab-products")).getByTestId("not-implemented-products"),
+    ).toBeVisible();
+
+    await userEvent.click(canvas.getByTestId("add-channel"));
+    const description = await screen.findByTestId("channel-description");
+    await waitFor(() => expect(description).toBeVisible());
+    await expect(
+      within(screen.getByRole("dialog")).getByTestId("not-implemented-channelDescription"),
+    ).toBeVisible();
+  },
+};
+
+// products-hang-off-a-channel: each product names the channel it is bought from. SAMPLE rows, made up from
+// the supplier's real channels — two per channel.
+export const ProductsNameTheirChannel: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    await openProducts(canvas);
+
+    const table = await canvas.findByTestId("products-table");
+    await expect(within(table).getAllByRole("row")).toHaveLength(1 + 2 * 3);
+    await expect(canvas.getByTestId(`product-row-${SHOPEE_STORE.id}-0`)).toHaveTextContent(SHOPEE_STORE.name);
+    await expect(canvas.getByTestId(`product-row-${SHOPEE_STORE.id}-0`)).toHaveTextContent("Shopee");
+  },
+};
+
+export const NoChannelsMeansNoProducts: Story = {
+  render: () => <AtSinar />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await canvas.findByTestId("channels-empty");
+    await openProducts(canvas);
+    await canvas.findByTestId("products-empty");
+  },
+};
+
+// the-channels-tab-searches-filters-and-pages: the search reads the name, the link and the description; nothing
+// matching says so, rather than reading as "no channels".
+export const ChannelsSearch: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    await userEvent.type(canvas.getByTestId("channels-search"), "official", { delay: 40 });
+    await waitFor(() => expect(canvas.queryByTestId(`channel-row-${TOKOPEDIA_STORE.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`channel-row-${SHOPEE_STORE.id}`)).toBeVisible();
+
+    // The old shop's description is searchable too.
+    await userEvent.clear(canvas.getByTestId("channels-search"));
+    await userEvent.type(canvas.getByTestId("channels-search"), "cigondewah", { delay: 40 });
+    await waitFor(() => expect(canvas.queryByTestId(`channel-row-${SHOPEE_STORE.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`channel-row-${OLD_OFFLINE_SHOP.id}`)).toBeVisible();
+
+    await userEvent.clear(canvas.getByTestId("channels-search"));
+    await userEvent.type(canvas.getByTestId("channels-search"), "zzz", { delay: 40 });
+    await canvas.findByTestId("channels-none-match");
+  },
+};
+
+export const ChannelsFilterByType: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    await userEvent.click(within(canvas.getByTestId("channels-type-filter")).getByTestId("marketplace-select"));
+    await userEvent.click(await canvas.findByRole("option", { name: "Tokopedia" }));
+
+    await waitFor(() => expect(canvas.queryByTestId(`channel-row-${SHOPEE_STORE.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`channel-row-${TOKOPEDIA_STORE.id}`)).toBeVisible();
+  },
+};
+
+// Twelve channels at ten a page: two pages.
+export const ChannelsPaginate: Story = {
+  render: () => <AtBanyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const table = await canvas.findByTestId("channels-table");
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + 10));
+
+    await userEvent.click(canvas.getByTestId("page-next"));
+    await waitFor(() => expect(within(canvas.getByTestId("channels-table")).getAllByRole("row")).toHaveLength(1 + 2));
+    await expect(canvas.getByTestId("channel-row-362")).toBeVisible();
+  },
+};
+
+// the-products-tab-searches-and-pages: the product, its SKU, or the channel it is bought from.
+export const ProductsSearch: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+    await openProducts(canvas);
+
+    await userEvent.type(canvas.getByTestId("products-search"), "KTN", { delay: 40 });
+    await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 1));
+    await expect(canvas.getByTestId("products-table")).toHaveTextContent("Kain Katun Jepang");
+
+    await userEvent.clear(canvas.getByTestId("products-search"));
+    await userEvent.type(canvas.getByTestId("products-search"), "zzz", { delay: 40 });
+    await canvas.findByTestId("products-none-match");
+  },
+};
+
+// Twelve channels make twenty-four sample products: three pages of ten.
+export const ProductsPaginate: Story = {
+  render: () => <AtBanyak />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId("channel-row-351");
+    await openProducts(canvas);
+
+    await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 10));
+    await userEvent.click(canvas.getByTestId("page-next"));
+    await userEvent.click(canvas.getByTestId("page-next"));
+    await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 4));
   },
 };
 

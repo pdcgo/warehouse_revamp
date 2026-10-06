@@ -14,7 +14,6 @@
     "restock": "Restock",
     "stock": "Stock",
     "placements": "Placements",
-    "supplier": "Supplier",
     "racks": "Racks",
     "batches": "Batches",
     "returns": "Returns",
@@ -31,7 +30,9 @@
     "settlement": "Settlement",
     "settlementReport": "Settlement Report",
     "settlementImports": "Settlement Imports",
-    "financialAccounts": "Accounts"
+    "financialAccounts": "Accounts",
+    "mySupplier": "My Supplier",
+    "discoverSupplier": "Discover Supplier"
   },
   "menu": {
     "theme": "Theme",
@@ -334,6 +335,49 @@
     "selectTeam": "Select a team to discover products.",
     "searchPlaceholder": "Search SKU or name",
     "empty": "No products found."
+  },
+  "discoverDetail": {
+    "back": "Discover Products",
+    "selectTeam": "Select a team to discover products.",
+    "invalidId": "Invalid product id.",
+    "notFound": "Product not found.",
+    "owner": "Owner",
+    "markupHint": "What you pay over the owner's cost, per unit.",
+    "reservedHint": "The owner keeps this many on every shelf — they are not shared.",
+    "noImage": "No image.",
+    "own": "This is your team's own product.",
+    "openOwn": "Open in My Product",
+    "archived": "Archived by its owner — no longer offered to other teams.",
+    "locked": "Locked by its owner — other teams cannot use it.",
+    "stockHeading": "Stock by Warehouse",
+    "stockHelp": "An order ships from one warehouse, so this is where you can get it from, and how many.",
+    "warehouse": "Warehouse",
+    "onShelf": "On shelf",
+    "canTake": "You can take",
+    "noWarehouses": "No warehouses yet.",
+    "suppliersHeading": "Suppliers",
+    "suppliersHelp": "The supplier stores that sell this product. Any team may restock from them, not only the owner.",
+    "noSuppliers": "No supplier lists this product yet.",
+    "supplier": "Supplier",
+    "store": "Store",
+    "pending": {
+      "canTake": {
+        "label": "You can take",
+        "reason": "on shelf minus the owner's reserved stock — whether the reserve binds only other teams, and where its boundary sits, is still open"
+      },
+      "unitCost": {
+        "label": "Your cost per unit",
+        "reason": "the unit price plus the markup — who may see the owner's unit price is not decided, so it is not shown"
+      },
+      "gallery": {
+        "label": "Images",
+        "reason": "only the cover — the full gallery comes from ProductDetail, which answers only the owning team"
+      },
+      "suppliers": {
+        "label": "Suppliers",
+        "reason": "sample rows — how a product is linked to a supplier's store is still to be decided, and no server reads another team's suppliers yet"
+      }
+    }
   },
   "products": {
     "toast": {
@@ -1429,7 +1473,37 @@
       "empty": "No suppliers found"
     },
     "sellingOnly": "Only a selling team has suppliers.",
-    "edit": "Edit supplier"
+    "edit": "Edit supplier",
+    "discover": {
+      "title": "Discover Suppliers",
+      "lead": "Suppliers every selling team buys from — search them by name, team or store.",
+      "search": "Search supplier, team or store",
+      "typeAll": "Any channel type",
+      "empty": "No suppliers yet.",
+      "none": "No suppliers match.",
+      "back": "Back to Discover Suppliers",
+      "notFound": "Supplier not found.",
+      "table": {
+        "supplier": "Supplier",
+        "team": "Team",
+        "channels": "Channels",
+        "contact": "Contact"
+      },
+      "pending": {
+        "suppliers": {
+          "label": "Suppliers across teams",
+          "reason": "sample rows — no server searches every team's suppliers yet; supplier_service will"
+        },
+        "supplier": {
+          "label": "This supplier",
+          "reason": "sample — no server reads another team's supplier with its channels yet"
+        },
+        "products": {
+          "label": "Products",
+          "reason": "sample rows — how a product is linked to a channel is still to be decided"
+        }
+      }
+    }
   },
   "supplierChannel": {
     "deleted": "Channel \"{{name}}\" deleted",
@@ -1438,7 +1512,6 @@
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
     "delete": "Delete",
     "section": {
-      "title": "Channels",
       "empty": "No channels yet."
     },
     "table": {
@@ -1478,7 +1551,28 @@
       "channelDescription": {
         "label": "Channel description",
         "reason": "the current server has no field for it, so it is thrown away until supplier_service is built"
+      },
+      "products": {
+        "label": "Products",
+        "reason": "sample rows — how a product is linked to a channel is still to be decided, so these are invented"
       }
+    },
+    "tab": {
+      "channels": "Channels",
+      "products": "Products"
+    },
+    "products": {
+      "product": "Product",
+      "sku": "SKU",
+      "channel": "Channel",
+      "empty": "No products yet.",
+      "search": "Search product, SKU or channel",
+      "none": "No products match."
+    },
+    "filter": {
+      "search": "Search name, link or description",
+      "typeAll": "All channel types",
+      "none": "No channels match."
     }
   },
   "teams": {

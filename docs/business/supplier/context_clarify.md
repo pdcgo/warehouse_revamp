@@ -12,7 +12,8 @@ Storybook: **Pages/Suppliers/Suppliers**, **Pages/Suppliers/SupplierDetail**, **
 | ➡ moved | [Q2](#question) and the contradiction *restock-has-no-supplier* → [restock clarify](../inventory/restock_clarify.md#question) — *"for 2 we talk further in restock context"* |
 | ✅ resolved | the contradiction *two-lists-of-marketplaces* — by your Q7 edit |
 | ⏸ deferred | statistics, and seeding `supplier_channel_products` — your §Whats defer · [parked](#parked--talk-later) |
-| ✅ your preview (2026-10-06) | the channels under a horizontal **Channels** tab — [channels-are-a-horizontal-tab](./context_decision.md#channels-are-a-horizontal-tab), built |
+| ✅ your preview (2026-10-06, later) | the Channels tab searches, filters by type and pages — [the-channels-tab-searches-filters-and-pages](./context_decision.md#the-channels-tab-searches-filters-and-pages) · the Products tab searches and pages — [the-products-tab-searches-and-pages](./context_decision.md#the-products-tab-searches-and-pages) · **Discover Suppliers** and its detail, across every team — [discover-searches-every-teams-suppliers](./context_decision.md#discover-searches-every-teams-suppliers). All built |
+| ✅ your preview (2026-10-06) | two horizontal tabs, **Channels** (one list with badges) and **Products** (sample rows) — [supplier-detail-has-channels-and-products-tabs](./context_decision.md#supplier-detail-has-channels-and-products-tabs), built. ⛔ My first reading, one *Channels* tab, was a misread: [superseded-channels-are-a-horizontal-tab](./context_decision.md#superseded-channels-are-a-horizontal-tab) |
 | 🆕 +1 (2026-10-06) | [Q10](#question) — the design_accept of the CRUD prototype, with the two nods left over: the move, and *Other* vs *Custom* |
 | ⛔ still stale | your [technical/architecture/context.md:7](../../technical/architecture/context.md) puts the supplier in `product_service` — [where-the-supplier-lives](#where-the-supplier-lives) |
 
@@ -96,13 +97,14 @@ RULE 3).
 - **Suppliers** (`/inventories/suppliers`) — the Code column goes. Delete confirms, and says the supplier is removed
   for good.
 - **Supplier form** — name, contact, address, description.
-- **Supplier detail** — the supplier's fields on top; the channels under a horizontal **Channels** tab
-  ([channels-are-a-horizontal-tab](./context_decision.md#channels-are-a-horizontal-tab)).
+- **Supplier detail** — the supplier's fields on top; two horizontal tabs, **Channels** and **Products**
+  ([supplier-detail-has-channels-and-products-tabs](./context_decision.md#supplier-detail-has-channels-and-products-tabs)).
 - **Channel form** — channel type (`MarketplaceSelect`), name, link, description. No online/offline switch.
 - **`SupplierSelect`** — shows and searches the name.
 
-**After the CRUD pass, not in it:** the discover page and the cross-team reads
-([manage-and-discover-are-two-pages](./context_decision.md#manage-and-discover-are-two-pages)), the restock's side
+**Discover is prototyped, on SAMPLE data:** the pages are built
+([discover-searches-every-teams-suppliers](./context_decision.md#discover-searches-every-teams-suppliers)); the cross-team
+reads are supplier_service's to build. **Not in the CRUD pass:** the restock's side
 ([restock clarify](../inventory/restock_clarify.md#question)), and everything [parked](#parked--talk-later).
 
 ```mermaid
@@ -143,10 +145,15 @@ Kept as lines so the numbers hold.
     | story | what to look at |
     | --- | --- |
     | Pages/Suppliers/Suppliers — *Default*, *AWarehouseTeam* | Name · Contact · Address, no Code or City · an old city folded into the address · New Supplier for a selling team only |
-    | Pages/Suppliers/SupplierDetail — *Default*, *AWebsiteOnly*, *NoChannelsYet* | the horizontal **Channels** tab · the channels by marketplace badge · an old offline shop reads as *Other* · the ⚠ 1 mark |
+    | Pages/Suppliers/SupplierDetail — *Default*, *ProductsTab*, *AWebsiteOnly*, *NoChannelsYet* | the **Channels** and **Products** tabs · the channels by marketplace badge · an old offline shop reads as *Other* · the ⚠ 1 and ⚠ 2 marks |
+    | Pages/Suppliers/SupplierDetail — *ManyChannels* | the Channels tab's search, type filter and pager; the Products tab's search and pager |
+    | Pages/Suppliers/DiscoverSuppliers — *Default* | every team's suppliers, the owning team on each row, search · type filter · pager — ⚠ sample |
+    | Pages/Suppliers/DiscoverSupplierDetail — *Default*, *ProductsTab* | another team's supplier, read-only, the same two tabs — ⚠ sample |
+    | the menu | **My Supplier** and **Discover Supplier** under Inventories (⚠ my naming, after My Product / Discover Product) |
     | Components/Pickers/SupplierSelect | the name alone, searched by name |
 
-    ⚠ **One mark, one loss:** a channel's description is typed and thrown away — the old server has no field for it.
+    ⚠ **Two marks:** a channel's description is typed and thrown away — the old server has no field for it (⚠ 1); and
+    the Products tab is invented rows, two per real channel, until the linking is designed (⚠ 2).
     Delete removes the supplier from every screen, though today's server still keeps the row underneath; the move does
     not carry it.
 
@@ -173,7 +180,10 @@ the later conversation starts from here:
 
 # Contradiction
 
-**Re-examined after the Q6, Q7 and Q8 answers.** *two-lists-of-marketplaces* is resolved by your Q7 edit;
+**Re-examined after the discover pages (2026-10-06):** [manage-and-discover-are-two-pages](./context_decision.md#manage-and-discover-are-two-pages)
+said discover searches *every OTHER team's* suppliers; your *"search supplier across all team"* includes the
+caller's own. A one-word drift in my record, not in your doc — annotated on the decision, and the pages follow your
+wording. **Earlier:** *two-lists-of-marketplaces* is resolved by your Q7 edit;
 *restock-has-no-supplier* moved to the [restock clarify](../inventory/restock_clarify.md#restock-has-no-supplier) with
 Q2. One stands.
 

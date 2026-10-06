@@ -115,7 +115,8 @@ export const AWarehouseGetsTheWarehousesMenu: Story = {
 
     // …and none of the selling side's.
     await expect(canvas.queryByRole("link", { name: "Shops" })).toBeNull();
-    await expect(canvas.queryByRole("link", { name: "Supplier" })).toBeNull();
+    await expect(canvas.queryByRole("link", { name: "My Supplier" })).toBeNull();
+    await expect(canvas.queryByRole("link", { name: "Discover Supplier" })).toBeNull();
   },
 };
 
@@ -138,7 +139,12 @@ export const ASellingTeamGetsTheSellingMenu: Story = {
 
     // A supplier belongs to the team that raises the restock, a rack to the building that holds it.
     await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.inventories"));
-    await waitFor(() => expect(canvas.getByRole("link", { name: "Supplier" })).toBeVisible());
+    // My Supplier and Discover Supplier — the same pair as My Product and Discover Product.
+    await waitFor(() => expect(canvas.getByRole("link", { name: "My Supplier" })).toBeVisible());
+    await expect(canvas.getByRole("link", { name: "Discover Supplier" })).toHaveAttribute(
+      "href",
+      "/inventories/suppliers/discover",
+    );
     await expect(canvas.queryByRole("link", { name: "Racks" })).toBeNull();
   },
 };

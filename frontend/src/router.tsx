@@ -36,6 +36,9 @@ const ProductDetailPage = lazy(() =>
 const DiscoverProductsPage = lazy(() =>
   import("./pages/product-discover").then((m) => ({ default: m.DiscoverProductsPage })),
 );
+const DiscoverProductDetailPage = lazy(() =>
+  import("./pages/product-discover-detail").then((m) => ({ default: m.DiscoverProductDetailPage })),
+);
 const ShopsPage = lazy(() => import("./pages/shops").then((m) => ({ default: m.ShopsPage })));
 const ShopDetailPage = lazy(() =>
   import("./pages/shop-detail").then((m) => ({ default: m.ShopDetailPage })),
@@ -107,6 +110,12 @@ const SuppliersPage = lazy(() =>
 );
 const SupplierDetailPage = lazy(() =>
   import("./pages/supplier-detail").then((m) => ({ default: m.SupplierDetailPage })),
+);
+const DiscoverSuppliersPage = lazy(() =>
+  import("./pages/supplier-discover").then((m) => ({ default: m.DiscoverSuppliersPage })),
+);
+const DiscoverSupplierDetailPage = lazy(() =>
+  import("./pages/supplier-discover-detail").then((m) => ({ default: m.DiscoverSupplierDetailPage })),
 );
 const RacksPage = lazy(() => import("./pages/racks").then((m) => ({ default: m.RacksPage })));
 const BatchesPage = lazy(() => import("./pages/batches").then((m) => ({ default: m.BatchesPage })));
@@ -244,6 +253,7 @@ export const router = createBrowserRouter([
       { path: "shipping", element: <ShipmentChannelsPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "products/discover", element: <DiscoverProductsPage /> },
+      { path: "products/discover/:productId", element: <DiscoverProductDetailPage /> },
       { path: "products/new", element: <ProductEditPage /> },
       { path: "products/:productId", element: <ProductDetailPage /> },
       { path: "products/:productId/edit", element: <ProductEditPage /> },
@@ -343,6 +353,10 @@ export const router = createBrowserRouter([
       { path: "inventories/opname", element: <OpnamePage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
+      // Every team's suppliers, searched across teams — independent of the team's own list above
+      // (manage-and-discover-are-two-pages). "discover" is a static segment, so it outranks :supplierId.
+      { path: "inventories/suppliers/discover", element: <DiscoverSuppliersPage /> },
+      { path: "inventories/suppliers/discover/:supplierId", element: <DiscoverSupplierDetailPage /> },
       // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
       // only, but the route is open and the server's policy is what actually decides.
       { path: "inventories/racks", element: <RacksPage /> },

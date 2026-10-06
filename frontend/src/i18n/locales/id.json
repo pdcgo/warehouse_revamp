@@ -14,7 +14,6 @@
     "restock": "Restok",
     "stock": "Stok",
     "placements": "Penempatan",
-    "supplier": "Pemasok",
     "racks": "Rak",
     "batches": "Batch",
     "returns": "Retur",
@@ -31,7 +30,9 @@
     "settlement": "Penyelesaian",
     "settlementReport": "Laporan Penyelesaian",
     "settlementImports": "Impor Penyelesaian",
-    "financialAccounts": "Akun Keuangan"
+    "financialAccounts": "Akun Keuangan",
+    "mySupplier": "Pemasok Saya",
+    "discoverSupplier": "Temukan Pemasok"
   },
   "menu": {
     "theme": "Tema",
@@ -331,6 +332,49 @@
     "selectTeam": "Pilih tim untuk menemukan produk.",
     "searchPlaceholder": "Cari SKU atau nama",
     "empty": "Produk tidak ditemukan."
+  },
+  "discoverDetail": {
+    "back": "Temukan Produk",
+    "selectTeam": "Pilih tim untuk menemukan produk.",
+    "invalidId": "ID produk tidak valid.",
+    "notFound": "Produk tidak ditemukan.",
+    "owner": "Pemilik",
+    "markupHint": "Yang Anda bayar di atas modal pemilik, per unit.",
+    "reservedHint": "Pemilik menyimpan sebanyak ini di setiap rak — tidak dibagikan.",
+    "noImage": "Tidak ada gambar.",
+    "own": "Ini produk tim Anda sendiri.",
+    "openOwn": "Buka di Produk Saya",
+    "archived": "Diarsipkan oleh pemiliknya — tidak lagi ditawarkan ke tim lain.",
+    "locked": "Dikunci oleh pemiliknya — tim lain tidak dapat memakainya.",
+    "stockHeading": "Stok di Setiap Gudang",
+    "stockHelp": "Pesanan dikirim dari satu gudang, jadi di sinilah Anda bisa mengambilnya, dan berapa banyak.",
+    "warehouse": "Gudang",
+    "onShelf": "Di rak",
+    "canTake": "Bisa Anda ambil",
+    "noWarehouses": "Belum ada gudang.",
+    "suppliersHeading": "Pemasok",
+    "suppliersHelp": "Toko pemasok yang menjual produk ini. Tim mana pun boleh restok dari mereka, bukan hanya pemiliknya.",
+    "noSuppliers": "Belum ada pemasok yang mencantumkan produk ini.",
+    "supplier": "Pemasok",
+    "store": "Toko",
+    "pending": {
+      "canTake": {
+        "label": "Bisa Anda ambil",
+        "reason": "stok di rak dikurangi stok cadangan pemilik — apakah cadangan hanya mengikat tim lain, dan di mana batasnya, masih terbuka"
+      },
+      "unitCost": {
+        "label": "Modal Anda per unit",
+        "reason": "harga satuan ditambah markup — siapa yang boleh melihat harga satuan pemilik belum diputuskan, jadi tidak ditampilkan"
+      },
+      "gallery": {
+        "label": "Gambar",
+        "reason": "hanya sampul — galeri lengkap datang dari ProductDetail, yang hanya menjawab tim pemilik"
+      },
+      "suppliers": {
+        "label": "Pemasok",
+        "reason": "data contoh — cara produk ditautkan ke toko pemasok belum diputuskan, dan belum ada server yang membaca pemasok tim lain"
+      }
+    }
   },
   "products": {
     "toast": {
@@ -1424,7 +1468,37 @@
       "empty": "Pemasok tidak ditemukan"
     },
     "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
-    "edit": "Ubah pemasok"
+    "edit": "Ubah pemasok",
+    "discover": {
+      "title": "Temukan Pemasok",
+      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, tim, atau toko.",
+      "search": "Cari pemasok, tim, atau toko",
+      "typeAll": "Semua jenis saluran",
+      "empty": "Belum ada pemasok.",
+      "none": "Tidak ada pemasok yang cocok.",
+      "back": "Kembali ke Temukan Pemasok",
+      "notFound": "Pemasok tidak ditemukan.",
+      "table": {
+        "supplier": "Pemasok",
+        "team": "Tim",
+        "channels": "Saluran",
+        "contact": "Kontak"
+      },
+      "pending": {
+        "suppliers": {
+          "label": "Pemasok lintas tim",
+          "reason": "data contoh — belum ada server yang mencari pemasok semua tim; supplier_service yang akan"
+        },
+        "supplier": {
+          "label": "Pemasok ini",
+          "reason": "data contoh — belum ada server yang membaca pemasok tim lain beserta salurannya"
+        },
+        "products": {
+          "label": "Produk",
+          "reason": "data contoh — cara produk ditautkan ke saluran belum diputuskan"
+        }
+      }
+    }
   },
   "supplierChannel": {
     "deleted": "Saluran \"{{name}}\" dihapus",
@@ -1433,7 +1507,6 @@
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
     "section": {
-      "title": "Saluran",
       "empty": "Belum ada saluran."
     },
     "table": {
@@ -1473,7 +1546,28 @@
       "channelDescription": {
         "label": "Deskripsi saluran",
         "reason": "server saat ini belum punya kolomnya, jadi dibuang sampai supplier_service dibangun"
+      },
+      "products": {
+        "label": "Produk",
+        "reason": "data contoh — cara produk ditautkan ke saluran belum diputuskan, jadi baris ini karangan"
       }
+    },
+    "tab": {
+      "channels": "Saluran",
+      "products": "Produk"
+    },
+    "products": {
+      "product": "Produk",
+      "sku": "SKU",
+      "channel": "Saluran",
+      "empty": "Belum ada produk.",
+      "search": "Cari produk, SKU, atau saluran",
+      "none": "Tidak ada produk yang cocok."
+    },
+    "filter": {
+      "search": "Cari nama, tautan, atau deskripsi",
+      "typeAll": "Semua jenis saluran",
+      "none": "Tidak ada saluran yang cocok."
     }
   },
   "teams": {
