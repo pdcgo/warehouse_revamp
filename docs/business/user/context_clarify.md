@@ -31,6 +31,7 @@ points are **deleted**, so this file is always the current open set.
 > | *"yes for 3 question i follow your recomendation"*, confirmed as all four | ✅ **Q21** [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · ✅ **Q22** [an-admin-changes-nobodys-role](./context_decision.md#an-admin-changes-nobodys-role) · ✅ **Q23** design_accept passed, [the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted) · [a-root-team-form-starts-with-no-role](./context_decision.md#a-root-team-form-starts-with-no-role) · [an-account-is-made-only-from-the-member-search](./context_decision.md#an-account-is-made-only-from-the-member-search), New User removed · ✅ **Q25** [a-user-is-name-username-email-phone-and-photo](./context_decision.md#a-user-is-name-username-email-phone-and-photo) · [only-name-and-username-are-required](./context_decision.md#only-name-and-username-are-required) · Critiques 23, 24, 26 deleted · ⚠ your §General Data now lags the record, [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record) · ▲ **Q26** is the rename still on hold, now the build starts |
 > | *"any left question, critique or other?"*, then *"elaborate q26"* | 🔄 **Q26** split into three parts, checked against the build: the rename is two changes, add two roles (blocks three decisions) and rename four (blocks nothing) · ⚠ `ownerRoleFor` gives an admin-type team's creator the **selling** Owner role · ▲ **Q27** a new team's first Owner is whoever created it (Critique 28) · four stale links to deleted user critiques repointed, in business_level, inventory and product |
 > | *"yes"*, confirmed as Q26 and Q27 | ✅ **Q26** [the-admin-team-roles-are-added-first](./context_decision.md#the-admin-team-roles-are-added-first) · [rename-the-roles-before-the-grant-checks](./context_decision.md#rename-the-roles-before-the-grant-checks), the hold lifted · [no-alias-for-the-old-role-names](./context_decision.md#no-alias-for-the-old-role-names) · ✅ **Q27** [the-create-team-form-names-the-first-owner](./context_decision.md#the-create-team-form-names-the-first-owner), its own prototype pass · Critiques 27, 28 deleted. **No question is open in this context** |
+> | *"elaborate q31"* | 🔄 **Q31** split into four parts, checked against the build: **31a** rewrite on save (recommend **b**, back from c) · **31b** refuse what is not a phone · **31c** a number with no 0 or +62 · **31d** numbers already stored. ⚠ Found: the forgot-password code is sent to the number as typed, and the SMS provider expects `+62…` |
 > | *"can we implement now?"* — the who filters, then the search | ✅ built: [a-who-filter-lists-the-people-on-its-rows](./context_decision.md#a-who-filter-lists-the-people-on-its-rows) · [whoever-reads-a-list-may-filter-it](./context_decision.md#whoever-reads-a-list-may-filter-it) · [a-filter-keeps-former-and-suspended-people](./context_decision.md#a-filter-keeps-former-and-suspended-people) · [only-member-managers-open-the-search](./context_decision.md#only-member-managers-open-the-search) · [managers-search-by-exact-username-phone-or-email](./context_decision.md#managers-search-by-exact-username-phone-or-email) · [a-result-shows-the-phones-last-four-digits](./context_decision.md#a-result-shows-the-phones-last-four-digits) · the popup's Change Role · 🔄 **Q31** narrowed: Q20d had already said how numbers compare, and the search now does it, so Q31 asks only whether a number is rewritten when saved — my recommendation moves to **c** · ⚠ my Q31 offered an option Q20d had closed, [q31-offered-what-q20d-had-closed](#q31-offered-what-q20d-had-closed) |
 > | *"continue"* — building one account per phone | ▲ **Q31** how two phone numbers are compared: nothing normalises them today, so `0812…` and `+62 812…` would be two accounts' numbers. The scoped search waits on the who filters first, item 18 |
 > | *"for q30 yes"*, confirmed as all three | ✅ **Q30** [an-erased-account-is-final](./context_decision.md#an-erased-account-is-final) · [erased-usernames-are-reserved](./context_decision.md#erased-usernames-are-reserved) · [erase-deletes-the-photo-file](./context_decision.md#erase-deletes-the-photo-file). **No question is open in this context** |
@@ -270,34 +271,71 @@ None open. Critique 29 was answered with Q28 on 2026-10-06; 23–28 before it.
     [an-erased-account-is-final](./context_decision.md#an-erased-account-is-final),
     [erased-usernames-are-reserved](./context_decision.md#erased-usernames-are-reserved),
     [erase-deletes-the-photo-file](./context_decision.md#erase-deletes-the-photo-file).
-31. **Is a phone number rewritten into one form when it is saved?** 🔄 *(2026-10-06, narrowed)*
+31. **How is a phone number saved?** 🔄 *(2026-10-06, elaborated into four parts, checked against the build)*
     [a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account) needs a unique
-    index on the phone. How two numbers compare was **already answered by Q20d** — *"a phone matches however it is
-    written"* — and is now built for the search: `user_phone_key` reads the digits, a leading `0` as `62` (migration
-    `00007`). So `0812-3456-7890` and `+62 812 3456 7890` are one number either way. What is left is what the column holds.
+    index on the phone. How two numbers compare is **Q20d's, and built**: `user_phone_key` reads the digits, a leading `0`
+    as `62` (migration `00007`), so `0812-3456-7890` and `+62 812 3456 7890` are one number. Email is already unique.
 
-    | | b. rewrite to international on save | c. keep as typed, unique on the key |
-    | --- | --- | --- |
-    | stored | `+6281234567890` | `0812-3456-7890`, as typed |
-    | the unique index | on `phone_number` | on `user_phone_key(phone_number)` — the search's index, made unique |
-    | a number that cannot be read (`0811`) | refused when typed | kept |
-    | the reset-code SMS | sends what is stored | sends `+` and the key |
-    | numbers already stored | rewritten once | untouched |
+    **What the build does with a phone today**
+
+    | | today |
+    | --- | --- |
+    | written by | `CreateUser` (the Add Member popup's Create), `UpdateUser` (Edit), `UpdateProfile` (your own) — **as typed** |
+    | refused | nothing but more than 40 characters: `abc` and `0811` are both accepted |
+    | read by | the Users screen and the user page (shown as typed) · the search (by the key) · **the forgot-password code** |
+    | the forgot-password code | sent to the stored text as it is, and checked against the same text. The SMS provider expects the international form (`+62…`), so a number saved as `0812…` most likely never receives its code. Not tried against the provider |
+    | development data | 11 accounts, 2 phones (`0811`, `+15551234567`), no two the same number |
 
     ```mermaid
     flowchart LR
-      T["typed: 0812-3456-7890"] --> K["user_phone_key: 6281234567890"]
-      K --> S["the search — built"]
-      K --> U{"the unique index"}
-      U -->|"b"| B["on the rewritten column"]
-      U -->|"c"| C["on the key itself"]
+      T["typed: 0812-3456-7890"] --> V{"31b, 31c: is it a phone?"}
+      V -->|"no"| R["refused — say what is wrong"]
+      V -->|"yes"| S{"31a: what is stored"}
+      S -->|"b"| B["+6281234567890 — one form"]
+      S -->|"c"| C["0812-3456-7890 — as typed"]
+      B --> U["unique index · search · the code SMS read one value"]
+      C --> K["unique index and search read the key, the SMS converts"]
     ```
 
-    Either way, duplicates already stored are resolved before the index, as the decision says.
-    - **b.** One stored form everywhere, and a bad number refused when typed. Rewrites every stored number once.
-    - **c.** Nothing stored changes; the index is one line on a key that already exists.
-      **→ Recommend: c** *(was b)*. The key is already how numbers compare, so the duplicate check and the search can
-      never disagree. Refusing an unreadable number is a separate rule and can be added to c later.
+    - **31a. Is the number rewritten into one form when it is saved?**
+
+      | | b. rewrite to international | c. keep as typed, unique on the key |
+      | --- | --- | --- |
+      | stored | `+6281234567890` | `0812-3456-7890` |
+      | unique index | on `phone_number` | on `user_phone_key(phone_number)` |
+      | the forgot-password code | sends what is stored — fixed by itself | must convert, on sending AND on checking, the same way |
+      | how many forms of one number | one | two, the typed and the key, and every new use must pick the key |
+      | the screens show | `+6281234567890`, or pretty-printed `+62 812-3456-7890` | whatever was typed, in many shapes |
+      | stored numbers | rewritten once (two in development) | untouched |
+
+      **→ Recommend: b** — back from c. I moved to c last round because the key already existed. Reading the code path
+      showed the code SMS needs the international form anyway, and that c leaves two forms of every number for each new
+      feature to choose between. b has one.
+
+    - **31b. What is refused as not a phone?** Today nothing is.
+      - i. Accept anything, as now.
+      - ii. Refuse unless, with spaces, dashes, dots and brackets removed, it is 8–15 digits with an optional leading `+`.
+        (15 is the international maximum; 8 lets through a Jakarta landline, `021-1234567`.)
+
+      **→ Recommend: ii.** A phone that cannot receive the code is a dead end only found when someone is locked out.
+
+    - **31c. A number with no `0` and no `+62`** — `812-3456-7890`, the leading 0 dropped:
+      - i. Read it as Indonesian, `+62 812…`.
+      - ii. Refuse it: *start with 0, or with + and the country code*.
+
+      **→ Recommend: ii.** A guess here can send someone's reset code to a stranger abroad; one extra keystroke cannot.
+      `62812…` without the `+` keeps reading as Indonesian, as Q20d has it.
+
+    - **31d. Numbers already stored** — the migration that adds the unique index:
+      - a readable number is rewritten (31a b);
+      - an unreadable one (development's `0811`) is **left as it is** and refused only when someone next edits it — blanking it
+        would quietly take away a phone;
+      - two accounts already on one number **stop the migration**, naming both, for a person to resolve — as
+        [a-phone-or-email-belongs-to-one-account](./context_decision.md#a-phone-or-email-belongs-to-one-account) already says.
+
+      **→ Recommend:** as listed. Development has no such pair.
+
+    Out of scope: the other phones in the system — an order's customer, a team's contact — are their contexts' to decide.
 
 ---
 
@@ -604,7 +642,7 @@ flowchart LR
 
 # Awaiting
 
-**[Q31](#question)** — whether a phone is rewritten when saved — and your §General Data line,
+**[Q31](#question)** — how a phone number is saved, four parts — and your §General Data line,
 [phone-and-photo-joined-the-record](#phone-and-photo-joined-the-record). Pass 1 passed design_accept on 2026-10-06
 ([the-pass-1-prototype-is-accepted](./context_decision.md#the-pass-1-prototype-is-accepted)). design_accept passed on 2026-10-05
 ([the-user-prototype-is-accepted](./context_decision.md#the-user-prototype-is-accepted)), so nothing else waits on you.
