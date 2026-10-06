@@ -117,7 +117,12 @@ message UpdateProfileRequest {
 
   // NO user_id. The subject is the token holder — same rule as ResetPassword.
   // Absent = leave alone.
-  optional string name = 1 [(buf.validate.field).string.max_len = 128];
+  // When sent, never blank (only-name-and-username-are-required).
+  optional string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "\\S"
+  }];
   optional string email = 2 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 3 [(buf.validate.field).string.max_len = 40];
   // The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
@@ -141,7 +146,12 @@ message UpdateUserRequest {
 
   uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
 
-  optional string name = 2 [(buf.validate.field).string.max_len = 128];
+  // When sent, never blank (only-name-and-username-are-required).
+  optional string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "\\S"
+  }];
   optional string email = 3 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 4 [(buf.validate.field).string.max_len = 40];
 
@@ -257,7 +267,10 @@ message UserRowMapItem {
 // The MEMBERSHIP slice: one user's place in the scoped team.
 message UserMembership {
   warehouse.role_base.v1.Role role = 1;
-  string alias = 2;
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 2;
+  reserved "alias";
 }
 
 message UserMembershipMapItem {
@@ -513,13 +526,21 @@ message CreateUserRequest {
     min_len: 8
     max_len: 200
   }];
-  string name = 4 [(buf.validate.field).string.max_len = 128];
+  // Required, and never only spaces (only-name-and-username-are-required).
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "\\S"
+  }];
   string email = 5 [(buf.validate.field).string.max_len = 200];
   string phone_number = 6 [(buf.validate.field).string.max_len = 40];
 
   // The role to grant in team_id. Required when team_id > 0; ignored when it is 0.
   warehouse.role_base.v1.Role role = 7;
-  string alias = 8 [(buf.validate.field).string.max_len = 60];
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 8;
+  reserved "alias";
 }
 
 message CreateUserResponse {
@@ -660,7 +681,10 @@ message ResetPasswordWithOtpResponse {}
 message TeamAccessItem {
   uint64 team_id = 1;
   warehouse.role_base.v1.Role role = 2;
-  string alias = 3;
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 3;
+  reserved "alias";
 
   // Resolved from team_service. EMPTY when team_service is unreachable — this RPC degrades
   // rather than failing, because a display-name lookup must never take down login.
@@ -802,7 +826,10 @@ message AddTeamUser {
     defined_only: true
     not_in: [0]
   }];
-  string alias = 3 [(buf.validate.field).string.max_len = 60];
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 3;
+  reserved "alias";
 }
 
 message RemoveTeamUser {

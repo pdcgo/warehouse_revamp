@@ -314,12 +314,11 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 		teamID uint64
 		userID uint64
 		role   role_basev1.Role
-		alias  string
 		user   string
 	}{
-		{san_auth.RootTeamID, devID, role_basev1.Role_ROLE_ADMINISTRATOR, "dev", "dev"},
-		{whID, devID, role_basev1.Role_ROLE_WAREHOUSE_OWNER, "dev", "dev"},
-		{sellID, devID, role_basev1.Role_ROLE_SELLING_OWNER, "dev", "dev"},
+		{san_auth.RootTeamID, devID, role_basev1.Role_ROLE_ADMINISTRATOR, "dev"},
+		{whID, devID, role_basev1.Role_ROLE_WAREHOUSE_OWNER, "dev"},
+		{sellID, devID, role_basev1.Role_ROLE_SELLING_OWNER, "dev"},
 	}
 
 	// A few scoped, non-admin users so screens have realistic data.
@@ -344,13 +343,12 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 			teamID uint64
 			userID uint64
 			role   role_basev1.Role
-			alias  string
 			user   string
-		}{s.teamID, uid, s.role, s.username, s.username})
+		}{s.teamID, uid, s.role, s.username})
 	}
 
 	for _, m := range memberships {
-		err = ensureMembership(ctx, db, m.teamID, m.userID, m.role, m.alias)
+		err = ensureMembership(ctx, db, m.teamID, m.userID, m.role)
 		if err != nil {
 			return fmt.Errorf("membership %s@%d: %w", m.user, m.teamID, err)
 		}
@@ -412,12 +410,12 @@ func ensureUser(ctx context.Context, db *sql.DB, username, name, hash string) (u
 
 // ensureMembership upserts a (team, user) role. The UNIQUE (team_id, user_id) index makes this a
 // real ON CONFLICT upsert — at most one role per user per team.
-func ensureMembership(ctx context.Context, db *sql.DB, teamID, userID uint64, role role_basev1.Role, alias string) error {
+func ensureMembership(ctx context.Context, db *sql.DB, teamID, userID uint64, role role_basev1.Role) error {
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO user_team_roles (team_id, user_id, role, alias)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (team_id, user_id) DO UPDATE SET role = EXCLUDED.role, alias = EXCLUDED.alias`,
-		teamID, userID, int32(role), alias,
+		INSERT INTO user_team_roles (team_id, user_id, role)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (team_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+		teamID, userID, int32(role),
 	)
 
 	return err

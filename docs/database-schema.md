@@ -125,7 +125,6 @@ erDiagram
         bigint      team_id    "opaque cross-service id, no FK to teams"
         bigint      user_id    FK "on delete cascade"
         bigint      role       "role_base.v1.Role enum number"
-        text        alias
         timestamptz created_at
         timestamptz updated_at
     }
@@ -159,7 +158,8 @@ erDiagram
   *number* (not a Postgres enum — proto enums are open). `UNIQUE (team_id, user_id)` is load-bearing:
   the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`
   is opaque — **no FK to `team_service.teams`** (that would couple the two services' databases);
-  team display data is resolved over RPC, never joined.
+  team display data is resolved over RPC, never joined. Its `alias` column was dropped in `00009`
+  ([a-user-is-name-username-email-phone-and-photo](business/user/context_decision.md#a-user-is-name-username-email-phone-and-photo)).
 - **`team_member_logs`** — the membership log
   ([every-role-change-is-logged](business/user/context_decision.md#every-role-change-is-logged)): one row per add,
   role change and removal, written in the **same transaction** as the `user_team_roles` change, so a membership

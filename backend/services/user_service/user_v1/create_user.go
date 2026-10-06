@@ -113,7 +113,6 @@ func (s *Service) CreateUser(
 			TeamID: teamID,
 			UserID: user.ID,
 			Role:   int32(role),
-			Alias:  req.Msg.GetAlias(),
 		}).Error
 		if err != nil {
 			return err

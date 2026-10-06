@@ -535,6 +535,7 @@ type UpdateProfileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// NO user_id. The subject is the token holder — same rule as ResetPassword.
 	// Absent = leave alone.
+	// When sent, never blank (only-name-and-username-are-required).
 	Name        *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Email       *string `protobuf:"bytes,2,opt,name=email,proto3,oneof" json:"email,omitempty"`
 	PhoneNumber *string `protobuf:"bytes,3,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
@@ -648,11 +649,12 @@ func (x *UpdateProfileResponse) GetUser() *User {
 }
 
 type UpdateUserRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	UserId      uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Name        *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Email       *string                `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
-	PhoneNumber *string                `protobuf:"bytes,4,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// When sent, never blank (only-name-and-username-are-required).
+	Name        *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Email       *string `protobuf:"bytes,3,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	PhoneNumber *string `protobuf:"bytes,4,opt,name=phone_number,json=phoneNumber,proto3,oneof" json:"phone_number,omitempty"`
 	// A typo in a username is fixed in place (the-username-is-editable): the same rule as at create,
 	// and still unique. User 1 keeps `root`.
 	Username      *string `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
@@ -1202,7 +1204,6 @@ func (x *UserRowMapItem) GetMapData() map[uint64]*User {
 type UserMembership struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Role          v11.Role               `protobuf:"varint,1,opt,name=role,proto3,enum=warehouse.role_base.v1.Role" json:"role,omitempty"`
-	Alias         string                 `protobuf:"bytes,2,opt,name=alias,proto3" json:"alias,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1242,13 +1243,6 @@ func (x *UserMembership) GetRole() v11.Role {
 		return x.Role
 	}
 	return v11.Role(0)
-}
-
-func (x *UserMembership) GetAlias() string {
-	if x != nil {
-		return x.Alias
-	}
-	return ""
 }
 
 type UserMembershipMapItem struct {
@@ -2484,14 +2478,14 @@ type CreateUserRequest struct {
 	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// Username is lowercase alphanumeric only (#87) — a stable, URL/login-safe handle. The frontend
 	// enforces the same rule; this is the real gate.
-	Username    string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Password    string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	// Required, and never only spaces (only-name-and-username-are-required).
 	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Email       string `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	PhoneNumber string `protobuf:"bytes,6,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
 	// The role to grant in team_id. Required when team_id > 0; ignored when it is 0.
 	Role          v11.Role `protobuf:"varint,7,opt,name=role,proto3,enum=warehouse.role_base.v1.Role" json:"role,omitempty"`
-	Alias         string   `protobuf:"bytes,8,opt,name=alias,proto3" json:"alias,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2573,13 +2567,6 @@ func (x *CreateUserRequest) GetRole() v11.Role {
 		return x.Role
 	}
 	return v11.Role(0)
-}
-
-func (x *CreateUserRequest) GetAlias() string {
-	if x != nil {
-		return x.Alias
-	}
-	return ""
 }
 
 type CreateUserResponse struct {
@@ -3309,7 +3296,6 @@ type TeamAccessItem struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	Role   v11.Role               `protobuf:"varint,2,opt,name=role,proto3,enum=warehouse.role_base.v1.Role" json:"role,omitempty"`
-	Alias  string                 `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
 	// Resolved from team_service. EMPTY when team_service is unreachable — this RPC degrades
 	// rather than failing, because a display-name lookup must never take down login.
 	TeamName string       `protobuf:"bytes,4,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
@@ -3363,13 +3349,6 @@ func (x *TeamAccessItem) GetRole() v11.Role {
 		return x.Role
 	}
 	return v11.Role(0)
-}
-
-func (x *TeamAccessItem) GetAlias() string {
-	if x != nil {
-		return x.Alias
-	}
-	return ""
 }
 
 func (x *TeamAccessItem) GetTeamName() string {
@@ -4065,7 +4044,6 @@ type AddTeamUser struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Role          v11.Role               `protobuf:"varint,2,opt,name=role,proto3,enum=warehouse.role_base.v1.Role" json:"role,omitempty"`
-	Alias         string                 `protobuf:"bytes,3,opt,name=alias,proto3" json:"alias,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4112,13 +4090,6 @@ func (x *AddTeamUser) GetRole() v11.Role {
 		return x.Role
 	}
 	return v11.Role(0)
-}
-
-func (x *AddTeamUser) GetAlias() string {
-	if x != nil {
-		return x.Alias
-	}
-	return ""
 }
 
 type RemoveTeamUser struct {
@@ -4330,9 +4301,9 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x12\x1f\n" +
 	"\vphone_last4\x18\x05 \x01(\tR\n" +
 	"phoneLast4\x12!\n" +
-	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\"\xf8\x01\n" +
-	"\x14UpdateProfileRequest\x12!\n" +
-	"\x04name\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12#\n" +
+	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\"\xfe\x01\n" +
+	"\x14UpdateProfileRequest\x12'\n" +
+	"\x04name\x18\x01 \x01(\tB\x0e\xbaH\vr\t\x10\x01\x18\x80\x012\x02\\SH\x00R\x04name\x88\x01\x01\x12#\n" +
 	"\x05email\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01H\x01R\x05email\x88\x01\x01\x12/\n" +
 	"\fphone_number\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18(H\x02R\vphoneNumber\x88\x01\x01\x12,\n" +
 	"\n" +
@@ -4342,10 +4313,10 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\r_phone_numberB\r\n" +
 	"\v_avatar_url\"D\n" +
 	"\x15UpdateProfileResponse\x12+\n" +
-	"\x04user\x18\x01 \x01(\v2\x17.warehouse.user.v1.UserR\x04user\"\xa2\x02\n" +
+	"\x04user\x18\x01 \x01(\v2\x17.warehouse.user.v1.UserR\x04user\"\xa8\x02\n" +
 	"\x11UpdateUserRequest\x12 \n" +
-	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\x12!\n" +
-	"\x04name\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12#\n" +
+	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\x12'\n" +
+	"\x04name\x18\x02 \x01(\tB\x0e\xbaH\vr\t\x10\x01\x18\x80\x012\x02\\SH\x00R\x04name\x88\x01\x01\x12#\n" +
 	"\x05email\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01H\x01R\x05email\x88\x01\x01\x12/\n" +
 	"\fphone_number\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18(H\x02R\vphoneNumber\x88\x01\x01\x127\n" +
 	"\busername\x18\x05 \x01(\tB\x16\xbaH\x13r\x11\x10\x03\x18d2\v^[a-z0-9]+$H\x03R\busername\x88\x01\x01:\b\x92\xb5\x18\x04\n" +
@@ -4384,10 +4355,9 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\bmap_data\x18\x01 \x03(\v2..warehouse.user.v1.UserRowMapItem.MapDataEntryR\amapData\x1aS\n" +
 	"\fMapDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.warehouse.user.v1.UserR\x05value:\x028\x01\"X\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.warehouse.user.v1.UserR\x05value:\x028\x01\"O\n" +
 	"\x0eUserMembership\x120\n" +
-	"\x04role\x18\x01 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x14\n" +
-	"\x05alias\x18\x02 \x01(\tR\x05alias\"\xc8\x01\n" +
+	"\x04role\x18\x01 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04roleJ\x04\b\x02\x10\x03R\x05alias\"\xc8\x01\n" +
 	"\x15UserMembershipMapItem\x12P\n" +
 	"\bmap_data\x18\x01 \x03(\v25.warehouse.user.v1.UserMembershipMapItem.MapDataEntryR\amapData\x1a]\n" +
 	"\fMapDataEntry\x12\x10\n" +
@@ -4488,18 +4458,17 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\fphone_number\x18\x05 \x01(\tR\vphoneNumber\x12!\n" +
 	"\fis_suspended\x18\x06 \x01(\bR\visSuspended\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xd8\x02\n" +
+	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xcc\x02\n" +
 	"\x11CreateUserRequest\x12\x1d\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\x04\x90\xb5\x18\x01R\x06teamId\x122\n" +
 	"\busername\x18\x02 \x01(\tB\x16\xbaH\x13r\x11\x10\x03\x18d2\v^[a-z0-9]+$R\busername\x12&\n" +
 	"\bpassword\x18\x03 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\bpassword\x12\x1c\n" +
-	"\x04name\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x04name\x12\x1e\n" +
+	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\bpassword\x12\"\n" +
+	"\x04name\x18\x04 \x01(\tB\x0e\xbaH\vr\t\x10\x01\x18\x80\x012\x02\\SR\x04name\x12\x1e\n" +
 	"\x05email\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x05email\x12*\n" +
 	"\fphone_number\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18(R\vphoneNumber\x120\n" +
-	"\x04role\x18\a \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x1d\n" +
-	"\x05alias\x18\b \x01(\tB\a\xbaH\x04r\x02\x18<R\x05alias:\r\x92\xb5\x18\t\n" +
-	"\a\x01\x02\x03\x04\x06\t\v\"A\n" +
+	"\x04role\x18\a \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role:\r\x92\xb5\x18\t\n" +
+	"\a\x01\x02\x03\x04\x06\t\vJ\x04\b\b\x10\tR\x05alias\"A\n" +
 	"\x12CreateUserResponse\x12+\n" +
 	"\x04user\x18\x01 \x01(\v2\x17.warehouse.user.v1.UserR\x04user\"y\n" +
 	"\x14ResetPasswordRequest\x12*\n" +
@@ -4541,14 +4510,13 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x04code\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\fR\x04code\x12-\n" +
 	"\fnew_password\x18\x03 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\b\x18\xc8\x01R\vnewPassword:\x06\x92\xb5\x18\x02\x18\x01\"\x1e\n" +
-	"\x1cResetPasswordWithOtpResponse\"\xe5\x01\n" +
+	"\x1cResetPasswordWithOtpResponse\"\xdc\x01\n" +
 	"\x0eTeamAccessItem\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x120\n" +
-	"\x04role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x14\n" +
-	"\x05alias\x18\x03 \x01(\tR\x05alias\x12\x1b\n" +
+	"\x04role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleR\x04role\x12\x1b\n" +
 	"\tteam_name\x18\x04 \x01(\tR\bteamName\x128\n" +
 	"\tteam_type\x18\x05 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\bteamType\x12\x1b\n" +
-	"\timage_url\x18\x06 \x01(\tR\bimageUrl\"\xe1\x01\n" +
+	"\timage_url\x18\x06 \x01(\tR\bimageUrlJ\x04\b\x03\x10\x04R\x05alias\"\xe1\x01\n" +
 	"\x14TeamAccessFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12D\n" +
@@ -4594,12 +4562,11 @@ const file_warehouse_user_v1_user_proto_rawDesc = "" +
 	"\x03add\x18\x02 \x01(\v2\x1e.warehouse.user.v1.AddTeamUserH\x00R\x03add\x12;\n" +
 	"\x06remove\x18\x03 \x01(\v2!.warehouse.user.v1.RemoveTeamUserH\x00R\x06remove:\r\x92\xb5\x18\t\n" +
 	"\a\x01\x02\x03\x04\x06\t\vB\x0f\n" +
-	"\x06action\x12\x05\xbaH\x02\b\x01\"\x8c\x01\n" +
+	"\x06action\x12\x05\xbaH\x02\b\x01\"z\n" +
 	"\vAddTeamUser\x12 \n" +
 	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\x12<\n" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.warehouse.role_base.v1.RoleB\n" +
-	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04role\x12\x1d\n" +
-	"\x05alias\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18<R\x05alias\"2\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04roleJ\x04\b\x03\x10\x04R\x05alias\"2\n" +
 	"\x0eRemoveTeamUser\x12 \n" +
 	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId\"\x18\n" +
 	"\x16TeamUserUpdateResponse\"5\n" +

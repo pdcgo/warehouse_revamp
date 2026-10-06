@@ -337,7 +337,6 @@ export function useCreateUser() {
       /** Optional, as the phone is (only-name-and-username-are-required). */
       phoneNumber?: string;
       role: Role;
-      alias: string;
     }) => userClient.createUser(vars),
     onSuccess: () => invalidate(),
   });
@@ -378,7 +377,7 @@ export function useAddTeamMember() {
     mutationFn: (vars: { teamId: bigint; userId: bigint; role: Role }) =>
       userClient.teamUserUpdate({
         teamId: vars.teamId,
-        action: { case: "add", value: { userId: vars.userId, role: vars.role, alias: "" } },
+        action: { case: "add", value: { userId: vars.userId, role: vars.role } },
       }),
     onSuccess: () => invalidate(),
   });

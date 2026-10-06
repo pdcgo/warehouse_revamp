@@ -41,7 +41,6 @@ type UserTeamRole struct {
 
 	// The raw warehouse.role_base.v1.Role enum NUMBER.
 	Role      int32
-	Alias     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

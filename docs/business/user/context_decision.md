@@ -241,7 +241,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run. 🔄 *(2026-10-06, later)* **the next free number** — `00007` and `00008` went to the phone; `00009` today |
+| the migration | a new `00005` in `user_service`. 00003 has already run, so it is not edited. 🔄 *(2026-10-06)* **`00007`**: `00005` went to the membership log and `00006` to `erased_at` first, and goose refuses a lower number added after a higher one has run. 🔄 *(2026-10-06, later)* **the next free number** — `00007` and `00008` went to the phone, `00009` to dropping the alias; `00010` today |
 | the password | a bcrypt hash of `root1234`, never the plain text |
 | ⚠ only while empty | `WHERE id = 1 AND password = ''`: a database whose root password was already set keeps it. Without this, a new migration would **reset** a production root password back to the public one |
 | the email | `root@pdc.com`, only while it is still `root@system.local` |
@@ -1497,6 +1497,10 @@ flowchart LR
   M["a membership — team, user, role"] -.->|"removed"| A["alias"]
 ```
 
+> 🔄 *(2026-10-06, built)* `user_team_roles.alias` dropped (migration `00009`); `UserMembership.alias`,
+> `CreateUserRequest.alias`, `TeamAccessItem.alias` and `AddTeamUser.alias` are `reserved` by number and name. `san seed`
+> and TeamCreate's Owner grant stopped writing one.
+
 **The spec.** ⚠ **Not built.** Every user field already exists. Removing `alias` touches the membership row
 (`UserTeamRole.Alias`, so a user_service migration and `docs/database-schema.md`) and four proto fields:
 `UserMembership.alias`, `CreateUserRequest.alias`, `TeamAccessItem.alias` and `AddTeamUser.alias`. Each is `reserved`,
@@ -1518,6 +1522,10 @@ flowchart LR
   O["optional, unique when given"] --> E["email"]
   O --> P["phone"]
 ```
+
+> 🔄 *(2026-10-06, built)* `CreateUserRequest.name` is required, and a name sent on `UpdateUserRequest` or
+> `UpdateProfileRequest` too: at least one character and never only spaces (`pattern: "\\S"`). Your own profile is held
+> to the same rule as an admin's edit. `name_required_test.go`.
 
 **The spec.** The prototype's create form marks the name required and refuses a blank one. ⚠ **The server is not
 built**: `CreateUserRequest.name` has a maximum length and no minimum, so it accepts a blank name, and `UpdateUser` may

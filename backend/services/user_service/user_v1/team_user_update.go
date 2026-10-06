@@ -110,7 +110,6 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 			TeamID: teamID,
 			UserID: add.GetUserId(),
 			Role:   int32(add.GetRole()),
-			Alias:  add.GetAlias(),
 		}
 
 		// IDEMPOTENT UPSERT. ON CONFLICT is possible only because of the UNIQUE (team_id, user_id)
@@ -120,7 +119,6 @@ func (s *Service) addMember(ctx context.Context, caller callerReach, teamID uint
 				Columns: []clause.Column{{Name: "team_id"}, {Name: "user_id"}},
 				DoUpdates: clause.Assignments(map[string]any{
 					"role":       membership.Role,
-					"alias":      membership.Alias,
 					"updated_at": gorm.Expr("NOW()"),
 				}),
 			}).

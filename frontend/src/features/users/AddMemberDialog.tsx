@@ -183,7 +183,6 @@ export function AddMemberDialog({
           email: draft.email,
           phoneNumber: draft.phone,
           role,
-          alias: "",
         },
         {
           onSuccess: () => done(t("users.toast.userCreated", { username: draft.username })),

@@ -722,7 +722,6 @@ export const transport = createRouterTransport(({ service }) => {
                       teamId: t.teamId,
                       // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
                       role: sessionScenario.role,
-                      alias: "",
                       teamName: t.teamName,
                       teamType: t.teamType,
                       imageUrl: "",

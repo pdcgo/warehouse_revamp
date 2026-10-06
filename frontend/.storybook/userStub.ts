@@ -313,7 +313,7 @@ export const userStub = {
     }
     if (types.includes(UserListDataType.MEMBERSHIP)) {
       const mapData = Object.fromEntries(
-        window.filter((u) => roles.has(u.id)).map((u) => [u.id.toString(), { role: roles.get(u.id)!, alias: "" }]),
+        window.filter((u) => roles.has(u.id)).map((u) => [u.id.toString(), { role: roles.get(u.id)! }]),
       );
       items.push({ d: { case: "membership" as const, value: { mapData } } });
     }

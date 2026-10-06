@@ -98,7 +98,6 @@ export function CreateTeamDialog({
       email: "",
       phoneNumber: newOwner.phone,
       role: Role.UNSPECIFIED,
-      alias: "",
     });
 
     const id = res.user?.id;

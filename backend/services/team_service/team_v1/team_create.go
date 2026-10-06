@@ -181,7 +181,6 @@ func (s *Service) grantOwner(ctx context.Context, teamID, userID uint64, teamTyp
 			Add: &userv1.AddTeamUser{
 				UserId: userID,
 				Role:   role_basev1.Role(ownerRoleFor(teamType)),
-				Alias:  "owner",
 			},
 		},
 	})
