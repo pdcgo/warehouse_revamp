@@ -1,0 +1,430 @@
+syntax = "proto3";
+
+package warehouse.settlement_importer.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/marketplace/v1/marketplace.proto";
+import "warehouse/role_base/v1/role.proto";
+import "warehouse/settlement/v1/settlement.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1;settlement_importerv1";
+
+// SettlementImporterService — a platform statement, uploaded as a file and posted to the settlement
+// ledger row by row (docs/business/settlement/settlement_importer.md).
+//
+// ⚠ A PROTOTYPE CONTRACT, for design_accept. Nothing serves it yet: the Storybook prototype runs
+// against a stub, and the handlers wait on the gate. Where it departs from §Rpc Detail, the clarify
+// file says why — a scoped team_id (critique 15), one request and one response name per RPC
+// (critique 16), a size cap (critique 17), and the step, count and file the flow sends (the
+// Contradiction).
+//
+// Every request is the settlement write set, scoped on its team: the uploader's token posts every
+// row (cs-and-up-import-daily).
+service SettlementImporterService {
+  // A TikTok statement — its Order details and Withdrawal records. One long task, streamed: the
+  // import finishes whether or not anyone watches (an-import-finishes-whether-anyone-watches).
+  rpc TiktokSettlementImport(TiktokSettlementImportRequest) returns (stream TiktokSettlementImportResponse);
+
+  // A Shopee "Rincian Transaksi" statement. Same stream, same shape.
+  rpc ShopeeSettlementImport(ShopeeSettlementImportRequest) returns (stream ShopeeSettlementImportResponse);
+
+  // The team's imported files, newest first — the import screen.
+  rpc UploadedFileList(UploadedFileListRequest) returns (UploadedFileListResponse);
+
+  // Files by id — one file's page reads its own row through this.
+  rpc UploadedFileByIds(UploadedFileByIdsRequest) returns (UploadedFileByIdsResponse);
+
+  // One file's rows, by outcome — what was held, what was skipped, what went to the shop.
+  rpc UploadedFileLineList(UploadedFileLineListRequest) returns (UploadedFileLineListResponse);
+}
+
+// ── The file ─────────────────────────────────────────────────────────────────────────────────────
+
+// What the stream says about a line — the screen colours it, and the closing summary lists the WARN
+// and ERROR ones (every-stream-message-is-a-leveled-log-line).
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_INFO = 1;
+  LOG_LEVEL_WARN = 2;
+  LOG_LEVEL_ERROR = 3;
+}
+
+enum UploadedFileStatus {
+  UPLOADED_FILE_STATUS_UNSPECIFIED = 0;
+  UPLOADED_FILE_STATUS_RUNNING = 1;
+  // RUNNING with no progress for two minutes: the server stopped mid-file. Worked out when read,
+  // never stored. Uploading the same file again completes it (the-row-key-is-the-only-dedupe).
+  UPLOADED_FILE_STATUS_INTERRUPTED = 2;
+  UPLOADED_FILE_STATUS_DONE = 3;
+  // Refused as a whole after it was stored — not this platform's file, or a ref whose order is in
+  // another shop. Nothing posted; `failure` says why.
+  UPLOADED_FILE_STATUS_FAILED = 4;
+}
+
+// The file's rows by outcome. A commissioned TikTok order yields TWO rows — its fund and its
+// affiliate_fee (tiktok-affiliate-commission-posts-as-affiliate-fee) — so the four outcomes sum to
+// `total`, which can be more than the file's line count.
+message UploadedFileTally {
+  uint32 total = 1;
+  uint32 posted = 2;
+  // Already in the ledger — the same row imported before.
+  uint32 existing = 3;
+  uint32 held = 4;
+  uint32 skipped = 5;
+  // Of `posted`: rows whose order ref found no order, posted to the shop
+  // (an-unmatched-ref-posts-to-the-shop).
+  uint32 posted_to_shop = 6;
+}
+
+// One uploaded statement — the importer's own row.
+message UploadedFile {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  uint64 shop_id = 3;
+  // Which reader read it — SHOPEE or TIKTOK, the shop's marketplace.
+  warehouse.marketplace.v1.Marketplace platform = 4;
+  // document_service's id for the stored bytes — "download the original".
+  string document_id = 5;
+  // sha256 of the bytes, hex — the stored file's name. NOT unique: the same file twice is two rows.
+  string content_sha256 = 6;
+  // The statement's own range, YYYY-MM-DD. Empty until the file has been read.
+  string period_from = 7;
+  string period_to = 8;
+  UploadedFileStatus status = 9;
+  // Why a FAILED file failed — its ERROR line. Empty otherwise.
+  string failure = 10;
+  UploadedFileTally tally = 11;
+  // The uploader — the actor on every row this file posts.
+  uint64 created_by_user_id = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  google.protobuf.Timestamp finished_at = 15;
+}
+
+// ── The two imports ──────────────────────────────────────────────────────────────────────────────
+//
+// The same two fields §Rpc Detail gives both platforms, plus the team that scopes them. The platform
+// is the RPC: the screen reads it off the shop's marketplace, so a person never picks it.
+//
+// ⚠ Before the file is stored, ShopAccessCheck must answer: the caller may work on the shop, it is
+// the right platform, and it has a primary CS — otherwise one ERROR line ends the stream and nothing
+// is stored (the-shop-is-checked-before-the-file-is-stored, a-shop-with-no-primary-cs-cannot-import).
+
+message TiktokSettlementImportRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The .xlsx as exported. 10 MB is forty times the largest sample (246 KB).
+  bytes file_content = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10485760
+  }];
+}
+
+// One step of the import. Every message is a leveled log line; the rest is set as it becomes known.
+message TiktokSettlementImportResponse {
+  LogLevel level = 1;
+  // The long-task guideline's required line — every important step, in words.
+  string message = 2;
+  // Rows handled so far — the progress bar's position.
+  uint32 step = 3;
+  // Rows in the file — the bar's end. 0 until the file has been read.
+  uint32 count = 4;
+  // The file's row, tallies included — set once the file is stored, so the screen can link to it and
+  // end on what did not post without a second read.
+  UploadedFile file = 5;
+}
+
+message ShopeeSettlementImportRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 shop_id = 2 [(buf.validate.field).uint64.gt = 0];
+  bytes file_content = 3 [(buf.validate.field).bytes = {
+    min_len: 1
+    max_len: 10485760
+  }];
+}
+
+message ShopeeSettlementImportResponse {
+  LogLevel level = 1;
+  string message = 2;
+  uint32 step = 3;
+  uint32 count = 4;
+  UploadedFile file = 5;
+}
+
+// ── UploadedFileList ─────────────────────────────────────────────────────────────────────────────
+
+message UploadedFileListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  UploadedFileListFilter filter = 2;
+  UploadedFileListFilterSort sort = 3;
+  repeated UploadedFileListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message UploadedFileListFilter {
+  // 0 = every shop of the team.
+  uint64 shop_id = 1;
+  // UNSPECIFIED = both platforms.
+  warehouse.marketplace.v1.Marketplace platform = 2;
+  // Empty = every status.
+  repeated UploadedFileStatus statuses = 3 [(buf.validate.field).repeated.max_items = 4];
+}
+
+enum UploadedFileListDataType {
+  UPLOADED_FILE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  // `name` is the file's own range — "2026-09-01 – 2026-09-15".
+  UPLOADED_FILE_LIST_DATA_TYPE_GENERAL = 1;
+  UPLOADED_FILE_LIST_DATA_TYPE_FILE = 2;
+}
+
+// Default: created_at DESC, newest upload first.
+enum UploadedFileRowSort {
+  UPLOADED_FILE_ROW_SORT_UNSPECIFIED = 0;
+  UPLOADED_FILE_ROW_SORT_CREATED_AT = 1;
+  UPLOADED_FILE_ROW_SORT_PERIOD_TO = 2;
+}
+
+message UploadedFileListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    UploadedFileRowSort file = 3;
+  }
+}
+
+message UploadedFileRowMapItem {
+  map<uint64, UploadedFile> map_data = 1;
+}
+
+message UploadedFileListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    UploadedFileRowMapItem file = 2;
+  }
+}
+
+message UploadedFileListResponse {
+  repeated UploadedFileListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── UploadedFileByIds ────────────────────────────────────────────────────────────────────────────
+
+message UploadedFileByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  UploadedFileByIdsFilter filter = 2 [(buf.validate.field).required = true];
+  repeated UploadedFileByIdsDataType data_request = 3;
+}
+
+// Another team's file is absent from the answer, as if it did not exist.
+message UploadedFileByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum UploadedFileByIdsDataType {
+  UPLOADED_FILE_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  UPLOADED_FILE_BY_IDS_DATA_TYPE_GENERAL = 1;
+  UPLOADED_FILE_BY_IDS_DATA_TYPE_FILE = 2;
+}
+
+message UploadedFileByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    UploadedFileRowMapItem file = 2;
+  }
+}
+
+message UploadedFileByIdsResponseList {
+  repeated UploadedFileByIdsResponseItem items = 1;
+}
+
+message UploadedFileByIdsResponse {
+  map<uint64, UploadedFileByIdsResponseList> items = 1;
+}
+
+// ── One file's rows ──────────────────────────────────────────────────────────────────────────────
+
+enum UploadedFileLineOutcome {
+  UPLOADED_FILE_LINE_OUTCOME_UNSPECIFIED = 0;
+  UPLOADED_FILE_LINE_OUTCOME_POSTED = 1;
+  // Its key was already in the ledger — the same row, imported before.
+  UPLOADED_FILE_LINE_OUTCOME_EXISTING = 2;
+  // Could not post. The reason says why; the same file again posts it once that is fixed.
+  UPLOADED_FILE_LINE_OUTCOME_HELD = 3;
+  // Must not post, by decision.
+  UPLOADED_FILE_LINE_OUTCOME_SKIPPED = 4;
+}
+
+enum UploadedFileLineReason {
+  UPLOADED_FILE_LINE_REASON_UNSPECIFIED = 0;
+  // POSTED to the shop: its ref found no order (an-unmatched-ref-posts-to-the-shop).
+  UPLOADED_FILE_LINE_REASON_NO_ORDER = 1;
+  // HELD: a type nobody has mapped yet.
+  UPLOADED_FILE_LINE_REASON_UNMAPPED_TYPE = 2;
+  // HELD: a fraction of a rupiah — never rounded.
+  UPLOADED_FILE_LINE_REASON_FRACTIONAL_AMOUNT = 3;
+  // HELD: settlement refused the row. `detail` carries its message.
+  UPLOADED_FILE_LINE_REASON_REFUSED = 4;
+  // SKIPPED: TikTok's Earnings and GMV Pay Deduction repeat money the order rows already carry.
+  UPLOADED_FILE_LINE_REASON_REPEATS_ORDER_DETAILS = 5;
+  // SKIPPED: a withdrawal that did not succeed, and the refund that returned it
+  // (only-a-successful-withdrawal-is-recorded).
+  UPLOADED_FILE_LINE_REASON_FAILED_WITHDRAWAL = 6;
+}
+
+// One row the file yielded, and what became of it.
+message UploadedFileLine {
+  uint64 id = 1;
+  uint64 uploaded_file_id = 2;
+  // Where it came from — "Order details", "Withdrawal records", "Rincian Transaksi".
+  string sheet = 3;
+  // As the file wrote them.
+  string order_ref = 4;
+  string platform_type = 5;
+  string description = 6;
+  // What it became. UNSPECIFIED when the platform's type is not mapped.
+  warehouse.settlement.v1.SettlementType settlement_type = 7;
+  // Whole rupiah. A FRACTIONAL_AMOUNT line keeps its figure as written in `detail`.
+  int64 change = 8;
+  // YYYY-MM-DD, Jakarta.
+  string occurred_on = 9;
+  // 0 = the shop.
+  uint64 order_id = 10;
+  UploadedFileLineOutcome outcome = 11;
+  UploadedFileLineReason reason = 12;
+  string detail = 13;
+  // The ledger row it posted or found. 0 when held or skipped.
+  uint64 settlement_log_id = 14;
+}
+
+message UploadedFileLineListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  UploadedFileLineListFilter filter = 2 [(buf.validate.field).required = true];
+  UploadedFileLineListFilterSort sort = 3;
+  repeated UploadedFileLineListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// The file page's three views are HELD · SKIPPED · POSTED with NO_ORDER.
+message UploadedFileLineListFilter {
+  uint64 uploaded_file_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // Empty = every outcome.
+  repeated UploadedFileLineOutcome outcomes = 2 [(buf.validate.field).repeated.max_items = 4];
+  // Empty = every reason.
+  repeated UploadedFileLineReason reasons = 3 [(buf.validate.field).repeated.max_items = 6];
+}
+
+enum UploadedFileLineListDataType {
+  UPLOADED_FILE_LINE_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  // `name` is the row's order ref, or its description when it has none.
+  UPLOADED_FILE_LINE_LIST_DATA_TYPE_GENERAL = 1;
+  UPLOADED_FILE_LINE_LIST_DATA_TYPE_LINE = 2;
+}
+
+// Default: occurred_on ASC, the file's own order.
+enum UploadedFileLineRowSort {
+  UPLOADED_FILE_LINE_ROW_SORT_UNSPECIFIED = 0;
+  UPLOADED_FILE_LINE_ROW_SORT_OCCURRED_ON = 1;
+  UPLOADED_FILE_LINE_ROW_SORT_CHANGE = 2;
+}
+
+message UploadedFileLineListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    UploadedFileLineRowSort line = 3;
+  }
+}
+
+message UploadedFileLineRowMapItem {
+  map<uint64, UploadedFileLine> map_data = 1;
+}
+
+message UploadedFileLineListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    UploadedFileLineRowMapItem line = 2;
+  }
+}
+
+message UploadedFileLineListResponse {
+  repeated UploadedFileLineListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}

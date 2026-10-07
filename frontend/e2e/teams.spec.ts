@@ -7,6 +7,12 @@ const SUFFIX = Date.now().toString().slice(-6);
 const CODE = `E2E${SUFFIX}`.slice(0, 10);
 const NAME = `E2E Team ${SUFFIX}`;
 
+// A second team, whose Owner is made on the form — someone other than the person creating it.
+const OWNED_CODE = `E2O${SUFFIX}`.slice(0, 10);
+const OWNED_NAME = `E2E Owned ${SUFFIX}`;
+const OWNER_USERNAME = `own${SUFFIX}`;
+const OWNER_PASSWORD = "ownerpass123";
+
 async function login(page: Page, username: string, password: string) {
   await page.goto("/");
   await page.evaluate(() => {
@@ -15,7 +21,7 @@ async function login(page: Page, username: string, password: string) {
   });
   await page.goto("/login");
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
@@ -35,16 +41,50 @@ test("CreateTeam: a new team appears in the list", async ({ page }) => {
   await page.getByTestId("new-team-name").fill(NAME);
   await page.getByTestId("new-team-code").fill(CODE);
   await page.getByTestId("new-team-description").fill("created by e2e");
+
+  // The form names the team's Owner (the-create-team-form-names-the-first-owner). Root names THEMSELVES here,
+  // so the tests below can act in it as a member; the next test names somebody else.
+  await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
   await page.getByTestId("submit-create-team").click();
 
   await expect(page.getByTestId(`team-row-${CODE}`)).toBeVisible();
   await expect(page.getByTestId(`team-row-${CODE}`)).toContainText(NAME);
 });
 
+// the-pass-1-prototype-is-accepted: the person the form names — here made on the form itself — becomes the
+// Owner, and the person who pressed Create is NOT made a member.
+test("CreateTeam: an Owner made on the form owns the team, and the creator is not a member", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoTeams(page);
+
+  await page.getByTestId("open-create-team").click();
+  await page.getByTestId("new-team-name").fill(OWNED_NAME);
+  await page.getByTestId("new-team-code").fill(OWNED_CODE);
+
+  await page.getByTestId("new-owner-create").click();
+  await page.getByTestId("new-owner-username").fill(OWNER_USERNAME);
+  await page.getByTestId("new-owner-password").fill(OWNER_PASSWORD);
+  await page.getByTestId("new-owner-name").fill(`Owner ${SUFFIX}`);
+  await page.getByTestId("submit-create-team").click();
+
+  await expect(page.getByTestId(`team-row-${OWNED_CODE}`)).toBeVisible();
+
+  await page.getByTestId(`open-team-${OWNED_CODE}`).click();
+  await page.getByTestId("team-detail-tab-member").click();
+  await expect(page.getByTestId(`member-row-${OWNER_USERNAME}`)).toBeVisible();
+  await expect(page.getByTestId(`member-row-${ROOT_USERNAME}`)).toHaveCount(0);
+
+  // The new Owner signs in to the team: it is their only membership, so it is their current team.
+  await login(page, OWNER_USERNAME, OWNER_PASSWORD);
+  await expect(page.getByTestId("team-switcher")).toContainText(OWNED_NAME);
+});
+
 test("EditTeam: rename sticks; type and code are untouched", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`edit-team-${CODE}`).click();
   await page.getByTestId("edit-team-name").fill(`${NAME} renamed`);
   await page.getByTestId("submit-edit-team").click();
@@ -55,21 +95,46 @@ test("EditTeam: rename sticks; type and code are untouched", async ({ page }) =>
   await expect(row).toContainText(CODE);
 });
 
-test("TeamInfo: bank details round-trip", async ({ page }) => {
+test("TeamInfo: the contact round-trips", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`info-team-${CODE}`).click();
   await page.getByTestId("info-contact").fill("0812-0000");
-  await page.getByTestId("info-bank-owner").fill("E2E Holder");
-  await page.getByTestId("info-bank-account").fill("999888777");
   await page.getByTestId("submit-team-info").click();
   await expect(page.getByTestId("submit-team-info")).toBeHidden();
 
-  // Reopen: the values must have persisted (TeamDetail returns them).
+  // Reopen: the value must have persisted (TeamDetail returns it).
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`info-team-${CODE}`).click();
-  await expect(page.getByTestId("info-bank-owner")).toHaveValue("E2E Holder");
-  await expect(page.getByTestId("info-bank-account")).toHaveValue("999888777");
+  await expect(page.getByTestId("info-contact")).toHaveValue("0812-0000");
+});
+
+test("TeamDetail: the dedicated detail page shows the team and its members", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoTeams(page);
+
+  // Clicking the team opens its dedicated detail page (not a dialog).
+  await page.getByTestId(`open-team-${CODE}`).click();
+  await expect(page.getByTestId("team-detail-page")).toBeVisible();
+  await expect(page.getByTestId("team-detail-page")).toContainText(`${NAME} renamed`);
+
+  // Members live under the Member tab now (#89) — switch to it.
+  await page.getByTestId("team-detail-tab-member").click();
+
+  // The create form named root as the Owner, so root is a member of this team.
+  await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
+
+  // The member list is searchable: a non-matching query empties it, clearing it brings root back.
+  await page.getByTestId("member-list-search").fill("zzz-no-such-member");
+  await expect(page.getByTestId("team-detail-no-members")).toBeVisible();
+  await page.getByTestId("member-list-search").fill("");
+  await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
+
+  // Back returns to the list.
+  await page.getByTestId("team-detail-back").click();
+  await expect(page.getByTestId("teams-table")).toBeVisible();
 });
 
 test("the root team cannot be deleted (no delete action offered)", async ({ page }) => {
@@ -85,6 +150,7 @@ test("DeleteTeam: the team is gone", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoTeams(page);
 
+  await page.getByTestId(`row-actions-team-${CODE}`).click();
   await page.getByTestId(`delete-team-${CODE}`).click();
   await page.getByTestId("confirm-action").click();
 

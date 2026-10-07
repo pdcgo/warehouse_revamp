@@ -1,0 +1,3 @@
+[submodule "backend/packages/san_receipt_readers"]
+	path = backend/packages/san_receipt_readers
+	url = https://github.com/pdcgo/san_receipt_readers.git

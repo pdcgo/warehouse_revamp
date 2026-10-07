@@ -69,7 +69,7 @@ func TestResolve_MemberRoleAndRootRole(t *testing.T) {
 
 	uid := newUser(t, db, "member", false)
 	grant(t, db, 42, uid, role_basev1.Role_ROLE_WAREHOUSE_ADMIN)
-	grant(t, db, san_auth.RootTeamID, uid, role_basev1.Role_ROLE_ADMIN)
+	grant(t, db, san_auth.RootTeamID, uid, role_basev1.Role_ROLE_ADMINISTRATOR)
 
 	access, err := resolver.Resolve(context.Background(), uid, 42)
 	if err != nil {
@@ -81,7 +81,7 @@ func TestResolve_MemberRoleAndRootRole(t *testing.T) {
 	}
 
 	// The super-admin bypass is reported in the same call — no second round trip.
-	if access.RootRole != role_basev1.Role_ROLE_ADMIN {
+	if access.RootRole != role_basev1.Role_ROLE_ADMINISTRATOR {
 		t.Errorf("RootRole = %v, want ADMIN", access.RootRole)
 	}
 }
