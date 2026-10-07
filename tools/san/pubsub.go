@@ -226,6 +226,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "settlement-log-posted",
 			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
 		},
+		// supplier_service's fold — mirrors supplier_service.FoldSubscription. A supplier's figures, folded from the
+		// restock's accept (the-report-is-processed-like-settlement); its replay SEEKS this subscription.
+		{
+			ID:     "supplier-fold",
+			Topic:  "restock-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
+		},
 		// selling_service's shop-access listener — mirrors selling_service.MemberRemovedSubscription
 		// (removing-a-member-drops-their-shop-access).
 		{

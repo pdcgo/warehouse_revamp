@@ -5,16 +5,15 @@ import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { SupplierChannelRecord } from "../../../features/suppliers/adapt";
 import { ChannelBrowser } from "../../../features/suppliers/ChannelBrowser";
-import { useDeleteSupplierChannel, useSupplierChannels } from "../../../features/suppliers/queries";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
+import { useDeleteSupplierChannel } from "../../../features/suppliers/queries";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { toaster } from "../../../components/feedback/Toaster";
-import { SUPPLIER_DETAIL_PENDING } from "../pending";
 import { SupplierChannelFormDialog } from "./SupplierChannelFormDialog";
 
-// ChannelsPanel is the MANAGE detail's Channels tab: the shared ChannelBrowser over this team's supplier, with
-// what only its owning team may do — Add Channel, and Edit / Delete on each row (only-a-selling-team-has-suppliers).
-// The discover detail mounts the same browser read-only.
+// ChannelsPanel is the MANAGE detail's Channels tab: the shared ChannelBrowser over the supplier, with what only
+// the team that keeps it may do — Add Channel, and Edit / Delete on each row. Reads cross teams and writes do not,
+// so the page decides `canManage` (its own team's supplier, and a selling team); the discover detail mounts the
+// same browser read-only.
 export function ChannelsPanel({
   teamId,
   supplierId,
@@ -22,15 +21,12 @@ export function ChannelsPanel({
 }: {
   teamId: bigint;
   supplierId: bigint;
-  /** Only a selling team edits its channels (only-a-selling-team-has-suppliers). */
+  /** The current team keeps this supplier — only then may it add, edit or delete a store. */
   canManage: boolean;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<SupplierChannelRecord | null>(null);
   const deleteChannel = useDeleteSupplierChannel();
-
-  // The whole list, once — the browser searches, filters and pages it (see ChannelBrowser).
-  const query = useSupplierChannels({ teamId, supplierId });
 
   // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
   // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
@@ -82,13 +78,10 @@ export function ChannelsPanel({
   return (
     <>
       <ChannelBrowser
-        channels={query.data ?? []}
-        loading={query.isPending}
-        busy={query.isFetching && !query.isPending}
-        error={query.isError ? rpcError(query.error) : ""}
+        teamId={teamId}
+        supplierId={supplierId}
         actions={canManage ? <SupplierChannelFormDialog supplierId={supplierId} /> : undefined}
         rowActions={canManage ? rowActions : undefined}
-        descriptionMark={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="channelDescription" />}
       />
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per channel. */}

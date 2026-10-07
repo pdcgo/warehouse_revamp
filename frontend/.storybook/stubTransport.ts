@@ -21,9 +21,10 @@ import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/docu
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
-import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
-import { SupplierChannelService } from "../src/gen/warehouse/inventory/v1/supplier_channel_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
+import { SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
+import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
+import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
 import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityPaymentService,
@@ -58,7 +59,7 @@ import {
   FinancialAccountService,
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
-import { supplierChannelService, supplierService } from "./supplierStub";
+import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -745,9 +746,11 @@ export const transport = createRouterTransport(({ service }) => {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
   });
 
-  // The supplier CRUD prototype — supplierStub.ts plays today's server and the decided rules.
+  // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
   service(SupplierChannelService, supplierChannelService);
+  // Its figures — supplierFigureFixtures.ts, read as the folded table is (the-figures-screens-are-accepted).
+  service(SupplierAnalyticService, supplierAnalyticService);
 
   service(RackService, {
     rackList: () => columnar("rack", racks),

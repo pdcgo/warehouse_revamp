@@ -36,6 +36,8 @@ import (
 	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	shipment_service "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service"
 	shipment_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
+	supplier_service "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service"
+	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	team_service "github.com/pdcgo/warehouse_revamp/backend/services/team_service"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_service "github.com/pdcgo/warehouse_revamp/backend/services/user_service"
@@ -64,6 +66,7 @@ func NewServeMux(
 	settlementService *settlement_v1.Service,
 	importerService *settlement_importer_v1.Service,
 	accountService *financial_account_v1.Service,
+	supplierService *supplier_v1.Service,
 	docCfg docstore.Config,
 	resolver access_interceptors.RoleResolver,
 	signer *san_auth.Signer,
@@ -112,6 +115,7 @@ func NewServeMux(
 		settlement_service.NewRegister(mux, settlementService, opts),
 		settlement_importer_service.NewRegister(mux, importerService, opts),
 		financial_account_service.NewRegister(mux, accountService, opts),
+		supplier_service.NewRegister(mux, supplierService, opts),
 	)
 
 	return mux, nil

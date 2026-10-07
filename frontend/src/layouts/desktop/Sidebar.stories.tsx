@@ -117,6 +117,8 @@ export const AWarehouseGetsTheWarehousesMenu: Story = {
     await expect(canvas.queryByRole("link", { name: "Shops" })).toBeNull();
     await expect(canvas.queryByRole("link", { name: "My Supplier" })).toBeNull();
     await expect(canvas.queryByRole("link", { name: "Discover Supplier" })).toBeNull();
+    await expect(canvas.queryByRole("link", { name: "Supplier Report" })).toBeNull();
+    await expect(canvas.queryByTestId("nav-group-toggle-nav.suppliers")).toBeNull();
   },
 };
 
@@ -137,15 +139,23 @@ export const ASellingTeamGetsTheSellingMenu: Story = {
     await waitFor(() => expect(canvas.getByRole("link", { name: "My Product" })).toBeVisible());
     await expect(canvas.getByRole("link", { name: "Discover Product" })).toBeVisible();
 
-    // A supplier belongs to the team that raises the restock, a rack to the building that holds it.
+    // A rack belongs to the building that holds it, not to the team that raises the restock.
     await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.inventories"));
-    // My Supplier and Discover Supplier — the same pair as My Product and Discover Product.
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Placements" })).toBeVisible());
+    await expect(canvas.queryByRole("link", { name: "Racks" })).toBeNull();
+
+    // Suppliers is a group of its own, shaped like Products: My Supplier, Discover Supplier, Supplier Report.
+    await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.suppliers"));
     await waitFor(() => expect(canvas.getByRole("link", { name: "My Supplier" })).toBeVisible());
     await expect(canvas.getByRole("link", { name: "Discover Supplier" })).toHaveAttribute(
       "href",
       "/inventories/suppliers/discover",
     );
-    await expect(canvas.queryByRole("link", { name: "Racks" })).toBeNull();
+    // …and the report that ranks them (the-figures-are-a-statistics-tab-and-a-supplier-report).
+    await expect(canvas.getByRole("link", { name: "Supplier Report" })).toHaveAttribute(
+      "href",
+      "/inventories/suppliers/report",
+    );
   },
 };
 

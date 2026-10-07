@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -170,6 +170,24 @@ const PRODUCTS_GROUP: MenuGroup = {
   ],
 };
 
+// A selling team's Suppliers is a sub-menu of its own, the same shape as Products (owner): "My Supplier" — the
+// suppliers this team keeps — "Discover Supplier" — every team's, searched across teams
+// (manage-and-discover-are-two-pages) — and "Supplier Report", suppliers ranked by what every team restocked from them
+// (the-figures-are-a-statistics-tab-and-a-supplier-report). It used to be three children of Inventories, where it
+// read as a kind of stock; a supplier is who the stock comes FROM.
+//
+// ⚠ The routes stay under /inventories/suppliers — only the menu moved. "Where am I" matches the longest prefix, so
+// these three still win over Inventories' own children.
+const SUPPLIERS_GROUP: MenuGroup = {
+  label: "nav.suppliers",
+  icon: Factory,
+  children: [
+    { to: "/inventories/suppliers", label: "nav.mySupplier", icon: Factory },
+    { to: "/inventories/suppliers/discover", label: "nav.discoverSupplier", icon: Compass },
+    { to: "/inventories/suppliers/report", label: "nav.supplierReport", icon: ChartColumn },
+  ],
+};
+
 // Inventories is a sub-menu (#95).
 //
 // "Restock" is ONE entry (#122): there used to be a Restock that was really the stock list (a
@@ -199,15 +217,10 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
     children.push({ to: "/inventories/returns", label: "nav.returns", icon: Undo2 });
   }
 
-  // Supplier and Placements are dropped from the WAREHOUSE menu (#212): a warehouse does not own the
-  // suppliers a selling team orders from, and Placements is a stub that only ever belonged to the
-  // stock-locating side. They stay for a selling team.
+  // Placements is dropped from the WAREHOUSE menu (#212): it is a stub that only ever belonged to the stock-locating
+  // side. The suppliers moved out to their own group (SUPPLIERS_GROUP), still a selling team's alone.
   if (teamType === TeamType.SELLING) {
     children.push({ to: "/inventories/placements", label: "nav.placements", icon: MapPin });
-    // "My Supplier" — the suppliers this team keeps — and "Discover Supplier" — every team's, searched across
-    // teams (manage-and-discover-are-two-pages). The same pair as My Product / Discover Product.
-    children.push({ to: "/inventories/suppliers", label: "nav.mySupplier", icon: Factory });
-    children.push({ to: "/inventories/suppliers/discover", label: "nav.discoverSupplier", icon: Compass });
   }
 
   // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).
@@ -271,6 +284,9 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     // A WAREHOUSE keeps it further down (see below): stock is not a footnote to a catalogue there,
     // it is the job, and its Inventories group holds different children.
     menu.push(inventoriesFor(teamType));
+    // Suppliers right under it — who the restocks in Inventories come from. A selling team's alone: a warehouse
+    // does not own the suppliers a selling team orders from (#212).
+    menu.push(SUPPLIERS_GROUP);
   }
 
   // Shops and orders are SELLING-team concepts (#66/#68).

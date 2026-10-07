@@ -24,6 +24,7 @@ import (
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/settlement_importer/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/shipment/v1"
+	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
 	_ "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"

@@ -63,17 +63,25 @@ export function useTeams({ teamType, page, pageSize, enabled = true, reference =
 // discover detail). One batch for the set, never one call per row. A name lookup, so it buys out of
 // always-fresh by name (referenceQuery): it labels something, and nobody works from it.
 export function useTeamsByIds({ ids }: { ids: bigint[] }) {
+  return useQuery({ ...teamsByIdsQuery(ids), enabled: ids.some((id) => id > 0n) });
+}
+
+// The same read as an options object, for a queryFn that needs team names inside its OWN answer — the
+// supplier discover list names each row's team (features/suppliers/discover.ts) through
+// `queryClient.fetchQuery(teamsByIdsQuery(ids))`, so it shares this cache entry and its `referenceQuery`
+// window instead of re-asking on every page turn. ⚠ The caller must not pass an empty set: TeamByIds
+// requires at least one id.
+export function teamsByIdsQuery(ids: bigint[]) {
   const wanted = Array.from(new Set(ids.filter((id) => id > 0n).map((id) => id.toString()))).sort();
 
-  return useQuery({
+  return {
     queryKey: key.teams(undefined, { byIds: wanted.join(",") }),
     ...referenceQuery,
-    enabled: wanted.length > 0,
     queryFn: async () =>
       teamsByIds(
         await teamClient.teamByIds({ filter: { ids: wanted.map((id) => BigInt(id)) }, dataRequest: teamByIdsRowData() }),
       ),
-  });
+  };
 }
 
 // EVERY TEAM, searched by name or code — the switcher's *All teams* for Root and the Administrator

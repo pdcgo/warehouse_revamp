@@ -15,7 +15,8 @@ export interface SampleProduct {
   channel: SupplierChannelRecord;
 }
 
-const CATALOGUE: [name: string, sku: string][] = [
+// Shared with sampleFigures.ts, so the Statistics tab's products are the Products tab's.
+export const CATALOGUE: [name: string, sku: string][] = [
   ["Kain Katun Jepang 1 rol", "KTN-JP-01"],
   ["Benang Polyester 40/2", "BNG-PL-40"],
   ["Kain Rayon Twill 1 rol", "RYN-TW-01"],

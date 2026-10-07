@@ -31,8 +31,10 @@
     "settlementReport": "Settlement Report",
     "settlementImports": "Settlement Imports",
     "financialAccounts": "Accounts",
+    "suppliers": "Suppliers",
     "mySupplier": "My Supplier",
-    "discoverSupplier": "Discover Supplier"
+    "discoverSupplier": "Discover Supplier",
+    "supplierReport": "Supplier Report"
   },
   "menu": {
     "theme": "Theme",
@@ -375,7 +377,7 @@
       },
       "suppliers": {
         "label": "Suppliers",
-        "reason": "sample rows — how a product is linked to a supplier's store is still to be decided, and no server reads another team's suppliers yet"
+        "reason": "sample rows — a product is linked to a supplier's store when a restock bought there is accepted, which is not built yet, so which stores sell it is invented"
       }
     }
   },
@@ -1443,7 +1445,7 @@
     "deleted": "Supplier \"{{name}}\" deleted",
     "deleteFailed": "Delete failed",
     "deleteSupplier": "Delete Supplier",
-    "deleteConfirm": "Delete \"{{name}}\" and its channels? It is removed for good.",
+    "deleteConfirm": "Delete \"{{name}}\"? It leaves this list and every picker — past restocks and its figures keep its name.",
     "delete": "Delete",
     "empty": "No suppliers found.",
     "table": {
@@ -1476,8 +1478,8 @@
     "edit": "Edit supplier",
     "discover": {
       "title": "Discover Suppliers",
-      "lead": "Suppliers every selling team buys from — search them by name, team or store.",
-      "search": "Search supplier, team or store",
+      "lead": "Suppliers every selling team buys from — search them by name, address, contact or store.",
+      "search": "Search supplier, address or store",
       "typeAll": "Any channel type",
       "empty": "No suppliers yet.",
       "none": "No suppliers match.",
@@ -1490,19 +1492,12 @@
         "contact": "Contact"
       },
       "pending": {
-        "suppliers": {
-          "label": "Suppliers across teams",
-          "reason": "sample rows — no server searches every team's suppliers yet; supplier_service will"
-        },
-        "supplier": {
-          "label": "This supplier",
-          "reason": "sample — no server reads another team's supplier with its channels yet"
-        },
         "products": {
           "label": "Products",
-          "reason": "sample rows — how a product is linked to a channel is still to be decided"
+          "reason": "sample rows — a product is linked to a channel when a restock bought there is accepted, and that is not built yet"
         }
-      }
+      },
+      "teamAll": "Any team"
     }
   },
   "supplierChannel": {
@@ -1548,18 +1543,15 @@
     },
     "edit": "Edit channel",
     "pending": {
-      "channelDescription": {
-        "label": "Channel description",
-        "reason": "the current server has no field for it, so it is thrown away until supplier_service is built"
-      },
       "products": {
         "label": "Products",
-        "reason": "sample rows — how a product is linked to a channel is still to be decided, so these are invented"
+        "reason": "sample rows — a product is linked to a channel when a restock bought there is accepted, and that is not built yet, so these are invented"
       }
     },
     "tab": {
       "channels": "Channels",
-      "products": "Products"
+      "products": "Products",
+      "statistics": "Statistics"
     },
     "products": {
       "product": "Product",
@@ -1574,6 +1566,67 @@
       "typeAll": "All channel types",
       "none": "No channels match."
     }
+  },
+  "supplierFigures": {
+    "restocked": "Restocked",
+    "restockedHint": "good units accepted into stock",
+    "lost": "Lost in shipping",
+    "lostHint": "units short in an accepted parcel",
+    "broken": "Broken in shipping",
+    "brokenHint": "units that arrived broken",
+    "brokenRate": "Broken rate",
+    "brokenRateHint": "broken ÷ every unit received",
+    "units_one": "{{n}} unit",
+    "units_other": "{{n}} units",
+    "rate": "{{rate}}%",
+    "rateBroken": "{{rate}}% broken",
+    "line": {
+      "restocked": "Restocked {{n}} · {{value}}",
+      "lostBroken": "Lost {{lost}} ({{lostRate}}) · broken {{broken}}"
+    },
+    "col": {
+      "period": "Period",
+      "product": "Product",
+      "team": "Team",
+      "restocked": "Restocked",
+      "lost": "Lost in shipping",
+      "broken": "Broken in shipping",
+      "brokenRate": "Broken rate"
+    },
+    "everyTeam": "Every team",
+    "teamNumber": "Team #{{id}}",
+    "rangeInvalid": "Pick a start and an end date — the figures need both ends.",
+    "productNumber": "Product #{{id}}"
+  },
+  "supplierStats": {
+    "overTime": "Over Time",
+    "byProduct": "By Product",
+    "empty": "Nothing was restocked from this supplier in this period.",
+    "noProducts": "No products in this period.",
+    "emptyTeam": "That team restocked nothing from this supplier in this period."
+  },
+  "supplierReport": {
+    "title": "Supplier Report",
+    "subtitle": "Which suppliers are restocked from most, and which of them break or lose the most on the way. Open a supplier for its figures over time.",
+    "selectTeam": "Select a team to see the supplier report.",
+    "ranking": "Ranking",
+    "rankBy": "Rank by",
+    "byValue": "Restocked Value",
+    "byBrokenRate": "Broken Rate",
+    "rankedName": "{{rank}}. {{name}}",
+    "empty": "Nothing was restocked from any supplier in this period.",
+    "col": {
+      "rank": "#",
+      "supplier": "Supplier",
+      "keptBy": "Kept by"
+    },
+    "emptyTeam": "That team restocked nothing in this period.",
+    "search": "Search supplier, address or store",
+    "none": "No supplier matches.",
+    "supplierNumber": "Supplier #{{id}}",
+    "deleted": "Deleted",
+    "rateTooFew": "Fewer than {{n}} units in this period — not rated against the others",
+    "rateMinNote": "A supplier with fewer than {{n}} units in this period is ranked after the others, its rate muted — a handful of units cannot say how a supplier packs."
   },
   "teams": {
     "name": "Name",

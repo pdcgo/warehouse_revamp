@@ -154,8 +154,9 @@ arrow-key away from a local one.
 - `--service <name>` skips the service prompt. Services are **discovered from the filesystem**
   (`backend/services/*`) — there is no hardcoded list to go stale.
 - `migrate up-all` migrates **every** service, in dependency order (`team_service` then
-  `user_service` first — team 1 must exist before the root role references it), asking only for
-  the database. That is the one-command path for a fresh database.
+  `user_service` first — team 1 must exist before the root role references it — then
+  `inventory_service`, whose `00023` frees the supplier table names `supplier_service` creates), asking
+  only for the database. That is the one-command path for a fresh database.
 - `--dsn` (or `DATABASE_URL`) skips the database prompt — the non-interactive path for CI.
 - `create` touches no database, so it never prompts for one.
 
@@ -616,7 +617,7 @@ it once a real domain service replaces it.
 | Start local Postgres (`:5433`) | `docker compose up -d` |
 | Lint the contract | `cd proto && buf lint` |
 | Regenerate Go + TS | `cd proto && buf generate` — needs Go and `frontend/node_modules`; **no Buf account** |
-| Set up a checkout (fresh, or after a pull) | `go run ./tools/san dev setup` — submodules, docker, every migration, dev logins, categories, regions, npm install; idempotent, LOCAL database only |
+| Set up a checkout (fresh, or after a pull) | `go run ./tools/san dev setup` — submodules, docker, every migration, the supplier move, the supplier figures backfill, dev logins, categories, regions, npm install; idempotent, LOCAL database only |
 | Run the whole dev stack (docker + API + UI) | `go run ./tools/san dev run` — one terminal, output prefixed per server, Ctrl-C stops all of it. Starts the Pub/Sub emulator too, and makes its topics on every start |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |

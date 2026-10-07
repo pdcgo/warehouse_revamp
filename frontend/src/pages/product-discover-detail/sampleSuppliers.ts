@@ -5,18 +5,18 @@ import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 // ⚠ SAMPLE — which supplier stores list this product. Pending "suppliers" on this page.
 //
 // A supplier's products hang off its channels (products-hang-off-a-channel), so "who sells this product" is
-// that table read backwards — and the table does not exist yet: how a product gets linked to a channel is
-// deferred (linking-products-is-deferred), and no server can read another team's suppliers either. So the
-// rows are picked from the SAME sample suppliers the supplier discover pages show, which keeps a click
-// through to a supplier landing on the record it named. Deleted the day the linking is designed.
+// that table read backwards — and the table does not exist yet: a product is linked to a store when a restock
+// bought there is accepted (restock-accepted-links-the-product-to-its-channel), which is not built. So the LINK
+// is invented: the suppliers and stores are REAL, read across every team the way Discover Suppliers reads them,
+// which keeps a click through to a supplier landing on the record it named. Deleted the day the links exist.
 
 export interface ProductSupplierLink {
   supplier: DiscoverSupplier;
   channel: SupplierChannelRecord;
 }
 
-/** Every sample supplier, in one page — the sample is a dozen rows, and the pick needs all of them. */
-const ALL = { q: "", channelType: Marketplace.UNSPECIFIED, page: 1, pageSize: 100 };
+/** One large page of every team's suppliers — the pick needs a pool, not a window. */
+const ALL = { q: "", channelType: Marketplace.UNSPECIFIED, ownerTeamId: 0n, page: 1, pageSize: 100 };
 
 /** Up to two invented links, the same ones every time for the same product. */
 export function useProductSupplierSample(args: { teamId: bigint | undefined; productId: bigint }) {

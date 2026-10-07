@@ -4,44 +4,41 @@ import {
   type SupplierByIdsResponse,
   SupplierListDataType,
   type SupplierListResponseItem,
-} from "../../gen/warehouse/inventory/v1/supplier_pb";
+} from "../../gen/warehouse/supplier/v1/supplier_pb";
 import {
   type SupplierChannel,
   SupplierChannelListDataType,
   type SupplierChannelListResponseItem,
-  SupplierChannelType,
-} from "../../gen/warehouse/inventory/v1/supplier_channel_pb";
-import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+} from "../../gen/warehouse/supplier/v1/supplier_channel_pb";
+import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 
-// ⚠ THE TRANSLATION STEP — temporary, and deleted when supplier_service lands.
+// The supplier domain's proto → record mapper, the same job every feature folder's adapt.ts does: pages read
+// and write `SupplierRecord` / `SupplierChannelRecord` and never touch the generated messages.
 //
-// The screens speak the DECIDED shape (docs/business/supplier/context_decision.md): a supplier is a name, a
-// contact, an address and a description (the-supplier-has-no-code, no-province-city-or-soft-delete), and a
-// channel is one store — a channel type off the shared marketplace list, a name, a link and a description
-// (the-supplier-lists-only-its-online-stores, channel-type-is-the-marketplace-list).
-//
-// The server still speaks warehouse.inventory.v1, which REQUIRES a code and an online/offline type. Rather than
-// let that leak into every screen, the whole difference lives here, at the query boundary: pages read and write
-// `SupplierRecord` / `SupplierChannelRecord` and never see the proto. When supplier_service lands, these
-// functions change and the pages do not.
-//
-// What the old server cannot hold is marked on screen, not hidden — see pages/supplier-detail/pending.ts.
+// It is a PLAIN mapper now — fields cross one to one. It used to be a translation step between the decided
+// shape and the old warehouse.inventory.v1 server (a made-up code, city and province folded into the address,
+// an offline shop read as Other, the channel list searched and paged in the browser). That server is gone:
+// supplier_service landed and speaks the decided shape itself (the-crud-prototype-is-accepted,
+// the-supplier-gets-its-own-service in docs/business/supplier/context_decision.md).
 
-/** A supplier as the screens see it — the decided fields, nothing else. */
+/** A supplier as the screens see it. */
 export interface SupplierRecord {
   id: bigint;
+  /** The team that keeps it — always a selling team (only-a-selling-team-has-suppliers). */
   teamId: bigint;
   name: string;
   contact: string;
   address: string;
   description: string;
+  /** Soft-deleted. Only SupplierByIds ever returns one (a-deleted-supplier-is-kept-for-its-figures). */
+  deleted: boolean;
 }
 
 /** One store a supplier sells through. */
 export interface SupplierChannelRecord {
   id: bigint;
   supplierId: bigint;
-  /** Off the shared marketplace list; `OTHER` is the owner's `custom`. */
+  /** Off the shared marketplace list; `OTHER` is the owner's `custom` (custom-is-labelled-other). */
   channelType: Marketplace;
   name: string;
   uri: string;
@@ -51,40 +48,36 @@ export interface SupplierChannelRecord {
 // ── Reads ───────────────────────────────────────────────────────────────────────────────────────
 
 export const supplierListRowData = (): SupplierListDataType[] => [SupplierListDataType.SUPPLIER];
+/** The rows AND each supplier's live stores — Discover's badge per channel type. */
+export const supplierListWithChannelsData = (): SupplierListDataType[] => [
+  SupplierListDataType.SUPPLIER,
+  SupplierListDataType.CHANNELS,
+];
 export const supplierChannelRowData = (): SupplierChannelListDataType[] => [
   SupplierChannelListDataType.SUPPLIER_CHANNEL,
 ];
 export const supplierByIdsRowData = (): SupplierByIdsDataType[] => [SupplierByIdsDataType.SUPPLIER];
 
-/**
- * The code is not carried. City and province are FOLDED into the address — the same fold the move to
- * supplier_service makes (no-province-city-or-soft-delete), so what is on screen now is what the moved row
- * will hold.
- */
 export function supplierRecord(s: Supplier): SupplierRecord {
   return {
     id: s.id,
     teamId: s.teamId,
     name: s.name,
     contact: s.contact,
-    address: [s.address, s.city, s.province].filter(Boolean).join(", "),
+    address: s.address,
     description: s.description,
+    deleted: s.deleted,
   };
 }
 
-/**
- * An old OFFLINE row has no marketplace, so it reads as `OTHER`, with its contact and location as its
- * description — the move's fold again (the-supplier-lists-only-its-online-stores). An online row's link is
- * its `url`.
- */
 export function channelRecord(c: SupplierChannel): SupplierChannelRecord {
   return {
     id: c.id,
     supplierId: c.supplierId,
-    channelType: c.marketplace === Marketplace.UNSPECIFIED ? Marketplace.OTHER : c.marketplace,
+    channelType: c.channelType,
     name: c.name,
-    uri: c.url,
-    description: [c.contact, c.location].filter(Boolean).join(" · "),
+    uri: c.uri,
+    description: c.description,
   };
 }
 
@@ -99,9 +92,26 @@ export function suppliersFromList(items: SupplierListResponseItem[], ids: bigint
     .map(supplierRecord);
 }
 
+/**
+ * The CHANNELS slice — supplier id → its live stores. Every supplier on the page has an entry, an empty set
+ * included; a supplier absent from the map (the slice was not asked for) reads as no stores.
+ */
+export function supplierChannelsFromList(items: SupplierListResponseItem[]): Map<string, SupplierChannelRecord[]> {
+  const out = new Map<string, SupplierChannelRecord[]>();
+  for (const it of items) {
+    if (it.d.case !== "channels") continue;
+
+    for (const [id, set] of Object.entries(it.d.value.mapData)) {
+      out.set(id, set.channels.map(channelRecord));
+    }
+  }
+  return out;
+}
+
 // A by-ids response is keyed PER ID, not one map across a page, so this flattens it to id → supplier.
 // An id the server had nothing for is simply missing from the map — that is the contract, and the
-// caller decides what "unknown" looks like rather than getting a fabricated blank.
+// caller decides what "unknown" looks like rather than getting a fabricated blank. A DELETED supplier is
+// present, with `deleted: true` — a past restock still names its vendor.
 export function suppliersFromByIds(res: SupplierByIdsResponse): Map<string, SupplierRecord> {
   const out = new Map<string, SupplierRecord>();
 
@@ -136,84 +146,19 @@ export function channelsFromList(
 export type SupplierFields = Pick<SupplierRecord, "name" | "contact" | "address" | "description">;
 export type ChannelFields = Pick<SupplierChannelRecord, "channelType" | "name" | "uri" | "description">;
 
-/**
- * The old server refuses a supplier without a code, and the screens no longer ask for one
- * (the-supplier-has-no-code). So one is made up — unique enough within a team, under its 32-character cap,
- * and never shown. The move to supplier_service drops the column.
- */
-export function generatedSupplierCode(): string {
-  const time = Date.now().toString(36);
-  const salt = Math.random().toString(36).slice(2, 6);
-
-  return `S${time}${salt}`.toUpperCase();
-}
-
 export function supplierCreateRequest(teamId: bigint, fields: SupplierFields) {
-  return { teamId, code: generatedSupplierCode(), ...fields };
+  return { teamId, ...fields };
 }
 
-/**
- * The address on the form is the FOLDED one, so city and province are cleared as it is saved — otherwise the
- * next read would fold them in a second time. The code is left alone.
- */
+/** Every field is sent, so the form's values are what the row holds afterwards. */
 export function supplierUpdateRequest(teamId: bigint, supplierId: bigint, fields: SupplierFields) {
-  return { teamId, supplierId, ...fields, province: "", city: "" };
+  return { teamId, supplierId, ...fields };
 }
 
-/**
- * Every channel is a store, so it is sent as ONLINE with its channel type as the marketplace. ⚠ The
- * description has nowhere to go on the old server — it is DROPPED, and the screen says so.
- */
 export function channelCreateRequest(teamId: bigint, supplierId: bigint, fields: ChannelFields) {
-  return {
-    teamId,
-    supplierId,
-    type: SupplierChannelType.ONLINE,
-    marketplace: fields.channelType,
-    name: fields.name,
-    url: fields.uri,
-  };
+  return { teamId, supplierId, ...fields };
 }
 
-/**
- * `contact` and `location` are left ABSENT, so an old offline row keeps what it held — its description on
- * screen is made of them, and sending them blank would erase it.
- */
 export function channelUpdateRequest(teamId: bigint, channelId: bigint, fields: ChannelFields) {
-  return {
-    teamId,
-    channelId,
-    type: SupplierChannelType.ONLINE,
-    marketplace: fields.channelType,
-    name: fields.name,
-    url: fields.uri,
-  };
-}
-
-// ── The channel list's search, filter and page ──────────────────────────────────────────────────
-
-export interface ChannelQuery {
-  /** Matched against the name, the link and the description. */
-  q: string;
-  /** `UNSPECIFIED` = every type. */
-  channelType: Marketplace;
-  page: number;
-  pageSize: number;
-}
-
-/**
- * ⚠ DONE IN THE BROWSER — part of the translation step. The old SupplierChannelList takes a supplier and a page,
- * nothing to search or filter by, so the supplier's channels are read whole (up to the 200 one page allows) and
- * searched, filtered and paged here, returning exactly what supplier_service's paginated list will. A supplier
- * has a handful of stores, so the cap is not reached in practice; when supplier_service lands, this moves to the
- * server and the screen does not change.
- */
-export function channelPage(channels: SupplierChannelRecord[], query: ChannelQuery) {
-  const q = query.q.trim().toLowerCase();
-  const matching = channels
-    .filter((c) => query.channelType === Marketplace.UNSPECIFIED || c.channelType === query.channelType)
-    .filter((c) => !q || [c.name, c.uri, c.description].some((field) => field.toLowerCase().includes(q)));
-  const start = (query.page - 1) * query.pageSize;
-
-  return { channels: matching.slice(start, start + query.pageSize), totalItems: matching.length };
+  return { teamId, channelId, ...fields };
 }

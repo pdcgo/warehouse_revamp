@@ -150,8 +150,9 @@ func migrateUpAll(ctx context.Context, db *sql.DB, target string) error {
 
 // orderedServicesWithMigrations returns the services that have a db_migrations dir, in the order
 // they must be applied: team_service then user_service first (team 1 must exist before user_service
-// seeds the root role that references it — there is no cross-service FK to enforce it), then the
-// rest (independent) in discovered order.
+// seeds the root role that references it — there is no cross-service FK to enforce it), then
+// inventory_service (its 00023 frees the table names supplier_service's 00001 creates —
+// the-supplier-gets-its-own-service), then the rest (independent) in discovered order.
 func orderedServicesWithMigrations() ([]string, error) {
 	all, err := discoverServices()
 	if err != nil {
@@ -175,7 +176,7 @@ func orderedServicesWithMigrations() ([]string, error) {
 	ordered := make([]string, 0, len(withMigrations))
 	seen := map[string]bool{}
 
-	for _, service := range []string{"team_service", "user_service"} {
+	for _, service := range []string{"team_service", "user_service", "inventory_service"} {
 		if slices.Contains(withMigrations, service) {
 			ordered = append(ordered, service)
 			seen[service] = true

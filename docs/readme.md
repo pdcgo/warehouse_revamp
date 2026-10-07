@@ -78,6 +78,7 @@ Chakra's `<Icon>`. The UI is internationalised with
 | `product_service` | each team's product catalogue |
 | `shipment_service` | the courier catalogue — shipment channels (docs/business/shipment) |
 | `inventory_service` | warehouse stock — receive, adjust, transfer, on-hand levels |
+| `supplier_service` | the suppliers a selling team buys from, and their online stores — read by every team (docs/business/supplier) |
 | `selling_service` | marketplace shops and orders (the selling side) |
 | `document_service` | uploaded files (two-phase upload, e.g. product images) |
 

@@ -31,6 +31,12 @@ func (s *Service) RestockRequestUpdate(
 ) (*connect.Response[inventoryv1.RestockRequestUpdateResponse], error) {
 	teamID := req.Msg.GetTeamId()
 
+	// The supplier is asked BEFORE the row is locked — a call to another service must never run while this
+	// request is held FOR UPDATE, or a warehouse accepting the delivery waits out a network round-trip
+	// (audits/services/inventory_service/concurrency/RestockRequestUpdate.md). Whether the answer MATTERS —
+	// only a changed supplier is checked — can only be known under the lock, so it is judged there.
+	supplierAnswer := askSupplier(ctx, s.suppliers, teamID, req.Msg.GetSupplierId())
+
 	var rr inventory_service_models.RestockRequest
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -60,19 +66,18 @@ func (s *Service) RestockRequestUpdate(
 			// Only a CHANGE is validated. A full replace re-sends the supplier the form prefilled, so an
 			// unchanged id is the request PRESERVING a reference it already holds, not making a new one.
 			// Re-checking it would punish the person for something they did not do: SupplierDelete is a
-			// SOFT delete and supplierExists() requires `deleted = false`, so deleting a supplier would
+			// SOFT delete and SupplierIsLive() refuses a deleted one, so deleting a supplier would
 			// otherwise make every pending request that names it permanently un-editable — failing with
 			// "supplier not found in this team" about a field they never touched. Pointing a request at a
 			// deleted supplier is still refused; keeping one that predates the deletion is not.
 			unchanged := rr.SupplierID != nil && *rr.SupplierID == id
 
 			if !unchanged {
-				exists, checkErr := supplierExists(tx, teamID, id)
-				if checkErr != nil {
-					return checkErr
+				if supplierAnswer.err != nil {
+					return supplierAnswer.err
 				}
 
-				if !exists {
+				if !supplierAnswer.live {
 					return errRestockSupplierMissing
 				}
 			}
@@ -150,4 +155,21 @@ func (s *Service) RestockRequestUpdate(
 	return connect.NewResponse(&inventoryv1.RestockRequestUpdateResponse{
 		Request: restockRequestToProto(&rr),
 	}), nil
+}
+
+// supplierAnswer is supplier_service's answer about one supplier, taken before any lock.
+type supplierAnswer struct {
+	live bool
+	err  error
+}
+
+// askSupplier asks whether a supplier is live. No supplier (0) asks nothing.
+func askSupplier(ctx context.Context, suppliers SupplierChecker, teamID, supplierID uint64) supplierAnswer {
+	if supplierID == 0 {
+		return supplierAnswer{}
+	}
+
+	live, err := suppliers.SupplierIsLive(ctx, teamID, supplierID)
+
+	return supplierAnswer{live: live, err: err}
 }

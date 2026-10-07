@@ -169,8 +169,8 @@ var (
 	// Labels exist only once the goods have arrived (#207): a pending request has no placements to
 	// print, and a cancelled one never will. Refused as FailedPrecondition, not guessed.
 	errRestockNotFulfilled = errors.New("restock request is not fulfilled")
-	// The optional supplier must be one of the REQUESTING team's own (#124).
-	errRestockSupplierMissing = errors.New("supplier not found in this team")
+	// The optional supplier must be a live one, of any selling team (a-team-restocks-from-another-teams-supplier).
+	errRestockSupplierMissing = errors.New("supplier not found")
 	// Proto validation requires min_items 1, so this can only be a row that predates #124 or was
 	// written around the API — fulfilling it would receive nothing while claiming success.
 	errRestockNoItems = errors.New("restock request has no items")

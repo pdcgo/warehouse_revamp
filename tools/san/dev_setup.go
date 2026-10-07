@@ -163,12 +163,30 @@ func readDevSeeds() (devSeeds, error) {
 
 // setupDatabase is every data step of `dev setup`: the schema first, then the rows that need it.
 //
-// Each step is the SAME function its own command runs — `migrate up-all`, `seed dev`,
+// Each step is the SAME function its own command runs — `migrate up-all`, `supplier move`, `supplier backfill-figures`, `seed dev`,
 // `seed categories`, `region load-seed` — so setup cannot drift from doing them one at a time.
 func setupDatabase(ctx context.Context, db *sql.DB, target, password string, seeds devSeeds) error {
 	fmt.Println("→ migrate up-all")
 
 	err := migrateUpAll(ctx, db, target)
+	if err != nil {
+		return err
+	}
+
+	// Right after the schema: inventory_service's 00023 moved its suppliers aside, and until they are copied
+	// into supplier_service the screens show none (existing-suppliers-move-with-their-ids). Safe to re-run.
+	fmt.Println("→ supplier move")
+
+	err = moveSuppliersOn(ctx, db, target)
+	if err != nil {
+		return err
+	}
+
+	// The supplier figures of every restock accepted before RestockAccepted existed (past-accepts-are-backfilled-once).
+	// After the move, so a restock naming a moved supplier finds it. Once only — a second setup says so.
+	fmt.Println("→ supplier backfill-figures")
+
+	err = backfillFiguresOn(ctx, db, target)
 	if err != nil {
 		return err
 	}

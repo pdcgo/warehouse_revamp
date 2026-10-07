@@ -6,11 +6,12 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { supplierFixtures } from "../../../.storybook/supplierFixtures";
 import { SupplierSelect, description } from "./SupplierSelect";
 
-// Team 12 is a selling team — only a selling team has suppliers (only-a-selling-team-has-suppliers). Team
-// 13's supplier is in the fixtures too, and must never be offered here.
+// Team 12 is a selling team — only a selling team has suppliers (only-a-selling-team-has-suppliers). Other
+// teams' suppliers are in the fixtures too, and so is a deleted one of team 12's: neither is ever offered here.
 const TEAM = 12n;
-const suppliers = supplierFixtures.filter((s) => s.teamId === TEAM);
+const suppliers = supplierFixtures.filter((s) => s.teamId === TEAM && !s.deleted);
 const otherTeams = supplierFixtures.filter((s) => s.teamId !== TEAM);
+const deleted = supplierFixtures.filter((s) => s.teamId === TEAM && s.deleted);
 
 const meta = {
   title: "Components/Pickers/SupplierSelect",
@@ -44,6 +45,11 @@ export const OpensOnClickWithTheWholeList: Story = {
       await waitFor(() => expect(option).toBeVisible());
     }
     for (const supplier of otherTeams) {
+      await expect(screen.queryByTestId(`supplier-select-option-${supplier.id}`)).toBeNull();
+    }
+    // a-deleted-supplier-is-kept-for-its-figures: it leaves every picker.
+    await expect(deleted.length).toBeGreaterThan(0);
+    for (const supplier of deleted) {
       await expect(screen.queryByTestId(`supplier-select-option-${supplier.id}`)).toBeNull();
     }
   },

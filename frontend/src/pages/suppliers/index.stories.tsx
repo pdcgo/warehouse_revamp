@@ -10,13 +10,14 @@ import { SuppliersPage } from "./index";
 // ⚠ PROTOTYPE for design_accept — the supplier CRUD pass
 // (docs/business/supplier/context_clarify.md#proposed-design).
 //
-// The MANAGE page (manage-and-discover-are-two-pages): a selling team's own suppliers. The stub plays today's
-// server — it still demands a code — so every create below also proves the translation step supplies one.
+// The MANAGE page (manage-and-discover-are-two-pages): a selling team's own suppliers. The stub plays
+// supplier_service (supplierStub.ts) — the OWN scope, soft deletes, and a create only a selling team may make.
 
 const SUMBER = supplierFixture("PT Sumber Makmur");
 const CAHAYA = supplierFixture("CV Cahaya Abadi");
 const SINAR = supplierFixture("Toko Grosir Sinar");
 const MAKMUR_JAYA = supplierFixture("UD Makmur Jaya"); // team 13's — never on team 12's list
+const LAMA_TUTUP = supplierFixture("CV Lama Tutup"); // team 12's, deleted
 
 const SELLING_TEAM = 12n;
 const WAREHOUSE_TEAM = 11n;
@@ -52,8 +53,7 @@ export const AWarehouseTeam: Story = { beforeEach: standingIn(WAREHOUSE_TEAM) };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-// the-supplier-has-no-code · no-province-city-or-soft-delete: Name, Contact, Address — no Code, no City.
-// An old supplier's city and province are folded into its address, the same fold the move makes.
+// the-supplier-has-no-code · no-province-or-city: Name, Contact, Address — no Code, no City.
 export const TheDecidedColumns: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -61,11 +61,18 @@ export const TheDecidedColumns: Story = {
 
     await expect(within(table).queryByText("Code")).toBeNull();
     await expect(within(table).queryByText("City")).toBeNull();
-    await expect(canvas.getByTestId(`supplier-row-${SUMBER.id}`)).toHaveTextContent(
-      "Jl. Soekarno-Hatta 112, Bandung, Jawa Barat",
-    );
-    // Another selling team's supplier is not on this one's manage page.
+    await expect(canvas.getByTestId(`supplier-row-${SUMBER.id}`)).toHaveTextContent(SUMBER.address);
+  },
+};
+
+// The page lists THIS team's live suppliers only: another selling team's is Discover's question, and a deleted one
+// has left every list (a-deleted-supplier-is-kept-for-its-figures).
+export const OnlyThisTeamsLiveSuppliers: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
     await expect(canvas.queryByTestId(`supplier-row-${MAKMUR_JAYA.id}`)).toBeNull();
+    await expect(canvas.queryByTestId(`supplier-row-${LAMA_TUTUP.id}`)).toBeNull();
   },
 };
 
@@ -80,8 +87,7 @@ export const SearchesByName: Story = {
   },
 };
 
-// the-supplier-has-no-code: the form asks for a name, a contact, an address and a description. The stub
-// still refuses a supplier without a code — so this passing is the translation step making one up.
+// the-supplier-has-no-code: the form asks for a name, a contact, an address and a description — and nothing else.
 export const NewSupplierAsksNoCode: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -107,26 +113,28 @@ export const NewSupplierAsksNoCode: Story = {
   },
 };
 
-// Editing an old supplier: its address arrives FOLDED, and saving does not fold the city in a second time.
-export const EditKeepsTheFoldedAddress: Story = {
+// Edit re-opens the record pre-filled, and what is saved is what the row then shows.
+export const EditCorrectsTheAddress: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId(`edit-supplier-${SUMBER.id}`));
     const address = await screen.findByTestId("supplier-address");
-    await waitFor(() => expect(address).toHaveValue("Jl. Soekarno-Hatta 112, Bandung, Jawa Barat"));
+    await waitFor(() => expect(address).toHaveValue(SUMBER.address));
 
+    await userEvent.clear(address);
+    await userEvent.type(address, "Jl. Kopo 9, Bandung", { delay: 20 });
     await userEvent.click(screen.getByTestId("submit-supplier"));
 
     await waitFor(() => expect(screen.queryByTestId("supplier-address")).toBeNull());
-    const row = canvas.getByTestId(`supplier-row-${SUMBER.id}`);
-    await waitFor(() => expect(row).toHaveTextContent("Jl. Soekarno-Hatta 112, Bandung, Jawa Barat"));
-    await expect(row.textContent).not.toContain("Bandung, Jawa Barat, Bandung");
+    await waitFor(() =>
+      expect(canvas.getByTestId(`supplier-row-${SUMBER.id}`)).toHaveTextContent("Jl. Kopo 9, Bandung"),
+    );
   },
 };
 
-// no-province-city-or-soft-delete: delete confirms, says it is for good, and the supplier is gone.
-export const DeleteIsForGood: Story = {
+// a-deleted-supplier-is-kept-for-its-figures: delete confirms, says past restocks keep the name, and the supplier leaves the list.
+export const DeleteKeepsTheHistory: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
@@ -134,7 +142,7 @@ export const DeleteIsForGood: Story = {
 
     const confirm = await screen.findByTestId("confirm-action");
     await waitFor(() => expect(confirm).toBeVisible());
-    await expect(screen.getByText(/removed for good/)).toBeVisible();
+    await expect(screen.getByText(/past restocks and its figures keep its name/)).toBeVisible();
     await userEvent.click(confirm);
 
     await waitFor(() => expect(canvas.queryByTestId(`supplier-row-${SINAR.id}`)).toBeNull());

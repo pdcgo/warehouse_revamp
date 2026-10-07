@@ -18,6 +18,7 @@ import (
 	settlement_importer_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
 	settlement_v1 "github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	shipment_v1 "github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
+	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	team_v1 "github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
@@ -59,6 +60,9 @@ func InitializeApp() (*App, error) {
 		category_v1.NewService,
 		document_v1.NewService,
 		inventory_v1.NewService,
+		// Whether a restock's supplier is live — asked of supplier_service. See supplier_deps.go.
+		NewSupplierClient,
+		NewInventorySupplierChecker,
 		liability_v1.NewService,
 		settlement_v1.NewService,
 		// Who an imported shop row counts for — the shop's primary CS, asked over Connect under the
@@ -92,6 +96,12 @@ func InitializeApp() (*App, error) {
 		// whether a shop is the team's, is asked of the shop — see financial_account_deps.go.
 		financial_account_v1.NewService,
 		NewFinancialAccountShopChecker,
+		// The suppliers a selling team buys from, and their stores. Its one outside question, whether a team
+		// is a selling team, is asked of team_service — see supplier_deps.go.
+		supplier_v1.NewService,
+		NewSupplierSellingTeams,
+		// Its figures' replay seeks the fold's own subscription — see replay_broker.go.
+		NewSupplierReplayBroker,
 
 		NewServeMux,
 		NewServer,

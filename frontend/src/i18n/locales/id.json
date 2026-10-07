@@ -31,8 +31,10 @@
     "settlementReport": "Laporan Penyelesaian",
     "settlementImports": "Impor Penyelesaian",
     "financialAccounts": "Akun Keuangan",
+    "suppliers": "Pemasok",
     "mySupplier": "Pemasok Saya",
-    "discoverSupplier": "Temukan Pemasok"
+    "discoverSupplier": "Temukan Pemasok",
+    "supplierReport": "Laporan Pemasok"
   },
   "menu": {
     "theme": "Tema",
@@ -372,7 +374,7 @@
       },
       "suppliers": {
         "label": "Pemasok",
-        "reason": "data contoh — cara produk ditautkan ke toko pemasok belum diputuskan, dan belum ada server yang membaca pemasok tim lain"
+        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, yang belum dibangun, jadi toko yang menjualnya masih karangan"
       }
     }
   },
@@ -1438,7 +1440,7 @@
     "deleted": "Pemasok \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
     "deleteSupplier": "Hapus Pemasok",
-    "deleteConfirm": "Hapus \"{{name}}\" beserta salurannya? Pemasok dihapus permanen.",
+    "deleteConfirm": "Hapus \"{{name}}\"? Pemasok hilang dari daftar ini dan setiap pilihan — restok lama dan angkanya tetap memakai namanya.",
     "delete": "Hapus",
     "empty": "Tidak ada pemasok ditemukan.",
     "table": {
@@ -1471,8 +1473,8 @@
     "edit": "Ubah pemasok",
     "discover": {
       "title": "Temukan Pemasok",
-      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, tim, atau toko.",
-      "search": "Cari pemasok, tim, atau toko",
+      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko.",
+      "search": "Cari pemasok, alamat, atau toko",
       "typeAll": "Semua jenis saluran",
       "empty": "Belum ada pemasok.",
       "none": "Tidak ada pemasok yang cocok.",
@@ -1485,19 +1487,12 @@
         "contact": "Kontak"
       },
       "pending": {
-        "suppliers": {
-          "label": "Pemasok lintas tim",
-          "reason": "data contoh — belum ada server yang mencari pemasok semua tim; supplier_service yang akan"
-        },
-        "supplier": {
-          "label": "Pemasok ini",
-          "reason": "data contoh — belum ada server yang membaca pemasok tim lain beserta salurannya"
-        },
         "products": {
           "label": "Produk",
-          "reason": "data contoh — cara produk ditautkan ke saluran belum diputuskan"
+          "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun"
         }
-      }
+      },
+      "teamAll": "Semua tim"
     }
   },
   "supplierChannel": {
@@ -1543,18 +1538,15 @@
     },
     "edit": "Ubah saluran",
     "pending": {
-      "channelDescription": {
-        "label": "Deskripsi saluran",
-        "reason": "server saat ini belum punya kolomnya, jadi dibuang sampai supplier_service dibangun"
-      },
       "products": {
         "label": "Produk",
-        "reason": "data contoh — cara produk ditautkan ke saluran belum diputuskan, jadi baris ini karangan"
+        "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
       }
     },
     "tab": {
       "channels": "Saluran",
-      "products": "Produk"
+      "products": "Produk",
+      "statistics": "Statistik"
     },
     "products": {
       "product": "Produk",
@@ -1569,6 +1561,67 @@
       "typeAll": "Semua jenis saluran",
       "none": "Tidak ada saluran yang cocok."
     }
+  },
+  "supplierFigures": {
+    "restocked": "Direstok",
+    "restockedHint": "unit baik yang diterima ke stok",
+    "lost": "Hilang di pengiriman",
+    "lostHint": "unit yang kurang dalam paket yang diterima",
+    "broken": "Rusak di pengiriman",
+    "brokenHint": "unit yang tiba dalam keadaan rusak",
+    "brokenRate": "Tingkat rusak",
+    "brokenRateHint": "rusak ÷ semua unit yang diterima",
+    "units_one": "{{n}} unit",
+    "units_other": "{{n}} unit",
+    "rate": "{{rate}}%",
+    "rateBroken": "{{rate}}% rusak",
+    "line": {
+      "restocked": "Direstok {{n}} · {{value}}",
+      "lostBroken": "Hilang {{lost}} ({{lostRate}}) · rusak {{broken}}"
+    },
+    "col": {
+      "period": "Periode",
+      "product": "Produk",
+      "team": "Tim",
+      "restocked": "Direstok",
+      "lost": "Hilang di pengiriman",
+      "broken": "Rusak di pengiriman",
+      "brokenRate": "Tingkat rusak"
+    },
+    "everyTeam": "Semua tim",
+    "teamNumber": "Tim #{{id}}",
+    "rangeInvalid": "Pilih tanggal awal dan akhir — angka ini butuh keduanya.",
+    "productNumber": "Produk #{{id}}"
+  },
+  "supplierStats": {
+    "overTime": "Dari Waktu ke Waktu",
+    "byProduct": "Per Produk",
+    "empty": "Tidak ada restok dari pemasok ini pada periode ini.",
+    "noProducts": "Tidak ada produk pada periode ini.",
+    "emptyTeam": "Tim itu tidak merestok dari pemasok ini pada periode ini."
+  },
+  "supplierReport": {
+    "title": "Laporan Pemasok",
+    "subtitle": "Pemasok mana yang paling banyak direstok, dan mana yang paling banyak rusak atau hilang di jalan. Buka pemasok untuk melihat angkanya dari waktu ke waktu.",
+    "selectTeam": "Pilih tim untuk melihat laporan pemasok.",
+    "ranking": "Peringkat",
+    "rankBy": "Urutkan menurut",
+    "byValue": "Nilai Restok",
+    "byBrokenRate": "Tingkat Rusak",
+    "rankedName": "{{rank}}. {{name}}",
+    "empty": "Tidak ada restok dari pemasok mana pun pada periode ini.",
+    "col": {
+      "rank": "#",
+      "supplier": "Pemasok",
+      "keptBy": "Dikelola oleh"
+    },
+    "emptyTeam": "Tim itu tidak merestok apa pun pada periode ini.",
+    "search": "Cari pemasok, alamat, atau toko",
+    "none": "Tidak ada pemasok yang cocok.",
+    "supplierNumber": "Pemasok #{{id}}",
+    "deleted": "Dihapus",
+    "rateTooFew": "Kurang dari {{n}} unit pada periode ini — tidak diperingkat bersama yang lain",
+    "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas."
   },
   "teams": {
     "name": "Nama",

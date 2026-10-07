@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierChannelClient, supplierClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
+import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
+import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import {
   type ChannelFields,
   type SupplierFields,
@@ -17,9 +19,20 @@ import {
   supplierListRowData,
 } from "./adapt";
 
-// The supplier screens' reads (#176). Every one returns the DECIDED shape — `SupplierRecord`,
-// `SupplierChannelRecord` — through the translation step in adapt.ts, so no screen sees the old proto.
+// The supplier screens' reads (#176), against supplier_service (warehouse.supplier.v1). Every one returns
+// `SupplierRecord` / `SupplierChannelRecord` through the mapper in adapt.ts, so no screen sees the proto.
+//
+// READS CROSS TEAMS, WRITES DO NOT. SupplierDetail and SupplierChannelList answer for ANY team's live
+// supplier (another-team-sees-everything-of-a-supplier); a write answers NotFound for anything but the
+// caller's own team's. So a screen that reads a supplier decides for itself whether it may offer to edit it
+// — by comparing the supplier's `teamId` with the current team.
+//
+// `teamId` on every hook is the CALLER's team — the authorization scope — not the team whose supplier comes
+// back, and it stays in every key: the same request can be answerable for one caller and refused for
+// another, and caching them together would leak one team's answer to the other.
 
+// The suppliers THIS team keeps — the My Supplier page, and the restock form's picker. Another team's are
+// Discover's question (features/suppliers/discover.ts).
 export function useSuppliers(args: {
   teamId: bigint | undefined;
   q: string;
@@ -37,7 +50,7 @@ export function useSuppliers(args: {
     queryFn: async () => {
       const res = await supplierClient.supplierList({
         teamId: teamId!,
-        filter: { q },
+        filter: { q, scope: SupplierListScope.OWN },
         dataRequest: supplierListRowData(),
         page: { page, limit: pageSize },
       });
@@ -52,14 +65,10 @@ export function useSuppliers(args: {
 
 // Suppliers by id, for a caller that already HOLDS the ids — a restock naming its vendor.
 //
-// Distinct from useSupplier, and the difference is the point: SupplierDetail filters by the caller's
-// team, so a WAREHOUSE asking about the selling team's supplier gets NotFound and the screen shows
-// "Supplier #2". SupplierByIds does not filter by team, which is what lets the crew accepting a
-// delivery name the vendor printed on the carton in front of them.
-//
-// `teamId` here is the CALLER's team — the authorization scope — not the team whose suppliers come
-// back, so it stays in the query key: the same id can be answerable for one caller and refused for
-// another, and caching them together would leak one team's answer to the other.
+// Distinct from useSupplier, and the difference is the point: SupplierDetail answers a LIVE supplier only,
+// so a restock whose vendor was deleted since would read "Supplier #2". SupplierByIds returns it anyway,
+// marked `deleted` (a-deleted-supplier-is-kept-for-its-figures) — whoever keeps it — which is what lets the
+// crew accepting a delivery name the vendor printed on the carton in front of them.
 export function useSuppliersByIds(args: { teamId: bigint | undefined; supplierIds: bigint[] }) {
   const { teamId } = args;
   const supplierIds = [...new Set(args.supplierIds.filter((id) => id > 0n))].sort();
@@ -79,6 +88,8 @@ export function useSuppliersByIds(args: { teamId: bigint | undefined; supplierId
   });
 }
 
+// One LIVE supplier, whichever team keeps it — the manage detail and the discover detail read the same
+// record. A deleted or unknown id is NotFound.
 export function useSupplier(args: { teamId: bigint | undefined; supplierId: bigint }) {
   const { teamId, supplierId } = args;
 
@@ -93,12 +104,12 @@ export function useSupplier(args: { teamId: bigint | undefined; supplierId: bigi
   });
 }
 
-// A supplier's channels. Kept as its OWN query rather than folded into useSupplier: the two failed
-// independently before (a channel list error did not blank the supplier), and merging them would
-// make one request's failure hide the other's result.
+// A supplier's WHOLE store list, in one large page — the 200 the contract allows. Kept for the Products tab:
+// its sample rows (sampleProducts.ts) are made from every store, not from the window the Channels tab shows.
+// A supplier has a handful of stores, so the cap is not reached in practice.
 //
-// Channels are few per supplier, so one large page — the 200 the contract allows — reads them all. The Products
-// tab's sample rows are made from this whole list, and the Channels tab's ChannelBrowser pages it.
+// Kept as its OWN query rather than folded into useSupplier: the two fail independently (a store-list error
+// does not blank the supplier), and merging them would make one request's failure hide the other's result.
 export function useSupplierChannels(args: { teamId: bigint | undefined; supplierId: bigint }) {
   const { teamId, supplierId } = args;
 
@@ -114,6 +125,48 @@ export function useSupplierChannels(args: { teamId: bigint | undefined; supplier
       });
 
       return channelsFromList(res.items, res.ids);
+    },
+  });
+}
+
+// ONE PAGE of a supplier's stores, searched and filtered ON THE SERVER — the Channels tab
+// (the-channels-tab-searches-filters-and-pages). `q` matches the name, the link and the description;
+// `channelType` UNSPECIFIED is every type.
+export function useSupplierChannelPage(args: {
+  teamId: bigint | undefined;
+  supplierId: bigint;
+  q: string;
+  channelType: Marketplace;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, supplierId, q, channelType, page, pageSize } = args;
+
+  return useQuery({
+    // A search, a type and a page refine the same question (HARD RULE 10) — the browser keeps the rows up
+    // behind its RefreshOverlay while the next answer loads.
+    ...listQuery,
+    queryKey: key.suppliers(teamId, {
+      supplierId: supplierId.toString(),
+      channelsPaged: true,
+      q,
+      channelType,
+      page,
+      pageSize,
+    }),
+    enabled: teamId !== undefined && supplierId > 0n,
+    queryFn: async () => {
+      const res = await supplierChannelClient.supplierChannelList({
+        teamId: teamId!,
+        filter: { supplierId, q, channelType },
+        dataRequest: supplierChannelRowData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        channels: channelsFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
     },
   });
 }
@@ -145,11 +198,11 @@ export function useInvalidateSuppliers() {
 //     renaming a supplier cannot stale a cached restock row.
 //   - SupplierSelect, which shows a supplier's name outside this domain, fetches it itself in an
 //     effect and holds no query cache entry, so there is nothing there to invalidate.
-//   - The selling restock detail DOES cache one, but through `useSupplier` above — so it sits under
-//     this same `suppliers` prefix and a rename already reaches it.
+//   - The restock screens DO cache one, but through `useSuppliersByIds` above — so it sits under this
+//     same `suppliers` prefix and a rename already reaches it.
 //
 // A channel write invalidates the whole `suppliers` prefix rather than just the channel list, because
-// the channels are read as part of the supplier: the detail page's two queries share the prefix, and
+// the channels are read as part of the supplier: the detail page's queries share the prefix, and
 // splitting the invalidation would buy one avoided refetch in exchange for a rule to remember.
 
 interface SaveSupplierVars extends SupplierFields {
@@ -172,6 +225,8 @@ export function useSaveSupplier() {
   });
 }
 
+// SOFT (a-deleted-supplier-is-kept-for-its-figures): the supplier leaves every list and picker, and a past
+// restock still reads its name through SupplierByIds.
 export function useDeleteSupplier() {
   const invalidate = useInvalidateSuppliers();
 
@@ -204,6 +259,7 @@ export function useSaveSupplierChannel() {
   });
 }
 
+// SOFT too (a-store-delete-is-soft-too): the store leaves the Channels tab; a restock line still finds it.
 export function useDeleteSupplierChannel() {
   const invalidate = useInvalidateSuppliers();
 

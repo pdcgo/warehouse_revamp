@@ -950,12 +950,19 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         await call("inventory.v1.RackService/RackCreate", { teamId: warehouse.id, code });
       }
 
-      // A supplier owned by the BUYING team (1), never by the warehouse — so naming it on the accept
-      // screen is a genuine cross-team read and not an accident of both sides being the same team.
+      // A supplier kept by a SELLING team of its own — only a selling team has suppliers
+      // (only-a-selling-team-has-suppliers), and the buying root team is not one. Team 1 restocks from it
+      // (a-team-restocks-from-another-teams-supplier), and the warehouse names it: neither keeps it, so naming
+      // it on the accept screen is a genuine cross-team read and not an accident of two sides being one team.
+      const vendorTeam = await call("team.v1.TeamService/TeamCreate", {
+        type: "TEAM_TYPE_SELLING",
+        name: `E2E Vendor Team ${whCode}`,
+        teamCode: `VT${whCode}`.slice(0, 10),
+        ownerUserId: "1",
+      });
       const supplierName = "Sinar Jaya Textile";
-      const supplier = await call("inventory.v1.SupplierService/SupplierCreate", {
-        teamId: "1",
-        code: "E2E-ACC",
+      const supplier = await call("supplier.v1.SupplierService/SupplierCreate", {
+        teamId: vendorTeam.team.id,
         name: supplierName,
       });
 
@@ -981,8 +988,9 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(line).toBeVisible();
 
   // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs
-  // to team 1 and we are reading as the WAREHOUSE, which every other supplier read refuses. If this
-  // regresses to "Supplier #<id>", the crew at the door is back to matching a carton against a number.
+  // to a selling team and we are reading as the WAREHOUSE — by id, which still names a vendor deleted since
+  // the restock was raised. If this regresses to "Supplier #<id>", the crew at the door is back to matching a
+  // carton against a number.
   await expect(page.getByTestId("accept-supplier")).toHaveText(seeded.supplierName);
 
   // The count is DERIVED now (#206): the line seeds with the ordered 10 on ONE row with no shelf, so

@@ -19,11 +19,9 @@ import { rpcError } from "../../../api/clients";
 import type { SupplierChannelRecord } from "../../../features/suppliers/adapt";
 import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useTeam } from "../../../features/team/TeamContext";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { MarketplaceSelect } from "../../../components/pickers/MarketplaceSelect";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveSupplierChannel } from "../../../features/suppliers/queries";
-import { SUPPLIER_DETAIL_PENDING } from "../pending";
 
 // SupplierChannelFormDialog creates OR edits one CHANNEL of a supplier — one store it sells through
 // (the-supplier-lists-only-its-online-stores): a channel type, a name, a link and a description. There is
@@ -196,10 +194,7 @@ export function SupplierChannelFormDialog({
                   </Field.Root>
 
                   <Field.Root>
-                    <Field.Label>
-                      {t("supplierChannel.form.description")}
-                      <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="channelDescription" />
-                    </Field.Label>
+                    <Field.Label>{t("supplierChannel.form.description")}</Field.Label>
                     <Textarea
                       value={description}
                       rows={2}

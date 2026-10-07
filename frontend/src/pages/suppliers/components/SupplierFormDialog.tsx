@@ -22,8 +22,8 @@ import { useSaveSupplier } from "../../../features/suppliers/queries";
 // travels in the message body (the backend's use_scope reads it there, never a header).
 //
 // The DECIDED fields only — a name, a contact, an address, a description. No code
-// (the-supplier-has-no-code), no province or city (no-province-city-or-soft-delete): an old supplier's
-// city and province arrive already folded into its address, and saving keeps them there.
+// (the-supplier-has-no-code), no province or city (no-province-or-city) — a supplier moved from the old
+// server arrives with its city and province already folded into its address (existing-suppliers-move-with-their-ids).
 //
 // Two modes, one form:
 //  - create — `supplier` undefined; the dialog renders its own "New Supplier" trigger.

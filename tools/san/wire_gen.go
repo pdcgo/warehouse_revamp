@@ -40,6 +40,7 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 	documentServiceClient := NewDocumentClient(config, mainInternalHTTPClient)
 	eventSender := NewEventSender()
 	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, documentServiceClient, cacheManager, eventSender)
-	san := NewSan(db, service)
+	supplier_v1Service := NewSupplierFigures(db)
+	san := NewSan(db, service, supplier_v1Service)
 	return san, nil
 }

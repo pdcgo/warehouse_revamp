@@ -11,6 +11,10 @@
 3. other selling team can use other selling team supplier for their restock.
 4. only selling team that can have supplier.
 
+## Supplier Rule.
+1. each selling team can manage their own supplier.
+2. other selling team can use other selling team supplier when restock. its choose per product in restock. we talk further in restock.
+
 ## What Frontend Expected form this Service.
 frontend use this service for 2 page supplier.
 1. supplier managing page.
@@ -28,6 +32,7 @@ frontend use this service for 2 page supplier.
     - `contact`
     - `address`
     - `description`
+    - `deleted_at`
     - `updated_at`
     - `created_at`
 
@@ -63,6 +68,55 @@ frontend use this service for 2 page supplier.
     - `created_at`
 
 
-## Whats defer.
-- defining statistic
-- defining how we seed `supplier_channel_products`
+## How We Seed `supplier_channel_products`
+```mermaid
+stateDiagram-v2
+direction LR
+
+state "Restock Accepted Event" as accept
+state "`supplier_channel_products` table" as chprod
+
+accept-->chprod: add to table
+
+```
+
+
+# How We provide Analitical Data of Suppliers.
+
+## Smallest Grain Reports.
+### Daily Reports.
+1. `supplier_product_daily_reports`
+
+    field must exists.
+    - `id`, for primary key
+    - `day`
+    - `supplier_id`
+    - `product_id` 
+    - `team_id`
+
+    - `restock_count`
+    - `restock_valuation`
+    
+    - `shipping_lost_count`
+    - `shipping_lost_valuation`
+    - `shipping_broken_count`
+    - `shipping_broken_valuation`
+
+    - `last_updated`
+
+    composite unique:
+    - `day`
+    - `supplier_id`
+    - `product_id` 
+    - `team_id`
+
+
+
+# How Supplier Service Rpc Deliver Analytical Data.
+we adopt how settlement deliver analitical data. [see this](../settlement/analytic_context.md#how-rpc-api-deliver-analytical-data)
+
+## What Metric that existed.
+1. Daily
+2. Monthly
+3. Yearly
+5. Supplier Grouped

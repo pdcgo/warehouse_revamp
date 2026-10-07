@@ -10,6 +10,7 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ChannelsPanel } from "./components/ChannelsPanel";
 import { ProductBrowser } from "../../features/suppliers/ProductBrowser";
+import { SupplierStatistics } from "../../features/suppliers/SupplierStatistics";
 import { SUPPLIER_DETAIL_PENDING } from "./pending";
 
 function parseSupplierId(raw: string | undefined): bigint {
@@ -36,14 +37,18 @@ function Field({ label, value, testId }: { label: string; value: string; testId?
 }
 
 // SupplierDetailPage is the dedicated detail route for a supplier — a PAGE, not a dialog. The supplier's own
-// fields sit on top (a name, a contact, an address, a description); under them, two horizontal tabs
-// (supplier-detail-has-channels-and-products-tabs):
+// fields sit on top (a name, a contact, an address, a description); under them, three horizontal tabs
+// (supplier-detail-has-channels-and-products-tabs, the-figures-are-a-statistics-tab-and-a-supplier-report):
 //
-//   Channels — every store the supplier sells through, one list, each with its marketplace badge.
-//   Products — what the supplier sells, each with the channel it is bought from. ⚠ SAMPLE rows until the
-//              channel-product linking is designed (linking-products-is-deferred).
+//   Channels   — every store the supplier sells through, one list, each with its marketplace badge.
+//   Products   — what the supplier sells, each with the channel it is bought from. ⚠ SAMPLE rows until an
+//                accepted restock links a product to its store (restock-accepted-links-the-product-to-its-channel).
+//   Statistics — what was restocked from it, lost and broken on the way, over time and by product — folded from the
+//                restock's accept (the-figures-screens-are-accepted).
 //
-// Reached by clicking a supplier row.
+// Reached by clicking a supplier row. ⚠ SupplierDetail answers for ANY team's live supplier (reads cross
+// teams), so this page does not assume the supplier is ours: the store actions are offered only when the
+// current team keeps it — another team's, reached by a typed URL, reads like the discover detail.
 export function SupplierDetailPage() {
   const { supplierId } = useParams();
   const navigate = useNavigate();
@@ -51,10 +56,6 @@ export function SupplierDetailPage() {
   const { t } = useTranslation();
 
   const id = parseSupplierId(supplierId);
-  // Only a selling team has suppliers (only-a-selling-team-has-suppliers), so only a selling team edits
-  // their channels. The backend interceptor is the real boundary either way.
-  const canManage = current?.teamType === TeamType.SELLING;
-
   const teamId = current?.teamId;
 
   // Two queries, not one. They failed independently before — a channel-list error did not blank the
@@ -75,8 +76,14 @@ export function SupplierDetailPage() {
         : "";
 
   // The whole list — the Products tab's sample rows are made from it. The Channels tab reads its own searched,
-  // filtered page of the same query (one request).
+  // filtered page from the server (ChannelBrowser).
   const channels = channelsQuery.data ?? [];
+
+  // Only the team that KEEPS the supplier writes to it — supplier_service answers NotFound to anyone else — and
+  // only a selling team keeps suppliers (only-a-selling-team-has-suppliers). The server is the real boundary
+  // either way; this keeps the page from offering what it would refuse.
+  const canManage =
+    current?.teamType === TeamType.SELLING && supplier !== null && supplier.teamId === current.teamId;
 
   const back = (
     <Button
@@ -152,6 +159,9 @@ export function SupplierDetailPage() {
               <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="products" />
             </HStack>
           </Tabs.Trigger>
+          <Tabs.Trigger value="statistics" data-testid="supplier-tab-statistics">
+            {t("supplierChannel.tab.statistics")}
+          </Tabs.Trigger>
         </Tabs.List>
 
         <Tabs.Content value="channels">
@@ -160,6 +170,10 @@ export function SupplierDetailPage() {
 
         <Tabs.Content value="products">
           <ProductBrowser channels={channels} />
+        </Tabs.Content>
+
+        <Tabs.Content value="statistics">
+          <SupplierStatistics supplierId={supplier.id} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

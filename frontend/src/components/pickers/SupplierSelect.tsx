@@ -3,6 +3,7 @@ import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError, supplierClient } from "../../api/clients";
 import { type SupplierRecord, suppliersFromList, supplierListRowData } from "../../features/suppliers/adapt";
+import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
 
 // How many suppliers are loaded. A team buys from a handful — dozens at most — so the whole list is
 // fetched and filtered in the browser.
@@ -15,7 +16,7 @@ import { type SupplierRecord, suppliersFromList, supplierListRowData } from "../
 const SUPPLIER_LIMIT = 200;
 
 export interface SupplierSelectProps {
-  /** The team whose suppliers to list — a supplier is team-scoped, so this is required. */
+  /** The team whose OWN suppliers to list — a deleted one is never offered (a-deleted-supplier-is-kept-for-its-figures). */
   teamId: bigint;
   /** Selected supplier id (0n = none). */
   value?: bigint;
@@ -76,6 +77,8 @@ export function SupplierSelect({
     supplierClient
       .supplierList({
         teamId,
+        // This team's own — another team's supplier is Discover's question, not this picker's.
+        filter: { scope: SupplierListScope.OWN },
         dataRequest: supplierListRowData(),
         page: { page: 1, limit: SUPPLIER_LIMIT },
       })

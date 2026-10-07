@@ -1,15 +1,13 @@
 import type { PendingList, PendingPart } from "../../features/pending/registry";
 
-// WHAT THE DISCOVER DETAIL CANNOT DO YET. Two things, both invented rows: the supplier itself — no server reads
-// another team's supplier with its channels yet, so it comes from the discover sample
-// (features/suppliers/discover.ts) — and its products, which wait on the channel-product linking
-// (linking-products-is-deferred). See `features/pending`.
+// WHAT THE DISCOVER DETAIL CANNOT DO YET. One thing: its Products tab is invented rows — a product is linked to a
+// store when a restock bought there is accepted (restock-accepted-links-the-product-to-its-channel), and restock lines
+// name no store yet. The supplier, its team, its stores and its figures are real reads. See `features/pending`.
 
 /** One unwired part of the page. The id is also its i18n key (`suppliers.discover.pending.<id>`). */
-export type DiscoverSupplierDetailPendingId = "supplier" | "products";
+export type DiscoverSupplierDetailPendingId = "products";
 
 const PARTS: PendingPart<DiscoverSupplierDetailPendingId>[] = [
-  { id: "supplier", kind: "sample" },
   { id: "products", kind: "sample" },
 ];
 

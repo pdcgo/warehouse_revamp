@@ -29,10 +29,11 @@ export const ROOT_USER_ID = "1";
 //
 // SEEDED FIRST is a contract, not a preference: team_service seeds team 1, and user_service's root-user
 // seed puts ROLE_ROOT *in team 1*. There is no cross-service foreign key to enforce that, so the wrong
-// order produces a role pointing at a team that does not exist yet. Everything after them is
-// independent by design (HARD RULE 3), so discovery order is fine.
+// order produces a role pointing at a team that does not exist yet. inventory_service follows them: its
+// 00023 frees the table names supplier_service's 00001 creates (the-supplier-gets-its-own-service).
+// Everything after them is independent by design (HARD RULE 3), so discovery order is fine.
 function servicesToMigrate(): string[] {
-  const seededFirst = ["team_service", "user_service"];
+  const seededFirst = ["team_service", "user_service", "inventory_service"];
 
   const discovered = readdirSync("../backend/services", { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.endsWith("_service"))

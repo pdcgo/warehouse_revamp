@@ -117,6 +117,9 @@ const DiscoverSuppliersPage = lazy(() =>
 const DiscoverSupplierDetailPage = lazy(() =>
   import("./pages/supplier-discover-detail").then((m) => ({ default: m.DiscoverSupplierDetailPage })),
 );
+const SupplierReportPage = lazy(() =>
+  import("./pages/supplier-report").then((m) => ({ default: m.SupplierReportPage })),
+);
 const RacksPage = lazy(() => import("./pages/racks").then((m) => ({ default: m.RacksPage })));
 const BatchesPage = lazy(() => import("./pages/batches").then((m) => ({ default: m.BatchesPage })));
 const BatchDetailPage = lazy(() =>
@@ -357,6 +360,9 @@ export const router = createBrowserRouter([
       // (manage-and-discover-are-two-pages). "discover" is a static segment, so it outranks :supplierId.
       { path: "inventories/suppliers/discover", element: <DiscoverSuppliersPage /> },
       { path: "inventories/suppliers/discover/:supplierId", element: <DiscoverSupplierDetailPage /> },
+      // Suppliers ranked by what was restocked from them (the-figures-are-a-statistics-tab-and-a-supplier-report).
+      // "report" is static too, so it outranks :supplierId the same way.
+      { path: "inventories/suppliers/report", element: <SupplierReportPage /> },
       // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
       // only, but the route is open and the server's policy is what actually decides.
       { path: "inventories/racks", element: <RacksPage /> },

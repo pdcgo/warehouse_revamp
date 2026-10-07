@@ -32,8 +32,8 @@ import { SupplierFormDialog } from "./components/SupplierFormDialog";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 // SuppliersPage manages the CURRENT team's suppliers — the vendors it buys stock from
-// (docs/business/supplier, manage-and-discover-are-two-pages: this is the MANAGE page; discovering other
-// teams' suppliers is a page of its own, after the CRUD pass).
+// (docs/business/supplier, manage-and-discover-are-two-pages: this is the MANAGE page; searching every team's
+// suppliers is Discover Suppliers, a page of its own).
 //
 // Only a selling team has suppliers (only-a-selling-team-has-suppliers), so only a selling team gets New,
 // Edit and Delete. Every RPC carries `current.teamId` in its body — the team is the scope.
@@ -104,7 +104,7 @@ export function SuppliersPage() {
 
         <ConfirmDialog
           title={t("suppliers.deleteSupplier")}
-          // A hard delete (no-province-city-or-soft-delete): the supplier and its channels are gone.
+          // A soft delete (a-deleted-supplier-is-kept-for-its-figures): gone from this list and every picker, kept for past restocks and the figures.
           message={t("suppliers.deleteConfirm", { name: supplier.name })}
           confirmLabel={t("suppliers.delete")}
           onConfirm={() => remove(supplier)}

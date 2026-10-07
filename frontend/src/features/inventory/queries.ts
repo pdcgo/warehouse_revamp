@@ -17,6 +17,7 @@ import {
   productsFromList,
 } from "../products/adapt";
 import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
+import { supplierByIdsRowData, suppliersFromByIds } from "../suppliers/adapt";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { orderListRowData, ordersFromList } from "../orders/adapt";
 import { restocksFromList, restockListRowData } from "../restock/adapt";
@@ -631,14 +632,21 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
 
       // Restock info (#218): the supplier who delivered it, and who accepted it — names resolved
       // best-effort, an unknown id just leaves "".
+      //
+      // SupplierByIds, not SupplierDetail: the vendor is a SELLING team's supplier read from the warehouse, and
+      // it may have been deleted since the delivery — by-ids still answers with it, marked
+      // (a-deleted-supplier-is-kept-for-its-figures), so a past batch keeps its vendor's name.
       let supplierName = "";
       if (batch.supplierId > 0n) {
         try {
-          const s = await supplierClient.supplierDetail({
-            teamId: warehouseId!,
-            supplierId: batch.supplierId,
-          });
-          supplierName = s.supplier?.name ?? "";
+          const found = suppliersFromByIds(
+            await supplierClient.supplierByIds({
+              teamId: warehouseId!,
+              filter: { ids: [batch.supplierId] },
+              dataRequest: supplierByIdsRowData(),
+            }),
+          );
+          supplierName = found.get(batch.supplierId.toString())?.name ?? "";
         } catch {
           supplierName = "";
         }

@@ -24,9 +24,9 @@ const PARTS: PendingPart<DiscoverDetailPendingId>[] = [
   // A by-ids row carries the cover and not the image list; the list comes from ProductDetail, which
   // answers only the owning team.
   { id: "gallery", kind: "missing" },
-  // Which supplier stores list it — supplier_channel_products read backwards. The table waits on
-  // linking-products-is-deferred and no cross-team supplier read exists, so the rows are picked from the
-  // supplier discover pages' own sample (sampleSuppliers.ts).
+  // Which supplier stores list it — supplier_channel_products read backwards. That table waits on an accepted
+  // restock linking the product to its store (restock-accepted-links-the-product-to-its-channel), so the LINKS are
+  // invented — picked from the real suppliers Discover Suppliers reads (sampleSuppliers.ts).
   { id: "suppliers", kind: "sample" },
 ];
 

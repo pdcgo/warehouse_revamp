@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/events/v1/event.proto.
  */
 export const file_warehouse_events_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIssECgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEiWQoNTWVtYmVyUmVtb3ZlZBIPCgd0ZWFtX2lkGAEgASgEEg8KB3VzZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FIq1GBAKDm1lbWJlci1yZW1vdmVkIrYDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgDEg8KB2JhbGFuY2UYCyABKAMSEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIusBCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEg8KB3JldmVudWUYAyABKAMSDAoEY29ncxgEIAEoAxIVCg1zaGlwcGluZ19jb3N0GAUgASgDEhIKCmNvc3Rfa25vd24YBiABKAgSFAoMd2FyZWhvdXNlX2lkGAcgASgEEjMKBWxpbmVzGAggAygLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlclBsYWNlZExpbmUSEAoIYWN0b3JfaWQYCSABKAQ6Eoq1GA4KDG9yZGVyLXBsYWNlZCJiCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAMiXAoOT3JkZXJDYW5jZWxsZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBDoVirUYEQoPb3JkZXItY2FuY2VsbGVkOmYKDGV2ZW50X2NvbmZpZxIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxjRhgMgASgLMiAud2FyZWhvdXNlLmV2ZW50cy52MS5FdmVudENvbmZpZ1ILZXZlbnRDb25maWdCTFpKZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9ldmVudHMvdjE7ZXZlbnRzdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
+  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIo4FCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkoKFXNldHRsZW1lbnRfbG9nX3Bvc3RlZBisAiABKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlNldHRsZW1lbnRMb2dQb3N0ZWRIABJBChByZXN0b2NrX2FjY2VwdGVkGJADIAEoCzIkLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0FjY2VwdGVkSAAaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQhAKB21lc3NhZ2USBbpIAggBIlkKDU1lbWJlclJlbW92ZWQSDwoHdGVhbV9pZBgBIAEoBBIPCgd1c2VyX2lkGAIgASgEEhAKCGFjdG9yX2lkGAMgASgEOhSKtRgQCg5tZW1iZXItcmVtb3ZlZCK2AwoTU2V0dGxlbWVudExvZ1Bvc3RlZBIOCgZsb2dfaWQYASABKAQSEQoJdW5pcXVlX2lkGAIgASgJEhAKCG9yZGVyX2lkGAMgASgEEg8KB3Nob3BfaWQYBCABKAQSDwoHdGVhbV9pZBgFIAEoBBIQCghhY3Rvcl9pZBgGIAEoBBIgChhvcmRlcl9jcmVhdGVkX2J5X3VzZXJfaWQYByABKAQSQAoPc2V0dGxlbWVudF90eXBlGAggASgOMicud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU2V0dGxlbWVudFR5cGUSOAoLc291cmNlX3R5cGUYCSABKA4yIy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5Tb3VyY2VUeXBlEg4KBmNoYW5nZRgKIAEoAxIPCgdiYWxhbmNlGAsgASgDEhEKCXBvc3RlZF9vbhgMIAEoCRITCgtvY2N1cnJlZF9vbhgNIAEoCRITCgtyZXZlcnNlc19pZBgOIAEoBBIMCgRub3RlGA8gASgJEg8KB3VzZXJfaWQYECABKAQ6G4q1GBcKFXNldHRsZW1lbnQtbG9nLXBvc3RlZCLrAQoLT3JkZXJQbGFjZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIPCgdyZXZlbnVlGAMgASgDEgwKBGNvZ3MYBCABKAMSFQoNc2hpcHBpbmdfY29zdBgFIAEoAxISCgpjb3N0X2tub3duGAYgASgIEhQKDHdhcmVob3VzZV9pZBgHIAEoBBIzCgVsaW5lcxgIIAMoCzIkLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRMaW5lEhAKCGFjdG9yX2lkGAkgASgEOhKKtRgOCgxvcmRlci1wbGFjZWQiYgoPT3JkZXJQbGFjZWRMaW5lEhIKCnByb2R1Y3RfaWQYASABKAQSFgoOb3duaW5nX3RlYW1faWQYAiABKAQSEAoIcXVhbnRpdHkYAyABKA0SEQoJdW5pdF9jb3N0GAQgASgDIlwKDk9yZGVyQ2FuY2VsbGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FYq1GBEKD29yZGVyLWNhbmNlbGxlZCLHAQoPUmVzdG9ja0FjY2VwdGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSEwoLc3VwcGxpZXJfaWQYBCABKAQSEwoLYWNjZXB0ZWRfb24YBSABKAkSNwoFbGluZXMYBiADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tBY2NlcHRlZExpbmU6Foq1GBIKEHJlc3RvY2stYWNjZXB0ZWQiqAEKE1Jlc3RvY2tBY2NlcHRlZExpbmUSDwoHaXRlbV9pZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhUKDW9yZGVyZWRfY291bnQYAyABKAMSEwoLdG90YWxfcHJpY2UYBCABKAMSFgoOYWNjZXB0ZWRfY291bnQYBSABKAMSFAoMYnJva2VuX2NvdW50GAYgASgDEhIKCmxvc3RfY291bnQYByABKAM6ZgoMZXZlbnRfY29uZmlnEh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNGGAyABKAsyIC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Q29uZmlnUgtldmVudENvbmZpZ0JMWkpnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V2ZW50cy92MTtldmVudHN2MWIGcHJvdG8z", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
 
 /**
  * EventConfig declares, ON THE VARIANT ITSELF, which Pub/Sub topic that event belongs to. The topic
@@ -124,7 +124,8 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
    */
   message: {
     /**
-     * Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399.
+     * Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
+     * inventory 400–499.
      *
      * @generated from field: warehouse.events.v1.MemberRemoved member_removed = 100;
      */
@@ -148,6 +149,12 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
      */
     value: SettlementLogPosted;
     case: "settlementLogPosted";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.RestockAccepted restock_accepted = 400;
+     */
+    value: RestockAccepted;
+    case: "restockAccepted";
   } | { case: undefined; value?: undefined };
 };
 
@@ -516,6 +523,133 @@ export type OrderCancelled = Message<"warehouse.events.v1.OrderCancelled"> & {
  */
 export const OrderCancelledSchema: GenMessage<OrderCancelled> = /*@__PURE__*/
   messageDesc(file_warehouse_events_v1_event, 6);
+
+/**
+ * RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.
+ *
+ * Published by inventory_service after RestockRequestFulfill's transaction commits. supplier_service folds it into a
+ * supplier's figures (the-report-is-processed-like-settlement) — a consumer downstream of the accept, which must never
+ * be able to fail it.
+ *
+ * IT CARRIES THE COUNTS AND THE PRICE, not just an id (each-figure-is-read-at-the-accept): every figure is what the
+ * accept knew, and a REPLAY must fold the historical fact, never the restock as it reads later.
+ *
+ * ⚠ `event_id` is `restock-accepted:<restock_id>` — a restock is accepted once, so a republish, a replay and the
+ * backfill (past-accepts-are-backfilled-once) all collide in the fold's dedup.
+ *
+ * @generated from message warehouse.events.v1.RestockAccepted
+ */
+export type RestockAccepted = Message<"warehouse.events.v1.RestockAccepted"> & {
+  /**
+   * @generated from field: uint64 restock_id = 1;
+   */
+  restockId: bigint;
+
+  /**
+   * The SELLING team that bought — the figures' `team_id` (the-report-is-keyed-by-team-not-by-store).
+   *
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * The warehouse team that counted it.
+   *
+   * @generated from field: uint64 warehouse_id = 3;
+   */
+  warehouseId: bigint;
+
+  /**
+   * The RESTOCK's supplier, 0 = none — every line counts for it until restock lines name a store
+   * (the-supplier-comes-from-the-restock-until-lines-name-a-store). With 0 there is nothing to fold.
+   *
+   * @generated from field: uint64 supplier_id = 4;
+   */
+  supplierId: bigint;
+
+  /**
+   * YYYY-MM-DD — the accept's JAKARTA day, the day the figures bucket on. A string, so no consumer re-derives a day
+   * from an instant in some other timezone.
+   *
+   * @generated from field: string accepted_on = 5;
+   */
+  acceptedOn: string;
+
+  /**
+   * @generated from field: repeated warehouse.events.v1.RestockAcceptedLine lines = 6;
+   */
+  lines: RestockAcceptedLine[];
+};
+
+/**
+ * Describes the message warehouse.events.v1.RestockAccepted.
+ * Use `create(RestockAcceptedSchema)` to create a new message.
+ */
+export const RestockAcceptedSchema: GenMessage<RestockAccepted> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 7);
+
+/**
+ * One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
+ * ordered ≈ accepted + lost + broken (each-figure-is-read-at-the-accept).
+ *
+ * @generated from message warehouse.events.v1.RestockAcceptedLine
+ */
+export type RestockAcceptedLine = Message<"warehouse.events.v1.RestockAcceptedLine"> & {
+  /**
+   * restock_request_items.id
+   *
+   * @generated from field: uint64 item_id = 1;
+   */
+  itemId: bigint;
+
+  /**
+   * The restocking team's product.
+   *
+   * @generated from field: uint64 product_id = 2;
+   */
+  productId: bigint;
+
+  /**
+   * Units ordered on the line, and the line's total as typed — what the supplier charged. A figure's value is
+   * units × total ÷ ordered, so the line's three values add back to its total without a rounded unit price.
+   *
+   * @generated from field: int64 ordered_count = 3;
+   */
+  orderedCount: bigint;
+
+  /**
+   * @generated from field: int64 total_price = 4;
+   */
+  totalPrice: bigint;
+
+  /**
+   * Units accepted as good stock — the batch's sellable count.
+   *
+   * @generated from field: int64 accepted_count = 5;
+   */
+  acceptedCount: bigint;
+
+  /**
+   * Units that arrived broken.
+   *
+   * @generated from field: int64 broken_count = 6;
+   */
+  brokenCount: bigint;
+
+  /**
+   * Units short in the box — the accept's LOST damage type.
+   *
+   * @generated from field: int64 lost_count = 7;
+   */
+  lostCount: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.RestockAcceptedLine.
+ * Use `create(RestockAcceptedLineSchema)` to create a new message.
+ */
+export const RestockAcceptedLineSchema: GenMessage<RestockAcceptedLine> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 8);
 
 /**
  * 50001 — the number warehouse.event_base.v1 held before it was removed

@@ -33,7 +33,7 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
-import { useSuppliers } from "../../features/suppliers/queries";
+import { useSuppliersByIds } from "../../features/suppliers/queries";
 import {
   useRestockOngoing,
   useRestockPeople,
@@ -142,16 +142,22 @@ export function RestockSellingPage() {
   const createdBy = useRestockPeople({ teamId, role: RestockActorRole.CREATED });
   const acceptedBy = useRestockPeople({ teamId, role: RestockActorRole.ACCEPTED });
 
-  // The two id → name lookups this screen's columns need. Both are ordinary paged lists read once
-  // and turned into maps, the same way the products screen resolves its warehouses: the list RPC's
-  // GENERAL slice carries the RESTOCK's own name, not its supplier's or its destination's.
+  // The two id → name lookups this screen's columns need: the list RPC's GENERAL slice carries the
+  // RESTOCK's own name, not its supplier's or its destination's. The warehouses are an ordinary paged list
+  // read once and turned into a map, the same way the products screen resolves them.
   const warehouses = useTeams({
     teamType: TeamType.WAREHOUSE,
     page: 1,
     pageSize: NAME_LOOKUP_SIZE,
     reference: true,
   });
-  const suppliers = useSuppliers({ teamId, q: "", page: 1, pageSize: NAME_LOOKUP_SIZE });
+  // The suppliers are resolved BY ID, for the rows on this page — not from this team's supplier list. A
+  // restock may name another selling team's supplier (a-team-restocks-from-another-teams-supplier), or one
+  // deleted since (a-deleted-supplier-is-kept-for-its-figures); SupplierByIds names both, the list neither.
+  const suppliers = useSuppliersByIds({
+    teamId,
+    supplierIds: (query.data?.requests ?? []).map((request) => request.supplierId),
+  });
 
   // Keyed to the whole TEAM, not just its name: the Destination cell renders the shared TeamItem
   // (owner), which wants the avatar and the type badge as well.
@@ -163,8 +169,8 @@ export function RestockSellingPage() {
 
   const supplierNames = useMemo(() => {
     const out: Record<string, string> = {};
-    for (const supplier of suppliers.data?.suppliers ?? []) {
-      out[supplier.id.toString()] = supplier.name;
+    for (const [id, supplier] of suppliers.data ?? []) {
+      out[id] = supplier.name;
     }
     return out;
   }, [suppliers.data]);

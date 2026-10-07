@@ -82,6 +82,8 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`dev run`](#dev-run) | Start the containers, the API and the UI in one terminal — Ctrl-C stops all of it |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
+| [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
+| [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
@@ -181,7 +183,10 @@ sequenceDiagram
 dependency order, asking only for the database. The order is a **contract, not a preference**:
 `team_service` seeds team 1 and `user_service`'s root-user seed puts `ROLE_ROOT` *in team 1*. There
 is no cross-service foreign key to enforce it — a service owns its own tables — so the wrong order
-produces a role pointing at a team that does not exist yet.
+produces a role pointing at a team that does not exist yet. `inventory_service` comes third: its `00023`
+renames its old supplier tables to `legacy_*`, freeing the names `supplier_service`'s `00001` creates —
+every service shares one database ([the-supplier-gets-its-own-service](../business/supplier/context_decision.md#the-supplier-gets-its-own-service)).
+A test pins the order (`TestMigrationOrderPinsTheDependencies`).
 
 ### Errors you should expect
 
@@ -291,12 +296,14 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 2 | `docker compose --profile pubsub up -d --wait` — Postgres, Redis and the Pub/Sub emulator | |
 | 3 | the emulator's topics and subscriptions | [`pubsub ensure --project warehouse-dev --emulator`](#pubsub-ensure) |
 | 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
-| 5 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller` | [`seed dev`](#seed) |
-| 6 | the product-category tree | [`seed categories`](#seed) |
-| 7 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
-| 8 | `npm install` in `frontend/` | |
+| 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
+| 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
+| 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller` | [`seed dev`](#seed) |
+| 8 | the product-category tree | [`seed categories`](#seed) |
+| 9 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
+| 10 | `npm install` in `frontend/` | |
 
-Steps 3–7 call **the same function** as their own command, so setup cannot drift from running them
+Steps 3–9 call **the same function** as their own command, so setup cannot drift from running them
 one at a time. Steps 2 and 3 are the same ones [`dev run`](#dev-run) starts with — see
 [the emulator and its topics](#the-emulator-and-its-topics).
 
@@ -313,7 +320,9 @@ flowchart TD
     S --> D["docker compose --profile pubsub up -d --wait"]
     D --> E["pubsub ensure — the emulator's topics"]
     E --> M["migrate up-all"]
-    M --> SD["seed dev"]
+    M --> SM["supplier move"]
+    SM --> SB["supplier backfill-figures"]
+    SB --> SD["seed dev"]
     SD --> SC["seed categories"]
     SC --> RG["region load-seed"]
     RG --> N["npm install"]
@@ -465,6 +474,133 @@ every screen but placing an order works without it.
 | `api exited (exit status 1) — stopped the rest` | Read the `api \|` lines above it. `failed to connect … :5433` means Postgres is down. A bind error on :8080 means the stack is already running somewhere |
 | `ui exited (exit status 1) — stopped the rest` | Read the `ui \|` lines. `Port 5174 is already in use` comes from vite's `strictPort` |
 | `start ui: exec: "npm": executable file not found` | Node is not installed or not on `PATH` |
+
+---
+
+## `supplier move`
+
+Copies every supplier and store out of inventory_service and into supplier_service, **keeping each id** — restocks
+and batches hold those ids ([existing-suppliers-move-with-their-ids](../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
+One-shot, and safe to run again: a row already moved is skipped. [`dev setup`](#dev-setup) runs it after migrating.
+
+```sh
+go run ./tools/san supplier move                     # prompts: Local or Production
+go run ./tools/san supplier move --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+⚠ **Run it right after `migrate up-all`, before anyone creates a supplier.** A supplier created first takes its
+id from supplier_service's new sequence, and that id may be one a legacy row still needs. The move then refuses —
+see the errors below — rather than overwrite or skip.
+
+⚠ **A hand-written INSERT, against [HARD RULE 3b](../../CLAUDE.md)'s default.** A command normally calls the RPC
+handler; no handler can create a row under a chosen id, and keeping the ids is the whole point. It copies rows that
+already passed their own rules — it is not an operation on the domain.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san supplier move
+  participant L as legacy_suppliers, legacy_supplier_channels
+  participant S as suppliers, supplier_channels
+  SAN->>L: read every row — deleted ones too
+  Note over SAN: fold — city and province into the address, an offline store into its supplier, code dropped
+  SAN->>S: read what already sits under the moving ids
+  alt a DIFFERENT row under a moving id
+    SAN-->>SAN: refuse, the clash named — nothing written
+  else
+    SAN->>S: INSERT each row not there yet, its id kept
+    SAN->>S: set both id sequences past the largest id
+  end
+  Note over SAN,S: one transaction
+```
+
+| legacy | becomes |
+| --- | --- |
+| `address`, `city`, `province` | one `address`, joined with ", " ([no-province-or-city](../business/supplier/context_decision.md#no-province-or-city)) |
+| `deleted = true` | `deleted_at` = the row's `updated_at` — the flag had no time ([a-deleted-supplier-is-kept-for-its-figures](../business/supplier/context_decision.md#a-deleted-supplier-is-kept-for-its-figures)) |
+| `code` | dropped ([the-supplier-has-no-code](../business/supplier/context_decision.md#the-supplier-has-no-code)) |
+| an **online** store | a store: marketplace → `channel_type` (`other` when it had none), `url` → `uri`, its contact and location kept in `description` |
+| an **offline** store | folded into its supplier: contact and location fill the supplier's when empty, else are appended to its description ([the-supplier-lists-only-its-online-stores](../business/supplier/context_decision.md#the-supplier-lists-only-its-online-stores)) |
+
+A row is "already there" when the same id holds the same supplier (team and name) or store (supplier and name).
+
+### Output
+
+```
+[Database Local] suppliers: 14 moved (2 of them deleted), 0 already there
+[Database Local] stores: 21 moved, 0 already there, 3 offline folded into their supplier
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `read legacy_suppliers (has inventory_service migrated to 00023?)` | The database is behind. Run [`migrate up-all`](#migrate) first |
+| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber", now "…")` | A supplier was created in supplier_service before the move ran, under an id a legacy row needs. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
+
+---
+
+## `supplier backfill-figures`
+
+Folds every restock accepted before *Restock Accepted* existed into the supplier figures, through supplier_service's
+own fold ([past-accepts-are-backfilled-once](../business/supplier/context_decision.md#past-accepts-are-backfilled-once)).
+**Once**: a second run folds nothing and says so. [`dev setup`](#dev-setup) runs it after the supplier move.
+
+```sh
+go run ./tools/san supplier backfill-figures                     # prompts: Local or Production
+go run ./tools/san supplier backfill-figures --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+It calls the fold, never a hand-written INSERT ([HARD RULE 3b](../../CLAUDE.md)), with the event the accept itself builds
+(`inventory_v1.RestockAcceptedEvent`) — so a backfilled restock is folded exactly as a live one would have been.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san supplier backfill-figures
+  participant INV as restock_requests and their items
+  participant SUP as supplier_service fold
+  SAN->>SUP: figures_backfilled set? then stop — already backfilled
+  SAN->>SUP: read figures_live_since — the earliest accept the webhook folded
+  loop 500 accepted restocks naming a supplier at a time, oldest first
+    SAN->>INV: the restocks, their lines, each line's damaged units
+    SAN->>SUP: fold each — skipped when accepted at or after figures_live_since, or already claimed
+  end
+  SAN->>SUP: set figures_backfilled
+```
+
+| guard | stops |
+| --- | --- |
+| `figures_live_since` | folding a restock the broker carried — the live fold's dedup rows are pruned after 45 days, this key is not |
+| the dedup claim, `restock-accepted:<id>` | folding one restock twice, live and backfilled, in the days they overlap |
+| `figures_backfilled` | a second run. Written LAST, so a run that failed half way is simply run again |
+
+⚠ **A replay cannot rebuild the backfilled past** — those accepts were never on the broker. `AnalyticReplayCompute`
+therefore refuses any start on or before the live fold's first day.
+
+### Output
+
+```
+[Database Local] supplier figures: 312 accepted restocks folded, 0 skipped (already folded, or the live fold's)
+[Database Local] supplier figures: already backfilled — nothing folded
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `supplier: event processing is locked (process_event_lock)` | A replay is running — the fold refuses while it holds the lock. Run the backfill after it finishes |
+| `relation "supplier_product_daily_reports" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
 
 ---
 
@@ -666,9 +802,10 @@ constant beside the handler that serves it):
 | `liability-order-cancelled` | `order-cancelled` | liability reverses them |
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
+| `supplier-fold` | `restock-accepted` | a supplier's figures fold — push route `/event/supplier-fold/push` ([the-report-is-processed-like-settlement](../business/supplier/context_decision.md#the-report-is-processed-like-settlement)) |
 | `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
 
-⚠ **`settlement-fold` is SEEKED by `AnalyticReplayCompute`**, which reaches back as far as the topic's
+⚠ **`settlement-fold` and `supplier-fold` are SEEKED by their service's `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other
 than this command — with a shorter retention — shortens the replay rather than breaking it.
 

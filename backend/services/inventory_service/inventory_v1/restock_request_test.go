@@ -438,17 +438,21 @@ func TestRestockRequest_MultipleItemsAllReceived(t *testing.T) {
 	}
 }
 
-// The optional supplier must be one of the REQUESTING team's own — another team's reads as NotFound,
-// so the error cannot be used to confirm that an id exists (#124).
-func TestRestockRequest_SupplierMustBelongToRequester(t *testing.T) {
+// The optional supplier must be a LIVE supplier — any selling team's, since team B restocks from team A's
+// supplier on its own restock (a-team-restocks-from-another-teams-supplier). A deleted one and an id that
+// exists nowhere are the same NotFound.
+func TestRestockRequest_SupplierMustBeLive(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newService(t, db)
 	ctx := ctxUser(1)
 
-	const sellingTeam uint64 = 2
+	const (
+		sellingTeam uint64 = 2
+		mine        uint64 = 31
+		theirs      uint64 = 32
+		deleted     uint64 = 33
+	)
 
-	mine := insertSupplier(t, db, sellingTeam, "My Vendor", "V-MINE")
-	theirs := insertSupplier(t, db, 9, "Their Vendor", "V-THEIRS")
+	svc := newServiceWithSuppliers(t, db, fakeSuppliers{mine: true, theirs: true, deleted: false})
 
 	create := func(supplierID uint64) error {
 		_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
@@ -478,14 +482,16 @@ func TestRestockRequest_SupplierMustBelongToRequester(t *testing.T) {
 		t.Fatalf("optional context did not round-trip: %+v", got)
 	}
 
-	// Another team's supplier is NotFound.
-	if code := connect.CodeOf(create(theirs)); code != connect.CodeNotFound {
-		t.Fatalf("cross-team supplier code = %v, want NotFound", code)
+	// Another team's LIVE supplier is accepted.
+	if err = create(theirs); err != nil {
+		t.Fatalf("another team's live supplier must be accepted, got %v", err)
 	}
 
-	// An id that exists nowhere is the same NotFound — indistinguishable, on purpose.
-	if code := connect.CodeOf(create(999999)); code != connect.CodeNotFound {
-		t.Fatalf("unknown supplier code = %v, want NotFound", code)
+	// A deleted supplier and an unknown id are the same NotFound.
+	for _, id := range []uint64{deleted, 999999} {
+		if code := connect.CodeOf(create(id)); code != connect.CodeNotFound {
+			t.Fatalf("supplier %d code = %v, want NotFound", id, code)
+		}
 	}
 }
 
@@ -1071,12 +1077,14 @@ func TestRestockRequest_Update(t *testing.T) {
 // supplier in place while the form showed them gone.
 func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newService(t, db)
 	ctx := ctxUser(1)
 
-	const sellingTeam uint64 = 2
+	const (
+		sellingTeam uint64 = 2
+		supplier    uint64 = 31
+	)
 
-	supplier := insertSupplier(t, db, sellingTeam, "My Vendor", "V-MINE")
+	svc := newServiceWithSuppliers(t, db, fakeSuppliers{supplier: true})
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5, ShippingCode: "jne",
@@ -1195,17 +1203,20 @@ func TestRestockRequest_UpdateOnlyWhilePending(t *testing.T) {
 	}
 }
 
-// The supplier rule holds on edit exactly as on create: it must be one of the REQUESTING team's own,
-// or the id itself would confirm another team's vendor.
-func TestRestockRequest_UpdateSupplierMustBelongToRequester(t *testing.T) {
+// The supplier rule holds on edit exactly as on create: any team's live supplier, never a deleted one — and
+// a refused edit applies nothing.
+func TestRestockRequest_UpdateSupplierMustBeLive(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newService(t, db)
 	ctx := ctxUser(1)
 
-	const sellingTeam uint64 = 2
+	const (
+		sellingTeam uint64 = 2
+		mine        uint64 = 31
+		theirs      uint64 = 32
+		deleted     uint64 = 33
+	)
 
-	mine := insertSupplier(t, db, sellingTeam, "My Vendor", "V-MINE")
-	theirs := insertSupplier(t, db, 9, "Their Vendor", "V-THEIRS")
+	svc := newServiceWithSuppliers(t, db, fakeSuppliers{mine: true, theirs: true, deleted: false})
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5,
@@ -1233,34 +1244,41 @@ func TestRestockRequest_UpdateSupplierMustBelongToRequester(t *testing.T) {
 		t.Fatalf("edit to own supplier: %v", err)
 	}
 
-	if code := connect.CodeOf(edit(theirs)); code != connect.CodeNotFound {
-		t.Fatalf("cross-team supplier on edit = %v, want NotFound", code)
+	if err = edit(theirs); err != nil {
+		t.Fatalf("edit to another team's live supplier: %v", err)
 	}
 
-	// The rejected edit must not have half-applied — the supplier is still ours.
+	if code := connect.CodeOf(edit(deleted)); code != connect.CodeNotFound {
+		t.Fatalf("deleted supplier on edit = %v, want NotFound", code)
+	}
+
+	// The rejected edit must not have half-applied — the supplier is still the last good one.
 	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
 		TeamId: sellingTeam, RequestId: reqID,
 	}))
 	if err != nil {
 		t.Fatalf("detail: %v", err)
 	}
-	if got := detail.Msg.GetRequest().GetSupplierId(); got != mine {
-		t.Fatalf("supplier after rejected edit = %d, want %d", got, mine)
+	if got := detail.Msg.GetRequest().GetSupplierId(); got != theirs {
+		t.Fatalf("supplier after rejected edit = %d, want %d", got, theirs)
 	}
 }
 
 // Deleting a supplier must not brick the pending requests that already name it. Because an edit is a
 // full replace, the form re-sends the supplier it prefilled — so re-validating an UNCHANGED id would
 // reject the edit over a field the person never touched, and SupplierDelete is a soft delete, so the
-// id keeps resolving to a row that supplierExists() refuses.
+// id keeps resolving to a supplier that SupplierIsLive() refuses.
 func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newService(t, db)
 	ctx := ctxUser(1)
 
-	const sellingTeam uint64 = 2
+	const (
+		sellingTeam uint64 = 2
+		supplier    uint64 = 31
+	)
 
-	supplier := insertSupplier(t, db, sellingTeam, "Doomed Vendor", "V-DOOM")
+	suppliers := fakeSuppliers{supplier: true}
+	svc := newServiceWithSuppliers(t, db, suppliers)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: 5, SupplierId: supplier,
@@ -1273,12 +1291,8 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 	}
 	reqID := created.Msg.GetRequest().GetId()
 
-	_, err = svc.SupplierDelete(ctx, connect.NewRequest(&inventoryv1.SupplierDeleteRequest{
-		TeamId: sellingTeam, SupplierId: supplier,
-	}))
-	if err != nil {
-		t.Fatalf("delete supplier: %v", err)
-	}
+	// The supplier is deleted in supplier_service — from now on it is not live.
+	suppliers[supplier] = false
 
 	// The edit re-sends the prefilled (now deleted) supplier and changes only the note.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{

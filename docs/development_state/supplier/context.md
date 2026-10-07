@@ -1,56 +1,61 @@
 # Development state — supplier
 
-**Pass:** business analysis on the owner's [supplier/context.md](../../business/supplier/context.md), written and
-revised five times on 2026-10-06. Questions: [context_clarify.md](../../business/supplier/context_clarify.md) —
-**Q10 open: the design_accept**. Decisions: [context_decision.md](../../business/supplier/context_decision.md) — eleven,
-one reversed. The lifecycle is at **design_accept**: the CRUD prototype is built and wired to the running app; no
-backend change yet.
+**As of 2026-10-07: the supplier context is BUILT, figures included.** The CRUD service, Discover, the move, and — this
+pass — a supplier's figures end to end: inventory's accept publishes *Restock Accepted*, `supplier_service` folds it, the
+Statistics tab and the Supplier Report read it, and `san supplier backfill-figures` folds the accepts from before the
+event. Open: [Q19](../../business/supplier/context_clarify.md#question) — the report's window (recommend a 366-day cap). Decisions:
+[context_decision.md](../../business/supplier/context_decision.md) — forty-one. Nothing committed — the owner commits on
+request.
 
-## Decided
+The passes of 2026-10-07, in order: `supplier_service` CRUD built · the figures prototyped (Q17, Q18 raised) · a search
+and a team picker on the report and the tab, a Team filter on Discover (Q16 answered) · the figures accepted and built
+for real (Q17, Q18 answered) · the menu's **Suppliers** group.
 
-| decision | what it means for the build |
-| --- | --- |
-| [the-supplier-gets-its-own-service](../../business/supplier/context_decision.md#the-supplier-gets-its-own-service) *(Q6)* | new `backend/services/supplier_service/`, proto `warehouse.supplier.v1` (my spec) · `restock_requests.supplier_id` loses its FK |
-| [no-province-city-or-soft-delete](../../business/supplier/context_decision.md#no-province-city-or-soft-delete) *(Q8)* | `suppliers` = id, team_id, name, contact, address, description, timestamps · **delete is hard**, channels cascade |
-| [the-supplier-has-no-code](../../business/supplier/context_decision.md#the-supplier-has-no-code) | no `code` anywhere — form, list column, `SupplierSelect` label, test ids · reverses `reversed-the-supplier-keeps-its-code` |
-| [the-supplier-lists-only-its-online-stores](../../business/supplier/context_decision.md#the-supplier-lists-only-its-online-stores) · [channel-type-is-the-marketplace-list](../../business/supplier/context_decision.md#channel-type-is-the-marketplace-list) *(Q5, Q7)* | `supplier_channels` = channel_type (the shared `Marketplace` enum, `custom` = OTHER), name, uri, description · no online/offline, no contact/location |
-| [only-a-selling-team-has-suppliers](../../business/supplier/context_decision.md#only-a-selling-team-has-suppliers) | `SupplierCreate` refuses a non-selling team — today it does not |
-| [a-team-restocks-from-another-teams-supplier](../../business/supplier/context_decision.md#a-team-restocks-from-another-teams-supplier) *(Q1)* · [another-team-sees-everything-of-a-supplier](../../business/supplier/context_decision.md#another-team-sees-everything-of-a-supplier) *(Q3)* · [manage-and-discover-are-two-pages](../../business/supplier/context_decision.md#manage-and-discover-are-two-pages) | cross-team use and the discover page — **after** the CRUD pass |
-| [products-hang-off-a-channel](../../business/supplier/context_decision.md#products-hang-off-a-channel) · [linking-products-is-deferred](../../business/supplier/context_decision.md#linking-products-is-deferred) · [statistics-are-deferred](../../business/supplier/context_decision.md#statistics-are-deferred) | `supplier_channel_products` and statistics wait — the parked points are in the clarify |
-
-## What exists — all inside `inventory_service`
+## What exists
 
 | | |
 | --- | --- |
-| RPCs | `SupplierCreate` · `List` · `ByIds` (cross-team) · `Detail` · `Update` · `Delete` (soft) · `SupplierChannelCreate` · `List` · `Update` · `Delete` |
-| tables | `suppliers` (with code, province, city, deleted) · `supplier_channels` (online/offline) · `restock_requests.supplier_id` a real FK, `ON DELETE SET NULL` |
-| frontend | `pages/suppliers`, `pages/supplier-detail`, `components/pickers/SupplierSelect` · routes `/inventories/suppliers[/:id]` |
+| service | `backend/services/supplier_service/` — `supplier_v1/`: 10 CRUD RPCs + 6 figures RPCs + the fold, one file each, a test file each · `supplier_service_models/` (5 models) · `db_migrations/00001_create_suppliers.sql`, `00002_supplier_figures.sql` · `register.go` (4 Connect services + the push route `/event/supplier-fold/push`, `FoldSubscription = "supplier-fold"`) |
+| contract | `proto/warehouse/supplier/v1/` — `SupplierService`, `SupplierChannelService` (`supplier.proto`, `supplier_channel.proto`; `SupplierListFilter.owner_team_id` is Discover's Team filter) · `SupplierAnalyticService` (`AnalyticTimeSearch`, `AnalyticProductSearch`, `AnalyticGroupSearch`, `AnalyticGroupMetric`) and `SupplierAnalyticMaintenanceService` (`AnalyticReplayCompute`, `AnalyticMaintenanceRun`) in `supplier_analytic.proto` · `warehouse.events.v1.RestockAccepted` (variant 400, topic `restock-accepted`) |
+| the fold | `analytic_fold.go` — settlement's shape: one transaction = lock FOR SHARE → claim `supplier_event_logs` by event id → one upsert per line on (day, supplier, product, team), ADDING (no later-day shift — no balance) → live only: lower `figures_live_since`. Value = units × total ÷ ordered. A restock with no supplier folds nothing, acked |
+| the reads | `analytic_*.go` — `window()` + `figureSums()` in `analytic_shared.go`; time buckets per grain with settlement's caps (366 d / 60 m / 20 y); the ranking joins `suppliers` + live stores for `q`, includes deleted suppliers, and orders by rate with `rateMinUnits = 50` first (`rate_min_units` on the response — the screen never keeps its own copy) |
+| replay / maintenance | `AnalyticReplayCompute` — settlement's, plus: refused unless `start_date` is AFTER `figures_live_since`'s Jakarta day (the backfilled past was never on the broker) · `AnalyticMaintenanceRun` — prunes `supplier_event_logs` > 45 days by `created_at` |
+| inventory_service | `RestockRequestFulfill` publishes `RestockAccepted` AFTER the commit (`restock_accepted_event.go`: `publishAccepted`, the pure `RestockAcceptedEvent`, `AcceptedRestocks` for the backfill). A 5th `NewService` arg, `events event_source.EventSender` (nil → `EmptySender`). A failed publish is logged, never fails the accept · earlier: `00023` renamed the legacy tables; `SupplierChecker` asked before any transaction |
+| `san` | `supplier move` · **`supplier backfill-figures`** (`tools/san/supplier_backfill.go`) — `NewSupplierFigures` in the CLI's Wire set; reads `inventory_v1.AcceptedRestocks` in batches of 500, folds via `FoldBackfill`; skips accepts at/after `figures_live_since`; `figures_backfilled` makes a second run fold nothing · `dev setup` step 6 · `pubsub ensure` declares `supplier-fold` on `restock-accepted` |
+| dev server | `cmd/app_development/replay_broker.go` — one `replayBroker` per subscription: `NewReplayBroker` (settlement), `NewSupplierReplayBroker`; inventory gets the existing `EventSender` through Wire |
+| frontend | `features/suppliers/analytics.ts` — the three hooks on the real RPCs (`listQuery`; names via `ProductByIds`, `SupplierByIds` — a deleted supplier marked — and `teamsByIdsQuery`) · `figures.ts` (the record + rates) · `FigureParts.tsx` (tiles, cells with a muted rate, phone block, `RestockTeamFilter`) · `SupplierStatistics.tsx` (props: `supplierId` only) · `pages/supplier-report/` (search, team picker, rank by value or rate, the 50-unit note, a deleted supplier marked and opening nothing) · Discover's Team filter · the menu's **Suppliers** group (`SUPPLIERS_GROUP` in `nav.ts`) — routes unchanged under `/inventories/suppliers/…` |
+| Storybook | `.storybook/supplierFigureFixtures.ts` (dated relative to today, the arithmetic in its comments) + `supplierAnalyticService` in `supplierStub.ts`; `pickTeam` in `pageStory.tsx` · `vitest.config.ts`'s browser port is **6106** (under 49152 — Windows reserves ranges above it after a Docker start) |
+| still sample | the Products tab (`sampleProducts.ts`) and product-discover-detail's suppliers (`sampleSuppliers.ts`) — the store-to-product link needs a store on each restock line |
+| tests | Go: all green from the root (fold 8, reads 6 files, replay 3, maintenance 1, inventory publish 3, the backfill command 1, `owner_team_id` 1) · stories **1047** green · e2e `restock`, `suppliers`, `supplier_channels` — 12 green |
+| audits | CRUD: perf **SupplierList HEAVY** ([report](../../../audits/services/supplier_service/performances/SupplierList.md), not applied — 3 open questions there), concurrency SAFE ([lock-order.md](../../../audits/services/supplier_service/concurrency/lock-order.md)) · figures: concurrency — one 🔴 found and **fixed the same day**, two accepts sharing products deadlocked on line order; the fold now writes in product order ([FoldHandler.md](../../../audits/services/supplier_service/concurrency/FoldHandler.md)); everything else proved SAFE (`analytic_fold_race_test.go`, `analytic_replay_compute_race_test.go`, `-tags raceaudit`) · performance — three 🔴 found and **fixed the same day**: the ranking 1 071 → 90 ms @ 1 year (one grouped statement, dates as literals), a page's figures 102 → 20 ms, the fold 3 + lines → 4 statements (2.1 ms @ 20 lines); reports in [performances/](../../../audits/services/supplier_service/performances/); the window's limit is Q19. ⚠ Re-measure on a FRESH database per test — rolled-back seeds bloat a reused one ~4× |
+| docs | `docs/database-schema.md` (the three figure tables) · `docs/services/supplier_service/rpc.md` (the fold, the reads, the replay) · `docs/services/inventory_service/rpc.md` (the accept announces) · `docs/tools/san.md` (`supplier backfill-figures`, setup step 6, `supplier-fold`) · CLAUDE.md's setup line |
 
-## The CRUD prototype — built 2026-10-06
+## Decided, not built
 
-| | |
+| decision | waits on |
 | --- | --- |
-| the translation step | `features/suppliers/adapt.ts` — pages read and write `SupplierRecord` / `SupplierChannelRecord` (the decided shape) and never the proto. It makes up a code (`generatedSupplierCode`), folds city + province into the address and clears them on save, sends every channel as ONLINE with `channel_type` as its marketplace, reads an old offline row as OTHER with contact · location as its description, and leaves contact/location ABSENT on a channel update so that description survives. **Delete it when supplier_service lands** — the pages do not change |
-| pages | `pages/suppliers` (Name · Contact · Address, phone blocks, RefreshOverlay + `listQuery`, New/Edit/Delete for a SELLING team only) · `pages/supplier-detail` (contact, address, description; two horizontal tabs — supplier-detail-has-channels-and-products-tabs — `ChannelsPanel`, one list by `MarketplaceBadge`, and `ProductsPanel`, SAMPLE rows from `sampleProducts.ts`; `pending.ts` — a `dropped` mark on the channel description and a `sample` mark on Products) · `SupplierSelect` (name only) |
-| Storybook | `.storybook/supplierStub.ts` + `supplierFixtures.ts` — writeable, TODAY's wire shape (code required, online/offline), plus two decided rules (selling team only, hard delete); reset in `preview.tsx`. Stories: `Pages/Suppliers/Suppliers` (8), `Pages/Suppliers/SupplierDetail` (16), `SupplierSelect` (8) |
-| tests | all 962 story tests green · `e2e/suppliers.spec.ts` + `supplier_channels.spec.ts` green against the real server — each makes its own SELLING team (Root as Owner) and switches to it |
-| discover (2026-10-06) | `pages/supplier-discover` + `pages/supplier-discover-detail` — every team's suppliers on SAMPLE data from `features/suppliers/discover.ts` (no cross-team read exists); the tabs are the shared `features/suppliers/ChannelBrowser` + `ProductBrowser` (search, type filter, pager — in the browser via `channelPage`). Menu: My Supplier · Discover Supplier. Stories: `Pages/Suppliers/DiscoverSuppliers`, `DiscoverSupplierDetail`, `Features/Suppliers/*`; 1010 story tests green |
-| fixtures | suppliers moved out of `fixtures.ts` to team **12** (selling); team 13 holds one supplier that team 12 must never list |
+| [restock-accepted-links-the-product-to-its-channel](../../business/supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel) · [every-accepted-line-links-its-own-product](../../business/supplier/context_decision.md#every-accepted-line-links-its-own-product) · [a-link-remembers-its-last-restock](../../business/supplier/context_decision.md#a-link-remembers-its-last-restock) — `supplier_channel_products`, the Products tab | a store on each restock line — restock [Q3](../../business/inventory/restock_clarify.md#question), [Q12](../../business/inventory/restock_clarify.md#question). Then the event gains the line's store, the fold reads the supplier from it ([the-supplier-comes-from-the-restock-until-lines-name-a-store](../../business/supplier/context_decision.md#the-supplier-comes-from-the-restock-until-lines-name-a-store)), and the link is one more upsert in the same fold |
+| [a-late-correction-lands-in-the-six-columns](../../business/supplier/context_decision.md#a-late-correction-lands-in-the-six-columns) — the adjustment event, a Root-only RPC, its `san` command | nothing — not built this pass. The fold would take a second variant into the same upsert |
+| the drop of `legacy_suppliers` / `legacy_supplier_channels` | the move having run on every database — a later inventory migration |
 
 ## Next
 
-1. **design_accept** — [Q10](../../business/supplier/context_clarify.md#question): 10a the screens, 10b the move, 10c *Other*.
-2. **`supplier_service`** — migrations, proto `warehouse.supplier.v1`, RPCs with a unit test each, the performance and
-   concurrency audits. Then point `adapt.ts` at it and delete the translation step.
-3. **The move** — if 10b: a one-shot `san` command copies rows keeping their ids, then an `inventory_service`
-   migration drops the old tables and the FK.
+1. **Q19** — if the cap is taken: a 366-day check in `AnalyticGroupSearch` and `AnalyticGroupMetric` (beside `parseRange`), and the report's date picker says why.
+2. **SupplierList's search** — the owner's answers to its perf report's three questions, then a trigram migration
+   **`00003`** in supplier_service (the owner's call, HARD RULE 3/8).
+3. **The adjustment** ([a-late-correction-lands-in-the-six-columns](../../business/supplier/context_decision.md#a-late-correction-lands-in-the-six-columns)) — decided, unbuilt.
+4. **The link and the Products tab** — when restock lines name a store.
 
 ## Elsewhere
 
-- **The restock side** moved to [restock_clarify.md](../../business/inventory/restock_clarify.md) — Q1 what a restock
-  shows after a hard delete (recommend a name snapshot), Q2 the cross-team picker. ⚠ That file is **not** a pass of
-  restock.md yet.
-- ⛔ The owner's [technical/architecture/context.md:7](../../technical/architecture/context.md) still puts the supplier
-  in `product_service` — reported, theirs to edit.
-- **"yes" to a two-option question was the LITERAL option both times this pass**, against the recommendation — Q8
-  (*drop them?* → drop) and Q6 (*own service, or the built one?* → own). Confirm before recording.
+- ⚠ **The live fold does not run in dev or e2e.** Their subscriptions are PULL (no `--push-base-url`) and the dev server
+  has no pull worker — settlement's fold shares this. Figures appear in dev from the backfill (`dev setup` runs it) or
+  with `pubsub ensure --push-base-url http://host.docker.internal:8080`. The pull worker is the event architecture's open
+  decision, not this context's.
+- **`SupplierSelect` is own-team only** — restock [Q2](../../business/inventory/restock_clarify.md#question).
+- The audits' perf/race tests are kept, build-tagged `perfaudit` / `raceaudit`. ⚠ Perf tests mislead when run together —
+  one at a time, after `VACUUM FULL ANALYZE`.
+- ⛔ The owner's [technical/architecture/context.md:7](../../technical/architecture/context.md) still puts the supplier in
+  `product_service`; analytic/context.md still draws a *Daily Supplier Report Table*; the owner's table and metric lists
+  trail three chat decisions ([chat-decisions-outran-your-doc](../../business/supplier/context_clarify.md#chat-decisions-outran-your-doc)) — theirs to edit.
+- **A terse "yes" to a two-way question is ambiguous** — confirm before recording (Q8, Q6, Q10c, Q11).

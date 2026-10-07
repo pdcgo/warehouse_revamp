@@ -6,8 +6,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 // supplier sells through: a channel type off the shared marketplace list, a name, a link
 // (the-supplier-lists-only-its-online-stores, channel-type-is-the-marketplace-list), listed under the
 // detail page's Channels tab (supplier-detail-has-channels-and-products-tabs). There is no
-// online/offline switch; the server still wants one, and the translation step in features/suppliers/adapt.ts
-// sends it.
+// online/offline switch. The tab searches, filters and pages on the server (supplier_service's
+// SupplierChannelList), and a store's description is kept.
 //
 // Only a selling team has suppliers (only-a-selling-team-has-suppliers), so the spec makes one — Root as its
 // Owner — and works from it.
@@ -109,6 +109,7 @@ test("Detail + channel: create a supplier, open it, add a channel, then delete i
   await page.getByRole("option", { name: "Shopee" }).click();
   await page.getByTestId("channel-name").fill(CHANNEL_NAME);
   await page.getByTestId("channel-uri").fill("https://shopee.co.id/e2estore");
+  await page.getByTestId("channel-description").fill(`Free shipping ${SUFFIX}`);
 
   await expect(page.getByTestId("submit-channel")).toBeEnabled();
   await page.getByTestId("submit-channel").click();
@@ -119,9 +120,14 @@ test("Detail + channel: create a supplier, open it, add a channel, then delete i
   await expect(channelsTable).toContainText(CHANNEL_NAME);
   await expect(channelsTable).toContainText("Shopee");
   await expect(channelsTable).toContainText("https://shopee.co.id/e2estore");
+  // The description is KEPT — supplier_service stores it.
+  await expect(channelsTable).toContainText(`Free shipping ${SUFFIX}`);
 
-  // The search finds it by name; a search for nothing says nothing matches, not "no channels".
+  // The search finds it by name, and by its description; a search for nothing says nothing matches, not
+  // "no channels".
   await page.getByTestId("channels-search").fill(CHANNEL_NAME);
+  await expect(page.getByTestId("channels-table")).toContainText(CHANNEL_NAME);
+  await page.getByTestId("channels-search").fill(`shipping ${SUFFIX}`);
   await expect(page.getByTestId("channels-table")).toContainText(CHANNEL_NAME);
   await page.getByTestId("channels-search").fill("no-such-channel");
   await expect(page.getByTestId("channels-none-match")).toBeVisible();

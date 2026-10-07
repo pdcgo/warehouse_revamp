@@ -29,6 +29,7 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 		NewEventSender,
 
 		user_v1.NewService,
+		NewSupplierFigures,
 
 		NewSan,
 	)

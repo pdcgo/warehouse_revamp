@@ -28,6 +28,61 @@ isshipproblem-->|yes|setlost["Selling Team set `lost`"]
 isshipproblem-->|no|wait
 ```
 
+## Restock Accepted Flow.
+1. for what case that `supplier_service` listen restock accept, [see supplier context](../supplier/context.md)
+```mermaid
+stateDiagram-v2
+direction LR
+
+state "Accept RPC called" as rpc
+
+rpc-->tx
+
+tx: Open Database Transaction
+note right of tx
+    If Any Step Fails, Rollback Transaction and Return Error 
+end note
+
+state tx {
+    
+    state "restock_problem_items" as prob
+    state "Batch Ledger" as bledger
+    state "Placement Ledger" as pledger
+
+    [*]-->prob: add problem entry if any item problem
+    [*]-->bledger: calculate price_unit and post in batch_ledger
+    [*]-->pledger: post in placement ledger
+
+    prob-->[*]
+    bledger-->[*]
+    pledger-->[*]
+}
+
+state "Send Restock Accepted Event" as evt
+tx-->evt: if success
+evt-->srv
+
+srv: Other Service
+state srv {
+    sup: Supplier Service
+    state sup {
+
+        state "Inventory Webhook" as supwebhook
+        state "Processing Event" as procevt
+
+        [*]-->supwebhook: receiving event by push subscribe
+        supwebhook-->procevt: processing event
+        procevt-->[*]
+    
+    }
+
+ 
+
+}
+
+```
+
+
 
 ## Table Should We Have.
 

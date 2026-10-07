@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Flex, HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
 import { ExternalLink } from "lucide-react";
-import { type SupplierChannelRecord, channelPage } from "./adapt";
+import { rpcError } from "../../api/clients";
+import type { SupplierChannelRecord } from "./adapt";
+import { useSupplierChannelPage } from "./queries";
+import { useDebounced } from "../../lib/useDebounced";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -29,12 +32,10 @@ function ChannelLink({ uri }: { uri: string }) {
 }
 
 export interface ChannelBrowserProps {
-  /** The supplier's WHOLE channel list — searched, filtered and paged here (see channelPage). */
-  channels: SupplierChannelRecord[];
-  loading?: boolean;
-  /** A refetch is in flight while rows are on screen — the RefreshOverlay's cue. */
-  busy?: boolean;
-  error?: string;
+  /** The CALLER's team — the scope the read is authorised in, not the team that keeps the supplier. */
+  teamId: bigint;
+  /** Any team's live supplier — reads cross teams. */
+  supplierId: bigint;
   /** Page actions in the filter bar's action slot — Add Channel on the manage page. */
   actions?: ReactNode;
   /** Per-row actions; absent = read-only, as on the discover detail. */
@@ -48,14 +49,12 @@ export interface ChannelBrowserProps {
 // marketplace badge per row (channel-type-is-the-marketplace-list), searched by name, link or description,
 // filtered by channel type and paged (the-channels-tab-searches-filters-and-pages).
 //
-// ⚠ The search, the filter and the pager run HERE, over the whole list (channelPage in adapt.ts), because the
-// old SupplierChannelList can do none of the three. When supplier_service pages on the server, this takes a
-// page and its callbacks instead of the whole list — the screen does not change.
+// It reads for itself: the search, the type and the page go to SupplierChannelList, which searches, filters and
+// pages ON THE SERVER (useSupplierChannelPage). The search is debounced, so a word is one request, not one per
+// key — the previous rows stay up behind the RefreshOverlay while the answer loads (HARD RULE 10).
 export function ChannelBrowser({
-  channels: all,
-  loading = false,
-  busy = false,
-  error = "",
+  teamId,
+  supplierId,
   actions,
   rowActions,
   descriptionMark,
@@ -68,6 +67,7 @@ export function ChannelBrowser({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const filtering = q.trim() !== "" || channelType !== Marketplace.UNSPECIFIED;
+  const term = useDebounced(q.trim());
 
   // A filter change is a new question, so it starts again at page one.
   function refilter(change: () => void) {
@@ -75,12 +75,17 @@ export function ChannelBrowser({
     setPage(1);
   }
 
-  const { channels, totalItems } = channelPage(all, { q, channelType, page, pageSize });
+  const query = useSupplierChannelPage({ teamId, supplierId, q: term, channelType, page, pageSize });
+  const channels = query.data?.channels ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const error = query.isError ? rpcError(query.error) : "";
+  // What the rows on screen were asked with — the settled search, not the one still being typed.
+  const narrowed = term !== "" || channelType !== Marketplace.UNSPECIFIED;
 
   function list() {
     if (channels.length === 0 && !error) {
       // Nothing at all, or nothing that matches — two different things to tell somebody.
-      return filtering ? (
+      return narrowed ? (
         <Text color="fg.muted" data-testid="channels-none-match">
           {t("supplierChannel.filter.none")}
         </Text>
@@ -206,7 +211,9 @@ export function ChannelBrowser({
         </Text>
       )}
 
-      {loading ? null : <RefreshOverlay busy={busy}>{list()}</RefreshOverlay>}
+      {query.isPending ? null : (
+        <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+      )}
 
       <Pagination
         count={totalItems}

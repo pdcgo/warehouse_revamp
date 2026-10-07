@@ -10,10 +10,11 @@ import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
 import { DocumentService } from "../gen/warehouse/document/v1/document_pb";
 import { InventoryService } from "../gen/warehouse/inventory/v1/inventory_pb";
-import { SupplierService } from "../gen/warehouse/inventory/v1/supplier_pb";
-import { SupplierChannelService } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
+import { SupplierChannelService } from "../gen/warehouse/supplier/v1/supplier_channel_pb";
+import { SupplierAnalyticService } from "../gen/warehouse/supplier/v1/supplier_analytic_pb";
 import { RegionService } from "../gen/warehouse/region/v1/region_pb";
 import { ExpenseService } from "../gen/warehouse/expense/v1/expense_pb";
 import {
@@ -51,8 +52,12 @@ export const receiptClient = createClient(ReceiptService, transport);
 export const categoryClient = createClient(CategoryService, transport);
 export const documentClient = createClient(DocumentService, transport);
 export const inventoryClient = createClient(InventoryService, transport);
+// The vendors a selling team buys from, and their stores — served by supplier_service. Reads cross teams,
+// writes do not (the-supplier-gets-its-own-service).
 export const supplierClient = createClient(SupplierService, transport);
 export const supplierChannelClient = createClient(SupplierChannelService, transport);
+// A supplier's figures — folded from the restock's accept (the-figures-screens-are-accepted).
+export const supplierAnalyticClient = createClient(SupplierAnalyticService, transport);
 // Racks belong to ONE warehouse — the team in the request body IS that warehouse (#129).
 export const rackClient = createClient(RackService, transport);
 export const restockClient = createClient(RestockRequestService, transport);

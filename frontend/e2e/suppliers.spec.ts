@@ -5,8 +5,8 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 // Supplier management — the CRUD pass of docs/business/supplier (manage-and-discover-are-two-pages: this is
 // the MANAGE page). Create / edit / delete, in the decided shape: a name, a contact, an address and a
 // description, with no code (the-supplier-has-no-code) and no city or province
-// (no-province-city-or-soft-delete). The server still wants a code; the translation step in
-// features/suppliers/adapt.ts makes one up, and passing here proves it against the real server.
+// (no-province-or-city) — against supplier_service, which holds exactly those fields. Delete is soft
+// (a-deleted-supplier-is-kept-for-its-figures): the supplier leaves the list, kept for past restocks.
 //
 // Only a selling team has suppliers (only-a-selling-team-has-suppliers), so the spec makes one — Root as
 // its Owner — and works from it. The root team gets no New Supplier.
@@ -118,12 +118,14 @@ test("Edit: rename and change the address; both persist", async ({ page }) => {
   await expect(row(page, `${NAME} renamed`)).toContainText("Jl. Sudirman 5, Jakarta");
 });
 
-test("Delete: the supplier is gone", async ({ page }) => {
+test("Delete: the supplier leaves the list", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await useSellingTeam(page);
   await gotoSuppliers(page);
 
   await row(page, NAME).getByTestId(/^delete-supplier-/).click();
+  // Soft, and the dialog says so — past restocks and the figures keep its name.
+  await expect(page.getByText(/past restocks and its figures keep its name/)).toBeVisible();
   await page.getByTestId("confirm-action").click();
 
   await expect(row(page, NAME)).toHaveCount(0);

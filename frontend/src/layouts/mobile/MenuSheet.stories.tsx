@@ -144,6 +144,7 @@ export const ASellingTeamGetsTheSellingMenu: Story = {
     await waitFor(() => expect(screen.getByRole("link", { name: "Shops" })).toBeVisible());
     await expect(screen.getByRole("link", { name: "My Supplier" })).toBeVisible();
     await expect(screen.getByRole("link", { name: "Discover Supplier" })).toBeVisible();
+    await expect(screen.getByRole("link", { name: "Supplier Report" })).toBeVisible();
     await expect(screen.queryByRole("link", { name: "Racks" })).toBeNull();
   },
 };
