@@ -10,6 +10,7 @@
 3. managing return.
 4. doing opname.
 5. managing placements.
+6. provide solid api for other service. like order for creating order.
 
 
 

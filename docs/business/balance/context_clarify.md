@@ -116,7 +116,8 @@ points are **deleted**, so this file is always the current open set.
 > discretionary tip is now setting every future COGS and every breakage reimbursement on that batch.
 > Recorded where the fix lives:
 > [product_context clarify → AdditionalWarehouseFee is capitalised into UnitPrice](../product/context_clarify.md#contradiction),
-> asked as [product Q6](../product/context_clarify.md#question).
+> asked as [product Q6](../product/context_clarify.md#question). ✅ *(2026-10-07)* **Answered — it stays in**:
+> [the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price).
 >
 > ⚠ **And the name now argues against itself** ([Q8](#question)). *Cash On Delivery* means paying for
 > the **goods** at the door, which is exactly how the shipped code reads it. A tip is a different

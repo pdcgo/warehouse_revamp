@@ -7,6 +7,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | --- | --- | --- |
 | [a-line-names-the-channel-it-was-bought-from](#a-line-names-the-channel-it-was-bought-from) | each restock line names the supplier channel it was bought from, optionally — not one supplier per restock | your §Table Should We Have edit, 2026-10-06 — answers *restock-has-no-supplier*, against my *one `supplier_id` per restock* |
 | [accept-is-one-transaction-then-an-event](#accept-is-one-transaction-then-an-event) | accept writes the problem rows, the batch with its price and the placements in ONE transaction; after commit it publishes *Restock Accepted*, heard by `supplier_service` | your §Restock Accepted Flow, 2026-10-06 — settles the shelf half of *two-drawings-of-receiving* |
+| [any-warehouse-member-counts-what-arrived](#any-warehouse-member-counts-what-arrived) | any member of the warehouse team counts and accepts; per line they type what arrived and how many of those are broken — the short units are the difference | chat, 2026-10-07 — answers Q6a, as recommended |
+| [a-product-appears-once-per-restock](#a-product-appears-once-per-restock) | one restock lists each product once, the store chosen per product | chat, 2026-10-07 — answers Q12, as recommended |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -74,3 +76,63 @@ flowchart LR
 **What it does NOT settle:** the courier's ask — neither its cost lines nor what the selling team owes for them is in
 the transaction ([Q10b](./restock_clarify.md#question)); how many batches, and whether the log rows name the restock
 ([Q11](./restock_clarify.md#question)); the status change and its trail ([Q9](./restock_clarify.md#question)).
+
+## any-warehouse-member-counts-what-arrived
+
+> Owner, in chat *(2026-10-07)*: *"for 3, all warehouse staff can"*. The question was *"what does Staff type at the door?"*,
+> and the owner confirmed it as **who + the recommendation**. It answers [Q6a](./restock_clarify.md#question), as recommended,
+> and widens [staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock) from Staff to the whole team.
+
+**The verdict.** Whoever in the warehouse team opens the box counts what is in it and accepts it, in one act. Per line
+they type two numbers: **how many arrived**, and **how many of those are broken**. Nobody counts what is not there; the
+short units are the difference.
+
+```mermaid
+flowchart LR
+  BOX["the box"] --> M["any warehouse team member"]
+  M --> R["per line - received_count"]
+  M --> K["per line - broken, out of received"]
+  R --> S["short = count - received_count"]
+  R --> G["good = received_count - broken"]
+  K --> G
+  G --> B["the batch"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | the warehouse team's Owner, Admin and Staff, plus Root and the Administrator. The build's `RestockRequestFulfillRequest` already allows all five |
+| `restock_items.received_count` | 🆕 typed at accept, `>= 0` |
+| broken | typed per line, `0 <= broken <= received_count`, written as a `restock_problem_items` row |
+| short | derived, `count - received_count`, written as a problem row when above 0. Its type name is [Q6c](./restock_clarify.md#question) |
+| good units | `received_count - broken`. They become stock ([restock.md](./restock.md): *"accept the rest of good stock"*) |
+
+**What it does NOT settle:** more arriving than was ordered ([Q6d](./restock_clarify.md#question)), whether the short row
+is named `lost` or `missing` ([Q6c](./restock_clarify.md#question)), and the problem row's price being copied rather than typed
+([Q6b](./restock_clarify.md#question)).
+
+## a-product-appears-once-per-restock
+
+> Owner, in chat *(2026-10-07)*, in the same answer: the recommendation for #3 included it. It answers
+> [Q12](./restock_clarify.md#question), as recommended. supplier.md §Supplier Rule 2 had said *"its choose per product in restock"*.
+
+**The verdict.** A restock lists each product **once**, and the store it was bought from is chosen per product. The
+same shirt bought from two stores is two restocks, or one restock under one store.
+
+```mermaid
+flowchart LR
+  R["a restock"] --> A["Kaos Polos Hitam - 15, from Melati"]
+  R --> B["Celana Chino - 8, from Toko Sinar"]
+  R -.->|"refused"| C["Kaos Polos Hitam again - from Toko Sinar"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `restock_items` | unique (`restock_id`, `product_id`) |
+| `restock_problem_items` | its `product_id` finds its line, so no `restock_item_id` is needed and [Critique 6](./restock_clarify.md#critique)'s case cannot happen |
+| the batch | one line is one product, one store and one price, which matches one batch per line ([Q11a](./restock_clarify.md#question)) |
+
+**What it costs:** a forwarder's box holding one product from two stores is entered as two restocks, or under one store.

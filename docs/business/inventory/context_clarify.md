@@ -3,6 +3,11 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> **Re-examined after the restock answers in chat (2026-10-07).** 🆕 [Q13](#question): *what is an
+> `inventory_transaction`*. Your *Still Confused* section leaves it open, and every ledger write waits on it. ⚠ **Not yet
+> re-examined:** your §Placements and §Batches, [batch_ledger.md](./batch_ledger.md) and
+> [placement_ledger.md](./placement_ledger.md). This file predates all four, and that pass is next.
+
 > **Merged.** The stock context now lives inside inventory
 > ([stock-merges-into-inventory](./context_decision.md#stock-merges-into-inventory)). Everything below was
 > written against `stock/context.md` and still applies verbatim: §Stock loss and §How Warehouse Team
@@ -238,8 +243,34 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 
     ⚠ Your receiving flow runs **one actor end to end** — accept, input
     losses, input broken, set placements — with no second party. For a **restock** that is now decided: Staff accepts
-    it alone ([staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock)). A loss at receiving
-    is the selling team's, so it creates no warehouse debt, and Q12 is about counts and losses **in custody**.
+    it alone ([staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock)), and 🔄 *(2026-10-07)* so
+    does any member of the warehouse team ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)).
+    A loss at receiving is the selling team's, so it creates no warehouse debt, and Q12 is about counts and losses **in custody**.
+
+13. 🆕 **What is an `inventory_transaction`?** Your *Still Confused* section lists `inventory_transactions` and
+    `inventory_transaction_items` with only an `id`. [batch_ledger.md](./batch_ledger.md) points every `batches` and
+    `batch_logs` row at one, while [placement_ledger.md](./placement_ledger.md)'s `product_placement_logs` points at none.
+    [Technical stock §ERD](../../technical/stock/design.md#stock-entity-relationship) gives it a `type` and a `status`.
+    **Every write to either ledger waits on this.** It is also how a log row names its restock
+    ([restock Q11b](./restock_clarify.md#question)), and how a mistake is reversed
+    ([§Cancelation](../../technical/stock/design.md#inventory-transaction-cancelation)).
+
+    | | Part | → Recommend |
+    | --- | --- | --- |
+    | **13a** | what one row is | **one act in the building**: a restock accept, an order take, a move, a count, a transfer leg, a revaluation |
+    | **13b** | its columns | `type` · `status` · `ref_type` + `ref_id` (restock 42, order 9001) · `warehouse_id` · `team_id` · `actor_id` · `created_at` |
+    | **13c** | who points at it | **every** `batch_logs` **and** `product_placement_logs` row, so both ledgers' rows for one act share an id. *Batch change = shelf change, per product* is then checkable per transaction |
+    | **13d** | `inventory_transaction_items` | **drop it.** The log rows are already the lines, and a third copy can disagree with them. *What were they meant to hold?* |
+
+    ```mermaid
+    flowchart TB
+      A["an act - restock accept, take, move, count"] --> T["inventory_transactions - type, status, ref"]
+      T --> BL["batch_logs - money, FIFO, expiry"]
+      T --> PL["product_placement_logs - which shelf"]
+      BL --> B["batches"]
+      PL --> P["product_placements"]
+      B -.->|"sum of counts equal, per warehouse and product"| P
+    ```
 
 ---
 

@@ -4,6 +4,11 @@ The pricing rules I read out of [product_context.md](./context.md), and
 what they do not yet decide. **That doc is yours — this one is mine.** Answered points are **deleted**,
 so this file is always the current open set.
 
+> **Re-examined after your answer in chat (2026-10-07).** ✅ **Closed:** [Q6](#question). The courier's ask stays in
+> the unit price ([the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price)),
+> against my recommendation. The [contradiction](#additionalwarehousefee-is-capitalised-into-unitprice-and-balance_contextmd-has-now-defined-it-as-a-tip)
+> it raised is resolved; what survives is the build's integer floor. [Q2](#question), the divisor, is untouched.
+>
 > **Re-examined after you added `## General.`, `## Responsbility.` and `## Attribute / Field That Product Must Have`.**
 > ✅ **Closed by your decision:** *can a warehouse team own a product?* — **no**, recorded as
 > [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue). `## General.` 1 stands, and
@@ -259,16 +264,8 @@ flowchart LR
    ⚠ **Now also a boundary question:** the layers are `inventory_service`'s and COGS is `ledger_service`'s,
    so *where the frozen number is stored and who owns it* travels with this answer —
    [architectures Q3](../../technical/architecture/context_clarify.md#question).
-6. **🆕 Does `AdditionalWarehouseFee` belong inside `UnitPrice` at all?** `balance_context.md` has now
-   defined that money as the courier's **accidental ask at the door** — *"coffe tip or other"*
-   ([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)).
-   §Unit Price Components freezes it into the goods' cost forever. ⚠ That doc's own sequence diagram
-   calls the charge a **reimbursement**, which is an argument against capitalising it made in the
-   owner's own words. ([Contradiction](#contradiction))
-   **→ I recommend taking it OUT and leaving `ShipmentFee` in.** Freight is agreed before the journey
-   and is genuinely part of what the goods cost. A tip is unpredictable, small, and — because
-   `freightPerUnit` floors — frequently contributes **0 per unit** while being charged in full on the
-   balance. That is the worst possible input to a permanently frozen number.
+6. ✅ *(2026-10-07)* **Answered — the courier's ask stays IN the unit price**, against my recommendation:
+   [the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price).
 
 7. **Is `product_code` the real field name?** ([Critique 13](#critique))
    🔄 **→ I now recommend RENAMING `sku` → `product_code`, reversing what I said last round.** *Globally unique*
@@ -353,42 +350,28 @@ flowchart TB
 
 ## `AdditionalWarehouseFee` is capitalised into UnitPrice, and `balance_context.md` has now defined it as a TIP
 
-**Raised by a decision in another doc, and the fix belongs here** — §Unit Price Components is what
-decides the formula.
+✅ **Resolved (2026-10-07): §Unit Price Components wins — the ask stays in**
+([the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price)). Recorded, not
+deleted: the cause was one money item defined in two docs that said opposite things about it. The *balance* doc
+called it a reimbursement and the *product* doc capitalised it.
 
 > `product_context.md` §Unit Price Components: `UnitPrice = ProductPrice + ((ShipmentFee + `**`AdditionalWarehouseFee`**`) / AllProductQtyRestock)`
 > `balance_context.md` §Why `cod_fee` Exists: *"shipping channel person who brought the goods ask accidental fee (`cod_fee`) … for the cost like coffe tip or other."*
 
-They are the **same money** — *"additional warehouse fee **on accept stock (optional)**"* and
-*"**optionally** set warehouse when accept restock"* describe one line item
-([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)).
-So a discretionary tip handed over at a door is currently **frozen into the goods' cost forever**,
-and every later COGS, margin and breakage reimbursement reads it.
-
-**Three consequences, and the third is the one that decides it:**
-
-1. **It is permanent where the debt is not.** The ledger entry can be reversed; `stock_batches.unit_cost`
-   is frozen at acceptance and has no correction path.
-2. **It sets what the warehouse owes itself back.** A `broken_good` reimbursement is `qty × unit_cost` —
-   so a bigger tip today means a bigger payout if the warehouse breaks the goods tomorrow.
-3. ⚠ **The same rupiah is EXACT in the ledger and rounds to ZERO in the cost.** `freightPerUnit` is
-   integer division (`restock_request_fulfill.go`), so a 5.000 tip across 1.000 units contributes
-   **0** to unit price while being charged **in full** on the balance. The capitalisation is therefore
-   already unreliable for exactly the amounts this fee is described as being.
+**What survives is a defect in the BUILD, not a question.** `freightPerUnit` is integer division
+(`restock_request_fulfill.go`), so a Rp 5.000 ask across 1.000 units adds **0** to the price while it is
+charged **in full** on the balance. Under the decision the ask belongs in the price, so the floor now drops
+money the decision put there.
+**→ Recommend:** compute `price_unit` in floating point, as
+[rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point) already requires, when accept is rebuilt.
 
 ```mermaid
 flowchart LR
-  T["a courier's ask at the door"] --> L["cod_fee — charged in full, reversible"]
-  T --> U["÷ qty, integer floor"]
-  U --> Z["often 0 per unit — silently dropped"]
-  U --> P["when non-zero: frozen in unit_cost forever"]
+  T["a courier's ask at the door"] --> L["the balance - owed in full"]
+  T --> U["divided over the units"]
+  U -->|"decided - floating point"| P["in price_unit"]
+  U -.->|"built - integer floor"| Z["0 per unit for a small ask"]
 ```
-
-**→ Recommend: keep `cod_fee` OUT of `UnitPrice`.** ⚠ **`balance_context.md`'s own diagram already
-names it** — *"Charge to selling as **reimbursement**"*. A reimbursement is money going back to
-whoever fronted it, not a component of what the goods cost. Add that it is unpredictable and small,
-and it is the worst possible input to a permanently frozen number. `ShipmentFee` stays inside: it is
-agreed before the journey and is genuinely part of what the goods cost. Asked as [Q6](#question).
 
 ---
 
