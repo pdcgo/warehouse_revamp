@@ -364,6 +364,37 @@ const customConfig = defineConfig({
           },
         },
       },
+      // ── A SEGMENTED CHOICE IS IN THE MAIN TONE (owner, `a-segmented-choice-is-in-the-main-tone`) ─────────
+      //
+      // Chakra draws a segmented control as a grey trough with a white raised chip — a look nothing else in this app
+      // has, and at `md` it stood a size taller than the fields beside it. Instead: a box drawn like a field (white,
+      // a thin border, the field's height at `sm`), and the chosen segment filled in pale rose with its label in the
+      // main tone — the tab's and the chosen radio's colour, so a pick looks like a pick everywhere.
+      //
+      // ⚠ The colour is the label's only: no bold on the chosen segment, because the wider word would shift the
+      // others sideways each time the choice moves. A hovered segment turns rose too, the chosen one included —
+      // never black (owner: *"activenya saat hover bukan hitam"*).
+      segmentGroup: {
+        defaultVariants: { size: "sm" },
+        base: {
+          root: {
+            "--segment-indicator-bg": "colors.brand.subtle",
+            "--segment-indicator-shadow": "none",
+            bg: "bg",
+            boxShadow: "none",
+            borderWidth: "1px",
+            borderColor: "border",
+            // 1px inside a 1px border around a 32px segment — 36px, the height of a field at `sm`.
+            p: "1px",
+          },
+          item: {
+            color: "fg.muted",
+            _checked: { color: "brand.fg" },
+            _hover: { color: "brand.fg" },
+          },
+        },
+        variants: { size: { sm: { item: { height: "8", px: "3", gap: "1.5" } } } },
+      },
       // ── TYPE HIERARCHY (owner) ──────────────────────────────────────────────────────────────────
       //
       // Lato ships only 400 and 700 (no 500/600), so the levels are told apart by SIZE and COLOUR,

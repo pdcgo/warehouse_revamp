@@ -34,6 +34,11 @@ the prototype these screens grew from was accepted
 | [the-wallet-reads-dompet-digital](#the-wallet-reads-dompet-digital) | the wallet type reads **Dompet digital** everywhere, not *Dompet* |
 | [the-form-asks-the-type-first](#the-form-asks-the-type-first) | New Account's type pills include **Lainnya**; the provider field follows the type — a picker of its own options, or the provider it sets, said in words |
 | [kas-and-lainnya-ask-no-provider](#kas-and-lainnya-ask-no-provider) | Kas and Lainnya show no provider field at all; a bank and a wallet keep their picker |
+| [set-account-reads-lengkapi-data-or-pindah-saldo](#set-account-reads-lengkapi-data-or-pindah-saldo) | Tentukan Rekening's two choices read **Lengkapi data** · **Pindah saldo**, with a line saying when to pick each |
+| [the-report-follows-the-screen-rules](#the-report-follows-the-screen-rules) | the account report applies the screen rules: title block, FilterBar, the order list's cards, tabs for the ranking, sort from the headings |
+| [the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table) | the account report is five cards — the three balances, then what moved it by account and by provider — and one table of periods with every type; breakdowns open from *Rincian ›* |
+| [a-phone-reads-an-account-as-a-block](#a-phone-reads-an-account-as-a-block) | on a phone the accounts list is one block per account — name and balance, provider and ⋯, last checked and links — and the header's actions wrap under the subtitle |
+| [the-change-sits-under-the-close-on-a-phone](#the-change-sits-under-the-close-on-a-phone) | a report period on a phone is two top-aligned columns: date and types left, close and change right — the change right under the close |
 | [a-balance-below-zero-says-to-check-the-bank](#a-balance-below-zero-says-to-check-the-bank) | under a balance below zero, a small red line with the ⚠: *Di bawah nol · cocokkan dengan bank* · the figures right-aligned |
 | [the-accounts-list-has-every-filter-the-contract-has](#the-accounts-list-has-every-filter-the-contract-has) | search · type · shop · operational only · archived, in the shared `FilterBar` — a sheet on a phone |
 | [the-accounts-table-sorts-from-its-headings](#the-accounts-table-sorts-from-its-headings) | **Akun** and **Penyedia** sort from their headings, A to Z first, then flip |
@@ -564,3 +569,125 @@ Jenis  ( ◉ Dompet digital ) → Penyedia [ShopeePay ⌄]  — kept, though it 
 | where | New Account and Tentukan Rekening alike |
 
 It narrows [the-form-asks-the-type-first](#the-form-asks-the-type-first)'s *the provider in words*.
+
+## set-account-reads-lengkapi-data-or-pindah-saldo
+
+> Owner, in chat (2026-10-06): *"Belum tercatat — isi datanya jadikan lengkapi data, Sudah ada di daftar ganti pindah
+> saldo"*.
+
+```
+( ◉ Lengkapi data )  ( ○ Pindah saldo )
+Kalau rekening aslinya belum ada di daftar — akun ini menjadi rekening itu.
+```
+
+| | |
+| --- | --- |
+| the pills | **Lengkapi data** (EN *Complete details*) — was *Belum tercatat — isi datanya* · **Pindah saldo** (EN *Move balance*) — was *Sudah ada di daftar* |
+| the line under | the old labels said WHEN, the new ones say WHAT — so a quiet line under the pills says when, changing with the pick: *Kalau rekening aslinya belum / sudah ada di daftar — …* |
+| unchanged | what each does — [an-unknown-account-is-filled-in-or-moved-in](../../business/financial_account/context_decision.md#an-unknown-account-is-filled-in-or-moved-in) |
+
+## the-report-follows-the-screen-rules
+
+> Owner, in chat (2026-10-07), after reading the report's context: *"coba normalize seperti keputusanku sebelumnya,
+> biar aku lihat hasilnya dulu"* — a preview, to be reviewed.
+
+```
+← Akun Keuangan
+Laporan Akun [Tim A]
+Apa yang menggerakkan uang tim, menurut hari uang berpindah. …
+[Seluruh tim ⌄]  [30 hari terakhir ⌄]  (Hari | Bulan | Tahun)            Hapus filter
+┌ Saldo awal ┐ ┌ Perubahan bersih ┐ ┌ Saldo akhir ───┐   ← the close leads, pale blue
+┌ [Penarikan] +Rp 11.000.000 ┐ ┌ [Biaya] −Rp 3.600.000 ┐ …   ← one card per type that moved
+Dari Waktu ke Waktu      Periode ↓ · the nine types · Perubahan bersih · Saldo akhir (bold)
+Yang Menggerakkannya     [Akun] [Penyedia] [Jenis]
+                         Akun · Penyedia · Saldo awal · Perubahan bersih ↓ · Saldo akhir ⇅
+```
+
+| rule | applied |
+| --- | --- |
+| [the-accounts-subtitle-sits-under-the-title](#the-accounts-subtitle-sits-under-the-title) | title, team badge and subtitle in one block; the filters moved out of the title row |
+| [a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet) · [clear-filters-is-red-and-bold](context_decision.md#clear-filters-is-red-and-bold) | the shared `FilterBar` — account, window, grain; Clear (red, bold) puts all three back; a sheet on a phone |
+| a picker over growing data is a search select (CLAUDE.md) · [a-search-select-reopens-whole](context_decision.md#a-search-select-reopens-whole) | the account filter is a `Combobox` — no pick reads *Seluruh tim*, clearing returns to it |
+| [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip) · [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border) | Saldo awal · Perubahan bersih · **Saldo akhir** (leading, as [the-total-leads-until-a-type-is-picked](#the-total-leads-until-a-type-is-picked)); one card per change type that moved, named by its badge |
+| [a-negative-amount-puts-its-minus-before-rp](context_decision.md#a-negative-amount-puts-its-minus-before-rp) | every movement signed and coloured — green in, red out; a balance below zero red |
+| [the-accounts-type-is-a-tab-row](#the-accounts-type-is-a-tab-row) · [a-selected-tab-is-in-the-main-tone](context_decision.md#a-selected-tab-is-in-the-main-tone) | the ranking's Akun · Penyedia · Jenis is a tab row, not an attached button group |
+| [a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings) | the series from **Periode** (newest first, flips); the ranking from **Perubahan bersih** (by size, the default) and **Saldo akhir** — the contract's `AnalyticMetricSort` |
+| [the-provider-cell-carries-the-number](#the-provider-cell-carries-the-number) · [a-balance-is-bold](#a-balance-is-bold) | ranked by account: the provider in its own column, as on the accounts list; every closing balance bold |
+| [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block) | on a phone a period is a block — the date and the close, then the types that moved and the net change — and so is a ranked row |
+| Title Case | the section headings *Dari Waktu ke Waktu*, *Yang Menggerakkannya* |
+| [the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen) | unchanged — `Pagination` under both tables; the growing pager stays the accounts list's trial |
+
+## the-report-is-five-cards-and-one-table
+
+> Owner, in chat (2026-10-07), after three redesign drafts were rejected (*"tidak ada yang bagus"*): *"kita akan memulai
+> dengan 1 halaman simple, statistic dan tabel"* — built beside the page as a draft (*"jadikan draft dulu, yang lama
+> tetap"*), detailed one instruction at a time, then *"siap apply ke report utama"*.
+
+```
+← Akun Keuangan
+Laporan Akun [Tim A]                                                        [⤓ Ekspor ⚠1]
+Apa yang menggerakkan uang tim, menurut hari uang berpindah. …
+⚠ 1 bagian layar ini belum diimplementasikan                                 (folded)
+[Semua akun ⌄]  [30 hari terakhir ⌄]  │▣ Harian│▦ Bulanan│▤ Tahunan│        Hapus filter
+┌ Saldo awal ─┐ ┌ Perubahan bersih  Rincian › ┐ ┌ Saldo akhir ──────┐ ┌ Akun  Rincian › ┐ ┌ Penyedia  Rincian › ┐
+│ 11.300.000  │ │ +5.143.500                  │ │ 16.443.500        │ │ +4.200.000      │ │ +4.200.000          │
+│ Awal 8 Sep  │ │ +45,5% dari saldo awal      │ │ Akhir 7 Okt       │ │ Melati TikTok   │ │ [Lainnya]           │
+└─────────────┘ └─────────────────────────────┘ │ Saldo awal + per… │ │ Terbesar dari 7 │ │ Terbesar dari 5     │
+Periode ↓ │ Penarikan · Modal · … nine types … · Perubahan bersih │ Saldo akhir      ← edges held, a row lights up
+                                                     Per halaman [20 ⌄]  ‹ [1] 2 ›
+```
+
+| part | spec |
+| --- | --- |
+| header | back link · title, team badge, subtitle under it ([the-accounts-subtitle-sits-under-the-title](#the-accounts-subtitle-sits-under-the-title)) · **Ekspor** on the title's row — a grey outline with a download icon, marked `dropped` (nothing builds a file; `pages/financial-account-report/pending.ts`) |
+| filters | `FilterBar`: the account (a search select; no pick reads **Semua akun**, as the shop filter reads *Semua toko*), the window, the grain · Clear puts all three back |
+| Saldo awal | the window's opening balance · *Awal {date}* |
+| Perubahan bersih | signed, coloured · *{share} dari saldo awal* (hidden when the opening is 0 or below) · **Rincian ›** at the end of the label row opens the nine types that moved, in first then out, summing to it, with *Saldo awal → Saldo akhir* under them |
+| Saldo akhir | leads, pale blue · *Akhir {date}* · *Saldo awal + perubahan bersih* |
+| Akun · Penyedia | the one that moved most (the server ranks by the size of the change) and *Terbesar dari n* · the provider named by its coloured badge · **Rincian ›** opens all of them — name, net change, close, a **Total** row equal to the two cards; an account row opens the account's page · **not drawn while one account is picked**, and not fetched |
+| table | one row per period, quiet ones included, newest first, flipped from **Periode** · the nine type columns, Perubahan bersih, Saldo akhir bold · **Periode held left, Saldo akhir held right** while the types scroll · a row lights up under the pointer, held cells included · a block per period on a phone |
+| pager | `GrowingPager`, as [the-accounts-pager-grows-with-the-pages-opened](#the-accounts-pager-grows-with-the-pages-opened) — 10 / 20 / 50 a page |
+| a card is not a control | only the word *Rincian* is pressed ([the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners)), as on the settlement margin card |
+
+**Supersedes**, in [the-report-follows-the-screen-rules](#the-report-follows-the-screen-rules): the per-type card strip,
+the ranking table with its Akun · Penyedia · Jenis tab row and its sort from Perubahan bersih and Saldo akhir, the
+section headings *Dari Waktu ke Waktu* / *Yang Menggerakkannya*, and `Pagination` — the change types now open from the
+net change card, the accounts and providers from their own cards. The contract is untouched: the same three analytic
+RPCs feed every figure.
+
+## a-phone-reads-an-account-as-a-block
+
+> Owner, in chat (2026-10-07), on the Mobile stories: *"deskripsi di mobile bug, actionnya masih bug juga"*, then *"di
+> mobile header masih ada"* — the table's headings still over a table 929px wide in a 318px screen.
+
+```
+Akun Keuangan [Tim A]
+Apa yang dipegang tim, dan di mana. …              ← the subtitle a sentence again
+[▥ Laporan] [▤ Arsip] [+ Akun Baru]                ← the actions wrap under it
+BCA Operasional                     Rp 11.443.500
+[BCA] 1234567890 · PT Melati Sejahtera          ⋯
+Terakhir dicek kemarin · [Operasional] [Melati Official] +1
+```
+
+| | |
+| --- | --- |
+| the header | the title block takes `flex="1 1 16rem"`, not `flex="1"` — with a zero basis it shrank to 40px on a phone (the subtitle one word a line, 399px tall) while the actions stayed on its row, Laporan over the title. Now the actions wrap onto a row of their own; a desktop is unchanged |
+| the list | `AccountBlock` per account, by the JS breakpoint (`a-phone-reads-each-line-as-a-block`): the name (archived marked) and the bold balance with its below-zero line · the provider badge, the number, the holder or *Rekening belum disebut* · the ⋯ menu with every action · last checked and the links — that line left out for an unknown account with nothing linked |
+| kept | the same test ids as the table row; the block opens the account; the sort is the Filter sheet's select |
+| still open | the type tabs wrap onto two rows on a phone; card notes clip on a two-column strip; a dialog meets the screen's edges — listed, not asked yet |
+
+## the-change-sits-under-the-close-on-a-phone
+
+> Owner, in chat (2026-10-07): *"yang perubahan taruh di bawah saldo pas atau tidak center dari tiap tipenya"*.
+
+```
+2026-10-05                           Rp 16.450.000
+[Modal] +Rp 1.000.000                  +Rp 600.000   ← right under the close
+[Restok] −Rp 400.000
+```
+
+| | |
+| --- | --- |
+| before | two rows — the date and the close, then the types and the change — with the change centred against however many type badges had wrapped |
+| now | two top-aligned columns: the date over the types on the left, the close over the change on the right |
+| pinned | the report's Mobile story checks every block: the change starts under the close, within 12px, on its right edge |

@@ -282,7 +282,11 @@ export const MoveTheUnknownAccountIn: Story = {
     await openSetAccount(canvas);
     const move = await screen.findByTestId("identify-move");
     await waitFor(() => expect(move).toBeVisible());
+    // What each does on the pill, when to pick it under (set-account-reads-lengkapi-data-or-pindah-saldo).
+    await expect(screen.getByTestId("identify-fill")).toHaveTextContent("Complete details");
+    await expect(move).toHaveTextContent("Move balance");
     await userEvent.click(move);
+    await expect(screen.getByTestId("identify-when")).toHaveTextContent("already in the list");
     await userEvent.click(screen.getByTestId("identify-into"));
     const into = await screen.findByTestId(`identify-into-option-${BCA_OPS.id}`);
     await waitFor(() => expect(into).toBeVisible());

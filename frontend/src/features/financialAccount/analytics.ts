@@ -126,11 +126,11 @@ export interface AccountReportPoint {
   metric: Metric;
 }
 
-/** The window, period by period — NEWEST first, every bucket including the quiet ones. */
+/** The window, period by period — every bucket including the quiet ones; NEWEST first unless asked otherwise. */
 export function useAccountReportSeries(
-  args: Window & { grain: PeriodGrain; accountId: bigint; page: number; pageSize: number },
+  args: Window & { grain: PeriodGrain; accountId: bigint; page: number; pageSize: number; dir?: "asc" | "desc" },
 ) {
-  const { teamId, from, to, valid, grain, accountId, page, pageSize } = args;
+  const { teamId, from, to, valid, grain, accountId, page, pageSize, dir = "desc" } = args;
 
   return useQuery({
     ...listQuery,
@@ -140,6 +140,7 @@ export function useAccountReportSeries(
       from,
       to,
       account: accountId.toString(),
+      dir,
       page,
       pageSize,
     }),
@@ -149,7 +150,7 @@ export function useAccountReportSeries(
         teamId: teamId!,
         timeframe: timeframeOf[grain],
         filter: { dateRange: { startDate: from, endDate: to }, accountId },
-        sortType: CommonSortType.DESC,
+        sortType: dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
         page: { page, limit: pageSize },
       });
 
@@ -171,12 +172,17 @@ export interface AccountReportGroupRow {
  * (analytic_context.md §How We Handle Grouped Metric), so the order and the numbers beside it come from
  * one server-side definition and cannot disagree.
  */
-export function useAccountReportGroups(args: Window & { groupBy: AccountGroupBy; page: number; pageSize: number }) {
-  const { teamId, from, to, valid, groupBy, page, pageSize } = args;
+/** What the ranking is ordered by — the movement (by size) or where each closed. */
+export type AccountGroupSort = { by: "change" | "close"; dir: "asc" | "desc" };
+
+export function useAccountReportGroups(
+  args: Window & { groupBy: AccountGroupBy; page: number; pageSize: number; sort?: AccountGroupSort },
+) {
+  const { teamId, from, to, valid, groupBy, page, pageSize, sort = { by: "change", dir: "desc" } } = args;
 
   return useQuery({
     ...listQuery,
-    queryKey: key.financialAccounts(teamId, { report: "groups", groupBy, from, to, page, pageSize }),
+    queryKey: key.financialAccounts(teamId, { report: "groups", groupBy, from, to, page, pageSize, sort: `${sort.by}:${sort.dir}` }),
     enabled: teamId !== undefined && valid,
     queryFn: async () => {
       const filter = { dateRange: { startDate: from, endDate: to }, groupType: groupTypeOf[groupBy] };
@@ -184,8 +190,8 @@ export function useAccountReportGroups(args: Window & { groupBy: AccountGroupBy;
       const ranked = await financialAccountAnalyticClient.analyticGroupSearch({
         teamId: teamId!,
         filter,
-        sort: AnalyticMetricSort.CHANGE,
-        sortType: CommonSortType.DESC,
+        sort: sort.by === "close" ? AnalyticMetricSort.CLOSE_BALANCE : AnalyticMetricSort.CHANGE,
+        sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
         page: { page, limit: pageSize },
       });
 

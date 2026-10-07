@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Flex, Icon, Table } from "@chakra-ui/react";
+import { Flex, Icon, Table, type TableColumnHeaderProps } from "@chakra-ui/react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 export const description =
@@ -28,6 +28,8 @@ export interface SortableHeaderProps<K extends string> {
    */
   firstDir?: SortDirection;
   testId?: string;
+  /** Passed to the heading cell — a sticky column's position and ground, say. */
+  headerProps?: TableColumnHeaderProps;
 }
 
 // Shared by every list that sorts from its headings — the settlement list was first, the accounts list
@@ -40,11 +42,16 @@ export function SortableHeader<K extends string>({
   end = false,
   firstDir = "desc",
   testId,
+  headerProps,
 }: SortableHeaderProps<K>) {
   const { t } = useTranslation();
 
   if (!onSortChange) {
-    return <Table.ColumnHeader textAlign={end ? "end" : undefined}>{label}</Table.ColumnHeader>;
+    return (
+      <Table.ColumnHeader textAlign={end ? "end" : undefined} {...headerProps}>
+        {label}
+      </Table.ColumnHeader>
+    );
   }
 
   const active = sort?.by === column;
@@ -55,6 +62,7 @@ export function SortableHeader<K extends string>({
     <Table.ColumnHeader
       textAlign={end ? "end" : undefined}
       aria-sort={dir === undefined ? "none" : dir === "desc" ? "descending" : "ascending"}
+      {...headerProps}
     >
       <Flex
         as="button"

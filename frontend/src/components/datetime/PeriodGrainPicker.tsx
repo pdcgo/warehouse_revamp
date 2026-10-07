@@ -1,10 +1,19 @@
 import { useTranslation } from "react-i18next";
-import { SegmentGroup } from "@chakra-ui/react";
+import { Icon, SegmentGroup } from "@chakra-ui/react";
+import { Calendar1, CalendarDays, CalendarRange, type LucideIcon } from "lucide-react";
 
 import type { PeriodGrain } from "../../lib/period";
 
 /** Every grain, coarsening — the default offer, and the order they are shown in. */
 export const PERIOD_GRAINS: PeriodGrain[] = ["day", "month", "year"];
+
+// An icon per grain (owner: *"pill harian bulanan tahunan kurang bagus dan sesuai temaku, mungkin ditambah icon juga"*)
+// — one day, a month's grid of days, a long span. Decorative: the label beside it is the name.
+const GRAIN_ICON: Record<PeriodGrain, LucideIcon> = {
+  day: Calendar1,
+  month: CalendarDays,
+  year: CalendarRange,
+};
 
 export interface PeriodGrainPickerProps {
   value: PeriodGrain;
@@ -33,7 +42,7 @@ export interface PeriodGrainPickerProps {
 // seeing without opening anything: a reader who cannot tell at a glance that they are looking at MONTHS
 // will read a running total as a month's worth of days.
 export const description =
-  "Period-grain picker (Chakra SegmentGroup) — Daily / Monthly / Yearly. Emits a PeriodGrain, the same union lib/period's bucketOf and bucketSpine take, so a caller rolls a daily series up without a mapping table. Segmented rather than a dropdown because the choice reframes everything below it and all three options should be readable at a glance. Narrow the offer with `grains` when the underlying series cannot answer at a resolution.";
+  "Period-grain picker (Chakra SegmentGroup) — Daily / Monthly / Yearly, each with its calendar icon. Emits a PeriodGrain, the same union lib/period's bucketOf and bucketSpine take, so a caller rolls a daily series up without a mapping table. Segmented rather than a dropdown because the choice reframes everything below it and all three options should be readable at a glance. Narrow the offer with `grains` when the underlying series cannot answer at a resolution.";
 
 export function PeriodGrainPicker({
   value,
@@ -59,6 +68,7 @@ export function PeriodGrainPicker({
       <SegmentGroup.Indicator />
       {grains.map((grain) => (
         <SegmentGroup.Item key={grain} value={grain} data-testid={`${testId}-${grain}`}>
+          <Icon as={GRAIN_ICON[grain]} boxSize="3.5" />
           <SegmentGroup.ItemText>{t(`periodGrain.${grain}`)}</SegmentGroup.ItemText>
           <SegmentGroup.ItemHiddenInput />
         </SegmentGroup.Item>

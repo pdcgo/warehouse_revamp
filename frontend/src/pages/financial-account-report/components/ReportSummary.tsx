@@ -1,59 +1,131 @@
 import { useTranslation } from "react-i18next";
-import { Box, Flex, HStack, Stack, Text } from "@chakra-ui/react";
+import { Button, Icon, Span } from "@chakra-ui/react";
+import { ChevronRight } from "lucide-react";
 
 import type { Metric } from "../../../features/financialAccount/analytics";
-import { BalanceText, ChangeTypeBadge } from "../../../features/financialAccount/badges";
-import { CHANGE_TYPES } from "../../../features/financialAccount/vocab";
-import { FIELD_OF, signed } from "./MetricColumns";
+import { ProviderBadge } from "../../../features/financialAccount/badges";
+import { SummaryCard, SummaryStrip } from "../../../features/orders/SummaryCard";
+import { dateInputToUnix, formatUnixDate } from "../../../lib/datetime";
+import { formatRupiahNumber } from "../../../lib/money";
+import { signed } from "./MetricColumns";
+import type { Mover } from "./MoversDialog";
 
-// The window in its numbers: where the money stood when it opened, what moved it — by type — and where it
-// stands at its end. `close − open` equals the sum of the types, by construction of the daily row.
-//
-// A TRANSFER nets to zero for the whole team — both legs are its own accounts — so it shows as zero here
-// and as its two sides when one account is filtered.
-export function ReportSummary({ metric }: { metric: Metric | undefined }) {
-  const { t } = useTranslation();
-
+/** A movement, signed and coloured — green in, red out, as on every statement. */
+export function SignedAmount({ amount }: { amount: number }) {
   return (
-    <Stack gap="card" borderWidth="1px" borderRadius="md" p="card" data-testid="account-report-summary">
-      <Flex gap="card" wrap="wrap">
-        <Tile label={t("financialAccounts.report.open")} testId="account-report-open">
-          <BalanceText balance={metric?.openBalance} size="lg" testId="account-report-open-value" />
-        </Tile>
-        <Tile label={t("financialAccounts.report.change")} testId="account-report-change">
-          <Text fontSize="lg" fontWeight="semibold" data-testid="account-report-change-value">
-            {metric ? signed(metric.change) : "—"}
-          </Text>
-        </Tile>
-        <Tile label={t("financialAccounts.report.close")} testId="account-report-close">
-          <BalanceText balance={metric?.closeBalance} size="lg" testId="account-report-close-value" />
-        </Tile>
-      </Flex>
-
-      <Flex gap="2" wrap="wrap">
-        {CHANGE_TYPES.map((c) => {
-          const v = metric ? metric[FIELD_OF[c]!] : 0;
-          if (v === 0) return null;
-
-          return (
-            <HStack key={c} gap="1" borderWidth="1px" borderRadius="md" px="2" py="1" data-testid={`account-report-type-${c}`}>
-              <ChangeTypeBadge changeType={c} />
-              <Text fontSize="sm">{signed(v)}</Text>
-            </HStack>
-          );
-        })}
-      </Flex>
-    </Stack>
+    <Span color={amount > 0 ? "fg.success" : amount < 0 ? "fg.error" : undefined} whiteSpace="nowrap">
+      {signed(amount)}
+    </Span>
   );
 }
 
-function Tile({ label, testId, children }: { label: string; testId: string; children: React.ReactNode }) {
+/** A balance — red below zero (below-zero-is-warned-never-refused). */
+function Balance({ amount }: { amount: number | undefined }) {
+  if (amount === undefined) return <>—</>;
+
+  return <Span color={amount < 0 ? "fg.error" : undefined}>{formatRupiahNumber(amount)}</Span>;
+}
+
+// THE REPORT'S FIVE CARDS (owner, `the-report-is-five-cards-and-one-table`), as the order list's card strip, each saying
+// what its figure is (owner: *"saldo awal kasih tanggal mulai, perubahan bersih dan saldo akhir entahlah isinya enaknya
+// apa dibawah, tapi saldo akhir bisa dikasih keterangan saldo awal + perubahan"*):
+//
+//   Saldo awal        the day it is the balance at the start of
+//   Perubahan bersih  how big the move was against where it started — the one thing the two balances do not say —
+//                     and "Rincian ›" at the end of its label row, which opens what it is made of
+//   Saldo akhir       the day it is the balance at the end of, and that it IS the opening plus the change
+//
+//   Akun · Penyedia   WHAT MOVED IT, by account and by provider (owner: *"yang menggerakannya bisa jadi statistic juga …
+//                     jadi nambah 2 statistik akun dan provider"*, account first): the one that moved most, out of how
+//                     many, and "Rincian ›" opening them all. Not drawn while one account is picked (owner: *"keduanya
+//                     jadi tidak perlu muncul kalau ada filter akun"*) — one account has nothing to rank, and the
+//                     contract's ranking cannot be narrowed to it.
+//
+// A card stays a card: only the word "Rincian" is pressed (as on the settlement margin card).
+export function ReportSummary({
+  metric,
+  from,
+  to,
+  onDetail,
+  movers,
+  onMovers,
+}: {
+  metric: Metric | undefined;
+  from: string;
+  to: string;
+  onDetail: () => void;
+  /** The ranked accounts and providers — undefined while one account is picked, and the two cards are not drawn. */
+  movers?: { account: Mover[] | undefined; provider: Mover[] | undefined };
+  onMovers: (kind: "account" | "provider") => void;
+}) {
+  const { t, i18n } = useTranslation();
+
+  const day = (d: string) => formatUnixDate(dateInputToUnix(d, false));
+  // Against the opening balance — nothing to measure against when it opened at zero or below.
+  const share =
+    metric && metric.openBalance > 0
+      ? new Intl.NumberFormat(i18n.language, { style: "percent", maximumFractionDigits: 1, signDisplay: "exceptZero" }).format(
+          metric.change / metric.openBalance,
+        )
+      : undefined;
+
+  const details = (onClick: () => void, testId: string) => (
+    <Button variant="plain" size="2xs" h="auto" p="0" ms="auto" color="brand.fg" fontWeight="bold" onClick={onClick} data-testid={testId}>
+      {t("financialAccounts.report.seeDetail")}
+      <Icon as={ChevronRight} boxSize="3" />
+    </Button>
+  );
+
+  // The one that moved most is first — the server ranks by the size of the change.
+  const moverCard = (kind: "account" | "provider", rows: Mover[] | undefined) => {
+    const top = rows?.[0];
+
+    return (
+      <SummaryCard
+        key={kind}
+        label={t(`financialAccounts.report.by.${kind}`)}
+        mark={rows && rows.length > 0 ? details(() => onMovers(kind), `account-report-by-${kind}-detail`) : undefined}
+        value={top ? <SignedAmount amount={top.change} /> : "—"}
+        // A provider is named by its coloured badge, as everywhere else — recognised before it is read.
+        line={kind === "provider" && top?.provider !== undefined ? <ProviderBadge provider={top.provider} /> : top?.name}
+        note={
+          rows
+            ? t(kind === "account" ? "financialAccounts.report.topOfAccounts" : "financialAccounts.report.topOfProviders", {
+                count: rows.length,
+              })
+            : undefined
+        }
+        // `by-` — `account-report-account` is the account filter's own field.
+        testId={`account-report-by-${kind}`}
+      />
+    );
+  };
+
   return (
-    <Box minW="10rem" flex="1" data-testid={testId}>
-      <Text fontSize="xs" color="fg.muted">
-        {label}
-      </Text>
-      {children}
-    </Box>
+    <SummaryStrip testId="account-report-totals">
+      <SummaryCard
+        label={t("financialAccounts.report.open")}
+        value={<Balance amount={metric?.openBalance} />}
+        line={from ? t("financialAccounts.report.openAt", { date: day(from) }) : undefined}
+        testId="account-report-open"
+      />
+      <SummaryCard
+        label={t("financialAccounts.report.change")}
+        mark={details(onDetail, "account-report-change-detail")}
+        value={metric ? <SignedAmount amount={metric.change} /> : "—"}
+        line={share ? t("financialAccounts.report.ofOpen", { share }) : undefined}
+        testId="account-report-change"
+      />
+      <SummaryCard
+        label={t("financialAccounts.report.close")}
+        value={<Balance amount={metric?.closeBalance} />}
+        line={to ? t("financialAccounts.report.closeAt", { date: day(to) }) : undefined}
+        note={t("financialAccounts.report.closeIs")}
+        emphasis
+        testId="account-report-close"
+      />
+      {movers && moverCard("account", movers.account)}
+      {movers && moverCard("provider", movers.provider)}
+    </SummaryStrip>
   );
 }

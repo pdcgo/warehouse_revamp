@@ -37,6 +37,7 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixRelative } from "../../lib/datetime";
 import { canMoveAccountMoney } from "../../lib/roles";
+import { AccountBlock } from "./components/AccountBlock";
 import { AccountLinks } from "./components/AccountLinks";
 import { AccountOptionsFilter } from "./components/AccountOptionsFilter";
 import { type AccountSortKey, AccountSortSelect } from "./components/AccountSortSelect";
@@ -156,9 +157,13 @@ export function FinancialAccountsPage() {
   return (
     <Stack gap="section" data-testid="financial-accounts-page">
       {/* THE SUBTITLE SITS UNDER THE TITLE (owner, `the-accounts-subtitle-sits-under-the-title`) — one block,
-          the actions beside it, instead of a section's gap between a title and the line that explains it. */}
+          the actions beside it, instead of a section's gap between a title and the line that explains it.
+
+          ⚠ A BASIS, NOT `flex="1"`. With a zero basis the title block never asked for room, so on a phone it shrank to
+          40px — the subtitle one word a line, 399px tall — while the actions stayed on its row, Laporan over the title.
+          At 16rem it wraps the actions onto a row of their own under it, and on a desktop still takes the free space. */}
       <Flex align="flex-start" gap="card" wrap="wrap">
-        <Stack gap="1" flex="1" minW="0">
+        <Stack gap="1" flex="1 1 16rem" minW="0">
           <HStack gap="2" wrap="wrap">
             <Heading size="md" data-testid="financial-accounts-heading">
               {t(archivedView ? "financialAccounts.archivedView.title" : "financialAccounts.title")}
@@ -170,7 +175,7 @@ export function FinancialAccountsPage() {
             {t(archivedView ? "financialAccounts.archivedView.subtitle" : "financialAccounts.subtitle")}
           </Text>
         </Stack>
-        <HStack gap="2">
+        <HStack gap="2" wrap="wrap">
           {archivedView ? (
             <Button size="xs" variant="outline" data-testid="back-to-active-accounts" onClick={() => showArchived(false)}>
               <Icon as={ArrowLeft} boxSize="4" />
@@ -275,132 +280,157 @@ export function FinancialAccountsPage() {
         <Spinner colorPalette="brand" />
       ) : (
         <RefreshOverlay busy={list.isFetching && !list.isPending}>
-          <Table.ScrollArea>
-            <Table.Root size="sm" interactive data-testid="financial-accounts-table">
-              <Table.Header>
-                <Table.Row>
-                  {/* THE SORT IS IN THE HEADINGS (owner, `the-accounts-table-sorts-from-its-headings`) — the two the
-                      contract can order by, A to Z first. Balance and last checked come from another RPC, so the
-                      server cannot sort a page by them; the rest would mean nothing in order. */}
-                  <SortableHeader
-                    column="name"
-                    label={t("financialAccounts.col.account")}
-                    sort={sort}
-                    onSortChange={sortBy}
-                    firstDir="asc"
-                    testId="account-sort-name"
-                  />
-                  <SortableHeader
-                    column="provider"
-                    label={t("financialAccounts.col.provider")}
-                    sort={sort}
-                    onSortChange={sortBy}
-                    firstDir="asc"
-                    testId="account-sort-provider"
-                  />
-                  <Table.ColumnHeader textAlign="end">{t("financialAccounts.col.balance")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("financialAccounts.col.lastChecked")}</Table.ColumnHeader>
-                  <Table.ColumnHeader>{t("financialAccounts.col.linkedTo")}</Table.ColumnHeader>
-                  {canMove && <Table.ColumnHeader textAlign="end">{t("financialAccounts.col.actions")}</Table.ColumnHeader>}
-                </Table.Row>
-              </Table.Header>
+          {/* A PHONE READS EACH ACCOUNT AS A BLOCK (`a-phone-reads-each-line-as-a-block`) — the table was 929px in a
+              318px screen, the balance and the actions off to the right, its headings over nothing. The sort is the
+              Filter sheet's select there. */}
+          {isMobile ? (
+            <Stack gap="0" data-testid="financial-accounts-table">
+              {accounts.map((account) => {
+                const b = balances.data?.get(account.id.toString());
 
-              <Table.Body>
-                {accounts.map((account) => {
-                  const id = account.id.toString();
-                  const b = balances.data?.get(id);
-                  const archived = account.status === FinancialAccountStatus.ARCHIVED;
-                  const unknown = isUnknown(account);
-                  // An unknown account is shown by its shop's name (`the-unknown-account-reads-lainnya`).
-                  const shown = { ...account, name: accountName(account, nameOf) };
+                return (
+                  <AccountBlock
+                    key={account.id.toString()}
+                    account={{ ...account, name: accountName(account, nameOf) }}
+                    balance={b?.balance}
+                    reconciledAt={b?.reconciledAt}
+                    teamId={teamId}
+                    canMove={canMove}
+                    shopNames={account.shopIds.map(shopName)}
+                    shopOf={shopOf}
+                    onOpen={() => navigate(`/financial-accounts/${account.id}`)}
+                  />
+                );
+              })}
+            </Stack>
+          ) : (
+            <Table.ScrollArea>
+              <Table.Root size="sm" interactive data-testid="financial-accounts-table">
+                <Table.Header>
+                  <Table.Row>
+                    {/* THE SORT IS IN THE HEADINGS (owner, `the-accounts-table-sorts-from-its-headings`) — the two the
+                        contract can order by, A to Z first. Balance and last checked come from another RPC, so the
+                        server cannot sort a page by them; the rest would mean nothing in order. */}
+                    <SortableHeader
+                      column="name"
+                      label={t("financialAccounts.col.account")}
+                      sort={sort}
+                      onSortChange={sortBy}
+                      firstDir="asc"
+                      testId="account-sort-name"
+                    />
+                    <SortableHeader
+                      column="provider"
+                      label={t("financialAccounts.col.provider")}
+                      sort={sort}
+                      onSortChange={sortBy}
+                      firstDir="asc"
+                      testId="account-sort-provider"
+                    />
+                    <Table.ColumnHeader textAlign="end">{t("financialAccounts.col.balance")}</Table.ColumnHeader>
+                    <Table.ColumnHeader>{t("financialAccounts.col.lastChecked")}</Table.ColumnHeader>
+                    <Table.ColumnHeader>{t("financialAccounts.col.linkedTo")}</Table.ColumnHeader>
+                    {canMove && <Table.ColumnHeader textAlign="end">{t("financialAccounts.col.actions")}</Table.ColumnHeader>}
+                  </Table.Row>
+                </Table.Header>
 
-                  return (
-                    <Table.Row
-                      key={id}
-                      cursor="pointer"
-                      data-testid={`account-row-${id}`}
-                      onClick={() => navigate(`/financial-accounts/${id}`)}
-                    >
-                      <Table.Cell>
-                        <Stack gap="0">
-                          <HStack gap="2">
-                            <Text fontWeight="medium" color={archived ? "fg.muted" : undefined}>
-                              {shown.name}
-                            </Text>
-                            {archived && (
-                              <Badge colorPalette="gray" data-testid={`account-archived-${id}`}>
-                                {t("financialAccounts.archived")}
-                              </Badge>
-                            )}
-                          </HStack>
-                          {/* AN UNKNOWN ACCOUNT SAYS WHAT IS LEFT TO DO, where the holder would be (owner,
-                              `the-unknown-row-warns-and-sets-from-the-menu`) — the type there only repeated the
-                              provider badge. Not mandatory, but every later withdrawal lands here until it is set,
-                              and reconciling the real bank first counts the money twice. */}
-                          {/* Only where a shop's withdrawals land — a Lainnya account a person opened holds none. */}
-                          {unknown && account.shopIds.length > 0 ? (
-                            <HStack gap="1" color="fg.warning" data-testid={`account-not-set-${id}`}>
-                              <Icon as={TriangleAlert} boxSize="3" />
-                              <Text fontSize="xs">{t("financialAccounts.accountNotSet")}</Text>
+                <Table.Body>
+                  {accounts.map((account) => {
+                    const id = account.id.toString();
+                    const b = balances.data?.get(id);
+                    const archived = account.status === FinancialAccountStatus.ARCHIVED;
+                    const unknown = isUnknown(account);
+                    // An unknown account is shown by its shop's name (`the-unknown-account-reads-lainnya`).
+                    const shown = { ...account, name: accountName(account, nameOf) };
+
+                    return (
+                      <Table.Row
+                        key={id}
+                        cursor="pointer"
+                        data-testid={`account-row-${id}`}
+                        onClick={() => navigate(`/financial-accounts/${id}`)}
+                      >
+                        <Table.Cell>
+                          <Stack gap="0">
+                            <HStack gap="2">
+                              <Text fontWeight="medium" color={archived ? "fg.muted" : undefined}>
+                                {shown.name}
+                              </Text>
+                              {archived && (
+                                <Badge colorPalette="gray" data-testid={`account-archived-${id}`}>
+                                  {t("financialAccounts.archived")}
+                                </Badge>
+                              )}
                             </HStack>
-                          ) : (
-                            <Text fontSize="xs" color="fg.muted">
-                              {account.holderName || t(TYPE_KEY[account.type]!)}
-                            </Text>
-                          )}
-                        </Stack>
-                      </Table.Cell>
-                      {/* THE PROVIDER AND ITS NUMBER, ONE CELL (owner, `the-provider-cell-carries-the-number`) — the
-                          badge first, because the column sorts by it; the number quiet under it. A cash box or an
-                          unknown account has no number, and the cell is the badge alone. */}
-                      <Table.Cell>
-                        <Stack gap="0.5" align="flex-start">
-                          <ProviderBadge provider={account.provider} />
-                          {account.accountNumber && (
-                            <Text fontFamily="mono" fontSize="xs" color="fg.muted" data-testid={`account-number-${id}`}>
-                              {account.accountNumber}
-                            </Text>
-                          )}
-                        </Stack>
-                      </Table.Cell>
-                      <Table.Cell textAlign="end">
-                        {/* WHAT THE BANNER USED TO SAY, under the figure it is about (owner,
-                            `a-balance-below-zero-says-to-check-the-bank`) — the ⚠ on that line, not beside the number. */}
-                        <BalanceText balance={b?.balance} testId={`account-balance-${id}`} hint={t("financialAccounts.belowZeroHint")} bold />
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Text
-                          fontSize="sm"
-                          color={b?.reconciledAt ? undefined : "fg.muted"}
-                          data-testid={`account-checked-${id}`}
-                        >
-                          {unknown
-                            ? "—"
-                            : b?.reconciledAt
-                              ? formatUnixRelative(b.reconciledAt.seconds)
-                              : t("financialAccounts.neverChecked")}
-                        </Text>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <AccountLinks account={shown} shopOf={shopOf} />
-                      </Table.Cell>
-                      {canMove && (
-                        <Table.Cell textAlign="end">
-                          <AccountActions
-                            teamId={teamId}
-                            account={shown}
-                            balance={b?.balance}
-                            shopNames={account.shopIds.map(shopName)}
-                            buttons
-                          />
+                            {/* AN UNKNOWN ACCOUNT SAYS WHAT IS LEFT TO DO, where the holder would be (owner,
+                                `the-unknown-row-warns-and-sets-from-the-menu`) — the type there only repeated the
+                                provider badge. Not mandatory, but every later withdrawal lands here until it is set,
+                                and reconciling the real bank first counts the money twice. */}
+                            {/* Only where a shop's withdrawals land — a Lainnya account a person opened holds none. */}
+                            {unknown && account.shopIds.length > 0 ? (
+                              <HStack gap="1" color="fg.warning" data-testid={`account-not-set-${id}`}>
+                                <Icon as={TriangleAlert} boxSize="3" />
+                                <Text fontSize="xs">{t("financialAccounts.accountNotSet")}</Text>
+                              </HStack>
+                            ) : (
+                              <Text fontSize="xs" color="fg.muted">
+                                {account.holderName || t(TYPE_KEY[account.type]!)}
+                              </Text>
+                            )}
+                          </Stack>
                         </Table.Cell>
-                      )}
-                    </Table.Row>
-                  );
-                })}
-              </Table.Body>
-            </Table.Root>
-          </Table.ScrollArea>
+                        {/* THE PROVIDER AND ITS NUMBER, ONE CELL (owner, `the-provider-cell-carries-the-number`) — the
+                            badge first, because the column sorts by it; the number quiet under it. A cash box or an
+                            unknown account has no number, and the cell is the badge alone. */}
+                        <Table.Cell>
+                          <Stack gap="0.5" align="flex-start">
+                            <ProviderBadge provider={account.provider} />
+                            {account.accountNumber && (
+                              <Text fontFamily="mono" fontSize="xs" color="fg.muted" data-testid={`account-number-${id}`}>
+                                {account.accountNumber}
+                              </Text>
+                            )}
+                          </Stack>
+                        </Table.Cell>
+                        <Table.Cell textAlign="end">
+                          {/* WHAT THE BANNER USED TO SAY, under the figure it is about (owner,
+                              `a-balance-below-zero-says-to-check-the-bank`) — the ⚠ on that line, not beside the number. */}
+                          <BalanceText balance={b?.balance} testId={`account-balance-${id}`} hint={t("financialAccounts.belowZeroHint")} bold />
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Text
+                            fontSize="sm"
+                            color={b?.reconciledAt ? undefined : "fg.muted"}
+                            data-testid={`account-checked-${id}`}
+                          >
+                            {unknown
+                              ? "—"
+                              : b?.reconciledAt
+                                ? formatUnixRelative(b.reconciledAt.seconds)
+                                : t("financialAccounts.neverChecked")}
+                          </Text>
+                        </Table.Cell>
+                        <Table.Cell>
+                          <AccountLinks account={shown} shopOf={shopOf} />
+                        </Table.Cell>
+                        {canMove && (
+                          <Table.Cell textAlign="end">
+                            <AccountActions
+                              teamId={teamId}
+                              account={shown}
+                              balance={b?.balance}
+                              shopNames={account.shopIds.map(shopName)}
+                              buttons
+                            />
+                          </Table.Cell>
+                        )}
+                      </Table.Row>
+                    );
+                  })}
+                </Table.Body>
+              </Table.Root>
+            </Table.ScrollArea>
+          )}
         </RefreshOverlay>
       )}
 

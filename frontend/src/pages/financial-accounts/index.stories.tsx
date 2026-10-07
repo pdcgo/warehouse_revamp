@@ -62,6 +62,71 @@ async function openMenu(canvas: ReturnType<typeof within>, id: bigint) {
 
 export const Default: Story = {};
 
+// ── Mobile ─────────────────────────────────────────────────────────────────────────────────────────────────────
+//
+// The `viewport` global sizes the story's canvas in the test run too (the orders list's phone story asserts on it), so
+// these play against the phone layout.
+
+// MOBILE (`a-phone-filters-from-a-sheet`, `a-phone-reads-each-line-as-a-block`) — the search stays in the row and
+// everything else is behind the Filter button; every account is a block, its balance and its ⋯ on screen.
+//
+// Two bugs pinned here (owner: *"deskripsi di mobile bug, actionnya masih bug juga"*, *"di mobile header masih ada"*):
+//   the header — the title block took no room, the subtitle shrank to one word a line and Laporan sat on the title;
+//   the table — 929px in a 318px screen under its headings, the balance and every action off to the right.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // The subtitle reads as a sentence, and the actions sit under the title rather than over it.
+    const heading = canvas.getByTestId("financial-accounts-heading").getBoundingClientRect();
+    const subtitle = canvas.getByTestId("financial-accounts-subtitle").getBoundingClientRect();
+    const report = canvas.getByTestId("open-account-report").getBoundingClientRect();
+    await expect(subtitle.width).toBeGreaterThan(250);
+    await expect(report.top).toBeGreaterThanOrEqual(subtitle.bottom - 1);
+    await expect(report.top).toBeGreaterThan(heading.bottom);
+
+    await expect(canvas.getByTestId("account-search")).toBeVisible();
+    await expect(canvas.getByTestId("account-filters-open")).toBeVisible();
+    await expect(canvas.queryByTestId("account-shop-filter")).toBeNull();
+    await expect(canvas.getByTestId("account-type-tabs")).toBeVisible();
+
+    // A block per account: no headings, the balance and the menu inside the screen.
+    const list = canvas.getByTestId("financial-accounts-table");
+    await expect(within(list).queryAllByRole("columnheader")).toHaveLength(0);
+    const balance = canvas.getByTestId(`account-balance-${BCA_OPS.id}`).getBoundingClientRect();
+    await expect(balance.right).toBeLessThanOrEqual(window.innerWidth);
+    const menu = canvas.getByTestId(`account-actions-${BCA_OPS.id}`).getBoundingClientRect();
+    await expect(menu.right).toBeLessThanOrEqual(window.innerWidth);
+    await expect(canvas.getByTestId("account-pager")).toBeVisible();
+
+    // Below zero says the fact alone on a phone — no "check it against the bank" (owner: *"tidak perlu cocokkan dengan
+    // bank jika mobile"*).
+    const shopeepay = canvas.getByTestId(`account-row-${SHOPEEPAY.id}`);
+    await expect(shopeepay).toHaveTextContent("Below zero");
+    await expect(shopeepay).not.toHaveTextContent("check it against the bank");
+  },
+};
+
+// Mobile: the shop, Operational only and the sort open from the Filter button, full width — the sort a select
+// there, because a phone has no column headings to press.
+export const MobileFiltersAreASheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("account-filters-open"));
+    const sheet = await screen.findByTestId("account-filters-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(within(sheet).getByTestId("account-shop-filter")).toBeVisible();
+    await expect(within(sheet).getByTestId("account-operational-only")).toBeVisible();
+    await expect(within(sheet).getByTestId("account-sort-select")).toBeVisible();
+
+    await userEvent.click(within(sheet).getByTestId("account-filters-done"));
+    await waitFor(() => expect(screen.queryByTestId("account-filters-sheet")).toBeNull());
+  },
+};
+
 export const AsAWarehouse: Story = { beforeEach: asTeam(11n) };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────

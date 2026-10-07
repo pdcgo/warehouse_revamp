@@ -25,6 +25,7 @@ when it applies one of these.
 | [a-selected-tab-is-in-the-main-tone](#a-selected-tab-is-in-the-main-tone) | the picked tab's text and underline are rose, on every tab row | [financial accounts](financial_accounts_decision.md#the-accounts-type-is-a-tab-row) |
 | [a-search-select-reopens-whole](#a-search-select-reopens-whole) | a search select searches only what is typed — opened again after a pick, it shows every option | every search select |
 | [a-checked-box-is-in-the-main-tone](#a-checked-box-is-in-the-main-tone) | a ticked checkbox is rose, as a chosen radio is — on every screen | [financial accounts](financial_accounts_decision.md#a-dialog-choice-is-a-radio-pill) |
+| [a-segmented-choice-is-in-the-main-tone](#a-segmented-choice-is-in-the-main-tone) | a segmented control is drawn like a field, the chosen segment pale rose with a rose label; the grain picker carries an icon per grain | [financial account report](financial_accounts_decision.md#the-report-is-five-cards-and-one-table) |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -487,6 +488,27 @@ sequenceDiagram
 | --- | --- |
 | the box | ticked: filled `brand.solid`, rose — was the default near-black beside rose radios |
 | where | `theme.ts`, `checkbox` on its root — every checkbox in the app |
+
+## a-segmented-choice-is-in-the-main-tone
+
+> Owner, in chat (2026-10-07), on the account report: *"pill harian bulanan tahunan kurang bagus dan sesuai
+> temaku, mungkin ditambah icon juga lebih bagus"*.
+
+*The segmented control's twin of [a-chosen-option-is-in-the-main-tone](#a-chosen-option-is-in-the-main-tone) and
+[a-selected-tab-is-in-the-main-tone](#a-selected-tab-is-in-the-main-tone).*
+
+```
+before   ░[ Harian ]░  Bulanan  ░  Tahunan ░     grey trough, a white raised chip, a size taller than a field
+after    │[▣ Harian]  ▦ Bulanan │ ▤ Tahunan │      a field's box; the pick pale rose, its label rose
+```
+
+| | |
+| --- | --- |
+| the box | white, a thin `border`, 36px — the height of a field at `sm`, so it lines up with the filters beside it |
+| the pick | filled `brand.subtle`, its label `brand.fg`; the others `fg.muted` — colour only, no bold, so the words do not shift as the pick moves |
+| hover | rose too, the chosen segment included — never black (owner, same day: *"activenya saat hover bukan hitam"*) |
+| the grain picker | an icon per grain — `Calendar1` a day, `CalendarDays` a month, `CalendarRange` a year — in `PeriodGrainPicker` |
+| where | `theme.ts`, `segmentGroup` — every segmented control: the grain picker (account report, settlement report, daily statement), the phone menu's theme and language switches, the order draft's rows, the pick queue, the restock labels |
 
 ## Recorded elsewhere
 

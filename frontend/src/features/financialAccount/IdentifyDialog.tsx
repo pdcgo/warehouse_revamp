@@ -120,6 +120,11 @@ export function IdentifyDialog({
           { value: "move", label: t("financialAccounts.identify.move"), testId: "identify-move" },
         ]}
       />
+      {/* WHEN TO PICK WHICH (owner, `set-account-reads-lengkapi-data-or-pindah-saldo`) — the pills now say what each
+          does, so the line under them says when: the old labels carried that, and it is the actual question. */}
+      <Text fontSize="xs" color="fg.muted" mt="-2" data-testid="identify-when">
+        {t(mode === "fill" ? "financialAccounts.identify.fillWhen" : "financialAccounts.identify.moveWhen")}
+      </Text>
 
       {mode === "fill" ? (
         <>
