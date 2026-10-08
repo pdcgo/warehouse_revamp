@@ -17,6 +17,10 @@ const ADMIN_SET_PASSWORD = "admin-set-pass-1"; // set by an admin (AdminResetPas
 // visitor straight back into the app, so navigating there while signed in does nothing.
 async function login(page: Page, username: string, password: string) {
   await page.goto("/");
+  // ⚠ Let the page SETTLE before clearing. On load the app renews its token (CheckAccess) and writes
+  // the answer back — clear before that answer lands and the old session is restored, so /login
+  // redirects straight back into the app as the previous user.
+  await page.waitForLoadState("networkidle");
 
   await page.evaluate(() => {
     window.localStorage.clear();
@@ -33,6 +37,10 @@ async function login(page: Page, username: string, password: string) {
 // loginExpectingFailure drives the form without asserting success.
 async function loginExpectingFailure(page: Page, username: string, password: string) {
   await page.goto("/");
+  // ⚠ Let the page SETTLE before clearing. On load the app renews its token (CheckAccess) and writes
+  // the answer back — clear before that answer lands and the old session is restored, so /login
+  // redirects straight back into the app as the previous user.
+  await page.waitForLoadState("networkidle");
 
   await page.evaluate(() => {
     window.localStorage.clear();
@@ -43,6 +51,16 @@ async function loginExpectingFailure(page: Page, username: string, password: str
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+}
+
+// Root's team is the ROOT team, whose only role on offer is the System Administrator — and a form there
+// starts with NO role, because making someone an Administrator is never a default (defaultGrant).
+const ROLE_ADMINISTRATOR = 2;
+
+// Typing opens the list — a click on the field alone does not.
+async function pickRole(page: Page, role: number, label: string) {
+  await page.getByTestId("role-select").locator("input").fill(label);
+  await page.getByTestId(`role-select-option-${role}`).click();
 }
 
 async function gotoUsers(page: Page) {
@@ -59,30 +77,42 @@ test("root can reach the Users screen", async ({ page }) => {
   await expect(page.getByTestId(`user-row-${ROOT_USERNAME}`)).toBeVisible();
 });
 
+// An account is made ONLY from the Add Member popup, when its search finds nobody
+// (an-account-is-made-only-from-the-member-search) — there is no New User button.
+async function openCreate(page: Page, term: string) {
+  await expect(page.getByTestId("open-create-user")).toHaveCount(0);
+  await page.getByTestId("open-add-member").click();
+  await page.getByTestId("add-member-search").fill(term);
+  await page.getByTestId("add-member-create").click();
+}
+
 test("CreateUser rejects an invalid username — lowercase alphanumeric only (#87)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
-  await page.getByTestId("open-create-user").click();
-  await page.getByTestId("new-username").fill("Bad_Name");
-  await page.getByTestId("new-password").fill("e2epassword1");
-  await page.getByTestId("new-name").fill("Nope");
-  await page.getByTestId("submit-create-user").click();
+  await openCreate(page, `nobody${SUFFIX}`);
+  await page.getByTestId("add-member-new-username").fill("Bad_Name");
+  await page.getByTestId("add-member-new-password").fill("e2epassword1");
+  await page.getByTestId("add-member-new-name").fill("Nope");
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
+  await page.getByTestId("submit-add-member").click();
 
   // The frontend blocks it with a validation error; no account is created.
-  await expect(page.getByTestId("create-user-error")).toBeVisible();
-  await expect(page.getByTestId("submit-create-user")).toBeVisible(); // dialog stays open
+  await expect(page.getByTestId("add-member-error")).toBeVisible();
+  await expect(page.getByTestId("submit-add-member")).toBeVisible(); // dialog stays open
 });
 
 test("CreateUser: a new user appears, and can immediately sign in", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
-  await page.getByTestId("open-create-user").click();
-  await page.getByTestId("new-username").fill(NEW_USER);
-  await page.getByTestId("new-password").fill(NEW_PASSWORD);
-  await page.getByTestId("new-name").fill("E2E User");
-  await page.getByTestId("submit-create-user").click();
+  // What was searched for is offered as the username.
+  await openCreate(page, NEW_USER);
+  await expect(page.getByTestId("add-member-new-username")).toHaveValue(NEW_USER);
+  await page.getByTestId("add-member-new-password").fill(NEW_PASSWORD);
+  await page.getByTestId("add-member-new-name").fill("E2E User");
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
+  await page.getByTestId("submit-add-member").click();
 
   // CreateUser writes the account AND the membership in one transaction, so the new user shows
   // up in this team's list right away.
@@ -91,6 +121,18 @@ test("CreateUser: a new user appears, and can immediately sign in", async ({ pag
   // And the account really works — not just a row in a table.
   await login(page, NEW_USER, NEW_PASSWORD);
   await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
+});
+
+// The role column (UserList's MEMBERSHIP slice) and the membership log (every-role-change-is-logged) both come
+// from the running server: the member made above shows their role, and the team's history has the add.
+test("Members: the row shows the role, and the history records the add", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await expect(page.getByTestId(`role-${NEW_USER}`)).toContainText("Administrator");
+
+  await page.getByTestId("users-tab-history").click();
+  await expect(page.getByTestId("member-log")).toContainText(`${ROOT_USERNAME} added ${NEW_USER} as`);
 });
 
 test("UpdateUser: an admin edits another user's name", async ({ page }) => {
@@ -214,11 +256,12 @@ test("TeamUserUpdate + SearchUser: remove a member, find them again, add them ba
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
   await page.getByTestId("users-tab-team").click();
 
-  // SearchUser is unscoped precisely so this works: finding someone who is NOT in your team.
-  // The dialog now uses the shared UserSelect combobox (#62).
+  // The Add Member SEARCH POPUP (a-member-is-found-in-a-search-popup): Root searches by part, picks the
+  // person from the list, and gives them a role.
   await page.getByTestId("open-add-member").click();
-  await page.getByTestId("user-select").locator("input").fill(NEW_USER);
-  await page.getByTestId(`user-select-option-${NEW_USER}`).click();
+  await page.getByTestId("add-member-search").fill(NEW_USER);
+  await page.getByTestId(`add-member-result-${NEW_USER}`).click();
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
   await page.getByTestId("submit-add-member").click();
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeVisible();
@@ -261,17 +304,127 @@ test("ForgotPassword: recover the account with an OTP, then sign in", async ({ p
   await expect(page.getByTestId("home-user")).toContainText(NEW_USER);
 });
 
-test("DeleteUser: the account is gone for good", async ({ page }) => {
+test("a user is never deleted: the row offers no Delete", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoUsers(page);
 
+  // a-user-is-never-deleted — a person who leaves is suspended, and erased on request; the row stays.
   await page.getByTestId(`row-actions-${NEW_USER}`).click();
-  await page.getByTestId(`delete-${NEW_USER}`).click();
+  await expect(page.getByTestId(`edit-${NEW_USER}`)).toBeVisible();
+  await expect(page.getByTestId(`delete-${NEW_USER}`)).toHaveCount(0);
+});
+
+// erase-keeps-the-row: a FORMER user — suspended first — is erased on request. The row stays and reads "Former user
+// #…", the old username is free again, and the account can never sign in. Last, because it ends the account.
+test("UserErase: a suspended account is erased, and its row becomes a former user", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  // Erase is offered only once the account is suspended.
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
+  await expect(page.getByTestId(`erase-${NEW_USER}`)).toHaveCount(0);
+  await page.getByTestId(`suspend-${NEW_USER}`).click();
+  await page.getByTestId("confirm-action").click();
+  await expect(page.getByTestId(`suspended-${NEW_USER}`)).toBeVisible();
+
+  await page.getByTestId(`row-actions-${NEW_USER}`).click();
+  await page.getByTestId(`erase-${NEW_USER}`).click();
   await page.getByTestId("confirm-action").click();
 
   await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+  await expect(page.getByTestId("users-table")).toContainText("Former user #");
 
-  // Really gone — not just filtered out of this team's view. The All User tab lists everyone.
-  await page.getByTestId("users-tab-all").click();
-  await expect(page.getByTestId(`user-row-${NEW_USER}`)).toBeHidden();
+  await loginExpectingFailure(page, NEW_USER, "otp-recovered-1");
+  await expect(page.getByTestId("login-error")).toBeVisible();
+});
+
+// The Add Member search as an Owner sees it, against the running server:
+//  - managers-search-by-exact-username-phone-or-email: a fragment finds nobody; the whole username does, and so
+//    does the phone however it is written (Q20d);
+//  - a-result-shows-the-phones-last-four-digits: the result carries the ending;
+//  - an-existing-member-gets-change-role: someone already in the team reads as Change Role, with their role.
+test("SearchUser: an Owner finds only the whole handle, sees the phone ending, and a member reads as Change Role", async ({ page }) => {
+  const owner = `own${SUFFIX}`;
+  const staff = `stf${SUFFIX}`;
+  const target = `tgt${SUFFIX}`;
+  const targetPhone = `0813-77${SUFFIX.slice(0, 2)}-${SUFFIX.slice(2)}`;
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+  // Two warehouses: the Owner's, with a Staff member in it, and another holding the person to find.
+  await page.evaluate(
+    async ([owner, staff, target, targetPhone, suffix, password]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const call = async (method: string, body: unknown) => {
+        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
+        return res.json();
+      };
+
+      const mine = await call("team.v1.TeamService/TeamCreate", { type: 3, name: `E2E Search A ${suffix}`, teamCode: `SA${suffix}`, ownerUserId: "1" });
+      const other = await call("team.v1.TeamService/TeamCreate", { type: 3, name: `E2E Search B ${suffix}`, teamCode: `SB${suffix}`, ownerUserId: "1" });
+
+      await call("user.v1.UserService/CreateUser", { teamId: mine.team.id, username: owner, password, name: "E2E Owner", role: "ROLE_WAREHOUSE_OWNER" });
+      await call("user.v1.UserService/CreateUser", { teamId: mine.team.id, username: staff, password, name: "E2E Staff", role: "ROLE_WAREHOUSE_STAFF" });
+      await call("user.v1.UserService/CreateUser", {
+        teamId: other.team.id,
+        username: target,
+        password,
+        name: "E2E Target",
+        phoneNumber: targetPhone,
+        role: "ROLE_WAREHOUSE_STAFF",
+      });
+    },
+    [owner, staff, target, targetPhone, SUFFIX, NEW_PASSWORD] as const,
+  );
+
+  await login(page, owner, NEW_PASSWORD);
+  await gotoUsers(page);
+  await page.getByTestId("open-add-member").click();
+
+  // A fragment is a browse, and an Owner does not browse.
+  await page.getByTestId("add-member-search").fill(target.slice(0, 5));
+  await expect(page.getByTestId("add-member-no-match")).toBeVisible();
+
+  // The whole username finds them, with the phone's last four digits.
+  await page.getByTestId("add-member-search").fill(target);
+  await expect(page.getByTestId(`add-member-result-${target}`)).toContainText(`phone ending ${SUFFIX.slice(2)}`);
+
+  // The same phone, written the international way.
+  await page.getByTestId("add-member-search").fill(`+62 813 77${SUFFIX.slice(0, 2)} ${SUFFIX.slice(2)}`);
+  await expect(page.getByTestId(`add-member-result-${target}`)).toBeVisible();
+
+  // A member of this team reads as Change Role, with the role they hold.
+  await page.getByTestId("add-member-search").fill(staff);
+  await page.getByTestId(`add-member-result-${staff}`).click();
+  await expect(page.getByTestId("add-member-current-role")).toContainText("Warehouse Staff");
+  await expect(page.getByTestId("add-member-dialog")).toContainText("Change role");
+});
+
+// a-phone-or-email-belongs-to-one-account, against the running server: the phone of the person found above, written
+// the international way, is refused at Create — and Find That Person brings that person up instead.
+test("CreateUser: a phone already on an account is refused, and that person is offered", async ({ page }) => {
+  const target = `tgt${SUFFIX}`;
+
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await gotoUsers(page);
+
+  await openCreate(page, `dup${SUFFIX}`);
+  await page.getByTestId("add-member-new-password").fill(NEW_PASSWORD);
+  await page.getByTestId("add-member-new-name").fill("E2E Duplicate");
+  await page.getByTestId("add-member-new-phone").fill(`+62 813 77${SUFFIX.slice(0, 2)} ${SUFFIX.slice(2)}`);
+  await pickRole(page, ROLE_ADMINISTRATOR, "Administrator");
+  await page.getByTestId("submit-add-member").click();
+
+  await expect(page.getByTestId("add-member-error")).toContainText("already another account's");
+
+  await page.getByTestId("add-member-find-taken").click();
+  await expect(page.getByTestId(`add-member-result-${target}`)).toBeVisible();
 });

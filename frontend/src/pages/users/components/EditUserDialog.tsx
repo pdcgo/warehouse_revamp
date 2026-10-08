@@ -20,11 +20,17 @@ import { useAuth } from "../../../features/auth/AuthContext";
 import { toaster } from "../../../components/feedback/Toaster";
 import { useSaveUser } from "../../../features/users/queries";
 
+// User 1 is the system's first Root and keeps the name `root` (the-username-is-editable).
+const ROOT_USER_ID = 1n;
+
 // EditUserDialog calls UpdateProfile when you are editing YOURSELF, and UpdateUser otherwise.
 //
 // They are two different RPCs with two different policies on purpose: UpdateProfile has no
 // user_id at all (the subject is the token holder), while UpdateUser is root/admin-only. One RPC
 // meaning both is exactly how the source produced an IDOR.
+//
+// The USERNAME is editable on someone else's account only (the-username-is-editable): a typo is fixed
+// in place, never by making the account again. UpdateProfile has no username, so your own stays put.
 export function EditUserDialog({
   user,
   open: openProp,
@@ -66,9 +72,18 @@ export function EditUserDialog({
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [phone, setPhone] = useState(user.phoneNumber);
+  const [username, setUsername] = useState(user.username);
+
+  const usernameLocked = user.id === ROOT_USER_ID;
 
   function submit(event: FormEvent) {
     event.preventDefault();
+
+    // The same rule as create (#87) — the server enforces it too.
+    if (!isSelf && !/^[a-z0-9]+$/.test(username)) {
+      setError(t("users.create.usernameError"));
+      return;
+    }
 
     setError("");
 
@@ -79,7 +94,14 @@ export function EditUserDialog({
     // An OMITTED userId is what selects UpdateProfile over UpdateUser inside the hook — the same
     // two-RPCs-one-form split this dialog already made, moved to where the call is.
     save.mutate(
-      { userId: isSelf ? undefined : user.id, name, email, phoneNumber: phone },
+      {
+        userId: isSelf ? undefined : user.id,
+        // Sent only when it changed, so an untouched form never rewrites it.
+        username: !isSelf && username !== user.username ? username : undefined,
+        name,
+        email,
+        phoneNumber: phone,
+      },
       {
         onSuccess: () => {
           toaster.create({ type: "success", title: t("users.toast.userUpdated", { username: user.username }) });
@@ -117,6 +139,20 @@ export function EditUserDialog({
                     </Text>
                   )}
 
+                  {!isSelf && (
+                    <Field.Root disabled={usernameLocked}>
+                      <Field.Label>{t("users.field.username")}</Field.Label>
+                      <Input
+                        value={username}
+                        data-testid="edit-username"
+                        onChange={(ev) => setUsername(ev.target.value)}
+                      />
+                      <Field.HelperText>
+                        {usernameLocked ? t("users.helper.rootUsername") : t("users.helper.usernameRule")}
+                      </Field.HelperText>
+                    </Field.Root>
+                  )}
+
                   <Field.Root>
                     <Field.Label>{t("users.field.name")}</Field.Label>
                     <Input value={name} data-testid="edit-name" onChange={(e) => setName(e.target.value)} />
@@ -129,7 +165,12 @@ export function EditUserDialog({
 
                   <Field.Root>
                     <Field.Label>{t("users.field.phone")}</Field.Label>
-                    <Input value={phone} data-testid="edit-phone" onChange={(e) => setPhone(e.target.value)} />
+                    <Input
+                      value={phone}
+                      placeholder={t("users.field.phonePlaceholder")}
+                      data-testid="edit-phone"
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
                   </Field.Root>
                 </Stack>
               </Dialog.Body>

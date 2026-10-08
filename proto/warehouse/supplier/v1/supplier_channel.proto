@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package warehouse.supplier.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/marketplace/v1/marketplace.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/supplier/v1;supplierv1";
+
+// SupplierChannelService owns `supplier_channels` — the online stores a supplier sells through, one row per
+// store (the-supplier-lists-only-its-online-stores). Its type is the shared marketplace list, MARKETPLACE_OTHER
+// being the owner's `custom` (channel-type-is-the-marketplace-list, custom-is-labelled-other).
+//
+// As SupplierService: READS CROSS TEAMS, WRITES DO NOT, and DELETE IS SOFT (a-store-delete-is-soft-too) — a
+// restock line names its store, so a deleted store still finds its supplier.
+service SupplierChannelService {
+  rpc SupplierChannelList(SupplierChannelListRequest) returns (SupplierChannelListResponse);
+  rpc SupplierChannelCreate(SupplierChannelCreateRequest) returns (SupplierChannelCreateResponse);
+  rpc SupplierChannelUpdate(SupplierChannelUpdateRequest) returns (SupplierChannelUpdateResponse);
+  rpc SupplierChannelDelete(SupplierChannelDeleteRequest) returns (SupplierChannelDeleteResponse);
+}
+
+message SupplierChannel {
+  uint64 id = 1;
+  uint64 supplier_id = 2;
+  warehouse.marketplace.v1.Marketplace channel_type = 3;
+  // The store's name.
+  string name = 4;
+  // A link to the store (optional).
+  string uri = 5;
+  string description = 6;
+}
+
+// A supplier's stores, as one value — SupplierList's CHANNELS slice.
+message SupplierChannelSet {
+  repeated SupplierChannel channels = 1;
+}
+
+message SupplierChannelListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  SupplierChannelListFilter filter = 2 [(buf.validate.field).required = true];
+  SupplierChannelListFilterSort sort = 3;
+  repeated SupplierChannelListDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+message SupplierChannelListFilter {
+  // Any team's live supplier; a deleted or unknown one answers NotFound.
+  uint64 supplier_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // Matched against the store's name, link and description.
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  // UNSPECIFIED = every type.
+  warehouse.marketplace.v1.Marketplace channel_type = 3 [(buf.validate.field).enum.defined_only = true];
+}
+
+enum SupplierChannelListDataType {
+  SUPPLIER_CHANNEL_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  SUPPLIER_CHANNEL_LIST_DATA_TYPE_GENERAL = 1;
+  SUPPLIER_CHANNEL_LIST_DATA_TYPE_SUPPLIER_CHANNEL = 2;
+}
+
+enum SupplierChannelRowSort {
+  SUPPLIER_CHANNEL_ROW_SORT_UNSPECIFIED = 0;
+  SUPPLIER_CHANNEL_ROW_SORT_ID = 1;
+  SUPPLIER_CHANNEL_ROW_SORT_NAME = 2;
+  SUPPLIER_CHANNEL_ROW_SORT_CHANNEL_TYPE = 3;
+}
+
+message SupplierChannelListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    warehouse.common.v1.GeneralSort general = 2;
+    SupplierChannelRowSort channel = 3;
+  }
+}
+
+message SupplierChannelMapItem {
+  map<uint64, SupplierChannel> map_data = 1;
+}
+
+message SupplierChannelListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    SupplierChannelMapItem supplier_channel = 2;
+  }
+}
+
+message SupplierChannelListResponse {
+  repeated SupplierChannelListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── Writes — only the team that keeps the supplier ──────────────────────────────────────────────
+
+message SupplierChannelCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // A live supplier of this team.
+  uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.marketplace.v1.Marketplace channel_type = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string uri = 5 [(buf.validate.field).string.max_len = 500];
+  string description = 6 [(buf.validate.field).string.max_len = 500];
+}
+
+message SupplierChannelCreateResponse {
+  SupplierChannel channel = 1;
+}
+
+message SupplierChannelUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // A live store of a live supplier of this team.
+  uint64 channel_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // Absent = leave alone. Present = write it.
+  optional warehouse.marketplace.v1.Marketplace channel_type = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  optional string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  optional string uri = 5 [(buf.validate.field).string.max_len = 500];
+  optional string description = 6 [(buf.validate.field).string.max_len = 500];
+}
+
+message SupplierChannelUpdateResponse {
+  SupplierChannel channel = 1;
+}
+
+message SupplierChannelDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 channel_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message SupplierChannelDeleteResponse {}

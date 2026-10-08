@@ -1,7 +1,6 @@
 package user_v1_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -18,8 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// newService builds a user_v1.Service against the test tx. teamClient is nil — none of the
-// handlers under test here call it (only TeamAccessList does, which needs a live team_service).
+// newService builds a user_v1.Service against the test tx, with a fake team_service that knows the
+// test teams' TYPES: a grant is checked against its team's type (every-role-has-a-code-name).
 func newService(t *testing.T, db *gorm.DB) *user_v1.Service {
 	t.Helper()
 
@@ -29,8 +29,10 @@ func newService(t *testing.T, db *gorm.DB) *user_v1.Service {
 		db,
 		san_auth.NewSigner("test-secret", time.Hour),
 		resolver,
-		nil,
+		testTeams(),
+		&fakePhotos{},
 		san_caches.NewSkipCacheManager(),
+		event_source.EmptySender,
 	)
 }
 
@@ -38,7 +40,7 @@ func TestCreateUser_InsideTeam_WritesUserAndMembership(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	res, err := svc.CreateUser(context.Background(), connect.NewRequest(&userv1.CreateUserRequest{
+	res, err := svc.CreateUser(asRoot(t, db), connect.NewRequest(&userv1.CreateUserRequest{
 		TeamId:   42,
 		Username: "picker",
 		Password: "pickerpass1",
@@ -72,7 +74,7 @@ func TestCreateUser_Teamless_NoMembership(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	res, err := svc.CreateUser(context.Background(), connect.NewRequest(&userv1.CreateUserRequest{
+	res, err := svc.CreateUser(asRoot(t, db), connect.NewRequest(&userv1.CreateUserRequest{
 		TeamId:   0, // teamless — root/admin only in practice; here we just verify no membership
 		Username: "loner",
 		Password: "lonerpass1",
@@ -97,12 +99,12 @@ func TestCreateUser_DuplicateUsername_AlreadyExists(t *testing.T) {
 		return connect.NewRequest(&userv1.CreateUserRequest{TeamId: 42, Username: "dup", Password: "duppass123", Role: role_basev1.Role_ROLE_WAREHOUSE_STAFF})
 	}
 
-	_, err := svc.CreateUser(context.Background(), req())
+	_, err := svc.CreateUser(asRoot(t, db), req())
 	if err != nil {
 		t.Fatalf("first create: %v", err)
 	}
 
-	_, err = svc.CreateUser(context.Background(), req())
+	_, err = svc.CreateUser(asRoot(t, db), req())
 	if connect.CodeOf(err) != connect.CodeAlreadyExists {
 		t.Fatalf("second create code = %v, want AlreadyExists", connect.CodeOf(err))
 	}
@@ -113,13 +115,13 @@ func TestCreateUser_DuplicateIsAtomic(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	_, _ = svc.CreateUser(context.Background(), connect.NewRequest(&userv1.CreateUserRequest{
+	_, _ = svc.CreateUser(asRoot(t, db), connect.NewRequest(&userv1.CreateUserRequest{
 		TeamId: 7, Username: "atomic", Password: "atomicpass1", Role: role_basev1.Role_ROLE_WAREHOUSE_STAFF,
 	}))
 
 	// Second attempt collides on username but names a DIFFERENT team. If the insert order leaked,
 	// we might see a stray membership for team 8. It must not.
-	_, _ = svc.CreateUser(context.Background(), connect.NewRequest(&userv1.CreateUserRequest{
+	_, _ = svc.CreateUser(asRoot(t, db), connect.NewRequest(&userv1.CreateUserRequest{
 		TeamId: 8, Username: "atomic", Password: "atomicpass1", Role: role_basev1.Role_ROLE_WAREHOUSE_STAFF,
 	}))
 
@@ -136,10 +138,40 @@ func TestCreateUser_GlobalRoleOutsideRoot_Rejected(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	_, err := svc.CreateUser(context.Background(), connect.NewRequest(&userv1.CreateUserRequest{
-		TeamId: 42, Username: "fakeadmin", Password: "fakeadmin1", Role: role_basev1.Role_ROLE_ADMIN,
+	_, err := svc.CreateUser(asRoot(t, db), connect.NewRequest(&userv1.CreateUserRequest{
+		TeamId: 42, Username: "fakeadmin", Password: "fakeadmin1", Role: role_basev1.Role_ROLE_ADMINISTRATOR,
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("code = %v, want InvalidArgument for ADMIN outside the root team", connect.CodeOf(err))
+	}
+}
+
+// A new user's role is a grant: an Owner never creates another Owner
+// (an-owner-never-makes-another-owner), and the refused create leaves no account behind.
+func TestCreateUser_TheRoleIsAGrant(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	owner, _ := asMember(t, db, "sellowner", sellTeam, role_basev1.Role_ROLE_SELLING_OWNER)
+
+	_, err := svc.CreateUser(owner, connect.NewRequest(&userv1.CreateUserRequest{
+		TeamId: sellTeam, Username: "secondowner", Password: "ownerpass1", Name: "Second", Role: role_basev1.Role_ROLE_SELLING_OWNER,
+	}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("code = %v, want PermissionDenied", connect.CodeOf(err))
+	}
+
+	var count int64
+	db.Model(&user_service_models.User{}).Where("username = ?", "secondowner").Count(&count)
+
+	if count != 0 {
+		t.Fatalf("a refused create left %d account(s)", count)
+	}
+
+	_, err = svc.CreateUser(owner, connect.NewRequest(&userv1.CreateUserRequest{
+		TeamId: sellTeam, Username: "newcs", Password: "cspassword1", Name: "New CS", Role: role_basev1.Role_ROLE_SELLING_CS,
+	}))
+	if err != nil {
+		t.Fatalf("an Owner creating Customer Service: %v", err)
 	}
 }

@@ -51,6 +51,8 @@ backend/
   cmd/app_development/       the dev server — wires services into the mux
   gen/                       generated code (never hand-edited)
   pkgs/                      shared, non-service packages (e.g. san_config, san_testdb)
+  packages/                  OTHER REPOS, checked out as git submodules, each its own Go module
+                             (san_receipt_readers) — the root go.mod `replace`s them with these folders
   services/
     team_service/            ← one dir per service (folder ends in _service)
       team_v1/               handler sub-package (matches warehouse.team.v1)
@@ -152,8 +154,9 @@ arrow-key away from a local one.
 - `--service <name>` skips the service prompt. Services are **discovered from the filesystem**
   (`backend/services/*`) — there is no hardcoded list to go stale.
 - `migrate up-all` migrates **every** service, in dependency order (`team_service` then
-  `user_service` first — team 1 must exist before the root role references it), asking only for
-  the database. That is the one-command path for a fresh database.
+  `user_service` first — team 1 must exist before the root role references it — then
+  `inventory_service`, whose `00023` frees the supplier table names `supplier_service` creates), asking
+  only for the database. That is the one-command path for a fresh database.
 - `--dsn` (or `DATABASE_URL`) skips the database prompt — the non-interactive path for CI.
 - `create` touches no database, so it never prompts for one.
 
@@ -614,8 +617,11 @@ it once a real domain service replaces it.
 | Start local Postgres (`:5433`) | `docker compose up -d` |
 | Lint the contract | `cd proto && buf lint` |
 | Regenerate Go + TS | `cd proto && buf generate` — needs Go and `frontend/node_modules`; **no Buf account** |
+| Set up a checkout (fresh, or after a pull) | `go run ./tools/san dev setup` — submodules, docker, every migration, the supplier move, the supplier figures backfill, dev logins, categories, regions, npm install; idempotent, LOCAL database only |
+| Run the whole dev stack (docker + API + UI) | `go run ./tools/san dev run` — one terminal, output prefixed per server, Ctrl-C stops all of it. Starts the Pub/Sub emulator too, and makes its topics on every start |
 | Run the API (`:8080`) | `cd backend && go run ./cmd/app_development` |
 | Build / vet / test Go | `go build ./... && go vet ./... && go test ./...` — **from the repo root**, so it covers `tools/` too |
+| Fetch / test a submodule package | `git submodule update --init` after a clone (the build needs it), then `cd backend/packages/<name> && go test ./...` — root `./...` never enters a nested module. A change there is committed and pushed **in the submodule first**, then committed here as a pointer move |
 | Migrations | `go run ./tools/san migrate <cmd> --service <svc>` |
 | Operations CLI (`san`) | `go run ./tools/san user reset-password --username <u>` — from the repo root |
 | Create the event topics + subscriptions | `go run ./tools/san pubsub ensure --project warehouse-dev --emulator` — **nothing else creates them** |
@@ -624,7 +630,7 @@ it once a real domain service replaces it.
 | Run the UI (`:5174`) | `cd frontend && npm run dev` |
 | Typecheck the UI | `cd frontend && npm run typecheck` |
 | Build the UI | `cd frontend && npm run build` |
-| E2E (starts both servers) | `cd frontend && npm run e2e` |
+| E2E (starts both servers) | `cd frontend && npm run e2e` — needs Postgres **and** the Pub/Sub emulator (`docker compose --profile pubsub up -d`); its setup refuses to start without it and creates the topics itself |
 | Component workbench (`:6006`) | `cd frontend && npm run storybook` |
 | Run every story's `play()` as a test | `cd frontend && npm run test:stories` |
 | Build the static Storybook | `cd frontend && npm run build-storybook` |
@@ -652,7 +658,7 @@ interceptor reads both by reflection at request time. There is no policy table.
 ```proto
 message TeamInfoUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
-    roles: [ROLE_ROOT, ROLE_ADMIN, ROLE_TEAM_OWNER]
+    roles: [ROLE_ROOT, ROLE_ADMINISTRATOR, ROLE_SELLING_OWNER]
   };
   uint64 team_id = 1 [(warehouse.role_base.v1.use_scope) = true];
 }
@@ -664,7 +670,7 @@ message TeamInfoUpdateRequest {
 - The token carries **identity only, never a role**. Roles are read from the database per
   request (cached ~1 min, invalidated on every membership change), so revoking a role takes
   effect without reissuing tokens.
-- **ROOT/ADMIN in team 1** (the root team) bypass every scope check.
+- **ROOT/ADMINISTRATOR in team 1** (the root team) bypass every scope check.
 
 **Where it lives:** [backend/services/user_service/access_interceptors/](backend/services/user_service/access_interceptors/)
 — user_service owns identity and roles, so it owns the enforcement. Other services import it.
@@ -673,10 +679,10 @@ The generic primitives (JWT, reading the proto options, descriptor validation) a
 
 ### Rules that are easy to get wrong
 
-- **Never put a team-level role (`TEAM_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with no
+- **Never put a team-level role (`SELLING_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with no
   `use_scope` field.** An unscoped roles-policy is evaluated against the root team, so those
   entries become **dead letters** — the proto claims something the system does not do. Either
-  give it a scope, or narrow the policy to `[ROOT, ADMIN]`.
+  give it a scope, or narrow the policy to `[ROOT, ADMINISTRATOR]`.
 - **Team scope is a message FIELD, never a header.** The frontend puts `team_id` in each request
   body; no interceptor can supply it.
 - **Every guarded handler must get the interceptor.** It is built once in `service_api.go` and
@@ -725,7 +731,8 @@ what a caller with no user passes. Topics and subscriptions are created by
 `go run ./tools/san pubsub ensure` and by nothing else — no service checks its setup at boot.
 
 Local broker: `docker compose --profile pubsub up -d` (emulator on `:8085`, honours
-`PUBSUB_EMULATOR_HOST`).
+`PUBSUB_EMULATOR_HOST`). `san dev run` and `dev setup` start it and run `pubsub ensure` for you — the emulator
+keeps topics in memory, so they are re-made on every start.
 
 > **Push subscriptions must have a dead-letter policy.** Pub/Sub treats any non-2xx as a NACK,
 > so a permanently malformed message is redelivered forever. The handler cannot distinguish

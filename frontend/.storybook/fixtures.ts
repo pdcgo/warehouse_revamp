@@ -56,10 +56,7 @@ export const shops = [
 ];
 
 // ── Suppliers ───────────────────────────────────────────────────────────────────────────────────
-export const suppliers = [
-  { id: 31n, teamId: 11n, code: "SUP-A", name: "PT Sumber Makmur", contact: "0812-1111", province: "Jawa Barat", city: "Bandung", address: "", description: "", deleted: false },
-  { id: 32n, teamId: 11n, code: "SUP-B", name: "CV Cahaya Abadi", contact: "0812-2222", province: "Jawa Timur", city: "Surabaya", address: "", description: "", deleted: false },
-];
+// In supplierFixtures.ts, beside the writeable stub that serves them (supplierStub.ts).
 
 // ── Racks ───────────────────────────────────────────────────────────────────────────────────────
 export const racks = [
@@ -82,14 +79,26 @@ export const users = [
   { id: 61n, username: "ani", name: "Ani Rahayu", email: "ani@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
   { id: 62n, username: "budi", name: "Budi Santoso", email: "budi@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
   { id: 63n, username: "citra", name: "Citra Dewi", email: "citra@example.test", phoneNumber: "", isSuspended: true, avatarUrl: "" },
+  // The member list's cast (userStub.ts gives each a role per team). APPEND, never reorder — stories
+  // index this positionally. Dewi owns both teams, Fajar is a second Root, Gita the System Administrator.
+  { id: 64n, username: "dewi", name: "Dewi Lestari", email: "dewi@example.test", phoneNumber: "081234567890", isSuspended: false, avatarUrl: "" },
+  { id: 65n, username: "eko", name: "Eko Prasetyo", email: "eko@example.test", phoneNumber: "+62 812-9876-1234", isSuspended: false, avatarUrl: "" },
+  { id: 66n, username: "fajar", name: "Fajar Nugroho", email: "fajar@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
+  { id: 67n, username: "gita", name: "Gita Ramadhani", email: "gita@example.test", phoneNumber: "", isSuspended: false, avatarUrl: "" },
+  // A SECOND Ani, in no team — two people one name apart, told apart only by the phone ending
+  // (a-result-shows-the-phones-last-four-digits).
+  { id: 68n, username: "anil", name: "Ani Lestari", email: "anil@example.test", phoneNumber: "081377778888", isSuspended: false, avatarUrl: "" },
 ];
 
-// PublicUser is the narrower shape SearchUser returns — no email, no suspension.
+// PublicUser is the narrower shape a name lookup and the search return — no email, and of the phone only its last
+// four digits (a-result-shows-the-phones-last-four-digits). Suspension is on it: a "who" filter badges it.
 export const publicUsers = users.map((u) => ({
   id: u.id,
   username: u.username,
   name: u.name,
   avatarUrl: u.avatarUrl,
+  phoneLast4: u.phoneNumber.replace(/\D/g, "").slice(-4),
+  isSuspended: u.isSuspended,
 }));
 
 // ── A CATALOGUE BIG ENOUGH TO OVERFLOW A DIALOG ─────────────────────────────────────────────────
@@ -206,6 +215,28 @@ export const shipmentChannels = [
   { id: 94n, code: "pos", name: "POS Indonesia", desc: "No longer picks up here", isDeleted: true },
 ];
 
+// ── What the stubbed ReceiptCheck reads off a label ──────────────────────────────────────────────
+//
+// ⚠ INVENTED, in the real shapes (an SPX tracking number, a Shopee order number). Never a real
+// sample's values: those name a buyer and where their parcel went, and this repo is public.
+export const receiptLabel = {
+  receipt: "SPXID000000000001",
+  orderRefId: "260101AAAA0001",
+  customerName: "Budi Contoh",
+  phone: "",
+  address: "Jl. Contoh No. 1, Kebayoran Baru, Jakarta Selatan",
+};
+
+/**
+ * A fake label PDF for a story. `result` names the answer the stub gives (`not_shipping_label`,
+ * `multiple_labels`, `unknown_label`, `unreadable`); without it, the file reads as `receiptLabel`.
+ */
+export function receiptLabelFile(result?: string): File {
+  const body = `%PDF-1.4\n${result ? `stub-result:${result}\n` : ""}%%EOF\n`;
+
+  return new File([body], "label.pdf", { type: "application/pdf" });
+}
+
 // ── The region TREE, for AddressPicker's four cascading level selects ────────────────────────────
 //
 // Codes follow the real Kepmendagri shape — a child's code is prefixed by its parent's — because
@@ -318,18 +349,18 @@ export const daysAgo = (days: number): bigint => BigInt(Math.floor(Date.now() / 
 // WE quoted and the marketplace figure is what the buyer paid the platform after its own vouchers and
 // subsidies. A fixture where they matched would make every settlement screen look right by accident.
 export const orders = [
-  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdAtUnix: daysAgo(1) },
-  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdAtUnix: daysAgo(2) },
-  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdAtUnix: daysAgo(3) },
-  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdAtUnix: daysAgo(4) },
-  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PACKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, marketplaceTotal: 303_500n, cogs: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdAtUnix: daysAgo(5) },
-  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPED, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, marketplaceTotal: 137_000n, cogs: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdAtUnix: daysAgo(6) },
-  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCELLED, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdAtUnix: daysAgo(8) },
-  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPED, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, cogs: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdAtUnix: daysAgo(120) },
-  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.CONFIRMED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, marketplaceTotal: 258_000n, cogs: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdAtUnix: daysAgo(1) },
+  { id: 101n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.PLACED, customerName: "Bu Ani", customerPhone: "0812-3456-0001", subtotal: 235_000n, shippingCost: 15_000n, total: 250_000n, marketplaceTotal: 245_000n, cogs: 148_000n, orderExternalRefId: "SP-2409-8841", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
+  { id: 102n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PLACED, customerName: "Pak Budi", customerPhone: "0812-3456-0002", subtotal: 168_000n, shippingCost: 12_000n, total: 180_000n, marketplaceTotal: 176_500n, cogs: 107_520n, orderExternalRefId: "TK-88120347", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(2) },
+  { id: 103n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.CONFIRMED, customerName: "Ibu Citra", customerPhone: "0812-3456-0003", subtotal: 86_000n, shippingCost: 9_000n, total: 95_000n, marketplaceTotal: 92_000n, cogs: 55_040n, orderExternalRefId: "SP-2409-8852", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(3) },
+  { id: 104n, teamId: 12n, warehouseId: 11n, shopId: 23n, status: OrderStatus.PICKING, customerName: "Pak Dedi", customerPhone: "0812-3456-0004", subtotal: 402_000n, shippingCost: 18_000n, total: 420_000n, marketplaceTotal: 413_000n, cogs: 257_280n, orderExternalRefId: "LZ-4471902", shippingCode: "anteraja", createdByUserId: 63n, createdAtUnix: daysAgo(4) },
+  { id: 105n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.PACKED, customerName: "Bu Eka", customerPhone: "0812-3456-0005", subtotal: 296_000n, shippingCost: 14_000n, total: 310_000n, marketplaceTotal: 303_500n, cogs: 189_440n, orderExternalRefId: "TK-88120388", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(5) },
+  { id: 106n, teamId: 12n, warehouseId: 11n, shopId: 21n, status: OrderStatus.SHIPPED, customerName: "Pak Firman", customerPhone: "0812-3456-0006", subtotal: 129_000n, shippingCost: 11_000n, total: 140_000n, marketplaceTotal: 137_000n, cogs: 82_560n, orderExternalRefId: "SP-2409-8877", shippingCode: "sicepat", createdByUserId: 62n, createdAtUnix: daysAgo(6) },
+  { id: 107n, teamId: 12n, warehouseId: 14n, shopId: 21n, status: OrderStatus.CANCELLED, customerName: "Bu Gita", customerPhone: "0812-3456-0007", subtotal: 66_000n, shippingCost: 9_000n, total: 75_000n, shippingCode: "jne", createdByUserId: 0n, createdAtUnix: daysAgo(8) },
+  { id: 108n, teamId: 12n, warehouseId: 11n, shopId: 22n, status: OrderStatus.SHIPPED, customerName: "Pak Hasan", customerPhone: "0812-3456-0008", subtotal: 480_000n, shippingCost: 20_000n, total: 500_000n, cogs: 307_200n, orderExternalRefId: "TK-88120411", shippingCode: "anteraja", createdByUserId: 62n, createdAtUnix: daysAgo(120) },
+  { id: 109n, teamId: 12n, warehouseId: 14n, shopId: 23n, status: OrderStatus.CONFIRMED, customerName: "Bu Indah", customerPhone: "0812-3456-0009", subtotal: 252_000n, shippingCost: 13_000n, total: 265_000n, marketplaceTotal: 258_000n, cogs: 161_280n, orderExternalRefId: "LZ-4471955", shippingCode: "jne", createdByUserId: 65n, createdAtUnix: daysAgo(1) },
 
-  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PLACED, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, marketplaceTotal: 628_000n, cogs: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdAtUnix: daysAgo(2) },
-  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PACKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdAtUnix: daysAgo(3) },
+  { id: 110n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PLACED, customerName: "Pak Joko", customerPhone: "0813-9999-0001", subtotal: 618_000n, shippingCost: 22_000n, total: 640_000n, marketplaceTotal: 628_000n, cogs: 395_520n, orderExternalRefId: "SP-2410-1002", shippingCode: "anteraja", createdByUserId: 61n, createdAtUnix: daysAgo(2) },
+  { id: 111n, teamId: 13n, warehouseId: 11n, shopId: 24n, status: OrderStatus.PACKED, customerName: "Bu Kartika", customerPhone: "0813-9999-0002", subtotal: 198_000n, shippingCost: 12_000n, total: 210_000n, shippingCode: "jne", createdByUserId: 61n, createdAtUnix: daysAgo(3) },
 ];
 
 // ── What a DETAIL read adds, and a list row never carries ───────────────────────────────────────

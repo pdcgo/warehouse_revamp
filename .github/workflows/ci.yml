@@ -14,9 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 2 is for `buf breaking` below — the default shallow clone has no HEAD~1.
+      # submodules: go.mod replaces san_receipt_readers with backend/packages/, and every go command
+      # reads that folder's go.mod — an empty folder fails the build before it starts.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+          submodules: true
 
       - uses: actions/setup-go@v5
         with:
@@ -138,7 +141,10 @@ jobs:
       REDIS_ADDR: localhost:6380
 
     steps:
+      # submodules: the same reason as the build job's checkout.
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: actions/setup-go@v5
         with:
@@ -148,6 +154,14 @@ jobs:
       # Repo root — same reason as go build: tools/san has its own tests.
       - name: go test
         run: go test ./...
+
+      # A submodule is a module of its own, and `./...` from the root never enters a nested module —
+      # so its tests run from inside it. Its real-label samples are untracked, so that test skips here.
+      - name: go test (backend/packages/*)
+        run: |
+          for m in backend/packages/*/; do
+            (cd "$m" && go vet ./... && go test ./...)
+          done
 
       - uses: actions/setup-node@v4
         with:

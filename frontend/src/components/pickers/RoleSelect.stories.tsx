@@ -25,9 +25,15 @@ export const ForAWarehouseTeam: Story = { args: { teamType: TeamType.WAREHOUSE }
 
 export const ForASellingTeam: Story = { args: { teamType: TeamType.SELLING } };
 
-export const Selected: Story = { args: { value: Role.WAREHOUSE_ADMIN } };
+// A prefilled role READS — the field is not blank while the value is set (the late-collection bug).
+export const Selected: Story = {
+  args: { value: Role.WAREHOUSE_ADMIN },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole("combobox")).toHaveValue("Warehouse Admin");
+  },
+};
 
-export const Disabled: Story = { args: { value: Role.TEAM_OWNER, disabled: true } };
+export const Disabled: Story = { args: { value: Role.SELLING_OWNER, disabled: true } };
 
 // ROOT and ADMIN are only meaningful in the root team — the backend refuses to grant them anywhere
 // else — so a warehouse-team picker that offered them would just be a button that always errors.
@@ -46,7 +52,7 @@ export const TeamTypeNarrowsTheOfferedRoles: Story = {
 // Precedence is explicit `roles` → `teamType` → all. An explicit list wins outright, which is what
 // lets a caller offer something the team-type default would not.
 export const ExplicitRolesWinOverTeamType: Story = {
-  args: { teamType: TeamType.WAREHOUSE, roles: [Role.ROOT, Role.ADMIN] },
+  args: { teamType: TeamType.WAREHOUSE, roles: [Role.ROOT, Role.ADMINISTRATOR] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -80,7 +86,7 @@ export const SearchesByLabel: Story = {
     await userEvent.type(input, "warehouse");
 
     await expect(await screen.findByTestId(`role-select-option-${Role.WAREHOUSE_OWNER}`)).toBeInTheDocument();
-    await expect(screen.queryByTestId(`role-select-option-${Role.TEAM_OWNER}`)).toBeNull();
+    await expect(screen.queryByTestId(`role-select-option-${Role.SELLING_OWNER}`)).toBeNull();
   },
 };
 
@@ -117,7 +123,7 @@ export const Interactive: Story = {
 
     // Then wait for VISIBILITY, not just presence: while the popover animates in the options carry
     // `pointer-events: none` and a click is rejected outright.
-    const option = await screen.findByTestId(`role-select-option-${Role.TEAM_ADMIN}`);
+    const option = await screen.findByTestId(`role-select-option-${Role.SELLING_ADMIN}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 

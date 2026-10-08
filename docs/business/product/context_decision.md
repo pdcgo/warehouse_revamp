@@ -249,3 +249,39 @@ quietly dropped.
 (`WHERE deleted = FALSE`) frees the code without mutating a string somebody printed — and the rename
 collides with itself when a code is created and deleted twice inside one `ts` tick, which fails the
 **delete**. If a rename is wanted anyway, suffix the row **id**.
+
+---
+
+## the-couriers-ask-is-in-the-unit-price
+
+> Owner, in chat *(2026-10-07)*: *"for 2, yes"*, confirmed as the literal question: *"should the courier's tip at the
+> door be part of a batch's unit price?"* It answers [Q6](./context_clarify.md#question) **against my recommendation**
+> (tip out, freight in). It was #4 of [biggest_question.md](../../biggest_question.md).
+
+**The verdict.** §Unit Price Components stands as written. What the warehouse hands the courier at the door
+(`AdditionalWarehouseFee`, the incidental ask of
+[cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)) is
+spread over the units with the freight and frozen into the batch's unit price. It is **also** still owed by the selling team, in full.
+
+```mermaid
+flowchart LR
+  G["goods - the line total"] --> P["price_unit - frozen for the batch"]
+  F["freight - paid by the selling team"] --> P
+  T["the courier's ask - fronted by the warehouse"] --> P
+  T --> D["the selling team owes the warehouse - in full"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the formula | §Unit Price Components, unchanged — the same as [technical stock §COGS](../../technical/stock/design.md#cogs-price-of-stock) |
+| when | at accept, inside its transaction ([accept-is-one-transaction-then-an-event](../inventory/restock_decision.md#accept-is-one-transaction-then-an-event)) — so the ask is entered at accept, before the price is computed |
+| the balance | unchanged — a warehouse receivable ([the-warehouse-receivable-is-order-fee-cod-fee-and-found](../balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found)) |
+| the arithmetic | floating point ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)) |
+| a mistyped ask | corrected by revaluing the batch — [batch_ledger.md §Change Price Flow](../inventory/batch_ledger.md#change-price-flow-example) |
+| the build | already includes it — `freight := rr.ShippingCost + costLineTotal` ([restock_request_fulfill.go:206](../../../backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L206)). ⚠ But `freightPerUnit` is **integer** division, so a Rp 5.000 ask over 1.000 units adds **0** — against the arithmetic row |
+
+**What it does NOT settle:** whether the divisor is the ordered or the arrived quantity ([Q2](./context_clarify.md#question)),
+and how freight and the ask split across a restock's lines — by quantity or by value
+([stock Q3](../../technical/stock/design_clarify.md#question)).

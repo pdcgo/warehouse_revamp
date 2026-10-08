@@ -49,6 +49,9 @@ type DialogName = "edit" | "transfer" | "capital" | "reconcile" | "identify" | "
 //              never operational (a-shop-with-no-account-gets-an-unknown-one, my spec)
 //   active     Transfer · Reconcile · Capital · Edit · Mark / Unmark operational · Archive
 //
+// Transfer and Capital need `canTransfer` as well: the warehouse Admin keeps the accounts and reconciles them, and
+// leaves moving money to the Owner (the-warehouse-admin-equals-the-owner-except-money).
+//
 // Archive is OFFERED only at zero, and the item says why when it is not
 // (an-account-is-archived-only-at-zero). The server refuses it anyway.
 //
@@ -59,6 +62,7 @@ export function AccountActions({
   balance,
   shopNames = [],
   buttons = false,
+  canTransfer,
 }: {
   teamId: bigint;
   account: FinancialAccount;
@@ -66,6 +70,8 @@ export function AccountActions({
   shopNames?: string[];
   /** The two most used as buttons, the rest in the menu — the list's rows and the account's page. */
   buttons?: boolean;
+  /** Transfer and Capital are offered — `canTransferMoney` of the caller's role. */
+  canTransfer: boolean;
 }) {
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<DialogName | null>(null);
@@ -157,7 +163,7 @@ export function AccountActions({
           {t("financialAccounts.actions.restore")}
         </Button>
       )}
-      {buttons && !archived && unknown && (
+      {buttons && !archived && unknown && canTransfer && (
         <Button size="xs" variant="outline" data-testid={`account-transfer-button-${id}`} onClick={() => setDialog("transfer")}>
           <Icon as={ArrowLeftRight} boxSize="4" />
           {t("financialAccounts.actions.transferOut")}
@@ -165,10 +171,12 @@ export function AccountActions({
       )}
       {buttons && !archived && !unknown && (
         <>
-          <Button size="xs" variant="outline" data-testid={`account-transfer-button-${id}`} onClick={() => setDialog("transfer")}>
-            <Icon as={ArrowLeftRight} boxSize="4" />
-            {t("financialAccounts.actions.transfer")}
-          </Button>
+          {canTransfer && (
+            <Button size="xs" variant="outline" data-testid={`account-transfer-button-${id}`} onClick={() => setDialog("transfer")}>
+              <Icon as={ArrowLeftRight} boxSize="4" />
+              {t("financialAccounts.actions.transfer")}
+            </Button>
+          )}
           <Button size="xs" variant="outline" data-testid={`account-reconcile-button-${id}`} onClick={() => setDialog("reconcile")}>
             <Icon as={Scale} boxSize="4" />
             {t("financialAccounts.actions.reconcile")}
@@ -191,14 +199,14 @@ export function AccountActions({
                 ) : unknown ? (
                   <>
                     {item("identify", SearchCheck, t("financialAccounts.actions.identify"), () => setDialog("identify"))}
-                    {!buttons && item("transfer", ArrowLeftRight, t("financialAccounts.actions.transferOut"), () => setDialog("transfer"))}
+                    {!buttons && canTransfer && item("transfer", ArrowLeftRight, t("financialAccounts.actions.transferOut"), () => setDialog("transfer"))}
                     {archiveItem}
                   </>
                 ) : (
                   <>
-                    {!buttons && item("transfer", ArrowLeftRight, t("financialAccounts.actions.transfer"), () => setDialog("transfer"))}
+                    {!buttons && canTransfer && item("transfer", ArrowLeftRight, t("financialAccounts.actions.transfer"), () => setDialog("transfer"))}
                     {!buttons && item("reconcile", Scale, t("financialAccounts.actions.reconcile"), () => setDialog("reconcile"))}
-                    {item("capital", HandCoins, t("financialAccounts.actions.capital"), () => setDialog("capital"))}
+                    {canTransfer && item("capital", HandCoins, t("financialAccounts.actions.capital"), () => setDialog("capital"))}
                     {item("edit", Pencil, t("financialAccounts.actions.edit"), () => setDialog("edit"))}
                     {account.operational
                       ? item("unmark-operational", BadgeMinus, t("financialAccounts.actions.unmarkOperational"), () => setDialog("operational"))

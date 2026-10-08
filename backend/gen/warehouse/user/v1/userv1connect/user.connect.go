@@ -72,8 +72,11 @@ const (
 	UserServiceUpdateUserProcedure = "/warehouse.user.v1.UserService/UpdateUser"
 	// UserServiceSuspendUserProcedure is the fully-qualified name of the UserService's SuspendUser RPC.
 	UserServiceSuspendUserProcedure = "/warehouse.user.v1.UserService/SuspendUser"
-	// UserServiceDeleteUserProcedure is the fully-qualified name of the UserService's DeleteUser RPC.
-	UserServiceDeleteUserProcedure = "/warehouse.user.v1.UserService/DeleteUser"
+	// UserServiceUserEraseProcedure is the fully-qualified name of the UserService's UserErase RPC.
+	UserServiceUserEraseProcedure = "/warehouse.user.v1.UserService/UserErase"
+	// UserServiceTeamMemberLogListProcedure is the fully-qualified name of the UserService's
+	// TeamMemberLogList RPC.
+	UserServiceTeamMemberLogListProcedure = "/warehouse.user.v1.UserService/TeamMemberLogList"
 	// UserServiceUserListProcedure is the fully-qualified name of the UserService's UserList RPC.
 	UserServiceUserListProcedure = "/warehouse.user.v1.UserService/UserList"
 	// UserServiceUserByIDsProcedure is the fully-qualified name of the UserService's UserByIDs RPC.
@@ -287,8 +290,18 @@ type UserServiceClient interface {
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
 	SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error)
-	// DeleteUser removes an account and, by FK cascade, all of its memberships.
-	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
+	// they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
+	// Administrator, and never a Root or another Administrator.
+	//
+	// ⚠ CONTRACT ONLY — accepted at design_accept with the screens. The handler answers Unimplemented
+	// until the backend is built.
+	UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error)
+	// TeamMemberLogList — the history of one team's membership: every add, role change and removal,
+	// who did it, and when (every-role-change-is-logged). Newest first.
+	//
+	// ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
+	TeamMemberLogList(context.Context, *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error)
 	// UserList — paginated, team-scoped.
 	UserList(context.Context, *connect.Request[v1.UserListRequest]) (*connect.Response[v1.UserListResponse], error)
 	// UserByIDs bulk-resolves users by id, for turning an id into a name.
@@ -368,10 +381,16 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("SuspendUser")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteUser: connect.NewClient[v1.DeleteUserRequest, v1.DeleteUserResponse](
+		userErase: connect.NewClient[v1.UserEraseRequest, v1.UserEraseResponse](
 			httpClient,
-			baseURL+UserServiceDeleteUserProcedure,
-			connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
+			baseURL+UserServiceUserEraseProcedure,
+			connect.WithSchema(userServiceMethods.ByName("UserErase")),
+			connect.WithClientOptions(opts...),
+		),
+		teamMemberLogList: connect.NewClient[v1.TeamMemberLogListRequest, v1.TeamMemberLogListResponse](
+			httpClient,
+			baseURL+UserServiceTeamMemberLogListProcedure,
+			connect.WithSchema(userServiceMethods.ByName("TeamMemberLogList")),
 			connect.WithClientOptions(opts...),
 		),
 		userList: connect.NewClient[v1.UserListRequest, v1.UserListResponse](
@@ -407,7 +426,8 @@ type userServiceClient struct {
 	updateProfile      *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 	updateUser         *connect.Client[v1.UpdateUserRequest, v1.UpdateUserResponse]
 	suspendUser        *connect.Client[v1.SuspendUserRequest, v1.SuspendUserResponse]
-	deleteUser         *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
+	userErase          *connect.Client[v1.UserEraseRequest, v1.UserEraseResponse]
+	teamMemberLogList  *connect.Client[v1.TeamMemberLogListRequest, v1.TeamMemberLogListResponse]
 	userList           *connect.Client[v1.UserListRequest, v1.UserListResponse]
 	userByIDs          *connect.Client[v1.UserByIDsRequest, v1.UserByIDsResponse]
 	searchUser         *connect.Client[v1.SearchUserRequest, v1.SearchUserResponse]
@@ -463,9 +483,14 @@ func (c *userServiceClient) SuspendUser(ctx context.Context, req *connect.Reques
 	return c.suspendUser.CallUnary(ctx, req)
 }
 
-// DeleteUser calls warehouse.user.v1.UserService.DeleteUser.
-func (c *userServiceClient) DeleteUser(ctx context.Context, req *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
-	return c.deleteUser.CallUnary(ctx, req)
+// UserErase calls warehouse.user.v1.UserService.UserErase.
+func (c *userServiceClient) UserErase(ctx context.Context, req *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error) {
+	return c.userErase.CallUnary(ctx, req)
+}
+
+// TeamMemberLogList calls warehouse.user.v1.UserService.TeamMemberLogList.
+func (c *userServiceClient) TeamMemberLogList(ctx context.Context, req *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error) {
+	return c.teamMemberLogList.CallUnary(ctx, req)
 }
 
 // UserList calls warehouse.user.v1.UserService.UserList.
@@ -510,8 +535,18 @@ type UserServiceHandler interface {
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
 	SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error)
-	// DeleteUser removes an account and, by FK cascade, all of its memberships.
-	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
+	// they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
+	// Administrator, and never a Root or another Administrator.
+	//
+	// ⚠ CONTRACT ONLY — accepted at design_accept with the screens. The handler answers Unimplemented
+	// until the backend is built.
+	UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error)
+	// TeamMemberLogList — the history of one team's membership: every add, role change and removal,
+	// who did it, and when (every-role-change-is-logged). Newest first.
+	//
+	// ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
+	TeamMemberLogList(context.Context, *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error)
 	// UserList — paginated, team-scoped.
 	UserList(context.Context, *connect.Request[v1.UserListRequest]) (*connect.Response[v1.UserListResponse], error)
 	// UserByIDs bulk-resolves users by id, for turning an id into a name.
@@ -587,10 +622,16 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("SuspendUser")),
 		connect.WithHandlerOptions(opts...),
 	)
-	userServiceDeleteUserHandler := connect.NewUnaryHandler(
-		UserServiceDeleteUserProcedure,
-		svc.DeleteUser,
-		connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
+	userServiceUserEraseHandler := connect.NewUnaryHandler(
+		UserServiceUserEraseProcedure,
+		svc.UserErase,
+		connect.WithSchema(userServiceMethods.ByName("UserErase")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceTeamMemberLogListHandler := connect.NewUnaryHandler(
+		UserServiceTeamMemberLogListProcedure,
+		svc.TeamMemberLogList,
+		connect.WithSchema(userServiceMethods.ByName("TeamMemberLogList")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceUserListHandler := connect.NewUnaryHandler(
@@ -633,8 +674,10 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceUpdateUserHandler.ServeHTTP(w, r)
 		case UserServiceSuspendUserProcedure:
 			userServiceSuspendUserHandler.ServeHTTP(w, r)
-		case UserServiceDeleteUserProcedure:
-			userServiceDeleteUserHandler.ServeHTTP(w, r)
+		case UserServiceUserEraseProcedure:
+			userServiceUserEraseHandler.ServeHTTP(w, r)
+		case UserServiceTeamMemberLogListProcedure:
+			userServiceTeamMemberLogListHandler.ServeHTTP(w, r)
 		case UserServiceUserListProcedure:
 			userServiceUserListHandler.ServeHTTP(w, r)
 		case UserServiceUserByIDsProcedure:
@@ -690,8 +733,12 @@ func (UnimplementedUserServiceHandler) SuspendUser(context.Context, *connect.Req
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.SuspendUser is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.DeleteUser is not implemented"))
+func (UnimplementedUserServiceHandler) UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.UserErase is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) TeamMemberLogList(context.Context, *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.TeamMemberLogList is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) UserList(context.Context, *connect.Request[v1.UserListRequest]) (*connect.Response[v1.UserListResponse], error) {

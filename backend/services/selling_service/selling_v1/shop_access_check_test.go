@@ -56,11 +56,11 @@ func TestShopAccessCheck_AGrantOrAManagerHasAccess(t *testing.T) {
 	)
 
 	svc := newServiceWithRoles(t, db, fakeRoles{
-		{granted, team}:              role_basev1.Role_ROLE_TEAM_CUSTOMER_SERVICE,
-		{cs, team}:                   role_basev1.Role_ROLE_TEAM_CUSTOMER_SERVICE,
-		{owner, team}:                role_basev1.Role_ROLE_TEAM_OWNER,
-		{teamAdmin, team}:            role_basev1.Role_ROLE_TEAM_ADMIN,
-		{root, san_auth.RootTeamID}:  role_basev1.Role_ROLE_ROOT,
+		{granted, team}:             role_basev1.Role_ROLE_SELLING_CS,
+		{cs, team}:                  role_basev1.Role_ROLE_SELLING_CS,
+		{owner, team}:               role_basev1.Role_ROLE_SELLING_OWNER,
+		{teamAdmin, team}:           role_basev1.Role_ROLE_SELLING_ADMIN,
+		{root, san_auth.RootTeamID}: role_basev1.Role_ROLE_ROOT,
 	})
 	shopID := insertShop(t, db, team, "Melati", "M1", "shopee")
 
@@ -103,7 +103,7 @@ func TestShopAccessCheck_AGrantOrAManagerHasAccess(t *testing.T) {
 // (a-shop-with-no-primary-cs-cannot-import).
 func TestShopAccessCheck_AShopWithNoGrantHasNoPrimary(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithRoles(t, db, fakeRoles{{12, 2}: role_basev1.Role_ROLE_TEAM_OWNER})
+	svc := newServiceWithRoles(t, db, fakeRoles{{12, 2}: role_basev1.Role_ROLE_SELLING_OWNER})
 	shopID := insertShop(t, db, 2, "Melati", "M1", "tiktok")
 
 	got := accessCheck(t, svc, 2, shopID, 12)

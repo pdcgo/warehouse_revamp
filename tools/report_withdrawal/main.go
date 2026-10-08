@@ -52,7 +52,7 @@ func main() {
 	ctx := context.Background()
 
 	err := san_config.NewConfiguration(&cfg,
-		san_config.NewGoogleSecretProvider(ctx, "pdcgudang", "warehouse_config"),
+		san_config.NewGoogleSecretProvider(ctx, os.Getenv("GOOGLE_CLOUD_PROJECT"), "warehouse_config"),
 	)
 
 	if err != nil {

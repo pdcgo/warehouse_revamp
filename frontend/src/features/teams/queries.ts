@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { teamClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { teamListRowData, teamsFromList } from "./adapt";
+import { teamByIdsRowData, teamListRowData, teamsByIds, teamsFromList } from "./adapt";
 import { useInvalidateUsers } from "../users/queries";
 
 // The team screens' reads (#176) and writes (#177). Query hooks live beside the screens that use
@@ -55,6 +55,51 @@ export function useTeams({ teamType, page, pageSize, enabled = true, reference =
         teams: teamsFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
+    },
+  });
+}
+
+// Teams by id, as a { [id]: Team } map — to NAME a team the caller is not in (a product's owner on the
+// discover detail). One batch for the set, never one call per row. A name lookup, so it buys out of
+// always-fresh by name (referenceQuery): it labels something, and nobody works from it.
+export function useTeamsByIds({ ids }: { ids: bigint[] }) {
+  return useQuery({ ...teamsByIdsQuery(ids), enabled: ids.some((id) => id > 0n) });
+}
+
+// The same read as an options object, for a queryFn that needs team names inside its OWN answer — the
+// supplier discover list names each row's team (features/suppliers/discover.ts) through
+// `queryClient.fetchQuery(teamsByIdsQuery(ids))`, so it shares this cache entry and its `referenceQuery`
+// window instead of re-asking on every page turn. ⚠ The caller must not pass an empty set: TeamByIds
+// requires at least one id.
+export function teamsByIdsQuery(ids: bigint[]) {
+  const wanted = Array.from(new Set(ids.filter((id) => id > 0n).map((id) => id.toString()))).sort();
+
+  return {
+    queryKey: key.teams(undefined, { byIds: wanted.join(",") }),
+    ...referenceQuery,
+    queryFn: async () =>
+      teamsByIds(
+        await teamClient.teamByIds({ filter: { ids: wanted.map((id) => BigInt(id)) }, dataRequest: teamByIdsRowData() }),
+      ),
+  };
+}
+
+// EVERY TEAM, searched by name or code — the switcher's *All teams* for Root and the Administrator
+// (the-switcher-offers-every-team). The set grows with every seller, so the server searches and a page caps it;
+// the person types to narrow it. `referenceQuery`: it is a picker feed, read to choose a team, not worked from.
+export function useTeamSearch({ q, enabled = true }: { q: string; enabled?: boolean }) {
+  return useQuery({
+    queryKey: key.teams(undefined, { search: q, page: 1, pageSize: 20 }),
+    ...referenceQuery,
+    enabled,
+    queryFn: async () => {
+      const res = await teamClient.teamList({
+        filter: { q },
+        dataRequest: teamListRowData(),
+        page: { page: 1, limit: 20 },
+      });
+
+      return teamsFromList(res.items, res.ids);
     },
   });
 }
@@ -155,11 +200,11 @@ export function useCreateTeam() {
   const invalidateUsers = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: (vars: { type: TeamType; name: string; teamCode: string; description: string }) =>
+    mutationFn: (vars: { type: TeamType; name: string; teamCode: string; description: string; ownerUserId: bigint }) =>
       teamClient.teamCreate(vars),
-    // Users too: TeamCreate makes the CALLER the new team's owner, server-side, so the person who
-    // pressed the button has a membership they did not have a moment ago. Their user-detail page
-    // lists it.
+    // Users too: the new team has an Owner, a membership that did not exist a moment ago, and their
+    // user-detail page lists it. (Until the backend pass that Owner is still the CALLER, not the person
+    // named — the-create-team-form-names-the-first-owner.)
     onSuccess: () => Promise.all([invalidateTeams(), invalidateUsers()]),
   });
 }

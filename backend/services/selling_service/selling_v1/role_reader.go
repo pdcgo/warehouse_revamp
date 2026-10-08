@@ -27,12 +27,12 @@ func (noRoles) Roles(context.Context, uint64, uint64) (role_basev1.Role, role_ba
 // isManager reports whether a role writes on every shop of its team without a grant.
 func isManager(team, root role_basev1.Role) bool {
 	switch root {
-	case role_basev1.Role_ROLE_ROOT, role_basev1.Role_ROLE_ADMIN:
+	case role_basev1.Role_ROLE_ROOT, role_basev1.Role_ROLE_ADMINISTRATOR:
 		return true
 	}
 
 	switch team {
-	case role_basev1.Role_ROLE_TEAM_OWNER, role_basev1.Role_ROLE_TEAM_ADMIN:
+	case role_basev1.Role_ROLE_SELLING_OWNER, role_basev1.Role_ROLE_SELLING_ADMIN:
 		return true
 	}
 

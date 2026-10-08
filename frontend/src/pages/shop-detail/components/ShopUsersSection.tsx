@@ -11,8 +11,9 @@ import { UserSelect } from "../../../components/pickers/UserSelect";
 import { toaster } from "../../../components/feedback/Toaster";
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
-// opaque ids to names via UserByIDs), adds one via the shared UserSelect (unscoped — grant anyone),
-// and removes with a confirm. Scoped to the shop's team; the backend is the real gate.
+// opaque ids to names via UserByIDs), adds one via the shared UserSelect SCOPED TO THE TEAM — a shop is
+// granted to one of the team's members, never to anyone in the system
+// (a-shop-grant-picks-from-the-teams-members) — and removes with a confirm. Scoped to the shop's team; the backend is the real gate.
 //
 // ⚠ AND IT SHOWS THE PRIMARY CS (the-primary-cs-is-a-flag-on-a-grant) — a badge on that user's row, and
 // Make primary on every other. The first user granted becomes it and removing its grant leaves none,
@@ -128,7 +129,12 @@ export function ShopUsersSection({
       <HStack gap="card" align="end">
         <Field.Root>
           <Field.Label>{t("shops.users.addLabel")}</Field.Label>
-          <UserSelect value={adding} onChange={setAdding} placeholder={t("shops.users.searchPlaceholder")} />
+          <UserSelect
+            teamId={teamId}
+            value={adding}
+            onChange={setAdding}
+            placeholder={t("shops.users.searchPlaceholder")}
+          />
         </Field.Root>
         <Button
           colorPalette="brand"

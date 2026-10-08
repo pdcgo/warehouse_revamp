@@ -21,6 +21,8 @@ import {
 import { TeamProvider } from "../src/features/team/TeamContext";
 import { resetFinancialAccounts } from "./financialAccountStub";
 import { resetSessionScenario } from "./sessionScenario";
+import { resetUserStub } from "./userStub";
+import { resetSupplierStub } from "./supplierStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -367,9 +369,6 @@ const preview: Preview = {
     // …and the payments table, which a story that REJECTS a claim writes to. Without this, whether a
     // pending payment still offers Confirm/Reject would depend on story order.
     resetLiabilityPayments();
-    // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
-    // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
-    stubUploads();
     // …and the imported-files table, which every story that runs an import adds a row to — and its
     // scenario flags (no primary CS, a wrong-shop file), which one story sets for itself alone.
     resetSettlementImports();
@@ -377,6 +376,12 @@ const preview: Preview = {
     resetFinancialAccounts();
     // …and who is signed in — a story standing as a CS must not leave the next one a CS.
     resetSessionScenario();
+    resetUserStub();
+    // …and the suppliers and their channels, which a create, an edit or a delete writes to.
+    resetSupplierStub();
+    // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
+    // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
+    stubUploads();
     stubClipboard();
   },
   parameters: {

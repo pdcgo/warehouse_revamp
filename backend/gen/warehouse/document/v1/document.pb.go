@@ -678,6 +678,96 @@ func (*ShareDocumentResponse) Descriptor() ([]byte, []int) {
 	return file_warehouse_document_v1_document_proto_rawDescGZIP(), []int{8}
 }
 
+type ProfilePictureEraseRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The person whose photos go: every PROFILE_PICTURE document they uploaded, older ones they replaced too.
+	UserId        uint64 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfilePictureEraseRequest) Reset() {
+	*x = ProfilePictureEraseRequest{}
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfilePictureEraseRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfilePictureEraseRequest) ProtoMessage() {}
+
+func (x *ProfilePictureEraseRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfilePictureEraseRequest.ProtoReflect.Descriptor instead.
+func (*ProfilePictureEraseRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_document_v1_document_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ProfilePictureEraseRequest) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+type ProfilePictureEraseResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How many were deleted. 0 when there were none — or when a retry finds them already gone.
+	Erased        uint32 `protobuf:"varint,1,opt,name=erased,proto3" json:"erased,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfilePictureEraseResponse) Reset() {
+	*x = ProfilePictureEraseResponse{}
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfilePictureEraseResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfilePictureEraseResponse) ProtoMessage() {}
+
+func (x *ProfilePictureEraseResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_document_v1_document_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfilePictureEraseResponse.ProtoReflect.Descriptor instead.
+func (*ProfilePictureEraseResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_document_v1_document_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ProfilePictureEraseResponse) GetErased() uint32 {
+	if x != nil {
+		return x.Erased
+	}
+	return 0
+}
+
 var File_warehouse_document_v1_document_proto protoreflect.FileDescriptor
 
 const file_warehouse_document_v1_document_proto_rawDesc = "" +
@@ -738,7 +828,12 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"withTeamId:\x0e\x92\xb5\x18\n" +
 	"\n" +
 	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x17\n" +
-	"\x15ShareDocumentResponse*\xbd\x02\n" +
+	"\x15ShareDocumentResponse\"H\n" +
+	"\x1aProfilePictureEraseRequest\x12 \n" +
+	"\auser_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\b\x92\xb5\x18\x04\n" +
+	"\x02\x01\x02\"5\n" +
+	"\x1bProfilePictureEraseResponse\x12\x16\n" +
+	"\x06erased\x18\x01 \x01(\rR\x06erased*\xbd\x02\n" +
 	"\x14DocumentResourceType\x12&\n" +
 	"\"DOCUMENT_RESOURCE_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eDOCUMENT_RESOURCE_TYPE_GENERAL\x10\x01\x12*\n" +
@@ -746,12 +841,13 @@ const file_warehouse_document_v1_document_proto_rawDesc = "" +
 	"$DOCUMENT_RESOURCE_TYPE_PRODUCT_IMAGE\x10\x03\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_ORDER_RECEIPT\x10\x04\x12(\n" +
 	"$DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF\x10\x05\x12/\n" +
-	"+DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT\x10\x062\xc4\x03\n" +
+	"+DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT\x10\x062\xc2\x04\n" +
 	"\x0fDocumentService\x12j\n" +
 	"\rRequestUpload\x12+.warehouse.document.v1.RequestUploadRequest\x1a,.warehouse.document.v1.RequestUploadResponse\x12j\n" +
 	"\rConfirmUpload\x12+.warehouse.document.v1.ConfirmUploadRequest\x1a,.warehouse.document.v1.ConfirmUploadResponse\x12m\n" +
 	"\x0eGetDownloadUrl\x12,.warehouse.document.v1.GetDownloadUrlRequest\x1a-.warehouse.document.v1.GetDownloadUrlResponse\x12j\n" +
-	"\rShareDocument\x12+.warehouse.document.v1.ShareDocumentRequest\x1a,.warehouse.document.v1.ShareDocumentResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1b\x06proto3"
+	"\rShareDocument\x12+.warehouse.document.v1.ShareDocumentRequest\x1a,.warehouse.document.v1.ShareDocumentResponse\x12|\n" +
+	"\x13ProfilePictureErase\x121.warehouse.document.v1.ProfilePictureEraseRequest\x1a2.warehouse.document.v1.ProfilePictureEraseResponseBPZNgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1;documentv1b\x06proto3"
 
 var (
 	file_warehouse_document_v1_document_proto_rawDescOnce sync.Once
@@ -766,35 +862,39 @@ func file_warehouse_document_v1_document_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_document_v1_document_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_warehouse_document_v1_document_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_warehouse_document_v1_document_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_warehouse_document_v1_document_proto_goTypes = []any{
-	(DocumentResourceType)(0),      // 0: warehouse.document.v1.DocumentResourceType
-	(*Document)(nil),               // 1: warehouse.document.v1.Document
-	(*RequestUploadRequest)(nil),   // 2: warehouse.document.v1.RequestUploadRequest
-	(*RequestUploadResponse)(nil),  // 3: warehouse.document.v1.RequestUploadResponse
-	(*ConfirmUploadRequest)(nil),   // 4: warehouse.document.v1.ConfirmUploadRequest
-	(*ConfirmUploadResponse)(nil),  // 5: warehouse.document.v1.ConfirmUploadResponse
-	(*GetDownloadUrlRequest)(nil),  // 6: warehouse.document.v1.GetDownloadUrlRequest
-	(*GetDownloadUrlResponse)(nil), // 7: warehouse.document.v1.GetDownloadUrlResponse
-	(*ShareDocumentRequest)(nil),   // 8: warehouse.document.v1.ShareDocumentRequest
-	(*ShareDocumentResponse)(nil),  // 9: warehouse.document.v1.ShareDocumentResponse
-	nil,                            // 10: warehouse.document.v1.RequestUploadResponse.HeadersEntry
+	(DocumentResourceType)(0),           // 0: warehouse.document.v1.DocumentResourceType
+	(*Document)(nil),                    // 1: warehouse.document.v1.Document
+	(*RequestUploadRequest)(nil),        // 2: warehouse.document.v1.RequestUploadRequest
+	(*RequestUploadResponse)(nil),       // 3: warehouse.document.v1.RequestUploadResponse
+	(*ConfirmUploadRequest)(nil),        // 4: warehouse.document.v1.ConfirmUploadRequest
+	(*ConfirmUploadResponse)(nil),       // 5: warehouse.document.v1.ConfirmUploadResponse
+	(*GetDownloadUrlRequest)(nil),       // 6: warehouse.document.v1.GetDownloadUrlRequest
+	(*GetDownloadUrlResponse)(nil),      // 7: warehouse.document.v1.GetDownloadUrlResponse
+	(*ShareDocumentRequest)(nil),        // 8: warehouse.document.v1.ShareDocumentRequest
+	(*ShareDocumentResponse)(nil),       // 9: warehouse.document.v1.ShareDocumentResponse
+	(*ProfilePictureEraseRequest)(nil),  // 10: warehouse.document.v1.ProfilePictureEraseRequest
+	(*ProfilePictureEraseResponse)(nil), // 11: warehouse.document.v1.ProfilePictureEraseResponse
+	nil,                                 // 12: warehouse.document.v1.RequestUploadResponse.HeadersEntry
 }
 var file_warehouse_document_v1_document_proto_depIdxs = []int32{
 	0,  // 0: warehouse.document.v1.Document.resource_type:type_name -> warehouse.document.v1.DocumentResourceType
 	0,  // 1: warehouse.document.v1.RequestUploadRequest.resource_type:type_name -> warehouse.document.v1.DocumentResourceType
-	10, // 2: warehouse.document.v1.RequestUploadResponse.headers:type_name -> warehouse.document.v1.RequestUploadResponse.HeadersEntry
+	12, // 2: warehouse.document.v1.RequestUploadResponse.headers:type_name -> warehouse.document.v1.RequestUploadResponse.HeadersEntry
 	1,  // 3: warehouse.document.v1.ConfirmUploadResponse.document:type_name -> warehouse.document.v1.Document
 	2,  // 4: warehouse.document.v1.DocumentService.RequestUpload:input_type -> warehouse.document.v1.RequestUploadRequest
 	4,  // 5: warehouse.document.v1.DocumentService.ConfirmUpload:input_type -> warehouse.document.v1.ConfirmUploadRequest
 	6,  // 6: warehouse.document.v1.DocumentService.GetDownloadUrl:input_type -> warehouse.document.v1.GetDownloadUrlRequest
 	8,  // 7: warehouse.document.v1.DocumentService.ShareDocument:input_type -> warehouse.document.v1.ShareDocumentRequest
-	3,  // 8: warehouse.document.v1.DocumentService.RequestUpload:output_type -> warehouse.document.v1.RequestUploadResponse
-	5,  // 9: warehouse.document.v1.DocumentService.ConfirmUpload:output_type -> warehouse.document.v1.ConfirmUploadResponse
-	7,  // 10: warehouse.document.v1.DocumentService.GetDownloadUrl:output_type -> warehouse.document.v1.GetDownloadUrlResponse
-	9,  // 11: warehouse.document.v1.DocumentService.ShareDocument:output_type -> warehouse.document.v1.ShareDocumentResponse
-	8,  // [8:12] is the sub-list for method output_type
-	4,  // [4:8] is the sub-list for method input_type
+	10, // 8: warehouse.document.v1.DocumentService.ProfilePictureErase:input_type -> warehouse.document.v1.ProfilePictureEraseRequest
+	3,  // 9: warehouse.document.v1.DocumentService.RequestUpload:output_type -> warehouse.document.v1.RequestUploadResponse
+	5,  // 10: warehouse.document.v1.DocumentService.ConfirmUpload:output_type -> warehouse.document.v1.ConfirmUploadResponse
+	7,  // 11: warehouse.document.v1.DocumentService.GetDownloadUrl:output_type -> warehouse.document.v1.GetDownloadUrlResponse
+	9,  // 12: warehouse.document.v1.DocumentService.ShareDocument:output_type -> warehouse.document.v1.ShareDocumentResponse
+	11, // 13: warehouse.document.v1.DocumentService.ProfilePictureErase:output_type -> warehouse.document.v1.ProfilePictureEraseResponse
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -811,7 +911,7 @@ func file_warehouse_document_v1_document_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_document_v1_document_proto_rawDesc), len(file_warehouse_document_v1_document_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

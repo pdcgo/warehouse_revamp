@@ -11,10 +11,31 @@ import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 // from stubTransport.ts would pull the whole stub into `npm run typecheck`.
 export const sessionScenario = {
   role: Role.WAREHOUSE_ADMIN as Role,
+  /**
+   * `null` (the default) = a member of EVERY fixture team. A list = only those teams, plus the root team when
+   * `role` is Root or the Administrator — someone who reaches every team without being in it
+   * (the-switcher-offers-every-team). That is the only way a story can show a team you are NOT in.
+   */
+  memberOf: null as bigint[] | null,
+};
+
+/** What the last TeamCreate carried, so a story can assert the form sent the Owner it names. */
+export const teamCreateScenario = {
+  last: undefined as undefined | { name: string; ownerUserId: bigint },
 };
 
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
+  sessionScenario.memberOf = null;
+  teamCreateScenario.last = undefined;
+}
+
+/** A `beforeEach`: Root or the Administrator, a member of the root team and of `memberOf` only. */
+export function asPlatformOnly(role: Role, memberOf: bigint[] = []) {
+  return () => {
+    sessionScenario.role = role;
+    sessionScenario.memberOf = memberOf;
+  };
 }
 
 /** A `beforeEach` that makes the signed-in person hold `role` in every team. */

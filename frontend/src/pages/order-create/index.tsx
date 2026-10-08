@@ -176,6 +176,10 @@ export function OrderCreatePage() {
   // used twice: to fill what is still empty, and to question what was typed when Create is pressed.
   const [scan, setScan] = useState<ReceiptScan | null>(null);
   const [filledFromFile, setFilledFromFile] = useState(false);
+  // THE FILE ITSELF, held only while its numbers are read (receipt-check-takes-the-file-bytes). The order
+  // keeps the document reference below; the bytes are read from HERE, beside the upload, never from
+  // storage — so the check starts the moment the file is picked.
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   // What the checks found on the last attempt to place. Empty = the dialog is closed.
   const [gate, setGate] = useState<CheckFinding[]>([]);
 
@@ -277,21 +281,24 @@ export function OrderCreatePage() {
   // what a person typed — so `applyScan` leaves a filled box alone, and the disagreement it would
   // have caused is raised at Create instead, where somebody can look at both.
   //
-  // Reading the LIVE values through refs keeps this an effect about the FILE: it runs when the
-  // document changes, not on every keystroke in the two fields it may fill.
+  // Reading the LIVE values through refs keeps this an effect about the FILE: it runs when a file is
+  // picked, not on every keystroke in the two fields it may fill.
   const refsNow = useRef({ orderRefId: "", trackingCode: "" });
   refsNow.current = { orderRefId: marketplace.orderExternalRefId, trackingCode: receiptCode };
 
   useEffect(() => {
-    if (!receipt.documentId) {
+    if (!receiptFile) {
       setScan(null);
       setFilledFromFile(false);
       return;
     }
 
     let cancelled = false;
+    // A new file is a new answer: the last file's notice must not stand beside this one while it is read.
+    setScan(null);
+    setFilledFromFile(false);
 
-    void scanReceipt(receipt).then((found) => {
+    void scanReceipt(receiptFile).then((found) => {
       if (cancelled || !found) return;
 
       setScan(found);
@@ -313,7 +320,7 @@ export function OrderCreatePage() {
     return () => {
       cancelled = true;
     };
-  }, [receipt]);
+  }, [receiptFile]);
 
   // WHICH STOREFRONT THE REFERENCE LOOKS LIKE (owner, rule 4) — offered only when the format names
   // exactly one and it is not the one already chosen. A suggestion that agrees with the field is
@@ -882,7 +889,13 @@ export function OrderCreatePage() {
             <ShippingReceiptCard
               teamId={cardTeamId}
               receipt={receipt}
-              onReceiptChange={setReceipt}
+              onReceiptChange={(next) => {
+                setReceipt(next);
+                // Removed: what the file said leaves with it. (Numbers it already filled stay — they
+                // are in the boxes now, and a person may have checked them against the paper.)
+                if (!hasReceipt(next)) setReceiptFile(null);
+              }}
+              onReceiptFile={setReceiptFile}
               orderRefId={marketplace.orderExternalRefId}
               onOrderRefIdChange={(orderExternalRefId) =>
                 setMarketplace({ ...marketplace, orderExternalRefId })
@@ -893,6 +906,7 @@ export function OrderCreatePage() {
               onShippingCodeChange={setShippingCode}
               marketplace={marketplace.marketplace}
               filledFromFile={filledFromFile}
+              scanResult={scan?.result}
             />
 
             {/* WHICH SHOP, WHICH WAREHOUSE — the warehouse decides what every stock figure below it

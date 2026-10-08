@@ -116,6 +116,27 @@ Authority: [CLAUDE.md](../../CLAUDE.md) → *The design system*.
 
 ---
 
+## A list needs a "created by" / "accepted by" filter. Do I use `UserSelect`?
+
+**No — [`PersonFilterSelect`](../../frontend/src/components/pickers/PersonFilterSelect.tsx), fed by the LIST's own
+service.** A "who" filter offers the people who appear on that list's rows
+([a-who-filter-lists-the-people-on-its-rows](../business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows)):
+
+| | asks | answers |
+| --- | --- | --- |
+| restock lists | `RestockActorList` (inventory_service) | who raised / accepted a restock this team may list |
+| orders list | `OrderCreatorList` (selling_service) | who typed in an order this team may list |
+
+- Not `UserList` — a team's members miss whoever has left, and a selling team cannot read the warehouse
+  people who accepted its deliveries.
+- Not `SearchUser` — it is the Add Member popup's, open only to the people who manage members
+  ([only-member-managers-open-the-search](../business/user/context_decision.md#only-member-managers-open-the-search)),
+  so Staff and Customer Service would be refused.
+- The RPC carries the list's own roles, keeps suspended and former people (badged), and returns ids; name them
+  with `peopleFor` (`features/users/queries.ts`). A new list with a who filter gets its own `…ActorList`-style RPC.
+
+---
+
 ## Where do sizes, spacing and colours come from?
 
 [`frontend/src/theme.ts`](../../frontend/src/theme.ts), and only there.

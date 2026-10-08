@@ -17,6 +17,9 @@ service RestockRequestService {
   rpc RestockRequestCreate(RestockRequestCreateRequest) returns (RestockRequestCreateResponse);
   // Both sides list: a team sees requests it MADE and requests TARGETING it as a warehouse.
   rpc RestockRequestList(RestockRequestListRequest) returns (RestockRequestListResponse);
+  // The people a "who" filter offers: everyone who raised, or accepted, a restock this team may list
+  // (a-who-filter-lists-the-people-on-its-rows).
+  rpc RestockActorList(RestockActorListRequest) returns (RestockActorListResponse);
   // One request in full, with its lines — the detail page (#125). Same two-sided scope as List.
   rpc RestockRequestDetail(RestockRequestDetailRequest) returns (RestockRequestDetailResponse);
   // The requesting team edits its own request, while the warehouse has not accepted it yet (#131).
@@ -248,10 +251,10 @@ message RestockRequestCreateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -293,10 +296,10 @@ message RestockRequestListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -415,10 +418,10 @@ message RestockRequestDetailRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -438,6 +441,102 @@ message RestockRequestDetailResponse {
 
 message RestockRequestListResponse {
   repeated RestockRequestListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── Who appears on the restocks (a-who-filter-lists-the-people-on-its-rows) ──────────────────────
+//
+// What the list's two "who" filters offer: the people who did that act on a restock this team may list,
+// and nobody else. Not a team's members — the person who counted a selling team's delivery works at the
+// warehouse, and the selling team cannot read that warehouse's members — and not the system's users. Every
+// id here is already printed on a row the caller can see, so nothing new is exposed. Former members and
+// suspended accounts are kept: a filter looks back (a-filter-keeps-former-and-suspended-people).
+
+// Which act the person did on the restock.
+enum RestockActorRole {
+  RESTOCK_ACTOR_ROLE_UNSPECIFIED = 0;
+  // Raised it — `created_by_user_id`.
+  RESTOCK_ACTOR_ROLE_CREATED = 1;
+  // Accepted it at the warehouse — `accepted_by_user_id`.
+  RESTOCK_ACTOR_ROLE_ACCEPTED = 2;
+}
+
+enum RestockActorListDataType {
+  RESTOCK_ACTOR_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  RESTOCK_ACTOR_LIST_DATA_TYPE_ACTOR = 1;
+}
+
+// RestockActorSort is the sort selection paired with the ACTOR slice.
+enum RestockActorSort {
+  RESTOCK_ACTOR_SORT_UNSPECIFIED = 0;
+  // When they last did it — the default, newest first, so the people working now lead.
+  RESTOCK_ACTOR_SORT_LAST_AT = 1;
+}
+
+message RestockActorListFilter {
+  RestockActorRole role = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+}
+
+message RestockActorListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    RestockActorSort actor = 2;
+  }
+}
+
+message RestockActorListRequest {
+  // Whoever may read the list may filter it (whoever-reads-a-list-may-filter-it): exactly
+  // RestockRequestList's roles.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  RestockActorListFilter filter = 2 [(buf.validate.field).required = true];
+  RestockActorListFilterSort sort = 3;
+  repeated RestockActorListDataType data_request = 4;
+  // It grows with staff turnover, slowly but without a ceiling, so it pages; the picker asks for a large
+  // first page and filters in the field.
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One person, and when they last did the act on a restock this team may list. Their name is user_service's
+// — the picker resolves it with UserByIDs.
+message RestockActorItem {
+  uint64 user_id = 1;
+  int64 last_at_unix = 2;
+}
+
+message RestockActorMapItem {
+  // Keyed by user id.
+  map<uint64, RestockActorItem> map_data = 1;
+}
+
+message RestockActorListResponseItem {
+  oneof d {
+    RestockActorMapItem actor = 1;
+  }
+}
+
+message RestockActorListResponse {
+  repeated RestockActorListResponseItem items = 1;
+  // User ids, in the sort's order.
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
 }
@@ -501,7 +600,7 @@ message RestockInboundStatRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -526,10 +625,10 @@ message RestockRequestUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -572,7 +671,7 @@ message RestockRequestFulfillRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -778,10 +877,10 @@ message RestockRequestCancelRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -803,7 +902,7 @@ message RestockRequestLabelsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF

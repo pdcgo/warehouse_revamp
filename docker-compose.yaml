@@ -40,9 +40,12 @@ services:
       timeout: 3s
       retries: 10
 
-  # Local Pub/Sub for backend/pkgs/event_source. Behind a profile because the image is large
-  # and most work needs no broker:
+  # Local Pub/Sub for backend/pkgs/event_source — the dev server publishes to it
+  # (dev-runs-the-emulator), and without it placing an order waits about a minute. Behind a
+  # profile so a bare `docker compose up` skips the large image; `san dev run` and `san dev setup`
+  # turn the profile on and make its topics. By hand:
   #   docker compose --profile pubsub up -d
+  #   go run ./tools/san pubsub ensure --project warehouse-dev --emulator
   pubsub:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
     container_name: warehouse_revamp_pubsub
@@ -54,3 +57,10 @@ services:
       --host-port=0.0.0.0:8085
     ports:
       - "8085:8085"
+    healthcheck:
+      # `up --wait` (san dev run) waits on this. Without it "running" means the JVM has started,
+      # not that the emulator answers — and the topics are made in the very next step.
+      test: ["CMD", "curl", "-sf", "http://localhost:8085/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

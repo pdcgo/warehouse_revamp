@@ -89,7 +89,7 @@ message WarehouseInfoUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
+      ROLE_ADMINISTRATOR,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -174,7 +174,7 @@ message Team {
   // picker's *Priority Product* tab.
   //
   // ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
-  // that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+  // that message is callable by SELLING_OWNER, so a capability granted by root must not live in it or a
   // team could grant itself the feature. How root sets it is not designed yet — the column and the
   // read path land first.
   bool priority_product = 9;
@@ -185,7 +185,7 @@ message TeamCreateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -205,6 +205,14 @@ message TeamCreateRequest {
     max_len: 10
   }];
   string description = 4 [(buf.validate.field).string = {max_len: 300}];
+
+  // The person who becomes the team's first Owner, picked or created on the Create Team form, and granted
+  // the team type's Owner role. The person creating the team is NOT made a member: Root and the
+  // Administrator reach every team from the switcher's All teams
+  // (the-create-team-form-names-the-first-owner, the-pass-1-prototype-is-accepted).
+  //
+  // An unknown or suspended person is refused, and then no team is created and its code stays free.
+  uint64 owner_user_id = 5 [(buf.validate.field).uint64.gt = 0];
 }
 
 message TeamCreateResponse {
@@ -215,11 +223,13 @@ message TeamUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER,
+      ROLE_ADMIN_ADMINISTRATOR
     ]
   };
 
@@ -250,7 +260,7 @@ message TeamDeleteRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -401,11 +411,13 @@ message TeamInfoUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER,
+      ROLE_ADMIN_ADMINISTRATOR
     ]
   };
 

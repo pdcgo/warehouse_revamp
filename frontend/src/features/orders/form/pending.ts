@@ -62,9 +62,9 @@ const PARTS: PendingPart<PendingId>[] = [
   // and the receipt is a FILE — there is no field anywhere for the tracking number itself, which is
   // the one thing a buyer asks for by name.
   { id: "receiptCode", kind: "dropped" },
-  // ⚠ THE FILE IS NOT READ BY ANYTHING YET. The API that takes the uploaded receipt and answers with
-  // the order id and the tracking number printed on it does not exist — so the autofill and the
-  // "does this match the file?" check both run against a stand-in (`scanReceipt`).
+  // ⚠ THE FILE IS READ BY A SERVICE THAT IS NOT BUILT YET. `scanReceipt` calls shipment's ReceiptCheck
+  // (receipt-check-is-shipments), which answers in Storybook from the stub and nowhere else until the
+  // backend lands — so outside it, the autofill and the "does this match the file?" check see nothing.
   { id: "receiptScan", kind: "sample" },
   // The comparison runs and really does refuse the order; what is missing is the authority. A
   // server-side checker sees what this one cannot — the references other orders already carry.

@@ -18,7 +18,7 @@ points are **deleted**, so this file is always the current open set.
 > **Re-examined again.** The only change to `balance_context.md` this round was a spelling fix in
 > §Balance Policy, so nothing below is closed by it. One word did get a definition elsewhere:
 > *"team owner"* is now a real role
-> *([user_context](../user/context_clarify.md#warehouse-roles-are-owner-admin-packer))*, so
+> *([user_context](../user/context_clarify.md#warehouse-roles-are-owner-admin-staff))*, so
 > [Critique 4](#critique) narrows to **whose** owner — the creditor's or the debtor's — and drops the
 > "what is a team owner" half.
 
@@ -116,7 +116,8 @@ points are **deleted**, so this file is always the current open set.
 > discretionary tip is now setting every future COGS and every breakage reimbursement on that batch.
 > Recorded where the fix lives:
 > [product_context clarify → AdditionalWarehouseFee is capitalised into UnitPrice](../product/context_clarify.md#contradiction),
-> asked as [product Q6](../product/context_clarify.md#question).
+> asked as [product Q6](../product/context_clarify.md#question). ✅ *(2026-10-07)* **Answered — it stays in**:
+> [the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price).
 >
 > ⚠ **And the name now argues against itself** ([Q8](#question)). *Cash On Delivery* means paying for
 > the **goods** at the door, which is exactly how the shipped code reads it. A tip is a different
@@ -140,8 +141,8 @@ points are **deleted**, so this file is always the current open set.
 > reading. [Q1](#question) narrows to whether the *absence of a record* is deliberate.
 >
 > ⚠ **NEW, and it may be a slip of wording rather than a decision** ([Critique 15](#critique)):
-> `ROLE_WAREHOUSE_OWNER` and `ROLE_WAREHOUSE_ADMIN` are **distinct roles** from `TEAM_OWNER` /
-> `TEAM_ADMIN`, and the creditor is normally the **warehouse**. Read literally, the party carrying the
+> `ROLE_WAREHOUSE_OWNER` and `ROLE_WAREHOUSE_ADMIN` are **distinct roles** from `SELLING_OWNER` /
+> `SELLING_ADMIN`, and the creditor is normally the **warehouse**. Read literally, the party carrying the
 > credit risk cannot set the limit protecting it. New [Q3](#question).
 >
 > ⚠ **Neither warning surface can render this yet.** The daily report exists; the terms screen does
@@ -164,7 +165,7 @@ points are **deleted**, so this file is always the current open set.
 > `actor_id`, and every override becomes identifiable without a new concept.
 >
 > ⚠ **Q3 survives, narrowed to an enum question.** *Which roles count as "a team's own people"* — a
-> warehouse is a team, but its people hold `ROLE_WAREHOUSE_*`, not `ROLE_TEAM_OWNER`.
+> warehouse is a team, but its people hold `ROLE_WAREHOUSE_*`, not `ROLE_SELLING_OWNER`.
 
 > # ✅ THE THRESHOLD IS FULLY DECIDED — three answers, and the file's oldest question set closes
 >

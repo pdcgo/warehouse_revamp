@@ -91,12 +91,37 @@ message Event {
     // row a human can read.
     option (buf.validate.oneof).required = true;
 
-    // Variants are numbered in a block per context: selling 200–299, settlement 300–399.
+    // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
+    // inventory 400–499.
+    MemberRemoved member_removed = 100;
+
     OrderPlaced order_placed = 200;
     OrderCancelled order_cancelled = 201;
 
     SettlementLogPosted settlement_log_posted = 300;
+
+    RestockAccepted restock_accepted = 400;
   }
+}
+
+// MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
+//
+// Published by user_service after TeamUserUpdate's removal commits, one per membership-log row. The shop side drops
+// the person's grants on that team's shops — a primary Customer Service flag is on a grant, so it goes with it. The
+// person keeps their account and their other teams, so nothing else listens.
+//
+// It carries only ids: "this person is no longer in this team" is the whole fact. The envelope's occurred_at is when
+// the removal happened — a consumer drops only what was granted BEFORE it, so a late redelivery never undoes a grant
+// made after the person was added back.
+message MemberRemoved {
+  option (event_config).topic = "member-removed";
+
+  uint64 team_id = 1;
+  uint64 user_id = 2;
+
+  // WHO REMOVED THEM — from the membership log row, a record (every-role-change-is-logged). 0 when it was a
+  // developer through tools/san.
+  uint64 actor_id = 3;
 }
 
 // SettlementLogPosted announces ONE immutable row of `settlement_logs` (docs/business/settlement/context.md
@@ -251,4 +276,56 @@ message OrderCancelled {
   // ledger movement, and it is a different person's act from the placement it undoes — so it carries
   // its own actor rather than reusing the one on the entries being reversed.
   uint64 actor_id = 3;
+}
+
+// RestockAccepted announces that a warehouse COUNTED AND ACCEPTED a restock, and the accept COMMITTED.
+//
+// Published by inventory_service after RestockRequestFulfill's transaction commits. supplier_service folds it into a
+// supplier's figures (the-report-is-processed-like-settlement) — a consumer downstream of the accept, which must never
+// be able to fail it.
+//
+// IT CARRIES THE COUNTS AND THE PRICE, not just an id (each-figure-is-read-at-the-accept): every figure is what the
+// accept knew, and a REPLAY must fold the historical fact, never the restock as it reads later.
+//
+// ⚠ `event_id` is `restock-accepted:<restock_id>` — a restock is accepted once, so a republish, a replay and the
+// backfill (past-accepts-are-backfilled-once) all collide in the fold's dedup.
+message RestockAccepted {
+  option (event_config).topic = "restock-accepted";
+
+  uint64 restock_id = 1;
+  // The SELLING team that bought — the figures' `team_id` (the-report-is-keyed-by-team-not-by-store).
+  uint64 team_id = 2;
+  // The warehouse team that counted it.
+  uint64 warehouse_id = 3;
+
+  // The RESTOCK's supplier, 0 = none — every line counts for it until restock lines name a store
+  // (the-supplier-comes-from-the-restock-until-lines-name-a-store). With 0 there is nothing to fold.
+  uint64 supplier_id = 4;
+
+  // YYYY-MM-DD — the accept's JAKARTA day, the day the figures bucket on. A string, so no consumer re-derives a day
+  // from an instant in some other timezone.
+  string accepted_on = 5;
+
+  repeated RestockAcceptedLine lines = 6;
+}
+
+// One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
+// ordered ≈ accepted + lost + broken (each-figure-is-read-at-the-accept).
+message RestockAcceptedLine {
+  // restock_request_items.id
+  uint64 item_id = 1;
+  // The restocking team's product.
+  uint64 product_id = 2;
+
+  // Units ordered on the line, and the line's total as typed — what the supplier charged. A figure's value is
+  // units × total ÷ ordered, so the line's three values add back to its total without a rounded unit price.
+  int64 ordered_count = 3;
+  int64 total_price = 4;
+
+  // Units accepted as good stock — the batch's sellable count.
+  int64 accepted_count = 5;
+  // Units that arrived broken.
+  int64 broken_count = 6;
+  // Units short in the box — the accept's LOST damage type.
+  int64 lost_count = 7;
 }

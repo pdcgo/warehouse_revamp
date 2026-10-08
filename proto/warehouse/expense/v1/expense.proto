@@ -132,14 +132,14 @@ message ExpenseCreateRequest {
   // managers read. These numbers move profit directly, so the people already trusted to manage a team
   // are the ones who move them (owner, 2026-07-21) — no new finance role.
   //
-  // TEAM_CUSTOMER_SERVICE is deliberately absent: a person taking orders has no reason to see or move
+  // SELLING_CS is deliberately absent: a person taking orders has no reason to see or move
   // the payroll number.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -215,9 +215,9 @@ message ExpenseListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -323,9 +323,9 @@ message ExpenseDailyRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -384,9 +384,9 @@ message ExpenseUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
     ]
   };
 
@@ -424,9 +424,9 @@ message ExpenseVoidRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
     ]
   };
 

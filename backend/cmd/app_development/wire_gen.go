@@ -19,6 +19,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_importer_service/settlement_importer_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/settlement_service/settlement_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/shipment_service/shipment_v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/team_service/team_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
@@ -44,7 +45,13 @@ func InitializeApp() (*App, error) {
 	authService := user_v1.NewAuthService(db, signer, roleResolver, otpVerification)
 	mainInternalHTTPClient := NewInternalHTTPClient()
 	teamServiceClient := NewTeamClient(config, mainInternalHTTPClient)
-	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, cacheManager)
+	documentServiceClient := NewDocumentClient(config, mainInternalHTTPClient)
+	client, err := NewPubsubClient()
+	if err != nil {
+		return nil, err
+	}
+	eventSender := NewEventSender(client)
+	service := user_v1.NewService(db, signer, roleResolver, teamServiceClient, documentServiceClient, cacheManager, eventSender)
 	userServiceClient := NewUserClient(config, mainInternalHTTPClient)
 	team_v1Service := team_v1.NewService(db, userServiceClient)
 	shipment_v1Service := shipment_v1.NewService(db)
@@ -53,13 +60,10 @@ func InitializeApp() (*App, error) {
 	inventory_v1LiabilityPoster := NewLiabilityPoster(liability_v1Service)
 	expense_v1Service := expense_v1.NewService(db)
 	inventory_v1ExpensePoster := NewExpensePoster(expense_v1Service)
-	inventory_v1Service := inventory_v1.NewService(db, inventory_v1LiabilityPoster, inventory_v1ExpensePoster)
+	supplierServiceClient := NewSupplierClient(config, mainInternalHTTPClient)
+	supplierChecker := NewInventorySupplierChecker(supplierServiceClient)
+	inventory_v1Service := inventory_v1.NewService(db, inventory_v1LiabilityPoster, inventory_v1ExpensePoster, supplierChecker, eventSender)
 	selling_v1StockPicker := NewStockPicker(inventory_v1Service)
-	client, err := NewPubsubClient()
-	if err != nil {
-		return nil, err
-	}
-	eventSender := NewEventSender(client)
 	selling_v1ProductCatalog := NewProductCatalog(product_v1Service)
 	selling_v1CreditChecker := NewCreditChecker(liability_v1Service)
 	settlement_v1ReplayBroker := NewReplayBroker(client)
@@ -76,14 +80,16 @@ func InitializeApp() (*App, error) {
 	shopChecker := NewImporterShopChecker(shopServiceClient)
 	orderServiceClient := NewOrderClient(config, mainInternalHTTPClient)
 	orderFinder := NewImporterOrderFinder(orderServiceClient)
-	documentServiceClient := NewDocumentClient(config, mainInternalHTTPClient)
 	statementStore := NewImporterStatementStore(documentServiceClient, mainInternalHTTPClient)
 	settlementWriteServiceClient := NewSettlementWriteClient(config, mainInternalHTTPClient)
 	ledger := NewImporterLedger(settlementWriteServiceClient)
 	settlement_importer_v1Service := settlement_importer_v1.NewService(db, shopChecker, orderFinder, statementStore, ledger)
 	financial_account_v1ShopChecker := NewFinancialAccountShopChecker(shopServiceClient)
 	financial_account_v1Service := financial_account_v1.NewService(db, financial_account_v1ShopChecker)
-	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, docstoreConfig, roleResolver, signer)
+	sellingTeams := NewSupplierSellingTeams(teamServiceClient)
+	supplier_v1ReplayBroker := NewSupplierReplayBroker(client)
+	supplier_v1Service := supplier_v1.NewService(db, sellingTeams, supplier_v1ReplayBroker)
+	serveMux, err := NewServeMux(authService, service, team_v1Service, shipment_v1Service, product_v1Service, selling_v1Service, category_v1Service, document_v1Service, inventory_v1Service, region_v1Service, expense_v1Service, liability_v1Service, settlement_v1Service, settlement_importer_v1Service, financial_account_v1Service, supplier_v1Service, docstoreConfig, roleResolver, signer)
 	if err != nil {
 		return nil, err
 	}

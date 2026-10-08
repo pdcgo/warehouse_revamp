@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { asRole } from "../../../.storybook/sessionScenario";
 import { liabilityPositions, teams } from "../../../.storybook/fixtures";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { LiabilityListPage } from "./index";
 
 const WAREHOUSE = teams.find((t) => t.id === 11n)!; // the creditor, watching its debtors
@@ -20,7 +22,11 @@ const meta = {
   component: LiabilityListPage,
   render: () => <Routed />,
   parameters: { signedIn: true, dataRouter: true },
-  beforeEach: asTeam(WAREHOUSE.id),
+  // The warehouse's Owner: the default terms are theirs to set (the-warehouse-admin-equals-the-owner-except-money).
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
 } satisfies Meta<typeof LiabilityListPage>;
 
 export default meta;
@@ -97,6 +103,16 @@ export const FrozenAndUnlimitedTeamsAreNotBadged: Story = {
 
     await expect(canvas.queryByTestId("liability-near-limit-13")).not.toBeInTheDocument();
     await expect(canvas.queryByTestId("liability-near-limit-15")).not.toBeInTheDocument();
+  },
+};
+
+// the-warehouse-admin-equals-the-owner-except-money: the warehouse Admin sees the debtors, and no Default Terms.
+export const TheWarehouseAdminHasNoDefaultTerms: Story = {
+  beforeEach: asRole(Role.WAREHOUSE_ADMIN),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("liability-default-terms")).toBeNull();
   },
 };
 

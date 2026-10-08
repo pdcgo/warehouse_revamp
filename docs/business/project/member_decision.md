@@ -48,6 +48,7 @@ product has no price until it is received — so the catalogue and the receiving
 decision, not two. It was also already true in the code: **`supplier` and `supplier_channel` live
 in `inventory_service`**, not in `product_service`, so the supplier half of the product context was
 Toni's before this was written down.
+🔄 *2026-10-06:* the supplier moves out of `inventory_service` to its own `supplier_service` — [the-supplier-gets-its-own-service](../supplier/context_decision.md#the-supplier-gets-its-own-service).
 
 ```mermaid
 flowchart LR

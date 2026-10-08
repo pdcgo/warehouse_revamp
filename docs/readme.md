@@ -78,6 +78,7 @@ Chakra's `<Icon>`. The UI is internationalised with
 | `product_service` | each team's product catalogue |
 | `shipment_service` | the courier catalogue — shipment channels (docs/business/shipment) |
 | `inventory_service` | warehouse stock — receive, adjust, transfer, on-hand levels |
+| `supplier_service` | the suppliers a selling team buys from, and their online stores — read by every team (docs/business/supplier) |
 | `selling_service` | marketplace shops and orders (the selling side) |
 | `document_service` | uploaded files (two-phase upload, e.g. product images) |
 
@@ -92,13 +93,12 @@ revenue work waits on.
 Prerequisites: Go, Node, and Docker (for Postgres). All commands assume the repo root.
 
 ```sh
-docker compose up -d                      # Postgres on :5433 (and Redis on :6380)
-go run ./tools/san migrate up # apply migrations (prompts for db + service)
-cd backend && go run ./cmd/app_development # the API on :8080
-cd frontend && npm install && npm run dev  # the UI on :5174 (talks to :8080)
+go run ./tools/san dev setup              # docker, migrations, dev logins, seeds, npm install — re-runnable
+go run ./tools/san dev run                # the API on :8080 + the UI on :5174 — Ctrl-C stops both
 ```
 
-Both servers must run for the UI to reach the API. More commands (lint, generate, test, e2e,
+Log in as `dev` / `devpassword123`. Both servers must run for the UI to reach the API, and
+[`san dev run`](tools/san.md#dev-run) starts both in one terminal. More commands (lint, generate, test, e2e,
 migrations) are in the [top-level guide](../CLAUDE.md#commands).
 
 ### Tools

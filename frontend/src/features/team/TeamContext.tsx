@@ -1,7 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { userClient } from "../../api/clients";
+import { teamClient, userClient } from "../../api/clients";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
 import { teamAccessFromList, teamAccessRowData } from "../users/adapt";
+import { create } from "@bufbuild/protobuf";
+import { TeamAccessItemSchema } from "../../gen/warehouse/user/v1/user_pb";
 import type { TeamAccessItem } from "../../gen/warehouse/user/v1/user_pb";
 import { useAuth } from "../auth/AuthContext";
 
@@ -12,10 +16,21 @@ import { useAuth } from "../auth/AuthContext";
 // rendering the DEFAULT team while claiming to be another one.
 export const CURRENT_TEAM_KEY = "warehouse_revamp.team";
 
+/** The root team — membership there as Root or the Administrator reaches every team. */
+export const ROOT_TEAM_ID = 1n;
+
+/** The team the app is scoped to. `notMember` marks a team picked from the switcher's *All teams*: the person
+ *  is Root or the Administrator, not in it, and acts with their platform role
+ *  (a-non-member-root-acts-under-a-strip). */
+export type CurrentTeam = TeamAccessItem & { notMember?: boolean };
+
 interface TeamState {
   teams: TeamAccessItem[];
-  current: TeamAccessItem | null;
+  current: CurrentTeam | null;
   ready: boolean;
+  /** ROOT or ADMINISTRATOR when the person holds it in the root team — the reach that lets them pick a team
+   *  they are not in (the-switcher-offers-every-team). */
+  platformRole: Role | undefined;
   selectTeam: (teamId: bigint) => void;
   // refresh re-loads the caller's memberships, KEEPING the current selection, so a rename or a
   // new team picture is reflected in the switcher without a full reload.
@@ -33,7 +48,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const { identity } = useAuth();
 
   const [teams, setTeams] = useState<TeamAccessItem[]>([]);
-  const [current, setCurrent] = useState<TeamAccessItem | null>(null);
+  const [current, setCurrent] = useState<CurrentTeam | null>(null);
   const [ready, setReady] = useState(false);
 
   // load fetches memberships and picks the current team: the caller-supplied preferred id wins,
@@ -55,7 +70,25 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         (preferredId ?? "").toString() || window.sessionStorage.getItem(CURRENT_TEAM_KEY);
       const restored = teams.find((t) => t.teamId.toString() === wanted);
 
-      setCurrent(restored ?? teams[0] ?? null);
+      if (restored) {
+        setCurrent(restored);
+        return;
+      }
+
+      // A team picked from *All teams* is not among the memberships, so it is restored BY ID — for Root and
+      // the Administrator only, who reach it through the root team. Anyone else falls back to their first team.
+      const platform = platformRoleOf(teams);
+
+      if (wanted && platform !== undefined) {
+        const outside = await nonMemberTeam(BigInt(wanted), platform);
+
+        if (outside) {
+          setCurrent(outside);
+          return;
+        }
+      }
+
+      setCurrent(teams[0] ?? null);
     },
     [],
   );
@@ -100,11 +133,14 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     await load(current?.teamId);
   }, [load, current?.teamId]);
 
+  const platformRole = platformRoleOf(teams);
+
   const selectTeam = useCallback(
     (teamId: bigint) => {
       const team = teams.find((t) => t.teamId === teamId);
 
-      if (!team) {
+      // Only Root and the Administrator may pick a team they are not in; the reload resolves it by id.
+      if (!team && platformRoleOf(teams) === undefined) {
         return;
       }
 
@@ -134,10 +170,43 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <TeamContext.Provider value={{ teams, current, ready, selectTeam, refresh }}>
+    <TeamContext.Provider value={{ teams, current, ready, platformRole, selectTeam, refresh }}>
       {children}
     </TeamContext.Provider>
   );
+}
+
+/** ROOT or ADMINISTRATOR, when held in the root team. */
+function platformRoleOf(teams: TeamAccessItem[]): Role | undefined {
+  const role = teams.find((t) => t.teamId === ROOT_TEAM_ID)?.role;
+
+  return role === Role.ROOT || role === Role.ADMINISTRATOR ? role : undefined;
+}
+
+/** A team the person is not in, as the current team: their platform role, flagged `notMember`. */
+async function nonMemberTeam(teamId: bigint, role: Role): Promise<CurrentTeam | null> {
+  try {
+    const team = teamsByIds(await teamClient.teamByIds({ filter: { ids: [teamId] }, dataRequest: teamByIdsRowData() }))[
+      teamId.toString()
+    ];
+
+    if (!team) {
+      return null;
+    }
+
+    return {
+      ...create(TeamAccessItemSchema, {
+        teamId,
+        teamName: team.name,
+        teamType: team.type,
+        imageUrl: team.imageUrl,
+        role,
+      }),
+      notMember: true,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function useTeam(): TeamState {

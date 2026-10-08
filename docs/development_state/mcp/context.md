@@ -35,7 +35,7 @@ and asked as Q8. My recommendation: C — our server hosts the MCP behind an OAu
 | reaching ChatGPT | C: a hosted MCP endpoint behind an OAuth login that mints the agent's credential — reverses A (Q8) |
 | offered to agents | a read is callable with an agent key only if its request also carries a new `(warehouse.agent.v1.tool)` option; boot fails on the option over a non-read (Q6) |
 | the credential | `agent_keys` in `user_service` — hashed, named, one team, expiring, revocable, `last_used_at`; never the root bypass (Q3, Q4) |
-| who | team owner and admin; CS and packer only if the owner allows (Q5) |
+| who | team owner and admin; CS and staff only if the owner allows (Q5) |
 | first tools | the 11 existing aggregate RPCs + a product search + an order by marketplace ref; a per-key rate limit (Q6) |
 | buyer data | `customer_name`, `customer_phone`, address cleared by our server for an agent's credential (Q7) |
 | screens | `/profile` → AI agents (create, show once, revoke via `ConfirmDialog`); the team's settings for the owner |

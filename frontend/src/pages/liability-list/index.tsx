@@ -29,6 +29,7 @@ import { directionCopy, daysSince } from "../../features/liability/direction";
 import { WARN_AT, limitStateOf } from "../../features/liability/CreditMeter";
 import { TermsEditDialog } from "../../features/liability/TermsEditDialog";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
+import { canSetLiabilityTerms } from "../../lib/roles";
 import { Button } from "@chakra-ui/react";
 import { Pagination } from "../../components/chrome/Pagination";
 import { formatRupiah } from "../../lib/money";
@@ -135,7 +136,7 @@ export function LiabilityListPage() {
 
   // ROOT and ADMIN write somebody else's terms, which is what makes a reason REQUIRED
   // (a-limit-change-is-recorded). The server decides for real; this only shapes the form.
-  const overrideWriter = current?.role === Role.ROOT || current?.role === Role.ADMIN;
+  const overrideWriter = current?.role === Role.ROOT || current?.role === Role.ADMINISTRATOR;
 
   // Search and team-type filter narrow the LOADED page client-side, as the mock drives them.
   const rows = positions.filter((p) => {
@@ -263,13 +264,15 @@ export function LiabilityListPage() {
 
             ⚠ IT IS NOT A ROW EITHER, which is why it sits in the toolbar. The rows are
             counterparties; the default is a rule about the ones with nothing set. */}
-        <Button
-          variant="outline"
-          data-testid="liability-default-terms"
-          onClick={() => setDefaultTermsOpen(true)}
-        >
-          {t("liability.defaultTerms")}
-        </Button>
+        {canSetLiabilityTerms(current?.role) && (
+          <Button
+            variant="outline"
+            data-testid="liability-default-terms"
+            onClick={() => setDefaultTermsOpen(true)}
+          >
+            {t("liability.defaultTerms")}
+          </Button>
+        )}
       </Flex>
 
       {query.isPending ? (

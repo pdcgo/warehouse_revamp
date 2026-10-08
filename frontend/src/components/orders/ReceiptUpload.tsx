@@ -55,9 +55,15 @@ function isPdf(mimeType: string): boolean {
 export function useReceiptUpload({
   teamId,
   onChange,
+  onFile,
 }: {
   teamId: bigint;
   onChange: (receipt: ReceiptValue) => void;
+  /**
+   * The picked FILE itself, the moment its upload starts — and `null` if that upload fails. The label
+   * check reads these bytes BESIDE the upload (receipt-check-takes-the-file-bytes), never the stored copy.
+   */
+  onFile?: (file: File | null) => void;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -85,6 +91,7 @@ export function useReceiptUpload({
 
     uploadingRef.current = true;
     setBusy(true);
+    onFile?.(file);
 
     try {
       // 1. Ask where to put the bytes. A receipt is PRIVATE, so no public URL comes back — the id is
@@ -122,6 +129,8 @@ export function useReceiptUpload({
         mimeType: doc.mimeType || file.type,
       });
     } catch (err) {
+      // A file that never arrived is not one to read numbers from.
+      onFile?.(null);
       toaster.create({ type: "error", title: t("orders.receiptFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
@@ -139,15 +148,18 @@ export function ReceiptUpload({
   teamId,
   value,
   onChange,
+  onFile,
   disabled,
 }: {
   teamId: bigint;
   value: ReceiptValue;
   onChange: (receipt: ReceiptValue) => void;
+  /** See `useReceiptUpload`. */
+  onFile?: (file: File | null) => void;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
-  const { upload, busy, pickerKey } = useReceiptUpload({ teamId, onChange });
+  const { upload, busy, pickerKey } = useReceiptUpload({ teamId, onChange, onFile });
 
   return (
     <Stack gap="card" data-testid="order-receipt-upload">

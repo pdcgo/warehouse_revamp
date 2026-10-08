@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { asRole } from "../../../.storybook/sessionScenario";
 import { teams } from "../../../.storybook/fixtures";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { LiabilityDetailPage } from "./index";
 
 const WAREHOUSE = teams.find((t) => t.id === 11n)!; // the creditor
@@ -27,11 +29,30 @@ const meta = {
     // The page mounts its own data router, so preview.tsx must stand its MemoryRouter down.
     dataRouter: true,
   },
-  beforeEach: asTeam(WAREHOUSE.id),
+  // The warehouse's Owner: setting terms is theirs (the-warehouse-admin-equals-the-owner-except-money).
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
 } satisfies Meta<typeof LiabilityDetailPage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+// the-warehouse-admin-equals-the-owner-except-money: the warehouse Admin reads the terms and the meter, and is offered
+// neither Set nor Remove.
+export const TheWarehouseAdminSetsNoTerms: Story = {
+  beforeEach: asRole(Role.WAREHOUSE_ADMIN),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-page")).toBeInTheDocument(), { timeout: 3000 });
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-terms"));
+
+    await waitFor(() => expect(canvas.getByTestId("terms-panel-fee")).toHaveTextContent("30.000"), { timeout: 3000 });
+    await expect(canvas.queryByTestId("terms-edit")).toBeNull();
+    await expect(canvas.queryByTestId("terms-delete")).toBeNull();
+  },
+};
 
 async function loaded(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);

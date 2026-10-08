@@ -3,7 +3,9 @@ package user_v1
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,8 +28,8 @@ const rootUserID uint64 = 1
 
 // profileUpdates builds the SET map from PRESENT fields only. Absent means leave alone —
 // without presence there is no way to say "don't touch this", and a name-only edit silently
-// blanks the email.
-func profileUpdates(name, email, phone *string) map[string]any {
+// blanks the email. A phone is stored in its one form, or refused (a-phone-is-saved-in-international-form).
+func profileUpdates(name, email, phone *string) (map[string]any, error) {
 	updates := map[string]any{}
 
 	if name != nil {
@@ -41,10 +43,15 @@ func profileUpdates(name, email, phone *string) map[string]any {
 	}
 
 	if phone != nil {
-		updates["phone_number"] = *phone
+		normalized, err := normalizePhone(*phone)
+		if err != nil {
+			return nil, err
+		}
+
+		updates["phone_number"] = normalized
 	}
 
-	return updates
+	return updates, nil
 }
 
 // applyUserUpdates updates a user's row and returns the fresh record. Existence is checked
@@ -66,16 +73,30 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 			return errUserMissing
 		}
 
+		// One account per phone or email: refused by name before the write, the unique indexes behind it.
+		email, _ := updates["email"].(string)
+		phone, _ := updates["phone_number"].(string)
+
+		err = refuseTakenContact(tx, userID, email, phone)
+		if err != nil {
+			return err
+		}
+
 		if len(updates) > 0 {
 			updates["updated_at"] = gorm.Expr("NOW()")
 
-			err = tx.
+			// Only a live account: an erased one is never edited (an-erased-account-is-final). The condition is in
+			// the UPDATE itself, so an erase that commits while this waits for the row is seen, not overwritten.
+			res := tx.
 				Model(&user_service_models.User{}).
-				Where("id = ?", userID).
-				Updates(updates).
-				Error
-			if err != nil {
-				return err
+				Where("id = ? AND erased_at IS NULL", userID).
+				Updates(updates)
+			if res.Error != nil {
+				return res.Error
+			}
+
+			if res.RowsAffected == 0 {
+				return errErased("is never edited")
 			}
 		}
 
@@ -86,8 +107,13 @@ func (s *Service) applyUserUpdates(ctx context.Context, userID uint64, updates m
 			return nil, connect.NewError(connect.CodeNotFound, errUserMissing)
 		}
 
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return nil, connectErr
+		}
+
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("email already in use"))
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("username, email or phone already in use"))
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -102,17 +128,19 @@ func escapeLike(q string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q)
 }
 
-// publicUserToProto is the shape any authenticated caller may see: id, username, name.
+// publicUserToProto is the shape any authenticated caller may see: id, username, name, photo, and
+// whether the account is suspended — a "who" filter badges that (a-filter-keeps-former-and-suspended-people).
 //
 // NO email, NO phone. The source returned the full record from its bulk/search RPCs under a
 // mere allow_only_authenticated policy, so any logged-in user could harvest every colleague's
-// contact details. A picker needs a name.
+// contact details. A picker needs a name. (SearchUser adds the phone's last four digits itself.)
 func publicUserToProto(user *user_service_models.User) *userv1.PublicUser {
 	return &userv1.PublicUser{
-		Id:        user.ID,
-		Username:  user.Username,
-		Name:      user.Name,
-		AvatarUrl: user.AvatarURL,
+		Id:          user.ID,
+		Username:    user.Username,
+		Name:        user.Name,
+		AvatarUrl:   user.AvatarURL,
+		IsSuspended: user.IsSuspended,
 	}
 }
 
@@ -142,22 +170,45 @@ func writePassword(
 		return err
 	}
 
-	err = db.
+	res := db.
 		WithContext(ctx).
 		Model(&user_service_models.User{}).
-		Where("id = ?", userID).
+		Where("id = ? AND erased_at IS NULL", userID).
 		Updates(map[string]any{
 			"password":            string(hash),
 			"last_password_reset": now,
 			"updated_at":          gorm.Expr("NOW()"),
-		}).
-		Error
-	if err != nil {
-		return err
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+
+	// The account was found by the caller, so no row means it is erased — and stays without a password.
+	if res.RowsAffected == 0 {
+		return errErased("is never given a password")
 	}
 
 	// A password change is a security event — drop cached roles so nothing stale survives it.
 	_ = resolver.Invalidate(ctx, userID)
+
+	return nil
+}
+
+// errErased refuses an act on an erased account (an-erased-account-is-final), saying which.
+func errErased(what string) error {
+	return connect.NewError(connect.CodeFailedPrecondition,
+		fmt.Errorf("an erased account %s (an-erased-account-is-final)", what))
+}
+
+// reservedUsername: `erased` and digits names an erased account and nothing else (erased-usernames-are-reserved), so
+// erasing user 57 can never collide with somebody already called erased57.
+var reservedUsernamePattern = regexp.MustCompile(`^erased[0-9]+$`)
+
+func refuseReservedUsername(username string) error {
+	if reservedUsernamePattern.MatchString(username) {
+		return connect.NewError(connect.CodeInvalidArgument,
+			errors.New("a username of erased and digits is kept for erased accounts (erased-usernames-are-reserved)"))
+	}
 
 	return nil
 }

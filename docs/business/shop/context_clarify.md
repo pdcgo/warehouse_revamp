@@ -10,6 +10,7 @@ other services may ask it.**
 
 | | |
 | --- | --- |
+| 🔄 narrowed (2026-10-06) | [Q6](#question) — *leaving the team ends a grant* was decided in the user context and is built ([removing-a-member-drops-their-shop-access](../user/context_decision.md#removing-a-member-drops-their-shop-access)); left: may a grant be made to a non-member (recommend no) |
 | 🔄 elaborated (2026-10-01) | [Q3](#question) — five parts: close only · only new selling refused · waiting drafts stay · the code unique among **open** shops (🔄 my *reserved* revised) · grants stay editable. ⛔ Checked against the code: **four built sites refuse a deleted shop**, and a fifth is being built — financial_account's *Point a shop here* ([A shop's life](#a-shops-life--q3)) |
 | ✅ answered (2026-09-29) | [Q2](#question) — its own `shop_service`: [the-shop-gets-its-own-service](./context_decision.md#the-shop-gets-its-own-service). ⚠ `ShopAccessCheck` and the primary CS were built into `selling_service` an hour earlier (f6dab3b) — they move with the shop |
 | ✅ answered (2026-09-29, later) | [Q7](#question) — the primary CS is a flag on one of the shop's grants: the first grant becomes it, the owner or admin moves it, removing that grant leaves none — [the-primary-cs-is-a-flag-on-a-grant](./context_decision.md#the-primary-cs-is-a-flag-on-a-grant) · ✅ `ShopAccessCheck` built as [critique 10](#critique) recommends (f6dab3b) |
@@ -246,9 +247,12 @@ erDiagram
    ⚠ A TikTok statement names no shop, so it gains nothing there — and uniqueness across teams tells a team
    that a storefront is already registered elsewhere.
 
-6. **May a grant outlive its holder's place in the team?** 🆕 *(2026-09-29)* Critique 9 — opened by *manage*.
-   **→ Recommend no.** `ShopUserAdd` refuses a user who is not a member of the shop's team, and leaving the team
-   ends every shop grant the person held — so a shop's access list is always people who can work there. A stale
+6. **May a grant be made to somebody who is not in the shop's team?** 🔄 *(2026-10-06, narrowed)* Half of the first
+   question — *leaving the team ends every shop grant* — was decided in the user context
+   ([removing-a-member-drops-their-shop-access](../user/context_decision.md#removing-a-member-drops-their-shop-access)) and is built: a removal is announced, and the shop side
+   drops the person's grants in that team, the primary flag with them. What is left is the other half.
+   **→ Recommend no.** `ShopUserAdd` refuses a user who is not a member of the shop's team — so a shop's access list
+   is always people who can work there. *(Opened 2026-09-29 as Critique 9 — by *manage*.)* A stale
    grant opens nothing today, since the interceptor refuses a non-member first. What it breaks is the list you now
    manage, which shows people who left — and ⛔ now that a grant gates writes
    ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)), a person who

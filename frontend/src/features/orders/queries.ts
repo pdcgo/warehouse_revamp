@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { peopleFor, WHO_FILTER_SIZE } from "../users/queries";
 import { orderListRowData, ordersFromList } from "./adapt";
 
 // The order screens' reads (#176).
 
-// The filters the LIST and the STAT share — search, shop, and the date window.
+// The filters the LIST and the STAT share — search, shop, the date window, and who typed it in.
 //
 // One type used by both hooks, deliberately. The header sits directly above the table, so the two
 // calls must be given the same narrowing or the counts describe a bigger population than the rows;
@@ -20,6 +21,8 @@ export interface OrderFilters {
   /** The `created_at` window, unix seconds, inclusive. 0n on a side is an OPEN end. */
   fromUnix: bigint;
   toUnix: bigint;
+  /** Only orders this person typed in. 0n or absent = anybody. */
+  createdByUserId?: bigint;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -36,6 +39,7 @@ const filterKey = (f: OrderFilters) => ({
   shopId: f.shopId.toString(),
   fromUnix: f.fromUnix.toString(),
   toUnix: f.toUnix.toString(),
+  createdByUserId: (f.createdByUserId ?? 0n).toString(),
 });
 
 const filterMsg = (f: OrderFilters) => ({
@@ -43,6 +47,7 @@ const filterMsg = (f: OrderFilters) => ({
   shopId: f.shopId,
   createdFromUnix: f.fromUnix,
   createdToUnix: f.toUnix,
+  createdByUserId: f.createdByUserId ?? 0n,
 });
 
 export function useOrders(args: {
@@ -105,6 +110,30 @@ export function useOrderStat(args: {
     enabled: teamId !== undefined,
     queryFn: () =>
       orderClient.orderStat({ teamId: teamId!, filter: { productId, ...filterMsg(filters) } }),
+  });
+}
+
+// WHO THE LIST'S "CREATED BY" FILTER OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone who typed in an
+// order this team may list, the latest first, named with one UserByIDs — never the team's member list, which
+// would miss whoever has left and offer whoever never typed one. Customer Service asks too
+// (whoever-reads-a-list-may-filter-it).
+//
+// `referenceQuery`: it LABELS a picker, and is re-read whenever one mounts.
+export function useOrderCreators(args: { teamId: bigint | undefined }) {
+  const { teamId } = args;
+
+  return useQuery({
+    queryKey: key.orders(teamId, { creators: 1 }),
+    ...referenceQuery,
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await orderClient.orderCreatorList({
+        teamId: teamId!,
+        page: { page: 1, limit: WHO_FILTER_SIZE },
+      });
+
+      return peopleFor(res.ids);
+    },
   });
 }
 

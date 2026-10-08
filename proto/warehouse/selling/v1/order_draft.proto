@@ -128,10 +128,10 @@ message OrderDraftListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -199,10 +199,10 @@ message OrderDraftDetailRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -260,10 +260,10 @@ message OrderDraftUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -302,10 +302,10 @@ message OrderDraftDeleteRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -349,10 +349,10 @@ message OrderDraftPushRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -418,10 +418,10 @@ message OrderDraftPromoteRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 

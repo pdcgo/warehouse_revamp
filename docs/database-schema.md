@@ -67,7 +67,7 @@ erDiagram
     On the **team** rather than on each product, because the decision is about a team — one write,
     and automatically true of everything the team adds later, with no backfill when a team is granted
     the feature. In **`teams`** rather than `team_infos` for a policy reason, not a layout one:
-    `TeamInfoUpdate` is callable by `ROLE_TEAM_OWNER`, so a capability granted by root must not live
+    `TeamInfoUpdate` is callable by `ROLE_SELLING_OWNER`, so a capability granted by root must not live
     in a message a team owner can write, or a team could grant itself the feature.
 
     ⚠ **`product_service` never reads this column** — it cannot, because `teams` belongs to
@@ -102,6 +102,8 @@ erDiagram
 ```mermaid
 erDiagram
     users ||--o{ user_team_roles : "member of"
+    users ||--o{ team_member_logs : "whose membership changed"
+    users |o--o{ team_member_logs : "who changed it"
 
     users {
         bigserial   id                  PK
@@ -109,10 +111,11 @@ erDiagram
         text        username            UK "unique on lower, required"
         text        password            "bcrypt hash, empty means cannot log in"
         text        email               UK "unique on lower when set"
-        text        phone_number
+        text        phone_number        UK "+ and country code, unique when set"
         boolean     is_suspended        "default false"
         text        avatar_url          "profile picture thumbnail url"
         timestamptz last_password_reset "nullable"
+        timestamptz erased_at           "nullable, set once by UserErase"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -122,20 +125,48 @@ erDiagram
         bigint      team_id    "opaque cross-service id, no FK to teams"
         bigint      user_id    FK "on delete cascade"
         bigint      role       "role_base.v1.Role enum number"
-        text        alias
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    team_member_logs {
+        bigserial   id            PK
+        bigint      team_id       "opaque cross-service id, no FK to teams"
+        bigint      actor_user_id FK "nullable, null when actor_agent is set"
+        text        actor_agent   "a tools/san developer, else empty"
+        bigint      user_id       FK
+        smallint    action        "1 add, 2 change role, 3 remove"
+        bigint      role_before   "0 before an add"
+        bigint      role_after    "0 after a removal"
+        boolean     is_override   "Root or the Administrator, not a member"
+        timestamptz created_at
     }
 ```
 
 - **`users`** — the identity table. An empty `password` is a deliberate "cannot log in" marker
   (bcrypt never matches an empty hash), used by the seeded root account until a password is set.
-  Case-insensitive uniqueness on both `username` and (non-empty) `email`.
+  Case-insensitive uniqueness on both `username` and (non-empty) `email`. `erased_at` marks an account erased on
+  request ([an-erased-account-is-final](business/user/context_decision.md#an-erased-account-is-final)): set once, never
+  cleared, and a CHECK (`users_erased_is_suspended`) keeps such an account suspended for good. `phone_number` is
+  stored in ONE form, `+` and the country code (`+6281234567890`), and **unique when set** — `users_phone_unique` (`00008`)
+  ([a-phone-is-saved-in-international-form](business/user/context_decision.md#a-phone-is-saved-in-international-form),
+  [a-phone-or-email-belongs-to-one-account](business/user/context_decision.md#a-phone-or-email-belongs-to-one-account)). The
+  handlers write that form (`normalizePhone`); `00008` rewrote the stored ones with `user_phone_international(text)`, its
+  SQL twin, which stays for that test. A number it could not read was left as it was. `00007`'s `user_phone_key` and its
+  index are dropped by `00008`.
 - **`user_team_roles`** — a user's role within a team. `role` stores the raw proto `Role` enum
   *number* (not a Postgres enum — proto enums are open). `UNIQUE (team_id, user_id)` is load-bearing:
   the authorization read takes one row, and it is what makes `TeamUserUpdate` an upsert. `team_id`
   is opaque — **no FK to `team_service.teams`** (that would couple the two services' databases);
-  team display data is resolved over RPC, never joined.
+  team display data is resolved over RPC, never joined. Its `alias` column was dropped in `00009`
+  ([a-user-is-name-username-email-phone-and-photo](business/user/context_decision.md#a-user-is-name-username-email-phone-and-photo)).
+- **`team_member_logs`** — the membership log
+  ([every-role-change-is-logged](business/user/context_decision.md#every-role-change-is-logged)): one row per add,
+  role change and removal, written in the **same transaction** as the `user_team_roles` change, so a membership
+  never changes without its row. **Append-only** — never updated, never deleted. A CHECK makes each row a real
+  change (an add has no role before it, a removal none after, a role change two different roles); nothing
+  changing writes nothing. Read newest first per team, and per person within a team — indexes
+  `(team_id, id DESC)` and `(team_id, user_id, id DESC)`.
 
 ---
 
@@ -359,7 +390,7 @@ erDiagram
   team **among active shops only** (`UNIQUE (team_id, shop_code) WHERE deleted = FALSE`), so a
   soft-deleted shop frees its code and two teams may share one. `marketplace` stores the shared
   `warehouse.marketplace.v1.Marketplace` enum **as text**, mapped via `pkgs/san_marketplace` — the
-  same helper `inventory_service.supplier_channels` uses, so the two domains cannot drift to different
+  same helper `supplier_service.supplier_channels` uses, so the two domains cannot drift to different
   encodings (#120). Deliberately **without** a `CHECK` IN-list: the mapper + proto validation guard
   the value, and an IN-list is just one more place to drift when the enum grows (the trap behind #80).
   No credentials are stored — "just shop info". selling_service also owns orders (the #23
@@ -558,7 +589,7 @@ erDiagram
 
     document_shares {
         bigserial   id          PK
-        text        document_id FK "-> documents(id) ON DELETE RESTRICT — a shared file cannot be deleted"
+        text        document_id FK "-> documents(id) ON DELETE RESTRICT — a shared file cannot be deleted by accident"
         bigint      team_id     "the team that may now read it, opaque, no FK"
         bigint      granted_by  "who granted it, opaque user id"
         timestamptz created_at
@@ -574,7 +605,10 @@ erDiagram
   signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
   transfer slip names an account number. And `settlement_statement` (`00006`) — the .xlsx the settlement
   importer stores under the hash of its bytes before it reads it: it lists every order and what the
-  platform took.
+  platform took. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
+  `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
+  which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
+  would otherwise refuse it.
 
 - **`document_shares`** — the ONE way a document is readable outside the team that owns it
   ([a-payment-must-carry-proof](business/balance/context_decision.md#a-payment-must-carry-proof)).
@@ -666,7 +700,7 @@ erDiagram
     restock_request_items ||--o| stock_batches : "restock_request_item_id (one batch per line)"
     stock_movements ||--o{ stock_owner_movements : "movement_id (projected per owner)"
 
-    suppliers ||--o{ supplier_channels : "supplier_id"
+    legacy_suppliers ||--o{ legacy_supplier_channels : "supplier_id"
 
     racks {
         bigserial   id           PK
@@ -679,11 +713,11 @@ erDiagram
         timestamptz updated_at
     }
 
-    suppliers {
+    legacy_suppliers {
         bigserial   id          PK
-        bigint      team_id     "owning team, opaque cross-service id, no FK"
-        text        code        "required, unique per team among active"
-        text        name        "required"
+        bigint      team_id     "MOVED to supplier_service.suppliers by san supplier move, ids kept"
+        text        code
+        text        name
         text        contact
         text        province
         text        city
@@ -694,15 +728,15 @@ erDiagram
         timestamptz updated_at
     }
 
-    supplier_channels {
+    legacy_supplier_channels {
         bigserial   id          PK
-        bigint      supplier_id FK "-> suppliers(id), ON DELETE CASCADE"
-        text        type        "SupplierChannelType as text (online/offline); no CHECK"
-        text        marketplace "online only: marketplace code (shopee/tiktok/...); empty otherwise"
-        text        name        "required, the store/shop name"
-        text        url         "online only, optional link to the store"
-        text        contact     "phone/WA, primary for an offline shop"
-        text        location    "offline only, physical address"
+        bigint      supplier_id FK "-> legacy_suppliers(id), ON DELETE CASCADE"
+        text        type        "online/offline"
+        text        marketplace
+        text        name
+        text        url
+        text        contact
+        text        location
         timestamptz created_at
         timestamptz updated_at
     }
@@ -710,7 +744,6 @@ erDiagram
     restock_requests ||--o{ restock_request_items : "restock_request_id"
     restock_requests ||--o{ restock_request_events : "restock_request_id"
     restock_requests ||--o{ restock_cost_lines : "restock_request_id"
-    suppliers ||--o{ restock_requests : "supplier_id (nullable)"
 
     restock_requests {
         bigserial   id                 PK
@@ -720,7 +753,7 @@ erDiagram
         text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
         text        order_ref          "optional: free-text reference to an order elsewhere; '' = none"
         text        receipt            "optional: courier tracking number (resi)"
-        bigint      supplier_id        FK "optional -> suppliers(id) ON DELETE SET NULL; same service"
+        bigint      supplier_id        "optional, OPAQUE supplier_service id, no FK since 00023"
         bigint      shipping_cost      "the freight the REQUESTER agreed, whole rupiah, CHECK >= 0"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
         text        note               "optional free text"
@@ -849,13 +882,14 @@ erDiagram
     writes to `stock_levels` go through raw SQL rather than GORM's primary-key path — see the model.
   - **`ON DELETE RESTRICT`** on both `rack_id` FKs: stock on a rack being deleted must be dealt with
     explicitly (#138), never stranded at a location nobody can reach.
-- **`suppliers`** — a team's vendors (who it buys stock from). Team-scoped (`team_id` carries
-  `use_scope`), so a supplier is only ever reachable within its owning team. `code` is unique per team
-  **among active suppliers only** (`UNIQUE (team_id, code) WHERE deleted = FALSE`), so a soft-deleted
-  supplier frees its code for reuse and two teams may share one. `team_id` is opaque — no FK to
-  `team_service.teams`. `contact`/`province`/`city`/`address`/`description` are free-text profile
-  fields. Structurally mirrors `selling_service.shops` (team-scoped CRUD, unique per-team code, soft
-  delete, search, pagination).
+- **`legacy_suppliers`** / **`legacy_supplier_channels`** — **MOVED OUT** (the-supplier-gets-its-own-service).
+  They were `suppliers` and `supplier_channels`; `00023_legacy_suppliers` renamed them — and their indexes and
+  sequences, whose names are schema-wide — so supplier_service's `00001` can create its own under the decided
+  names (every service shares one database). Nothing in inventory_service reads them any more: only
+  `san supplier move` does, copying their rows into supplier_service with the ids kept
+  (existing-suppliers-move-with-their-ids). ⚠ A **later** migration drops them, once the move has run on every
+  database — dropping them in 00023 would have lost the rows before the command could read them.
+  inventory_service is therefore pinned before supplier_service in every apply order.
 - **`racks`** — the physical places inside one warehouse (#129). Scoped to the `warehouse_id`, which
   **is** a team (a warehouse is a team), carrying `use_scope`; opaque, no FK. `code` is the label
   someone reads off the shelf and is unique per warehouse **among active racks only**
@@ -866,16 +900,6 @@ erDiagram
   counted per `(warehouse_id, product_id)` in `stock_levels`. Putting stock **on** a rack is
   an **open owner decision** (warehouse-level vs bin-level), and writing down the racks a warehouse
   has does not settle it — it is the prerequisite, not the answer.
-- **`supplier_channels`** — the ways a team can reach or order from a supplier (#120): an **online**
-  channel (a store on a marketplace) or an **offline** channel (a physical shop). `supplier_id` is a
-  **real FK** to `suppliers` (same service, `ON DELETE CASCADE`); scope to a team is enforced by the
-  handler (it verifies the supplier is in the team before touching its channels), not by a column on
-  this table. `type` and `marketplace` are stored **as text** (mapped in the handler, no `CHECK`
-  IN-list, cf. #80); the `marketplace` code is the shared `warehouse.marketplace.v1.Marketplace`
-  vocabulary (the same enum `selling_service.shops.marketplace` uses — promoted to a neutral proto so
-  neither domain owns it, #120), set only for an online channel. An online channel must name a
-  marketplace;
-  an offline one keeps `contact`/`location`. Channels are hard-deleted (no history to keep).
 - **`restock_requests`** / **`restock_request_items`** — a SELLING team's request for a WAREHOUSE to
   restock (#105/#124). Two-sided: `requesting_team_id` (the selling team, `use_scope` on
   create/cancel/list) raises a `pending` request naming a `warehouse_id` (the target warehouse,
@@ -970,10 +994,11 @@ erDiagram
     warehouse never saw.
 - **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
   **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
-  who the goods are bought from. `supplier_id` is the one **real FK**, because `suppliers` is the
-  *same service* (`ON DELETE SET NULL`, so a request keeps its history if a supplier is ever
-  hard-deleted). The handler additionally requires the supplier to belong to the **requesting team** —
-  another team's supplier reads as `NotFound`, so the error can't be used to confirm an id exists.
+  who the goods are bought from. Since `00023` `supplier_id` is an **opaque supplier_service id** with no FK,
+  as an order's shop is. The handler asks supplier_service (`SupplierByIds`) that it is a **live supplier of any
+  selling team** (a-team-restocks-from-another-teams-supplier); a deleted or unknown one is `NotFound`. An edit
+  re-sending the supplier a request already holds is not re-checked, so deleting a supplier never bricks the
+  pending requests that name it.
 - `order_ref` **was** a `uint64 order_id` (#124) and became text in #127. That was a shape fix, not a
   rename: the order is written down from a marketplace or a chat *elsewhere*, so it was never a row in
   this system — a reference that happens to be numeric never pointed at anything here, and a real one
@@ -1039,6 +1064,8 @@ erDiagram
     teams ||--o{ shops : "team_id, opaque via RPC"
     teams ||--o{ documents : "team_id, opaque via RPC"
     categories ||--o{ products : "category_id, opaque via RPC"
+    teams ||--o{ suppliers : "team_id, opaque via RPC"
+    suppliers ||--o{ restock_requests : "supplier_id, opaque via RPC"
 ```
 
 `user_team_roles.team_id`, `products.team_id`, `documents.team_id`,
@@ -1702,3 +1729,113 @@ A transfer locks both accounts in id order. The lock order is `audits/services/f
 
 `shop_accounts.shop_id` is an opaque `selling_service` id — `FinancialAccountShopSet` asks the shop's service
 whether it is the team's before linking it, and the withdrawal listener trusts settlement's event.
+
+---
+
+## supplier_service
+
+`backend/services/supplier_service/db_migrations/` — the suppliers a selling team buys from, and the online stores
+each sells through (docs/business/supplier/context_decision.md, the-supplier-gets-its-own-service).
+
+```mermaid
+erDiagram
+    suppliers ||--o{ supplier_channels : "supplier_id"
+
+    suppliers {
+        bigserial   id          PK "moved rows keep their inventory_service id"
+        bigint      team_id     "the SELLING team that keeps it, opaque, no FK"
+        text        name        "required"
+        text        contact
+        text        address     "city and province folded in by the move"
+        text        description
+        timestamptz deleted_at  "NULL = live, soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    supplier_channels {
+        bigserial   id           PK
+        bigint      supplier_id  FK "-> suppliers(id), no ON DELETE: rows are never removed"
+        text        channel_type "shared marketplace code via san_marketplace, other = custom"
+        text        name         "required, the store's name"
+        text        uri          "optional link to the store"
+        text        description
+        timestamptz deleted_at   "NULL = live, soft delete"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    supplier_product_daily_reports {
+        bigserial   id                        PK
+        date        day                       "the accept, Jakarta day"
+        bigint      supplier_id               "the restock supplier, no FK, a deleted one kept"
+        bigint      product_id                "the RESTOCKING team product, opaque"
+        bigint      team_id                   "the RESTOCKING team, not the supplier owner"
+        bigint      restock_count             "units accepted as good stock"
+        bigint      restock_valuation         "at the line price"
+        bigint      shipping_lost_count       "short in an accepted parcel"
+        bigint      shipping_lost_valuation
+        bigint      shipping_broken_count     "arrived broken"
+        bigint      shipping_broken_valuation
+        timestamptz last_updated
+    }
+
+    supplier_event_logs {
+        text        id          PK "the EVENT id, restock-accepted:N, the fold dedup"
+        bytea       raw         "the event as received, protojson"
+        date        day         "the figures day, cut by the replay on the same predicate"
+        timestamptz created_at  "received, pruned after 45 days"
+    }
+
+    supplier_service_metadata {
+        bigserial   id          PK
+        text        key         "unique, process_event_lock, figures_live_since, figures_backfilled"
+        text        value       "each key defines its encoding"
+        timestamptz updated_at
+    }
+```
+
+- **Reads cross teams, writes do not** (another-team-sees-everything-of-a-supplier). Any team reads any live
+  supplier and its stores — Discover Supplier is a list across every team; only the team in `team_id` writes. So
+  a write's `WHERE` carries `team_id = ?` and a read's does not.
+- **Delete is soft, on both** (a-deleted-supplier-is-kept-for-its-figures, a-store-delete-is-soft-too) — a past
+  restock names its supplier and store, and the daily figures still read them. Every read states
+  `deleted_at IS NULL` itself (not GORM's hidden scope), because `SupplierByIds` deliberately reads deleted
+  rows. Deleting a supplier does **not** mark its stores: they hide with it.
+- `channel_type` is the shared `warehouse.marketplace.v1.Marketplace` code **as text**, mapped by
+  `pkgs/san_marketplace` — the same encoding `selling_service.shops.marketplace` uses; no `CHECK` IN-list (#80).
+- Ids: the move inserts the legacy rows **with their ids**, then sets both sequences past the largest id, so a
+  supplier created afterwards never takes one a restock already holds.
+
+| index | serves |
+| --- | --- |
+| `suppliers_team_live_idx` (team_id, id DESC) WHERE deleted_at IS NULL | My Supplier — a team's live suppliers, newest first |
+| `supplier_channels_supplier_live_idx` (supplier_id, id DESC) WHERE deleted_at IS NULL | a supplier's live stores — the Channels tab, Discover's badges and its store-name search |
+
+### The figures — `00002_supplier_figures`
+
+A supplier's figures are a FOLD of inventory_service's *Restock Accepted* event (the-report-is-processed-like-settlement,
+the-figures-screens-are-accepted) — every table here is DERIVED and rebuilt by `AnalyticReplayCompute`; nothing on a
+write path reads them.
+
+- **The key is the owner's** — unique (`day`, `supplier_id`, `product_id`, `team_id`), the fold's upsert target
+  (the-report-is-keyed-by-team-not-by-store). All six figures are movements, so the upsert ADDS and no later day
+  changes — there is no balance to carry, unlike settlement's.
+- **`supplier_id` is the RESTOCK's** while restock lines name no store
+  (the-supplier-comes-from-the-restock-until-lines-name-a-store); no FK, because a deleted supplier's figures stay.
+- **The dedup row is the event's id**, never the broker's message id — a republish, a replay and the backfill all
+  collide on `restock-accepted:<id>`. It is pruned 45 days after receipt (`AnalyticMaintenanceRun`).
+- **`supplier_service_metadata`** holds three keys: `process_event_lock` (`{"lock":true|false}`, seeded false — the
+  replay's switch, and a value that does not parse is an error, never "unlocked"); `figures_live_since` (the earliest
+  accept the WEBHOOK has folded, a fixed-width UTC instant — the backfill's cutoff, never pruned); `figures_backfilled`
+  (the one-shot backfill has run).
+
+| index | serves |
+| --- | --- |
+| `supplier_product_daily_reports_key_idx` UNIQUE (day, supplier_id, product_id, team_id) | the fold's upsert · the replay's delete · every window scan — the ranking |
+| `supplier_product_daily_reports_supplier_day_idx` (supplier_id, day) | one supplier over a window — the Statistics tab's series and by-product table |
+| `supplier_event_logs_day_idx` (day) · `_created_idx` (created_at) | the replay's delete · the prune |
+
+**Not here yet:** `supplier_channel_products` — the store-to-product link
+(restock-accepted-links-the-product-to-its-channel) needs a store on each restock line, which the restock does not
+record yet.

@@ -20,8 +20,8 @@ type RestockRequest struct {
 	// Optional context (#124/#127). OrderRef is the order this restock is FOR, as free text — it is
 	// written down from a marketplace or a chat elsewhere, never a row here, so it is a reference and
 	// not an id. Receipt is the courier's tracking number (resi), empty until there is one.
-	// SupplierID points at a supplier of the REQUESTING team — suppliers is the same service, so
-	// unlike the opaque ids above it is a real FK; nil when none was recorded.
+	// SupplierID is an OPAQUE supplier_service id (the-supplier-gets-its-own-service) — any selling team's
+	// live supplier when it was set, checked over Connect; no FK. nil when none was recorded.
 	OrderRef   string
 	Receipt    string
 	SupplierID *uint64

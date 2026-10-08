@@ -4,11 +4,16 @@ The pricing rules I read out of [product_context.md](./context.md), and
 what they do not yet decide. **That doc is yours — this one is mine.** Answered points are **deleted**,
 so this file is always the current open set.
 
+> **Re-examined after your answer in chat (2026-10-07).** ✅ **Closed:** [Q6](#question). The courier's ask stays in
+> the unit price ([the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price)),
+> against my recommendation. The [contradiction](#additionalwarehousefee-is-capitalised-into-unitprice-and-balance_contextmd-has-now-defined-it-as-a-tip)
+> it raised is resolved; what survives is the build's integer floor. [Q2](#question), the divisor, is untouched.
+>
 > **Re-examined after you added `## General.`, `## Responsbility.` and `## Attribute / Field That Product Must Have`.**
 > ✅ **Closed by your decision:** *can a warehouse team own a product?* — **no**, recorded as
 > [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue). `## General.` 1 stands, and
 > four write policies narrow to match. ⚠ **Its successor is open below ([Q9](#question))**: the ACL narrowing does not
-> enforce the rule, because nothing stops `ROLE_TEAM_OWNER` being granted inside a warehouse team.
+> enforce the rule, because nothing stops `ROLE_SELLING_OWNER` being granted inside a warehouse team.
 >
 > ✅ **Closed by your decision:** *is `categories` plural?* — **yes**, recorded as
 > [a-product-files-under-many-categories](./context_decision.md#a-product-files-under-many-categories). `products.category_id` becomes a link table
@@ -176,7 +181,7 @@ flowchart LR
 
 ⚠ **And no role may set either control.** [user_context.md](../user/context.md) names
 Owner, Admin and Customer Service on the selling side and assigns none of them the markup, the reserve or
-the lock — [user_context_clarity Critique 4](../user/context_clarify.md#critique).
+the lock — user Critique 4, since answered: the selling Owner and Admin set all three, [the-selling-owner-and-admin-set-markup-reserve-and-lock](../user/context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock).
 
 ### The code namespace, and what `globally unique` costs
 
@@ -225,7 +230,7 @@ flowchart LR
 | **7** | **Nothing says the fee is FROZEN.** The owner edits the markup from 10% to 15%. Do last month's orders, already shipped and already owed, change? If the fee is recomputed on read, an invoice changes after both teams agreed it — and with a [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) able to block a team, a retroactive rate change can block somebody retroactively. **The `(COGS)` edit raises the stakes**: a frozen line COGS is now also the price a *return* re-enters at, so an unfrozen fee would rewrite stock valuations too. | State: **the fee is computed once, when the order consumes the stock, and stored.** A rate change applies to future orders only. One sentence can cover this and the cost freeze in [Critique 3](#critique). |
 | **8** | **Two divisions and a percentage, and no rounding rule anywhere.** `(ShipmentFee + AdditionalWarehouseFee) / AllProductQtyRestock` rarely divides evenly into whole rupiah, and `UnitPrice × markup` almost never does. Rounding per unit versus per line changes the total on a line of 7, and two teams reconciling to the rupiah will find that difference. | Round **once, half-up, on the line total**, never per unit, and store whole rupiah. Keep the rate a percent — the rate is not the money. And say where the remainder goes when freight does not divide evenly: I would put it on the **first** unit rather than lose it. |
 | **9** | **A return is now neither priced NOR placed.** The price rule was deleted this round ([Contradiction](#the-return-path-prices-the-unit-as-the-borrowers-while-the-order-path-leaves-it-the-owners)), and even before that nothing said **whose stock** the unit re-enters, whether the **fee reverses**, or what happens when it comes back **unsellable** — which per [receiving-losses-are-not-the-warehouses](../business_level_clarify.md#receiving-losses-are-not-the-warehouses) the warehouse does not bear, and per `inventory/context.md` may be borne by nobody. | Answer it with the loan-vs-sale question below, in one place: if a cross order is a **loan**, the unit returns to the **owner** at the owner's cost and the fee reverses. And say **which** selling team eats an unsellable cross return — I would say the **borrower**, because it chose the customer. |
-| **10** | **Two teams selling the same physical item are two products, and the doc does not say what that means on the shelf.** [product-is-a-selling-teams-catalogue](#product-is-a-selling-teams-catalogue) makes a product team-scoped, so identical goods are different rows with different batches and owners. If the warehouse commingles them the FIFO layers are a fiction — and so is the reserve in [Critique 5](#critique), because you cannot protect a reserve you cannot tell apart. **A Packer is the person this instruction is for**, and no rule reaches them. | State the physical rule: **stock is segregated by owning team** — a shelf may hold two owners' units side by side, never mixed into one count. |
+| **10** | **Two teams selling the same physical item are two products, and the doc does not say what that means on the shelf.** [product-is-a-selling-teams-catalogue](#product-is-a-selling-teams-catalogue) makes a product team-scoped, so identical goods are different rows with different batches and owners. If the warehouse commingles them the FIFO layers are a fiction — and so is the reserve in [Critique 5](#critique), because you cannot protect a reserve you cannot tell apart. **Warehouse Staff are the people this instruction is for**, and no rule reaches them. | State the physical rule: **stock is segregated by owning team** — a shelf may hold two owners' units side by side, never mixed into one count. |
 | **11** | **§System Requirements still links to an empty file whose one line is about a different subject.** | See [systems/systems_product_context_clarity](./systems_clarify.md). |
 | **12** | **`## Responsbility.` says what the service DOES and not what it does NOT** — *"provide product service that can manage the team products"* is circular, and the useful half is the boundary. Under HARD RULE 3 the catalogue, the stock and the cost are three services, and this doc carries rules for all three (§Unit Pricing System is batch/stock, not catalogue). | **One boundary sentence: product_service owns the catalogue entry and its sharing terms — never a quantity, never a price.** That also settles which markup the ledger charges from, which is a live discrepancy today ([biggest_question #5](../../biggest_question.md)). |
 | **13** | **The doc and the wire disagree on two names — and one of them is now a name the CODE has outgrown.** `product_code` is shipped as `sku`, and `cross_markup_percent` as `cross_markup_bps` (integer basis points, 1250 = 12.50%). | 🔄 **Reversed this round: rename `sku` → `product_code`.** An SKU is a *stock-keeping unit* — a seller's own code, per-seller by definition — and `### Whats is `product_code`` 2 just made it **globally unique**. The shipped name would describe the opposite of the rule. **`cross_markup_bps` stays**: a markup is a *percent* to a person and basis points on the wire, because an integer is the only safe thing to multiply rupiah by. Asked as [Q7](#question). |
@@ -259,16 +264,8 @@ flowchart LR
    ⚠ **Now also a boundary question:** the layers are `inventory_service`'s and COGS is `ledger_service`'s,
    so *where the frozen number is stored and who owns it* travels with this answer —
    [architectures Q3](../../technical/architecture/context_clarify.md#question).
-6. **🆕 Does `AdditionalWarehouseFee` belong inside `UnitPrice` at all?** `balance_context.md` has now
-   defined that money as the courier's **accidental ask at the door** — *"coffe tip or other"*
-   ([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)).
-   §Unit Price Components freezes it into the goods' cost forever. ⚠ That doc's own sequence diagram
-   calls the charge a **reimbursement**, which is an argument against capitalising it made in the
-   owner's own words. ([Contradiction](#contradiction))
-   **→ I recommend taking it OUT and leaving `ShipmentFee` in.** Freight is agreed before the journey
-   and is genuinely part of what the goods cost. A tip is unpredictable, small, and — because
-   `freightPerUnit` floors — frequently contributes **0 per unit** while being charged in full on the
-   balance. That is the worst possible input to a permanently frozen number.
+6. ✅ *(2026-10-07)* **Answered — the courier's ask stays IN the unit price**, against my recommendation:
+   [the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price).
 
 7. **Is `product_code` the real field name?** ([Critique 13](#critique))
    🔄 **→ I now recommend RENAMING `sku` → `product_code`, reversing what I said last round.** *Globally unique*
@@ -276,7 +273,7 @@ flowchart LR
    opposite of your rule. `cross_markup_bps` stays as it is: percent to a person, basis points on the wire.
 8. **🆕 How does product_service learn a team's TYPE?** The successor to
    [only-a-selling-team-owns-a-catalogue](./context_decision.md#only-a-selling-team-owns-a-catalogue): narrowing the four
-   write policies is not enforcement, because `ROLE_TEAM_OWNER` can be held inside a warehouse team and no grant
+   write policies is not enforcement, because `ROLE_SELLING_OWNER` can be held inside a warehouse team and no grant
    path checks `teams.type`. product_service has no read path to team_service today, and HARD RULE 3 makes it an
    RPC, not a shared model.
    **→ I recommend a team-type read at write time, cached** — a team's type changes approximately never, so the
@@ -353,42 +350,28 @@ flowchart TB
 
 ## `AdditionalWarehouseFee` is capitalised into UnitPrice, and `balance_context.md` has now defined it as a TIP
 
-**Raised by a decision in another doc, and the fix belongs here** — §Unit Price Components is what
-decides the formula.
+✅ **Resolved (2026-10-07): §Unit Price Components wins — the ask stays in**
+([the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price)). Recorded, not
+deleted: the cause was one money item defined in two docs that said opposite things about it. The *balance* doc
+called it a reimbursement and the *product* doc capitalised it.
 
 > `product_context.md` §Unit Price Components: `UnitPrice = ProductPrice + ((ShipmentFee + `**`AdditionalWarehouseFee`**`) / AllProductQtyRestock)`
 > `balance_context.md` §Why `cod_fee` Exists: *"shipping channel person who brought the goods ask accidental fee (`cod_fee`) … for the cost like coffe tip or other."*
 
-They are the **same money** — *"additional warehouse fee **on accept stock (optional)**"* and
-*"**optionally** set warehouse when accept restock"* describe one line item
-([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)).
-So a discretionary tip handed over at a door is currently **frozen into the goods' cost forever**,
-and every later COGS, margin and breakage reimbursement reads it.
-
-**Three consequences, and the third is the one that decides it:**
-
-1. **It is permanent where the debt is not.** The ledger entry can be reversed; `stock_batches.unit_cost`
-   is frozen at acceptance and has no correction path.
-2. **It sets what the warehouse owes itself back.** A `broken_good` reimbursement is `qty × unit_cost` —
-   so a bigger tip today means a bigger payout if the warehouse breaks the goods tomorrow.
-3. ⚠ **The same rupiah is EXACT in the ledger and rounds to ZERO in the cost.** `freightPerUnit` is
-   integer division (`restock_request_fulfill.go`), so a 5.000 tip across 1.000 units contributes
-   **0** to unit price while being charged **in full** on the balance. The capitalisation is therefore
-   already unreliable for exactly the amounts this fee is described as being.
+**What survives is a defect in the BUILD, not a question.** `freightPerUnit` is integer division
+(`restock_request_fulfill.go`), so a Rp 5.000 ask across 1.000 units adds **0** to the price while it is
+charged **in full** on the balance. Under the decision the ask belongs in the price, so the floor now drops
+money the decision put there.
+**→ Recommend:** compute `price_unit` in floating point, as
+[rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point) already requires, when accept is rebuilt.
 
 ```mermaid
 flowchart LR
-  T["a courier's ask at the door"] --> L["cod_fee — charged in full, reversible"]
-  T --> U["÷ qty, integer floor"]
-  U --> Z["often 0 per unit — silently dropped"]
-  U --> P["when non-zero: frozen in unit_cost forever"]
+  T["a courier's ask at the door"] --> L["the balance - owed in full"]
+  T --> U["divided over the units"]
+  U -->|"decided - floating point"| P["in price_unit"]
+  U -.->|"built - integer floor"| Z["0 per unit for a small ask"]
 ```
-
-**→ Recommend: keep `cod_fee` OUT of `UnitPrice`.** ⚠ **`balance_context.md`'s own diagram already
-names it** — *"Charge to selling as **reimbursement**"*. A reimbursement is money going back to
-whoever fronted it, not a component of what the goods cost. Add that it is unpredictable and small,
-and it is the worst possible input to a permanently frozen number. `ShipmentFee` stays inside: it is
-agreed before the journey and is genuinely part of what the goods cost. Asked as [Q6](#question).
 
 ---
 

@@ -25,13 +25,14 @@ import {
 import { Check, ChevronDown, PackageCheck, Printer, Receipt } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import {
+  RestockActorRole,
   RestockDateField,
   RestockRequestStatus,
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
-import { useRestockInbound, useRestockRequests } from "../../features/restock/queries";
+import { useRestockInbound, useRestockPeople, useRestockRequests } from "../../features/restock/queries";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
@@ -43,7 +44,7 @@ import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { UserSelect } from "../../components/pickers/UserSelect";
+import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
 
@@ -104,6 +105,12 @@ export function RestockWarehousePage() {
   // Ani AND counted by Budi" is not a question this screen offers.
   const [actorRole, setActorRole] = useState<ActorRole>("created");
   const [actorId, setActorId] = useState(0n);
+
+  // The people the role's question can be answered by — everyone who did that on a restock to this warehouse.
+  const actorPeople = useRestockPeople({
+    teamId: current?.teamId,
+    role: actorRole === "created" ? RestockActorRole.CREATED : RestockActorRole.ACCEPTED,
+  });
 
   const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
   const [dateField, setDateField] = useState<RestockDateField>(RestockDateField.CREATED);
@@ -289,11 +296,11 @@ export function RestockWarehousePage() {
         {/* BY PERSON — the role segment and the picker read as ONE control (owner), so they sit in one
             bordered group the way the range picker carries its date-type segment.
 
-            THE ROLE DECIDES THE SCOPE, and that is the substance of it rather than a detail. "Raised
-            by" is somebody in a SELLING team, so the picker searches across teams — scoping it to the
-            reader's own team would offer warehouse staff, who never raise a restock, and hide every
-            buyer there is. "Counted by" is this warehouse's OWN crew, so it scopes to the current team
-            and offers a short, correct list of the people who stand at the door.
+            THE ROLE DECIDES WHO IS OFFERED: the people who did THAT on this warehouse's restocks
+            (a-who-filter-lists-the-people-on-its-rows), answered by inventory_service. "Raised by" is
+            every buyer in a selling team who sent goods here — never readable from a member list here —
+            and "Counted by" this warehouse's own crew, former and suspended ones included. The floor
+            Staff use it too (whoever-reads-a-list-may-filter-it).
 
             Switching the role CLEARS the person, and it has to: the people valid for one role are
             mostly invalid for the other, so keeping the id would silently re-ask the new question
@@ -359,13 +366,14 @@ export function RestockWarehousePage() {
           <Box borderRightWidth="1px" borderColor="border" />
 
           <Box flex="1" minW="0">
-            <UserSelect
-              // Remounted per role so the combobox drops the previous role's loaded options — they
-              // came from a different search (all users vs this team's members).
+            <PersonFilterSelect
+              // Remounted per role so the combobox drops the previous role's people — they answer a
+              // different question.
               key={actorRole}
               flush
+              people={actorPeople.data}
+              error={actorPeople.isError}
               value={actorId > 0n ? actorId : undefined}
-              teamId={actorRole === "accepted" ? teamId : undefined}
               placeholder={t("restock.inbound.actorAll")}
               // A cleared picker emits undefined → 0n, "anyone" — the filter is removed, not stuck.
               onChange={(id) => refilter(() => setActorId(id ?? 0n))}

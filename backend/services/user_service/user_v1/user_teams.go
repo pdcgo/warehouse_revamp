@@ -91,7 +91,6 @@ func (s *Service) UserTeams(
 		item := &userv1.TeamAccessItem{
 			TeamId: membership.TeamID,
 			Role:   role_basev1.Role(membership.Role),
-			Alias:  membership.Alias,
 		}
 
 		team, found := teams[membership.TeamID]

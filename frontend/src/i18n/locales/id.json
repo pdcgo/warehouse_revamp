@@ -14,7 +14,6 @@
     "restock": "Restok",
     "stock": "Stok",
     "placements": "Penempatan",
-    "supplier": "Pemasok",
     "racks": "Rak",
     "batches": "Batch",
     "returns": "Retur",
@@ -31,7 +30,11 @@
     "settlement": "Penyelesaian",
     "settlementReport": "Laporan Penyelesaian",
     "settlementImports": "Impor Penyelesaian",
-    "financialAccounts": "Akun Keuangan"
+    "financialAccounts": "Akun Keuangan",
+    "suppliers": "Pemasok",
+    "mySupplier": "Pemasok Saya",
+    "discoverSupplier": "Temukan Pemasok",
+    "supplierReport": "Laporan Pemasok"
   },
   "menu": {
     "theme": "Tema",
@@ -44,7 +47,14 @@
     "openMenu": "Buka menu",
     "search": "Cari…",
     "notifications": "Notifikasi",
-    "menu": "Menu"
+    "menu": "Menu",
+    "notMember": "Bukan anggota tim ini — bertindak sebagai {{role}}.",
+    "switchTeam": "Ganti Tim",
+    "searchTeams": "Cari tim",
+    "noTeams": "Tidak ada tim.",
+    "myTeams": "Tim saya",
+    "allTeams": "Semua tim",
+    "notMemberBadge": "Bukan anggota"
   },
   "liability": {
     "title": "Kewajiban",
@@ -329,6 +339,49 @@
     "searchPlaceholder": "Cari SKU atau nama",
     "empty": "Produk tidak ditemukan."
   },
+  "discoverDetail": {
+    "back": "Temukan Produk",
+    "selectTeam": "Pilih tim untuk menemukan produk.",
+    "invalidId": "ID produk tidak valid.",
+    "notFound": "Produk tidak ditemukan.",
+    "owner": "Pemilik",
+    "markupHint": "Yang Anda bayar di atas modal pemilik, per unit.",
+    "reservedHint": "Pemilik menyimpan sebanyak ini di setiap rak — tidak dibagikan.",
+    "noImage": "Tidak ada gambar.",
+    "own": "Ini produk tim Anda sendiri.",
+    "openOwn": "Buka di Produk Saya",
+    "archived": "Diarsipkan oleh pemiliknya — tidak lagi ditawarkan ke tim lain.",
+    "locked": "Dikunci oleh pemiliknya — tim lain tidak dapat memakainya.",
+    "stockHeading": "Stok di Setiap Gudang",
+    "stockHelp": "Pesanan dikirim dari satu gudang, jadi di sinilah Anda bisa mengambilnya, dan berapa banyak.",
+    "warehouse": "Gudang",
+    "onShelf": "Di rak",
+    "canTake": "Bisa Anda ambil",
+    "noWarehouses": "Belum ada gudang.",
+    "suppliersHeading": "Pemasok",
+    "suppliersHelp": "Toko pemasok yang menjual produk ini. Tim mana pun boleh restok dari mereka, bukan hanya pemiliknya.",
+    "noSuppliers": "Belum ada pemasok yang mencantumkan produk ini.",
+    "supplier": "Pemasok",
+    "store": "Toko",
+    "pending": {
+      "canTake": {
+        "label": "Bisa Anda ambil",
+        "reason": "stok di rak dikurangi stok cadangan pemilik — apakah cadangan hanya mengikat tim lain, dan di mana batasnya, masih terbuka"
+      },
+      "unitCost": {
+        "label": "Modal Anda per unit",
+        "reason": "harga satuan ditambah markup — siapa yang boleh melihat harga satuan pemilik belum diputuskan, jadi tidak ditampilkan"
+      },
+      "gallery": {
+        "label": "Gambar",
+        "reason": "hanya sampul — galeri lengkap datang dari ProductDetail, yang hanya menjawab tim pemilik"
+      },
+      "suppliers": {
+        "label": "Pemasok",
+        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, yang belum dibangun, jadi toko yang menjualnya masih karangan"
+      }
+    }
+  },
   "products": {
     "toast": {
       "deleted": "Produk \"{{sku}}\" dihapus",
@@ -559,10 +612,6 @@
       "warehouseFilter": {
         "label": "Filter gudang",
         "reason": "Filter daftar pesanan belum punya kolom gudang, jadi memilih gudang tidak mengubah tabelnya."
-      },
-      "creator": {
-        "label": "Pembuat pesanan",
-        "reason": "Pesanan sama sekali belum menyimpan siapa pembuatnya — filternya tidak menyaring apa pun, dan nama di bawah tanggal itu karangan."
       },
       "mpDate": {
         "label": "Tanggal order marketplace",
@@ -1391,18 +1440,17 @@
   "suppliers": {
     "title": "Pemasok",
     "selectTeam": "Pilih tim untuk mengelola pemasoknya.",
-    "searchPlaceholder": "Cari nama atau kode",
+    "searchPlaceholder": "Cari berdasarkan nama",
     "deleted": "Pemasok \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
     "deleteSupplier": "Hapus Pemasok",
-    "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
+    "deleteConfirm": "Hapus \"{{name}}\"? Pemasok hilang dari daftar ini dan setiap pilihan — restok lama dan angkanya tetap memakai namanya.",
     "delete": "Hapus",
     "empty": "Tidak ada pemasok ditemukan.",
     "table": {
-      "code": "Kode",
       "name": "Nama",
       "contact": "Kontak",
-      "city": "Kota",
+      "address": "Alamat",
       "actions": "Aksi"
     },
     "form": {
@@ -1411,22 +1459,44 @@
       "newSupplier": "Pemasok Baru",
       "editTitle": "Ubah Pemasok",
       "createTitle": "Pemasok Baru",
-      "code": "Kode",
-      "codeHelp": "Unik dalam tim, maksimal 32 karakter.",
       "name": "Nama",
       "contact": "Kontak",
-      "province": "Provinsi",
-      "city": "Kota",
       "address": "Alamat",
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat"
+      "create": "Buat",
+      "contactHelp": "Nomor telepon atau WhatsApp."
     },
     "select": {
       "placeholder": "Pilih pemasok",
       "unavailable": "Pemasok tidak tersedia",
       "empty": "Pemasok tidak ditemukan"
+    },
+    "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
+    "edit": "Ubah pemasok",
+    "discover": {
+      "title": "Temukan Pemasok",
+      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko.",
+      "search": "Cari pemasok, alamat, atau toko",
+      "typeAll": "Semua jenis saluran",
+      "empty": "Belum ada pemasok.",
+      "none": "Tidak ada pemasok yang cocok.",
+      "back": "Kembali ke Temukan Pemasok",
+      "notFound": "Pemasok tidak ditemukan.",
+      "table": {
+        "supplier": "Pemasok",
+        "team": "Tim",
+        "channels": "Saluran",
+        "contact": "Kontak"
+      },
+      "pending": {
+        "products": {
+          "label": "Produk",
+          "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun"
+        }
+      },
+      "teamAll": "Semua tim"
     }
   },
   "supplierChannel": {
@@ -1435,18 +1505,13 @@
     "deleteTitle": "Hapus Saluran",
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
-    "type": {
-      "online": "Online",
-      "offline": "Offline"
-    },
     "section": {
-      "title": "Saluran",
       "empty": "Belum ada saluran."
     },
     "table": {
-      "type": "Tipe",
       "channel": "Saluran",
-      "details": "Detail",
+      "uri": "Tautan",
+      "description": "Deskripsi",
       "actions": "Aksi"
     },
     "detail": {
@@ -1455,10 +1520,7 @@
       "back": "Kembali ke Pemasok",
       "notFound": "Pemasok tidak ditemukan.",
       "title": "Detail Pemasok",
-      "code": "Kode",
       "contact": "Kontak",
-      "province": "Provinsi",
-      "city": "Kota",
       "address": "Alamat",
       "description": "Deskripsi"
     },
@@ -1468,16 +1530,102 @@
       "addChannel": "Tambah Saluran",
       "editTitle": "Ubah Saluran",
       "createTitle": "Tambah Saluran",
-      "type": "Tipe",
-      "marketplace": "Marketplace",
       "name": "Nama",
-      "url": "URL",
-      "contact": "Kontak",
-      "location": "Lokasi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Tambah"
+      "create": "Tambah",
+      "channelType": "Jenis saluran",
+      "channelTypePlaceholder": "Pilih jenis saluran",
+      "nameHelp": "Nama toko di saluran tersebut.",
+      "uri": "Tautan",
+      "description": "Deskripsi"
+    },
+    "edit": "Ubah saluran",
+    "pending": {
+      "products": {
+        "label": "Produk",
+        "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
+      }
+    },
+    "tab": {
+      "channels": "Saluran",
+      "products": "Produk",
+      "statistics": "Statistik"
+    },
+    "products": {
+      "product": "Produk",
+      "sku": "SKU",
+      "channel": "Saluran",
+      "empty": "Belum ada produk.",
+      "search": "Cari produk, SKU, atau saluran",
+      "none": "Tidak ada produk yang cocok."
+    },
+    "filter": {
+      "search": "Cari nama, tautan, atau deskripsi",
+      "typeAll": "Semua jenis saluran",
+      "none": "Tidak ada saluran yang cocok."
     }
+  },
+  "supplierFigures": {
+    "restocked": "Direstok",
+    "restockedHint": "unit baik yang diterima ke stok",
+    "lost": "Hilang di pengiriman",
+    "lostHint": "unit yang kurang dalam paket yang diterima",
+    "broken": "Rusak di pengiriman",
+    "brokenHint": "unit yang tiba dalam keadaan rusak",
+    "brokenRate": "Tingkat rusak",
+    "brokenRateHint": "rusak ÷ semua unit yang diterima",
+    "units_one": "{{n}} unit",
+    "units_other": "{{n}} unit",
+    "rate": "{{rate}}%",
+    "rateBroken": "{{rate}}% rusak",
+    "line": {
+      "restocked": "Direstok {{n}} · {{value}}",
+      "lostBroken": "Hilang {{lost}} ({{lostRate}}) · rusak {{broken}}"
+    },
+    "col": {
+      "period": "Periode",
+      "product": "Produk",
+      "team": "Tim",
+      "restocked": "Direstok",
+      "lost": "Hilang di pengiriman",
+      "broken": "Rusak di pengiriman",
+      "brokenRate": "Tingkat rusak"
+    },
+    "everyTeam": "Semua tim",
+    "teamNumber": "Tim #{{id}}",
+    "rangeInvalid": "Pilih tanggal awal dan akhir — angka ini butuh keduanya.",
+    "productNumber": "Produk #{{id}}"
+  },
+  "supplierStats": {
+    "overTime": "Dari Waktu ke Waktu",
+    "byProduct": "Per Produk",
+    "empty": "Tidak ada restok dari pemasok ini pada periode ini.",
+    "noProducts": "Tidak ada produk pada periode ini.",
+    "emptyTeam": "Tim itu tidak merestok dari pemasok ini pada periode ini."
+  },
+  "supplierReport": {
+    "title": "Laporan Pemasok",
+    "subtitle": "Pemasok mana yang paling banyak direstok, dan mana yang paling banyak rusak atau hilang di jalan. Buka pemasok untuk melihat angkanya dari waktu ke waktu.",
+    "selectTeam": "Pilih tim untuk melihat laporan pemasok.",
+    "ranking": "Peringkat",
+    "rankBy": "Urutkan menurut",
+    "byValue": "Nilai Restok",
+    "byBrokenRate": "Tingkat Rusak",
+    "rankedName": "{{rank}}. {{name}}",
+    "empty": "Tidak ada restok dari pemasok mana pun pada periode ini.",
+    "col": {
+      "rank": "#",
+      "supplier": "Pemasok",
+      "keptBy": "Dikelola oleh"
+    },
+    "emptyTeam": "Tim itu tidak merestok apa pun pada periode ini.",
+    "search": "Cari pemasok, alamat, atau toko",
+    "none": "Tidak ada pemasok yang cocok.",
+    "supplierNumber": "Pemasok #{{id}}",
+    "deleted": "Dihapus",
+    "rateTooFew": "Kurang dari {{n}} unit pada periode ini — tidak diperingkat bersama yang lain",
+    "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas."
   },
   "teams": {
     "name": "Nama",
@@ -1552,7 +1700,13 @@
     "to": "sampai",
     "editWarehouseTitle": "Ubah Gudang",
     "warehouseAddressHelp": "Alamat fisik gudang.",
-    "warehouseSaved": "Gudang disimpan"
+    "warehouseSaved": "Gudang disimpan",
+    "owner": "Pemilik",
+    "ownerHelp": "Orang yang memiliki tim ini. Anda tidak dijadikan anggota — Anda menjangkaunya dari Semua tim.",
+    "ownerPlaceholder": "Cari orang berdasarkan nama, nama pengguna, atau telepon",
+    "ownerRequired": "Pilih pemilik tim, atau buat pengguna baru.",
+    "createOwner": "Buat Pengguna Baru",
+    "backToOwnerSearch": "Kembali ke Pencarian"
   },
   "users": {
     "title": "Pengguna",
@@ -1566,11 +1720,13 @@
       "user": "Pengguna",
       "email": "Email",
       "status": "Status",
-      "actions": "Tindakan"
+      "actions": "Tindakan",
+      "role": "Peran"
     },
     "status": {
       "suspended": "Ditangguhkan",
-      "active": "Aktif"
+      "active": "Aktif",
+      "erased": "Dihapus"
     },
     "action": {
       "edit": "Ubah",
@@ -1579,7 +1735,8 @@
       "resetPassword": "Atur Ulang Kata Sandi",
       "restore": "Pulihkan",
       "suspend": "Tangguhkan",
-      "delete": "Hapus"
+      "changeRole": "Ubah Peran",
+      "erase": "Hapus Data Pribadi"
     },
     "empty": "Tidak ada pengguna ditemukan.",
     "toast": {
@@ -1587,15 +1744,16 @@
       "userRestored": "{{username}} dipulihkan",
       "suspendedDescription": "Sesi aktif mereka langsung diputus.",
       "suspendFailed": "Gagal menangguhkan",
-      "userDeleted": "{{username}} dihapus",
-      "deleteFailed": "Gagal menghapus",
       "removedFromTeam": "{{username}} dikeluarkan dari tim",
       "removeFailed": "Gagal mengeluarkan",
       "userCreated": "{{username}} dibuat",
       "userUpdated": "{{username}} diperbarui",
       "passwordReset": "Kata sandi diatur ulang untuk {{username}}",
       "passwordResetDescription": "Semua sesi mereka yang ada telah dikeluarkan.",
-      "memberAdded": "Anggota ditambahkan"
+      "memberAdded": "Anggota ditambahkan",
+      "roleChanged": "{{username}} kini {{role}}",
+      "userErased": "Data pribadi pengguna #{{id}} dihapus",
+      "eraseFailed": "Gagal menghapus data"
     },
     "confirm": {
       "removeFromTeam": {
@@ -1611,9 +1769,9 @@
         "title": "Tangguhkan Akun",
         "message": "Tangguhkan {{username}}? Sesi aktif mereka langsung diputus dan mereka tidak dapat masuk."
       },
-      "delete": {
-        "title": "Hapus Pengguna",
-        "message": "Hapus {{username}} secara permanen? Keanggotaan tim mereka juga dihapus. Tindakan ini tidak dapat dibatalkan."
+      "erase": {
+        "title": "Hapus Data Pribadi",
+        "message": "Hapus data pribadi {{username}}? Nama, email, telepon, foto dan kata sandinya dihapus, dan nama penggunanya dibebaskan. Akunnya tetap ada sebagai pengguna #{{id}}, jadi setiap catatan yang dibuatnya tetap menunjuk ke sana. Tindakan ini tidak bisa dibatalkan."
       }
     },
     "thisTeam": "tim ini",
@@ -1626,22 +1784,21 @@
     },
     "create": {
       "usernameError": "Nama pengguna hanya boleh berisi huruf kecil dan angka.",
-      "title": "Pengguna Baru",
-      "roleInTeam": "Peran di {{team}}",
-      "submit": "Buat"
+      "nameRequired": "Nama wajib diisi."
     },
-    "newUser": "Pengguna Baru",
     "field": {
       "username": "Nama Pengguna",
       "password": "Kata Sandi",
       "name": "Nama",
       "email": "Email",
       "phone": "Telepon",
-      "role": "Peran"
+      "role": "Peran",
+      "phonePlaceholder": "0812-3456-7890 atau +62 812…"
     },
     "helper": {
       "usernameRule": "Hanya huruf kecil dan angka.",
-      "min8": "Minimal 8 karakter."
+      "min8": "Minimal 8 karakter.",
+      "rootUsername": "Root pertama selalu memakai nama pengguna root."
     },
     "cancel": "Batal",
     "edit": {
@@ -1658,11 +1815,50 @@
     "addMember": {
       "trigger": "Tambah Anggota",
       "title": "Tambah Anggota",
-      "findUser": "Cari pengguna",
-      "searchPlaceholder": "Cari di semua tim",
-      "helper": "Mencari semua orang — tambahkan pengguna yang belum ada di tim ini.",
-      "submit": "Tambah"
-    }
+      "findUser": "Cari orang",
+      "submit": "Tambah",
+      "createTitle": "Anggota Baru",
+      "placeholderExact": "Nama pengguna, telepon atau email lengkapnya",
+      "placeholderBroad": "Sebagian nama atau nama pengguna",
+      "helperExact": "Ketik nama pengguna, telepon atau email lengkap orang yang Anda tambahkan.",
+      "helperBroad": "Mencari semua orang di sistem.",
+      "found_one": "{{count}} orang ditemukan",
+      "found_other": "{{count}} orang ditemukan",
+      "phoneEnding": "telepon berakhiran {{last4}}",
+      "noMatch": "Tidak ada yang cocok dengan “{{q}}”.",
+      "createNew": "Buat Pengguna Baru",
+      "repick": "Pilih Orang Lain",
+      "alreadyMember": "Sudah di tim ini sebagai {{role}}.",
+      "selectRole": "Pilih peran",
+      "changeRole": "Ubah peran",
+      "cannotChange": "Perannya tidak di bawah peran Anda, jadi Anda tidak bisa mengubahnya.",
+      "createLead": "Akun baru, langsung ditambahkan ke tim ini.",
+      "oneAccountHelper": "Satu nomor telepon atau email hanya untuk satu akun.",
+      "backToSearch": "Kembali ke Pencarian",
+      "submitChange": "Ubah Peran",
+      "submitCreate": "Buat dan Tambah",
+      "nothingToChange": "Tidak ada peran lain yang bisa Anda berikan kepadanya.",
+      "findTaken": "Cari Orangnya"
+    },
+    "changeRole": {
+      "title": "Ubah Peran untuk {{username}}",
+      "current": "Peran saat ini: {{role}}",
+      "newRole": "Peran baru",
+      "helper": "Hanya peran di bawah peran Anda yang ditawarkan.",
+      "submit": "Ubah Peran"
+    },
+    "log": {
+      "title": "Riwayat Keanggotaan",
+      "added": "{{actor}} menambahkan {{user}} sebagai {{to}}",
+      "changed": "{{actor}} mengubah {{user}} dari {{from}} menjadi {{to}}",
+      "removed": "{{actor}} mengeluarkan {{user}} ({{from}})",
+      "system": "sistem",
+      "userRef": "pengguna #{{id}}",
+      "override": "penggantian",
+      "failed": "Riwayat keanggotaan gagal dimuat.",
+      "empty": "Belum ada yang bergabung, keluar, atau berganti peran."
+    },
+    "formerUser": "Mantan pengguna #{{id}}"
   },
   "inventory": {
     "title": "Inventaris",
@@ -2503,255 +2699,6 @@
       "empty": "Kurir tidak ditemukan"
     }
   },
-  "pending": {
-    "title_one": "{{count}} bagian layar ini belum diimplementasi",
-    "title_other": "{{count}} bagian layar ini belum diimplementasi",
-    "lead_one": "Bagian ini hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
-    "lead_other": "Bagian berikut hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
-    "toggle": "Lihat {{count}} bagiannya",
-    "markAria": "Belum diimplementasi, nomor {{n}}: {{label}}",
-    "tag": {
-      "dropped": "· tidak terkirim",
-      "sample": "· angka contoh",
-      "derived": "· rumus belum final",
-      "missing": "· tidak masuk total"
-    }
-  },
-  "orderForm": {
-    "pending": {
-      "bundle": {
-        "label": "Grup bundel",
-        "reason": "Bundel menaruh produknya sebagai baris biasa; grupnya sendiri belum tersimpan."
-      },
-      "returnMap": {
-        "label": "Pemetaan retur",
-        "reason": "Peta tautan produk belum dibangun."
-      },
-      "creditLimit": {
-        "label": "Batas hutang",
-        "reason": "Sebuah tim belum bisa membaca batas yang ditetapkan tim lain untuknya."
-      },
-      "profit": {
-        "label": "Estimasi profit",
-        "reason": "Rumusnya belum diputuskan, dan harga jual masih berstatus catatan."
-      },
-      "shippingCost": {
-        "label": "Ongkos kirim",
-        "reason": "Belum ada yang menentukan harga pengiriman, jadi kolomnya disembunyikan dan total kurang satu komponen."
-      },
-      "warehouseFee": {
-        "label": "Biaya gudang",
-        "reason": "Layar ini belum membaca ketentuan gudang."
-      },
-      "invoice": {
-        "label": "Tagihan",
-        "reason": "Butuh markup tiap tim dan biaya gudang."
-      },
-      "orderDate": {
-        "label": "Tanggal order",
-        "reason": "Pesanan tercatat pada saat diketik, dan belum punya kolom untuk kapan sebenarnya dibeli."
-      },
-      "deadline": {
-        "label": "Tenggat pesanan",
-        "reason": "Pesanan belum punya kolomnya."
-      },
-      "buyerUsername": {
-        "label": "Username pembeli",
-        "reason": "Pesanan belum punya kolomnya."
-      },
-      "receiptCode": {
-        "label": "Nomor resi",
-        "reason": "Pesanan menyimpan kurir dan file resinya, tapi nomornya sendiri belum ada kolomnya."
-      },
-      "receiptScan": {
-        "label": "Pemeriksaan file resi",
-        "reason": "Belum ada yang membaca file yang diunggah, jadi autofill dan pencocokannya masih memakai pengganti."
-      },
-      "refsDistinct": {
-        "label": "Order ID vs nomor resi",
-        "reason": "Perbandingannya jalan di sini; pemeriksa yang berwenang belum dibangun."
-      },
-      "formatRules": {
-        "label": "Format kurir & marketplace",
-        "reason": "Polanya masih sementara — hanya memperingatkan, tidak pernah menolak."
-      },
-      "draftKeeps": {
-        "label": "Yang disimpan draft",
-        "reason": "Draft hanya menyimpan toko, gudang, customer, kurir dan baris. Resi, referensi, nomor resi, catatan, tanggal dan username pembeli tidak disimpan."
-      },
-      "rowBundle": {
-        "label": "Baris dipetakan ke bundle",
-        "reason": "Baris draft hanya menyimpan satu produk, jadi pemetaan bundle tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
-      },
-      "rowSplit": {
-        "label": "Baris dipecah ke beberapa produk",
-        "reason": "Baris draft hanya menyimpan satu produk, jadi pecahan tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
-      },
-      "makeBundle": {
-        "label": "Jadikan bundle",
-        "reason": "Template bundle masih sampel, jadi belum ada tempat menyimpan bundle baru."
-      },
-      "sellPrice": {
-        "label": "Harga jual",
-        "reason": "Draft belum punya harga jual. Nilainya mulai dari jumlah Harga MP baris dan bisa diketik ulang, tapi yang diketik tidak disimpan."
-      },
-      "listingQty": {
-        "label": "Qty listing",
-        "reason": "Baris draft hanya menyimpan satu qty, jadi qty yang berbeda dari listing menimpanya saat disimpan — qty listing asli dan peringatan ini hilang saat draft dibuka lagi."
-      }
-    },
-    "source": {
-      "title": "Informasi Order",
-      "help": "Toko mana yang menjualnya, gudang mana yang mengirimnya, dan kapan dibelinya.",
-      "orderDate": "Tanggal order",
-      "orderDateHelp": "Kapan pelanggan membelinya — bukan kapan diketik.",
-      "sellPrice": "Harga jual",
-      "sellPriceHelp": "Jumlah yang dibayar pelanggan di marketplace. Margin di bawah dihitung terhadap angka ini.",
-      "looksLike": "Referensi ini sepertinya",
-      "useIt": "Pakai {{name}}"
-    },
-    "bundles": {
-      "title": "Bundel",
-      "help": "Bundel menaruh produknya ke pesanan. Tiap slot bisa diisi produk lain — batasnya ketentuan bundel dikali jumlah bundel yang dipesan.",
-      "slotCount_one": "{{count}} slot",
-      "slotCount_other": "{{count}} slot",
-      "empty": "Belum ada bundel di pesanan ini.",
-      "qty": "Bundel",
-      "remove": "Hapus bundel",
-      "rule": "{{qty}} per bundel",
-      "substitute": "Ganti Produk",
-      "search": "Cari bundel",
-      "noMatch": "Tidak ada bundel yang cocok"
-    },
-    "returnMap": {
-      "title": "Pemetaan Retur",
-      "help": "Produk yang dipesan dari tim lain dipetakan ke produk kita, supaya retur punya tempat mendarat. Sekali dijawab, berikutnya sudah terisi sendiri.",
-      "empty": "Tidak ada produk tim lain di pesanan ini.",
-      "unmapped": "{{count}} belum dipetakan",
-      "pick": "Cari produk Anda",
-      "undo": "Ubah",
-      "needs": "Perlu dipetakan",
-      "remembered": "Dari sebelumnya",
-      "duplicate": "Duplikasi Produk",
-      "wouldDuplicate": "Akan diduplikasi"
-    },
-    "extra": {
-      "title": "Data Tambahan",
-      "help": "Opsional, dan keduanya belum menjadi bagian dari pesanan.",
-      "deadline": "Tenggat pesanan",
-      "deadlineHelp": "Kapan pembeli membutuhkannya.",
-      "buyerUsername": "Username pembeli",
-      "buyerUsernamePlaceholder": "Namanya di marketplace",
-      "buyerUsernameHelp": "Siapa yang membeli, sesuai tampilan toko."
-    },
-    "credit": {
-      "title": "Batas Hutang",
-      "help": "Satu baris per tim yang akan dihutangi pesanan ini — gudang yang mengirim, dan tiap tim pemilik produk. Pesanan ditolak kalau hutang sudah menyentuh batas.",
-      "empty": "Pilih gudang untuk melihat hutang yang timbul dari pesanan ini.",
-      "after": "Pesanan ini menambah {{adds}} · menjadi {{after}}",
-      "wouldPass": "melewati batas setelah pesanan ini",
-      "role": {
-        "warehouse": "Gudang",
-        "owner": "Pemilik produk"
-      }
-    },
-    "profit": {
-      "title": "Estimasi Profit",
-      "help": "Sisa harga jual setelah dikurangi biaya pesanan. Batas bawahnya {{pct}}%.",
-      "sellPrice": "Harga jual",
-      "orderTotal": "Total pesanan",
-      "profit": "Profit",
-      "margin": "Margin",
-      "below": "Di bawah {{pct}}%",
-      "noSellPrice": "Harga jual belum diisi — isi jumlah yang diterima toko di kartu Informasi Order."
-    },
-    "totals": {
-      "title": "Total & Tagihan",
-      "help": "Nilai pesanan ini, dan berapa dari nilainya yang terhutang ke tim lain.",
-      "products": "Produk",
-      "warehouseFee": "Biaya gudang",
-      "orderTotal": "Total pesanan",
-      "invoiceTitle": "Tagihan",
-      "invoiceEmpty": "Tidak ada tagihan — semua produk milik tim ini.",
-      "invoiceTotal": "Total tagihan",
-      "feeNote": "Biaya tetap untuk pemenuhan pesanan ini.",
-      "markupNote": "{{base}} modal · markup {{markup}}%",
-      "costUnknown": "Gudang ini belum punya catatan modal untuk barang tersebut, jadi belum ada yang ditagihkan.",
-      "blockedByMapping": "{{count}} produk belum punya pemetaan retur — belum ikut tersimpan bersama pesanan."
-    },
-    "rail": {
-      "collapse": "Ringkas",
-      "expand": "Rinci",
-      "title": "Ringkasan Pesanan"
-    },
-    "resi": {
-      "title": "Resi Pengiriman",
-      "help": "File resinya, dan dua nomor yang tercetak di dalamnya.",
-      "trackingNumber": "Nomor resi",
-      "noFile": "Belum ada file resi yang dilampirkan",
-      "bothPrinted": "Order ID dan nomor resi dua-duanya ada di file resi.",
-      "halfMissing": "File resi memuat kedua nomornya — salah satu kolom di atas masih kosong.",
-      "filledFromFile": "Terisi dari file resi — cocokkan lagi dengan kertasnya.",
-      "dropHere": "atau taruh filenya di sini",
-      "pdfNoPreview": "PDF — buka untuk membaca nomornya"
-    },
-    "checks": {
-      "blockedTitle": "Pesanan ini belum bisa dibuat",
-      "warnTitle": "Periksa dulu sebelum dibuat",
-      "blockedLead": "Salah satu hal berikut harus dibetulkan dulu.",
-      "warnLead": "Tidak ada yang menghalangi pesanan ini — baca dulu, lalu putuskan.",
-      "back": "Kembali ke Form",
-      "placeAnyway": "Tetap Buat",
-      "refsIdentical": "Order ID dan nomor resi sama persis. Keduanya referensi yang berbeda — pesanan yang membawa satu nomor dua kali tidak bisa dicari lagi dari sisi mana pun.",
-      "refsNearlyIdentical": "Order ID dan nomor resi nyaris sama. Kemungkinan salah satunya tertempel ke dua kolom.",
-      "scanBothOff": "Kedua nomor tidak cocok dengan file resi, yang tertulis {{ref}} dan {{code}}.",
-      "scanRefOff": "Order ID tidak cocok dengan file resi, yang tertulis {{ref}}.",
-      "scanCodeOff": "Nomor resi tidak cocok dengan file resi, yang tertulis {{code}}.",
-      "trackingCourier": "Nomor resi tidak seperti milik kurir ini — biasanya berbentuk {{shape}}.",
-      "refMarketplace": "Order ID tidak seperti milik marketplace ini — biasanya berbentuk {{shape}}.",
-      "profitBelowFloor": "Estimasi margin {{pct}}%, di bawah batas {{floor}}%."
-    },
-    "warehouse": {
-      "title": "Dikirim dari",
-      "governs": "Semua angka stok dan HPP di bawah ini milik gudang tersebut.",
-      "chooseFirst": "Pilih gudangnya dulu — tidak ada angka di bawah yang bisa diukur tanpa itu."
-    }
-  },
-  "quantityInput": {
-    "increase": "Tambah",
-    "decrease": "Kurangi"
-  },
-  "orderDraftForm": {
-    "items": {
-      "help": "Apa yang dibaca app dari marketplace, satu listing per baris — petakan ke produk, bundle, atau beberapa produk.",
-      "added": "Ditambah di sini",
-      "addedHelp": "Baris yang tidak dibaca app — tidak ada teks scrape untuk dibandingkan.",
-      "mapAs": "Petakan sebagai",
-      "mode": {
-        "product": "Produk",
-        "bundle": "Bundle",
-        "split": "Pecah"
-      },
-      "changeBundle": "Ganti Bundle",
-      "splitHelp": "Tiap produk dengan jumlah per satu listing — dikalikan qty baris.",
-      "perUnit": "Per satuan",
-      "addPart": "Tambah Produk",
-      "makeBundle": "Jadikan Bundle",
-      "stockLine": "Stok {{stock}} · HPP {{hpp}}",
-      "listing": "Listing: {{qty}} × {{price}}",
-      "rowHpp": "HPP {{hpp}}",
-      "bundleCount": "Jumlah paket",
-      "countDiffers": "Dikirim {{count}}, listing menyebut {{listing}}"
-    },
-    "sellPriceHelp": "Jumlah harga MP semua baris — yang dibayar pembeli, dan dasar perhitungan profit.",
-    "gaps": {
-      "unmapped": "Ada baris yang belum dipetakan",
-      "notStorable": "Baris bundle atau pecah belum bisa dipromosikan",
-      "saveFirst": "Simpan perubahan dulu"
-    },
-    "sellPriceTyped": "Diketik manual, bukan dari harga baris.",
-    "sellPriceReset": "Pakai Harga Baris"
-  },
   "warehouseOrders": {
     "col": {
       "createdBy": "Dibuat oleh",
@@ -2764,10 +2711,6 @@
       "statusSet": {
         "label": "Sudah diserahkan",
         "reason": "Sudah diserahkan adalah langkah terakhir gudang, tapi kontrak belum punya statusnya — tabnya belum bisa menyaring apa pun."
-      },
-      "creator": {
-        "label": "Dibuat oleh",
-        "reason": "Order tidak mencatat pembuatnya — hanya tim tempat order dibuat."
       },
       "shop": {
         "label": "Toko seller",
@@ -3306,5 +3249,264 @@
       "unmarkTitle": "Hapus Tanda Operasional {{name}}",
       "unmarkMessage": "{{name}} tidak lagi bisa dipilih untuk membayar restock dan biaya."
     }
+  },
+  "pending": {
+    "title_one": "{{count}} bagian layar ini belum diimplementasi",
+    "title_other": "{{count}} bagian layar ini belum diimplementasi",
+    "lead_one": "Bagian ini hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
+    "lead_other": "Bagian berikut hanya berfungsi di layar — isinya tidak ikut terkirim: {{parts}}.",
+    "toggle": "Lihat {{count}} bagiannya",
+    "markAria": "Belum diimplementasi, nomor {{n}}: {{label}}",
+    "tag": {
+      "dropped": "· tidak terkirim",
+      "sample": "· angka contoh",
+      "derived": "· rumus belum final",
+      "missing": "· tidak masuk total"
+    }
+  },
+  "orderForm": {
+    "pending": {
+      "bundle": {
+        "label": "Grup bundel",
+        "reason": "Bundel menaruh produknya sebagai baris biasa; grupnya sendiri belum tersimpan."
+      },
+      "returnMap": {
+        "label": "Pemetaan retur",
+        "reason": "Peta tautan produk belum dibangun."
+      },
+      "creditLimit": {
+        "label": "Batas hutang",
+        "reason": "Sebuah tim belum bisa membaca batas yang ditetapkan tim lain untuknya."
+      },
+      "profit": {
+        "label": "Estimasi profit",
+        "reason": "Rumusnya belum diputuskan, dan harga jual masih berstatus catatan."
+      },
+      "shippingCost": {
+        "label": "Ongkos kirim",
+        "reason": "Belum ada yang menentukan harga pengiriman, jadi kolomnya disembunyikan dan total kurang satu komponen."
+      },
+      "warehouseFee": {
+        "label": "Biaya gudang",
+        "reason": "Layar ini belum membaca ketentuan gudang."
+      },
+      "invoice": {
+        "label": "Tagihan",
+        "reason": "Butuh markup tiap tim dan biaya gudang."
+      },
+      "orderDate": {
+        "label": "Tanggal order",
+        "reason": "Pesanan tercatat pada saat diketik, dan belum punya kolom untuk kapan sebenarnya dibeli."
+      },
+      "deadline": {
+        "label": "Tenggat pesanan",
+        "reason": "Pesanan belum punya kolomnya."
+      },
+      "buyerUsername": {
+        "label": "Username pembeli",
+        "reason": "Pesanan belum punya kolomnya."
+      },
+      "receiptCode": {
+        "label": "Nomor resi",
+        "reason": "Pesanan menyimpan kurir dan file resinya, tapi nomornya sendiri belum ada kolomnya."
+      },
+      "receiptScan": {
+        "label": "Pemeriksaan file resi",
+        "reason": "File dikirim ke ReceiptCheck milik shipment, yang belum dibangun — di luar Storybook belum ada yang terbaca darinya."
+      },
+      "refsDistinct": {
+        "label": "Order ID vs nomor resi",
+        "reason": "Perbandingannya jalan di sini; pemeriksa yang berwenang belum dibangun."
+      },
+      "formatRules": {
+        "label": "Format kurir & marketplace",
+        "reason": "Polanya masih sementara — hanya memperingatkan, tidak pernah menolak."
+      },
+      "draftKeeps": {
+        "label": "Yang disimpan draft",
+        "reason": "Draft hanya menyimpan toko, gudang, customer, kurir dan baris. Resi, referensi, nomor resi, catatan, tanggal dan username pembeli tidak disimpan."
+      },
+      "rowBundle": {
+        "label": "Baris dipetakan ke bundle",
+        "reason": "Baris draft hanya menyimpan satu produk, jadi pemetaan bundle tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
+      },
+      "rowSplit": {
+        "label": "Baris dipecah ke beberapa produk",
+        "reason": "Baris draft hanya menyimpan satu produk, jadi pecahan tampil dan dihitung tapi disimpan sebagai belum dipetakan, dan memblokir Promote."
+      },
+      "makeBundle": {
+        "label": "Jadikan bundle",
+        "reason": "Template bundle masih sampel, jadi belum ada tempat menyimpan bundle baru."
+      },
+      "sellPrice": {
+        "label": "Harga jual",
+        "reason": "Draft belum punya harga jual. Nilainya mulai dari jumlah Harga MP baris dan bisa diketik ulang, tapi yang diketik tidak disimpan."
+      },
+      "listingQty": {
+        "label": "Qty listing",
+        "reason": "Baris draft hanya menyimpan satu qty, jadi qty yang berbeda dari listing menimpanya saat disimpan — qty listing asli dan peringatan ini hilang saat draft dibuka lagi."
+      }
+    },
+    "source": {
+      "title": "Informasi Order",
+      "help": "Toko mana yang menjualnya, gudang mana yang mengirimnya, dan kapan dibelinya.",
+      "orderDate": "Tanggal order",
+      "orderDateHelp": "Kapan pelanggan membelinya — bukan kapan diketik.",
+      "sellPrice": "Harga jual",
+      "sellPriceHelp": "Jumlah yang dibayar pelanggan di marketplace. Margin di bawah dihitung terhadap angka ini.",
+      "looksLike": "Referensi ini sepertinya",
+      "useIt": "Pakai {{name}}"
+    },
+    "bundles": {
+      "title": "Bundel",
+      "help": "Bundel menaruh produknya ke pesanan. Tiap slot bisa diisi produk lain — batasnya ketentuan bundel dikali jumlah bundel yang dipesan.",
+      "slotCount_one": "{{count}} slot",
+      "slotCount_other": "{{count}} slot",
+      "empty": "Belum ada bundel di pesanan ini.",
+      "qty": "Bundel",
+      "remove": "Hapus bundel",
+      "rule": "{{qty}} per bundel",
+      "substitute": "Ganti Produk",
+      "search": "Cari bundel",
+      "noMatch": "Tidak ada bundel yang cocok"
+    },
+    "returnMap": {
+      "title": "Pemetaan Retur",
+      "help": "Produk yang dipesan dari tim lain dipetakan ke produk kita, supaya retur punya tempat mendarat. Sekali dijawab, berikutnya sudah terisi sendiri.",
+      "empty": "Tidak ada produk tim lain di pesanan ini.",
+      "unmapped": "{{count}} belum dipetakan",
+      "pick": "Cari produk Anda",
+      "undo": "Ubah",
+      "needs": "Perlu dipetakan",
+      "remembered": "Dari sebelumnya",
+      "duplicate": "Duplikasi Produk",
+      "wouldDuplicate": "Akan diduplikasi"
+    },
+    "extra": {
+      "title": "Data Tambahan",
+      "help": "Opsional, dan keduanya belum menjadi bagian dari pesanan.",
+      "deadline": "Tenggat pesanan",
+      "deadlineHelp": "Kapan pembeli membutuhkannya.",
+      "buyerUsername": "Username pembeli",
+      "buyerUsernamePlaceholder": "Namanya di marketplace",
+      "buyerUsernameHelp": "Siapa yang membeli, sesuai tampilan toko."
+    },
+    "credit": {
+      "title": "Batas Hutang",
+      "help": "Satu baris per tim yang akan dihutangi pesanan ini — gudang yang mengirim, dan tiap tim pemilik produk. Pesanan ditolak kalau hutang sudah menyentuh batas.",
+      "empty": "Pilih gudang untuk melihat hutang yang timbul dari pesanan ini.",
+      "after": "Pesanan ini menambah {{adds}} · menjadi {{after}}",
+      "wouldPass": "melewati batas setelah pesanan ini",
+      "role": {
+        "warehouse": "Gudang",
+        "owner": "Pemilik produk"
+      }
+    },
+    "profit": {
+      "title": "Estimasi Profit",
+      "help": "Sisa harga jual setelah dikurangi biaya pesanan. Batas bawahnya {{pct}}%.",
+      "sellPrice": "Harga jual",
+      "orderTotal": "Total pesanan",
+      "profit": "Profit",
+      "margin": "Margin",
+      "below": "Di bawah {{pct}}%",
+      "noSellPrice": "Harga jual belum diisi — isi jumlah yang diterima toko di kartu Informasi Order."
+    },
+    "totals": {
+      "title": "Total & Tagihan",
+      "help": "Nilai pesanan ini, dan berapa dari nilainya yang terhutang ke tim lain.",
+      "products": "Produk",
+      "warehouseFee": "Biaya gudang",
+      "orderTotal": "Total pesanan",
+      "invoiceTitle": "Tagihan",
+      "invoiceEmpty": "Tidak ada tagihan — semua produk milik tim ini.",
+      "invoiceTotal": "Total tagihan",
+      "feeNote": "Biaya tetap untuk pemenuhan pesanan ini.",
+      "markupNote": "{{base}} modal · markup {{markup}}%",
+      "costUnknown": "Gudang ini belum punya catatan modal untuk barang tersebut, jadi belum ada yang ditagihkan.",
+      "blockedByMapping": "{{count}} produk belum punya pemetaan retur — belum ikut tersimpan bersama pesanan."
+    },
+    "rail": {
+      "collapse": "Ringkas",
+      "expand": "Rinci",
+      "title": "Ringkasan Pesanan"
+    },
+    "resi": {
+      "title": "Resi Pengiriman",
+      "help": "File resinya, dan dua nomor yang tercetak di dalamnya.",
+      "trackingNumber": "Nomor resi",
+      "noFile": "Belum ada file resi yang dilampirkan",
+      "bothPrinted": "Order ID dan nomor resi dua-duanya ada di file resi.",
+      "halfMissing": "File resi memuat kedua nomornya — salah satu kolom di atas masih kosong.",
+      "filledFromFile": "Terisi dari file resi — cocokkan lagi dengan kertasnya.",
+      "dropHere": "atau taruh filenya di sini",
+      "pdfNoPreview": "PDF — buka untuk membaca nomornya",
+      "scan": {
+        "multipleLabels": "File ini berisi beberapa label — lampirkan label untuk pesanan ini saja.",
+        "notShippingLabel": "File ini bukan label pengiriman kurir — pastikan filenya benar.",
+        "unreadable": "File ini tidak bisa dibaca — ketik nomornya dari label."
+      }
+    },
+    "checks": {
+      "blockedTitle": "Pesanan ini belum bisa dibuat",
+      "warnTitle": "Periksa dulu sebelum dibuat",
+      "blockedLead": "Salah satu hal berikut harus dibetulkan dulu.",
+      "warnLead": "Tidak ada yang menghalangi pesanan ini — baca dulu, lalu putuskan.",
+      "back": "Kembali ke Form",
+      "placeAnyway": "Tetap Buat",
+      "refsIdentical": "Order ID dan nomor resi sama persis. Keduanya referensi yang berbeda — pesanan yang membawa satu nomor dua kali tidak bisa dicari lagi dari sisi mana pun.",
+      "refsNearlyIdentical": "Order ID dan nomor resi nyaris sama. Kemungkinan salah satunya tertempel ke dua kolom.",
+      "scanBothOff": "Kedua nomor tidak cocok dengan file resi, yang tertulis {{ref}} dan {{code}}.",
+      "scanRefOff": "Order ID tidak cocok dengan file resi, yang tertulis {{ref}}.",
+      "scanCodeOff": "Nomor resi tidak cocok dengan file resi, yang tertulis {{code}}.",
+      "trackingCourier": "Nomor resi tidak seperti milik kurir ini — biasanya berbentuk {{shape}}.",
+      "refMarketplace": "Order ID tidak seperti milik marketplace ini — biasanya berbentuk {{shape}}.",
+      "profitBelowFloor": "Estimasi margin {{pct}}%, di bawah batas {{floor}}%."
+    },
+    "warehouse": {
+      "title": "Dikirim dari",
+      "governs": "Semua angka stok dan HPP di bawah ini milik gudang tersebut.",
+      "chooseFirst": "Pilih gudangnya dulu — tidak ada angka di bawah yang bisa diukur tanpa itu."
+    }
+  },
+  "quantityInput": {
+    "increase": "Tambah",
+    "decrease": "Kurangi"
+  },
+  "orderDraftForm": {
+    "items": {
+      "help": "Apa yang dibaca app dari marketplace, satu listing per baris — petakan ke produk, bundle, atau beberapa produk.",
+      "added": "Ditambah di sini",
+      "addedHelp": "Baris yang tidak dibaca app — tidak ada teks scrape untuk dibandingkan.",
+      "mapAs": "Petakan sebagai",
+      "mode": {
+        "product": "Produk",
+        "bundle": "Bundle",
+        "split": "Pecah"
+      },
+      "changeBundle": "Ganti Bundle",
+      "splitHelp": "Tiap produk dengan jumlah per satu listing — dikalikan qty baris.",
+      "perUnit": "Per satuan",
+      "addPart": "Tambah Produk",
+      "makeBundle": "Jadikan Bundle",
+      "stockLine": "Stok {{stock}} · HPP {{hpp}}",
+      "listing": "Listing: {{qty}} × {{price}}",
+      "rowHpp": "HPP {{hpp}}",
+      "bundleCount": "Jumlah paket",
+      "countDiffers": "Dikirim {{count}}, listing menyebut {{listing}}"
+    },
+    "sellPriceHelp": "Jumlah harga MP semua baris — yang dibayar pembeli, dan dasar perhitungan profit.",
+    "gaps": {
+      "unmapped": "Ada baris yang belum dipetakan",
+      "notStorable": "Baris bundle atau pecah belum bisa dipromosikan",
+      "saveFirst": "Simpan perubahan dulu"
+    },
+    "sellPriceTyped": "Diketik manual, bukan dari harga baris.",
+    "sellPriceReset": "Pakai Harga Baris"
+  },
+  "personFilter": {
+    "empty": "Belum ada siapa pun",
+    "noMatch": "Tidak ada yang cocok",
+    "unavailable": "Daftar orang tidak tersedia"
   }
 }

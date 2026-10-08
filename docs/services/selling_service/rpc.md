@@ -499,6 +499,20 @@ primary nobody holds. The concurrency audit found this
 ([ShopUserSetPrimary](../../../audits/services/selling_service/concurrency/ShopUserSetPrimary.md)), and its
 lock-level alternatives are still open there.
 
+## A member leaves a team — their shop grants go (`MemberRemoved`)
+
+[removing-a-member-drops-their-shop-access](../../business/user/context_decision.md#removing-a-member-drops-their-shop-access). user_service announces a removal; this service's
+listener — `/event/selling-member-removed/push`, subscription `selling-member-removed` — drops the person's grants.
+
+```mermaid
+flowchart LR
+  E["MemberRemoved — team, user, occurred_at"] --> D["DELETE shop_users WHERE user_id = user AND created_at <= occurred_at AND shop_id IN the team's shops"]
+  D --> F["a primary flag is on a grant — it goes with it"]
+  D --> K["grants in other teams, and newer ones, stay"]
+```
+
+Idempotent with no dedup table: a redelivery finds nothing older to delete. A database error NACKs for a retry.
+
 ## A statement's refs, resolved — `OrderByExternalRefs`
 
 The settlement importer turns every marketplace ref in a statement into our order in **one call per file**:

@@ -154,6 +154,36 @@ func TestDiscoverServicesFindsTheRealServices(t *testing.T) {
 	}
 }
 
+// The apply order is a contract: team before user (team 1 before the root role), and inventory before
+// supplier — inventory's 00023 frees the table names supplier_service's 00001 creates. Out of order, a fresh
+// database fails with "relation already exists" and nothing says why.
+func TestMigrationOrderPinsTheDependencies(t *testing.T) {
+	ordered, err := orderedServicesWithMigrations()
+	if err != nil {
+		t.Fatalf("orderedServicesWithMigrations: %v", err)
+	}
+
+	position := func(service string) int {
+		for i, s := range ordered {
+			if s == service {
+				return i
+			}
+		}
+
+		t.Fatalf("%s missing from %v", service, ordered)
+
+		return -1
+	}
+
+	if position("team_service") > position("user_service") {
+		t.Fatalf("team_service must migrate before user_service: %v", ordered)
+	}
+
+	if position("inventory_service") > position("supplier_service") {
+		t.Fatalf("inventory_service must migrate before supplier_service: %v", ordered)
+	}
+}
+
 // chdir moves the process and hands back the undo. t.Chdir would be tidier, but these tests share
 // a process with the rest of the package and an unrestored cwd would break whatever runs next.
 func chdir(t *testing.T, dir string) func() {

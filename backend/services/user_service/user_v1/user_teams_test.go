@@ -24,7 +24,7 @@ func TestUserTeams_ReturnsUserAndTeams(t *testing.T) {
 
 	uid := insertUser(t, db, "viewed", "pw12345678")
 	grantRole(t, db, 3, uid, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
-	grantRole(t, db, 4, uid, role_basev1.Role_ROLE_TEAM_OWNER)
+	grantRole(t, db, 4, uid, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	// The interceptor gates this by policy; the handler itself takes the user id from the request.
 	res, err := svc.UserTeams(ctxWithIdentity(1, "root"), connect.NewRequest(&userv1.UserTeamsRequest{Filter: &userv1.UserTeamsFilter{UserId: uid}, Page: pageAll()}))
@@ -51,8 +51,8 @@ func TestUserTeams_ReturnsUserAndTeams(t *testing.T) {
 		names[item.GetTeamId()] = item.GetTeamName()
 	}
 
-	if roles[3] != role_basev1.Role_ROLE_WAREHOUSE_STAFF || roles[4] != role_basev1.Role_ROLE_TEAM_OWNER {
-		t.Errorf("roles = %v, want 3=WAREHOUSE_STAFF 4=TEAM_OWNER", roles)
+	if roles[3] != role_basev1.Role_ROLE_WAREHOUSE_STAFF || roles[4] != role_basev1.Role_ROLE_SELLING_OWNER {
+		t.Errorf("roles = %v, want 3=WAREHOUSE_STAFF 4=SELLING_OWNER", roles)
 	}
 
 	if names[3] != "Team Three" || names[4] != "Team Four" {

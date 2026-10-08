@@ -5,6 +5,8 @@ import { Box } from "@chakra-ui/react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { users } from "../../../.storybook/fixtures";
+import { asRole } from "../../../.storybook/sessionScenario";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { UserSelect, description } from "./UserSelect";
 
 const meta = {
@@ -14,6 +16,9 @@ const meta = {
     docs: { description: { component: description } },
   },
   args: { onChange: fn() },
+  // Searching everyone is Root's and the Administrator's alone (only-member-managers-open-the-search) — Create
+  // Team's Owner picker is where it is used.
+  beforeEach: asRole(Role.ROOT),
 } satisfies Meta<typeof UserSelect>;
 
 export default meta;
@@ -22,8 +27,7 @@ type Story = StoryObj<typeof meta>;
 export const SearchesEveryone: Story = {};
 
 // With a teamId the search narrows to that team's members (UserList) instead of everyone
-// (SearchUser). The backend enforces the difference too — UserList is role-gated and scoped, while
-// SearchUser is open to any authenticated caller — so this is not merely a client-side filter.
+// (SearchUser). Both are role-gated and scoped on the server, so this is not merely a client-side filter.
 export const ScopedToATeam: Story = { args: { teamId: 11n } };
 
 export const Disabled: Story = { args: { disabled: true } };
@@ -101,6 +105,19 @@ export const ClearingEmitsUndefined: Story = {
   },
 };
 
+// a-suspended-user-is-never-picked: Citra is suspended, so she is never offered.
+export const NeverOffersASuspendedPerson: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByRole("combobox");
+
+    await userEvent.click(input);
+    await userEvent.type(input, "citra");
+
+    await expect(await screen.findByText("No users found")).toBeInTheDocument();
+  },
+};
+
 export const Interactive: Story = {
   render: (args) => {
     const [value, setValue] = useState<bigint | undefined>(undefined);
@@ -112,12 +129,12 @@ export const Interactive: Story = {
     const input = canvas.getByRole("combobox");
 
     await userEvent.click(input);
-    await userEvent.type(input, "citra");
+    await userEvent.type(input, "dewi");
 
-    const option = await screen.findByTestId(`user-select-option-${users[2]!.username}`);
+    const option = await screen.findByTestId(`user-select-option-${users[3]!.username}`);
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
-    await waitFor(() => expect(input).toHaveValue(users[2]!.username));
+    await waitFor(() => expect(input).toHaveValue(users[3]!.username));
   },
 };

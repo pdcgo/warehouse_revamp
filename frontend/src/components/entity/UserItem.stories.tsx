@@ -67,6 +67,18 @@ export const FallsBackToUsername: Story = {
   },
 };
 
+// An ERASED account (erase-keeps-the-row) is a former user: blank name, username `erased<id>`. It reads
+// "Former user #57", and the synthetic username is the one @username NOT shown — it names nobody.
+export const AnErasedAccountIsAFormerUser: Story = {
+  args: { user: { name: "", username: "erased57", avatarUrl: "" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByText("Former user #57")).toBeInTheDocument();
+    await expect(canvas.queryByText("@erased57")).toBeNull();
+  },
+};
+
 // UNSPECIFIED is not a role, so it must not render an empty badge beside the username.
 export const UnspecifiedRoleShowsNoBadge: Story = {
   args: { role: Role.UNSPECIFIED },

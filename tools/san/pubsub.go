@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/urfave/cli/v3"
@@ -79,59 +81,79 @@ func pubsubEnsureCommand() *cli.Command {
 
 			defer func() { _ = client.Close() }()
 
-			topics, err := event_source.DeclaredTopics()
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("project %s — %d topics declared by the proto:\n", project, len(topics))
-
-			for _, topic := range topics {
-				fmt.Printf("  %s  (+ %s.dlq, %s.dlq.triage)\n", topic, topic, topic)
-			}
-
-			err = event_source.InitializeTopic(ctx, client, event_source.TopicOptions{ProjectID: project})
-			if err != nil {
-				return err
-			}
-
-			fmt.Println("topics ensured")
-
-			if cmd.Bool("topics-only") {
-				return nil
-			}
-
-			subs := declaredSubscriptions()
-
-			err = event_source.InitializeSubscriber(ctx, client, subs, event_source.SubscriberOptions{
-				ProjectID:     project,
-				PushBaseURL:   cmd.String("push-base-url"),
-				ProjectNumber: int64(cmd.Int("project-number")),
+			return ensureEvents(ctx, os.Stdout, client, eventSetup{
+				project:       project,
+				pushBaseURL:   cmd.String("push-base-url"),
+				projectNumber: int64(cmd.Int("project-number")),
+				topicsOnly:    cmd.Bool("topics-only"),
 			})
-			if err != nil {
-				return err
-			}
-
-			for _, sub := range subs {
-				fmt.Printf("  %s on %s\n", sub.ID, sub.Topic)
-			}
-
-			fmt.Println("subscriptions ensured")
-
-			// Reported, never deleted. One is usually a consumer somebody else owns, or a rename
-			// mid-flight — and deleting it would discard everything undelivered on it, silently.
-			extra, err := event_source.UndeclaredSubscriptions(ctx, client, subs, project)
-			if err != nil {
-				return err
-			}
-
-			for _, name := range extra {
-				fmt.Printf("⚠ not declared here, left alone: %s\n", name)
-			}
-
-			return nil
 		},
 	}
+}
+
+// eventSetup is what `pubsub ensure` is asked to make. The zero value past the project is the
+// emulator's: pull subscriptions, no IAM, topics and subscriptions both.
+type eventSetup struct {
+	project       string
+	pushBaseURL   string
+	projectNumber int64
+	topicsOnly    bool
+}
+
+// ensureEvents is `pubsub ensure` — shared with `dev run` and `dev setup`, so the dev stack cannot make
+// a different set of topics from the one the command makes.
+func ensureEvents(ctx context.Context, out io.Writer, client *pubsub.Client, setup eventSetup) error {
+	topics, err := event_source.DeclaredTopics()
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(out, "project %s — %d topics declared by the proto:\n", setup.project, len(topics))
+
+	for _, topic := range topics {
+		fmt.Fprintf(out, "  %s  (+ %s.dlq, %s.dlq.triage)\n", topic, topic, topic)
+	}
+
+	err = event_source.InitializeTopic(ctx, client, event_source.TopicOptions{ProjectID: setup.project})
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out, "topics ensured")
+
+	if setup.topicsOnly {
+		return nil
+	}
+
+	subs := declaredSubscriptions()
+
+	err = event_source.InitializeSubscriber(ctx, client, subs, event_source.SubscriberOptions{
+		ProjectID:     setup.project,
+		PushBaseURL:   setup.pushBaseURL,
+		ProjectNumber: setup.projectNumber,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, sub := range subs {
+		fmt.Fprintf(out, "  %s on %s\n", sub.ID, sub.Topic)
+	}
+
+	fmt.Fprintln(out, "subscriptions ensured")
+
+	// Reported, never deleted. One is usually a consumer somebody else owns, or a rename
+	// mid-flight — and deleting it would discard everything undelivered on it, silently.
+	extra, err := event_source.UndeclaredSubscriptions(ctx, client, subs, setup.project)
+	if err != nil {
+		return err
+	}
+
+	for _, name := range extra {
+		fmt.Fprintf(out, "⚠ not declared here, left alone: %s\n", name)
+	}
+
+	return nil
 }
 
 // pubsubRedriveCommand brings dead-lettered events back.
@@ -203,6 +225,20 @@ func declaredSubscriptions() []event_source.Subscription {
 			ID:     "settlement-fold",
 			Topic:  "settlement-log-posted",
 			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
+		},
+		// supplier_service's fold — mirrors supplier_service.FoldSubscription. A supplier's figures, folded from the
+		// restock's accept (the-report-is-processed-like-settlement); its replay SEEKS this subscription.
+		{
+			ID:     "supplier-fold",
+			Topic:  "restock-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
+		},
+		// selling_service's shop-access listener — mirrors selling_service.MemberRemovedSubscription
+		// (removing-a-member-drops-their-shop-access).
+		{
+			ID:     "selling-member-removed",
+			Topic:  "member-removed",
+			Filter: `attributes.event_type = "warehouse.events.v1.MemberRemoved"`,
 		},
 		// financial_account_service's withdrawal listener — mirrors financial_account_service.WithdrawalSubscription.
 		// The SAME topic as settlement's fold, its OWN subscription: each consumer keeps its own delivery state.

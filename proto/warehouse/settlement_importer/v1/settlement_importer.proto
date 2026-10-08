@@ -117,10 +117,10 @@ message TiktokSettlementImportRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -154,10 +154,10 @@ message ShopeeSettlementImportRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -186,10 +186,10 @@ message UploadedFileListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -257,10 +257,10 @@ message UploadedFileByIdsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -364,10 +364,10 @@ message UploadedFileLineListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 

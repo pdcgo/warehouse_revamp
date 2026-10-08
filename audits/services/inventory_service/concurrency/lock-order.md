@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-08-20, adding the SETTLEMENT tables (`StockAdjust`'s damage reimbursement) |
+| Last swept | 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -29,7 +29,7 @@ them in a different relative order.
 | --- | --- | --- |
 | `RestockRequestFulfill` | `restock_requests` → `restock_request_items` → `stock_levels` → `stock_shelf_batches` → **settlement** | items `ORDER BY id ASC` |
 | `RestockRequestCancel` | `restock_requests` → `restock_request_items` | items `ORDER BY id ASC` |
-| `RestockRequestUpdate` | `restock_requests` → `restock_request_items` | items `ORDER BY id ASC` |
+| `RestockRequestUpdate` | `restock_requests` → 🔴 *supplier_service call* → `restock_request_items` | items `ORDER BY id ASC` · see [below](#no-lock-across-a-call-to-another-service) |
 | `StockAdjust` | `stock_levels` (one row) → `stock_shelf_batches` → **settlement** (damage/lost/found only) | single product — n/a |
 | **`StockOpname`** | `stock_levels` (n rows) → `stock_shelf_batches` | **`ORDER BY product_id ASC`, sorted in the handler** |
 | `StockPick` | `stock_levels` (n rows) → `stock_shelf_batches` | `ORDER BY (rack_id IS NOT NULL), r.code` — drain order |
@@ -76,6 +76,18 @@ inventory row they touch, which is what keeps the hierarchy a line rather than a
   and touches no inventory table, so it cannot close the cycle — and any future handler wanting both
   must take inventory first.
 
+## No lock across a call to another service
+
+Since the-supplier-gets-its-own-service, a restock's supplier check is an RPC (`SupplierChecker`), no longer a
+local read. Where that call sits relative to the locks:
+
+| Handler | Call | Locks held during it |
+| --- | --- | --- |
+| `RestockRequestUpdate` (supplier changed) | ✅ **before** the transaction (`askSupplier`); the answer is judged under `FOR UPDATE` | none — fixed 2026-10-07 ([RestockRequestUpdate.md](RestockRequestUpdate.md)); it was the request row |
+| `RestockRequestCreate` | ✅ **before** `Transaction` | none, and no pinned connection — proved |
+
+The rule this adds to the hierarchy: **a call to another service happens before the first lock, or after commit.**
+
 ## What is proved, and by what
 
 | Claim | Proof |
@@ -83,9 +95,12 @@ inventory row they touch, which is what keeps the hierarchy a line rather than a
 | Two opnames of one shelf with **opposite line orders** do not deadlock | `TestRace_StockOpname_OppositeLineOrdersDoNotDeadlock` — n=8, ×15 runs, 0 deadlocks |
 | Two opnames that **disagree** leave the shelf on one counted figure, and the ledger reconciles | `TestRace_StockOpname_TheLastCountWinsCleanly` — `seed + Σdelta = final` |
 | The `stock_levels` `FOR UPDATE` **actually holds**, and the waiter re-reads after it | `TestInterleave_StockOpname_TheShelfLockHolds` — `⏸ blocked, released on the other commit`, B reads A's 45 not the stale 50 |
+| `RestockRequestUpdate` does NOT hold the request across its supplier_service call (fixed) | `TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip`: Cancel 56 ms on an 800 ms call · before the fix, 817 ms |
+| `RestockRequestCreate` holds no transaction during its call | `TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheSupplierCall`: 0 idle in transaction, 0 locks |
 
 ```sh
 go test -tags raceaudit -run 'StockOpname' -v ./backend/services/inventory_service/inventory_v1/
+go test -tags raceaudit -run 'RestockRequest' -v ./backend/services/inventory_service/inventory_v1/
 ```
 
 ## Not proved

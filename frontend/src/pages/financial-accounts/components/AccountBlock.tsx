@@ -25,6 +25,7 @@ export function AccountBlock({
   reconciledAt,
   teamId,
   canMove,
+  canTransfer,
   shopNames,
   shopOf,
   onOpen,
@@ -35,6 +36,8 @@ export function AccountBlock({
   reconciledAt: { seconds: bigint } | undefined;
   teamId: bigint;
   canMove: boolean;
+  /** Transfer and Capital are offered — the role may move money (the-warehouse-admin-equals-the-owner-except-money). */
+  canTransfer: boolean;
   shopNames: string[];
   shopOf: (shopId: bigint) => { name: string; marketplace: Marketplace } | undefined;
   onOpen: () => void;
@@ -83,7 +86,7 @@ export function AccountBlock({
             </Text>
           )}
         </HStack>
-        {canMove && <AccountActions teamId={teamId} account={account} balance={balance} shopNames={shopNames} />}
+        {canMove && <AccountActions teamId={teamId} account={account} balance={balance} shopNames={shopNames} canTransfer={canTransfer} />}
       </Flex>
 
       {/* An unknown account is never checked against a bank — the table's "—" says so in a column, but alone on a

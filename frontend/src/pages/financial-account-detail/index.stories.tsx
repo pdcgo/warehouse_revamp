@@ -41,7 +41,11 @@ const meta = {
   title: "Pages/FinancialAccount/Account",
   component: routedAt(BCA_OPS.id),
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
-  beforeEach: asTeam(12n),
+  // Toko Melati's Admin — a selling team's, who moves its money.
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_ADMIN)();
+  },
 } satisfies Meta;
 
 export default meta;
@@ -341,7 +345,7 @@ export const ACashBoxIsCounted: Story = {
 
 // seeing-is-team-wide-moving-is-admin-and-up: a CS reads the statement and moves nothing.
 export const AMemberReadsButDoesNotMove: Story = {
-  beforeEach: asRole(Role.TEAM_CUSTOMER_SERVICE),
+  beforeEach: asRole(Role.SELLING_CS),
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
 

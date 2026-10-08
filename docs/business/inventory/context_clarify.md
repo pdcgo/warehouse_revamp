@@ -3,6 +3,11 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> **Re-examined after the restock answers in chat (2026-10-07).** 🆕 [Q13](#question): *what is an
+> `inventory_transaction`*. Your *Still Confused* section leaves it open, and every ledger write waits on it. ⚠ **Not yet
+> re-examined:** your §Placements and §Batches, [batch_ledger.md](./batch_ledger.md) and
+> [placement_ledger.md](./placement_ledger.md). This file predates all four, and that pass is next.
+
 > **Merged.** The stock context now lives inside inventory
 > ([stock-merges-into-inventory](./context_decision.md#stock-merges-into-inventory)). Everything below was
 > written against `stock/context.md` and still applies verbatim: §Stock loss and §How Warehouse Team
@@ -22,7 +27,7 @@ this file is always the current open set.
 > **Re-examined again.** `stock_context.md` did not move this round, but
 > [user_context.md](../user/context.md) arrived and it lands squarely here: the
 > liability in §Stock loss 2 belongs to a **team**, and the acts that trigger it are now performed by a
-> named **person** — a Packer. Which role may count, declare a loss, or accept a delivery is asked in
+> named **person** — a Staff member. Which role may count, declare a loss, or accept a delivery is asked in
 > [user_context_clarity](../user/context_clarify.md#question); what changes *here* is that
 > [Critique 2](#critique) and [Critique 7](#critique) are no longer abstract.
 
@@ -128,6 +133,22 @@ Three phases currently have no bearer, and each of them is a real event that hap
 | goods expire on the shelf | ? | open — expiry is not mentioned anywhere in the requirement set |
 | a unit is lost in transit between two warehouses | ? | open, [Critique 6](#critique) |
 
+### Who confirms a count — the separation-of-duty picture (moved from the user context)
+
+```mermaid
+flowchart LR
+  P["a Staff member counts a shelf"] --> S["the count is 3 short"]
+  S --> L["the WAREHOUSE TEAM owes the owning selling team the COGS"]
+  L --> Q{"who confirmed the count?"}
+  Q -->|"nobody — today, one call records it and posts it"| R["the team pays for one person's arithmetic"]
+  Q -->|"the SAME human — a manager alone, or a root-team Admin"| R2["a rule that reads as two people and is one"]
+  Q -->|"a different human"| G["a liability somebody agreed to"]
+```
+
+**→ Recommend** state the rule against the **person**, not the role: *the human who records may not be the
+human who confirms.* One role per team does not do it: a manager may count and confirm alone, and the root team
+acts in every team. A check of recorder against confirmer closes both, and it costs one comparison.
+
 ---
 
 ## Critique
@@ -135,12 +156,12 @@ Three phases currently have no bearer, and each of them is a real event that hap
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **[in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) has no tolerance and no dispute path.** Every count in a real warehouse differs from the book by a little. As written, each of those differences is a debt on the warehouse the moment somebody counts — and with a [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) now able to block a team, an accumulation of small counting noise can stop a warehouse trading. | Keep the rule (it is right — a count with no consequence stops being done carefully), but add the two things that make it survivable: **a stated tolerance or none, said explicitly**, and **a dispute window** in which the warehouse can recount before the entry is final. I would say **no tolerance, and a 24-hour recount window** — exactness with a chance to correct beats a fudge factor nobody can audit. |
-| **2** | **Nothing says who may CALL an opname — nor, now that roles exist, who may PERFORM one.** If a stock owner can demand a count of their own goods at will, they can generate warehouse liabilities on demand. If only the warehouse may count itself, nobody independent ever verifies the goods. And [user_context.md](../user/context.md) gives the warehouse a **Packer**, so the person whose handling caused a shortfall may also be the person who records it — the team then pays for one person's arithmetic, unchecked. | **The warehouse counts on a schedule it owns, and an owner may REQUEST a count** which the warehouse must perform within a stated time — the trigger stays with the party that bears the result, and the owner still gets a real check. **Grain: a shelf, on a rolling cycle**, because a whole-building count needs the building shut. And **recorder ≠ confirmer, stated against the HUMAN and not the role** — `user_context.md` §General lets one person hold two roles, so a role-level rule can be satisfied by one pair of hands ([user_context_clarity Critique 2](../user/context_clarify.md#critique)). |
+| **2** | **Nothing says who may CALL an opname — nor, now that roles exist, who may PERFORM one.** If a stock owner can demand a count of their own goods at will, they can generate warehouse liabilities on demand. If only the warehouse may count itself, nobody independent ever verifies the goods. And [user_context.md](../user/context.md) gives the warehouse **Staff**, so the person whose handling caused a shortfall may also be the person who records it — the team then pays for one person's arithmetic, unchecked. | **The warehouse counts on a schedule it owns, and an owner may REQUEST a count** which the warehouse must perform within a stated time — the trigger stays with the party that bears the result, and the owner still gets a real check. **Grain: a shelf, on a rolling cycle**, because a whole-building count needs the building shut. And **recorder ≠ confirmer, stated against the HUMAN and not the role** — `user_context.md` §General lets one person hold two roles, so a role-level rule can be satisfied by one pair of hands (user Critique 2, since moved here as [Q12](#question)). |
 | **3** | **"loss/opname" merges two different events into one liability.** A *witnessed* loss — someone drops a box — is a fact with an actor, a time and often a photograph. An *opname shortfall* is the absence of an explanation: the goods went at some unknown moment, possibly before this warehouse ever had them. Charging both identically is defensible, but it makes the more common one impossible to investigate, because nothing distinguishes them afterwards. | Record them as **two kinds** even though they price the same: **loss** (witnessed, has an actor and a cause) and **shortfall** (found by counting, cause unknown). A warehouse whose shortfalls are rising has a different problem from one whose losses are, and the doc should let you see which. |
 | **4** | **Nothing says what happens to a broken unit — or a found one — after the money is settled.** The warehouse has reimbursed the owner's Unit Price. The object still exists: does the warehouse keep it, scrap it, or sell it? And when a written-off unit is found again ([balance cause 5](../balance/context_clarify.md#the-six-causes-and-which-direction-each-pushes)), does it return to the owner's shelf? | Say it: **once reimbursed, the object is the warehouse's** — it paid for it. That also makes found-back coherent: the unit going *back* to the owner is exactly why the money reverses. A broken-and-reimbursed unit the warehouse then sells is its own income, not the owner's. |
 | **5** | **"Broken" and "lost" are used as one phrase everywhere and they are different events.** A broken unit is here and unsellable — someone is holding it. A lost unit is not here, and only a lost unit can be *found back*. | Separate them in the vocabulary. **Broken** = present, unsellable, something must be decided about the object ([Critique 4](#critique)). **Lost** = absent, and it may come back. Only the second needs a reversal path. |
 | **6** | **In-transit stock between warehouses has no owner of the risk.** Goods leave warehouse 1 and have not arrived at warehouse 2 — they are in nobody's custody, so [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) does not reach them. A transfer is currently the one way to lose goods with no liability. | Name **in transit** as a place, and put the risk on the **sending** warehouse until receipt is confirmed. |
-| **7** | **Two Packers at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
+| **7** | **Two Staff at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
 | **8** | **Expiry is never mentioned in the requirement set.** If anything you sell perishes, it is a loss with a date on it that nobody is watching, and FIFO stops being an accounting rule and becomes a picking instruction. | Say whether **anything you sell expires**. If yes, expiry belongs here as a first-class fact and it changes how the crew picks. If no, one line closes a whole area. |
 | **9** | **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
 | **10** | **A delivery that is both SHORT and DAMAGED can only record one of the two.** `Is Any Lost → yes → Input Losts → Calculate valid Qty` — the "yes" branch **skips the broken check entirely**. Only a delivery with *no* losses ever reaches *Is Any Broken*. Both happen in one delivery routinely: a carton missing and another crushed. Under the drawn flow the crushed one is never recorded, so it becomes stock the system believes is sellable — and the difference surfaces later as an unexplained shortfall, which under [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) is a **warehouse liability** for goods that arrived broken. | Make the two checks **sequential, not exclusive** — `Input Losts → Is Any Broken`. One arrow again, and it stops the warehouse inheriting a supplier's damage. |
@@ -196,6 +217,60 @@ Three phases currently have no bearer, and each of them is a real event that hap
     count in between finds the unit still on the rack and the recount adds it back, and it can be sold twice.
     **→ I recommend two quantities: a take lowers AVAILABLE, and `on_hand` drops when the unit is picked**, so a
     count corrects `on_hand` and can never undo a take.
+
+12. **When a count or a loss changes what one team owes another, who has to agree before it posts?**
+    ➡ Moved from [user Q3](../user/context_clarify.md#question) (2026-10-02). It is the confirm half of
+    [Critique 2](#critique). Five parts, each its own yes or no:
+
+    | | Part | Built today | → I recommend |
+    | --- | --- | --- | --- |
+    | **12a** | **Which acts need a second person?** | none — every count and adjustment posts in the call that records it | **every count or adjustment that changes a debt**: short, damaged, lost, and *found*, because a false *found* erases a debt. A count that matches posts at once, so the usual case costs nothing |
+    | **12b** | **Who records, who confirms?** | only the warehouse's Owner or Admin may count or adjust, and Staff are refused, though the proto itself says Staff are the ones at the racks | **Staff or a manager records, the warehouse's Owner or Admin confirms.** Counting is floor work, and your Staff line does not list it yet |
+    | **12c** | **May the confirmer be the human who recorded?** | yes — nothing compares the two | **No, never.** This is the half one role per team does not give you |
+    | **12d** | **May Root or the root team's Admin confirm?** | they can do anything in any team. The access check already knows when someone got in this way (an *override*), but only liability's terms log records it | **Root and the Administrator may** — [root-can-do-anything](../user/context_decision.md#root-can-do-anything), [the-administrator-can-do-anything](../user/context_decision.md#the-administrator-can-do-anything). **→ Recorded as an override, and still never their own record.** |
+    | **12e** | **What does the shelf show while a count waits?** | nothing ever waits | **The old figure, with the pending count beside it.** A count never posts by timeout, because a debt nobody agreed to is what this exists to stop. A rejected count is counted again |
+
+    ```mermaid
+    flowchart LR
+      C["Staff or a manager counts shelf A-01-3"] --> V{"does it match?"}
+      V -->|"yes"| P["posts now — no debt moves"]
+      V -->|"no — short, damaged, lost or found"| W["PENDING — the shelf keeps its old figure"]
+      W --> K{"who confirms?"}
+      K -->|"the warehouse's Owner or Admin, another human"| OK["posts — the debt is created"]
+      K -->|"the human who counted"| X["refused"]
+      W -->|"rejected"| R["counted again"]
+    ```
+
+    ⚠ Your receiving flow runs **one actor end to end** — accept, input
+    losses, input broken, set placements — with no second party. For a **restock** that is now decided: Staff accepts
+    it alone ([staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock)), and 🔄 *(2026-10-07)* so
+    does any member of the warehouse team ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)).
+    A loss at receiving is the selling team's, so it creates no warehouse debt, and Q12 is about counts and losses **in custody**.
+
+13. 🆕 **What is an `inventory_transaction`?** Your *Still Confused* section lists `inventory_transactions` and
+    `inventory_transaction_items` with only an `id`. [batch_ledger.md](./batch_ledger.md) points every `batches` and
+    `batch_logs` row at one, while [placement_ledger.md](./placement_ledger.md)'s `product_placement_logs` points at none.
+    [Technical stock §ERD](../../technical/stock/design.md#stock-entity-relationship) gives it a `type` and a `status`.
+    **Every write to either ledger waits on this.** It is also how a log row names its restock
+    ([restock Q11b](./restock_clarify.md#question)), and how a mistake is reversed
+    ([§Cancelation](../../technical/stock/design.md#inventory-transaction-cancelation)).
+
+    | | Part | → Recommend |
+    | --- | --- | --- |
+    | **13a** | what one row is | **one act in the building**: a restock accept, an order take, a move, a count, a transfer leg, a revaluation |
+    | **13b** | its columns | `type` · `status` · `ref_type` + `ref_id` (restock 42, order 9001) · `warehouse_id` · `team_id` · `actor_id` · `created_at` |
+    | **13c** | who points at it | **every** `batch_logs` **and** `product_placement_logs` row, so both ledgers' rows for one act share an id. *Batch change = shelf change, per product* is then checkable per transaction |
+    | **13d** | `inventory_transaction_items` | **drop it.** The log rows are already the lines, and a third copy can disagree with them. *What were they meant to hold?* |
+
+    ```mermaid
+    flowchart TB
+      A["an act - restock accept, take, move, count"] --> T["inventory_transactions - type, status, ref"]
+      T --> BL["batch_logs - money, FIFO, expiry"]
+      T --> PL["product_placement_logs - which shelf"]
+      BL --> B["batches"]
+      PL --> P["product_placements"]
+      B -.->|"sum of counts equal, per warehouse and product"| P
+    ```
 
 ---
 

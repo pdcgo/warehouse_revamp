@@ -52,7 +52,7 @@ func (s *Service) TeamAccessList(
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 
-		if access.RootRole != role_basev1.Role_ROLE_ROOT && access.RootRole != role_basev1.Role_ROLE_ADMIN {
+		if access.RootRole != role_basev1.Role_ROLE_ROOT && access.RootRole != role_basev1.Role_ROLE_ADMINISTRATOR {
 			return nil, connect.NewError(connect.CodePermissionDenied,
 				errors.New("listing another user's teams requires root or admin"))
 		}
@@ -102,7 +102,6 @@ func (s *Service) TeamAccessList(
 		item := &userv1.TeamAccessItem{
 			TeamId: membership.TeamID,
 			Role:   role_basev1.Role(membership.Role),
-			Alias:  membership.Alias,
 		}
 
 		team, found := teams[membership.TeamID]

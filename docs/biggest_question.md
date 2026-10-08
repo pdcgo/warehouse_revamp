@@ -14,12 +14,629 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in two
 > docs**, and merging those is most of what this file is for.
 
-**162 open questions across 29 files.** The seven below are shown; **155 are not** — they are not
+**181 open questions across 32 files.** The seven below are shown; **174 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▲ **+18 this round — `dev` merged with the order design line** (2026-10-02): [technical/order/design_clarify.md](technical/order/design_clarify.md#question) arrives with its 18 open questions (the order list, detail, draft and warehouse screens' asks of the contract). Counted as a delta, not re-ranked: none was in the seven on that line either. The merge also surfaced
-one contradiction, not counted: the order screens were built on eight statuses, and `dev` had added a ninth,
-`return_completed` ([recorded here](technical/order/design_clarify.md#the-order-screens-count-eight-statuses-and-the-owner-added-a-ninth)).
+▼ **−1 this round — product Q6, restock Q12 and Q6a answered in chat; inventory Q13 opened — #4 is REPLACED** (2026-10-07):
+the courier's ask stays **in** the unit price, against my recommendation
+([the-couriers-ask-is-in-the-unit-price](business/product/context_decision.md#the-couriers-ask-is-in-the-unit-price)), so the old #4
+closes; what survives of it is a build defect, the integer floor in `freightPerUnit`. Any warehouse member counts received and broken
+per line ([any-warehouse-member-counts-what-arrived](business/inventory/restock_decision.md#any-warehouse-member-counts-what-arrived)), and a
+product appears once per restock ([a-product-appears-once-per-restock](business/inventory/restock_decision.md#a-product-appears-once-per-restock)),
+both as recommended. **#4 is now [inventory Q13](business/inventory/context_clarify.md#question)**: what an `inventory_transaction` is.
+Every write to the owner's two new ledgers waits on it.
+
+▲ **+1 the round before — supplier Q19, found by the performance audit** (2026-10-07): the Supplier Report's window has no
+limit, and a ranking reads every row in it — one year 90 ms after the audit's fixes, a growing history slower every day.
+Recommend a 366-day cap, a monthly rollup only on request ([supplier Q19](business/supplier/context_clarify.md#question)). None of the seven moves.
+
+▼ **−2 the round before — supplier Q17 and Q18 answered, as recommended — supplier has nothing open** (2026-10-07): the figures'
+screens are accepted and built for real ([the-figures-screens-are-accepted](business/supplier/context_decision.md#the-figures-screens-are-accepted)); ranked by rate, a supplier needs 50 units
+([rate-ranking-needs-50-units](business/supplier/context_decision.md#rate-ranking-needs-50-units)). Two gaps of the BUILT restock decided with them: a line's figures go to the restock's supplier
+until lines name a store, and past accepts are backfilled once. **#2** gains a consumer — the supplier fold is a second
+broker-only path. None of the seven moves.
+
+▼ **−1 the round before — supplier Q16 answered, as recommended** (2026-10-07): Discover Supplier gets a Team filter — the team that
+keeps the supplier, sent as `owner_team_id` ([discover-filters-by-the-team-that-keeps-it](business/supplier/context_decision.md#discover-filters-by-the-team-that-keeps-it)). The same message gave the
+Supplier Report a search and made the figures' team filter a selling-team picker, against my two buttons
+([the-team-filter-picks-any-selling-team](business/supplier/context_decision.md#the-team-filter-picks-any-selling-team)) — one reading of supplier Q17, which stays open for the other four. None of the seven moves.
+
+▲ **+2 the round before — the supplier's figures prototyped** (2026-10-07): the Statistics tab on both supplier details and the
+Supplier Report page, on sample figures. [Supplier Q17](business/supplier/context_clarify.md#question) asks to accept them;
+[supplier Q18](business/supplier/context_clarify.md#question) — ranked by broken rate, a supplier with two units tops one
+with a thousand: recommend a 50-unit minimum. None of the seven moves.
+
+▲ **+1 the round before — supplier_service built, one question found on the way** (2026-10-07): the accepted Discover
+screen searched the owning team's name, and supplier_service knows only the team's id — [supplier Q16](business/supplier/context_clarify.md#question),
+recommend a Team filter. None of the seven moves.
+
+▼ **−2 the round before — supplier Q10c and Q15d answered, as recommended — supplier has nothing open** (2026-10-07):
+`custom` reads Other ([custom-is-labelled-other](business/supplier/context_decision.md#custom-is-labelled-other)); a figure wrong past the replay window is corrected in the six columns by an
+adjustment event, no `system_adjustment` ([a-late-correction-lands-in-the-six-columns](business/supplier/context_decision.md#a-late-correction-lands-in-the-six-columns)). Left in supplier: the owner's edits (the store's `deleted_at`,
+the link's `last_restocked_at`, Product Grouped, analytic's stray report box, architecture's service list) and two
+parked points. `supplier_service` is being built. None of the seven moves.
+
+▼ **−1 the round before — supplier Q14 answered, as recommended** (2026-10-07): a Statistics tab on both supplier details and a
+Supplier Report page, Product Grouped added ([the-figures-are-a-statistics-tab-and-a-supplier-report](business/supplier/context_decision.md#the-figures-are-a-statistics-tab-and-a-supplier-report)); every selling team sees every team's figures
+([every-selling-team-sees-every-teams-figures](business/supplier/context_decision.md#every-selling-team-sees-every-teams-figures)). Supplier has two left — Q10c (*Other* or *Custom*) and Q15d (the adjustment past 30 days). None of the seven
+moves.
+
+▼ **−1 the round before — supplier Q13 answered in chat** (2026-10-07): every figure is read at the accept ([each-figure-is-read-at-the-accept](business/supplier/context_decision.md#each-figure-is-read-at-the-accept)) —
+`restock_count` is the units **accepted** as good stock, against my *units ordered*, so lost and broken sit beside it;
+the line's price, the accept day and *short in an accepted parcel* as recommended. Restock Q10c's payload follows: the
+accepted count. None of the seven moves.
+
+▼ **−1 the round before — supplier Q10a, b and Q11 answered, all as recommended** (2026-10-07): the CRUD prototype is
+**accepted** ([the-crud-prototype-is-accepted](business/supplier/context_decision.md#the-crud-prototype-is-accepted)), so `supplier_service` is built next; today's suppliers move by a
+`san` command with their ids, deleted ones too, and the inventory drop waits for a later pass
+([existing-suppliers-move-with-their-ids](business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)). Q11, *"we are linking at restock"*, confirmed as at accept: every line
+naming a store links its own product ([every-accepted-line-links-its-own-product](business/supplier/context_decision.md#every-accepted-line-links-its-own-product)), a store's delete is soft too
+([a-store-delete-is-soft-too](business/supplier/context_decision.md#a-store-delete-is-soft-too)), and a link carries `last_restocked_at` ([a-link-remembers-its-last-restock](business/supplier/context_decision.md#a-link-remembers-its-last-restock)).
+Q10c — *Other* or *Custom* — stays open: a "yes" does not pick between two. One contradiction: the two new fields are not
+in the owner's table list. None of the seven moves.
+
+🔄 **±0 the round before — supplier delete is SOFT, in chat** (2026-10-07): *"we soft delete it and still need that for valid
+analytic"* — a deleted supplier leaves every list and picker, and every past restock and figure still reads its name
+([a-deleted-supplier-is-kept-for-its-figures](business/supplier/context_decision.md#a-deleted-supplier-is-kept-for-its-figures)). It reverses Q8's hard delete — the old decision is renamed
+[no-province-or-city](business/supplier/context_decision.md#no-province-or-city) — and answers supplier Q15c. Supplier
+Q11c is re-asked: **is a store's delete soft too** (recommend yes — the line names the store). Restock Q1 moves to **no
+snapshot**. Your table list gained `suppliers.deleted_at` the same pass, so the contradiction it raised is already resolved. Counts unchanged. None of the seven
+moves.
+
+🔄 **±0 the round before — supplier Q15a, b answered in chat** (2026-10-07): *"we adopt how settlement processing analytic"* —
+the report is folded and repaired as settlement's is: a lock, a dedup table, an atomic upsert; a broker replay within
+30 days, an adjustment beyond ([the-report-is-processed-like-settlement](business/supplier/context_decision.md#the-report-is-processed-like-settlement)).
+15b against my *re-fold from the restocks*. It leaves 🆕 **15d**: settlement's adjustment is a `system_adjustment`
+column this report lacks — recommend an adjustment event whose six deltas land in the six columns it corrects. 15c
+stays open. Supplier keeps Q15, so the count is unchanged. **#2** now covers the supplier report exactly as it covers
+settlement's — the same broker-only path. None of the seven moves.
+
+🔄 **±0 the round before — your supplier edit, the seventh** (2026-10-07): the daily report gains `team_id` and the key
+(day, supplier, product, team) — supplier Q12 closes, the team as recommended, **the store left out against it**
+([the-report-is-keyed-by-team-not-by-store](business/supplier/context_decision.md#the-report-is-keyed-by-team-not-by-store)).
+The new §Supplier Rule restates what is decided, and its *"choose per product in restock"* opens
+[restock Q12](business/inventory/restock_clarify.md#question): may one restock carry a product twice, from two stores —
+recommend **once**, since Staff cannot tell which identical shirt came from which store. −1 +1. None of the seven moves.
+
+🔄 **±0 the round before — supplier Q11 elaborated** (2026-10-07): each reading is drawn with its options — 11a the
+restocking team's product, the team shown, so one shirt bought by two teams is two rows · 11b every line naming a store,
+even all broken · 11c a store deleted before the accept: skip the line, acknowledge the event. 🆕 **11d** — a link never
+goes away, so a store that stopped selling an item lists it forever: recommend `last_restocked_at`, raised by every
+accept, and no removal yet ([supplier Q11](business/supplier/context_clarify.md#question)). A part, not a question — the
+count is unchanged. None of the seven moves.
+
+▲ **+5 the round before — your supplier edit, the sixth** (2026-10-07): §Whats defer became two sections and both deferrals
+end. An accepted restock writes each line's product to its channel — answering restock Q10a as recommended
+([restock-accepted-links-the-product-to-its-channel](business/supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel)) —
+and a supplier is measured per product per day in `supplier_product_daily_reports`, read like settlement's
+([a-supplier-is-measured-per-product-per-day](business/supplier/context_decision.md#a-supplier-is-measured-per-product-per-day)).
+Five questions open ([supplier clarify](business/supplier/context_clarify.md#question)): Q11 the link's three readings ·
+Q12 the report's key — add the restocking team and the store · Q13 what each number counts — units ordered, the line's
+price, the accept day, short units only · Q14 the screens — a Statistics tab, a Supplier Report page, every team sees
+every team's · Q15 the write side — settlement's dedup, and **repair by re-folding the restocks**, which are kept
+forever. One contradiction: analytic's diagram still draws a *Daily Supplier Report Table* of its own. My restock Q10c
+(*no price on the event*) is revised. The supplier report is the first later copy that **#2** warned about, and Q15b
+is #2's question for it — but none of the seven moves: the link and the report wait on the restock's accept, which is
+not built.
+
+▲ **+2 the round before — your restock §Restock Accepted Flow** (2026-10-06): accept is one transaction — problem rows, the
+batch with its computed price, the placement ledger — and a *Restock Accepted* event to `supplier_service` after commit
+([accept-is-one-transaction-then-an-event](business/inventory/restock_decision.md#accept-is-one-transaction-then-an-event)).
+It settles the shelf half of *two-drawings-of-receiving*. Two questions open ([restock clarify](business/inventory/restock_clarify.md#question)):
+Q10, who hears the event — does `supplier_service` write the product-to-channel link (un-parking a supplier deferral), and
+the courier's ask goes **inside** the transaction, not on the event · Q11, one batch per line, and every ledger row names
+its restock. None of the seven moves — the courier's ask in the price is still **#4**.
+
+▲ **+7 the round before — restock.md, the first full pass** (2026-10-06): your restock flow and its three tables, read against
+the build and every decision that touches a restock ([restock clarify](business/inventory/restock_clarify.md#question)).
+Your edit putting `supplier_channel_id` on each line answered *restock-has-no-supplier*, against my *one supplier per
+restock* ([a-line-names-the-channel-it-was-bought-from](business/inventory/restock_decision.md#a-line-names-the-channel-it-was-bought-from)).
+Seven questions open beside the two moved from supplier: a supplier with no channel (Q3), **a restock is one parcel**
+(Q4), who moves `arrived` / `lost` / `cancel` (Q5), **count what is in the box**, with the short ones renamed `missing`
+(Q6), the resi (Q7), the line total typed (Q8), and `restock_logs` (Q9). Three contradictions: two drawings of receiving,
+the paid-from account and the noted cost lines missing from the tables, and `lost` meaning three things with two payers.
+Q5 and Q6 shape the restock's screens, so they block its prototype — but not a whole context, and the money question
+under them is already **#4**. None of the seven moves.
+
+▼ **−1 the round before — user Q31 answered, all four as recommended** (2026-10-06): a phone is saved as `+62…`, 8 to 15 digits,
+starting with 0 or a country code, and the migration rewrites stored ones and stops on a shared number
+([a-phone-is-saved-in-international-form](business/user/context_decision.md#a-phone-is-saved-in-international-form)). The user
+context has nothing open. None of the seven moves.
+
+🔄 **±0 the round before — supplier Discover pages, and search and pages on both tabs** (2026-10-06): your preview notes, all built — the Channels tab searches, filters by type and pages; the Products tab searches and pages; **Discover Suppliers** and its detail search every team's suppliers, independent of My Supplier ([discover-searches-every-teams-suppliers](business/supplier/context_decision.md#discover-searches-every-teams-suppliers)), on SAMPLE data until supplier_service builds the cross-team read. Supplier Q10 stays open. None of the seven moves.
+
+🔄 **±0 the round before — the supplier detail: Channels and Products tabs** (2026-10-06): your second preview note replaces my misread single tab — two horizontal tabs, **Channels** as one list with marketplace badges and **Products** as sample rows marked sample ([supplier-detail-has-channels-and-products-tabs](business/supplier/context_decision.md#supplier-detail-has-channels-and-products-tabs)), built. Supplier Q10 stays open. None of the seven moves.
+
+🔄 **±0 the round before that — the supplier prototype, your first preview note** (2026-10-06): the channels move under a horizontal **Channels** tab ([superseded-channels-are-a-horizontal-tab](business/supplier/context_decision.md#superseded-channels-are-a-horizontal-tab) — ⛔ a misread), built. Supplier Q10 stays open. None of the seven moves.
+
+▲ **+1 the round before — supplier Q10, the design_accept of the CRUD prototype** (2026-10-06): the supplier screens are built to the decided shape and wired to the running app through a translation step that makes up the code and the online type today's server still wants ([supplier Q10](business/supplier/context_clarify.md#question)). Preview in Storybook: Pages/Suppliers/Suppliers, Pages/Suppliers/SupplierDetail. Three parts — the screens, the move of the existing rows, *Other* vs *Custom*. It blocks the supplier context's backend only, so none of the seven moves.
+
+🔄 **±0 the round before — user Q31 elaborated into four parts** (2026-10-06): rewrite a phone on save (recommend yes,
+international form — back from *keep as typed*), refuse what is not a phone, a number with no 0 or +62 (recommend
+refuse), and numbers already stored. Found on the way: the forgot-password code is sent to the number as typed, and the
+SMS provider expects `+62…` ([user Q31](business/user/context_clarify.md#question)). The count is unchanged. None of the
+seven moves.
+
+🔄 **±0 the round before — user Q31 narrowed, the who filters and the search built** (2026-10-06): Q20d had already said a
+phone matches however it is written, and the Owners' exact search now compares numbers that way (`user_phone_key`). So
+[user Q31](business/user/context_clarify.md#question) asks only whether a number is rewritten when saved, and my
+recommendation moves to **keep as typed, unique on the key**. The count is unchanged. None of the seven moves.
+
+▼ **−2 the round before — supplier Q6, Q7, Q8 answered, Q2 moved to the restock** (2026-10-06): Q7 by your edit — `channel_type` is the shared marketplace list ([channel-type-is-the-marketplace-list](business/supplier/context_decision.md#channel-type-is-the-marketplace-list)). Q8 and Q6, each "yes" confirmed as the literal option and **both against my recommendation**: `province`, `city` and `deleted` are dropped, so **delete is a hard delete** ([no-province-or-city](business/supplier/context_decision.md#no-province-or-city) — 🔄 its hard delete reversed 2026-10-07), and the supplier gets **its own `supplier_service`** ([the-supplier-gets-its-own-service](business/supplier/context_decision.md#the-supplier-gets-its-own-service)). Q2 moved, in chat *"we talk further in restock context"*, to a new [restock clarify](business/inventory/restock_clarify.md#question): what a restock shows once its supplier is hard-deleted (recommend a name snapshot), and how the picker reaches another team's supplier. The supplier context has nothing open, and its CRUD pass is specified. None of the seven moves.
+
+🔄 **±0 the round before — your supplier edit, the fifth** (2026-10-06): §Whats defer puts *defining statistic* and *how we seed `supplier_channel_products`* off until later ([statistics-are-deferred](business/supplier/context_decision.md#statistics-are-deferred)). No question opens or closes — supplier still has Q2, Q6, Q7 and Q8. None of the seven moves.
+
+▼ **−1 the round before — your supplier edit, the fourth, and *basic CRUD first*** (2026-10-06): `code` is dropped, reversing the earlier *keep* ([the-supplier-has-no-code](business/supplier/context_decision.md#the-supplier-has-no-code)). The channels table keeps the name `supplier_channels`, typed by `channel_type`. A new `supplier_channel_products` table stores a supplier's products per channel, which closes supplier Q9. How a product gets linked is parked, in chat: *"we talk later … focus basic crud first"* ([linking-products-is-deferred](business/supplier/context_decision.md#linking-products-is-deferred)). Supplier Q8, Q7 and Q6 now decide the shape of the CRUD pass, and Q2a its delete. None of the seven moves.
+
+🔄 **±0 the round before — supplier Q3 answered, Q9 opened** (2026-10-06): another team sees everything — the supplier, its stores and its products, against my *never their purchases* ([another-team-sees-everything-of-a-supplier](business/supplier/context_decision.md#another-team-sees-everything-of-a-supplier)). A supplier's products come from restock lines, which also carry a price and a quantity, so [supplier Q9](business/supplier/context_clarify.md#question) asks which restocks count (recommend accepted only), whether the price shows (recommend the last unit price with its date, no quantities), and whether the discover search finds a product (recommend yes). None of the seven moves.
+
+🔄 **±0 the round before — your supplier edit, the third** (2026-10-06): §General 3 answers supplier Q1 — team B names team A's supplier on its own restock, **no copy**, against my recommendation. With it, §General 4 (only a selling team has suppliers) and the two pages, manage and discover, are recorded ([supplier decisions](business/supplier/context_decision.md)). Q2 re-opens: A's edit and delete reach B's restocks (recommend accept, delete soft), and B's restock picker searches every selling team's suppliers, its own first. None of the seven moves.
+
+▼ **−1 the round before — your supplier §Table Must Have edit** (2026-10-06): `team_id` replaces `created_by_team_id`, so each
+supplier is one team's again. Q4 (the code stays) and Q5 (a website is a `custom` marketplace) are answered by the edit and
+recorded ([supplier decisions](business/supplier/context_decision.md)). Q2 folds into Q1, which is re-asked as **copy or
+reference** — my recommendation changed to **copy**, and with it Q6 to *stay in `inventory_service`*. Two new questions: Q7, your
+five `marketplace_type` values against the shared list of seven, and Q8, the built `province`, `city` and `deleted`, which your list
+does not have. None of the seven moves.
+
+▲ **+1 the round before — user Q31, how phone numbers compare** (2026-10-06): one account per phone needs a unique index,
+and nothing normalises numbers — `0812…` and `+62 812…` would pass as two. Recommend storing every number in
+international form, Indonesia by default ([user Q31](business/user/context_clarify.md#question)). None of the seven moves.
+
+▲ **+6 the round before — a new context, supplier, first pass** (2026-10-06): your new
+[supplier/context.md](business/supplier/context.md) adds *"selling team can discover / search other team suppliers"* and
+`created_by_team_id`. Those turn a team's private address book into one company-wide directory, and the build is strictly
+team-scoped. Six questions ([supplier Q1–Q6](business/supplier/context_clarify.md#question)): shared row or copy (recommend
+shared, plus each team's own list) · who edits, and delete removes it from MY list only · what another team sees (the record,
+never their prices) · drop `code` · a one-off link is not a supplier · its own `supplier_service`. Two contradictions: the
+supplier has three homes in your docs, and [restock.md](business/inventory/restock.md)'s tables have no supplier. Architecture's
+row 10 now points to supplier Q6. They block the supplier context's own next step, and no other context's, so none of the seven
+moves.
+
+▼ **−1 the round before — user Q30 answered: all three, as recommended** (2026-10-06): an erased account is final, `erased`
+and digits are reserved, and erase deletes the photo files
+([an-erased-account-is-final](business/user/context_decision.md#an-erased-account-is-final)). None of the seven moves.
+
+▲ **+1 the round before — user Q30, what erase leaves open** (2026-10-06): the role column, the membership log and erase are
+built; erase is built to its spec, and building it found three things the spec does not settle — *Erased* is not
+final (Root can unsuspend it and set a password), `erased<id>` can be taken first, and the photo file stays in storage
+([user Q30](business/user/context_clarify.md#question)). None of the seven moves.
+
+▼ **−1 the round before — user Q29 answered: pass 1 is accepted** (2026-10-06), both parts as recommended
+([the-pass-1-prototype-is-accepted](business/user/context_decision.md#the-pass-1-prototype-is-accepted)). The user context
+has nothing open again; its next step is `TeamCreate` granting the named Owner. None of the seven moves.
+
+▲ **+1 the round before — user Q29, the design_accept of pass 1** (2026-10-06): the switcher's *All teams* for Root and the
+Administrator, the *not a member* strip, and Create Team's Owner, previewed in Storybook
+([user Q29](business/user/context_clarify.md#question)). The switcher and the strip already work against the real server;
+`TeamCreate` ignores the Owner until the backend pass. It blocks the user context's next build step only, so none of the
+seven moves.
+
+▼ **−1 the round before — user Q28 answered, as recommended** (2026-10-06): the switcher adds *All teams* under *My teams* —
+Root and the Administrator with full reach under a *not a member* strip, the admin team read-only
+([the-switcher-offers-every-team](business/user/context_decision.md#the-switcher-offers-every-team)). Two passes: the switcher with Q27's Create
+Team form now, the admin team's read-only half after. The user context has no open question. None of the seven moves.
+
+🔄 **±0 the round before — user Q28 elaborated** (2026-10-06) into five parts
+([user Q28](business/user/context_clarify.md#question)). Who sees every team and at what reach · *All teams* searched on
+the server under *My teams* · Root and the Administrator act with their platform role under a *not a member* strip · the
+admin team read-only · and the order: Root's and the Administrator's half goes with Q27 now, the admin team's half is its
+own pass, since each of 142 team-scoped requests must be marked a read or not by hand. None of the seven moves.
+
+▲ **+1 the round before — user Q28, found building step 1a** (2026-10-05): the team switcher lists your memberships only, Root
+included. So [the-create-team-form-names-the-first-owner](business/user/context_decision.md#the-create-team-form-names-the-first-owner) would cut Root and the
+Administrator off from the teams they create, and the admin team's reads have no screen
+([user Q28](business/user/context_clarify.md#question)). Recommend the switcher lists every team to them, read-only for the
+admin team. It blocks the user context's next prototype, not another context, so none of the seven moves. Step 1a itself
+is built: `admin_owner` and `admin_administrator`, their six policies, the labels.
+
+▼ **−2 the round before — user Q26 and Q27 answered, as recommended** (2026-10-05): the hold on the role rename is lifted. Add
+`admin_owner` and `admin_administrator` first, rename the four roles before the grant checks, no alias
+([rename-the-roles-before-the-grant-checks](business/user/context_decision.md#rename-the-roles-before-the-grant-checks)). A new team's first Owner is
+the person the Create Team form names ([the-create-team-form-names-the-first-owner](business/user/context_decision.md#the-create-team-form-names-the-first-owner)), a
+prototype pass of its own. The user context has no open question. None of the seven moves.
+
+▲ **+1 the round before — user Q26 elaborated, and Q27 opened** (2026-10-05). Checked against the build, the rename on hold is
+two changes: adding `admin_owner` and `admin_administrator` blocks three decisions and clashes with nothing, renaming four
+roles blocks nothing but has already misled the code once (`ownerRoleFor` gives an admin-type team's creator the selling
+Owner role). Recommend both now, before the grant checks, with no alias
+([user Q26](business/user/context_clarify.md#question)). [User Q27](business/user/context_clarify.md#question): `TeamCreate`
+makes whoever creates a team its Owner, so the Administrator owns every team; recommend the form names the Owner.
+Neither blocks another context, so none of the seven moves.
+
+▼ **−3 the round before — the user context answered all four, and its prototype is accepted** (2026-10-05): user Q21, Q22,
+Q23 and Q25 closed, each as recommended. A who filter lists the people on the list's own rows, open to whoever reads the
+list, suspended and former people kept
+([a-who-filter-lists-the-people-on-its-rows](business/user/context_decision.md#a-who-filter-lists-the-people-on-its-rows)) ·
+an Admin changes nobody's role · **design_accept passed**
+([the-user-prototype-is-accepted](business/user/context_decision.md#the-user-prototype-is-accepted)), New User removed ·
+the record is name, username, email, phone and photo, the per-team `alias` dropped. Opened
+[user Q26](business/user/context_clarify.md#question): the role rename was to be the build's first step and is on hold.
+Recommend lifting it. It does not block the backend, which could build on the old names, so none of the seven moves.
+
+▲ **+3 the round before — `dev` merged with `hfrada`'s warehouse order list** (2026-10-05): order design Q16–Q18
+([technical/order/design_clarify.md](technical/order/design_clarify.md#question)), what the warehouse list needs
+from the contract: the row's denormalised fields, the warehouse's filters, and the workbench's statuses, step
+change, label lookup and bulk handover. The screen is a hidden Storybook preview, so none of the three blocks a
+lifecycle pass yet, and none of the seven moves. The same merge moved the screen decisions into
+[technical/frontend/](technical/frontend/context_decision.md), so links that pointed at them changed. No count moved.
+
+± **0 the round before — the receipt reader is its own repo** (2026-10-05): the owner's new §General puts
+`san_receipt_readers` in the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`. Asked as
+receipt_readers Q18 (its own Go module, the folder, CI, a `*.pdf` gitignore) and answered in the same round
+([the-reader-is-a-submodule-with-its-own-module](technical/packages/receipt_readers/context_decision.md#the-reader-is-a-submodule-with-its-own-module)).
+None of the seven moves.
+
+± **0 the round before — `ReceiptCheck`'s critiques accepted, the prototype built** (2026-10-05): the owner accepted all
+three (a `result` in a successful response · a 3 MB read cap on this handler · log the result only), now decisions in
+[shipment](business/shipment/context_decision.md#a-label-outcome-is-a-result-not-an-error). Critiques are not counted
+here, so no number moves. The prototype (the contract, and the order form calling it, stubbed in Storybook) waits at
+`design_accept`.
+
+▼ **−3 the round before — `ReceiptCheck`'s shape answered** (2026-10-05): shipment Q2–Q4 closed, each as recommended.
+Signed-in callers only, no team scope ([receipt-check-needs-a-login](business/shipment/context_decision.md#receipt-check-needs-a-login)) · it reads and
+returns `Extract`'s `ReceiptData`, with no verdict ([receipt-check-returns-what-the-library-reads](business/shipment/context_decision.md#receipt-check-returns-what-the-library-reads)) ·
+the file's bytes, sent beside the upload ([receipt-check-takes-the-file-bytes](business/shipment/context_decision.md#receipt-check-takes-the-file-bytes)).
+Shipment is back to Q1, the eight couriers. None of the seven moves.
+
+▲ **+1 the round before — `ReceiptCheck` is shipment's** (2026-10-05): the owner put the shipping-label reader's RPC
+in shipment_service as `ReceiptCheck`
+([receipt-check-is-shipments](business/shipment/context_decision.md#receipt-check-is-shipments)), which answers
+receipt_readers Q3 (I had recommended order_service). Three questions open in
+[shipment Q2–Q4](business/shipment/context_clarify.md#question): who may call it (recommend signed in, not no-login like
+the channel list, because it parses a caller's file) · read or verify (recommend read: five clean reads still differ from
+their stored receipts) · bytes or a stored document (receipt_readers Q2 re-routed, recommend bytes). Net +1 (shipment +3,
+receipt_readers −2). None outranks the seven.
+
+± **0 the round before — a note with no tracking number is not a label** (2026-10-05): a cross-team order note designed in
+Canva over a background picture, filed by the owner as a non-label. No barcode and no word shaped like a tracking
+number is now `ErrNotShippingLabel` too
+([a-note-with-no-tracking-number-is-not-a-label](technical/packages/receipt_readers/context_decision.md#a-note-with-no-tracking-number-is-not-a-label)).
+No question opened or closed.
+
+▼ **−1 the round before — the Lazada receipt reversed, and Q12 answered** (2026-10-05): the owner withdrew the value the
+"Lazada receipt is its order number" decision rested on. A Lazada label's receipt is the courier's tracking number and
+its order id the 16-digit order number, as first built
+([a-lazada-receipt-is-its-tracking-number](technical/packages/receipt_readers/context_decision.md#a-lazada-receipt-is-its-tracking-number)),
+which answers receipt_readers Q12. `lazada_lex_02`'s mismatch is back in Q17. None of the seven moves.
+
+▼ **−1 the round before — receipt_readers Q7 answered: barcode-confirmed** (2026-10-05): a Shopee label no courier layout
+knows is now read from its Resi box when a barcode on the page says the same
+([a-shopee-resi-is-confirmed-by-its-barcode](technical/packages/receipt_readers/context_decision.md#a-shopee-resi-is-confirmed-by-its-barcode)).
+Run alone, it reads all eighteen Shopee samples with a Resi box exactly as the courier layouts do, including the
+eleven that each cost a round. None of the seven moves.
+
+± **0 the round before — a fifth SiCepat logo** (2026-10-05): a SiCepat `REG` label printed on a larger page, its logo at a
+new size (136×45). Another round [receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)
+would remove. No question opened or closed.
+
+± **0 the round before — a Lazada receipt is its order number** (2026-10-05): the owner said a Lazada label's receipt is its
+16-digit order number, not the courier's tracking number
+([a-lazada-receipt-is-its-order-number](technical/packages/receipt_readers/context_decision.md#a-lazada-receipt-is-its-order-number)).
+That explains one of Q17's mismatches, and reframes
+[receipt_readers Q12](technical/packages/receipt_readers/context_clarify.md#question) to what a Lazada label's order id is
+now (built: empty). No question opened or closed.
+
+± **0 the round before — a Shopee Pos Indonesia label** (2026-10-05): an eighth Shopee number shape (`SHPE` and eighteen
+characters), now read. Pos Indonesia joins [shipment Q1](business/shipment/context_clarify.md#question). No question
+opened or closed.
+
+± **0 the round before — a Shopee ID Express label** (2026-10-05): a seventh Shopee number shape (`IDS` and thirteen
+digits), now read. No question opened or closed.
+
+▲ **+1 the round before — five clean reads that don't match their orders** (2026-10-05): a TikTok / Tokopedia AnterAja label
+now reads (`TSA-…`, `Order ID：` with no `TT`). And two more labels the owner's tool saved read cleanly, so five orders
+store a receipt other than the one their label prints. [receipt_readers Q17](technical/packages/receipt_readers/context_clarify.md#question)
+asks what they store; one is an instant order, which tests the pickup-code decision. A fourth Shopee instant
+header (`Instant`, GoSend) joins the list. None outranks the seven.
+
+± **0 the round before — a Lazada label in J&T's own number format** (2026-10-05): Lazada prints each partner courier's
+format (`JZ…` here), so its rule accepts J&T's shape beside the four-capitals-dash one. No question opened or closed.
+
+± **0 the round before — a Shopee J&T Cargo label, and an order number cut short** (2026-10-05): J&T Cargo on Shopee, told
+apart from SiCepat (same twelve digits) by its logo. Its order number was cut short with an ellipsis, and the stump
+would have been read as the order id with no error; it is now read whole from the label's `Pesan:` line. A third label
+read cleanly but mismatched the stored receipt. No question opened or closed.
+
+± **0 the round before — a second Lazada tracking prefix** (2026-10-05): `JNAP-` beside `LXAD-`, one shape, so the reader
+checks the shape. The label's page 2 captions page 1's 16-digit number `Nomor Order :`, which settles
+[receipt_readers Q12](technical/packages/receipt_readers/context_clarify.md#question); recommended closed, awaiting
+the owner's word. No question opened or closed.
+
+± **0 the round before — a SiCepat logo at a third size** (2026-10-05): a Shopee `REG` label that failed only on its
+logo (140×40), now in the logo table. One more round the logo gate of
+[receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question) cost. No question opened or closed.
+
+± **0 the round before — a TikTok Shop instant label** (2026-10-05): no tracking number, a pickup code under
+`Kode Pengambilan`, the order id after `Nomor Order:`. Its receipt is the pickup code, the Shopee instant decision
+carried over as the default; the owner's tool will show whether TikTok orders store it. No question opened or closed.
+
+± **0 the round before — a screenshot is not a label either** (2026-10-05): the owner filed non-labels in a `pdc_samples/`
+folder, and one, a screenshot of a manual order's note, had an image and slipped through as an unknown label. No text
+and no readable barcode or QR is now `ErrNotShippingLabel` too
+([a-picture-with-no-code-is-not-a-label](technical/packages/receipt_readers/context_decision.md#a-picture-with-no-code-is-not-a-label)).
+No question opened or closed.
+
+▼ **−1 the round before — receipt_readers Q16 answered** (2026-10-05): the owner asked for a separate error for a file that
+is not a shipping label, then split it from "cannot read"
+([a-non-label-gets-its-own-error](technical/packages/receipt_readers/context_decision.md#a-non-label-gets-its-own-error),
+[unreadable-and-not-a-label-are-two-errors](technical/packages/receipt_readers/context_decision.md#unreadable-and-not-a-label-are-two-errors)).
+Two exported errors that never overlap: `ErrUnreadable` and `ErrNotShippingLabel`. None of the seven moves.
+
+± **0 the round before — spam gets its own error, built as Q16 recommends** (2026-10-05): the same Canva file came back
+attached to a third order. A file matching no layout with no image on any page is now `ErrNotShippingLabel` (still the
+unknown-layout refusal), so the owner's iterate tool can skip spam. Q16 stays open for the owner to confirm.
+
+± **0 the round before — Q15 answered, Q16 opened** (2026-10-05): the owner called the Canva-made label spam, so it is
+refused and the layout that read it is gone
+([a-file-that-is-not-a-courier-label-is-refused](technical/packages/receipt_readers/context_decision.md#a-file-that-is-not-a-courier-label-is-refused)).
+[receipt_readers Q16](technical/packages/receipt_readers/context_clarify.md#question) asks how to tell spam from a courier
+label we don't know yet. Recommend rules, not image recognition: every real label carries an image and a tracking
+number, and the spam carries neither. None outranks the seven.
+
+▲ **+1 the round before — a label the seller made** (2026-10-05): designed in Canva, captions and values, no courier,
+tracking number or order id. Built: its recipient is read (the phone in full). [receipt_readers Q15](technical/packages/receipt_readers/context_clarify.md#question)
+asks whether such a label should be read at all, and what its order stores as a receipt. None outranks the seven.
+
+± **0 the round before — a Shopee JNE Trucking label** (2026-10-05): `JTR`, a sixth Shopee number shape (`JT` and eleven
+digits, JNE's despite the prefix), read by its exact shape and confirmed by its barcode. Fixed: a recipient's name
+that runs into the `Pengirim:` caption kept its last letters. No question opened or closed.
+
+± **0 the round before — a Shopee SPX label printed as pictures** (2026-10-05, `shopee_std_01.pdf`): printed through
+Microsoft Print To PDF, so every word is outlines and each graphic its own JPEG. The reader now scans every image of a
+text-less page, not the largest, and finds a JPEG in the file's bytes, since the PDF library has no JPEG filter. Its
+barcodes give the tracking number **and** the order number, so
+[receipt_readers Q13](technical/packages/receipt_readers/context_clarify.md#question)'s OCR option would add only the
+recipient here. No question opened or closed.
+
+± **0 the round before — a Shopee same-day label carried by GoSend** (2026-10-05): the instant template with a third
+header wording, `SAMEDAY` alone, now in the header list. Its receipt is its pickup code, as decided. GoSend joins
+[shipment Q1](business/shipment/context_clarify.md#question). No question opened or closed.
+
+± **0 the round before — a TikTok J&T Cargo label** (2026-10-05): the known template, its logo a size smaller (680×156
+against 683×157), now a second row in the logo table. The first two-page label: page 2 only continues the product list.
+No question opened or closed.
+
+🔄 **±0 the round before — user Q21 elaborated** (2026-10-05) into three parts, checked against the build
+([user Q21](business/user/context_clarify.md#question)). The question is wider than the restock pages: every "who"
+filter (restocks on both sides, and the orders page) asks a manager-only user search, so **Customer Service and Staff
+are refused on four of six filters today**, and a selling Owner on *accepted by* once a warehouse is picked.
+Recommend: a who filter lists the people on the list's own rows, open to whoever may read the list, former and
+suspended people included. None outranks the seven.
+
+▲ **+1 the round before — a Shopee reservation label** (2026-10-05): an SPX parcel to an SPX hub, which prints
+`No.Reservasi:` instead of `No. Pesanan:`. [receipt_readers Q14](technical/packages/receipt_readers/context_clarify.md#question)
+asks whether the reservation number is the order id (built: yes), and whether such an order belongs in the order
+list at all. Fixed: an address block now ends at a line set further down than its own spacing. None outranks the seven.
+
+± **0 the round before — a Shopee `NEXT DAY` label** (2026-10-05): SiCepat's `BEST`, named only by a third SiCepat logo,
+now in the logo table. The third label in a row that
+[receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)'s barcode-confirmed mode would
+have read with no round. Corrected: the `CM` label is "probably JNE" by its prefix only; its sort code's shape is
+Shopee's.
+
+± **0 an earlier round today — a Shopee AnterAja label** (2026-10-05, restored: a concurrent rewrite of this file
+dropped it): a fifth Shopee number shape (fourteen digits), read by its exact shape and confirmed by its barcode.
+AnterAja joins [shipment Q1](business/shipment/context_clarify.md#question). Fixed: an address tag (`HOME`) in the
+address's own size was read as the whole address.
+
+▼ **−1 the round before — user Q24 closed: the owner cancelled short_code** (2026-10-05). It is gone from §General Data
+([a-user-has-no-short-code](business/user/context_decision.md#a-user-has-no-short-code)), and the alias decision of
+minutes earlier is superseded. The user design_accept (Q23) no longer waits on it. Q25 (is the phone kept) stays open.
+
+± **0 the round before — user Q24 answered in part: short_code is a unique alias** (2026-10-05)
+([superseded-short-code-is-a-unique-alias](business/user/context_decision.md#superseded-short-code-is-a-unique-alias)), not the paper mark I
+read it as. [User Q24](business/user/context_clarify.md#question) narrows to four parts: does it replace the per-team
+`alias`, is it required, its format and who changes it, and does the Add Member popup search by it (recommend not, since a
+short code is easy to guess). It still comes before the user design_accept. None outranks the seven.
+
+▲ **+2 the round before — the user doc lists a user's fields, and one of them is new** (2026-10-05): §General Data In Users
+says name, username, email, **short_code**. Nothing in the requirement set or the build reads a short_code, so
+[user Q24](business/user/context_clarify.md#question) asks what it is for. I recommend reading it as the *who did this*
+mark on slips, unique system-wide, never changed. [User Q25](business/user/context_clarify.md#question): the list has no
+phone, which the OTP reset and four decisions use. Q24 now comes before the user design_accept (Q23), because a required
+code adds a field to both create forms. None outranks the seven.
+
+± **0 the round before — a Shopee `Reguler` label** (2026-10-05): a fourth Shopee number shape (`CM` and eleven digits,
+probably JNE), with no courier named anywhere on the label. Read by its exact shape. Its barcode decodes to the same
+number as its `No. Resi:` box, so [receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)
+now offers a lenient mode that is safe: read the box only when the barcode agrees. No question opened or closed.
+
+▲ **+1 the round before — a J&T label printed as a picture** (2026-10-05): the page has no text at all. Its QR code
+carries the tracking number, so the reader now decodes barcodes on a text-less page and reads the receipt;
+[receipt_readers Q13](technical/packages/receipt_readers/context_clarify.md#question) asks whether the rest (order
+id, recipient) is worth OCR. Recommend not yet. None outranks the seven.
+
+▲ **+1 the round before — a Lazada label** (2026-10-02): it read as an empty page, because the label draws its whole
+face as one form and the PDF library never reads inside one; the reader now follows forms itself. Its order id is
+printed with **no caption**, so [receipt_readers Q12](technical/packages/receipt_readers/context_clarify.md#question)
+asks to confirm the 16-digit number is it (built: read). LEX joins
+[shipment Q1](business/shipment/context_clarify.md#question). None outranks the seven.
+
+▼ **−1 the round before — the owner's data answered a receipt question** (2026-10-02): a second GrabExpress label
+read, but its order stores a four-character code as the receipt: the label's pickup code (`Kode Pengambilan`). So an
+instant / same-day order's receipt is its pickup code
+([the-pickup-code-is-the-receipt](technical/packages/receipt_readers/context_decision.md#the-pickup-code-is-the-receipt)),
+and receipt_readers Q6 closes. None of the seven moves.
+
+▲ **+1 the round before — a KiriminAja label** (2026-10-02): an aggregator's label, here for ID Express, read by
+its captions (the tracking number sits under `AWB`). It prints **no marketplace order id**, only KiriminAja's own
+booking number, so [receipt_readers Q11](technical/packages/receipt_readers/context_clarify.md#question) asks
+whether that counts (recommend `""`, unless the orders store it). It is also the first label to print the
+**recipient's phone** in full (Q8 gains the evidence), and ID Express joins
+[shipment Q1](business/shipment/context_clarify.md#question). None outranks the seven.
+
+▲ **+2 the round before — the owner changed the receipt contract** (2026-10-02): no `Courier` ("too hard to
+extract"), and the recipient added (`Phone`, `CustomerName`, `Address`). Built and read on all nine samples.
+The HALU question closes as moot (−1), and three open (+3) in
+[receipt_readers Q8–Q10](technical/packages/receipt_readers/context_clarify.md#question): **no sample prints the
+recipient's phone** (Shopee prints only the sender's, TikTok masks it) · masked values come back empty · the
+address is one string, with words the box wrapped left split. None outranks the seven.
+
+▲ **+1 the round before — a SiCepat `REG` label, named only by its logo** (2026-10-02):
+[receipt_readers Q8](technical/packages/receipt_readers/context_clarify.md#question) asks whether a Shopee label
+from a courier the reader doesn't know should FAIL (built: that's how the owner's iterate tool finds samples) or
+be read with an empty courier (more useful in the order form). Recommend strict while iterating, lenient before
+`ReceiptScan` ships. None outranks the seven.
+
+▲ **+1 the round before — a Shopee `HALU` label** (2026-10-02): its text never names a courier, and the reader
+reads it as **SiCepat** by the service name. [receipt_readers Q7](technical/packages/receipt_readers/context_clarify.md#question)
+asks the owner to confirm the mapping. None outranks the seven.
+
+▲ **+2 the round before — the first live receipt the reader could not read** (2026-10-02): an **SPX** Shopee Instant
+label, saved by the owner's iterate tool. It prints **no tracking number anywhere** (the text, the barcode and the QR
+all carry the order number), so [receipt_readers Q6](technical/packages/receipt_readers/context_clarify.md#question)
+asks what its receipt is. And SPX is not a shipment channel, so
+[shipment Q1](business/shipment/context_clarify.md#question) asks to add it. Built the same round: a second layout,
+and a fix for a silent id truncation (the PDF library reads no Type0 widths).
+
+▲ **+5 the round before — a new package, `receipt_readers`, first pass** (2026-10-02):
+[receipt_readers Q1–Q5](technical/packages/receipt_readers/context_clarify.md#question). Go reads the J&T sample
+(pure Go, 7–9 ms, all three contract fields). Open: which app generated the label (it is `wkhtmltopdf` output, not
+J&T's) · the caller flow, A/B/C · which service hosts the scan · PDFs only or photos too · keeping the sample PDFs
+(a buyer's street address) out of this public repo. None outranks the seven: the order form already runs on a
+stand-in.
+
+▲ **+3 the round before — the user prototype is built, and asks three things** (2026-10-02):
+[user Q21–Q23](business/user/context_clarify.md#question). Do the restock filters stop using `SearchUser` (the decided
+rules would refuse Staff and Customer Service there) · an Admin changes nobody's role, since a team has one role below
+Admin · **design_accept**, which blocks the user pass. None outranks the seven: they block one context's next phase,
+not money.
+
+▼ **−1 the round before — user Q20 answered: the user context has nothing open** (2026-10-02). Its four readings are
+confirmed. Next: implementation analysis — the Storybook prototype of the user screens.
+
+▼ **−3 the round before — user Q17, Q18, Q19 answered in chat** (2026-10-02): a removal is made by those who add, only below
+their own role, logged, and drops the person's shop access in that team · Customer Service runs orders, restock
+requests **and settlements** (against my recommendation on settlements, and as built) · the warehouse Admin equals the
+Owner except the liability terms, transfers and capital. Only user Q20 is left: four of my readings to confirm.
+
+▲ **+4 the round before — what was left in the user context, made into questions** (2026-10-02):
+[user Q17–Q20](business/user/context_clarify.md#question). How a member is removed · what Customer Service does (the
+build lets it make 62 calls, some of them settlement and restock money acts) · whether the warehouse Admin is the Owner's
+equal (the build makes them identical, 85 calls each) · four of my readings to confirm. None blocks a pass.
+
+▼ **−5 the round before — user Q12–Q16 answered in chat, all as recommended** (2026-10-02): the admin team monitors all and
+manages its own · a membership log · overrides stamped in every service · *System Administrator* and *Admin Team Admin*
+· one account per phone stays a refusal. The user context has no open question. None of it is built.
+
+▲ **+5 the round before — the owner asked for a critique of the user design as decided** (2026-10-02):
+[user Q12–Q16](business/user/context_clarify.md#question). The admin team now has no job (`business_level.md` says it
+manages every team, the decision lets it manage only itself) · nothing records who gave a role · a do-anything write
+leaves no trace outside liability · `administrator` and `admin_administrator` are one word apart · shared phone
+numbers. None blocks a pass.
+
+± **0 the round before — the admin team's roles get team management only** (2026-10-02)
+([admin-team-roles-manage-only-their-team](business/user/context_decision.md#admin-team-roles-manage-only-their-team)).
+The role rename stays decided and unbuilt, on the owner's word.
+
+▼ **−1 the round before — user Q11 answered, the user context has no open question** (2026-10-02): the search popup opens only
+for those who manage members, an Owner or Admin finds a person by exact username, phone or email, a result shows the
+phone's last four digits, Change Role touches only roles below your own, a phone or email belongs to one account, and a
+shop grant picks from the team's members. All as recommended; none built yet. State report:
+[development_state/user/context.md](development_state/user/context.md).
+
+± **0 the round before — the owner drew Change Role into the member flow** (2026-10-02): someone already in the team gets
+*Change Role* in the same flow
+([an-existing-member-gets-change-role](business/user/context_decision.md#an-existing-member-gets-change-role)), against
+my recommendation. [User Q11d](business/user/context_clarify.md#question) narrows to whose role it may change. ⚠ Today:
+anyone's, so an Admin can demote the Owner.
+
+🔄 **±0 the round before — user Q11 elaborated** (2026-10-02) into six parts: who opens the search popup · exact or partial match
+· what a result shows · someone already a member · duplicate accounts · the shop grant's search
+([user Q11](business/user/context_clarify.md#question)). ⚠ Checked against the code: **re-adding a member overwrites
+their role**, so an Admin can demote the Owner from the Add Member popup, and **a shop grant searches every user in the
+system**.
+
+± **0 the round before — the owner gave the warehouse Admin "manage member"** (2026-10-02): it supersedes half of the Q5 answer
+recorded the round before. The warehouse and selling Admins manage members, the admin team's does not
+([the-admin-team-admin-alone-does-not-manage-members](business/user/context_decision.md#the-admin-team-admin-alone-does-not-manage-members)).
+The build already lets both Admins do it. No question opened or closed.
+
+▼ **−3 the round before — user Q5, Q9 and Q10 answered in chat** (2026-10-02): only the selling Admin manages members, and
+nobody gives their own role · the Administrator keeps "do anything", against my recommendation
+([the-administrator-can-do-anything](business/user/context_decision.md#the-administrator-can-do-anything)) · the role
+names become the code's names, so `ROLE_TEAM_*` is renamed `ROLE_SELLING_*` and the admin team gets two roles
+([the-role-names-are-the-codes-names](business/user/context_decision.md#the-role-names-are-the-codes-names)). The
+member is found in a search popup; user Q11 stays open on what it matches.
+
+▼ **−1 the round before — user Q4 closed** (2026-10-02): the selling Owner and Admin set the markup, the reserve and the lock
+([the-selling-owner-and-admin-set-markup-reserve-and-lock](business/user/context_decision.md#the-selling-owner-and-admin-set-markup-reserve-and-lock)),
+as built. No Owner makes another Owner, and the selling Admin manages members. Q5 narrows to the warehouse and admin
+teams' Admins. ⚠ One contradiction inside the owner's doc: the member flow's heading leaves out the selling Admin.
+
+▲ **+1 the round before — user Q4's restock half answered, and the owner drew how a member is added** (2026-10-02). Staff
+accepts a restock alone ([staff-accepts-the-restock](business/user/context_decision.md#staff-accepts-the-restock)),
+against my recommendation, and the build already does it. Root, the Administrator or the team's Owner add a member
+([owner-root-and-administrator-add-members](business/user/context_decision.md#owner-root-and-administrator-add-members)).
+Opened [user Q11](business/user/context_clarify.md#question): today **any signed-in user can search every user in the
+system**, and a missed search creates a second account for the same person.
+
+± **0 the round before — the owner named every role** (2026-10-02): ten code names
+([every-role-has-a-code-name](business/user/context_decision.md#every-role-has-a-code-name)), several Roots
+([root-can-be-several](business/user/context_decision.md#root-can-be-several), closes user Q8), and Root grants the
+Administrator (narrows Q5). Opened [user Q10](business/user/context_clarify.md#question): are the names the code's
+names. ⚠ Only five of the ten match the build: the selling roles are `TEAM_*`, and the admin team has no roles of its own.
+
+▼ **−1 the round before — user Q7 closed: the owner changed their mind on suspend** (2026-10-02). New §Suspend Users: only Root
+and the Administrator suspend, never sideways
+([only-root-and-the-administrator-suspend](business/user/context_decision.md#only-root-and-the-administrator-suspend)).
+The team-level suspend recorded the round before is superseded, which makes 7f moot. ⚠ Today the build refuses to suspend
+only user 1, so an Admin can suspend another Admin.
+
+± **0 the round before — user Q7d and 7e answered in chat** (2026-10-02): a suspended user is never offered when picking
+someone ([a-suspended-user-is-never-picked](business/user/context_decision.md#a-suspended-user-is-never-picked)), and a
+former user is erased, keeping the row and id, by Root or the System Administrator
+([erase-keeps-the-row](business/user/context_decision.md#erase-keeps-the-row)). Q7 stays open on 7f alone.
+
+± **0 the round before — user Q7a, 7b and 7c answered in chat** (2026-10-02): never delete, the username is editable, and
+suspend has two levels — Root and the System Administrator suspend an account, a team's Owner or Admin suspends a member
+in that team only ([superseded-two-levels-of-suspend](business/user/context_decision.md#superseded-two-levels-of-suspend)). Q7 stays open on
+7d, 7e and a new 7f: may a team's Admin suspend its Owner.
+
+🔄 **±0 the round before — user Q7 elaborated** (2026-10-02) into five parts: never delete · fix a typo by editing the
+username · only Root and the System Administrator suspend · a suspended user is never offered in a picker · erase personal
+data without deleting the row ([user Q7](business/user/context_clarify.md#question)). Checked against the code: a delete
+leaves **22 columns in 8 services** pointing at nobody.
+
+▼ **−1 the round before — user Q6 answered in chat** (2026-10-02): *"its okay write password in migration"*. A migration
+writes `root1234`, only while root's password is still empty, so a production password already set is never reset
+([the-migration-writes-the-dev-root-password](business/user/context_decision.md#the-migration-writes-the-dev-root-password)).
+Against my recommendation. Not built yet.
+
+± **0 the round before — the dev root password is now `root1234`** (2026-10-02): 8 characters, so it passes the app's rule
+([dev-root-password-is-root1234](business/user/context_decision.md#dev-root-password-is-root1234)). It closes the length
+half of [user Q6](business/user/context_clarify.md#question). Q6 stays open on its other half: whether the migration or
+`tools/san` writes the password.
+
+▲ **+2 the round before — the owner rewrote the user doc's root team** (2026-10-02): Root is granted by nobody in the app
+([root-is-granted-only-through-san](business/user/context_decision.md#root-is-granted-only-through-san)) and can do
+anything ([root-can-do-anything](business/user/context_decision.md#root-can-do-anything)), which closes half of user Q5
+against my recommendation. ⛔ **The app can grant Root today**, three ways. Opened:
+[user Q8](business/user/context_clarify.md#question) one Root or several ·
+[user Q9](business/user/context_clarify.md#question) whether the new System Administrator is the build's `ROLE_ADMIN`, which
+can do anything too. Neither blocks a pass.
+
+▼ **−2 the round before — the owner answered user Q1 and Q2** (2026-10-02). [user Q2](business/user/context_clarify.md#question):
+one person holds one role in a team, and any role in another
+([one-role-per-person-per-team](business/user/context_decision.md#one-role-per-person-per-team)); the database already
+enforces it. 🔄 Then **user Q3 elaborated, and MOVED to [inventory Q12](business/inventory/context_clarify.md#question)** — the owner: *"what count? we talk in user context"*. A stock count is inventory's act. Five parts (which acts · who records and confirms · never the same
+human · the root team as an override · what a pending shelf shows). Checked against the code: **no count has a confirm step**,
+and one role per team does not stop a manager confirming their own count. [user Q1](business/user/context_clarify.md#question)
+is answered as recommended — Staff (`WAREHOUSE_STAFF`) is the whole floor job
+([warehouse-staff-is-the-whole-floor-job](business/user/context_decision.md#warehouse-staff-is-the-whole-floor-job)).
+The code already matched. The rename left "Packer" in 15 places across five other clarify files and one state report, all
+fixed ([the-packer-rename-left-fourteen-sites](business/user/context_clarify.md#the-packer-rename-left-fourteen-sites)).
+
+▲ **+2 the round before — the owner added §Responsbility and §Default Data to the user doc** (2026-10-02):
+[user Q6](business/user/context_clarify.md#question) — the dev root password `root123` is 7 characters and the
+app requires 8, and root is made only by a migration that also runs on production · [user Q7](business/user/context_clarify.md#question) —
+the build hard-deletes users, which §Responsbility does not list. Neither blocks a pass, so neither ranks into the seven.
+
+▲ **+15 the round before — the `hfrada` branch merged** (2026-10-02): it brings
+[technical/order/design_clarify.md](technical/order/design_clarify.md#question) and its 15 questions about the
+order screens. Its own rollup ranked none of them into the seven, and that is kept, not re-ranked. It also brought one contradiction, which is not counted as a question:
+[the-warehouse-steps-rule-met-the-return-status](business/order/context_clarify.md#the-warehouse-steps-rule-met-the-return-status).
 
 ± **0 this round — financial_account is BUILT** (2026-10-01): the owner accepted the prototype
 ([the-prototype-and-its-contract-are-accepted](business/financial_account/context_decision.md#the-prototype-and-its-contract-are-accepted)),
@@ -1768,9 +2385,9 @@ Q2, which is a pointer to order's a-lost-publish-is-not-tracked-on-the-order (wa
 | # | The question | Blocks | Asked in | My recommendation |
 | --- | --- | --- | --- | --- |
 | **1** | **How is a half-succeeded order FOUND afterwards?** 🔄 **REFRAMED, and the old framing was wrong on three counts.** This row said there is *"no outbox, no saga and no compensation anywhere in the repo"* and that settlement *"sits on the critical path"*. Opening the files: [team_create.go:21](../backend/services/team_service/team_v1/team_create.go#L21) **is** an explicit saga (commit locally, grant remotely, soft-delete on failure) · [order_place.go:246](../backend/services/selling_service/selling_v1/order_place.go#L246) **is** an explicit compensation (`stock.Return`, with `picked` set BEFORE the call because *"a Pick whose result never reached us may well have committed"*) · and settlement's leg is **decided** ([the-order-commits-without-settlement](business/settlement/context_decision.md#the-order-commits-without-settlement)). ✅ **The PRE-COMMIT half is handled**: the pick runs INSIDE the order's transaction, so not enough stock rolls the order back and none exists. ⛔ **What is actually open is the POST-COMMIT half, and it is one gap at three sites** — the `OrderPlacedEvent` publish (liability never charges the order fee), `SettlementPost` (no account opens), and `catalog.Snapshots` (an unresolved owner rides as **0**, which liability reads as *nobody to pay*). All three end at *"logged loudly"*, and **nothing enumerates which orders are in that state**. 🆕 ⚠ And the event architecture now **assumes the publish succeeds** ([no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)), so for the event leg the finder is the only detector there is. ⚠ The third is the worst: it logs no failure an operator would act on, so a transient catalogue blip becomes a fee never charged and never surfaced. 🆕 ⛔ **Re-examined against the code (2026-09-15): FIVE sites, not three, and the net is missing.** Cancel has the same gap twice — `OrderCancelled` unsent leaves a cancelled order's fees charged for good, and `CancelSale` failing leaves the account counting a dead sale · `OpenSale` is skipped **without a log line** when `marketplace_total = 0` · a crash between commit and send logs **nothing** · the catalogue failure that writes owner `0` also skips the owners' credit check · and **#187, the reconciliation report six code comments rely on to find all of this, has been open since 2026-07-21 with no RPC and no table**. ⚠ A fix that re-sends `OrderPlaced` with corrected owners is silently dropped — the event id is `order-placed:<id>`, so the event must be **held** until owners resolve. | ⛔ every order whose downstream row silently never appeared — fees uncharged, accounts unopened, cancelled orders still charged, with no list of them anywhere | [order: a-lost-publish-is-not-tracked-on-the-order](business/order/context_decision.md#a-lost-publish-is-not-tracked-on-the-order) (was Q14) — ➡ **re-routed there by the owner (2026-09-10)**, from architecture and settlement, neither of which can answer it | **A finder per leg** — a query listing committed orders with no downstream row. It needs no saga, no outbox and no new mechanism, and all three legs already assume it exists: [the-order-commits-without-settlement](business/settlement/context_decision.md#the-order-commits-without-settlement) flags *⛔ how a missing account is FOUND* as its own undecided half. ⚠ **And record the premise clash**: `architecture/context_clarify.md` says *"the amount is only known AFTER the draw, so the gate cannot run before it — step 7 is the whole design"*, while the shipped code runs the gate FIRST on a `UnitCosts` read and states the trade (*"the staleness that allows is exactly the overshoot the `debt < limit` rule already permits"*). `draw → gate → commit → release` describes an ordering the code deliberately inverted. |
-| **2** | **Can a report heal from a lost event — or is the broker its only path?** 🔄 **REPLACED (2026-09-28) — the old #2 closed**: both its halves were answered the same day — the reconcile check declined ([the-reconcile-check-is-not-built](business/settlement/context_decision.md#the-reconcile-check-is-not-built)) and the user carry kept ([the-user-carry-is-kept](business/settlement/context_decision.md#the-user-carry-is-kept)). What inherits the slot is the same concern one level up. Every report is built by folding events, the publish is trusted ([no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)), and nothing now checks a report against its log — so an event that never arrives, or is rejected after its retries, is a permanently wrong number. ⛔ **The owner's template already promises the cure** — *"Statistic is streaming and reconcile every midnight + 1 hour"* ([mutation_and_ledger.md](technical/ledger/mutation_and_ledger.md)) — **and the analytic doc draws no such path** ([Contradiction](business/analytic/context_clarify.md#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other)). | ⛔ the correctness of every stream-built report — settlement's already ships on the broker alone — and the pattern every later report copies | [analytic Q2](business/analytic/context_clarify.md#question) | **Two paths, one fold**: the event is a doorbell, and a tick reads the log after a cursor and folds what the doorbell missed, each source row claimed once ([the design](business/analytic/context_clarify.md#log-is-the-source-broker-is-the-trigger)). ⚠ **If not, strike the template's line** — a promised nightly reconcile that nothing runs is the next argument someone leans on. |
+| **2** | **Can a report heal from a lost event — or is the broker its only path?** 🔄 **REPLACED (2026-09-28) — the old #2 closed**: both its halves were answered the same day — the reconcile check declined ([the-reconcile-check-is-not-built](business/settlement/context_decision.md#the-reconcile-check-is-not-built)) and the user carry kept ([the-user-carry-is-kept](business/settlement/context_decision.md#the-user-carry-is-kept)). What inherits the slot is the same concern one level up. Every report is built by folding events, the publish is trusted ([no-outbox-the-publish-is-trusted](technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)), and nothing now checks a report against its log — so an event that never arrives, or is rejected after its retries, is a permanently wrong number. ⛔ **The owner's template already promises the cure** — *"Statistic is streaming and reconcile every midnight + 1 hour"* ([mutation_and_ledger.md](technical/ledger/mutation_and_ledger.md)) — **and the analytic doc draws no such path** ([Contradiction](business/analytic/context_clarify.md#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other)). | ⛔ the correctness of every stream-built report — settlement's already ships on the broker alone — and the pattern every later report copies — 🆕 *(2026-10-07)* supplier's daily report is the first, and it adopts settlement's processing whole ([the-report-is-processed-like-settlement](business/supplier/context_decision.md#the-report-is-processed-like-settlement)) | [analytic Q2](business/analytic/context_clarify.md#question) | **Two paths, one fold**: the event is a doorbell, and a tick reads the log after a cursor and folds what the doorbell missed, each source row claimed once ([the design](business/analytic/context_clarify.md#log-is-the-source-broker-is-the-trigger)). ⚠ **If not, strike the template's line** — a promised nightly reconcile that nothing runs is the next argument someone leans on. |
 | **3** | **How is drift repaired when the LOG is already right and only the FOLD was lost?** 🔄 **Reshaped — the ledger-or-report half was ANSWERED in a day.** `context.md` made `system_adjustment` an eighth `settlement_type`, so it is a **ledger row**, shop-addressed, reaching the report through the broker — against my recommendation, and my report-column proposal is **withdrawn**. ⛔ **What survives is the case the design cannot express.** The adjustment moves the log and the report **together, by the same amount** — so it repairs damage where BOTH were wrong, and cannot repair damage where only the report was. ⚠ **And “only the report” is what every known drift cause produces**: a dead-lettered event, a cascade that did not run, a replay that skipped a day — in all three the log already holds the truth. Posting an adjustment there overstates the log by exactly the amount it corrects the report by, so the two end up disagreeing permanently. | ⛔ out-of-window report drift, which the replay cannot reach by decision and the adjustment cannot express — and, with [no reconcile check](business/settlement/context_decision.md#the-reconcile-check-is-not-built), found only when a person notices | [settlement context clarify](business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) | **A targeted DAY RE-FOLD from the log** — re-read one scope's rows for one day and rewrite that day. It reaches **any** date because the log has no retention limit, it needs no adjustment row, and it leaves the ledger true. ⚠ **It is a second reader of the log**, which [the-replay-seeks-the-broker](business/settlement/context_decision.md#the-replay-seeks-the-broker) deliberately avoided — but that decision governed a RANGE replay through the webhook, and this is one day, on demand, for repair. Decide it on its own rather than inheriting that answer. ⚠ **Keep `system_adjustment` for what it is genuinely for**: a fact that was never recorded at all, where log and report are wrong together and move back together. |
-| **4** | **Does the courier's TIP belong inside the frozen unit cost?** ⚠ **HALVED by re-examination, and the surviving half is verified in code.** This row used to merge a denominator defect and a numerator one. **(a) The denominator is already right** — [restock_request_fulfill.go:210](../backend/services/inventory_service/inventory_v1/restock_request_fulfill.go#L210) divides by `sellableTotal`, what actually arrived with damaged units excluded, and the line cost by `line.quantity`, the received one. The owner's flow diagram draws it the other way round, so [stock Q1](business/inventory/context_clarify.md#question) is a question about the DIAGRAM, not a live defect. **(b) The numerator stands** — `freight := rr.ShippingCost + costLineTotal`, under the comment *"EVERY OUTLAY IS FREIGHT"*, capitalises the incidental fee that `balance_context.md` defines as a courier's *"coffe tip"* into a cost frozen for the life of the batch. ⚠ **And it compounds with a decision taken this round**: a breakage reimbursement pays at COGS, so the warehouse is repaid a tip it charged, and [found-posts-without-a-handshake](business/balance/context_decision.md#found-posts-without-a-handshake) lets it reverse that reimbursement unilaterally. | every batch's frozen unit cost — and therefore COGS, margin, the cross-charge (COGS × markup) and breakage payouts, for the life of the batch | [product Q6](business/product/context_clarify.md#question) · [stock Q1](business/inventory/context_clarify.md#question) | **Take the tip OUT, leave `ShipmentFee` in** — freight is agreed before the journey and is genuinely part of what the goods cost; an unpredictable ask at the door is not. One line — `freight := rr.ShippingCost` — with `costLineTotal` still posting to the balance. ⚠ Note `freightPerUnit` is integer division and **floors**, so a small tip contributes **0 per unit** while being charged in full on the balance: it is already unreliable at exactly the sizes it is described as being. |
+| **4** | **🆕 What is an `inventory_transaction`?** 🔄 **REPLACED (2026-10-07). The old #4 closed**: the courier's ask stays IN the unit price, against my recommendation ([the-couriers-ask-is-in-the-unit-price](business/product/context_decision.md#the-couriers-ask-is-in-the-unit-price)). Its residue is a build defect, recorded there: `freightPerUnit` floors a small ask to 0. **What inherits the slot:** the owner's inventory docs now describe two ledgers — [batch_ledger.md](business/inventory/batch_ledger.md) for money and FIFO, [placement_ledger.md](business/inventory/placement_ledger.md) for shelves — and the table that ties them together is the one [context.md](business/inventory/context.md) marks *"Still Confused"*, with only an `id`. ⛔ The drafts disagree: batch rows point at it, placement logs point at nothing, and [technical stock §ERD](technical/stock/design.md#stock-entity-relationship) gives it a `type` and a `status`. ⛔ Nothing says the two ledgers' counts must agree. ⚠ Checked against the build: it has no such table — `stock_movements` and `stock_shelf_batches` tie batch to shelf instead, so the owner's model is a rebuild of `inventory_service`'s data, not a change to it. | ⛔ every write to either ledger — restock accept, order take, move, count, transfer · how a log row names its restock ([restock Q11b](business/inventory/restock_clarify.md#question)) · how a mistake is reversed ([§Cancelation](technical/stock/design.md#inventory-transaction-cancelation)) | [inventory Q13](business/inventory/context_clarify.md#question) | **One row per act** — `type`, `status`, `ref_type` + `ref_id`, `warehouse_id`, `team_id`, `actor_id` — and **every** batch log and placement log row carries its id, so *batch change = shelf change, per product* is checkable per transaction. **Drop `inventory_transaction_items`** — the log rows already are the lines, and a third copy can disagree with them. |
 | **5** | **🆕 Which markup does the LEDGER charge from?** ⛔ **A live billing discrepancy, found while acting on an owner decision.** The cross-product markup is stored TWICE and nothing keeps the copies equal: `products.cross_markup_bps` is what the product detail QUOTES a borrowing team, and `liability_terms.product_markup_bp` is what [`order_fees.go:144`](../backend/services/liability_service/liability_v1/order_fees.go) actually CHARGES it. Set one to 20% and leave the other at 5% and the quote and the invoice disagree — in whichever direction was edited last, silently, with neither screen able to see the other. ✅ The OWNERSHIP is settled: the rate is `product_service`'s ([the-cross-markup-belongs-to-the-product](business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)), and the balance screens no longer show it. What is open is only which number the posting reads. | every cross-sold order's fee — the amount a team is quoted versus the amount it is billed | [technical balance Q10](technical/balance/team_balance_design_clarify.md#question) · [Contradiction](business/balance/context_clarify.md#two-markups-exist-and-the-screen-and-the-ledger-read-different-ones) | **`order_fees.go` reads the PRODUCT's rate when it freezes the fee, and `liability_terms.product_markup_bp` is dropped in the same migration.** Balance is then told the amount rather than asked to compute the rate — already true of every other cause. ⚠ **Three things land together or the fee breaks**: the read moves, the column goes, and the frontend's pass-through bridge is deleted. |
 | **6** | **🆕 Where does a returned parcel land — and does an OWN product go through the cross-product map?** The owner added `## Order Return Flow.` and a second table (`product_return_maps`) to [order_return.md](business/order/order_return.md) on 2026-09-21. ✅ **The diagram parses.** ⛔ **Checked against the build before ranking** (the rule this file learned the hard way), and the configuration it asks for **already ships**: `team_return_configurations` is [`team_infos.return_warehouse_id`](../backend/services/team_service/db_migrations/00001_create_teams.sql) in `team_service`, sitting beside its outbound twin `default_warehouse_id` — **written by no screen and read by no server**, the third instance of the stored-but-unread pattern after `warehouse_infos`' open/close grids and `products.reserved_stock`. ⛔ **And the twin argues the opposite philosophy in its own migration** — *"It is a DEFAULT, not a rule… a fallback applied server-side would quietly undo that refusal"* — while the doc gates order create on a CONFIG ROW. ⛔ **The flow's own-product branch is a live defect**: `is cross --> no --> Set Team Return Configuration --> Get Product Map` sends a product the team already owns to look for a map it can never have, missing, and continuing into `Clone Product` — **a team duplicating its own catalogue once per return**, against [context.md](business/order/context.md)'s own return diagram, which goes straight to `Create Return` ([Contradiction](business/order/order_return_clarify.md#the-own-line-goes-through-the-cross-product-machinery)). ⛔ The map's uniqueness names **`to_product_id`, which is not a column**, and the pair-unique it describes allows two clones of one borrowed product. ⛔ A clone **cannot reuse the lender's code** now that it is composed and globally unique ([the-code-is-composed-from-the-team-code](business/product/context_decision.md#the-code-is-composed-from-the-team-code)), and there is no clone RPC anywhere. ⛔ **No line carries a returned quantity** — a buyer returning 1 of 3 puts back 3. | ⛔ **order create itself** — the gate as written refuses every team, since every `return_warehouse_id` is NULL and no screen sets one · the whole return context, which cannot be built from a flow that clones own products · a duplicate table in a second service | [order_return Q1–Q9](business/order/order_return_clarify.md#question) · [the corrected flow](business/order/order_return_clarify.md#the-return-flow-corrected) · [the map as I would write it](business/order/order_return_clarify.md#the-map-as-i-would-write-it) | **No new table** — keep `team_infos.return_warehouse_id`, add a per-**shop** override in `selling_service` (the platform prints the return address per shop, and the courier follows the label), resolve shop → team on the order form as `default_warehouse_id` is resolved today, and **freeze it on the order** (`orders.return_warehouse_id`) for the reason [00005_order_warehouse.sql](../backend/services/selling_service/db_migrations/00005_order_warehouse.sql) already gives: *"what an order says happened must stay what happened"*. **Gate the REQUEST, not the config row.** The own line joins the payload directly, the map is unique on `(team_id, shared_product_id)`, and `warehouse_id` comes out of it — a catalogue map is not a location fact. Build the editor and backfill **before** the gate: two commits, never one. |
 | **7** | **🔄 May a closed shop still be paid?** ✅ **Where the shop lives is decided** (2026-09-29) — its own `shop_service` ([the-shop-gets-its-own-service](business/shop/context_decision.md#the-shop-gets-its-own-service)), so settlement's call to the shop for a row's primary CS ([settlement-asks-the-shop-for-its-primary-cs](business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)) is no longer a cycle with `selling_service`. What keeps the slot is the second half: ⛔ **the built `ShopAccessCheck` answers a deleted shop `NotFound`**, so a shop's last statements — paid after it stops selling — can never be imported ([shop Q3](business/shop/context_clarify.md#question)). 🔄 **Elaborated 2026-10-01 into five parts (3a–3e)**, and ⛔ checked against the code: the importer's check, settlement's imported shop row and every grant refuse a deleted shop, and financial_account's *Point a shop here* — being built — asks the same `ShopAccessCheck`. | ⛔ a closed shop's last payouts, refused at the import's shop check and again at settlement's — the importer is **built**, so this is live · its last withdrawals, with no account a person can point it at | [shop Q3](business/shop/context_clarify.md#question) | **Close rather than delete** — only new selling is refused; `ShopAccessCheck` returns the shop with its status and each caller decides: the importer, settlement and the accounts take it, an order refuses it. The move to `shop_service` rewrites every shop RPC anyway, so this costs least now. |
@@ -1822,45 +2439,46 @@ settlement row ([withdrawal-is-a-settlement-type](business/settlement/context_de
 recommendation is overtaken. What the answer opened — whether it counts toward the position — is blocking,
 and is **#7**.
 
-## Where the other 155 are
+## Where the other 174 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up
-*from* these files, so the column sums to **162**, the whole set, not to 155. Previous rounds left
+*from* these files, so the column sums to **181**, the whole set, not to 174. Previous rounds left
 that ambiguous and the sums never reconciled with the header: two rounds ago it said 116 above and
 113 here while the rows added to 119, and last round it said 133 here against a header of 137. Both
-are counted as a DELTA this round, not recounted — 144 on `dev`, +18 merged in from the order design line
-(`technical/order/design_clarify.md`, a file `dev` did not have): **162** across 29 files, and the
-column below sums to it.
+are counted as a DELTA this round, not recounted — 182 last round, ▼ −1 (product Q6 and restock Q12 answered, inventory Q13 opened): **181** across 32 files, and the column below sums to it.
 
 | File | Open | |
 | --- | ---: | --- |
+| [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 1 | ▲ **+1 (2026-10-07, audit)** — Q19 the report's window. Before that: ▼ **−2 (2026-10-07, in chat)** — Q17 accepted, Q18 a 50-unit minimum. Before that: ▼ **−1 (2026-10-07, in chat)** — Q16 answered: a Team filter on Discover. Before that: ▲ **+2 (2026-10-07, prototype)** — Q17 accept the figures' screens · Q18 a broken rate on few units. Before that: ▲ **+1 (2026-10-07, building)** — Q16 Discover's search and the team's name. Before that: ✅ **−2 (2026-10-07, in chat)** — Q10c Other, Q15d the six columns; nothing open. Before that: ▼ **−1** — Q14 answered. Before that: ▼ **−1** — Q13 answered (accepted units). Before that: ▼ **−1** — Q10a, b accepted, Q11 answered. Before that: 🔄 **±0 (2026-10-07, soft delete)** — Q15c answered, Q11c re-asked: is a store's delete soft too. Before that: 🔄 **±0 (2026-10-07, in chat)** — Q15a, b answered: processed like settlement; 15d opened, the adjustment past 30 days. Before that: ▼ **−1 (2026-10-07, your seventh edit)** — Q12 answered by your key: the team in, the store out. Before that: 🔄 **±0 (2026-10-07)** — Q11 elaborated, 11d added: a link never goes away. Before that: ▲ **+5 (2026-10-07, your sixth edit)** — Q11 the link's readings · Q12 the report's key · Q13 what each number counts · Q14 the screens, who sees · Q15 the write side, repair from the restocks. Before that: ▲ **+1 (2026-10-06, prototype)** — Q10 the design_accept: the screens, the move, *Other*. Before that: ✅ **−4 (2026-10-06)** — Q7 the shared marketplace list · Q8 drop all three, hard delete · Q6 its own `supplier_service` (both against my recommendation) · Q2 moved to the restock. Nothing open; the CRUD pass is specified |
+| [business/inventory/restock_clarify.md](business/inventory/restock_clarify.md#question) | 11 | ▼ **−1 (2026-10-07, in chat)** — Q12 a product once per restock; Q6a received and broken per line, Q6 stays open for 6b–d. Before that: 🔄 **±0 (2026-10-07, supplier soft delete)** — Q1 moves to no snapshot. Before that: ▲ **+1 (2026-10-07, supplier §Supplier Rule)** — Q12 a product once per restock. Before that: ±0 *(2026-10-07)* — Q10a answered by the supplier edit, Q10c revised to carry the price; Q10 stays open on b, c. Before that: ▲ **+2 (2026-10-06, your accept flow)** — Q10 who hears *Restock Accepted* (supplier's link · the courier's ask stays in the transaction · the payload) · Q11 one batch per line, every ledger row names its restock. Before that: ▲ **+7 (2026-10-06, first full pass of restock.md)** — Q3 a supplier with no channel · Q4 a restock is one parcel · Q5 who moves each status (5 parts) · Q6 how the box is counted (4 parts) · Q7 the resi · Q8 the line total typed · Q9 `restock_logs`. Q1 re-asked for the channel (snapshot the names) · Q2 the picker across teams. Before that: 🆕 opened for the questions moved from supplier Q2 |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 14 | 🆕 **a new context, first pass** — three of its four asks are already built elsewhere: the location + both weekly grids are `team_service.warehouse_infos` (and the grids have **no reader**), the fee is `liability_terms.handling_fee`, **flat** and live. ▲ **+3 the same day**, from the `WarehouseFeeCalculate` payload the owner then added: money as `double` · no selling team in the request · one warehouse per call. See **#7** |
-| [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 18 | ▲ +1 (2026-10-01): what the warehouse workbench needs from the contract — picked and handed-over statuses, a step-change RPC with the transition table, lookup by label, bulk handover, product barcode, label merge, export. Before that: ▲ +1 (2026-10-01): what the warehouse must be able to filter by — seller team, marketplace, courier, shipment state, and a search over the MP id and the resi. Before that: ▲ +1 (2026-10-01): what an order list must carry to a warehouse reader — shop and marketplace, item quantity, creator. Before that: ▲ +1 (2026-09-30): should a draft carry a sell price from the start. Before that: ▲ +1 (2026-09-30): what a draft line maps to — a product, a bundle with its fills, or a split — now that the draft page offers all three and the draft can store only the first. Waits on a bundle contract. Before that: ▲ +1 (2026-09-30): where a draft's pushing app goes on the row, now that the draft list is the Drafts tab (`the-draft-list-is-the-drafts-tab`). +1 contradiction in [business/order/context_clarify.md](business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server): the build lets a person draft and promotes on the server, against two business decisions. Before that: ▼ −1 (2026-09-30): the owner answered *is withdrawal & penyesuaian the settlement ledger?* — the order detail shows the settlement ledger and the invented withdrawal section is gone (`settlement-replaces-withdrawal-on-the-order`). Where a wallet → bank withdrawal lives (Q2) is NOT settled by it. +1 contradiction: two earlier decisions still describe the removed section. Before that: ▼ −3 (2026-09-29): the owner APPROVED the order-detail preview, which settles the line price (harga beli), the margin's direction (MP − sistem) and sections-over-tabs — recorded as decisions. Before that: ▲ +1 (2026-09-29): who may edit a note, may it be deleted, and are system notes the timeline. Before that: ▲ +2 (2026-09-29): does promote keep the marketplace product title · what a return shipment is. Before that: ▲ **+4 from the order DETAIL preview** (2026-09-29): is the line price what we paid or charged · the margin subtraction written the other way up · sections or the built page’s tabs · is withdrawal & penyesuaian the settlement ledger (the same fork as Q2, seen from one order). Before that: ▲ **+4 from the order LIST's row and its actions** (2026-09-28): is *sudah diserahkan* a status or the absence of one (it gates three row actions and falls back to `PACKED`) · is Edit Resi the seller's or the warehouse's · ⛔ **can a root reader see the list at all** — the owner decided the Team column appears above selling level and `scopedOrders` has no root bypass, so the column is correct and the table is empty · does a row's date show the year, and whose clock formats it. 🆕 **One contradiction, four sites, one cause**: the owner redefined an order's total as goods + fulfilment, which the proto's `total = subtotal + shipping_cost` and the create screen's shipping field both predate. The margin was CHECKED and does not ripple. ⚠ **Then the owner corrected the money outright and THREE of those decisions reversed in one round** — total beli is the COST side (`cogs` + fees), and margin is `harga MP − total beli`, measured against the platform's price rather than ours. +2: what the revenue of an unpriced order is, and where the deadline bands come from. Recorded as one contradiction with three sites, because it is one misreading. Earlier: 🆕 **the order LIST's summary** (2026-09-24) — the owner named the fifteen figures the old system showed and the split was argued: volume, value and gross margin stay over the work queue, the settlement-clock figures move. All three questions are **already open elsewhere and blocked there**: the report's home · where a wallet→bank withdrawal lives ([settlement Q1](business/settlement/context_clarify.md#question) · [architecture Q7](technical/architecture/context_clarify.md#question)) · whether one order's warehouse fee is readable ([balance Q9](business/balance/context_clarify.md#question)). ✅ One thing it CLOSES: the owner settled which sense "withdrawal" is — wallet→bank, not settlement's `fund` |
+| [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 18 | ▲ **+3 (2026-10-05, merged from `hfrada`)** Q16–Q18 — the warehouse order list: what its row carries, what it filters by, what the workbench needs from the contract. Before that: ▲ +1 (2026-09-30): should a draft carry a sell price from the start. Before that: ▲ +1 (2026-09-30): what a draft line maps to — a product, a bundle with its fills, or a split — now that the draft page offers all three and the draft can store only the first. Waits on a bundle contract. Before that: ▲ +1 (2026-09-30): where a draft's pushing app goes on the row, now that the draft list is the Drafts tab (`the-draft-list-is-the-drafts-tab`). +1 contradiction in [business/order/context_clarify.md](business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server): the build lets a person draft and promotes on the server, against two business decisions. Before that: ▼ −1 (2026-09-30): the owner answered *is withdrawal & penyesuaian the settlement ledger?* — the order detail shows the settlement ledger and the invented withdrawal section is gone (`settlement-replaces-withdrawal-on-the-order`). Where a wallet → bank withdrawal lives (Q2) is NOT settled by it. +1 contradiction: two earlier decisions still describe the removed section. Before that: ▼ −3 (2026-09-29): the owner APPROVED the order-detail preview, which settles the line price (harga beli), the margin's direction (MP − sistem) and sections-over-tabs — recorded as decisions. Before that: ▲ +1 (2026-09-29): who may edit a note, may it be deleted, and are system notes the timeline. Before that: ▲ +2 (2026-09-29): does promote keep the marketplace product title · what a return shipment is. Before that: ▲ **+4 from the order DETAIL preview** (2026-09-29): is the line price what we paid or charged · the margin subtraction written the other way up · sections or the built page’s tabs · is withdrawal & penyesuaian the settlement ledger (the same fork as Q2, seen from one order). Before that: ▲ **+4 from the order LIST's row and its actions** (2026-09-28): is *sudah diserahkan* a status or the absence of one (it gates three row actions and falls back to `PACKED`) · is Edit Resi the seller's or the warehouse's · ⛔ **can a root reader see the list at all** — the owner decided the Team column appears above selling level and `scopedOrders` has no root bypass, so the column is correct and the table is empty · does a row's date show the year, and whose clock formats it. 🆕 **One contradiction, four sites, one cause**: the owner redefined an order's total as goods + fulfilment, which the proto's `total = subtotal + shipping_cost` and the create screen's shipping field both predate. The margin was CHECKED and does not ripple. ⚠ **Then the owner corrected the money outright and THREE of those decisions reversed in one round** — total beli is the COST side (`cogs` + fees), and margin is `harga MP − total beli`, measured against the platform's price rather than ours. +2: what the revenue of an unpriced order is, and where the deadline bands come from. Recorded as one contradiction with three sites, because it is one misreading. Earlier: 🆕 **the order LIST's summary** (2026-09-24) — the owner named the fifteen figures the old system showed and the split was argued: volume, value and gross margin stay over the work queue, the settlement-clock figures move. All three questions are **already open elsewhere and blocked there**: the report's home · where a wallet→bank withdrawal lives ([settlement Q1](business/settlement/context_clarify.md#question) · [architecture Q7](technical/architecture/context_clarify.md#question)) · whether one order's warehouse fee is readable ([balance Q9](business/balance/context_clarify.md#question)). ✅ One thing it CLOSES: the owner settled which sense "withdrawal" is — wallet→bank, not settlement's `fund` |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-21)** what `return` means — it is a CLAIM, and the owner added a ninth status `return_completed` for the receipt · ▼ −1 the half-finished order is NOT tracked (owner, 2026-09-17) · ▼ −6 pruned 2026-09-17, overtaken by the day's decisions (draft pre-checks, SKU mapping, review reject, the synchronous take, the cross line's cost, what placement means) · ▲ +1 re-routed from shipment: an order cannot be created without a channel. ▲ was 14 — rewritten after the owner's 2026-09-15 edits: six decisions recorded, −2 closed, +4 opened. ⚠ **Counted as `###` headings now** — its questions are named, not numbered |
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 1 | ▼ was 5 — four answered 2026-09-17: a take reduces stock and placement (its shelf half re-routed to inventory Q11) · rupiah is `double` · the take is never retried · inventory computes the markup. Left: which team `team_id` is |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | ▲ **+13 (2026-09-21)**, ▼ **−10 decided the same day** — incl. ✅ the own-line branch FIXED in two passes (the first left a junk map write that read as a fix) and ✅ a ninth status `return_completed`, which superseded the eight-status decision (the map’s key · written once · never partial · a return may land in another warehouse · **the return warehouse is per TEAM** · **it is read when the return happens, not frozen on the order** — the last two both reversed my recommendations, and together they mean the whole configuration is a column that already ships and the order carries nothing about returns). ✅ **The whole return-warehouse cluster is now CLOSED** — five decisions, three of which reversed my recommendation, and what is left to build is an **editor** and a **reader** for a column that already ships. ⛔ The open successor is **who creates the return** — CS from an office or the receiving warehouse — which decides the screen and decided the last argument — incl. ⛔ **the return warehouse is a SECOND warehouse**: stock is keyed `(warehouse_id, product_id)`, so a unit taken from the fulfilling warehouse returns onto a DIFFERENT pile, and nothing moves it back, ▼ **−3 decided the same day** — the map’s key and its stale `to_product_id` · a map is written once · **a return is never partial** (which reversed my own recommendation and made the owner’s qty-less flow correct as drawn). ▲ +1 successor: a short-delivered parcel is now neither a return nor completed. — the owner added `## Order Return Flow.` and a second table, `product_return_maps`. ✅ Its diagram **parses**. ⛔ The own-product branch routes through the cross-product map and ends in `Clone Product`, so a team **duplicates its own catalogue** on every return · the map's uniqueness names `to_product_id`, **not a column** · the warehouse is read twice, two ways, in one picture · a clone needs a `product_code` nobody generates now that the code is composed · no line carries a returned **quantity**. ⛔ **And `team_return_configurations` already exists as `team_infos.return_warehouse_id`** in another service, unread and with no editor. **See #6** |
-| [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 0 | ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
+| [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 1 | ▼ **−3 (2026-10-05, later)** Q2–Q4 answered as recommended: signed in, read not verify, the bytes. Before that: ▲ **+3 (2026-10-05, `ReceiptCheck`)** Q2–Q4 — the owner put the label reader's RPC here ([receipt-check-is-shipments](business/shipment/context_decision.md#receipt-check-is-shipments)): who may call it (recommend signed in) · read or verify (recommend read) · bytes or a stored document (re-routed receipt_readers Q2, recommend bytes). Before that: ▲ **+1 (2026-10-02)** Q1 — **are SPX, GrabExpress, J&T Cargo, ID Express, LEX, AnterAja, GoSend and Pos Indonesia channels?** (GrabExpress, J&T Cargo, ID Express, LEX, AnterAja and GoSend joined since, ID Express via a KiriminAja label, and KiriminAja itself is an aggregator, not a channel) A live order's receipt is an SPX Shopee Instant label, and the channel list is jne, jnt, sicepat. Recommend adding `spx` (a row root creates). Found by the receipt reader. Before that: ▼ was 3 at the start of 2026-09-16 — ✅ every question closed: −10 decided (identity · soft delete · root-only · courier grain · deleted resolves by id · the app maps courier text · restore not recreate · handover deferred · the list needs no login · ByIDs public too), tracking parked, unknown-courier re-routed to order. Then the three critique rows accepted (immutable `code` · seed the three · `updated_at`) — the context is fully decided |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 9 | ▼ **−1 (2026-09-28)** Q6 — where a shop lives — moved to [shop Q2](business/shop/context_clarify.md#question), ✅ answered 2026-09-29 — its own `shop_service`. Before that: ▼ **−1 (2026-09-26)** Q7 — where a withdrawal lives, answered by settlement's type list. Before that: ⚠ **counted 10 here last round and 11 mechanically** — the row said "count unchanged" while one had been added. 🔄 2026-09-17: re-examined against the built shipment context — every `shipping_service` proposal rewritten, Q8 (region) reworded to *does region_service stay separate*, +1 Contradiction: its line 13 still describes the old shipping service. Count unchanged. ▼ was 11 — Q2 became a pointer to order's half-finished-orders question. What stayed is a contradiction, not a question |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 | ▼ **−1 (2026-10-01)** Q11 answered — an accepted payment is final, the reverse is removed. Before that: ▼ was 9 — `found` needs no handshake |
-| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 11 | ▲ +1 re-routed from order_creation: a stock count between create and pick re-adds a taken unit · ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |
+| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 13 | ▲ **+1 (2026-10-07)** — Q13 what an `inventory_transaction` is, now **#4**. Before that: ▲ **+1 (2026-10-02)** Q12 moved from user Q3 — who confirms a count or a loss, five parts. Before that: ▲ +1 re-routed from order_creation: a stock count between create and pick re-adds a taken unit · ▲ was 7 — `stock/` merged into `inventory/` ([stock-merges-into-inventory](business/inventory/context_decision.md#stock-merges-into-inventory)) · +3: purchasing boundary, what inventory does NOT own, Toni's proposal |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 | |
 | [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 6 | ▲ which markup does the ledger charge from |
-| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 12 | +6 |
+| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 11 | ▼ **−1 (2026-10-07, in chat)** — Q6 answered, the courier's ask stays in the price; it was #4. Before that: +6 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 | |
-| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 5 | |
+| [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 | ✅ **−1 (2026-10-06, phones decided)** Q31 answered; nothing open. Before that: 🔄 **±0 (2026-10-06, elaborated)** Q31 split into four parts: rewrite on save, what is a phone, no country prefix, stored numbers. Before that: 🔄 **±0 (2026-10-06, narrowed)** Q31 narrowed to whether a phone is rewritten when saved; Q20d had answered how numbers compare. Before that: ▲ **+1 (2026-10-06, phones)** Q31, how phone numbers compare. Before that: ✅ **−1 (2026-10-06, q30)** Q30 answered; nothing open. Before that: ▲ **+1 (2026-10-06, erase built)** Q30, what erase leaves open. Before that: ✅ **−1 (2026-10-06, accepted)** Q29 answered, pass 1 accepted; nothing open. Before that: ▲ **+1 (2026-10-06, last)** Q29, design_accept of pass 1. Before that: ✅ **−1 (2026-10-06, later)** Q28 answered; nothing open. Before that: 🔄 **±0 (2026-10-06)** Q28 elaborated into five parts. Before that: ▲ **+1 (2026-10-05, building 1a)** Q28, the switcher lists memberships only. Before that: ✅ **−2** Q26 and Q27 answered; nothing open. Before that: ▲ **+1** Q26 elaborated into three parts; Q27 opened, a new team's first Owner. Before that: ▼ **−3 (2026-10-05, later)** Q21, Q22, Q23, Q25 answered as recommended, design_accept passed; Q26 opened, is the role rename still on hold. Before that: 🔄 **±0** Q21 elaborated: every who filter, three parts; the floor roles are refused on four of six today. Before that: ▼ **−1 (2026-10-05)** Q24 closed, short_code cancelled. Q21–Q23 and Q25 open. Before that: ± **0 (2026-10-05)** Q24 answered in part: short_code is a unique alias, four rules left. Before that: ▲ **+2 (2026-10-05)** Q24–Q25 from §General Data: what short_code is for, and whether the phone stays. Before that: ▲ **+3 (2026-10-02)** Q21–Q23 from the prototype — the restock filters' search, an Admin changes no role, design_accept. Before that: ✅ nothing open — Q20 answered. Before that: Q17–Q19 answered. Before that: ▲ **+4 (2026-10-02)** Q17–Q20, the leftovers made into questions. Before that: ▼ **−5 (2026-10-02)** Q12–Q16 answered, none open. Before that: ▲ **+5 (2026-10-02)** Q12–Q16, from a critique of the design as decided. Before that: every question answered, Q11 closed. Before that: Q11 elaborated into six parts. Before that: ▼ **−3 (2026-10-02)** Q5, Q9, Q10 answered; only Q11 left. Before that: Q4 closed. Before that: ▲ **+1 (2026-10-02)** Q11 opened (search and duplicate accounts); Q4 and Q5 narrowed. Before that: Q8 answered, Q10 opened (the role names against the code). Before that: ▼ **−1** Q7 closed by §Suspend Users. Before that: Q7d–e answered. Before that: Q7a–c answered. Before that: 🔄 **±0** Q7 elaborated into five parts. Before that: ▼ **−1 (2026-10-02)** Q6 answered — the migration writes `root1234`. Before that: ± **0 (2026-10-02)** Q6 narrowed — the password is `root1234`; only *migration or `tools/san`* is left. Before that: ▲ **+2 (2026-10-02)** Q8 one Root or several · Q9 the System Administrator; Q5 and Q6 narrowed. Before that: ▼ **−3 (2026-10-02)** Q1 answered — Staff is the whole floor job · Q2 answered — one role per team · Q3 moved to inventory Q12; numbers kept, so the list starts at Q3. Before that: ▲ **+2 (2026-10-02)** from §Responsbility and §Default Data: the dev root password and where it is set · may a user be deleted |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | 🔄 **Q2 now holds #2** (2026-09-28) — the settlement report's check was declined, so whether any report can heal a lost event is the open decision. See **#2**. Before that: ▲ the `### Why` section landed — it argues the pattern's case but names the wrong coupling, and it opens a structural one: is `analytic` a LIBRARY or a SERVICE |
 | [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 4 | 🆕 counted for the first time |
 | [business/project/member_clarify.md](business/project/member_clarify.md#question) | 5 | 🆕 who DECIDES, rather than what the system does. ▼ progress reporting is settled |
 | [technical/development/workflow_clarify.md](technical/development/workflow_clarify.md#question) | 4 | |
 | [business/settlement/context_clarify.md](business/settlement/context_clarify.md#question) | 4 | ▼ **−1 (2026-09-29)** Q1 answered — a withdrawal counts in the position, against my recommendation ([withdrawal-counts-in-the-position](business/settlement/context_decision.md#withdrawal-counts-in-the-position)). Before that: 🔄 **Q1 reshaped (2026-09-26)** — where a withdrawal lives is answered (a settlement type); whether it counts toward the position is open, and blocks the importer. +2 contradictions: `withdrawal` against the shortfall position · 13 types in the list, 8 in the contract. See **#7**. Before that: ▲ was 3 — 🔨 **the build added two** (Q4 `marketplace_total = 0`, Q5 the live sale), both built as recommended; Q3 is built too. Before that: ▼ was 5 — the ledger's mechanics are all settled. What is left: where a platform WITHDRAWAL lives, whether `problem funding` is `marketplace_adjustment`, and who PUBLISHES a ledger change (re-routed from the analytic clarify, which the owner scoped to receiving). 🆕 **Three new contradictions this round, no new questions** — `context.md` is doc-lagging the shipped tables, and two of the five stale sites were in the clarify itself |
 | [business/settlement/settlement_importer_clarify.md](business/settlement/settlement_importer_clarify.md#question) | 0 | ✅ **(2026-09-29) BUILT** — the service, its screens and its dependencies ([state report](development_state/settlement/settlement_importer.md)). Before that: 🔨 **(2026-09-29) design_accept passed** ([decision](business/settlement/settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)) — critiques 15–17 closed with the contract, and the build is under way. Before that: ▼ **−3 (2026-09-29, after Q13)** Q1, Q5 and Q14 answered, each as recommended ([decisions](business/settlement/settlement_importer_decision.md)). ✅ **None left.** Before that: ▼ **−1 (2026-09-29, after Q10)** Q13 answered — settlement asks the shop ([decision](business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs)). Before that: ▲ **+1 (2026-09-29, after Q9)** Q10 closed by the owner's new §How We Decide `user_id`, Q13 and Q14 opened ([decision](business/settlement/settlement_importer_decision.md#user-id-is-the-orders-creator-else-the-shops-primary-cs)). Before that: ▼ **−1 (2026-09-29, latest)** Q9 answered — the row key is the only dedupe ([decision](business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). Before that: ▼ **−1 (2026-09-29, later)** Q8 answered — an import finishes whether anyone watches ([decision](business/settlement/settlement_importer_decision.md#an-import-finishes-whether-anyone-watches)). Before that: ▼ **−1 (2026-09-29)** Q6 answered — only a successful withdrawal is recorded ([decision](business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)). Before that: ▼ **−2 (2026-09-28)** Q11 answered — no dry run, for now ([decision](business/settlement/settlement_importer_decision.md#the-import-has-no-dry-run-for-now)); Q12 moved to the shop clarify. Before that: ▼ **−1 (2026-09-28)** Q3 answered — a file with another shop's orders is refused ([decision](business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Before that: ▲ **+1 (2026-09-28, §Flow's shop check)** Q12 — who may work on a shop; the check before the file is stored is recorded ([decision](business/settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)). Before that: 🔄 **±0 (2026-09-28, §Rpc Detail)** — two decisions (the request is the shop and the file · every stream message is a leveled log line); critiques 15–17 and a contradiction: no `team_id`, two `Payload`s, no size cap, and no field for the flow's step and count. Before that: ▼ **−2 (2026-09-28)** Q7 yes, Q4 no revert, Q2 post to the shop — the last two against my recommendation; Q11 opened: a dry run, since nothing is undoable. Before that: 🔄 **±0 (2026-09-28)** — the owner named the Excel Reader as its reader ([decision](business/settlement/settlement_importer_decision.md#the-excel-reader-reads-every-statement)); critique 14: the reader's TikTok key is unsettled, and it is this service's key. Before that: ▲ **+1 (2026-09-28, later still)** Q10 — how a row comes to name its order's creator. The owner's `## How We Decide actor_id / user_id` decided an imported row names the order's creator, else the uploader ([decision](business/settlement/settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader)) — which also answered analytic Q7 — and `SettlementPost` takes its actor from the caller's token. Before that: ▲ **+1 (2026-09-28, later)** Q9 — the same file twice, opened when the owner named the stored file by its content hash ([decision](business/settlement/settlement_importer_decision.md#the-file-is-named-by-its-content-hash)). Before that: ▲ **+2 (2026-09-28)** — the owner made both imports server streams and drew a flow. Q7: the access interceptor refuses every stream, so neither import can be called · Q8: does an import outlive its watcher. The async critique the stream answered is recorded as [the-import-is-one-streamed-call](business/settlement/settlement_importer_decision.md#the-import-is-one-streamed-call). Before that: 🆕 **a new service doc, first pass** (2026-09-26) — three RPCs, no person, no screens, measured against all 26 sample workbooks. ⛔ Every choice about a row is frozen at its first import — global keys, and nothing reverts · a TikTok file names no shop, and our `Shop` stores no Shopee username · matching joins on a ref rule that is decided and not built · `GMV Pay Deduction` equals the ads rows to the rupiah, so it is skipped like `Earnings` · 0 fractional amounts in 26 files. Q6 re-routed from excel_readers, where it pointed at settlement and never landed. See **#7** |
-| [business/shop/context_clarify.md](business/shop/context_clarify.md#question) | 4 | 🔄 **±0 (2026-10-01)** Q3 elaborated into five parts — the code's rule revised to unique among open shops; four built sites and one being built refuse a deleted shop. Before that: ▼ **−1 (2026-09-29)** Q2 answered — its own `shop_service` ([the-shop-gets-its-own-service](business/shop/context_decision.md#the-shop-gets-its-own-service)). Before that: ▼ **−1 (2026-09-29, later)** Q7 answered — the primary CS is a flag on a grant ([the-primary-cs-is-a-flag-on-a-grant](business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)). Q2 and Q3 are now **#7**. Before that: ▼ **−1 (2026-09-29)** Q1 answered — a write needs a grant or a manager role ([a-write-needs-a-grant-or-a-manager](business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). Before that: ▲ **+1 (2026-09-29)** Q7 — §Manage User Access gave a shop one primary CS: must it always have one, who may be one, and what the importer does with `primary_user_id`. ⛔ And `ShopAccessCheck` as written has no `team_id` (critique 10). Before that: ▲ **+1 (2026-09-29)** Q6 — *manage* access opened who can hold a grant: nothing ends one when its holder leaves the team. Before that: ▲ **+3 (2026-09-28, second pass)** — Q3 close, not delete · Q4 marketplace and team fixed at creation · Q5 the shop's own name on the platform · Q2 absorbs architecture Q6 and now recommends a `shop_service` of its own. ⛔ Found: settlement lets the first team to post claim a shop's account ([critique 6](business/shop/context_clarify.md#critique)). Before that: 🆕 **a new context, first pass** (2026-09-28) — the owner's shop doc lists create, edit, delete, list; `ShopService` already ships inside `selling_service`, with shop access (#86) that nothing enforces. Q1 re-routed from importer Q12 (who may work on a shop) · Q2 is the shop its own service |
+| [business/shop/context_clarify.md](business/shop/context_clarify.md#question) | 4 | 🔄 **±0 (2026-10-06, narrowed)** Q6 — *leaving the team ends a grant* was decided in the user context and is built ([removing-a-member-drops-their-shop-access](business/user/context_decision.md#removing-a-member-drops-their-shop-access)); left: may a grant be made to a non-member. Before that: 🔄 **±0 (2026-10-01)** Q3 elaborated into five parts — the code's rule revised to unique among open shops; four built sites and one being built refuse a deleted shop. Before that: ▼ **−1 (2026-09-29)** Q2 answered — its own `shop_service` ([the-shop-gets-its-own-service](business/shop/context_decision.md#the-shop-gets-its-own-service)). Before that: ▼ **−1 (2026-09-29, later)** Q7 answered — the primary CS is a flag on a grant ([the-primary-cs-is-a-flag-on-a-grant](business/shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant)). Q2 and Q3 are now **#7**. Before that: ▼ **−1 (2026-09-29)** Q1 answered — a write needs a grant or a manager role ([a-write-needs-a-grant-or-a-manager](business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)). Before that: ▲ **+1 (2026-09-29)** Q7 — §Manage User Access gave a shop one primary CS: must it always have one, who may be one, and what the importer does with `primary_user_id`. ⛔ And `ShopAccessCheck` as written has no `team_id` (critique 10). Before that: ▲ **+1 (2026-09-29)** Q6 — *manage* access opened who can hold a grant: nothing ends one when its holder leaves the team. Before that: ▲ **+3 (2026-09-28, second pass)** — Q3 close, not delete · Q4 marketplace and team fixed at creation · Q5 the shop's own name on the platform · Q2 absorbs architecture Q6 and now recommends a `shop_service` of its own. ⛔ Found: settlement lets the first team to post claim a shop's account ([critique 6](business/shop/context_clarify.md#critique)). Before that: 🆕 **a new context, first pass** (2026-09-28) — the owner's shop doc lists create, edit, delete, list; `ShopService` already ships inside `selling_service`, with shop access (#86) that nothing enforces. Q1 re-routed from importer Q12 (who may work on a shop) · Q2 is the shop its own service |
 | [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 0 | ▼ **−1 (2026-09-28)** Q7 answered in the owner's importer doc — the uploader carries an imported shop-level row ([an-imported-row-names-its-orders-creator-else-the-uploader](business/settlement/settlement_importer_decision.md#superseded-an-imported-row-names-its-orders-creator-else-the-uploader)); my user-0 recommendation declined. ✅ **None left.** Before that: ▼ **−1 (2026-09-28)** Q6 answered — topic retention carries the replay ([topic-retention-carries-the-replay](business/settlement/context_decision.md#topic-retention-carries-the-replay)). Before that: ▼ **−1 (2026-09-28)** Q2 answered — the fold locks the shop, then the person ([the-fold-locks-shop-then-user](business/settlement/context_decision.md#the-fold-locks-shop-then-user)). Before that: ▼ **−1 (2026-09-28)** Q5 answered — periods are grouped on the server ([periods-are-grouped-on-the-server](business/settlement/context_decision.md#periods-are-grouped-on-the-server)). Before that: ▼ **−1 (2026-09-28, later still)** Q1 answered — only the replay holds the lock ([only-the-replay-holds-the-lock](business/settlement/context_decision.md#only-the-replay-holds-the-lock)). Before that: 🔄 **±0 (2026-09-28, later)** Q3 answered — the user carry is kept ([the-user-carry-is-kept](business/settlement/context_decision.md#the-user-carry-is-kept)); Q7 opened — an imported shop-level row lands on whoever uploaded it. Before that: ▼ **−1 (2026-09-28)** Q4 — the reconcile check, declined ([the-reconcile-check-is-not-built](business/settlement/context_decision.md#the-reconcile-check-is-not-built)); kept as a one-line pointer so Q5–Q6 keep their numbers. Before that: ▲ was 5 — 🔨 Q6 from the build: topic retention for the replay's seek. Before that: ▼ was 6 — `system_adjustment` decided as a ledger row in a day. What is left of it is **#3**, reshaped |
 | [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 | 🔄 **±0 (2026-09-28)** Q1 answered — the lock is state, the replay's alone ([only-the-replay-holds-the-lock](business/settlement/context_decision.md#only-the-replay-holds-the-lock)); Q2 opened — what releases a lock the replay died holding. Before that: 🆕 `settlement_service_metadata` — `analytic_status` is gone, `process_event_lock` replaced it — is this table CONFIG (human-set) or STATE (service-set)? |
 | [technical/ledger/mutation_and_ledger_clarify.md](technical/ledger/mutation_and_ledger_clarify.md#question) | 3 | 🆕 counted for the first time |
 | [technical/event_architecture/context_clarify.md](technical/event_architecture/context_clarify.md#question) | 0 | ▼ was 1 — ✅ **every question closed**: Q6, Q14 and Q15 all decided part by part, on top of Q1–Q13. **Twenty-three decisions**, the newest being the required `oneof`, one decoder, breaking the old protos accepted, `identity` settled in four parts, and CI on `dev` with `buf breaking` — applied. ⛔ **What blocks the first event here is a contradiction, not a question** — the shipped library cannot publish the decided envelope, and `context.md` lags its own decisions. See **#6** |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 | ⚠ listed in *what changed* last round but never added to this table |
 | [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 7 | ▲ **+1 (2026-09-24)** Q7 — a fourth TikTok layout renamed the item's headers; the reader is fixed, but whether keys survive the switchover is unmeasured, and 18 of 22 sample adjustments carry a `Type` the new layout respells or drops. Before that: 🆕 **a new technical package, first pass** — the Shopee/TikTok settlement file reader, measured against all 25 sample workbooks rather than read off the spec. ⛔ **Two findings are load-bearing beyond this package**: TikTok's column set is **not fixed** (three layouts across 13 files — `Flat fee` and `Sales fee` vanish, `GMV Max ad fee` appears), and **neither platform gives a per-row unique key**, which contradicts settlement's `hash(date + order_ref_id)`. ▼ **The Shopee half of that closed the same day** — the owner added a `### Shopee Contract` with a `GenerateUniqueID` (md5 over six fields), and it survived testing: **0 collisions in 3788 rows** across 12 files, both duplicate-row pairs distinct, and **141/141 stable** across a re-save through another tool. What is left is TikTok, whose `Order/adjustment ID` repeats. ⚠ The new contract opened three of its own, all about that hash being taken over `json.Marshal` of a struct that will change — and it **corrected one of my recommendations into a recorded contradiction**: I proposed `int64` rupiah in a `technical/` doc against [rupiah-is-floating-point](business/order/context_decision.md#rupiah-is-floating-point), which was decided system-wide in the *order* tree and had already rejected that same recommendation once. The other five are scope and typing: verbatim strings or an enum · is Tokopedia a *format* or a *column* · fixtures or real values (`wderror`, `x`) · what timezone is stored · does the package read only settlement reports. ⚠ Also non-design: **`examples/` is untracked and not gitignored**, and the workbooks carry real seller usernames and revenue into a PUBLIC repo. ▼ **−1 and SHIPPED (2026-09-24)** — three decisions recorded ([hash-the-whole-struct](technical/packages/excel_readers/context_decision.md#hash-the-whole-struct) · [jakarta-is-the-clock](technical/packages/excel_readers/context_decision.md#jakarta-is-the-clock) · [dash-is-not-a-reference](technical/packages/excel_readers/context_decision.md#dash-is-not-a-reference)), and `backend/pkgs/san_excel_readers/shopee.go` is built and green over all 12 sample workbooks. The timezone question closed by being decided. ⛔ **The remaining six are TikTok-shaped or unresolvable at item level**: the item is capped at six fields forever, so the recovered order ref and the reversal flag have nowhere to live but the document |
+| [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 | ▼ **−2 (2026-10-05, `ReceiptCheck`)** — Q3 answered (shipment hosts it), Q2 moved to [shipment Q4](business/shipment/context_clarify.md#question). Before that: ± **0 (2026-10-05, a note with no tracking number)** — a third non-label rule. Before that: ▼ **−1 (2026-10-05, Q12 answered)** — the Lazada receipt reversed back to the tracking number, the order number is the order id. Before that: ▼ **−1 (2026-10-05, Q7 answered: barcode-confirmed)** — a Shopee label no courier layout knows is read when its barcode confirms its Resi box. Before that: ± **0 (2026-10-05, a fifth SiCepat logo)** — 136×45. Before that: ± **0 (2026-10-05, a Lazada receipt is its order number)** — decided; Q12 reframed to the Lazada order id, Q17 down to four mismatches. Before that: ± **0 (2026-10-05, a Shopee Pos Indonesia label)** — `SHPE…`, an eighth Shopee shape. Before that: ± **0 (2026-10-05, a Shopee ID Express label)** — `IDS…`, a seventh Shopee shape. Before that: ▲ **+1 (2026-10-05, Q17)** — five labels read cleanly but mismatch their orders' stored receipts: what do they store? A TikTok AnterAja label reads (`TSA-…`). Before that: ± **0 (2026-10-05, a Lazada label in J&T's format)** — `JZ…` accepted beside `LXAD-…`. Before that: ± **0 (2026-10-05, Shopee J&T Cargo, a cut order number)** — read whole from `Pesan:`, never the stump. Before that: ± **0 (2026-10-05, a second Lazada prefix)** — `JNAP-`; Q12 settled by the label itself, awaiting confirmation. Before that: ± **0 (2026-10-05, a SiCepat logo at a third size)** — one row in the logo table. Before that: ± **0 (2026-10-05, a TikTok Shop instant label)** — the pickup code is its receipt by default. Before that: ± **0 (2026-10-05, a screenshot is not a label)** — no text and no readable code is `ErrNotShippingLabel` too. Before that: ▼ **−1 (2026-10-05, Q16 answered)** — `ErrUnreadable` and `ErrNotShippingLabel`, two exported errors that never overlap. Before that: ± **0 (2026-10-05, spam built as Q16 recommends)** — `ErrNotShippingLabel` for a file with no layout and no image; Q16 awaits the owner's confirmation. Before that: ± **0 (2026-10-05, Q15 answered, Q16 opened)** — the Canva label is spam and refused; Q16: tell spam from an unknown courier label, by rules (recommended) or image recognition. Before that: ▲ **+1 (2026-10-05, a label the seller made)** Q15 — no courier, tracking number or order id: read its recipient (built) or refuse it, and what does its order store as a receipt? Before that: ± **0 (2026-10-05, a Shopee JNE Trucking label)** — `JT` and eleven digits by exact shape; a name fused to the sender caption keeps its end. Before that: ± **0 (2026-10-05, an SPX label printed as pictures)** — every image scanned, JPEGs read, the order id from a barcode. Before that: ± **0 (2026-10-05, a Shopee same-day label, GoSend)** — a third instant header, `SAMEDAY`. Before that: ± **0 (2026-10-05, a TikTok J&T Cargo label)** — a second J&T Cargo logo size; Q7 notes the barcode check reaches Shopee only. Before that: ▲ **+1 (2026-10-05, a Shopee reservation label)** Q14 — `No.Reservasi:` instead of `No. Pesanan:`: is the reservation number the order id (built: yes), and does a parcel to an SPX hub belong in the order list? Before that: ± **0 (2026-10-05, a Shopee NEXT DAY label)** — SiCepat BEST, a third SiCepat logo added; Q7's barcode mode would have skipped this round too. Before that: ± **0 (2026-10-05, a Shopee AnterAja label)** — fourteen digits by exact shape; Q7's barcode-confirmed option would have read this and the Reguler label with no round. An address tag no longer becomes the address. Before that: ± **0 (2026-10-05, a Shopee Reguler label)** — a `CM…` number (probably JNE) read by its exact shape; Q7 gains a third option, lenient but confirmed by the barcode. Before that: ▲ **+1 (2026-10-05, a J&T label printed as a picture)** Q13 — no text at all: the receipt is decoded from its QR code (built, `gozxing`), and the order id and recipient would need OCR. Recommend not yet. The contradiction about the form's `JP` rule gains a second real prefix, `JX`. Before that: ▲ **+1 (2026-10-02, a Lazada label)** Q12 — its order id is printed with no caption: is the 16-digit number it? Built: read. The label is one Form XObject the library never opened (the reader now follows forms), and subset-font widths had never been found (fixed). Before that: ▼ **−1 (2026-10-02, the owner's data)** Q6 closes: an instant / same-day order stores its pickup code (`Kode Pengambilan`) as the receipt, so the reader now returns it ([the-pickup-code-is-the-receipt](technical/packages/receipt_readers/context_decision.md#the-pickup-code-is-the-receipt)). Q7–Q11 keep their numbers. Before that: ▲ **+1 (2026-10-02, a KiriminAja label)** Q11 — it prints no marketplace order id, only KiriminAja's `OID-…` booking number: is that the order id? Recommend `""` (built) unless the orders store it. Read by caption (`AWB`), any courier KiriminAja books. First label to print the recipient's phone. Its bold is drawn twice (doubled glyphs, now dropped). Before that: ▲ **+2 (2026-10-02, the contract edit)** — no `Courier`, the recipient added. HALU closes (moot), and Q8–Q10 open: no sample prints the recipient's phone · masked → empty · the address joins wrapped lines. A ninth sample, TikTok J&T Cargo, reads too (logo gate, fingerprint now covers the alpha mask). Before that: ± **0 (2026-10-02, after SiCepat REG)** — an OLDER SiCepat print: number printed once (read from its `Resi:` box, safe because 12 digits cut short fail), and the SiCepat logo at a second size (145×40). Q8 gains the evidence: an exact-match logo table grows one entry per render size. Before that: ▲ **+1 (2026-10-02, after GrabExpress)** Q8 — a SiCepat `REG` label is named only by its logo (`REG` is also JNE's), so logos now CONFIRM a courier where the text names none: fail or read-without-courier when nothing does? Before that: ± **0 (2026-10-02, after HALU)** — a **GrabExpress** `Same-day` label: the Shopee instant template with another header and logo. Read now (no tracking number, courier from a table of known logos). Folds into Q6 and [shipment Q1](business/shipment/context_clarify.md#question), which now asks for `spx` and `grabexpress`. Before that: ▲ **+1 (2026-10-02, newest)** Q7 — a Shopee `HALU` label names no courier in its text, read as SiCepat by the service name: confirm? Read with the same most-printed rule, now shared (`mostPrinted`). Before that: ± **0 (2026-10-02, last)** — a fourth sample, **SPX `ECO`** (`spx_03.pdf`): its Resi box wraps the number and its caption is `Resi:`, so the SPX number is now read as the `SPXID` token printed most often (≥ 2×, no tie), never from the box. Before that: ± **0** — a third sample, **SPX standard** (`spx_02.pdf`), prints `No. Resi: SPXID…` and reads now. It also **reversed my logo match**: the same SPX logo was a different image (68×27 → 77×24), so the courier comes from text (`SPXID`), and on the instant label the logo is only a hint. Q6 widens to the instant label's courier too. Also fixed: rotated text reporting a 3.7e-16 size leaked into lines. Before that: ▲ **+1 (2026-10-02, later)** Q6 — the owner's iterate tool hit an **SPX** Shopee Instant label: it prints **no tracking number** anywhere, so what is its receipt? Recommend `""` (built), since the order number again would trip the form's refs-distinct error. Built the same round: an SPX instant layout (named only by its logo, matched by pixel hash), and a fix for a **silent id truncation** (the library reads no Type0 widths, so kerning split words). Before that: 🆕 **(2026-10-02) a new technical package, first pass**: the shipping-label (resi) reader the order form's `scanReceipt` stand-in is waiting for. **Proven doable, and ✅ BUILT to the owner's contract the same day** (`backend/packages/san_receipt_readers/`, 10 tests on synthetic PDFs + `TestSamples` over the real ones): pure-Go `ledongthuc/pdf` reads the J&T sample in 7–9 ms, once the package groups glyphs into lines itself (the library's own row grouping returned the whole page as one row). No caller is built. Two decisions recorded ([three-fields-only](technical/packages/receipt_readers/context_decision.md#three-fields-only) · [the-reader-finds-the-courier](technical/packages/receipt_readers/context_decision.md#the-reader-finds-the-courier)). Open: which app generated the label (`wkhtmltopdf`, not J&T) · caller flow A/B/C · host service · PDFs only · sample privacy (a buyer's street address, public repo). ⚠ A contradiction found in code: the form's J&T rule is `JP…`, and the real label is `JY…` |
 | [business/mcp/context_clarify.md](business/mcp/context_clarify.md#question) | 6 | ⛔ **±0 (2026-09-29, later)** Q2 answered — A, and ChatGPT and Claude — and the two conflict: Q8 opens, since ChatGPT cannot reach the shipped app ([Contradiction](business/mcp/context_clarify.md#the-shipped-app-cannot-reach-chatgpt)). Before that: 🔄 **±0 (2026-09-29)** the owner's §General 3 names the Go SDK ([the-mcp-uses-the-official-go-sdk](business/mcp/context_decision.md#the-mcp-uses-the-official-go-sdk)) — it builds every option Q2 weighs · Q2 reworded into 2a, which protocol crosses to us, and 2b, which agents. Before that: ▼ **−1 (2026-09-29)** Q1 answered — the agent only reads, for now, and the server refuses any write ([an-agent-only-reads-for-now](business/mcp/context_decision.md#an-agent-only-reads-for-now)); it rules out the session token as the agent's credential. Before that: 🆕 **a new context, first pass (2026-09-29)** — a local MCP app shipped to users, so their own AI agent reads and analyzes their data through the RPC API. Nothing is built and nothing waits on it, so none of the seven enters the list above. ⛔ Two belong before the first line of code: may the agent act or only read (Q1) — it acts on text a buyer typed — and does a key carry the root bypass (Q4), which would hand every team's data to a third-party AI. The other five: where the tools live and which agents must be reached · how an account connects · who may send a team's data out · which data first · whether a buyer's name, phone and address may leave |
 | [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 0 | ✅ **(2026-10-01) BUILT** — design_accept passed, and the service, the withdrawal listener and its screens are implemented, tested and audited ([state report](development_state/financial_account/context.md)). Before that: 🔨 **(2026-10-01) the prototype is built**. Before that: ▼ **−3 (2026-10-01)** Q15–Q17 answered as recommended, critique 9 adopted · **nothing left open**. Before that: ▲ **+3 (2026-10-01)** the analytics section — Q15 which day a row counts in, Q16 the daily row's grain, Q17 how it is computed. Before that: ▼ **−1 (2026-10-01)** Q9 answered — where to pay is the team's description · **nothing left open**. Before that: ▼ **−1 (2026-10-01)** Q14 answered — there is no reversal to hear. Before that: ▲ **+1 (2026-09-30)** Q14 opened — a payment accepted, then reversed; team payments post on acceptance only. Before that: ± **0 (2026-09-30)** critiques 1 and 2 decided — no critique left, only Q9. Before that: ± **0 (2026-09-30)** critiques 4 and 8 adopted — two critiques left. Before that: ± **0 (2026-09-30)** `provider`, `name` + `holder_name`, `occurred_at` adopted — four critiques left. Before that: ± **0 (2026-09-30)** the log names its account — no contradiction left. Before that: ± **0 (2026-09-30)** the team record's bank dropped, not copied; Q9 narrows to where a team is paid. Before that: ± **0 (2026-09-30)** `shop_id` unique — the shop-key contradiction closes; one contradiction left, the log's account. Before that: ▼ **−1 (2026-09-30)** Q13 answered — settlement's ads and the accounts are independent; `ads_expense` joins the types. Before that: ▼ **−2 (2026-09-30)** Q2 and Q3 answered — a restock and an expense must name the account that paid, required against my *optional*; Q12 answered — an unknown account is filled in or moved in; Q13 opened — an ads charge from the seller balance. Before that: ± **0 (2026-09-30)** Q11 answered — an `unknown` account; Q12 opened — how it becomes the real one. Before that: ± **0 (2026-09-30)** Q1 answered — `shop_accounts`; Q11 opened — a shop with no row; `operational_accounts` narrows Q2; ⛔ a second contradiction — both new keys allow several accounts. Before that: ± **0 (2026-09-29)** Q1 narrowed — `revenue_fund` is `withdrawal`, revenue stays in settlement; where it lands is left. Before that: ▼ **−1 (2026-09-29)** Q8 answered — the whole team sees, admin and up move the money (seeing against my recommendation). Before that: ▼ **−1 (2026-09-29)** Q10 answered — one way in per type; Q1 and Q3 narrow to which account a withdrawal and an expense name. Before that: ± **0 (2026-09-29)** Q10 narrowed — `restock` is never typed by hand; `expense`, `revenue_fund`, `team_payment` left. Before that: ▼ **−1 (2026-09-29)** Q4 answered — an adjustment is only a reconcile's difference; `balance_after` adopted from critique 5 · ⚠ the log still has no account column. Before that: ± **0 (2026-09-29, the owner's second and third edits)** `opening_balance`, `transfer`, `team_payment`, then `capital`, joined the list — Q4 narrows to whether `adjustment` is for reconciling only. Before that: ▼ **−3 (2026-09-29)** Q5, Q6, Q7 answered as recommended — the team's e-wallet · a real account recorded once (closes the cash-number contradiction; ⚠ ripples into Q9) · below zero warned, never refused. Before that: ▲ **+1 (2026-09-29, the owner's first edit)** Q10 — which way each type comes in; two decisions recorded (one ledger · by hand or from the broker), and the log's missing account is now a contradiction. Before that: 🆕 **a new context, first pass (2026-09-29)** — a team's bank, ShopeePay and cash accounts, each with a balance and a log. Nothing is built and nothing waits on it, so none of the nine enters the list above. ⛔ The log names neither its account nor its cause (critique 1), `adjustment` is the only type for anything off the list, and `account_number` is unique while a cash box has none (a contradiction). Four questions reach built services: the restock's payment picker (Q2), the expense form (Q3), team payments (Q4), the team record's bank fields (Q9). **Q4 and Q8 first** — which forms exist, and which screens show a balance |
 

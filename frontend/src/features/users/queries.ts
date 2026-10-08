@@ -1,9 +1,13 @@
+import { create } from "@bufbuild/protobuf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import { PublicUserSchema, type PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import {
+  logEntriesFromList,
+  memberListRowData,
+  membershipsFromList,
   publicUsersByIds,
   teamAccessFromList,
   teamAccessRowData,
@@ -56,6 +60,22 @@ export async function fetchActors(ids: bigint[]): Promise<Map<string, PublicUser
   return actors;
 }
 
+// A WHO FILTER'S PEOPLE (a-who-filter-lists-the-people-on-its-rows): the ids a list's own service says are on its
+// rows, in its order, named with one UserByIDs. Which people is the list service's answer; this only names them.
+//
+// An id user_service could not name (the lookup failed) stays in the set as "#7" rather than vanishing: a filter
+// that silently drops a person is a filter that can no longer find their rows.
+export async function peopleFor(ids: bigint[]): Promise<PublicUser[]> {
+  const actors = await fetchActors(ids);
+
+  return ids.map(
+    (id) => actors.get(id.toString()) ?? create(PublicUserSchema, { id, username: id.toString(), name: `#${id}` }),
+  );
+}
+
+/** How many people a who filter asks for: the contract's largest page. The set grows only with staff turnover. */
+export const WHO_FILTER_SIZE = 200;
+
 // The hook form: one history's people, resolved once.
 //
 // Keyed on the IDS, so the same people are resolved once no matter which record asks — an order and a
@@ -102,12 +122,15 @@ export function useUsers({ teamId, q, page, pageSize }: UserListArgs) {
       const res = await userClient.userList({
         teamId: teamId!,
         filter: { q },
-        dataRequest: userListRowData(),
+        dataRequest: memberListRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
         users: usersFromList(res.items, res.ids),
+        // Each person's role in the scoped team (at 0n, in the root team). Empty until the server
+        // sends the MEMBERSHIP slice — the user decisions are not built yet.
+        memberships: membershipsFromList(res.items),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -152,8 +175,9 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
 // The user PICKER's search (UserSelect).
 //
 // Two RPCs behind one hook, because the question differs with the scope: inside a team it is "this
-// team's members matching q" (UserList), outside it is "anyone" (SearchUser). Both are in the key,
-// so the two answers cannot share an entry.
+// team's members matching q" (UserList), outside it is "anyone" (SearchUser at the root team — Root and
+// the Administrator only, picking a new team's Owner). Both are in the key, so the two answers cannot
+// share an entry. A list's "who" filter is neither: it is PersonFilterSelect, fed by the list's own service.
 //
 // Reading through the cache buys two things a hand-rolled search does not have. A transient failure
 // RETRIES rather than silently becoming an empty result list — and deleting a character returns to a
@@ -185,6 +209,55 @@ export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
       const res = await userClient.searchUser({ q, limit: 10 });
 
       return res.users;
+    },
+  });
+}
+
+// The ADD MEMBER popup's search (a-member-is-found-in-a-search-popup).
+//
+// SearchUser, told which team the person is being added to, so the answer also says who is ALREADY
+// in it (an-existing-member-gets-change-role). A separate hook from useUserSearch because it is a
+// different question with a different answer shape — the picker only needs people.
+//
+// The server reads the policy in `team_id` (only-member-managers-open-the-search): an Owner or an Admin gets an
+// exact match, Root and the Administrator the broad one; suspended accounts never come back.
+export function useMemberSearch(args: { teamId: bigint | undefined; q: string }) {
+  const { teamId, q } = args;
+
+  return useQuery({
+    queryKey: key.users(teamId, { memberSearch: q }),
+    ...referenceQuery,
+    enabled: q.length >= 2 && teamId !== undefined,
+    queryFn: async () => {
+      const res = await userClient.searchUser({ q, limit: 10, teamId: teamId! });
+
+      return {
+        users: res.users,
+        rolesInTeam: new Map<string, Role>(Object.entries(res.rolesInTeam)),
+      };
+    },
+  });
+}
+
+// One team's membership history, newest first (every-role-change-is-logged).
+export function useTeamMemberLog(args: { teamId: bigint | undefined; page: number; pageSize: number }) {
+  const { teamId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.users(teamId, { memberLog: true, page, pageSize }),
+    ...listQuery,
+    enabled: teamId !== undefined && teamId > 0n,
+    retry: false,
+    queryFn: async () => {
+      const res = await userClient.teamMemberLogList({
+        teamId: teamId!,
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        entries: logEntriesFromList(res.items, res.ids),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
     },
   });
 }
@@ -230,16 +303,21 @@ interface SaveUserVars {
   name: string;
   email: string;
   phoneNumber: string;
+  /**
+   * A new username (the-username-is-editable) — UpdateUser only, never your own profile.
+   * ⚠ The server ignores it until the user decisions are built.
+   */
+  username?: string;
 }
 
 export function useSaveUser() {
   const invalidate = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: async ({ userId, ...vars }: SaveUserVars) =>
+    mutationFn: async ({ userId, username, ...vars }: SaveUserVars) =>
       userId === undefined
         ? await userClient.updateProfile(vars)
-        : await userClient.updateUser({ ...vars, userId }),
+        : await userClient.updateUser({ ...vars, userId, username }),
     onSuccess: () => invalidate(),
   });
 }
@@ -256,8 +334,9 @@ export function useCreateUser() {
       password: string;
       name: string;
       email: string;
+      /** Optional, as the phone is (only-name-and-username-are-required). */
+      phoneNumber?: string;
       role: Role;
-      alias: string;
     }) => userClient.createUser(vars),
     onSuccess: () => invalidate(),
   });
@@ -272,11 +351,13 @@ export function useSuspendUser() {
   });
 }
 
-export function useDeleteUser() {
+// No useDeleteUser: a user is never deleted (a-user-is-never-deleted). A former user is suspended,
+// and their personal data is erased on request — the row and the id stay.
+export function useEraseUser() {
   const invalidate = useInvalidateUsers();
 
   return useMutation({
-    mutationFn: (vars: { userId: bigint }) => userClient.deleteUser(vars),
+    mutationFn: (vars: { userId: bigint }) => userClient.userErase(vars),
     onSuccess: () => invalidate(),
   });
 }
@@ -296,11 +377,15 @@ export function useAddTeamMember() {
     mutationFn: (vars: { teamId: bigint; userId: bigint; role: Role }) =>
       userClient.teamUserUpdate({
         teamId: vars.teamId,
-        action: { case: "add", value: { userId: vars.userId, role: vars.role, alias: "" } },
+        action: { case: "add", value: { userId: vars.userId, role: vars.role } },
       }),
     onSuccess: () => invalidate(),
   });
 }
+
+// Change Role is the SAME write as an add — TeamUserUpdate's add overwrites the role of someone already
+// in the team (an-existing-member-gets-change-role). A second name, so a call site says which it means.
+export const useChangeMemberRole = useAddTeamMember;
 
 export function useRemoveTeamMember() {
   const invalidate = useInvalidateUsers();

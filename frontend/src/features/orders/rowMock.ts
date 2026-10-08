@@ -3,8 +3,9 @@ import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 
 // THE TWO ROW FACTS THE CONTRACT DOES NOT CARRY, INVENTED SO THE ROW CAN BE LOOKED AT (owner).
 //
-// `Order` has no tracking number and no creator. Both sit beside something real, so without them the
-// row is simply shorter — honest, and impossible to judge a layout from.
+// `Order` has no tracking number. It sits beside something real, so without it the row is simply
+// shorter — honest, and impossible to judge a layout from. (Who typed an order in is real now,
+// `created_by_user_id`; `mockCreator` is left for the order notes, which have no record yet.)
 // This fills them the way `summaryMock` fills the strip's money and `mockTerms` fills the order form's
 // warehouse fee: realistic shapes, fixed values, and a mark on screen saying so.
 //
@@ -44,7 +45,7 @@ export function mockReceiptCode(id: bigint, _status: OrderStatus): string {
   return `${CARRIERS[n % CARRIERS.length]}${(n * 8675309).toString().padStart(10, "0").slice(0, 10)}`;
 }
 
-/** Who created the order. Every order has somebody, so this one never returns nothing. */
+/** Who wrote an order NOTE — notes have no record yet (`order-detail/notesMock`). Never an order's creator. */
 export function mockCreator(id: bigint): string {
   return CREATORS[Number(id) % CREATORS.length]!;
 }

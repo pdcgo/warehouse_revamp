@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/role_base/v1/role.proto.
  */
 export const file_warehouse_role_base_v1_role: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2Uvcm9sZV9iYXNlL3YxL3JvbGUucHJvdG8SFndhcmVob3VzZS5yb2xlX2Jhc2UudjEixAEKCElkZW50aXR5EhMKC2lkZW50aXR5X2lkGAEgASgEEjsKDWlkZW50aXR5X3R5cGUYAyABKA4yJC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5VHlwZRINCgVhZ2VudBgEIAEoCRIQCgh1c2VybmFtZRgFIAEoCRIuCgpleHBpcmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1hZ2VudF92ZXJzaW9uGAcgASgJInEKDVJlcXVlc3RQb2xpY3kSKwoFcm9sZXMYASADKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSEQoJYWxsb3dfYWxsGAMgASgIEiAKGGFsbG93X29ubHlfYXV0aGVudGljYXRlZBgEIAEoCCqBAgoEUm9sZRIUChBST0xFX1VOU1BFQ0lGSUVEEAASDQoJUk9MRV9ST09UEAESDgoKUk9MRV9BRE1JThACEhMKD1JPTEVfVEVBTV9PV05FUhADEhMKD1JPTEVfVEVBTV9BRE1JThAEEh4KGlJPTEVfVEVBTV9DVVNUT01FUl9TRVJWSUNFEAUSGAoUUk9MRV9XQVJFSE9VU0VfT1dORVIQBhIYChRST0xFX1dBUkVIT1VTRV9TVEFGRhAIEhgKFFJPTEVfV0FSRUhPVVNFX0FETUlOEAkSDwoLUk9MRV9TWVNURU0QCiIECAcQByoVUk9MRV9XQVJFSE9VU0VfTEVBREVSKoQBCgxJZGVudGl0eVR5cGUSHQoZSURFTlRJVFlfVFlQRV9VTlNQRUNJRklFRBAAEhgKFElERU5USVRZX1RZUEVfU1lTVEVNEAESHgoaSURFTlRJVFlfVFlQRV9HRU5FUkFMX1VTRVIQAhIbChdJREVOVElUWV9UWVBFX0VYVEVOU0lPThADOm8KDnJlcXVlc3RfcG9saWN5Eh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNKGAyABKAsyJS53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJlcXVlc3RQb2xpY3lSDXJlcXVlc3RQb2xpY3k6PAoJdXNlX3Njb3BlEh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxjShgMgASgIUgh1c2VTY29wZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3JvbGVfYmFzZS92MTtyb2xlX2Jhc2V2MWIGcHJvdG8z", [file_google_protobuf_descriptor, file_google_protobuf_timestamp]);
+  fileDesc("CiF3YXJlaG91c2Uvcm9sZV9iYXNlL3YxL3JvbGUucHJvdG8SFndhcmVob3VzZS5yb2xlX2Jhc2UudjEixAEKCElkZW50aXR5EhMKC2lkZW50aXR5X2lkGAEgASgEEjsKDWlkZW50aXR5X3R5cGUYAyABKA4yJC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5VHlwZRINCgVhZ2VudBgEIAEoCRIQCgh1c2VybmFtZRgFIAEoCRIuCgpleHBpcmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1hZ2VudF92ZXJzaW9uGAcgASgJInEKDVJlcXVlc3RQb2xpY3kSKwoFcm9sZXMYASADKA4yHC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJvbGUSEQoJYWxsb3dfYWxsGAMgASgIEiAKGGFsbG93X29ubHlfYXV0aGVudGljYXRlZBgEIAEoCCqCAwoEUm9sZRIUChBST0xFX1VOU1BFQ0lGSUVEEAASDQoJUk9MRV9ST09UEAESFgoSUk9MRV9BRE1JTklTVFJBVE9SEAISFgoSUk9MRV9TRUxMSU5HX09XTkVSEAMSFgoSUk9MRV9TRUxMSU5HX0FETUlOEAQSEwoPUk9MRV9TRUxMSU5HX0NTEAUSGAoUUk9MRV9XQVJFSE9VU0VfT1dORVIQBhIYChRST0xFX1dBUkVIT1VTRV9TVEFGRhAIEhgKFFJPTEVfV0FSRUhPVVNFX0FETUlOEAkSDwoLUk9MRV9TWVNURU0QChIUChBST0xFX0FETUlOX09XTkVSEAsSHAoYUk9MRV9BRE1JTl9BRE1JTklTVFJBVE9SEAwiBAgHEAcqFVJPTEVfV0FSRUhPVVNFX0xFQURFUioKUk9MRV9BRE1JTioPUk9MRV9URUFNX09XTkVSKg9ST0xFX1RFQU1fQURNSU4qGlJPTEVfVEVBTV9DVVNUT01FUl9TRVJWSUNFKoQBCgxJZGVudGl0eVR5cGUSHQoZSURFTlRJVFlfVFlQRV9VTlNQRUNJRklFRBAAEhgKFElERU5USVRZX1RZUEVfU1lTVEVNEAESHgoaSURFTlRJVFlfVFlQRV9HRU5FUkFMX1VTRVIQAhIbChdJREVOVElUWV9UWVBFX0VYVEVOU0lPThADOm8KDnJlcXVlc3RfcG9saWN5Eh8uZ29vZ2xlLnByb3RvYnVmLk1lc3NhZ2VPcHRpb25zGNKGAyABKAsyJS53YXJlaG91c2Uucm9sZV9iYXNlLnYxLlJlcXVlc3RQb2xpY3lSDXJlcXVlc3RQb2xpY3k6PAoJdXNlX3Njb3BlEh0uZ29vZ2xlLnByb3RvYnVmLkZpZWxkT3B0aW9ucxjShgMgASgIUgh1c2VTY29wZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL3JvbGVfYmFzZS92MTtyb2xlX2Jhc2V2MWIGcHJvdG8z", [file_google_protobuf_descriptor, file_google_protobuf_timestamp]);
 
 /**
  * Identity is what a token carries. It carries NO role: roles are read from the database on
@@ -116,24 +116,28 @@ export enum Role {
   ROOT = 1,
 
   /**
-   * @generated from enum value: ROLE_ADMIN = 2;
+   * The root team's System Administrator — `administrator`.
+   *
+   * @generated from enum value: ROLE_ADMINISTRATOR = 2;
    */
-  ADMIN = 2,
+  ADMINISTRATOR = 2,
 
   /**
-   * @generated from enum value: ROLE_TEAM_OWNER = 3;
+   * A selling team's three roles — `selling_owner`, `selling_admin`, `selling_cs`.
+   *
+   * @generated from enum value: ROLE_SELLING_OWNER = 3;
    */
-  TEAM_OWNER = 3,
+  SELLING_OWNER = 3,
 
   /**
-   * @generated from enum value: ROLE_TEAM_ADMIN = 4;
+   * @generated from enum value: ROLE_SELLING_ADMIN = 4;
    */
-  TEAM_ADMIN = 4,
+  SELLING_ADMIN = 4,
 
   /**
-   * @generated from enum value: ROLE_TEAM_CUSTOMER_SERVICE = 5;
+   * @generated from enum value: ROLE_SELLING_CS = 5;
    */
-  TEAM_CUSTOMER_SERVICE = 5,
+  SELLING_CS = 5,
 
   /**
    * @generated from enum value: ROLE_WAREHOUSE_OWNER = 6;
@@ -154,6 +158,21 @@ export enum Role {
    * @generated from enum value: ROLE_SYSTEM = 10;
    */
   SYSTEM = 10,
+
+  /**
+   * The admin team's two roles — `admin_owner`, `admin_administrator` (the-admin-team-roles-are-added-first).
+   * They manage their own team and nothing else (admin-team-roles-manage-only-their-team): both edit the
+   * team's info and read its members; only the Owner adds, changes and removes them
+   * (the-admin-team-admin-alone-does-not-manage-members). Neither holds a selling policy.
+   *
+   * @generated from enum value: ROLE_ADMIN_OWNER = 11;
+   */
+  ADMIN_OWNER = 11,
+
+  /**
+   * @generated from enum value: ROLE_ADMIN_ADMINISTRATOR = 12;
+   */
+  ADMIN_ADMINISTRATOR = 12,
 }
 
 /**

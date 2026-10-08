@@ -74,7 +74,11 @@ export function TotalsInvoicePanel({
         <Stack gap={compact ? "3" : "card"}>
           {/* ── THE ORDER ─────────────────────────────────────────────────────────────────────── */}
           <Stack gap={compact ? "1" : "2"}>
-            <Line label={t("orderForm.totals.products")} value={formatRupiah(productsTotal)} />
+            <Line
+              label={t("orderForm.totals.products")}
+              value={formatRupiah(productsTotal)}
+              testId="order-create-products-total"
+            />
 
             {/* ⚠ NO SHIPPING ROW (owner) — nothing prices a shipment, so the field is off the screen
                 rather than sitting there as a box to guess into. Its mark rides on the card's title
@@ -83,7 +87,11 @@ export function TotalsInvoicePanel({
 
             {/* No mark on this row: number 6 is already on the card's title, and the same number
                 twice on one card reads as two different problems. */}
-            <Line label={t("orderForm.totals.warehouseFee")} value={formatRupiah(warehouseFee)} />
+            <Line
+              label={t("orderForm.totals.warehouseFee")}
+              value={formatRupiah(warehouseFee)}
+              testId="order-create-warehouse-fee"
+            />
 
             <Separator />
 
@@ -166,11 +174,13 @@ export function TotalsInvoicePanel({
   );
 }
 
-function Line({ label, value }: { label: string; value: string }) {
+function Line({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
     <Flex align="baseline" justify="space-between" gap="card">
       <Text fontSize="sm">{label}</Text>
-      <Text fontSize="sm">{value}</Text>
+      <Text fontSize="sm" data-testid={testId}>
+        {value}
+      </Text>
     </Flex>
   );
 }

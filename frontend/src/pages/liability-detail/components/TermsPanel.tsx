@@ -16,6 +16,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useDeleteTerms, useLiabilityTerms } from "../../../features/liability/queries";
 import type { LiabilityTerms } from "../../../gen/warehouse/liability/v1/liability_pb";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
+import { canSetLiabilityTerms } from "../../../lib/roles";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../../components/feedback/RefreshOverlay";
 import { formatRupiah } from "../../../lib/money";
@@ -36,7 +37,7 @@ const TERMS_PAGE = 200;
 // ⚠ It shapes the form only; the server decides for real. A UI that let one of these save with no
 // reason would be offering a write the backend is going to refuse.
 function isOverrideWriter(role: Role): boolean {
-  return role === Role.ROOT || role === Role.ADMIN;
+  return role === Role.ROOT || role === Role.ADMINISTRATOR;
 }
 
 export interface TermsPanelProps {
@@ -116,21 +117,25 @@ export function TermsPanel({
             </Text>
           )}
 
-          <Button
-            size="xs"
-            variant="outline"
-            data-testid="terms-edit"
-            onClick={() => setEditOpen(true)}
-          >
-            <Icon as={Pencil} boxSize="4" />
-            {own ? t("terms.edit") : t("terms.setTerms")}
-          </Button>
+          {/* Only those who may set terms are offered to — the warehouse Admin is not
+              (the-warehouse-admin-equals-the-owner-except-money). */}
+          {canSetLiabilityTerms(role) && (
+            <Button
+              size="xs"
+              variant="outline"
+              data-testid="terms-edit"
+              onClick={() => setEditOpen(true)}
+            >
+              <Icon as={Pencil} boxSize="4" />
+              {own ? t("terms.edit") : t("terms.setTerms")}
+            </Button>
+          )}
 
           {/* ⚠ ONLY AN OWN ROW CAN BE REMOVED. Deleting the default from a pair page would change
               every other pair at once, which is not what "remove this pair's terms" means — and
               removing a limit is deleting the row, never zeroing it
               (the-threshold-defaults-to-unlimited). */}
-          {own && (
+          {own && canSetLiabilityTerms(role) && (
             <Button
               size="xs"
               variant="ghost"

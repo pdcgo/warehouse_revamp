@@ -37,7 +37,11 @@ const meta = {
   title: "Pages/FinancialAccount/Accounts",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
-  beforeEach: asTeam(12n),
+  // Toko Melati's Admin — a selling team's, who moves its money.
+  beforeEach: () => {
+    asTeam(12n)();
+    asRole(Role.SELLING_ADMIN)();
+  },
 } satisfies Meta<typeof Routed>;
 
 export default meta;
@@ -127,7 +131,32 @@ export const MobileFiltersAreASheet: Story = {
   },
 };
 
-export const AsAWarehouse: Story = { beforeEach: asTeam(11n) };
+export const AsAWarehouse: Story = {
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
+};
+
+// the-warehouse-admin-equals-the-owner-except-money: the warehouse Admin keeps and reconciles the accounts, and moves
+// no money between them — no Transfer, no Capital. Reconcile stays the row's button
+// (`transfer-and-reconcile-sit-on-the-row`); the menu never repeats it, so it is looked for on the row.
+export const TheWarehouseAdminNeitherTransfersNorAddsCapital: Story = {
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_ADMIN)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByTestId("account-reconcile-button-1307", {}, { timeout: 4000 })).toBeVisible();
+    await expect(canvas.queryByTestId("account-transfer-button-1307")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("account-actions-1307"));
+    await waitFor(() => expect(screen.getByTestId("account-edit-1307")).toBeVisible());
+    await expect(screen.queryByTestId("account-transfer-1307")).toBeNull();
+    await expect(screen.queryByTestId("account-capital-1307")).toBeNull();
+  },
+};
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
@@ -645,7 +674,7 @@ export const MarkAnAccountOperational: Story = {
 
 // seeing-is-team-wide-moving-is-admin-and-up: a CS sees every account and balance — and no button.
 export const AMemberSeesButDoesNotMove: Story = {
-  beforeEach: asRole(Role.TEAM_CUSTOMER_SERVICE),
+  beforeEach: asRole(Role.SELLING_CS),
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 

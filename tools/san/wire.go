@@ -25,8 +25,11 @@ func InitializeSan(dsn DatabaseDSN) (*San, error) {
 		NewRoleResolver,
 		NewInternalHTTPClient,
 		NewTeamClient,
+		NewDocumentClient,
+		NewEventSender,
 
 		user_v1.NewService,
+		NewSupplierFigures,
 
 		NewSan,
 	)

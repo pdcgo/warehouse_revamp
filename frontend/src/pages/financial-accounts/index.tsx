@@ -36,7 +36,7 @@ import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixRelative } from "../../lib/datetime";
-import { canMoveAccountMoney } from "../../lib/roles";
+import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
 import { AccountBlock } from "./components/AccountBlock";
 import { AccountLinks } from "./components/AccountLinks";
 import { AccountOptionsFilter } from "./components/AccountOptionsFilter";
@@ -296,6 +296,7 @@ export function FinancialAccountsPage() {
                     reconciledAt={b?.reconciledAt}
                     teamId={teamId}
                     canMove={canMove}
+                    canTransfer={canTransferMoney(current.role)}
                     shopNames={account.shopIds.map(shopName)}
                     shopOf={shopOf}
                     onOpen={() => navigate(`/financial-accounts/${account.id}`)}
@@ -420,6 +421,7 @@ export function FinancialAccountsPage() {
                               account={shown}
                               balance={b?.balance}
                               shopNames={account.shopIds.map(shopName)}
+                              canTransfer={canTransferMoney(current.role)}
                               buttons
                             />
                           </Table.Cell>

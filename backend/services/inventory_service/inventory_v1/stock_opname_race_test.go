@@ -82,7 +82,7 @@ func opnameOnHand(t *testing.T, db *gorm.DB, warehouse, product, rack uint64) in
 // they converge on one order and the second waits instead of deadlocking.
 func TestRace_StockOpname_OppositeLineOrdersDoNotDeadlock(t *testing.T) {
 	h := san_race.New(t, opnameTables...)
-	svc := inventory_v1.NewService(h.DB(), nil, nil)
+	svc := inventory_v1.NewService(h.DB(), nil, nil, nil, nil)
 
 	const warehouse uint64 = 5
 	const p1, p2 uint64 = 100, 101
@@ -140,7 +140,7 @@ func TestRace_StockOpname_OppositeLineOrdersDoNotDeadlock(t *testing.T) {
 // and the movement ledger then records two deltas that do not add up to where the shelf ended.
 func TestRace_StockOpname_TheLastCountWinsCleanly(t *testing.T) {
 	h := san_race.New(t, opnameTables...)
-	svc := inventory_v1.NewService(h.DB(), nil, nil)
+	svc := inventory_v1.NewService(h.DB(), nil, nil, nil, nil)
 
 	const warehouse uint64 = 5
 	const product uint64 = 100

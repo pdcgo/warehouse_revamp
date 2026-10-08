@@ -154,7 +154,7 @@ func TestPerf_ShopAccessCheck(t *testing.T) {
 	granted := perfShopUser(team, j+1) // a granted CS, not the primary
 	owner := perfShopUser(team, 9)     // no grant — the team's owner, answered by the role reader
 
-	svc := newServiceWithRoles(t, db, fakeRoles{{owner, teamID}: role_basev1.Role_ROLE_TEAM_OWNER})
+	svc := newServiceWithRoles(t, db, fakeRoles{{owner, teamID}: role_basev1.Role_ROLE_SELLING_OWNER})
 	ctx := t.Context()
 
 	// Warm-up on another shop: schema reflection and pool setup are not this RPC's cost.

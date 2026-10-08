@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // LocalMountPath is where the FileHandler is mounted; a Config.BaseURL should end with the same
@@ -86,13 +87,27 @@ func (l *LocalStore) Delete(key string) error {
 		return err
 	}
 
-	err = os.Remove(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
+	// A missing key is not an error — deleting is idempotent, so a retry, or two callers deleting the same file, both
+	// succeed. On Windows the second of two simultaneous deletes is refused ("Access is denied") while the first is
+	// still finishing; it is asked again a moment later, when the file is simply gone.
+	for attempt := 1; ; attempt++ {
+		err = os.Remove(path)
+		if err == nil || errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
 
-	return err
+		if attempt == deleteAttempts {
+			return err
+		}
+
+		time.Sleep(deleteRetryWait)
+	}
 }
+
+const (
+	deleteAttempts  = 5
+	deleteRetryWait = 10 * time.Millisecond
+)
 
 func (l *LocalStore) Open(key string) (io.ReadCloser, error) {
 	path, err := safeJoin(l.dir, key)

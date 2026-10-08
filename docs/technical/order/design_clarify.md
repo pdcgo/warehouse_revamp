@@ -129,8 +129,10 @@ The alternative — mirroring the six enum values the build happens to have — 
 screen that the owner's own clarify already records as stale, and the screen would be rebuilt when
 the migration lands.
 
-⚠ The owner has since added a ninth, `return_completed` — see
-[the order screens count eight statuses, and the owner added a ninth](#the-order-screens-count-eight-statuses-and-the-owner-added-a-ninth).
+⚠ **There are nine now, not eight** — a ninth status `return_completed` was decided on another branch
+([the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed))
+and met this screen at the merge. Whether it gets its own tab is the order context's to answer:
+[the-warehouse-steps-rule-met-the-return-status](../../business/order/context_clarify.md#the-warehouse-steps-rule-met-the-return-status).
 
 | the owner's eight | what the contract has | on this screen |
 | --- | --- | --- |

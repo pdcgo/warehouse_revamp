@@ -46,6 +46,9 @@ are deleted, so this file is always the current open set; what was settled is in
 > [the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses) worse**: §Complete Journey
 > now omits three statuses, not two.
 
+> ⛔ **Found at the `hfrada → dev` merge (2026-10-02):** a decision made on that branch still reasons from eight
+> statuses and a return RECORD — [the-warehouse-steps-rule-met-the-return-status](#the-warehouse-steps-rule-met-the-return-status).
+
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
 [product_context](../product/context_clarify.md) · [balance_context](../balance/context_clarify.md) ·
 [inventory_context](../inventory/context_clarify.md) · [settlement_context](../settlement/context_clarify.md).
@@ -270,6 +273,36 @@ flowchart LR
   end
   subgraph "built"
     A2["app, or Save as Draft"] --> D2["draft"] --> P2["OrderDraftPromote"]
+  end
+```
+
+## the-warehouse-steps-rule-met-the-return-status
+
+Two decisions made on two branches, which met at the `hfrada → dev` merge (2026-10-02). Neither saw the other.
+
+| [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) (2026-09-24) | [the-accept-is-the-status-return-completed](./context_decision.md#the-accept-is-the-status-return-completed) (2026-09-21) |
+| --- | --- |
+| its diagram puts *"return — being processed, received"* on **the record that owns the work** | the accept is a **status**, `return_completed` — *"a return record: **not built**"* |
+| cites *return-means-received-by-the-warehouse* as precedent: a return's transit lives on a return record | answered that same question the other way: `return` is the claim, *received* is the ninth status |
+| *"the set of eight"* | nine statuses |
+
+**Which is wrong:** the RETURN half of the warehouse-steps decision, not its verdict. The owner's answer on
+2026-09-24 was about `confirm · picking · packed · handover` folding into `processed` — the return line and the
+precedent were reasoning around it, and the precedent was overturned three days earlier.
+**→ Recommend:** scope the warehouse-steps verdict to the OUTBOUND steps, and let `return_completed` stand as a
+status. Then the order list's tabs ([design_clarify](../../technical/order/design_clarify.md)) need a ninth pile —
+I would give `return_completed` its own tab, because it is the warehouse's queue (`WHERE status = 'return'`) emptied,
+and a seller reads *"it is back"* differently from *"it is coming back"*.
+⚠ Its link to `./context_clarify.md#return-means-received-by-the-warehouse` is dead — the question was answered
+and deleted on dev.
+
+```mermaid
+flowchart LR
+  subgraph "outbound — the warehouse-steps rule holds"
+    P["processed"] --> S1["confirm · picking · packed · handover — on the warehouse task"]
+  end
+  subgraph "return — the status decision holds"
+    R["return — the claim"] --> RC["return_completed — the goods are here"]
   end
 ```
 

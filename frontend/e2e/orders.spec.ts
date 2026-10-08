@@ -147,6 +147,12 @@ test("setup: a warehouse for the order to ship from (#72)", async ({ page }) => 
   await page.getByTestId("open-create-warehouse").click();
   await page.getByTestId("new-team-name").fill(WH_NAME);
   await page.getByTestId("new-team-code").fill(WH_CODE);
+
+  // The form names the team's Owner (the-create-team-form-names-the-first-owner) — root, so it acts in the
+  // new warehouse as a member.
+  await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
+
   await page.getByTestId("submit-create-team").click();
   await expect(page.getByTestId(`team-row-${WH_CODE}`)).toBeVisible();
 });
@@ -383,7 +389,7 @@ test("Create: place an order through the form; money computes; the detail opens"
   // same distinction the revenue screen already makes for this product (#74).
   await expect(page.getByTestId("order-line-hpp-0")).toContainText("not recorded");
   await expect(page.getByTestId("order-line-total-0")).toHaveText("Rp 0");
-  await expect(page.getByTestId("order-create-subtotal")).toHaveText("Rp 0");
+  // There is no subtotal line any more — the rebuilt form states one TOTAL, asserted below.
 
   // What the storefront took is a NOTE: typed here, stored on the order, and added to NOTHING.
   await page.getByTestId("order-marketplace-total").fill("58000");
@@ -408,9 +414,13 @@ test("Create: place an order through the form; money computes; the detail opens"
   // Attached, and named — the upload has finished by the time the row appears.
   await expect(page.getByTestId("order-receipt-attached")).toContainText("resi-jne.pdf");
 
-  // The total IS the subtotal now: the shipping cost was removed from this form (owner), and the
-  // marketplace figure was never in the sum.
-  await expect(page.getByTestId("order-create-total")).toHaveText("Rp 0");
+  // The total is the goods PLUS the warehouse's handling fee — no shipping (owner), and the marketplace
+  // figure was never in the sum. The fee is a SAMPLE until the form reads the warehouse's terms (its
+  // pending mark says so), so it is read off the screen rather than pinned: with the goods at Rp 0,
+  // the total is exactly the fee. The fee is not sent — the create request carries the goods alone.
+  await expect(page.getByTestId("order-create-products-total")).toHaveText("Rp 0");
+  const fee = (await page.getByTestId("order-create-warehouse-fee").textContent()) ?? "";
+  await expect(page.getByTestId("order-create-total")).toHaveText(fee);
 
   await expect(page.getByTestId("order-create-save")).toBeEnabled();
   await page.getByTestId("order-create-save").click();
@@ -450,10 +460,11 @@ test("Create: place an order through the form; money computes; the detail opens"
   await expect(page.getByTestId("settlement-summary")).toContainText("Rp 58.000");
   await expect(page.getByTestId("ledger-table").locator('[data-testid^="entry-"]')).toHaveCount(1);
 
-  // And it now shows in the list.
+  // And it now shows in the list — by the marketplace's id for it, which is what a row leads with now
+  // (the list has no customer column).
   await page.getByTestId("order-detail-back").click();
   await expect(page.getByTestId("orders-table")).toBeVisible();
-  await expect(page.getByTestId("orders-table")).toContainText(CUSTOMER);
+  await expect(page.getByTestId("orders-table")).toContainText(MARKETPLACE_REF);
 });
 
 // THE SETTLEMENT REPORT is wired end to end: the route, the analytics RPCs and their policy.
@@ -533,6 +544,10 @@ test("Address: a postal code suggests the address and fills the whole cascade", 
   await expect(page.getByTestId("address-kodepos").locator("input")).toHaveValue(KODE_POS);
 });
 
+// The order the Lifecycle test places and cancels. The list has no customer column, and this order
+// has no marketplace ref, so the list tests below find its row by id. (The file is serial, one worker.)
+let lifecycleOrderId = "";
+
 // The SELLING seat's half of an order's life: it can call the order off, and that is all.
 //
 // Confirming used to be here too (#91). It is now the WAREHOUSE's first step (owner) — see the
@@ -541,6 +556,7 @@ test("Address: a postal code suggests the address and fills the whole cascade", 
 test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await placeOrderViaForm(page, `${CUSTOMER} lifecycle`);
+  lifecycleOrderId = /\/orders\/(\d+)$/.exec(page.url())![1]!;
   const detail = page.getByTestId("order-detail-page");
 
   // A fresh order is PLACED — the owner's "Pending" stage — and waiting on the warehouse rather than
@@ -559,43 +575,40 @@ test("Lifecycle: the selling seat can cancel, and cannot confirm (#91, owner)", 
 // The header and the status tabs above the list.
 //
 // It runs HERE on purpose: the two tests before it have left exactly one PLACED order and one
-// CANCELLED one, which is the smallest set that can tell the stat's two halves apart — a cancelled
-// order has to be counted in the census and left out of the money, and with only placed orders on the
-// board both rules would look identical.
-test("Orders: the stat counts the queue and the tabs filter by status", async ({ page }) => {
+// CANCELLED one, which is the smallest set that tells two stages apart — with only placed orders on
+// the board, a tab or a summary card reading the wrong stage would look identical.
+test("Orders: the summary counts each stage and the tabs filter by it", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   await page.goto("/orders");
   await expect(page.getByTestId("orders-table")).toBeVisible();
 
-  // The work queue — a live census of where each order is sitting right now.
-  await expect(page.getByTestId("orders-stat-to-confirm")).toHaveText("1");
-  await expect(page.getByTestId("orders-stat-in-warehouse")).toHaveText("0");
-  await expect(page.getByTestId("orders-stat-shipped")).toHaveText("0");
+  // The summary on the All tab: one card per stage plus the total, each a COUNT of orders ("N tx").
+  // The 30-day tiles are gone (owner) — every figure follows the filter bar's date range instead.
+  // Its lines are valued at an UNRECORDED HPP and the form takes no shipping cost, so the money is
+  // genuinely Rp 0; the counts are what tell the piles apart.
+  await expect(page.getByTestId("order-summary-total")).toContainText("2 tx");
+  await expect(page.getByTestId("order-summary-row-pending")).toContainText("1 tx");
+  await expect(page.getByTestId("order-summary-row-cancel")).toContainText("1 tx");
+  await expect(page.getByTestId("order-summary-row-shipped")).toContainText("0 tx");
 
-  // The money — the surviving order only. Its lines are valued at an UNRECORDED HPP and the form no
-  // longer takes a shipping cost, so its total is genuinely Rp 0; the cancelled one is left out of
-  // these three figures entirely, though it is in the census above. That gap is the whole rule, and
-  // the COUNT is what still proves it — one order in the money, two on the board.
-  await expect(page.getByTestId("orders-stat-orders-30d")).toHaveText("1");
-  await expect(page.getByTestId("orders-stat-revenue-30d")).toHaveText("Rp 0");
-  await expect(page.getByTestId("orders-stat-avg-order")).toHaveText("Rp 0");
-
+  // The tabs are the owner's stages: a fresh order is PENDING, a cancelled one CANCEL.
   await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
-  await expect(page.getByTestId("orders-tab-count-placed")).toHaveText("1");
-  await expect(page.getByTestId("orders-tab-count-cancelled")).toHaveText("1");
+  await expect(page.getByTestId("orders-tab-count-pending")).toHaveText("1");
+  await expect(page.getByTestId("orders-tab-count-cancel")).toHaveText("1");
   await expect(page.getByTestId("orders-tab-count-shipped")).toHaveText("0");
 
-  // The tab narrows the TABLE and leaves the stat alone: the counts are what you read to decide which
-  // tab to open, so a tab that rewrote them would erase its own signpost.
-  await page.getByTestId("orders-tab-cancelled").click();
-  await expect(page.getByTestId("orders-table")).toContainText(`${CUSTOMER} lifecycle`);
+  // The tab narrows the TABLE and leaves the tab counts alone: the counts are what you read to decide
+  // which tab to open, so a tab that rewrote them would erase its own signpost.
+  await page.getByTestId("orders-tab-cancel").click();
+  await expect(page.getByTestId(`order-row-${lifecycleOrderId}`)).toBeVisible();
   // One row, not two: the placed order is genuinely filtered out server-side rather than the tab
-  // merely highlighting it. (Asserted by row COUNT — the two customers share a prefix, so a
-  // text assertion could not tell them apart.)
+  // merely highlighting it.
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(1);
   await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
-  await expect(page.getByTestId("orders-stat-to-confirm")).toHaveText("1");
+  // …while the SUMMARY follows the tab: it now reads the chosen stage's own figures.
+  await expect(page.getByTestId("order-summary")).toHaveAttribute("data-pile", "cancel");
+  await expect(page.getByTestId("order-summary-measure-tx")).toContainText("1");
 
   // A status with nothing in it says so as that status, not as "no orders yet" — the second would read
   // as an empty system rather than an empty shelf.
@@ -623,14 +636,14 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   await page.getByTestId("orders-search").fill("lifecycle");
 
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(1);
-  await expect(page.getByTestId("orders-table")).toContainText(`${CUSTOMER} lifecycle`);
+  await expect(page.getByTestId(`order-row-${lifecycleOrderId}`)).toBeVisible();
 
   // ⚠ The counts moved WITH the table. This is the assertion the whole test exists for: 2 → 1 on
   // "All", and the placed order's tab down to 0, because the search is a filter on the screen rather
   // than on the table alone.
   await expect(page.getByTestId("orders-tab-count-all")).toHaveText("1");
-  await expect(page.getByTestId("orders-tab-count-placed")).toHaveText("0");
-  await expect(page.getByTestId("orders-tab-count-cancelled")).toHaveText("1");
+  await expect(page.getByTestId("orders-tab-count-pending")).toHaveText("0");
+  await expect(page.getByTestId("orders-tab-count-cancel")).toHaveText("1");
 
   // A term nothing matches says so AS A FILTER result, never as "no orders yet" — the second would
   // tell somebody their orders had vanished when they are one Clear away.
@@ -638,7 +651,7 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   await expect(page.getByTestId("orders-empty")).toContainText("filters");
 
   // Clearing puts everything back — both the rows and the counts.
-  await page.getByTestId("orders-clear-filters").click();
+  await page.getByTestId("orders-filters-clear").click();
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(2);
   await expect(page.getByTestId("orders-tab-count-all")).toHaveText("2");
 
@@ -649,7 +662,7 @@ test("Orders: the filter bar narrows the table AND the counts together", async (
   await page.getByTestId("orders-date-quick-1").click();
   await expect(page.getByTestId(/^order-row-/)).toHaveCount(2);
 
-  await page.getByTestId("orders-clear-filters").click();
+  await page.getByTestId("orders-filters-clear").click();
 
   // And the shop filter, over the team's one shop: picking it keeps both orders (they were placed on
   // it), which proves the id is being sent correctly — a wrong id would empty the table.
@@ -668,9 +681,10 @@ test("Orders: clicking a row opens that order's detail", async ({ page }) => {
   await page.goto("/orders");
   await expect(page.getByTestId("orders-table")).toBeVisible();
 
-  // The CUSTOMER cell, deliberately — not the `#id` one. The id text was once the only live target on
-  // the row, so a click there would pass with the other three quarters of the row dead.
-  await page.getByTestId(/^order-row-/).first().getByRole("cell").nth(1).click();
+  // The CREATED cell, deliberately — not the id one. The id text was once the only live target on the
+  // row, so a click there would pass with the rest of the row dead. (Not the tracking-number cell
+  // either: that one is a copy control, and a click there copies instead of opening.)
+  await page.getByTestId(/^order-row-/).first().getByRole("cell").nth(3).click();
 
   await expect(page).toHaveURL(/\/orders\/\d+$/);
   await expect(page.getByTestId("order-detail-page")).toBeVisible();
@@ -936,12 +950,19 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         await call("inventory.v1.RackService/RackCreate", { teamId: warehouse.id, code });
       }
 
-      // A supplier owned by the BUYING team (1), never by the warehouse — so naming it on the accept
-      // screen is a genuine cross-team read and not an accident of both sides being the same team.
+      // A supplier kept by a SELLING team of its own — only a selling team has suppliers
+      // (only-a-selling-team-has-suppliers), and the buying root team is not one. Team 1 restocks from it
+      // (a-team-restocks-from-another-teams-supplier), and the warehouse names it: neither keeps it, so naming
+      // it on the accept screen is a genuine cross-team read and not an accident of two sides being one team.
+      const vendorTeam = await call("team.v1.TeamService/TeamCreate", {
+        type: "TEAM_TYPE_SELLING",
+        name: `E2E Vendor Team ${whCode}`,
+        teamCode: `VT${whCode}`.slice(0, 10),
+        ownerUserId: "1",
+      });
       const supplierName = "Sinar Jaya Textile";
-      const supplier = await call("inventory.v1.SupplierService/SupplierCreate", {
-        teamId: "1",
-        code: "E2E-ACC",
+      const supplier = await call("supplier.v1.SupplierService/SupplierCreate", {
+        teamId: vendorTeam.team.id,
         name: supplierName,
       });
 
@@ -967,13 +988,14 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await expect(line).toBeVisible();
 
   // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs
-  // to team 1 and we are reading as the WAREHOUSE, which every other supplier read refuses. If this
-  // regresses to "Supplier #<id>", the crew at the door is back to matching a carton against a number.
+  // to a selling team and we are reading as the WAREHOUSE — by id, which still names a vendor deleted since
+  // the restock was raised. If this regresses to "Supplier #<id>", the crew at the door is back to matching a
+  // carton against a number.
   await expect(page.getByTestId("accept-supplier")).toHaveText(seeded.supplierName);
 
   // The count is DERIVED now (#206): the line seeds with the ordered 10 on ONE row with no shelf, so
   // Accept is blocked until every quantity has a home — there is no separate "arrived" box to type.
-  const firstQty = line.getByTestId(/^accept-placement-qty-/).first();
+  const firstQty = line.getByTestId(/^accept-placement-qty-(?!.*-(?:minus|plus)$)/).first();
   await expect(firstQty).toHaveValue("10");
   await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeVisible();
   await expect(page.getByTestId("accept-submit")).toBeDisabled();
@@ -994,7 +1016,7 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await pickRack(0, "ACC-01");
 
   await page.getByTestId(`accept-add-placement-${seeded.productId}`).click();
-  await line.getByTestId(/^accept-placement-qty-/).nth(1).fill("3");
+  await line.getByTestId(/^accept-placement-qty-(?!.*-(?:minus|plus)$)/).nth(1).fill("3");
   await pickRack(1, "ACC-02");
 
   // Everything typed now has a shelf — the blocking pill is gone and the progress line with it.
@@ -1003,9 +1025,9 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 
   // The other 2 never arrived sellable — recorded as a PROBLEM (broken), which never enters stock.
   // The problems section is COLLAPSED until asked for: most deliveries have none.
-  await expect(line.getByTestId(/^accept-problem-qty-/)).toHaveCount(0);
+  await expect(line.getByTestId(/^accept-problem-qty-(?!.*-(?:minus|plus)$)/)).toHaveCount(0);
   await page.getByTestId(`accept-add-problem-${seeded.productId}`).click();
-  await line.getByTestId(/^accept-problem-qty-/).first().fill("2");
+  await line.getByTestId(/^accept-problem-qty-(?!.*-(?:minus|plus)$)/).first().fill("2");
   await line.getByTestId(/^accept-problem-note-/).first().fill("crushed in transit");
 
   // The COD fee changes what everything cost, and the HPP must move as it is typed (#155).

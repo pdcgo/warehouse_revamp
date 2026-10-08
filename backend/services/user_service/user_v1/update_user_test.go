@@ -62,3 +62,54 @@ func TestUpdateUser_MissingIsNotFound(t *testing.T) {
 		t.Fatalf("code = %v, want NotFound", connect.CodeOf(err))
 	}
 }
+
+// the-username-is-editable — a typo is fixed in place: same id, new name, and the new name signs in.
+func TestUpdateUser_TheUsernameIsEditable(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	uid := insertUser(t, db, "anii", "pw12345678")
+	fixed := "ani"
+
+	res, err := svc.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{UserId: uid, Username: &fixed}))
+	if err != nil {
+		t.Fatalf("UpdateUser: %v", err)
+	}
+
+	if res.Msg.GetUser().GetId() != uid || res.Msg.GetUser().GetUsername() != "ani" {
+		t.Fatalf("got id %d username %q, want id %d username ani", res.Msg.GetUser().GetId(), res.Msg.GetUser().GetUsername(), uid)
+	}
+
+	_, err = newAuthService(t, db).Login(context.Background(), connect.NewRequest(&userv1.LoginRequest{Username: "ani", Password: "pw12345678"}))
+	if err != nil {
+		t.Fatalf("signing in with the new username: %v", err)
+	}
+}
+
+// A username already taken is refused, as at create — and reported as a name, not an email.
+func TestUpdateUser_ATakenUsernameIsRefused(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	insertUser(t, db, "budi", "pw12345678")
+	uid := insertUser(t, db, "budii", "pw12345678")
+	taken := "budi"
+
+	_, err := svc.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{UserId: uid, Username: &taken}))
+	if connect.CodeOf(err) != connect.CodeAlreadyExists {
+		t.Fatalf("code = %v, want AlreadyExists", connect.CodeOf(err))
+	}
+}
+
+// User 1 keeps `root`.
+func TestUpdateUser_UserOneKeepsRoot(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	renamed := "notroot"
+
+	_, err := svc.UpdateUser(context.Background(), connect.NewRequest(&userv1.UpdateUserRequest{UserId: 1, Username: &renamed}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("code = %v, want FailedPrecondition", connect.CodeOf(err))
+	}
+}

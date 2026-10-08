@@ -175,7 +175,7 @@ system lets any logged-in user reset any other account.
 | You are | Path | RPC | Needs |
 | --- | --- | --- | --- |
 | the user | Profile → Change Password | `ResetPassword` | the **old** password; no `user_id` exists — the subject is the token holder |
-| an admin | Users → the row's overflow menu → Reset Password | `AdminResetPassword` | `ROLE_ROOT` / `ROLE_ADMIN` (unscoped); the item is hidden on your own row |
+| an admin | Users → the row's overflow menu → Reset Password | `AdminResetPassword` | `ROLE_ROOT` / `ROLE_ADMINISTRATOR` (unscoped); the item is hidden on your own row |
 | locked out | Login → Forgot password → OTP by phone | `ResetPasswordWithOtp` | nothing — see [the flow](../services/user_service/rpc.md#the-forgot-password-flow-requestpasswordresetotp--resetpasswordwithotp) |
 | an operator, no UI | `go run ./tools/san user reset-password --username ani` (repo root) | calls `AdminResetPassword` | database access |
 
@@ -198,9 +198,9 @@ Common causes, in order:
 
 1. No `request_policy` on the request **message**. It extends `MessageOptions`, not
    `MethodOptions` — it does not go on the `rpc`.
-2. A team-level role (`TEAM_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with **no `use_scope`
+2. A team-level role (`SELLING_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with **no `use_scope`
    field**. An unscoped roles-policy is evaluated against the root team, so those entries become
-   dead letters. Give it a scope, or narrow the policy to `[ROOT, ADMIN]`.
+   dead letters. Give it a scope, or narrow the policy to `[ROOT, ADMINISTRATOR]`.
 3. The caller did not send `team_id` in the **request body**. Team scope is a message field, never
    a header — no interceptor can supply it.
 4. The generated option package is not linked into the binary, so `proto.HasExtension` silently
@@ -218,7 +218,7 @@ reading the proto options, descriptor validation) are in
 
 **No — identity only.** Roles are read from the database per request (cached about a minute,
 invalidated on every membership change), so revoking a role takes effect without reissuing tokens.
-ROOT/ADMIN in team 1 (the root team) bypass every scope check.
+ROOT/ADMINISTRATOR in team 1 (the root team) bypass every scope check.
 
 ---
 

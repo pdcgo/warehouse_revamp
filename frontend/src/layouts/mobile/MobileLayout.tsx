@@ -2,6 +2,7 @@ import { Suspense, useCallback, useState } from "react";
 import { Box, Flex, Icon, IconButton, Spinner, Text } from "@chakra-ui/react";
 import { Bell } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
+import { NotMemberStrip } from "../NotMemberStrip";
 import { useTranslation } from "react-i18next";
 
 import { useTeam } from "../../features/team/TeamContext";
@@ -99,6 +100,8 @@ export function MobileLayout() {
           />
         </Box>
       </Flex>
+
+      <NotMemberStrip />
 
       {/* `p="card"` rather than the desktop's `p="page"` — a phone gutter is a gutter, not a margin;
           `page` spacing here would spend a tenth of the width on nothing. */}

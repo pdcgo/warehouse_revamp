@@ -1,5 +1,6 @@
 import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
-import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
+import { checkLabel } from "../../shipment/receiptCheck";
+import type { LabelResult } from "../../shipment/receiptCheck";
 
 // WHAT IS CHECKED BEFORE AN ORDER IS PLACED (owner) — six rules, in one file.
 //
@@ -7,7 +8,7 @@ import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 // about a layout, and three of them will move behind an API. A pure function here is a function a
 // server can be handed later without a component coming with it.
 //
-//   1. the receipt file names an order id and a tracking number → autofill, then verify  (API, stubbed)
+//   1. the receipt file names an order id and a tracking number → autofill, then verify  (API: ReceiptCheck)
 //   2. the tracking number's FORMAT belongs to the chosen courier                        (local rule)
 //   3. the order id / tracking number's format belongs to the chosen marketplace         (local rule)
 //   4. …and when it does not, the format SUGGESTS which marketplace it is                (local rule)
@@ -158,36 +159,37 @@ export function checkProfitFloor(sellPrice: bigint, orderTotal: bigint): CheckFi
 
 // ── 1. what the receipt file says ───────────────────────────────────────────────────────────────
 
-/** What the (future) receipt check reads off the file. `""` = the file did not carry it. */
+/**
+ * What shipment's ReceiptCheck read off the label file. `""` = the label did not carry it — and both
+ * numbers are `""` for every result but `read`, so a file that is not a label fills nothing and
+ * contradicts nothing.
+ */
 export interface ReceiptScan {
+  result: LabelResult;
   orderRefId: string;
   trackingCode: string;
 }
 
 /**
- * THE RECEIPT FILE, READ BACK (owner) — a STUB standing in for the API that will do it.
+ * THE RECEIPT FILE, READ BACK (owner) — shipment's `ReceiptCheck`, run on the FILE the person picked,
+ * beside its upload (receipt-check-takes-the-file-bytes), never on the stored document.
  *
- * The real call takes the uploaded document and answers with the order id and the tracking number
- * printed on it. Two things then happen, and they are deliberately different:
+ * Two things then happen, and they are deliberately different:
  *
  *   • AUTOFILL — but only into an EMPTY field (`applyScan`). A person's typing is never overwritten
- *     by a machine reading a photo.
+ *     by a machine reading a file.
  *   • VERIFY — at submit time, what was typed is compared with what the file says, and a mismatch is
- *     a warning the person can overrule (`checkScanMatches`).
+ *     a warning the person can overrule (`checkScanMatches`). The SERVER never verifies
+ *     (receipt-check-returns-what-the-library-reads), so nothing refuses an order on it.
  *
- * Until the API exists this returns the file's own name when it looks like a reference, and nothing
- * otherwise — enough to exercise both paths on a real screen without inventing numbers that would
- * then be "verified" against a person's correct typing.
+ * The recipient the label prints (name, phone, address) is read too and NOT used here yet: whether it
+ * may fill the customer card is the order form's question, not the check's.
  */
-export async function scanReceipt(receipt: ReceiptValue): Promise<ReceiptScan | null> {
-  if (!receipt.documentId) return null;
+export async function scanReceipt(file: File): Promise<ReceiptScan | null> {
+  const reading = await checkLabel(file);
+  if (!reading) return null;
 
-  const stem = receipt.filename.replace(/\.[a-z0-9]+$/i, "");
-  const parts = stem.split(/[_\s]+/).filter((p) => /^[A-Z0-9/]{8,}$/i.test(p));
-
-  if (parts.length === 0) return null;
-
-  return { orderRefId: parts[0] ?? "", trackingCode: parts[1] ?? "" };
+  return { result: reading.result, orderRefId: reading.orderRefId, trackingCode: reading.receipt };
 }
 
 /** Fills ONLY what is still empty — see `scanReceipt`. */

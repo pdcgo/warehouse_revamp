@@ -62,8 +62,19 @@ service UserService {
   // SuspendUser blocks (or unblocks) an account.
   rpc SuspendUser(SuspendUserRequest) returns (SuspendUserResponse);
 
-  // DeleteUser removes an account and, by FK cascade, all of its memberships.
-  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  // UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
+  // they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
+  // Administrator, and never a Root or another Administrator.
+  //
+  // ⚠ CONTRACT ONLY — accepted at design_accept with the screens. The handler answers Unimplemented
+  // until the backend is built.
+  rpc UserErase(UserEraseRequest) returns (UserEraseResponse);
+
+  // TeamMemberLogList — the history of one team's membership: every add, role change and removal,
+  // who did it, and when (every-role-change-is-logged). Newest first.
+  //
+  // ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
+  rpc TeamMemberLogList(TeamMemberLogListRequest) returns (TeamMemberLogListResponse);
 
   // UserList — paginated, team-scoped.
   rpc UserList(UserListRequest) returns (UserListResponse);
@@ -86,6 +97,19 @@ message PublicUser {
   string name = 3;
   // Compact avatar URL — safe to show (an avatar is meant to be seen); empty if none.
   string avatar_url = 4;
+
+  // The LAST FOUR digits of the phone, so two people with one name are told apart in a search
+  // result without showing anyone's number (a-result-shows-the-phones-last-four-digits). Computed on
+  // the server; the full number never leaves it.
+  //
+  // SearchUser fills it and nothing else does: a name lookup (UserByIDs) is open to anyone signed in,
+  // and needs no help telling people apart. Empty with no phone, and when the number has four digits or
+  // fewer — then the last four would be all of it.
+  string phone_last4 = 5;
+
+  // The account is suspended. A "who" filter keeps a suspended person and badges them
+  // (a-filter-keeps-former-and-suspended-people); the pickers that GIVE something never offer one.
+  bool is_suspended = 6;
 }
 
 message UpdateProfileRequest {
@@ -93,7 +117,12 @@ message UpdateProfileRequest {
 
   // NO user_id. The subject is the token holder — same rule as ResetPassword.
   // Absent = leave alone.
-  optional string name = 1 [(buf.validate.field).string.max_len = 128];
+  // When sent, never blank (only-name-and-username-are-required).
+  optional string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "\\S"
+  }];
   optional string email = 2 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 3 [(buf.validate.field).string.max_len = 40];
   // The profile picture's (compact) URL, set after uploading via document_service. Absent = leave
@@ -111,15 +140,28 @@ message UpdateUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
   uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
 
-  optional string name = 2 [(buf.validate.field).string.max_len = 128];
+  // When sent, never blank (only-name-and-username-are-required).
+  optional string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "\\S"
+  }];
   optional string email = 3 [(buf.validate.field).string.max_len = 200];
   optional string phone_number = 4 [(buf.validate.field).string.max_len = 40];
+
+  // A typo in a username is fixed in place (the-username-is-editable): the same rule as at create,
+  // and still unique. User 1 keeps `root`.
+  optional string username = 5 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 100
+    pattern: "^[a-z0-9]+$"
+  }];
 }
 
 message UpdateUserResponse {
@@ -130,7 +172,7 @@ message SuspendUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -143,18 +185,19 @@ message SuspendUserRequest {
 
 message SuspendUserResponse {}
 
-message DeleteUserRequest {
+message UserEraseRequest {
+  // Unscoped roles-policy = Root and the Administrator, as for SuspendUser — an account spans teams.
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
   uint64 user_id = 1 [(buf.validate.field).uint64.gt = 0];
 }
 
-message DeleteUserResponse {}
+message UserEraseResponse {}
 
 // ── The guideline list shape for users (guidelines/service-guideline.md) ──────────────────────────
 
@@ -164,6 +207,11 @@ enum UserListDataType {
   USER_LIST_DATA_TYPE_GENERAL = 1;
   // USER: the full user row (email, phone) — which is why UserList is role-gated.
   USER_LIST_DATA_TYPE_USER = 2;
+  // MEMBERSHIP: each user's role in the SCOPED team — what a member row shows, and what decides
+  // whether the caller may change or remove them (change-role-only-below-your-own). At team_id = 0
+  // it is the role in the root team, so the all-users view can tell Root and the Administrator apart.
+  // A user with no role there is absent from the map.
+  USER_LIST_DATA_TYPE_MEMBERSHIP = 3;
 }
 
 // UserRowSort is the sort selection paired with the USER (row) slice.
@@ -190,11 +238,13 @@ message UserListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER,
+      ROLE_ADMIN_ADMINISTRATOR
     ]
   };
 
@@ -214,10 +264,24 @@ message UserRowMapItem {
   map<uint64, User> map_data = 1;
 }
 
+// The MEMBERSHIP slice: one user's place in the scoped team.
+message UserMembership {
+  warehouse.role_base.v1.Role role = 1;
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 2;
+  reserved "alias";
+}
+
+message UserMembershipMapItem {
+  map<uint64, UserMembership> map_data = 1;
+}
+
 message UserListResponseItem {
   oneof d {
     warehouse.common.v1.GeneralMapItem general = 1;
     UserRowMapItem user = 2;
+    UserMembershipMapItem membership = 3;
   }
 }
 
@@ -275,14 +339,28 @@ message UserByIDsResponse {
 }
 
 message SearchUserRequest {
-  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+  // Only those who manage members open the search (only-member-managers-open-the-search): every
+  // team's Owner, the warehouse and selling Admins, Root and the Administrator. The admin team's Admin
+  // manages no members and is left out (the-admin-team-admin-alone-does-not-manage-members). Staff and
+  // Customer Service filter their lists through each list's own "who" RPC instead
+  // (a-who-filter-lists-the-people-on-its-rows).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER
+    ]
+  };
 
-  // DELIBERATELY UNSCOPED and top-level.
-  //
-  // Unscoped because its whole purpose is finding people who are NOT in your team yet, so you
-  // can add them. Top-level because the interceptor only reads scope from top-level fields —
-  // in the source this field was NESTED, which silently made the RPC unscoped anyway. If it is
-  // going to be unscoped, say so out loud rather than by accident.
+  // What is typed. For an Owner or an Admin it must be someone's WHOLE username, email or phone
+  // (managers-search-by-exact-username-phone-or-email), so they find a person they already know and
+  // never browse other teams' people. A phone matches however it is written: 0812…, +62 812… and
+  // 62-812… are one number. Root and the Administrator match any part of a name or username.
+  // Suspended accounts are never found (a-suspended-user-is-never-picked).
   string q = 1 [(buf.validate.field).string = {
     min_len: 2
     max_len: 100
@@ -292,10 +370,115 @@ message SearchUserRequest {
     gte: 1
     lte: 20
   }];
+
+  // The team the person is being added to — the SCOPE, so the policy above is read in it. It also
+  // answers who is ALREADY in it (roles_in_team), so the popup offers Change Role instead of an add
+  // (an-existing-member-gets-change-role).
+  //
+  // 0 is the root team: Root and the Administrator picking a new team's first Owner, before the team
+  // exists (the-create-team-form-names-the-first-owner).
+  uint64 team_id = 3 [(warehouse.role_base.v1.use_scope) = true];
 }
 
 message SearchUserResponse {
+  // Each with `phone_last4` filled.
   repeated PublicUser users = 1;
+
+  // For each user found, their role in `team_id`. A user who is not a member is ABSENT; at team 0 it is
+  // empty.
+  map<uint64, warehouse.role_base.v1.Role> roles_in_team = 2;
+}
+
+// ── The membership log (every-role-change-is-logged), in the guideline list shape ────────────────
+
+enum TeamMemberLogAction {
+  TEAM_MEMBER_LOG_ACTION_UNSPECIFIED = 0;
+  TEAM_MEMBER_LOG_ACTION_ADD = 1;
+  TEAM_MEMBER_LOG_ACTION_CHANGE_ROLE = 2;
+  TEAM_MEMBER_LOG_ACTION_REMOVE = 3;
+}
+
+enum TeamMemberLogDataType {
+  TEAM_MEMBER_LOG_DATA_TYPE_UNSPECIFIED = 0;
+  TEAM_MEMBER_LOG_DATA_TYPE_ENTRY = 1;
+}
+
+// TeamMemberLogSort is the sort selection paired with the ENTRY slice.
+enum TeamMemberLogSort {
+  TEAM_MEMBER_LOG_SORT_UNSPECIFIED = 0;
+  TEAM_MEMBER_LOG_SORT_CREATED = 1;
+}
+
+message TeamMemberLogListFilter {
+  // One person's history in the team; 0 = everyone.
+  uint64 user_id = 1;
+}
+
+message TeamMemberLogListFilterSort {
+  warehouse.common.v1.CommonSortType sort_type = 1;
+  oneof s {
+    TeamMemberLogSort entry = 2;
+  }
+}
+
+message TeamMemberLogListRequest {
+  // The people who manage members read their team's history. The admin team's Admin is left out
+  // once it has its own role (the-admin-team-admin-alone-does-not-manage-members).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER,
+      ROLE_ADMIN_ADMINISTRATOR
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  TeamMemberLogListFilter filter = 2;
+  TeamMemberLogListFilterSort sort = 3;
+  repeated TeamMemberLogDataType data_request = 4;
+  warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
+}
+
+// One change to the team's membership. Never updated, never deleted.
+message TeamMemberLogEntry {
+  uint64 id = 1;
+  uint64 team_id = 2;
+  // Who did it. A developer acting through tools/san is recorded as such (agent), with 0 here.
+  uint64 actor_user_id = 3;
+  string actor_agent = 4;
+  // Whose membership changed.
+  uint64 user_id = 5;
+  TeamMemberLogAction action = 6;
+  // UNSPECIFIED before an ADD, and after a REMOVE.
+  warehouse.role_base.v1.Role role_before = 7;
+  warehouse.role_base.v1.Role role_after = 8;
+  // Whether the actor got in by the root-team bypass (an-override-is-stamped-in-every-service).
+  bool is_override = 9;
+  int64 created_at_unix = 10;
+}
+
+message TeamMemberLogMapItem {
+  map<uint64, TeamMemberLogEntry> map_data = 1;
+}
+
+message TeamMemberLogListResponseItem {
+  oneof d {
+    TeamMemberLogMapItem entry = 1;
+  }
+}
+
+message TeamMemberLogListResponse {
+  repeated TeamMemberLogListResponseItem items = 1;
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
 }
 
 message User {
@@ -313,11 +496,12 @@ message CreateUserRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER
     ]
   };
 
@@ -342,13 +526,21 @@ message CreateUserRequest {
     min_len: 8
     max_len: 200
   }];
-  string name = 4 [(buf.validate.field).string.max_len = 128];
+  // Required, and never only spaces (only-name-and-username-are-required).
+  string name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "\\S"
+  }];
   string email = 5 [(buf.validate.field).string.max_len = 200];
   string phone_number = 6 [(buf.validate.field).string.max_len = 40];
 
   // The role to grant in team_id. Required when team_id > 0; ignored when it is 0.
   warehouse.role_base.v1.Role role = 7;
-  string alias = 8 [(buf.validate.field).string.max_len = 60];
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 8;
+  reserved "alias";
 }
 
 message CreateUserResponse {
@@ -382,7 +574,7 @@ message AdminResetPasswordRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -489,7 +681,10 @@ message ResetPasswordWithOtpResponse {}
 message TeamAccessItem {
   uint64 team_id = 1;
   warehouse.role_base.v1.Role role = 2;
-  string alias = 3;
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 3;
+  reserved "alias";
 
   // Resolved from team_service. EMPTY when team_service is unreachable — this RPC degrades
   // rather than failing, because a display-name lookup must never take down login.
@@ -542,7 +737,7 @@ message TeamAccessListResponseItem {
 }
 
 message TeamAccessListFilter {
-  // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMIN — otherwise any
+  // 0 = the caller. Naming another user requires ROLE_ROOT / ROLE_ADMINISTRATOR — otherwise any
   // authenticated user could enumerate anyone else's teams and roles.
   uint64 user_id = 1;
 }
@@ -576,7 +771,7 @@ message UserTeamsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -603,11 +798,12 @@ message TeamUserUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
-      ROLE_WAREHOUSE_ADMIN
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_ADMIN_OWNER
     ]
   };
 
@@ -630,7 +826,10 @@ message AddTeamUser {
     defined_only: true
     not_in: [0]
   }];
-  string alias = 3 [(buf.validate.field).string.max_len = 60];
+
+  // The per-team alias is gone (a-user-is-name-username-email-phone-and-photo): never renumber, never reuse.
+  reserved 3;
+  reserved "alias";
 }
 
 message RemoveTeamUser {
@@ -654,7 +853,7 @@ message RoleResolveResponse {
   // The caller's role in team_id (ROLE_UNSPECIFIED = not a member).
   warehouse.role_base.v1.Role role = 1;
 
-  // The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMIN here is the global
+  // The caller's role in the ROOT team (team 1). ROLE_ROOT / ROLE_ADMINISTRATOR here is the global
   // super-admin bypass. Returned in the same call so the interceptor needs only ONE round trip.
   warehouse.role_base.v1.Role root_role = 2;
 

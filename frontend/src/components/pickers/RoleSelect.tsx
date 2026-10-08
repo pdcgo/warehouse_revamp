@@ -8,13 +8,15 @@ import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 // Every assignable role, for the "all" case — excludes UNSPECIFIED and the internal SYSTEM role.
 const ALL_ROLES: Role[] = [
   Role.ROOT,
-  Role.ADMIN,
-  Role.TEAM_OWNER,
-  Role.TEAM_ADMIN,
-  Role.TEAM_CUSTOMER_SERVICE,
+  Role.ADMINISTRATOR,
+  Role.SELLING_OWNER,
+  Role.SELLING_ADMIN,
+  Role.SELLING_CS,
   Role.WAREHOUSE_OWNER,
   Role.WAREHOUSE_ADMIN,
   Role.WAREHOUSE_STAFF,
+  Role.ADMIN_OWNER,
+  Role.ADMIN_ADMINISTRATOR,
 ];
 
 interface RoleOption {
@@ -48,11 +50,14 @@ export function RoleSelect({
 }: RoleSelectProps) {
   const options: RoleOption[] = useMemo(() => {
     const offered = roles ?? (teamType !== undefined ? rolesFor(teamType) : ALL_ROLES);
-    return offered.map((r) => ({ label: roleLabel(r), value: String(r) }));
+    return offered.map((r) => ({ label: roleLabel(r, teamType), value: String(r) }));
   }, [roles, teamType]);
 
+  // ⚠ SEEDED with the options, not filled in later by the effect below. The role set is known on the
+  // first render, and a combobox whose collection arrives late renders a PREFILLED value blank (Zag
+  // derives the input's text once, at init) — every create form that starts on a role read empty.
   const { collection, set } = useListCollection<RoleOption>({
-    initialItems: [],
+    initialItems: options,
     itemToString: (item) => item.label,
     itemToValue: (item) => item.value,
   });

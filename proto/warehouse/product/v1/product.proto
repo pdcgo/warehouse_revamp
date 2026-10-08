@@ -92,9 +92,9 @@ message ProductCreateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -268,10 +268,10 @@ message ProductListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -305,10 +305,10 @@ message ProductDiscoverRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -414,10 +414,10 @@ message ProductByIdsRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -480,9 +480,9 @@ message ProductUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -536,10 +536,10 @@ message ProductDetailRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN,
       ROLE_WAREHOUSE_STAFF
@@ -561,9 +561,9 @@ message ProductDeleteRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]
@@ -591,9 +591,9 @@ message ProductRestoreRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
       ROLE_WAREHOUSE_OWNER,
       ROLE_WAREHOUSE_ADMIN
     ]

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { rpcError, supplierClient } from "../../api/clients";
-import { suppliersFromList, supplierListRowData } from "../../features/suppliers/adapt";
-import type { Supplier } from "../../gen/warehouse/inventory/v1/supplier_pb";
+import { type SupplierRecord, suppliersFromList, supplierListRowData } from "../../features/suppliers/adapt";
+import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
 import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 // How many suppliers are loaded. A team buys from a handful — dozens at most — so the whole list is
@@ -17,7 +17,7 @@ import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 const SUPPLIER_LIMIT = 200;
 
 export interface SupplierSelectProps {
-  /** The team whose suppliers to list — a supplier is team-scoped, so this is required. */
+  /** The team whose OWN suppliers to list — a deleted one is never offered (a-deleted-supplier-is-kept-for-its-figures). */
   teamId: bigint;
   /** Selected supplier id (0n = none). */
   value?: bigint;
@@ -27,10 +27,9 @@ export interface SupplierSelectProps {
 }
 
 // SupplierSelect is the shared supplier picker for a team (#109). A Chakra Combobox so the list is
-// searchable, matching on NAME or CODE — people type either, and two suppliers with similar names
-// stay distinguishable by the code beside them.
+// searchable, matching on the NAME — a supplier has no code (the-supplier-has-no-code).
 export const description =
-  'Searchable supplier picker for a team (Chakra Combobox over SupplierList) — matches on name or code. Emits a supplier id, and clears to 0 because "no supplier" is a real value.';
+  'Searchable supplier picker for a team (Chakra Combobox over SupplierList) — matches on the name. Emits a supplier id, and clears to 0 because "no supplier" is a real value.';
 
 export function SupplierSelect({
   teamId,
@@ -45,29 +44,22 @@ export function SupplierSelect({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const { collection, filter, set } = useListCollection<Supplier>({
+  const { collection, filter, set } = useListCollection<SupplierRecord>({
     initialItems: [],
-    itemToString: (s) => (s.code ? `${s.name} (${s.code})` : s.name),
+    itemToString: (s) => s.name,
     itemToValue: (s) => s.id.toString(),
-    // Match the item's OWN LABEL first, then name or code separately.
+    // Match the item's OWN LABEL — which is now the bare name.
     //
-    // ⚠ `itemText` is not redundant, and leaving it out was a real bug: on SELECTION the combobox
-    // writes itemToString back into the input, which re-runs this filter with the WHOLE label as the
-    // query. "PT Sumber Makmur (SUP-A)" is contained in neither the name nor the code, so the
-    // collection emptied, the selected id no longer resolved to a label, and the field went BLANK
-    // while a supplier was in fact selected — the same symptom as #131, arrived at from the other
-    // direction. TeamSelect escapes it only by accident: its label is the bare name.
-    //
-    // Name and code stay because they are what a person TYPES — nobody types the bracketed form.
-    filter: (itemText, filterText, supplier) => {
+    // ⚠ Keep matching `itemText` if the label ever grows again: on SELECTION the combobox writes
+    // itemToString back into the input, which re-runs this filter with the WHOLE label as the query. When
+    // the label was "PT Sumber Makmur (SUP-A)" and the filter looked only at the name and the code, the
+    // collection emptied and the field went BLANK while a supplier was in fact selected — the same
+    // symptom as #131, arrived at from the other direction.
+    filter: (itemText, filterText) => {
       const q = filterText.trim().toLowerCase();
       if (!q) return true;
 
-      return (
-        itemText.toLowerCase().includes(q) ||
-        supplier.name.toLowerCase().includes(q) ||
-        supplier.code.toLowerCase().includes(q)
-      );
+      return itemText.toLowerCase().includes(q);
     },
   });
 
@@ -86,6 +78,8 @@ export function SupplierSelect({
     supplierClient
       .supplierList({
         teamId,
+        // This team's own — another team's supplier is Discover's question, not this picker's.
+        filter: { scope: SupplierListScope.OWN },
         dataRequest: supplierListRowData(),
         page: { page: 1, limit: SUPPLIER_LIMIT },
       })
@@ -170,7 +164,7 @@ export function SupplierSelect({
                     key={supplier.id.toString()}
                     data-testid={`supplier-select-option-${supplier.id}`}
                   >
-                    {supplier.code ? `${supplier.name} (${supplier.code})` : supplier.name}
+                    {supplier.name}
                     <Combobox.ItemIndicator />
                   </Combobox.Item>
                 ))}

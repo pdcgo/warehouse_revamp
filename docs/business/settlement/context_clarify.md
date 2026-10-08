@@ -300,7 +300,7 @@ excellence — worth one row, since the table is what a reader copies.
 > **Sold for** and **% of sales**.
 >
 > ✅ **§Access Role is answered, and one answer REVERSED my recommendation** (owner). The write set is
-> `[ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, CS]` scoped on `team_id`
+> `[ROOT, ADMIN, SELLING_OWNER, SELLING_ADMIN, CS]` scoped on `team_id`
 > ([the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up)), and `initial_total`
 > **is** hand-postable — by everyone in that set except `team_admin`
 > ([initial-total-is-postable-by-cs-and-owners](./context_decision.md#initial-total-is-postable-by-cs-and-owners)).
@@ -1557,7 +1557,7 @@ flowchart LR
 - ⛔ **§Access Role still defers a policy that is decided AND shipped.** It reads *"for now, there is no
   specific role for this service. [defer later]"*, but
   [the-write-set-is-cs-and-up](./context_decision.md#the-write-set-is-cs-and-up) fixed the set
-  (`ROOT, ADMIN, TEAM_OWNER, TEAM_ADMIN, CS`, scoped on `team_id`),
+  (`ROOT, ADMIN, SELLING_OWNER, SELLING_ADMIN, CS`, scoped on `team_id`),
   [initial-total-is-postable-by-cs-and-owners](./context_decision.md#initial-total-is-postable-by-cs-and-owners)
   fixed who may type `initial_total`, and the proto carries both on every request message.
   ⚠ The deferral is not harmless wording: [no-role-policy-yet](./context_decision.md#no-role-policy-yet)

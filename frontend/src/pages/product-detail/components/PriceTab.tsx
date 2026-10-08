@@ -9,7 +9,8 @@ import { useOwnerCostLayers } from "../../../features/products/queries";
 import type { Product } from "../../../gen/warehouse/product/v1/product_pb";
 import { formatMarkup } from "../../../lib/markup";
 import { formatRupiah } from "../../../lib/money";
-import { Pending, Stat, WarehouseFilter, WarehouseNote } from "./parts";
+import { Stat } from "../../../features/products/RecordField";
+import { Pending, WarehouseFilter, WarehouseNote } from "./parts";
 
 // The PRICE tab — the batches GROUPED BY WHAT THEY COST.
 //

@@ -456,6 +456,10 @@ func (s *Service) RestockRequestFulfill(
 		return nil, restockErr(err)
 	}
 
+	// AFTER the commit, never inside: a supplier's figures are downstream of the accept and must not be able to fail
+	// it, and an event for an accept that rolled back would fold goods that never arrived.
+	s.publishAccepted(ctx, &rr)
+
 	return connect.NewResponse(&inventoryv1.RestockRequestFulfillResponse{
 		Request: restockRequestToProto(&rr),
 	}), nil

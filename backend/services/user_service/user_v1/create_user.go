@@ -11,7 +11,6 @@ import (
 
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	userv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/user/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_service_models"
 )
 
@@ -38,12 +37,30 @@ func (s *Service) CreateUser(
 			errors.New("a role is required when creating a user inside a team"))
 	}
 
-	// ROOT and ADMIN are only meaningful IN THE ROOT TEAM — that is the super-admin scope the
-	// interceptor checks. Granting them anywhere else stores a role that looks powerful and
-	// grants nothing, which is worse than refusing: it makes an audit of "who is an admin" lie.
-	if teamID != san_auth.RootTeamID && isGlobalRole(role) {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			errors.New("ROOT and ADMIN can only be granted in the root team"))
+	// The role is a GRANT, so it passes the same rules as Add Member: never Root, the Administrator
+	// only by Root, only a role below the caller's own, and only a role of this team's type — which
+	// also covers the old "Root and the Administrator only in the root team" check. A new person holds
+	// no role yet, so `current` is none.
+	var (
+		caller callerReach
+		err    error
+	)
+
+	if teamID > 0 {
+		caller, err = s.callerIn(ctx, teamID)
+		if err != nil {
+			return nil, err
+		}
+
+		teamType, err := s.teamTypeOf(ctx, teamID)
+		if err != nil {
+			return nil, err
+		}
+
+		err = checkMemberWrite(caller, memberWrite{teamType: teamType, next: role})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Normalise before writing: the unique indexes are on LOWER(username) / LOWER(email), so
@@ -51,6 +68,17 @@ func (s *Service) CreateUser(
 	// login could not tell them apart.
 	username := strings.ToLower(strings.TrimSpace(req.Msg.GetUsername()))
 	email := strings.ToLower(strings.TrimSpace(req.Msg.GetEmail()))
+
+	err = refuseReservedUsername(username)
+	if err != nil {
+		return nil, err
+	}
+
+	// One stored form, or refused (a-phone-is-saved-in-international-form).
+	phone, err := normalizePhone(req.Msg.GetPhoneNumber())
+	if err != nil {
+		return nil, err
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Msg.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
@@ -61,12 +89,18 @@ func (s *Service) CreateUser(
 		Username:    username,
 		Email:       email,
 		Name:        req.Msg.GetName(),
-		PhoneNumber: req.Msg.GetPhoneNumber(),
+		PhoneNumber: phone,
 		Password:    string(hash),
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Create(&user).Error
+		// One account per phone or email, refused by name; the unique indexes stay the guarantee.
+		err := refuseTakenContact(tx, 0, email, phone)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Create(&user).Error
 		if err != nil {
 			return err
 		}
@@ -75,27 +109,34 @@ func (s *Service) CreateUser(
 			return nil
 		}
 
-		return tx.Create(&user_service_models.UserTeamRole{
+		err = tx.Create(&user_service_models.UserTeamRole{
 			TeamID: teamID,
 			UserID: user.ID,
 			Role:   int32(role),
-			Alias:  req.Msg.GetAlias(),
 		}).Error
+		if err != nil {
+			return err
+		}
+
+		_, err = logMembership(tx, caller, teamID, user.ID, role_basev1.Role_ROLE_UNSPECIFIED, role)
+
+		return err
 	})
 	if err != nil {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return nil, connectErr
+		}
+
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, connect.NewError(connect.CodeAlreadyExists,
-				errors.New("username or email already exists"))
+				errors.New("username, email or phone already exists"))
 		}
 
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	return connect.NewResponse(&userv1.CreateUserResponse{User: userToProto(&user)}), nil
-}
-
-func isGlobalRole(role role_basev1.Role) bool {
-	return role == role_basev1.Role_ROLE_ROOT || role == role_basev1.Role_ROLE_ADMIN
 }
 
 // userToProto never includes the password hash. Obvious, and worth being deliberate about: a

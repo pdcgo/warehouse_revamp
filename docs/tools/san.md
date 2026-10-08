@@ -14,7 +14,7 @@ go run ./tools/san user reset-password --username ani
 
 ---
 
-## One CLI, four jobs
+## One CLI, five jobs
 
 `san` covers the whole life of the project's data and the environment around it.
 
@@ -22,21 +22,25 @@ go run ./tools/san user reset-password --username ani
 | --- | --- | --- |
 | **the schema** | [`migrate`](#migrate) | goose, per service (HARD RULE 3) |
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
-| **operations** | [`user reset-password`](#user-reset-password) | acts on real data, through the real services |
+| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
+| **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
 
 ```mermaid
 flowchart LR
     subgraph san["tools/san — one binary"]
         M["migrate"]
         S["seed · db · region"]
-        U["user reset-password"]
+        U["user reset-password · user root"]
         R["remote · remote mcp · refresh-token"]
+        V["dev setup · dev run"]
     end
     M -->|"shapes the schema"| DB[(Postgres)]
     S -->|"puts rows in it"| DB
     U -->|"changes what is IN it, through the services"| DB
     R -->|"runs shell commands in the checkout"| WS[/"the working tree"/]
+    V -->|"starts the API and the UI from"| WS
+    V -->|"setup migrates and seeds the LOCAL one"| DB
 ```
 
 > **This used to be two binaries.** `migrate`, `seed`, `db` and `region` lived in
@@ -74,7 +78,12 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`seed`](#seed) | Development fixtures — `root`, `dev`, `categories` |
 | [`db`](#db) | Create, reset and drop the **test** database (`warehouse_test`) |
 | [`region`](#region) | Build and load region_service's reference data |
+| [`dev setup`](#dev-setup) | Make a checkout runnable: submodules, containers, every migration, the dev logins, categories, regions, `npm install`. Safe to re-run |
+| [`dev run`](#dev-run) | Start the containers, the API and the UI in one terminal — Ctrl-C stops all of it |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
+| [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
+| [`supplier move`](#supplier-move) | Copy inventory_service's suppliers and stores into supplier_service, ids kept. One-shot, safe to re-run |
+| [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`remote`](#remote) | Serve this checkout to a coding agent — shell commands, streamed, behind a bearer token kept per workspace |
@@ -85,9 +94,12 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 
 *(Every new one is added to this table — see [Adding a command](#adding-a-command).)*
 
-**`remote` and `pubsub` touch no database**, so they never ask Local/Production and need no Postgres
-running. `--dsn` is meaningless to both. `pubsub` has its own target flags instead — `--project`, and
-`--emulator` for the local broker.
+**`remote`, `pubsub` and `dev run` touch no database**, so they never ask Local/Production and need
+no Postgres running (`dev run` starts the containers, and that is all). `--dsn` is meaningless to all
+three. `pubsub` has its own target flags instead — `--project`, and `--emulator` for the local broker.
+
+**`dev setup` touches only the local one, and never asks.** It refuses to run at all when `--dsn` or
+`DATABASE_URL` is set — see [local only](#dev-setup).
 
 ---
 
@@ -171,7 +183,10 @@ sequenceDiagram
 dependency order, asking only for the database. The order is a **contract, not a preference**:
 `team_service` seeds team 1 and `user_service`'s root-user seed puts `ROLE_ROOT` *in team 1*. There
 is no cross-service foreign key to enforce it — a service owns its own tables — so the wrong order
-produces a role pointing at a team that does not exist yet.
+produces a role pointing at a team that does not exist yet. `inventory_service` comes third: its `00023`
+renames its old supplier tables to `legacy_*`, freeing the names `supplier_service`'s `00001` creates —
+every service shares one database ([the-supplier-gets-its-own-service](../business/supplier/context_decision.md#the-supplier-gets-its-own-service)).
+A test pins the order (`TestMigrationOrderPinsTheDependencies`).
 
 ### Errors you should expect
 
@@ -187,7 +202,8 @@ produces a role pointing at a team that does not exist yet.
 ## `seed`
 
 Development fixtures. **Never production data**, and deliberately not a migration — a migration runs
-everywhere, including production, and anything inside one *will* eventually execute there.
+everywhere, including production, and anything inside one *will* eventually execute there. ⚠ The one exception is
+decided: root's development password is written by a migration, and production replaces it with `seed root`.
 
 ```sh
 go run ./tools/san seed root --password <secret>   # the root account, nothing else
@@ -198,7 +214,7 @@ go run ./tools/san seed categories -f other.json
 
 | Sub-command | | |
 | --- | --- | --- |
-| `root` | Sets the root account's password | The migration creates root with an **empty** password, which bcrypt can never match — so the account exists and cannot log in until this runs. That is the point |
+| `root` | Sets the root account's password | A migration (`00010`) gives root the **development** password `root1234` while it has none ([the-migration-writes-the-dev-root-password](../business/user/context_decision.md#the-migration-writes-the-dev-root-password)). It is public in this repository, so **a production database runs this right after its first migration** |
 | `dev` | Teams and several logins | Development only |
 | `categories` | The product taxonomy from JSON | `-f` to point at another file |
 
@@ -260,6 +276,333 @@ forgets the blank import.
 Both `--file` and `--out` default to the checked-in seed, resolved **against the repository root**,
 so they find it wherever the command is run from. An explicit relative path is still relative to
 your working directory.
+
+---
+
+## `dev setup`
+
+Makes a checkout runnable: everything [`dev run`](#dev-run) assumes is already there. Run it on a new
+machine, and **again after a pull** that brings migrations or changed seeds. Every step is
+idempotent, so there is no separate "update" command.
+
+```sh
+go run ./tools/san dev setup               # all of it
+go run ./tools/san dev setup --no-docker   # the containers are already up
+```
+
+| | Step | The same as |
+| --- | --- | --- |
+| 1 | check out a submodule a plain `git clone` left empty | `git submodule update --init` |
+| 2 | `docker compose --profile pubsub up -d --wait` — Postgres, Redis and the Pub/Sub emulator | |
+| 3 | the emulator's topics and subscriptions | [`pubsub ensure --project warehouse-dev --emulator`](#pubsub-ensure) |
+| 4 | migrate every service, in dependency order | [`migrate up-all`](#migrate) |
+| 5 | the suppliers inventory_service set aside, into supplier_service | [`supplier move`](#supplier-move) |
+| 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
+| 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller` | [`seed dev`](#seed) |
+| 8 | the product-category tree | [`seed categories`](#seed) |
+| 9 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
+| 10 | `npm install` in `frontend/` | |
+
+Steps 3–9 call **the same function** as their own command, so setup cannot drift from running them
+one at a time. Steps 2 and 3 are the same ones [`dev run`](#dev-run) starts with — see
+[the emulator and its topics](#the-emulator-and-its-topics).
+
+| Flag | |
+| --- | --- |
+| `--no-docker` | Skip `docker compose up`. The topics are still made if the emulator answers, and a missing one is only a warning |
+| `--password` | The password of every dev account. Default `devpassword123`, env `DEV_PASSWORD` |
+
+```mermaid
+flowchart TD
+    G{"--dsn or DATABASE_URL set?"} -->|"yes"| X["refuse — nothing has run"]
+    G -->|"no"| R["read the seed files"]
+    R --> S["submodules — only an EMPTY one"]
+    S --> D["docker compose --profile pubsub up -d --wait"]
+    D --> E["pubsub ensure — the emulator's topics"]
+    E --> M["migrate up-all"]
+    M --> SM["supplier move"]
+    SM --> SB["supplier backfill-figures"]
+    SB --> SD["seed dev"]
+    SD --> SC["seed categories"]
+    SC --> RG["region load-seed"]
+    RG --> N["npm install"]
+    N --> OK["✓ next: dev run, log in as dev"]
+```
+
+**Local only, and it never asks.** It acts on the docker database (`POSTGRES_*` env, the same database
+the prompt calls *Database Local*), which is the one the API uses by default. `seed dev` creates
+superusers with a known password, so pointing it anywhere else has to be a deliberate act. When
+`--dsn` or `DATABASE_URL` is set, setup **refuses** instead of guessing which database you meant. To
+set up a different database, run the steps one by one against it.
+
+**Re-running resets the fixture**, which is usually what you want:
+
+- every dev account's password goes back to `--password`;
+- a category you deleted or archived from the seeded tree is inserted again;
+- rows you created yourself (teams, products, orders) are left alone.
+
+**Only an EMPTY submodule is checked out.** `git submodule update` would also move an initialised one
+back to the commit this repo records, under somebody who is working in it. Neither `san` nor the dev
+servers import a submodule. Step 1 is for `go build ./...` and `go test ./...`, which do.
+
+A re-run takes about 15 s on a warm machine. Most of it is the regions upsert, about 5 s. The **first** run
+also pulls the emulator's image, about 1.1 GB.
+
+### Errors you should expect
+
+| Message | Cause |
+| --- | --- |
+| `dev setup acts only on the local docker database` | `--dsn` or `DATABASE_URL` is set. Unset it, or run the steps by hand |
+| `the dev password must be at least 8 characters` | `--password` is too short |
+| `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
+| `the Pub/Sub emulator is not answering on localhost:8085 although docker started it` | The container is up but not serving. `docker compose logs pubsub` says why |
+| `pubsub ensure: …` | The emulator refused a topic or subscription. Same causes as [`pubsub ensure`](#pubsub-ensure)'s errors |
+| `connecting to Database Local: …` | Postgres is not up. Drop `--no-docker`, or start it |
+| `migrating <service>: …` | A broken migration. The services before it are applied, so re-run once it is fixed |
+| `npm install: … is Node installed?` | Node is not installed or not on `PATH` |
+
+---
+
+## `dev run`
+
+The whole local stack in **one terminal**, replacing the two terminals in the getting-started steps.
+Every line of output is prefixed with the process that wrote it.
+
+```sh
+go run ./tools/san dev run               # the containers and the emulator's topics, then the API and the UI
+go run ./tools/san dev run --no-docker   # the containers are already up
+```
+
+```
+→ docker compose --profile pubsub up -d --wait
+→ pubsub ensure --project warehouse-dev --emulator
+topics ensured
+subscriptions ensured
+→ api  go run ./cmd/app_development   (in backend)
+→ ui   npm run dev   (in frontend)
+ui  |   VITE v6.4.3  ready in 401 ms
+ui  |   ➜  Local:   http://localhost:5174/
+api | … listening on localhost:8080
+```
+
+| Flag | |
+| --- | --- |
+| `--no-docker` | Skip `docker compose up`, because the containers are already running. The topics are still made if the emulator answers; a missing emulator is a warning, not an error |
+
+It is a **machine** command ([two shapes](#two-shapes-and-which-rules-apply)): it picks no database
+and builds no Wire graph. Each server runs in the directory a person would `cd` into, so the API
+still finds an optional `backend/config.yaml`.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+    actor P as you
+    participant S as san dev run
+    participant D as docker compose
+    participant E as the emulator
+    participant A as api, go run
+    participant U as ui, npm run dev
+    P->>S: go run ./tools/san dev run
+    S->>S: frontend/node_modules present?
+    S->>D: --profile pubsub up -d --wait
+    D-->>S: postgres, redis and the emulator healthy
+    S->>E: pubsub ensure — on every start, it forgets them
+    E-->>S: topics and subscriptions ensured
+    par
+        S->>A: start, in backend/
+    and
+        S->>U: start, in frontend/
+    end
+    alt Ctrl-C, or the terminal closes
+        P->>S: Ctrl-C
+        S->>A: kill the whole process tree
+        S->>U: kill the whole process tree
+        S-->>P: ✓ stopped, exit 0
+    else one server exits on its own
+        A-->>S: exited
+        S->>U: kill the whole process tree
+        S-->>P: api exited — stopped the rest, exit 1
+    end
+```
+
+**It stops as one thing.** Half a stack is the confusing case: a UI whose API died a minute ago shows
+every screen failing, and nothing on the screen says the server is gone. So any server that exits,
+even with code 0, takes the other one down with it, and the error names the server that exited.
+
+**It kills the tree, not the process.** `go run` is go.exe → the toolchain's go.exe → the built
+server, and `npm run dev` is cmd.exe → npm → vite. Killing the outer process leaves the inner one
+holding :8080 or :5174. Each server is started in its own process group and stopped as a group:
+`kill(-pgid)` on Unix, `taskkill /T` on Windows. The code is
+[`proctree`](../../tools/san/proctree/), shared with [`remote`](#remote). Having its own group also
+means Ctrl-C reaches only `san`. On Windows that keeps cmd.exe from stopping at *"Terminate batch job
+(Y/N)?"*.
+
+The stop is a **hard kill**. The API does not drain its requests, which is fine for a dev server.
+
+### The emulator and its topics
+
+The dev server publishes to the Pub/Sub emulator
+([dev-runs-the-emulator](../technical/event_architecture/context_decision.md#dev-runs-the-emulator)), and
+without it a publish does not fail — it **waits about a minute**, so placing an order hangs on a form with
+nothing wrong with it. So `dev run` and `dev setup` both:
+
+| | why |
+| --- | --- |
+| turn on the compose `pubsub` profile | the emulator is behind it, so a plain `docker compose up` leaves it out |
+| wait for it to be **healthy** | its healthcheck asks it to answer. Running is not enough: the JVM starts seconds before it serves |
+| run [`pubsub ensure`](#pubsub-ensure) on **every** start | ⚠ the emulator keeps topics in MEMORY. A restarted container (Docker Desktop restarting is enough) has none, and a publish to a missing topic hangs the same way. Ensuring is idempotent and takes a second |
+
+Under `--no-docker` it still makes the topics when the emulator answers, and only **warns** when it does not:
+every screen but placing an order works without it.
+
+### What it does NOT do
+
+| | Do it yourself |
+| --- | --- |
+| Migrate, seed the logins, `npm install` | [`dev setup`](#dev-setup). `dev run` never changes the database you review on |
+| Survive `kill -9` / `taskkill /F` of `san` itself | Cannot. The servers outlive it. Stop it with Ctrl-C |
+
+### Errors you should expect
+
+| Message | Cause |
+| --- | --- |
+| `docker compose up: exit status 1 — is Docker running?` | Docker Desktop is not running. Start it, or pass `--no-docker` |
+| `the Pub/Sub emulator is not answering on localhost:8085 although docker started it` | The container is up but not serving. `docker compose logs pubsub` says why |
+| `⚠ the Pub/Sub emulator is not answering …` | Not an error — `--no-docker` with no emulator. The stack starts. Start the emulator before placing an order |
+| `frontend/node_modules is missing` | Run [`dev setup`](#dev-setup), or `cd frontend && npm install` |
+| `api exited (exit status 1) — stopped the rest` | Read the `api \|` lines above it. `failed to connect … :5433` means Postgres is down. A bind error on :8080 means the stack is already running somewhere |
+| `ui exited (exit status 1) — stopped the rest` | Read the `ui \|` lines. `Port 5174 is already in use` comes from vite's `strictPort` |
+| `start ui: exec: "npm": executable file not found` | Node is not installed or not on `PATH` |
+
+---
+
+## `supplier move`
+
+Copies every supplier and store out of inventory_service and into supplier_service, **keeping each id** — restocks
+and batches hold those ids ([existing-suppliers-move-with-their-ids](../business/supplier/context_decision.md#existing-suppliers-move-with-their-ids)).
+One-shot, and safe to run again: a row already moved is skipped. [`dev setup`](#dev-setup) runs it after migrating.
+
+```sh
+go run ./tools/san supplier move                     # prompts: Local or Production
+go run ./tools/san supplier move --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+⚠ **Run it right after `migrate up-all`, before anyone creates a supplier.** A supplier created first takes its
+id from supplier_service's new sequence, and that id may be one a legacy row still needs. The move then refuses —
+see the errors below — rather than overwrite or skip.
+
+⚠ **A hand-written INSERT, against [HARD RULE 3b](../../CLAUDE.md)'s default.** A command normally calls the RPC
+handler; no handler can create a row under a chosen id, and keeping the ids is the whole point. It copies rows that
+already passed their own rules — it is not an operation on the domain.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san supplier move
+  participant L as legacy_suppliers, legacy_supplier_channels
+  participant S as suppliers, supplier_channels
+  SAN->>L: read every row — deleted ones too
+  Note over SAN: fold — city and province into the address, an offline store into its supplier, code dropped
+  SAN->>S: read what already sits under the moving ids
+  alt a DIFFERENT row under a moving id
+    SAN-->>SAN: refuse, the clash named — nothing written
+  else
+    SAN->>S: INSERT each row not there yet, its id kept
+    SAN->>S: set both id sequences past the largest id
+  end
+  Note over SAN,S: one transaction
+```
+
+| legacy | becomes |
+| --- | --- |
+| `address`, `city`, `province` | one `address`, joined with ", " ([no-province-or-city](../business/supplier/context_decision.md#no-province-or-city)) |
+| `deleted = true` | `deleted_at` = the row's `updated_at` — the flag had no time ([a-deleted-supplier-is-kept-for-its-figures](../business/supplier/context_decision.md#a-deleted-supplier-is-kept-for-its-figures)) |
+| `code` | dropped ([the-supplier-has-no-code](../business/supplier/context_decision.md#the-supplier-has-no-code)) |
+| an **online** store | a store: marketplace → `channel_type` (`other` when it had none), `url` → `uri`, its contact and location kept in `description` |
+| an **offline** store | folded into its supplier: contact and location fill the supplier's when empty, else are appended to its description ([the-supplier-lists-only-its-online-stores](../business/supplier/context_decision.md#the-supplier-lists-only-its-online-stores)) |
+
+A row is "already there" when the same id holds the same supplier (team and name) or store (supplier and name).
+
+### Output
+
+```
+[Database Local] suppliers: 14 moved (2 of them deleted), 0 already there
+[Database Local] stores: 21 moved, 0 already there, 3 offline folded into their supplier
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `read legacy_suppliers (has inventory_service migrated to 00023?)` | The database is behind. Run [`migrate up-all`](#migrate) first |
+| `supplier_service already holds a different row under a moving id — nothing was written: supplier 7 (legacy "Sumber", now "…")` | A supplier was created in supplier_service before the move ran, under an id a legacy row needs. Nothing was moved. The clashing row has to be re-numbered or removed by hand — decide which with the owner |
+
+---
+
+## `supplier backfill-figures`
+
+Folds every restock accepted before *Restock Accepted* existed into the supplier figures, through supplier_service's
+own fold ([past-accepts-are-backfilled-once](../business/supplier/context_decision.md#past-accepts-are-backfilled-once)).
+**Once**: a second run folds nothing and says so. [`dev setup`](#dev-setup) runs it after the supplier move.
+
+```sh
+go run ./tools/san supplier backfill-figures                     # prompts: Local or Production
+go run ./tools/san supplier backfill-figures --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+It calls the fold, never a hand-written INSERT ([HARD RULE 3b](../../CLAUDE.md)), with the event the accept itself builds
+(`inventory_v1.RestockAcceptedEvent`) — so a backfilled restock is folded exactly as a live one would have been.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san supplier backfill-figures
+  participant INV as restock_requests and their items
+  participant SUP as supplier_service fold
+  SAN->>SUP: figures_backfilled set? then stop — already backfilled
+  SAN->>SUP: read figures_live_since — the earliest accept the webhook folded
+  loop 500 accepted restocks naming a supplier at a time, oldest first
+    SAN->>INV: the restocks, their lines, each line's damaged units
+    SAN->>SUP: fold each — skipped when accepted at or after figures_live_since, or already claimed
+  end
+  SAN->>SUP: set figures_backfilled
+```
+
+| guard | stops |
+| --- | --- |
+| `figures_live_since` | folding a restock the broker carried — the live fold's dedup rows are pruned after 45 days, this key is not |
+| the dedup claim, `restock-accepted:<id>` | folding one restock twice, live and backfilled, in the days they overlap |
+| `figures_backfilled` | a second run. Written LAST, so a run that failed half way is simply run again |
+
+⚠ **A replay cannot rebuild the backfilled past** — those accepts were never on the broker. `AnalyticReplayCompute`
+therefore refuses any start on or before the live fold's first day.
+
+### Output
+
+```
+[Database Local] supplier figures: 312 accepted restocks folded, 0 skipped (already folded, or the live fold's)
+[Database Local] supplier figures: already backfilled — nothing folded
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `supplier: event processing is locked (process_event_lock)` | A replay is running — the fold refuses while it holds the lock. Run the backfill after it finishes |
+| `relation "supplier_product_daily_reports" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first |
+
+---
 
 ## `user reset-password`
 
@@ -344,10 +687,66 @@ The database label is always in the line, so the record of what happened says **
 
 ---
 
+## `user root add` / `remove`
+
+Adds and removes a **Root** ([root-can-be-several](../business/user/context_decision.md#root-can-be-several)). This is the only way:
+no RPC gives or takes Root ([root-is-granted-only-through-san](../business/user/context_decision.md#root-is-granted-only-through-san)), and the app's own
+membership write refuses to.
+
+```sh
+go run ./tools/san user root add    --username fajar
+go run ./tools/san user root remove --user-id 66 --dsn "$DSN"
+```
+
+| Flag | Notes |
+| --- | --- |
+| `--username` · `--email` · `--user-id` | **Exactly one**, as for `user reset-password` |
+
+### What actually happens
+
+```mermaid
+sequenceDiagram
+    actor Op as Operator
+    participant CLI as san
+    participant Svc as user_v1.GrantRoot or RevokeRoot
+    participant DB as Postgres
+    participant Cache as role cache
+
+    Op->>CLI: user root remove --username fajar
+    CLI->>CLI: the database chosen — Local, or Production after typing production
+    CLI->>DB: find the ONE account matching the selector
+    CLI->>Svc: RevokeRoot(user, agent san)
+    Svc->>DB: BEGIN, lock the account's users row
+    Svc->>DB: lock EVERY Root's membership row, then count them
+    alt the last Root
+        Svc-->>CLI: refused — add another first
+    else another Root remains
+        Svc->>DB: delete the root-team membership, log it with actor san, COMMIT
+        Svc->>Cache: invalidate the account's cached roles
+        Svc-->>CLI: ok
+    end
+```
+
+- **The lock and the history live in user_service**, not here: `GrantRoot` and `RevokeRoot` are in-process methods of
+  `user_v1.Service` with no RPC in front of them. The history row names `san` as who did it
+  ([every-role-change-is-logged](../business/user/context_decision.md#every-role-change-is-logged)).
+- **"The last" is counted under a lock on every Root's row**, so two removals of the last two Roots run one after the
+  other and the second is refused — proved by `TestInterleave_RevokeRoot_TheSecondCountsAfterTheFirst`.
+- `add` turns a System Administrator into Root (one role per team) and changes nothing for an existing Root.
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `the last Root is never removed — add another first` | `remove` on the only Root |
+| `this account is not a Root` | `remove` on anybody else |
+| `a suspended or erased account is never made Root` | `add` on a suspended or erased account |
+| `name the account: --username, --email or --user-id` | No selector, or more than one |
+
 ## `pubsub ensure`
 
 ```sh
-# dev, against the local emulator (docker compose --profile pubsub up -d)
+# dev, against the local emulator — dev run, dev setup and the e2e setup run this for you
 go run ./tools/san pubsub ensure --project warehouse-dev --emulator
 
 # production: the grants need the NUMERIC project id, and push needs the base URL
@@ -362,6 +761,10 @@ subscription nobody created receives nothing and says nothing.
 **It ENSURES, so run it as often as you like** — creating what is missing, updating what may change, and
 REFUSING what Pub/Sub cannot change. It never deletes
 ([setup-ensures-safe-defaults-never-deletes](../technical/event_architecture/context_decision.md#setup-ensures-safe-defaults-never-deletes)).
+
+**An unchanged subscription gets no write.** Only the settings that DIFFER go in the update. It used to send
+all five every run, and the emulator refuses any update naming `expiration_policy` — so every SECOND run
+failed, which is exactly what `dev run` and the e2e setup do on each start.
 
 **The topics come from the PROTO**, not from a list here: every variant of `warehouse.events.v1.Event`
 declares its own topic, and the command walks the descriptor. Add a variant, re-run, and its topic
@@ -399,8 +802,10 @@ constant beside the handler that serves it):
 | `liability-order-cancelled` | `order-cancelled` | liability reverses them |
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
+| `supplier-fold` | `restock-accepted` | a supplier's figures fold — push route `/event/supplier-fold/push` ([the-report-is-processed-like-settlement](../business/supplier/context_decision.md#the-report-is-processed-like-settlement)) |
+| `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
 
-⚠ **`settlement-fold` is SEEKED by `AnalyticReplayCompute`**, which reaches back as far as the topic's
+⚠ **`settlement-fold` and `supplier-fold` are SEEKED by their service's `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other
 than this command — with a shorter retention — shortens the replay rather than breaking it.
 
@@ -1027,6 +1432,16 @@ them to it would be cargo cult — so be explicit about which shape a new comman
 | `protovalidate` | before calling the handler by hand | done by the **validation interceptor**, because it really is served over RPC |
 | Test harness | `san_testdb`, per-test transaction | a real server + the generated client, so the interceptor is tested too |
 
+[`dev run`](#dev-run) is a machine command that serves nothing, so it has no request to validate. Its
+tests start **the test binary itself** as the child processes, so they need no go, npm or docker. A
+kill that misses a child shows up as a test that never returns.
+
+[`dev setup`](#dev-setup) is neither shape. It acts on data but never picks a database (it is local
+by construction), and it calls the data commands' own functions instead of a service handler. Its
+test creates a **throwaway database** and runs every data step twice against it, which proves the
+re-run is safe. It cannot use `san_testdb`, because migrations do not run inside the per-test
+transaction.
+
 What does **not** change either way: a unit test beside the file, and a row in the Commands table of
 this document in the same commit.
 
@@ -1039,7 +1454,7 @@ this document in the same commit.
 | [`main.go`](../../tools/san/main.go) | the root command and `--dsn` |
 | [`san.go`](../../tools/san/san.go) | `San` — what every command is handed — and `withSan` |
 | [`wire.go`](../../tools/san/wire.go) | the composition root (`wire_gen.go` is generated) |
-| [`deps.go`](../../tools/san/deps.go) | the providers: db, cache, signer, role resolver |
+| [`deps.go`](../../tools/san/deps.go) | the providers: db, cache, signer, role resolver, the team and document clients `user_v1` is built with, and an event sender that validates and drops — san removes no member, so it announces nothing |
 | [`config.go`](../../tools/san/config.go) | env/yaml configuration |
 | [`user.go`](../../tools/san/user.go) | the `user` group and the account selector |
 | [`user_reset_password.go`](../../tools/san/user_reset_password.go) | the command |
@@ -1047,6 +1462,10 @@ this document in the same commit.
 | [`remote_exec.go`](../../tools/san/remote_exec.go) | the `remote exec` client |
 | [`remote_file.go`](../../tools/san/remote_file.go) | the `remote get` / `remote put` clients, and the shared authenticated client |
 | [`remote/`](../../tools/san/remote/) | the service: `exec.go`, `info.go`, `file_read.go`, `file_write.go`, `auth.go`, `workspace.go`, `shell.go`, one test per file |
+| [`dev.go`](../../tools/san/dev.go) | the `dev` group, and what both commands share: `--no-docker`, `docker compose up`, running one step |
+| [`dev_setup.go`](../../tools/san/dev_setup.go) | `dev setup`: the local-only guard, the submodule check, the data steps in order |
+| [`dev_run.go`](../../tools/san/dev_run.go) | `dev run`: the stack, the supervisor, the line prefixer |
+| [`proctree/`](../../tools/san/proctree/) | start a child in its own group, kill its whole tree. Shared by `remote` and `dev run` |
 | [`pkgs/san_dbtarget`](../../backend/pkgs/san_dbtarget/) | the Local/Production choice, shared with `cmd/tool` |
 
 **`remote/` is a Connect service that deliberately does NOT live in `backend/services/`.** Every

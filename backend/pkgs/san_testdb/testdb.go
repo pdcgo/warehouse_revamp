@@ -40,9 +40,11 @@ const migrationLockKey = 8748301
 
 // seededFirst is the only part of the apply order that MATTERS: team_service seeds team 1 before
 // user_service seeds the root user that references it. There is no cross-service FK to enforce that,
-// so the order is enforced here exactly as it is in production. Every other service owns its own
-// tables (HARD RULE 3) and can go anywhere.
-var seededFirst = []string{"team_service", "user_service"}
+// so the order is enforced here exactly as it is in production. inventory_service comes next because its
+// 00023 frees the names `suppliers` and `supplier_channels` that supplier_service's 00001 creates
+// (the-supplier-gets-its-own-service). Every other service owns its own tables (HARD RULE 3) and can go
+// anywhere.
+var seededFirst = []string{"team_service", "user_service", "inventory_service"}
 
 // migrationServices lists what to migrate, DISCOVERED FROM THE FILESYSTEM rather than hand-written.
 //
