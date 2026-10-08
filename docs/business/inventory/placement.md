@@ -22,8 +22,7 @@
     - `id` as primary key
     - `team_id`
     - `warehouse_id`
-    - `product_id`
-
+    - `product_id`, its unique with `placement_id`
     - `placement_id`
 
     - `stock_count`
@@ -38,6 +37,7 @@
     - `team_id`
     - `product_id`
     - `placement_id`
+    - `transaction_id`, related to `inventory_transactions` table
 
     - `change_type`
     - `stock_change`
@@ -45,4 +45,21 @@
     - `stock_after`
 
     - `description`
+    - `actor_id`
     - `created_at`
+
+    Field `change_type` contain:
+    - `order`
+    - `restock`
+    - `return`
+    - `sample`
+    - `transfer_in`
+    - `transfer_out`
+    - `adjustment`
+
+
+
+# Placement Ledger Mutation.
+1. Post Order.
+    - stock decrease with priority product placement that have low stock. 
+

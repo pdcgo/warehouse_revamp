@@ -13,7 +13,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 ## a-line-names-the-channel-it-was-bought-from
 
 > Owner, in [restock.md](./restock.md) §Table Should We Have *(2026-10-06)*: `restock_items` and
-> `restock_problem_items` gain *"`supplier_channel_id`, its optionals"*; [batch_ledger.md](./batch_ledger.md) gives
+> `restock_problem_items` gain *"`supplier_channel_id`, its optionals"*; [batch.md](./batch.md) gives
 > `batches` the same. It answers the clarify's contradiction *restock-has-no-supplier*, **against my recommendation** of
 > one `restocks.supplier_id`, *"because one parcel has one sender"*.
 
@@ -68,7 +68,7 @@ flowchart LR
 
 | | |
 | --- | --- |
-| inside the transaction | `restock_problem_items` · `batches` + `batch_logs` (+ `batch_price_logs`, per [batch_ledger.md](./batch_ledger.md)) · `product_placements` + `product_placement_logs` |
+| inside the transaction | `restock_problem_items` · `batches` + `batch_logs` (+ `batch_price_logs`, per [batch.md](./batch.md)) · `product_placements` + `product_placement_logs` |
 | the price | computed at accept — consistent with [staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock) (*"the quantity, the losses, the unit price"*); the formula is still product Q2, Q6 |
 | the event | published after commit, no outbox — [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted) |
 | who hears it | `supplier_service`, by push. What it does is [Q10a](./restock_clarify.md#question) |

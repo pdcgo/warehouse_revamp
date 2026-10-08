@@ -48,10 +48,12 @@ state tx {
     state "restock_problem_items" as prob
     state "Batch Ledger" as bledger
     state "Placement Ledger" as pledger
+    state "Inv Transaction" as inv
 
-    [*]-->prob: add problem entry if any item problem
-    [*]-->bledger: calculate price_unit and post in batch_ledger
-    [*]-->pledger: post in placement ledger
+    [*]-->inv: get transaction
+    inv-->prob: add problem entry if any item problem
+    inv-->bledger: calculate price_unit and post in batch_ledger
+    inv-->pledger: post in placement ledger
 
     prob-->[*]
     bledger-->[*]
@@ -84,7 +86,7 @@ state srv {
 
 
 
-## Table Should We Have.
+## Table Should We Have In Restock.
 
 First for restock:
 
@@ -94,6 +96,7 @@ First for restock:
     - `id` as primary key
     - `warehouse_id`
     - `team_id`
+    - `transaction_id`
     - `status`, it has `ongoing`, `arrived`, `accepted`, `lost` and `cancel`
     - `shipment_cost`
     - `warehouse_additional_cost`

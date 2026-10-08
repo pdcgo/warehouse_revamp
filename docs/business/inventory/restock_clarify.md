@@ -3,6 +3,12 @@
 [restock.md](./restock.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [restock_decision.md](./restock_decision.md).
 
+> **Re-examined after your transaction edit (2026-10-08).** Accept now *gets* an inventory transaction before it writes
+> anything ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)).
+> `restocks.transaction_id` points the restock at it, so [Critique 12](#critique) is answered for one accept, and
+> [Q11b](#question) moves to [context Q13a](./context_clarify.md#question): a restock with a second transaction. Whether
+> accept gets or creates it is [context Q13b](./context_clarify.md#question).
+>
 > **Re-examined after your answers in chat (2026-10-07).** ✅ **Closed:** [Q6a](#question) and [Q12](#question), both as
 > recommended. Any warehouse member counts what arrived and what is broken
 > ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)), and a
@@ -74,7 +80,7 @@
 | **9** | **Nobody is named and nothing is timed.** No creator, and no actor or time on `arrived`, `accepted`, `lost`, `cancel` — yet the restock lists filter by them ([a-who-filter-lists-the-people-on-its-rows](../user/context_decision.md#a-who-filter-lists-the-people-on-its-rows)), and a supplier's lead time needs *arrived at*. | `restock_logs`, the shape of your `batch_logs` — [Q9](#question) |
 | **10** | **The courier's ask has no step in the accept.** The warehouse may set it when it accepts ([the-warehouse-receivable-is-order-fee-cod-fee-and-found](../balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found)), and 🔄 *(2026-10-07)* it is now **decided** to enter the price ([the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price)). So the cost lines must be in the transaction. Still unwritten: what the selling team then owes | that debt inside the transaction too — [Q10b](#question) |
 | **11** | ✅ **Answered by your supplier edit** — `supplier_service` writes the product-to-channel link and its daily report ([restock-accepted-links-the-product-to-its-channel](../supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel), [a-supplier-is-measured-per-product-per-day](../supplier/context_decision.md#a-supplier-is-measured-per-product-per-day)) | what the event carries — [Q10c](#question) |
-| **12** | **The ledgers cannot name the restock.** `batch_logs.transaction_id` points at `inventory_transactions`, which [context.md](./context.md) still marks *Still Confused*; `product_placement_logs` has no reference at all. A shelf that gained 8 units cannot say from which delivery. | every row of both logs names its restock — [Q11b](#question) |
+| **12** | 🔄 *(2026-10-08)* **Answered for one accept** — both logs point at a transaction, and `restocks.transaction_id` points the restock at it ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)). A shelf that gained 8 units can now find its delivery. ⚠ One column holds one transaction, so a count corrected after accept has nowhere to go | `ref_id` on the transaction instead — asked where it is answered, [context Q13a](./context_clarify.md#question) |
 | **13** | **The three branches are drawn side by side, but one transaction runs them in turn** — and two accepts of the same product, by the pair working one stock level, update the same placement rows. In different orders, they deadlock. | lines in `product_id` order, shelves in `placement_id` order. Not a question — the concurrency audit checks it |
 
 ## Recommendation
@@ -153,7 +159,7 @@ the warehouse out of pocket with no record.
     | | Part | → Recommend |
     | --- | --- | --- |
     | **11a** | how many batches | **one per line with good units** — a line is one product, one store, one price, which is exactly a batch. Its `price_unit` is the landed price; the formula stays [product Q2, Q6](../product/context_clarify.md#question) and [biggest #4](../../biggest_question.md) |
-    | **11b** | what each log row names | **its restock** — on `batch_logs` and on `product_placement_logs`, through whatever [context.md](./context.md)'s `inventory_transactions` becomes |
+    | **11b** | what each log row names | ➡ *(2026-10-08)* **Re-routed to [context Q13a](./context_clarify.md#question).** Both logs now name a transaction ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)); whether the transaction names its restock is a question about `inventory_transactions`, which context.md owns |
 
 12. ✅ *(2026-10-07)* **Answered: once per restock**, as recommended —
     [a-product-appears-once-per-restock](./restock_decision.md#a-product-appears-once-per-restock).
@@ -249,13 +255,15 @@ stateDiagram-v2
   direction LR
   state "Accept RPC called" as rpc
   state "one database transaction" as tx {
+    state "Inv Transaction - tx_type restock, ref_id the restock" as inv
     state "NEW - status to accepted, a restock_logs row" as st
     state "restock_problem_items - missing written, broken typed" as prob
     state "NEW - restock_cost_lines, the courier's ask with a note" as cost
     state "Batch Ledger - one batch per line, landed price_unit" as bl
     state "Placement Ledger - good units on their shelves" as pl
     state "NEW - the selling team owes the warehouse the cost lines" as owe
-    [*] --> st
+    [*] --> inv
+    inv --> st
     st --> prob
     prob --> cost
     cost --> bl

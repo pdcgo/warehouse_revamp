@@ -95,7 +95,7 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 settled (day × supplier × product × team), all six figures are movements, and every rollup — month, year, supplier — is
 a plain SUM. That is why [each-figure-is-read-at-the-accept](./context_decision.md#each-figure-is-read-at-the-accept) — *accepted units, the line's price, the accept day* — hangs together: each is known at
 accept and never revised, so no row has to be reopened later. The batch's price is the counter-example: it can be edited
-after the fact ([batch_ledger.md](../inventory/batch_ledger.md) `batch_price_logs`), and a report valued at it would
+after the fact ([batch.md](../inventory/batch.md) `batch_price_logs`), and a report valued at it would
 have to follow every edit.
 
 ## Proposed Design

@@ -877,7 +877,7 @@ flowchart LR
 | --- | --- |
 | `restock_count` | the line's units **accepted as good stock** — the batch's `init_stock_count` |
 | lost, broken | **beside** it, not inside: ordered ≈ restock + lost + broken; a broken rate is broken ÷ (restock + lost + broken) |
-| `*_valuation` | units × **the line's price** — what the supplier charged. Never the batch's landed price, which [batch_price_logs](../inventory/batch_ledger.md) can edit later |
+| `*_valuation` | units × **the line's price** — what the supplier charged. Never the batch's landed price, which [batch_price_logs](../inventory/batch.md) can edit later |
 | `day` | the **accept** day, Jakarta time — settlement's *created_at in GMT+7*, read for the accept |
 | `shipping_lost` | units **short in an accepted parcel** — restock's problem rows. A parcel never received is not counted. If restock [Q6c](../inventory/restock_clarify.md#question) renames the short unit `missing`, these columns follow |
 
