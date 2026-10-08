@@ -3194,7 +3194,11 @@
       "already": "{{shop}} sudah menarik ke sini.",
       "moves": "{{shop}} saat ini menarik ke {{from}} — akan pindah ke {{to}}.",
       "first": "{{shop}} belum punya akun — penarikannya mulai masuk ke sini.",
-      "shopPlaceholder": "Pilih toko"
+      "shopPlaceholder": "Pilih toko",
+      "linked": "Toko terhubung",
+      "pointShort": "Arahkan",
+      "count_one": "{{count}} toko",
+      "count_other": "{{count}} toko"
     },
     "log": {
       "title": "Mutasi",
@@ -3203,11 +3207,16 @@
       "type": "Jenis",
       "description": "Keterangan",
       "change": "Perubahan",
-      "balanceAfter": "Saldo setelah",
+      "balanceAfter": "Saldo",
+      "detailTitle": "Detail Mutasi",
+      "by": "Oleh",
+      "recorded": "Dicatat",
       "recordedOn": "dicatat {{date}}",
       "byHand": "manual · {{name}}",
       "automatic": "otomatis — dari tempat kejadiannya",
-      "allTypes": "Semua jenis"
+      "allTypes": "Semua jenis",
+      "searchType": "Cari jenis",
+      "noType": "Tidak ada jenis yang cocok."
     },
     "allShops": "Semua toko",
     "operationalOnly": "Hanya operasional",

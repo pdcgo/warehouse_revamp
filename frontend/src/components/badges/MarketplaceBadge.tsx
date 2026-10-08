@@ -32,7 +32,8 @@ export function marketplaceLabel(m: Marketplace): string {
 // The colours themselves are the marketplace's brand colour adapted per colour mode, and live in
 // theme.ts (`marketplace.<name>.bg` / `.fg`, MARKETPLACE COLOURS) — this only picks which one. Anything
 // without its own colour (Other, an unrecognised value) is `others`, a plain gray.
-function marketplaceKey(m: Marketplace): string {
+/** The theme's `marketplace.<key>` colour pair — a shop's chip is tinted with it too (AccountLinks). */
+export function marketplaceKey(m: Marketplace): string {
   switch (m) {
     case Marketplace.SHOPEE:
       return "shopee";

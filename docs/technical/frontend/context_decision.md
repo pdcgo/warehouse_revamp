@@ -26,6 +26,7 @@ when it applies one of these.
 | [a-search-select-reopens-whole](#a-search-select-reopens-whole) | a search select searches only what is typed — opened again after a pick, it shows every option | every search select |
 | [a-checked-box-is-in-the-main-tone](#a-checked-box-is-in-the-main-tone) | a ticked checkbox is rose, as a chosen radio is — on every screen | [financial accounts](financial_accounts_decision.md#a-dialog-choice-is-a-radio-pill) |
 | [a-segmented-choice-is-in-the-main-tone](#a-segmented-choice-is-in-the-main-tone) | a segmented control is drawn like a field, the chosen segment pale rose with a rose label; the grain picker carries an icon per grain | [financial account report](financial_accounts_decision.md#the-report-is-five-cards-and-one-table) |
+| [a-date-speaks-the-apps-language](#a-date-speaks-the-apps-language) | a formatted date and a relative time follow the language picked in the app, not the browser's — *kemarin*, *7 Okt 2026* | every screen through `lib/datetime` |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -509,6 +510,17 @@ after    │[▣ Harian]  ▦ Bulanan │ ▤ Tahunan │      a field's box; th
 | hover | rose too, the chosen segment included — never black (owner, same day: *"activenya saat hover bukan hitam"*) |
 | the grain picker | an icon per grain — `Calendar1` a day, `CalendarDays` a month, `CalendarRange` a year — in `PeriodGrainPicker` |
 | where | `theme.ts`, `segmentGroup` — every segmented control: the grain picker (account report, settlement report, daily statement), the phone menu's theme and language switches, the order draft's rows, the pick queue, the restock labels |
+
+## a-date-speaks-the-apps-language
+
+> Owner, in chat (2026-10-08), on an account's *Terakhir dicek*: *"yesterday tidak ikut i18n?"*.
+
+| | |
+| --- | --- |
+| the bug | `lib/datetime`'s formatters passed `undefined` as the locale — the BROWSER's — so an English browser printed *yesterday* and *Oct 7, 2026* on a screen switched to Bahasa Indonesia |
+| now | `formatUnixDate`, `formatUnixDateTime`, `formatRfc3339DateTime` and `formatUnixRelative` read i18next's current language on every call: *kemarin*, *7 Okt 2026* |
+| pinned | the account page's `DatesFollowTheAppsLanguage` story, under the Indonesian locale |
+| still open | seven pages keep a local copy of the date formatter with `undefined` (balance, batch-detail, batch-receipt, batches, restock-accept, restock-labels, warehouse-product) — the same bug, not touched yet |
 
 ## Recorded elsewhere
 

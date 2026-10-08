@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Combobox, HStack, Span, useListCollection } from "@chakra-ui/react";
+import { Combobox, HStack, Span, useFilter, useListCollection } from "@chakra-ui/react";
 
 import { ProviderBadge } from "../../../features/financialAccount/badges";
 import type { FinancialAccount, FinancialAccountProvider } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
@@ -37,10 +37,14 @@ export function AccountFilter({
     [accounts],
   );
 
+  // ⚠ ARK FILTERS ONLY WITH A MATCHER. `useListCollection` without `filter` keeps every item whatever is typed — the
+  // field looked like a search and searched nothing. `contains`, case- and accent-blind.
+  const { contains } = useFilter({ sensitivity: "base" });
   const { collection, filter, set } = useListCollection<AccountItem>({
     initialItems: [],
     itemToString: (item) => item.label,
     itemToValue: (item) => item.value,
+    filter: contains,
   });
 
   // ⚠ The ShopSelect fix: Zag derives the field's text once, so the collection fills in, then the Root remounts.

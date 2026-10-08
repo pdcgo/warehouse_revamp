@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Field, Flex, Heading, Icon, Stack, Text, Wrap } from "@chakra-ui/react";
-import { Store } from "lucide-react";
+import { Box, Button, Field, Flex, Icon, Text } from "@chakra-ui/react";
+import { ChevronRight } from "lucide-react";
 
 import { rpcError } from "../../../api/clients";
 import { toaster } from "../../../components/feedback/Toaster";
 import { ShopSelect } from "../../../components/pickers/ShopSelect";
 import type { FinancialAccount } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
+import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { AccountLinks } from "../../../features/financialAccount/AccountLinks";
 import { FormDialog } from "../../../features/financialAccount/FormDialog";
 import { useAccountOfShop, useShopSet } from "../../../features/financialAccount/queries";
 import { accountName } from "../../../features/financialAccount/vocab";
@@ -22,12 +24,15 @@ export function ShopLinks({
   account,
   shopName,
   nameOf,
+  shopOf,
   canSet,
 }: {
   teamId: bigint;
   account: FinancialAccount;
   shopName: (id: bigint) => string;
   nameOf: (id: bigint) => string | undefined;
+  /** The team's shop by id — its name and marketplace, for the badges. */
+  shopOf: (id: bigint) => { name: string; marketplace: Marketplace } | undefined;
   /** Admin and up, on an active real account. */
   canSet: boolean;
 }) {
@@ -35,40 +40,68 @@ export function ShopLinks({
   const [setting, setSetting] = useState(false);
 
   return (
-    <Stack gap="field" data-testid="account-shops">
-      <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="sm">{t("financialAccounts.shops.title")}</Heading>
+    // TOKO TERHUBUNG, THE THIRD CARD (owner, `linked-shops-sit-beside-the-cards`) — one column, a card as wide as the
+    // other two (owner: *"kalau toko terhubung cuma 1/5"*), so the row is three equal cards; the whole row on a tablet
+    // and a phone, where a column is too narrow for two names. Drawn as a summary card is (grey ground, thin line), but
+    // not a SummaryCard: its body is a row of shops, not one figure.
+    <Box
+      gridColumn={{ base: "1 / -1", lg: "auto" }}
+      borderWidth="1px"
+      borderColor="border"
+      bg="bg.muted"
+      borderRadius="l2"
+      px="3"
+      py="2.5"
+      minW="0"
+      data-testid="account-shops"
+    >
+      <Flex gap="1" align="center">
+        <Text fontSize="xs" fontWeight="bold" color="fg.label">
+          {t("financialAccounts.shops.linked")}
+        </Text>
+        {/* "ARAHKAN ›" AT THE END OF THE LABEL ROW — the report cards' "Rincian ›": only the word is pressed. */}
         {canSet && (
-          <Button size="xs" variant="outline" data-testid="open-shop-set" onClick={() => setSetting(true)}>
-            <Icon as={Store} boxSize="4" />
-            {t("financialAccounts.shops.point")}
+          <Button
+            variant="plain"
+            size="2xs"
+            h="auto"
+            p="0"
+            ms="auto"
+            color="brand.fg"
+            fontWeight="bold"
+            data-testid="open-shop-set"
+            onClick={() => setSetting(true)}
+          >
+            {t("financialAccounts.shops.pointShort")}
+            <Icon as={ChevronRight} boxSize="3" />
           </Button>
         )}
       </Flex>
 
       {account.shopIds.length === 0 ? (
-        <Text fontSize="sm" color="fg.muted" data-testid="account-shops-none">
+        <Text fontSize="sm" color="fg.subtle" mt="1.5" data-testid="account-shops-none">
           {t("financialAccounts.shops.none")}
         </Text>
       ) : (
-        <Wrap gap="1">
-          {account.shopIds.map((id) => (
-            <Badge key={id.toString()} variant="surface" data-testid={`account-shops-${id}`}>
-              {shopName(id)}
-            </Badge>
-          ))}
-        </Wrap>
+        <>
+          {/* TWO, THEN +N — the accounts list's rule by its own component (the-linked-column-shows-three-then-more), at two:
+              three names do not fit a fifth of a row on one line, and a second line would stretch the cards beside it. */}
+          <Box mt="1.5">
+            <AccountLinks account={account} shopOf={shopOf} withOperational={false} shown={2} />
+          </Box>
+          <Text fontSize="xs" color="fg.muted" mt="1" data-testid="account-shops-count">
+            {t("financialAccounts.shops.count", { count: account.shopIds.length })}
+          </Text>
+        </>
       )}
 
       {setting && (
         <ShopSetDialog teamId={teamId} account={account} shopName={shopName} nameOf={nameOf} onClose={() => setSetting(false)} />
       )}
-    </Stack>
+    </Box>
   );
 }
 
-// A shop names ONE account (a-shop-has-one-account), so pointing it here MOVES it — the dialog names the
-// account it leaves before Save, never after.
 function ShopSetDialog({
   teamId,
   account,

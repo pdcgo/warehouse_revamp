@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Button, CloseButton, Dialog, Portal, Stack, Text, Wrap } from "@chakra-ui/react";
 
-import { ShopItem } from "../../../components/entity/ShopItem";
-import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { marketplaceKey } from "../../components/badges/MarketplaceBadge";
+import { ShopItem } from "../../components/entity/ShopItem";
+import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 
-const SHOWN = 3;
 
 interface LinkedAccount {
   id: bigint;
@@ -18,13 +18,23 @@ interface LinkedAccount {
 // operations) and the shops that withdraw into it. Three badges at most, so a busy account does not
 // stretch its row; the rest behind a "+N" that opens them all in a dialog.
 //
+// SHARED BY TWO PAGES — the accounts list's Terhubung ke column and phone block, and the account page's Toko terhubung
+// panel (`linked-shops-sit-beside-the-cards`), which says Operasional in its header already and so passes
+// `withOperational={false}`. One component, so an account's shops read the same on the list and on its page.
+//
 // ⚠ THE CELL'S CLICKS STOP HERE. The row opens the account's page, and React bubbles a click from a portalled
 // dialog up the component tree — without the stops, closing the dialog would also open the page.
 export function AccountLinks({
   account,
   shopOf,
+  withOperational = true,
+  shown = 3,
 }: {
   account: LinkedAccount;
+  /** How many links before "+N" — three on the list's row; the account page's card, a fifth of a row, takes two. */
+  shown?: number;
+  /** Badge Operasional among the links — off where the page says it already. */
+  withOperational?: boolean;
   /** The team's shop by id — its name and marketplace. Undefined while the shops load or for a stray id. */
   shopOf: (shopId: bigint) => { name: string; marketplace: Marketplace } | undefined;
 }) {
@@ -33,21 +43,31 @@ export function AccountLinks({
   const id = account.id.toString();
 
   const links = [
-    ...(account.operational ? [{ key: "operational" as const }] : []),
+    ...(withOperational && account.operational ? [{ key: "operational" as const }] : []),
     ...account.shopIds.map((shopId) => ({ key: "shop" as const, shopId })),
   ];
-  const hidden = links.length - SHOWN;
+  const hidden = links.length - shown;
   const nameOf = (shopId: bigint) => shopOf(shopId)?.name ?? `#${shopId}`;
+  // A SHOP'S CHIP IN ITS MARKETPLACE'S COLOUR (owner: *"toko ada badgenya?"*) — the theme's `marketplace.<key>` pair, the
+  // one MarketplaceBadge wears, so Melati Official reads as a Shopee shop at a glance and two storefronts with one name
+  // are told apart. The dialog keeps the full ShopItem, the marketplace written out.
+  const tint = (shopId: bigint) => {
+    const shop = shopOf(shopId);
+    if (!shop) return {};
+    const key = marketplaceKey(shop.marketplace);
+
+    return { bg: `marketplace.${key}.bg`, color: `marketplace.${key}.fg` };
+  };
 
   return (
     <Wrap gap="1">
-      {links.slice(0, SHOWN).map((link) =>
+      {links.slice(0, shown).map((link) =>
         link.key === "operational" ? (
           <Badge key="operational" colorPalette="brand" variant="outline" data-testid={`account-operational-${id}`}>
             {t("financialAccounts.operational")}
           </Badge>
         ) : (
-          <Badge key={link.shopId.toString()} variant="surface" data-testid={`account-shop-${id}-${link.shopId}`}>
+          <Badge key={link.shopId.toString()} variant="surface" {...tint(link.shopId)} data-testid={`account-shop-${id}-${link.shopId}`}>
             {nameOf(link.shopId)}
           </Badge>
         ),

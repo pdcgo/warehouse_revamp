@@ -39,6 +39,15 @@ the prototype these screens grew from was accepted
 | [the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table) | the account report is five cards — the three balances, then what moved it by account and by provider — and one table of periods with every type; breakdowns open from *Rincian ›* |
 | [a-phone-reads-an-account-as-a-block](#a-phone-reads-an-account-as-a-block) | on a phone the accounts list is one block per account — name and balance, provider and ⋯, last checked and links — and the header's actions wrap under the subtitle |
 | [the-change-sits-under-the-close-on-a-phone](#the-change-sits-under-the-close-on-a-phone) | a report period on a phone is two top-aligned columns: date and types left, close and change right — the change right under the close |
+| [the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules) | an account's page applies the screen rules: the order list's cards, the shared FilterBar over the statement, the growing pager; on a phone the header is the name and ⋯, and a statement row is a block |
+| [linked-shops-sit-beside-the-cards](#linked-shops-sit-beside-the-cards) | an account's linked shops are the third card of its row — *Toko terhubung*, a fifth wide, two shops then +N in their marketplace's colour, *Arahkan ›* |
+| [the-statement-filters-several-types](#the-statement-filters-several-types) | the statement's type filter is a multi-pick search select — the options and the picks are the type's own coloured badge |
+| [the-type-filter-starts-at-a-fields-height](#the-type-filter-starts-at-a-fields-height) | the type filter is the date field's 36px to start, shows three picks whole and "+N" past that, and keeps its × and ⌄ outside the box the picks wrap in |
+| [the-type-filter-shows-four-picks](#the-type-filter-shows-four-picks) | four picks' badges before "+N", not three |
+| [a-phone-statement-row-opens-its-detail](#a-phone-statement-row-opens-its-detail) | on a phone the statement is Tanggal · Jenis · Saldo under their headings, the change under the balance; a tap opens the description, who and when it was typed |
+| [the-balance-column-reads-saldo](#the-balance-column-reads-saldo) | the statement's balance column reads **Saldo**, not *Saldo setelah* |
+| [a-statement-row-lights-up](#a-statement-row-lights-up) | a statement row lights up under the pointer, and on a phone while pressed |
+| [the-type-sits-under-the-date-on-a-phone](#the-type-sits-under-the-date-on-a-phone) | on a phone the statement is two columns, Tanggal · Saldo — the type under the date, the change under the balance |
 | [a-balance-below-zero-says-to-check-the-bank](#a-balance-below-zero-says-to-check-the-bank) | under a balance below zero, a small red line with the ⚠: *Di bawah nol · cocokkan dengan bank* · the figures right-aligned |
 | [the-accounts-list-has-every-filter-the-contract-has](#the-accounts-list-has-every-filter-the-contract-has) | search · type · shop · operational only · archived, in the shared `FilterBar` — a sheet on a phone |
 | [the-accounts-table-sorts-from-its-headings](#the-accounts-table-sorts-from-its-headings) | **Akun** and **Penyedia** sort from their headings, A to Z first, then flip |
@@ -691,3 +700,228 @@ Terakhir dicek kemarin · [Operasional] [Melati Official] +1
 | before | two rows — the date and the close, then the types and the change — with the change centred against however many type badges had wrapped |
 | now | two top-aligned columns: the date over the types on the left, the close over the change on the right |
 | pinned | the report's Mobile story checks every block: the change starts under the close, within 12px, on its right edge |
+
+## the-account-page-follows-the-screen-rules
+
+> Owner, in chat (2026-10-08): *"sekarang masuk ke detail account … sesuaikan sedikit sesuai keputusan sebelumnya"*.
+
+```
+← Akun Keuangan
+BCA Operasional [BCA] [Operasional]                    [⇄ Transfer] [⚖ Cocokkan Saldo] ⋯
+Rekening bank · 1234567890 · PT Melati Sejahtera
+┌ Saldo ────────────┐ ┌ Terakhir dicek ┐          ← the order list's cards, the balance leading
+│ Rp 11.443.500     │ │ kemarin        │
+└───────────────────┘ │ 7 Okt 2026     │
+                      └────────────────┘
+Toko yang menarik ke sini …
+Mutasi
+[Semua jenis ⌄] [Semua tanggal ⌄]                    Hapus filter   ← the shared FilterBar
+Tanggal · Jenis · Kenapa · Perubahan · Saldo setelah
+                                     Per halaman [20 ⌄]  ‹ [1] ›    ← the growing pager
+
+on a phone
+BCA Operasional [BCA] [Operasional]                ⋯   ← every action in the menu
+7 Okt 2026 [Penyesuaian]                  −Rp 6.500
+Cocokkan saldo — aplikasi menunjukkan …
+manual · Ani Rahayu    Saldo setelah Rp 11.443.500     ← a statement row is a block
+```
+
+| rule | applied |
+| --- | --- |
+| [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip) · [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border) | *Saldo* (leading, pale blue, as [the-total-leads-until-a-type-is-picked](#the-total-leads-until-a-type-is-picked)) and *Terakhir dicek* (relative, the date under it; muted when never checked or an unknown account) — they were a bordered box drawn by hand |
+| below-zero-is-warned-never-refused | the balance red with its ⚠ in the card; the sentence that says what to do under the strip — a card's line is too short for it |
+| [a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet) · [clear-filters-is-red-and-bold](context_decision.md#clear-filters-is-red-and-bold) | the statement's type and window in the shared `FilterBar`, under the *Mutasi* heading; Clear puts both back; a sheet on a phone |
+| [the-accounts-pager-grows-with-the-pages-opened](#the-accounts-pager-grows-with-the-pages-opened) | `GrowingPager`, 10 / 20 / 50 a page, as the accounts list and the report |
+| [the-phone-header-is-one-row](context_decision.md#the-phone-header-is-one-row) | on a phone the name, its badges and ⋯ — Transfer and Cocokkan Saldo fold into the menu with the rest; on a desktop they stay on the row ([transfer-and-reconcile-sit-on-the-row](#transfer-and-reconcile-sit-on-the-row)) |
+| [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block) | a statement row on a phone: the date, the type and the change · the description at the full width · who (or *otomatis*) and *Saldo setelah* |
+| the header on a desktop | the title block takes a basis (`1 1 16rem`), as the accounts list's header learned in [a-phone-reads-an-account-as-a-block](#a-phone-reads-an-account-as-a-block) |
+| unchanged | the unknown account's explanation stays on its page ([the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners) moved it here); the shops section; the statement's columns and *Saldo setelah*'s weight |
+
+## linked-shops-sit-beside-the-cards
+
+> Owner, in chat (2026-10-08): *"karena statistik cuma 2 dan itu sangat menyisakan ruang, aku ingin toko ada
+> disebelahnya"* — titled *"toko terhubung"*, then *"kalau toko terhubung cuma 1/5"*, and *"toko ada badgenya?"*.
+
+```
+┌ Saldo ───────┐ ┌ Terakhir dicek ┐ ┌ Toko terhubung       Arahkan › ┐
+│ Rp 11.443.500│ │ kemarin        │ │ [Melati Official] [Melati Store] [+1]
+│              │ │ 7 Okt 2026     │ │ 3 toko                         │
+└──────────────┘ └────────────────┘ └────────────────────────────────┘
+      1/5               1/5                       1/5        ← three equal cards, one row
+on a tablet and a phone: the two cards, then Toko terhubung across the whole row
+```
+
+| | |
+| --- | --- |
+| where | the third child of the card strip — one column, as wide and as tall as the two beside it; the whole row below `lg`, where a column is too narrow for two names |
+| what it is | drawn as a summary card is (grey ground, thin line), not a `SummaryCard`: its body is a row of shops, not one figure |
+| the title | **Toko terhubung** — sentence case, as every card label |
+| the shops | `AccountLinks` — the accounts list's own component — at **two** then *+N* (the list keeps three: three names do not fit a fifth on one line, and a second line would stretch the cards beside it); no Operasional, the header says it |
+| the colour | each shop chip in its marketplace's `marketplace.<key>` pair, the one `MarketplaceBadge` wears — on the list's *Terhubung ke* too, since it is one component; the +N dialog keeps `ShopItem`, the marketplace written out |
+| under them | *n toko* |
+| the action | **Arahkan ›** at the end of the label row, only the word pressed (the report cards' *Rincian ›*) — admin and up, an active account that is not Lainnya |
+| none linked | *Belum ada toko yang menarik ke akun ini* (subtle), Arahkan still offered |
+| a warehouse | no card — its team has no shops — and the row is the two cards |
+
+**Supersedes** the *"the shops section"* left unchanged in
+[the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules): the section under the cards is gone.
+`AccountLinks` moved to `features/financialAccount/` with it, since two pages now use it.
+
+## the-statement-filters-several-types
+
+> Owner, in chat (2026-10-08), after asking whether the contract allowed it: *"kalau gitu multi select saja, bisa search,
+> dan badge berwarna sesuai di tabel"*.
+
+```
+┌ [Biaya ×] [Iklan ×]  Cari jenis        × ⌄ ┐   ← the picks inside the field
+├────────────────────────────────────────────┤
+│ [Penarikan]                                │
+│ [Biaya]                                  ✓ │   ← each option the type's badge, the colour of the
+│ [Iklan]                                  ✓ │     statement's Jenis column
+│ …                                          │
+└────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the contract | `FinancialAccountLogListFilter.change_types` is a list (≤ 9, empty = every type), and the server reads it as `change_type IN (…)` — the screen had narrowed it to one |
+| the control | a Chakra `Combobox`, `multiple`, `closeOnSelect={false}` — the panel stays open for the next pick; typing narrows the nine, by `searchOnlyWhatIsTyped` (a pick or a reopen shows them all again, [a-search-select-reopens-whole](context_decision.md#a-search-select-reopens-whole)) |
+| the options | `ChangeTypeBadge` — the colour the Jenis column wears — and a ✓ when picked |
+| the picks | the same badges inside the field, each with an × that takes it out; the field's own × clears them all; nothing picked reads *Semua jenis* |
+| the field | the control draws the box, as every field does (thin border, the field hover, the main tone on focus); the input inside is bare, so the badges and the typing wrap together. 20rem in the FilterBar; full width in the phone's sheet; inline, not portalled |
+| Clear and the count | *Hapus filter* empties it; a non-empty pick counts as one filter on the phone's Filter button |
+
+## the-type-filter-starts-at-a-fields-height
+
+> Owner, in chat (2026-10-08), over five turns on how big the field was: *"multi select sebesar ini memang?"*, *"tampilkan
+> maksimal 3 … + kalau lebih dari 3"*, *"jangan ellipsis, boleh 2/3 line"*, and last *"aku ingin insialnya tinggi sama,
+> maksimal 3 dan ++, lalu untuk closeable dan selector iconnya tidak masuk ke containernya selected"*.
+
+```
+empty, 1–2 picks — 36px, the date's height
+┌ Semua jenis                       × ⌄ ┐  ┌ Semua tanggal    ⌄ ┐
+└───────────────────────────────────────┘  └────────────────────┘
+
+3 picks and more — the badges wrap, × ⌄ stay put
+┌ [Biaya] [Iklan] [Penarikan] [+2] │      ┐
+│ ▏(typing)                        │ × ⌄  │   ← the picks' box │ the indicators, outside it
+└───────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the height | **36px to start**, equal to the date field beside it. The input drops the recipe's own 36px minimum (`minH="0"`, 28px tall): inside a bordered box that minimum made the field 42 |
+| the picks | **three badges at most**, each written whole — no ellipsis — and an outline **"+N"** for the rest. Past what one line holds they wrap; the field grows a line rather than cut a name |
+| × and ⌄ | **outside the box the picks wrap in**: the control is a row of two — the picks and the typing on the left, wrapping; the clear and the open indicator on the right, never wrapping. A badge never sits under them |
+| taking one back | in the list, by its ✓ — the badges in the field carry no × of their own; the field's × clears them all |
+| the width | 16rem in the FilterBar — on a phone the sheet's full width, where five picks still hold one line |
+
+**Supersedes** three rows of [the-statement-filters-several-types](#the-statement-filters-several-types): *the picks*
+(no × per badge, three and "+N"), and *the field* (16rem, not 20rem, and × ⌄ no longer wrap with the badges).
+
+Measured in Storybook (1280 and 414 wide):
+
+| picks | desktop, 16rem | phone sheet |
+| --- | --- | --- |
+| 0 – 2 | 36px | 36px |
+| 3 – 5 | 58px — line 2 holds the typing | 36px |
+
+## the-type-filter-shows-four-picks
+
+> Owner, in chat (2026-10-08), looking at three badges and an empty typing line under them: *"maksimalnya tambah 1 jadi 4"*.
+
+```
+desktop, 16rem — five picks                  phone sheet — five picks
+┌ [Biaya] [Iklan] [Penarikan] │      ┐       ┌ [Biaya] [Iklan] [Penarikan] [Restok] [+1] │ × ⌄ ┐
+│ [Restok] [+1] ▏(typing)     │ × ⌄  │       └──────────────────────────────────────────────────┘
+└────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the picks | **four badges** at most, then "+N" — `SHOWN = 4` in `ChangeTypeFilter` |
+| the height | unchanged: 36px with 0 – 2 picks. On a desktop the fourth badge takes the second line beside the typing, so that line is no longer empty; 58px from three picks on. The phone sheet holds all of it on one line, 36px |
+
+**Supersedes** the *three badges at most* of
+[the-type-filter-starts-at-a-fields-height](#the-type-filter-starts-at-a-fields-height); the rest of it stands.
+
+## a-phone-statement-row-opens-its-detail
+
+> Owner, in chat (2026-10-08): *"keterangan di mobile lebih baik dihidden saja, atau buat modal detail untuk mobile,
+> heading tolong tetap ada, perubahan tolong di bawah saldo langsung"*. Built as both halves of the "or": hidden on the
+> row, and a tap opens it.
+
+```
+Tanggal       Jenis               Saldo        ← the headings stay
+7 Okt 2026    [Penyesuaian]   Rp 11.443.500    ← the balance, the figure the row is read for
+                                  −Rp 6.500    ← the change right under it, on the same right edge
+─────────────────────────────────────────── tap ↓
+┌ Detail Mutasi                       × ┐
+│ 7 Okt 2026                            │
+│ [Penyesuaian]               −Rp 6.500 │
+│ Saldo                   Rp 11.443.500 │
+│ ───────────────────────────────────── │
+│ Keterangan                            │
+│ Reconcile — the app showed …          │
+│ Oleh              manual · Ani Rahayu │
+│ Dicatat                    7 Okt 2026 │
+│                               [Tutup] │
+└───────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the row | a `Table` with its headings — **Tanggal · Jenis · Saldo** — top-aligned; the change under the balance in the Saldo cell |
+| left out of the row | the description, who (or *otomatis*) and *dicatat* — all in the dialog |
+| the dialog | `AccountLogDetailDialog`: the day the money moved under the title; the type and the change; the balance; the description whole; **Oleh**; **Dicatat** — always, where the desktop row shows it only when it differs |
+| opening it | a tap, or Enter / Space on a focused row; the row lights up while pressed |
+| the desktop | unchanged: five columns, no dialog |
+
+**Supersedes** the statement's phone block in [the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules)
+(*"a statement row is a block"*, the description at the full width). Not a contradiction of
+[a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block): that rule is for a WIDE
+table, and without the description the statement is three columns that fit a phone.
+
+## the-balance-column-reads-saldo
+
+> Owner, in chat (2026-10-08): *"saldo setelah jadi saldo saja"*.
+
+| | |
+| --- | --- |
+| the label | **Saldo** (en *Balance*) — was *Saldo setelah* / *Balance after* |
+| where | the statement's last column on a desktop, its heading on a phone, the detail dialog — one key, `financialAccounts.log.balanceAfter` |
+| the figure | unchanged — still `balance_after`, the balance once that row posted |
+
+Earlier entries that write *Saldo setelah* — [a-balance-is-bold](#a-balance-is-bold),
+[the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules) — describe the same column, now
+labelled **Saldo**.
+
+## a-statement-row-lights-up
+
+> Owner, in chat (2026-10-08), with the phone change: *"hoverable juga"*.
+
+| | |
+| --- | --- |
+| the desktop | a statement row lights up under the pointer, every cell in `bg.muted` — as the report's table does ([the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table)) |
+| the phone | the same, while a row is pressed — the row is a control there, it opens its detail |
+| a story | drives it with `data-hover`, which Chakra's `_hover` honours — a synthetic pointer sets no CSS `:hover` |
+
+## the-type-sits-under-the-date-on-a-phone
+
+> Owner, in chat (2026-10-08), looking at the three phone columns: *"mobile tipe di bawah tanggal"*.
+
+```
+Tanggal                       Saldo     ← each heading names its column's top line
+7 Okt 2026            Rp 11.443.500
+[Penyesuaian]             −Rp 6.500     ← the type under the day, the change under the balance
+```
+
+| | |
+| --- | --- |
+| the columns | **two**: Tanggal on the left, Saldo on the right — both top-aligned, both two lines |
+| the left cell | the day the money moved, its type badge right under it, on the same left edge |
+| the right cell | unchanged — the balance, the change right under it |
+| the headings | **Tanggal · Saldo**; the *Jenis* heading goes with its column — a badge reads as a type without one |
+
+**Supersedes** the three columns (*Tanggal · Jenis · Saldo*) of
+[a-phone-statement-row-opens-its-detail](#a-phone-statement-row-opens-its-detail); its dialog and the tap stand.

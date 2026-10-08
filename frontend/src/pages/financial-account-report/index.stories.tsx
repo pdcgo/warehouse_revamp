@@ -184,6 +184,19 @@ export const TheNetChangeOpensItsBreakdown: Story = {
   },
 };
 
+// The account filter SEARCHES — typing "BCA" leaves the two BCA accounts. It looked like a search and searched nothing:
+// Ark's list collection filters only when given a matcher.
+export const TheAccountFilterSearches: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("account-report-account"));
+    await userEvent.type(canvas.getByTestId("account-report-account"), "BCA", { delay: 40 });
+    await waitFor(() => expect(canvas.queryByTestId(`account-report-account-option-${MELATI_TIKTOK.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`account-report-account-option-${BCA_OPS.id}`)).toBeVisible();
+  },
+};
+
 // One account: its own open and close, and its transfers show in the breakdown — they left IT, even if not the team.
 export const OneAccount: Story = {
   play: async ({ canvasElement }) => {

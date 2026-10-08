@@ -3205,7 +3205,11 @@
       "already": "{{shop}} already withdraws here.",
       "moves": "{{shop}} withdraws into {{from}} now — it moves to {{to}}.",
       "first": "{{shop}} names no account yet — its withdrawals start landing here.",
-      "shopPlaceholder": "Choose a shop"
+      "shopPlaceholder": "Choose a shop",
+      "linked": "Linked shops",
+      "pointShort": "Point a Shop",
+      "count_one": "{{count}} shop",
+      "count_other": "{{count}} shops"
     },
     "log": {
       "title": "Statement",
@@ -3214,11 +3218,16 @@
       "type": "Type",
       "description": "Why",
       "change": "Change",
-      "balanceAfter": "Balance after",
+      "balanceAfter": "Balance",
+      "detailTitle": "Statement Entry",
+      "by": "By",
+      "recorded": "Recorded",
       "recordedOn": "recorded {{date}}",
       "byHand": "by hand · {{name}}",
       "automatic": "automatic — from where it happened",
-      "allTypes": "All types"
+      "allTypes": "All types",
+      "searchType": "Search a type",
+      "noType": "No type matches."
     },
     "allShops": "All shops",
     "operationalOnly": "Operational only",

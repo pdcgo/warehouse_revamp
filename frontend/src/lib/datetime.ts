@@ -6,6 +6,14 @@
 // anyone behind UTC (all of Indonesia is UTC+7/8/9). A warehouse filter that silently shifts a day is
 // the exact bug these helpers exist to prevent, so every parse builds the Date from parts in local time.
 
+import i18next from "i18next";
+
+// THE APP'S LANGUAGE, NOT THE BROWSER'S, for every human date below (owner: *"yesterday tidak ikut i18n?"*). They all
+// passed `undefined` as the locale, which is the browser's: an English browser printed "yesterday" and "Oct 7, 2026"
+// on a screen switched to Bahasa Indonesia. Read per call, so a switch of language reads the new one on the next
+// render — every caller re-renders on a switch anyway, through its own `t`.
+const appLocale = (): string | undefined => i18next.language || undefined;
+
 export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
@@ -145,7 +153,7 @@ export function monthGrid(viewMonth: Date): Date[] {
 export function formatUnixDate(unix: bigint): string {
   if (unix <= 0n) return "—";
 
-  return new Date(Number(unix) * 1000).toLocaleDateString(undefined, {
+  return new Date(Number(unix) * 1000).toLocaleDateString(appLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -163,7 +171,7 @@ export function formatUnixDate(unix: bigint): string {
 export function formatUnixDateTime(unix: bigint): string {
   if (unix <= 0n) return "—";
 
-  return new Date(Number(unix) * 1000).toLocaleString(undefined, {
+  return new Date(Number(unix) * 1000).toLocaleString(appLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -188,7 +196,7 @@ export function formatRfc3339DateTime(rfc3339: string): string {
   const d = new Date(rfc3339);
   if (Number.isNaN(d.getTime())) return rfc3339;
 
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(appLocale(), {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -224,7 +232,7 @@ export function formatUnixRelative(unix: bigint, now: Date = new Date()): string
   const deltaSeconds = Number(unix) - Math.floor(now.getTime() / 1000);
   const abs = Math.abs(deltaSeconds);
 
-  const fmt = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const fmt = new Intl.RelativeTimeFormat(appLocale(), { numeric: "auto" });
 
   for (const { unit, seconds } of RELATIVE_STEPS) {
     if (abs >= seconds) {

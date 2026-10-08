@@ -8,7 +8,7 @@ import { TYPE_KEY, isUnknown } from "../../../features/financialAccount/vocab";
 import { type FinancialAccount, FinancialAccountStatus } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
 import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { formatUnixRelative } from "../../../lib/datetime";
-import { AccountLinks } from "./AccountLinks";
+import { AccountLinks } from "../../../features/financialAccount/AccountLinks";
 
 // ONE ACCOUNT ON A PHONE (`a-phone-reads-each-line-as-a-block`) — the table's six columns were 929px in a 318px screen,
 // the balance and every action off to the right. A block reads top to bottom instead, each line one thing:
