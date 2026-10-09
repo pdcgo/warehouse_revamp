@@ -1448,7 +1448,6 @@
   "suppliers": {
     "title": "Suppliers",
     "selectTeam": "Select a team to manage its suppliers.",
-    "searchPlaceholder": "Search by name",
     "deleted": "Supplier \"{{name}}\" deleted",
     "deleteFailed": "Delete failed",
     "deleteSupplier": "Delete Supplier",
@@ -1456,25 +1455,29 @@
     "delete": "Delete",
     "empty": "No suppliers found.",
     "table": {
-      "name": "Name",
       "contact": "Contact",
-      "address": "Address",
-      "actions": "Actions"
+      "actions": "Actions",
+      "supplier": "Supplier",
+      "channels": "Channels"
     },
     "form": {
       "saved": "Supplier saved",
       "created": "Supplier \"{{name}}\" created",
-      "newSupplier": "New Supplier",
+      "newSupplier": "Add Supplier",
       "editTitle": "Edit Supplier",
-      "createTitle": "New Supplier",
+      "createTitle": "Add Supplier",
       "name": "Name",
       "contact": "Contact",
       "address": "Address",
       "description": "Description",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create",
-      "contactHelp": "A phone or WhatsApp number."
+      "create": "Add",
+      "contactHelp": "A phone or WhatsApp number.",
+      "namePlaceholder": "e.g. PT Sumber Makmur",
+      "contactPlaceholder": "e.g. 0812-3456-7890",
+      "addressPlaceholder": "e.g. Jl. Soekarno-Hatta 112, Bandung",
+      "descriptionPlaceholder": "e.g. fabric and thread wholesale, minimum order 1 roll"
     },
     "select": {
       "placeholder": "Select a supplier",
@@ -1482,7 +1485,6 @@
       "empty": "No suppliers found"
     },
     "sellingOnly": "Only a selling team has suppliers.",
-    "edit": "Edit supplier",
     "discover": {
       "title": "Discover Suppliers",
       "lead": "Suppliers every selling team buys from — search them by name, address, contact or store.",
@@ -1505,7 +1507,20 @@
         }
       },
       "teamAll": "Any team"
-    }
+    },
+    "lead": "The suppliers this team keeps — the vendors it buys its stock from.",
+    "search": "Search a supplier, address or channel",
+    "typeAll": "All channel types",
+    "none": "No supplier matches.",
+    "sort": {
+      "label": "Sort",
+      "default": "Newest first",
+      "name": {
+        "asc": "Name, A to Z",
+        "desc": "Name, Z to A"
+      }
+    },
+    "editAction": "Edit"
   },
   "supplierChannel": {
     "deleted": "Channel \"{{name}}\" deleted",

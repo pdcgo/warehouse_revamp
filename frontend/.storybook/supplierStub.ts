@@ -21,14 +21,14 @@
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
-import { SupplierListDataType, SupplierListScope, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
+import { SupplierListDataType, SupplierListScope, SupplierRowSort, SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
 import {
   AnalyticGroupSort,
   AnalyticTimeframe,
   SupplierAnalyticService,
 } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
-import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
+import { CommonSortType, GeneralSort } from "../src/gen/warehouse/common/v1/list_pb";
 import { TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 import { teams } from "./fixtures";
 import { type ChannelFixture, type SupplierFixture, channelFixtures, supplierFixtures } from "./supplierFixtures";
@@ -126,13 +126,21 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
     // Discover's Team filter — the team that keeps the supplier. 0 = any team.
     const ownerTeamId = req.filter?.ownerTeamId ?? 0n;
 
-    const rows = newestFirst(
+    const found = newestFirst(
       suppliers
         .filter((s) => !s.deleted && (everyTeam || s.teamId === req.teamId))
         .filter((s) => ownerTeamId === 0n || s.teamId === ownerTeamId)
         .filter((s) => channelType === Marketplace.UNSPECIFIED || liveStoresOf(s.id).some((c) => c.channelType === channelType))
         .filter((s) => matches(q, s.name, s.address, s.contact, ...liveStoresOf(s.id).map((c) => c.name))),
     );
+    // By name when asked — the server's order (supplierOrderClause): the name, then the id to break a tie.
+    const byName =
+      (req.sort?.s.case === "supplier" && req.sort.s.value === SupplierRowSort.NAME) ||
+      (req.sort?.s.case === "general" && req.sort.s.value === GeneralSort.NAME);
+    const asc = req.sort?.sortType === CommonSortType.ASC;
+    const rows = byName
+      ? [...found].sort((x, y) => (asc ? 1 : -1) * (x.name.localeCompare(y.name) || Number(x.id - y.id)))
+      : found;
     const { rows: page, pageInfo } = pageOf(rows, req.page as PageReq);
 
     const supplierMap: Record<string, SupplierFixture> = {};

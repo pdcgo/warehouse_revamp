@@ -159,3 +159,116 @@ export const OnlyASellingTeamHasSuppliers: Story = {
     await expect(canvas.queryByTestId("open-create-supplier")).toBeNull();
   },
 };
+
+// ── The screen rules (`the-suppliers-list-follows-the-screen-rules`) ───────────────────────────────
+
+const BANYAK = supplierFixture("PT Banyak Toko");
+
+const rowNames = (canvas: ReturnType<typeof within>) =>
+  within(canvas.getByTestId("suppliers-table"))
+    .getAllByRole("row")
+    .slice(1)
+    .map((r) => r.querySelector("td p")?.textContent ?? "");
+
+// THE COLUMNS ARE DISCOVER'S, MINUS THE TEAM — the supplier and where it is (two lines), its stores as one badge per
+// type, its contact. A deleted store is not a badge (a-store-delete-is-soft-too): PT Sumber Makmur's Lazada is gone.
+export const ItsStoresAreBadges: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const sumber = canvas.getByTestId(`supplier-row-${SUMBER.id}`);
+    await expect(sumber).toHaveTextContent("Shopee");
+    await expect(sumber).toHaveTextContent("Tokopedia");
+    await expect(sumber).not.toHaveTextContent("Lazada");
+    await expect(canvas.getByTestId(`supplier-row-${BANYAK.id}`)).toHaveTextContent("×3");
+    // A supplier with no store reads a dash, and its address line too.
+    await expect(canvas.getByTestId(`supplier-row-${SINAR.id}`)).toHaveTextContent("—");
+  },
+};
+
+// THE SHARED FILTER STRIP (a-phone-filters-from-a-sheet, clear-filters-is-red-and-bold) — "which of ours sell on
+// Lazada?": a live store of the type. Clear, red and bold while anything narrows, puts it back.
+export const TheStoreTypeFilters: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("suppliers-filter-clear")).toBeNull();
+    await userEvent.click(within(canvas.getByTestId("suppliers-type-filter")).getByTestId("marketplace-select"));
+    const lazada = await canvas.findByRole("option", { name: "Lazada" });
+    await waitFor(() => expect(lazada).toBeVisible());
+    await userEvent.click(lazada);
+
+    await waitFor(() => expect(canvas.queryByTestId(`supplier-row-${SUMBER.id}`)).toBeNull());
+    await expect(canvas.getByTestId(`supplier-row-${BANYAK.id}`)).toBeVisible();
+
+    const clear = canvas.getByTestId("suppliers-filter-clear");
+    await expect(getComputedStyle(clear).fontWeight).toBe("700");
+    await userEvent.click(clear);
+    await waitFor(() => expect(canvas.getByTestId(`supplier-row-${SUMBER.id}`)).toBeVisible());
+  },
+};
+
+// THE NAME SORTS FROM ITS HEADING (a-table-sorts-from-its-headings) — the list's own order is newest first; the
+// heading starts at A to Z, then flips. The server sorts; a page is never re-sorted here.
+export const TheNameSortsFromItsHeading: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(rowNames(canvas)).toEqual(["PT Banyak Toko", "Toko Grosir Sinar", "CV Cahaya Abadi", "PT Sumber Makmur"]);
+
+    await userEvent.click(canvas.getByTestId("supplier-sort-name"));
+    await waitFor(() =>
+      expect(rowNames(canvas)).toEqual(["CV Cahaya Abadi", "PT Banyak Toko", "PT Sumber Makmur", "Toko Grosir Sinar"]),
+    );
+
+    await userEvent.click(canvas.getByTestId("supplier-sort-name"));
+    await waitFor(() =>
+      expect(rowNames(canvas)).toEqual(["Toko Grosir Sinar", "PT Sumber Makmur", "PT Banyak Toko", "CV Cahaya Abadi"]),
+    );
+  },
+};
+
+// The pages grow as they are opened, as on the accounts list.
+export const TheGrowingPager: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("suppliers-pager")).toBeVisible();
+  },
+};
+
+// ── Mobile ──────────────────────────────────────────────────────────────────────────────────────
+
+// A PHONE READS EACH SUPPLIER AS A BLOCK (a-phone-reads-each-line-as-a-block) — the name, its stores, the contact and
+// the address; no headings, so the sort is the Filter sheet's, with the store type.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(within(canvas.getByTestId("suppliers-table")).queryAllByRole("columnheader")).toHaveLength(0);
+    await expect(canvas.getByTestId(`supplier-row-${SUMBER.id}`)).toHaveTextContent("Shopee");
+
+    await userEvent.click(canvas.getByTestId("suppliers-filter-open"));
+    const sheet = await screen.findByTestId("suppliers-filter-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(within(sheet).getByTestId("supplier-sort-select")).toBeVisible();
+    await expect(within(sheet).getByTestId("marketplace-select")).toBeVisible();
+  },
+};
+
+// A ROW LIGHTS UP UNDER THE POINTER, every cell of it (owner: *"hoverable"*, `a-supplier-row-lights-up`) — as the
+// account's statement does.
+//
+// ⚠ HOVER IS DRIVEN BY `data-hover`, which Chakra's `_hover` honours — a synthetic pointer event sets no CSS `:hover`.
+export const ASupplierRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const row = canvas.getByTestId(`supplier-row-${SUMBER.id}`);
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};

@@ -1,51 +1,23 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Box, HStack, Heading, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Heading, Stack, Table, Text } from "@chakra-ui/react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
+import { ChannelTypes } from "../../features/suppliers/ChannelTypes";
 import { type DiscoverSupplier, useDiscoverSuppliers } from "../../features/suppliers/discover";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-// A supplier's stores as badges — one per channel TYPE, so a supplier with three Shopee stores reads "Shopee ×3"
-// rather than three identical badges.
-function ChannelTypes({ supplier }: { supplier: DiscoverSupplier }) {
-  const counts = new Map<Marketplace, number>();
-  for (const c of supplier.channels) {
-    counts.set(c.channelType, (counts.get(c.channelType) ?? 0) + 1);
-  }
-
-  if (counts.size === 0) {
-    return <Text color="fg.muted">—</Text>;
-  }
-
-  return (
-    <HStack gap="1" wrap="wrap">
-      {[...counts].map(([type, n]) => (
-        <HStack key={type} gap="0.5">
-          <MarketplaceBadge marketplace={type} />
-          {n > 1 && (
-            <Text fontSize="xs" color="fg.muted">
-              ×{n}
-            </Text>
-          )}
-        </HStack>
-      ))}
-    </HStack>
-  );
-}
 
 // DiscoverSuppliersPage searches suppliers ACROSS EVERY TEAM — "who sells this, anywhere in the company?"
 // (manage-and-discover-are-two-pages). It is independent of the Suppliers page, which lists the suppliers THIS
@@ -127,7 +99,7 @@ export function DiscoverSuppliersPage() {
             >
               <Text fontWeight="bold">{s.name}</Text>
               {team(s)}
-              <ChannelTypes supplier={s} />
+              <ChannelTypes channels={s.channels} />
             </Stack>
           ))}
         </Stack>
@@ -167,7 +139,7 @@ export function DiscoverSuppliersPage() {
                 <Box maxW="15rem">{team(s)}</Box>
               </Table.Cell>
               <Table.Cell>
-                <ChannelTypes supplier={s} />
+                <ChannelTypes channels={s.channels} />
               </Table.Cell>
               <Table.Cell>{s.contact || "—"}</Table.Cell>
             </Table.Row>

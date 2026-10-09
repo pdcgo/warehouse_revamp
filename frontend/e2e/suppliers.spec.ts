@@ -59,7 +59,8 @@ async function useSellingTeam(page: Page) {
 
 async function gotoSuppliers(page: Page) {
   await page.goto("/inventories/suppliers");
-  await expect(page.getByTestId("suppliers-table")).toBeVisible();
+  // The PAGE, not the table: an empty list says so in a sentence, and draws no table (the-suppliers-list-follows-the-screen-rules).
+  await expect(page.getByTestId("suppliers-page")).toBeVisible();
 }
 
 // A row is keyed by the supplier's id, which the spec does not know — so it is found by its name.

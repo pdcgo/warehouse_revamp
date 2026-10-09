@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { Plus } from "lucide-react";
 import {
   Button,
   CloseButton,
   Dialog,
   Field,
+  Icon,
   Input,
   Portal,
   Stack,
@@ -122,7 +124,9 @@ export function SupplierFormDialog({
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       {!isControlled && (
         <Dialog.Trigger asChild>
+          {/* "Tambah Pemasok", with its ＋ (owner, `a-supplier-action-is-labelled`) — the accounts list's add button. */}
           <Button size="xs" colorPalette="brand" data-testid="open-create-supplier">
+            <Icon as={Plus} boxSize="4" />
             {t("suppliers.form.newSupplier")}
           </Button>
         </Dialog.Trigger>
@@ -152,13 +156,20 @@ export function SupplierFormDialog({
                       {t("suppliers.form.name")}
                       <Field.RequiredIndicator />
                     </Field.Label>
-                    <Input value={name} data-testid="supplier-name" onChange={(e) => setName(e.target.value)} />
+                    <Input
+                      value={name}
+                      // An example, not a label (owner: *"kasih placeholder untuk tambah pemasok"*, `the-add-supplier-form-shows-examples`).
+                      placeholder={t("suppliers.form.namePlaceholder")}
+                      data-testid="supplier-name"
+                      onChange={(e) => setName(e.target.value)}
+                    />
                   </Field.Root>
 
                   <Field.Root>
                     <Field.Label>{t("suppliers.form.contact")}</Field.Label>
                     <Input
                       value={contact}
+                      placeholder={t("suppliers.form.contactPlaceholder")}
                       data-testid="supplier-contact"
                       onChange={(e) => setContact(e.target.value)}
                     />
@@ -170,6 +181,7 @@ export function SupplierFormDialog({
                     <Textarea
                       value={address}
                       rows={2}
+                      placeholder={t("suppliers.form.addressPlaceholder")}
                       data-testid="supplier-address"
                       onChange={(e) => setAddress(e.target.value)}
                     />
@@ -180,6 +192,7 @@ export function SupplierFormDialog({
                     <Textarea
                       value={description}
                       rows={2}
+                      placeholder={t("suppliers.form.descriptionPlaceholder")}
                       data-testid="supplier-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />

@@ -1443,7 +1443,6 @@
   "suppliers": {
     "title": "Pemasok",
     "selectTeam": "Pilih tim untuk mengelola pemasoknya.",
-    "searchPlaceholder": "Cari berdasarkan nama",
     "deleted": "Pemasok \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
     "deleteSupplier": "Hapus Pemasok",
@@ -1451,25 +1450,29 @@
     "delete": "Hapus",
     "empty": "Tidak ada pemasok ditemukan.",
     "table": {
-      "name": "Nama",
       "contact": "Kontak",
-      "address": "Alamat",
-      "actions": "Aksi"
+      "actions": "Aksi",
+      "supplier": "Pemasok",
+      "channels": "Saluran"
     },
     "form": {
       "saved": "Pemasok disimpan",
       "created": "Pemasok \"{{name}}\" dibuat",
-      "newSupplier": "Pemasok Baru",
+      "newSupplier": "Tambah Pemasok",
       "editTitle": "Ubah Pemasok",
-      "createTitle": "Pemasok Baru",
+      "createTitle": "Tambah Pemasok",
       "name": "Nama",
       "contact": "Kontak",
       "address": "Alamat",
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat",
-      "contactHelp": "Nomor telepon atau WhatsApp."
+      "create": "Tambah",
+      "contactHelp": "Nomor telepon atau WhatsApp.",
+      "namePlaceholder": "Contoh: PT Sumber Makmur",
+      "contactPlaceholder": "Contoh: 0812-3456-7890",
+      "addressPlaceholder": "Contoh: Jl. Soekarno-Hatta 112, Bandung",
+      "descriptionPlaceholder": "Contoh: grosir kain dan benang, minimal order 1 rol"
     },
     "select": {
       "placeholder": "Pilih pemasok",
@@ -1477,7 +1480,6 @@
       "empty": "Pemasok tidak ditemukan"
     },
     "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
-    "edit": "Ubah pemasok",
     "discover": {
       "title": "Temukan Pemasok",
       "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko.",
@@ -1500,7 +1502,20 @@
         }
       },
       "teamAll": "Semua tim"
-    }
+    },
+    "lead": "Pemasok yang dikelola tim ini — vendor tempat tim membeli stoknya.",
+    "search": "Cari pemasok, alamat, atau saluran",
+    "typeAll": "Semua jenis saluran",
+    "none": "Tidak ada pemasok yang cocok.",
+    "sort": {
+      "label": "Urutkan",
+      "default": "Terbaru dulu",
+      "name": {
+        "asc": "Nama, A ke Z",
+        "desc": "Nama, Z ke A"
+      }
+    },
+    "editAction": "Ubah"
   },
   "supplierChannel": {
     "deleted": "Saluran \"{{name}}\" dihapus",
