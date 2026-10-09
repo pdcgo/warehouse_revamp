@@ -81,9 +81,8 @@ export const SellingTeam: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-// THE TOP BAR CARRIES THE SAME TWO FACTS AS THE DESKTOP BREADCRUMB, in the same order: whose data
-// this is, then what you are looking at. Stacked rather than chevroned, because a crumb trail at this
-// width truncates to naming neither.
+// THE TOP BAR NAMES THE TEAM, THEN THE SCREEN — whose data this is, then what you are looking at, stacked. And
+// nothing else: no bell (`the-phone-has-no-bell`) — nothing sends a notification yet.
 export const TheHeaderNamesTheTeamThenTheScreen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -91,13 +90,46 @@ export const TheHeaderNamesTheTeamThenTheScreen: Story = {
 
     await waitFor(() => expect(header.getByText(WAREHOUSE.name)).toBeInTheDocument());
     await expect(header.getByTestId("mobile-title")).toHaveTextContent("Home");
+    await expect(canvas.queryByTestId("notifications")).toBeNull();
 
-    // ⚠ AND THE TEAM CHIP MUST NOT STRETCH. TeamSwitcher is `w="full"` in the sidebar it was built
-    // for; collapsed into this bar it took the entire width and pushed the title out of the header
-    // altogether — with the title still in the DOM, at zero width, so every assertion above passed.
+  },
+};
+
+// THE WHOLE BOX IS THE SELECTOR (owner, `the-phone-team-chip-is-the-whole-box`) — the avatar, the team, the screen and
+// ⇅ are one control, so a tap on the screen's NAME opens the workspace too, not only a tap on the picture.
+export const TheWholeHeaderBoxIsTheTeamSelector: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const header = within(await canvas.findByRole("banner"));
+
+    const selector = await header.findByTestId("team-switcher", {}, { timeout: 4000 });
+    await expect(selector).toContainElement(header.getByTestId("mobile-title"));
+    await expect(selector).toHaveTextContent(WAREHOUSE.name);
+    // Across the bar, not a chip in its corner.
     const bar = canvas.getByRole("banner").getBoundingClientRect();
-    const chip = header.getByTestId("team-switcher").getBoundingClientRect();
-    await expect(chip.width).toBeLessThan(bar.width / 2);
+    await expect(selector.getBoundingClientRect().width).toBeGreaterThan(bar.width * 0.8);
+
+    await userEvent.click(header.getByTestId("mobile-title"));
+    await waitFor(() => expect(screen.getByTestId("team-switcher-drawer")).toBeVisible());
+  },
+};
+
+// THE TEAM CHIP OPENS THE WORKSPACE FROM THE BOTTOM (`the-phone-opens-its-panels-from-the-bottom`) — a drawer at
+// the screen's foot, where the thumb is, never the whole screen.
+export const TheChipOpensTheWorkspaceFromTheBottom: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("team-switcher", {}, { timeout: 4000 }));
+    const drawer = await screen.findByTestId("team-switcher-drawer");
+    await waitFor(() => expect(drawer).toBeVisible());
+    await expect(within(drawer).getByTestId(`team-option-${WAREHOUSE.id}`)).toBeVisible();
+
+    await waitFor(() => {
+      const r = drawer.getBoundingClientRect();
+      expect(Math.round(r.bottom)).toBe(window.innerHeight);
+      expect(r.top).toBeGreaterThan(0);
+    });
   },
 };
 

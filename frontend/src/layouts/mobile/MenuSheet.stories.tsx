@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { RouteObject } from "react-router-dom";
-import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
@@ -107,33 +107,36 @@ export const ThemeLanguageAndSignOutAreOneTapEach: Story = {
     // The role is scoped — "Warehouse Admin HERE", not a property of the person.
     await expect(screen.getByText("Warehouse Admin")).toBeInTheDocument();
 
-    await expect(screen.getByTestId("lang-id")).toBeInTheDocument();
     await expect(screen.getByTestId("sign-out")).toBeInTheDocument();
 
-    // Theme is ONE class on <html> (lib/colorMode.ts) — the same single line the desktop menu runs.
-    await userEvent.click(screen.getByTestId("theme-dark"));
+    // TWO SWITCHES (the-more-sheet-switches-theme-and-language). Theme is ONE class on <html> (lib/colorMode.ts) —
+    // the same single line the desktop menu runs; the thumb carries the sun, then the moon.
+    const theme = screen.getByTestId("theme-switch");
+    await expect(theme).not.toHaveAttribute("data-state", "checked");
+    await userEvent.click(theme);
     await waitFor(() => expect(document.documentElement).toHaveClass("dark"));
-    await userEvent.click(screen.getByTestId("theme-light"));
+    await userEvent.click(theme);
     await waitFor(() => expect(document.documentElement).not.toHaveClass("dark"));
+
+    // The language switch reads EN while the app is in English; one tap and it is ID.
+    const language = screen.getByTestId("lang-switch");
+    await expect(language).toHaveTextContent("EN");
+    await userEvent.click(language);
+    await waitFor(() => expect(document.documentElement).toHaveAttribute("lang", "id"));
+    await expect(screen.getByTestId("lang-switch")).toHaveTextContent("ID");
   },
 };
 
-// THE CURRENT TEAM IS THE SCOPE, so the switcher is the sheet's header rather than a row in it: it
-// re-scopes every screen at once, and this is the one mobile surface with room for the full card.
-//
-// ⚠ NOTHING HERE CLICKS ANOTHER TEAM. `selectTeam` deliberately hard-reloads to "/" (TeamContext:
-// nothing from the previous team survives) — in a story that would navigate the test runner out of
-// the page it is running.
-export const TheTeamSwitcherIsTheHeader: Story = {
+// THE ACCOUNT IS THE HEADER (owner, `the-more-sheet-starts-with-the-account`) — who is signed in, and as what here,
+// at the top of the sheet. The workspace is not in it: the top bar's team chip is where a phone switches team.
+export const TheAccountIsTheHeader: Story = {
   play: async () => {
-    await userEvent.click(await screen.findByTestId("team-switcher"));
+    const sheet = await screen.findByTestId("menu-sheet");
+    const header = await screen.findByTestId("menu-sheet-account");
 
-    // The phone keeps the centred dialog; its search is the heading's icon (the-workspace-search-opens-under-its-heading).
-    const searchIcon = await screen.findByTestId("team-search-mine");
-    await waitFor(() => expect(searchIcon).toBeVisible());
-    for (const team of teams) {
-      await expect(screen.getByTestId(`team-option-${team.id}`)).toBeInTheDocument();
-    }
+    await waitFor(() => expect(within(header).getByTestId("current-user")).toHaveTextContent("ani"));
+    await expect(within(header).getByText("Warehouse Admin")).toBeInTheDocument();
+    await expect(within(sheet).queryByTestId("team-switcher")).toBeNull();
   },
 };
 

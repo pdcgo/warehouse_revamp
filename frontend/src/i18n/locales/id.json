@@ -47,7 +47,6 @@
     "signOut": "Keluar"
   },
   "shell": {
-    "notifications": "Notifikasi",
     "menu": "Menu",
     "notMember": "Bukan anggota tim ini — bertindak sebagai {{role}}.",
     "switchTeam": "Ganti Tim",

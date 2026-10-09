@@ -36,6 +36,13 @@ when it applies one of these.
 | [the-workspace-search-goes-back-by-a-chevron](#the-workspace-search-goes-back-by-a-chevron) | the section search is an input with its search icon, left by a ‹ chevron on its left; the list rides the panel's right edge | the workspace panel |
 | [the-workspace-search-follows-access](#the-workspace-search-follows-access) | a member has one list with the search at its top; the sections and their search icons are Root's and the Administrator's | the workspace panel |
 | [the-workspace-search-opens-under-its-heading](#the-workspace-search-opens-under-its-heading) | each section's search opens under its heading, which stays; the icon becomes a ^ that shuts it — for a member and for Root alike | the workspace panel |
+| [the-phone-has-no-bell](#the-phone-has-no-bell) | the phone top bar has no notifications bell | the phone shell |
+| [the-phone-opens-its-panels-from-the-bottom](#the-phone-opens-its-panels-from-the-bottom) | on a phone the workspace and the More menu open as drawers from the bottom, never the whole screen | the phone shell |
+| [the-more-sheet-starts-with-the-account](#the-more-sheet-starts-with-the-account) | the More sheet is headed by the signed-in account; the workspace is not in it | the phone shell |
+| [the-phone-team-chip-is-the-whole-box](#the-phone-team-chip-is-the-whole-box) | the phone top bar is one team selector — avatar, team, screen and ⇅ — and a tap anywhere on it opens the workspace | the phone shell |
+| [the-more-sheet-switches-theme-and-language](#the-more-sheet-switches-theme-and-language) | in the More sheet, Tema is a sun/moon switch and Bahasa an ID/EN switch | the phone shell |
+| [the-switch-is-a-step-past-lg](#the-switch-is-a-step-past-lg) | a `lg` switch is 56×28 — a step past Chakra's 48×24; the More sheet's two switches | the phone shell |
+| [the-account-menu-switches-theme-and-language](#the-account-menu-switches-theme-and-language) | the desktop account menu draws Tema and Bahasa as the phone's switches — ☀/☾ and ID/EN — each a row that toggles and keeps the menu open | the desktop sidebar |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -752,6 +759,142 @@ Tim saya                 ⌕       Tim saya                 ^    ← the heading
 left — the heading no longer gives way to the field) and the *a member* row of
 [the-workspace-search-follows-access](#the-workspace-search-follows-access) (a member searches from the heading too;
 access still decides how many sections there are).
+
+## the-phone-has-no-bell
+
+> Owner, in chat (2026-10-09), opening the phone's turn: *"notifikasi tidak ada"*.
+
+```
+before                              now
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│ (TM) Toko Melati         🔔• │    │ (TM) Toko Melati              │
+│      Beranda                 │    │      Beranda                  │
+└──────────────────────────────┘    └──────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| gone | the phone top bar's bell and its dot — nothing sends a notification, and a dot that never clears tells the person something false. The desktop lost its bell with its top bar ([the-desktop-shell-has-no-top-bar](#the-desktop-shell-has-no-top-bar)) |
+| the top bar | the team chip, then the team and the screen, stacked |
+
+## the-phone-opens-its-panels-from-the-bottom
+
+> Owner, in chat (2026-10-09): *"pilih workspace dan menu lainnya pakai drawer dari bawah"*.
+
+```
+┌──────────────────────────────┐
+│ (GP) Gudang Pusat             │
+│      Beranda                  │
+│ ░░░░░░░░ the page, dimmed ░░░ │
+╭──────────────────────────────╮  ← rounded at the top, never the whole screen
+│ Ganti Tim                  × │
+│ Tim saya                   ⌕ │
+│  GP Gudang Pusat           ✓ │
+│  TM Toko Melati              │
+╰──────────────────────────────╯
+```
+
+| | |
+| --- | --- |
+| the workspace | the top bar's team chip opens it in a **drawer from the bottom** — `TeamSwitcher`'s `panel="drawer"`, its phone variant (it was a centred dialog). Its content is the desktop panel's: the sections, each searched from its heading |
+| the More menu | the same kind of drawer — it was the whole screen; now the page stays visible above it, up to 90% of the height |
+| both | rounded at the top, closed by ×, a tap on the dimmed page, or Escape |
+
+## the-more-sheet-starts-with-the-account
+
+> Owner, in chat (2026-10-09): *"menu lainnya jangan ada pilih workspace, paling atas nama akunnya"*.
+
+```
+╭──────────────────────────────╮
+│ (A) ani                    × │  ← the account heads the sheet
+│     Warehouse Admin          │
+│ ▌Beranda                     │
+│  …the menu…                  │
+├──────────────────────────────┤
+│ Tema    [Terang|Gelap]       │
+│ Bahasa  [ID|EN]              │
+│ [Keluar]                     │
+╰──────────────────────────────╯
+```
+
+| | |
+| --- | --- |
+| the header | the signed-in person — avatar, name, and their role in this team |
+| the workspace | **not in this sheet** — the top bar's team chip is the one place a phone switches team |
+| the foot | Tema, Bahasa, Keluar — the name moved up from here |
+
+## the-phone-team-chip-is-the-whole-box
+
+> Owner, in chat (2026-10-09): *"yang select tim, pakai selector saja, semua box jadi trigger bukan hanya gambar"*.
+
+```
+before — only the picture opened it      now — one selector, all of it opens it
+┌────┐ Toko Melati                       ┌──────────────────────────────────┐
+│(TM)│ Beranda                           │ (TM) Toko Melati               ⇅ │
+└────┘                                   │      Beranda                     │
+                                         └──────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the control | the phone top bar is **one selector** across the bar: the team's avatar, the team's name, the screen's name under it, and ⇅ — drawn as the sidebar's card is (thin border, the field's hover) |
+| a tap | anywhere on it opens the workspace drawer ([the-phone-opens-its-panels-from-the-bottom](#the-phone-opens-its-panels-from-the-bottom)) — the picture alone was a small target |
+| the order | unchanged — the team, then the screen, stacked |
+| where | `TeamSwitcher`'s `screen` prop: the screen's name in place of the team type line |
+
+## the-more-sheet-switches-theme-and-language
+
+> Owner, in chat (2026-10-09): *"di tema klik lainnya, buat jadi switch icon matahari bulan, untuk bahasa switch ID dan
+> EN"*.
+
+```
+light, Indonesian                 dark, English
+Tema     [(☀)      ]              Theme     [      (☾)]   ← rose track when on
+Bahasa   [(ID)     ]              Language  [      (EN)]
+[        Keluar        ]          [       Sign Out      ]
+```
+
+| | |
+| --- | --- |
+| Tema | a **switch** — off is light, on is dark; the thumb carries ☀ or ☾ (lucide `Sun` / `Moon`) |
+| Bahasa | a **switch** — off is Indonesian, on is English; the thumb carries **ID** or **EN** |
+| the look | Chakra `Switch`, `lg` for a thumb, the track rose when on ([a-checked-box-is-in-the-main-tone](#a-checked-box-is-in-the-main-tone)) |
+| ⚠ the thumb's marks | fixed tones — `gray.600` off, `brand.solid` on — because the thumb is white in both modes, and a mode-following tone turns pale on it in the dark |
+| was | two segmented controls: *Terang · Gelap*, *Bahasa Indonesia · English* |
+| the desktop | unchanged — Tema and Bahasa stay radio groups in the user card's menu |
+
+## the-switch-is-a-step-past-lg
+
+> Owner, in chat (2026-10-09), on the More sheet's two switches: *"switch tema dan bahasa kurang besar dikit"*.
+
+```
+before  [(☀)    ]  48×24        now  [ (☀)      ]  56×28
+```
+
+| | |
+| --- | --- |
+| the size | `lg` is **56×28** — set once, in theme.ts's `switch` recipe; Chakra's own `lg` is 48×24 |
+| who it reaches | only the More sheet's Tema and Bahasa — no other switch in the app is `lg` |
+| the thumb's marks | ☀ / ☾ at 16px, ID / EN at `xs` — grown with the thumb |
+
+## the-account-menu-switches-theme-and-language
+
+> Owner, in chat (2026-10-09), after the phone's switches: *"di desktop sekalian kasih icon saja sama huruf ID EN"*.
+
+```
+before                            now
+Tema                              ◐ Tema       [(☀)    ]   ← a row; its switch shows the state
+ ○ Terang  ● Gelap                ⟨A⟩ Bahasa   [(ID)   ]
+Bahasa
+ ● Bahasa Indonesia  ○ English
+```
+
+| | |
+| --- | --- |
+| the rows | **Tema** and **Bahasa**, each a menu item with a leading icon (`SunMoon`, `Languages`) and, at its right, the phone sheet's switch — ☀ or ☾, ID or EN ([the-more-sheet-switches-theme-and-language](#the-more-sheet-switches-theme-and-language)) |
+| a click | on the ROW — or Enter — toggles it; the switch is a picture of the state, taking no pointer and no focus of its own. The menu **stays open** to show the change |
+| one component | `layouts/PreferenceSwitches.tsx` — `ThemeSwitch` and `LanguageSwitch`, `lg` on the phone, `md` here — so the two shells cannot draw them two ways |
+| was | two radio groups, *Terang · Gelap* and *Bahasa Indonesia · English* |
 
 ## Recorded elsewhere
 

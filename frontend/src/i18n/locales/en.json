@@ -47,7 +47,6 @@
     "signOut": "Sign Out"
   },
   "shell": {
-    "notifications": "Notifications",
     "menu": "Menu",
     "notMember": "Not a member of this team — acting as {{role}}.",
     "switchTeam": "Switch Team",

@@ -15,7 +15,7 @@ import {
   Text,
   Tooltip,
 } from "@chakra-ui/react";
-import { ChevronRight, ChevronsUpDown, CircleUser, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, ChevronsUpDown, CircleUser, Languages, LogOut, PanelLeftClose, PanelLeftOpen, SunMoon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -23,11 +23,10 @@ import { Logo } from "../../components/chrome/Logo";
 import { useAuth } from "../../features/auth/AuthContext";
 import { useLiabilityAwaiting } from "../../features/liability/queries";
 import { useTeam } from "../../features/team/TeamContext";
-import { LANGUAGES, useLanguage } from "../../i18n/language";
-import type { Lang } from "../../i18n/language";
+import { useLanguage } from "../../i18n/language";
 import { setColorMode, useColorMode } from "../../lib/colorMode";
-import type { ColorMode } from "../../lib/colorMode";
 import { roleLabel } from "../../lib/roles";
+import { LanguageSwitch, ThemeSwitch } from "../PreferenceSwitches";
 import { TeamSwitcher } from "../TeamSwitcher";
 import { PROFILE, activeRoute, flattenMenu, isMenuGroup, menuFor, menuSectionsFor, owningGroupLabel } from "../nav";
 import type { MenuGroup, MenuItem, MenuSection } from "../nav";
@@ -458,35 +457,31 @@ export function Sidebar() {
 
                   <Menu.Separator />
 
-                  {/* Theme (#214/#213) — light / dark on the color-mode tokens, the mock's placement. */}
-                  <Menu.RadioItemGroup
-                    value={colorMode}
-                    onValueChange={(e) => setColorMode(e.value as ColorMode)}
+                  {/* TEMA AND BAHASA AS SWITCHES (owner: *"di desktop sekalian kasih icon saja sama huruf ID EN"*,
+                      `the-account-menu-switches-theme-and-language`) — the phone sheet's switches (PreferenceSwitches),
+                      each on a row: a click or Enter on the ROW toggles it, and the menu stays open to show the change. */}
+                  <Menu.Item
+                    value="theme"
+                    closeOnSelect={false}
+                    aria-label={`${t("menu.theme")}: ${colorMode === "dark" ? t("menu.themeDark") : t("menu.themeLight")}`}
+                    data-testid="theme-switch"
+                    onSelect={() => setColorMode(colorMode === "dark" ? "light" : "dark")}
                   >
-                    <Menu.ItemGroupLabel>{t("menu.theme")}</Menu.ItemGroupLabel>
-                    <Menu.RadioItem value="light" data-testid="theme-light">
-                      {t("menu.themeLight")}
-                      <Menu.ItemIndicator />
-                    </Menu.RadioItem>
-                    <Menu.RadioItem value="dark" data-testid="theme-dark">
-                      {t("menu.themeDark")}
-                      <Menu.ItemIndicator />
-                    </Menu.RadioItem>
-                  </Menu.RadioItemGroup>
-
-                  <Menu.Separator />
-
-                  {/* Language switcher (#93). Persists the choice and sets the page language; the
-                      UI-string translation itself is the i18n effort tracked in #65. */}
-                  <Menu.RadioItemGroup value={lang} onValueChange={(e) => setLang(e.value as Lang)}>
-                    <Menu.ItemGroupLabel>{t("menu.language")}</Menu.ItemGroupLabel>
-                    {LANGUAGES.map((l) => (
-                      <Menu.RadioItem key={l.value} value={l.value} data-testid={`lang-${l.value}`}>
-                        {l.label}
-                        <Menu.ItemIndicator />
-                      </Menu.RadioItem>
-                    ))}
-                  </Menu.RadioItemGroup>
+                    <Icon as={SunMoon} boxSize="4" />
+                    <Text flex="1">{t("menu.theme")}</Text>
+                    <ThemeSwitch size="md" face />
+                  </Menu.Item>
+                  <Menu.Item
+                    value="language"
+                    closeOnSelect={false}
+                    aria-label={`${t("menu.language")}: ${lang === "en" ? "English" : "Bahasa Indonesia"}`}
+                    data-testid="lang-switch"
+                    onSelect={() => setLang(lang === "en" ? "id" : "en")}
+                  >
+                    <Icon as={Languages} boxSize="4" />
+                    <Text flex="1">{t("menu.language")}</Text>
+                    <LanguageSwitch size="md" face />
+                  </Menu.Item>
 
                   <Menu.Separator />
 

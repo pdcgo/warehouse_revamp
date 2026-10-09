@@ -28,9 +28,9 @@ test("Language: switching to Indonesian translates the shell and persists", asyn
 
   // Switch to Indonesian from the avatar menu.
   await page.getByTestId("user-menu").click();
-  await expect(page.getByTestId("lang-id")).toBeVisible();
-  await expect(page.getByTestId("lang-en")).toBeVisible();
-  await page.getByTestId("lang-id").click();
+  // A switch row (the-account-menu-switches-theme-and-language): it reads EN, and one click makes it ID.
+  await expect(page.getByTestId("lang-switch")).toContainText("EN");
+  await page.getByTestId("lang-switch").click();
 
   // The navigation is translated and the document language reflects it.
   await expect(page.getByRole("link", { name: "Beranda" }).first()).toBeVisible();
@@ -56,7 +56,7 @@ test("Language: switching to Indonesian translates the shell and persists", asyn
 
   // And back to English.
   await page.getByTestId("user-menu").click();
-  await page.getByTestId("lang-en").click();
+  await page.getByTestId("lang-switch").click();
   await expect(page.getByRole("link", { name: "Home" }).first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });

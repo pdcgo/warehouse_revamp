@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, Box, CloseButton, Dialog, Flex, Icon, IconButton, Input, InputGroup, Popover, Portal, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Avatar, Box, CloseButton, Drawer, Flex, Icon, IconButton, Input, InputGroup, Popover, Portal, Spinner, Stack, Text } from "@chakra-ui/react";
 import { Check, ChevronUp, ChevronsUpDown, Search } from "lucide-react";
 import { teamTypeAvatar, teamTypeLabel } from "../components/badges/TeamTypeBadge";
 import { TeamItem } from "../components/entity/TeamItem";
@@ -18,7 +18,8 @@ import { useDebounced } from "../lib/useDebounced";
 //   | --------- | ------------------------- | -------------------------------------------------------------- |
 //   | "below"   | the open desktop sidebar  | a panel straight under the card, the card's width              |
 //   | "right"   | the collapsed sidebar     | a panel to the right of the avatar, beside the rail            |
-//   | "dialog"  | the phone (the default)   | a centred dialog — a dropdown under a chip is a small target   |
+//   | "drawer"  | the phone (the default)   | a drawer from the bottom, where the thumb is — a dropdown      |
+//   |           |                           | under a chip is a small target (`the-phone-opens-its-panels-from-the-bottom`) |
 //
 // Root and the Administrator get a second section, *All teams*, searched on the server: every team they are not in
 // (the-switcher-offers-every-team). Picking one acts there with their platform role under a strip on every page
@@ -36,10 +37,16 @@ import { useDebounced } from "../lib/useDebounced";
 //    TM Toko Melati                      (Semua tim aside while My teams is searched)
 export function TeamSwitcher({
   collapsed,
-  panel = "dialog",
+  panel = "drawer",
+  screen,
 }: {
   collapsed?: boolean;
-  panel?: "dialog" | "below" | "right";
+  panel?: "drawer" | "below" | "right";
+  /**
+   * The phone top bar's use (`the-phone-team-chip-is-the-whole-box`): the screen's name under the team's, so the whole
+   * bar is ONE selector — team, then screen, then ⇅ — rather than an avatar chip beside two lines of text.
+   */
+  screen?: string;
 }) {
   const { t } = useTranslation();
   const { teams, current, platformRole, selectTeam } = useTeam();
@@ -144,7 +151,7 @@ export function TeamSwitcher({
   };
 
   // While its panel is open the card reads as pressed — the panel hangs from it.
-  const pressed = open && panel !== "dialog";
+  const pressed = open && panel !== "drawer";
 
   const trigger = (
     <Flex
@@ -180,14 +187,26 @@ export function TeamSwitcher({
 
       {!collapsed && (
         <>
-          <Box textAlign="start" flex="1" minW="0">
-            <Text fontSize="sm" fontWeight="medium" lineClamp={1}>
-              {name}
-            </Text>
-            <Text fontSize="xs" color="fg.muted">
-              {current ? teamTypeLabel(current.teamType) : ""}
-            </Text>
-          </Box>
+          {screen !== undefined ? (
+            // The phone's top bar: whose data, then what you are looking at — stacked, as the bar always said it.
+            <Box textAlign="start" flex="1" minW="0">
+              <Text fontSize="xs" color="fg.subtle" truncate>
+                {name}
+              </Text>
+              <Text fontSize="sm" fontWeight="semibold" truncate data-testid="mobile-title">
+                {screen}
+              </Text>
+            </Box>
+          ) : (
+            <Box textAlign="start" flex="1" minW="0">
+              <Text fontSize="sm" fontWeight="medium" lineClamp={1}>
+                {name}
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                {current ? teamTypeLabel(current.teamType) : ""}
+              </Text>
+            </Box>
+          )}
           <Icon as={ChevronsUpDown} boxSize="4" color="fg.muted" flexShrink={0} />
         </>
       )}
@@ -205,10 +224,10 @@ export function TeamSwitcher({
         gap="0.5"
         maxH="400px"
         layerStyle="scrollList"
-        // Out through the panel's padding (2.5, or the dialog body's 6), and only a sliver of it given back: with the
+        // Out through the panel's padding (2.5, or the drawer body's 6), and only a sliver of it given back: with the
         // 10px gutter that makes the right inset match the left one.
-        me={panel === "dialog" ? "-6" : "-2.5"}
-        pe={panel === "dialog" ? "4" : "0.5"}
+        me={panel === "drawer" ? "-6" : "-2.5"}
+        pe={panel === "drawer" ? "4" : "0.5"}
       >
         {searching !== "all" && (
           <>
@@ -259,7 +278,7 @@ export function TeamSwitcher({
     </>
   );
 
-  if (panel !== "dialog") {
+  if (panel !== "drawer") {
     return (
       <Popover.Root
         open={open}
@@ -293,33 +312,33 @@ export function TeamSwitcher({
     );
   }
 
+  // The phone: a drawer from the bottom, rounded at the top, never the whole screen.
   return (
-    <Dialog.Root
+    <Drawer.Root
       open={open}
       onOpenChange={(e) => onOpenChange(e.open)}
       closeOnEscape={searching === null}
-      placement="center"
-      size="sm"
+      placement="bottom"
     >
-      <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
+      <Drawer.Trigger asChild>{trigger}</Drawer.Trigger>
 
       <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            <Dialog.Header>
-              <Dialog.Title>{t("shell.switchTeam")}</Dialog.Title>
-            </Dialog.Header>
+        <Drawer.Backdrop />
+        <Drawer.Positioner>
+          <Drawer.Content roundedTop="l3" maxH="85dvh" data-testid="team-switcher-drawer">
+            <Drawer.Header>
+              <Drawer.Title>{t("shell.switchTeam")}</Drawer.Title>
+            </Drawer.Header>
 
-            <Dialog.Body>{body}</Dialog.Body>
+            <Drawer.Body pb="calc(env(safe-area-inset-bottom) + var(--chakra-spacing-4))">{body}</Drawer.Body>
 
-            <Dialog.CloseTrigger asChild>
+            <Drawer.CloseTrigger asChild>
               <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
+            </Drawer.CloseTrigger>
+          </Drawer.Content>
+        </Drawer.Positioner>
       </Portal>
-    </Dialog.Root>
+    </Drawer.Root>
   );
 }
 

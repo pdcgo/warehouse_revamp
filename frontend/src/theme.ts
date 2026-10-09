@@ -395,6 +395,16 @@ const customConfig = defineConfig({
         },
         variants: { size: { sm: { item: { height: "8", px: "3", gap: "1.5" } } } },
       },
+      // A SWITCH A THUMB FINDS (owner: *"switch tema dan bahasa kurang besar dikit"*, `the-more-sheet-switches-theme-and-language`).
+      // Chakra's `lg` is 48×24; ours is a step past it, 56×28 — it is the whole control on its row in the phone's More
+      // sheet, worked with a thumb. Only those two switches use `lg`.
+      switch: {
+        variants: {
+          size: {
+            lg: { root: { "--switch-width": "sizes.14", "--switch-height": "sizes.7" } },
+          },
+        },
+      },
       // ── TYPE HIERARCHY (owner) ──────────────────────────────────────────────────────────────────
       //
       // Lato ships only 400 and 700 (no 500/600), so the levels are told apart by SIZE and COLOUR,

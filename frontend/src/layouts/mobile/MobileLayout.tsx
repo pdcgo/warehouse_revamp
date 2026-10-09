@@ -1,6 +1,5 @@
 import { Suspense, useCallback, useState } from "react";
-import { Box, Flex, Icon, IconButton, Spinner, Text } from "@chakra-ui/react";
-import { Bell } from "lucide-react";
+import { Box, Flex, Spinner } from "@chakra-ui/react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NotMemberStrip } from "../NotMemberStrip";
 import { useTranslation } from "react-i18next";
@@ -21,7 +20,8 @@ import { MenuSheet } from "./MenuSheet";
 // everything else one tap away in [MenuSheet].
 //
 //   ┌──────────────────────────┐
-//   │ (T)  Restock        🔔   │  the team chip, the screen, notifications
+//   │ [(T) Toko Melati       ⇅] │  ONE selector — the team, then the screen; a tap
+//   │ [    Restock             ] │  anywhere opens the workspace drawer
 //   ├──────────────────────────┤
 //   │        <Outlet/>         │  the ONLY scrolling region — the bars never leave
 //   ├──────────────────────────┤
@@ -47,7 +47,8 @@ export function MobileLayout() {
 
   return (
     <Flex direction="column" h="100dvh">
-      {/* TOP BAR — the team chip, then WHERE YOU ARE, then notifications.
+      {/* TOP BAR — the team chip, then WHERE YOU ARE. No notifications (owner, `the-phone-has-no-bell`): nothing
+          sends any, and a bell with a dot that never clears is a bar telling the person something false.
           The team and the screen, stacked — the two facts the desktop says with its sidebar (the
           switcher, the lit item), which a phone has no room to keep on screen. */}
       <Flex
@@ -61,43 +62,11 @@ export function MobileLayout() {
         py="2"
         bg="bg.subtle"
       >
-        {/* Collapsed to its colour chip: the team's NAME is on the line below, and the switcher is a
-            control you use once a day, not a heading. Tapping it still opens the full switcher. */}
-        <TeamSwitcher collapsed />
-
-        <Box flex="1" minW="0">
-          <Text fontSize="xs" color="fg.subtle" truncate>
-            {current?.teamName}
-          </Text>
-          <Text fontSize="sm" fontWeight="semibold" truncate data-testid="mobile-title">
-            {currentLabel ? t(currentLabel) : ""}
-          </Text>
-        </Box>
-
-        {/* Notifications stay; SEARCH DOES NOT. The desktop's 220px search field cannot survive at
-            this width without becoming the whole bar, and it is not wired to anything yet (there is
-            no search service) — a screen's own filters are where searching actually happens today. */}
-        <Box position="relative" flexShrink={0}>
-          <IconButton
-            size="sm"
-            variant="outline"
-            aria-label={t("shell.notifications")}
-            data-testid="notifications"
-          >
-            <Icon as={Bell} boxSize="4" />
-          </IconButton>
-          <Box
-            position="absolute"
-            top="1"
-            right="1"
-            boxSize="2"
-            bg="warning.solid"
-            rounded="full"
-            borderWidth="1.5px"
-            borderColor="bg.subtle"
-            pointerEvents="none"
-          />
-        </Box>
+        {/* THE WHOLE BOX IS THE SELECTOR (owner: *"pakai selector saja, semua box jadi trigger bukan hanya gambar"*,
+            `the-phone-team-chip-is-the-whole-box`) — the team's avatar, its name, the screen's name and ⇅, one control.
+            A tap anywhere on it opens the workspace in a drawer from the bottom
+            (`the-phone-opens-its-panels-from-the-bottom`) — the ONE place a phone switches team. */}
+        <TeamSwitcher panel="drawer" screen={currentLabel ? t(currentLabel) : ""} />
       </Flex>
 
       <NotMemberStrip />

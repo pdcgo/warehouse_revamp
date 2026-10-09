@@ -229,14 +229,18 @@ export const TheAccountMenuCarriesThemeLanguageAndSignOut: Story = {
     await userEvent.click(canvas.getByTestId("user-menu"));
 
     // The menu is PORTALLED, so it is on `screen` rather than in the canvas.
-    const dark = await screen.findByTestId("theme-dark");
-    await waitFor(() => expect(dark).toBeVisible());
-    await expect(screen.getByTestId("lang-id")).toBeInTheDocument();
+    const theme = await screen.findByTestId("theme-switch");
+    await waitFor(() => expect(theme).toBeVisible());
+    await expect(screen.getByTestId("lang-switch")).toHaveTextContent("EN");
     await expect(screen.getByTestId("sign-out")).toBeInTheDocument();
 
-    // Theme is ONE class on <html> (lib/colorMode.ts) — the same single line the toolbar switch runs.
-    await userEvent.click(dark);
+    // Theme is ONE class on <html> (lib/colorMode.ts) — the same single line the toolbar switch runs. The ROW is the
+    // control (the-account-menu-switches-theme-and-language), and the menu stays open to show the change.
+    await userEvent.click(theme);
     await waitFor(() => expect(document.documentElement).toHaveClass("dark"));
+    await expect(screen.getByTestId("theme-switch")).toBeVisible();
+    await userEvent.click(screen.getByTestId("theme-switch"));
+    await waitFor(() => expect(document.documentElement).not.toHaveClass("dark"));
   },
 };
 
