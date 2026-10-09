@@ -228,7 +228,7 @@ func foldLines(tx *gorm.DB, day string, supplierID, teamID uint64, lines []*even
 	var products, rc, rv, lc, lv, bc, bv []int64
 
 	for _, line := range lines {
-		accepted, lost, broken := line.GetAcceptedCount(), line.GetLostCount(), line.GetBrokenCount()
+		accepted, lost, broken := line.GetAcceptedCount(), line.GetMissingCount(), line.GetBrokenCount()
 		if accepted == 0 && lost == 0 && broken == 0 {
 			continue
 		}

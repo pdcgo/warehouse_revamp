@@ -19,6 +19,11 @@ export interface RackSelectProps {
   /** Label for the not-answered-yet option; defaults to the translated "select a place". */
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Offer the unplaced pile? Default true. A restock accept passes false: the good units of a box always go onto a
+   * placement (there-is-no-unplaced-pile), so "Unplaced" is not an answer there.
+   */
+  allowUnplaced?: boolean;
 }
 
 // RackSelect is the shared place picker for a warehouse (#139) — the racks plus the unplaced pile.
@@ -40,9 +45,16 @@ export interface RackSelectProps {
 // it. Select models it directly: an empty value array IS "nothing selected", so the hack is gone
 // while the semantics are identical.
 export const description =
-  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile. Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
+  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile (allowUnplaced={false} leaves it out — a restock accept). Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
 
-export function RackSelect({ warehouseId, value, onChange, placeholder, disabled }: RackSelectProps) {
+export function RackSelect({
+  warehouseId,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  allowUnplaced = true,
+}: RackSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("racks.select.placeholder");
 
@@ -56,14 +68,14 @@ export function RackSelect({ warehouseId, value, onChange, placeholder, disabled
       createListCollection({
         items: [
           // Rendered even when the rack list failed to load: "unplaced" is answerable without it.
-          { label: t("racks.select.unplaced"), value: UNPLACED },
+          ...(allowUnplaced ? [{ label: t("racks.select.unplaced"), value: UNPLACED }] : []),
           ...racks.map((rack) => ({
             label: rack.name ? `${rack.code} — ${rack.name}` : rack.code,
             value: rack.id.toString(),
           })),
         ],
       }),
-    [racks, t],
+    [racks, t, allowUnplaced],
   );
 
   return (

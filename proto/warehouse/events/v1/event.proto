@@ -101,6 +101,9 @@ message Event {
     SettlementLogPosted settlement_log_posted = 300;
 
     RestockAccepted restock_accepted = 400;
+    RestockCreated restock_created = 401;
+    RestockCancelled restock_cancelled = 402;
+    RestockUpdated restock_updated = 403;
   }
 }
 
@@ -307,6 +310,9 @@ message RestockAccepted {
   string accepted_on = 5;
 
   repeated RestockAcceptedLine lines = 6;
+
+  // The accept's instant, unix seconds (restock-accepted-carries-every-line) — the day above is derived from it.
+  int64 accepted_at_unix = 7;
 }
 
 // One line as the accept counted it. Lost and broken sit BESIDE accepted, never inside it, so
@@ -326,6 +332,69 @@ message RestockAcceptedLine {
   int64 accepted_count = 5;
   // Units that arrived broken.
   int64 broken_count = 6;
-  // Units short in the box — the accept's LOST damage type.
-  int64 lost_count = 7;
+  // Units short in the box — the MISSING problem row (a-short-unit-at-the-door-is-missing). Renamed in place from
+  // lost_count.
+  int64 missing_count = 7;
+
+  // The line's own supplier and store (a-line-names-the-channel-it-was-bought-from); 0 = not named. Until restock lines
+  // store them, the restock-level supplier_id above is what a fold reads.
+  uint64 supplier_id = 8;
+  uint64 supplier_channel_id = 9;
+}
+
+// RestockCreated announces a restock was RAISED — the money left the paying account then
+// (a-created-restock-tells-the-financial-account, a-restock-must-name-the-account-that-paid).
+//
+// Published by inventory_service after RestockRequestCreate commits; financial_account_service posts the payment.
+// `event_id` is `restock-created:<restock_id>`.
+message RestockCreated {
+  option (event_config).topic = "restock-created";
+
+  uint64 restock_id = 1;
+  // The selling team that raised it.
+  uint64 team_id = 2;
+  uint64 warehouse_id = 3;
+  // The operational account that paid.
+  uint64 finance_account_id = 4;
+  // Goods plus shipping, whole rupiah — never the courier's charge, which the warehouse paid
+  // (the-couriers-charge-stays-out-of-total).
+  int64 amount = 5;
+  uint64 actor_id = 6;
+  int64 created_at_unix = 7;
+}
+
+// RestockCancelled announces an ONGOING restock was called off (a-restock-is-cancelled-only-while-ongoing).
+//
+// `money_returned` decides what the financial account does: yes posts a refund of `amount` into the account that
+// paid, no posts nothing (a-restock-names-its-paying-account). `event_id` is `restock-cancelled:<restock_id>` — a
+// restock is cancelled once.
+message RestockCancelled {
+  option (event_config).topic = "restock-cancelled";
+
+  uint64 restock_id = 1;
+  uint64 team_id = 2;
+  uint64 finance_account_id = 3;
+  int64 amount = 4;
+  bool money_returned = 5;
+  uint64 actor_id = 6;
+  int64 cancelled_at_unix = 7;
+}
+
+// RestockUpdated announces an edit that changed WHAT WAS PAID, or FROM WHERE (an-edit-sends-the-difference,
+// an-edit-may-move-the-payment-to-another-account). Not sent for an edit that changed nothing paid.
+//
+// Both sides are carried so a consumer never re-derives them: the same account means post new − old; a different
+// account means the old one gets old_amount back and the new one pays new_amount. `event_id` is
+// `restock-updated:<restock_id>:<restock_log_id>` — one per edit.
+message RestockUpdated {
+  option (event_config).topic = "restock-updated";
+
+  uint64 restock_id = 1;
+  uint64 team_id = 2;
+  uint64 old_finance_account_id = 3;
+  uint64 new_finance_account_id = 4;
+  int64 old_amount = 5;
+  int64 new_amount = 6;
+  uint64 actor_id = 7;
+  int64 updated_at_unix = 8;
 }

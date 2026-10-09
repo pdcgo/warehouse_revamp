@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
-	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
@@ -68,23 +67,10 @@ type recordingPoster struct {
 	fail    error
 }
 
-// codLines is the cost-line form of what these tests used to write as `CodShippingFee: n` (00021):
-// one INCIDENTAL line, which is what every one of them means by "this delivery cost the warehouse n
-// at the door". A zero is no lines at all — not a line of zero, which the handler refuses.
-//
-// ⚠ THE NOTE IS NO LONGER OPTIONAL (an-incidental-line-must-say-what-it-was-for). It used to be, for
-// the kind that no longer exists, so every fixture here has to say what the money was.
-func codLines(amount int64) []*inventoryv1.RestockCostLine {
-	if amount == 0 {
-		return nil
-	}
-
-	return []*inventoryv1.RestockCostLine{{
-		Kind:   inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL,
-		Amount: amount,
-		Note:   "courier at the door",
-	}}
-}
+// courierNote is what every fixture here says the courier's charge at the door was for. A restock carries ONE such
+// charge, as `warehouse_additional_cost` (the-courier-is-paid-once-per-restock), and its note is REQUIRED above 0
+// (an-incidental-line-must-say-what-it-was-for) — so every accept that charges anything says what the money was.
+const courierNote = "courier at the door"
 
 type codPosting struct {
 	sellingTeamID    uint64

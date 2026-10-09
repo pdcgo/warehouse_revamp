@@ -50,181 +50,103 @@ fails, the whole transaction (dedup row included) rolls back so a redelivery rep
 
 ---
 
-## Restock requests (#105)
+## Restock requests
 
-A **two-sided** flow across two teams and three tables. A SELLING team asks a WAREHOUSE to restock a
-product; the warehouse fulfils it, and *fulfilment is what receives the stock*. The request row and
-the stock ledger can never diverge because the fulfil does both in **one transaction**.
+A **two-sided** flow across two teams. A SELLING team restocks into a WAREHOUSE; the warehouse signs for the box and
+counts it in, and *the accept is what receives the stock*. The design is
+[restock.md](../../business/inventory/restock.md) and its decisions in
+[restock_decision.md](../../business/inventory/restock_decision.md); the contract was **rewritten in place** to it
+([the-restock-contract-changes-in-place](../../business/inventory/restock_decision.md#the-restock-contract-changes-in-place)).
 
-- **`RestockRequestCreate`** — the SELLING team (`requesting_team_id`, `use_scope`) raises a `pending`
-  request naming the target `warehouse_id`, a `shipping_code`, and **one or more priced lines**
-  (product + `sku`/`name` snapshot + quantity + per-unit price, #124). Optionally an `order_ref` (free
-  text — the order lives in someone else's system, #127), a `receipt` (resi), a `supplier_id` (a **live supplier of
-  any selling team**, asked of [supplier_service](../supplier_service/rpc.md#who-asks-the-supplier) — a deleted or
-  unknown one is **NotFound**), plus the restock's own money and context: a
-  `shipping_cost` (the freight, on top of the per-line prices), a `payment_type`, and a `note`.
-  No stock is touched.
-- **`RestockRequestList`** — returns rows where `requesting_team_id = team_id` **OR**
-  `warehouse_id = team_id`, so the one RPC serves both the requester's "my requests" view and the
-  warehouse's "incoming" view. Paginated, newest first. Lines are **preloaded** in one extra query
-  keyed by request id, so a page costs 2 queries rather than N+1.
-  - **Every filter is server-side**, and that is forced by pagination rather than chosen: a
-    client-side filter narrows the loaded page only, while `total_items` goes on counting the
-    unfiltered set and the pager confidently offers pages that no longer exist.
-  - **The two lenses are mirror images, and each screen offers exactly one.** `warehouse_id` is the
-    BUYER's ("what is going to Jakarta") — meaningless to a warehouse, where it could only equal the
-    caller. `requesting_team_id` is the RECEIVER's ("what is coming from Bandung") — meaningless to a
-    seller for the same reason.
-  - ⚠ **A lens NARROWS the two-sided scope, it never replaces it.** The `requesting_team_id = ? OR
-    warehouse_id = ?` clause still applies, so a warehouse naming a selling team gets that team's
-    restocks *addressed to itself* — not that team's whole book. A filter written as a substitute for
-    the scope passes every ordinary test and hands one warehouse another's inbound queue.
-- **`RestockRequestDetail`** — one request in full, with its lines, for the detail page (#125). The
-  same two-sided scope as List, and the scope **is** the `WHERE` clause: a request that is neither
-  yours nor targeting you reads as **NotFound**, never PermissionDenied — a permission error would
-  confirm the id exists.
-- **`RestockRequestFulfill`** — the TARGET WAREHOUSE (`warehouse_id`, `use_scope`) receives the stock
-  and flips the status, atomically. The request is loaded `FOR UPDATE` scoped to this warehouse
-  (another warehouse's request reads as **NotFound**) and must be `pending` (a re-fulfil is
-  **FailedPrecondition**). **Every line is received inside the one transaction** (#124) — a request
-  half-received would be worse than one not received at all, and the status flip has to mean all of
-  it landed. A request with no lines is refused rather than "fulfilled" having moved nothing.
-  - **Accepting IS counting** (#133) **AND shelving** (#137). The call carries `lines` — one
-    `RestockRequestReceivedLine` per item, each saying how many turned up **and which shelf they went
-    on** — and **stock receives `received_quantity`, never the requested `quantity`**, onto the rack
-    named. A request is a promise and a delivery is a fact; receiving the promise on the warehouse's
-    behalf would be inventing stock it does not have.
-  - **A line that arrived must say WHERE it went** (#137). Goods that turned up are somewhere, and the
-    system is told rather than guessing: a placeless arrived line is **InvalidArgument**. A line
-    counted `0` owes no place — nothing is there to put anywhere — and one left pre-filled beside a
-    zeroed count is an ordinary screen state, not a contradiction worth refusing. `unplaced` stays a
-    legal answer for a warehouse that has not shelved yet; #136 is how that pile gets shelved later.
-    The rack must belong to the **accepting** warehouse (another's reads as **NotFound**).
-  - **The count must cover the request exactly**: every line named once, nothing omitted, nothing
-    extra. An incomplete count is **InvalidArgument** — refused, not interpreted. Reading a missing
-    line as "all of it came" or "none did" is a guess, and a guess about stock is drift. There is
-    deliberately **no "accept as asked" shortcut**, because that shortcut is how a warehouse ends up
-    holding stock nobody ever counted.
-  - **A short count still fulfils.** The goods arrived and the request has done its job. Nothing is
-    hidden by that: `quantity` (asked) and `received_quantity` (arrived) both stay on the line, so the
-    shortfall remains on the record for whoever chases the supplier.
-  - **A line counted `0` moves no stock at all** — no zero-quantity movement is appended. A ledger row
-    saying nothing happened is worse than no row, because it reads as a receipt.
-  - **A COD acceptance writes TWO timeline events, fee first** (#155/#184). Paying the courier at the
-    door and counting the box in are two facts about two pockets: one says goods landed, the other says
-    the warehouse is out of pocket for goods it does not own and the requesting team now owes it. Folded
-    into the acceptance, the payment is invisible on the timeline of the team that has to settle it.
-    Both carry the same instant, so the ORDER comes from the insert order — Detail sorts `at ASC, id
-    ASC`. A fee of `0` writes no event, exactly as it posts no ledger entry.
-- **`RestockRequestUpdate`** — the REQUESTER edits its own request **while the warehouse has not
-  accepted it** (#131). Until then nothing has physically happened, so there is nothing to protect and
-  the request is freely editable — the warehouse it targets included. Once it is `fulfilled` the goods
-  have moved, and once `cancelled` it is closed, so both are **FailedPrecondition**; another team's
-  request is **NotFound**, as for Cancel.
-  - It is a **full replace, not a patch** — the edit screen is the create form re-opened, so it
-    submits every field back and an empty one means *cleared*. The handler writes with a **column
-    map, not a struct**: GORM skips a struct's zero values, which would silently keep the old note or
-    supplier while the form showed them gone.
-  - **Lines are rewritten, not diffed** (delete + re-insert in the transaction). While a request is
-    pending nothing references a line — stock only moves at fulfil — so their ids are not worth
-    preserving, and a rewrite cannot drift the way a partial diff can.
-  - Guarded `FOR UPDATE` **inside the transaction**, like Fulfil and Cancel: the status check and the
-    write must be atomic, or an edit racing the warehouse's acceptance could land just after the stock
-    was received and change the quantities that were accepted. Both take the same row lock, so the
-    loser sees the other's committed status and bails.
-  - **The supplier is asked BEFORE the row is locked** and the answer judged under the lock — a call to another service
-    never runs while the request is held `FOR UPDATE`, or a warehouse accepting the delivery would wait out a network
-    round-trip ([the audit](../../../audits/services/inventory_service/concurrency/RestockRequestUpdate.md)).
-  - **The supplier is only re-validated when it CHANGES.** A full replace re-sends the supplier the
-    form prefilled, so an unchanged id is the request *preserving* a reference it already holds, not
-    making a new one. Since `SupplierDelete` is a **soft** delete and supplier_service answers a deleted
-    supplier as not live, re-checking an untouched id would make deleting a supplier permanently brick
-    every pending request that names it — rejecting the edit over a field the person never touched.
-    *Adopting* a deleted supplier is still **NotFound**; *keeping* one that predates the deletion is
-    not.
-- **`RestockRequestCancel`** — the REQUESTER (`requesting_team_id`, `use_scope`) cancels its own
-  still-`pending` request (another team's reads as **NotFound**; a non-pending one is
-  **FailedPrecondition**). No stock is touched.
+> ⚠ **Until the restock backend step.** The contract is ahead of the tables: `finance_account_id`, `shipment_id`,
+> `receipt_file`, a line's `supplier_id` / `supplier_channel_id` / `note`, a problem row's `note` and cancel's
+> `money_returned` are **accepted but not stored**; `RestockRequestArrive` and `RestockRequestMarkLost` answer
+> **Unimplemented**. The stored status text still says `pending` for ONGOING and `fulfilled` for ACCEPTED, and a
+> missing problem row is stored as `lost` — the mapper translates; renaming the data is that step's migration.
+
+| RPC | Who | From → to | What it does |
+| --- | --- | --- | --- |
+| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction; each product once; the lines' common supplier is stored at the restock level until lines store their own |
+| `RestockRequestList` / `Detail` | either side | — | rows where `requesting_team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
+| `RestockRequestUpdate` | selling team | ongoing | a full replace of the restock. The arrived window — lines only, new lines allowed, none removed — opens with `Arrive` |
+| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | *Unimplemented until the backend step* |
+| `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
+| `RestockRequestMarkLost` | selling team | ongoing → lost | *Unimplemented until the backend step* |
+| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once |
+| `RestockRequestLabels` | warehouse | accepted | one label per placement the good units went to |
+| `RestockInboundStat` | warehouse | — | what is still coming: ongoing **and** arrived |
 
 ### Lifecycle
 
-`pending` is the only writable state: it is where the requester still owns the request, and it is why
-edit and cancel both live there and nowhere else.
-
 ```mermaid
 stateDiagram-v2
-    [*] --> pending: RestockRequestCreate (selling team)
-    pending --> pending: RestockRequestUpdate (requester) — freely edited, not yet accepted (#131)
-    pending --> fulfilled: RestockRequestFulfill (target warehouse) — COUNTS what arrived, receives that (#133)
-    pending --> cancelled: RestockRequestCancel (requester)
-    fulfilled --> [*]
+    [*] --> ongoing: Create — selling team
+    ongoing --> ongoing: Update — anything
+    ongoing --> arrived: Arrive — warehouse signs for the box
+    ongoing --> accepted: Accept — warehouse
+    arrived --> arrived: Update — the lines only
+    arrived --> accepted: Accept — warehouse
+    ongoing --> lost: MarkLost — selling team
+    lost --> arrived: Arrive — a late box
+    ongoing --> cancelled: Cancel — selling team
+    accepted --> [*]
     cancelled --> [*]
-    note right of fulfilled
-        FailedPrecondition if already
-        fulfilled/cancelled (guarded FOR UPDATE) —
-        for Update as much as for Fulfil/Cancel
-    end note
 ```
 
-### Fulfil transaction (the one that must not diverge)
+Every move takes the restock row `FOR UPDATE` first and checks the status under it, so an accept and a cancel at the
+same second queue on one lock and the second sees what the first did
+([accept-locks-the-restock](../../business/inventory/restock_decision.md#accept-locks-the-restock)).
 
-The warehouse arrives at this with a **count**, not a confirmation: it has opened the box, and `lines`
-says how many of each line actually turned up **and which shelf each went on**. Everything below moves
-that number, onto that shelf — never the ask, never a guessed place.
+### The accept transaction
+
+Per line the warehouse types **what is in the box** and **how many of those are broken**; good and missing are worked
+out ([any-warehouse-member-counts-what-arrived](../../business/inventory/restock_decision.md#any-warehouse-member-counts-what-arrived)).
 
 ```mermaid
 sequenceDiagram
-    participant W as Warehouse staff
-    participant H as RestockRequestFulfill
-    participant DB as Postgres (one tx)
+    participant W as Warehouse member
+    participant H as RestockRequestAccept
+    participant DB as Postgres - one tx
 
-    W->>H: RestockRequestFulfill{team_id=warehouse, request_id,<br/>lines=[{item_id, received_quantity,<br/>place: rack_id | unplaced}, …]} (#133/#137)
-    activate H
-    H->>DB: BEGIN
-    H->>DB: SELECT restock_requests<br/>WHERE id=? AND warehouse_id=? FOR UPDATE
-    alt not found for this warehouse
-        DB-->>H: ErrRecordNotFound
+    W->>H: lines [item, received, broken, notes, placements], courier charge + note
+    H->>H: charge above 0 without a note → InvalidArgument
+    H->>DB: SELECT restock WHERE id AND warehouse_id FOR UPDATE
+    alt not this warehouse's
         H-->>W: NotFound
-    else found but status != pending
-        H-->>W: FailedPrecondition (re-fulfil)
-    else count does not cover the request exactly
-        Note over H: a line omitted, counted twice,<br/>or not on this request
-        H-->>W: InvalidArgument — refused, never interpreted (#133)
-    else a line ARRIVED but named no place
-        H-->>W: InvalidArgument — goods that turned up are<br/>somewhere, so say where (#137)
-    else a named rack is not this warehouse's
-        H-->>W: NotFound — never PermissionDenied
-    else pending, count complete, places named
-        loop every line of the request (#124)
-            H->>DB: UPDATE restock_request_items<br/>SET received_quantity, received_rack_id
-            alt counted == 0 (never turned up)
-                Note over H,DB: no movement — a zero row<br/>would read as a receipt.<br/>No place owed either.
-            else counted > 0
-                H->>DB: applyDelta(warehouse, product, RACK, +COUNTED) → balance
-                H->>DB: INSERT stock_movements (RECEIVE, rack, ref=shipping_code)
-                Note over H,DB: straight onto the named shelf —<br/>counting and shelving are ONE act
+    else not ongoing or arrived
+        H-->>W: FailedPrecondition
+    else a line missing, doubled, over its count, broken above received, or misplaced
+        H-->>W: InvalidArgument — refused, never interpreted
+    else the count is complete
+        loop every line
+            H->>DB: received_quantity = good units
+            H->>DB: problem rows — broken as typed, missing = count − received
+            opt good units
+                H->>DB: mint the line's batch at the landed price
+                H->>DB: one movement and shelf row per placement
             end
         end
-        H->>DB: UPDATE restock_requests SET status='fulfilled',<br/>cod_shipping_fee, accepted_by_user_id, accepted_at
-        Note over H,DB: a SHORT count still fulfils — both<br/>asked and arrived stay on the line
-        opt cod_shipping_fee > 0 (#155)
-            H->>DB: INSERT restock_request_events (cod_fee)
-            Note over H,DB: written FIRST — the courier is paid at the door,<br/>THEN the box is counted in. Nothing at all when the<br/>fee is 0, which is most deliveries.
-            H->>DB: PostCODFee → liability ledger (#184)
+        H->>DB: status accepted, accepted_by, accepted_at
+        opt courier charge above 0
+            H->>DB: one cost line, a trail row, the debt to the warehouse
         end
-        H->>DB: INSERT restock_request_events (accepted)
-        Note over H,DB: same instant as accepted_at — the timeline and<br/>the accepted-date filter name one second
-        H->>DB: COMMIT
-        DB-->>H: ok
-        H-->>W: RestockRequest{status=fulfilled}
+        H->>DB: trail row accepted, COMMIT
+        H-->>W: the restock, accepted
     end
-    deactivate H
 ```
 
-`applyDelta` + `appendMovement` are the same stock primitives `StockReceive` uses (see
-[service.go](../../../backend/services/inventory_service/inventory_v1/service.go)), so a fulfilment is
-indistinguishable in the ledger from a manual receive except for its `reason` (`"restock request"`)
-and `ref` (the request's `shipping_code`).
+| Rule | Decision |
+| --- | --- |
+| received above the line's count is refused — the selling team adds the extra by an edit first | [accept-refuses-more-than-the-line-says](../../business/inventory/restock_decision.md#accept-refuses-more-than-the-line-says) |
+| the short units are a MISSING row, worked out, never typed | [a-short-unit-at-the-door-is-missing](../../business/inventory/restock_decision.md#a-short-unit-at-the-door-is-missing) |
+| the good units go onto placements of this warehouse, exactly received − broken; there is no unplaced choice | [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile) |
+| a problem row's worth is the line's share, filled on read | [the-problem-price-is-filled-by-the-system](../../business/inventory/restock_decision.md#the-problem-price-is-filled-by-the-system) |
+| one batch per line with good units; unit cost = line total ÷ good units + (shipping + courier charge) ÷ all good units | [one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line) |
+| one courier's charge, its note required; outside the restock's total, inside the unit price; the debt posts in the same transaction | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [the-couriers-debt-is-written-in-the-accept](../../business/inventory/restock_decision.md#the-couriers-debt-is-written-in-the-accept) |
+| an empty problem note is stored as words while 00013's `CHECK (reason <> '')` stands | [a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional) |
+
+`applyDelta` + `appendMovement` are the same stock primitives `StockReceive` uses, so an accept is indistinguishable in
+the ledger from a manual receive except for its `reason` (`"restock request"`) and `ref` (the tracking number).
 
 ---
 
@@ -250,7 +172,7 @@ or explicitly the unplaced pile. It is a **required `oneof`**, and the handler r
 reading the zero value, because `GetRackId()` returns 0 both for *"unplaced"* and for *"said nothing"*.
 Silently treating the second as the first is the bug the field exists to prevent: a stock-take that
 corrects a pile nobody counted. **Refuse, do not interpret** — the same rule as the per-line count in
-`RestockRequestFulfill`.
+`RestockRequestAccept`.
 
 The rejected alternative was a warehouse-level figure. It needed a rule for spreading a correction
 across a product's shelves (proportionally? onto unplaced? refuse?) and **every such rule invents a
@@ -352,54 +274,37 @@ person moves them, so recording them as "somewhere" would invent a location nobo
 
 ## Accepting a delivery (#154, #155, #157)
 
-Accepting is **counting** (#133) — and since #154 it is also saying **where each part went** and
-**what arrived broken**, with a COD fee that changes what it all cost. That is a form with sections,
-so the warehouse's Accept surface is a **page**, not a dialog.
+Accepting is **counting** — what is in the box and how many are broken, per line — and **saying where the good units
+went**, with the courier's charge at the door beside it. That is a form with sections, so the warehouse's Accept surface
+is a **page**, not a dialog.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant W as Warehouse crew
+    participant W as Warehouse member
     participant UI as Accept page
     participant I as inventory_service
 
-    UI->>I: RestockRequestDetail — the lines
-    UI->>I: ProductPlaces — where these products already live (#156)
-    I-->>UI: "A-01-3 (40), Unplaced (12)"
-
-    Note over W,UI: count, split across shelves, record breakage,<br/>type the COD fee — HPP updates live
-
-    UI->>I: RestockRequestFulfill — lines + placements + damaged + cod_shipping_fee
-
-    rect rgb(240, 240, 240)
-        Note over I: ONE transaction
-        I->>I: refuse unless placements sum to the count
-        I->>I: record breakage — never enters stock
-        I->>I: one movement PER PLACE
-        I->>I: status -> FULFILLED, store the COD fee
-    end
-
-    I-->>UI: the fulfilled request
+    UI->>I: RestockRequestDetail — the lines, their notes
+    UI->>I: ProductPlaces — where these products already live
+    Note over W,UI: type received and broken, split the good units across placements, type the courier's charge and its note — HPP updates live
+    UI->>I: RestockRequestAccept
+    I-->>UI: the accepted restock
 ```
 
-### The three rules the screen mirrors
+### The rules the screen mirrors
 
 | Rule | Why |
 | --- | --- |
-| A blank count is **not** zero | 0 means "looked, nothing came". Blank means nobody counted — submitting it as 0 would write off a line no one examined. |
-| Placements must **sum** to the count | Counting 8 and placing 7 is an error in one of the two, and which is not knowable. Refused, never interpreted. |
-| Breakage **never** enters stock | Stock that cannot be sold is stock that fails at the shelf, in front of a customer. |
+| A blank count is **not** zero | 0 means "looked, none of it was in the box". Blank means nobody counted. |
+| Received above the line's count **blocks** Accept | the selling team adds the extra by an edit first (accept-refuses-more-than-the-line-says) |
+| Missing is **worked out**, never typed | ordered − received (a-short-unit-at-the-door-is-missing) |
+| Placements must **sum** to received − broken | counting 8 good and placing 7 is an error in one of the two |
+| The courier's charge needs a note, and sits **outside** the total | the-courier-is-paid-once-per-restock, the-couriers-charge-stays-out-of-total |
 
-The screen shows the imbalance **while typing** rather than refusing at the end — being told what is
-wrong after pressing a disabled button is how a form wastes somebody's time. But the guard is a single
-expression mirroring the server's rules: a second one beside it is how a screen's idea of "ready to
-send" drifts from the handler's idea of "acceptable".
-
-### HPP moves as you type
-
-The COD fee feeds the cost live (#155), because the person entering it is entitled to see what it does
-before committing. The screen's arithmetic mirrors `StockCost`'s SQL — same divisor (sellable units),
-same rounding (down) — so the figure on screen is the one an order will actually book.
+The guard is a single expression mirroring the handler's rules — a second one beside it is how a screen's idea of
+"ready to send" drifts from the handler's idea of "acceptable". The HPP preview mirrors the accept's arithmetic, the
+courier's charge included, so the figure on screen is the one the batch freezes.
 
 ---
 
@@ -411,7 +316,7 @@ asks *what have I committed that has not landed*; the warehouse asks *what work 
 ```mermaid
 flowchart LR
     subgraph "the same rows, read from two ends"
-      RR["restock_requests (status = pending)"]
+      RR["restock_requests (ongoing or arrived)"]
       RI[restock_request_items]
       RI --> RR
     end
@@ -419,7 +324,7 @@ flowchart LR
     RR -->|"warehouse_id = team"| I["RestockInboundStat — work waiting"]
 ```
 
-Four figures over **pending restocks targeting this warehouse**, narrowed by the same
+Four figures over **ongoing and arrived restocks coming to this warehouse**, narrowed by the same
 `requesting_team_id` lens the list uses — a headline that ignored the filter under it would contradict
 the table it sits above.
 
@@ -427,12 +332,12 @@ the table it sits above.
 | --- | --- | --- |
 | `restock_count` | `COUNT(*)` over the pending REQUESTS | Over requests, not the item join — a two-line delivery is **one** delivery. 3 deliveries of 400 pieces and 30 of 400 are the same stock and completely different amounts of door-opening. |
 | `product_count` | **DISTINCT** `product_id` across the queue | Counting LINES reports 4 for one SKU on four deliveries. It is one thing to find a shelf for, and put-away is the job this number sizes. |
-| `unit_count` | Σ `quantity` | The **asked** quantity — nobody has counted these yet, which is exactly why they are in the queue. |
-| `amount` | Σ `total_price` | **Goods only.** `shipping_cost` is what the buying team paid to get them moving and `cod_shipping_fee` is 0 until someone accepts, so either would answer a question about somebody else's spending. |
+| `unit_count` | Σ ordered `count` | The **asked** quantity — nobody has counted these yet, which is exactly why they are in the queue. |
+| `amount` | Σ `total_price` | **Goods only.** Shipping is what the buying team paid to get them moving and the courier's charge is 0 until someone accepts, so either would answer a question about somebody else's spending. |
 | `oldest_pending_unix` | `MIN(created_at)` over the REQUESTS | Over requests, not their lines — a line-less request still waits at the door, and a MIN over the item join would skip it. A count of 7 hides the box that has sat since Monday. |
 
-**PENDING is the whole meaning of it.** A fulfilled delivery has been counted and become stock; a
-cancelled one never arrives. Either leaking in produces a queue that never drains.
+**Still coming is the whole meaning of it** — on its way, or at the door not yet counted. An accepted restock has
+become stock; a lost or cancelled one never arrives. Either leaking in produces a queue that never drains.
 
 `MIN`/`MAX` over no rows is **NULL, not 0** — the scan target is nullable, and an empty queue reports
 `0` (the RPC's "never"), which the UI renders as an em dash rather than "0 days".
@@ -749,20 +654,23 @@ split the single-adjust path draws, and for the same reason.
 now the only one of the three paths out of step, on both axes — an open **contradiction**, left
 standing deliberately: changing a shipped money path is the owner's call.
 
-## RestockRequestFulfill — announces the accept
+## RestockRequestAccept — announces the accept
 
-After the accept COMMITS, `RestockRequestFulfill` publishes `RestockAccepted` — the restock, its two teams, its
-supplier, the accept's Jakarta day, and per line the ordered count, the total, the good units, the broken and the short
-([each-figure-is-read-at-the-accept](../../business/supplier/context_decision.md#each-figure-is-read-at-the-accept)).
+After the accept COMMITS, `RestockRequestAccept` publishes `RestockAccepted` — the restock, its two teams, its
+supplier, the accept's Jakarta day and instant, and per line the ordered count, the total, the good units, the broken,
+the missing and the line's supplier
+([restock-accepted-carries-every-line](../../business/inventory/restock_decision.md#restock-accepted-carries-every-line)).
 supplier_service folds it into a supplier's figures ([its doc](../supplier_service/rpc.md#the-figures--a-fold-of-restock-accepted)).
+The restock's other money events — Restock Created, Cancelled and Updated, for the financial account — are in the
+contract and published from the backend step.
 
 ```mermaid
 sequenceDiagram
-  participant W as warehouse Staff
+  participant W as warehouse member
   participant INV as inventory_service
   participant PS as Pub/Sub — restock-accepted
-  W->>INV: RestockRequestFulfill — the count, the places, the damage
-  INV->>INV: one transaction — stock, batches, cost lines, the timeline, the COD obligation
+  W->>INV: RestockRequestAccept — the count, the placements, the courier's charge
+  INV->>INV: one transaction — stock, batches, problem rows, the trail, the courier's debt
   INV-->>INV: COMMIT
   INV->>PS: RestockAccepted — event_id restock-accepted N
   Note over INV,PS: a failed publish is logged with its event_id, never fails the accept

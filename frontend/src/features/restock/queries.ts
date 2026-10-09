@@ -303,13 +303,37 @@ export function useCancelRestockRequest() {
   });
 }
 
-// Accepting a delivery. See the warning above for why this one invalidates stock and racks too.
-export function useFulfillRestockRequest() {
+// Counting the box in (accept-locks-the-restock). See the warning above for why this one invalidates stock and racks
+// too.
+export function useAcceptRestockRequest() {
   const invalidateStock = useInvalidateStock();
 
   return useMutation({
-    mutationFn: (vars: Parameters<typeof restockClient.restockRequestFulfill>[0]) =>
-      restockClient.restockRequestFulfill(vars),
+    mutationFn: (vars: Parameters<typeof restockClient.restockRequestAccept>[0]) =>
+      restockClient.restockRequestAccept(vars),
     onSuccess: () => invalidateStock(),
+  });
+}
+
+// The warehouse signing for the box: ongoing or lost → arrived (the-warehouse-signs-and-accepts-the-team-does-the-rest).
+// No goods move — the box is in the building, not yet counted — so it stays within ["restock"].
+export function useArriveRestockRequest() {
+  const invalidate = useInvalidateRestock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof restockClient.restockRequestArrive>[0]) =>
+      restockClient.restockRequestArrive(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// The selling team giving the parcel up: ongoing → lost (lost-is-set-only-before-the-box-arrives).
+export function useMarkLostRestockRequest() {
+  const invalidate = useInvalidateRestock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof restockClient.restockRequestMarkLost>[0]) =>
+      restockClient.restockRequestMarkLost(vars),
+    onSuccess: () => invalidate(),
   });
 }

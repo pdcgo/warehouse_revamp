@@ -20,7 +20,7 @@ func TestBatchReceipt(t *testing.T) {
 	const warehouse uint64 = 5
 
 	// GRN-0721: Kaos (100 arrived, all accepted, on rack A) and Topi (30 arrived, 2 damaged, 28
-	// accepted, unplaced).
+	// accepted, on the staging placement — there-is-no-unplaced-pile).
 	req := seedTwoBatches(t, svc, warehouse)
 	deliveryID := req.GetId()
 
@@ -58,14 +58,15 @@ func TestBatchReceipt(t *testing.T) {
 		t.Errorf("kaos should sit on a real rack, got %v", kaos.GetRackIds())
 	}
 
-	// Topi — 2 broke and never entered stock; the 28 accepted are unplaced (rack 0).
+	// Topi — 2 broke and never entered stock; the 28 accepted sit on the staging placement. Every unit in stock is
+	// on a placement (there-is-no-unplaced-pile), so it is a real one — never rack 0 — and not Kaos's shelf.
 	topi := byProduct[200]
 	if topi.GetArrived() != 30 || topi.GetDamaged() != 2 || topi.GetAccepted() != 28 {
 		t.Errorf("topi arrived/damaged/accepted = %d/%d/%d, want 30/2/28",
 			topi.GetArrived(), topi.GetDamaged(), topi.GetAccepted())
 	}
-	if len(topi.GetRackIds()) != 1 || topi.GetRackIds()[0] != 0 {
-		t.Errorf("topi should be unplaced (rack 0), got %v", topi.GetRackIds())
+	if len(topi.GetRackIds()) != 1 || topi.GetRackIds()[0] == 0 || topi.GetRackIds()[0] == kaos.GetRackIds()[0] {
+		t.Errorf("topi should sit on the staging placement, got %v (kaos on %v)", topi.GetRackIds(), kaos.GetRackIds())
 	}
 
 	// Totals: accepted 100 + 28 = 128; value is the sum of the known-cost line costs.

@@ -60,6 +60,8 @@ import {
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
+import { restockRequestService } from "./restockStub";
+import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -208,8 +210,14 @@ function pagedColumnarBy<C extends string, R>(
 type StubTerms = (typeof liabilityTerms)[number];
 let termsTable: StubTerms[] = [...liabilityTerms];
 
-// The payments the stub serves — WRITEABLE, because rejecting one changes it. Reset per story.
+// The payments the stub serves — WRITEABLE, because recording, accepting and rejecting one change it.
+// Reset per story.
 let paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+let nextPaymentId = 700n;
+
+// The positions — WRITEABLE too, because ACCEPTING a payment moves one. Signed from team 11's side,
+// like the fixture. Reset with the payments, since only a payment's acceptance writes it.
+let positionsTable = liabilityPositions.map((p) => ({ ...p }));
 
 // The shipment channel table — WRITEABLE, because create, edit, delete and restore are the screen. The
 // rows carry real timestamps so the Updated column moves when a write lands. Reset per story.
@@ -240,6 +248,8 @@ export function resetLiabilityTerms() {
 // depend on which story ran first.
 export function resetLiabilityPayments() {
   paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+  nextPaymentId = 700n;
+  positionsTable = liabilityPositions.map((p) => ({ ...p }));
 }
 
 // ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
@@ -746,6 +756,9 @@ export const transport = createRouterTransport(({ service }) => {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
   });
 
+  // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
+  service(RestockRequestService, restockRequestService);
+
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
   service(SupplierChannelService, supplierChannelService);
@@ -1236,7 +1249,7 @@ export const transport = createRouterTransport(({ service }) => {
     // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
     // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
     liabilityPositionList: (req) => {
-      const set = liabilityPositions.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
+      const set = positionsTable.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
 
       // ⚠ THE SUMMARY IS COMPUTED OVER `set`, NEVER OVER THE PAGE — the stub models the server, and
       // the whole point of these fields is that the tiles cannot be a reduce of what loaded. A stub
@@ -1267,7 +1280,7 @@ export const transport = createRouterTransport(({ service }) => {
         req.page,
       ),
       balance:
-        liabilityPositions.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
+        positionsTable.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
     }),
 
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
@@ -1313,6 +1326,57 @@ export const transport = createRouterTransport(({ service }) => {
         ),
         req.page,
       ),
+
+    // RECORD — the payer's claim. ⚠ IT POSTS NOTHING: a recorded payment is pending until the creditor
+    // accepts it, so the stub adds the row and leaves every balance where it was.
+    liabilityPaymentRecord: (req) => {
+      const row = {
+        id: nextPaymentId++,
+        payerTeamId: req.teamId,
+        creditorTeamId: req.creditorTeamId,
+        amount: req.amount,
+        status: 1,
+        note: req.note,
+        recordedBy: 1n,
+        confirmedBy: 0n,
+        createdAtUnix: BigInt(Math.floor(Date.now() / 1000)),
+        confirmedAtUnix: 0n,
+        documentIds: [...req.documentIds],
+        reason: "",
+      };
+      paymentsTable.unshift(row);
+
+      return { payment: row };
+    },
+
+    // ACCEPT — the `yes` arm, and the only act that lets a balance go down. The positions are signed
+    // from team 11's side, so a payment FROM the counterparty shrinks what they owe us, and a payment
+    // TO them shrinks what we owe them.
+    liabilityPaymentConfirm: (req) => {
+      const row = paymentsTable.find((p) => p.id === req.paymentId);
+
+      if (!row) {
+        throw new ConnectError("payment not found", Code.NotFound);
+      }
+
+      if (row.status !== 1) {
+        throw new ConnectError("only a recorded payment can be accepted", Code.FailedPrecondition);
+      }
+
+      row.status = 2;
+      row.confirmedBy = 1n;
+      row.confirmedAtUnix = BigInt(Math.floor(Date.now() / 1000));
+
+      const theyPaid = positionsTable.find((p) => p.counterpartyId === row.payerTeamId);
+      const wePaid = positionsTable.find((p) => p.counterpartyId === row.creditorTeamId);
+      if (theyPaid) {
+        theyPaid.balance -= row.amount;
+      } else if (wePaid) {
+        wePaid.balance += row.amount;
+      }
+
+      return { payment: row };
+    },
 
     // REJECT — the `no` arm of §Payment Flow. ⚠ IT POSTS NOTHING, so unlike confirm the stub mutates
     // only the claim's own row: a stub that also moved a balance would be modelling the bug this
@@ -1380,6 +1444,9 @@ export const transport = createRouterTransport(({ service }) => {
         },
       };
     },
+    // A payment's proof is SHARED with the creditor as it is uploaded (useProofUpload). The stub has
+    // no reader ACL to widen, so the share only has to succeed.
+    shareDocument: () => ({}),
     // A document uploaded in this story opens its own bytes; a fixture id (a proof the fixtures name)
     // gets a placeholder, as before.
     getDownloadUrl: (req) => ({

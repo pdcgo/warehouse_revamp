@@ -158,7 +158,23 @@
     "tabTerms": "Terms",
     "recordProof": "Proof of transfer",
     "recordProofHelp": "Required — an image or PDF of the transfer. It is shared with them so they can check it.",
-    "recordProofRemove": "Remove this file"
+    "recordProofRemove": "Remove this file",
+    "recordFromAccount": "Paid from",
+    "recordFromAccountPlaceholder": "Select the account you paid from",
+    "recordFromAccountHelp": "The account the transfer left. When they accept, the amount comes out of it.",
+    "confirmToAccount": "Received into",
+    "confirmToAccountPlaceholder": "Select the account it arrived in",
+    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first.",
+    "pending": {
+      "fromAccount": {
+        "label": "Paid from",
+        "reason": "A payment does not carry an account yet, so the one you pick is not saved. Once it does, accepting the payment takes the amount out of this account."
+      },
+      "toAccount": {
+        "label": "Received into",
+        "reason": "Accepting does not carry an account yet, so the one you pick is not saved. Once it does, the amount is added to this account."
+      }
+    }
   },
   "common": {
     "perPage": "Per page",
@@ -172,7 +188,8 @@
     "copied": "Copied",
     "copyFailed": "Could not copy — select the text and copy it by hand",
     "filters": "Filters",
-    "done": "Done"
+    "done": "Done",
+    "deleted": "Deleted"
   },
   "dateRange": {
     "all": "All dates",
@@ -1028,7 +1045,25 @@
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
     "selling": {
-      "subtitle": "Stock you've ordered in — what it cost, where it's going, and what actually landed."
+      "searchPlaceholder": "Search restock, tracking, invoice or SKU",
+      "pending": {
+        "lineSupplier": {
+          "label": "Supplier",
+          "reason": "A line's supplier and store are not stored yet, and store names are not served yet — the real server shows every row as not connected."
+        },
+        "courier": {
+          "label": "Courier",
+          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
+        },
+        "moneyReturned": {
+          "label": "Did the money come back?",
+          "reason": "Cancel asks it, but the answer is not sent on to the paying account yet."
+        },
+        "markLost": {
+          "label": "Mark Lost",
+          "reason": "Marking a restock lost is not built on the server yet — it answers \"not implemented\"."
+        }
+      }
     },
     "searchPlaceholder": "Search restock, tracking, order or SKU",
     "warehouseAll": "All warehouses",
@@ -1052,16 +1087,29 @@
     "dateField": {
       "created": "Created",
       "accepted": "Accepted",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "arrived": "Arrived",
+      "lost": "Lost"
     },
     "inbound": {
       "title": "Incoming Restocks",
-      "subtitle": "Deliveries on their way to this warehouse — accept one to count it onto the shelves.",
+      "subtitle": "Deliveries on their way to this warehouse — sign for a box when it arrives, accept it to count it onto the shelves.",
       "empty": "Nothing is coming in to this warehouse yet.",
       "fromAll": "From any team",
       "actorCreated": "Raised by",
       "actorAccepted": "Counted by",
-      "actorAll": "Anyone"
+      "actorAll": "Anyone",
+      "restocksHint": "on their way or at the door",
+      "pending": {
+        "courier": {
+          "label": "Courier",
+          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
+        },
+        "signForBox": {
+          "label": "Sign for Box",
+          "reason": "Signing for the box is not built on the server yet — it answers \"not implemented\". Accepting still works straight from ongoing."
+        }
+      }
     },
     "detail": {
       "title": "Restock Request",
@@ -1069,38 +1117,97 @@
       "back": "Back to Restock Requests",
       "notFound": "Restock request not found.",
       "invalidId": "Invalid restock request id.",
-      "request": "Request",
       "delivery": "Delivery",
       "created": "Created",
-      "sku": "SKU",
-      "name": "Name",
       "unitPrice": "Unit price",
       "lineTotal": "Line total",
-      "supplierRef": "Supplier #{{id}}",
-      "asked": "Asked",
-      "arrived": "Arrived",
-      "place": "Place",
-      "rackUnknown": "Unknown rack",
-      "receivedTotal": "Received into stock",
+      "rackUnknown": "Unknown placement",
       "tab": {
         "info": "Info",
-        "products": "Product",
-        "timeline": "Timeline",
-        "settlement": "Settlement"
+        "products": "Products",
+        "timeline": "Timeline"
       },
       "product": "Product",
-      "accepted": "Accepted"
+      "destination": "Destination",
+      "from": "From",
+      "courier": "Courier",
+      "tracking": "Tracking number",
+      "receiptPhoto": "Photo of the label",
+      "noReceiptPhoto": "No photo of the label",
+      "arrivedAt": "Arrived",
+      "payment": "Payment",
+      "paidFrom": "Paid from",
+      "accountRef": "Account #{{id}}",
+      "invoice": "Invoice",
+      "subtotal": "Goods",
+      "shipping": "Shipping",
+      "total": "Total",
+      "courierCharge": "Courier's charge at the door",
+      "courierChargeOwedBySelling": "Paid by {{warehouse}} when the box was handed over. Your team owes it to the warehouse — it is not part of the total.",
+      "courierChargeOwedToUs": "Paid by this warehouse when the box was handed over. {{team}} owes it back — it is not part of the total.",
+      "courierChargeNone": "None — the courier asked for nothing at the door.",
+      "note": "Note",
+      "products": "Products",
+      "supplier": "Supplier",
+      "ordered": "Ordered",
+      "received": "Received",
+      "good": "Good",
+      "placement": "Placement",
+      "lineNote": "Note: {{note}}",
+      "problemWorth": "worth {{amount}}",
+      "goodOfOrdered": "Good units into stock",
+      "missingBadge_one": "{{count}} missing",
+      "missingBadge_other": "{{count}} missing",
+      "pending": {
+        "payingAccount": {
+          "label": "Paid from",
+          "reason": "Picked on the form but not stored yet — the real server returns no account until the backend step."
+        },
+        "courier": {
+          "label": "Courier",
+          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
+        },
+        "receiptPhoto": {
+          "label": "Photo of the label",
+          "reason": "Not stored yet — the real server returns no photo."
+        },
+        "lineSupplier": {
+          "label": "Line supplier and store",
+          "reason": "A line's supplier and store are not stored yet, and store names are not served yet — the real server shows every line as not connected."
+        },
+        "lineNote": {
+          "label": "Line note",
+          "reason": "The selling team's note on a line is not stored yet."
+        },
+        "problemNotes": {
+          "label": "Broken and missing notes",
+          "reason": "The warehouse's note on a broken or missing row is not stored yet. The counts and what they were worth are real."
+        },
+        "moneyReturned": {
+          "label": "Did the money come back?",
+          "reason": "Cancel asks it, but the answer is not sent on to the paying account yet."
+        },
+        "markLost": {
+          "label": "Mark Lost",
+          "reason": "Marking a restock lost is not built on the server yet — it answers \"not implemented\"."
+        },
+        "signForBox": {
+          "label": "Sign for Box",
+          "reason": "Signing for the box is not built on the server yet — it answers \"not implemented\". Accepting still works straight from ongoing."
+        }
+      }
     },
     "timeline": {
-      "created": "Request raised",
-      "accepted": "Delivery accepted",
-      "codFee": "COD fee paid at the door",
-      "cancelled": "Request cancelled",
-      "awaiting": "Waiting for the warehouse",
+      "created": "Restock raised",
+      "accepted": "Counted in",
+      "cancelled": "Cancelled",
       "noDate": "Date not recorded",
-      "edited": "Request edited",
-      "unknown": "Something happened",
-      "costRecorded": "Delivery costs recorded"
+      "edited": "Edited",
+      "arrived": "Signed for the box",
+      "lost": "Marked lost",
+      "changed": "Status changed",
+      "awaitingSign": "Waiting for the warehouse to sign for the box",
+      "awaitingCount": "Waiting for the warehouse to count it in"
     },
     "summary": {
       "totalProducts": "Total products",
@@ -1113,27 +1220,25 @@
       "allStatus": "All Status"
     },
     "status": {
-      "pending": "Pending",
-      "fulfilled": "Fulfilled",
       "cancelled": "Cancelled",
-      "unspecified": "Unspecified"
+      "unspecified": "Unspecified",
+      "ongoing": "Ongoing",
+      "arrived": "Arrived",
+      "accepted": "Accepted",
+      "lost": "Lost"
     },
     "table": {
       "status": "Status",
       "restock": "Restock",
-      "warehouse": "Warehouse",
       "destination": "Destination",
       "from": "From",
       "supplier": "Supplier",
-      "requestedBy": "Requested by",
       "product": "Products",
-      "qty": "Qty",
       "value": "Value",
       "shipment": "Shipment",
       "receipt": "Receipt",
       "accepted": "Accepted",
       "reference": "Reference",
-      "orderRefValue": "Order {{value}}",
       "receiptValue": "Resi {{value}}",
       "by": "by {{name}}",
       "userRef": "User #{{id}}",
@@ -1141,30 +1246,22 @@
       "itemsSummary_one": "{{count}} product · {{pieces}} pcs",
       "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
       "firstAndMore": "{{sku}} +{{count}} more",
-      "shortBy": "{{count}} short",
-      "noProducts": "No products"
+      "noProducts": "No products",
+      "invoiceValue": "Invoice {{value}}",
+      "missingBadge_one": "{{count}} missing",
+      "missingBadge_other": "{{count}} missing",
+      "moreSuppliers_one": "+{{count}} more supplier",
+      "moreSuppliers_other": "+{{count}} more suppliers"
     },
     "form": {
       "warehouse": "Warehouse",
       "warehouseHelp": "The warehouse that will receive the stock.",
       "products": "Products",
-      "quantity": "Quantity",
-      "addProduct": "Choose products",
+      "addProduct": "Choose Products",
       "removeProduct": "Remove product",
       "noProducts": "No products yet — choose the ones this restock is asking for.",
-      "shipment": "Shipment",
-      "shipmentHelp": "How the goods reach the warehouse.",
-      "orderDetails": "Order details",
-      "supplier": "Supplier",
-      "supplierHelp": "Who the goods are bought from.",
-      "receipt": "Receipt",
-      "receiptHelp": "The courier's tracking number, once there is one.",
-      "orderRef": "Order ref",
-      "orderRefHelp": "A reference to the order this restock is for, wherever it lives.",
       "shippingCost": "Shipping cost",
       "shippingCostHelp": "What the shipment itself costs, on top of the goods.",
-      "paymentType": "Payment type",
-      "paymentTypeHelp": "How this restock was paid for.",
       "paymentTypeNone": "Not recorded",
       "paymentShopeePay": "Shopee Pay",
       "paymentBankAccount": "Bank account",
@@ -1173,29 +1270,97 @@
       "notePlaceholder": "Add a note about this restock…",
       "submit": "Create Request",
       "saveChanges": "Save Changes",
-      "totalPrice": "Total Price"
+      "newTitle": "New Restock Request",
+      "editTitle": "Edit Restock Request",
+      "back": "Back",
+      "selectTeamCreate": "Select a team to create a restock request.",
+      "selectTeamEdit": "Select a team to edit a restock request.",
+      "invalidId": "Invalid restock request id.",
+      "notFound": "Restock request not found.",
+      "backToList": "Back to Restock Requests",
+      "count": "Count",
+      "lineTotal": "Total",
+      "perPiece": "{{price}} / pc",
+      "boughtFrom": "Bought from",
+      "changeSupplier": "Change",
+      "clearSupplier": "Clear supplier",
+      "lineNote": "Line note",
+      "lineNotePlaceholder": "e.g. extra stock",
+      "lineNoteRequired": "A product added after the box arrived needs a note.",
+      "addedLine": "Added",
+      "paymentAndParcel": "Payment and Parcel",
+      "financeAccount": "Paid from",
+      "financeAccountHelp": "The team's operational account that paid for this restock.",
+      "invoiceRef": "Invoice or order number",
+      "invoiceRefHelp": "The store's invoice or order number — one per restock.",
+      "courier": "Courier",
+      "courierHelp": "Who carries the parcel to the warehouse.",
+      "trackingNumber": "Tracking number",
+      "trackingNumberHelp": "The resi on the box's label — how the warehouse finds this restock at the door.",
+      "labelPhoto": "Photo of the label",
+      "restockNote": "Restock Note",
+      "lockedArrived": "Closed once the box arrived",
+      "linesLockedHint": "Count, total and note can still change; the supplier and store are closed.",
+      "arrivedBanner": "The box has arrived. Each line's count, total and note can still change, and a product that came unordered can be added — with a note. No line can be removed, and the payment and parcel details are closed.",
+      "cannotRemoveArrived": "A line cannot be removed once the box has arrived — what is not in the box is written as missing at accept.",
+      "notEditable": "This restock can no longer be edited — only an ongoing restock, or the lines of an arrived one, can change.",
+      "notEditableOwner": "Only the team that raised this restock can edit it.",
+      "backToRestock": "Back to Restock",
+      "toastCreated": "Restock request created",
+      "toastUpdated": "Restock request updated",
+      "summary": {
+        "products": "Products",
+        "none": "No products picked yet.",
+        "goods": "Goods",
+        "shipping": "Shipping",
+        "total": "Total",
+        "courierNote": "The courier's charge at the door is not part of this total — the warehouse enters it when it accepts the box."
+      },
+      "missing": {
+        "title": "Still needed before saving:",
+        "warehouse": "the warehouse",
+        "account": "the account that paid",
+        "lines": "at least one product",
+        "count": "a count of at least 1 on every line",
+        "newLineNote": "a note on every product added after the box arrived"
+      },
+      "pending": {
+        "lineSupplier": {
+          "label": "A line's supplier and store",
+          "reason": "accepted by the server but not stored until the backend step, and the store names are not served yet"
+        },
+        "lineNote": {
+          "label": "A line's note",
+          "reason": "accepted by the server but not stored until the backend step"
+        },
+        "financeAccount": {
+          "label": "Paid from",
+          "reason": "required, but not stored until the backend step — the payment is not posted to the account yet"
+        },
+        "shipment": {
+          "label": "Courier",
+          "reason": "accepted by the server but not stored until the backend step"
+        },
+        "receiptFile": {
+          "label": "Photo of the label",
+          "reason": "the photo uploads, but the restock does not keep it until the backend step"
+        }
+      }
     },
     "cancel": {
-      "action": "Cancel",
-      "title": "Cancel Restock Request",
-      "message": "Cancel this restock request? This cannot be undone.",
-      "confirm": "Cancel Request"
+      "title": "Cancel Restock #{{id}}",
+      "message": "It is still on its way. Once cancelled it cannot be reopened.",
+      "confirm": "Cancel Restock",
+      "keep": "Keep Restock",
+      "moneyQuestion": "Did the money come back?",
+      "moneyYes": "Yes — it was refunded",
+      "moneyNo": "No — it was not",
+      "moneyHint": "Yes puts {{amount}} back into the account that paid. No posts nothing."
     },
     "receive": {
       "title": "Accept Restock",
-      "intro": "Count what actually arrived. Your warehouse receives these numbers, not the ones asked for — a short count still accepts the request, and both numbers are kept.",
-      "asked": "Asked",
-      "arrived": "Arrived",
-      "arrivedFor": "Arrived, {{sku}}",
-      "uncounted": "Not counted",
-      "place": "Place",
-      "noPlace": "No place chosen",
       "short": "short by {{n}}",
-      "over": "over by {{n}}",
-      "summary": "{{asked}} asked · {{arrived}} arriving",
-      "differing": "{{n}} not as asked",
-      "matches": "Everything arrived",
-      "confirm": "Accept Restock"
+      "over": "{{n}} more than ordered — ask the selling team to add them"
     },
     "toast": {
       "created": "Restock request created",
@@ -1214,7 +1379,7 @@
       "accepted": "Accepted",
       "count": "labels · {{products}} products",
       "perPiece": "one per piece",
-      "perShelf": "one per shelf placement",
+      "perShelf": "one per placement",
       "print": "Print",
       "downloadPdf": "Download PDF",
       "controls": "Labels to print",
@@ -1224,83 +1389,180 @@
       "shelf": "Shelf",
       "size": "Label size",
       "showOn": "Show on label",
-      "showRack": "Rack location",
       "showRef": "Restock ref & date",
       "showHpp": "HPP / cost price",
-      "holding": "HOLDING",
-      "excluded_one": "{{count}} unit arrived broken or lost — it never entered stock, so it gets no label.",
-      "excluded_other": "{{count}} units arrived broken or lost — they never entered stock, so they get no label.",
+      "excluded_one": "{{count}} unit arrived broken or missing — it never entered stock, so it gets no label.",
+      "excluded_other": "{{count}} units arrived broken or missing — they never entered stock, so they get no label.",
       "previewNote": "Showing the first {{shown}} of {{total}} — all {{total}} print.",
-      "none": "Nothing entered stock on this delivery, so there is nothing to label."
+      "none": "Nothing entered stock on this delivery, so there is nothing to label.",
+      "showPlacement": "Placement",
+      "notAccepted": "Only an accepted restock has labels — nothing became stock before it was counted in."
     },
     "accept": {
       "title": "Accept Delivery",
-      "back": "Back to the Request",
+      "back": "Back to the Restock",
       "warehouseOnly": "Only the warehouse a restock was sent to can accept it.",
-      "notFound": "That restock request is not for this warehouse.",
+      "notFound": "That restock is not for this warehouse.",
       "action": "Accept Delivery",
-      "codFee": "COD Fee",
-      "freightTotal": "Freight Total",
       "goodsPrice": "Price / pc",
       "hpp": "Cost / pc (HPP)",
       "perPiece": "{{price}} / pc",
-      "putaway": "Put away to racks",
-      "ordered": "ordered {{n}}",
+      "putaway": "Put away to placements",
+      "ordered": "Ordered {{n}}",
       "toPlace": "{{count}} to place",
-      "pcs": "{{count}} pcs",
-      "restockCount": "{{count}} pcs · restock count",
-      "notPlaced_one": "{{count}} line not placed",
-      "notPlaced_other": "{{count}} lines not placed",
       "placedBefore": "Placed here before",
       "hereCount": "{{count}} here",
-      "addPlacement": "Split to Another Shelf",
-      "removePlacement": "Remove this place",
-      "reportProblem": "Report a Problem",
-      "noProblems": "Nothing broken or missing",
-      "problems": "Problems — never enters stock",
-      "problemBroken": "Broken",
-      "problemLost": "Lost",
-      "problemNote": "What happened?",
-      "addProblem": "Add Another",
-      "removeProblem": "Remove this problem",
+      "addPlacement": "Split to Another Placement",
+      "removePlacement": "Remove this placement",
       "summary": {
         "restock": "Restock",
         "team": "Team",
         "raisedBy": "Person",
-        "order": "Order & Shipment",
         "shipping": "Shipping",
-        "freight": "Freight",
-        "orderRef": "Order ID",
-        "supplier": "Supplier",
-        "ordered": "Ordered",
         "courier": "Courier",
-        "receipt": "AWB / Resi",
-        "cost": "Value",
-        "productTotal": "Products",
-        "shippingTotal": "Shipping",
-        "shippingBreakdown": "{{shipping}} shipping + {{outlay}} warehouse outlay",
-        "grandTotal": "Total"
+        "parcel": "Parcel",
+        "tracking": "Tracking number",
+        "invoice": "Invoice",
+        "raised": "Raised",
+        "signedFor": "Signed for",
+        "note": "Selling team's note",
+        "value": "Value",
+        "goods": "Goods",
+        "total": "Total",
+        "totalHint": "Goods + shipping — what the selling team paid",
+        "courierOwed": "Courier's charge — owed by the selling team",
+        "courierOwedHint": "Not part of the total"
       },
       "confirm": {
         "title": "Accept This Delivery",
-        "message": "The stock will be received onto the shelves you named, and any problems recorded. This cannot be undone.",
+        "message": "The good units go onto the placements you named, and the broken and missing units are recorded against the selling team. This cannot be undone.",
         "label": "Accept"
       },
       "toast": {
         "accepted": "Delivery accepted",
         "failed": "Could not accept the delivery"
+      },
+      "actions": "Actions",
+      "notAcceptable": {
+        "title": "Restock #{{id}} is {{status}}",
+        "description": "Only an ongoing or arrived restock can be counted in, so there is nothing to accept here."
+      },
+      "openRestock": "Open the Restock",
+      "countSummary": "{{received}} of {{ordered}} pcs in the box",
+      "progress_one": "{{count}} line to finish",
+      "progress_other": "{{count}} lines to finish",
+      "ready": "Every line counted and placed",
+      "lineNote": "Selling team:",
+      "count": "What arrived",
+      "received": "Received",
+      "receivedHint": "In the box, broken included",
+      "allArrived": "All Arrived",
+      "broken": "Broken",
+      "brokenHint": "Optional — blank is none",
+      "brokenOverReceived": "Broken can't be more than received ({{n}}).",
+      "good": "Good — goes into stock",
+      "worth": "worth {{value}}",
+      "brokenNote": "Note on the broken units (optional)",
+      "missingNote": "Note on the missing units (optional)",
+      "countFirst": "Count first",
+      "nothingToPlace": "Nothing to place",
+      "nothingToPlaceHint": "No good units on this line — nothing goes onto a placement.",
+      "choosePlacement": "Choose a placement",
+      "duplicatePlacement": "A placement twice",
+      "tooMany": "{{count}} too many",
+      "placed": "{{count}} placed",
+      "placementPlaceholder": "Select a placement",
+      "placementQty": "Units on this placement",
+      "courier": {
+        "title": "Courier's charge at the door",
+        "hint": "What the courier asked when handing the parcel over. The warehouse pays it and the selling team owes it back — it is not part of the restock's total.",
+        "amount": "Amount",
+        "note": "What it was for",
+        "notePlaceholder": "e.g. COD handling fee",
+        "noteRequired": "Say what the courier's charge was for."
+      },
+      "pending": {
+        "courier": {
+          "label": "Courier",
+          "reason": "the restock's courier is not stored yet, so a real restock shows none"
+        },
+        "lineSupplier": {
+          "label": "Where each line was bought",
+          "reason": "a line's supplier and store are not stored yet, and store names cannot be read — a real line shows \"not connected\""
+        },
+        "lineNote": {
+          "label": "The selling team's line note",
+          "reason": "a line's note (\"extra stock\") is not stored yet"
+        },
+        "problemNotes": {
+          "label": "Notes on broken and missing units",
+          "reason": "they are sent with the accept but not kept yet"
+        }
       }
     },
     "createdByAll": "Anyone who raised it",
     "acceptedByAll": "Anyone who accepted it",
-    "cost": {
-      "title": "What this delivery cost the warehouse",
-      "hint": "What you paid to get these goods in. It is spread over the units that arrived and charged to the requesting team.",
-      "add": "Add a Cost",
-      "remove": "Remove this cost",
-      "note": "What it was for",
-      "noteRequired": "Say what this cost was for.",
-      "total": "Warehouse outlay"
+    "problem": {
+      "broken": "Broken",
+      "missing": "Missing"
+    },
+    "lineSupplier": {
+      "none": "Not connected to a supplier",
+      "noStore": "No store — bought offline",
+      "unknownSupplier": "Supplier #{{id}}",
+      "unknownStore": "Store #{{id}}"
+    },
+    "supplierPicker": {
+      "trigger": "Connect Supplier Channel",
+      "title": "Connect Supplier Channel",
+      "searchPlaceholder": "Search suppliers of every team",
+      "supplier": "Supplier",
+      "store": "Store",
+      "teamUnknown": "Team #{{id}}",
+      "yourTeam": "Your team",
+      "noStores": "No online store",
+      "storeCount_one": "{{count}} store",
+      "storeCount_other": "{{count}} stores",
+      "noMatch": "No supplier matches this search.",
+      "empty": "No suppliers yet.",
+      "pickSupplierFirst": "Pick a supplier to see its stores.",
+      "noStore": "No store — bought offline",
+      "noStoreHelp": "A market stall, or bought in person.",
+      "connect": "Connect"
+    },
+    "actions": {
+      "edit": "Edit",
+      "editLines": "Edit Lines",
+      "cancel": "Cancel",
+      "markLost": "Mark Lost",
+      "signForBox": "Sign for Box",
+      "accept": "Accept",
+      "menu": "Restock actions",
+      "sign": {
+        "title": "Sign for Restock #{{id}}",
+        "message": "Confirm the courier has handed this box over. The restock moves to Arrived — the selling team can still correct its lines until you accept it.",
+        "messageLost": "This restock was marked lost, and the box has turned up after all. Signing for it moves it to Arrived, and you accept it as usual.",
+        "dismiss": "Not Yet",
+        "tracking": "Tracking number on the label: {{receipt}}",
+        "noTracking": "No tracking number was given — check the box against its lines."
+      },
+      "toast": {
+        "cancelled": "Restock cancelled",
+        "cancelFailed": "Cancel failed",
+        "lost": "Restock marked lost",
+        "lostFailed": "Mark lost failed",
+        "arrived": "Signed for — the restock has arrived",
+        "arriveFailed": "Sign for box failed"
+      }
+    },
+    "lost": {
+      "title": "Mark Restock #{{id}} as Lost",
+      "message": "The parcel never came. If it turns up later, the warehouse signs for it and it goes on as usual.",
+      "confirm": "Mark Lost",
+      "keep": "Keep Waiting",
+      "reason": "Why",
+      "reasonPlaceholder": "e.g. the courier returned it to the sender",
+      "reasonHint": "Optional — it is kept on the restock's timeline."
     }
   },
   "shops": {

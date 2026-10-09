@@ -12,6 +12,7 @@
     - `name`
     - `code`, code is unique with warehouse_id
     - `description`
+    - `locked`
     - `deleted_at`, for soft delete
     - `updated_at`
     - `created_at`

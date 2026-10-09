@@ -17,6 +17,9 @@
 > **Re-examined after your answer on the courier's charge (2026-10-09).** `warehouse_additional_cost` is the courier's charge
 > at the door — recorded. 🆕 [Q19](#question): a line per charge, and `total` without it. **Open now: Q19.**
 >
+> **The form prototype (2026-10-09)** raised [Q21](#question): may a line added after the box arrived name its supplier?
+> **Open now: Q21.**
+>
 > **Re-examined after your Q17 answer (2026-10-09).** ✅ [Q17](#question): the lines stay editable until accepted, and accept
 > refuses more than a line says. **No question is open.** What remains is two [contradictions](#contradiction) — receiving drawn
 > twice, and `warehouse_additional_cost`. ✅ Fixed in restock.md since: `problem_type` says `missing`, and `shipment_id` is the courier.
@@ -209,6 +212,16 @@ the warehouse out of pocket with no record.
 20. ✅ *(2026-10-09)* **Answered, every part** — [lines-can-be-added-not-removed-while-arrived](./restock_decision.md#lines-can-be-added-not-removed-while-arrived) ·
     [a-broken-reason-is-optional](./restock_decision.md#a-broken-reason-is-optional) · [three-notes-one-writer-each](./restock_decision.md#three-notes-one-writer-each) ·
     [edits-are-in-the-same-trail](./restock_decision.md#edits-are-in-the-same-trail) · [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile).
+
+21. 🆕 *(2026-10-09)* **A line added after the box arrived — may it name where it was bought?** Raised by the form
+    prototype. While `arrived`, a line's store is closed
+    ([the-lines-stay-editable-until-accepted](./restock_decision.md#the-lines-stay-editable-until-accepted)) — and a line
+    may be ADDED then ([lines-can-be-added-not-removed-while-arrived](./restock_decision.md#lines-can-be-added-not-removed-while-arrived)).
+    Read together, a product that turned up unordered can never say which supplier sent it: its supplier report and its
+    batch are anonymous for good.
+    **→ Recommend: yes — a NEW line may name its supplier and store; a STORED line's stay closed.** The closing rule
+    exists so a line already raised cannot be re-attributed after the box is in the building; a line that did not exist
+    until now has nothing to re-attribute.
 
 ## Proposed Design
 

@@ -2,19 +2,21 @@ import { Badge } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 
-// The standard label key + colour for each restock status, in one place, so a status looks the same
-// everywhere it is shown (#125). PENDING is the actionable state (blue), FULFILLED is a positive
-// terminal state (green), CANCELLED is inert (gray).
-//
-// Unlike OrderStatusBadge, the label is an i18n KEY, not English: this badge was lifted out of
-// RestockRequestsPage, which already translated its statuses, and a shared component must not
-// silently drop that.
+// The standard label key + colour for each restock status, in one place, so a status looks the same everywhere it is
+// shown. A status here is a LIFECYCLE STEP, so its colour is categorical — it tells the steps apart rather than saying
+// good or bad: on its way (blue), at the door waiting to be counted (orange — the warehouse's next job), counted in
+// (green), and the two ends it never reached (lost red, cancelled gray). The journey is
+// the-warehouse-signs-and-accepts-the-team-does-the-rest.
 function statusMeta(s: RestockRequestStatus): { key: string; color: string } {
   switch (s) {
-    case RestockRequestStatus.PENDING:
-      return { key: "restock.status.pending", color: "blue" };
-    case RestockRequestStatus.FULFILLED:
-      return { key: "restock.status.fulfilled", color: "green" };
+    case RestockRequestStatus.ONGOING:
+      return { key: "restock.status.ongoing", color: "blue" };
+    case RestockRequestStatus.ARRIVED:
+      return { key: "restock.status.arrived", color: "orange" };
+    case RestockRequestStatus.ACCEPTED:
+      return { key: "restock.status.accepted", color: "green" };
+    case RestockRequestStatus.LOST:
+      return { key: "restock.status.lost", color: "red" };
     case RestockRequestStatus.CANCELLED:
       return { key: "restock.status.cancelled", color: "gray" };
     default:
@@ -22,10 +24,10 @@ function statusMeta(s: RestockRequestStatus): { key: string; color: string } {
   }
 }
 
-// RestockStatusBadge renders a restock request's status as a Chakra Badge in its standard colour.
-// This is THE way to show a restock status — the list and the detail page both render through it.
+// RestockStatusBadge renders a restock's status as a Chakra Badge in its standard colour. This is THE way to show a
+// restock status — the lists, the tabs' badges and the detail pages all render through it.
 export const description =
-  "A restock request's status as a standard-coloured Chakra Badge (pending=blue, fulfilled=green, cancelled=gray). Labels are translated.";
+  "A restock's status as a standard-coloured Chakra Badge — ongoing=blue, arrived=orange, accepted=green, lost=red, cancelled=gray. Labels are translated.";
 
 export function RestockStatusBadge({ status }: { status: RestockRequestStatus }) {
   const { t } = useTranslation();

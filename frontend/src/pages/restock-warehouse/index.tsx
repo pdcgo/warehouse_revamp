@@ -9,7 +9,6 @@ import {
   HStack,
   Heading,
   Icon,
-  IconButton,
   Menu,
   Portal,
   SimpleGrid,
@@ -22,7 +21,7 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Check, ChevronDown, PackageCheck, Printer, Receipt } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import {
   RestockActorRole,
@@ -33,6 +32,9 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import { useRestockInbound, useRestockPeople, useRestockRequests } from "../../features/restock/queries";
+import { useShipmentChannelsByIds } from "../../features/shipment/queries";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
@@ -40,13 +42,15 @@ import { shortfall } from "../../features/restock/summary";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
+import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
+import { RESTOCK_WAREHOUSE_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -70,9 +74,12 @@ type ActorRole = "created" | "accepted";
 // RestockWarehousePage — the RESTOCK LIST AS THE RECEIVING WAREHOUSE SEES IT (#133).
 //
 // The other half of the screen that used to serve both sides (#122). A warehouse is not buying
-// anything: it is working an INBOUND QUEUE. The job on this page is to find what is waiting and
-// accept it — count what actually turned up and say which shelf it went on (#133/#137/#154) — and
-// afterwards to print the labels and the receipt for what it shelved.
+// anything: it is working an INBOUND QUEUE. The job on this page is to find what is waiting, SIGN for a
+// box when the courier hands it over, and ACCEPT it — count what actually turned up and say which
+// placement it went on — and afterwards to print the labels and the receipt for what it shelved. Those
+// two acts at the door are the warehouse's; everything else is the selling team's
+// (the-warehouse-signs-and-accepts-the-team-does-the-rest), and each row offers exactly what its status
+// allows (WarehouseRestockActions holds the matrix).
 //
 // MONEY IS IN THE HEADLINE, NOT IN THE ROWS (owner, 2026-07-30), and the split is the decision rather
 // than an inconsistency. What the queue is WORTH is a fact about the warehouse's own exposure — the
@@ -137,8 +144,8 @@ export function RestockWarehousePage() {
   });
 
   // The headline follows the FROM lens and nothing else — see useRestockInbound for why the status
-  // tabs deliberately do not move it. It is always the PENDING queue, so switching to Fulfilled shows
-  // what has been done beneath a headline of what has not.
+  // tabs deliberately do not move it. It is always the queue still to do — ongoing and arrived — so
+  // switching to Accepted shows what has been done beneath a headline of what has not.
   const inbound = useRestockInbound({ teamId, requestingTeamId: requesterFilter });
 
   // Every team type, not just SELLING: a root team can raise a restock too, and a "From" column that
@@ -152,6 +159,8 @@ export function RestockWarehousePage() {
   }, [teams.data]);
 
   const requests = query.data?.requests ?? [];
+  // The couriers — a restock names a shipment channel by id; one read for the page.
+  const couriers = useShipmentChannelsByIds(requests.map((r) => r.shipmentId));
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   // Always-fresh means every tab, page and filter change refetches; `listQuery` keeps the rows that
@@ -203,9 +212,12 @@ export function RestockWarehousePage() {
             order goods for itself — it receives what a selling team bought (#105). */}
       </Flex>
 
-      {/* WHAT IS STILL AT THE DOOR (owner). Server-side totals over every PENDING restock targeting
-          this warehouse, so they describe the queue rather than the visible page — a headline that
-          silently summarised page 1 of 6 would be worse than none, because it looks authoritative. */}
+      <NotImplementedSummary list={RESTOCK_WAREHOUSE_PENDING} />
+
+      {/* WHAT IS STILL TO DO (owner). Server-side totals over every restock targeting this warehouse
+          that is ON ITS WAY OR AT THE DOOR — ongoing and arrived, both still to be counted in — so they
+          describe the queue rather than the visible page. A headline that silently summarised page 1 of
+          6 would be worse than none, because it looks authoritative. */}
       <SimpleGrid columns={{ base: 2, md: 5 }} gap="card">
         {/* THE COARSEST COUNT LEADS — how many deliveries, which is what a shift is planned by. The
             three that follow break the same queue down into products, pieces and money. */}
@@ -214,7 +226,7 @@ export function RestockWarehousePage() {
           <Stat.ValueText data-testid="restock-stat-restocks">
             {(inbound.data?.restockCount ?? 0n).toString()}
           </Stat.ValueText>
-          <Stat.HelpText>{t("restock.stat.inboundRestocksHint")}</Stat.HelpText>
+          <Stat.HelpText>{t("restock.inbound.restocksHint")}</Stat.HelpText>
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("restock.stat.inboundProducts")}</Stat.Label>
@@ -306,8 +318,8 @@ export function RestockWarehousePage() {
             mostly invalid for the other, so keeping the id would silently re-ask the new question
             about somebody who cannot be its answer — and return an empty list that looks like a bug.
 
-            "Counted by" also implies an accepted restock: nobody counted a pending one, so pairing it
-            with the Pending tab returns nothing. That is the honest answer, not a fault. */}
+            "Counted by" also implies an accepted restock: nobody counted an ongoing one, so pairing it
+            with the Ongoing tab returns nothing. That is the honest answer, not a fault. */}
         {/* ONE FORM GROUP: [ Raised by ▾ │ 🔍 person ]. The same shape DateRangePicker uses for its
             date-field segment — an outer bordered Flex, a ghost Menu button with square corners, a
             1px divider, and the real control with its own border dropped (`flush`). Two separate
@@ -415,7 +427,12 @@ export function RestockWarehousePage() {
                     <Table.ColumnHeader>{t("restock.table.from")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.status")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.product")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("restock.table.shipment")}</Table.ColumnHeader>
+                    <Table.ColumnHeader>
+                      <HStack gap="1.5">
+                        {t("restock.table.shipment")}
+                        <NotImplemented list={RESTOCK_WAREHOUSE_PENDING} id="courier" />
+                      </HStack>
+                    </Table.ColumnHeader>
                     <Table.ColumnHeader textAlign="end">
                       {t("restock.table.actions")}
                     </Table.ColumnHeader>
@@ -424,9 +441,7 @@ export function RestockWarehousePage() {
 
                 <Table.Body>
                   {requests.map((request) => {
-                    const isPending = request.status === RestockRequestStatus.PENDING;
-                    const isFulfilled = request.status === RestockRequestStatus.FULFILLED;
-                    const short = shortfall(request);
+                    const missing = shortfall(request);
 
                     return (
                       <Table.Row
@@ -450,12 +465,12 @@ export function RestockWarehousePage() {
                             <RestockStatusBadge status={request.status} />
                             {/* The warehouse's OWN count is what produced this gap, so it belongs on
                                 its list too — it is the record of what it reported at the door. */}
-                            {short > 0n && (
+                            {missing > 0n && (
                               <Badge
                                 colorPalette="warning"
-                                data-testid={`restock-short-${request.id}`}
+                                data-testid={`restock-missing-${request.id}`}
                               >
-                                {t("restock.table.shortBy", { count: Number(short) })}
+                                {t("restock.table.missingBadge", { count: Number(missing) })}
                               </Badge>
                             )}
                           </Stack>
@@ -467,7 +482,10 @@ export function RestockWarehousePage() {
                         </Table.Cell>
                         <Table.Cell>
                           <Stack gap="0" align="start">
-                            <ShippingBadge code={request.shippingCode} />
+                            <ShipmentChannelBadge
+                              channelId={request.shipmentId}
+                              channel={couriers.data?.get(request.shipmentId.toString())}
+                            />
                             {request.receipt && (
                               <Span fontSize="xs" color="fg.muted">
                                 {request.receipt}
@@ -478,55 +496,18 @@ export function RestockWarehousePage() {
 
                         {/* Stop the row's navigate from firing when a row action is used. */}
                         <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                          <HStack justify="end" gap="1">
-                            {/* Accepting is COUNTING (#133), and since #154 also placing and writing
-                                off — a form with sections, so the row action opens the Accept PAGE
-                                (#157). There is deliberately no one-click "as asked". */}
-                            {isPending && (
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                colorPalette="success"
-                                aria-label={t("restock.receive.title")}
-                                data-testid={`fulfil-${request.id}`}
-                                onClick={() =>
-                                  navigate(`/inventories/restock/${request.id}/accept`)
-                                }
-                              >
-                                <Icon as={PackageCheck} boxSize="4" />
-                              </IconButton>
-                            )}
-
-                            {/* What the crew does immediately AFTER accepting: stick a label on each
-                                shelved placement (#207), and file the goods-received document. */}
-                            {isFulfilled && (
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                aria-label={t("restock.labels.action")}
-                                data-testid={`labels-${request.id}`}
-                                onClick={() =>
-                                  navigate(`/inventories/restock/${request.id}/labels`)
-                                }
-                              >
-                                <Icon as={Printer} boxSize="4" />
-                              </IconButton>
-                            )}
-
-                            {isFulfilled && (
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                aria-label={t("restock.table.receipt")}
-                                data-testid={`receipt-${request.id}`}
-                                onClick={() =>
-                                  navigate(`/inventories/restock/${request.id}/receipt`)
-                                }
-                              >
-                                <Icon as={Receipt} boxSize="4" />
-                              </IconButton>
-                            )}
-                          </HStack>
+                          {/* Never more than two, so they stay inline and NAMED — the queue's job is these
+                              buttons, and an unlabelled icon in the last column is one nobody finds. Accepting is
+                              counting, placing and pricing, so it opens the Accept PAGE; signing for the box
+                              confirms first, because it cannot be taken back. */}
+                          {teamId !== undefined && (
+                            <WarehouseRestockActions
+                              request={request}
+                              teamId={teamId}
+                              variant="row"
+                              pending={RESTOCK_WAREHOUSE_PENDING}
+                            />
+                          )}
                         </Table.Cell>
                       </Table.Row>
                     );

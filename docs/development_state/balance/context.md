@@ -9,6 +9,19 @@ schema change. ⚠ **New build work arrived from financial_account** and is NOT 
 `from_account_id` (payer, at record) and `to_account_id` (creditor, at accept), and accept must publish
 them — [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept).
 
+**2026-10-08:** the account pickers are **built in the frontend, ahead of the contract** — *Paid from*
+in Make Payment, *Received into* in a new `AcceptPaymentDialog` (it replaced the plain `ConfirmDialog`
+on Confirm). Both are required, any active account of the acting team (not operational-only — settling
+a debt is not an operation), and both are **`dropped`** pending marks (`pages/liability-detail/pending.ts`):
+neither request has an account field, so the pick is thrown away. ⛔ **Still to do:** `from_account_id`
+on `LiabilityPaymentRecordRequest`, `to_account_id` on `LiabilityPaymentConfirmRequest`, the columns,
+and the accept event carrying both — then delete the two marks. The stub now serves Record, Confirm
+(which moves the position) and ShareDocument, so the whole §Payment Flow is clickable in Storybook.
+⛔ **A real bug was found and fixed on the way:** Make Payment could never be SENT from the screen —
+the proof's file input is `required` and cleared after each upload, so the browser swallowed every
+submit. The form is now `noValidate` (`ready` is its validation). The e2e never saw it because it
+records payments through the RPC; `APaymentNamesTheAccountItWasPaidFrom` is the regression story.
+
 **Lifecycle position:** `Run Testing` complete — unit, integration and e2e all green for the first
 time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at the running screens.
 

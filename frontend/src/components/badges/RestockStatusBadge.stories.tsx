@@ -11,28 +11,36 @@ const meta = {
   parameters: {
     docs: { description: { component: description } },
   },
-  args: { status: RestockRequestStatus.PENDING },
+  args: { status: RestockRequestStatus.ONGOING },
 } satisfies Meta<typeof RestockStatusBadge>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Pending: Story = {};
+export const Ongoing: Story = {};
 
-export const Fulfilled: Story = { args: { status: RestockRequestStatus.FULFILLED } };
+export const Arrived: Story = { args: { status: RestockRequestStatus.ARRIVED } };
+
+export const Accepted: Story = { args: { status: RestockRequestStatus.ACCEPTED } };
+
+export const Lost: Story = { args: { status: RestockRequestStatus.LOST } };
 
 export const Cancelled: Story = { args: { status: RestockRequestStatus.CANCELLED } };
 
-// Blue is the ACTIONABLE state, green a positive terminal one, gray inert. Reviewing them together
-// is what keeps that a rule rather than three separate colour choices.
+const JOURNEY = [
+  RestockRequestStatus.ONGOING,
+  RestockRequestStatus.ARRIVED,
+  RestockRequestStatus.ACCEPTED,
+  RestockRequestStatus.LOST,
+  RestockRequestStatus.CANCELLED,
+];
+
+// The five steps side by side, in the order a restock lives them — reviewing them together is what keeps the colours a
+// set rather than five separate choices.
 export const AllStatuses: Story = {
   render: () => (
     <HStack gap="2" wrap="wrap">
-      {[
-        RestockRequestStatus.PENDING,
-        RestockRequestStatus.FULFILLED,
-        RestockRequestStatus.CANCELLED,
-      ].map((s) => (
+      {JOURNEY.map((s) => (
         <RestockStatusBadge key={s} status={s} />
       ))}
     </HStack>
@@ -40,14 +48,12 @@ export const AllStatuses: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Unlike OrderStatusBadge these labels were ALREADY translated before the badge was extracted,
-    // so a shared component that quietly dropped i18n would be a regression. Asserting real words
-    // (not the key) is what catches a missing catalogue entry.
-    await expect(canvas.getByTestId(`restock-status-${RestockRequestStatus.PENDING}`)).toHaveTextContent(
-      /pending/i,
-    );
-    await expect(canvas.getByTestId(`restock-status-${RestockRequestStatus.FULFILLED}`)).not.toHaveTextContent(
-      "restock.status",
-    );
+    // Real words, not keys — a missing catalogue entry renders "restock.status.…", which this catches.
+    await expect(canvas.getByTestId(`restock-status-${RestockRequestStatus.ONGOING}`)).toHaveTextContent(/ongoing/i);
+    await expect(canvas.getByTestId(`restock-status-${RestockRequestStatus.ARRIVED}`)).toHaveTextContent(/arrived/i);
+
+    for (const s of JOURNEY) {
+      await expect(canvas.getByTestId(`restock-status-${s}`)).not.toHaveTextContent("restock.status");
+    }
   },
 };

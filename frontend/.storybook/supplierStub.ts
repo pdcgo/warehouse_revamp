@@ -52,7 +52,8 @@ const newestFirst = <R extends { id: bigint }>(rows: R[]) => [...rows].sort((a, 
 
 const matches = (q: string, ...fields: string[]) => !q || fields.some((f) => f.toLowerCase().includes(q));
 
-// A store as the wire carries it — the message has no `deleted`, so the stub's own bookkeeping stays home.
+// A store as a LIST carries it — a deleted one never reaches a list, so the flag stays home; only SupplierChannelByIds
+// sends it.
 const wireChannel = ({ deleted: _deleted, ...c }: ChannelFixture) => c;
 
 // The guideline List envelope's paging — the same shape stubTransport.ts serves, kept here so this stub
@@ -225,6 +226,17 @@ export const supplierService: Partial<ServiceImpl<typeof SupplierService>> = {
 // ── SupplierChannelService ──────────────────────────────────────────────────────────────────────
 
 export const supplierChannelService: Partial<ServiceImpl<typeof SupplierChannelService>> = {
+  // Stores by id, DELETED ONES INCLUDED and marked — what a restock line reads to show its store, badged when it is
+  // gone (a-deleted-supplier-still-shows-with-a-badge). An unknown id is simply absent.
+  supplierChannelByIds: (req) => {
+    const out: Record<string, ReturnType<typeof wireChannel> & { deleted: boolean }> = {};
+    for (const id of req.ids) {
+      const found = channels.find((c) => c.id === id);
+      if (found) out[id.toString()] = { ...wireChannel(found), deleted: found.deleted };
+    }
+    return { channels: out };
+  },
+
   // Any team's live supplier's live stores — searched, filtered and paged here, as the server does.
   supplierChannelList: (req) => {
     const supplier = live(req.filter?.supplierId ?? 0n);

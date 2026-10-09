@@ -105,7 +105,7 @@ folds.
 
 ```mermaid
 sequenceDiagram
-  participant INV as inventory_service — RestockRequestFulfill
+  participant INV as inventory_service — RestockRequestAccept
   participant PS as Pub/Sub — restock-accepted
   participant W as supplier_service webhook
   participant DB as supplier_service tables

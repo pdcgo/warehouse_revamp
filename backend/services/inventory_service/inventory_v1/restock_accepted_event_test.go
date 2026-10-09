@@ -40,14 +40,15 @@ const (
 )
 
 // createTwoLines raises a restock from supplier 31: 10 of product 100 for Rp 100.000, 5 of product 200 for Rp 25.000.
+// Both lines name the supplier — it rides each line (a-line-connects-to-any-teams-supplier-from-a-popup).
 func createTwoLines(t *testing.T, svc *inventory_v1.Service) *inventoryv1.RestockRequest {
 	t.Helper()
 
 	created, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: acceptSellingTeam, WarehouseId: acceptWarehouse, SupplierId: acceptSupplier,
+		TeamId: acceptSellingTeam, WarehouseId: acceptWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 100000},
-			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Quantity: 5, TotalPrice: 25000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000, SupplierId: acceptSupplier},
+			{ProductId: 200, Sku: "SKU2", Name: "Gadget", Count: 5, Total: 25000, SupplierId: acceptSupplier},
 		},
 	}))
 	if err != nil {
@@ -62,40 +63,37 @@ func newAcceptService(db *gorm.DB, sender *recordingSender) *inventory_v1.Servic
 }
 
 // The accept announces what it COUNTED (each-figure-is-read-at-the-accept): per line the good units, the broken and
-// the short — lost and broken BESIDE accepted, never inside it — the ordered count and the total, the restock's
-// supplier and team, and the accept's Jakarta day.
-func TestRestockRequestFulfill_PublishesRestockAccepted(t *testing.T) {
+// the short — missing and broken BESIDE accepted, never inside it — the ordered count and the total, the line's and
+// the restock's supplier and team, and the accept's Jakarta day and instant (restock-accepted-carries-every-line).
+// The short unit is MISSING, worked out as count − received (a-short-unit-at-the-door-is-missing).
+func TestRestockRequestAccept_PublishesRestockAccepted(t *testing.T) {
 	db := san_testdb.DB(t)
 	sender := &recordingSender{}
 	svc := newAcceptService(db, sender)
 
 	req := createTwoLines(t, svc)
 	first, second := req.GetItems()[0], req.GetItems()[1]
+	staging := stagingPlacement(t, db, acceptWarehouse)
 
-	_, err := svc.RestockRequestFulfill(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	before := time.Now().Unix()
+
+	_, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: acceptWarehouse, RequestId: req.GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
-				// 10 ordered: 7 good, 2 broken, 1 short in the box.
-				ItemId: first.GetId(), ReceivedQuantity: 7,
-				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 7},
-				},
-				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed", Type: broken},
-					{Quantity: 1, Reason: "short", Type: lost},
-				},
+				// 10 ordered: 9 in the box — 7 good, 2 broken — and the 1 short is worked out, not typed.
+				ItemId: first.GetId(), ReceivedCount: 9,
+				BrokenCount: 2, BrokenNote: "crushed", MissingNote: "short",
+				Placements: placedOn(staging, 7),
 			},
 			{
-				ItemId: second.GetId(), ReceivedQuantity: 5,
-				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 5},
-				},
+				ItemId: second.GetId(), ReceivedCount: 5,
+				Placements: placedOn(staging, 5),
 			},
 		},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	if len(sender.sent) != 1 {
@@ -118,11 +116,15 @@ func TestRestockRequestFulfill_PublishesRestockAccepted(t *testing.T) {
 			acceptSellingTeam, acceptWarehouse, acceptSupplier, today)
 	}
 
-	type line struct{ product, ordered, total, accepted, broken, lost int64 }
+	if at := accepted.GetAcceptedAtUnix(); at < before || at > time.Now().Unix() {
+		t.Fatalf("accepted_at_unix = %d, want the accept's instant, inside [%d, now]", at, before)
+	}
+
+	type line struct{ product, ordered, total, accepted, broken, missing, supplier int64 }
 
 	want := []line{
-		{100, 10, 100000, 7, 2, 1},
-		{200, 5, 25000, 5, 0, 0},
+		{100, 10, 100000, 7, 2, 1, int64(acceptSupplier)},
+		{200, 5, 25000, 5, 0, 0, int64(acceptSupplier)},
 	}
 
 	if len(accepted.GetLines()) != len(want) {
@@ -130,7 +132,15 @@ func TestRestockRequestFulfill_PublishesRestockAccepted(t *testing.T) {
 	}
 
 	for i, l := range accepted.GetLines() {
-		got := line{int64(l.GetProductId()), l.GetOrderedCount(), l.GetTotalPrice(), l.GetAcceptedCount(), l.GetBrokenCount(), l.GetLostCount()}
+		got := line{
+			int64(l.GetProductId()),
+			l.GetOrderedCount(),
+			l.GetTotalPrice(),
+			l.GetAcceptedCount(),
+			l.GetBrokenCount(),
+			l.GetMissingCount(),
+			int64(l.GetSupplierId()),
+		}
 		if got != want[i] {
 			t.Fatalf("line %d = %+v, want %+v", i, got, want[i])
 		}
@@ -139,7 +149,7 @@ func TestRestockRequestFulfill_PublishesRestockAccepted(t *testing.T) {
 
 // An accept that is REFUSED announces nothing — an event for goods that never went on the shelf would fold figures
 // for a delivery the warehouse did not take.
-func TestRestockRequestFulfill_ARefusedAcceptPublishesNothing(t *testing.T) {
+func TestRestockRequestAccept_ARefusedAcceptPublishesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
 	sender := &recordingSender{}
 	svc := newAcceptService(db, sender)
@@ -147,9 +157,9 @@ func TestRestockRequestFulfill_ARefusedAcceptPublishesNothing(t *testing.T) {
 	req := createTwoLines(t, svc)
 
 	// Only one of the two lines counted — refused as incomplete (#133).
-	_, err := svc.RestockRequestFulfill(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: acceptWarehouse, RequestId: req.GetId(),
-		Lines: allArrived(&inventoryv1.RestockRequest{Items: req.GetItems()[:1]}),
+		Lines: allArrived(t, db, &inventoryv1.RestockRequest{WarehouseId: acceptWarehouse, Items: req.GetItems()[:1]}),
 	}))
 	if err == nil {
 		t.Fatal("an incomplete count was accepted")
@@ -162,22 +172,22 @@ func TestRestockRequestFulfill_ARefusedAcceptPublishesNothing(t *testing.T) {
 
 // A dead broker does not fail the accept (no-outbox-the-publish-is-trusted): the goods are on the shelf, and that is
 // the truth the warehouse needs recorded.
-func TestRestockRequestFulfill_APublishFailureDoesNotFailTheAccept(t *testing.T) {
+func TestRestockRequestAccept_APublishFailureDoesNotFailTheAccept(t *testing.T) {
 	db := san_testdb.DB(t)
 	sender := &recordingSender{err: errors.New("broker unreachable")}
 	svc := newAcceptService(db, sender)
 
 	req := createTwoLines(t, svc)
 
-	ful, err := svc.RestockRequestFulfill(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	ful, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: acceptWarehouse, RequestId: req.GetId(),
-		Lines: allArrived(req),
+		Lines: allArrived(t, db, req),
 	}))
 	if err != nil {
 		t.Fatalf("the accept failed with the broker: %v", err)
 	}
 
-	if ful.Msg.GetRequest().GetStatus() != fulfilled {
-		t.Fatalf("status = %v, want fulfilled", ful.Msg.GetRequest().GetStatus())
+	if ful.Msg.GetRequest().GetStatus() != accepted {
+		t.Fatalf("status = %v, want accepted", ful.Msg.GetRequest().GetStatus())
 	}
 }

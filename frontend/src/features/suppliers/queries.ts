@@ -88,6 +88,23 @@ export function useSuppliersByIds(args: { teamId: bigint | undefined; supplierId
   });
 }
 
+// Stores by id, DELETED ONES INCLUDED and marked — what a restock line reads to show where it was bought, badged when the
+// store has since been deleted (a-deleted-supplier-still-shows-with-a-badge). Keyed by store id; an unknown id is absent.
+export function useSupplierChannelsByIds(args: { teamId: bigint | undefined; channelIds: bigint[] }) {
+  const { teamId } = args;
+  const channelIds = [...new Set(args.channelIds.filter((id) => id > 0n))].sort();
+
+  return useQuery({
+    queryKey: key.suppliers(teamId, { channelsByIds: channelIds.map(String).join(",") }),
+    enabled: teamId !== undefined && channelIds.length > 0,
+    queryFn: async () => {
+      const res = await supplierChannelClient.supplierChannelByIds({ teamId: teamId!, ids: channelIds });
+
+      return res.channels;
+    },
+  });
+}
+
 // One LIVE supplier, whichever team keeps it — the manage detail and the discover detail read the same
 // record. A deleted or unknown id is NotFound.
 export function useSupplier(args: { teamId: bigint | undefined; supplierId: bigint }) {

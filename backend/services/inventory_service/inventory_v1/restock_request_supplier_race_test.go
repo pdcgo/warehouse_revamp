@@ -43,10 +43,19 @@ const (
 )
 
 func raceRestockItems() []*inventoryv1.RestockRequestItem {
-	return []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100}}
+	return []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100}}
 }
 
-// raceRestockSeed commits one PENDING restock naming no supplier — so seeding never asks the checker.
+// raceRestockItemsFrom is the same line naming a supplier — the supplier rides each line
+// (a-line-connects-to-any-teams-supplier-from-a-popup), and the handler asks supplier_service about it.
+func raceRestockItemsFrom(supplierID uint64) []*inventoryv1.RestockRequestItem {
+	items := raceRestockItems()
+	items[0].SupplierId = supplierID
+
+	return items
+}
+
+// raceRestockSeed commits one ONGOING restock naming no supplier — so seeding never asks the checker.
 func raceRestockSeed(t *testing.T, db *gorm.DB) uint64 {
 	t.Helper()
 
@@ -199,7 +208,7 @@ func TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip(t *
 		if i == 0 {
 			_, err := updater.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 				TeamId: raceRestockTeam, RequestId: reqID, WarehouseId: raceRestockWarehouse,
-				SupplierId: newSupplier, Items: raceRestockItems(),
+				Items: raceRestockItemsFrom(newSupplier),
 			}))
 
 			return err
@@ -263,7 +272,7 @@ func TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheSupplierCall(t *te
 
 	_, err := inventory_v1.NewService(h.DB(), nil, nil, probe, nil).RestockRequestCreate(ctxUser(1),
 		connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, SupplierId: supplier, Items: raceRestockItems(),
+			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, Items: raceRestockItemsFrom(supplier),
 		}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -309,8 +318,8 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 			func(tx *gorm.DB) error {
 				_, err := inventory_v1.NewService(tx, nil, nil, answering, nil).RestockRequestCreate(ctx,
 					connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-						TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, SupplierId: supplierID,
-						Items: raceRestockItems(),
+						TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse,
+						Items: raceRestockItemsFrom(supplierID),
 					}))
 
 				return err

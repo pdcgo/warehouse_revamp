@@ -53,35 +53,6 @@ Placement have own ledger. [see this](./placement_ledger.md)
 We have batch in inventory service. Because our product have different price unit across team and across time. for the reference [see this](./batch_ledger.md)
 
 
-
-
-## General Table That Must Have.
-
-3. Table `inventory_transactions`
-
-    This table is for record all operation that happen in inventory.
-
-    Field that must have:
-    - `id` as primary key
-    - `warehouse_id`
-    - `team_id`
-    - `tx_type`
-    - `create_by_user_id`
-    - `updated_at`
-    - `created_at`
-
-    Field `tx_type` contain:
-    - `order`
-    - `restock`
-    - `return`
-    - `sample`
-    - `transfer_in`
-    - `transfer_out`
-    - `adjustment`
-
-
-
-
 ## Stock loss.
 1. Selling Team bears the loss at receiving.
 2. When Stocks already in Warehouse, and loss/opname happen, its shortfall a warehouse liability.

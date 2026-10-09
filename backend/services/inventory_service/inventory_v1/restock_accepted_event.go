@@ -55,14 +55,14 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 	lines := make([]*eventsv1.RestockAcceptedLine, 0, len(rr.Items))
 
 	for _, item := range rr.Items {
-		var broken, lost int64
+		var broken, missing int64
 
 		for _, d := range item.Damaged {
 			switch d.DamageType {
-			case restockDamageBroken:
+			case restockProblemBroken:
 				broken += d.Quantity
-			case restockDamageLost:
-				lost += d.Quantity
+			case restockProblemMissing:
+				missing += d.Quantity
 			}
 		}
 
@@ -73,7 +73,9 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 			TotalPrice:    item.TotalPrice,
 			AcceptedCount: item.ReceivedQuantity,
 			BrokenCount:   broken,
-			LostCount:     lost,
+			MissingCount:  missing,
+			// The line's supplier is the restock's until lines store their own (restockLineSupplier).
+			SupplierId: supplierID,
 		})
 	}
 
@@ -94,6 +96,8 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 				SupplierId:  supplierID,
 				AcceptedOn:  acceptedAt.In(jakarta).Format("2006-01-02"),
 				Lines:       lines,
+				// restock-accepted-carries-every-line: the instant, beside the day derived from it.
+				AcceptedAtUnix: acceptedAt.Unix(),
 			},
 		},
 	}
@@ -107,7 +111,7 @@ func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 		Model(&inventory_service_models.RestockRequest{}).
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Items.Damaged").
-		Where("status = ? AND supplier_id IS NOT NULL", restockStatusFulfilled).
+		Where("status = ? AND supplier_id IS NOT NULL", restockStatusAccepted).
 		Order("id")
 }
 

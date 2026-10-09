@@ -254,9 +254,9 @@ func acceptOneFor(
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: team, WarehouseId: warehouse, ShippingCode: "jne",
+		TeamId: team, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Quantity: qty, TotalPrice: total},
+			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: total},
 		},
 	}))
 	if err != nil {
@@ -265,14 +265,14 @@ func acceptOneFor(
 
 	item := created.Msg.GetRequest().GetItems()[0]
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{{
-			ItemId:           item.GetId(),
-			ReceivedQuantity: qty,
+			ItemId:        item.GetId(),
+			ReceivedCount: qty,
 			Placements: []*inventoryv1.RestockPlacement{{
-				Place:    &inventoryv1.RestockPlacement_RackId{RackId: rackID},
-				Quantity: qty,
+				PlacementId: rackID,
+				Quantity:    qty,
 			}},
 		}},
 	}))

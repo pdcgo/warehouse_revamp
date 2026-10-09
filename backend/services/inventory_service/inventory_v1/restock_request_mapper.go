@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -11,144 +12,137 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// Restock request status as stored in the `status` TEXT column. This mapper is the only reader/writer,
-// so validity is guarded here (no DB CHECK IN-list, cf. #80).
+// Restock status as stored in the `status` TEXT column. This mapper is the only reader/writer, so validity is guarded
+// here (no DB CHECK IN-list, cf. #80).
+//
+// ⚠ THE STORED TEXT PREDATES THE REWRITE (the-restock-contract-changes-in-place): `pending` is what the contract now
+// calls ONGOING and `fulfilled` is ACCEPTED. The text is left as it is — renaming it is a data migration, and that
+// belongs to the backend step. `arrived` and `lost` are written by RestockRequestArrive / RestockRequestMarkLost,
+// which land in that same step.
 const (
-	restockStatusPending   = "pending"
-	restockStatusFulfilled = "fulfilled"
+	restockStatusOngoing   = "pending"
+	restockStatusAccepted  = "fulfilled"
 	restockStatusCancelled = "cancelled"
+	restockStatusArrived   = "arrived"
+	restockStatusLost      = "lost"
 )
 
-// How the restock was paid for, as stored in the `payment_type` TEXT column (#127). Mapped here, not
-// by a DB CHECK IN-list (cf. #80). Empty text = none recorded.
+// restockInboundStatuses is "still coming": on its way, or at the door and not yet counted. What a warehouse waits
+// for and what a selling team has committed and not received are both this set.
+var restockInboundStatuses = []string{restockStatusOngoing, restockStatusArrived}
+
+// How a restock raised before paying accounts was paid for, as stored in `payment_type` (#127). Read-only history now
+// (a-restock-must-name-the-account-that-paid): new restocks name an account and write nothing here.
 const (
 	restockPaymentShopeePay   = "shopee_pay"
 	restockPaymentBankAccount = "bank_account"
 )
 
-// What happened to a restock, as stored in `restock_request_events.kind` (00019). Text, not a DB
-// CHECK IN-list (cf. #80) — adding a kind is a constant here, never a migration.
+// What happened to a restock, as stored in `restock_request_events.kind` (00019). The contract now reads them as
+// RestockLog rows (every-status-change-is-logged, edits-are-in-the-same-trail) — see restockLogFromEvent.
 const (
 	restockEventCreated   = "created"
 	restockEventEdited    = "edited"
 	restockEventAccepted  = "accepted"
 	restockEventCancelled = "cancelled"
 	restockEventCODFee    = "cod_fee"
-	// 00021: what the delivery cost the WAREHOUSE, superseding cod_fee now that a delivery can cost it
-	// more than the fee at the door.
+	// 00021: what the delivery cost the WAREHOUSE — the courier's charge at the door.
 	restockEventCostRecorded = "cost_recorded"
 )
 
-// Unknown text reads back as UNSPECIFIED rather than being dropped: an event this build does not know
-// still HAPPENED, and a timeline that silently omits it would be a shorter history than the truth.
-func restockEventKindFromText(text string) inventoryv1.RestockRequestEventKind {
-	switch text {
-	case restockEventCreated:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CREATED
-	case restockEventEdited:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_EDITED
-	case restockEventAccepted:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_ACCEPTED
-	case restockEventCancelled:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CANCELLED
-	case restockEventCODFee:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COD_FEE
-	case restockEventCostRecorded:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED
-	default:
-		return inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_UNSPECIFIED
-	}
-}
-
-// How a unit failed to become stock, as stored in `restock_damaged_units.damage_type` (#154). Mapped
-// here, not by a DB CHECK (cf. #80). Empty text (pre-2026-07-23 rows) reads back as UNSPECIFIED.
+// What went wrong with units at the door, as stored in `restock_damaged_units.damage_type` (#154).
+//
+// ⚠ `lost` IS STORED TEXT FOR WHAT THE CONTRACT CALLS MISSING (a-short-unit-at-the-door-is-missing): it always meant
+// "ordered, not in the box". Left as it is until the backend step renames the data.
 const (
-	restockDamageBroken = "broken"
-	restockDamageLost   = "lost"
+	restockProblemBroken  = "broken"
+	restockProblemMissing = "lost"
 )
 
-// What kind of outlay a cost line is, as stored in `restock_cost_lines.kind` (00021). Mapped here,
-// not by a DB CHECK IN-list (cf. #80).
-//
-// ⚠ THERE IS EXACTLY ONE. It held `cod_shipping` and `other`, which described the same money
-// (the-ledger-speaks-the-business-words): what the warehouse had to pay to get one delivery in. That
-// money is INCIDENTAL by nature, so no list of kinds can enumerate it — the NOTE says what a line
-// was, and it is now required for exactly that reason.
+// When the warehouse leaves the optional note empty (a-broken-reason-is-optional). ⚠ The column still carries
+// `CHECK (reason <> ”)` from 00013; until the backend step drops it, an empty note is stored as these words.
+const (
+	restockProblemBrokenDefaultNote  = "broken at the door"
+	restockProblemMissingDefaultNote = "missing from the box"
+)
+
+// The one kind a restock cost line is stored under (00021) — the courier's charge at the door. A restock carries at
+// most one (the-courier-is-paid-once-per-restock).
 const (
 	restockCostIncidental = "incidental"
 )
 
-func restockCostKindToText(k inventoryv1.RestockCostKind) string {
-	switch k {
-	case inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL:
-		return restockCostIncidental
+var (
+	errRestockMissing = errors.New("restock request not found")
+	// Edit and cancel are the selling team's while the restock is ongoing (a-restock-is-cancelled-only-while-ongoing,
+	// a-restock-is-edited-only-while-ongoing).
+	errRestockNotOngoing = errors.New("restock request is not ongoing")
+	// Accept takes a restock from ongoing or arrived only (accept-locks-the-restock).
+	errRestockNotAcceptable = errors.New("restock request can only be accepted while ongoing or arrived")
+	// Labels exist only once the goods are stock.
+	errRestockNotAccepted = errors.New("restock request is not accepted")
+	// The supplier a line names must be a live one, of any selling team.
+	errRestockSupplierMissing = errors.New("supplier not found")
+	// Proto validation requires min_items 1, so this can only be a row written around the API.
+	errRestockNoItems = errors.New("restock request has no items")
+	// Accepting IS the count: every line named, once, and no line that is not on it.
+	errRestockCountIncomplete = errors.New("every line of the request must be counted exactly once")
+	// More in the box than the line says is the selling team's edit to make first (accept-refuses-more-than-the-line-says).
+	errRestockOverCount = errors.New("more arrived than ordered — ask the selling team to add them")
+	// Broken units are among those that arrived.
+	errRestockBrokenOverReceived = errors.New("broken cannot be more than received")
+	// Good units are somewhere (there-is-no-unplaced-pile): a line with good units names its placements.
+	errRestockLineNoPlace = errors.New("a line with good units must say which placement they went to")
+	// The placements must add up to the good units — received minus broken.
+	errRestockPlacementMismatch = errors.New("the placements must add up to the good units")
+	// A line names each placement once.
+	errRestockPlacementDuplicate = errors.New("a line may name each placement only once")
+	// The courier's charge says what it was for (an-incidental-line-must-say-what-it-was-for).
+	errRestockCostNoteMissing = errors.New("the courier's charge needs a note")
+)
+
+func restockStatusToText(status inventoryv1.RestockRequestStatus) string {
+	switch status {
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ONGOING:
+		return restockStatusOngoing
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED:
+		return restockStatusAccepted
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED:
+		return restockStatusCancelled
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ARRIVED:
+		return restockStatusArrived
+	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_LOST:
+		return restockStatusLost
 	default:
 		return ""
 	}
 }
 
-// restockCostLinesToProto carries a delivery's outlay to the wire, in the order it was typed.
-//
-// An unloaded association is an empty slice, which is the correct wire value for a list response:
-// "this response does not carry the lines", not "this delivery cost the warehouse nothing". Only the
-// reads that preload them say anything about them.
-func restockCostLinesToProto(lines []inventory_service_models.RestockCostLine) []*inventoryv1.RestockCostLine {
-	if len(lines) == 0 {
-		return nil
-	}
-
-	out := make([]*inventoryv1.RestockCostLine, 0, len(lines))
-	for i := range lines {
-		out = append(out, &inventoryv1.RestockCostLine{
-			Id:     lines[i].ID,
-			Kind:   restockCostKindFromText(lines[i].Kind),
-			Amount: lines[i].Amount,
-			Note:   lines[i].Note,
-		})
-	}
-
-	return out
-}
-
-func restockCostKindFromText(text string) inventoryv1.RestockCostKind {
+func restockStatusFromText(text string) inventoryv1.RestockRequestStatus {
 	switch text {
-	case restockCostIncidental:
-		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL
+	case restockStatusOngoing:
+		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ONGOING
+	case restockStatusAccepted:
+		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED
+	case restockStatusCancelled:
+		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED
+	case restockStatusArrived:
+		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ARRIVED
+	case restockStatusLost:
+		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_LOST
 	default:
-		return inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED
+		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED
 	}
 }
 
-func restockDamageTypeToText(t inventoryv1.RestockDamageType) string {
-	switch t {
-	case inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_BROKEN:
-		return restockDamageBroken
-	case inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_LOST:
-		return restockDamageLost
-	default:
-		return ""
-	}
-}
-
-func restockDamageTypeFromText(text string) inventoryv1.RestockDamageType {
+func restockProblemTypeFromText(text string) inventoryv1.RestockProblemType {
 	switch text {
-	case restockDamageBroken:
-		return inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_BROKEN
-	case restockDamageLost:
-		return inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_LOST
+	case restockProblemBroken:
+		return inventoryv1.RestockProblemType_RESTOCK_PROBLEM_TYPE_BROKEN
+	case restockProblemMissing:
+		return inventoryv1.RestockProblemType_RESTOCK_PROBLEM_TYPE_MISSING
 	default:
-		return inventoryv1.RestockDamageType_RESTOCK_DAMAGE_TYPE_UNSPECIFIED
-	}
-}
-
-func restockPaymentToText(p inventoryv1.RestockPaymentType) string {
-	switch p {
-	case inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_SHOPEE_PAY:
-		return restockPaymentShopeePay
-	case inventoryv1.RestockPaymentType_RESTOCK_PAYMENT_TYPE_BANK_ACCOUNT:
-		return restockPaymentBankAccount
-	default:
-		return ""
+		return inventoryv1.RestockProblemType_RESTOCK_PROBLEM_TYPE_UNSPECIFIED
 	}
 }
 
@@ -163,89 +157,136 @@ func restockPaymentFromText(text string) inventoryv1.RestockPaymentType {
 	}
 }
 
-var (
-	errRestockMissing    = errors.New("restock request not found")
-	errRestockNotPending = errors.New("restock request is not pending")
-	// Labels exist only once the goods have arrived (#207): a pending request has no placements to
-	// print, and a cancelled one never will. Refused as FailedPrecondition, not guessed.
-	errRestockNotFulfilled = errors.New("restock request is not fulfilled")
-	// The optional supplier must be a live one, of any selling team (a-team-restocks-from-another-teams-supplier).
-	errRestockSupplierMissing = errors.New("supplier not found")
-	// Proto validation requires min_items 1, so this can only be a row that predates #124 or was
-	// written around the API — fulfilling it would receive nothing while claiming success.
-	errRestockNoItems = errors.New("restock request has no items")
-	// Accepting IS the count (#133), so the count must cover the request exactly: every line named,
-	// once, and no line that is not on it. Refused rather than interpreted — reading an omitted line
-	// as "all of it came" or "none of it did" is a guess, and a guess here is stock drift.
-	errRestockCountIncomplete = errors.New("every line of the request must be counted exactly once")
-	// #137: counting and shelving are one act, so a line that ARRIVED must say where it went. Goods
-	// that turned up are somewhere; the system is told, or it refuses — it does not guess a shelf.
-	errRestockLineNoPlace = errors.New("a line that arrived must say which place it was put")
-	// #154: the places a line names must add up to the count beside them. A person who says "8 arrived"
-	// and then puts 7 away has made a mistake in one of the two, and which one is not knowable here.
-	errRestockPlacementMismatch = errors.New("the placements must add up to the received quantity")
-	// #154: a line names each place once. Two rows for the same shelf is one placement written twice,
-	// and summing them is not the same as the person having meant it.
-	errRestockPlacementDuplicate = errors.New("a line may name each place only once")
-	// 00021: a cost line whose kind this build does not know. Refused rather than stored as text the
-	// mapper cannot read back — an unrecognised kind would still be charged to the requesting team
-	// while showing as "unspecified" on the screen that has to justify it.
-	errCostLineKind = errors.New("a cost line must name a known kind")
-)
+// restockLogFromEvent reads a stored event as a trail row. The events table records WHAT happened, not the status on
+// either side, so the two statuses are inferred from the kind — exact for every kind written today, because each one
+// only ever happens from ongoing. The backend step replaces the table with `restock_logs`, which stores both.
+func restockLogFromEvent(e *inventory_service_models.RestockRequestEvent) *inventoryv1.RestockLog {
+	ongoing := inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ONGOING
 
-// restockStatusToText is the direction the LIST FILTER needs (#130): an enum in, the stored text out.
-// Empty for UNSPECIFIED, which the filter reads as "no filter" rather than as a status to match.
-func restockStatusToText(status inventoryv1.RestockRequestStatus) string {
-	switch status {
-	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_PENDING:
-		return restockStatusPending
-	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_FULFILLED:
-		return restockStatusFulfilled
-	case inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED:
-		return restockStatusCancelled
-	default:
-		return ""
+	out := &inventoryv1.RestockLog{
+		Id:          e.ID,
+		FromStatus:  ongoing,
+		ToStatus:    ongoing,
+		ActorUserId: e.ActorUserID,
+		AtUnix:      e.At.Unix(),
 	}
+
+	switch e.Kind {
+	case restockEventCreated:
+		out.FromStatus = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED
+		out.Description = "created"
+	case restockEventEdited:
+		out.Description = "edited"
+	case restockEventAccepted:
+		out.ToStatus = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_ACCEPTED
+		out.Description = "accepted"
+	case restockEventCancelled:
+		out.ToStatus = inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED
+		out.Description = "cancelled"
+	case restockEventCODFee, restockEventCostRecorded:
+		out.Description = "courier's charge recorded"
+	default:
+		// A kind this build does not know still HAPPENED; the trail keeps it rather than shortening the history.
+		out.Description = e.Kind
+	}
+
+	return out
 }
 
-func restockStatusFromText(text string) inventoryv1.RestockRequestStatus {
-	switch text {
-	case restockStatusPending:
-		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_PENDING
-	case restockStatusFulfilled:
-		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_FULFILLED
-	case restockStatusCancelled:
-		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_CANCELLED
-	default:
-		return inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED
+// restockLineSupplier is the supplier every line names, or nil when they disagree or name none.
+//
+// ⚠ A BRIDGE until restock lines store their own supplier (the backend step): the restock-level column is what
+// RestockAccepted's `supplier_id` — and so a supplier's figures — still read. A restock whose lines name one supplier
+// keeps feeding them; one that mixes suppliers records none here, rather than crediting all of it to the first.
+func restockLineSupplier(items []*inventoryv1.RestockRequestItem) *uint64 {
+	var supplier uint64
+
+	for _, item := range items {
+		id := item.GetSupplierId()
+		if id == 0 {
+			return nil
+		}
+
+		if supplier != 0 && supplier != id {
+			return nil
+		}
+
+		supplier = id
 	}
+
+	if supplier == 0 {
+		return nil
+	}
+
+	return &supplier
+}
+
+// problemPrice is a problem row's worth, filled by the system from its line and never typed
+// (the-problem-price-is-filled-by-the-system): the line's total × count ÷ the line's count.
+func problemPrice(lineTotal, lineCount, count int64) (unit, total int64) {
+	if lineCount <= 0 {
+		return 0, 0
+	}
+
+	return lineTotal / lineCount, lineTotal * count / lineCount
 }
 
 func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventoryv1.RestockRequest {
 	items := make([]*inventoryv1.RestockRequestItem, 0, len(r.Items))
+
+	var subtotal int64
+
 	for i := range r.Items {
+		src := &r.Items[i]
+
 		item := &inventoryv1.RestockRequestItem{
-			Id:               r.Items[i].ID,
-			ProductId:        r.Items[i].ProductID,
-			Sku:              r.Items[i].SKU,
-			Name:             r.Items[i].Name,
-			Quantity:         r.Items[i].Quantity,
-			TotalPrice:       r.Items[i].TotalPrice,
-			ReceivedQuantity: r.Items[i].ReceivedQuantity,
+			Id:        src.ID,
+			ProductId: src.ProductID,
+			Sku:       src.SKU,
+			Name:      src.Name,
+			Count:     src.Quantity,
+			Total:     src.TotalPrice,
 		}
 
-		// Where it was shelved, one entry per place (#137/#154), and what arrived broken.
-		for p := range r.Items[i].Placements {
-			item.Placements = append(item.Placements, placementToProto(&r.Items[i].Placements[p]))
+		if src.Quantity > 0 {
+			item.PriceUnit = src.TotalPrice / src.Quantity
 		}
 
-		for d := range r.Items[i].Damaged {
-			item.Damaged = append(item.Damaged, &inventoryv1.RestockDamagedUnits{
-				Quantity: r.Items[i].Damaged[d].Quantity,
-				Reason:   r.Items[i].Damaged[d].Reason,
-				Type:     restockDamageTypeFromText(r.Items[i].Damaged[d].DamageType),
+		// Until lines store their own supplier, every line reads the restock's.
+		if r.SupplierID != nil {
+			item.SupplierId = *r.SupplierID
+		}
+
+		subtotal += src.TotalPrice
+
+		for p := range src.Placements {
+			item.Placements = append(item.Placements, placementToProto(&src.Placements[p]))
+		}
+
+		// `received_quantity` stored the GOOD units; the contract's received_count is what was in the box, so the
+		// broken rows are added back (any-warehouse-member-counts-what-arrived).
+		received := src.ReceivedQuantity
+
+		for d := range src.Damaged {
+			problem := &src.Damaged[d]
+			kind := restockProblemTypeFromText(problem.DamageType)
+
+			if kind == inventoryv1.RestockProblemType_RESTOCK_PROBLEM_TYPE_BROKEN {
+				received += problem.Quantity
+			}
+
+			unit, total := problemPrice(src.TotalPrice, src.Quantity, problem.Quantity)
+
+			item.Problems = append(item.Problems, &inventoryv1.RestockProblemItem{
+				Type:      kind,
+				Count:     problem.Quantity,
+				PriceUnit: unit,
+				Total:     total,
+				Note:      problem.Reason,
 			})
 		}
+
+		item.ReceivedCount = received
 
 		items = append(items, item)
 	}
@@ -254,15 +295,16 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		Id:               r.ID,
 		RequestingTeamId: r.RequestingTeamID,
 		WarehouseId:      r.WarehouseID,
-		ShippingCode:     r.ShippingCode,
 		Status:           restockStatusFromText(r.Status),
 		CreatedAtUnix:    r.CreatedAt.Unix(),
 		Items:            items,
-		OrderRef:         r.OrderRef,
 		Receipt:          r.Receipt,
-		ShippingCost:     r.ShippingCost,
-		CostLines:        restockCostLinesToProto(r.CostLines),
+		InvoiceRefId:     r.OrderRef,
 		PaymentType:      restockPaymentFromText(r.PaymentType),
+		ShipmentCost:     r.ShippingCost,
+		Subtotal:         subtotal,
+		// Goods plus shipping — never the courier's charge (the-couriers-charge-stays-out-of-total).
+		Total:            subtotal + r.ShippingCost,
 		Note:             r.Note,
 		CreatedByUserId:  r.CreatedByUserID,
 		AcceptedByUserId: r.AcceptedByUserID,
@@ -270,25 +312,26 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 		CancelledByUserId: r.CancelledByUserID,
 	}
 
-	// THE HISTORY, oldest first — empty unless the caller preloaded it, which only Detail does. An
-	// unloaded association is an empty slice here, and that is the correct wire value for the list:
-	// "this response does not carry the history", not "this restock has none".
+	// The courier's charge, one per restock with its note (the-courier-is-paid-once-per-restock). Rows from before the
+	// decision may hold several lines; they read as their sum, their notes joined.
+	var notes []string
+
+	for i := range r.CostLines {
+		out.WarehouseAdditionalCost += r.CostLines[i].Amount
+
+		if r.CostLines[i].Note != "" {
+			notes = append(notes, r.CostLines[i].Note)
+		}
+	}
+
+	out.WarehouseAdditionalCostNote = strings.Join(notes, "; ")
+
+	// THE TRAIL, oldest first — empty unless the caller preloaded it, which only Detail does.
 	for i := range r.Events {
-		out.Events = append(out.Events, &inventoryv1.RestockRequestEvent{
-			Id:          r.Events[i].ID,
-			Kind:        restockEventKindFromText(r.Events[i].Kind),
-			ActorUserId: r.Events[i].ActorUserID,
-			AtUnix:      r.Events[i].At.Unix(),
-		})
+		out.Logs = append(out.Logs, restockLogFromEvent(&r.Events[i]))
 	}
 
-	// A nil supplier is "none recorded" — the wire carries 0 rather than a null.
-	if r.SupplierID != nil {
-		out.SupplierId = *r.SupplierID
-	}
-
-	// Same shape for the two nullable timestamps: NULL means "it has not happened", and the wire says
-	// that as 0 rather than as the zero time.Time, which would ride over as a date in year 1.
+	// NULL means "it has not happened", which the wire says as 0, not as the zero time.Time.
 	if r.AcceptedAt != nil {
 		out.AcceptedAtUnix = r.AcceptedAt.Unix()
 	}
@@ -300,20 +343,11 @@ func restockRequestToProto(r *inventory_service_models.RestockRequest) *inventor
 	return out
 }
 
-// restockItemModels turns request lines into rows. Three fields on the input message are deliberately
-// NOT read, and every omission is load-bearing:
+// restockItemModels turns request lines into rows. The fields a line READS BACK after accept — received_count,
+// placements, problems — are deliberately NOT read: only the warehouse writes them, and only by counting at the door.
 //
-//   - `id` — a caller does not get to choose a row's identity.
-//   - `received_quantity` — it is on the shared line message because a line READS back what arrived,
-//     but only the WAREHOUSE may ever write it, and only by counting at acceptance (#133). Copying it
-//     here would let the requesting team declare its own delivery received on create or edit: stock
-//     the warehouse never saw, written by the party that benefits from claiming it arrived.
-//   - `placements` / `damaged` — the same rule for the same reason (#137/#154): only the warehouse
-//     says where the goods went and what arrived broken, and only by counting and shelving as it
-//     accepts. A requesting team that could set these would be declaring which shelf a delivery it
-//     never made had been placed on, or writing off goods it never handled.
-//
-// All of them are ignored on the way in. Do not "complete" this mapping by adding any of them.
+// ⚠ supplier_id, supplier_channel_id and note have no column until the backend step; supplier_id is carried at the
+// restock level by restockLineSupplier.
 func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service_models.RestockRequestItem {
 	out := make([]inventory_service_models.RestockRequestItem, 0, len(in))
 	for _, item := range in {
@@ -321,75 +355,60 @@ func restockItemModels(in []*inventoryv1.RestockRequestItem) []inventory_service
 			ProductID:  item.GetProductId(),
 			SKU:        item.GetSku(),
 			Name:       item.GetName(),
-			Quantity:   item.GetQuantity(),
-			TotalPrice: item.GetTotalPrice(),
+			Quantity:   item.GetCount(),
+			TotalPrice: item.GetTotal(),
 		})
 	}
 
 	return out
 }
 
-// restockErr maps the internal errors to Connect codes: a missing/cross-scope request is NotFound; a
-// request that is not pending is FailedPrecondition; everything else is Internal.
+// restockErr maps the internal errors to Connect codes: a missing/cross-scope restock is NotFound; one in the wrong
+// status is FailedPrecondition; a malformed count is InvalidArgument; everything else is Internal.
 func restockErr(err error) error {
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return connect.NewError(connect.CodeNotFound, errRestockMissing)
 	case errors.Is(err, errRestockSupplierMissing):
-		// NotFound, not PermissionDenied: another team's supplier must be indistinguishable from one
-		// that does not exist, or the error itself confirms the id.
+		// NotFound, not PermissionDenied: another team's supplier must be indistinguishable from one that does not
+		// exist, or the error itself confirms the id.
 		return connect.NewError(connect.CodeNotFound, errRestockSupplierMissing)
-	case errors.Is(err, errRestockNotPending):
-		return connect.NewError(connect.CodeFailedPrecondition, errRestockNotPending)
-	case errors.Is(err, errRestockNotFulfilled):
-		return connect.NewError(connect.CodeFailedPrecondition, errRestockNotFulfilled)
-	case errors.Is(err, errRestockNoItems):
-		return connect.NewError(connect.CodeFailedPrecondition, errRestockNoItems)
-	case errors.Is(err, errRestockCountIncomplete):
-		// InvalidArgument, not FailedPrecondition: the request is in a perfectly good state — it is the
-		// COUNT that is malformed, and the caller fixes it by sending a complete one.
-		return connect.NewError(connect.CodeInvalidArgument, errRestockCountIncomplete)
-	case errors.Is(err, errRestockLineNoPlace):
-		return connect.NewError(connect.CodeInvalidArgument, errRestockLineNoPlace)
-	case errors.Is(err, errRestockPlacementMismatch):
-		return connect.NewError(connect.CodeInvalidArgument, errRestockPlacementMismatch)
-	case errors.Is(err, errRestockPlacementDuplicate):
-		return connect.NewError(connect.CodeInvalidArgument, errRestockPlacementDuplicate)
+	case errors.Is(err, errRestockNotOngoing),
+		errors.Is(err, errRestockNotAcceptable),
+		errors.Is(err, errRestockNotAccepted),
+		errors.Is(err, errRestockNoItems):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	case errors.Is(err, errRestockCountIncomplete),
+		errors.Is(err, errRestockOverCount),
+		errors.Is(err, errRestockBrokenOverReceived),
+		errors.Is(err, errRestockLineNoPlace),
+		errors.Is(err, errRestockPlacementMismatch),
+		errors.Is(err, errRestockPlacementDuplicate),
+		errors.Is(err, errRestockCostNoteMissing):
+		// InvalidArgument: the restock is in a good state — it is the COUNT that is malformed.
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errRackMissing):
-		// NotFound, not PermissionDenied: another warehouse's rack must be indistinguishable from one
-		// that does not exist, or the error itself confirms the id.
+		// NotFound: another warehouse's placement must be indistinguishable from one that does not exist.
 		return connect.NewError(connect.CodeNotFound, errRackMissing)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}
 }
 
-// placementToProto carries one placement over the wire (#154).
-//
-// The oneof is what makes "unplaced" say itself out loud. A nil rack becomes `unplaced: true` rather
-// than `rack_id: 0`, because 0 is what an unset number looks like and the pile is a real place — the
-// same distinction RackSelect keeps on screen (#136/#139) and the one #139 was written to defend.
+// placementToProto carries one placement over the wire. Every unit in stock is on a placement
+// (there-is-no-unplaced-pile); a row from the unplaced pile that predates the decision reads as placement 0.
 func placementToProto(p *inventory_service_models.RestockReceivedPlacement) *inventoryv1.RestockPlacement {
 	out := &inventoryv1.RestockPlacement{Quantity: p.Quantity}
 
 	if p.RackID != nil {
-		out.Place = &inventoryv1.RestockPlacement_RackId{RackId: *p.RackID}
-	} else {
-		out.Place = &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}
+		out.PlacementId = *p.RackID
 	}
 
 	return out
 }
 
-// recordRestockEvent appends one entry to a restock's history (00019).
-//
-// IN THE SAME TRANSACTION as the change it describes, always — that is the only reason it takes a
-// `tx` rather than the service's db. An event written outside the transaction can survive a rolled
-// back write, and a history claiming something that never happened is worse than no history.
-//
-// `at` is passed in rather than taken here so the event carries the SAME instant as the column the
-// handler stamps — two calls to time.Now() a microsecond apart would have the timeline and the
-// `accepted_at` filter disagreeing about which second a delivery landed.
+// recordRestockEvent appends one entry to a restock's trail (00019), IN THE SAME TRANSACTION as the change it
+// describes, carrying the same instant as the column the handler stamps.
 func recordRestockEvent(
 	tx *gorm.DB,
 	requestID uint64,

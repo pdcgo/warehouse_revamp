@@ -35,7 +35,14 @@ func (s *Service) RestockRequestUpdate(
 	// request is held FOR UPDATE, or a warehouse accepting the delivery waits out a network round-trip
 	// (audits/services/inventory_service/concurrency/RestockRequestUpdate.md). Whether the answer MATTERS —
 	// only a changed supplier is checked — can only be known under the lock, so it is judged there.
-	supplierAnswer := askSupplier(ctx, s.suppliers, teamID, req.Msg.GetSupplierId())
+	lineSupplier := restockLineSupplier(req.Msg.GetItems())
+
+	var wantSupplier uint64
+	if lineSupplier != nil {
+		wantSupplier = *lineSupplier
+	}
+
+	supplierAnswer := askSupplier(ctx, s.suppliers, teamID, wantSupplier)
 
 	var rr inventory_service_models.RestockRequest
 
@@ -49,8 +56,10 @@ func (s *Service) RestockRequestUpdate(
 			return loadErr
 		}
 
-		if rr.Status != restockStatusPending {
-			return errRestockNotPending
+		// Ongoing only for now: the arrived window — lines editable, nothing else
+		// (the-lines-stay-editable-until-accepted) — opens with RestockRequestArrive in the backend step.
+		if rr.Status != restockStatusOngoing {
+			return errRestockNotOngoing
 		}
 
 		items := restockItemModels(req.Msg.GetItems())
@@ -62,7 +71,7 @@ func (s *Service) RestockRequestUpdate(
 
 		var supplierID *uint64
 
-		if id := req.Msg.GetSupplierId(); id != 0 {
+		if id := wantSupplier; id != 0 {
 			// Only a CHANGE is validated. A full replace re-sends the supplier the form prefilled, so an
 			// unchanged id is the request PRESERVING a reference it already holds, not making a new one.
 			// Re-checking it would punish the person for something they did not do: SupplierDelete is a
@@ -86,12 +95,10 @@ func (s *Service) RestockRequestUpdate(
 		}
 
 		rr.WarehouseID = req.Msg.GetWarehouseId()
-		rr.ShippingCode = req.Msg.GetShippingCode()
 		rr.Receipt = req.Msg.GetReceipt()
 		rr.SupplierID = supplierID
-		rr.OrderRef = req.Msg.GetOrderRef()
-		rr.ShippingCost = req.Msg.GetShippingCost()
-		rr.PaymentType = restockPaymentToText(req.Msg.GetPaymentType())
+		rr.OrderRef = req.Msg.GetInvoiceRefId()
+		rr.ShippingCost = req.Msg.GetShipmentCost()
 		rr.Note = req.Msg.GetNote()
 
 		editedAt := time.Now()
@@ -103,12 +110,10 @@ func (s *Service) RestockRequestUpdate(
 			Model(&rr).
 			Updates(map[string]any{
 				"warehouse_id":  rr.WarehouseID,
-				"shipping_code": rr.ShippingCode,
 				"receipt":       rr.Receipt,
 				"supplier_id":   rr.SupplierID,
 				"order_ref":     rr.OrderRef,
 				"shipping_cost": rr.ShippingCost,
-				"payment_type":  rr.PaymentType,
 				"note":          rr.Note,
 				"updated_at":    editedAt,
 			}).

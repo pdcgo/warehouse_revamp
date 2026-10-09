@@ -88,3 +88,16 @@ export const Interactive: Story = {
     await expect(canvas.getByTestId("rack-select")).toHaveTextContent(racks[2]!.code);
   },
 };
+
+// A restock accept leaves the pile out: the good units of a box always go onto a placement (there-is-no-unplaced-pile).
+export const WithoutTheUnplacedPile: Story = {
+  args: { allowUnplaced: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("rack-select"));
+    await canvas.findByTestId(`rack-select-option-${racks[0]!.id}`);
+
+    await expect(canvas.queryByTestId(`rack-select-option-${UNPLACED}`)).toBeNull();
+  },
+};

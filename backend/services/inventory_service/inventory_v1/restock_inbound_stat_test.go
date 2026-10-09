@@ -59,12 +59,12 @@ func TestRestockInboundStat(t *testing.T) {
 
 	widget := func(qty, total int64) *inventoryv1.RestockRequestItem {
 		return &inventoryv1.RestockRequestItem{
-			ProductId: 100, Sku: "SKU-W", Name: "Widget", Quantity: qty, TotalPrice: total,
+			ProductId: 100, Sku: "SKU-W", Name: "Widget", Count: qty, Total: total,
 		}
 	}
 	gadget := func(qty, total int64) *inventoryv1.RestockRequestItem {
 		return &inventoryv1.RestockRequestItem{
-			ProductId: 200, Sku: "SKU-G", Name: "Gadget", Quantity: qty, TotalPrice: total,
+			ProductId: 200, Sku: "SKU-G", Name: "Gadget", Count: qty, Total: total,
 		}
 	}
 
@@ -91,11 +91,11 @@ func TestRestockInboundStat(t *testing.T) {
 	// FULFILLED IS NOT WAITING. It has been counted and is now stock; leaving it in makes the queue
 	// look like it never drains.
 	accepted := create(bandung, jakarta, widget(4, 40_000))
-	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: jakarta, RequestId: accepted.GetId(), Lines: allArrived(accepted),
+	_, err := svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: jakarta, RequestId: accepted.GetId(), Lines: allArrived(t, db, accepted),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// CANCELLED NEVER ARRIVES.
@@ -170,7 +170,7 @@ func TestRestockInboundStat_ScopedToTheReceivingWarehouse(t *testing.T) {
 	_, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: seller, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU-W", Name: "Widget", Quantity: 10, TotalPrice: 100_000},
+			{ProductId: 100, Sku: "SKU-W", Name: "Widget", Count: 10, Total: 100_000},
 		},
 	}))
 	if err != nil {

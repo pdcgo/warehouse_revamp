@@ -1,16 +1,19 @@
 import type { TFunction } from "i18next";
 
-// The rules for COUNTING A DELIVERY, in one place (#133/#154).
+// The rules for COUNTING A BOX at the door, in one place — the accept screen and its stories read them, and two
+// copies of "what counts as counted" is how a screen's idea of valid drifts from the handler's.
 //
-// Extracted from the receive dialog when the Accept screen (#157) replaced it: the same rules now
-// govern a bigger form, and two copies of "what counts as counted" is how a screen's idea of valid
-// drifts from the handler's.
+// Per line the warehouse types two numbers: what is IN THE BOX, and how many of those are BROKEN
+// (any-warehouse-member-counts-what-arrived). Everything else is worked out:
+//
+//   good    = received − broken      → becomes stock, on the placements named
+//   missing = ordered − received     → a MISSING row (a-short-unit-at-the-door-is-missing)
+//
+// More in the box than ordered is refused — the selling team adds the extra by an edit first
+// (accept-refuses-more-than-the-line-says).
 
-// A count is held as a STRING while editing, because blank is not 0 — and here that distinction has
-// teeth. `0` is a legitimate count (the line never turned up); BLANK means nobody has counted it yet.
-// Submitting a blank as 0 would silently write off a line no one looked at, which is the exact failure
-// the server refuses an incomplete `lines` array to prevent. So a blank is INVALID, not zero: to say
-// nothing arrived you type 0 and mean it.
+// A count is held as a STRING while editing, because blank is not 0: `0` is a legitimate count (nothing of this line
+// was in the box); BLANK means nobody has counted it yet. A blank is INVALID, not zero.
 export function isCounted(raw: string): boolean {
   if (raw.trim() === "") return false;
 
@@ -19,18 +22,21 @@ export function isCounted(raw: string): boolean {
   return Number.isInteger(n) && n >= 0;
 }
 
-// Only ever called on a string `isCounted` has already accepted. There is deliberately no upper bound
-// — 11 against 10 asked is over-delivery, which is real, and a cap would only force the person
-// counting to write down a number they can see is wrong.
-export function toReceived(raw: string): bigint {
+// Only called on a string `isCounted` has accepted.
+export function toCount(raw: string): bigint {
   if (!isCounted(raw)) return 0n;
 
   return BigInt(Number(raw));
 }
 
-// Whole rupiah from a typed field. Blank and rubbish are both 0 — unlike a count, a blank price is not
-// a distinct state worth defending: 0 is a legitimate cost (a sample, a transfer) and the difference
-// between "free" and "not typed yet" is not one this form has to carry.
+// Broken is optional to type — blank means none broke.
+export function toBroken(raw: string): bigint {
+  if (raw.trim() === "") return 0n;
+
+  return toCount(raw);
+}
+
+// Whole rupiah from a typed field. Blank and rubbish are both 0.
 export function toRupiah(raw: string): bigint {
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) return 0n;
@@ -38,60 +44,53 @@ export function toRupiah(raw: string): bigint {
   return BigInt(Math.trunc(n));
 }
 
-// A place is owed exactly when goods arrived — the server's rule, mirrored: `received_quantity > 0`
-// REQUIRES a placement, `== 0` forbids one. An UNCOUNTED line owes nothing yet: it is already blocked
-// by the count itself, and until someone writes a number down there is no question of where goods went.
-export function needsPlace(raw: string): boolean {
-  return isCounted(raw) && toReceived(raw) > 0n;
+// More in the box than the line ordered — accept is refused until the selling team edits the line.
+export function isOverCount(received: bigint, ordered: bigint): boolean {
+  return received > ordered;
 }
 
-// Counted zero — someone looked and the line was not there. NOT the same as an uncounted blank, and
-// the distinction is the same one `isCounted` draws: 0 is an answer, blank is the absence of one.
-export function noneArrived(raw: string): boolean {
-  return isCounted(raw) && toReceived(raw) === 0n;
+// Broken units are among those that arrived.
+export function isBrokenOverReceived(broken: bigint, received: bigint): boolean {
+  return broken > received;
 }
 
-// The gap between what was asked for and what arrived, as a phrase — "" when they match. The live hint
-// while counting and the badge on the finished record both read it from here, so the same discrepancy
-// can never be phrased two ways.
-export function deltaLabel(t: TFunction, asked: bigint, arrived: bigint): string {
-  if (arrived === asked) return "";
-  if (arrived < asked) return t("restock.receive.short", { n: (asked - arrived).toString() });
+// The good units, never below 0.
+export function goodUnits(received: bigint, broken: bigint): bigint {
+  const good = received - broken;
 
-  return t("restock.receive.over", { n: (arrived - asked).toString() });
+  return good > 0n ? good : 0n;
 }
 
-// What a unit cost BEFORE any freight — the line's own price, divided by what actually landed
-// sellable. Shown beside the HPP (owner) so the person typing the COD fee can see the two apart: this
-// is the number on the supplier's invoice, and the gap to the HPP is exactly what the delivery added.
-//
-// Same zero rule as unitHpp: no sellable units means the question has no answer, not that it was free.
-export function unitGoods(lineTotal: bigint, lineReceived: bigint): bigint {
-  if (lineReceived <= 0n) return 0n;
+// The gap between what was ordered and what is in the box, as a phrase — "" when they match. The live hint while
+// counting and the badge on the finished record both read it from here.
+export function deltaLabel(t: TFunction, ordered: bigint, received: bigint): string {
+  if (received === ordered) return "";
+  if (received < ordered) return t("restock.receive.short", { n: (ordered - received).toString() });
 
-  return lineTotal / lineReceived;
+  return t("restock.receive.over", { n: (received - ordered).toString() });
 }
 
-// HPP — what a unit of this line ACTUALLY cost, freight included (#155). Mirrors StockCost's SQL so
-// the figure on screen is the one the order will book:
-//
-//   additional = (shipping + cod) / sellable units across the WHOLE request
-//   hpp        = (line total / that line's sellable units) + additional
-//
-// Rounded DOWN at both steps, like the server — and shown live, because the person typing the COD fee
-// is entitled to see what it does to the cost before they commit to it.
-//
-// 0 when the line received nothing: "what did the units cost" has no answer when none came, and the
-// server skips such a line rather than dividing by its zero.
-export function unitHpp(
-  lineTotal: bigint,
-  lineReceived: bigint,
-  freight: bigint,
-  sellableAcrossRequest: bigint,
-): bigint {
-  if (lineReceived <= 0n) return 0n;
+// What a unit cost BEFORE freight — the line's price divided by the good units. Shown beside the HPP so the person
+// typing the courier's charge can see what the delivery added.
+export function unitGoods(lineTotal: bigint, good: bigint): bigint {
+  if (good <= 0n) return 0n;
 
-  const additional = sellableAcrossRequest > 0n ? freight / sellableAcrossRequest : 0n;
+  return lineTotal / good;
+}
 
-  return lineTotal / lineReceived + additional;
+// HPP — what a good unit of this line ACTUALLY cost. Mirrors the accept handler, so the figure on screen is the one
+// the batch freezes:
+//
+//   freight per unit = (shipment cost + the courier's charge) / good units across the WHOLE restock
+//   hpp              = line total / that line's good units + freight per unit
+//
+// The courier's charge is OUTSIDE the restock's total and INSIDE the unit price
+// (the-couriers-charge-stays-out-of-total, the-couriers-ask-is-in-the-unit-price). Rounded down at both steps, like
+// the server. 0 when the line has no good units — "what did the units cost" has no answer when none became stock.
+export function unitHpp(lineTotal: bigint, good: bigint, freight: bigint, goodAcrossRestock: bigint): bigint {
+  if (good <= 0n) return 0n;
+
+  const perUnit = goodAcrossRestock > 0n ? freight / goodAcrossRestock : 0n;
+
+  return lineTotal / good + perUnit;
 }

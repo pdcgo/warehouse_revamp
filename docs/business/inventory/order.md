@@ -40,3 +40,41 @@ state invsrv {
 
 ```
 
+
+## How Warehouse Process The Order.
+```mermaid
+stateDiagram-v2
+direction LR
+
+sell: Selling Team
+state sell {
+
+    state "New Order" as nord
+
+    [*]-->nord
+    nord-->[*]
+
+}
+
+sell-->ware
+
+ware: Warehouse Team
+state ware {
+
+    state "Order Processed" as confirm
+    state "Staff Picking Goods" as pick
+    state "Staff Scan Goods for verify" as scan
+    state "Order Packing Completed" as pack
+    state "Order Shipped" as shipped
+
+    [*]-->confirm: Staff confirming order, change order status and print receipt
+    confirm-->pick
+    pick-->scan
+    scan-->pack: staff start packing
+    pack-->shipped: wait courrier pickup, before give to courrier, staff scan to change shipped
+}
+
+```
+
+
+

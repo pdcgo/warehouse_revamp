@@ -33,8 +33,11 @@ func (s *Service) RestockRequestCancel(
 			return loadErr
 		}
 
-		if rr.Status != restockStatusPending {
-			return errRestockNotPending
+		// Ongoing only (a-restock-is-cancelled-only-while-ongoing): a box that arrived is in the building, a lost one
+		// was paid for, and a cancelled one must not refund twice. ⚠ money_returned has no column until the backend
+		// step, which also publishes RestockCancelled.
+		if rr.Status != restockStatusOngoing {
+			return errRestockNotOngoing
 		}
 
 		// WHEN it was called off, stamped here rather than left to `updated_at`: any later write would

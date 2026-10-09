@@ -33,7 +33,7 @@ func accept(restockID, team, supplier uint64, day string, lines ...line) *events
 	for _, l := range lines {
 		wire = append(wire, &eventsv1.RestockAcceptedLine{
 			ProductId: l.product, OrderedCount: l.ordered, TotalPrice: l.total,
-			AcceptedCount: l.accepted, BrokenCount: l.broken, LostCount: l.lost,
+			AcceptedCount: l.accepted, BrokenCount: l.broken, MissingCount: l.lost,
 		})
 	}
 

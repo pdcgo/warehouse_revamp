@@ -28,6 +28,88 @@ isshipproblem-->|yes|setlost["Selling Team set `lost`"]
 isshipproblem-->|no|wait
 ```
 
+## Restock Created Flow.
+
+```mermaid
+stateDiagram-v2
+direction LR
+state "Create RPC called" as rpc
+state "Cancel RPC called" as cancel
+
+
+
+rpc-->tx
+cancel-->ctx
+
+
+%% bagian cancel
+
+ctx: Open Database Transaction
+note right of ctx
+    If Any Step Fails, Rollback Transaction and Return Error 
+end note
+
+state ctx {
+    state "Restock Exist" as rec
+    state "Status Updated" as status
+    state is_accept <<choice>>
+    state "Error" as err
+
+    [*]-->rec: find and lock restock
+    rec-->is_accept: check is accepted
+    is_accept-->status: [no] updating status
+    is_accept-->err: [yes] return error
+    status-->[*]
+}
+
+state "Send Restock Cancel Event" as cevt
+ctx-->cevt: if success
+cevt-->srv
+
+
+%% end bagian cancel
+
+tx: Open Database Transaction
+note right of tx
+    If Any Step Fails, Rollback Transaction and Return Error 
+end note
+
+
+state tx {
+    
+    state "Create Restock Items Records" as items
+    state "New Restock Record" as restock
+
+    [*]-->restock: create new restock record
+    restock-->items: add item
+
+    items-->[*]
+}
+
+state "Send Restock Created Event" as evt
+tx-->evt: if success
+evt-->srv
+
+srv: Other Service
+state srv {
+    sup: Financial Account Service
+    state sup {
+
+        state "Financial Account Webhook" as supwebhook
+        state "Processing Event" as procevt
+
+        [*]-->supwebhook: receiving event by push subscribe
+        supwebhook-->procevt: processing event
+        procevt-->[*]
+    
+    }
+
+ 
+
+}
+
+```
+
 ## Restock Accepted Flow.
 1. for what case that `supplier_service` listen restock accept, [see supplier context](../supplier/context.md)
 ```mermaid
@@ -35,6 +117,7 @@ stateDiagram-v2
 direction LR
 
 state "Accept RPC called" as rpc
+
 
 rpc-->tx
 
@@ -49,11 +132,21 @@ state tx {
     state "Batch Ledger" as bledger
     state "Placement Ledger" as pledger
     state "Inv Transaction" as inv
+    state "Restock Record" as res
+    state is_ware_additional <<choice>>
 
-    [*]-->inv: get transaction
+    
+
+    res-->inv: get transaction
     inv-->prob: add problem entry if any item problem
     inv-->bledger: calculate price_unit and post in batch_ledger
     inv-->pledger: post in placement ledger
+
+    [*]-->is_ware_additional: warehouse have additional cost
+    is_ware_additional-->[*]: no
+    is_ware_additional-->res: yes, update restock
+    [*]-->res: getting restock
+    
 
     prob-->[*]
     bledger-->[*]
@@ -63,6 +156,8 @@ state tx {
 state "Send Restock Accepted Event" as evt
 tx-->evt: if success
 evt-->srv
+
+
 
 srv: Other Service
 state srv {
@@ -75,6 +170,18 @@ state srv {
         [*]-->supwebhook: receiving event by push subscribe
         supwebhook-->procevt: processing event
         procevt-->[*]
+    
+    }
+
+    bal: Balance Service
+    state bal {
+
+        state "Balane Webhook" as balwebhook
+        state "Processing Event" as balprocevt
+
+        [*]-->balwebhook: receiving event by push subscribe
+        balwebhook-->balprocevt: processing event
+        balprocevt-->[*]
     
     }
 
@@ -97,6 +204,11 @@ First for restock:
     - `warehouse_id`
     - `team_id`
     - `transaction_id`
+    - `finance_account_id`
+    - `invoice_ref_id`, its string
+    - `shipment_id`
+    - `receipt`
+    - `receipt_file`
     - `status`, it has `ongoing`, `arrived`, `accepted`, `lost` and `cancel`
     - `shipment_cost`
     - `warehouse_additional_cost`
@@ -116,7 +228,7 @@ First for restock:
 
     - `count`
     - `price_unit`
-    
+    - `note`
     - `total`
 
 
@@ -139,4 +251,4 @@ First for restock:
 
     Field `problem_type` is contain:
     - `broken`
-    - `lost`
+    - `missing`

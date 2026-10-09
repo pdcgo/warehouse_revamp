@@ -1,7 +1,8 @@
 import { useState } from "react";
+import type { ComponentProps } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button } from "@chakra-ui/react";
+import { Button, RadioGroup, Stack, Text } from "@chakra-ui/react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -111,5 +112,68 @@ export const ShowsBusyWhileTheActionRuns: Story = {
     await userEvent.click(confirm);
 
     await waitFor(() => expect(confirm).toHaveAttribute("data-loading"));
+  },
+};
+
+// ── The body slot ───────────────────────────────────────────────────────────────────────────────
+//
+// A confirmation that has to ASK something — a restock cancel asks whether the money came back. The question lives
+// inside the one dialog, under the message, and the confirm waits until it is answered (`confirmDisabled`).
+function AskingTheMoneyQuestion(args: ComponentProps<typeof ConfirmDialog>) {
+  const [answer, setAnswer] = useState<"" | "yes" | "no">("");
+
+  return (
+    <ConfirmDialog
+      {...args}
+      title="Cancel Restock #501"
+      message="It is still on its way. Once cancelled it cannot be reopened."
+      confirmLabel="Cancel Restock"
+      dismissLabel="Keep Restock"
+      confirmDisabled={answer === ""}
+      trigger={<Button colorPalette="error">Cancel</Button>}
+    >
+      <RadioGroup.Root value={answer} onValueChange={(e) => setAnswer((e.value ?? "") as "yes" | "no")}>
+        <Stack gap="2">
+          <Text fontWeight="bold">Did the money come back?</Text>
+          <RadioGroup.Item value="yes" data-testid="money-yes">
+            <RadioGroup.ItemHiddenInput />
+            <RadioGroup.ItemIndicator />
+            <RadioGroup.ItemText>Yes</RadioGroup.ItemText>
+          </RadioGroup.Item>
+          <RadioGroup.Item value="no" data-testid="money-no">
+            <RadioGroup.ItemHiddenInput />
+            <RadioGroup.ItemIndicator />
+            <RadioGroup.ItemText>No</RadioGroup.ItemText>
+          </RadioGroup.Item>
+        </Stack>
+      </RadioGroup.Root>
+    </ConfirmDialog>
+  );
+}
+
+export const WithAQuestionInTheBody: Story = {
+  render: (args) => <AskingTheMoneyQuestion {...args} />,
+};
+
+// The question is part of the act: the confirm stays disabled until it is answered, then runs.
+export const ConfirmWaitsForTheAnswer: Story = {
+  render: (args) => <AskingTheMoneyQuestion {...args} />,
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
+
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await expect(screen.getByText("Did the money come back?")).toBeVisible();
+    await expect(confirm).toBeDisabled();
+    // The dismiss button is renamed — "Cancel" beside "Cancel Restock" would be two cancels.
+    await expect(screen.getByRole("button", { name: "Keep Restock" })).toBeVisible();
+
+    await userEvent.click(screen.getByTestId("money-yes"));
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    await expect(args.onConfirm).toHaveBeenCalled();
   },
 };

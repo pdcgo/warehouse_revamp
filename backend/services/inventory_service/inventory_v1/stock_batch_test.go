@@ -33,10 +33,10 @@ func TestAccept_MintsBatchPerLine(t *testing.T) {
 	rackBID := rackB.Msg.GetRack().GetId()
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne", ShippingCost: 80000,
+		TeamId: sellingTeam, WarehouseId: warehouse, ShipmentCost: 80000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "KPH-001", Name: "Kaos", Quantity: 100, TotalPrice: 4000000},
-			{ProductId: 200, Sku: "TTM-207", Name: "Topi", Quantity: 30, TotalPrice: 840000},
+			{ProductId: 100, Sku: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000},
+			{ProductId: 200, Sku: "TTM-207", Name: "Topi", Count: 30, Total: 840000},
 		},
 	}))
 	if err != nil {
@@ -45,30 +45,32 @@ func TestAccept_MintsBatchPerLine(t *testing.T) {
 	req := created.Msg.GetRequest()
 	items := req.GetItems()
 
-	// 100 shirts split 60/40; 28 hats unplaced with 2 broken.
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), CostLines: codLines(50000),
+	// there-is-no-unplaced-pile: the hats not shelved yet go to the staging placement.
+	staging := stagingPlacement(t, db, warehouse)
+
+	// 100 shirts split 60/40; 30 hats in the box, 2 broken, the 28 good on the staging placement.
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: req.GetId(), WarehouseAdditionalCost: 50000, WarehouseAdditionalCostNote: courierNote,
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
-				ItemId:           items[0].GetId(),
-				ReceivedQuantity: 100,
+				ItemId:        items[0].GetId(),
+				ReceivedCount: 100,
 				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackAID}, Quantity: 60},
-					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackBID}, Quantity: 40},
+					{PlacementId: rackAID, Quantity: 60},
+					{PlacementId: rackBID, Quantity: 40},
 				},
 			},
 			{
-				ItemId:           items[1].GetId(),
-				ReceivedQuantity: 28,
-				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 28},
-				},
-				Damaged: []*inventoryv1.RestockDamagedUnits{{Quantity: 2, Reason: "crushed", Type: broken}},
+				ItemId:        items[1].GetId(),
+				ReceivedCount: 30,
+				BrokenCount:   2,
+				BrokenNote:    "crushed",
+				Placements:    placedOn(staging, 28),
 			},
 		},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	var batches []inventory_service_models.StockBatch
@@ -136,13 +138,15 @@ func TestAccept_MintsBatchPerLine(t *testing.T) {
 		t.Fatalf("shirt split = A:%d B:%d, want 60/40", placed[rackAID], placed[rackBID])
 	}
 
-	// The hat sits on the unplaced pile — a shelf_batch with a nil rack.
+	// The hat sits on the staging placement — a shelf_batch with a REAL rack, never a nil one
+	// (there-is-no-unplaced-pile).
 	var hatShelves []inventory_service_models.StockShelfBatch
 	err = db.WithContext(context.Background()).Where("batch_id = ?", hat.ID).Find(&hatShelves).Error
 	if err != nil {
 		t.Fatalf("load hat shelves: %v", err)
 	}
-	if len(hatShelves) != 1 || hatShelves[0].RackID != nil || hatShelves[0].Qty != 28 {
-		t.Fatalf("hat shelf_batch = %+v, want one unplaced row of 28", hatShelves)
+	if len(hatShelves) != 1 || hatShelves[0].RackID == nil || *hatShelves[0].RackID != staging ||
+		hatShelves[0].Qty != 28 {
+		t.Fatalf("hat shelf_batch = %+v, want one row of 28 on the staging placement", hatShelves)
 	}
 }

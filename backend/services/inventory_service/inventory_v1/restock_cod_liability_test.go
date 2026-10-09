@@ -25,6 +25,7 @@ const (
 // door. Returns the request id.
 func acceptWithCOD(
 	t *testing.T,
+	db *gorm.DB,
 	svc *inventory_v1.Service,
 	codFee int64,
 ) (uint64, error) {
@@ -33,9 +34,9 @@ func acceptWithCOD(
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: codSellingTeam, WarehouseId: codWarehouse, ShippingCode: "jne",
+		TeamId: codSellingTeam, WarehouseId: codWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 500000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -44,11 +45,11 @@ func acceptWithCOD(
 
 	reqID := created.Msg.GetRequest().GetId()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId:    codWarehouse,
-		RequestId: reqID,
-		CostLines: codLines(codFee),
-		Lines:     allArrived(created.Msg.GetRequest()),
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId:                  codWarehouse,
+		RequestId:               reqID,
+		WarehouseAdditionalCost: codFee, WarehouseAdditionalCostNote: courierNote,
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 
 	return reqID, err
@@ -56,14 +57,14 @@ func acceptWithCOD(
 
 // THE OBLIGATION THAT EXISTS TODAY AND WAS NEVER RECORDED (#184). The warehouse paid the courier at
 // the door for goods it does not own, so the requesting team owes it that money.
-func TestRestockFulfil_PostsTheCODObligation(t *testing.T) {
+func TestRestockAccept_PostsTheCODObligation(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
 
-	reqID, err := acceptWithCOD(t, svc, 25000)
+	reqID, err := acceptWithCOD(t, db, svc, 25000)
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	if len(poster.posted) != 1 {
@@ -89,13 +90,13 @@ func TestRestockFulfil_PostsTheCODObligation(t *testing.T) {
 // ⚠ RECORDING THE OBLIGATION MUST NOT REMOVE THE FEE FROM COSTING. The same rupiah answers two
 // different questions — what the goods cost (#155) and who is owed for them (#184) — and the first
 // version of a change like this is exactly where one of them quietly disappears.
-func TestRestockFulfil_TheCODFeeStillReachesCosting(t *testing.T) {
+func TestRestockAccept_TheCODFeeStillReachesCosting(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
-	reqID, err := acceptWithCOD(t, svc, 25000)
+	reqID, err := acceptWithCOD(t, db, svc, 25000)
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	var stored []inventory_service_models.RestockCostLine
@@ -112,14 +113,14 @@ func TestRestockFulfil_TheCODFeeStillReachesCosting(t *testing.T) {
 
 // MOST DELIVERIES ARE NOT COD. An entry of zero would be a ledger row saying nothing happened —
 // worse than no row, because it reads as a debt of nothing rather than the absence of one.
-func TestRestockFulfil_NoCODFeeMeansNoObligation(t *testing.T) {
+func TestRestockAccept_NoCODFeeMeansNoObligation(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
 
-	_, err := acceptWithCOD(t, svc, 0)
+	_, err := acceptWithCOD(t, db, svc, 0)
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	if len(poster.posted) != 0 {
@@ -130,17 +131,17 @@ func TestRestockFulfil_NoCODFeeMeansNoObligation(t *testing.T) {
 // ONE TRANSACTION, and this is the failure it prevents: if the stock movement commits and the
 // obligation does not, the warehouse is out of pocket with no record — which is EXACTLY the
 // situation liability_service exists to fix, reproduced by the code meant to fix it.
-func TestRestockFulfil_AFailedPostingRollsBackTheAcceptance(t *testing.T) {
+func TestRestockAccept_AFailedPostingRollsBackTheAcceptance(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{fail: errors.New("the ledger is down")}
 	svc := newServiceWithLiability(t, db, poster)
 
-	reqID, err := acceptWithCOD(t, svc, 25000)
+	reqID, err := acceptWithCOD(t, db, svc, 25000)
 	if err == nil {
 		t.Fatal("the acceptance succeeded while its obligation failed")
 	}
 
-	// The request is still PENDING…
+	// The request is still ONGOING (stored as `pending`; accepted is stored as `fulfilled`)…
 	var stored inventory_service_models.RestockRequest
 
 	readErr := db.Where("id = ?", reqID).Take(&stored).Error
@@ -172,7 +173,7 @@ func TestRestockFulfil_AFailedPostingRollsBackTheAcceptance(t *testing.T) {
 // The poster is handed the SAME transaction the acceptance runs in — the whole reason the two can be
 // atomic at all. A poster given the bare connection would commit independently and the guarantee
 // above would be an illusion.
-func TestRestockFulfil_ThePosterRunsInTheAcceptancesTransaction(t *testing.T) {
+func TestRestockAccept_ThePosterRunsInTheAcceptancesTransaction(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	var seen *gorm.DB
@@ -180,9 +181,9 @@ func TestRestockFulfil_ThePosterRunsInTheAcceptancesTransaction(t *testing.T) {
 	poster := &txCapturingPoster{onPost: func(tx *gorm.DB) { seen = tx }}
 	svc := newServiceWithLiability(t, db, poster)
 
-	_, err := acceptWithCOD(t, svc, 25000)
+	_, err := acceptWithCOD(t, db, svc, 25000)
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	if seen == nil {
@@ -296,13 +297,13 @@ func (p *realPoster) PostStockDamage(
 	return err
 }
 
-func TestRestockFulfil_TheLedgerActuallyRecordsTheDebt(t *testing.T) {
+func TestRestockAccept_TheLedgerActuallyRecordsTheDebt(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
 
-	reqID, err := acceptWithCOD(t, svc, 25000)
+	reqID, err := acceptWithCOD(t, db, svc, 25000)
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// The warehouse is OWED: positive on its side.

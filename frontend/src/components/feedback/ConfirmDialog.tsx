@@ -1,14 +1,24 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Button, CloseButton, Dialog, Portal, Text } from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Portal, Stack, Text } from "@chakra-ui/react";
 
 interface ConfirmDialogProps {
   // Optional: when this dialog is opened from a menu item, the page controls `open` and there is
   // no inline trigger. Left absent, the dialog triggers itself (products/categories still do).
   trigger?: ReactNode;
   title: string;
-  message: string;
+  message?: string;
+  /**
+   * A QUESTION THE CONFIRMATION HAS TO ASK, rendered under the message — "did the money come back?",
+   * an optional reason. It lives inside the one dialog rather than in a second one after it, because
+   * the answer is part of the act being confirmed: a cancel without it is not the same cancel.
+   */
+  children?: ReactNode;
   confirmLabel?: string;
+  /** The dismiss button. "Cancel" by default — rename it where the act itself is a cancel. */
+  dismissLabel?: string;
+  /** Hold the confirm button until the body's question is answered. */
+  confirmDisabled?: boolean;
   destructive?: boolean;
   onConfirm: () => Promise<void>;
   open?: boolean;
@@ -21,7 +31,10 @@ export function ConfirmDialog({
   trigger,
   title,
   message,
+  children,
   confirmLabel = "Confirm",
+  dismissLabel = "Cancel",
+  confirmDisabled = false,
   destructive = true,
   onConfirm,
   open: openProp,
@@ -65,17 +78,21 @@ export function ConfirmDialog({
             </Dialog.Header>
 
             <Dialog.Body>
-              <Text>{message}</Text>
+              <Stack gap="field">
+                {message && <Text>{message}</Text>}
+                {children}
+              </Stack>
             </Dialog.Body>
 
             <Dialog.Footer>
               <Dialog.ActionTrigger asChild>
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline">{dismissLabel}</Button>
               </Dialog.ActionTrigger>
 
               <Button
                 colorPalette={destructive ? "error" : "brand"}
                 loading={busy}
+                disabled={confirmDisabled}
                 onClick={() => void confirm()}
                 data-testid="confirm-action"
               >

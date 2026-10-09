@@ -68,16 +68,16 @@ func wantCost(t *testing.T, db *gorm.DB, itemID uint64, want int64, why string) 
 
 // The plain case, and the one that pins the shape of the formula: goods per piece plus this delivery's
 // freight per piece, with the COD fee counted as freight because it is (#155).
-func TestRestockFulfil_FreezesTheHPPOfWhatArrived(t *testing.T) {
+func TestRestockAccept_FreezesTheHPPOfWhatArrived(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
-		ShippingCost: 15000,
+		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 500000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -86,13 +86,13 @@ func TestRestockFulfil_FreezesTheHPPOfWhatArrived(t *testing.T) {
 
 	req := created.Msg.GetRequest()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
-		CostLines: codLines(25000),
-		Lines:     allArrived(req),
+		WarehouseAdditionalCost: 25000, WarehouseAdditionalCostNote: courierNote,
+		Lines: allArrived(t, db, req),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// goods 500.000 / 10 = 50.000 ; freight (15.000 + 25.000) / 10 = 4.000 ; HPP = 54.000.
@@ -105,16 +105,16 @@ func TestRestockFulfil_FreezesTheHPPOfWhatArrived(t *testing.T) {
 // too, and that cost has to land somewhere: on the good units, so a damaged delivery honestly reads as
 // more expensive per piece. Spread over all 10 instead, the freight paid on the broken pair is
 // absorbed by nobody and the margin is quietly optimistic.
-func TestRestockFulfil_FrozenHPPSpreadsFreightOverSellableUnitsOnly(t *testing.T) {
+func TestRestockAccept_FrozenHPPSpreadsFreightOverSellableUnitsOnly(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
-		ShippingCost: 16000,
+		ShipmentCost: 16000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 400000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 400000},
 		},
 	}))
 	if err != nil {
@@ -124,23 +124,19 @@ func TestRestockFulfil_FrozenHPPSpreadsFreightOverSellableUnitsOnly(t *testing.T
 	req := created.Msg.GetRequest()
 	itemID := req.GetItems()[0].GetId()
 
-	// 10 shipped, 2 crushed: 8 sellable.
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	// 10 shipped, all 10 in the box, 2 crushed: 8 sellable, onto the staging placement (there-is-no-unplaced-pile).
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
-				ItemId: itemID, ReceivedQuantity: 8,
-				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 8},
-				},
-				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed in transit", Type: broken},
-				},
+				ItemId: itemID, ReceivedCount: 10,
+				BrokenCount: 2, BrokenNote: "crushed in transit",
+				Placements: placedOn(stagingPlacement(t, db, hppWarehouse), 8),
 			},
 		},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// goods 400.000 / 8 = 50.000 ; freight 16.000 / 8 = 2.000 ; HPP = 52.000.
@@ -151,17 +147,17 @@ func TestRestockFulfil_FrozenHPPSpreadsFreightOverSellableUnitsOnly(t *testing.T
 // ONE SHIPMENT, SEVERAL LINES. Every piece carries the same freight whichever line it is on, while the
 // goods stay on their own line — a delivery does not make a cheap product expensive by travelling with
 // an expensive one.
-func TestRestockFulfil_FrozenHPPSplitsFreightAcrossLinesByPiece(t *testing.T) {
+func TestRestockAccept_FrozenHPPSplitsFreightAcrossLinesByPiece(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
-		ShippingCost: 10000,
+		ShipmentCost: 10000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Cheap", Quantity: 4, TotalPrice: 40000},
-			{ProductId: productX + 1, Sku: "SKU2", Name: "Dear", Quantity: 6, TotalPrice: 600000},
+			{ProductId: productX, Sku: "SKU1", Name: "Cheap", Count: 4, Total: 40000},
+			{ProductId: productX + 1, Sku: "SKU2", Name: "Dear", Count: 6, Total: 600000},
 		},
 	}))
 	if err != nil {
@@ -170,13 +166,13 @@ func TestRestockFulfil_FrozenHPPSplitsFreightAcrossLinesByPiece(t *testing.T) {
 
 	req := created.Msg.GetRequest()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
-		CostLines: codLines(10000),
-		Lines:     allArrived(req),
+		WarehouseAdditionalCost: 10000, WarehouseAdditionalCostNote: courierNote,
+		Lines: allArrived(t, db, req),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// freight (10.000 + 10.000) over the 10 pieces that arrived = 2.000 each, on BOTH lines.
@@ -190,16 +186,16 @@ func TestRestockFulfil_FrozenHPPSplitsFreightAcrossLinesByPiece(t *testing.T) {
 // rupiah has nowhere to go; what must not happen is that rupiah being reconciled by rewriting the
 // 10.000 somebody typed off the invoice (#140). The line total is what a human entered; the per-piece
 // figure is openly derived.
-func TestRestockFulfil_TheRoundingNeverRewritesTheLineTotal(t *testing.T) {
+func TestRestockAccept_TheRoundingNeverRewritesTheLineTotal(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
-		ShippingCost: 1000,
+		ShipmentCost: 1000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 3, TotalPrice: 10000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 3, Total: 10000},
 		},
 	}))
 	if err != nil {
@@ -209,12 +205,12 @@ func TestRestockFulfil_TheRoundingNeverRewritesTheLineTotal(t *testing.T) {
 	req := created.Msg.GetRequest()
 	itemID := req.GetItems()[0].GetId()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
-		Lines: allArrived(req),
+		Lines: allArrived(t, db, req),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// goods 10.000 / 3 = 3.333 (floor) ; freight 1.000 / 3 = 333 (floor) ; HPP = 3.666.
@@ -237,13 +233,13 @@ func TestRestockFulfil_TheRoundingNeverRewritesTheLineTotal(t *testing.T) {
 // layer; the first one still says what the first one cost. A recomputed-on-read cost would have the
 // older stock silently revalued by whatever was bought most recently, and every margin already
 // reported against it would change after the fact.
-func TestRestockFulfil_ALaterDeliveryDoesNotRewriteAnEarlierLayer(t *testing.T) {
+func TestRestockAccept_ALaterDeliveryDoesNotRewriteAnEarlierLayer(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
 
-	first := acceptOneLine(t, svc, ctx, 10, 500000, 0)
-	second := acceptOneLine(t, svc, ctx, 10, 900000, 0)
+	first := acceptOneLine(t, db, svc, ctx, 10, 500000, 0)
+	second := acceptOneLine(t, db, svc, ctx, 10, 900000, 0)
 
 	wantCost(t, db, first, 50000, "the first delivery cost 50.000 a piece and still does")
 	wantCost(t, db, second, 90000, "the second is its own layer at its own price")
@@ -253,6 +249,7 @@ func TestRestockFulfil_ALaterDeliveryDoesNotRewriteAnEarlierLayer(t *testing.T) 
 // received line's id — the key the batch it minted is found by.
 func acceptOneLine(
 	t *testing.T,
+	db *gorm.DB,
 	svc *inventory_v1.Service,
 	ctx context.Context,
 	qty, total, freight int64,
@@ -261,9 +258,9 @@ func acceptOneLine(
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: hppSellingTeam, WarehouseId: hppWarehouse,
-		ShippingCost: freight,
+		ShipmentCost: freight,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: qty, TotalPrice: total},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: qty, Total: total},
 		},
 	}))
 	if err != nil {
@@ -272,12 +269,12 @@ func acceptOneLine(
 
 	req := created.Msg.GetRequest()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: hppWarehouse, RequestId: req.GetId(),
-		Lines: allArrived(req),
+		Lines: allArrived(t, db, req),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	return req.GetItems()[0].GetId()

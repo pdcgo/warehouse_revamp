@@ -29,7 +29,7 @@ func labelsFor(
 	return res.Msg, nil
 }
 
-// A FULFILLED delivery, split across shelves and with breakage, prints ONE label PER PLACEMENT — the
+// An ACCEPTED delivery, split across shelves and with breakage, prints ONE label PER PLACEMENT — the
 // broken units never enter stock so they never get a label, and a line on two shelves is two labels
 // that share its batch id (#207).
 func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
@@ -51,12 +51,15 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 	rackAID := rackA.Msg.GetRack().GetId()
 	rackBID := rackB.Msg.GetRack().GetId()
 
+	// there-is-no-unplaced-pile: what is not shelved yet goes to the staging placement, which has a code like any rack.
+	staging := stagingPlacement(t, db, warehouse)
+
 	// A two-line request: 100 shirts (freight-bearing), 30 hats.
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne", ShippingCost: 80000,
+		TeamId: sellingTeam, WarehouseId: warehouse, ShipmentCost: 80000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "KPH-001", Name: "Kaos Polos Hitam", Quantity: 100, TotalPrice: 4000000},
-			{ProductId: 200, Sku: "TTM-207", Name: "Topi Trucker Merah", Quantity: 30, TotalPrice: 840000},
+			{ProductId: 100, Sku: "KPH-001", Name: "Kaos Polos Hitam", Count: 100, Total: 4000000},
+			{ProductId: 200, Sku: "TTM-207", Name: "Topi Trucker Merah", Count: 30, Total: 840000},
 		},
 	}))
 	if err != nil {
@@ -65,32 +68,30 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 	req := created.Msg.GetRequest()
 	items := req.GetItems()
 
-	// Accept: shirts split 60/40 across two shelves; hats 28 to the unplaced pile with 2 broken.
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), CostLines: codLines(50000),
+	// Accept: shirts split 60/40 across two shelves; 30 hats in the box, 2 broken, the 28 good to the staging
+	// placement.
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: req.GetId(), WarehouseAdditionalCost: 50000, WarehouseAdditionalCostNote: courierNote,
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
-				ItemId:           items[0].GetId(),
-				ReceivedQuantity: 100,
+				ItemId:        items[0].GetId(),
+				ReceivedCount: 100,
 				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackAID}, Quantity: 60},
-					{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackBID}, Quantity: 40},
+					{PlacementId: rackAID, Quantity: 60},
+					{PlacementId: rackBID, Quantity: 40},
 				},
 			},
 			{
-				ItemId:           items[1].GetId(),
-				ReceivedQuantity: 28,
-				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 28},
-				},
-				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed brims", Type: broken},
-				},
+				ItemId:        items[1].GetId(),
+				ReceivedCount: 30,
+				BrokenCount:   2,
+				BrokenNote:    "crushed brims",
+				Placements:    placedOn(staging, 28),
 			},
 		},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	msg, err := labelsFor(t, svc, warehouse, req.GetId())
@@ -107,7 +108,7 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 		t.Fatalf("restock_id = %d, want %d", msg.GetRestockId(), req.GetId())
 	}
 	if msg.GetReceivedAtUnix() == 0 {
-		t.Fatal("received_at_unix is 0 on a fulfilled request")
+		t.Fatal("received_at_unix is 0 on an accepted request")
 	}
 
 	// The 2 broken hats got no label, and the screen is told so out loud.
@@ -118,19 +119,13 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 	// The two shirt labels share the line's batch id and name their shelves; their quantities are the
 	// per-shelf split, not the line total.
 	byRack := map[string]*inventoryv1.RestockLabel{}
-	var totalHats int64
 	for _, l := range msg.GetLabels() {
-		if l.GetUnplaced() {
-			byRack["unplaced"] = l
-			totalHats += l.GetQuantity()
-			continue
-		}
-		byRack[l.GetRackCode()] = l
+		byRack[l.GetPlacementCode()] = l
 	}
 
 	shirtA := byRack["A-01-3"]
 	shirtB := byRack["B-02-1"]
-	hats := byRack["unplaced"]
+	hats := byRack[stagingCode]
 	if shirtA == nil || shirtB == nil || hats == nil {
 		t.Fatalf("missing a label: %+v", byRack)
 	}
@@ -146,9 +141,10 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 		t.Fatalf("sku = %q, want KPH-001", shirtA.GetSku())
 	}
 
-	// The hats went to the unplaced pile — said out loud, not a blank rack.
-	if !hats.GetUnplaced() || hats.GetRackCode() != "" {
-		t.Fatalf("unplaced label = {unplaced:%v code:%q}, want {true \"\"}", hats.GetUnplaced(), hats.GetRackCode())
+	// The hats went to the staging placement — a label a picker can walk to, never a blank code
+	// (there-is-no-unplaced-pile).
+	if hats.GetPlacementCode() != stagingCode {
+		t.Fatalf("hat label code = %q, want %q", hats.GetPlacementCode(), stagingCode)
 	}
 	if hats.GetQuantity() != 28 {
 		t.Fatalf("hats placed = %d, want 28 (2 broken excluded)", hats.GetQuantity())
@@ -165,9 +161,9 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 	}
 }
 
-// A PENDING request has nothing shelved yet, so there is nothing to print — refused, not returned
+// An ONGOING request has nothing shelved yet, so there is nothing to print — refused, not returned
 // empty, so the screen can say the delivery has not been accepted.
-func TestRestockLabels_PendingIsRefused(t *testing.T) {
+func TestRestockLabels_OngoingIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
@@ -175,9 +171,9 @@ func TestRestockLabels_PendingIsRefused(t *testing.T) {
 	const sellingTeam, warehouse uint64 = 2, 5
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne",
+		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 5000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 5000},
 		},
 	}))
 	if err != nil {
@@ -186,7 +182,7 @@ func TestRestockLabels_PendingIsRefused(t *testing.T) {
 
 	_, err = labelsFor(t, svc, warehouse, created.Msg.GetRequest().GetId())
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("pending labels code = %v, want FailedPrecondition", connect.CodeOf(err))
+		t.Fatalf("ongoing labels code = %v, want FailedPrecondition", connect.CodeOf(err))
 	}
 }
 
@@ -200,9 +196,9 @@ func TestRestockLabels_CrossWarehouseIsNotFound(t *testing.T) {
 	const sellingTeam, warehouse, other uint64 = 2, 5, 9
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: sellingTeam, WarehouseId: warehouse, ShippingCode: "jne",
+		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 5000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 5000},
 		},
 	}))
 	if err != nil {
@@ -210,11 +206,11 @@ func TestRestockLabels_CrossWarehouseIsNotFound(t *testing.T) {
 	}
 	req := created.Msg.GetRequest()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), Lines: onePlace(req, nil),
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: req.GetId(), Lines: allArrived(t, db, req),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	_, err = labelsFor(t, svc, other, req.GetId())

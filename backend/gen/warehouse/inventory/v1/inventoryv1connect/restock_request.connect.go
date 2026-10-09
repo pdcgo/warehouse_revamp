@@ -48,9 +48,15 @@ const (
 	// RestockRequestServiceRestockRequestUpdateProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockRequestUpdate RPC.
 	RestockRequestServiceRestockRequestUpdateProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestUpdate"
-	// RestockRequestServiceRestockRequestFulfillProcedure is the fully-qualified name of the
-	// RestockRequestService's RestockRequestFulfill RPC.
-	RestockRequestServiceRestockRequestFulfillProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestFulfill"
+	// RestockRequestServiceRestockRequestArriveProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestArrive RPC.
+	RestockRequestServiceRestockRequestArriveProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestArrive"
+	// RestockRequestServiceRestockRequestAcceptProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestAccept RPC.
+	RestockRequestServiceRestockRequestAcceptProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestAccept"
+	// RestockRequestServiceRestockRequestMarkLostProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestMarkLost RPC.
+	RestockRequestServiceRestockRequestMarkLostProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestMarkLost"
 	// RestockRequestServiceRestockRequestCancelProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockRequestCancel RPC.
 	RestockRequestServiceRestockRequestCancelProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestCancel"
@@ -65,26 +71,30 @@ const (
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
 // service.
 type RestockRequestServiceClient interface {
-	// A selling team creates a restock request (scoped to the requesting team).
+	// The selling team raises a restock — the restock and its lines in one transaction, then Restock Created
+	// (a-created-restock-tells-the-financial-account).
 	RestockRequestCreate(context.Context, *connect.Request[v1.RestockRequestCreateRequest]) (*connect.Response[v1.RestockRequestCreateResponse], error)
-	// Both sides list: a team sees requests it MADE and requests TARGETING it as a warehouse.
+	// Both sides list: a team sees restocks it raised and restocks coming to it as a warehouse.
 	RestockRequestList(context.Context, *connect.Request[v1.RestockRequestListRequest]) (*connect.Response[v1.RestockRequestListResponse], error)
-	// The people a "who" filter offers: everyone who raised, or accepted, a restock this team may list
-	// (a-who-filter-lists-the-people-on-its-rows).
+	// The people a "who" filter offers (a-who-filter-lists-the-people-on-its-rows).
 	RestockActorList(context.Context, *connect.Request[v1.RestockActorListRequest]) (*connect.Response[v1.RestockActorListResponse], error)
-	// One request in full, with its lines — the detail page (#125). Same two-sided scope as List.
+	// One restock in full, with its lines and its trail. Same two-sided scope as List.
 	RestockRequestDetail(context.Context, *connect.Request[v1.RestockRequestDetailRequest]) (*connect.Response[v1.RestockRequestDetailResponse], error)
-	// The requesting team edits its own request, while the warehouse has not accepted it yet (#131).
+	// The selling team edits — everything while ongoing, only the lines while arrived
+	// (the-lines-stay-editable-until-accepted).
 	RestockRequestUpdate(context.Context, *connect.Request[v1.RestockRequestUpdateRequest]) (*connect.Response[v1.RestockRequestUpdateResponse], error)
-	// The target warehouse fulfils a pending request — receives the stock and marks it fulfilled.
-	RestockRequestFulfill(context.Context, *connect.Request[v1.RestockRequestFulfillRequest]) (*connect.Response[v1.RestockRequestFulfillResponse], error)
-	// The requesting team cancels a still-pending request.
+	// The warehouse signs for the box: ongoing or lost → arrived (a-late-lost-box-is-signed-for-as-arrived).
+	RestockRequestArrive(context.Context, *connect.Request[v1.RestockRequestArriveRequest]) (*connect.Response[v1.RestockRequestArriveResponse], error)
+	// The warehouse counts the box in: ongoing or arrived → accepted, under a lock on the restock row
+	// (accept-locks-the-restock).
+	RestockRequestAccept(context.Context, *connect.Request[v1.RestockRequestAcceptRequest]) (*connect.Response[v1.RestockRequestAcceptResponse], error)
+	// The selling team gives the parcel up: ongoing → lost (lost-is-set-only-before-the-box-arrives).
+	RestockRequestMarkLost(context.Context, *connect.Request[v1.RestockRequestMarkLostRequest]) (*connect.Response[v1.RestockRequestMarkLostResponse], error)
+	// The selling team calls it off: ongoing → cancelled (a-restock-is-cancelled-only-while-ongoing).
 	RestockRequestCancel(context.Context, *connect.Request[v1.RestockRequestCancelRequest]) (*connect.Response[v1.RestockRequestCancelResponse], error)
-	// The printable labels for a FULFILLED request (#207) — one per placement of stock that entered the
-	// warehouse, to stick on the shelf so a picker can find and scan it. Warehouse-side only.
+	// The printable shelf labels for an ACCEPTED restock — one per placement the good units went to.
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
-	// The headline over the warehouse's inbound queue (owner): what is still waiting to be counted.
-	// Warehouse-side only — the buying team's equivalent is inventory's OwnerStockStat.
+	// The headline over the warehouse's inbound queue: what is still on its way or at the door.
 	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
 }
 
@@ -130,10 +140,22 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestUpdate")),
 			connect.WithClientOptions(opts...),
 		),
-		restockRequestFulfill: connect.NewClient[v1.RestockRequestFulfillRequest, v1.RestockRequestFulfillResponse](
+		restockRequestArrive: connect.NewClient[v1.RestockRequestArriveRequest, v1.RestockRequestArriveResponse](
 			httpClient,
-			baseURL+RestockRequestServiceRestockRequestFulfillProcedure,
-			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestFulfill")),
+			baseURL+RestockRequestServiceRestockRequestArriveProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestArrive")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestAccept: connect.NewClient[v1.RestockRequestAcceptRequest, v1.RestockRequestAcceptResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestAcceptProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestAccept")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestMarkLost: connect.NewClient[v1.RestockRequestMarkLostRequest, v1.RestockRequestMarkLostResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestMarkLostProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestMarkLost")),
 			connect.WithClientOptions(opts...),
 		),
 		restockRequestCancel: connect.NewClient[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse](
@@ -159,15 +181,17 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 
 // restockRequestServiceClient implements RestockRequestServiceClient.
 type restockRequestServiceClient struct {
-	restockRequestCreate  *connect.Client[v1.RestockRequestCreateRequest, v1.RestockRequestCreateResponse]
-	restockRequestList    *connect.Client[v1.RestockRequestListRequest, v1.RestockRequestListResponse]
-	restockActorList      *connect.Client[v1.RestockActorListRequest, v1.RestockActorListResponse]
-	restockRequestDetail  *connect.Client[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse]
-	restockRequestUpdate  *connect.Client[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse]
-	restockRequestFulfill *connect.Client[v1.RestockRequestFulfillRequest, v1.RestockRequestFulfillResponse]
-	restockRequestCancel  *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
-	restockRequestLabels  *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
-	restockInboundStat    *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
+	restockRequestCreate   *connect.Client[v1.RestockRequestCreateRequest, v1.RestockRequestCreateResponse]
+	restockRequestList     *connect.Client[v1.RestockRequestListRequest, v1.RestockRequestListResponse]
+	restockActorList       *connect.Client[v1.RestockActorListRequest, v1.RestockActorListResponse]
+	restockRequestDetail   *connect.Client[v1.RestockRequestDetailRequest, v1.RestockRequestDetailResponse]
+	restockRequestUpdate   *connect.Client[v1.RestockRequestUpdateRequest, v1.RestockRequestUpdateResponse]
+	restockRequestArrive   *connect.Client[v1.RestockRequestArriveRequest, v1.RestockRequestArriveResponse]
+	restockRequestAccept   *connect.Client[v1.RestockRequestAcceptRequest, v1.RestockRequestAcceptResponse]
+	restockRequestMarkLost *connect.Client[v1.RestockRequestMarkLostRequest, v1.RestockRequestMarkLostResponse]
+	restockRequestCancel   *connect.Client[v1.RestockRequestCancelRequest, v1.RestockRequestCancelResponse]
+	restockRequestLabels   *connect.Client[v1.RestockRequestLabelsRequest, v1.RestockRequestLabelsResponse]
+	restockInboundStat     *connect.Client[v1.RestockInboundStatRequest, v1.RestockInboundStatResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -195,9 +219,19 @@ func (c *restockRequestServiceClient) RestockRequestUpdate(ctx context.Context, 
 	return c.restockRequestUpdate.CallUnary(ctx, req)
 }
 
-// RestockRequestFulfill calls warehouse.inventory.v1.RestockRequestService.RestockRequestFulfill.
-func (c *restockRequestServiceClient) RestockRequestFulfill(ctx context.Context, req *connect.Request[v1.RestockRequestFulfillRequest]) (*connect.Response[v1.RestockRequestFulfillResponse], error) {
-	return c.restockRequestFulfill.CallUnary(ctx, req)
+// RestockRequestArrive calls warehouse.inventory.v1.RestockRequestService.RestockRequestArrive.
+func (c *restockRequestServiceClient) RestockRequestArrive(ctx context.Context, req *connect.Request[v1.RestockRequestArriveRequest]) (*connect.Response[v1.RestockRequestArriveResponse], error) {
+	return c.restockRequestArrive.CallUnary(ctx, req)
+}
+
+// RestockRequestAccept calls warehouse.inventory.v1.RestockRequestService.RestockRequestAccept.
+func (c *restockRequestServiceClient) RestockRequestAccept(ctx context.Context, req *connect.Request[v1.RestockRequestAcceptRequest]) (*connect.Response[v1.RestockRequestAcceptResponse], error) {
+	return c.restockRequestAccept.CallUnary(ctx, req)
+}
+
+// RestockRequestMarkLost calls warehouse.inventory.v1.RestockRequestService.RestockRequestMarkLost.
+func (c *restockRequestServiceClient) RestockRequestMarkLost(ctx context.Context, req *connect.Request[v1.RestockRequestMarkLostRequest]) (*connect.Response[v1.RestockRequestMarkLostResponse], error) {
+	return c.restockRequestMarkLost.CallUnary(ctx, req)
 }
 
 // RestockRequestCancel calls warehouse.inventory.v1.RestockRequestService.RestockRequestCancel.
@@ -218,26 +252,30 @@ func (c *restockRequestServiceClient) RestockInboundStat(ctx context.Context, re
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
-	// A selling team creates a restock request (scoped to the requesting team).
+	// The selling team raises a restock — the restock and its lines in one transaction, then Restock Created
+	// (a-created-restock-tells-the-financial-account).
 	RestockRequestCreate(context.Context, *connect.Request[v1.RestockRequestCreateRequest]) (*connect.Response[v1.RestockRequestCreateResponse], error)
-	// Both sides list: a team sees requests it MADE and requests TARGETING it as a warehouse.
+	// Both sides list: a team sees restocks it raised and restocks coming to it as a warehouse.
 	RestockRequestList(context.Context, *connect.Request[v1.RestockRequestListRequest]) (*connect.Response[v1.RestockRequestListResponse], error)
-	// The people a "who" filter offers: everyone who raised, or accepted, a restock this team may list
-	// (a-who-filter-lists-the-people-on-its-rows).
+	// The people a "who" filter offers (a-who-filter-lists-the-people-on-its-rows).
 	RestockActorList(context.Context, *connect.Request[v1.RestockActorListRequest]) (*connect.Response[v1.RestockActorListResponse], error)
-	// One request in full, with its lines — the detail page (#125). Same two-sided scope as List.
+	// One restock in full, with its lines and its trail. Same two-sided scope as List.
 	RestockRequestDetail(context.Context, *connect.Request[v1.RestockRequestDetailRequest]) (*connect.Response[v1.RestockRequestDetailResponse], error)
-	// The requesting team edits its own request, while the warehouse has not accepted it yet (#131).
+	// The selling team edits — everything while ongoing, only the lines while arrived
+	// (the-lines-stay-editable-until-accepted).
 	RestockRequestUpdate(context.Context, *connect.Request[v1.RestockRequestUpdateRequest]) (*connect.Response[v1.RestockRequestUpdateResponse], error)
-	// The target warehouse fulfils a pending request — receives the stock and marks it fulfilled.
-	RestockRequestFulfill(context.Context, *connect.Request[v1.RestockRequestFulfillRequest]) (*connect.Response[v1.RestockRequestFulfillResponse], error)
-	// The requesting team cancels a still-pending request.
+	// The warehouse signs for the box: ongoing or lost → arrived (a-late-lost-box-is-signed-for-as-arrived).
+	RestockRequestArrive(context.Context, *connect.Request[v1.RestockRequestArriveRequest]) (*connect.Response[v1.RestockRequestArriveResponse], error)
+	// The warehouse counts the box in: ongoing or arrived → accepted, under a lock on the restock row
+	// (accept-locks-the-restock).
+	RestockRequestAccept(context.Context, *connect.Request[v1.RestockRequestAcceptRequest]) (*connect.Response[v1.RestockRequestAcceptResponse], error)
+	// The selling team gives the parcel up: ongoing → lost (lost-is-set-only-before-the-box-arrives).
+	RestockRequestMarkLost(context.Context, *connect.Request[v1.RestockRequestMarkLostRequest]) (*connect.Response[v1.RestockRequestMarkLostResponse], error)
+	// The selling team calls it off: ongoing → cancelled (a-restock-is-cancelled-only-while-ongoing).
 	RestockRequestCancel(context.Context, *connect.Request[v1.RestockRequestCancelRequest]) (*connect.Response[v1.RestockRequestCancelResponse], error)
-	// The printable labels for a FULFILLED request (#207) — one per placement of stock that entered the
-	// warehouse, to stick on the shelf so a picker can find and scan it. Warehouse-side only.
+	// The printable shelf labels for an ACCEPTED restock — one per placement the good units went to.
 	RestockRequestLabels(context.Context, *connect.Request[v1.RestockRequestLabelsRequest]) (*connect.Response[v1.RestockRequestLabelsResponse], error)
-	// The headline over the warehouse's inbound queue (owner): what is still waiting to be counted.
-	// Warehouse-side only — the buying team's equivalent is inventory's OwnerStockStat.
+	// The headline over the warehouse's inbound queue: what is still on its way or at the door.
 	RestockInboundStat(context.Context, *connect.Request[v1.RestockInboundStatRequest]) (*connect.Response[v1.RestockInboundStatResponse], error)
 }
 
@@ -278,10 +316,22 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestUpdate")),
 		connect.WithHandlerOptions(opts...),
 	)
-	restockRequestServiceRestockRequestFulfillHandler := connect.NewUnaryHandler(
-		RestockRequestServiceRestockRequestFulfillProcedure,
-		svc.RestockRequestFulfill,
-		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestFulfill")),
+	restockRequestServiceRestockRequestArriveHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestArriveProcedure,
+		svc.RestockRequestArrive,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestArrive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestAcceptHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestAcceptProcedure,
+		svc.RestockRequestAccept,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestAccept")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestMarkLostHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestMarkLostProcedure,
+		svc.RestockRequestMarkLost,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestMarkLost")),
 		connect.WithHandlerOptions(opts...),
 	)
 	restockRequestServiceRestockRequestCancelHandler := connect.NewUnaryHandler(
@@ -314,8 +364,12 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockRequestDetailHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockRequestUpdateProcedure:
 			restockRequestServiceRestockRequestUpdateHandler.ServeHTTP(w, r)
-		case RestockRequestServiceRestockRequestFulfillProcedure:
-			restockRequestServiceRestockRequestFulfillHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestArriveProcedure:
+			restockRequestServiceRestockRequestArriveHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestAcceptProcedure:
+			restockRequestServiceRestockRequestAcceptHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestMarkLostProcedure:
+			restockRequestServiceRestockRequestMarkLostHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockRequestCancelProcedure:
 			restockRequestServiceRestockRequestCancelHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockRequestLabelsProcedure:
@@ -351,8 +405,16 @@ func (UnimplementedRestockRequestServiceHandler) RestockRequestUpdate(context.Co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestUpdate is not implemented"))
 }
 
-func (UnimplementedRestockRequestServiceHandler) RestockRequestFulfill(context.Context, *connect.Request[v1.RestockRequestFulfillRequest]) (*connect.Response[v1.RestockRequestFulfillResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestFulfill is not implemented"))
+func (UnimplementedRestockRequestServiceHandler) RestockRequestArrive(context.Context, *connect.Request[v1.RestockRequestArriveRequest]) (*connect.Response[v1.RestockRequestArriveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestArrive is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestAccept(context.Context, *connect.Request[v1.RestockRequestAcceptRequest]) (*connect.Response[v1.RestockRequestAcceptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestAccept is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestMarkLost(context.Context, *connect.Request[v1.RestockRequestMarkLostRequest]) (*connect.Response[v1.RestockRequestMarkLostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestMarkLost is not implemented"))
 }
 
 func (UnimplementedRestockRequestServiceHandler) RestockRequestCancel(context.Context, *connect.Request[v1.RestockRequestCancelRequest]) (*connect.Response[v1.RestockRequestCancelResponse], error) {

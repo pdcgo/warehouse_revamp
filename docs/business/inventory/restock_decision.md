@@ -47,6 +47,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [edits-are-in-the-same-trail](#edits-are-in-the-same-trail) | an edit is a `restock_logs` row too, status unchanged, the change in its description | chat, 2026-10-09 — answers Q20d, as recommended |
 | [there-is-no-unplaced-pile](#there-is-no-unplaced-pile) | every unit in stock is on a placement; a staging area is an ordinary placement | chat, 2026-10-09 — answers Q20e, as recommended |
 | [three-notes-one-writer-each](#three-notes-one-writer-each) | `restocks.note` and `restock_items.note` by the selling team; `restock_problem_items.note` by the warehouse | chat, 2026-10-09 — answers Q20c, as recommended |
+| [the-restock-contract-changes-in-place](#the-restock-contract-changes-in-place) | the v1 restock proto is rewritten in place; backend handlers that no longer fit return Unimplemented until the backend step | chat, 2026-10-09 — against my v2 |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -1140,3 +1141,29 @@ flowchart LR
 | `restocks.note` | 🆕 the selling team | the restock as a whole |
 | `restock_items.note` | the selling team | one line — e.g. *extra stock* |
 | `restock_problem_items.note` | 🆕 the warehouse, at accept | one broken or missing row — optional |
+## the-restock-contract-changes-in-place
+
+> Owner, in chat *(2026-10-09)*: *"1. B"* — asked how the API contract should change for the prototype, between **A** a new
+> `warehouse.inventory.v2` restock contract, **B** editing v1 in place, and **C** only adding to v1. **Against my
+> recommendation** of A.
+
+**The verdict.** The restock messages in `proto/warehouse/inventory/v1/` are rewritten **in place** to the decided design —
+no second version alongside. The prototype is built on them; the backend handlers that no longer fit are stubbed to answer
+`Unimplemented` until the backend step rewrites them, so the build stays green while the running app's restock pages wait
+for it.
+
+```mermaid
+flowchart LR
+  P["v1 restock proto - rewritten"] --> G["buf generate - Go and TS"]
+  G --> F["the restock pages - prototype in Storybook, stub transport"]
+  G --> B["inventory_service restock handlers - Unimplemented until the backend step"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | `proto/warehouse/inventory/v1/restock_request.proto`, and the restock events in `proto/warehouse/events/v1/event.proto` |
+| the backend meanwhile | compiles; a handler whose messages changed returns `Unimplemented` |
+| the running app | its restock pages fail against the real API until the backend step — the prototype is reviewed in Storybook |
+| the branch | `backup/inventory` |

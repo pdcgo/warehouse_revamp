@@ -7,6 +7,7 @@ import (
 
 	"buf.build/go/protovalidate"
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -14,15 +15,16 @@ import (
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
-// A DELIVERY COSTS THE WAREHOUSE MORE THAN THE FEE AT THE DOOR (00021).
+// WHAT THE DELIVERY COST THE WAREHOUSE AT THE DOOR (00021).
 //
-// The fee had its own column, so it was the only outlay the system could hold: unloading, a pickup,
-// packaging the warehouse supplied were either not recorded or typed into the COD box under the wrong
-// name. These tests cover what the column could not do.
+// These tests were written for COST LINES — several outlays per delivery, each with a kind. The-courier-is-paid-once-
+// per-restock replaced them: a restock carries ONE courier's charge, `warehouse_additional_cost`, with its note, and if
+// the courier asks for two things the warehouse enters their sum. Every case below that used several lines now uses
+// that one sum, and the cases about a line's KIND became the nearest refusals the one charge still has.
 //
-// ⚠ THE POINT IS THAT ONE LINE DOES TWO THINGS. Every cost line raises the requesting team's debt AND
-// lands in the HPP the batch freezes. A change that satisfies one of those and quietly drops the other
-// is the failure worth testing for, so both are asserted from the same acceptance.
+// ⚠ THE POINT IS STILL THAT ONE CHARGE DOES TWO THINGS. It raises the requesting team's debt AND lands in the HPP the
+// batch freezes (the-couriers-ask-is-in-the-unit-price). A change that satisfies one of those and quietly drops the
+// other is the failure worth testing for, so both are asserted from the same acceptance.
 
 const (
 	clSellingTeam uint64 = 2
@@ -30,27 +32,25 @@ const (
 	clProduct     uint64 = 620
 )
 
-func costLine(kind inventoryv1.RestockCostKind, amount int64, note string) *inventoryv1.RestockCostLine {
-	return &inventoryv1.RestockCostLine{Kind: kind, Amount: amount, Note: note}
-}
-
 // acceptWithCosts raises a 10-unit request worth 500.000 with 15.000 of the buying team's own
-// freight, then accepts it with `lines` as what the warehouse paid.
+// freight, then accepts it with `amount` as the courier's charge the warehouse paid, and `note` as what it was for.
 func acceptWithCosts(
 	t *testing.T,
+	db *gorm.DB,
 	svc *inventory_v1.Service,
 	product uint64,
-	lines []*inventoryv1.RestockCostLine,
+	amount int64,
+	note string,
 ) (uint64, error) {
 	t.Helper()
 
 	ctx := ctxUser(9)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: clSellingTeam, WarehouseId: clWarehouse, ShippingCode: "jne",
-		ShippingCost: 15000,
+		TeamId: clSellingTeam, WarehouseId: clWarehouse,
+		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU-CL", Name: "Widget", Quantity: 10, TotalPrice: 500000},
+			{ProductId: product, Sku: "SKU-CL", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -59,28 +59,28 @@ func acceptWithCosts(
 
 	reqID := created.Msg.GetRequest().GetId()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId:    clWarehouse,
-		RequestId: reqID,
-		CostLines: lines,
-		Lines:     allArrived(created.Msg.GetRequest()),
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId:                      clWarehouse,
+		RequestId:                   reqID,
+		WarehouseAdditionalCost:     amount,
+		WarehouseAdditionalCostNote: note,
+		Lines:                       allArrived(t, db, created.Msg.GetRequest()),
 	}))
 
 	return reqID, err
 }
 
-// SEVERAL COSTS ON ONE DELIVERY — the case the single column could not represent at all.
-func TestRestockFulfil_RecordsEveryCostLine(t *testing.T) {
+// TWO ASKS AT THE DOOR ARE ONE CHARGE — their sum, under one note (the-courier-is-paid-once-per-restock). Converted
+// from "several cost lines on one delivery": the contract no longer holds a list, so the warehouse enters the sum.
+func TestRestockAccept_RecordsTheOneCourierCharge(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
 
-	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, "courier at the door"),
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, "porter at the gate"),
-	})
+	// 25.000 for the courier and 5.000 for the porter, entered as one.
+	reqID, err := acceptWithCosts(t, db, svc, clProduct, 30000, "courier at the door + porter at the gate")
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	var stored []inventory_service_models.RestockCostLine
@@ -90,41 +90,48 @@ func TestRestockFulfil_RecordsEveryCostLine(t *testing.T) {
 		t.Fatalf("read cost lines: %v", err)
 	}
 
-	if len(stored) != 2 {
-		t.Fatalf("%d cost lines stored, want 2 — a delivery can cost more than one thing", len(stored))
+	if len(stored) != 1 {
+		t.Fatalf("%d cost rows stored, want 1 — a restock carries one courier's charge", len(stored))
 	}
 
-	if stored[0].Kind != "incidental" || stored[0].Amount != 25000 {
-		t.Fatalf("first line = %+v, want incidental 25000", stored[0])
-	}
-
-	// The NOTE is the whole reason `other` is allowed: it is what the team being charged reads.
-	if stored[1].Kind != "incidental" || stored[1].Amount != 5000 || stored[1].Note != "porter at the gate" {
-		t.Fatalf("second line = %+v, want other 5000 'porter at the gate'", stored[1])
+	// The NOTE is what the team being charged reads.
+	if stored[0].Kind != "incidental" || stored[0].Amount != 30000 ||
+		stored[0].Note != "courier at the door + porter at the gate" {
+		t.Fatalf("stored charge = %+v, want incidental 30000 with its note", stored[0])
 	}
 
 	// WHO TYPED IT. A cost charged to another team with nobody's name on it is the first thing a
 	// dispute asks for.
-	for i := range stored {
-		if stored[i].ActorID != 9 {
-			t.Fatalf("line %d names actor %d, want the accepting user 9", i, stored[i].ActorID)
-		}
+	if stored[0].ActorID != 9 {
+		t.Fatalf("the charge names actor %d, want the accepting user 9", stored[0].ActorID)
+	}
+
+	// And it reads back as the restock's one charge, beside — not inside — the total.
+	detail, err := svc.RestockRequestDetail(ctxUser(9), connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
+		TeamId: clSellingTeam, RequestId: reqID,
+	}))
+	if err != nil {
+		t.Fatalf("detail: %v", err)
+	}
+
+	got := detail.Msg.GetRequest()
+	if got.GetWarehouseAdditionalCost() != 30000 ||
+		got.GetWarehouseAdditionalCostNote() != "courier at the door + porter at the gate" {
+		t.Fatalf("charge reads back as %d %q, want 30000 with its note",
+			got.GetWarehouseAdditionalCost(), got.GetWarehouseAdditionalCostNote())
 	}
 }
 
-// ONE DEBT PER DELIVERY, for the SUM. Posting per line would make the ledger's source_id name a cost
-// row while every other source names a business object — and would put two debts on one delivery.
-func TestRestockFulfil_PostsOneObligationForTheWholeOutlay(t *testing.T) {
+// ONE DEBT PER DELIVERY, for the charge. The ledger's source_id names the restock, as every other source names a
+// business object.
+func TestRestockAccept_PostsOneObligationForTheWholeOutlay(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
 
-	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, ""),
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, "porter"),
-	})
+	reqID, err := acceptWithCosts(t, db, svc, clProduct, 30000, "courier and porter")
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	if len(poster.posted) != 1 {
@@ -148,20 +155,18 @@ func TestRestockFulfil_PostsOneObligationForTheWholeOutlay(t *testing.T) {
 }
 
 // ⚠ THE SAME RUPIAH ANSWERS TWO QUESTIONS. The debt above must not have taken the money OUT of
-// costing: every line is freight, spread over the units that arrived sellable.
+// costing: the charge is freight, spread over the units that arrived sellable (the-couriers-ask-is-in-the-unit-price
+// — outside the restock's total, inside the unit price).
 //
-//	(15.000 own freight + 25.000 + 5.000) / 10 units = 4.500 per unit
+//	(15.000 own freight + 30.000 courier's charge) / 10 units = 4.500 per unit
 //	500.000 / 10 = 50.000 goods per unit  →  54.500 HPP
-func TestRestockFulfil_EveryCostLineReachesTheHPP(t *testing.T) {
+func TestRestockAccept_TheCourierChargeReachesTheHPP(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
-	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, ""),
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, "porter"),
-	})
+	_, err := acceptWithCosts(t, db, svc, clProduct, 30000, "courier and porter")
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	cost, err := svc.StockCost(ctxUser(9), connect.NewRequest(&inventoryv1.StockCostRequest{
@@ -178,34 +183,35 @@ func TestRestockFulfil_EveryCostLineReachesTheHPP(t *testing.T) {
 	}
 
 	if lines[0].GetUnitCost() != 54500 {
-		t.Fatalf("HPP = %d, want 54500 — a cost line that raises a debt must also raise the cost",
+		t.Fatalf("HPP = %d, want 54500 — a charge that raises a debt must also raise the cost",
 			lines[0].GetUnitCost())
 	}
 }
 
-// AN 'OTHER' WITH NO NOTE IS REFUSED. It is the escape hatch, and the note is what stops it being a
-// black hole: an untyped amount with no words beside it is a number the team being charged cannot
-// argue with. The pair rule cannot be expressed in protovalidate, so it is the handler's.
-// ⚠ IT ASSERTS AGAINST THE CONTRACT, NOT THE HANDLER, and that is the point.
+// A CHARGE WITH NO NOTE IS REFUSED (an-incidental-line-must-say-what-it-was-for): an amount with no words beside it is a
+// number the team being charged cannot argue with.
 //
-// The rule used to be `kind == other && note == ""` in `restock_request_fulfill.go` — a constraint
-// across two fields, which protovalidate cannot express. Collapsing the kinds made it unconditional
-// (an-incidental-line-must-say-what-it-was-for), so it moved into the proto as `min_len: 1` and the
-// handler's copy was deleted rather than left as a second place to drift.
-//
-// ⚠ A HANDLER CALLED DIRECTLY GETS NO VALIDATION INTERCEPTOR, so calling `acceptWithCosts` here would
-// prove nothing — the empty note would sail through. This validates the request the way
-// `service_api.go` does before the handler ever sees it.
-func TestRestockFulfil_RefusesACostWithNoNote(t *testing.T) {
-	err := protovalidate.GlobalValidator.Validate(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId:    1,
-		RequestId: 1,
-		CostLines: []*inventoryv1.RestockCostLine{
-			costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 5000, ""),
-		},
+// ⚠ THE RULE MOVED BACK TO THE HANDLER, and this test moved with it. With cost lines it was unconditional and lived in
+// the proto as `min_len: 1`. With one charge it is conditional — the note is required only ABOVE 0 — which is a rule
+// across two fields that protovalidate cannot express, so the contract no longer refuses it and the handler does. The
+// test asserts both halves: the contract lets it through, the handler stops it.
+func TestRestockAccept_RefusesACostWithNoNote(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newServiceWithLiability(t, db, &recordingPoster{})
+
+	err := protovalidate.GlobalValidator.Validate(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId:                  1,
+		RequestId:               1,
+		WarehouseAdditionalCost: 5000,
+		Lines:                   []*inventoryv1.RestockRequestReceivedLine{{ItemId: 1}},
 	})
-	if err == nil {
-		t.Fatal("an unexplained cost passed validation and would be charged to another team")
+	if err != nil {
+		t.Fatalf("the contract refused a charge with no note (%v) — the rule is the handler's now", err)
+	}
+
+	_, err = acceptWithCosts(t, db, svc, clProduct, 5000, "")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("an unexplained charge = %v, want InvalidArgument", connect.CodeOf(err))
 	}
 
 	if !strings.Contains(err.Error(), "note") {
@@ -213,38 +219,36 @@ func TestRestockFulfil_RefusesACostWithNoNote(t *testing.T) {
 	}
 }
 
-// AN UNKNOWN KIND IS REFUSED rather than stored as text nothing can read back. It would still be
-// charged, while showing on the screen that has to justify it as "unspecified".
-func TestRestockFulfil_RefusesAnUnknownCostKind(t *testing.T) {
-	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &recordingPoster{})
-
-	_, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		{Kind: inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED, Amount: 5000},
+// A CHARGE THAT CANNOT BE TRUE IS REFUSED rather than stored. Converted from "an unknown cost kind" — the one charge
+// has no kind any more, so the nearest unusable charge is a negative one, which the contract refuses (gte 0) before
+// the handler ever sees it.
+func TestRestockAccept_RefusesANegativeCharge(t *testing.T) {
+	err := protovalidate.GlobalValidator.Validate(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId:                      1,
+		RequestId:                   1,
+		WarehouseAdditionalCost:     -5000,
+		WarehouseAdditionalCostNote: "refund?",
+		Lines:                       []*inventoryv1.RestockRequestReceivedLine{{ItemId: 1}},
 	})
 	if err == nil {
-		t.Fatal("a cost of no known kind was accepted")
+		t.Fatal("a negative courier's charge passed validation")
 	}
 
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("refused with %v, want InvalidArgument", connect.CodeOf(err))
+	if !strings.Contains(err.Error(), "warehouse_additional_cost") {
+		t.Fatalf("refused for %v, want a complaint about warehouse_additional_cost", err)
 	}
 }
 
-// A REFUSED LINE LEAVES NOTHING BEHIND — the validation runs before the transaction, so a delivery is
-// never half-received because of a typo in a cost.
-func TestRestockFulfil_ARefusedCostLineReceivesNothing(t *testing.T) {
+// A REFUSED CHARGE LEAVES NOTHING BEHIND — the note check runs before the transaction, so a delivery is never
+// half-received because of a missing word on the charge.
+func TestRestockAccept_ARefusedCostLineReceivesNothing(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
-	// ⚠ AN UNKNOWN KIND, not an empty note. The note rule is the contract's now, and this test is
-	// about the HANDLER's transaction boundary — so it has to use a refusal the handler still makes
-	// itself, or it would be asserting on a call that never failed.
-	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		{Kind: inventoryv1.RestockCostKind_RESTOCK_COST_KIND_UNSPECIFIED, Amount: 5000, Note: "n"},
-	})
+	// The refusal the handler makes itself: a charge with no note.
+	reqID, err := acceptWithCosts(t, db, svc, clProduct, 5000, "")
 	if err == nil {
-		t.Fatal("the acceptance succeeded with an unusable cost on it")
+		t.Fatal("the acceptance succeeded with an unusable charge on it")
 	}
 
 	var stored inventory_service_models.RestockRequest
@@ -254,8 +258,9 @@ func TestRestockFulfil_ARefusedCostLineReceivesNothing(t *testing.T) {
 		t.Fatalf("read request: %v", readErr)
 	}
 
+	// ACCEPTED is still stored as `fulfilled`.
 	if stored.Status == "fulfilled" {
-		t.Fatal("the request was fulfilled despite the cost being refused")
+		t.Fatal("the request was accepted despite the charge being refused")
 	}
 
 	var levels int64
@@ -274,16 +279,16 @@ func TestRestockFulfil_ARefusedCostLineReceivesNothing(t *testing.T) {
 	}
 }
 
-// NO COSTS AT ALL is the ordinary delivery, and it must post nothing: an entry of zero reads as a debt
+// NO CHARGE AT ALL is the ordinary delivery, and it must post nothing: an entry of zero reads as a debt
 // of nothing rather than the absence of one.
-func TestRestockFulfil_NoCostsMeanNoObligationAndNoRows(t *testing.T) {
+func TestRestockAccept_NoCostsMeanNoObligationAndNoRows(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{}
 	svc := newServiceWithLiability(t, db, poster)
 
-	reqID, err := acceptWithCosts(t, svc, clProduct, nil)
+	reqID, err := acceptWithCosts(t, db, svc, clProduct, 0, "")
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	if len(poster.posted) != 0 {
@@ -302,21 +307,19 @@ func TestRestockFulfil_NoCostsMeanNoObligationAndNoRows(t *testing.T) {
 	}
 
 	if count != 0 {
-		t.Fatalf("%d cost lines written for a delivery that cost nothing", count)
+		t.Fatalf("%d cost rows written for a delivery that cost nothing", count)
 	}
 }
 
-// The lines and the debt are ONE TRANSACTION with the goods. If the posting fails, neither the stock
-// nor the costs may survive — otherwise the warehouse's own record says it paid for a delivery the
-// system never received.
-func TestRestockFulfil_AFailedPostingRollsBackTheCostLines(t *testing.T) {
+// The charge and the debt are ONE TRANSACTION with the goods (the-couriers-debt-is-written-in-the-accept). If the
+// posting fails, neither the stock nor the charge may survive — otherwise the warehouse's own record says it paid for a
+// delivery the system never received.
+func TestRestockAccept_AFailedPostingRollsBackTheCostLines(t *testing.T) {
 	db := san_testdb.DB(t)
 	poster := &recordingPoster{fail: errors.New("the ledger is down")}
 	svc := newServiceWithLiability(t, db, poster)
 
-	reqID, err := acceptWithCosts(t, svc, clProduct, []*inventoryv1.RestockCostLine{
-		costLine(inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL, 25000, ""),
-	})
+	reqID, err := acceptWithCosts(t, db, svc, clProduct, 25000, courierNote)
 	if err == nil {
 		t.Fatal("the acceptance succeeded while its obligation failed")
 	}
@@ -333,6 +336,6 @@ func TestRestockFulfil_AFailedPostingRollsBackTheCostLines(t *testing.T) {
 	}
 
 	if count != 0 {
-		t.Fatalf("%d cost lines survived a rolled-back acceptance", count)
+		t.Fatalf("%d cost rows survived a rolled-back acceptance", count)
 	}
 }
