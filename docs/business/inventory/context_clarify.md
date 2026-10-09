@@ -3,6 +3,28 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> **Re-examined after the restock answers (2026-10-09).** 🆕 [14h](#question): a line may name a supplier with no store, and a
+> batch has nowhere to keep it.
+>
+> **Re-examined after transaction.md (2026-10-09).** ➡ [Q13](#question) moved to [transaction_clarify](./transaction_clarify.md#question)
+> with the type-list [Contradiction](#the-two-type-lists-do-not-line-up); 13b and 13e are answered there, 13g withdrawn.
+> 🔄 [14b](#question): a find is partial, so it is an adjustment naming its loss, not a rollback.
+>
+> **Re-examined after opname.md (2026-10-08).** ✅ [Q5](#question) answered — the warehouse admin opens a session
+> ([an-opname-is-a-locked-session](./opname_decision.md#an-opname-is-a-locked-session)). ➡ Re-routed to
+> [opname_clarify](./opname_clarify.md#question): [Q4](#question) (tolerance), [Q12](#question) (who confirms), 11e (a whole
+> product). Q11 stays open for 11d only.
+>
+> **Re-examined after order.md §How Warehouse Process The Order (2026-10-08).** ➡ [Q11c](#question) re-routed to
+> [order_clarify Q1](./order_clarify.md#question): the flow's *"Staff Scan Goods for verify"* is the pick signal 11c needed.
+> Q11 stays open for 11d and 11e.
+>
+> **Re-examined after your 11b answer in chat (2026-10-08).** ✅ 11b: no rack scan — the next stock opname corrects a
+> wrong-rack pick ([a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count)),
+> against my scan. 🆕 11e: that count must not charge the warehouse, so a product is counted on all its racks at once —
+> [Q5](#question)'s grain moves from per shelf to per product. 11c stays: the count causes it, so the count cannot fix it.
+> [PostOrder, worked](#postorder-worked) is rewritten as short stories.
+>
 > **Q11b–d elaborated (2026-10-08)**, on request — [PostOrder, worked](#postorder-worked). 11b and 11c share one
 > missing fact, the moment of the pick, so both now recommend a **`pick` transaction**. 🔄 11d: my *lowest shelf that fills
 > the line* is **withdrawn** — a line of 3 over shelves of 1, 2 and 5 empties two racks under your rule and none under
@@ -93,7 +115,7 @@ Your three tables, plus what [Q13](#question) and [Q14](#question) would add.
 
 ```mermaid
 flowchart TB
-  A["an operation in the building"] --> T["inventory_transactions - tx_type, ref_id, reverses_id, who"]
+  A["an operation in the building"] --> T["inventory_transactions - tx_type, ref_id, is_rollback, who"]
   T --> BL["batch_logs - change_count, change_valuation, price_unit_after"]
   T --> PL["product_placement_logs - stock_change"]
   BL --> B["batches - how many a team owns, and what they cost"]
@@ -113,99 +135,68 @@ What each operation writes — the row a `tx_type` list has to cover:
 | a count differs | 🆕 `opname` | − / + | − / + |
 | goods move between shelves | 🆕 `move` | — | − then + |
 | a batch's price changes | 🆕 `revaluation` | money only | — |
-| a mistake or a cancel | the same type, `reverses_id` set | opposite signs | opposite signs |
+| a mistake or a cancel | 🔄 the same transaction, rolled back — `is_rollback` ([an-undo-rolls-the-transaction-back-once](./transaction_decision.md#an-undo-rolls-the-transaction-back-once)) | its rows, sign flipped | its rows, sign flipped |
 
 ### PostOrder, worked
 
-[Q11](#question) b–d. One product, *Kaos Polos Hitam*.
+[Q11](#question), told from the warehouse floor. One product, *Kaos Hitam*. All of it comes from one decided fact
+([a-take-reduces-stock-and-placement](../order/context_decision.md#a-take-reduces-stock-and-placement)):
 
-**Why 11b and 11c exist at all.** The shelf drops when the order is created
-([a-take-reduces-stock-and-placement](../order/context_decision.md#a-take-reduces-stock-and-placement)); the picker lifts
-the unit later, in *"Warehouse Process Order (Packing/Picking)"* ([order/context.md](../order/context.md)). For those
-hours the book and the rack disagree by exactly the units waiting to be picked — and **inventory never hears the pick**,
-so it cannot tell which those are.
+> **When an order comes in, the system lowers the rack's number at once. The picker takes the item later — maybe hours
+> later.**
 
-```mermaid
-sequenceDiagram
-  participant O as order created
-  participant I as inventory
-  participant R as Rak 3
-  participant P as picker
-  O->>I: PostOrder, 1 unit
-  I->>R: book 2 to 1
-  Note over R: the rack still holds 2, for hours
-  P->>R: lifts 1, the rack holds 1
-  Note over I,R: book and rack agree again, but only if the picker used Rak 3, and nobody counted in between
-```
-
-**What 11b and 11c both need: the moment of the pick.** The picker confirms which shelf the unit left, **when it leaves
-the shelf** — not when the parcel leaves the building, or a count in between finds a shortfall that is only a parcel on a
-packing table. Inventory records it as a **`pick` transaction**, referencing the order ([13a](#question)'s `ref_id`):
-
-| the pick | writes |
-| --- | --- |
-| from the shelf the list printed | nothing to either ledger — the take already moved the book |
-| from another shelf | a shelf-to-shelf `move` on the placement ledger; batches untouched |
-| its existence | marks that order's take on that shelf as picked — the order's own transaction is never updated ([13e](#question)) |
-
-`pick` joins the types [13c](#question) is adding.
-
-**11b — the picker takes it from another shelf.** The list prints Rak 3. Rak 3 is empty in fact — an earlier move went
-unrecorded — or Rak 1 is simply nearer.
-
-| | Rak 3 book | Rak 3 rack | Rak 1 book | Rak 1 rack |
-| --- | --- | --- | --- | --- |
-| before | 2 | 2 | 5 | 5 |
-| `PostOrder` plans Rak 3 | **1** | 2 | 5 | 5 |
-| the picker lifts it from Rak 1 | 1 | 2 | 5 | **4** |
-| *unrecorded:* the next count | +1 found | | **−1, a warehouse debt** | |
-| *recorded:* the pick writes a `move`, Rak 1 → Rak 3 | **2** | 2 | **4** | 4 |
-
-Two edges. When the printed shelf was **empty**, the pick also flags it for a count — the move keeps the book from getting
-worse, but cannot repair a shelf that was already wrong. And a move that would take the shelf the picker used **below 0**
-in the book is not written; that shelf is flagged for a count instead.
-
-**11c — a count before the pick.**
-
-| | Rak 3 book | Rak 3 rack |
-| --- | --- | --- |
-| `PostOrder` takes 1 | 1 | 2 — the unit waits for the picker |
-| *as built today:* the count posts what it sees | **2, "found" +1** | 2 |
-| the picker lifts it | 2 | 1 |
-| the next order takes and picks the one real unit | 1 | 0 |
-| the book's last unit does not exist — the order sold against it finds nothing, and the count posts | **−1: a debt for a unit the warehouse never lost** | 0 |
-
-The recommended count compares **counted − waiting** against the book, where *waiting* is the takes from that shelf with
-no `pick` yet:
+For those hours the system shows fewer than the rack holds. That is normal; the questions are about what goes wrong in
+between.
 
 ```mermaid
 flowchart LR
-  C["counted on Rak 3 - 2"] --> S["minus waiting to be picked - 1"]
-  S --> V["1"]
-  B["book - 1"] --> Q{"equal?"}
-  V --> Q
-  Q -->|"yes"| N["nothing posts"]
-  Q -->|"no"| D["the difference is real - it posts"]
+  O["09:00 - the order comes in - system Rak A 2 to 1"] --> W["the unit still sits on Rak A"]
+  W --> P["14:00 - the picker takes it - rack and system agree"]
+  W -.->|"11b - picked from another rack"| B["two racks off by one - the count fixes it"]
+  W -.->|"11c - counted before 14:00"| C["the count adds the sold unit back - a ghost"]
 ```
 
-The count screen shows *"waiting to be picked: 1"* beside the shelf, so the counter can see why the rack holds more than
-the book.
+**11b — the picker uses another rack.** ✅ Decided: the next stock opname corrects it
+([a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count)). Rak A had 2,
+Rak B 5; the system took from A, the picker from B:
 
-**11d — a line bigger than the lowest shelf.** I had proposed *the lowest shelf that can fill the whole line*. Working it
-through, it can cost exactly what your rule is for:
+| | system says | really there | the count adjusts |
+| --- | --- | --- | --- |
+| Rak A | 1 | 2 | +1 |
+| Rak B | 5 | 4 | −1 |
 
-| the line, and the shelves | yours — fewest first, then spill | mine — the lowest shelf that fills it |
-| --- | --- | --- |
-| 4 · Rak 3: 2, Rak 2: 4, Rak 1: 5 | Rak 3 −2, Rak 2 −2 · 2 racks · 1 emptied | Rak 2 −4 · 1 rack · 1 emptied |
-| 3 · Rak 3: 1, Rak 2: 2, Rak 1: 5 | Rak 3 −1, Rak 2 −2 · 2 racks · **2 emptied** | Rak 1 −3 · 1 rack · **none emptied** |
-| 1 — most order lines | the lowest shelf that is not empty | the same shelf |
+**11e — so the count must not charge the warehouse for it.** Rak B's −1 looks like a loss, and a loss in custody is the
+warehouse's debt. But the unit is not lost — it left in a parcel, from the other rack. Counted together, A's +1 and B's
+−1 cancel, and that is a **move**: nothing to pay. Counted on different days, the warehouse pays on Monday and is paid back
+on Thursday. → Count a product on **all its racks at once**, and let money follow the product's total only.
 
-Mine saves a walk and can leave every small remainder standing; for a line of 1 the two are identical. **So keep yours as
-written**: fewest first, spilling to the next-fewest, and the pick list prints each shelf with its count —
-*"Rak 3 × 1, Rak 2 × 2"*. Every spill moves the product onto fewer racks, which shortens later picks and counts. Two
-shelves with the same count go by the **lower placement id** — the order the locks are already taken in
-([batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id)), and a reprinted list never
-changes. If all the product's shelves together hold less than the line, `PostOrder` fails whole and writes nothing.
+**11c — someone counts before the picker comes.**
+
+| time | what happens | system | really there |
+| --- | --- | --- | --- |
+| 09:00 | order comes in | 2 → 1 | 2 |
+| 11:00 | staff counts Rak A, sees 2 — *"1 extra found!"* | 1 → **2** | 2 |
+| 14:00 | picker takes the unit | 2 | 1 |
+| later | a new order is sold the **ghost** unit; the picker finds nothing | | |
+
+**The count made this error itself**, so the next count cannot be the fix. The count has to know that 1 of the 2 on the
+rack is already sold. → The order's picking step tells inventory *"order 9001 is picked"* — no rack needed, so it does not
+bring back the scan 11b declined — and the count screen shows *"1 here is sold, waiting for the picker"*: 2 counted,
+1 waiting, 1 — it matches.
+
+✅ *(2026-10-08)* **Decided**: *"Staff Scan Goods for verify"* tells inventory the order is picked —
+[the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked).
+
+**11d — the order wants more than the smallest rack holds.** 3 wanted; Rak A holds 1, Rak B 2, Rak C 5.
+
+| | takes | racks visited | racks emptied |
+| --- | --- | --- | --- |
+| **your rule — fewest first** | 1 from A, 2 from B | 2 | **2** |
+| all from one rack | 3 from C | 1 | 0 |
+
+→ Keep your rule. The pick list says *"Rak A × 1, Rak B × 2"*; two racks holding the same go by the smaller id; and if
+all racks together hold too few, `PostOrder` fails and writes nothing. My earlier *one rack that fills the line* is
+withdrawn — it empties nothing here.
 
 ### The ledger rules, worked
 
@@ -229,8 +220,8 @@ flowchart TB
 
 **14b — a found unit goes back where it was lost from.** A shirt goes missing from batch 7, priced Rp 12.000, and the
 warehouse reimburses Rp 12.000. Two weeks later it turns up. Put on the newest batch 9 at Rp 15.000, the reversal
-pays the warehouse back Rp 15.000 — Rp 3.000 more than it paid. As the reversal of the loss, it returns to batch 7 at
-Rp 12.000, and FIFO then sells it first, which is right: it is the oldest unit.
+pays the warehouse back Rp 15.000 — Rp 3.000 more than it paid. Recorded against the loss it answers, it returns to batch 7
+at Rp 12.000, and FIFO then sells it first, which is right: it is the oldest unit.
 
 **14c — a batch ends at exactly zero money.** 3 pcs bought for Rp 10.000:
 
@@ -356,7 +347,7 @@ Three phases currently have no bearer, and each of them is a real event that hap
 | | The question | Why it cannot be deferred |
 | --- | --- | --- |
 | **1** | **What is the unit we track?** A piece, a box, a pair? Is it the same unit the supplier sells and the marketplace sells? | If they differ, every count, every cost and every order line needs a conversion — a business rule nobody can guess. It also decides what `AllProductQtyRestock` counts in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost). |
-| **2** | **Where can stock BE?** On a shelf · arrived but not yet shelved · in transit between warehouses · set aside as damaged · held for an order. | 🔄 *(2026-10-08)* **A placement is now defined** — §Placements: *"like warehouse rack or physical placement… "rak 1", "rak ruang tengah""*, so opname *per shelf* has a grain. ⚠ Still unplaced: goods in transit between warehouses, and broken goods set aside — neither has a placement row. These are the places a person can physically point at, and [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) now attaches **money** to being "in the warehouse" — so the boundary of that phrase has a price. |
+| **2** | **Where can stock BE?** On a shelf · arrived but not yet shelved · in transit between warehouses · set aside as damaged · held for an order. | 🔄 *(2026-10-08)* **A placement is now defined** — §Placements: *"like warehouse rack or physical placement… "rak 1", "rak ruang tengah""*, so a count has places to cover — 🔄 per product across its racks ([Q11e](#question)). ⚠ Still unplaced: goods in transit between warehouses, and broken goods set aside — neither has a placement row. These are the places a person can physically point at, and [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) now attaches **money** to being "in the warehouse" — so the boundary of that phrase has a price. |
 | **3** | **What does "available" mean?** On-hand minus what — committed orders, the shared reserve, damaged units awaiting a decision? | Two selling teams share one pool by design, and [reserved-stock-is-never-shared](../product/context_clarify.md#reserved-stock-is-never-shared) now subtracts from it. "Available" is the number both teams sell against, and if it means two things they will oversell. |
 | **4** | **Who may move stock, is the move RECORDED, and who may change a count?** `business_level.md` §Warehouse 8 now names *"manage placements of the stocks"* as a standalone responsibility ([warehouse-manages-placements](../business_level_clarify.md#warehouse-manages-placements)) — so moving goods between places is a first-class act. 🔄 *(2026-10-08)* **The trace now exists**: `product_placement_logs` carries a `transaction_id` and an actor — but a move has no `tx_type` yet ([Q13c](#question)). ⚠ **An unrecorded move is indistinguishable from a loss at the next count**, and under [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) a count shortfall is a **warehouse liability**. A crew that reshelves without recording it **manufactures its own debt** — and the units turn up on another shelf as an unexplained surplus. | **Every move is recorded, from place to place, with its actor** — that single rule is what makes the opname liability survivable, because a difference then has somewhere to be explained from. Also answer the two originals: may the *owner* adjust a quantity, and may the warehouse write stock off unilaterally? |
 | **5** | **Can stock change OWNER without moving?** Team A sells its remaining units to team B, or a team closes. | Nothing allows it and nothing forbids it. If it can happen it is a movement with a cost and a balance entry, not an edit. |
@@ -398,12 +389,12 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **1** | **[in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) has no tolerance and no dispute path.** Every count in a real warehouse differs from the book by a little. As written, each of those differences is a debt on the warehouse the moment somebody counts — and with a [debt threshold](../balance/context_clarify.md#debt-threshold-limits-liability) now able to block a team, an accumulation of small counting noise can stop a warehouse trading. | Keep the rule (it is right — a count with no consequence stops being done carefully), but add the two things that make it survivable: **a stated tolerance or none, said explicitly**, and **a dispute window** in which the warehouse can recount before the entry is final. I would say **no tolerance, and a 24-hour recount window** — exactness with a chance to correct beats a fudge factor nobody can audit. |
-| **2** | **Nothing says who may CALL an opname — nor, now that roles exist, who may PERFORM one.** If a stock owner can demand a count of their own goods at will, they can generate warehouse liabilities on demand. If only the warehouse may count itself, nobody independent ever verifies the goods. And [user_context.md](../user/context.md) gives the warehouse **Staff**, so the person whose handling caused a shortfall may also be the person who records it — the team then pays for one person's arithmetic, unchecked. | **The warehouse counts on a schedule it owns, and an owner may REQUEST a count** which the warehouse must perform within a stated time — the trigger stays with the party that bears the result, and the owner still gets a real check. **Grain: a shelf, on a rolling cycle**, because a whole-building count needs the building shut. And **recorder ≠ confirmer, stated against the HUMAN and not the role** — `user_context.md` §General lets one person hold two roles, so a role-level rule can be satisfied by one pair of hands (user Critique 2, since moved here as [Q12](#question)). |
+| **2** | **Nothing says who may CALL an opname — nor, now that roles exist, who may PERFORM one.** If a stock owner can demand a count of their own goods at will, they can generate warehouse liabilities on demand. If only the warehouse may count itself, nobody independent ever verifies the goods. And [user_context.md](../user/context.md) gives the warehouse **Staff**, so the person whose handling caused a shortfall may also be the person who records it — the team then pays for one person's arithmetic, unchecked. | **The warehouse counts on a schedule it owns, and an owner may REQUEST a count** which the warehouse must perform within a stated time — the trigger stays with the party that bears the result, and the owner still gets a real check. **Grain:** 🔄 *(2026-10-08)* **a product on all its racks, on a rolling cycle** — no longer a shelf: a whole-building count needs the building shut, and a single shelf cannot net a wrong-rack pick ([Q11e](#question)). And **recorder ≠ confirmer, stated against the HUMAN and not the role** — `user_context.md` §General lets one person hold two roles, so a role-level rule can be satisfied by one pair of hands (user Critique 2, since moved here as [Q12](#question)). |
 | **3** | **"loss/opname" merges two different events into one liability.** A *witnessed* loss — someone drops a box — is a fact with an actor, a time and often a photograph. An *opname shortfall* is the absence of an explanation: the goods went at some unknown moment, possibly before this warehouse ever had them. Charging both identically is defensible, but it makes the more common one impossible to investigate, because nothing distinguishes them afterwards. | Record them as **two kinds** even though they price the same: **loss** (witnessed, has an actor and a cause) and **shortfall** (found by counting, cause unknown). A warehouse whose shortfalls are rising has a different problem from one whose losses are, and the doc should let you see which. |
 | **4** | **Nothing says what happens to a broken unit — or a found one — after the money is settled.** The warehouse has reimbursed the owner's Unit Price. The object still exists: does the warehouse keep it, scrap it, or sell it? And when a written-off unit is found again ([balance cause 5](../balance/context_clarify.md#the-six-causes-and-which-direction-each-pushes)), does it return to the owner's shelf? | Say it: **once reimbursed, the object is the warehouse's** — it paid for it. That also makes found-back coherent: the unit going *back* to the owner is exactly why the money reverses. A broken-and-reimbursed unit the warehouse then sells is its own income, not the owner's. |
 | **5** | **"Broken" and "lost" are used as one phrase everywhere and they are different events.** A broken unit is here and unsellable — someone is holding it. A lost unit is not here, and only a lost unit can be *found back*. | Separate them in the vocabulary. **Broken** = present, unsellable, something must be decided about the object ([Critique 4](#critique)). **Lost** = absent, and it may come back. Only the second needs a reversal path. |
 | **6** | **In-transit stock between warehouses has no owner of the risk.** Goods leave warehouse 1 and have not arrived at warehouse 2 — they are in nobody's custody, so [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) does not reach them. A transfer is currently the one way to lose goods with no liability. | Name **in transit** as a place, and put the risk on the **sending** warehouse until receipt is confirmed. |
-| **7** | **Two Staff at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
+| **7** | 🔄 *(2026-10-08)* **Direction decided: a count locks its rack** ([a-count-locks-its-rack](./order_decision.md#a-count-locks-its-rack)) — the design waits for [opname.md](./opname.md). As first raised: **Two Staff at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
 | **8** | 🔄 *(2026-10-08)* **A batch knows when it expires, and not which shelf it is on.** [batch.md](./batch.md) gives `batches` an optional `expired_at`, so something you sell perishes. But a batch has no placement and a shelf row has no batch — the system can say *"12 units expire in March"* and cannot tell the picker where they are. | **FIFO stays a costing rule, and expiry is a report** — what expires soon, per product per warehouse. If an expiring product must be **picked** soonest-first, a shelf row needs a `batch_id` — [Q7](#question). |
 | **9** | **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
 | **10** | ✅ *(2026-10-08)* **Answered** — a restock line records both: what arrived and how many of those are broken, and the short units are the difference ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)). ⚠ This flow still draws them as exclusive, so it is now older than the restock it describes | redraw it from the restock, or point at it |
@@ -426,10 +417,10 @@ acts in every team. A check of recorder against confirmer closes both, and it co
    them?** *"Report Manually (Outside System)"* ends the flow with stock in the building and no record.
    ([Critique 11](#critique)) **→ I recommend recording a receipt with no matching restock and leaving the
    goods unplaced, so the escape hatch ends inside the system.**
-4. **Is there a tolerance on an opname shortfall, and can the warehouse dispute one?**
-   ([Critique 1](#critique)) **→ I recommend no tolerance, with a short recount window.**
-5. **Who may call for an opname, and at what grain?** ([Critique 2](#critique))
-   **→ I recommend the warehouse schedules it, the owner may request one, counted per shelf.**
+4. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q7](./opname_clarify.md#question)** — tolerance and recount; opname.md now answers it.
+5. ✅ *(2026-10-08)* **Answered by opname.md** — the warehouse admin opens a session over all racks, a team, a product or a
+   rack ([an-opname-is-a-locked-session](./opname_decision.md#an-opname-is-a-locked-session)). What was left — may a selling
+   team ask for one — is [opname_clarify Q9](./opname_clarify.md#question).
 6. **After the warehouse has reimbursed a broken unit, whose object is it?** ([Critique 4](#critique))
    **→ I recommend the warehouse's.**
 7. 🔄 *(2026-10-08)* **Something expires — does the picker take the soonest-expiring unit?** `batches.expired_at`
@@ -464,57 +455,24 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     | | Part | → Recommend |
     | --- | --- | --- |
     | **11a** | ✅ **Answered: the shelf holding the fewest goes first** — [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first) | — |
-    | **11b** | **The picker takes it from another shelf.** The book moves a unit off Rak 3 and the picker lifts it off Rak 1. The next count finds a debt on Rak 1 and a surplus on Rak 3 | 🔄 *(elaborated)* **the pick list prints the shelf; the picker confirms the shelf it actually used, as a `pick` transaction**; when the two differ, the pick writes a `move` so the book follows the unit |
-    | **11c** | **A count before the pick** finds the unit still on the rack. Posted as found, the same unit is sold twice — and a warehouse debt turns up later for a unit it never lost | 🔄 *(elaborated)* **the count subtracts the units taken from that shelf and not yet picked** — known from the `pick` transactions, so nothing has to update the order's transaction ([13e](#question)) |
-    | **11d** | **A line bigger than the lowest shelf**, and two shelves with the same count | 🔄 *(elaborated)* **keep your rule as written — fewest first, spilling to the next** — and the pick list prints each shelf with its count. My *lowest shelf that fills the line* is **withdrawn**: it can cost exactly the emptying your rule exists for. Ties go to the lower placement id |
+    | **11b** | ✅ **Answered: no rack scan — the next stock opname corrects it** — [a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count). Against my scan | — |
+    | **11c** | ✅ *(2026-10-08)* **Answered in order.md: the verify scan tells inventory *picked*** — [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked). Was re-routed to [order_clarify Q1](./order_clarify.md#question) — your §How Warehouse Process The Order has a *"Staff Scan Goods for verify"* step, the moment a unit leaves the rack, so whether it tells inventory is that doc's to answer | — |
+    | **11d** | **The order wants more than the smallest rack holds** — 3 wanted, racks of 1, 2 and 5 | **keep your rule as written**: 1 from the first, 2 from the second, and the pick list says *"Rak A × 1, Rak B × 2"*. Equal racks go by the smaller id. Is one order line from two racks OK? |
+    | **11e** | ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q6](./opname_clarify.md#question)** — when a count's difference costs money; opname.md now answers it | — |
 
-    All three are worked through, with the book and the rack side by side, in [PostOrder, worked](#postorder-worked).
+    Each is told as a short story in [PostOrder, worked](#postorder-worked).
 
     ➡ Re-routed here from [order_creation](../order/order_creation_clarify.md) on 2026-09-17. When
     [placement.md](./placement.md) gets a clarify of its own, this moves there.
 
-12. **When a count or a loss changes what one team owes another, who has to agree before it posts?**
-    ➡ Moved from [user Q3](../user/context_clarify.md#question) (2026-10-02). It is the confirm half of
-    [Critique 2](#critique). Five parts, each its own yes or no:
+12. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q8](./opname_clarify.md#question)** — who confirms a difference before
+    it posts. Its fifth part, what the shelf shows while a count waits, is answered by the lock.
 
-    | | Part | Built today | → I recommend |
-    | --- | --- | --- | --- |
-    | **12a** | **Which acts need a second person?** | none — every count and adjustment posts in the call that records it | **every count or adjustment that changes a debt**: short, damaged, lost, and *found*, because a false *found* erases a debt. A count that matches posts at once, so the usual case costs nothing |
-    | **12b** | **Who records, who confirms?** | only the warehouse's Owner or Admin may count or adjust, and Staff are refused, though the proto itself says Staff are the ones at the racks | **Staff or a manager records, the warehouse's Owner or Admin confirms.** Counting is floor work, and your Staff line does not list it yet |
-    | **12c** | **May the confirmer be the human who recorded?** | yes — nothing compares the two | **No, never.** This is the half one role per team does not give you |
-    | **12d** | **May Root or the root team's Admin confirm?** | they can do anything in any team. The access check already knows when someone got in this way (an *override*), but only liability's terms log records it | **Root and the Administrator may** — [root-can-do-anything](../user/context_decision.md#root-can-do-anything), [the-administrator-can-do-anything](../user/context_decision.md#the-administrator-can-do-anything). **→ Recorded as an override, and still never their own record.** |
-    | **12e** | **What does the shelf show while a count waits?** | nothing ever waits | **The old figure, with the pending count beside it.** A count never posts by timeout, because a debt nobody agreed to is what this exists to stop. A rejected count is counted again |
-
-    ```mermaid
-    flowchart LR
-      C["Staff or a manager counts shelf A-01-3"] --> V{"does it match?"}
-      V -->|"yes"| P["posts now — no debt moves"]
-      V -->|"no — short, damaged, lost or found"| W["PENDING — the shelf keeps its old figure"]
-      W --> K{"who confirms?"}
-      K -->|"the warehouse's Owner or Admin, another human"| OK["posts — the debt is created"]
-      K -->|"the human who counted"| X["refused"]
-      W -->|"rejected"| R["counted again"]
-    ```
-
-    ⚠ Your receiving flow runs **one actor end to end** — accept, input
-    losses, input broken, set placements — with no second party. For a **restock** that is now decided: Staff accepts
-    it alone ([staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock)), and 🔄 *(2026-10-07)* so
-    does any member of the warehouse team ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)).
-    A loss at receiving is the selling team's, so it creates no warehouse debt, and Q12 is about counts and losses **in custody**.
-
-13. 🔄 *(2026-10-08)* **What the transaction still does not say.** Its core is decided —
-    [every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction).
-    These are the gaps in the table you wrote:
-
-    | | Part | → Recommend |
-    | --- | --- | --- |
-    | **13a** | **Which restock, which order?** 🔄 You answered it the other way round: `restocks.transaction_id`, so the restock points at its transaction. That works while a restock has **one** transaction. It breaks on the second — a mistyped count corrected after accept, a reversal — because one column holds one id. And an order lives in another service, so inventory cannot add the column to the order | **`ref_id` on the transaction** — the restock's, order's, return's or transfer's id, and `tx_type` already says which kind. Many transactions can then point at one restock, and inventory can say which order a transaction served without asking anyone. `restocks.transaction_id` becomes a copy. *I would still put it on the transaction — what breaks?* |
-    | **13b** | **"get transaction" — made at accept, or earlier?** [restock.md](./restock.md)'s accept *gets* one, and `restocks.transaction_id` suggests it exists before accept. Made when the restock is created, a cancelled or lost restock holds a transaction that never moved stock | **created at accept.** A transaction is a change to stock, and nothing changes before accept |
-    | **13c** | **Operations with no `tx_type`.** A move between shelves writes placement logs, a revaluation writes `batch_logs`, a count corrects both — each needs a `transaction_id`, and none has a type | add **`move`**, **`revaluation`**, **`opname`**. Not `adjustment` for all three: a move creates no debt and a count does ([Critique 3](#critique)) |
-    | **13d** | **What is `sample`?** Units out for a product photo, a buyer's sample, a giveaway? Who asks for it, and who pays — the owning team or the warehouse? | **the owning team asks, and bears it** — its own goods leaving on its own request, never a warehouse debt |
-    | **13e** | **How is a mistake undone?** There is no `status`, yet `updated_at` says the row changes. And an order cancelled before the pick puts its units back — under which type? | **Nothing updates a transaction** — drop `updated_at`. A mistake or a cancel is a **new** transaction with opposite signs and **`reverses_id`** pointing at the one it undoes. A found unit is then the reversal of its loss: same batch, same price ([Q14b](#question)) |
-    | **13f** | **Whose `team_id` when team B sells team A's goods?** | **the stock's owner, A** — both ledgers are keyed by the owning team, and the seller is on the order. An order holding two owners' goods writes two transactions |
-    | **13g** | **The person, recorded twice** — `create_by_user_id` on the transaction, `actor_id` on both logs. I asked for the placement log's `actor_id` in chat; now that the transaction names the person, it is a copy that can disagree | **keep it on the transaction only**; drop `actor_id` from `batch_logs` and `product_placement_logs` |
+13. ➡ *(2026-10-09)* **Moved to [transaction_clarify](./transaction_clarify.md#question)** — the table now lives in
+    [transaction.md](./transaction.md). 13b and 13e are answered there
+    ([a-transaction-is-made-when-the-act-happens](./transaction_decision.md#a-transaction-is-made-when-the-act-happens),
+    [an-undo-rolls-the-transaction-back-once](./transaction_decision.md#an-undo-rolls-the-transaction-back-once)); 13a, 13c,
+    13d and 13f are its Q1, Q5, Q6, Q7; 13g is withdrawn.
 
 14. 🔄 *(2026-10-08, elaborated)* **The two ledgers' rules** — what [batch.md](./batch.md) and
     [placement.md](./placement.md) do not yet say. Seven parts; e, f and g are answered, a–d are open. Every part is worked through,
@@ -523,12 +481,13 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     | | Part | → Recommend |
     | --- | --- | --- |
     | **14a** | **Nothing says the two ledgers count the same units.** One mutation that writes a shelf and forgets the batch leaves a unit the system can sell and nobody can find | **one rule, no exceptions:** per transaction and product, the batch change equals the shelf change. A move nets 0 on shelves and a revaluation moves no units, so both obey it as written. Each mutation's unit test asserts it |
-    | **14b** | **A found unit — which batch?** On the newest batch, its money comes back at a different price from the one the warehouse paid out | **the reversal of the loss** ([13e](#question)) — same batch, same price, so the money reverses to the rupiah. An emptied batch reopens for it |
+    | **14b** | **A found unit — which batch?** On the newest batch, its money comes back at a different price from the one the warehouse paid out. 🔄 *(2026-10-09)* And a find is often partial — 1 of 3 lost — so it cannot be a [rollback](./transaction_decision.md#an-undo-rolls-the-transaction-back-once), which undoes a whole transaction | **a find is a new `adjustment` that names the loss it answers**, and returns to the batch the loss came from, at that batch's price. An emptied batch reopens for it |
     | **14c** | **A batch must reach zero money when it reaches zero units.** `price_unit × n` leaves Rp 0,01 on an emptied 3-for-Rp-10.000 batch | **`stock_valuation` is the truth.** A take of *n* removes `valuation × n / count`; the take that empties a batch removes all that is left, which is exactly 0 even in floating point |
     | **14d** | **Revaluing a part-sold batch loses money.** A late Rp 20.000 freight bill after 6 of 10 sold: Rp 8.000 lands in the batch, Rp 12.000 nowhere | **name the triggers.** A typo or a markdown revalues only what is left, as drawn. A **late cost** splits by units: the on-hand share into the batch, the sold share out as a one-off cost to the team |
     | **14e** | ✅ **Answered: `price_unit_after` added, `batch_price_logs` kept** — [batch-logs-carry-price-unit-after](./context_decision.md#batch-logs-carry-price-unit-after) | — |
     | **14f** | ✅ **Answered, as recommended** — [one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement), [a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it) | — |
     | **14g** | ✅ **Answered, as recommended** — [the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason) | — |
+    | **14h** | 🆕 *(2026-10-09)* **A batch from a stall purchase loses its supplier.** A restock line may now name a supplier with no store ([a-line-may-name-a-supplier-without-a-channel](./restock_decision.md#a-line-may-name-a-supplier-without-a-channel)), but [batch.md](./batch.md)'s `batches` keeps `supplier_channel_id` only — so the batch minted from that line forgets who sold it | **`batches.supplier_id`** beside `supplier_channel_id`, both optional, copied from the line at accept |
 
 15. ✅ *(2026-10-08)* **Answered: one mutation per operation · batches lock before shelves, by id · the layer underneath
     is a ledger** — [one-mutation-per-operation](./context_decision.md#one-mutation-per-operation),
@@ -578,37 +537,8 @@ flowchart LR
 
 ## the-two-type-lists-do-not-line-up
 
-*(2026-10-08)* A transaction's type and its log rows' type are two lists, written in two docs, and they disagree:
-
-| | `tx_type` — [context.md](./context.md) | `change_type` — [batch.md](./batch.md) |
-| --- | --- | --- |
-| in both | `order` · `restock` · `return` · `adjustment` | the same |
-| only here | `sample` · `transfer_in` · `transfer_out` | — so a sample's or a transfer's batch row has **no valid `change_type`** |
-| only there | — so a revaluation has **no `tx_type`** | `revaluation` · `broken` · `lost` |
-
-🔄 *(2026-10-08)* **Half fixed.** [placement.md](./placement.md) now lists `product_placement_logs.change_type`, and it
-is the `tx_type` list exactly — the placement side writes its transaction's type, as recommended below. **The batch side
-still differs.** `broken` and `lost` are fine — they are the *reasons* inside an `adjustment` — but `revaluation`,
-`sample` and the transfer legs each break one side. Neither list has `move` ([Q13c](#question)).
-
-**→ Recommend** one list, kept in [context.md](./context.md), that both ledger docs point at: **every `tx_type`, plus
-the reasons an `adjustment` carries** (`broken`, `lost`, `found`). A log row writes its transaction's type — or, inside
-an adjustment, its reason. One list cannot drift from itself; two will drift again the next time a type is added.
-
-```mermaid
-flowchart LR
-  subgraph tx["tx_type - context.md"]
-    t1["order, restock, return, adjustment"]
-    t2["sample, transfer_in, transfer_out"]
-  end
-  subgraph ch["change_type - batch.md"]
-    c1["order, restock, return, adjustment"]
-    c3["revaluation, broken, lost"]
-  end
-  t1 <-->|"match"| c1
-  t2 -.->|"no change_type to write"| X["a sample or transfer batch row"]
-  c3 -.->|"revaluation has no tx_type"| Y["a revaluation transaction"]
-```
+➡ *(2026-10-09)* **Moved to [transaction_clarify](./transaction_clarify.md#the-two-type-lists-do-not-line-up)** — `tx_type`
+now lives in [transaction.md](./transaction.md).
 
 ## ✅ the receiving-boundary gap is CLOSED — recorded, not deleted silently
 

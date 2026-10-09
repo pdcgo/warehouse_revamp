@@ -6,7 +6,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | decision | what it decided |
 | --- | --- |
 | [stock-merges-into-inventory](#stock-merges-into-inventory) | there is no separate stock context — its rules live in `inventory/context.md` |
-| [every-stock-change-belongs-to-a-transaction](#every-stock-change-belongs-to-a-transaction) | one `inventory_transactions` row per operation; both ledgers' log rows point at it; there is no items table |
+| [every-stock-change-belongs-to-a-transaction](#every-stock-change-belongs-to-a-transaction) | one `inventory_transactions` row per operation; both ledgers' log rows point at it — 🔄 its *no items table* is reversed by [a-transaction-lists-its-items](./transaction_decision.md#a-transaction-lists-its-items) |
 | [one-mutation-per-operation](#one-mutation-per-operation) | a mutation is one operation — `PostOrder`, `PostRestock` — and it writes the transaction row and both ledgers; no RPC writes a ledger directly |
 | [an-order-takes-from-the-lowest-shelf-first](#an-order-takes-from-the-lowest-shelf-first) | `PostOrder` lowers the product's shelf holding the fewest units first; the batch side stays FIFO |
 | [batch-logs-carry-price-unit-after](#batch-logs-carry-price-unit-after) | `batch_logs` gains `price_unit_after`; `batch_price_logs` is kept beside it, and a mint or a revaluation writes both |
@@ -15,6 +15,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-owning-team-revalues-with-a-reason](#the-owning-team-revalues-with-a-reason) | only the owning team's Owner or Admin changes a batch's price, with a reason, and the warehouse sees it |
 | [batches-lock-before-shelves-by-id](#batches-lock-before-shelves-by-id) | every mutation locks batches first, then shelves, each in id order — and locks a product's shelves before choosing among them by stock |
 | [the-layer-under-a-mutation-is-a-ledger](#the-layer-under-a-mutation-is-a-ledger) | the per-ledger functions are a *Placement Ledger* and a *Batch Ledger*; only a mutation calls them |
+| [a-wrong-rack-pick-waits-for-the-count](#a-wrong-rack-pick-waits-for-the-count) | the picker does not confirm the rack; a pick from another rack is corrected by the next stock opname |
 
 ---
 
@@ -95,6 +96,10 @@ flowchart TB
 second transaction, and how an order (in another service) names its own · whether accept *gets* one made earlier or *creates* one · the operations with no `tx_type`
 (a shelf move, a revaluation, a count) · what `sample` is · how a mistake is undone · whose `team_id` a cross-team order
 carries.
+
+🔄 *(2026-10-09)* **Superseded in part.** The table moved to [transaction.md](./transaction.md), and the items row above is
+reversed: [a-transaction-lists-its-items](./transaction_decision.md#a-transaction-lists-its-items). The open set moved to
+[transaction_clarify.md](./transaction_clarify.md).
 
 ---
 
@@ -341,3 +346,35 @@ flowchart TB
 
 ⚠ Two places still use the old word: [placement.md](./placement.md)'s heading *Placement Ledger Mutation*, and
 §How We Breakdown Complexity's diagram node `PlacementLedgerMutation` in [context.md](./context.md).
+
+---
+
+## a-wrong-rack-pick-waits-for-the-count
+
+> Owner, in chat *(2026-10-08)*: *"for 11b, later warehouse staff doing stock opname and adjust the error"*. It answers
+> [context_clarify Q11b](./context_clarify.md#question) — *the picker takes the item from a different rack than the system
+> chose* — **against my recommendation**, which was for the picker to scan the rack they used.
+
+**The verdict.** The pick list says which rack. The picker is not asked to confirm it. If they take the item from another
+rack, nothing is recorded at the pick: the two racks stay wrong by one each until the next stock opname, and the opname's
+adjustment puts them right. One scan less per pick, paid for with racks that can be briefly wrong.
+
+```mermaid
+flowchart LR
+  O["order - the system lowers Rak A"] --> P["the picker takes it from Rak B"]
+  P --> W["until the count - Rak A shows 1 too few, Rak B 1 too many"]
+  W --> C["stock opname - Rak A +1, Rak B -1"]
+  C --> OK["both racks right again"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the pick | no rack confirmation — the rack on the pick list is assumed |
+| a pick from another rack | both racks are off by one until counted |
+| the fix | the next opname's adjustment, on both racks |
+
+**What it does NOT settle:** that the fix must not charge the warehouse — Rak A +1 and Rak B −1 are one unit that moved,
+not a loss and a find ([Q11e](./context_clarify.md#question)); and a count made *before* the pick, which the count itself
+gets wrong ([Q11c](./context_clarify.md#question)).

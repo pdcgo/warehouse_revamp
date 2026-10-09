@@ -3,6 +3,60 @@
 [restock.md](./restock.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [restock_decision.md](./restock_decision.md).
 
+> **Re-examined after your Q19a answer (2026-10-09).** ✅ [Q19](#question): one courier's charge per restock, for now, with a
+> note. **No question is open in restock.** Left: [two-drawings-of-receiving](#two-drawings-of-receiving) — context.md still draws
+> its own accept — and a column for the charge's note.
+>
+> **Re-examined after your Q19b answer (2026-10-09).** ✅ 19b: the courier's charge stays outside `total`. **Open now: Q19a** — a
+> line per charge, or one number.
+>
+> **Re-examined after your answer on the courier's charge (2026-10-09).** `warehouse_additional_cost` is the courier's charge
+> at the door — recorded. 🆕 [Q19](#question): a line per charge, and `total` without it. **Open now: Q19.**
+>
+> **Re-examined after your Q17 answer (2026-10-09).** ✅ [Q17](#question): the lines stay editable until accepted, and accept
+> refuses more than a line says. **No question is open.** What remains is two [contradictions](#contradiction) — receiving drawn
+> twice, and `warehouse_additional_cost`. ✅ Fixed in restock.md since: `problem_type` says `missing`, and `shipment_id` is the courier.
+>
+> **Re-examined after your Q18 answer (2026-10-09).** ✅ [Q18](#question): one invoice per restock, many products in it. **Open now: Q17.**
+>
+> **Q17 and Q18 elaborated (2026-10-09)** — [Q17 and Q18, worked](#q17-and-q18-worked). 17a widened: while `arrived` the
+> selling team may change the **lines** (count, total, note), not only count and note — the extra may have been paid for.
+>
+> **Re-examined after your 6c and 6d answers (2026-10-09).** ✅ Q6 closed: a short unit is `missing` after all — the decision
+> I recorded minutes earlier is **reversed** — and extra units are the selling team's edit, with a `note`. 🆕 [Q17](#question):
+> that edit comes after `arrived`, when editing is refused. 🆕 [Q18](#question): one invoice reference for a parcel from two
+> stores. **Open now: Q17, Q18.**
+>
+> **Re-examined after your 6b and 6c answers (2026-10-09).** ✅ 6b: the system fills the price, read-only · ✅ 6c: `lost`
+> and `broken` keep their names — the table says whose. My `missing` is withdrawn; it renamed one of two words with the same
+> two meanings. **Open now: Q6d** — 12 arriving in a box of 10.
+>
+> **Re-examined after your answers (2026-10-09).** ✅ [Q15](#question), ✅ [Q16](#question): `receipt` is the tracking number.
+> **Open now: Q6.** ⏸ `invoice_ref_id` was added in chat but is not saved in restock.md yet — examined once it is.
+>
+> **Re-examined after your `restocks` columns (2026-10-09).** `finance_account_id` is the paying account — recorded under your
+> name. 🆕 [Q16](#question): is `receipt` the courier's resi or the supplier's invoice?
+>
+> **Q6 elaborated, Q14 answered (2026-10-09).** ✅ [Q14](#question): *Restock Updated* carries the difference
+> ([an-edit-sends-the-difference](./restock_decision.md#an-edit-sends-the-difference)). 🆕 [Q15](#question): an edit that changes the paying account.
+> [counting the box, worked](#counting-the-box-worked) tells Q6 at the door. **Open now: Q6 and Q15.**
+>
+> **Re-examined after your second round of answers (2026-10-09).** ✅ **Closed:** Q1 (a *deleted* badge), Q2 (a popup searching
+> every supplier), Q3, Q4 (one parcel, many products), Q5 (b, c, e), Q7, Q8, Q9, Q11a — all recorded in
+> [restock_decision.md](./restock_decision.md). 🆕 [Q14](#question): an edit has no event, though the financial account posts
+> the difference. **Open now: Q6 (b–d) and Q14.**
+>
+> **Re-examined after your answers in chat (2026-10-09).** ✅ [Q13](#question) — accept locks the restock, from `ongoing` or
+> `arrived` · ✅ [Q10](#question) b, c, d, as recommended · ✅ [Q5](#question) a and d — the warehouse signs and accepts, the
+> selling team does the rest, and cancels only while `ongoing`. Q5 stays for 5b, 5c, 5e — and 5c now matters, since accept
+> is refused from `lost`.
+>
+> **Re-examined after §Restock Created Flow and your accept change (2026-10-09).** Recorded:
+> [a-created-restock-tells-the-financial-account](./restock_decision.md#a-created-restock-tells-the-financial-account),
+> [an-accepted-restock-cannot-be-cancelled](./restock_decision.md#an-accepted-restock-cannot-be-cancelled) — Q5d half answered.
+> 🆕 [Q13](#question): accept does not take cancel's lock, so both can win ([Critique 14](#critique)) · [Q10d](#question): the
+> events lack the paying account and *did the money come back?* ([Critique 15](#critique)).
+>
 > **Re-examined after your transaction edit (2026-10-08).** Accept now *gets* an inventory transaction before it writes
 > anything ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)).
 > `restocks.transaction_id` points the restock at it, so [Critique 12](#critique) is answered for one accept, and
@@ -69,19 +123,22 @@
 
 | # | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **A restock from a physical vendor names nobody.** A line reaches its supplier only through `supplier_channel_id`, and a supplier selling from a stall has no channel ([the-supplier-lists-only-its-online-stores](../supplier/context_decision.md#the-supplier-lists-only-its-online-stores)). | `restock_items.supplier_id` beside the channel, both optional — [Q3](#question) |
-| **2** | 🔄 *(2026-10-07)* **A deleted supplier no longer blanks the line** — its delete is soft ([a-deleted-supplier-is-kept-for-its-figures](../supplier/context_decision.md#a-deleted-supplier-is-kept-for-its-figures)). A deleted **store** no longer does either — [a-store-delete-is-soft-too](../supplier/context_decision.md#a-store-delete-is-soft-too). | no snapshot — [Q1](#question) |
-| **3** | **A restock with lines from two stores arrives as two parcels.** Two Shopee stores ship separately, at different times, but the flow asks *is restock arrived?* once, for all of it. | **a restock is one parcel** — [Recommendation](#recommendation), [Q4](#question) |
-| **4** | **`arrived` and `cancel` are statuses no arrow sets.** Nor does the flow say whether `lost` may be set on a parcel the warehouse already signed for, or what happens when a `lost` parcel turns up. | the [state diagram](#lifecycle) — [Q5](#question) |
+| **1** | ✅ **Answered** — [a-line-may-name-a-supplier-without-a-channel](./restock_decision.md#a-line-may-name-a-supplier-without-a-channel) | — |
+| **2** | ✅ **Answered** — [a-deleted-supplier-still-shows-with-a-badge](./restock_decision.md#a-deleted-supplier-still-shows-with-a-badge) | — |
+| **3** | ✅ **Answered** — [a-restock-is-one-parcel](./restock_decision.md#a-restock-is-one-parcel) | — |
+| **4** | ✅ **Answered** — every status has its mover and its sources: [the-warehouse-signs-and-accepts-the-team-does-the-rest](./restock_decision.md#the-warehouse-signs-and-accepts-the-team-does-the-rest) and the rules after it | — |
 | **5** | ✅ **Answered** — `received_count` is typed per line, and the short units are the difference ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)). An over-delivery is still unwritten | [Q6d](#question) |
 | **6** | ✅ **Answered by [Q12](#question)** — a product is once per restock, so the problem row's `product_id` finds its line. Its price can still disagree with the line's | price copied, never typed — [Q6b](#question) |
-| **7** | **`count × price_unit` is not what the invoice says.** *3 pcs Rp 10.000* is Rp 3.333,33 a piece: a rounded price makes `total` disagree with what was paid. | the person types the line's `total`; `price_unit` is derived — [Q8](#question) |
-| **8** | **The warehouse cannot find the restock a parcel belongs to.** The parcel's label carries a tracking number (resi). `restocks` has none, so *check on the system* is a search of every open restock by product. | `tracking_number` and `courier` on `restocks` — [Q7](#question) |
-| **9** | **Nobody is named and nothing is timed.** No creator, and no actor or time on `arrived`, `accepted`, `lost`, `cancel` — yet the restock lists filter by them ([a-who-filter-lists-the-people-on-its-rows](../user/context_decision.md#a-who-filter-lists-the-people-on-its-rows)), and a supplier's lead time needs *arrived at*. | `restock_logs`, the shape of your `batch_logs` — [Q9](#question) |
-| **10** | **The courier's ask has no step in the accept.** The warehouse may set it when it accepts ([the-warehouse-receivable-is-order-fee-cod-fee-and-found](../balance/context_decision.md#the-warehouse-receivable-is-order-fee-cod-fee-and-found)), and 🔄 *(2026-10-07)* it is now **decided** to enter the price ([the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price)). So the cost lines must be in the transaction. Still unwritten: what the selling team then owes | that debt inside the transaction too — [Q10b](#question) |
+| **7** | ✅ **Answered** — [a-line-is-typed-as-its-total](./restock_decision.md#a-line-is-typed-as-its-total) | — |
+| **8** | ✅ **Answered** — [a-restock-carries-its-tracking-number](./restock_decision.md#a-restock-carries-its-tracking-number) | — |
+| **9** | ✅ **Answered** — [every-status-change-is-logged](./restock_decision.md#every-status-change-is-logged) | — |
+| **10** | ✅ **Answered** — [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) | — |
 | **11** | ✅ **Answered by your supplier edit** — `supplier_service` writes the product-to-channel link and its daily report ([restock-accepted-links-the-product-to-its-channel](../supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel), [a-supplier-is-measured-per-product-per-day](../supplier/context_decision.md#a-supplier-is-measured-per-product-per-day)) | what the event carries — [Q10c](#question) |
 | **12** | 🔄 *(2026-10-08)* **Answered for one accept** — both logs point at a transaction, and `restocks.transaction_id` points the restock at it ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)). A shelf that gained 8 units can now find its delivery. ⚠ One column holds one transaction, so a count corrected after accept has nowhere to go | `ref_id` on the transaction instead — asked where it is answered, [context Q13a](./context_clarify.md#question) |
 | **13** | **The three branches are drawn side by side, but one transaction runs them in turn** — and two accepts of the same product, by the pair working one stock level, update the same placement rows. In different orders, they deadlock. | lines in `product_id` order, shelves in `placement_id` order. Not a question — the concurrency audit checks it |
+| **14** | ✅ **Answered** — accept takes cancel's lock ([accept-locks-the-restock](./restock_decision.md#accept-locks-the-restock)) | — |
+| **15** | ✅ **Answered** — [a-restock-names-its-paying-account](./restock_decision.md#a-restock-names-its-paying-account) | — |
+| **16** | ✅ **Answered** — [an-edit-sends-the-difference](./restock_decision.md#an-edit-sends-the-difference) | — |
 
 ## Recommendation
 
@@ -97,86 +154,122 @@ the warehouse out of pocket with no record.
 
 ## Question
 
-1. **What does a line show once its supplier or channel is deleted?** *(was supplier Q2a — re-asked for the channel)*
-   🔄 *(2026-10-07, was "snapshot the names")* **→ Recommend: read the names from the kept rows — no snapshot — and A may
-   always delete.** The supplier's delete is now soft, and so is the store's
-   ([a-store-delete-is-soft-too](../supplier/context_decision.md#a-store-delete-is-soft-too)), so a name is always there to read. *What breaks?* A rename reaches B's past lines.
-   I had called that wrong for a purchase record; with the blank line gone it is the only reason left, and it is the same
-   vendor under its new name — not worth two columns and a call to `supplier_service` on every save.
+1. ✅ *(2026-10-09)* **Answered: still shown, with a *deleted* badge** — [a-deleted-supplier-still-shows-with-a-badge](./restock_decision.md#a-deleted-supplier-still-shows-with-a-badge).
+2. ✅ *(2026-10-09)* **Answered: a Connect Supplier Channel popup that searches every supplier** — [a-line-connects-to-any-teams-supplier-from-a-popup](./restock_decision.md#a-line-connects-to-any-teams-supplier-from-a-popup).
+3. ✅ *(2026-10-09)* **Answered: yes, `supplier_id` beside the channel** — [a-line-may-name-a-supplier-without-a-channel](./restock_decision.md#a-line-may-name-a-supplier-without-a-channel).
+4. ✅ *(2026-10-09)* **Answered: one parcel, any number of products** — [a-restock-is-one-parcel](./restock_decision.md#a-restock-is-one-parcel).
 
-2. **How does B's line find A's supplier?** *(was supplier Q2b)*
-   **→ Recommend: the picker searches every selling team's suppliers, B's own first**, another team's with its
-   team's name — then, optionally, one of that supplier's channels.
+5. ✅ *(2026-10-09)* **Answered, every part** — [the-warehouse-signs-and-accepts-the-team-does-the-rest](./restock_decision.md#the-warehouse-signs-and-accepts-the-team-does-the-rest) ·
+   [lost-is-set-only-before-the-box-arrives](./restock_decision.md#lost-is-set-only-before-the-box-arrives) · [a-late-lost-box-is-signed-for-as-arrived](./restock_decision.md#a-late-lost-box-is-signed-for-as-arrived) ·
+   [a-restock-is-cancelled-only-while-ongoing](./restock_decision.md#a-restock-is-cancelled-only-while-ongoing) · [a-restock-is-edited-only-while-ongoing](./restock_decision.md#a-restock-is-edited-only-while-ongoing).
 
-3. **May a line name a supplier that has no channel?** ([Critique 1](#critique))
-   **→ Recommend: yes — `supplier_id` and `supplier_channel_id`, both optional; a channel, when given, must be that
-   supplier's.** Without it every market-stall purchase is anonymous, and its batches with it.
+6. ✅ *(2026-10-09)* **Answered, every part** — [the-problem-price-is-filled-by-the-system](./restock_decision.md#the-problem-price-is-filled-by-the-system) ·
+   [a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing) · [extra-units-are-added-by-the-selling-teams-edit](./restock_decision.md#extra-units-are-added-by-the-selling-teams-edit). What 6d leaves is
+   [Q17](#question).
 
-4. **Is a restock one parcel?** ([Recommendation](#recommendation)) **→ Recommend: yes.**
-   *What breaks?* A team buying from two stores that ship separately raises two restocks, not one.
+7. ✅ *(2026-10-09)* **Answered: yes** — [a-restock-carries-its-tracking-number](./restock_decision.md#a-restock-carries-its-tracking-number).
+8. ✅ *(2026-10-09)* **Answered: the total** — [a-line-is-typed-as-its-total](./restock_decision.md#a-line-is-typed-as-its-total).
+9. ✅ *(2026-10-09)* **Answered: yes** — [every-status-change-is-logged](./restock_decision.md#every-status-change-is-logged).
 
-5. **Who moves each status, and from where?** ([Critique 4](#critique))
+10. ✅ *(2026-10-09)* **Answered, as recommended** — the link (10a, earlier) ·
+    [the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept) ·
+    [restock-accepted-carries-every-line](./restock_decision.md#restock-accepted-carries-every-line) ·
+    [a-restock-names-its-paying-account](./restock_decision.md#a-restock-names-its-paying-account).
 
-   | | Part | → Recommend |
-   | --- | --- | --- |
-   | **5a** | who sets `arrived`, and when | **Staff, when signing for the parcel** — before it is opened. It stamps when the warehouse took the box, and when a courier's ask was paid |
-   | **5b** | may `lost` be set after `arrived` | **no** — the box is in the building; a unit missing from it is a problem row ([Q6](#question)) |
-   | **5c** | a `lost` parcel turns up | **`lost → arrived`, the same restock** — it is the record of what is in that box |
-   | **5d** | `cancel` | **the selling team, from `ongoing` only**; the money follows [a-restock-must-name-the-account-that-paid](../financial_account/context_decision.md#a-restock-must-name-the-account-that-paid) — *did the money come back?* |
-   | **5e** | editing | **while `ongoing` only** |
-
-   `arrived` does not split the count: Staff still counts and accepts in one act
-   ([staff-accepts-the-restock](../user/context_decision.md#staff-accepts-the-restock)).
-
-6. **How is the box counted?** ([Critique 5, 6](#critique))
-
-   | | Part | → Recommend |
-   | --- | --- | --- |
-   | **6b** | the problem row's money | 🔄 *(2026-10-07)* **`price_unit` and `total` copied from the line, never typed.** Which line is no longer a question: [a-product-appears-once-per-restock](./restock_decision.md#a-product-appears-once-per-restock) |
-   | **6c** | the name of a short unit | **`missing`, not `lost`** — [lost-means-three-things](#lost-means-three-things) |
-   | **6d** | more arrived than ordered | **accepted** — the extra units are good stock with no price of their own, so the landed price spreads over them |
-
-7. **Does a restock carry its tracking number and courier?** ([Critique 8](#critique))
-   **→ Recommend: yes, editable while `ongoing`** — a marketplace issues the resi a day after the purchase.
-
-8. **Which is typed on a line — the unit price or the total?** ([Critique 7](#critique))
-   **→ Recommend: the total**, as the invoice prints it; `price_unit` is derived for display. Whether money is integer
-   rupiah is [stock Q4](../../technical/stock/design_clarify.md#question).
-
-9. **A trail — `restock_logs`?** ([Critique 9](#critique))
-   **→ Recommend: yes** — one row per status change: from, to, actor, time, description.
-
-10. **Who hears *Restock Accepted*, and for what?** ([Critique 10, 11](#critique))
-
-    | | Part | → Recommend |
-    | --- | --- | --- |
-    | **10a** | ✅ **answered** (2026-10-07) — the link, by your supplier §How We Seed: [restock-accepted-links-the-product-to-its-channel](../supplier/context_decision.md#restock-accepted-links-the-product-to-its-channel). Its three readings are [supplier Q11](../supplier/context_clarify.md#question) | — |
-    | **10b** | what the selling team owes for the courier's ask | 🔄 *(2026-10-07)* The cost lines are now inside the transaction by necessity: the price reads them ([the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price)). **→ The debt goes in the same transaction, NOT on the event.** See [Recommendation](#recommendation) |
-    | **10c** | what the event carries | 🔄 *(2026-10-07, was "no price")* **the restock, both teams, the accept time, and every line — product, channel, the accepted count, its price, the broken and the short counts.** Supplier's daily report needs all of it ([supplier: what the event has to carry](../supplier/context_clarify.md#what-the-event-has-to-carry--asked-where-it-is-produced)) |
-
-11. **What does accept write into the two ledgers?** ([Critique 12](#critique))
-
-    | | Part | → Recommend |
-    | --- | --- | --- |
-    | **11a** | how many batches | **one per line with good units** — a line is one product, one store, one price, which is exactly a batch. Its `price_unit` is the landed price; the formula stays [product Q2, Q6](../product/context_clarify.md#question) and [biggest #4](../../biggest_question.md) |
-    | **11b** | what each log row names | ➡ *(2026-10-08)* **Re-routed to [context Q13a](./context_clarify.md#question).** Both logs now name a transaction ([every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)); whether the transaction names its restock is a question about `inventory_transactions`, which context.md owns |
+11. ✅ *(2026-10-09)* **Answered** — one batch per line with good units ([one-batch-per-line](./restock_decision.md#one-batch-per-line)). What each log row names
+    moved to the transaction: [transaction_clarify Q1](./transaction_clarify.md#question).
 
 12. ✅ *(2026-10-07)* **Answered: once per restock**, as recommended —
     [a-product-appears-once-per-restock](./restock_decision.md#a-product-appears-once-per-restock).
 
+13. ✅ *(2026-10-09)* **Answered: accept locks the restock and accepts from `ongoing` or `arrived`** —
+    [accept-locks-the-restock](./restock_decision.md#accept-locks-the-restock).
+
+14. ✅ *(2026-10-09)* **Answered: Restock Updated, with the difference** — [an-edit-sends-the-difference](./restock_decision.md#an-edit-sends-the-difference).
+
+15. ✅ *(2026-10-09)* **Answered: yes, while `ongoing`** — [an-edit-may-move-the-payment-to-another-account](./restock_decision.md#an-edit-may-move-the-payment-to-another-account).
+
+16. ✅ *(2026-10-09)* **Answered: the tracking number** — [the-receipt-is-the-tracking-number](./restock_decision.md#the-receipt-is-the-tracking-number); the courier is
+    `shipment_id`.
+
+17. ✅ *(2026-10-09)* **Answered, as recommended** — [the-lines-stay-editable-until-accepted](./restock_decision.md#the-lines-stay-editable-until-accepted) ·
+    [accept-refuses-more-than-the-line-says](./restock_decision.md#accept-refuses-more-than-the-line-says).
+
+18. ✅ *(2026-10-09)* **Answered: one invoice per restock, many products in it** —
+    [a-restock-has-one-invoice](./restock_decision.md#a-restock-has-one-invoice).
+
+19. ✅ *(2026-10-09)* **Answered: one charge per restock for now, with a note; outside `total`** —
+    [the-courier-is-paid-once-per-restock](./restock_decision.md#the-courier-is-paid-once-per-restock) ·
+    [the-couriers-charge-stays-out-of-total](./restock_decision.md#the-couriers-charge-stays-out-of-total).
+
 ## Proposed Design
+
+### counting the box, worked
+
+[Q6](#question), told at the door. The selling team bought **Kaos Polos Hitam, 10 pcs, Rp 100.000** — Rp 10.000 each.
+
+✅ *(2026-10-09)* **All three decided** — the system fills the price, read-only
+([the-problem-price-is-filled-by-the-system](./restock_decision.md#the-problem-price-is-filled-by-the-system)); a short unit is `missing` ([a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing));
+extra units are the selling team's edit, with a note ([extra-units-are-added-by-the-selling-teams-edit](./restock_decision.md#extra-units-are-added-by-the-selling-teams-edit)).
+
+### Q17 and Q18, worked
+
+**[Q17](#question) — the extra units are found after the box is signed for.** The selling team raised *Kaos Hitam × 10,
+Rp 100.000*.
+
+| when | what happens | status |
+| --- | --- | --- |
+| day 1 | the selling team creates the restock | `ongoing` |
+| day 3, 09:00 | the box arrives; staff sign for it | `arrived` |
+| 10:00 | staff open it: **12** shirts | `arrived` |
+| 10:05 | the selling team edits the line to 12, *"extra stock"* — **refused**: editing is `ongoing`-only | `arrived` |
+| — | the warehouse cannot accept 12 (the line says 10), the selling team cannot edit: **stuck** | |
+
+```mermaid
+flowchart LR
+  A["arrived - 12 in a box of 10"] --> E{"selling team edits the line"}
+  E -->|"today - refused, ongoing only"| X["stuck"]
+  E -->|"17a - the line may change until accepted"| OK["count 12, note extra stock"]
+  OK --> W["warehouse accepts 12"]
+  A -->|"17b - staff type 12 before the edit"| R["refused - ask the selling team to add them"]
+```
+
+**→ 17a:** while `arrived`, the selling team may still change **the lines** — count, total, note — until the warehouse
+accepts. The account, the store and the tracking number stay `ongoing`-only. **→ 17b:** if staff type more received than
+the line says, accept is refused with *"more arrived than ordered — ask the selling team to add them"*.
+
+**[Q18](#question) — one parcel, two invoices.** The selling team buys from two Shopee stores and a forwarder repacks both
+into one box:
+
+| line | store | invoice |
+| --- | --- | --- |
+| Kaos Hitam × 10 | Toko Melati | **INV-001** |
+| Celana Chino × 5 | Toko Sinar | **INV-777** |
+
+One box, one resi, so one restock ([a-restock-is-one-parcel](./restock_decision.md#a-restock-is-one-parcel)) — and
+`restocks.invoice_ref_id` holds one string.
+
+| | where INV-777 goes | the cost |
+| --- | --- | --- |
+| both in one string — *"INV-001, INV-777"* | the same field | a person can read it; nothing can search or match it |
+| **one per line** | `restock_items.invoice_ref_id` | each line already names its store — its invoice sits beside it |
+| two restocks for one box | a second restock | two restocks share one resi, and the warehouse finds two records for one box |
+
+✅ *(2026-10-09)* **Decided: one invoice per restock** — [a-restock-has-one-invoice](./restock_decision.md#a-restock-has-one-invoice). A restock's lines share a store in practice.
 
 ### lifecycle
 
 ```mermaid
 stateDiagram-v2
-  [*] --> ongoing: the selling team creates
-  ongoing --> ongoing: edit
-  ongoing --> cancel: the selling team, before it arrives
-  ongoing --> lost: the selling team, it never came
-  ongoing --> arrived: Staff signs for the parcel
-  lost --> arrived: the parcel turns up late
-  arrived --> accepted: Staff counts and accepts, one act
+  [*] --> ongoing: selling team creates
+  ongoing --> ongoing: selling team edits anything
+  arrived --> arrived: selling team edits the lines
+  ongoing --> cancel: selling team, ongoing only
+  ongoing --> lost: selling team
+  ongoing --> arrived: warehouse signs for the box
+  ongoing --> accepted: warehouse accepts
+  arrived --> accepted: warehouse accepts
+  lost --> arrived: warehouse signs for a late box
   accepted --> [*]
   cancel --> [*]
 ```
@@ -257,7 +350,7 @@ stateDiagram-v2
   state "one database transaction" as tx {
     state "Inv Transaction - tx_type restock, ref_id the restock" as inv
     state "NEW - status to accepted, a restock_logs row" as st
-    state "restock_problem_items - missing written, broken typed" as prob
+    state "restock_problem_items - missing worked out, broken typed, price filled" as prob
     state "NEW - restock_cost_lines, the courier's ask with a note" as cost
     state "Batch Ledger - one batch per line, landed price_unit" as bl
     state "Placement Ledger - good units on their shelves" as pl
@@ -308,6 +401,10 @@ flowchart LR
 
 ## the-tables-miss-two-decided-fields
 
+✅ *(2026-10-09)* **Closed** — the paying account is `finance_account_id`; the warehouse cost is the courier's charge, one per
+restock with a note, outside `total` ([the-courier-is-paid-once-per-restock](./restock_decision.md#the-courier-is-paid-once-per-restock)). ⚠ The note's column
+is not in restock.md yet. As first recorded:
+
 | decision | requires | restock.md |
 | --- | --- | --- |
 | [a-restock-must-name-the-account-that-paid](../financial_account/context_decision.md#a-restock-must-name-the-account-that-paid) | the paying account, **required** at create | absent |
@@ -332,23 +429,20 @@ flowchart LR
   CL -.->|"must not be added into"| T
 ```
 
-## lost-means-three-things
+## ✅ lost-means-three-things — resolved by `missing`
 
-| where | `lost` means | who bears it |
-| --- | --- | --- |
-| `restocks.status` | the parcel never came | the selling team — outside the building |
-| `restock_problem_items.problem_type` | a unit short in a parcel that came | the selling team — [selling-team-bears-the-receiving-loss](./context_clarify.md#selling-team-bears-the-receiving-loss) |
-| `batch_logs.change_type`, balance's `lost_good` | a unit gone from the shelf | the **warehouse** — [the-warehouse-payable-is-broken-and-lost](../balance/context_decision.md#the-warehouse-payable-is-broken-and-lost) |
+*(2026-10-09)* `lost` meant three things with two payers. A short unit at the door is now **`missing`**
+([a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing)), so `lost` keeps only a parcel that never came and a unit gone from a rack —
+two meanings that never meet in one table. `broken` keeps its name in both places; its table says whose it is.
 
-One word, two payers. A receiving `lost` mapped to `lost_good` bills the warehouse for the selling team's loss.
-**→ Recommend:** the receiving one is **`missing`** ([Q6c](#question)).
+**Why it is kept here:** the cause was one word, two payers. The guard that stops it recurring is one rule — a receiving
+problem row never posts to the warehouse's payable. ✅ [restock.md](./restock.md)'s `problem_type` now says `broken` · `missing`.
 
 ```mermaid
 flowchart LR
-  P["a parcel never came - lost"] --> SEL["the selling team"]
-  M["a unit short in the box - missing"] --> SEL
-  G["a unit gone from the shelf - lost"] --> WH["the warehouse"]
-  M -.->|"if it shares the word"| WH
+  M["restock_problem_items - missing, broken"] --> S["the selling team"]
+  B["batch_logs - lost, broken"] --> W["the warehouse"]
+  M -.->|"never"| W
 ```
 
 ## ✅ restock-has-no-supplier — answered by your edit
