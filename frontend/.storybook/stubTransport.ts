@@ -704,7 +704,12 @@ export const transport = createRouterTransport(({ service }) => {
       // root team for Root or the Administrator, whose reach comes from there.
       const mine = sessionScenario.memberOf === null ? teams : teams.filter((t) => sessionScenario.memberOf!.includes(t.id));
       const platform = sessionScenario.role === Role.ROOT || sessionScenario.role === Role.ADMINISTRATOR;
-      const rows = mine.map((t) => ({ teamId: t.id, teamName: t.name, teamType: t.type }));
+      // A story may rename one (sessionScenario.teamNames) — a long name, to see how it is cut.
+      const rows = mine.map((t) => ({
+        teamId: t.id,
+        teamName: sessionScenario.teamNames[t.id.toString()] ?? t.name,
+        teamType: t.type,
+      }));
 
       if (sessionScenario.memberOf !== null && platform) {
         rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });

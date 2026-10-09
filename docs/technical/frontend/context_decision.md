@@ -43,6 +43,8 @@ when it applies one of these.
 | [the-more-sheet-switches-theme-and-language](#the-more-sheet-switches-theme-and-language) | in the More sheet, Tema is a sun/moon switch and Bahasa an ID/EN switch | the phone shell |
 | [the-switch-is-a-step-past-lg](#the-switch-is-a-step-past-lg) | a `lg` switch is 56×28 — a step past Chakra's 48×24; the More sheet's two switches | the phone shell |
 | [the-account-menu-switches-theme-and-language](#the-account-menu-switches-theme-and-language) | the desktop account menu draws Tema and Bahasa as the phone's switches — ☀/☾ and ID/EN — each a row that toggles and keeps the menu open | the desktop sidebar |
+| [the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) | on a phone the workspace is a round bubble raised out of the tab bar's centre, the team's name under it; the top bar names the screen only | the phone shell |
+| [the-phone-workspace-keeps-its-size](#the-phone-workspace-keeps-its-size) | the phone's workspace drawer is always 75% of the screen, whatever a search leaves in it; a long team name is cut to one line | the phone shell |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -895,6 +897,60 @@ Bahasa
 | a click | on the ROW — or Enter — toggles it; the switch is a picture of the state, taking no pointer and no focus of its own. The menu **stays open** to show the change |
 | one component | `layouts/PreferenceSwitches.tsx` — `ThemeSwitch` and `LanguageSwitch`, `lg` on the phone, `md` here — so the two shells cannot draw them two ways |
 | was | two radio groups, *Terang · Gelap* and *Bahasa Indonesia · English* |
+
+## the-workspace-is-the-tab-bars-centre
+
+> Owner, in chat (2026-10-09): *"di mobile, apa bisa yang select workspace itu di tengah menu, bulat besar dan sedikit
+> offset ke atas"* — then *"ya begitu saja"* to the drawing, and *"heading timnya tidak butuh, kasih saja nama di bawah
+> selectnya"*.
+
+```
+┌──────────────────────────────────┐
+│ Beranda                          │  ← the top bar: the screen, and only that
+│                                  │
+│             (the page)           │
+├────────────╮ ╭────╮ ╭────────────┤
+│  ⌂     🛒  │ │ TM │ │  📦     ☰  │  ← the team's avatar, 56px, risen ~26px out of the bar
+│ Beranda Pesanan ╰────╯ Produk Lainnya │
+│            Toko Melati           │  ← its name where a tab carries its label
+└──────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the bubble | the current team's avatar (its type's colour), round, 56px, ringed in the bar's colour, raised out of the middle of the tab bar — `TeamSwitcher`'s `bubble` |
+| its name | under it, where a tab has its label, on the same line as theirs. Bubble and name are one button, named *Ganti Tim: Toko Melati* |
+| the bar | five columns — Beranda, Pesanan, [the team], Produk, Lainnya — the bubble in the middle; it is not a tab, never lit. The bar stays a tab's height (the bubble is pulled up, not the bar pushed taller) |
+| a tap | opens the workspace drawer from the bottom ([the-phone-opens-its-panels-from-the-bottom](#the-phone-opens-its-panels-from-the-bottom)) — still the ONE place a phone switches team; picking a team is a second, deliberate tap |
+| the top bar | **the screen's name only** — no team name, no control |
+| ⚠ the centre's cost | the middle of a tab bar is where a primary action usually lives — a Scan, for the warehouse crew. Taken by the workspace while no such action exists; reopen this when one does |
+
+**Supersedes** [the-phone-team-chip-is-the-whole-box](#the-phone-team-chip-is-the-whole-box): the top bar is no longer the
+selector.
+
+## the-phone-workspace-keeps-its-size
+
+> Owner, in chat (2026-10-09), asking for a long-name story: *"sama untuk ukuran ganti timnya kamu fixkan, soalnya
+> kalau tiba-tiba berubah menyusahkan"* — then *"yang di menu mobile"*: the phone's, not the desktop's.
+
+```
+opened                         searched "zzz" — the same height
+╭──────────────────────────╮   ╭──────────────────────────╮
+│ Ganti Tim              × │   │ Ganti Tim              × │
+│ Tim saya               ⌕ │   │ Tim saya               ^ │
+│  GU Gudang Pusat Dist…  ✓│   │ [⌕ zzz                 ] │
+│  TM Toko Melati          │   │ Tidak ada tim.           │
+│  …                       │   │                          │
+│                          │   │                          │  ← nothing shrinks under the thumb
+╰──────────────────────────╯   ╰──────────────────────────╯
+```
+
+| | |
+| --- | --- |
+| the phone's drawer | **75% of the screen's height, always** — whatever it holds; the list fills it and scrolls inside it |
+| why | a search narrowing the list, or a section stepping aside, made the drawer shrink and jump under the thumb |
+| the desktop panel | unchanged — it follows its content, up to 400px |
+| a long team name | one line, cut with … — under the tab bar's bubble (in a tab's width) and in the switcher's rows; the full name is the bubble's accessible name. Storybook: *Layouts/Mobile/AppShell › A Long Team Name* |
 
 ## Recorded elsewhere
 

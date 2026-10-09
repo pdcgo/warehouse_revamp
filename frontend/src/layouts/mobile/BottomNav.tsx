@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import type { ReactNode } from "react";
 import { Flex, Icon, Text } from "@chakra-ui/react";
 import { Menu as MenuIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -18,12 +20,19 @@ import { activeRoute, bottomBarFor } from "../nav";
 //
 // MORE LIGHTS WHEN NOTHING ELSE DOES, so there is always exactly one lit tab: it is the tab that
 // owns everywhere the other three do not.
+//
+// THE CENTRE IS THE WORKSPACE (owner, `the-workspace-is-the-tab-bars-centre`): `center` sits in the middle column,
+// half the tabs either side of it — Beranda, Pesanan, [ the team ], Produk, Lainnya. It is not a tab: it lights nothing
+// and is never lit.
 export function BottomNav({
   menuOpen,
   onMenuOpen,
+  center,
 }: {
   menuOpen: boolean;
   onMenuOpen: () => void;
+  /** The raised control in the middle column — the workspace bubble. */
+  center?: ReactNode;
 }) {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -31,6 +40,23 @@ export function BottomNav({
 
   const items = bottomBarFor(current?.teamType, current?.role);
   const activeTo = activeRoute(items, location.pathname);
+
+  const tabs = [
+    ...items.map((item) => (
+      <Tab key={item.to} to={item.to} label={t(item.label)} icon={item.icon} active={item.to === activeTo} />
+    )),
+    <Tab
+      key="more"
+      label={t("nav.more")}
+      icon={MenuIcon}
+      active={menuOpen || activeTo === undefined}
+      expanded={menuOpen}
+      testId="bottom-nav-more"
+      onClick={onMenuOpen}
+    />,
+  ];
+  // The middle of the row — with four tabs, after the second.
+  const middle = Math.floor(tabs.length / 2);
 
   return (
     <Flex
@@ -40,28 +66,24 @@ export function BottomNav({
       borderTopWidth="1px"
       borderColor="border"
       bg="bg.subtle"
+      // Above the page: the centre bubble rises out of the bar, over the bottom of <main>.
+      position="relative"
+      zIndex={1}
       // The iOS home indicator sits over the bottom of the viewport; without this the last row of
       // labels lives underneath it.
       pb="env(safe-area-inset-bottom)"
     >
-      {items.map((item) => (
-        <Tab
-          key={item.to}
-          to={item.to}
-          label={t(item.label)}
-          icon={item.icon}
-          active={item.to === activeTo}
-        />
+      {tabs.map((tab, i) => (
+        <Fragment key={i}>
+          {center !== undefined && i === middle && (
+            // A column as wide and as tall as a tab's; what is in it may rise above the bar.
+            <Flex flex="1" minW="0" justify="center" align="stretch" data-testid="bottom-nav-center">
+              {center}
+            </Flex>
+          )}
+          {tab}
+        </Fragment>
       ))}
-
-      <Tab
-        label={t("nav.more")}
-        icon={MenuIcon}
-        active={menuOpen || activeTo === undefined}
-        expanded={menuOpen}
-        testId="bottom-nav-more"
-        onClick={onMenuOpen}
-      />
     </Flex>
   );
 }

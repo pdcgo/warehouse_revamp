@@ -38,15 +38,15 @@ import { useDebounced } from "../lib/useDebounced";
 export function TeamSwitcher({
   collapsed,
   panel = "drawer",
-  screen,
+  bubble = false,
 }: {
   collapsed?: boolean;
   panel?: "drawer" | "below" | "right";
   /**
-   * The phone top bar's use (`the-phone-team-chip-is-the-whole-box`): the screen's name under the team's, so the whole
-   * bar is ONE selector — team, then screen, then ⇅ — rather than an avatar chip beside two lines of text.
+   * The phone's use (`the-workspace-is-the-tab-bars-centre`): the trigger is a big round bubble of the team's avatar,
+   * raised out of the middle of the tab bar, where the thumb is.
    */
-  screen?: string;
+  bubble?: boolean;
 }) {
   const { t } = useTranslation();
   const { teams, current, platformRole, selectTeam } = useTeam();
@@ -153,7 +153,53 @@ export function TeamSwitcher({
   // While its panel is open the card reads as pressed — the panel hangs from it.
   const pressed = open && panel !== "drawer";
 
-  const trigger = (
+  const trigger = bubble ? (
+    // THE BUBBLE — the team's avatar, round and large, and the team's NAME under it where a tab carries its label
+    // (owner: *"heading timnya tidak butuh, kasih saja nama di bawah selectnya"*). The column is the tab's height and
+    // ends where the tabs' labels end, and the 56px avatar above the name rises out of the bar; a ring in the bar's own
+    // colour cuts it from the bar's top line. Bubble and name are ONE button.
+    <Flex
+      as="button"
+      data-testid="team-switcher"
+      aria-label={`${t("shell.switchTeam")}: ${name}`}
+      direction="column"
+      align="center"
+      justify="flex-end"
+      gap="0.5"
+      w="full"
+      h="full"
+      pb="2"
+      cursor="pointer"
+      color="fg.muted"
+      _hover={{ color: "brand.fg" }}
+    >
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        boxSize="14"
+        flexShrink={0}
+        // ⚠ Pulled up by half its height, so the column stays a tab's height — without it the BAR grows to hold the
+        // bubble instead of the bubble rising out of the bar.
+        mt="-7"
+        rounded="full"
+        borderWidth="4px"
+        borderColor="bg.subtle"
+        bg="bg.subtle"
+        shadow="md"
+        transition="transform 120ms ease"
+        _active={{ transform: "scale(0.95)" }}
+      >
+        <Avatar.Root shape="full" size="lg" {...teamTypeAvatar(current?.teamType)}>
+          <Avatar.Fallback name={name} />
+          <Avatar.Image src={current?.imageUrl || undefined} alt={name} />
+        </Avatar.Root>
+      </Box>
+      <Text fontSize="2xs" fontWeight="semibold" lineClamp={1} maxW="full" data-testid="team-switcher-name">
+        {name}
+      </Text>
+    </Flex>
+  ) : (
     <Flex
       as="button"
       data-testid="team-switcher"
@@ -187,26 +233,14 @@ export function TeamSwitcher({
 
       {!collapsed && (
         <>
-          {screen !== undefined ? (
-            // The phone's top bar: whose data, then what you are looking at — stacked, as the bar always said it.
-            <Box textAlign="start" flex="1" minW="0">
-              <Text fontSize="xs" color="fg.subtle" truncate>
-                {name}
-              </Text>
-              <Text fontSize="sm" fontWeight="semibold" truncate data-testid="mobile-title">
-                {screen}
-              </Text>
-            </Box>
-          ) : (
-            <Box textAlign="start" flex="1" minW="0">
-              <Text fontSize="sm" fontWeight="medium" lineClamp={1}>
-                {name}
-              </Text>
-              <Text fontSize="xs" color="fg.muted">
-                {current ? teamTypeLabel(current.teamType) : ""}
-              </Text>
-            </Box>
-          )}
+          <Box textAlign="start" flex="1" minW="0">
+            <Text fontSize="sm" fontWeight="medium" lineClamp={1}>
+              {name}
+            </Text>
+            <Text fontSize="xs" color="fg.muted">
+              {current ? teamTypeLabel(current.teamType) : ""}
+            </Text>
+          </Box>
           <Icon as={ChevronsUpDown} boxSize="4" color="fg.muted" flexShrink={0} />
         </>
       )}
@@ -222,7 +256,12 @@ export function TeamSwitcher({
     <>
       <Stack
         gap="0.5"
-        maxH="400px"
+        // On the PHONE a fixed height (owner: *"ukuran ganti timnya kamu fixkan, soalnya kalau tiba-tiba berubah
+        // menyusahkan … yang di menu mobile"*, `the-phone-workspace-keeps-its-size`): the drawer is one height and the
+        // list fills it, so a search narrowing it never drops the drawer under the thumb. The desktop panel follows its
+        // content, up to 400px.
+        h={panel === "drawer" ? "full" : undefined}
+        maxH={panel === "drawer" ? undefined : "400px"}
         layerStyle="scrollList"
         // Out through the panel's padding (2.5, or the drawer body's 6), and only a sliver of it given back: with the
         // 10px gutter that makes the right inset match the left one.
@@ -325,12 +364,21 @@ export function TeamSwitcher({
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
-          <Drawer.Content roundedTop="l3" maxH="85dvh" data-testid="team-switcher-drawer">
+          {/* ONE height, whatever it holds (`the-phone-workspace-keeps-its-size`) — three-quarters of the screen. */}
+          <Drawer.Content roundedTop="l3" h="75dvh" data-testid="team-switcher-drawer">
             <Drawer.Header>
               <Drawer.Title>{t("shell.switchTeam")}</Drawer.Title>
             </Drawer.Header>
 
-            <Drawer.Body pb="calc(env(safe-area-inset-bottom) + var(--chakra-spacing-4))">{body}</Drawer.Body>
+            <Drawer.Body
+              display="flex"
+              flexDirection="column"
+              minH="0"
+              overflow="hidden"
+              pb="calc(env(safe-area-inset-bottom) + var(--chakra-spacing-4))"
+            >
+              {body}
+            </Drawer.Body>
 
             <Drawer.CloseTrigger asChild>
               <CloseButton size="sm" />

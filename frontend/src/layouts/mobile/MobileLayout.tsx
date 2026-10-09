@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useState } from "react";
-import { Box, Flex, Spinner } from "@chakra-ui/react";
+import { Box, Flex, Spinner, Text } from "@chakra-ui/react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NotMemberStrip } from "../NotMemberStrip";
 import { useTranslation } from "react-i18next";
@@ -20,12 +20,12 @@ import { MenuSheet } from "./MenuSheet";
 // everything else one tap away in [MenuSheet].
 //
 //   ┌──────────────────────────┐
-//   │ [(T) Toko Melati       ⇅] │  ONE selector — the team, then the screen; a tap
-//   │ [    Restock             ] │  anywhere opens the workspace drawer
+//   │ Restock                   │  the screen — the team's name is under the workspace bubble
 //   ├──────────────────────────┤
 //   │        <Outlet/>         │  the ONLY scrolling region — the bars never leave
 //   ├──────────────────────────┤
-//   │  ⌂    📦    🛒    ☰      │  the team's own destinations, plus More
+//   │  ⌂    🛒   (TM)   📦   ☰  │  the team's destinations and More — the WORKSPACE raised in the middle,
+//   │            Toko Melati    │  its team's name under it
 //   └──────────────────────────┘
 //
 // ⚠ `h="100dvh"`, NOT `minH` — the desktop shell grows and lets the WINDOW scroll, which here would
@@ -62,11 +62,11 @@ export function MobileLayout() {
         py="2"
         bg="bg.subtle"
       >
-        {/* THE WHOLE BOX IS THE SELECTOR (owner: *"pakai selector saja, semua box jadi trigger bukan hanya gambar"*,
-            `the-phone-team-chip-is-the-whole-box`) — the team's avatar, its name, the screen's name and ⇅, one control.
-            A tap anywhere on it opens the workspace in a drawer from the bottom
-            (`the-phone-opens-its-panels-from-the-bottom`) — the ONE place a phone switches team. */}
-        <TeamSwitcher panel="drawer" screen={currentLabel ? t(currentLabel) : ""} />
+        {/* THE SCREEN, AND ONLY THAT (owner, `the-workspace-is-the-tab-bars-centre`): the workspace moved to the tab bar's
+            centre, where the thumb is, with the team's name under its bubble — so this bar no longer repeats it. */}
+        <Text flex="1" minW="0" fontSize="md" fontWeight="semibold" truncate data-testid="mobile-title">
+          {currentLabel ? t(currentLabel) : ""}
+        </Text>
       </Flex>
 
       <NotMemberStrip />
@@ -86,7 +86,13 @@ export function MobileLayout() {
         </Suspense>
       </Box>
 
-      <BottomNav menuOpen={menuOpen} onMenuOpen={() => setMenuOpen(true)} />
+      {/* The workspace bubble in the bar's centre, opening its drawer from the bottom
+          (`the-phone-opens-its-panels-from-the-bottom`) — the ONE place a phone switches team. */}
+      <BottomNav
+        menuOpen={menuOpen}
+        onMenuOpen={() => setMenuOpen(true)}
+        center={<TeamSwitcher bubble panel="drawer" />}
+      />
       <MenuSheet open={menuOpen} onClose={closeMenu} />
     </Flex>
   );

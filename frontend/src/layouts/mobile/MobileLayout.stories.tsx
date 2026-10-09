@@ -5,7 +5,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
-import { asPlatformOnly } from "../../../.storybook/sessionScenario";
+import { asPlatformOnly, withTeamName } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { MobileLayout } from "./MobileLayout";
 
@@ -81,40 +81,94 @@ export const SellingTeam: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-// THE TOP BAR NAMES THE TEAM, THEN THE SCREEN — whose data this is, then what you are looking at, stacked. And
-// nothing else: no bell (`the-phone-has-no-bell`) — nothing sends a notification yet.
-export const TheHeaderNamesTheTeamThenTheScreen: Story = {
+// THE TOP BAR NAMES THE SCREEN, and only that — the team's name is under the workspace bubble in the tab bar
+// (`the-workspace-is-the-tab-bars-centre`). No bell either (`the-phone-has-no-bell`) — nothing sends a notification yet.
+export const TheHeaderNamesTheScreen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const header = within(await canvas.findByRole("banner"));
 
-    await waitFor(() => expect(header.getByText(WAREHOUSE.name)).toBeInTheDocument());
-    await expect(header.getByTestId("mobile-title")).toHaveTextContent("Home");
+    await waitFor(() => expect(header.getByTestId("mobile-title")).toHaveTextContent("Home"));
+    await expect(header.queryByText(WAREHOUSE.name)).toBeNull();
     await expect(canvas.queryByTestId("notifications")).toBeNull();
 
   },
 };
 
-// THE WHOLE BOX IS THE SELECTOR (owner, `the-phone-team-chip-is-the-whole-box`) — the avatar, the team, the screen and
-// ⇅ are one control, so a tap on the screen's NAME opens the workspace too, not only a tap on the picture.
-export const TheWholeHeaderBoxIsTheTeamSelector: Story = {
+// THE WORKSPACE IS THE TAB BAR'S CENTRE (owner, `the-workspace-is-the-tab-bars-centre`) — a round bubble of the team's
+// avatar in the middle column, lifted above the bar's top line, the team's name under it; the top bar holds no control.
+export const TheWorkspaceIsTheTabBarsCentre: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const header = within(await canvas.findByRole("banner"));
 
-    const selector = await header.findByTestId("team-switcher", {}, { timeout: 4000 });
-    await expect(selector).toContainElement(header.getByTestId("mobile-title"));
-    await expect(selector).toHaveTextContent(WAREHOUSE.name);
-    // Across the bar, not a chip in its corner.
-    const bar = canvas.getByRole("banner").getBoundingClientRect();
-    await expect(selector.getBoundingClientRect().width).toBeGreaterThan(bar.width * 0.8);
+    const nav = await canvas.findByTestId("bottom-nav");
+    const bubble = await within(nav).findByTestId("team-switcher", {}, { timeout: 4000 });
+    await expect(header.queryByTestId("team-switcher")).toBeNull();
+    await expect(bubble).toHaveAccessibleName(`Switch Team: ${WAREHOUSE.name}`);
+    await waitFor(() => expect(within(bubble).getByTestId("team-switcher-name")).toHaveTextContent(WAREHOUSE.name));
 
-    await userEvent.click(header.getByTestId("mobile-title"));
+    // In the middle column — two tabs either side — and raised out of the bar.
+    const columns = Array.from(nav.children);
+    await expect(columns).toHaveLength(5);
+    await expect(columns[2]).toContainElement(bubble);
+    // The ROUND part rises; the button around it is the tab's column.
+    const n = nav.getBoundingClientRect();
+    const r = (bubble.firstElementChild as HTMLElement).getBoundingClientRect();
+    await expect(Math.abs(r.left + r.width / 2 - (n.left + n.width / 2))).toBeLessThan(2);
+    await expect(r.top).toBeLessThan(n.top - 8);
+
+    await userEvent.click(bubble);
     await waitFor(() => expect(screen.getByTestId("team-switcher-drawer")).toBeVisible());
   },
 };
 
-// THE TEAM CHIP OPENS THE WORKSPACE FROM THE BOTTOM (`the-phone-opens-its-panels-from-the-bottom`) — a drawer at
+// A LONG TEAM NAME — cut to one line under the bubble, with an ellipsis, in a column a tab's width; the bar keeps its
+// height and the bubble its place. The full name is the button's name, and the drawer's row.
+const LONG_NAME = "Gudang Pusat Distribusi Jawa Barat Cikarang Utara";
+
+export const ALongTeamName: Story = {
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    withTeamName(WAREHOUSE.id, LONG_NAME)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nav = await canvas.findByTestId("bottom-nav");
+    const label = await within(nav).findByTestId("team-switcher-name", {}, { timeout: 4000 });
+
+    await waitFor(() => expect(label).toHaveTextContent(LONG_NAME));
+    // One line, cut — not wrapped, not spilling into the tabs beside it. (A line clamp cuts by LINES, so what it hides
+    // is height, not width.)
+    await expect(label.scrollHeight).toBeGreaterThan(label.clientHeight);
+    await expect(label.getBoundingClientRect().height).toBeLessThan(20);
+    const column = canvas.getByTestId("bottom-nav-center").getBoundingClientRect();
+    await expect(label.getBoundingClientRect().right).toBeLessThanOrEqual(column.right + 0.5);
+    await expect(Math.round(nav.getBoundingClientRect().height)).toBe(56);
+
+    await expect(within(nav).getByTestId("team-switcher")).toHaveAccessibleName(`Switch Team: ${LONG_NAME}`);
+  },
+};
+
+// THE PHONE WORKSPACE KEEPS ITS SIZE (owner, `the-phone-workspace-keeps-its-size`) — the drawer is three-quarters of the screen
+// whatever it holds: a search that leaves nothing does not drop it under the thumb.
+export const TheWorkspaceKeepsItsSize: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("team-switcher", {}, { timeout: 4000 }));
+    const drawer = await screen.findByTestId("team-switcher-drawer");
+    await waitFor(() => expect(Math.round(drawer.getBoundingClientRect().height)).toBe(Math.round(window.innerHeight * 0.75)));
+    const before = Math.round(drawer.getBoundingClientRect().height);
+
+    await userEvent.click(screen.getByTestId("team-search-mine"));
+    await userEvent.type(await screen.findByTestId("team-search"), "zzz", { delay: 30 });
+    await waitFor(() => expect(screen.getByText("No teams found.")).toBeVisible());
+    await expect(Math.round(drawer.getBoundingClientRect().height)).toBe(before);
+  },
+};
+
+// THE BUBBLE OPENS THE WORKSPACE FROM THE BOTTOM (`the-phone-opens-its-panels-from-the-bottom`) — a drawer at
 // the screen's foot, where the thumb is, never the whole screen.
 export const TheChipOpensTheWorkspaceFromTheBottom: Story = {
   play: async ({ canvasElement }) => {
