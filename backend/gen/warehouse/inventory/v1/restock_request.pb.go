@@ -2399,8 +2399,9 @@ type RestockRequestUpdateRequest struct {
 	//
 	//	ongoing  → every field.
 	//	arrived  → the LINES only: count, total, note, and new lines may be added but none removed
-	//	           (the-lines-stay-editable-until-accepted, lines-can-be-added-not-removed-while-arrived). Any other
-	//	           field that differs is refused.
+	//	           (the-lines-stay-editable-until-accepted, lines-can-be-added-not-removed-while-arrived). A NEW line
+	//	           may name its supplier and store; a stored line's stay as stored
+	//	           (a-line-added-after-arrival-names-its-supplier). Any other field that differs is refused.
 	//	anything else → FailedPrecondition.
 	//
 	// An edit that changes the amount sends the difference; one that moves the paying account moves the whole amount

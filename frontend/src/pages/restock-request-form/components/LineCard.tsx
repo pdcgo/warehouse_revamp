@@ -47,15 +47,16 @@ export interface LineCardProps {
 //                     (a-line-connects-to-any-teams-supplier-from-a-popup, a-line-may-name-a-supplier-without-a-channel).
 //   note              the selling team's — "extra stock" (extra-units-are-added-by-the-selling-teams-edit).
 //
-// While the box is at the door (arrived) the count, total and note stay open (the-lines-stay-editable-until-accepted);
-// the supplier closes, and a STORED line cannot be removed — it becomes `missing` at accept
-// (lines-can-be-added-not-removed-while-arrived). A line added in this edit carries an "Added" badge and needs a note.
+// While the box is at the door (arrived) the count, total and note stay open (the-lines-stay-editable-until-accepted).
+// A STORED line keeps its supplier and cannot be removed — it becomes `missing` at accept
+// (lines-can-be-added-not-removed-while-arrived). A line added in this edit carries an "Added" badge, needs a note, and
+// may name where it was bought (a-line-added-after-arrival-names-its-supplier).
 export function LineCard({ line, index, mode, teamId, suppliers, channels, onPatch, onRemove }: LineCardProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
   const arrived = mode === "arrived";
-  const supplierLocked = arrived;
+  const supplierLocked = arrived && line.stored;
   const removable = !(arrived && line.stored);
   const noteMissing = needsNote(mode, line);
   const id = `restock-line-${index}`;

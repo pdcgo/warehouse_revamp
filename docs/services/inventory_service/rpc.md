@@ -68,7 +68,7 @@ counts it in, and *the accept is what receives the stock*. The design is
 | --- | --- | --- | --- |
 | `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction; each product once; the lines' common supplier is stored at the restock level until lines store their own |
 | `RestockRequestList` / `Detail` | either side | — | rows where `requesting_team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
-| `RestockRequestUpdate` | selling team | ongoing | a full replace of the restock. The arrived window — lines only, new lines allowed, none removed — opens with `Arrive` |
+| `RestockRequestUpdate` | selling team | ongoing | a full replace of the restock. The arrived window — lines only, new lines allowed (each may name its supplier and store), none removed — opens with `Arrive` |
 | `RestockRequestArrive` | warehouse | ongoing / lost → arrived | *Unimplemented until the backend step* |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
 | `RestockRequestMarkLost` | selling team | ongoing → lost | *Unimplemented until the backend step* |
@@ -84,7 +84,7 @@ stateDiagram-v2
     ongoing --> ongoing: Update — anything
     ongoing --> arrived: Arrive — warehouse signs for the box
     ongoing --> accepted: Accept — warehouse
-    arrived --> arrived: Update — the lines only
+    arrived --> arrived: Update — the lines only, a new line may name its supplier
     arrived --> accepted: Accept — warehouse
     ongoing --> lost: MarkLost — selling team
     lost --> arrived: Arrive — a late box

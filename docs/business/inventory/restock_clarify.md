@@ -18,7 +18,7 @@
 > at the door — recorded. 🆕 [Q19](#question): a line per charge, and `total` without it. **Open now: Q19.**
 >
 > **The form prototype (2026-10-09)** raised [Q21](#question): may a line added after the box arrived name its supplier?
-> **Open now: Q21.**
+> ✅ **Q21 answered (2026-10-09)** — [a-line-added-after-arrival-names-its-supplier](./restock_decision.md#a-line-added-after-arrival-names-its-supplier). **No open question.**
 >
 > **Re-examined after your Q17 answer (2026-10-09).** ✅ [Q17](#question): the lines stay editable until accepted, and accept
 > refuses more than a line says. **No question is open.** What remains is two [contradictions](#contradiction) — receiving drawn
@@ -213,15 +213,7 @@ the warehouse out of pocket with no record.
     [a-broken-reason-is-optional](./restock_decision.md#a-broken-reason-is-optional) · [three-notes-one-writer-each](./restock_decision.md#three-notes-one-writer-each) ·
     [edits-are-in-the-same-trail](./restock_decision.md#edits-are-in-the-same-trail) · [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile).
 
-21. 🆕 *(2026-10-09)* **A line added after the box arrived — may it name where it was bought?** Raised by the form
-    prototype. While `arrived`, a line's store is closed
-    ([the-lines-stay-editable-until-accepted](./restock_decision.md#the-lines-stay-editable-until-accepted)) — and a line
-    may be ADDED then ([lines-can-be-added-not-removed-while-arrived](./restock_decision.md#lines-can-be-added-not-removed-while-arrived)).
-    Read together, a product that turned up unordered can never say which supplier sent it: its supplier report and its
-    batch are anonymous for good.
-    **→ Recommend: yes — a NEW line may name its supplier and store; a STORED line's stay closed.** The closing rule
-    exists so a line already raised cannot be re-attributed after the box is in the building; a line that did not exist
-    until now has nothing to re-attribute.
+21. ✅ *(2026-10-09)* **Answered: yes, a new line only** — [a-line-added-after-arrival-names-its-supplier](./restock_decision.md#a-line-added-after-arrival-names-its-supplier).
 
 ## Proposed Design
 
@@ -256,7 +248,7 @@ flowchart LR
 ```
 
 **→ 17a:** while `arrived`, the selling team may still change **the lines** — count, total, note — until the warehouse
-accepts. The account, the store and the tracking number stay `ongoing`-only. **→ 17b:** if staff type more received than
+accepts. The account, the store and the tracking number stay `ongoing`-only. 🔄 *(2026-10-09)* A line ADDED while `arrived` may name its store ([a-line-added-after-arrival-names-its-supplier](./restock_decision.md#a-line-added-after-arrival-names-its-supplier)). **→ 17b:** if staff type more received than
 the line says, accept is refused with *"more arrived than ordered — ask the selling team to add them"*.
 
 **[Q18](#question) — one parcel, two invoices.** The selling team buys from two Shopee stores and a forwarder repacks both

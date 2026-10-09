@@ -254,7 +254,8 @@ export const ArrivedClosesTheHeaderAndKeepsTheLines: Story = {
 };
 
 // lines-can-be-added-not-removed-while-arrived: a product found in the box can be ADDED — with a note — and that new
-// line, never saved, can still be dropped; the stored one cannot.
+// line, never saved, can still be dropped; the stored one cannot. a-line-added-after-arrival-names-its-supplier: the
+// added line may connect where it was bought, while the stored line's supplier stays closed.
 export const ArrivedAddsALineOnlyWithANote: Story = {
   render: () => <EditArrived />,
   beforeEach: arrivedWithoutBeras,
@@ -268,6 +269,16 @@ export const ArrivedAddsALineOnlyWithANote: Story = {
     await expect(within(added).getByTestId("restock-line-1-added")).toBeInTheDocument();
     await expect(canvas.queryByTestId("restock-remove-0")).toBeNull();
     await expect(canvas.getByTestId("restock-remove-1")).toBeInTheDocument();
+
+    // The added line can say where it came from; the stored one cannot be re-connected.
+    await expect(canvas.queryByTestId("restock-line-0-picker-trigger")).toBeNull();
+    await userEvent.click(canvas.getByTestId("restock-line-1-picker-trigger"));
+    const dialog = within(await screen.findByTestId("restock-line-1-picker-dialog"));
+    await userEvent.type(dialog.getByTestId("restock-line-1-picker-search"), "Cahaya", { delay: 20 });
+    await userEvent.click(await dialog.findByTestId(`restock-line-1-picker-supplier-${CAHAYA.id}`, {}, { timeout: 4000 }));
+    await userEvent.click(await dialog.findByTestId(`restock-line-1-picker-store-${CAHAYA_STORE}`, {}, { timeout: 4000 }));
+    await userEvent.click(dialog.getByTestId("restock-line-1-picker-confirm"));
+    await waitFor(() => expect(canvas.getByTestId("restock-line-1-supplier-shown")).toHaveTextContent("Cahaya Abadi"));
 
     // No note, no save.
     await expect(canvas.getByTestId("submit-restock")).toBeDisabled();

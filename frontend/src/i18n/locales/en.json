@@ -1300,7 +1300,7 @@
       "labelPhoto": "Photo of the label",
       "restockNote": "Restock Note",
       "lockedArrived": "Closed once the box arrived",
-      "linesLockedHint": "Count, total and note can still change; the supplier and store are closed.",
+      "linesLockedHint": "Count, total and note can still change. A line already ordered keeps its supplier and store; a line you add can name its own.",
       "arrivedBanner": "The box has arrived. Each line's count, total and note can still change, and a product that came unordered can be added — with a note. No line can be removed, and the payment and parcel details are closed.",
       "cannotRemoveArrived": "A line cannot be removed once the box has arrived — what is not in the box is written as missing at accept.",
       "notEditable": "This restock can no longer be edited — only an ongoing restock, or the lines of an arrived one, can change.",

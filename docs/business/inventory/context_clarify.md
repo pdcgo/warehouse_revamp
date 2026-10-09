@@ -3,6 +3,14 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> **Re-examined for stale recommendations (2026-10-09).** 🔄 [Q3](#question) said *leave the goods unplaced*, which
+> [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile) rules out. They now go on a holding
+> placement ([q3-still-said-unplaced](#q3-still-said-unplaced)).
+>
+> **Re-examined after placement.md got its own clarify (2026-10-09).** ➡ [11d](#question) moved to
+> [placement_clarify Q2](./placement_clarify.md#question), so nothing in [Q11](#question) is open here any more. ➡
+> [Critique 12](#critique) moved to [placement_clarify 3d](./placement_clarify.md#question).
+>
 > **Re-examined after the restock answers (2026-10-09).** 🆕 [14h](#question): a line may name a supplier with no store, and a
 > batch has nowhere to keep it.
 >
@@ -398,8 +406,8 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 | **8** | 🔄 *(2026-10-08)* **A batch knows when it expires, and not which shelf it is on.** [batch.md](./batch.md) gives `batches` an optional `expired_at`, so something you sell perishes. But a batch has no placement and a shelf row has no batch — the system can say *"12 units expire in March"* and cannot tell the picker where they are. | **FIFO stays a costing rule, and expiry is a report** — what expires soon, per product per warehouse. If an expiring product must be **picked** soonest-first, a shelf row needs a `batch_id` — [Q7](#question). |
 | **9** | **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
 | **10** | ✅ *(2026-10-08)* **Answered** — a restock line records both: what arrived and how many of those are broken, and the short units are the difference ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)). ⚠ This flow still draws them as exclusive, so it is now older than the restock it describes | redraw it from the restock, or point at it |
-| **11** | **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and leave the goods **unplaced** until someone resolves it. Then the count reconciles and the manual report is a task rather than a dead end. |
-| **12** | **Placement now has two moments and only one is drawn.** The receiving flow ends at `Set Placements`, so a **first** placement always happens and nothing routinely sits unshelved — good, and it matches [warehouse-manages-placements](../business_level_clarify.md#warehouse-manages-placements). What the flow does not cover is the **later** move: reshelving, consolidating, moving between racks. My recording recommendation in row 4 covers both, but only the second is a *move* — the first is part of accepting, and it already has a natural record because the receipt exists. | Say the two are different acts: **placement at receiving is part of the receipt** · **a later move is its own recorded event with its own actor**. Otherwise "record every move" reads as demanding a second record for something the receipt already captured. |
+| **11** | **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and put the goods on a **holding placement** until someone resolves it. 🔄 *(2026-10-09)* This used to say *unplaced*; there is no unplaced pile any more ([q3-still-said-unplaced](#q3-still-said-unplaced)). Then the count reconciles and the manual report is a task rather than a dead end. |
+| **12** | ➡ *(2026-10-09)* **Moved to [placement_clarify 3d](./placement_clarify.md#question).** As first raised: **Placement now has two moments and only one is drawn.** The receiving flow ends at `Set Placements`, so a **first** placement always happens and nothing routinely sits unshelved — good, and it matches [warehouse-manages-placements](../business_level_clarify.md#warehouse-manages-placements). What the flow does not cover is the **later** move: reshelving, consolidating, moving between racks. My recording recommendation in row 4 covers both, but only the second is a *move* — the first is part of accepting, and it already has a natural record because the receipt exists. | Say the two are different acts: **placement at receiving is part of the receipt** · **a later move is its own recorded event with its own actor**. Otherwise "record every move" reads as demanding a second record for something the receipt already captured. |
 | **13** | 🔄 *(2026-10-08)* **Two of the four are now listed** — *5. managing placements*, and *6. a solid api for other services, like order* covers stock leaving for an order ([order.md](./order.md) draws it). **Still not listed:** transfer between warehouses — it has [warehouse_transfer.md](./warehouse_transfer.md) and a `tx_type`, and no line — and recording broken and lost, which §Stock loss 2 makes a liability. | Add **7. transfer between warehouses** and **8. recording broken, lost and found back**. |
 
 ---
@@ -415,8 +423,10 @@ acts in every team. A check of recorder against confirmer closes both, and it co
    [any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived).
 3. **Goods arrive that the system does not know about — what happens to them physically, and who bears
    them?** *"Report Manually (Outside System)"* ends the flow with stock in the building and no record.
-   ([Critique 11](#critique)) **→ I recommend recording a receipt with no matching restock and leaving the
-   goods unplaced, so the escape hatch ends inside the system.**
+   ([Critique 11](#critique)) 🔄 *(2026-10-09)* **→ I recommend recording a receipt with no matching restock, held
+   for the team named on the parcel, with the goods on a holding placement**, which is a rack like any other
+   ([there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile)). The escape hatch then ends inside the
+   system, and the next count finds units it can explain.
 4. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q7](./opname_clarify.md#question)** — tolerance and recount; opname.md now answers it.
 5. ✅ *(2026-10-08)* **Answered by opname.md** — the warehouse admin opens a session over all racks, a team, a product or a
    rack ([an-opname-is-a-locked-session](./opname_decision.md#an-opname-is-a-locked-session)). What was left — may a selling
@@ -457,13 +467,13 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     | **11a** | ✅ **Answered: the shelf holding the fewest goes first** — [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first) | — |
     | **11b** | ✅ **Answered: no rack scan — the next stock opname corrects it** — [a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count). Against my scan | — |
     | **11c** | ✅ *(2026-10-08)* **Answered in order.md: the verify scan tells inventory *picked*** — [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked). Was re-routed to [order_clarify Q1](./order_clarify.md#question) — your §How Warehouse Process The Order has a *"Staff Scan Goods for verify"* step, the moment a unit leaves the rack, so whether it tells inventory is that doc's to answer | — |
-    | **11d** | **The order wants more than the smallest rack holds** — 3 wanted, racks of 1, 2 and 5 | **keep your rule as written**: 1 from the first, 2 from the second, and the pick list says *"Rak A × 1, Rak B × 2"*. Equal racks go by the smaller id. Is one order line from two racks OK? |
+    | **11d** | ➡ *(2026-10-09)* **Moved to [placement_clarify Q2](./placement_clarify.md#question)**: an order line bigger than the smallest rack | — |
     | **11e** | ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q6](./opname_clarify.md#question)** — when a count's difference costs money; opname.md now answers it | — |
 
     Each is told as a short story in [PostOrder, worked](#postorder-worked).
 
-    ➡ Re-routed here from [order_creation](../order/order_creation_clarify.md) on 2026-09-17. When
-    [placement.md](./placement.md) gets a clarify of its own, this moves there.
+    ➡ Re-routed here from [order_creation](../order/order_creation_clarify.md) on 2026-09-17. ➡ *(2026-10-09)* Its last open
+    part, 11d, moved to [placement_clarify](./placement_clarify.md#question).
 
 12. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q8](./opname_clarify.md#question)** — who confirms a difference before
     it posts. Its fifth part, what the shelf shows while a count waits, is answered by the lock.
@@ -539,6 +549,29 @@ flowchart LR
 
 ➡ *(2026-10-09)* **Moved to [transaction_clarify](./transaction_clarify.md#the-two-type-lists-do-not-line-up)** — `tx_type`
 now lives in [transaction.md](./transaction.md).
+
+## q3-still-said-unplaced
+
+*(2026-10-09)* A restock decision reached a question in this file, and my recommendation did not follow it.
+
+| where | says |
+| --- | --- |
+| [Q3](#question) and [Critique 11](#critique), mine, before today | *"leave the goods **unplaced** until someone resolves it"* |
+| [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile), decided 2026-10-09 | every unit is on a placement, and a staging area is just another placement |
+
+The decision is right; my text was stale. It was written while an unplaced pile was still an option. **Fixed in both
+places:** the goods go on a holding placement. Nothing for you to edit.
+
+**→ Recommend:** when a placement rule changes, search the inventory clarifies for *unplaced* and *unshelved*. This is the
+second time a restock decision rippled into this file (the first was
+[the-two-type-lists-do-not-line-up](#the-two-type-lists-do-not-line-up)).
+
+```mermaid
+flowchart LR
+  D["there-is-no-unplaced-pile"] -->|"restock accept"| A["good units go to a rack"]
+  D -.->|"missed"| Q["context Q3 - surprise goods left unplaced"]
+  Q -->|"fixed"| H["a holding placement, a rack like any other"]
+```
 
 ## ✅ the receiving-boundary gap is CLOSED — recorded, not deleted silently
 

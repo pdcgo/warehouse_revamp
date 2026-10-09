@@ -1296,7 +1296,7 @@
       "labelPhoto": "Foto label",
       "restockNote": "Catatan Restok",
       "lockedArrived": "Ditutup sejak paket tiba",
-      "linesLockedHint": "Jumlah, total, dan catatan masih bisa diubah; supplier dan toko sudah ditutup.",
+      "linesLockedHint": "Jumlah, total, dan catatan masih bisa diubah. Baris yang sudah dipesan tetap dengan supplier dan tokonya; baris yang Anda tambahkan bisa memilih sendiri.",
       "arrivedBanner": "Paket sudah tiba. Jumlah, total, dan catatan tiap baris masih bisa diubah, dan produk yang datang tanpa dipesan bisa ditambahkan — dengan catatan. Tidak ada baris yang bisa dihapus, dan data pembayaran serta paket sudah ditutup.",
       "cannotRemoveArrived": "Baris tidak bisa dihapus setelah paket tiba — yang tidak ada di paket dicatat sebagai hilang saat diterima.",
       "notEditable": "Restok ini tidak bisa diubah lagi — hanya restok yang masih berjalan, atau baris dari restok yang sudah tiba, yang bisa diubah.",

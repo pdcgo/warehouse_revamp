@@ -16,7 +16,8 @@ import { toRupiah } from "../../features/restock/counting";
  *   ongoing  → everything (a-restock-is-edited-only-while-ongoing).
  *   arrived  → the LINES only — each line's count, total and note, and a new line may be added (with a note) but
  *              none removed (the-lines-stay-editable-until-accepted, lines-can-be-added-not-removed-while-arrived).
- *              The paying account, the invoice, the parcel and each line's supplier are closed.
+ *              The paying account, the invoice, the parcel and a STORED line's supplier are closed; a line added now
+ *              may name its own (a-line-added-after-arrival-names-its-supplier).
  *   closed   → nothing: accepted, lost or cancelled — or not this team's restock to edit.
  */
 export type FormMode = "create" | "ongoing" | "arrived" | "closed";
@@ -61,7 +62,8 @@ export interface LineDraft {
   thumbnailUrl: string;
   /**
    * Was on the restock when it was loaded. While ARRIVED a stored line cannot be removed and its supplier cannot
-   * change; a line added in this edit can be dropped again (it was never saved) but must carry a note.
+   * change; a line added in this edit can be dropped again (it was never saved), must carry a note, and may name its
+   * supplier (a-line-added-after-arrival-names-its-supplier).
    */
   stored: boolean;
 }

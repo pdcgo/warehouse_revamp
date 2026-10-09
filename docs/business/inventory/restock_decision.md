@@ -37,7 +37,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [extra-units-are-added-by-the-selling-teams-edit](#extra-units-are-added-by-the-selling-teams-edit) | more in the box than ordered: the selling team edits the line's count and writes a `note`; the warehouse accepts that | chat, 2026-10-09 — answers Q6d, instead of my accept-at-the-door |
 | [a-restock-keeps-its-invoice-reference](#a-restock-keeps-its-invoice-reference) | `restocks.invoice_ref_id`, a string — the store's invoice or order number | your restock.md, 2026-10-09 |
 | [a-restock-has-one-invoice](#a-restock-has-one-invoice) | one invoice per restock, listing any number of products — `invoice_ref_id` stays on `restocks` | chat, 2026-10-09 — answers Q18, against my one-per-line |
-| [the-lines-stay-editable-until-accepted](#the-lines-stay-editable-until-accepted) | while `arrived`, the selling team may still edit the lines — count, total, note — until accepted | chat, 2026-10-09 — answers Q17a, as recommended |
+| [the-lines-stay-editable-until-accepted](#the-lines-stay-editable-until-accepted) | while `arrived`, the selling team may still edit the lines — count, total, note — until accepted | chat, 2026-10-09 — answers Q17a, as recommended — 🔄 narrowed for added lines by [a-line-added-after-arrival-names-its-supplier](#a-line-added-after-arrival-names-its-supplier) |
 | [accept-refuses-more-than-the-line-says](#accept-refuses-more-than-the-line-says) | if staff count more than a line says, accept is refused until the selling team edits | chat, 2026-10-09 — answers Q17b, as recommended |
 | [the-warehouse-cost-is-the-couriers-charge-at-the-door](#the-warehouse-cost-is-the-couriers-charge-at-the-door) | `warehouse_additional_cost` is the courier's charge at handover; the warehouse pays it, the selling team compensates | chat, 2026-10-09 — as I had read it |
 | [the-couriers-charge-stays-out-of-total](#the-couriers-charge-stays-out-of-total) | `total` = `subtotal` + `shipment_cost`; the courier's charge is its own debt | chat, 2026-10-09 — answers Q19b, as recommended |
@@ -48,6 +48,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [there-is-no-unplaced-pile](#there-is-no-unplaced-pile) | every unit in stock is on a placement; a staging area is an ordinary placement | chat, 2026-10-09 — answers Q20e, as recommended |
 | [three-notes-one-writer-each](#three-notes-one-writer-each) | `restocks.note` and `restock_items.note` by the selling team; `restock_problem_items.note` by the warehouse | chat, 2026-10-09 — answers Q20c, as recommended |
 | [the-restock-contract-changes-in-place](#the-restock-contract-changes-in-place) | the v1 restock proto is rewritten in place; backend handlers that no longer fit return Unimplemented until the backend step | chat, 2026-10-09 — against my v2 |
+| [a-line-added-after-arrival-names-its-supplier](#a-line-added-after-arrival-names-its-supplier) | while `arrived`, a NEW line may name its supplier and store; a stored line's stay closed | chat, 2026-10-09 — answers Q21, as recommended |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -923,6 +924,10 @@ stateDiagram-v2
 | a line's count, total, note | ✅ | ✅ | — |
 | the paying account, a line's store, the tracking number | ✅ | — | — |
 
+> 🔄 *(2026-10-09)* **Narrowed** by [a-line-added-after-arrival-names-its-supplier](#a-line-added-after-arrival-names-its-supplier):
+> *a line's store* closes for the lines that existed when the box arrived. A line ADDED while `arrived` may name its
+> supplier and store.
+
 An edit while `arrived` that changes the amount still sends the difference
 ([an-edit-sends-the-difference](#an-edit-sends-the-difference)).
 
@@ -1167,3 +1172,40 @@ flowchart LR
 | the backend meanwhile | compiles; a handler whose messages changed returns `Unimplemented` |
 | the running app | its restock pages fail against the real API until the backend step — the prototype is reviewed in Storybook |
 | the branch | `backup/inventory` |
+
+## a-line-added-after-arrival-names-its-supplier
+
+> Owner, in chat *(2026-10-09)*: *"for restock, q21, i follow your recomendation"*. It answers
+> [restock_clarify Q21](./restock_clarify.md#question) as recommended — a question raised by the form prototype. It narrows
+> [the-lines-stay-editable-until-accepted](#the-lines-stay-editable-until-accepted) for added lines.
+
+**The verdict.** While the box is `arrived`, a line the selling team **adds** may name its supplier and store, through the
+same *Connect Supplier Channel* popup ([a-line-connects-to-any-teams-supplier-from-a-popup](#a-line-connects-to-any-teams-supplier-from-a-popup)).
+A line that was **stored** before the box arrived keeps its supplier and store closed. The closing rule exists so a line
+already raised cannot be re-attributed once the box is in the building; a line that did not exist until now has nothing to
+re-attribute — and without this, a product that turned up unordered would be anonymous for good in the supplier report
+and in its batch.
+
+```mermaid
+flowchart LR
+  A["arrived - the box is open"] --> S["a line stored before arrival"]
+  A --> N["a line added now - with a note"]
+  S -->|"count, total, note"| E1["editable"]
+  S -->|"supplier, store"| C["closed"]
+  N -->|"count, total, note, supplier, store"| E2["editable until accepted"]
+```
+
+**The spec.**
+
+| editable by the selling team while `arrived` | a stored line | a line added while `arrived` |
+| --- | --- | --- |
+| count, total, note | ✅ | ✅ |
+| supplier, store | — | ✅ until accepted |
+| remove the line | — | — ([lines-can-be-added-not-removed-while-arrived](#lines-can-be-added-not-removed-while-arrived)) |
+
+| | |
+| --- | --- |
+| how the server tells them apart | a line in the update with no stored `restock_items` row for its product is new; a stored line whose supplier or store differs from what is stored is refused while `arrived` |
+| the edit's trail row | names the added line and, if given, its supplier ([edits-are-in-the-same-trail](#edits-are-in-the-same-trail)) |
+| the event | *Restock Accepted* carries each line's supplier and store as usual, so the added line reaches the supplier report |
+

@@ -1,9 +1,10 @@
 # Development state — inventory / restock
 
-**As of 2026-10-09, the restock is DECIDED and PROTOTYPED. It is not built.** All 44 decisions are in
-[restock_decision.md](../../business/inventory/restock_decision.md). One question is open:
-[Q21](../../business/inventory/restock_clarify.md#question), whether a line added after the box arrived may name its
-supplier (recommended: yes, for new lines only). The screens run in Storybook against a stub that plays the decided
+**As of 2026-10-09, the restock is DECIDED and PROTOTYPED. It is not built.** All 45 decisions are in
+[restock_decision.md](../../business/inventory/restock_decision.md), and no question is open. The last one,
+[a-line-added-after-arrival-names-its-supplier](../../business/inventory/restock_decision.md#a-line-added-after-arrival-names-its-supplier),
+lets a line added while `arrived` name its supplier and store. The form and its story already do this, and the backend
+step must allow it in Update's arrived window. The screens run in Storybook against a stub that plays the decided
 rules. The contract was changed in place
 ([the-restock-contract-changes-in-place](../../business/inventory/restock_decision.md#the-restock-contract-changes-in-place)),
 and the backend was carried along only far enough to compile and stay green. **Next step: the owner's design_accept on
