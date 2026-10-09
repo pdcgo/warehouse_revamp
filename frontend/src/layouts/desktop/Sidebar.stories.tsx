@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { RouteObject } from "react-router-dom";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
@@ -28,16 +28,11 @@ import { Sidebar } from "./Sidebar";
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLING = teams[1]!; // Toko Melati (12)
 
-// The drawer state is the CALLER'S (Layout owns it, because the hamburger is in the top bar), so a
-// story passes it in — which is exactly how the backdrop rule below can be checked as a contract
-// rather than through a whole shell.
-const onClose = fn();
-
 // A SPLAT route, rather than the parent/child pair a page story uses: the sidebar renders no
 // <Outlet/>, so nothing would ever show under it. This way every link in the menu lands somewhere,
 // the sidebar re-renders with the new location, and its active item moves for real.
-const at = (path: string, open = false) => {
-  const route: RouteObject = { path: "*", element: <Sidebar open={open} onClose={onClose} /> };
+const at = (path: string) => {
+  const route: RouteObject = { path: "*", element: <Sidebar /> };
 
   return routedPage([route], path);
 };
@@ -45,7 +40,6 @@ const at = (path: string, open = false) => {
 const AtHome = at("/");
 const AtDiscover = at("/products/discover");
 const AtDrafts = at("/order-drafts");
-const AtHomeWithDrawerOpen = at("/", true);
 
 // A nav link found by its ROUTE rather than by its role.
 //
@@ -70,11 +64,6 @@ const meta = {
     layout: "fullscreen",
   },
   beforeEach: asTeam(WAREHOUSE.id),
-  // The props, for the docs table. The values the component actually receives come from the routed
-  // wrapper built at module scope (`at` above) — a router cannot be rebuilt per render without
-  // resetting the very navigation these stories assert on — so `open` is varied by picking a
-  // different wrapper rather than by an arg.
-  args: { open: false, onClose },
   render: () => <AtHome />,
 } satisfies Meta<typeof Sidebar>;
 
@@ -263,37 +252,260 @@ export const TheTeamSwitcherListsEveryTeamAndMarksTheCurrentOne: Story = {
 
     await userEvent.click(await canvas.findByTestId("team-switcher"));
 
-    // A centred Dialog, portalled out of the sidebar.
-    const search = await screen.findByTestId("team-search");
-    await waitFor(() => expect(search).toBeVisible());
+    // A panel under the card, portalled out of the sidebar (the-workspace-opens-under-its-card).
+    const panel = await screen.findByTestId("team-switcher-panel");
+    await waitFor(() => expect(panel).toBeVisible());
     for (const team of teams) {
       await expect(screen.getByTestId(`team-option-${team.id}`)).toBeInTheDocument();
     }
 
+    // Searched from the heading's icon, the field opening under it (the-workspace-search-opens-under-its-heading).
+    await userEvent.click(screen.getByTestId("team-search-mine"));
+    const search = await screen.findByTestId("team-search");
     await userEvent.type(search, SELLING.name, { delay: 40 });
     await waitFor(() => expect(screen.queryByTestId(`team-option-${WAREHOUSE.id}`)).toBeNull());
     await expect(screen.getByTestId(`team-option-${SELLING.id}`)).toBeInTheDocument();
   },
 };
 
-// THE BACKDROP IS THE SIDEBAR'S, THE HAMBURGER IS THE SHELL'S (#214). On a narrow screen the sidebar
-// sits OVER the page, so an outside tap has to be able to dismiss it — that gesture is the one people
-// try first, and without a target for it the only way out is the link you did not want.
-//
-// This is the CONTRACT half: the backdrop calls `onClose`, and the caller decides what that means.
-// The other half — the hamburger opening it, and navigating closing it — is pinned in the shell's own
-// stories, where both ends actually exist.
-export const TheBackdropAsksTheCallerToClose: Story = {
-  render: () => <AtHomeWithDrawerOpen />,
+// THE MENU IS IN SECTIONS (owner, `the-sidebar-is-in-sections`) — Home leads with no heading, then the team's work,
+// its money and its people, each under a small heading. Profile is the person's, so it is in the user card instead.
+export const TheMenuIsInSections: Story = {
+  beforeEach: asTeam(SELLING.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Shops" })).toBeInTheDocument());
+
+    const sections = Array.from(canvasElement.querySelectorAll("[data-testid^='nav-section-']"));
+    await expect(sections.map((s) => s.getAttribute("data-testid"))).toEqual([
+      "nav-section-lead",
+      "nav-section-nav.sectionOperations",
+      "nav-section-nav.sectionFinance",
+      "nav-section-nav.sectionTeam",
+    ]);
+
+    const operations = within(canvas.getByTestId("nav-section-nav.sectionOperations"));
+    await expect(operations.getByText("Operations")).toBeVisible();
+    await expect(operations.getByRole("link", { name: "Shops" })).toBeInTheDocument();
+    const finance = within(canvas.getByTestId("nav-section-nav.sectionFinance"));
+    await expect(finance.getByRole("link", { name: "Accounts" })).toBeInTheDocument();
+    const team = within(canvas.getByTestId("nav-section-nav.sectionTeam"));
+    await expect(team.getByRole("link", { name: "Users" })).toBeInTheDocument();
+
+    await expect(canvas.queryByRole("link", { name: "Profile" })).toBeNull();
+  },
+};
+
+// A WAREHOUSE's Inventories is in its operations, beside its orders — it sat under the money while the menu was one
+// column, where stock read as a footnote to the books rather than the job.
+export const AWarehousesInventoriesIsInItsOperations: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const operations = within(await canvas.findByTestId("nav-section-nav.sectionOperations"));
+
+    await expect(operations.getByTestId("nav-group-nav.inventories")).toBeInTheDocument();
+    await expect(operations.getByRole("link", { name: "Orders" })).toBeInTheDocument();
+  },
+};
+
+// THE COUNT ON KEWAJIBAN — payments waiting for this team to confirm. Gudang Pusat has one: Toko Melati's transfer
+// of 2.000.000, recorded and not yet confirmed (fixtures, liabilityPayments 602).
+export const LiabilityCountsWhatAwaitsConfirmation: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const backdrop = await canvas.findByTestId("sidebar-backdrop");
-    // ⚠ A DELTA, not an absolute count: the route effect fires once on mount (mounting IS arriving
-    // somewhere), so `onClose` has already been called before the story touches anything.
-    const before = onClose.mock.calls.length;
+    const count = await canvas.findByTestId("nav-count-/liability", {}, { timeout: 4000 });
+    await expect(count).toHaveTextContent("1");
+    // Nothing else counts — a 0 is never drawn.
+    await expect(canvasElement.querySelectorAll("[data-testid^='nav-count-']")).toHaveLength(1);
+  },
+};
 
-    await userEvent.click(backdrop);
-    await waitFor(() => expect(onClose.mock.calls.length).toBe(before + 1));
+// Profile from the user card — the person's page, beside their theme and language.
+export const ProfileIsInTheUserCard: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("user-menu"));
+    const profile = await screen.findByTestId("user-menu-profile");
+    await waitFor(() => expect(profile).toBeVisible());
+    await expect(profile).toHaveTextContent("Profile");
+    await userEvent.click(profile);
+    await waitFor(() => expect(screen.queryByTestId("user-menu-profile")).toBeNull());
+  },
+};
+
+// A SUB-MENU ITEM HAS NO ICON (owner, provisional, `a-submenu-item-has-no-icon`) — the icon is the front level's: the
+// group header keeps its own, and a top-level item keeps its own. Under the rail a child is its name alone.
+export const ASubmenuItemHasNoIcon: Story = {
+  beforeEach: asTeam(SELLING.id),
+  render: () => <AtDiscover />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const discover = await canvas.findByRole("link", { name: "Discover Product" });
+    await waitFor(() => expect(discover).toBeVisible());
+    await expect(discover.querySelector("svg")).toBeNull();
+    await expect(canvas.getByRole("link", { name: "My Product" }).querySelector("svg")).toBeNull();
+
+    await expect(canvas.getByTestId("nav-group-toggle-nav.products").querySelector("svg")).not.toBeNull();
+    await expect(canvas.getByRole("link", { name: "Shops" }).querySelector("svg")).not.toBeNull();
+  },
+};
+
+// ── Collapsed (`the-sidebar-collapses-to-its-icons`) ────────────────────────────────────────────
+
+const sidebarWidth = (canvas: ReturnType<typeof within>) =>
+  Math.round(canvas.getByTestId("sidebar").getBoundingClientRect().width);
+
+// THE SIDEBAR COLLAPSES TO ITS ICONS (owner) — the « in the logo row takes it to 64px: a section's heading becomes a
+// line, an item its icon (its name kept for a screen reader and shown in a tooltip). The choice is remembered.
+export const TheSidebarCollapsesToItsIcons: Story = {
+  beforeEach: asTeam(SELLING.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Shops" })).toBeVisible());
+    await waitFor(() => expect(sidebarWidth(canvas)).toBe(258));
+
+    await userEvent.click(canvas.getByTestId("sidebar-toggle"));
+    await waitFor(() => expect(sidebarWidth(canvas)).toBe(64));
+    await expect(canvas.getByTestId("sidebar-toggle")).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.queryByText("Operations")).toBeNull();
+    const shops = canvas.getByRole("link", { name: "Shops" });
+    await expect(shops).not.toHaveTextContent("Shops");
+    await expect(localStorage.getItem("wh-sidebar-collapsed")).toBe("1");
+
+    // A tooltip names the icon.
+    await userEvent.hover(shops);
+    await waitFor(() => expect(screen.getByText("Shops")).toBeVisible());
+
+    await userEvent.click(canvas.getByTestId("sidebar-toggle"));
+    await waitFor(() => expect(sidebarWidth(canvas)).toBe(258));
+    await expect(localStorage.getItem("wh-sidebar-collapsed")).toBe("0");
+  },
+};
+
+// …remembered: a browser that collapsed it opens collapsed.
+export const ACollapsedSidebarStaysCollapsed: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    localStorage.setItem("wh-sidebar-collapsed", "1");
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Shops" })).toBeInTheDocument());
+    await expect(sidebarWidth(canvas)).toBe(64);
+  },
+};
+
+// Ctrl+B toggles it — but not while somebody is typing in a field.
+export const CtrlBTogglesTheSidebar: Story = {
+  beforeEach: asTeam(SELLING.id),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Shops" })).toBeVisible());
+
+    await userEvent.keyboard("{Control>}b{/Control}");
+    await waitFor(() => expect(sidebarWidth(canvas)).toBe(64));
+    await userEvent.keyboard("{Control>}b{/Control}");
+    await waitFor(() => expect(sidebarWidth(canvas)).toBe(258));
+
+    // In the team switcher's search box, Ctrl+B is the field's.
+    await userEvent.click(canvas.getByTestId("team-switcher"));
+    await userEvent.click(await screen.findByTestId("team-search-mine"));
+    const search = await screen.findByTestId("team-search");
+    await userEvent.click(search);
+    await userEvent.keyboard("{Control>}b{/Control}");
+    await expect(sidebarWidth(canvas)).toBe(258);
+  },
+};
+
+// COLLAPSED, A GROUP OPENS A FLYOUT — on a click, never a hover: its name and its children, by name and without
+// icons (`a-submenu-item-has-no-icon`). Escape shuts it; so does going somewhere.
+export const ACollapsedGroupOpensAFlyout: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    localStorage.setItem("wh-sidebar-collapsed", "1");
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("nav-group-toggle-nav.products"));
+    const flyout = await screen.findByTestId("nav-flyout-nav.products");
+    await waitFor(() => expect(flyout).toBeVisible());
+    await expect(flyout).toHaveTextContent("Products");
+    const mine = within(flyout).getByRole("link", { name: "My Product" });
+    await expect(mine.querySelector("svg")).toBeNull();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("nav-flyout-nav.products")).toBeNull());
+
+    // Going somewhere from it closes it.
+    await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.products"));
+    const reopened = await screen.findByTestId("nav-flyout-nav.products");
+    await userEvent.click(await within(reopened).findByRole("link", { name: "Discover Product" }));
+    await waitFor(() => expect(screen.queryByTestId("nav-flyout-nav.products")).toBeNull());
+  },
+};
+
+// Collapsed, Kewajiban's count rides its icon's corner — Gudang Pusat's one payment awaiting confirmation.
+export const ACollapsedCountRidesTheIcon: Story = {
+  beforeEach: () => {
+    localStorage.setItem("wh-sidebar-collapsed", "1");
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const count = await canvas.findByTestId("nav-count-/liability", {}, { timeout: 4000 });
+    await expect(count).toHaveTextContent("1");
+    await expect(canvas.getByRole("link", { name: "Liability" })).toContainElement(count);
+  },
+};
+
+// THE WORKSPACE OPENS UNDER ITS CARD (owner: *"workspace, di panel aja langsung di bawahnya"*,
+// `the-workspace-opens-under-its-card`) — a panel straight below the switcher, as wide as it; not a dialog in the
+// middle of the screen.
+export const TheWorkspaceOpensUnderItsCard: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const card = await canvas.findByTestId("team-switcher", {}, { timeout: 4000 });
+    await userEvent.click(card);
+    const panel = await screen.findByTestId("team-switcher-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+    // Not the centred dialog — no backdrop dims the page.
+    await expect(document.querySelector("[data-scope='dialog'][data-part='backdrop']")).toBeNull();
+
+    const c = card.getBoundingClientRect();
+    // Measured once the panel has finished growing in — it opens with a scale.
+    await waitFor(() => {
+      const p = panel.getBoundingClientRect();
+      expect(Math.round(p.top - c.bottom)).toBe(6);
+      expect(Math.round(p.left)).toBe(Math.round(c.left));
+      expect(Math.round(p.width)).toBe(Math.round(c.width));
+    });
+
+    // ⚠ Not by picking a team — a pick hard-reloads the app (switching re-scopes everything), which a story
+    // cannot survive. Escape closes it, as an outside click does.
+    await expect(within(panel).getByTestId(`team-option-${SELLING.id}`)).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("team-switcher-panel")).toBeNull());
+  },
+};
+
+// …and collapsed, beside the avatar, to the right of the rail.
+export const ACollapsedWorkspaceOpensBesideTheRail: Story = {
+  beforeEach: () => {
+    localStorage.setItem("wh-sidebar-collapsed", "1");
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("team-switcher", {}, { timeout: 4000 }));
+    const panel = await screen.findByTestId("team-switcher-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+    await waitFor(() =>
+      expect(panel.getBoundingClientRect().left).toBeGreaterThanOrEqual(canvas.getByTestId("sidebar").getBoundingClientRect().right),
+    );
   },
 };

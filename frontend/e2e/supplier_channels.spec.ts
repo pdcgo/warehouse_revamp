@@ -52,6 +52,8 @@ async function call(page: Page, method: string, body: unknown) {
 
 async function useSellingTeam(page: Page) {
   await page.getByTestId("team-switcher").click();
+  // Search is per section (the-workspace-searches-one-section) — root owns this team, so it is under My teams.
+  await page.getByTestId("team-search-mine").click();
   await page.getByTestId("team-search").fill(TEAM_NAME);
   await page.getByTestId(/^team-option-/).first().click();
   await expect(page.getByTestId("team-switcher")).toContainText(TEAM_NAME);

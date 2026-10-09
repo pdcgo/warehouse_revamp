@@ -46,6 +46,8 @@ test("a team you just created is switchable WITHOUT a reload", async ({ page }) 
   // NO reload. The switcher reads TeamContext's memberships, which the create must have refreshed —
   // remove that refresh and this fails here, with the new team absent from the list.
   await page.getByTestId("team-switcher").click();
+  // Search is per section (the-workspace-searches-one-section) — root owns this team, so it is under My teams.
+  await page.getByTestId("team-search-mine").click();
   await page.getByTestId("team-search").fill(WH_NAME);
   await page.getByTestId(/^team-option-/).first().click();
 

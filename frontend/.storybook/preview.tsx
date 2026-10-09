@@ -357,6 +357,8 @@ const preview: Preview = {
     // …and for the legacy sidebar's collapse preference, which is persisted on purpose (an operator
     // sets it once) and would otherwise leave every later sidebar story rendering collapsed.
     localStorage.removeItem("legacy-sidebar-collapsed");
+    // …and the desktop sidebar's, persisted the same way (the-sidebar-collapses-to-its-icons).
+    localStorage.removeItem("wh-sidebar-collapsed");
     // …and for the auth token, so a `signedIn` story cannot leave the next one authenticated. The
     // selected team is sessionStorage, and is cleared with it.
     clearToken();

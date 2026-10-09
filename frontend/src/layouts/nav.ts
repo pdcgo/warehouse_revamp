@@ -12,7 +12,7 @@ export interface MenuItem {
   icon: LucideIcon;
   // Other route prefixes this item OWNS without linking to. A screen reached from inside a page —
   // Drafts, a tab of Orders — is still that menu item's screen: without this it would light nothing
-  // in the sidebar and leave the breadcrumb blank, which reads as having fallen out of the app.
+  // in the sidebar and leave the phone's top bar blank, which reads as having fallen out of the app.
   alsoMatches?: string[];
 }
 
@@ -32,9 +32,9 @@ export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
 // ── Where am I? ─────────────────────────────────────────────────────────────────────────────────
 //
 // The route → menu matching lives HERE, beside the menu it matches against, because TWO components
-// ask the question: the SIDEBAR lights an item, and the TOP BAR's breadcrumb names it. Two copies of
-// a longest-prefix rule is a breadcrumb saying one screen while the sidebar highlights another — and
-// that disagreement would be invisible in review, because each half looks right on its own.
+// ask the question: the desktop SIDEBAR and the phone's TAB BAR light an item, and the phone's TOP BAR names it.
+// Two copies of a longest-prefix rule is a title saying one screen while the highlight says another — and that
+// disagreement would be invisible in review, because each half looks right on its own.
 
 // A group's children are routes too, so both answers below are computed over the FLAT list.
 export function flattenMenu(menu: MenuEntry[]): MenuItem[] {
@@ -68,7 +68,7 @@ export function activeRoute(menu: MenuEntry[], pathname: string): string | undef
     .sort((a, b) => b.to.length - a.to.length)[0]?.to;
 }
 
-// The active item's label (an i18n key) — what the breadcrumb says you are looking at.
+// The active item's label (an i18n key) — what the phone's top bar says you are looking at.
 export function activeLabel(menu: MenuEntry[], pathname: string): string {
   const to = activeRoute(menu, pathname);
 
@@ -102,7 +102,7 @@ const ORDERS: MenuItem = {
   label: "nav.orders",
   icon: ShoppingCart,
   // The drafts screen keeps its own route, so Orders has to claim it — otherwise standing on Drafts
-  // highlights nothing and the breadcrumb goes blank.
+  // highlights nothing and the phone's top bar goes blank.
   alsoMatches: ["/order-drafts"],
 };
 
@@ -156,7 +156,8 @@ const SETTLEMENT_IMPORTS: MenuItem = {
 const FINANCIAL_ACCOUNTS: MenuItem = { to: "/financial-accounts", label: "nav.financialAccounts", icon: Landmark };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
-const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
+// The person's own page. On a desktop it is offered from the user card, not the menu (`the-sidebar-is-in-sections`).
+export const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
 
 // A selling team's Products is a sub-menu (#106): "My Product" (the team's own catalogue) and
 // "Discover Product" (products across ALL teams, to order from). A warehouse team keeps the flat
@@ -241,85 +242,86 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   return { label: "nav.inventories", icon: Boxes, children };
 }
 
-// menuFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
+// THE MENU IS IN SECTIONS (owner, `the-sidebar-is-in-sections`) — the team's work, its money, its people — each
+// under a small heading, so eleven links read as three groups rather than one column. Home leads with no heading.
+// A section with nothing in it for this team and role is left out, heading and all.
+export interface MenuSection {
+  /** The heading's i18n key — none for the lead section, Home, which every team opens on. */
+  label?: string;
+  entries: MenuEntry[];
+}
+
+// menuSectionsFor picks the navigation for the CURRENT TEAM'S TYPE and the caller's role in it.
 //
 // ⚠ THIS IS UX, NOT SECURITY. Hiding a menu item hides nothing: the RPC behind it is still
 // reachable, and the only thing that actually stops the call is the server's access interceptor.
 // Never move a check from the backend into here.
-export function menuFor(teamType: TeamType | undefined, role: Role | undefined): MenuEntry[] {
-  const menu: MenuEntry[] = [HOME];
+export function menuSectionsFor(teamType: TeamType | undefined, role: Role | undefined): MenuSection[] {
+  const operations: MenuEntry[] = [];
+  const finance: MenuEntry[] = [];
+  const team: MenuEntry[] = [];
 
   if (teamType === TeamType.ROOT || teamType === TeamType.ADMIN) {
     // Teams is the single home for every team type — warehouses are the Warehouses TAB here (#59).
-    menu.push(TEAMS);
+    operations.push(TEAMS);
     // Categories are one GLOBAL taxonomy, curated by root/admin — same gate as Teams.
-    menu.push(CATEGORIES);
+    operations.push(CATEGORIES);
     // Shipping channels are one GLOBAL courier catalogue, and only ROOT curates it
     // (only-root-manages-channels, docs/business/shipment). An admin would see a page of writes the
     // server refuses — so the item is offered to root alone.
     if (role === Role.ROOT) {
-      menu.push(SHIPPING);
+      operations.push(SHIPPING);
     }
     // Stock lives at warehouses; root/admin oversee every warehouse's inventory (they pick one).
-    menu.push(INVENTORY);
+    operations.push(INVENTORY);
   }
 
   // A warehouse team gets a flat Products list; a selling team gets the Products sub-menu — My
   // Product + Discover Product (#106). Root/admin teams have no products of their own.
   if (teamType === TeamType.WAREHOUSE) {
-    menu.push(PRODUCTS);
+    operations.push(PRODUCTS);
     // Orders sits HIGH and TOP-LEVEL for a warehouse, because it is the day's work rather than a
     // reference screen: the crew opens it first and returns to it after every order. Below Products
     // so the catalogue still reads as the subject and the orders as what is happening to it.
-    menu.push(WAREHOUSE_ORDERS);
+    operations.push(WAREHOUSE_ORDERS);
+    // Inventories — restock, racks, batches, opname (#95) — closes the warehouse's operations. It sat below the
+    // money section while the menu was one column; in sections it is where a warehouse's work is, beside its
+    // orders (`the-sidebar-is-in-sections`).
+    operations.push(inventoriesFor(teamType));
   }
   if (teamType === TeamType.SELLING) {
-    menu.push(PRODUCTS_GROUP);
+    operations.push(PRODUCTS_GROUP);
     // Inventories sits DIRECTLY under Products for a selling team, because for that team the two are
     // one subject read in one sitting: the product list now shows the stock behind each row (ready,
     // ongoing, oldest batch), and every answer to "why is this empty" — the restock, the placement,
-    // the supplier — is in this menu. Leaving it below the money section made a person cross the
-    // whole sidebar to follow a question they were already asking.
-    //
-    // A WAREHOUSE keeps it further down (see below): stock is not a footnote to a catalogue there,
-    // it is the job, and its Inventories group holds different children.
-    menu.push(inventoriesFor(teamType));
+    // the supplier — is in this menu.
+    operations.push(inventoriesFor(teamType));
     // Suppliers right under it — who the restocks in Inventories come from. A selling team's alone: a warehouse
     // does not own the suppliers a selling team orders from (#212).
-    menu.push(SUPPLIERS_GROUP);
-  }
+    operations.push(SUPPLIERS_GROUP);
+    // Shops and orders are SELLING-team concepts (#66/#68).
+    operations.push(SHOPS);
+    operations.push(ORDERS);
 
-  // Shops and orders are SELLING-team concepts (#66/#68).
-  if (teamType === TeamType.SELLING) {
-    menu.push(SHOPS);
-    menu.push(ORDERS);
-
-    // Revenue is the MANAGER's view of those same orders (#78). Customer service places orders but
-    // has no business reading the margin on them — which is exactly how RevenueList is scoped on the
-    // server too, so this hides a link that would genuinely be refused.
+    // Costs (#170) are the MANAGER's: CostList is scoped to the team's managers on the server too — a person
+    // taking orders has no business seeing the payroll number.
     //
-    // Costs (#170) sit beside it under the same gate: they are the two halves of one question, and
-    // CostList is scoped to the same roles for the same reason — a person taking orders has no
-    // business seeing the payroll number.
+    // ⚠ NO Revenue, Profit or Statement item for a selling team any more. All three were made
+    // ENTIRELY of `revenue_service`'s expected margin, and that service has been removed with its
+    // statistics deferred. Expenses stands alone because it never read revenue at all.
     if (isTeamManager(role)) {
-      menu.push(EXPENSES);
-      // ⚠ NO Revenue, Profit or Statement item for a selling team any more. All three were made
-      // ENTIRELY of `revenue_service`'s expected margin, and that service has been removed with its
-      // statistics deferred. Expenses stands alone because it never read revenue at all.
+      finance.push(EXPENSES);
     }
   }
 
-  // A WAREHOUSE gets the daily statement too (owner, 2026-08-14), even though it has none of the three
-  // money screens above.
+  // A WAREHOUSE gets the daily statement too (owner, 2026-08-14), even though it has none of the
+  // selling team's money screens.
   //
   // It reads a DIFFERENT income column — the handling fees it charged, from liability_service, because
   // a warehouse has no orders and therefore no margin. Its costs are its own expenses, and those already
   // include the stock it writes off (#211), which is the number a warehouse actually runs on.
-  //
-  // No Revenue / Expenses / Profit item beside it, deliberately: Revenue would be permanently empty, and
-  // Profit is the selling-team subtraction. The statement IS the warehouse's money screen.
   if (teamType === TeamType.WAREHOUSE && isTeamManager(role)) {
-    menu.push(STATEMENT);
+    finance.push(STATEMENT);
   }
 
   // Liability is BACK OFFICE, and it is offered to both team types that can be a counterparty: a
@@ -329,45 +331,51 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) &&
     isTeamManager(role)
   ) {
-    menu.push(LIABILITY);
+    finance.push(LIABILITY);
   }
 
   if (teamType === TeamType.SELLING && isTeamManager(role)) {
-    menu.push(SETTLEMENT);
-    menu.push(SETTLEMENT_REPORT);
+    finance.push(SETTLEMENT);
+    finance.push(SETTLEMENT_REPORT);
   }
 
   if (teamType === TeamType.SELLING && canImportSettlement(role)) {
-    menu.push(SETTLEMENT_IMPORTS);
+    finance.push(SETTLEMENT_IMPORTS);
   }
 
   // The accounts close the money section, for EVERY member — the one money screen not gated on a role.
   if (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) {
-    menu.push(FINANCIAL_ACCOUNTS);
-  }
-
-  // Inventories sub-menu — restock, racks, batches, opname — for a WAREHOUSE (#95). A selling team
-  // has already had its own (differently populated) Inventories group pushed directly under Products
-  // above, which is where that team reads it from.
-  if (teamType === TeamType.WAREHOUSE) {
-    menu.push(inventoriesFor(teamType));
+    finance.push(FINANCIAL_ACCOUNTS);
   }
 
   // Users is offered to anyone who could plausibly manage a team's membership. The backend
   // decides for real.
   if (canManageUsers(role)) {
-    menu.push(USERS);
+    team.push(USERS);
   }
 
   // Team settings — the current team's picture and name (issues #43/#44). Same managers who may
   // edit the team; the backend's TeamUpdate policy is the real gate.
   if (isTeamManager(role)) {
-    menu.push(SETTINGS);
+    team.push(SETTINGS);
   }
 
-  menu.push(PROFILE);
+  const sections: MenuSection[] = [
+    { entries: [HOME] },
+    { label: "nav.sectionOperations", entries: operations },
+    { label: "nav.sectionFinance", entries: finance },
+    { label: "nav.sectionTeam", entries: team },
+  ];
 
-  return menu;
+  return sections.filter((section) => section.entries.length > 0);
+}
+
+// The whole menu as one list — what "where am I" matches against, the phone's sheet draws and the bottom bar is
+// filtered by. The sections in order, then PROFILE: the desktop offers it from the user card rather than the
+// menu (`the-sidebar-is-in-sections` — it is the person's, not the team's), but it is still a screen of this app
+// and has to light up and be named when you stand on it.
+export function menuFor(teamType: TeamType | undefined, role: Role | undefined): MenuEntry[] {
+  return [...menuSectionsFor(teamType, role).flatMap((section) => section.entries), PROFILE];
 }
 
 // ── The mobile bottom bar ───────────────────────────────────────────────────────────────────────

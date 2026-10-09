@@ -1247,7 +1247,9 @@ export const transport = createRouterTransport(({ service }) => {
 
       return {
         ...pagedColumnarBy("position", set, (p) => p.counterpartyId, req.page),
-        awaitingConfirmation: 0,
+        // Whole-set, as the server counts it: every payment recorded TO this team and not yet confirmed or
+        // refused — the menu's count on Kewajiban reads it (`the-sidebar-is-in-sections`).
+        awaitingConfirmation: paymentsTable.filter((p) => p.creditorTeamId === req.teamId && p.status === 1).length,
         totalReceivable: set.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n),
         // A MAGNITUDE, as the wire carries it — direction is words on this screen, never a sign.
         totalPayable: set.reduce((s, p) => (p.balance < 0n ? s - p.balance : s), 0n),

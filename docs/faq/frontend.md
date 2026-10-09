@@ -214,8 +214,9 @@ covered by this rule until they move to a query hook.
 
 **A phone gets a DIFFERENT SHELL, not the desktop one squeezed.** `Layout` reads one media query
 (`useIsMobile`, Chakra's `md`) and mounts either `DesktopLayout` (a persistent 258px sidebar beside
-a breadcrumb top bar) or `MobileLayout` (a compact top bar plus a **bottom tab bar** the thumb
-reaches — no hamburger).
+the page — no top bar, see
+[the-desktop-shell-has-no-top-bar](../technical/frontend/context_decision.md#the-desktop-shell-has-no-top-bar)) or
+`MobileLayout` (a compact top bar plus a **bottom tab bar** the thumb reaches — no hamburger).
 
 ⚠ **Exactly ONE shell mounts — a JS breakpoint, never `hideFrom`/`hideBelow`.** Hiding one with CSS
 renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` landmarks, and two of

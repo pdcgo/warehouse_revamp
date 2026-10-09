@@ -34,7 +34,10 @@
     "suppliers": "Pemasok",
     "mySupplier": "Pemasok Saya",
     "discoverSupplier": "Temukan Pemasok",
-    "supplierReport": "Laporan Pemasok"
+    "supplierReport": "Laporan Pemasok",
+    "sectionOperations": "Operasional",
+    "sectionFinance": "Keuangan",
+    "sectionTeam": "Tim"
   },
   "menu": {
     "theme": "Tema",
@@ -44,17 +47,18 @@
     "signOut": "Keluar"
   },
   "shell": {
-    "openMenu": "Buka menu",
-    "search": "Cari…",
     "notifications": "Notifikasi",
     "menu": "Menu",
     "notMember": "Bukan anggota tim ini — bertindak sebagai {{role}}.",
     "switchTeam": "Ganti Tim",
-    "searchTeams": "Cari tim",
     "noTeams": "Tidak ada tim.",
     "myTeams": "Tim saya",
     "allTeams": "Semua tim",
-    "notMemberBadge": "Bukan anggota"
+    "notMemberBadge": "Bukan anggota",
+    "collapseMenu": "Ciutkan menu",
+    "expandMenu": "Buka menu",
+    "searchIn": "Cari di {{section}}",
+    "closeSearch": "Tutup pencarian"
   },
   "liability": {
     "title": "Kewajiban",

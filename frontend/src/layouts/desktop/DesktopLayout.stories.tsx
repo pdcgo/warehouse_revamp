@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { RouteObject } from "react-router-dom";
 import { Text } from "@chakra-ui/react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
@@ -9,18 +9,17 @@ import { asPlatformOnly } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { DesktopLayout } from "./DesktopLayout";
 
-// THE DESKTOP APP SHELL — the sidebar beside a top bar and the routed page. (The phone's shell is a
-// different component with its own stories: Layouts/Mobile.)
+// THE DESKTOP APP SHELL — the sidebar beside the routed page, nothing above it (`the-desktop-shell-has-no-top-bar`).
+// (The phone's shell is a different component with its own stories: Layouts/Mobile.)
 //
 // The menu's own rules live in Sidebar.stories.tsx, beside the component that owns them. What is left
-// here is what only exists once the two halves are ASSEMBLED, and each of these is a seam where the
-// halves have to agree:
+// here is what only exists once the halves are ASSEMBLED:
 //
 //   | the seam            | what goes wrong if it slips                                         |
 //   | ------------------- | ------------------------------------------------------------------- |
-//   | breadcrumb ↔ menu   | the crumb names one screen while the sidebar highlights another      |
-//   | hamburger ↔ drawer  | the top bar opens a sidebar that only the sidebar knows how to close  |
+//   | no top bar          | a header creeps back over every page                                 |
 //   | route → canvas      | a page paints its own background and two screens drift apart          |
+//   | the non-member strip| a Root override reads as ordinary membership                          |
 //
 // The team is chosen by planting the current-team key before the providers mount (`asTeam`) — the
 // same thing the team switcher does. The shell has no prop for it, and should not: the whole app is
@@ -83,67 +82,27 @@ export const SellingTeam: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-// The breadcrumb answers "whose data am I looking at, and at what" — in that order. The team comes
-// first because two tabs open on two teams are otherwise identical at a glance.
-export const TheBreadcrumbNamesTheTeamThenThePage: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const header = within(await canvas.findByRole("banner"));
-
-    await waitFor(() => expect(header.getByText(WAREHOUSE.name)).toBeInTheDocument());
-    await expect(header.getByText("Home")).toBeInTheDocument();
-  },
-};
-
-// ⚠ THE CRUMB AND THE HIGHLIGHT ARE ONE MATCH (nav.ts), which is what this pins. Drafts has its own
-// route but no menu item, so it is CLAIMED by Orders (`alsoMatches`) — and the top bar has to reach
-// the same conclusion the sidebar did, or the shell names a screen the sidebar says you are not on.
-export const TheBreadcrumbAgreesWithTheHighlightedItem: Story = {
+// NO TOP BAR (owner: *"di app shell, kita tidak perlu heading yang ada breadcrumbnya"*) — the page starts at the top,
+// beside the sidebar: no header landmark, no breadcrumb, no search, no bell, no hamburger. The team and the screen
+// are the sidebar's to say — the switcher, and the lit item.
+export const TheShellHasNoTopBar: Story = {
   beforeEach: asTeam(SELLING.id),
   render: () => <AtDrafts />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // ⚠ The sidebar is selected as `complementary` (the <aside>), NOT as `navigation`: the shell has
-    // TWO navigation landmarks — the sidebar's <nav> and the breadcrumb, which Chakra renders as one
-    // too — so a by-role query for "navigation" is ambiguous and fails on the wrong thing.
     const sidebar = within(await canvas.findByRole("complementary"));
-    const header = within(canvas.getByRole("banner"));
 
     await waitFor(() =>
       expect(sidebar.getByRole("link", { name: "Orders" })).toHaveAttribute("aria-current", "page"),
     );
-    await expect(header.getByText("Orders")).toBeInTheDocument();
-  },
-};
+    await expect(canvas.queryByRole("banner")).toBeNull();
+    await expect(canvas.getAllByRole("navigation")).toHaveLength(1);
+    await expect(canvas.queryByTestId("sidebar-hamburger")).toBeNull();
+    await expect(canvas.queryByTestId("global-search")).toBeNull();
+    await expect(canvas.queryByTestId("notifications")).toBeNull();
 
-// A DRAGGED-SMALL WINDOW TURNS THE SIDEBAR INTO A DRAWER (#214) — a phone gets the mobile shell
-// instead, so this is now about a narrow DESKTOP window. The two ends of it live in different components: the
-// hamburger that opens it is in the top bar, and everything that closes it — the backdrop, and
-// navigating — is the sidebar's. This is the story that proves they are wired to each other.
-//
-// ⚠ The trigger is `hideFrom="md"` — a MEDIA QUERY, and the story runner's viewport is a desktop one,
-// so what this pins is the drawer's STATE MACHINE, not the breakpoint that reveals the button. The
-// breakpoint is CSS with no logic in it; the closing rules are logic that has no CSS.
-export const TheDrawerOpensOnTheHamburgerAndClosesOnNavigation: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await userEvent.click(await canvas.findByTestId("sidebar-hamburger"));
-    await waitFor(() => expect(canvas.getByTestId("sidebar-backdrop")).toBeInTheDocument());
-
-    // An outside tap. The backdrop only asks — this is the caller acting on it.
-    await userEvent.click(canvas.getByTestId("sidebar-backdrop"));
-    await waitFor(() => expect(canvas.queryByTestId("sidebar-backdrop")).toBeNull());
-
-    // …and a link, which must both navigate and get out of the way.
-    await userEvent.click(canvas.getByTestId("sidebar-hamburger"));
-    await waitFor(() => expect(canvas.getByTestId("sidebar-backdrop")).toBeInTheDocument());
-
-    const sidebar = within(canvas.getByRole("complementary"));
-    await userEvent.click(sidebar.getByRole("link", { name: "Products" }));
-
-    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeInTheDocument());
-    await expect(canvas.queryByTestId("sidebar-backdrop")).toBeNull();
+    // The page starts at the top of the window.
+    await expect(Math.round(canvas.getByRole("main").getBoundingClientRect().top)).toBe(0);
   },
 };
 

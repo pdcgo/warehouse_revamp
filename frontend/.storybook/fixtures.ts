@@ -672,7 +672,8 @@ export const liabilityTerms = [
 
 // What each debtor owes team 11 right now. Positive = they owe us, so these are what the limits cap.
 export const liabilityPositions = [
-  { counterpartyId: 12n, balance: 8_700_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  // 12 has one payment waiting for team 11 to confirm — liabilityPayments' 602.
+  { counterpartyId: 12n, balance: 8_700_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 1 },
   { counterpartyId: 13n, balance: 1_000_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 14n, balance: 6_200_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 15n, balance: 250_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },

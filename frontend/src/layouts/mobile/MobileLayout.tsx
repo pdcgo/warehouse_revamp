@@ -41,16 +41,15 @@ export function MobileLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  // The same match the tab bar highlights with and the desktop breadcrumb names — one implementation
+  // The same match the tab bar and the desktop sidebar highlight with — one implementation
   // in nav.ts, because a title disagreeing with the lit tab is a bug that looks correct in each half.
   const currentLabel = activeLabel(menuFor(current?.teamType, current?.role), location.pathname);
 
   return (
     <Flex direction="column" h="100dvh">
       {/* TOP BAR — the team chip, then WHERE YOU ARE, then notifications.
-          It carries the same two facts as the desktop breadcrumb, in the same order (team, then
-          screen) — stacked instead of separated by a chevron, because a phone has no room for a
-          crumb trail and a truncated one names neither. */}
+          The team and the screen, stacked — the two facts the desktop says with its sidebar (the
+          switcher, the lit item), which a phone has no room to keep on screen. */}
       <Flex
         as="header"
         align="center"

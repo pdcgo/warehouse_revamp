@@ -696,6 +696,8 @@ test("Orders: clicking a row opens that order's detail", async ({ page }) => {
 // exercised from the seat that placed the order. This is the switch that makes the crew's view real.
 async function switchToWarehouse(page: Page) {
   await page.getByTestId("team-switcher").click();
+  // Search is per section (the-workspace-searches-one-section) — root owns this team, so it is under My teams.
+  await page.getByTestId("team-search-mine").click();
   await page.getByTestId("team-search").fill(WH_NAME);
   await page.getByTestId(/^team-option-/).first().click();
   await expect(page.getByTestId("team-switcher")).toContainText(WH_NAME);

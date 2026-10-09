@@ -34,7 +34,10 @@
     "suppliers": "Suppliers",
     "mySupplier": "My Supplier",
     "discoverSupplier": "Discover Supplier",
-    "supplierReport": "Supplier Report"
+    "supplierReport": "Supplier Report",
+    "sectionOperations": "Operations",
+    "sectionFinance": "Finance",
+    "sectionTeam": "Team"
   },
   "menu": {
     "theme": "Theme",
@@ -44,17 +47,18 @@
     "signOut": "Sign Out"
   },
   "shell": {
-    "openMenu": "Open menu",
-    "search": "Search…",
     "notifications": "Notifications",
     "menu": "Menu",
     "notMember": "Not a member of this team — acting as {{role}}.",
     "switchTeam": "Switch Team",
-    "searchTeams": "Search teams",
     "noTeams": "No teams found.",
     "myTeams": "My teams",
     "allTeams": "All teams",
-    "notMemberBadge": "Not a member"
+    "notMemberBadge": "Not a member",
+    "collapseMenu": "Collapse menu",
+    "expandMenu": "Expand menu",
+    "searchIn": "Search in {{section}}",
+    "closeSearch": "Close search"
   },
   "liability": {
     "title": "Liability",

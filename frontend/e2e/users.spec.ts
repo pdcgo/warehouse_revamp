@@ -165,7 +165,9 @@ test("UserDetail: clicking a user opens their detail page", async ({ page }) => 
 test("ResetPassword: a user changes their OWN password and stays signed in", async ({ page }) => {
   await login(page, NEW_USER, NEW_PASSWORD);
 
-  await page.getByRole("link", { name: "Profile" }).click();
+  // Profile is in the user card's menu, not the sidebar's (the-sidebar-is-in-sections).
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("user-menu-profile").click();
   await page.getByTestId("open-change-password").click();
 
   await page.getByTestId("old-password").fill(NEW_PASSWORD);

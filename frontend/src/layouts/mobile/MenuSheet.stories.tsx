@@ -128,8 +128,9 @@ export const TheTeamSwitcherIsTheHeader: Story = {
   play: async () => {
     await userEvent.click(await screen.findByTestId("team-switcher"));
 
-    const search = await screen.findByTestId("team-search");
-    await waitFor(() => expect(search).toBeVisible());
+    // The phone keeps the centred dialog; its search is the heading's icon (the-workspace-search-opens-under-its-heading).
+    const searchIcon = await screen.findByTestId("team-search-mine");
+    await waitFor(() => expect(searchIcon).toBeVisible());
     for (const team of teams) {
       await expect(screen.getByTestId(`team-option-${team.id}`)).toBeInTheDocument();
     }
