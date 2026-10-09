@@ -26,7 +26,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-restock-is-one-parcel](#a-restock-is-one-parcel) | one restock is what the courier hands over together — any number of products and variations | chat, 2026-10-09 — answers Q4, as recommended |
 | [a-restock-carries-its-tracking-number](#a-restock-carries-its-tracking-number) | `restocks.tracking_number` and `courier`, editable while `ongoing` | chat, 2026-10-09 — answers Q7, as recommended |
 | [a-line-is-typed-as-its-total](#a-line-is-typed-as-its-total) | a line is typed as count and total; `price_unit` is derived for display | chat, 2026-10-09 — answers Q8, as recommended |
-| [every-status-change-is-logged](#every-status-change-is-logged) | `restock_logs` — one row per status change: from, to, who, when, why | chat, 2026-10-09 — answers Q9, as recommended |
+| [every-status-change-is-logged](#every-status-change-is-logged) | `restock_logs` — one row per status change: from, to, who, when, why | chat, 2026-10-09 — answers Q9, as recommended — 🔄 extended to edits by [edits-are-in-the-same-trail](#edits-are-in-the-same-trail) |
 | [one-batch-per-line](#one-batch-per-line) | accept mints one batch per line with good units, at the landed price | chat, 2026-10-09 — answers Q11a, as recommended |
 | [an-edit-sends-the-difference](#an-edit-sends-the-difference) | an edit that changes the amount sends *Restock Updated* with the account and the difference | chat, 2026-10-09 — answers Q14, as recommended |
 | [an-edit-may-move-the-payment-to-another-account](#an-edit-may-move-the-payment-to-another-account) | while `ongoing`, an edit may change the paying account; *Restock Updated* moves the whole amount back and out | chat, 2026-10-09 — answers Q15, as recommended |
@@ -42,6 +42,11 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-warehouse-cost-is-the-couriers-charge-at-the-door](#the-warehouse-cost-is-the-couriers-charge-at-the-door) | `warehouse_additional_cost` is the courier's charge at handover; the warehouse pays it, the selling team compensates | chat, 2026-10-09 — as I had read it |
 | [the-couriers-charge-stays-out-of-total](#the-couriers-charge-stays-out-of-total) | `total` = `subtotal` + `shipment_cost`; the courier's charge is its own debt | chat, 2026-10-09 — answers Q19b, as recommended |
 | [the-courier-is-paid-once-per-restock](#the-courier-is-paid-once-per-restock) | one courier's charge per restock, with a required note — for now | chat, 2026-10-09 — answers Q19a, against my cost lines |
+| [lines-can-be-added-not-removed-while-arrived](#lines-can-be-added-not-removed-while-arrived) | while `arrived` the selling team may add a line, never remove one | chat, 2026-10-09 — answers Q20a, as recommended |
+| [a-broken-reason-is-optional](#a-broken-reason-is-optional) | the broken count is required; its reason is optional | chat, 2026-10-09 — answers Q20b, as recommended |
+| [edits-are-in-the-same-trail](#edits-are-in-the-same-trail) | an edit is a `restock_logs` row too, status unchanged, the change in its description | chat, 2026-10-09 — answers Q20d, as recommended |
+| [there-is-no-unplaced-pile](#there-is-no-unplaced-pile) | every unit in stock is on a placement; a staging area is an ordinary placement | chat, 2026-10-09 — answers Q20e, as recommended |
+| [three-notes-one-writer-each](#three-notes-one-writer-each) | `restocks.note` and `restock_items.note` by the selling team; `restock_problem_items.note` by the warehouse | chat, 2026-10-09 — answers Q20c, as recommended |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -1028,3 +1033,110 @@ flowchart LR
 | *for now* | one charge; a list of lines if several become common |
 
 ⚠ [restock.md](./restock.md)'s `restocks` has no column for the note yet.
+
+## lines-can-be-added-not-removed-while-arrived
+
+> Owner, in chat *(2026-10-09)*: *"for a,b,d,e follow your recomendation"*. It answers
+> [restock_clarify Q20a](./restock_clarify.md#question) as recommended — a question raised by the frontend gap analysis.
+
+**The verdict.** While the box is `arrived`, the selling team may **add** a line — a product that came in the box but was
+never ordered, with a note — but never **remove** one. A line that was ordered and is not in the box is `missing`; removing
+it would erase the shortfall the supplier owes for.
+
+```mermaid
+flowchart LR
+  A["arrived - the box is open"] --> X["a product came that was not ordered"]
+  X -->|"selling team adds a line, with a note"| L["a new line"]
+  A --> Y["a product was ordered and is not there"]
+  Y -->|"never removed"| M["the accept writes it missing"]
+```
+
+| while `arrived` | |
+| --- | --- |
+| add a line | ✅ with a note |
+| remove a line | ❌ — it becomes `missing` at accept |
+| change a line | count, total, note ([the-lines-stay-editable-until-accepted](#the-lines-stay-editable-until-accepted)) |
+
+## a-broken-reason-is-optional
+
+> Owner, in chat *(2026-10-09)*: *"for a,b,d,e follow your recomendation"*. It answers
+> [restock_clarify Q20b](./restock_clarify.md#question) as recommended.
+
+**The verdict.** Staff at the door type **how many** are broken; why is optional. A reason helps the selling team claim
+against the supplier, but an accept is never held up for one.
+
+```mermaid
+flowchart LR
+  B["2 broken"] --> OK["accept goes through"]
+  N["a reason - box crushed"] -.->|"optional"| B
+```
+
+| | |
+| --- | --- |
+| broken count | required, typed |
+| its reason | optional — where it is written is [Q20c](./restock_clarify.md#question) |
+
+## edits-are-in-the-same-trail
+
+> Owner, in chat *(2026-10-09)*: *"for a,b,d,e follow your recomendation"*. It answers
+> [restock_clarify Q20d](./restock_clarify.md#question) as recommended, and extends
+> [every-status-change-is-logged](#every-status-change-is-logged).
+
+**The verdict.** A restock has **one** history. An edit is a row in `restock_logs` too: the status does not change, and the
+description says what did — so *10 → 12, extra stock* sits in the same timeline as *arrived* and *accepted*.
+
+```mermaid
+flowchart LR
+  C["ongoing to ongoing - created"] --> E["arrived to arrived - Kaos 10 to 12, extra stock"]
+  E --> A["arrived to accepted"]
+```
+
+| `restock_logs` row | `from_status` | `to_status` | `description` |
+| --- | --- | --- | --- |
+| a status change | the old status | the new status | why, if given |
+| an edit | the current status | the same | what changed |
+
+## there-is-no-unplaced-pile
+
+> Owner, in chat *(2026-10-09)*: *"for a,b,d,e follow your recomendation"*. It answers
+> [restock_clarify Q20e](./restock_clarify.md#question) as recommended — the current build keeps goods on a rack-less
+> *unplaced* pile.
+
+**The verdict.** Every unit in stock is on a placement. Accept always says where the good units go; a warehouse that wants
+a staging spot creates a placement for it — *Area Terima* — like any other rack.
+
+```mermaid
+flowchart LR
+  A["accept"] --> P["a placement - Rak 1, or Area Terima"]
+  A -.->|"never"| U["no placement"]
+```
+
+| | |
+| --- | --- |
+| a shelf row without a placement | does not exist |
+| a staging area | an ordinary placement |
+
+## three-notes-one-writer-each
+
+> Owner, in chat *(2026-10-09)*: *"for c restock note is note restock related, and in item, its used broken, missing.
+> warehouse can wrote on that too"* — then, shown three notes with one writer each: **yes**. It answers
+> [restock_clarify Q20c](./restock_clarify.md#question) as recommended.
+
+**The verdict.** A restock carries three notes, and **each has one writer**, so neither team's words can replace the
+other's. The selling team writes about the restock and about its lines; the warehouse writes about what was broken or
+missing at the door — which is also where [a-broken-reason-is-optional](#a-broken-reason-is-optional)'s reason lives.
+
+```mermaid
+flowchart LR
+  S["the selling team"] --> R["restocks.note - urgent, for the 10.10 sale"]
+  S --> I["restock_items.note - extra stock"]
+  W["the warehouse"] --> P["restock_problem_items.note - box crushed"]
+```
+
+**The spec.**
+
+| field | written by | about |
+| --- | --- | --- |
+| `restocks.note` | 🆕 the selling team | the restock as a whole |
+| `restock_items.note` | the selling team | one line — e.g. *extra stock* |
+| `restock_problem_items.note` | 🆕 the warehouse, at accept | one broken or missing row — optional |

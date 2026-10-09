@@ -3,6 +3,10 @@
 [restock.md](./restock.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [restock_decision.md](./restock_decision.md).
 
+> **The frontend gap analysis (2026-10-09)** raised [Q20](#question) — all five parts now answered, c as three notes with one
+> writer each. **No question is open in restock.** ⚠ restock.md still lacks `restocks.note`, `restock_problem_items.note`, and the
+> courier's-charge note.
+>
 > **Re-examined after your Q19a answer (2026-10-09).** ✅ [Q19](#question): one courier's charge per restock, for now, with a
 > note. **No question is open in restock.** Left: [two-drawings-of-receiving](#two-drawings-of-receiving) — context.md still draws
 > its own accept — and a column for the charge's note.
@@ -201,6 +205,10 @@ the warehouse out of pocket with no record.
 19. ✅ *(2026-10-09)* **Answered: one charge per restock for now, with a note; outside `total`** —
     [the-courier-is-paid-once-per-restock](./restock_decision.md#the-courier-is-paid-once-per-restock) ·
     [the-couriers-charge-stays-out-of-total](./restock_decision.md#the-couriers-charge-stays-out-of-total).
+
+20. ✅ *(2026-10-09)* **Answered, every part** — [lines-can-be-added-not-removed-while-arrived](./restock_decision.md#lines-can-be-added-not-removed-while-arrived) ·
+    [a-broken-reason-is-optional](./restock_decision.md#a-broken-reason-is-optional) · [three-notes-one-writer-each](./restock_decision.md#three-notes-one-writer-each) ·
+    [edits-are-in-the-same-trail](./restock_decision.md#edits-are-in-the-same-trail) · [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile).
 
 ## Proposed Design
 
