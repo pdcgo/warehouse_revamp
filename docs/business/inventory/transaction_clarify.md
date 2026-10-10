@@ -91,7 +91,9 @@ flowchart LR
    **→ Recommend: the log rows** — each `batch_logs` and `product_placement_logs` row of the transaction, sign flipped. The
    units go back to batch 7 and batch 9 at their own prices, to Rak A and Rak B, exactly as they left. The items are then
    only checked against them.
-4. **What if a rollback would take a batch or a rack below zero?** ([Critique 4](#critique))
+4. **What if a rollback would take a batch or a rack below zero?** ([Critique 4](#critique)) 🔄 *(2026-10-10)* **The rack
+   half is forced now** — [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) puts a
+   database check on `stock_count`, so a rollback that would go below zero on a rack fails. What is left is the batch.
    **→ Recommend: refuse it**, and correct with an `adjustment` instead. An order's rollback never hits this — it puts units
    back, and [no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms) means they
    were never picked.
@@ -118,7 +120,7 @@ flowchart LR
 | | `tx_type` — [transaction.md](./transaction.md) | `change_type` — [placement.md](./placement.md) | `change_type` — [batch.md](./batch.md) |
 | --- | --- | --- | --- |
 | `order` · `restock` · `return` · `adjustment` | ✅ | ✅ | ✅ |
-| `sample` · `transfer_in` · `transfer_out` | ✅ | ✅ | ❌ — a sample's or a transfer's batch row has no valid type |
+| `sample` · `transfer_in` · `transfer_out` | ✅ | ✅ | ❌ — a sample's or a transfer's batch row has no valid type. 🔄 *(2026-10-10)* More pressing now: batch.md mints a batch on transfer in, and that batch's first row has no type |
 | `revaluation` | ❌ — no transaction type | ❌ | ✅ |
 | `broken` · `lost` | — | — | ✅ — reasons inside an `adjustment`, fine |
 

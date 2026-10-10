@@ -132,16 +132,18 @@ flowchart LR
   ST -.->|"order fee and receiving outlay"| WT
 ```
 
-### The custody boundary — three phases still have no bearer
+### The custody boundary — two phases still have no bearer
 
 ```mermaid
 flowchart TB
   R["at the door — restock receiving"] -->|"the SELLING team bears it"| S1["inventory_context §Stock loss 1"]
   B["back from a customer — return receiving"] -->|"is this 'receiving'? nobody says"| U["still open"]
   C["on the shelf — in custody, including a count shortfall"] -->|"the WAREHOUSE pays Unit Price"| S2["inventory_context §Stock loss 2"]
-  T["in transit between warehouses"] --> U
+  T["in transit between warehouses"] -->|"the SELLING team bears it"| S3["inventory/warehouse_transfer - decided 2026-10-10"]
   H["after handover to the courier"] --> U
 ```
+
+🔄 *(2026-10-10)* In transit between warehouses now has a bearer, the selling team: [the-selling-team-bears-broken-missing-and-lost](./inventory/warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost).
 
 **→ Recommend** §Warehouse 6 **link** to `inventory/context.md` §Stock loss rather than stating only the
 negative half — the doc that defines the four teams' responsibilities says who does *not* pay, and who

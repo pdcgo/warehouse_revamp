@@ -6,7 +6,7 @@
 
 1. Table `batches`
 
-    batch is minted by restock, return and adjustment
+    batch is minted by restock, return, transfer in and adjustment
 
     Field that must have:
     - `id` as primary key

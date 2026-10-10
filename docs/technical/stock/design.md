@@ -115,7 +115,6 @@ This COGS price is using to unit price in `batches` table.
 
 
 ## Stock Entity Relationship.
-1. `warehouse_transfer_teams` table is just dictionary. So we can query in `owner_team_id` side.
 ```mermaid
 erDiagram
 
@@ -222,12 +221,6 @@ tf[warehouse_transfers]{
     
     
     datetime created_at
-}
-
-tft[warehouse_transfer_teams]{
-    uint id "primary_key"
-    uint transfer_id
-    uint owner_team_id
 }
 
 re|o--o|tx : "zero or one"

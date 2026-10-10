@@ -1,8 +1,12 @@
 # Clarify — `inventory/placement.md`
 
 [placement.md](./placement.md) is yours, and this file is mine. When a point is answered I delete it here, and your
-answer goes in `placement_decision.md`.
+answer goes in [placement_decision.md](./placement_decision.md).
 
+> ✅ **Answered 2026-10-10 and deleted:** Q6, both rules —
+> [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) and
+> [rack-codes-are-saved-lowercase](./placement_decision.md#rack-codes-are-saved-lowercase) (lowercase, against my uppercase).
+>
 > **First pass (2026-10-09).** Your three tables hold up, and I am adding no columns. What placement.md does not say
 > yet is the **rules**: §Placement Ledger Mutation covers `PostOrder` and nothing else. ➡ **Moved here:**
 > [context Q11d](./context_clarify.md#question) is now [Q2](#question), and
@@ -26,6 +30,8 @@ Siblings: [context_clarify](./context_clarify.md) · [opname_clarify](./opname_c
 | [batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id) | batches are locked first, then shelves, each in id order |
 | [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked) | a sold unit counts as waiting on the rack until the verify scan |
 | [a-count-locks-the-product-on-the-rack](./opname_decision.md#a-count-locks-the-product-on-the-rack) | a count locks one product on one rack, not the whole rack |
+| [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) | `stock_count` is never below 0, checked by the database; an order that would take it below fails, and order creation returns the error |
+| [rack-codes-are-saved-lowercase](./placement_decision.md#rack-codes-are-saved-lowercase) | a rack code is trimmed and lowercased when saved |
 
 ## Placement questions filed elsewhere
 
@@ -63,7 +69,8 @@ flowchart LR
 | move | 🆕 `move` | staff | from rack to rack: [Q3](#question) |
 | broken, lost or found on a rack | `adjustment` | staff | the rack where it happened |
 | count | 🆕 `opname` | the session | per snapshot row |
-| sample · transfer out | `sample` · `transfer_out` | ❓ | [Q1](#question) |
+| transfer out | `transfer_out` | the system | ✅ fewest first, at create — [a-transfer-takes-from-the-sender-at-create](./warehouse_transfer_decision.md#a-transfer-takes-from-the-sender-at-create) |
+| sample | `sample` | ❓ | [Q1](#question) |
 | transfer in | `transfer_in` | staff, at receipt | same as accept |
 | undo | the original's type | nobody | the original's log rows with the sign flipped ([transaction Q3](./transaction_clarify.md#question)) |
 
@@ -90,7 +97,7 @@ erDiagram
   placements {
     uint id PK
     uint warehouse_id
-    string code "unique per warehouse among undeleted"
+    string code "lowercase, unique per warehouse among undeleted"
     string name
     string description
     bool locked "see opname_clarify Contradiction"
@@ -102,7 +109,7 @@ erDiagram
     uint warehouse_id
     uint product_id "unique with placement_id"
     uint placement_id
-    int stock_count "never below 0 - Q6a"
+    int stock_count "never below 0"
   }
   product_placement_logs {
     uint id PK
@@ -131,7 +138,8 @@ erDiagram
 
 ## Question
 
-1. **Sample and transfer out: which rack?** ([Critique 1](#critique))
+1. 🔄 *(2026-10-10)* **Sample: which rack?** ✅ The transfer-out half is decided — the system picks fewest first, at create
+   ([a-transfer-takes-from-the-sender-at-create](./warehouse_transfer_decision.md#a-transfer-takes-from-the-sender-at-create)). What is left is the sample. ([Critique 1](#critique))
    **→ Recommend:** it depends on how they are requested. If the selling team asks ahead (a sample for a buyer, stock
    sent to another warehouse), the request works exactly like an order: the system picks fewest first and prints a pick
    list. If the warehouse does it on the spot at the shelf, staff name the rack. I expect both are asked ahead, so the
@@ -177,13 +185,6 @@ erDiagram
    | put goods away at accept | staff | ✅ already in restock-accept |
 
    **→ Recommend:** build the list, the detail and the move first. The product section ships with the product page.
-
-6. **Two small rules. Can you confirm them?**
-
-   | | rule | why |
-   | --- | --- | --- |
-   | **6a** | `stock_count` is never below 0, enforced by a check in the database | a failed order is better than a negative shelf, and it matches the rollback refusing to go below zero ([transaction Q4](./transaction_clarify.md#question)) |
-   | **6b** | codes are compared after trimming spaces and ignoring case | `A-01` and `a-01` are the same label painted on a shelf |
 
 ---
 
