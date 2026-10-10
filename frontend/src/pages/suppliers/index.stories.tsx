@@ -32,7 +32,7 @@ function standingIn(teamId: bigint) {
 const meta = {
   title: "Pages/Suppliers/Suppliers",
   component: SuppliersPage,
-  parameters: { signedIn: true, layout: "padded" },
+  parameters: { signedIn: true },
   beforeEach: standingIn(SELLING_TEAM),
 } satisfies Meta<typeof SuppliersPage>;
 

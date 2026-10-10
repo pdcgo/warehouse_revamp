@@ -1010,9 +1010,11 @@ against a real Go server and a real Postgres, while a story pins ONE component w
 A regression in `RackSelect` should fail here in a second, naming the component — not as a mysterious
 timeout in an order-flow spec.
 
-**Only `Pages/*` stories get the page gutter** (owner) — `p="page"` is applied by `preview.tsx` to
-those and to nothing else, so a page story is framed the way the app frames it while a component
-story stays flush against the canvas and can be judged on its own edges.
+**Only `Pages/*` stories get the page gutter** (owner) — the shell's own gutter, applied by `preview.tsx` to
+those and to nothing else: `card` (12px) on a phone viewport, as `MobileLayout` has it, and `page` (20px) from
+`md` up, as `DesktopLayout` has it. A page story is framed the way the app frames it while a component
+story stays flush against the canvas and can be judged on its own edges. ⚠ A page story never sets
+`layout: "padded"` — that is Storybook's 16px ON TOP of the gutter (it made a phone story 36px a side).
 
 **The API is stubbed at the TRANSPORT**, not per hook — [.storybook/stubTransport.ts](frontend/.storybook/stubTransport.ts)
 is a `createRouterTransport` fake that replaces `src/transport.ts` at build time

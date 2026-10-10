@@ -33,7 +33,7 @@ const Routed = routedPage(
 const meta = {
   title: "Pages/Settlement/Imports",
   component: SettlementImportsPage,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: asTeam(TEAM.id),
   render: () => <Routed />,
 } satisfies Meta<typeof SettlementImportsPage>;

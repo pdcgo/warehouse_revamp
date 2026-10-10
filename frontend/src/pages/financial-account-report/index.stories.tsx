@@ -33,7 +33,7 @@ const Routed = routedPage(
 const meta = {
   title: "Pages/FinancialAccount/Report",
   component: Routed,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: asTeam(12n),
 } satisfies Meta<typeof Routed>;
 

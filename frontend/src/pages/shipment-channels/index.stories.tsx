@@ -14,7 +14,7 @@ const [jne, , , pos] = shipmentChannels;
 const meta = {
   title: "Pages/Shipment/ShipmentChannels",
   component: ShipmentChannelsPage,
-  parameters: { layout: "padded" },
+  parameters: {},
 } satisfies Meta<typeof ShipmentChannelsPage>;
 
 export default meta;

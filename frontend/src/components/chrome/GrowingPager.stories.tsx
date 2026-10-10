@@ -8,8 +8,9 @@ import { GrowingPager, description } from "./GrowingPager";
 
 // A list of `total` rows the pager is NOT told about — it learns, page by page, only whether another page
 // exists, the way a list RPC with no total answers.
-function Harness({ total = 95, pageSize = 20 }: { total?: number; pageSize?: number }) {
+function Harness({ total = 95, pageSize: initialSize = 20, sizes = false }: { total?: number; pageSize?: number; sizes?: boolean }) {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialSize);
   const [filter, setFilter] = useState("all");
 
   return (
@@ -28,7 +29,22 @@ function Harness({ total = 95, pageSize = 20 }: { total?: number; pageSize?: num
       >
         Change Filter
       </Button>
-      <GrowingPager page={page} onPageChange={setPage} hasNext={page * pageSize < total} resetKey={filter} pageSize={pageSize} />
+      <GrowingPager
+        page={page}
+        onPageChange={setPage}
+        hasNext={page * pageSize < total}
+        resetKey={`${filter}|${pageSize}`}
+        pageSize={pageSize}
+        pageSizeOptions={sizes ? [10, 20, 50] : undefined}
+        onPageSizeChange={
+          sizes
+            ? (n) => {
+                setPageSize(n);
+                setPage(1);
+              }
+            : undefined
+        }
+      />
     </Stack>
   );
 }
@@ -46,6 +62,31 @@ const numbers = (canvas: ReturnType<typeof within>) =>
   canvas.queryAllByTestId(/^growing-pager-page-\d+$/).map((b: HTMLElement) => b.textContent);
 
 export const FirstOpen: Story = {};
+
+// With a per-page selector, on the left of the page buttons — the row pushed to the right.
+export const WithPageSizes: Story = {
+  args: { sizes: true },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId("growing-pager-size")).toBeVisible();
+  },
+};
+
+// ON A PHONE the page buttons are centred and the per-page selector is gone — it filled the row
+// (a-phone-pager-is-centred-without-a-page-size).
+export const Mobile: Story = {
+  args: { sizes: true },
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByTestId("growing-pager-size")).toBeNull();
+
+    const row = canvas.getByTestId("growing-pager").getBoundingClientRect();
+    const first = canvas.getByTestId("growing-pager-prev").getBoundingClientRect();
+    const last = canvas.getByTestId("growing-pager-next").getBoundingClientRect();
+    // As much room on the left of the buttons as on their right.
+    await expect(Math.abs(first.left - row.left - (row.right - last.right))).toBeLessThan(4);
+  },
+};
 
 /** One page of data: ‹ [1] ›, both arrows off — always on screen. */
 export const OnePage: Story = {

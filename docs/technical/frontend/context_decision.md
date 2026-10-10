@@ -51,6 +51,8 @@ when it applies one of these.
 | [an-action-button-carries-its-icon](#an-action-button-carries-its-icon) | a page's and a row's action buttons carry a leading icon, as a menu item does | the order list's header actions |
 | [a-breakdown-opens-from-rincian](#a-breakdown-opens-from-rincian) | a card with a breakdown opens it from **Rincian ›** at the end of its label — a dialog, a bottom sheet on a phone | [the settlement margin](order_settlement_decision.md#the-margin-breakdown-opens-from-rincian) |
 | [every-page-has-a-mobile-story](#every-page-has-a-mobile-story) | every page's stories include one named **Mobile**, right after Default | the order screens |
+| [a-page-story-has-its-shells-gutter](#a-page-story-has-its-shells-gutter) | a page story is framed by its shell's gutter — 12px on a phone, 20px from `md` — never Storybook's padding on top | every page story |
+| [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1085,6 +1087,44 @@ Pages/Suppliers/SupplierDetail
 | its place | **right after Default**, so the two shells of one screen sit side by side in the sidebar |
 | its name | *Mobile*, never *On a Phone* |
 | today | 17 of the 35 page story files have none — they gain one when the screen is next worked on |
+
+## a-page-story-has-its-shells-gutter
+
+> Owner, in chat (2026-10-10), reviewing Discover's Mobile story: *"1 hal yang kusadari di mobile, padding xnya
+> kebesaran"* — then *"padding semuanya kayaknya"*.
+
+```
+before — a phone story                      now                         the app (MobileLayout)
+|←16→|←20→| Temukan Pemasok                 |←12→| Temukan Pemasok       |←12→| Temukan Pemasok
+  Storybook  the desktop's                    the phone shell's
+  "padded"   page gutter                      card gutter
+```
+
+| | |
+| --- | --- |
+| a page story | framed by **its shell's gutter**, on every side — `card` (12px) on a phone viewport, as `MobileLayout`'s `<main>`; `page` (20px) from `md` up, as `DesktopLayout`'s. Applied once, in `.storybook/preview.tsx` |
+| Storybook's `layout: "padded"` | **never** on a page story — it added 16px on top; removed from the 14 page story files that had it |
+| why | the phone stories showed 36px a side where the app has 12 — the review screen lied about the screen it reviews |
+| a component story | unchanged — flush against the canvas |
+
+## a-phone-pager-is-centred-without-a-page-size
+
+> Owner, in chat (2026-10-10), asked how a pager usually looks on a phone — to *Muat lebih banyak*, endless scroll or
+> Prev/Next: *"tetap seperti yang sekarang saja, tapi tengah, tetapi masalah di perpage dia memenuhi space"*.
+
+```
+before — a phone                                 now — a phone
+Per halaman [10 ⌄]    ‹ [1] 2 ›                         ‹ [1] 2 ›
+(the selector and its label filled the row)        (centred, no selector)
+```
+
+| | |
+| --- | --- |
+| the pager | the same `GrowingPager` — the pages opened so far, the current one in rose ([every-list-pages-with-the-growing-pager](#every-list-pages-with-the-growing-pager)) |
+| on a phone | its buttons **centred**; **no per-page selector** — the list keeps its page size |
+| a desktop | unchanged — the selector on the left of the buttons, the row on the right |
+| amends | *per page: the selector sits beside it* in [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) — not on a phone. The pager itself is still always on screen |
+| not chosen | *Muat lebih banyak*, endless scroll, Prev/Next — offered, kept as it is |
 
 ## Recorded elsewhere
 

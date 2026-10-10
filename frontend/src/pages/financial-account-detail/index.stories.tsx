@@ -40,7 +40,7 @@ const AtBcaGaji = routedAt(BCA_GAJI.id);
 const meta = {
   title: "Pages/FinancialAccount/Account",
   component: routedAt(BCA_OPS.id),
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   // Toko Melati's Admin — a selling team's, who moves its money.
   beforeEach: () => {
     asTeam(12n)();

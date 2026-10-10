@@ -9,12 +9,13 @@ import {
   Select,
   Text,
   createListCollection,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const description =
-  "A pager for lists that know only whether ANOTHER page exists — no total. Every page already opened gets a number, so going back to any of them is one click; › at the end opens the next new page and the numbers grow (owner: `the-accounts-pager-grows-with-the-pages-opened`). The trail lives in the component, so a refresh or leaving the screen forgets it, and a `resetKey` change (a filter, a tab, a sort) starts it over. The current page is filled in the main tone. One page reads ‹ [1] › with both arrows off — it is always on screen.";
+  "A pager for lists that know only whether ANOTHER page exists — no total. Every page already opened gets a number, so going back to any of them is one click; › at the end opens the next new page and the numbers grow (owner: `the-accounts-pager-grows-with-the-pages-opened`). The trail lives in the component, so a refresh or leaving the screen forgets it, and a `resetKey` change (a filter, a tab, a sort) starts it over. The current page is filled in the main tone. One page reads ‹ [1] › with both arrows off — it is always on screen. On a phone the buttons are centred and the per-page selector is not drawn.";
 
 export interface GrowingPagerProps {
   /** The current page, 1-based. */
@@ -85,9 +86,16 @@ export function GrowingPager({
   // ONE ROW OF EQUAL BOXES (owner: *"kurang serasi antara page dan perpage"*) — the per-page selector and the page
   // buttons side by side on the right, all `xs` (32px), all outlined, one radius, one type size. They used to be a
   // 36px borderless row at one end and a 32px bordered box at the other, and read as two unrelated controls.
+  //
+  // ON A PHONE: the page buttons CENTRED, and no per-page selector (owner: *"tetap seperti yang sekarang saja, tapi
+  // tengah, tetapi masalah di perpage dia memenuhi space"*, `a-phone-pager-is-centred-without-a-page-size`) — the
+  // selector and its label filled the row and pushed the numbers to a second one; a phone keeps the list's page size.
+  // The breakpoint is FilterBar's and the shells' (`md`).
+  const phone = useBreakpointValue({ base: true, md: false }) ?? false;
+
   return (
-    <Flex justify="flex-end" align="center" gap="3" wrap="wrap" w="full" data-testid={testId}>
-      {showSizePicker && (
+    <Flex justify={phone ? "center" : "flex-end"} align="center" gap="3" wrap="wrap" w="full" data-testid={testId}>
+      {showSizePicker && !phone && (
         <HStack gap="2">
           <Text fontSize="xs" color="fg.muted">
             {t("common.perPage")}

@@ -34,7 +34,7 @@ const AtUnknown = routedAt(999n);
 const meta = {
   title: "Pages/Suppliers/DiscoverSupplierDetail",
   component: AtNusantara,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(12n)();
     asRole(Role.SELLING_CS)();

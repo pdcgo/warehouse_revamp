@@ -37,6 +37,10 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [the-first-restock-has-its-own-line](#the-first-restock-has-its-own-line) | on a phone a product block puts *pertama …* on its own line under *Terakhir dibeli …* |
 | [a-figures-product-shows-its-picture](#a-figures-product-shows-its-picture) | Statistik's Per Produk draws a product with its picture, name and SKU — the Produk tab's item |
 | [a-phone-supplier-is-its-name-and-stores](#a-phone-supplier-is-its-name-and-stores) | on a phone the supplier list's block is the name and its stores — no contact, no address; no store reads *Belum ada toko pemasok* |
+| [discover-filters-team-before-store](#discover-filters-team-before-store) | Discover's filters: the search, then *Tim*, then the store type |
+| [discover-is-cards-or-a-table](#discover-is-cards-or-a-table) | Discover shows its suppliers as cards (the default) or as a table, by a switch; a phone always shows cards |
+| [a-discover-card-reads-who-whose-where](#a-discover-card-reads-who-whose-where) | a Discover card is the owner's reference card — name and address, a rule, the team and the stores, the contact with ↗ bottom right; four a row on a 2K screen |
+| [a-store-type-filter-is-chips](#a-store-type-filter-is-chips) | Discover's store type is a row of chips under the filters — *Semua* then every type, one chosen, in the main tone |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -570,3 +574,95 @@ Toko Grosir Sinar                       Toko Grosir Sinar
 | gone | the contact and the address line — the block is for finding the supplier; its page carries both ([the-supplier-is-described-under-its-name](#the-supplier-is-described-under-its-name)) |
 | no store | a muted line in words, ***Belum ada toko pemasok*** (en *No supplier stores yet*) — it was a dash, or no line at all |
 | a desktop | unchanged — the address under the name, the contact in its column, a store-less row's *Toko pemasok* cell still a dash |
+
+## discover-filters-team-before-store
+
+> Owner, in chat (2026-10-10), on Discover: *"tim sebelum toko untuk filter"*.
+
+```
+[Cari pemasok, alamat, atau toko]  [Semua tim ⌄]  [Semua jenis toko ⌄]
+```
+
+*Whose* comes before *where it sells* — as on the supplier page's Produk tab ([the-products-tab-filters-by-team-and-store](#the-products-tab-filters-by-team-and-store)).
+
+## discover-is-cards-or-a-table
+
+> Owner, in chat (2026-10-10): *"untuk discover kita bagi 2 mode, yaitu card dan table dan bisa swicth default card"*.
+
+```
+Temukan Pemasok
+[Cari …] [Semua tim ⌄] [Semua jenis toko ⌄]                    (▦ Kartu | ⊞ Tabel)
+┌ PT Sumber Makmur ─────────┐ ┌ CV Cahaya Abadi ───┐ ┌ UD Makmur Jaya ────┐
+│ Jl. Soekarno-Hatta 112, … │ │ Jl. Raya Darmo 45… │ │ Jl. Pasar Baru 3…  │
+│ [TM] Toko Melati  Selling │ │ [TM] Toko Melati   │ │ [TK] Toko Kenanga  │
+│ [Shopee] [Tokopedia] …    │ │ [Other]            │ │ [Shopee] [TikTok]  │
+│ ☎ 0812-1111-2222          │ │ ☎ 0812-2222-3333   │ │ ☎ 0813-4444-5555   │
+└───────────────────────────┘ └────────────────────┘ └────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the switch | **Kartu · Tabel**, a segmented choice with an icon each ([a-segmented-choice-is-in-the-main-tone](context_decision.md#a-segmented-choice-is-in-the-main-tone)), at the right of the filter row — **Kartu** first |
+| a card | the name, the address under it, the team that keeps it (`TeamItem`), its stores (`ChannelTypes`, or *Belum ada toko pemasok*), the contact with its icon · the whole card opens the Discover detail and lights up under a pointer and while pressed |
+| the grid | one card a row on a phone, two from `md`, three from `lg` |
+| the table | the rows it had — Pemasok (address under) · Tim · Toko pemasok · Kontak |
+| what carries across | the filters and the page — the same rows, read two ways |
+| a phone | always cards — they are its blocks — so no switch |
+| remembered | no — every visit opens on cards |
+| with it | the screen rules it had missed: `GrowingPager` ([every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager)), every cell of a table row lighting up ([a-table-row-lights-up](context_decision.md#a-table-row-lights-up)), a Mobile story right after Default ([every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story)) |
+
+## a-discover-card-reads-who-whose-where
+
+> Owner, in chat (2026-10-10), sending a reference card (a title, a description, a rule, an owner with a sub-line, tags,
+> then *Contact available* and ↗): *"card 4, sama kasih panah itu di bawah kanan"* — then *"cardnya ada 4 di 2k"*.
+
+```
+┌──────────────────────────────────┐
+│ PT Sumber Makmur                 │   ← Card.Title
+│ Jl. Soekarno-Hatta 112, Bandung  │   ← Card.Description — where it is
+│ ──────────────────────────────── │
+│ [TM] Toko Melati                 │   ← whose it is (TeamItem)
+│      Selling                     │
+│ [Shopee] [Tokopedia] [Other]     │   ← where it sells — or "Belum ada toko pemasok"
+│ 0812-1111-2222                ↗  │   ← Card.Footer: the contact, the arrow bottom right
+└──────────────────────────────────┘
+```
+
+| the reference | the supplier card |
+| --- | --- |
+| title | the supplier's **name** |
+| description | its **address** (two lines at most) — the supplier's own description stays on its page |
+| the rule | a `Separator` |
+| the owner, with its sub-line | **the team that keeps it** — `TeamItem`, the app's one way to draw a team (its type a badge, not plain text) |
+| tags | **its stores** — `ChannelTypes`, one badge per type with its count |
+| *Contact available* | **the contact itself**, small and muted — or *Belum ada kontak* |
+| ↗ bottom right | `ArrowUpRight`, muted — the whole card opens the Discover detail |
+
+| | |
+| --- | --- |
+| the grid | one a row on a phone, two from `md`, three from `lg`, **four from `2xl`** (1536px — a 2K screen) |
+| supersedes | the card's content and the grid in [discover-is-cards-or-a-table](#discover-is-cards-or-a-table) |
+
+## a-store-type-filter-is-chips
+
+> Owner, in chat (2026-10-10), on Discover, sending a row of rounded chips (*All · Engineering · Design · Product*):
+> *"filter jenis tokonya seperti ini"*.
+
+```
+[Cari pemasok, alamat, atau toko]  [Semua tim ⌄]   Hapus Filter          (▦ Kartu | ⊞ Tabel)
+(Semua) (Shopee) (Tokopedia) (Lazada) (TikTok) (Blibli) (Bukalapak) (Other)
+           ↑ the chosen chip — pale rose, a rose border and label
+
+on a phone
+[Cari …]  [⚟ Filter]
+(Semua) (Shopee) (Tokopedia) (Lazada) …  → scrolls sideways
+```
+
+| | |
+| --- | --- |
+| the control | `FilterChips` (new, `components/chrome/`) — **Semua** first, then every store type; **one** chosen at a time, in the main tone ([a-chosen-option-is-in-the-main-tone](context_decision.md#a-chosen-option-is-in-the-main-tone)); buttons with `aria-pressed` |
+| where | its **own row, right under the filters** — the team filter stays first ([discover-filters-team-before-store](#discover-filters-team-before-store)) |
+| on a phone | outside the Filter sheet, one row that **scrolls sideways** — the narrowing reached for most stays one tap away |
+| the Filter count | leaves the type out — its chips are on screen; **Hapus Filter** still resets it |
+| not RadioPills | that is a field's answer on a form, with a radio mark and two to four options; this is a list's quick narrowing |
+| was | a `MarketplaceSelect` dropdown in the filter row |

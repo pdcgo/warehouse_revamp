@@ -36,7 +36,7 @@ const Routed = routedPage(
 const meta = {
   title: "Pages/FinancialAccount/Accounts",
   component: Routed,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   // Toko Melati's Admin — a selling team's, who moves its money.
   beforeEach: () => {
     asTeam(12n)();

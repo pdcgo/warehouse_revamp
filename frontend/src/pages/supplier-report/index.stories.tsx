@@ -38,7 +38,7 @@ const Routed = routedPage(
 const meta = {
   title: "Pages/Suppliers/SupplierReport",
   component: Routed,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(MELATI.id)();
     asRole(Role.SELLING_OWNER)();

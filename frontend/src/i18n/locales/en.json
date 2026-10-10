@@ -1506,7 +1506,14 @@
           "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet"
         }
       },
-      "teamAll": "Any team"
+      "teamAll": "Any team",
+      "view": {
+        "label": "View",
+        "cards": "Cards",
+        "table": "Table"
+      },
+      "noContact": "No contact yet",
+      "typeChipAll": "All"
     },
     "lead": "The suppliers this team keeps — the vendors it buys its stock from.",
     "search": "Search a supplier, address or store",

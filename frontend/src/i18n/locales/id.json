@@ -1501,7 +1501,14 @@
           "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun"
         }
       },
-      "teamAll": "Semua tim"
+      "teamAll": "Semua tim",
+      "view": {
+        "label": "Tampilan",
+        "cards": "Kartu",
+        "table": "Tabel"
+      },
+      "noContact": "Belum ada kontak",
+      "typeChipAll": "Semua"
     },
     "lead": "Pemasok yang dikelola tim ini — vendor tempat tim membeli stoknya.",
     "search": "Cari pemasok, alamat, atau toko",

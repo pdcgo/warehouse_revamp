@@ -49,7 +49,7 @@ const AtDeleted = routedAt(LAMA_TUTUP.id);
 const meta = {
   title: "Pages/Suppliers/SupplierDetail",
   component: routedAt(SUMBER.id),
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(12n)();
     asRole(Role.SELLING_OWNER)();

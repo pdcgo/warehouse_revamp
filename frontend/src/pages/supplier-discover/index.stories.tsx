@@ -24,14 +24,15 @@ const Routed = routedPage(
 const SUMBER = supplierFixture("PT Sumber Makmur"); // team 12's — the viewer's own team
 const BANYAK = supplierFixture("PT Banyak Toko"); // team 12's — has a Lazada store
 const NUSANTARA = supplierFixture("PT Tekstil Nusantara"); // team 15's — has a Lazada store
-const LINEN = supplierFixture("Linen House"); // team 15's — its TikTok store is "linenhouse"
+const LINEN = supplierFixture("Linen House");
+const SINAR = supplierFixture("Toko Grosir Sinar"); // team 12's — no store // team 15's — its TikTok store is "linenhouse"
 const LAMA_TUTUP = supplierFixture("CV Lama Tutup"); // deleted
 const LIVE = supplierFixtures.filter((s) => !s.deleted);
 
 const meta = {
   title: "Pages/Suppliers/DiscoverSuppliers",
   component: Routed,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(12n)();
     asRole(Role.SELLING_CS)();
@@ -58,6 +59,24 @@ async function search(canvas: ReturnType<typeof within>, term: string) {
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 export const Default: Story = {};
+
+// A PHONE ALWAYS READS CARDS — one column, the cards are its blocks — so it has no Cards/Table switch.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("discover-suppliers-table")).toHaveAttribute("data-view", "cards");
+    await expect(canvas.queryByTestId("discover-suppliers-view")).toBeNull();
+  },
+};
+
+export const TableView: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("discover-suppliers-view-table"));
+    await waitFor(() => expect(canvas.getByTestId("discover-suppliers-table")).toHaveAttribute("data-view", "table"));
+  },
+};
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
@@ -131,12 +150,9 @@ export const FilterByChannelType: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(
-      within(canvas.getByTestId("discover-suppliers-type-filter")).getByTestId("marketplace-select"),
-    );
-    const lazada = await canvas.findByRole("option", { name: "Lazada" });
-    await waitFor(() => expect(lazada).toBeVisible());
-    await userEvent.click(lazada);
+    // The store type is a chip (a-store-type-filter-is-chips).
+    await userEvent.click(canvas.getByRole("button", { name: "Lazada" }));
+    await expect(canvas.getByRole("button", { name: "Lazada" })).toHaveAttribute("aria-pressed", "true");
 
     await waitFor(() => expect(rows(canvas)).toHaveLength(2));
     await expect(canvas.getByTestId(`discover-supplier-row-${BANYAK.id}`)).toBeVisible();
@@ -150,13 +166,13 @@ export const Paginates: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await userEvent.click(canvas.getByTestId("page-size"));
+    await userEvent.click(canvas.getByTestId("discover-suppliers-pager-size"));
     const ten = await canvas.findByRole("option", { name: "10" });
     await waitFor(() => expect(ten).toBeVisible());
     await userEvent.click(ten);
     await waitFor(() => expect(rows(canvas)).toHaveLength(10));
 
-    await userEvent.click(canvas.getByTestId("page-next"));
+    await userEvent.click(canvas.getByTestId("discover-suppliers-pager-next"));
     await waitFor(() => expect(rows(canvas)).toHaveLength(LIVE.length - 10));
   },
 };
@@ -169,5 +185,107 @@ export const ARowOpensTheDiscoverDetail: Story = {
     await userEvent.click(canvas.getByTestId(`discover-supplier-row-${NUSANTARA.id}`));
     await canvas.findByTestId("at-discover-detail");
     await expect(canvas.queryByTestId("at-manage-detail")).toBeNull();
+  },
+};
+
+// ── Cards or a table (`discover-is-cards-or-a-table`, `discover-filters-team-before-store`) ────────────────────────
+
+// CARDS FIRST, a table on a switch — the same rows either way, and the filters and the page carry across.
+export const CardsFirstThenATable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("discover-suppliers-table")).toHaveAttribute("data-view", "cards");
+    await expect(within(canvas.getByTestId("discover-suppliers-table")).queryAllByRole("columnheader")).toHaveLength(0);
+    const shown = rows(canvas).length;
+
+    await userEvent.click(canvas.getByTestId("discover-suppliers-view-table"));
+    await waitFor(() => expect(canvas.getByTestId("discover-suppliers-table")).toHaveAttribute("data-view", "table"));
+    await expect(within(canvas.getByTestId("discover-suppliers-table")).getAllByRole("columnheader").length).toBeGreaterThan(0);
+    await expect(rows(canvas)).toHaveLength(shown);
+
+    await userEvent.click(canvas.getByTestId("discover-suppliers-view-cards"));
+    await waitFor(() => expect(canvas.getByTestId("discover-suppliers-table")).toHaveAttribute("data-view", "cards"));
+  },
+};
+
+// A CARD says who the supplier is, whose it is and where it sells — and a store-less one says so in words.
+export const ACardReadsTheRow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const card = canvas.getByTestId(`discover-supplier-row-${SUMBER.id}`);
+    await expect(card).toHaveTextContent(SUMBER.name);
+    await expect(card).toHaveTextContent(SUMBER.address);
+    await expect(card).toHaveTextContent("Toko Melati");
+    await expect(card).toHaveTextContent("Shopee");
+    await expect(card).toHaveTextContent(SUMBER.contact);
+
+    await expect(canvas.getByTestId(`discover-supplier-row-${SINAR.id}`)).toHaveTextContent("No supplier stores yet");
+  },
+};
+
+// The team filter comes before the store type.
+export const TheTeamFilterComesFirst: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const team = canvas.getByTestId("discover-suppliers-team-filter").getBoundingClientRect();
+    // The store-type chips are the row under the filters.
+    const type = canvas.getByTestId("discover-suppliers-type-filter").getBoundingClientRect();
+    await expect(type.top).toBeGreaterThanOrEqual(team.bottom);
+  },
+};
+
+// THE STORE TYPE IS CHIPS — Semua first and chosen, then every type; one pressed at a time; on a phone they stay out of
+// the Filter sheet, one row that scrolls sideways (a-store-type-filter-is-chips).
+export const TheStoreTypeIsChips: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const chips = within(canvas.getByTestId("discover-suppliers-type-filter")).getAllByRole("button");
+
+    await expect(chips.map((c) => c.textContent)).toEqual([
+      "All",
+      "Shopee",
+      "Tokopedia",
+      "Lazada",
+      "TikTok",
+      "Blibli",
+      "Bukalapak",
+      "Other",
+    ]);
+    await expect(chips[0]).toHaveAttribute("aria-pressed", "true");
+  },
+};
+
+// A table row lights up under the pointer, every cell (a-table-row-lights-up) — driven by `data-hover`.
+export const ATableRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("discover-suppliers-view-table"));
+
+    const row = await canvas.findByTestId(`discover-supplier-row-${SUMBER.id}`);
+    await waitFor(() => expect(row.tagName).toBe("TR"));
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};
+
+// THE CARD READS AS THE OWNER'S REFERENCE (a-discover-card-reads-who-whose-where): the name and where it is, a rule, whose
+// it is and where it sells, then the contact with the ↗ at the bottom right — or words when there is no contact.
+export const TheCardEndsWithItsContactAndAnArrow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const card = canvas.getByTestId(`discover-supplier-row-${SUMBER.id}`);
+    const contact = within(card).getByTestId(`discover-card-contact-${SUMBER.id}`).getBoundingClientRect();
+    const arrow = card.querySelector("svg.lucide-arrow-up-right")!.getBoundingClientRect();
+    await expect(contact.top).toBeGreaterThan(within(card).getByTestId(`discover-card-address-${SUMBER.id}`).getBoundingClientRect().bottom);
+    await expect(arrow.left).toBeGreaterThan(contact.right);
+    await expect(Math.abs(arrow.right - card.getBoundingClientRect().right)).toBeLessThan(32);
+
+    await expect(canvas.getByTestId(`discover-card-contact-${SINAR.id}`)).toHaveTextContent("No contact yet");
   },
 };
