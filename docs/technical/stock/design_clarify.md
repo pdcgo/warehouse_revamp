@@ -145,6 +145,16 @@ and it is the doc every other service copies. **→ Rename it there.**
 2. **Is cancellation refused once the batch has been touched?** I recommend yes.
 3. **`ProductQtyCount` — this line, or the whole restock?** And by quantity or by value?
 
+6. 🆕 *(2026-10-10, found by the `int64` sweep)* **Do inventory's money fields move to `double` in the same cut-over?**
+   The ledgers are `float64` ([stock-money-is-float64-compared-at-4-digits](./design_decision.md#stock-money-is-float64-compared-at-4-digits)),
+   but every money field in inventory's protos is `int64`: 41 of them, across `inventory`, `restock_request`, `rack` and
+   `warehouse_transfer` (the prototype included). So restock accept would hand an `int64` unit cost to a `float64` batch.
+
+   **→ Recommend yes, in the same pass as [Q5](#question).** The cut-over already moves all 38 files, and changing the
+   field types is part of the same move. Otherwise every RPC converts at the ledger's edge, and a fractional unit cost
+   (Rp 333,33…) is truncated on its way back out to the screen. Every new field is `double` from now on.
+
+
 ---
 
 # Awaiting

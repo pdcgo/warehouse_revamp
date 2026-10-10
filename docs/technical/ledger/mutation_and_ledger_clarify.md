@@ -5,6 +5,10 @@ yours; this one is mine. Answered points are **deleted**, so this is always the 
 
 > **Full re-examination.** Rewritten tight — the previous version had grown past the doc it tracks.
 > Nothing still-open was dropped.
+>
+> ✅ **Answered 2026-10-10 and deleted:** Q2 and Critique 1, against my integer minor-units — float64 is the
+> template's default, and the payment ledger inherits it
+> ([every-ledger-keeps-money-as-float64](./mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
 
 ---
 
@@ -77,7 +81,6 @@ decision and re-deriving it.
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **`float64` in the template reaches the Payment ledger, where the stock argument does not apply.** `## Implementation Plan.` item 3 is a *"Payment and Balance Ledger"*. Stock justified float by COGS division (`(fee) / qty`) — payments have no such division: an amount owed is an exact number of rupiah. Inheriting float there is a money ledger that cannot reconcile to a bank statement, for a reason that was never about payments. | Integer minor-units in the template. If stock keeps float for valuation, that is a stock-local exception and should be stated as one — not the default every future ledger copies. |
 | **2** | **Lock ordering is undefined → deadlock.** `mut` locks its business rows, then `lg` locks state rows, and the change list is applied in a `loop` in list order. Two mutations touching the same two scopes in opposite order deadlock — and this system's normal case is two people on one shelf. | **Sort the change list by scope key inside the write session.** Invisible to callers, impossible to get wrong at a call site, and it exists once. Then `audit-sql` on the first mutation that uses it. |
 | **3** | **`lock states` and `update atomic balance + change` are redundant.** If the update is `UPDATE … SET balance = balance + ? RETURNING balance`, the row lock is implicit and the explicit lock does nothing. If the explicit lock is what protects it, "atomic" is doing nothing. | Drop the `lg->>st: lock states` step. `UPDATE … RETURNING` **is** the protocol, and a guard becomes `WHERE balance + ? >= 0` with zero-rows-affected as the rejection. |
 | **4** | **Get-or-create races.** `alt Exist / else create` — two concurrent transactions both miss, both insert, one dies on the unique violation and takes the whole business transaction with it. The same check-then-act shape the event library rejects for dedup. | Collapse the `alt` **and** the `loop` into one statement: `INSERT … ON CONFLICT (scope…) DO UPDATE SET balance = ledger_state.balance + EXCLUDED.change RETURNING balance`. The race disappears rather than being handled. |
@@ -90,8 +93,6 @@ decision and re-deriving it.
 
 1. **Does `## Idempotency Layer.` survive at all**, now that item 1 defers to `event_library`? I recommend
    deleting it.
-2. **Is `float64` a stock-local exception or the template's default?** It decides what the Payment ledger
-   inherits.
 3. **Is `ledger_logs` append-only?** Stock has answered it; the template has not, and `## Ledger Log.`'s
    source-of-truth rule rests on the answer.
 4. 🆕 *(2026-10-08)* **Who opens the database transaction — the mutation, or its caller?** `## Flow Mutation and
