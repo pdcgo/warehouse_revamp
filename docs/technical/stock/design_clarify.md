@@ -6,6 +6,10 @@ is mine. Answered points are **deleted**, so this is always the current open set
 > **Full re-examination.** This file had grown to 4× the doc it tracks by appending on every save —
 > the thing `disscuss/` is supposed to avoid. Rewritten tight. Nothing dropped that is still open.
 >
+> ✅ **Answered 2026-10-10 and deleted:** Q4, against my `int64` — stock money is `float64`, compared at 4-digit precision
+> ([stock-money-is-float64-compared-at-4-digits](./design_decision.md#stock-money-is-float64-compared-at-4-digits)). It also
+> closes the first contradiction below.
+>
 > **Closed since last pass:** `inventory_transactions.status` exists · `warehouse_transfer_teams` is
 > declared a query-side dictionary · deleted places mangle `code` so it can be reused · the Accept
 > participant is now named `Restock Accept Mutation`.
@@ -16,44 +20,10 @@ is mine. Answered points are **deleted**, so this is always the current open set
 
 ## `float64` is a worse answer to division, not a better one
 
-> *"The reason valuation used `float64` is because later in cogs Price there is additional price that
-> calculate and divided by quantity."* — `## General Brief` item 2
-
-The premise is right and it is the strongest reason to **drop** float. Division by quantity produces a
-non-terminating value, so **the remainder has to go somewhere.** Float does not solve that — it hides
-where, and picks a binary approximation you cannot audit. A 1,000 shipping fee over 3 units:
-
-| type | the three unit costs | × 3 |
-| --- | --- | --- |
-| `float64` | 333.33333333333331… | **999.99999999999989** ≠ 1000 |
-| `numeric(_,2)`, remainder to the last | 333.33 · 333.33 · 333.34 | **1000.00** ✅ |
-| `int64` rupiah, remainder to the last | 333 · 333 · 334 | **1000** ✅ |
-
-Float is *also* inexact here — it just fails at the 13th decimal instead of the 2nd, and it fails
-silently. **The 4-digit comparison rule fixes comparison and not the two things underneath it:**
-
-- **`SUM()` over `float8` is not deterministic in Postgres.** Addition is not associative in floating
-  point, and parallel aggregation accumulates partial sums in whatever order the workers finish. The
-  same reconcile query over the same unchanged rows can return two different totals on two runs — so
-  the value being compared is itself unstable, and a tolerance cannot fix an unstable input.
-- **Drift accumulates, a fixed epsilon does not.** 1e-4 is comfortable for a hundred movements and not
-  for ten million. The failure mode is that it holds for a year and then starts tripping, with no way
-  to tell when the error entered — and the tempting fix is to widen the epsilon.
-
-**→ `int64` rupiah.** Rupiah has no sub-unit in practice, so a fractional currency value is never a real
-quantity, and four digits of precision are being spent compensating for an error the type introduced.
-Integer division forces you to *state* where the remainder goes, which is auditable and reconciles to
-the bank. If sub-rupiah unit costs are genuinely needed (a screw at 33.3), scale the integer — store
-`unit_cost` in 1/100 rupiah, or store the line total and derive the unit.
-
-**If float stays, that is your call — but then write the weaker guarantee down.** `## Ledger Log.` says
-the log *is* the source of truth for state. With float it reproduces state *to within a tolerance*, so
-the doc should say: the tolerance is 1e-4, reconcile compares within it, and a difference below it is
-not evidence of a bug. Silence there is what makes a future discrepancy unarguable in both directions.
-
-⚠ **The same reasoning covers all eight money columns** — `valuation_balance`, `unit_price`,
-`stock_accepted_valuation`, `valuation_change`, `valuation_balance_after`, `restocks.total`,
-`restock_items.total`, and both fees. Quantity as `int` is already right.
+✅ *(2026-10-10)* **Decided the other way — float stays**, as §General Brief says:
+[stock-money-is-float64-compared-at-4-digits](./design_decision.md#stock-money-is-float64-compared-at-4-digits). My `int64`
+argument is withdrawn. What I asked for if float stayed is now written down in the decision: amounts are compared at
+4-digit precision through one helper, and the log reproduces money to that precision, so a smaller difference is not a bug.
 
 ## In-transit goods have nowhere to be
 
@@ -174,7 +144,6 @@ and it is the doc every other service copies. **→ Rename it there.**
    *where do in-transit goods live?* My in-transit place is withdrawn.
 2. **Is cancellation refused once the batch has been touched?** I recommend yes.
 3. **`ProductQtyCount` — this line, or the whole restock?** And by quantity or by value?
-4. **Valuation type — `numeric` or integer rupiah?** I recommend `int64` rupiah.
 
 ---
 
