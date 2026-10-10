@@ -3,6 +3,12 @@
 [placement.md](./placement.md) is yours, and this file is mine. When a point is answered I delete it here, and your
 answer goes in [placement_decision.md](./placement_decision.md).
 
+> ✅ **Answered 2026-10-10 and deleted:** Q5 and 3e, the first screens —
+> [placements-list-detail-and-move-come-first](./placement_decision.md#placements-list-detail-and-move-come-first) — and
+> Q7, which that opened against the build —
+> [the-racks-page-is-the-placement-list](./placement_decision.md#the-racks-page-is-the-placement-list): the built Racks
+> page is the list, the Move goes on Rack detail, the screen says *Racks*, and the selling team's stub is dropped.
+>
 > ✅ **Answered 2026-10-10 and deleted:** Q6, both rules —
 > [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) and
 > [rack-codes-are-saved-lowercase](./placement_decision.md#rack-codes-are-saved-lowercase) (lowercase, against my uppercase).
@@ -32,6 +38,8 @@ Siblings: [context_clarify](./context_clarify.md) · [opname_clarify](./opname_c
 | [a-count-locks-the-product-on-the-rack](./opname_decision.md#a-count-locks-the-product-on-the-rack) | a count locks one product on one rack, not the whole rack |
 | [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) | `stock_count` is never below 0, checked by the database; an order that would take it below fails, and order creation returns the error |
 | [rack-codes-are-saved-lowercase](./placement_decision.md#rack-codes-are-saved-lowercase) | a rack code is trimmed and lowercased when saved |
+| [placements-list-detail-and-move-come-first](./placement_decision.md#placements-list-detail-and-move-come-first) | the list, the detail, and a move as an action on the detail come first; *where is this product* ships with the product page |
+| [the-racks-page-is-the-placement-list](./placement_decision.md#the-racks-page-is-the-placement-list) | those screens are the built Racks and Rack detail; the Move goes on Rack detail; the screen says *Racks*, the table `placements`; no placement screen for a selling team |
 
 ## Placement questions filed elsewhere
 
@@ -132,7 +140,6 @@ erDiagram
 | **1** | **One rule for seven kinds.** §Placement Ledger Mutation covers `PostOrder`, but `change_type` lists seven kinds of change, and each one has to say which rack it uses. | Use the principle in [who chooses the rack](#who-chooses-the-rack), and give placement.md one line per operation |
 | **2** | **There is no move**, and a move is the only act that touches placements and nothing else. Without a recorded move, reshelving shows up at the next count as a loss on one rack and a find on another, and a loss is the warehouse's debt. A rack can only be deleted at 0, so emptying one also needs a move | [Q3](#question) |
 | **3** | **`stock_count` is not what is physically on the shelf.** `PostOrder` lowers it when the order is created, but the unit only leaves at the verify scan. So Rak A can read 1 while 2 units are still on it | Treat `stock_count` as *on the rack and not sold*, and have the screen show what is physically there: [Q4](#question) |
-| **4** | **No screen is named.** HARD RULE 6 orders the design jobs → screens → API, and placement has jobs (set up racks, look at a rack, move goods) but no screens yet | [Q5](#question) |
 
 ---
 
@@ -165,7 +172,10 @@ erDiagram
    | **3b** | who | any member of the warehouse team, the same as accept. Each row carries the actor |
    | **3c** | many products at once, e.g. *"empty Rak A into Rak C"* | one action that writes **one transaction per owning team**, because a transaction carries one `team_id` |
    | **3d** | putting goods away at accept | **not a move.** It is part of the accept's own log rows. Only a later re-shelving is a move (moved from context Critique 12) |
-   | **3e** | where the move happens on screen | an action on the rack's page (a dialog: product, quantity, target rack), not a page of its own ([Q5](#question)) |
+
+   ✅ 3e, where a move happens on screen, is answered: a dialog on Rack detail
+   ([placements-list-detail-and-move-come-first](./placement_decision.md#placements-list-detail-and-move-come-first),
+   [the-racks-page-is-the-placement-list](./placement_decision.md#the-racks-page-is-the-placement-list)).
 
 4. **What does the rack screen show?** ([Critique 3](#critique)) Rak A: the book says 1, one sold unit is waiting for the
    picker, so 2 are physically there.
@@ -173,18 +183,6 @@ erDiagram
    picker"* under it. Whoever reads a rack's screen is standing at that rack, and a screen that disagrees with what they
    can see is a screen they stop trusting. The selling team never reads a rack: it reads the product total, which is the
    book. `stock_count` stays the book, and the physical count is the book plus the sold units not yet scanned.
-
-5. **Which screens, and which come first?** ([Critique 4](#critique))
-
-   | job | who | screen |
-   | --- | --- | --- |
-   | set up racks | warehouse admin | **Placements**: a list, plus create, edit and delete |
-   | see what is on a rack | staff | **Placement detail**: its products with counts ([Q4](#question)) and its log |
-   | move goods | staff | **Move**: an action on Placement detail ([3e](#question)) |
-   | find where a product is | staff, picker | a section on the product's warehouse page |
-   | put goods away at accept | staff | ✅ already in restock-accept |
-
-   **→ Recommend:** build the list, the detail and the move first. The product section ships with the product page.
 
 ---
 

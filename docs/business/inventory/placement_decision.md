@@ -7,6 +7,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | --- | --- | --- |
 | [a-shelf-never-goes-below-zero](#a-shelf-never-goes-below-zero) | `stock_count` is never below 0, checked by the database; a take that would go below is refused, and order creation returns the error | chat, 2026-10-10 — answers placement Q6a, as recommended |
 | [rack-codes-are-saved-lowercase](#rack-codes-are-saved-lowercase) | a rack code is trimmed and lowercased when saved, so one label has one spelling | chat, 2026-10-10 — answers placement Q6b, **against** my uppercase |
+| [placements-list-detail-and-move-come-first](#placements-list-detail-and-move-come-first) | the first placement screens are the list, the detail, and a move as an action on the detail; *where is this product* ships with the product page | chat, 2026-10-10 — answers placement Q5 and 3e, as recommended |
+| [the-racks-page-is-the-placement-list](#the-racks-page-is-the-placement-list) | the built Racks page is the placement list and Rack detail gets the Move; the screen says *Racks* (*Rak*), the table stays `placements`; the selling team's stub is dropped | chat, 2026-10-10 — answers placement Q7, as recommended |
 
 ---
 
@@ -77,3 +79,84 @@ flowchart LR
 **What it does NOT settle** — ⚠ the build today stores codes as typed, with a case-sensitive index. Moving to this rule
 lowercases the existing codes, and two that differ only by case (`A-01` and `a-01` in one warehouse) collide: they must be
 merged or renamed before the migration runs.
+
+## placements-list-detail-and-move-come-first
+
+> Owner, in chat *(2026-10-10)*: *"for q5 yes i follow your recomendation"*. It answers
+> [placement_clarify Q5](./placement_clarify.md#question) (which screens, and which come first) as recommended. The
+> accepted table put the move on Placement detail, so it answers **3e** (where a move happens) too.
+
+**The verdict.** Each placement job gets one screen, tied to the person who does it (HARD RULE 6). Three come first: the
+list, the detail, and the move. A move is an action on the rack's own page, not a page of its own, because whoever
+moves goods is already looking at the rack they are taking from.
+
+```mermaid
+flowchart LR
+  L["Placements - list, create, edit, delete"] -->|"click a rack"| D["Placement detail - products, counts, log"]
+  D -->|"Move action"| M["Move dialog - product, quantity, target rack"]
+  M -->|"writes the move"| D
+  P["product warehouse page - later"] -.->|"where is this product"| D
+  R["restock accept - built"] -.->|"put-away"| D
+```
+
+**The spec.**
+
+| job | who | screen | when |
+| --- | --- | --- | --- |
+| set up racks | warehouse admin | **Placements**: a list, with create, edit and delete | **first** |
+| see what is on a rack | staff | **Placement detail**: its products with their counts, and its log | **first** |
+| move goods | staff | **Move**: a dialog opened from Placement detail (product, quantity, target rack). Not a page | **first** |
+| find where a product is | staff, picker | a section on the product's warehouse page | ships **with the product page** |
+| put goods away at accept | staff | restock-accept | ✅ already built |
+
+**What it does NOT settle.**
+- The big number on Placement detail, the book count or what is physically there: [Q4](./placement_clarify.md#question).
+- What a move writes, who may do one, and moving many products at once: [Q3a–c](./placement_clarify.md#question).
+- ⚠ The build already has two of the three screens, under another name: **Racks** (`inventories/racks`: list, create,
+  edit, delete) and **Rack detail** (stock, plus two history tabs), both in the warehouse menu. There is no Move action
+  yet. `inventories/placements` is an empty stub in the **selling** team's menu. What to call the screens, and whether
+  the stub stays: [Q7](./placement_clarify.md#question).
+
+## the-racks-page-is-the-placement-list
+
+> Owner, in chat *(2026-10-10)*: *"i follow your recomendation"*, quoting the recommendation in full. It answers
+> [placement_clarify Q7](./placement_clarify.md#question) (the decided list already exists under another name, and the
+> decided name sits on an empty page for the wrong team) as recommended.
+
+**The verdict.** The screens named in
+[placements-list-detail-and-move-come-first](#placements-list-detail-and-move-come-first) are the ones already built.
+Nothing new is started for the list or the detail; the Move is added to Rack detail. On screen they are called by the word
+staff use at the shelf, *"Rak A"*, and the schema keeps its own word. A selling team never reads a rack, so the empty
+Placements page in its menu goes.
+
+```mermaid
+flowchart LR
+  subgraph "decided as"
+    PL["Placements list"]
+    PD["Placement detail"]
+    MV["Move"]
+  end
+  subgraph "built as"
+    RL["Racks - inventories/racks"]
+    RD["Rack detail - inventories/racks/:rackId"]
+    RM["Move dialog on Rack detail - to build"]
+  end
+  PL --> RL
+  PD --> RD
+  MV --> RM
+  ST["selling menu - Placements stub"] -->|"dropped"| X["gone"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the list | `inventories/racks`, warehouse menu only, as built: list, create, edit, delete |
+| the detail | `inventories/racks/:rackId`, as built; the Move is added here as a dialog (product, quantity, target rack) |
+| the word on screen | **Racks** in English, **Rak** in Indonesian, for the menu, the titles and the buttons |
+| the word in the schema | `placements`, `product_placements`, `product_placement_logs`, as [placement.md](./placement.md) names them |
+| the selling team's `inventories/placements` | dropped: the menu entry, the route, the page and its copy |
+
+**What it does NOT settle** — the Move's behaviour, which waits on [Q3a–c](./placement_clarify.md#question) · the count shown
+on Rack detail, [Q4](./placement_clarify.md#question) · the word *placement* inside other screens (a batch's *Placements*
+tab, a rack's *Placement history*), which names the act of placing rather than the screen, so it stays.

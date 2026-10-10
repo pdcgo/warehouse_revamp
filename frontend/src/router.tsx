@@ -93,9 +93,6 @@ const LiabilityDetailPage = lazy(() =>
 const InventoryPage = lazy(() =>
   import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
-const PlacementsPage = lazy(() =>
-  import("./pages/placements").then((m) => ({ default: m.PlacementsPage })),
-);
 const ReturnsPage = lazy(() =>
   import("./pages/returns").then((m) => ({ default: m.ReturnsPage })),
 );
@@ -366,7 +363,6 @@ export const router = createBrowserRouter([
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122), and it is now TWO
       // screens behind ONE path — see RestockRoute. The on-hand list is "Stock" (it was only ever
       // called Restock under the superseded "pick a warehouse and receive there" design).
-      // Placements is a stub.
       { path: "inventories/restock", element: <RestockRoute /> },
       // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
       // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
@@ -396,7 +392,6 @@ export const router = createBrowserRouter([
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.
       { path: "inventories/products/:productId", element: <WarehouseProductPage /> },
-      { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/returns", element: <ReturnsPage /> },
       // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
       // dialog (CLAUDE.md).
@@ -411,8 +406,9 @@ export const router = createBrowserRouter([
       // Suppliers ranked by what was restocked from them (the-figures-are-a-statistics-tab-and-a-supplier-report).
       // "report" is static too, so it outranks :supplierId the same way.
       { path: "inventories/suppliers/report", element: <SupplierReportPage /> },
-      // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
-      // only, but the route is open and the server's policy is what actually decides.
+      // Racks are the warehouse's own shelves (#129), and this IS the placement list
+      // (the-racks-page-is-the-placement-list) — the menu offers them to warehouse teams only, but
+      // the route is open and the server's policy is what actually decides.
       { path: "inventories/racks", element: <RacksPage /> },
       // Every stock batch in the warehouse (#209) — cost layers, browsable by receipt and expiry.
       { path: "inventories/batches", element: <BatchesPage /> },
