@@ -46,6 +46,11 @@ when it applies one of these.
 | [the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) | on a phone the workspace is a round bubble raised out of the tab bar's centre, the team's name under it; the top bar names the screen only | the phone shell |
 | [the-phone-workspace-keeps-its-size](#the-phone-workspace-keeps-its-size) | the phone's workspace drawer is always 75% of the screen, whatever a search leaves in it; a long team name is cut to one line | the phone shell |
 | [every-list-pages-with-the-growing-pager](#every-list-pages-with-the-growing-pager) | every paged list uses `GrowingPager`; a screen still on `Pagination` moves when it is next touched | the supplier page's tabs |
+| [a-table-row-lights-up](#a-table-row-lights-up) | every table row lights up under the pointer, every cell; a phone block only when it opens something | [the settlement ledger](order_settlement_decision.md#the-ledger-margin-leads-and-says-where-it-comes-from) |
+| [every-form-field-shows-an-example](#every-form-field-shows-an-example) | every typed field in a form shows an example as its placeholder — *Contoh: …* | [the account dialogs](financial_accounts_decision.md#an-account-note-is-a-textarea) |
+| [an-action-button-carries-its-icon](#an-action-button-carries-its-icon) | a page's and a row's action buttons carry a leading icon, as a menu item does | the order list's header actions |
+| [a-breakdown-opens-from-rincian](#a-breakdown-opens-from-rincian) | a card with a breakdown opens it from **Rincian ›** at the end of its label — a dialog, a bottom sheet on a phone | [the settlement margin](order_settlement_decision.md#the-margin-breakdown-opens-from-rincian) |
+| [every-page-has-a-mobile-story](#every-page-has-a-mobile-story) | every page's stories include one named **Mobile**, right after Default | the order screens |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -976,6 +981,110 @@ Per halaman [10⌄]   ‹  1 of 3  ›         Per halaman [10⌄]   [‹] [1] [
 **Supersedes** the line in [the-accounts-pager-grows-with-the-pages-opened](financial_accounts_decision.md#the-accounts-pager-grows-with-the-pages-opened)
 that kept every other list on `Pagination` *"until the owner decides"* — this is the decision. The control named in
 [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) (`Pagination`) reads as `GrowingPager` from here.
+
+## a-table-row-lights-up
+
+> Owner, in chat (2026-10-10), asked which earlier decisions were never recorded as rules for every screen, and picked
+> this one: *"aturan umum"*. Said six times, screen by screen — the ledger (*"table hover → background"*, 2026-10-03),
+> the account report (*"tabel report kasih hover per row"*, 2026-10-07), the statement (*"hoverable juga"*, 2026-10-08),
+> the supplier list (*"hoverable"*, 2026-10-09), the supplier figures and its two tabs (2026-10-10).
+
+```
+Periode      Direstok   Hilang   …        ← resting
+2026-10-08   40         1        …        ← under the pointer: every cell in bg.muted, edge to edge
+```
+
+| | |
+| --- | --- |
+| a desktop row | lights up under the pointer — **every cell** in `bg.muted`, set on the cells (`"& > td"`), so a held (sticky) cell turns with the rest |
+| a phone block | the same tone under a pointer and **while pressed** — but only when the block **opens something**; a block that opens nothing does not light up |
+| a story | drives it with `data-hover`, which Chakra's `_hover` honours — a synthetic pointer sets no CSS `:hover` |
+| the screens | the rule for every new table. A screen already built moves when it is next worked on, as [every-list-pages-with-the-growing-pager](#every-list-pages-with-the-growing-pager) |
+| was | recorded screen by screen — [the ledger](order_settlement_decision.md#the-ledger-margin-leads-and-says-where-it-comes-from), [the statement](financial_accounts_decision.md#a-statement-row-lights-up), [the supplier list](suppliers_decision.md#a-supplier-row-lights-up), [the figures](suppliers_decision.md#a-figures-row-lights-up), [the supplier tabs](suppliers_decision.md#a-supplier-tab-row-lights-up) — so a new screen never read it, and it had to be asked for again on each one |
+
+## every-form-field-shows-an-example
+
+> Owner, in chat (2026-10-10), picked as a rule for every screen: *"aturan umum"*. First said on the account dialogs —
+> *"sebisa mungkin form ada placeholdernya"* (2026-10-06) — then again for the add-supplier form (*"kasih placeholder
+> untuk tambah pemasok"*, 2026-10-09) and the add-store form (*"tambah toko kasih placeholder"*, 2026-10-10).
+
+```
+Nama *      [Contoh: PT Sumber Makmur          ]
+Kontak      [Contoh: 0812-3456-7890            ]
+Tautan      [Contoh: https://shopee.co.id/…    ]
+Deskripsi   [Contoh: grosir kain dan benang, …  ]
+Jumlah      [Rp  0                              ]   ← a money field keeps its 0
+Jenis       [Pilih jenis toko                 ⌄]   ← a picker says what to pick
+```
+
+| | |
+| --- | --- |
+| a typed field | **an example** as its placeholder — *Contoh: …* (en *e.g. …*), sentence case, a realistic value of the thing asked for |
+| a money field | keeps its **0** ([a-money-field-shows-0-until-typed](#a-money-field-shows-0-until-typed)) |
+| a picker | keeps saying what to pick — *Pilih …* (en *Select …*) |
+| editing | shows none — a filled field hides its placeholder |
+| was | recorded on [the account dialogs](financial_accounts_decision.md#an-account-note-is-a-textarea), [the add-supplier form](suppliers_decision.md#the-add-supplier-form-shows-examples) and [the add-store form](suppliers_decision.md#the-add-store-form-shows-examples) — each asked for separately |
+
+## an-action-button-carries-its-icon
+
+> Owner, in chat (2026-10-10), picked as a rule for every screen: *"aturan umum"*. Said for the order list's header
+> actions (*"3 aksi temasuk di atas kasih icon"*, 2026-09-23) and the supplier list (*"tambah pemasok ada iconnya"*,
+> 2026-10-09).
+
+```
+Pemasok [Toko Melati]                        [＋ Tambah Pemasok]
+PT Sumber Makmur   …   [✎ Ubah] [🗑 Hapus]
+Pesanan            [⤓ Ekspor] [⤒ Impor] [＋ Buat Pesanan]
+```
+
+| | |
+| --- | --- |
+| which buttons | an action **at the top of a page** (add, export, import, a report) and an action **on a row** — each carries a leading lucide icon through `<Icon>`, as a menu item already does (CLAUDE.md) |
+| the icon | the action's own — ＋ to add, ✎ to edit, 🗑 to delete, ⤓ to export; `boxSize="4"` |
+| not covered | a dialog's footer (*Batal*, *Simpan*, *Tambah*) — not asked; it stays text |
+| was | recorded on [the supplier list](suppliers_decision.md#a-supplier-action-is-labelled) alone |
+
+## a-breakdown-opens-from-rincian
+
+> Owner, in chat (2026-10-10), picked as a rule for every screen: *"aturan umum"*. Chosen for the settlement margin —
+> *"Text Link At the End"* (2026-10-05) — and asked for again on the account report's cards (*"triggernya tulisan
+> details di atas"*, 2026-10-07).
+
+```
+┌ Margin riil              Rincian › ┐      ← the only pressable thing on the card
+│ Rp 96.000                          │
+│ 18,2% dari harga jual              │
+└────────────────────────────────────┘
+          ↓ click
+dialog on a desktop · bottom sheet on a phone — how the figure adds up
+```
+
+| | |
+| --- | --- |
+| the trigger | the text **Rincian ›** (en *Details ›*) at the **end of the card's label row** |
+| the card | stays not a control — only the word is pressed (`SummaryCard`: *a card is not a control*) |
+| what opens | how the figure adds up — a dialog on a desktop, a bottom sheet on a phone |
+| was | recorded on [the settlement margin](order_settlement_decision.md#the-margin-breakdown-opens-from-rincian) and inside [the account report](financial_accounts_decision.md#the-report-is-five-cards-and-one-table) |
+
+## every-page-has-a-mobile-story
+
+> Owner, in chat (2026-10-10), picked as a rule for every screen: *"aturan umum"*. Said for the order screens (*"halaman
+> order kasih story bentuk mobile … terapkan ke halaman order lain"*, 2026-09-21) and the account screens (*"on a phon
+> ganti mobile saja, di bawah default pas"*, 2026-10-07). Never recorded until now.
+
+```
+Pages/Suppliers/SupplierDetail
+  Default
+  Mobile          ← always the second story
+  …the states and the rules
+```
+
+| | |
+| --- | --- |
+| the story | every `Pages/*` stories file has one named **Mobile** — `globals: { viewport: { value: "mobile2" } }` — the page as a phone shows it |
+| its place | **right after Default**, so the two shells of one screen sit side by side in the sidebar |
+| its name | *Mobile*, never *On a Phone* |
+| today | 17 of the 35 page story files have none — they gain one when the screen is next worked on |
 
 ## Recorded elsewhere
 

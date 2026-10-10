@@ -830,6 +830,13 @@ folders while being curated gallery components — if a component exports a `des
 
 ### The design system
 
+**A NEW SCREEN STARTS FROM [context_decision.md](docs/technical/frontend/context_decision.md)** — the owner's rules for
+EVERY screen (row hover, example placeholders, icons on actions, the growing pager, a Mobile story, …). Read its index
+before building or reworking a screen, and apply every row. (owner, 2026-10-10) These rules used to be recorded only in
+the file of the screen they were first said on, so the next screen never read them and the owner had to ask again.
+⚠ **A rule the owner gives on a second screen is a rule for every screen** — record it in `context_decision.md`, not in
+the page's own `_decision.md`.
+
 **BEFORE writing any frontend, look for a shared component that already does it.** (owner, #143)
 `frontend/src/components/` holds 39 of them, **grouped by kind**, every one with a **Storybook**
 story beside it (`<Component>.stories.tsx`). `cd frontend && npm run storybook` is the fastest way
