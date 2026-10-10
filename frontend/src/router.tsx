@@ -169,6 +169,28 @@ const RestockWarehouseDetailPage = lazy(() =>
     default: m.RestockWarehouseDetailPage,
   })),
 );
+// The warehouse transfer — a PROTOTYPE until design_accept: the real server answers Unimplemented, so every screen shows
+// its error state outside Storybook (docs/business/inventory/warehouse_transfer.md).
+const WarehouseTransferSellingPage = lazy(() =>
+  import("./pages/warehouse-transfer-selling").then((m) => ({ default: m.WarehouseTransferSellingPage })),
+);
+const WarehouseTransferWarehousePage = lazy(() =>
+  import("./pages/warehouse-transfer-warehouse").then((m) => ({ default: m.WarehouseTransferWarehousePage })),
+);
+const WarehouseTransferFormPage = lazy(() =>
+  import("./pages/warehouse-transfer-form").then((m) => ({ default: m.WarehouseTransferFormPage })),
+);
+const WarehouseTransferSellingDetailPage = lazy(() =>
+  import("./pages/warehouse-transfer-selling-detail").then((m) => ({ default: m.WarehouseTransferSellingDetailPage })),
+);
+const WarehouseTransferWarehouseDetailPage = lazy(() =>
+  import("./pages/warehouse-transfer-warehouse-detail").then((m) => ({
+    default: m.WarehouseTransferWarehouseDetailPage,
+  })),
+);
+const WarehouseTransferAcceptPage = lazy(() =>
+  import("./pages/warehouse-transfer-accept").then((m) => ({ default: m.WarehouseTransferAcceptPage })),
+);
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
   import("./pages/user-detail").then((m) => ({ default: m.UserDetailPage })),
@@ -225,6 +247,25 @@ function RestockDetailRoute() {
     <RestockWarehouseDetailPage />
   ) : (
     <RestockSellingDetailPage />
+  );
+}
+
+// /inventories/transfer is TWO screens behind ONE path, on restock's rule and for the same reason (RestockRoute above):
+// the selling team that owns the goods reads its own transfers; a warehouse reads its queue of outgoing and incoming
+// ones — two different jobs (the-team-opens-the-sender-ships-the-receiver-accepts).
+function WarehouseTransferRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? <WarehouseTransferWarehousePage /> : <WarehouseTransferSellingPage />;
+}
+
+function WarehouseTransferDetailRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? (
+    <WarehouseTransferWarehouseDetailPage />
+  ) : (
+    <WarehouseTransferSellingDetailPage />
   );
 }
 
@@ -344,6 +385,13 @@ export const router = createBrowserRouter([
       // The goods-received receipt for the delivery (#219) — a printable document, reached from an
       // accepted restock and from a batch's Print receipt (?batch= highlights that product's line).
       { path: "inventories/restock/:requestId/receipt", element: <BatchReceiptPage /> },
+      // A selling team moving its own stock between warehouses — one path, two screens (WarehouseTransferRoute).
+      // `new` is static, so it ranks above :transferId whatever the order here. Create only: lines are never edited.
+      { path: "inventories/transfer", element: <WarehouseTransferRoute /> },
+      { path: "inventories/transfer/new", element: <WarehouseTransferFormPage /> },
+      { path: "inventories/transfer/:transferId", element: <WarehouseTransferDetailRoute /> },
+      // Warehouse B counts the box in — a page, not a dialog.
+      { path: "inventories/transfer/:transferId/accept", element: <WarehouseTransferAcceptPage /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.

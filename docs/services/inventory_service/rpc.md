@@ -150,6 +150,122 @@ the ledger from a manual receive except for its `reason` (`"restock request"`) a
 
 ---
 
+## Warehouse transfers
+
+A selling team moves its OWN stock from one warehouse (A) to another (B) — **three teams on one record**: the team opens
+it, A processes and ships it, B signs for it and counts it in. The design is
+[warehouse_transfer.md](../../business/inventory/warehouse_transfer.md) and its decisions in
+[warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md).
+
+> ⚠ **PROTOTYPE — no handler exists.** `WarehouseTransferService`
+> ([warehouse_transfer.proto](../../../proto/warehouse/inventory/v1/warehouse_transfer.proto)) is mounted answering
+> **Unimplemented** (`inventory_v1.WarehouseTransferPrototype`), and the screens run against the Storybook stub until
+> design_accept. The flows below are what the backend step builds. It supersedes `InventoryService.StockTransfer`, the
+> instant one-product move.
+
+| RPC | Who | From → to | What it does |
+| --- | --- | --- | --- |
+| `WarehouseTransferCreate` | selling team | → created | the transfer, its lines and its `transfer_out` at A in one transaction — below |
+| `WarehouseTransferList` / `Detail` | any side | — | rows where the team owns it, or is A, or is B; a fourth team reads **NotFound**. `direction` splits a warehouse's outgoing from its incoming |
+| `WarehouseTransferUpdate` | selling team | until accepted | the shipping cost, its account and the note — never the lines |
+| `WarehouseTransferCancel` | selling team | created → cancelled | rolls the `transfer_out` back |
+| `WarehouseTransferMarkLost` | selling team | shipped → lost | the loss is the team's |
+| `WarehouseTransferProcess` | A | created → process | from here on there is no cancel |
+| `WarehouseTransferShip` | A | process → shipped | the courier, tracking number and label photo — all optional |
+| `WarehouseTransferArrive` | B | shipped / lost → arrived | signs for the box |
+| `WarehouseTransferAccept` | B | shipped / arrived → accepted | counts the box in — below |
+
+### Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> created: Create — selling team, stock leaves A
+    created --> cancelled: Cancel — selling team
+    created --> process: Process — A confirms
+    process --> shipped: Ship — A hands to the courier
+    shipped --> lost: MarkLost — selling team
+    shipped --> arrived: Arrive — B signs
+    lost --> arrived: Arrive — the box turns up
+    shipped --> accepted: Accept — B counts on arrival
+    arrived --> accepted: Accept — B
+    accepted --> [*]
+    cancelled --> [*]
+```
+
+Every status change takes the transfer row `FOR UPDATE` first, then batches, then shelves, each in id order, and checks
+the status under the lock — a cancel racing A's confirm, or two accepts of one box, cannot both succeed
+([a-transfer-is-locked-before-any-status-change](../../business/inventory/warehouse_transfer_decision.md#a-transfer-is-locked-before-any-status-change)).
+
+### The create transaction — the stock leaves A
+
+```mermaid
+sequenceDiagram
+    participant S as Selling team
+    participant H as WarehouseTransferCreate
+    participant DB as Postgres - one tx
+    participant F as financial_account_service
+
+    S->>H: from, to, lines [product, count], note, shipment_cost + account
+    H->>H: from equals to, a product twice, or a cost without an account → InvalidArgument
+    H->>DB: inventory_transactions row — transfer_out at A
+    loop every line
+        H->>DB: lock A's batches oldest first, then shelves fewest first
+        alt A holds too few
+            H-->>S: FailedPrecondition — nothing written
+        else enough
+            H->>DB: batch_logs and product_placement_logs, the line's total from the batch rows
+        end
+    end
+    H->>DB: warehouse_transfers created, its lines with their picks, the first trail row, COMMIT
+    opt shipment_cost above 0
+        H-->>F: event after commit — the account, the amount
+    end
+    H-->>S: the transfer, created
+```
+
+### The accept transaction — the stock arrives at B
+
+```mermaid
+sequenceDiagram
+    participant B as Warehouse B member
+    participant H as WarehouseTransferAccept
+    participant DB as Postgres - one tx
+
+    B->>H: lines [item, arrived, broken, notes, placements], courier charge + note
+    H->>DB: SELECT transfer WHERE id AND to_warehouse_id FOR UPDATE
+    alt not this warehouse's
+        H-->>B: NotFound
+    else not shipped or arrived
+        H-->>B: FailedPrecondition
+    else a line missing, doubled, over its count, broken above arrived, or not all good units placed
+        H-->>B: InvalidArgument
+    else the count is complete
+        H->>DB: inventory_transactions row — transfer_in at B
+        loop every line
+            H->>DB: problem rows — broken as typed, missing = count − arrived, priced off the newest layer
+            H->>DB: one batch at B per source batch, same price and expiry, good units filling the oldest first
+            H->>DB: one placement log per rack the good units went to
+        end
+        opt courier charge above 0
+            H->>DB: the selling team's debt to B
+        end
+        H->>DB: status accepted, trail row, COMMIT
+        H-->>B: the transfer, accepted
+    end
+```
+
+| Rule | Decision |
+| --- | --- |
+| the stock leaves A at create; too few fails the create | [a-transfer-takes-from-the-sender-at-create](../../business/inventory/warehouse_transfer_decision.md#a-transfer-takes-from-the-sender-at-create) |
+| in transit, the units are in neither warehouse's book, only in the transfer | [the-transfer-is-where-goods-in-transit-are](../../business/inventory/warehouse_transfer_decision.md#the-transfer-is-where-goods-in-transit-are) |
+| B mints one batch per source batch; the trip never changes a unit's price | [the-receiver-mints-one-batch-per-source-batch](../../business/inventory/warehouse_transfer_decision.md#the-receiver-mints-one-batch-per-source-batch), [a-transfer-never-changes-a-units-price](../../business/inventory/warehouse_transfer_decision.md#a-transfer-never-changes-a-units-price) |
+| every price is the system's, from the batch rows | [the-system-fills-a-transfers-prices](../../business/inventory/warehouse_transfer_decision.md#the-system-fills-a-transfers-prices) |
+| broken, missing and lost are the selling team's loss | [the-selling-team-bears-broken-missing-and-lost](../../business/inventory/warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost) |
+| the shipping expense reaches the account by event; the on-site charge is a debt written in the accept | [the-shipping-expense-reaches-the-account-by-event](../../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event), [the-on-site-charge-is-paid-by-b-at-accept](../../business/inventory/warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept) |
+| one line per product, one problem row per product per kind | [a-product-appears-once-per-transfer](../../business/inventory/warehouse_transfer_decision.md#a-product-appears-once-per-transfer) |
+
+---
+
 ## Stock lives in a PLACE (#135) — and what that changes about reads
 
 Since #135 the grain is **(warehouse, rack, product)**. One idea explains most of the surprises here:

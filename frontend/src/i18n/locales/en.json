@@ -34,7 +34,8 @@
     "suppliers": "Suppliers",
     "mySupplier": "My Supplier",
     "discoverSupplier": "Discover Supplier",
-    "supplierReport": "Supplier Report"
+    "supplierReport": "Supplier Report",
+    "warehouseTransfer": "Transfers"
   },
   "menu": {
     "theme": "Theme",
@@ -3710,5 +3711,288 @@
     "empty": "Nobody yet",
     "noMatch": "No one matches",
     "unavailable": "People unavailable"
+  },
+  "warehouseTransfer": {
+    "selectTeam": "Pick a team to see its transfers.",
+    "newTransfer": "New Transfer",
+    "searchPlaceholder": "Search number, tracking number, SKU or product",
+    "warehouseAll": "All warehouses",
+    "ownerAll": "All teams",
+    "toAll": "Going anywhere",
+    "fromAll": "Coming from anywhere",
+    "warehouseRef": "Warehouse #{{id}}",
+    "empty": "No transfers yet.",
+    "emptyFiltered": "No {{status}} transfers.",
+    "emptyOutgoing": "Nothing is leaving this warehouse.",
+    "emptyIncoming": "Nothing is coming to this warehouse.",
+    "direction": {
+      "label": "Direction",
+      "outgoing": "Outgoing",
+      "incoming": "Incoming"
+    },
+    "status": {
+      "unspecified": "Unknown",
+      "created": "Created",
+      "process": "Process",
+      "shipped": "Shipped",
+      "arrived": "Arrived",
+      "accepted": "Accepted",
+      "cancelled": "Cancelled",
+      "lost": "Lost"
+    },
+    "tab": {
+      "allStatus": "All Status"
+    },
+    "table": {
+      "transfer": "Transfer",
+      "route": "Route",
+      "status": "Status",
+      "products": "Products",
+      "shipping": "Shipping",
+      "parcel": "Parcel",
+      "value": "Value",
+      "actions": "Actions",
+      "owner": "Owner",
+      "to": "To",
+      "from": "From",
+      "product": "Product",
+      "sent": "Sent",
+      "pickFrom": "Pick from",
+      "arrived": "Arrived",
+      "broken": "Broken",
+      "missing": "Missing",
+      "putAway": "Put away",
+      "noCost": "No cost yet",
+      "noProducts": "No products",
+      "itemsSummary_one": "{{count}} product · {{pieces}} pcs",
+      "itemsSummary_other": "{{count}} products · {{pieces}} pcs",
+      "firstAndMore": "{{sku}} +{{count}} more",
+      "problemUnits_one": "{{count}} unit broken or missing",
+      "problemUnits_other": "{{count}} units broken or missing",
+      "perPiece": "{{amount}} / pcs",
+      "userRef": "User #{{id}}",
+      "by": "by {{name}}"
+    },
+    "actions": {
+      "menu": "Transfer actions",
+      "editCost": "Edit Cost",
+      "cancel": "Cancel Transfer",
+      "markLost": "Mark Lost",
+      "process": "Process",
+      "ship": "Ship",
+      "arrive": "Sign for Box",
+      "accept": "Accept"
+    },
+    "cost": {
+      "title": "Shipping Cost for Transfer #{{id}}",
+      "message": "The courier prices by the packed weight, so this can be filled in or corrected until the transfer is accepted.",
+      "shippingCost": "Shipping cost",
+      "shippingCostHint": "Your team's expense. It never changes what a unit cost.",
+      "account": "Paid from",
+      "accountRequired": "A cost needs the account that pays it.",
+      "note": "Note",
+      "confirm": "Save",
+      "dismiss": "Keep As It Is"
+    },
+    "cancel": {
+      "title": "Cancel Transfer #{{id}}",
+      "message": "The units go back on the sending warehouse's book. This cannot be undone.",
+      "reason": "Reason",
+      "confirm": "Cancel Transfer",
+      "keep": "Keep Transfer"
+    },
+    "lost": {
+      "title": "Mark Transfer #{{id}} Lost",
+      "message": "The box never came. The loss is your team's. If it turns up, the receiving warehouse can still sign for it.",
+      "reason": "Reason",
+      "confirm": "Mark Lost",
+      "keep": "Keep Waiting"
+    },
+    "process": {
+      "title": "Process Transfer #{{id}}",
+      "message": "Confirm and start picking. From here on the selling team can no longer cancel it.",
+      "dismiss": "Not Yet"
+    },
+    "ship": {
+      "title": "Ship Transfer #{{id}}",
+      "message": "Record what is on the label as the box is handed over.",
+      "courier": "Courier",
+      "courierPlaceholder": "Select a courier",
+      "tracking": "Tracking number",
+      "labelPhoto": "Label photo",
+      "optionalHint": "All optional — a warehouse's own vehicle has none of them.",
+      "dismiss": "Not Yet"
+    },
+    "arrive": {
+      "title": "Sign for Transfer #{{id}}",
+      "message": "The box is here. You can count it in now or later.",
+      "messageLost": "This box was marked lost. Signing for it records that it turned up after all.",
+      "dismiss": "Not Yet"
+    },
+    "timeline": {
+      "created": "Created",
+      "edited": "Edited",
+      "changed": "Status changed",
+      "process": "Confirmed by the sending warehouse",
+      "shipped": "Handed to the courier",
+      "arrived": "Signed for at the receiving warehouse",
+      "accepted": "Counted in",
+      "cancelled": "Cancelled",
+      "lost": "Marked lost",
+      "awaitingProcess": "Waiting for the sending warehouse to confirm",
+      "awaitingShip": "Being picked and packed",
+      "awaitingArrival": "On its way",
+      "awaitingCount": "Waiting to be counted",
+      "noDate": "No date"
+    },
+    "toast": {
+      "created": "Transfer created",
+      "createFailed": "Could not create the transfer",
+      "costSaved": "Shipping cost saved",
+      "costFailed": "Could not save the shipping cost",
+      "cancelled": "Transfer cancelled",
+      "cancelFailed": "Could not cancel the transfer",
+      "lost": "Transfer marked lost",
+      "lostFailed": "Could not mark the transfer lost",
+      "processed": "Transfer confirmed",
+      "processFailed": "Could not confirm the transfer",
+      "shipped": "Transfer shipped",
+      "shipFailed": "Could not ship the transfer",
+      "arrived": "Box signed for",
+      "arriveFailed": "Could not sign for the box",
+      "accepted": "Transfer accepted",
+      "acceptFailed": "Could not accept the transfer"
+    },
+    "selling": {
+      "pending": {
+        "costEvent": {
+          "label": "Shipping cost",
+          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+        }
+      }
+    },
+    "form": {
+      "back": "Back to Transfers",
+      "route": "Route",
+      "from": "From",
+      "to": "To",
+      "fromPlaceholder": "Select the sending warehouse",
+      "toPlaceholder": "Select the receiving warehouse",
+      "products": "Products",
+      "pickProducts": "Pick Products",
+      "pickFromFirst": "Choose the sending warehouse first — the products come from its shelves.",
+      "noLines": "No products yet.",
+      "available": "{{count}} at the sending warehouse",
+      "availableUnknown": "Stock unknown",
+      "removeLine": "Remove product",
+      "shipping": "Shipping",
+      "shippingHint": "Optional now. The courier prices by the packed weight, so you can add it once the box is packed.",
+      "note": "Note",
+      "notePlaceholder": "Why, or anything the warehouses should know",
+      "valueHint": "The value is worked out from the sending warehouse's batches when the transfer is created.",
+      "stillNeeded": "Still needed: {{parts}}",
+      "submit": "Create Transfer",
+      "missing": {
+        "from": "the sending warehouse",
+        "to": "the receiving warehouse",
+        "lines": "at least one product",
+        "count": "a count for every product",
+        "stock": "counts within the stock at the sending warehouse",
+        "account": "the account that pays the shipping"
+      },
+      "pending": {
+        "costEvent": {
+          "label": "Shipping cost",
+          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+        }
+      }
+    },
+    "detail": {
+      "back": "Back to Transfers",
+      "title": "Transfer #{{id}}",
+      "invalidId": "That is not a transfer number.",
+      "notFound": "Transfer not found.",
+      "route": "Route",
+      "from": "From",
+      "to": "To",
+      "owner": "Owner",
+      "created": "Created",
+      "note": "Note",
+      "parcel": "Parcel",
+      "courier": "Courier",
+      "notShipped": "Not shipped yet",
+      "tracking": "Tracking number",
+      "shippingCost": "Shipping cost",
+      "noCostYet": "Not yet entered",
+      "paidFrom": "Paid from",
+      "accountRef": "Account #{{id}}",
+      "onSiteCharge": "Courier's charge at the door",
+      "products": "Products",
+      "total": "Value moved: {{amount}}",
+      "loss": "Broken or missing: {{amount}} — your team's loss",
+      "pickHint": "Take each product from the racks listed — chosen when the transfer was created, the fewest first.",
+      "pending": {
+        "costEvent": {
+          "label": "Shipping cost",
+          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+        },
+        "labelPhoto": {
+          "label": "Label photo",
+          "reason": "The photo's upload type is not designed yet — it is uploaded nowhere."
+        }
+      }
+    },
+    "warehouse": {
+      "pending": {
+        "labelPhoto": {
+          "label": "Label photo",
+          "reason": "The photo's upload type is not designed yet — it is uploaded nowhere."
+        }
+      }
+    },
+    "warehouseDetail": {
+      "pending": {
+        "labelPhoto": {
+          "label": "Label photo",
+          "reason": "The photo's upload type is not designed yet — it is uploaded nowhere."
+        }
+      }
+    },
+    "accept": {
+      "back": "Back to Transfer",
+      "title": "Accept Transfer #{{id}}",
+      "notAcceptable": "This transfer is not waiting to be counted at this warehouse.",
+      "sent": "{{count}} sent",
+      "lineOk": "Counted",
+      "arrived": "Arrived",
+      "arrivedHint": "What is in the box, broken units included.",
+      "overSent": "More than was sent.",
+      "broken": "Broken",
+      "brokenOverArrived": "More broken than arrived.",
+      "brokenNote": "Broken note",
+      "missingNote": "Missing note ({{count}} missing)",
+      "putAway": "Put {{count}} good units away",
+      "placed": "{{placed}} of {{good}} placed",
+      "rackPlaceholder": "Select a rack",
+      "removeRack": "Remove rack",
+      "addRack": "Add Rack",
+      "charge": "Courier's Charge at the Door",
+      "chargeHint": "If the courier asked for money on delivery: your warehouse pays it, and the selling team owes it back.",
+      "chargeAmount": "Amount",
+      "chargeNote": "What it was for",
+      "summarySent": "Sent",
+      "summaryArrived": "Arrived",
+      "summaryGood": "Good",
+      "summaryUncounted": "Lines not counted",
+      "confirmTitle": "Accept Transfer #{{id}}",
+      "confirmMessage": "{{good}} of {{sent}} units go onto your racks. This cannot be undone.",
+      "keepCounting": "Keep Counting",
+      "pending": {
+        "courierDebt": {
+          "label": "Courier's charge",
+          "reason": "The amount is real, but where the selling team's debt to this warehouse is held is not decided yet — the same open point as the restock's."
+        }
+      }
+    }
   }
 }

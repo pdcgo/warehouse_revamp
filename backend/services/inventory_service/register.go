@@ -22,6 +22,8 @@ func NewRegister(
 		mux.Handle(inventoryv1connect.NewInventoryServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRestockRequestServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRackServiceHandler(inventory, opts))
+		// A prototype until design_accept: every RPC answers Unimplemented (warehouse_transfer_prototype.go).
+		mux.Handle(inventoryv1connect.NewWarehouseTransferServiceHandler(inventory_v1.WarehouseTransferPrototype{}, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
 		// directly rather than through san_grpc. Push auth (OIDC/token) is a deployment concern.
@@ -31,6 +33,7 @@ func NewRegister(
 			inventoryv1connect.InventoryServiceName,
 			inventoryv1connect.RestockRequestServiceName,
 			inventoryv1connect.RackServiceName,
+			inventoryv1connect.WarehouseTransferServiceName,
 		}
 	}
 }

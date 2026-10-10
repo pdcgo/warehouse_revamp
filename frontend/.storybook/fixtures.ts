@@ -63,6 +63,10 @@ export const racks = [
   { id: 41n, warehouseId: 11n, code: "A-01-1", name: "Aisle A bawah", description: "", deleted: false },
   { id: 42n, warehouseId: 11n, code: "A-01-2", name: "Aisle A tengah", description: "", deleted: false },
   { id: 43n, warehouseId: 11n, code: "B-02-1", name: "Aisle B bawah", description: "", deleted: false },
+  // Gudang Cabang's shelves — APPENDED for the warehouse transfer, whose receiving warehouse (B) puts the good units
+  // away on its OWN racks. RackList is scoped by the warehouse, so these never show at Gudang Pusat.
+  { id: 44n, warehouseId: 14n, code: "C-01-1", name: "Cabang rak depan", description: "", deleted: false },
+  { id: 45n, warehouseId: 14n, code: "C-01-2", name: "Cabang rak belakang", description: "", deleted: false },
 ];
 
 // ── Categories (a two-level tree — CategorySelect drills into children) ──────────────────────────
@@ -291,6 +295,9 @@ export const warehouseStock: Record<string, bigint> = {
   // warehouse cannot fill, so one fixture product is kept scarce on purpose.
   "72": 3n,
   "73": 12n,
+  // Toko Melati's own Beras — APPENDED so the team the warehouse transfer form runs as has something of its own on
+  // Gudang Pusat's shelves to send. Without it OwnStockedProductPicker opens empty for team 12.
+  "74": 25n,
 };
 
 // HPP, in whole rupiah.

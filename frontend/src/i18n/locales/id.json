@@ -34,7 +34,8 @@
     "suppliers": "Pemasok",
     "mySupplier": "Pemasok Saya",
     "discoverSupplier": "Temukan Pemasok",
-    "supplierReport": "Laporan Pemasok"
+    "supplierReport": "Laporan Pemasok",
+    "warehouseTransfer": "Transfer Stok"
   },
   "menu": {
     "theme": "Tema",
@@ -3700,5 +3701,288 @@
     "empty": "Belum ada siapa pun",
     "noMatch": "Tidak ada yang cocok",
     "unavailable": "Daftar orang tidak tersedia"
+  },
+  "warehouseTransfer": {
+    "selectTeam": "Pilih tim untuk melihat transfernya.",
+    "newTransfer": "Transfer Baru",
+    "searchPlaceholder": "Cari nomor, nomor resi, SKU atau produk",
+    "warehouseAll": "Semua gudang",
+    "ownerAll": "Semua tim",
+    "toAll": "Ke mana saja",
+    "fromAll": "Dari mana saja",
+    "warehouseRef": "Gudang #{{id}}",
+    "empty": "Belum ada transfer.",
+    "emptyFiltered": "Tidak ada transfer {{status}}.",
+    "emptyOutgoing": "Tidak ada yang keluar dari gudang ini.",
+    "emptyIncoming": "Tidak ada yang menuju gudang ini.",
+    "direction": {
+      "label": "Arah",
+      "outgoing": "Keluar",
+      "incoming": "Masuk"
+    },
+    "status": {
+      "unspecified": "Tidak diketahui",
+      "created": "Dibuat",
+      "process": "Diproses",
+      "shipped": "Dikirim",
+      "arrived": "Tiba",
+      "accepted": "Diterima",
+      "cancelled": "Dibatalkan",
+      "lost": "Hilang"
+    },
+    "tab": {
+      "allStatus": "Semua Status"
+    },
+    "table": {
+      "transfer": "Transfer",
+      "route": "Rute",
+      "status": "Status",
+      "products": "Produk",
+      "shipping": "Pengiriman",
+      "parcel": "Paket",
+      "value": "Nilai",
+      "actions": "Aksi",
+      "owner": "Pemilik",
+      "to": "Ke",
+      "from": "Dari",
+      "product": "Produk",
+      "sent": "Dikirim",
+      "pickFrom": "Ambil dari",
+      "arrived": "Tiba",
+      "broken": "Rusak",
+      "missing": "Kurang",
+      "putAway": "Disimpan di",
+      "noCost": "Belum ada biaya",
+      "noProducts": "Tidak ada produk",
+      "itemsSummary_one": "{{count}} produk · {{pieces}} pcs",
+      "itemsSummary_other": "{{count}} produk · {{pieces}} pcs",
+      "firstAndMore": "{{sku}} +{{count}} lainnya",
+      "problemUnits_one": "{{count}} unit rusak atau kurang",
+      "problemUnits_other": "{{count}} unit rusak atau kurang",
+      "perPiece": "{{amount}} / pcs",
+      "userRef": "Pengguna #{{id}}",
+      "by": "oleh {{name}}"
+    },
+    "actions": {
+      "menu": "Aksi transfer",
+      "editCost": "Ubah Biaya",
+      "cancel": "Batalkan Transfer",
+      "markLost": "Tandai Hilang",
+      "process": "Proses",
+      "ship": "Kirim",
+      "arrive": "Terima Paket",
+      "accept": "Terima"
+    },
+    "cost": {
+      "title": "Biaya Kirim Transfer #{{id}}",
+      "message": "Kurir menghitung dari berat paket, jadi biaya ini bisa diisi atau diperbaiki sampai transfer diterima.",
+      "shippingCost": "Biaya kirim",
+      "shippingCostHint": "Pengeluaran tim Anda. Tidak pernah mengubah harga pokok unit.",
+      "account": "Dibayar dari",
+      "accountRequired": "Biaya perlu akun yang membayarnya.",
+      "note": "Catatan",
+      "confirm": "Simpan",
+      "dismiss": "Biarkan"
+    },
+    "cancel": {
+      "title": "Batalkan Transfer #{{id}}",
+      "message": "Unit kembali ke catatan gudang pengirim. Tindakan ini tidak bisa dibatalkan.",
+      "reason": "Alasan",
+      "confirm": "Batalkan Transfer",
+      "keep": "Simpan Transfer"
+    },
+    "lost": {
+      "title": "Tandai Transfer #{{id}} Hilang",
+      "message": "Paket tidak pernah sampai. Kerugiannya ditanggung tim Anda. Jika paket muncul, gudang penerima masih bisa menerimanya.",
+      "reason": "Alasan",
+      "confirm": "Tandai Hilang",
+      "keep": "Tetap Menunggu"
+    },
+    "process": {
+      "title": "Proses Transfer #{{id}}",
+      "message": "Konfirmasi dan mulai mengambil barang. Setelah ini tim penjual tidak bisa membatalkannya lagi.",
+      "dismiss": "Nanti Saja"
+    },
+    "ship": {
+      "title": "Kirim Transfer #{{id}}",
+      "message": "Catat isi label saat paket diserahkan.",
+      "courier": "Kurir",
+      "courierPlaceholder": "Pilih kurir",
+      "tracking": "Nomor resi",
+      "labelPhoto": "Foto label",
+      "optionalHint": "Semua opsional — kendaraan gudang sendiri tidak punya resi.",
+      "dismiss": "Nanti Saja"
+    },
+    "arrive": {
+      "title": "Terima Paket Transfer #{{id}}",
+      "message": "Paket sudah sampai. Anda bisa menghitungnya sekarang atau nanti.",
+      "messageLost": "Paket ini sudah ditandai hilang. Menerimanya mencatat bahwa paket ternyata sampai.",
+      "dismiss": "Nanti Saja"
+    },
+    "timeline": {
+      "created": "Dibuat",
+      "edited": "Diubah",
+      "changed": "Status berubah",
+      "process": "Dikonfirmasi gudang pengirim",
+      "shipped": "Diserahkan ke kurir",
+      "arrived": "Diterima di gudang penerima",
+      "accepted": "Dihitung masuk",
+      "cancelled": "Dibatalkan",
+      "lost": "Ditandai hilang",
+      "awaitingProcess": "Menunggu konfirmasi gudang pengirim",
+      "awaitingShip": "Sedang diambil dan dikemas",
+      "awaitingArrival": "Dalam perjalanan",
+      "awaitingCount": "Menunggu dihitung",
+      "noDate": "Tanpa tanggal"
+    },
+    "toast": {
+      "created": "Transfer dibuat",
+      "createFailed": "Gagal membuat transfer",
+      "costSaved": "Biaya kirim disimpan",
+      "costFailed": "Gagal menyimpan biaya kirim",
+      "cancelled": "Transfer dibatalkan",
+      "cancelFailed": "Gagal membatalkan transfer",
+      "lost": "Transfer ditandai hilang",
+      "lostFailed": "Gagal menandai transfer hilang",
+      "processed": "Transfer dikonfirmasi",
+      "processFailed": "Gagal mengonfirmasi transfer",
+      "shipped": "Transfer dikirim",
+      "shipFailed": "Gagal mengirim transfer",
+      "arrived": "Paket diterima",
+      "arriveFailed": "Gagal menerima paket",
+      "accepted": "Transfer diterima",
+      "acceptFailed": "Gagal menerima transfer"
+    },
+    "selling": {
+      "pending": {
+        "costEvent": {
+          "label": "Biaya kirim",
+          "reason": "Biaya tersimpan di transfer, tetapi akun pembayar belum menerimanya — event-nya hadir di tahap backend."
+        }
+      }
+    },
+    "form": {
+      "back": "Kembali ke Transfer",
+      "route": "Rute",
+      "from": "Dari",
+      "to": "Ke",
+      "fromPlaceholder": "Pilih gudang pengirim",
+      "toPlaceholder": "Pilih gudang penerima",
+      "products": "Produk",
+      "pickProducts": "Pilih Produk",
+      "pickFromFirst": "Pilih gudang pengirim dulu — produknya diambil dari raknya.",
+      "noLines": "Belum ada produk.",
+      "available": "{{count}} di gudang pengirim",
+      "availableUnknown": "Stok tidak diketahui",
+      "removeLine": "Hapus produk",
+      "shipping": "Pengiriman",
+      "shippingHint": "Opsional sekarang. Kurir menghitung dari berat paket, jadi bisa diisi setelah paket dikemas.",
+      "note": "Catatan",
+      "notePlaceholder": "Alasannya, atau hal yang perlu diketahui gudang",
+      "valueHint": "Nilainya dihitung dari batch gudang pengirim saat transfer dibuat.",
+      "stillNeeded": "Masih perlu: {{parts}}",
+      "submit": "Buat Transfer",
+      "missing": {
+        "from": "gudang pengirim",
+        "to": "gudang penerima",
+        "lines": "minimal satu produk",
+        "count": "jumlah untuk setiap produk",
+        "stock": "jumlah dalam batas stok gudang pengirim",
+        "account": "akun yang membayar biaya kirim"
+      },
+      "pending": {
+        "costEvent": {
+          "label": "Biaya kirim",
+          "reason": "Biaya tersimpan di transfer, tetapi akun pembayar belum menerimanya — event-nya hadir di tahap backend."
+        }
+      }
+    },
+    "detail": {
+      "back": "Kembali ke Transfer",
+      "title": "Transfer #{{id}}",
+      "invalidId": "Itu bukan nomor transfer.",
+      "notFound": "Transfer tidak ditemukan.",
+      "route": "Rute",
+      "from": "Dari",
+      "to": "Ke",
+      "owner": "Pemilik",
+      "created": "Dibuat",
+      "note": "Catatan",
+      "parcel": "Paket",
+      "courier": "Kurir",
+      "notShipped": "Belum dikirim",
+      "tracking": "Nomor resi",
+      "shippingCost": "Biaya kirim",
+      "noCostYet": "Belum diisi",
+      "paidFrom": "Dibayar dari",
+      "accountRef": "Akun #{{id}}",
+      "onSiteCharge": "Biaya kurir di tempat",
+      "products": "Produk",
+      "total": "Nilai dipindahkan: {{amount}}",
+      "loss": "Rusak atau kurang: {{amount}} — kerugian tim Anda",
+      "pickHint": "Ambil tiap produk dari rak yang tercantum — dipilih saat transfer dibuat, yang paling sedikit dulu.",
+      "pending": {
+        "costEvent": {
+          "label": "Biaya kirim",
+          "reason": "Biaya tersimpan di transfer, tetapi akun pembayar belum menerimanya — event-nya hadir di tahap backend."
+        },
+        "labelPhoto": {
+          "label": "Foto label",
+          "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
+        }
+      }
+    },
+    "warehouse": {
+      "pending": {
+        "labelPhoto": {
+          "label": "Foto label",
+          "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
+        }
+      }
+    },
+    "warehouseDetail": {
+      "pending": {
+        "labelPhoto": {
+          "label": "Foto label",
+          "reason": "Jenis unggahan fotonya belum dirancang — foto tidak diunggah ke mana pun."
+        }
+      }
+    },
+    "accept": {
+      "back": "Kembali ke Transfer",
+      "title": "Terima Transfer #{{id}}",
+      "notAcceptable": "Transfer ini tidak sedang menunggu dihitung di gudang ini.",
+      "sent": "{{count}} dikirim",
+      "lineOk": "Sudah dihitung",
+      "arrived": "Tiba",
+      "arrivedHint": "Isi paket, termasuk unit yang rusak.",
+      "overSent": "Lebih dari yang dikirim.",
+      "broken": "Rusak",
+      "brokenOverArrived": "Rusak lebih banyak dari yang tiba.",
+      "brokenNote": "Catatan rusak",
+      "missingNote": "Catatan kurang ({{count}} kurang)",
+      "putAway": "Simpan {{count}} unit bagus",
+      "placed": "{{placed}} dari {{good}} sudah disimpan",
+      "rackPlaceholder": "Pilih rak",
+      "removeRack": "Hapus rak",
+      "addRack": "Tambah Rak",
+      "charge": "Biaya Kurir di Tempat",
+      "chargeHint": "Jika kurir meminta uang saat mengantar: gudang Anda membayarnya, dan tim penjual menggantinya.",
+      "chargeAmount": "Jumlah",
+      "chargeNote": "Untuk apa",
+      "summarySent": "Dikirim",
+      "summaryArrived": "Tiba",
+      "summaryGood": "Bagus",
+      "summaryUncounted": "Baris belum dihitung",
+      "confirmTitle": "Terima Transfer #{{id}}",
+      "confirmMessage": "{{good}} dari {{sent}} unit masuk ke rak Anda. Tindakan ini tidak bisa dibatalkan.",
+      "keepCounting": "Lanjut Menghitung",
+      "pending": {
+        "courierDebt": {
+          "label": "Biaya kurir",
+          "reason": "Jumlahnya nyata, tetapi di mana utang tim penjual ke gudang ini dicatat belum diputuskan — sama dengan restock."
+        }
+      }
+    }
   }
 }

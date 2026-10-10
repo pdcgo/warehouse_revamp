@@ -62,6 +62,8 @@ import { financialAccountAnalyticService, financialAccountService } from "./fina
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
+import { warehouseTransferService } from "./warehouseTransferStub";
+import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -758,6 +760,8 @@ export const transport = createRouterTransport(({ service }) => {
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
   service(RestockRequestService, restockRequestService);
+  // The warehouse transfer — a prototype, so this stub is its only implementation until the backend step.
+  service(WarehouseTransferService, warehouseTransferService);
 
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
@@ -766,7 +770,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(SupplierAnalyticService, supplierAnalyticService);
 
   service(RackService, {
-    rackList: () => columnar("rack", racks),
+    // Scoped by the warehouse, as the server is: the team in the request IS the warehouse whose shelves these are.
+    rackList: (req) => columnar("rack", racks.filter((r) => r.warehouseId === req.teamId)),
   });
 
   service(CategoryService, {
