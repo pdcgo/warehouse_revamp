@@ -33,6 +33,10 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-on-site-charge-is-paid-by-b-at-accept](#the-on-site-charge-is-paid-by-b-at-accept) | B pays the courier's on-site charge and enters it at accept; the team's debt to B is written inside the accept | chat, 2026-10-10 — answers Q8e, as recommended |
 | [a-transfer-never-changes-a-units-price](#a-transfer-never-changes-a-units-price) | neither cost enters B's unit price — a transfer moves, it does not buy | chat, 2026-10-10 — answers Q8f, as recommended, unlike a restock |
 | [the-sender-enters-the-courier-at-ship](#the-sender-enters-the-courier-at-ship) | Warehouse A enters the courier, the tracking number and the label photo when it ships; the team enters only the cost and its account | chat, 2026-10-10 — raised by the screens, as recommended |
+| [the-transfer-prototype-is-accepted](#the-transfer-prototype-is-accepted) | design_accept: the six screens and the contract are the design; a contract change from here is a new pass | chat, 2026-10-10 |
+| [the-decided-ledgers-come-before-the-transfer](#the-decided-ledgers-come-before-the-transfer) | the legs write the decided ledgers (transactions, batches, placements), built first — not today's `stock_*` tables | chat, 2026-10-10 — **against** my existing-tables recommendation |
+| [a-batch-carries-its-owner](#a-batch-carries-its-owner) | `batches.team_id` is written at mint — the restock's team, or the source batch's at a transfer; no climb through restocks | chat, 2026-10-10 — as recommended |
+| [the-transfer-expense-event-waits-for-the-events-pass](#the-transfer-expense-event-waits-for-the-events-pass) | the shipping-expense event is built in one events pass with restock's | chat, 2026-10-10 — as recommended |
 
 ---
 
@@ -834,3 +838,109 @@ flowchart LR
 | `shipment_id`, `receipt`, `receipt_file` | entered by Warehouse A in the Ship action, moving `process → shipped`; all optional ([a-transfer-may-travel-without-a-courier](#a-transfer-may-travel-without-a-courier)) |
 | `shipment_cost`, `finance_account_id` | entered by the selling team, until `accepted` ([the-shipping-expense-reaches-the-account-by-event](#the-shipping-expense-reaches-the-account-by-event)) |
 | the team's create form | asks for neither the courier nor the tracking number |
+
+## the-transfer-prototype-is-accepted
+
+> Owner, in chat *(2026-10-10)*, choosing *"Accept, build it"* when asked whether the six screens and the contract are the
+> design to build. It is the lifecycle's design_accept (docs/development_lifecycle.md).
+
+**The verdict.** The prototype is the design: the six pages and `WarehouseTransferService` as committed in `855cd1a`. The
+contract is accepted WITH the screens (contract-accepted-with-the-screens), so a change to it from here on is a new pass,
+not an amendment.
+
+```mermaid
+flowchart LR
+  P["prototype - screens and contract"] -->|"design_accept, 2026-10-10"| B["backend analysis"]
+  B --> L["the decided ledgers first"]
+  L --> T["the transfer's handlers"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| accepted | the six pages under `frontend/src/pages/warehouse-transfer-*` and `proto/warehouse/inventory/v1/warehouse_transfer.proto` |
+| a contract change after this | a new pass through the screens, not a quiet edit |
+| next | backend analysis — which [the-decided-ledgers-come-before-the-transfer](#the-decided-ledgers-come-before-the-transfer) orders |
+
+## the-decided-ledgers-come-before-the-transfer
+
+> Owner, in chat *(2026-10-10)*, choosing *"Build the decided ledgers first"* when asked which stock tables the
+> transfer's two legs write. **Against my recommendation**, which was the existing `stock_*` tables through the
+> primitives restock's accept uses.
+
+**The verdict.** The transfer is not built on the stock tables the build has today (`stock_levels`, `stock_movements`,
+`stock_batches`, `stock_shelf_batches`). Its two legs write the DECIDED model — one `inventory_transactions` row per leg,
+through the batch ledger and the placement ledger ([one-mutation-per-operation](./context_decision.md#one-mutation-per-operation),
+[every-stock-change-belongs-to-a-transaction](./context_decision.md#every-stock-change-belongs-to-a-transaction)) — and
+that model is built first.
+
+```mermaid
+flowchart LR
+  Q["the ledgers' open questions answered"] --> L["the ledgers built - transactions, batches, placements"]
+  L --> M["today's writers and readers moved onto them"]
+  M --> T["PostTransferOut, PostTransferIn, the transfer's handlers"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the out-leg | `PostTransferOut` — a `transfer_out` transaction at A, batches oldest first, shelves fewest first |
+| the in-leg | `PostTransferIn` — a `transfer_in` transaction at B, one batch per source batch |
+| order of work | the ledgers' open questions → the ledgers → the transfer |
+
+**What it does NOT settle** — the ledgers cannot be built until their open questions are answered: transaction Q1–Q7,
+context Q14a–d and h, the type lists ([the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up)),
+and the ledger template's Q1, Q3 and Q4. How today's `stock_*` tables give way to the ledgers is a new question, filed
+where it can be answered: [technical stock Q5](../../technical/stock/design_clarify.md#question). The money type is
+settled — `float64` ([every-ledger-keeps-money-as-float64](../../technical/ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64),
+[stock-money-is-float64-compared-at-4-digits](../../technical/stock/design_decision.md#stock-money-is-float64-compared-at-4-digits)) —
+and ⚠ this transfer's own contract carries its money as `int64`; whether those fields turn `double` in the same cut-over is
+[technical stock Q6](../../technical/stock/design_clarify.md#question).
+
+## a-batch-carries-its-owner
+
+> Owner, in chat *(2026-10-10)*, choosing *"owner_team_id on the batch"* when asked how a batch created at Warehouse B
+> stays the selling team's. As recommended.
+
+**The verdict.** Whose a batch is, is a fact written ON the batch when it is minted, never worked out by climbing back to
+the restock that first brought the units in. In the decided ledger that column already exists — `batches.team_id`
+([batch.md](./batch.md)) — so the decision is what fills it: the restock's selling team at a restock accept, and the
+SOURCE batch's team at a transfer accept.
+
+```mermaid
+flowchart LR
+  R["restock accept"] -->|"team_id = the restock's selling team"| B1["batch 7 at A - team 12"]
+  B1 -->|"transfer accept copies it"| B2["batch 31 at B - team 12"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `batches.team_id` | the owner — required, written at mint, never changed |
+| a restock accept | the restock's selling team |
+| a transfer accept | the source batch's `team_id` ([the-receiver-mints-one-batch-per-source-batch](#the-receiver-mints-one-batch-per-source-batch)) |
+| an owner read | reads the column — no climb through restocks |
+
+## the-transfer-expense-event-waits-for-the-events-pass
+
+> Owner, in chat *(2026-10-10)*, choosing *"Defer, like restock"*. As recommended.
+
+**The verdict.** The shipping expense's event to `financial_account_service`
+([the-shipping-expense-reaches-the-account-by-event](#the-shipping-expense-reaches-the-account-by-event)) is built in ONE
+events pass with restock's own events, which are not published yet either. Until then the cost and its account are
+stored on the transfer, and the screens keep their `costEvent` mark.
+
+```mermaid
+flowchart LR
+  T["transfer - cost stored"] -.->|"later, with restock's events"| F["financial_account_service"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| this pass | `shipment_cost` and `finance_account_id` stored; no event |
+| the events pass | the transfer's and the restock's events together: create, cost change, cancel refund |

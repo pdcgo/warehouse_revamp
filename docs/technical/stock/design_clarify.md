@@ -144,6 +144,27 @@ and it is the doc every other service copies. **→ Rename it there.**
    *where do in-transit goods live?* My in-transit place is withdrawn.
 2. **Is cancellation refused once the batch has been touched?** I recommend yes.
 3. **`ProductQtyCount` — this line, or the whole restock?** And by quantity or by value?
+5. 🆕 *(2026-10-10, raised by the transfer's backend analysis)* **How do today's `stock_*` tables give way to the decided
+   ledgers?** The build keeps stock in `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches` and
+   `stock_owner_movements`; **38 files** read or write them — restock's accept, receive, adjust, move, pick, return,
+   opname, the batch and owner reads, the racks. The ledgers (`inventory_transactions`, `batches`, `batch_logs`,
+   `product_placements`, `product_placement_logs`) replace all five.
+
+   | | way | + | − |
+   | --- | --- | --- | --- |
+   | **a** | **one cut-over** — a migration turns each warehouse's batches and shelves into ledger rows under one opening transaction per warehouse and owner; every writer and reader moves in the same pass; the old tables are dropped after | one truth from the first day; owner reads switch to `batches.team_id` ([a-batch-carries-its-owner](../../business/inventory/warehouse_transfer_decision.md#a-batch-carries-its-owner)) | one large pass, and the screens over stock all move at once |
+   | **b** | **side by side** — new operations write the ledgers, the old tables stay for what they hold, and reads merge both | smaller steps | two truths: every stock read sums two models, and a unit moved by an old writer is invisible to a new reader |
+
+   **→ Recommend a**, done service-internally behind the same RPCs, so the screens see no change but the numbers. A
+   stock figure that two models answer is the one thing this system cannot have: two people at one shelf already read
+   it from a scanner and a phone.
+
+   ```mermaid
+   flowchart LR
+     O["stock_* tables - today"] -->|"one migration - opening transactions"| L["the ledgers"]
+     W["38 files - writers and readers"] -->|"moved in the same pass"| L
+     L --> T["the transfer's legs"]
+   ```
 
 6. 🆕 *(2026-10-10, found by the `int64` sweep)* **Do inventory's money fields move to `double` in the same cut-over?**
    The ledgers are `float64` ([stock-money-is-float64-compared-at-4-digits](./design_decision.md#stock-money-is-float64-compared-at-4-digits)),
@@ -153,7 +174,6 @@ and it is the doc every other service copies. **→ Rename it there.**
    **→ Recommend yes, in the same pass as [Q5](#question).** The cut-over already moves all 38 files, and changing the
    field types is part of the same move. Otherwise every RPC converts at the ledger's edge, and a fractional unit cost
    (Rp 333,33…) is truncated on its way back out to the screen. Every new field is `double` from now on.
-
 
 ---
 

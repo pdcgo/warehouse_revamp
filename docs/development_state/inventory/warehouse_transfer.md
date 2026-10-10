@@ -1,10 +1,38 @@
 # Development state — inventory / warehouse_transfer
 
-**As of 2026-10-10, the warehouse transfer is DECIDED and PROTOTYPED. It is not built.** All 27 decisions are in
-[warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md); the clarify has no open question
-and no open contradiction. The screens run in Storybook against a stub that plays the decided rules; in the app they are
-routed and in the menu, and every call answers **Unimplemented**. **Next step: the owner's design_accept on the Storybook
-screens and the contract, then the backend step.**
+**As of 2026-10-10, the warehouse transfer is DECIDED, PROTOTYPED and its DESIGN ACCEPTED. It is not built.** All 31
+decisions are in [warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md); the clarify has
+no open question and no open contradiction. The screens run in Storybook against a stub that plays the decided rules; in
+the app they are routed and in the menu, and every call answers **Unimplemented**.
+
+**Next step is NOT the transfer's handlers.** The owner chose to build the decided ledgers first
+([the-decided-ledgers-come-before-the-transfer](../../business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)),
+so the critical path is:
+
+```mermaid
+flowchart LR
+  Q["answer the ledgers' open questions"] --> L["build the ledgers"]
+  L --> C["cut today's stock_* code over to them"]
+  C --> T["the transfer's handlers"]
+```
+
+| blocking | where |
+| --- | --- |
+| what a transaction is: `ref_id`, items, rollback, below-zero rollback, the missing types, `sample`, the team on a cross-team order | [transaction_clarify Q1–Q7](../../business/inventory/transaction_clarify.md#question) |
+| the two ledgers' rules: same units in both, a found unit's batch, zero money at zero units, a late cost, `batches.supplier_id` | [context_clarify Q14a–d, h](../../business/inventory/context_clarify.md#question) |
+| one `change_type` list for both ledgers | [the-two-type-lists-do-not-line-up](../../business/inventory/transaction_clarify.md#the-two-type-lists-do-not-line-up) |
+| the ledger template: idempotency, append-only logs, who opens the transaction | [mutation_and_ledger_clarify Q1, Q3, Q4](../../technical/ledger/mutation_and_ledger_clarify.md#question) |
+| how today's `stock_*` tables (38 files) give way to the ledgers | [technical stock Q5](../../technical/stock/design_clarify.md#question) |
+| whether inventory's `int64` money fields — this transfer's contract included — turn `double` in the same cut-over | [technical stock Q6](../../technical/stock/design_clarify.md#question) |
+
+✅ Settled since: the money type is `float64`, compared at 4 digits
+([every-ledger-keeps-money-as-float64](../../technical/ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64),
+[stock-money-is-float64-compared-at-4-digits](../../technical/stock/design_decision.md#stock-money-is-float64-compared-at-4-digits)).
+
+Ownership is settled for the ledger: `batches.team_id`, written at mint
+([a-batch-carries-its-owner](../../business/inventory/warehouse_transfer_decision.md#a-batch-carries-its-owner)). The
+shipping-expense event waits for one events pass with restock's
+([the-transfer-expense-event-waits-for-the-events-pass](../../business/inventory/warehouse_transfer_decision.md#the-transfer-expense-event-waits-for-the-events-pass)).
 
 ## Lifecycle as decided
 
