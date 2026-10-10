@@ -23,7 +23,7 @@ import { SortableHeader, type SortState } from "../../components/chrome/Sortable
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
-import { SupplierFormDialog } from "./components/SupplierFormDialog";
+import { SupplierFormDialog } from "../../features/suppliers/SupplierFormDialog";
 import { SupplierSortSelect } from "./components/SupplierSortSelect";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -43,8 +43,8 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 //
 //   Pemasok  [Toko Melati]                                   [+ Tambah Pemasok]
 //   Pemasok yang dikelola tim ini — …
-//   [⌕ Cari pemasok, alamat, atau saluran] [Semua jenis saluran ⌄]   Hapus filter   ← the shared FilterBar
-//   Pemasok ⇅           · Saluran          · Kontak        · [✎ Ubah] [🗑 Hapus]   ← the name sorts, A to Z first
+//   [⌕ Cari pemasok, alamat, atau toko] [Semua jenis toko ⌄]   Hapus filter   ← the shared FilterBar
+//   Pemasok ⇅           · Toko pemasok     · Kontak        · [✎ Ubah] [🗑 Hapus]   ← the name sorts, A to Z first
 //   PT Sumber Makmur      [Shopee] ×2        0812-…
 //   Jl. Kopo 9, Bandung
 //                                            Per halaman [20 ⌄]  ‹ [1] ›          ← the growing pager

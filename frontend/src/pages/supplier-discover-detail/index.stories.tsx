@@ -84,6 +84,7 @@ export const StatisticsCountEveryTeam: Story = {
     const picker = within(await canvas.findByTestId("statistics-team")).getByRole("combobox");
     await expect(picker).toHaveValue("");
     await expect(picker).toHaveAttribute("placeholder", "Every team");
+    await userEvent.click(canvas.getByTestId("statistics-view-product"));
     const named = await canvas.findAllByTestId("statistics-product-team");
     await expect(named.map((cell) => cell.textContent)).toContain("Toko Melati");
   },

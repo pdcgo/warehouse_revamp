@@ -14,11 +14,11 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import { rpcError } from "../../../api/clients";
-import type { SupplierRecord } from "../../../features/suppliers/adapt";
-import { useTeam } from "../../../features/team/TeamContext";
-import { toaster } from "../../../components/feedback/Toaster";
-import { useSaveSupplier } from "../../../features/suppliers/queries";
+import { rpcError } from "../../api/clients";
+import type { SupplierRecord } from "./adapt";
+import { useTeam } from "../team/TeamContext";
+import { toaster } from "../../components/feedback/Toaster";
+import { useSaveSupplier } from "./queries";
 
 // SupplierFormDialog creates OR edits a supplier in the CURRENT team. The team is the scope: it
 // travels in the message body (the backend's use_scope reads it there, never a header).

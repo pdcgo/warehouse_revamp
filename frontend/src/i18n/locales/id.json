@@ -1453,7 +1453,7 @@
       "contact": "Kontak",
       "actions": "Aksi",
       "supplier": "Pemasok",
-      "channels": "Saluran"
+      "channels": "Toko pemasok"
     },
     "form": {
       "saved": "Pemasok disimpan",
@@ -1482,9 +1482,9 @@
     "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
     "discover": {
       "title": "Temukan Pemasok",
-      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko.",
+      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko pemasok.",
       "search": "Cari pemasok, alamat, atau toko",
-      "typeAll": "Semua jenis saluran",
+      "typeAll": "Semua jenis toko",
       "empty": "Belum ada pemasok.",
       "none": "Tidak ada pemasok yang cocok.",
       "back": "Kembali ke Temukan Pemasok",
@@ -1492,20 +1492,20 @@
       "table": {
         "supplier": "Pemasok",
         "team": "Tim",
-        "channels": "Saluran",
+        "channels": "Toko pemasok",
         "contact": "Kontak"
       },
       "pending": {
         "products": {
           "label": "Produk",
-          "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun"
+          "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun"
         }
       },
       "teamAll": "Semua tim"
     },
     "lead": "Pemasok yang dikelola tim ini — vendor tempat tim membeli stoknya.",
-    "search": "Cari pemasok, alamat, atau saluran",
-    "typeAll": "Semua jenis saluran",
+    "search": "Cari pemasok, alamat, atau toko",
+    "typeAll": "Semua jenis toko",
     "none": "Tidak ada pemasok yang cocok.",
     "sort": {
       "label": "Urutkan",
@@ -1515,19 +1515,20 @@
         "desc": "Nama, Z ke A"
       }
     },
-    "editAction": "Ubah"
+    "editAction": "Ubah",
+    "actions": "Aksi pemasok"
   },
   "supplierChannel": {
-    "deleted": "Saluran \"{{name}}\" dihapus",
+    "deleted": "Toko \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
-    "deleteTitle": "Hapus Saluran",
+    "deleteTitle": "Hapus Toko",
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
     "section": {
-      "empty": "Belum ada saluran."
+      "empty": "Belum ada toko pemasok."
     },
     "table": {
-      "channel": "Saluran",
+      "channel": "Toko pemasok",
       "uri": "Tautan",
       "description": "Deskripsi",
       "actions": "Aksi"
@@ -1543,45 +1544,51 @@
       "description": "Deskripsi"
     },
     "form": {
-      "saved": "Saluran disimpan",
-      "created": "Saluran \"{{name}}\" dibuat",
-      "addChannel": "Tambah Saluran",
-      "editTitle": "Ubah Saluran",
-      "createTitle": "Tambah Saluran",
+      "saved": "Toko disimpan",
+      "created": "Toko \"{{name}}\" dibuat",
+      "addChannel": "Tambah Toko",
+      "editTitle": "Ubah Toko",
+      "createTitle": "Tambah Toko",
       "name": "Nama",
+      "namePlaceholder": "Contoh: Sumber Makmur Official",
       "cancel": "Batal",
       "save": "Simpan",
       "create": "Tambah",
-      "channelType": "Jenis saluran",
-      "channelTypePlaceholder": "Pilih jenis saluran",
-      "nameHelp": "Nama toko di saluran tersebut.",
+      "channelType": "Jenis toko",
+      "channelTypePlaceholder": "Pilih jenis toko",
+      "nameHelp": "Nama toko pemasok di marketplace atau situsnya.",
       "uri": "Tautan",
-      "description": "Deskripsi"
+      "uriPlaceholder": "Contoh: https://shopee.co.id/sumbermakmur",
+      "description": "Deskripsi",
+      "descriptionPlaceholder": "Contoh: gratis ongkir di atas 5 rol"
     },
-    "edit": "Ubah saluran",
+    "editAction": "Ubah",
     "pending": {
       "products": {
         "label": "Produk",
-        "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
+        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
       }
     },
     "tab": {
-      "channels": "Saluran",
+      "channels": "Toko",
       "products": "Produk",
       "statistics": "Statistik"
     },
     "products": {
       "product": "Produk",
-      "sku": "SKU",
-      "channel": "Saluran",
+      "team": "Tim",
+      "channel": "Toko pemasok",
+      "lastBought": "Terakhir dibeli",
+      "firstBought": "pertama {{date}}",
       "empty": "Belum ada produk.",
-      "search": "Cari produk, SKU, atau saluran",
+      "search": "Cari produk, SKU, atau toko",
+      "storeAll": "Semua toko",
       "none": "Tidak ada produk yang cocok."
     },
     "filter": {
       "search": "Cari nama, tautan, atau deskripsi",
-      "typeAll": "Semua jenis saluran",
-      "none": "Tidak ada saluran yang cocok."
+      "typeAll": "Semua jenis toko",
+      "none": "Tidak ada toko pemasok yang cocok."
     }
   },
   "supplierFigures": {
@@ -1596,6 +1603,9 @@
     "units_one": "{{n}} unit",
     "units_other": "{{n}} unit",
     "rate": "{{rate}}%",
+    "total": "Total",
+    "totalHint": "semua unit yang diterima dari pemasok",
+    "ofTotal": "dari total",
     "rateBroken": "{{rate}}% rusak",
     "line": {
       "restocked": "Direstok {{n}} · {{value}}",
@@ -1607,6 +1617,7 @@
       "team": "Tim",
       "restocked": "Direstok",
       "lost": "Hilang di pengiriman",
+      "lostRate": "Tingkat hilang",
       "broken": "Rusak di pengiriman",
       "brokenRate": "Tingkat rusak"
     },

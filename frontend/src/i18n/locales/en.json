@@ -1458,7 +1458,7 @@
       "contact": "Contact",
       "actions": "Actions",
       "supplier": "Supplier",
-      "channels": "Channels"
+      "channels": "Supplier stores"
     },
     "form": {
       "saved": "Supplier saved",
@@ -1487,9 +1487,9 @@
     "sellingOnly": "Only a selling team has suppliers.",
     "discover": {
       "title": "Discover Suppliers",
-      "lead": "Suppliers every selling team buys from — search them by name, address, contact or store.",
+      "lead": "Suppliers every selling team buys from — search them by name, address, contact or supplier store.",
       "search": "Search supplier, address or store",
-      "typeAll": "Any channel type",
+      "typeAll": "All store types",
       "empty": "No suppliers yet.",
       "none": "No suppliers match.",
       "back": "Back to Discover Suppliers",
@@ -1497,20 +1497,20 @@
       "table": {
         "supplier": "Supplier",
         "team": "Team",
-        "channels": "Channels",
+        "channels": "Supplier stores",
         "contact": "Contact"
       },
       "pending": {
         "products": {
           "label": "Products",
-          "reason": "sample rows — a product is linked to a channel when a restock bought there is accepted, and that is not built yet"
+          "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet"
         }
       },
       "teamAll": "Any team"
     },
     "lead": "The suppliers this team keeps — the vendors it buys its stock from.",
-    "search": "Search a supplier, address or channel",
-    "typeAll": "All channel types",
+    "search": "Search a supplier, address or store",
+    "typeAll": "All store types",
     "none": "No supplier matches.",
     "sort": {
       "label": "Sort",
@@ -1520,19 +1520,20 @@
         "desc": "Name, Z to A"
       }
     },
-    "editAction": "Edit"
+    "editAction": "Edit",
+    "actions": "Supplier actions"
   },
   "supplierChannel": {
-    "deleted": "Channel \"{{name}}\" deleted",
+    "deleted": "Store \"{{name}}\" deleted",
     "deleteFailed": "Delete failed",
-    "deleteTitle": "Delete Channel",
+    "deleteTitle": "Delete Store",
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
     "delete": "Delete",
     "section": {
-      "empty": "No channels yet."
+      "empty": "No supplier stores yet."
     },
     "table": {
-      "channel": "Channel",
+      "channel": "Supplier store",
       "uri": "Link",
       "description": "Description",
       "actions": "Actions"
@@ -1548,45 +1549,51 @@
       "description": "Description"
     },
     "form": {
-      "saved": "Channel saved",
-      "created": "Channel \"{{name}}\" created",
-      "addChannel": "Add Channel",
-      "editTitle": "Edit Channel",
-      "createTitle": "Add Channel",
+      "saved": "Store saved",
+      "created": "Store \"{{name}}\" created",
+      "addChannel": "Add Store",
+      "editTitle": "Edit Store",
+      "createTitle": "Add Store",
       "name": "Name",
+      "namePlaceholder": "e.g. Sumber Makmur Official",
       "cancel": "Cancel",
       "save": "Save",
       "create": "Add",
-      "channelType": "Channel type",
-      "channelTypePlaceholder": "Select a channel type",
-      "nameHelp": "The store's name on that channel.",
+      "channelType": "Store type",
+      "channelTypePlaceholder": "Select a store type",
+      "nameHelp": "The supplier store's name on its marketplace or site.",
       "uri": "Link",
-      "description": "Description"
+      "uriPlaceholder": "e.g. https://shopee.co.id/sumbermakmur",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g. free shipping over 5 rolls"
     },
-    "edit": "Edit channel",
+    "editAction": "Edit",
     "pending": {
       "products": {
         "label": "Products",
-        "reason": "sample rows — a product is linked to a channel when a restock bought there is accepted, and that is not built yet, so these are invented"
+        "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet, so these are invented"
       }
     },
     "tab": {
-      "channels": "Channels",
+      "channels": "Stores",
       "products": "Products",
       "statistics": "Statistics"
     },
     "products": {
       "product": "Product",
-      "sku": "SKU",
-      "channel": "Channel",
+      "team": "Team",
+      "channel": "Supplier store",
+      "lastBought": "Last bought",
+      "firstBought": "first {{date}}",
       "empty": "No products yet.",
-      "search": "Search product, SKU or channel",
+      "search": "Search product, SKU or store",
+      "storeAll": "Every store",
       "none": "No products match."
     },
     "filter": {
       "search": "Search name, link or description",
-      "typeAll": "All channel types",
-      "none": "No channels match."
+      "typeAll": "All store types",
+      "none": "No supplier stores match."
     }
   },
   "supplierFigures": {
@@ -1601,6 +1608,9 @@
     "units_one": "{{n}} unit",
     "units_other": "{{n}} units",
     "rate": "{{rate}}%",
+    "total": "Total",
+    "totalHint": "every unit received from the supplier",
+    "ofTotal": "of total",
     "rateBroken": "{{rate}}% broken",
     "line": {
       "restocked": "Restocked {{n}} · {{value}}",
@@ -1612,6 +1622,7 @@
       "team": "Team",
       "restocked": "Restocked",
       "lost": "Lost in shipping",
+      "lostRate": "Lost rate",
       "broken": "Broken in shipping",
       "brokenRate": "Broken rate"
     },

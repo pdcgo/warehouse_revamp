@@ -118,7 +118,7 @@ export const ChannelsAndProductsTabs: Story = {
     const tablist = canvas.getByRole("tablist");
     await expect(tablist).toHaveAttribute("aria-orientation", "horizontal");
     await expect(within(tablist).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
-      "Channels",
+      "Stores",
       // Products carries its own sample mark; Statistics is real (the-figures-screens-are-accepted).
       "Products1",
       "Statistics",
@@ -289,9 +289,13 @@ export const ChannelsPaginate: Story = {
     const table = await canvas.findByTestId("channels-table");
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + 10));
 
-    await userEvent.click(canvas.getByTestId("page-next"));
+    await userEvent.click(canvas.getByTestId("channels-pager-next"));
     await waitFor(() => expect(within(canvas.getByTestId("channels-table")).getAllByRole("row")).toHaveLength(1 + 2));
     await expect(canvas.getByTestId("channel-row-351")).toBeVisible();
+
+    // every-list-pages-with-the-growing-pager: a page opened is one click away.
+    await userEvent.click(canvas.getByTestId("channels-pager-page-1"));
+    await waitFor(() => expect(within(canvas.getByTestId("channels-table")).getAllByRole("row")).toHaveLength(1 + 10));
   },
 };
 
@@ -321,9 +325,13 @@ export const ProductsPaginate: Story = {
     await openProducts(canvas);
 
     await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 10));
-    await userEvent.click(canvas.getByTestId("page-next"));
-    await userEvent.click(canvas.getByTestId("page-next"));
+    await userEvent.click(canvas.getByTestId("products-pager-next"));
+    await userEvent.click(canvas.getByTestId("products-pager-next"));
     await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 4));
+
+    // every-list-pages-with-the-growing-pager: page 1 is one click back, not two.
+    await userEvent.click(canvas.getByTestId("products-pager-page-1"));
+    await waitFor(() => expect(within(canvas.getByTestId("products-table")).getAllByRole("row")).toHaveLength(1 + 10));
   },
 };
 
@@ -340,6 +348,9 @@ export const AnotherTeamsSupplierIsReadOnly: Story = {
 
     await expect(canvas.queryByTestId("add-channel")).toBeNull();
     await expect(canvas.queryAllByTestId(/^edit-channel-|^delete-channel-/)).toHaveLength(0);
+    // …nor Ubah or Hapus on the supplier itself.
+    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
+    await expect(canvas.queryByTestId("supplier-detail-delete")).toBeNull();
     await expect(within(canvas.getByTestId("channels-table")).queryByText("Actions")).toBeNull();
   },
 };
@@ -360,5 +371,133 @@ export const BackGoesToTheList: Story = {
 
     await userEvent.click(canvas.getByTestId("supplier-detail-back"));
     await canvas.findByTestId("at-suppliers");
+  },
+};
+
+// ── Who it is, and its own actions (`the-supplier-is-described-under-its-name`) ─────────────────────
+
+// WHO THE SUPPLIER IS, UNDER ITS NAME — a line of icons and words and its note, not a card of uppercase labels; the
+// contact copies with one click.
+export const TheSupplierIsDescribedUnderItsName: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
+    const meta = canvas.getByTestId("supplier-meta");
+    await expect(meta.getBoundingClientRect().top).toBeGreaterThanOrEqual(name.bottom);
+    await expect(meta.getBoundingClientRect().bottom).toBeLessThan(canvas.getByRole("tablist").getBoundingClientRect().top);
+    await expect(within(meta).queryByText("CONTACT")).toBeNull();
+    await expect(within(meta).getByRole("button", { name: /copy/i })).toBeInTheDocument();
+  },
+};
+
+// …and a field left empty is left out: Toko Grosir Sinar has nothing but a name.
+export const AnEmptyFieldIsLeftOut: Story = {
+  render: () => <AtSinar />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.queryByTestId("supplier-meta")).toBeNull();
+  },
+};
+
+// UBAH FROM THE PAGE — the list row's pair, now beside the name too. What is saved is what the line then says.
+export const EditFromThePage: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("supplier-detail-edit"));
+    const contact = await screen.findByTestId("supplier-contact");
+    await waitFor(() => expect(contact).toHaveValue(SUMBER.contact));
+    await userEvent.clear(contact);
+    await userEvent.type(contact, "0811-0000-1234", { delay: 20 });
+    await userEvent.click(screen.getByTestId("submit-supplier"));
+
+    await waitFor(() => expect(canvas.getByTestId("supplier-detail-contact")).toHaveTextContent("0811-0000-1234"));
+  },
+};
+
+// HAPUS FROM THE PAGE confirms, keeps the supplier for its figures, and goes back to the list — the page it was on
+// no longer opens.
+export const DeleteFromThePageGoesBackToTheList: Story = {
+  render: () => <AtCahaya />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("supplier-detail-delete"));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+
+    await canvas.findByTestId("at-suppliers", {}, { timeout: 4000 });
+  },
+};
+
+// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and ⋯, Ubah and Hapus inside it; the line
+// of who the supplier is under it.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
+    const menu = canvas.getByTestId("supplier-detail-menu");
+    const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
+    await expect(menu.getBoundingClientRect().top).toBeLessThan(name.bottom);
+
+    await userEvent.click(menu);
+    await waitFor(() => expect(screen.getByTestId("supplier-detail-edit")).toBeVisible());
+    await expect(screen.getByTestId("supplier-detail-delete")).toBeVisible();
+  },
+};
+
+// ── A store's row (`a-store-reads-its-name-then-its-type`, `a-channel-action-is-labelled`) ──────────────
+
+// A STORE READS ITS NAME, THEN ITS TYPE — one cell in two lines, the badge UNDER the name, so the badges line up down
+// the list. Its Edit and Delete are labelled buttons.
+export const AStoreReadsItsNameThenItsType: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const shopee = await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+    const tokopedia = canvas.getByTestId(`channel-row-${TOKOPEDIA_STORE.id}`);
+    const shopeeBadge = within(shopee).getByTestId(/^marketplace-badge-/).getBoundingClientRect();
+    const tokopediaBadge = within(tokopedia).getByTestId(/^marketplace-badge-/).getBoundingClientRect();
+
+    await expect(shopeeBadge.top).toBeGreaterThanOrEqual(within(shopee).getByText(SHOPEE_STORE.name).getBoundingClientRect().bottom);
+    await expect(shopeeBadge.left).toBe(tokopediaBadge.left);
+
+    await expect(within(shopee).getByTestId(`edit-channel-${SHOPEE_STORE.id}`)).toHaveTextContent("Edit");
+    await expect(within(shopee).getByTestId(`delete-channel-${SHOPEE_STORE.id}`)).toHaveTextContent("Delete");
+  },
+};
+
+// …and on a phone a store is a block: its name, its type under it, the link and the note — Edit and Delete at its foot,
+// where they do not squeeze the name.
+export const AStoreOnAPhone: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const block = await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+    const badge = within(block).getByTestId(/^marketplace-badge-/).getBoundingClientRect();
+    const edit = within(block).getByTestId(`edit-channel-${SHOPEE_STORE.id}`).getBoundingClientRect();
+
+    await expect(badge.top).toBeGreaterThanOrEqual(within(block).getByText(SHOPEE_STORE.name).getBoundingClientRect().bottom);
+    await expect(edit.top).toBeGreaterThanOrEqual(badge.bottom);
+  },
+};
+
+// THE ADD-STORE FORM SHOWS EXAMPLES — every field, as the add-supplier form does (the-add-store-form-shows-examples).
+export const TheAddStoreFormShowsExamples: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("add-channel"));
+    const name = await screen.findByTestId("channel-name");
+    await waitFor(() => expect(name).toBeVisible());
+
+    await expect(name).toHaveAttribute("placeholder", "e.g. Sumber Makmur Official");
+    await expect(screen.getByTestId("channel-uri")).toHaveAttribute("placeholder", "e.g. https://shopee.co.id/sumbermakmur");
+    await expect(screen.getByTestId("channel-description")).toHaveAttribute("placeholder", "e.g. free shipping over 5 rolls");
   },
 };

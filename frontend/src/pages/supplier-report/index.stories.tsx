@@ -126,7 +126,7 @@ export const RankedByRateNeedsFiftyUnits: Story = {
 
     await waitFor(() => expect(order(canvas)).toEqual(["34", "31", "37", "36", "38"]));
 
-    const rateOf = (id: string) => within(canvas.getByTestId(`supplier-report-row-${id}`)).getByText(/%$/);
+    const rateOf = (id: string) => within(canvas.getByTestId(`supplier-report-row-${id}`)).getByTestId("figure-broken-rate");
     await expect(rateOf("37")).toHaveAttribute("data-muted", "true");
     await expect(rateOf("34")).not.toHaveAttribute("data-muted");
     await expect(canvas.getByTestId("supplier-report-rate-note")).toHaveTextContent("fewer than 50 units");

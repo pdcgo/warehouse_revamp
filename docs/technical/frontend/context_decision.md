@@ -45,6 +45,7 @@ when it applies one of these.
 | [the-account-menu-switches-theme-and-language](#the-account-menu-switches-theme-and-language) | the desktop account menu draws Tema and Bahasa as the phone's switches — ☀/☾ and ID/EN — each a row that toggles and keeps the menu open | the desktop sidebar |
 | [the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) | on a phone the workspace is a round bubble raised out of the tab bar's centre, the team's name under it; the top bar names the screen only | the phone shell |
 | [the-phone-workspace-keeps-its-size](#the-phone-workspace-keeps-its-size) | the phone's workspace drawer is always 75% of the screen, whatever a search leaves in it; a long team name is cut to one line | the phone shell |
+| [every-list-pages-with-the-growing-pager](#every-list-pages-with-the-growing-pager) | every paged list uses `GrowingPager`; a screen still on `Pagination` moves when it is next touched | the supplier page's tabs |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -951,6 +952,30 @@ opened                         searched "zzz" — the same height
 | why | a search narrowing the list, or a section stepping aside, made the drawer shrink and jump under the thumb |
 | the desktop panel | unchanged — it follows its content, up to 400px |
 | a long team name | one line, cut with … — under the tab bar's bubble (in a tab's width) and in the switcher's rows; the full name is the bubble's accessible name. Storybook: *Layouts/Mobile/AppShell › A Long Team Name* |
+
+## every-list-pages-with-the-growing-pager
+
+> Owner, in chat (2026-10-10), on the supplier page: *"paginasi belum diganti semua tab, kita ke depannya pakai
+> paginasi seperti keputusan sebelumnya"*.
+
+```
+before — Pagination                      now — GrowingPager
+Per halaman [10⌄]   ‹  1 of 3  ›         Per halaman [10⌄]   [‹] [1] [2] [3] [›]
+                                           ↑ every page opened is one click away
+```
+
+| | |
+| --- | --- |
+| the control | **`GrowingPager`** for every paged list — the pages opened so far as numbers, the current one in the main tone, › opening the next ([the-accounts-pager-grows-with-the-pages-opened](financial_accounts_decision.md#the-accounts-pager-grows-with-the-pages-opened)) |
+| a new filter, sort, tab or page size | starts the trail over (`resetKey`) |
+| per page | kept as the list had it — 10 / 20 / 50 where it offered sizes, none where it did not |
+| still on screen | on one page and on none, `‹ [1] ›` — [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) holds, with this control |
+| the rest of the app | a screen still on `Pagination` **moves when it is next worked on** — not in a sweep of its own |
+| first applied | the supplier page's three tabs: Toko, Produk, and both of Statistik's tables (also Discover's detail, which shares them) |
+
+**Supersedes** the line in [the-accounts-pager-grows-with-the-pages-opened](financial_accounts_decision.md#the-accounts-pager-grows-with-the-pages-opened)
+that kept every other list on `Pagination` *"until the owner decides"* — this is the decision. The control named in
+[the-pager-is-always-on-screen](#the-pager-is-always-on-screen) (`Pagination`) reads as `GrowingPager` from here.
 
 ## Recorded elsewhere
 

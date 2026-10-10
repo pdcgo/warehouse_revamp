@@ -42,6 +42,13 @@ async function loaded(canvasElement: HTMLElement) {
   return canvas;
 }
 
+// The By Product view — its own page within the tab (the-statistics-tab-is-two-views).
+async function openByProduct(canvas: ReturnType<typeof within>) {
+  await userEvent.click(canvas.getByTestId("statistics-view-product"));
+  await waitFor(() => expect(canvas.getByTestId("statistics-view-product")).toHaveAttribute("aria-selected", "true"));
+  return canvas.findByTestId("statistics-products", {}, { timeout: 3000 });
+}
+
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 export const Default: Story = {};
@@ -75,8 +82,11 @@ export const TheHeadlineIsTheWholeWindow: Story = {
     await expect(canvas.getByTestId("statistics-summary-restocked-units")).toHaveTextContent("130 units");
     await expect(canvas.getByTestId("statistics-summary-lost-value")).toHaveTextContent(rp(50_000n));
     await expect(canvas.getByTestId("statistics-summary-broken-value")).toHaveTextContent(rp(195_000n));
-    // 6 broken of 137 received — broken beside restocked, never inside it.
-    await expect(canvas.getByTestId("statistics-summary-rate-value")).toHaveTextContent("4,4%");
+    // 6 broken of 137 received — broken beside restocked, never inside it — and 1 lost of 137. Each rate sits in its own
+    // card, beside its figure, in its tone (the-loss-rates-sit-in-their-cards).
+    await expect(canvas.getByTestId("statistics-summary-broken-rate")).toHaveTextContent("4,4%");
+    await expect(canvas.getByTestId("statistics-summary-lost-rate")).toHaveTextContent("0,7%");
+    await expect(canvas.queryByTestId("statistics-summary-rate")).toBeNull();
   },
 };
 
@@ -127,7 +137,7 @@ export const TheMonthsAddUpToTheWindow: Story = {
 export const PickingATeamNarrowsEveryNumber: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(within(canvas.getByTestId("statistics-products")).getByText("Team")).toBeInTheDocument();
+    await expect(within(await openByProduct(canvas)).getByText("Team")).toBeInTheDocument();
 
     await pickTeam(canvas.getByTestId("statistics-team"), MELATI.teamCode);
 
@@ -143,7 +153,7 @@ export const PickingATeamNarrowsEveryNumber: Story = {
 export const EachProductNamesItsTeam: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    const table = await canvas.findByTestId("statistics-products");
+    const table = await openByProduct(canvas);
 
     await waitFor(() => expect(within(table).getByText("Beras Pandan Wangi 5kg")).toBeVisible());
 
@@ -168,5 +178,132 @@ export const NothingRestockedSaysSo: Story = {
     await expect(await canvas.findByTestId("statistics-empty", {}, { timeout: 3000 })).toHaveTextContent(
       "Nothing was restocked from this supplier in this period.",
     );
+  },
+};
+
+// ── Two views (`the-statistics-tab-is-two-views`) ────────────────────────────────────────────────────────────
+
+// OVER TIME AND BY PRODUCT ARE TWO VIEWS — one open at a time, Over Time first. The grain belongs to Over Time only.
+export const TwoViewsOverTimeFirst: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("statistics-view-time")).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByTestId("statistics-series")).toBeVisible();
+    await expect(canvas.queryByTestId("statistics-products")).toBeNull();
+    await expect(canvas.getByTestId("statistics-grain")).toBeVisible();
+
+    await openByProduct(canvas);
+    await expect(canvas.queryByTestId("statistics-series")).toBeNull();
+    await expect(canvas.queryByTestId("statistics-grain")).toBeNull();
+    // The headline is the window, on both views.
+    await expect(canvas.getByTestId("statistics-summary")).toBeVisible();
+  },
+};
+
+// SWITCHING VIEW KEEPS THE QUESTION — the team picked on Over Time still narrows By Product.
+export const SwitchingViewKeepsTheTeam: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await pickTeam(canvas.getByTestId("statistics-team"), MELATI.teamCode);
+    await waitFor(() =>
+      expect(canvas.getByTestId("statistics-summary-restocked-value")).toHaveTextContent(rp(3_500_000n)),
+    );
+
+    const table = await openByProduct(canvas);
+    await waitFor(() => expect(within(table).getAllByRole("row").slice(1)).toHaveLength(1));
+    await expect(within(table).queryByText("Team")).not.toBeInTheDocument();
+  },
+};
+
+// ── The total, the rates, the grain, the hover (`the-total-leads-the-figures`, `a-figures-row-lights-up`) ─────────────
+
+// A RATE IS IN ITS FIGURE'S TONE — broken red, lost amber, the same colour as the number beside it.
+export const ARateWearsItsFiguresTone: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const brokenValue = canvas.getByTestId("statistics-summary-broken-value").querySelector("span")!;
+    const brokenRate = canvas.getByTestId("statistics-summary-broken-rate");
+    await expect(getComputedStyle(brokenRate).color).toBe(getComputedStyle(brokenValue).color);
+
+    const lostValue = canvas.getByTestId("statistics-summary-lost-value").querySelector("span")!;
+    const lostRate = canvas.getByTestId("statistics-summary-lost-rate");
+    await expect(getComputedStyle(lostRate).color).toBe(getComputedStyle(lostValue).color);
+    await expect(getComputedStyle(lostRate).color).not.toBe(getComputedStyle(brokenRate).color);
+  },
+};
+
+// THE TOTAL LEADS — every unit received, good, short and broken, and its value — so a percentage has its whole on
+// screen, and says so: "1 unit · 0,7% of total" (the-total-leads-the-figures).
+export const TheTotalLeads: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const total = canvas.getByTestId("statistics-summary-total");
+    await expect(total).toHaveAttribute("data-emphasis");
+    await expect(canvas.getByTestId("statistics-summary").firstElementChild).toBe(total);
+    // 130 + 1 + 6 units; Rp 4.400.000 + 50.000 + 195.000.
+    await expect(canvas.getByTestId("statistics-summary-total-value")).toHaveTextContent(rp(4_645_000n));
+    await expect(canvas.getByTestId("statistics-summary-total-units")).toHaveTextContent("137 units");
+
+    await expect(canvas.getByTestId("statistics-summary-lost")).toHaveTextContent("1 unit · 0,7% of total");
+    await expect(canvas.getByTestId("statistics-summary-broken")).toHaveTextContent("6 units · 4,4% of total");
+  },
+};
+
+// The grain sits RIGHT of the window it cuts.
+export const TheGrainIsRightOfTheWindow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const range = canvas.getByTestId("statistics-range").getBoundingClientRect();
+    const grain = canvas.getByTestId("statistics-grain").getBoundingClientRect();
+    await expect(grain.left).toBeGreaterThan(range.left);
+  },
+};
+
+// A ROW LIGHTS UP under the pointer, every cell of it — driven by `data-hover`, which Chakra's `_hover` honours; a
+// synthetic pointer sets no CSS `:hover`.
+export const AFiguresRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const row = canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`);
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};
+
+// The view is picked FIRST — its tab row sits over the filters, since it decides which filters there are.
+export const TheViewIsOverTheFilters: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const views = canvas.getByTestId("statistics-views").getBoundingClientRect();
+    const team = canvas.getByTestId("statistics-team").getBoundingClientRect();
+    await expect(views.bottom).toBeLessThanOrEqual(team.top);
+  },
+};
+
+// EACH RATE IS ITS OWN COLUMN, right after its figure — Hilang · Tingkat hilang · Rusak · Tingkat rusak — in the figure's
+// tone once there is any (the-loss-rates-are-their-own-columns).
+export const EachRateFollowsItsFigure: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const headers = within(canvas.getByTestId("statistics-series"))
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    await expect(headers).toEqual(["Period", "Restocked", "Lost in shipping", "Lost rate", "Broken in shipping", "Broken rate"]);
+
+    // 2 broken of 43 received on that day; 1 lost.
+    const row = canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`);
+    const broken = within(row).getByTestId("figure-broken-rate");
+    await expect(broken).toHaveTextContent("4,7%");
+    await expect(within(row).getByTestId("figure-lost-rate")).toHaveTextContent("2,3%");
+    await expect(getComputedStyle(broken).color).not.toBe(getComputedStyle(within(row).getByTestId("figure-lost-rate")).color);
   },
 };

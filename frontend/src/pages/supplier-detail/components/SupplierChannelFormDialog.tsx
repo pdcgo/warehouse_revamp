@@ -179,7 +179,14 @@ export function SupplierChannelFormDialog({
                       {t("supplierChannel.form.name")}
                       <Field.RequiredIndicator />
                     </Field.Label>
-                    <Input value={name} data-testid="channel-name" onChange={(e) => setName(e.target.value)} />
+                    {/* An example in every field (owner: *"tambah toko kasih placeholder"*, the add-supplier form's
+                        the-add-supplier-form-shows-examples) — shown only while the field is empty. */}
+                    <Input
+                      value={name}
+                      placeholder={t("supplierChannel.form.namePlaceholder")}
+                      data-testid="channel-name"
+                      onChange={(e) => setName(e.target.value)}
+                    />
                     <Field.HelperText>{t("supplierChannel.form.nameHelp")}</Field.HelperText>
                   </Field.Root>
 
@@ -187,7 +194,7 @@ export function SupplierChannelFormDialog({
                     <Field.Label>{t("supplierChannel.form.uri")}</Field.Label>
                     <Input
                       value={uri}
-                      placeholder="https://"
+                      placeholder={t("supplierChannel.form.uriPlaceholder")}
                       data-testid="channel-uri"
                       onChange={(e) => setUri(e.target.value)}
                     />
@@ -198,6 +205,7 @@ export function SupplierChannelFormDialog({
                     <Textarea
                       value={description}
                       rows={2}
+                      placeholder={t("supplierChannel.form.descriptionPlaceholder")}
                       data-testid="channel-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />

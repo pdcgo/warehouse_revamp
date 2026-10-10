@@ -44,7 +44,7 @@ export const ReadOnly: Story = {};
 
 export const WithActions: Story = {
   args: {
-    actions: <Button size="xs">Add Channel</Button>,
+    actions: <Button size="xs">Add Store</Button>,
     rowActions: () => <Button size="xs" variant="ghost">Edit</Button>,
   },
 };
@@ -115,7 +115,7 @@ export const Paginates: Story = {
     const canvas = await loaded(canvasElement);
 
     await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 10));
-    await userEvent.click(canvas.getByTestId("page-next"));
+    await userEvent.click(canvas.getByTestId("channels-pager-next"));
     await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 2));
     await expect(canvas.getByTestId("channel-row-351")).toBeVisible();
   },
@@ -129,5 +129,20 @@ export const AnotherTeamsStoresAreReadable: Story = {
 
     await waitFor(() => expect(rows(canvas)).toHaveLength(1 + 2));
     await expect(canvas.getByTestId("channels-table")).toHaveTextContent("Makmur Jaya Grosir");
+  },
+};
+
+// A ROW LIGHTS UP under the pointer, every cell of it (a-supplier-tab-row-lights-up) — driven by `data-hover`, which
+// Chakra's `_hover` honours; a synthetic pointer sets no CSS `:hover`.
+export const AStoreRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const row = within(await canvas.findByTestId("channels-table")).getAllByRole("row")[1]!;
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
   },
 };

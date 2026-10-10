@@ -144,7 +144,7 @@ export function DiscoverSupplierDetailPage() {
           </Tabs.Trigger>
         </Tabs.List>
 
-        {/* Read-only: no Add Channel, no row actions — this is another team's supplier. */}
+        {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
         <Tabs.Content value="channels">
           <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} />
         </Tabs.Content>

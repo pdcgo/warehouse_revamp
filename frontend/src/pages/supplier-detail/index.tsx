@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Card, HStack, Heading, Icon, SimpleGrid, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Button, Flex, HStack, Heading, Icon, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -11,7 +11,10 @@ import { NotImplementedSummary } from "../../features/pending/NotImplementedSumm
 import { ChannelsPanel } from "./components/ChannelsPanel";
 import { ProductBrowser } from "../../features/suppliers/ProductBrowser";
 import { SupplierStatistics } from "../../features/suppliers/SupplierStatistics";
+import { useIsMobile } from "../../layouts/shell";
 import { SUPPLIER_DETAIL_PENDING } from "./pending";
+import { SupplierMeta } from "./components/SupplierMeta";
+import { SupplierHeaderActions } from "./components/SupplierHeaderActions";
 
 function parseSupplierId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -22,26 +25,20 @@ function parseSupplierId(raw: string | undefined): bigint {
   }
 }
 
-// A labelled read-only field; a dash keeps the layout from collapsing on an empty value.
-function Field({ label, value, testId }: { label: string; value: string; testId?: string }) {
-  return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3} whiteSpace="pre-line" data-testid={testId}>
-        {value || "—"}
-      </Text>
-    </Stack>
-  );
-}
-
-// SupplierDetailPage is the dedicated detail route for a supplier — a PAGE, not a dialog. The supplier's own
-// fields sit on top (a name, a contact, an address, a description); under them, three horizontal tabs
+// SupplierDetailPage is the dedicated detail route for a supplier — a PAGE, not a dialog. Its name and its own actions on
+// top, who it is in a line under the name (`the-supplier-is-described-under-its-name`), then three horizontal tabs
 // (supplier-detail-has-channels-and-products-tabs, the-figures-are-a-statistics-tab-and-a-supplier-report):
 //
-//   Channels   — every store the supplier sells through, one list, each with its marketplace badge.
-//   Products   — what the supplier sells, each with the channel it is bought from. ⚠ SAMPLE rows until an
+//   ← Kembali ke Pemasok
+//   PT Sumber Makmur                                        [✎ Ubah] [🗑 Hapus]   ← ⋯ on a phone
+//   ☎ 0812-1111-2222 ⧉    📍 Jl. Soekarno-Hatta 112, Bandung
+//   Grosir kain dan benang, minimal order 1 rol.
+//   Toko | Produk | Statistik
+//
+//   Channels   — every store the supplier sells through, one list, each with its marketplace badge. Its word is
+//                Toko in an action, Toko pemasok in a table or a description (toko-in-an-action-toko-pemasok-in-a-table).
+//   Products   — what was bought from the supplier: the product, whose it is, the store and when, first and last
+//                (a-supplier-product-row-says-whose-where-and-when). ⚠ SAMPLE rows until an
 //                accepted restock links a product to its store (restock-accepted-links-the-product-to-its-channel).
 //   Statistics — what was restocked from it, lost and broken on the way, over time and by product — folded from the
 //                restock's accept (the-figures-screens-are-accepted).
@@ -54,6 +51,7 @@ export function SupplierDetailPage() {
   const navigate = useNavigate();
   const { current } = useTeam();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   const id = parseSupplierId(supplierId);
   const teamId = current?.teamId;
@@ -128,25 +126,19 @@ export function SupplierDetailPage() {
     <Stack gap="section" data-testid="supplier-detail-page">
       {back}
 
-      <Heading size="md" data-testid="supplier-detail-name">
-        {supplier.name}
-      </Heading>
+      {/* THE NAME AND ITS ACTIONS — one row; on a phone it stays one row, the actions in ⋯ (`the-phone-header-is-one-row`).
+          Who the supplier is sits right under it, in words (`the-supplier-is-described-under-its-name`). */}
+      <Stack gap="1.5">
+        <Flex align="center" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
+          <Heading size="md" flex="1 1 16rem" minW="0" truncate={isMobile} data-testid="supplier-detail-name">
+            {supplier.name}
+          </Heading>
+          {canManage && <SupplierHeaderActions teamId={teamId} supplier={supplier} folded={isMobile} />}
+        </Flex>
+        <SupplierMeta supplier={supplier} />
+      </Stack>
 
       <NotImplementedSummary list={SUPPLIER_DETAIL_PENDING} />
-
-      <Card.Root>
-        <Card.Body>
-          <SimpleGrid columns={{ base: 1, sm: 3 }} gap="card">
-            <Field label={t("supplierChannel.detail.contact")} value={supplier.contact} testId="supplier-detail-contact" />
-            <Field label={t("supplierChannel.detail.address")} value={supplier.address} testId="supplier-detail-address" />
-            <Field
-              label={t("supplierChannel.detail.description")}
-              value={supplier.description}
-              testId="supplier-detail-description"
-            />
-          </SimpleGrid>
-        </Card.Body>
-      </Card.Root>
 
       <Tabs.Root defaultValue="channels" lazyMount unmountOnExit data-testid="supplier-tabs">
         <Tabs.List>

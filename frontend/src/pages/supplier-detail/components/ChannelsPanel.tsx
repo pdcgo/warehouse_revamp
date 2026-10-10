@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { HStack, Icon, IconButton } from "@chakra-ui/react";
+import { Button, HStack, Icon } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { SupplierChannelRecord } from "../../../features/suppliers/adapt";
@@ -41,18 +41,15 @@ export function ChannelsPanel({
     }
   }
 
+  // Edit and Delete, LABELLED buttons as on the supplier list's rows (owner: *"di channel, aksi ada namanya"*,
+  // `a-channel-action-is-labelled`) — the same pair on a table row and at a phone block's foot.
   function rowActions(ch: SupplierChannelRecord) {
     return (
-      <HStack justify="end" gap="1">
-        <IconButton
-          size="xs"
-          variant="ghost"
-          aria-label={t("supplierChannel.edit")}
-          data-testid={`edit-channel-${ch.id}`}
-          onClick={() => setEditing(ch)}
-        >
+      <HStack justify="end" gap="1.5">
+        <Button size="xs" variant="outline" data-testid={`edit-channel-${ch.id}`} onClick={() => setEditing(ch)}>
           <Icon as={Pencil} boxSize="4" />
-        </IconButton>
+          {t("supplierChannel.editAction")}
+        </Button>
 
         <ConfirmDialog
           title={t("supplierChannel.deleteTitle")}
@@ -60,15 +57,10 @@ export function ChannelsPanel({
           confirmLabel={t("supplierChannel.delete")}
           onConfirm={() => removeChannel(ch)}
           trigger={
-            <IconButton
-              size="xs"
-              variant="ghost"
-              colorPalette="error"
-              aria-label={t("supplierChannel.delete")}
-              data-testid={`delete-channel-${ch.id}`}
-            >
+            <Button size="xs" variant="outline" colorPalette="error" data-testid={`delete-channel-${ch.id}`}>
               <Icon as={Trash2} boxSize="4" />
-            </IconButton>
+              {t("supplierChannel.delete")}
+            </Button>
           }
         />
       </HStack>
