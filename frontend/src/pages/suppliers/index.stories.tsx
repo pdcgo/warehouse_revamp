@@ -49,6 +49,30 @@ async function loaded(canvasElement: HTMLElement) {
 
 export const Default: Story = {};
 
+// A PHONE READS EACH SUPPLIER AS A BLOCK (a-phone-reads-each-line-as-a-block) — the name and its stores, or words saying
+// it has none; no contact, no address; no headings, so the sort is the Filter sheet's, with the store type.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(within(canvas.getByTestId("suppliers-table")).queryAllByRole("columnheader")).toHaveLength(0);
+    const sumber = canvas.getByTestId(`supplier-row-${SUMBER.id}`);
+    await expect(sumber).toHaveTextContent("Shopee");
+    // Its name and its stores — no contact, no address (a-phone-supplier-is-its-name-and-stores).
+    await expect(sumber).not.toHaveTextContent(SUMBER.contact);
+    await expect(sumber).not.toHaveTextContent(SUMBER.address);
+    // A supplier with no store says so in words, not a dash.
+    await expect(canvas.getByTestId(`supplier-row-${SINAR.id}-no-stores`)).toHaveTextContent("No supplier stores yet");
+
+    await userEvent.click(canvas.getByTestId("suppliers-filter-open"));
+    const sheet = await screen.findByTestId("suppliers-filter-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(within(sheet).getByTestId("supplier-sort-select")).toBeVisible();
+    await expect(within(sheet).getByTestId("marketplace-select")).toBeVisible();
+  },
+};
+
 export const AWarehouseTeam: Story = { beforeEach: standingIn(WAREHOUSE_TEAM) };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
@@ -233,26 +257,6 @@ export const TheGrowingPager: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await expect(canvas.getByTestId("suppliers-pager")).toBeVisible();
-  },
-};
-
-// ── Mobile ──────────────────────────────────────────────────────────────────────────────────────
-
-// A PHONE READS EACH SUPPLIER AS A BLOCK (a-phone-reads-each-line-as-a-block) — the name, its stores, the contact and
-// the address; no headings, so the sort is the Filter sheet's, with the store type.
-export const Mobile: Story = {
-  globals: { viewport: { value: "mobile2" } },
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await expect(within(canvas.getByTestId("suppliers-table")).queryAllByRole("columnheader")).toHaveLength(0);
-    await expect(canvas.getByTestId(`supplier-row-${SUMBER.id}`)).toHaveTextContent("Shopee");
-
-    await userEvent.click(canvas.getByTestId("suppliers-filter-open"));
-    const sheet = await screen.findByTestId("suppliers-filter-sheet");
-    await waitFor(() => expect(sheet).toBeVisible());
-    await expect(within(sheet).getByTestId("supplier-sort-select")).toBeVisible();
-    await expect(within(sheet).getByTestId("marketplace-select")).toBeVisible();
   },
 };
 

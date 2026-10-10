@@ -165,6 +165,17 @@ anggrek[4]!.name =
 anggrek[9]!.name = "Lada Bubuk";
 
 // ── Products ────────────────────────────────────────────────────────────────────────────────────
+
+// A flat drawing standing in for a product photo — so a screen's picture path is exercised by at least one product
+// (Beras), while the others keep the placeholder. Inline, so no story waits on a network image.
+const RICE_PICTURE = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
+    `<rect width="64" height="64" fill="#fef3c7"/>` +
+    `<rect x="14" y="10" width="36" height="46" rx="6" fill="#f5f5f4" stroke="#a8a29e" stroke-width="2"/>` +
+    `<rect x="14" y="24" width="36" height="14" fill="#16a34a"/>` +
+    `</svg>`,
+)}`;
+
 export const products = [
   {
     id: 71n, teamId: 11n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g",
@@ -188,7 +199,7 @@ export const products = [
   // "Other" and "Priority" would be indistinguishable from "everyone else" and "everyone else".
   {
     id: 74n, teamId: 12n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg",
-    description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
+    description: "", categoryId: 54n, defaultImageUrl: RICE_PICTURE, defaultImageThumbnailUrl: RICE_PICTURE,
     deleted: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
   },
   // ⚠ LAST, and that is load-bearing rather than tidiness. The stub filters this array in order, so

@@ -110,11 +110,18 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
                 <Text lineClamp={1}>{p.channel.name}</Text>
                 <MarketplaceBadge marketplace={p.channel.channelType} />
               </HStack>
-              <Text fontSize="sm" color="fg.muted">
-                {t("supplierChannel.products.lastBought")} {formatUnixDate(p.lastBoughtAt)}
-                {p.firstBoughtAt !== p.lastBoughtAt &&
-                  ` · ${t("supplierChannel.products.firstBought", { date: formatUnixDate(p.firstBoughtAt) })}`}
-              </Text>
+              {/* The first restock on its OWN line, as on a desktop (owner: *"oke"*, `the-first-restock-has-its-own-line`)
+                  — after a dot it wrapped mid-date, the year alone on the next line. */}
+              <Stack gap="0" fontSize="sm" color="fg.muted">
+                <Text data-testid={`product-row-${p.key}-last`}>
+                  {t("supplierChannel.products.lastBought")} {formatUnixDate(p.lastBoughtAt)}
+                </Text>
+                {p.firstBoughtAt !== p.lastBoughtAt && (
+                  <Text data-testid={`product-row-${p.key}-first`}>
+                    {t("supplierChannel.products.firstBought", { date: formatUnixDate(p.firstBoughtAt) })}
+                  </Text>
+                )}
+              </Stack>
             </Stack>
           ))}
         </Stack>

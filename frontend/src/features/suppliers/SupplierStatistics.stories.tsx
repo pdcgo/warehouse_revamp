@@ -307,3 +307,43 @@ export const EachRateFollowsItsFigure: Story = {
     await expect(getComputedStyle(broken).color).not.toBe(getComputedStyle(within(row).getByTestId("figure-lost-rate")).color);
   },
 };
+
+// ── On a phone ────────────────────────────────────────────────────────────────────────────────────
+
+// A PHONE: a period is a block that reads the desktop's columns — restocked, then lost and broken each with its rate
+// beside it (a-phone-figures-block-reads-the-columns); a quiet period is one thin line (a-quiet-period-is-one-line-on-a-phone);
+// the cards carry no note (a-phone-card-shows-no-note).
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const busy = canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`);
+    await expect(busy).toHaveTextContent("Restocked 40");
+    await expect(within(busy).getByTestId(`statistics-series-row-${dayAgo(2)}-lost`)).toHaveTextContent("Lost 1 · 2,3%");
+    await expect(within(busy).getByTestId(`statistics-series-row-${dayAgo(2)}-broken`)).toHaveTextContent("Broken 2 · 4,7%");
+    await expect(busy).not.toHaveTextContent("% broken");
+
+    const quiet = canvas.getByTestId(`statistics-series-row-${dayAgo(0)}`);
+    await expect(quiet).toHaveAttribute("data-quiet", "true");
+    await expect(quiet).toHaveTextContent("nothing restocked");
+
+    await expect(canvas.queryByTestId("statistics-summary-total-note")).toBeNull();
+  },
+};
+
+// A PRODUCT SHOWS ITS PICTURE — the app's product item: the picture, the name, the SKU under it; a product with no
+// picture shows the placeholder (a-figures-product-shows-its-picture). Beras has a picture in the fixtures, Gula none.
+export const AProductShowsItsPicture: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const table = await openByProduct(canvas);
+
+    const beras = within(table).getByTestId("statistics-product-row-12|74");
+    await waitFor(() => expect(within(beras).getByRole("img")).toBeInTheDocument());
+    await expect(beras).toHaveTextContent("SKU-BERAS-5K");
+
+    const gula = within(table).getByTestId("statistics-product-row-13|73");
+    await expect(within(gula).queryByRole("img")).toBeNull();
+  },
+};

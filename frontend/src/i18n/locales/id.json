@@ -1507,6 +1507,7 @@
     "search": "Cari pemasok, alamat, atau toko",
     "typeAll": "Semua jenis toko",
     "none": "Tidak ada pemasok yang cocok.",
+    "noStores": "Belum ada toko pemasok",
     "sort": {
       "label": "Urutkan",
       "default": "Terbaru dulu",
@@ -1609,7 +1610,8 @@
     "rateBroken": "{{rate}}% rusak",
     "line": {
       "restocked": "Direstok {{n}} · {{value}}",
-      "lostBroken": "Hilang {{lost}} ({{lostRate}}) · rusak {{broken}}"
+      "lost": "Hilang {{n}}",
+      "broken": "Rusak {{n}}"
     },
     "col": {
       "period": "Periode",
@@ -1631,7 +1633,8 @@
     "byProduct": "Per Produk",
     "empty": "Tidak ada restok dari pemasok ini pada periode ini.",
     "noProducts": "Tidak ada produk pada periode ini.",
-    "emptyTeam": "Tim itu tidak merestok dari pemasok ini pada periode ini."
+    "emptyTeam": "Tim itu tidak merestok dari pemasok ini pada periode ini.",
+    "quietPeriod": "tidak ada restok"
   },
   "supplierReport": {
     "title": "Laporan Pemasok",

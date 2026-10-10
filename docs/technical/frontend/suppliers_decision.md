@@ -31,6 +31,12 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [the-loss-rates-are-their-own-columns](#the-loss-rates-are-their-own-columns) | in the figures tables, *Tingkat hilang* follows *Hilang* and *Tingkat rusak* follows *Rusak*, each a column of its own in the figure's tone |
 | [a-supplier-tab-row-lights-up](#a-supplier-tab-row-lights-up) | a row of the Toko and Produk tabs lights up under the pointer, every cell |
 | [the-add-store-form-shows-examples](#the-add-store-form-shows-examples) | the add-store dialog shows an example in every field, as the add-supplier dialog does |
+| [a-phone-figures-block-reads-the-columns](#a-phone-figures-block-reads-the-columns) | on a phone a figures block reads the desktop's columns — *Hilang 1 · 2,3%  Rusak 2 · 4,7%* in their tones; no rate beside the title |
+| [a-quiet-period-is-one-line-on-a-phone](#a-quiet-period-is-one-line-on-a-phone) | on a phone a period with nothing restocked is one thin dashed line, *2026-10-10 · tidak ada restok* |
+| [a-phone-card-shows-no-note](#a-phone-card-shows-no-note) | on a phone the figures cards drop their note line — label, figure and units only |
+| [the-first-restock-has-its-own-line](#the-first-restock-has-its-own-line) | on a phone a product block puts *pertama …* on its own line under *Terakhir dibeli …* |
+| [a-figures-product-shows-its-picture](#a-figures-product-shows-its-picture) | Statistik's Per Produk draws a product with its picture, name and SKU — the Produk tab's item |
+| [a-phone-supplier-is-its-name-and-stores](#a-phone-supplier-is-its-name-and-stores) | on a phone the supplier list's block is the name and its stores — no contact, no address; no store reads *Belum ada toko pemasok* |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -461,3 +467,106 @@ Periode     Direstok      Hilang di pengiriman  Tingkat hilang  Rusak di pengiri
 | the placeholders | *Contoh: …* in the name, the link and the description — the add-supplier form's pattern ([the-add-supplier-form-shows-examples](#the-add-supplier-form-shows-examples)). The type keeps *Pilih jenis toko* |
 | the link | was a bare *https://* — now a whole example address |
 | edit | shows none — a filled field hides its placeholder |
+
+## a-phone-figures-block-reads-the-columns
+
+> Owner, in chat (2026-10-10), reviewing the supplier page on a phone — to *"Statistik: blok per periode masih format
+> lama"*: *"diperbaiki"*.
+
+```
+before                              now
+2026-10-08          4,7% rusak      2026-10-08
+Direstok 40 · Rp 2.000.000          Direstok 40 · Rp 2.000.000
+Hilang 1 (2,3%) · rusak 2           Hilang 1 · 2,3%    Rusak 2 · 4,7%     ← amber, red
+```
+
+| | |
+| --- | --- |
+| the lines | the title (and its sub-line), **Direstok n · Rp …**, then **Hilang n · rate** and **Rusak n · rate** side by side — the desktop's columns ([the-loss-rates-are-their-own-columns](#the-loss-rates-are-their-own-columns)) read as a line |
+| tones | a count and its rate in amber (lost) or red (broken) once there is any; *0* and its *0%* muted; no rate when nothing arrived |
+| beside the title | nothing — the broken rate there repeated the line under it |
+| a block that opens something | (the Supplier Report's) lights up under a pointer and while pressed, as [a-table-row-lights-up](context_decision.md#a-table-row-lights-up) |
+| where | `FigureBlock` — the Statistik tab's two views **and the Supplier Report's phone list**; its muted rate under 50 units stays, on *Rusak* |
+
+## a-quiet-period-is-one-line-on-a-phone
+
+> Owner, in chat (2026-10-10), to *"hari tanpa restok tetap jadi blok penuh"*: *"oke"*.
+
+```
+┆ 2026-10-10 · tidak ada restok ┆        ← dashed, muted, one line
+┌ 2026-10-08 ───────────────────┐
+│ Direstok 40 · Rp 2.000.000    │
+│ Hilang 1 · 2,3%  Rusak 2 · 4,7% │
+└───────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| a quiet period | nothing received — one line, *{period} · tidak ada restok*, dashed and muted |
+| why it stays | a missing period reads as one that did not load — the series keeps every period |
+| was | a full block of zeroes per quiet day — thirty blocks for thirty days |
+| a desktop | unchanged — its quiet rows are already one line of muted zeroes |
+
+## a-phone-card-shows-no-note
+
+> Owner, in chat (2026-10-10), to *"keterangan terpotong"*: *"iya"*.
+
+| | |
+| --- | --- |
+| on a phone | the figures cards show their label, figure and units — **no note** (*semua unit yang diterima …*) |
+| why | two cards share a row on a phone and every note was cut to *"unit yang…"* |
+| a desktop | keeps its notes |
+| where | `FiguresSummary` — the Statistik tab and the Supplier Report |
+
+## the-first-restock-has-its-own-line
+
+> Owner, in chat (2026-10-10), to *"baris tanggal terbelah aneh"*: *"oke"*.
+
+```
+before                                        now
+Terakhir dibeli 29 Sep 2026 · pertama 13 Agu  Terakhir dibeli 29 Sep 2026
+2026                                          pertama 13 Agu 2026
+```
+
+On a phone the first restock sits on its own line under the last, as on a desktop — after a dot it wrapped mid-date.
+
+## a-figures-product-shows-its-picture
+
+> Owner, in chat (2026-10-10): *"statistik per produk ada gambar"*.
+
+```
+desktop                                                          phone
+Produk                          Tim          Direstok  …         [▦] Beras Pandan Wangi 5kg
+[▦] Beras Pandan Wangi 5kg      Toko Melati        70            SKU-BERAS-5K [Toko Melati]
+    SKU-BERAS-5K                             Rp 3.500.000         Direstok 70 · Rp 3.500.000
+[📦] Gula Pasir 1kg             Toko Kenanga       60            Hilang 1 · 1,4%   Rusak 3 · 4,1%
+    SKU-GULA-1K
+```
+
+| | |
+| --- | --- |
+| the product | `ProductListItem` — the picture (the thumbnail, else the full image; the placeholder when there is none), the name, the SKU under it — as the Produk tab draws it ([a-supplier-product-row-says-whose-where-and-when](#a-supplier-product-row-says-whose-where-and-when)) |
+| on a phone | the same item heads the block, the team as a badge beside the SKU (gone when one team is picked) |
+| the data | already in the read — `ProductByIds` returns each product's `default_image_thumbnail_url`; no API change |
+| Storybook | product 74 (Beras) now has a drawn picture in the shared fixtures, so a picture path is exercised; the others keep the placeholder |
+
+## a-phone-supplier-is-its-name-and-stores
+
+> Owner, in chat (2026-10-10): *"suppliers mobil tidak perlu kontak dan alamat, tidak ada toko tertaut tulis teks"*.
+
+```
+before                                  now
+PT Sumber Makmur                        PT Sumber Makmur
+[Shopee] [Tokopedia] [Other]            [Shopee] [Tokopedia] [Other]
+0812-1111-2222 · Jl. Soekarno-Hatta…                    [✎ Ubah] [🗑 Hapus]
+                [✎ Ubah] [🗑 Hapus]
+Toko Grosir Sinar                       Toko Grosir Sinar
+—                                       Belum ada toko pemasok
+```
+
+| | |
+| --- | --- |
+| the block | the supplier's **name**, then **its stores** (`ChannelTypes`), then Ubah and Hapus at its foot |
+| gone | the contact and the address line — the block is for finding the supplier; its page carries both ([the-supplier-is-described-under-its-name](#the-supplier-is-described-under-its-name)) |
+| no store | a muted line in words, ***Belum ada toko pemasok*** (en *No supplier stores yet*) — it was a dash, or no line at all |
+| a desktop | unchanged — the address under the name, the contact in its column, a store-less row's *Toko pemasok* cell still a dash |

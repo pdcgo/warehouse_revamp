@@ -74,6 +74,24 @@ async function openProducts(canvas: ReturnType<typeof within>) {
 
 export const Default: Story = {};
 
+// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and ⋯, Ubah and Hapus inside it; the line
+// of who the supplier is under it.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
+    const menu = canvas.getByTestId("supplier-detail-menu");
+    const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
+    await expect(menu.getBoundingClientRect().top).toBeLessThan(name.bottom);
+
+    await userEvent.click(menu);
+    await waitFor(() => expect(screen.getByTestId("supplier-detail-edit")).toBeVisible());
+    await expect(screen.getByTestId("supplier-detail-delete")).toBeVisible();
+  },
+};
+
 export const ProductsTab: Story = {
   play: async ({ canvasElement }) => {
     await openProducts(await loaded(canvasElement));
@@ -429,24 +447,6 @@ export const DeleteFromThePageGoesBackToTheList: Story = {
     await userEvent.click(confirm);
 
     await canvas.findByTestId("at-suppliers", {}, { timeout: 4000 });
-  },
-};
-
-// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and ⋯, Ubah and Hapus inside it; the line
-// of who the supplier is under it.
-export const Mobile: Story = {
-  globals: { viewport: { value: "mobile2" } },
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
-    const menu = canvas.getByTestId("supplier-detail-menu");
-    const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
-    await expect(menu.getBoundingClientRect().top).toBeLessThan(name.bottom);
-
-    await userEvent.click(menu);
-    await waitFor(() => expect(screen.getByTestId("supplier-detail-edit")).toBeVisible());
-    await expect(screen.getByTestId("supplier-detail-delete")).toBeVisible();
   },
 };
 

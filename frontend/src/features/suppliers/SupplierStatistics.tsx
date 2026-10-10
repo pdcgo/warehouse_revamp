@@ -19,6 +19,7 @@ import {
   useSupplierFiguresByProduct,
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
+import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
 const PAGE_SIZE = 10;
@@ -235,14 +236,34 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
   if (isMobile) {
     return (
       <Stack gap="2" data-testid="statistics-series">
-        {points.map((point) => (
-          <FigureBlock
-            key={point.at}
-            title={point.at}
-            figures={point.figures}
-            testId={`statistics-series-row-${point.at}`}
-          />
-        ))}
+        {points.map((point) =>
+          // A QUIET PERIOD IS ONE THIN LINE, not a block of zeroes (owner, on the phone: *"oke"*,
+          // `a-quiet-period-is-one-line-on-a-phone`) — still there, so a missing day never reads as one that did not
+          // load; thirty days were thirty full blocks, most of them "Direstok 0 · Rp 0".
+          unitsReceived(point.figures) === 0 ? (
+            <Text
+              key={point.at}
+              fontSize="sm"
+              color="fg.muted"
+              px="3"
+              py="1.5"
+              borderWidth="1px"
+              borderStyle="dashed"
+              borderRadius="md"
+              data-testid={`statistics-series-row-${point.at}`}
+              data-quiet="true"
+            >
+              {point.at} · {t("supplierStats.quietPeriod")}
+            </Text>
+          ) : (
+            <FigureBlock
+              key={point.at}
+              title={point.at}
+              figures={point.figures}
+              testId={`statistics-series-row-${point.at}`}
+            />
+          ),
+        )}
       </Stack>
     );
   }
@@ -283,6 +304,14 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
     row.team.name || t("supplierFigures.teamNumber", { id: row.team.teamId.toString() });
   const productLabel = (row: SupplierProductRow) =>
     row.name || t("supplierFigures.productNumber", { id: row.productId.toString() });
+  // THE PRODUCT AS THE APP DRAWS A PRODUCT — its picture, its name, its SKU under it (owner: *"statistik per produk ada
+  // gambar"*, `a-figures-product-shows-its-picture`), as the Produk tab draws it. No picture → the placeholder.
+  const productOf = (row: SupplierProductRow) => ({
+    id: row.productId,
+    name: productLabel(row),
+    sku: row.sku,
+    defaultImageThumbnailUrl: row.thumbnailUrl,
+  });
 
   if (rows.length === 0) {
     return (
@@ -299,7 +328,8 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
           <FigureBlock
             key={row.key}
             title={productLabel(row)}
-            sub={showTeam ? `${row.sku} · ${teamLabel(row)}` : row.sku}
+            // The team as a badge beside the SKU — the Produk tab's phone block.
+            header={<ProductListItem product={productOf(row)} teamName={showTeam ? teamLabel(row) : undefined} />}
             figures={row.figures}
             testId={`statistics-product-row-${row.key}`}
           />
@@ -322,10 +352,9 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
           {rows.map((row) => (
             <Table.Row key={row.key} data-testid={`statistics-product-row-${row.key}`} css={LIGHTS_UP}>
               <Table.Cell>
-                <Text fontSize="sm">{productLabel(row)}</Text>
-                <Text fontSize="xs" color="fg.muted">
-                  {row.sku}
-                </Text>
+                <Box minW="14rem">
+                  <ProductListItem product={productOf(row)} />
+                </Box>
               </Table.Cell>
               {showTeam && (
                 <Table.Cell>

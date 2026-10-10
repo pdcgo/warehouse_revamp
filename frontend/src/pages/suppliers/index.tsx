@@ -162,8 +162,10 @@ export function SuppliersPage() {
     }
 
     if (isMobile) {
-      // A PHONE READS EACH SUPPLIER AS A BLOCK (`a-phone-reads-each-line-as-a-block`): the name at full width, its
-      // stores, then the contact and the address — never three clamped columns. The sort is the Filter sheet's.
+      // A PHONE READS EACH SUPPLIER AS A BLOCK (`a-phone-reads-each-line-as-a-block`): the name at full width, then its
+      // stores — never three clamped columns. The sort is the Filter sheet's. No contact and no address (owner:
+      // *"suppliers mobil tidak perlu kontak dan alamat"*, `a-phone-supplier-is-its-name-and-stores`): the block is for
+      // finding the supplier, and its page carries both.
       return (
         <Stack gap="2" data-testid="suppliers-table">
           {suppliers.map((supplier) => (
@@ -181,11 +183,15 @@ export function SuppliersPage() {
               onClick={() => open(supplier)}
             >
               <Text fontWeight="bold">{supplier.name}</Text>
-              {/* A store-less supplier skips the line — one dash under its name is enough. */}
-              {supplier.channels.length > 0 && <ChannelTypes channels={supplier.channels} />}
-              <Text fontSize="sm" color="fg.muted" lineClamp={2}>
-                {[supplier.contact, supplier.address].filter(Boolean).join(" · ") || "—"}
-              </Text>
+              {/* A store-less supplier SAYS so, in words (owner: *"tidak ada toko tertaut tulis teks"*) — the line is
+                  never skipped and never a bare dash. */}
+              {supplier.channels.length > 0 ? (
+                <ChannelTypes channels={supplier.channels} />
+              ) : (
+                <Text fontSize="sm" color="fg.muted" data-testid={`supplier-row-${supplier.id}-no-stores`}>
+                  {t("suppliers.noStores")}
+                </Text>
+              )}
               {/* The labelled buttons at the block's FOOT — beside the name they squeezed it into a narrow column. */}
               {canManage && (
                 <Box pt="1" onClick={(e) => e.stopPropagation()}>

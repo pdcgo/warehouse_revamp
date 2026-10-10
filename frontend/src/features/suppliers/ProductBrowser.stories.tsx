@@ -137,7 +137,10 @@ export const Mobile: Story = {
   play: async ({ canvasElement }) => {
     const block = await within(canvasElement).findByTestId("product-row-1-0");
     await expect(block).toHaveTextContent("Toko Melati");
-    await expect(block).toHaveTextContent("Last bought");
+    // The first restock on its OWN line, under the last — never wrapped onto it (the-first-restock-has-its-own-line).
+    const last = within(block).getByTestId("product-row-1-0-last").getBoundingClientRect();
+    const first = within(block).getByTestId("product-row-1-0-first").getBoundingClientRect();
+    await expect(first.top).toBeGreaterThanOrEqual(last.bottom);
   },
 };
 
