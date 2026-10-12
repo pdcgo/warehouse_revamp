@@ -3,10 +3,26 @@
 ```mermaid
 stateDiagram-v2
 direction LR
+
+fe: Frontend
+state fe{
+    state "Order Need Created" as needc
+    state "Create Idempotency Key" as idem
+    state "Filling Order Form" as fill
+    state "Create Order" as cre
+
+    [*]-->needc
+    needc-->idem
+    idem-->fill
+    fill-->cre
+}
+
+fe-->rpc
+
 state "Create RPC called" as rpc
 state create_err <<choice>>
 
-rpc-->tx
+rpc-->tx: bring idempotency key
 
 tx: Open Database Transaction
 
@@ -28,7 +44,7 @@ state tx {
     state "Inventory Service" as inv
     state "Warehouse Service" as wh
 
-    [*]-->inv: call for take stock & placement 
+    [*]-->inv: call for take stock & placement, and bring idempotency key
     inv-->sub: returning subtotal info.
     sub-->wh: call for get warehouse fee
     
@@ -90,9 +106,9 @@ state "Order Created Event" as createdevt
 state "Inventory Tx Cancel Compensate Event" as cominvevt
 state "Delete Draft Order" as draft
 
-create_err-->createdevt: if success
+create_err-->createdevt: if success, and bring idempotency key
 create_err-->draft: if success
-create_err-->cominvevt: if error
+create_err-->cominvevt: if error, and bring idempotency key
 createdevt-->srv
 cominvevt-->srv
 

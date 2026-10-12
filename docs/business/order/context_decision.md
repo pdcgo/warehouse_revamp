@@ -37,6 +37,12 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-take-reduces-stock-and-placement](#a-take-reduces-stock-and-placement) | create takes stock directly — shelves and counts are inventory's to design |
 | [rupiah-is-floating-point](#rupiah-is-floating-point) | every rupiah amount is `double`/`float`, system-wide |
 | [the-take-is-never-retried](#the-take-is-never-retried) | one call to inventory — any failure fails the create |
+| [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key) | one key from the form names the take, *Order Created* and the compensation |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | the order keeps the key it was created with — a resend gets that order back |
+| [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) | `orders.idempotency_key`, UNIQUE — a key, not an `_id` |
+| [inventory-takes-a-key-once](#inventory-takes-a-key-once) | a second take on a used key is refused, never replayed · an early cancel is kept |
+| [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the form mints a new key after any answer — the same key only for a resend with no answer |
+| [every-release-goes-by-the-key](#every-release-goes-by-the-key) | Order Cancel carries the key · inventory has ONE release, by key, for the cancel and the compensation · a second release does nothing |
 | [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
 | [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
 | [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
@@ -1779,3 +1785,216 @@ flowchart LR
 
 The contract has no status for it yet (nor for the handover); both are asked for in
 [design_clarify.md](../../technical/order/design_clarify.md#question).
+
+---
+
+## the-frontend-mints-the-idempotency-key
+
+> Owner (2026-10-12), written into [order_creation.md](./order_creation.md): the frontend **creates an idempotency
+> key** before the form is filled, and the key rides the whole create — into the RPC, into the take, onto *Order
+> Created* on success and onto the compensation on error. It answers the open ⚠ of
+> [the-take-is-never-retried](#the-take-is-never-retried): *the take still needs a reference the order knows before
+> it calls*. Its purpose, in the owner's words the same day: *"if we call inventory service and timeout, we can
+> publish cancel inv transaction"*.
+
+**The verdict.** One key, minted in the browser before anything is sent, names the create everywhere it goes. It
+exists before the take, so the compensation can name a take whose response never arrived.
+
+```mermaid
+sequenceDiagram
+  participant F as frontend
+  participant O as order_service
+  participant I as inventory_service
+  participant B as broker
+  F->>F: open the form, mint key K
+  F->>O: OrderCreate with K
+  O->>I: take stock with K
+  I-->>O: lines, owner, cost
+  alt the transaction commits
+    O->>B: Order Created with K
+  else any step fails
+    O->>B: compensation with K
+    B->>I: release the take named K
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| minted by | the frontend, at *Order Need Created* — before the form is filled |
+| carried on | the create request · the take request · *Order Created* · the compensation event |
+| what it names | the TAKE — the take runs before the order row exists, so the key is its only reference |
+| what it fixes | a take that committed after its call timed out can still be released — the compensation carries K, not the lost response |
+
+**What it amends.** [the-take-is-never-retried](#the-take-is-never-retried) says inventory *"does not need to be
+idempotent against a retry"*. Minted when the form opens, K is the same on a second submit of the same form, so
+inventory must recognise it — a second take on one K must not take twice. The verdict there stands: `order_service`
+never retries the call by itself.
+
+**What it left open, settled the same day:** the order stores K
+([the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key),
+[the-idempotency-key-is-unique](#the-idempotency-key-is-unique)) · a key buys one take
+([inventory-takes-a-key-once](#inventory-takes-a-key-once)) · a new K after any answer
+([a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer)).
+
+---
+
+## the-order-stores-its-idempotency-key
+
+> Owner (2026-10-12), in [context.md](./context.md) §Table That Must Have: `orders` gains **`idempotency_id`** —
+> answering *"does the order keep the key?"*
+> ([order_creation_clarify](./order_creation_clarify.md#question)), as recommended.
+
+**The verdict.** The order keeps the key it was created with, so a create can tell **its own resend** from a new
+order.
+
+```mermaid
+flowchart TD
+  R["OrderCreate with K"] --> Q{"an order already has idempotency_key K?"}
+  Q -->|"yes"| S["return that order — success, no stock taken"]
+  Q -->|"no"| N["a new create — the take runs"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| column | `orders.idempotency_key` — the key minted by the frontend ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)). The doc wrote `idempotency_id`, renamed by [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) |
+| what it prevents | a resend of an order that DID commit, whose reply was lost, being refused by the uniqueness check as a duplicate of itself |
+| unique | yes — [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) |
+
+---
+
+## the-idempotency-key-is-unique
+
+> Owner (2026-10-12): *"yes, i follow the recommendation of the critique"* — accepting
+> `the-idempotency-id-is-unique` as recommended.
+
+**The verdict.** The order's key is **UNIQUE**, and the column is named **`idempotency_key`** — it is a value the
+frontend minted, not a reference to another row, and the diagram already calls it a key.
+
+```mermaid
+flowchart LR
+  A["submit 1 with K"] --> IX["UNIQUE index on idempotency_key"]
+  B["submit 2 with K, the same second"] --> IX
+  IX --> W["one row is written"]
+  IX --> L["the other fails, and is answered with the order that won"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| column | `orders.idempotency_key` — renames the `idempotency_id` written in [context.md](./context.md) §Table That Must Have |
+| constraint | `UNIQUE`. A check in code alone lets two submits in the same second both pass — the same race as the ref's |
+| the loser | a unique violation on this column is a resend that lost the race, so it is answered with the order that won, never as an error |
+
+⚠ **The owner's table still says `idempotency_id`** — reported in
+[order_creation_clarify](./order_creation_clarify.md#contradiction), not edited (RULE 7b).
+
+---
+
+## inventory-takes-a-key-once
+
+> Owner (2026-10-12): *"yes, i follow the recommendation of the critique"* — accepting it as recommended. It
+> **reverses my own earlier spec**, written the same morning, in which inventory REPLAYED a second take on the same
+> key by returning the first take's answer.
+
+**The verdict.** A key buys **one take, ever.** A second take on a key inventory has already seen — as a take or
+as a cancel — is refused, never replayed.
+
+```mermaid
+flowchart TD
+  T["a take arrives with K"] --> Q{"has inventory seen K before?"}
+  Q -->|"no"| D["take the stock under K"]
+  Q -->|"yes — a take or a cancel"| X["refuse — K is used"]
+  C["a cancel arrives with K"] --> Q2{"is there a take under K?"}
+  Q2 -->|"yes"| R["release it"]
+  Q2 -->|"no — the take is still on its way"| TS["keep the cancel, so the late take is refused"]
+```
+
+**Why replay was wrong.** A timeout publishes the cancel for K. If the form resends on K and inventory replays,
+the resend is handed the very take being cancelled — the order commits, the cancel lands, and the stock goes back
+on the shelf under a live order. Refusing makes that impossible, so the release needs no check against the order.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a take on an unseen K | takes the stock, recorded under K |
+| a take on a seen K | refused as a used key |
+| a cancel on a K with a take | releases it |
+| a cancel on an unseen K | **kept** — the take may still be committing after its call timed out — and a later take on K is refused |
+| the order's own resend | never reaches inventory: [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) answers it first |
+
+⚠ **Accepted, not solved:** `order_service` dies after the take and before it publishes the cancel. The take under
+K is then held with nothing to release it — the lost-publish case
+[a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) already accepts.
+
+---
+
+## a-key-is-spent-by-any-answer
+
+> Owner (2026-10-12): *"yes, i follow the recommendation of the critique"* — accepting it as recommended.
+
+**The verdict.** The form mints a **new key after any answer** from the server, success or error. It keeps the
+same key only for a resend that got **no answer at all** — the one case where the person cannot know whether the
+first attempt happened.
+
+```mermaid
+flowchart TD
+  O["open the form, mint K"] --> S["submit with K"]
+  S --> A{"did the server answer?"}
+  A -->|"no answer"| S
+  A -->|"an error"| N["mint a new K, the person fixes the form"]
+  N --> S
+  A -->|"success"| D(("done — K is spent"))
+```
+
+**Why it is needed.** With [inventory-takes-a-key-once](#inventory-takes-a-key-once), a form that keeps K after an
+error is **locked**: every later submit is refused as a used key, even after the line is fixed.
+
+⚠ **The owner's frontend box does not draw this loop yet** — it ends at *Create Order*. Reported in
+[order_creation_clarify](./order_creation_clarify.md#critique).
+
+---
+
+## every-release-goes-by-the-key
+
+> Owner (2026-10-12), on `the-cancel-finds-the-take-by-key`: *"One way to release stock in inventory: release the
+> take under K. Both events use it … Releasing an already-released take does nothing … yes, its i mean"* — as
+> recommended.
+
+**The verdict.** Inventory has **one** way to give stock back: *release the take under K*. The compensation and
+the Order Cancel both use it — they differ only in **why** they were sent — so the Order Cancel carries K. A release
+on a take already released does nothing.
+
+**Why.** The take runs before the order row exists, so inventory files it under K and never learns an order id.
+An Order Cancel naming only the order finds no take, and the stock stays taken forever — silently, until a count
+shows a shortage nobody can explain.
+
+```mermaid
+flowchart LR
+  CMP["compensation — the create failed"] -->|"K"| R["release the take under K"]
+  CAN["Order Cancel — the order was cancelled"] -->|"K, and the order id"| R
+  R --> Q{"the take under K?"}
+  Q -->|"taken"| B["give the stock back, mark it released"]
+  Q -->|"already released"| N["do nothing, acknowledge"]
+  Q -->|"not seen yet"| TS["keep the release — inventory-takes-a-key-once"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| Order Cancel | carries `idempotency_key` beside the order id — read from `orders.idempotency_key` ([the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key)) |
+| the compensation | carries K, as already drawn ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)) |
+| inventory | one release, by K. Taken → released · released → nothing · unseen → kept, so a late take is refused ([inventory-takes-a-key-once](#inventory-takes-a-key-once)) |
+| a redelivered cancel | finds the take released, acknowledges, gives nothing back twice |
+| K on *Order Created* | needed by nothing that releases stock — inventory may read it to label a take with its order, for display only |
+
+**What it amends.** [inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled) says the
+release is *"keyed on the order"* — it is keyed on K. Its verdict, that a cancel releases stock **by event**, stands.
+[event_context.md](./event_context.md) §Order Cancel lists subscribers and no fields, so nothing in it is stale —
+the key is a field the event gains.
