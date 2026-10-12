@@ -130,7 +130,7 @@ erDiagram
     | | Part | → Recommend |
     | --- | --- | --- |
     | **10a** | **it names no session** — two sessions' rows for Rak A cannot be told apart | `opname_session_id` |
-    | **10b** | **does `system_stock_count` include units sold but still on the rack?** If it is the book alone, every rack with an order waiting shows a false surplus — the ghost of [context Q11c](./context_clarify.md#question) | keep the book in `system_stock_count`, and the sold-but-unprinted units in **`waiting_count`**, both written at the snapshot |
+    | **10b** | **does `system_stock_count` include units sold but still on the rack?** If it is the book alone, every rack with an order waiting shows a false surplus — the ghost of [context Q11c](./context_clarify.md#question) | keep the book in `system_stock_count`, and the sold-but-unprinted units in **`waiting_count`**, both written at the snapshot. 🆕 *(2026-10-12, from placement 4b)* **A transfer out waits too**, until Warehouse A processes it: it is taken at create ([a-transfer-takes-from-the-sender-at-create](./warehouse_transfer_decision.md#a-transfer-takes-from-the-sender-at-create)) and stays on the rack until packed. A rack screen no longer needs this ([a-rack-shows-its-stock-count-for-now](./placement_decision.md#a-rack-shows-its-stock-count-for-now)); the count still does |
     | **10c** | **who counted it** — [Q8c](#question) cannot check the finalizer against the counter without it | `counted_by_id` |
     | **10d** | **`session_placements` repeats the snapshot rows' racks** — and also names no session | drop it; the snapshot rows say which racks a session covers |
 

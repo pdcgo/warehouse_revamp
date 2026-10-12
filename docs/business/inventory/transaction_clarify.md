@@ -3,6 +3,15 @@
 [transaction.md](./transaction.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded
 in [transaction_decision.md](./transaction_decision.md).
 
+> 🆕 **Opened 2026-10-12:** Q8, where *picked* is stored, from [placement Q4](./placement_clarify.md#question).
+>
+> 🔄 **Narrowed 2026-10-12:** Q5. `move` was added in chat ([a-move-has-its-own-type](./transaction_decision.md#a-move-has-its-own-type)), so only `revaluation` and
+> `opname` are left.
+>
+> 🔄 **Narrowed 2026-10-12:** Q6. What a sample is was answered in chat
+> ([a-sample-is-handed-over-at-the-warehouse](./transaction_decision.md#a-sample-is-handed-over-at-the-warehouse)), so
+> only who bears it is left.
+>
 > **First pass (2026-10-09)**, after you moved the transaction table here from context.md and added items and a rollback.
 > Recorded: [a-transaction-lists-its-items](./transaction_decision.md#a-transaction-lists-its-items) (reverses the old
 > *no items table*) · [a-transaction-is-made-when-the-act-happens](./transaction_decision.md#a-transaction-is-made-when-the-act-happens)
@@ -97,16 +106,45 @@ flowchart LR
    **→ Recommend: refuse it**, and correct with an `adjustment` instead. An order's rollback never hits this — it puts units
    back, and [no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms) means they
    were never picked.
-5. **Operations with no `tx_type`.** ➡ Was [context Q13c](./context_clarify.md#question). A move between racks, a
-   revaluation and a count each write ledger rows and have no type.
-   **→ Recommend:** add **`move`**, **`revaluation`**, **`opname`** — not `adjustment` for all three: a move creates no debt,
-   and a count does.
-6. **What is `sample`?** ➡ Was [context Q13d](./context_clarify.md#question). Units out for a photo, a buyer's sample, a
-   giveaway — who asks, and who pays?
-   **→ Recommend: the owning team asks, and bears it** — its own goods leaving on its own request, never a warehouse debt.
+5. 🔄 *(2026-10-12)* **Operations with no `tx_type`.** ✅ `move` is added ([a-move-has-its-own-type](./transaction_decision.md#a-move-has-its-own-type)). ➡ Was
+   [context Q13c](./context_clarify.md#question). A revaluation and a count each write ledger rows and have no type.
+   **→ Recommend:** add **`revaluation`** and **`opname`**, not `adjustment` for both: a revaluation moves no units, and a
+   count can create a debt that a reader must be able to tell from a broken or lost unit.
+6. 🔄 *(2026-10-12)* **A sample: who bears it, and must the owning team agree?** ✅ *What it is* is answered: a person
+   asks at the warehouse, and staff pick the goods and hand them over
+   ([a-sample-is-handed-over-at-the-warehouse](./transaction_decision.md#a-sample-is-handed-over-at-the-warehouse)). ➡ Was
+   [context Q13d](./context_clarify.md#question). My *"the owning team asks"* is withdrawn. **The warehouse decides now**,
+   and the goods are the team's.
+
+   | | who bears it | + | − |
+   | --- | --- | --- | --- |
+   | **a** | the owning team, always | simple | staff can give away a team's goods and the team pays; a missing unit can be written down as a *sample* instead of a shortfall |
+   | **b** | the owning team, **when one of its members agreed**: staff name that member on the record | the team stays in control; the record says who said yes | staff must reach someone before handing over |
+   | **c** | the warehouse, always | nothing to abuse | the warehouse pays for the team's marketing, so staff will refuse every request |
+
+   **→ Recommend b.** It is one field on the form, a member of the owning team, picked by staff. If the person asking is
+   from the owning team, they name themselves. A sample with nobody named is the warehouse's, like any other shortfall in
+   its custody. *Who usually asks: someone from the owning team, or an outsider?*
 7. **Whose `team_id` when team B sells team A's goods?** ➡ Was [context Q13f](./context_clarify.md#question).
    **→ Recommend: the stock's owner, A** — both ledgers are keyed by the owning team; the seller is on the order. An order
    holding two owners' goods writes two transactions.
+
+8. 🆕 *(2026-10-12, from [placement Q4](./placement_clarify.md#question))* **Where is *picked* stored?**
+   [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked) says a unit waits
+   on the rack while *"an order's take has no picked yet"*, and no table holds *picked*. A count needs it to know what
+   is still physically on a rack ([opname Q10b](./opname_clarify.md#question)); the rack screen does not, for now
+   ([a-rack-shows-its-stock-count-for-now](./placement_decision.md#a-rack-shows-its-stock-count-for-now)). A transfer out waits the same way, until Warehouse A processes it.
+   **→ Recommend: `picked_at`** on `inventory_transactions`, null while the units are still on the rack. The verify scan
+   sets it for an order, and `process` for a transfer out. Every other take is at the shelf, so it is set at create.
+   Waiting on a rack is then that transaction's log rows on the rack, not rolled back, with `picked_at` null.
+
+   ```mermaid
+   flowchart LR
+     O["order 9001 - PostOrder"] -->|"picked_at null - waiting"| S["verify scan"]
+     S -->|"picked_at 13:40"| D["off the rack"]
+     T["transfer out"] -->|"picked_at null - waiting"| P["Warehouse A processes"]
+     P -->|"picked_at set"| D
+   ```
 
 ---
 
