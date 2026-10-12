@@ -24,6 +24,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-rack-shows-its-stock-count-for-now](#a-rack-shows-its-stock-count-for-now) | a rack screen shows `stock_count` and nothing else, for now: no physical count, no waiting line | chat, 2026-10-12 — answers placement Q4a, **against** my physical count with the waiting units under it |
 | [a-sample-is-recorded-on-rack-detail](#a-sample-is-recorded-on-rack-detail) | staff record a sample with a *Record Sample* action on Rack detail, so the rack is the one they are looking at | chat, 2026-10-12 — asked before the Storybook pass, as recommended |
 | [the-move-dialog-shows-stock-count-only-for-now](#the-move-dialog-shows-stock-count-only-for-now) | the Move dialog shows `stock_count` and *max = stock_count*, with no waiting note, like the rack screen | chat, 2026-10-12 — resolves [the-move-dialog-still-explains-waiting-units](./placement_clarify.md#the-move-dialog-still-explains-waiting-units), as recommended; amends the dialog row of [a-move-leaves-sold-units-on-their-rack](#a-move-leaves-sold-units-on-their-rack) |
+| [the-placement-prototype-is-accepted](#the-placement-prototype-is-accepted) | the Racks page and Rack detail as prototyped, with their contract, are the design to build, including the three choices left to the review | chat, 2026-10-12 — design_accept |
 
 ---
 
@@ -642,3 +643,32 @@ flowchart LR
 | per line | the product, its `stock_count`, a quantity up to it |
 | sold units waiting | not shown, for now |
 | *for now* | revisited together with the rack screen |
+
+## the-placement-prototype-is-accepted
+
+> Owner, in chat *(2026-10-12)*: *"for 1, i have reviewed"*, answering the first of two next steps offered: review
+> `Pages/Racks/RackList` and `Pages/Racks/RackDetail` in Storybook. No change was asked for, so I took it as the lifecycle's
+> design_accept (docs/development_lifecycle.md), with the three choices left to the review accepted as built.
+
+**The verdict.** The prototype is the design: the Racks page and Rack detail, and the `RackService` contract, as committed
+in `556b083`. The contract is accepted with the screens
+([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)), so a
+change to it from here on is a new pass, not a quiet edit.
+
+```mermaid
+flowchart LR
+  P["prototype - Racks page, Rack detail, RackService"] -->|"design_accept, 2026-10-12"| B["backend analysis"]
+  B --> L["the decided ledgers first"]
+  L --> M["RackMove and RackSample on them"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| accepted | `frontend/src/pages/racks/`, `frontend/src/pages/rack-detail/` (Move Goods, Record Sample), and in `proto/warehouse/inventory/v1/rack.proto`: `RackMove`, `RackSample`, the `RackList` STOCK slice, `RackStockLine.counting` |
+| the Move dialog | every product starts at 0; *Move Everything* fills them |
+| the Sample dialog | `recipient` is required: who received it, as they gave it |
+| the Products tab | the column keeps the label *On this rack*, now meaning the stock count |
+| still pending on the screen | the count's lock ([opname Q4](./opname_clarify.md#question)) · who on the owning team agreed to a sample ([transaction Q6](./transaction_clarify.md#question)) |
+| next | backend analysis, which the ledgers come before ([the-decided-ledgers-come-before-the-transfer](./warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)) |

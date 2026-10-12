@@ -1,20 +1,20 @@
 # Development state — inventory / placement
 
-**As of 2026-10-12, placement is DECIDED and PROTOTYPED, and waits on design_accept.** It is not built. Every question in
+**As of 2026-10-12, placement is DECIDED, PROTOTYPED and ACCEPTED** ([the-placement-prototype-is-accepted](../../business/inventory/placement_decision.md#the-placement-prototype-is-accepted)). Its writes are not built. Every question in
 [placement_clarify.md](../../business/inventory/placement_clarify.md) is answered and its contradictions are resolved; the
-decisions are in [placement_decision.md](../../business/inventory/placement_decision.md) (19) and two in
+decisions are in [placement_decision.md](../../business/inventory/placement_decision.md) (20) and two in
 [transaction_decision.md](../../business/inventory/transaction_decision.md) (`a-sample-is-handed-over-at-the-warehouse`,
 `a-move-has-its-own-type`). Rack detail's two new writes — **Move Goods** and **Record Sample** — run in Storybook against a
 stub that plays those decisions; in the app they are on Rack detail and answer **Unimplemented**. The Racks page — the
 placement list — is built and real, and now shows each rack's product count and stock count.
 
-**Next step: the owner previews `Pages/Racks/RackList` and `Pages/Racks/RackDetail` in Storybook (design_accept).** After it, the backend step is on
-the same critical path as the transfer: the decided ledgers first
+**Next step: backend analysis, which waits on the ledgers.** design_accept passed with no change asked for. The backend
+step is on the same critical path as the transfer: the decided ledgers first
 ([the-decided-ledgers-come-before-the-transfer](../../business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)).
 
 ```mermaid
 flowchart LR
-  A["design_accept - Pages/Racks/RackDetail"] --> Q["the ledgers' open questions"]
+  A["design_accept passed - 2026-10-12"] --> Q["the ledgers' open questions"]
   Q --> L["build the ledgers"]
   L --> M["RackMove and RackSample on them"]
 ```
@@ -53,13 +53,13 @@ flowchart LR
 | `countLock` | derived | a counted product locks at 0, but what a count's lock blocks is [opname Q4](../../business/inventory/opname_clarify.md#question), and opname is not built |
 | `sampleAgreedBy` | missing | who on the owning team agreed to a sample is not on the form: who bears a sample is [transaction Q6](../../business/inventory/transaction_clarify.md#question) |
 
-## Proposed at the prototype — for design_accept to judge
+## Proposed at the prototype — accepted as built
 
 - **Every product starts at 0**, with *Move Everything* to fill them, rather than starting full: a stray Move then moves
   nothing instead of the whole rack. (The chat sketch showed them starting full.)
 - **`RackSample.recipient` is required** — who received it, as they gave it. Nothing in the decisions requires it.
 - The Products tab column still reads *On this rack* while it now means the stock count; with sold units waiting it reads
-  lower than the shelf. Renaming it is a word for design_accept.
+  lower than the shelf. Kept as it is.
 
 ## The backend step: what it has to do
 

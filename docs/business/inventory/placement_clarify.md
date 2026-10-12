@@ -3,6 +3,9 @@
 [placement.md](./placement.md) is yours, and this file is mine. When a point is answered I delete it here, and your
 answer goes in [placement_decision.md](./placement_decision.md).
 
+> ✅ **Accepted 2026-10-12:** the prototype passed design_accept ([the-placement-prototype-is-accepted](./placement_decision.md#the-placement-prototype-is-accepted)).
+> Nothing opened. *Awaiting your text* below still stands.
+>
 > ✅ **Resolved 2026-10-12:** [the-move-dialog-still-explains-waiting-units](#the-move-dialog-still-explains-waiting-units) — the Move dialog drops its waiting note ([the-move-dialog-shows-stock-count-only-for-now](./placement_decision.md#the-move-dialog-shows-stock-count-only-for-now));
 > and a sample is recorded from Rack detail ([a-sample-is-recorded-on-rack-detail](./placement_decision.md#a-sample-is-recorded-on-rack-detail)). Both asked before the Storybook pass.
 >

@@ -6,6 +6,11 @@ is mine. Answered points are **deleted**, so this is always the current open set
 > **Full re-examination.** This file had grown to 4× the doc it tracks by appending on every save —
 > the thing `disscuss/` is supposed to avoid. Rewritten tight. Nothing dropped that is still open.
 >
+> 🔄 **Pruned 2026-10-12.** Q2 moved: it is [transaction Q4](../../business/inventory/transaction_clarify.md#question), asked
+> twice. Two contradictions closed by the business docs: a cancellation **does** reuse its transaction
+> ([an-undo-rolls-the-transaction-back-once](../../business/inventory/transaction_decision.md#an-undo-rolls-the-transaction-back-once)),
+> and the type list now has `restock` and `move` ([a-move-has-its-own-type](../../business/inventory/transaction_decision.md#a-move-has-its-own-type)).
+>
 > ✅ **Answered 2026-10-10 and deleted:** Q4, against my `int64` — stock money is `float64`, compared at 4-digit precision
 > ([stock-money-is-float64-compared-at-4-digits](./design_decision.md#stock-money-is-float64-compared-at-4-digits)). It also
 > closes the first contradiction below.
@@ -66,36 +71,18 @@ flowchart TB
 
 ## A cancellation reuses the original transaction
 
-*(Locking and the enclosing transaction are elided by the section's own note — nothing here is about
-those.)* The flow gets the hard half right: append-only compensation, both ledgers. But it does
-`update status` on the original and appends the reversal under it.
+✅ *(2026-10-09)* **Decided the other way** in the business doc —
+[an-undo-rolls-the-transaction-back-once](../../business/inventory/transaction_decision.md#an-undo-rolls-the-transaction-back-once):
+an undo locks the same transaction, reverses it in both ledgers and sets `is_rollback`, once. My new `adjustment`
+transaction with `reverses_id` is withdrawn. Its open half, a rollback that would take a batch below zero, is
+[transaction Q4](../../business/inventory/transaction_clarify.md#question); reversing from the log rows rather than the
+items is [transaction Q3](../../business/inventory/transaction_clarify.md#question).
 
-- `sum(stock_change)` for that transaction becomes **zero** — "moved 100" and "moved 100, gave it back"
-  are indistinguishable, which is exactly the check above.
-- The transaction is typed `restock` while half its rows are a reversal. `return` and `adjustment` are
-  in the enum and go unused.
-- Nothing links a reversal to what it reverses.
+## The transaction type list is missing two values
 
-**→ Mint a new transaction typed `adjustment`, referencing the original, with `reverses_id` on the log
-rows.** `update status` still makes sense as a flag, not as the record of the movement.
-
-⚠ **Still unanswered, and not a locking question:** cancel a restock accept after 30 of its 100 units
-sold and `−100` drives the batch negative. **Refuse once the batch has been touched** — the alternative
-is a stocktake adjustment wearing a cancellation's name.
-
-## The transaction type list is missing two values that now have flows
-
-`type` is *"order, return, adjustment, transfer_in, transfer_out, broken, and lost"*. Two of this doc's
-own flows have no type in it:
-
-| flow | type it would use |
-| --- | --- |
-| `## Flow Of Create Restock.` / Accept — and `re \|o--o\| tx` says a restock points at a transaction | **`restock`** — none of the seven fit |
-| `## How We Moving Goods Between Placements.` | **`move`** — it is not a transfer, which is between *warehouses* |
-
-**→ Add both.** That list is the most valuable line in the ERD: it reads as the complete inventory of
-things that move stock, so a gap in it is either a flow nobody typed or a flow nobody designed. It has
-now been the second on two occasions.
+✅ *(2026-10-12)* **Closed by the business doc.** `restock` is in `tx_type` ([transaction.md](../../business/inventory/transaction.md)),
+and `move` was added ([a-move-has-its-own-type](../../business/inventory/transaction_decision.md#a-move-has-its-own-type)).
+What is still missing, `revaluation` and `opname`, is [transaction Q5](../../business/inventory/transaction_clarify.md#question).
 
 ## `orders` crosses a service boundary — and you already drew the fix
 
@@ -142,7 +129,8 @@ and it is the doc every other service copies. **→ Rename it there.**
 1. ✅ *(2026-10-10)* **Decided, via [warehouse_transfer_clarify Q3](../../business/inventory/warehouse_transfer_clarify.md#question)** —
    [the-transfer-is-where-goods-in-transit-are](../../business/inventory/warehouse_transfer_decision.md#the-transfer-is-where-goods-in-transit-are). As first asked:
    *where do in-transit goods live?* My in-transit place is withdrawn.
-2. **Is cancellation refused once the batch has been touched?** I recommend yes.
+2. ➡ *(2026-10-12)* **Moved** to [transaction Q4](../../business/inventory/transaction_clarify.md#question), which asks the
+   same thing: a rollback that would take a batch below zero. Recommended there: refuse it.
 3. **`ProductQtyCount` — this line, or the whole restock?** And by quantity or by value?
 5. 🆕 *(2026-10-10, raised by the transfer's backend analysis)* **How do today's `stock_*` tables give way to the decided
    ledgers?** The build keeps stock in `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches` and
@@ -179,7 +167,9 @@ and it is the doc every other service copies. **→ Rename it there.**
 
 # Awaiting
 
-- **`## How We Moving Goods Between Placements.`** — the transaction is opened and closed with the work
+- **`## How We Moving Goods Between Placements.`** ✅ *(2026-10-12)* What it writes is decided in the business doc:
+  [a-move-writes-two-rack-rows-and-no-batch-row](../../business/inventory/placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row),
+  a row per rack touched when it splits. Still awaiting your text here. As first noted: the transaction is opened and closed with the work
   not yet between them, and `mut as Move Mutation` is declared but unused. One thing worth confirming
   when you fill it in, because it is the first operation that touches only **one** ledger: a move is
   **two placement entries under one transaction** (−20 at Place 1, +20 at Place 2) and **no batch entry
