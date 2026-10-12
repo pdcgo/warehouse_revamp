@@ -24,6 +24,14 @@ export interface RackSelectProps {
    * placement (there-is-no-unplaced-pile), so "Unplaced" is not an answer there.
    */
   allowUnplaced?: boolean;
+  /**
+   * A rack that is not an answer here — the Move dialog's SOURCE, which can never be a destination
+   * (a-move-is-one-rack-to-one-or-more-racks). Left out of the options rather than shown disabled: there is nothing to
+   * learn from an option that can never be picked.
+   */
+  excludeRackId?: bigint;
+  /** The trigger's testid. Defaults to "rack-select"; a dialog with one picker per line gives each its own. */
+  testId?: string;
 }
 
 // RackSelect is the shared place picker for a warehouse (#139) — the racks plus the unplaced pile.
@@ -45,7 +53,7 @@ export interface RackSelectProps {
 // it. Select models it directly: an empty value array IS "nothing selected", so the hack is gone
 // while the semantics are identical.
 export const description =
-  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile (allowUnplaced={false} leaves it out — a restock accept). Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
+  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile (allowUnplaced={false} leaves it out — a restock accept; excludeRackId leaves one rack out — a move's source). Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
 
 export function RackSelect({
   warehouseId,
@@ -54,6 +62,8 @@ export function RackSelect({
   placeholder,
   disabled,
   allowUnplaced = true,
+  excludeRackId,
+  testId = "rack-select",
 }: RackSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("racks.select.placeholder");
@@ -69,13 +79,15 @@ export function RackSelect({
         items: [
           // Rendered even when the rack list failed to load: "unplaced" is answerable without it.
           ...(allowUnplaced ? [{ label: t("racks.select.unplaced"), value: UNPLACED }] : []),
-          ...racks.map((rack) => ({
-            label: rack.name ? `${rack.code} — ${rack.name}` : rack.code,
-            value: rack.id.toString(),
-          })),
+          ...racks
+            .filter((rack) => rack.id !== excludeRackId)
+            .map((rack) => ({
+              label: rack.name ? `${rack.code} — ${rack.name}` : rack.code,
+              value: rack.id.toString(),
+            })),
         ],
       }),
-    [racks, t, allowUnplaced],
+    [racks, t, allowUnplaced, excludeRackId],
   );
 
   return (
@@ -94,7 +106,7 @@ export function RackSelect({
       <Select.HiddenSelect />
 
       <Select.Control>
-        <Select.Trigger data-testid="rack-select">
+        <Select.Trigger data-testid={testId}>
           <Select.ValueText
             placeholder={error ? t("racks.select.unavailable") : resolvedPlaceholder}
           />

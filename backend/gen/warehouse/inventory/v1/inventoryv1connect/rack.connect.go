@@ -47,6 +47,10 @@ const (
 	RackServiceRackUpdateProcedure = "/warehouse.inventory.v1.RackService/RackUpdate"
 	// RackServiceRackDeleteProcedure is the fully-qualified name of the RackService's RackDelete RPC.
 	RackServiceRackDeleteProcedure = "/warehouse.inventory.v1.RackService/RackDelete"
+	// RackServiceRackMoveProcedure is the fully-qualified name of the RackService's RackMove RPC.
+	RackServiceRackMoveProcedure = "/warehouse.inventory.v1.RackService/RackMove"
+	// RackServiceRackSampleProcedure is the fully-qualified name of the RackService's RackSample RPC.
+	RackServiceRackSampleProcedure = "/warehouse.inventory.v1.RackService/RackSample"
 )
 
 // RackServiceClient is a client for the warehouse.inventory.v1.RackService service.
@@ -61,6 +65,15 @@ type RackServiceClient interface {
 	RackHistory(context.Context, *connect.Request[v1.RackHistoryRequest]) (*connect.Response[v1.RackHistoryResponse], error)
 	RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error)
 	RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error)
+	// ⚠ PROTOTYPE until design_accept — the server answers Unimplemented, and the screens run against the Storybook
+	// stub (docs/business/inventory/placement_decision.md).
+	//
+	// MOVE GOODS off ONE rack onto one or more racks of the same warehouse: staff reorganizing space
+	// (a-move-is-one-rack-to-one-or-more-racks). All or nothing (a-move-is-all-or-nothing).
+	RackMove(context.Context, *connect.Request[v1.RackMoveRequest]) (*connect.Response[v1.RackMoveResponse], error)
+	// RECORD A SAMPLE taken from ONE rack and handed to a person at the warehouse
+	// (a-sample-is-handed-over-at-the-warehouse, a-sample-is-recorded-on-rack-detail).
+	RackSample(context.Context, *connect.Request[v1.RackSampleRequest]) (*connect.Response[v1.RackSampleResponse], error)
 }
 
 // NewRackServiceClient constructs a client for the warehouse.inventory.v1.RackService service. By
@@ -116,6 +129,18 @@ func NewRackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(rackServiceMethods.ByName("RackDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		rackMove: connect.NewClient[v1.RackMoveRequest, v1.RackMoveResponse](
+			httpClient,
+			baseURL+RackServiceRackMoveProcedure,
+			connect.WithSchema(rackServiceMethods.ByName("RackMove")),
+			connect.WithClientOptions(opts...),
+		),
+		rackSample: connect.NewClient[v1.RackSampleRequest, v1.RackSampleResponse](
+			httpClient,
+			baseURL+RackServiceRackSampleProcedure,
+			connect.WithSchema(rackServiceMethods.ByName("RackSample")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -128,6 +153,8 @@ type rackServiceClient struct {
 	rackHistory *connect.Client[v1.RackHistoryRequest, v1.RackHistoryResponse]
 	rackUpdate  *connect.Client[v1.RackUpdateRequest, v1.RackUpdateResponse]
 	rackDelete  *connect.Client[v1.RackDeleteRequest, v1.RackDeleteResponse]
+	rackMove    *connect.Client[v1.RackMoveRequest, v1.RackMoveResponse]
+	rackSample  *connect.Client[v1.RackSampleRequest, v1.RackSampleResponse]
 }
 
 // RackCreate calls warehouse.inventory.v1.RackService.RackCreate.
@@ -165,6 +192,16 @@ func (c *rackServiceClient) RackDelete(ctx context.Context, req *connect.Request
 	return c.rackDelete.CallUnary(ctx, req)
 }
 
+// RackMove calls warehouse.inventory.v1.RackService.RackMove.
+func (c *rackServiceClient) RackMove(ctx context.Context, req *connect.Request[v1.RackMoveRequest]) (*connect.Response[v1.RackMoveResponse], error) {
+	return c.rackMove.CallUnary(ctx, req)
+}
+
+// RackSample calls warehouse.inventory.v1.RackService.RackSample.
+func (c *rackServiceClient) RackSample(ctx context.Context, req *connect.Request[v1.RackSampleRequest]) (*connect.Response[v1.RackSampleResponse], error) {
+	return c.rackSample.CallUnary(ctx, req)
+}
+
 // RackServiceHandler is an implementation of the warehouse.inventory.v1.RackService service.
 type RackServiceHandler interface {
 	RackCreate(context.Context, *connect.Request[v1.RackCreateRequest]) (*connect.Response[v1.RackCreateResponse], error)
@@ -177,6 +214,15 @@ type RackServiceHandler interface {
 	RackHistory(context.Context, *connect.Request[v1.RackHistoryRequest]) (*connect.Response[v1.RackHistoryResponse], error)
 	RackUpdate(context.Context, *connect.Request[v1.RackUpdateRequest]) (*connect.Response[v1.RackUpdateResponse], error)
 	RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error)
+	// ⚠ PROTOTYPE until design_accept — the server answers Unimplemented, and the screens run against the Storybook
+	// stub (docs/business/inventory/placement_decision.md).
+	//
+	// MOVE GOODS off ONE rack onto one or more racks of the same warehouse: staff reorganizing space
+	// (a-move-is-one-rack-to-one-or-more-racks). All or nothing (a-move-is-all-or-nothing).
+	RackMove(context.Context, *connect.Request[v1.RackMoveRequest]) (*connect.Response[v1.RackMoveResponse], error)
+	// RECORD A SAMPLE taken from ONE rack and handed to a person at the warehouse
+	// (a-sample-is-handed-over-at-the-warehouse, a-sample-is-recorded-on-rack-detail).
+	RackSample(context.Context, *connect.Request[v1.RackSampleRequest]) (*connect.Response[v1.RackSampleResponse], error)
 }
 
 // NewRackServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -228,6 +274,18 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(rackServiceMethods.ByName("RackDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rackServiceRackMoveHandler := connect.NewUnaryHandler(
+		RackServiceRackMoveProcedure,
+		svc.RackMove,
+		connect.WithSchema(rackServiceMethods.ByName("RackMove")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rackServiceRackSampleHandler := connect.NewUnaryHandler(
+		RackServiceRackSampleProcedure,
+		svc.RackSample,
+		connect.WithSchema(rackServiceMethods.ByName("RackSample")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.RackService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RackServiceRackCreateProcedure:
@@ -244,6 +302,10 @@ func NewRackServiceHandler(svc RackServiceHandler, opts ...connect.HandlerOption
 			rackServiceRackUpdateHandler.ServeHTTP(w, r)
 		case RackServiceRackDeleteProcedure:
 			rackServiceRackDeleteHandler.ServeHTTP(w, r)
+		case RackServiceRackMoveProcedure:
+			rackServiceRackMoveHandler.ServeHTTP(w, r)
+		case RackServiceRackSampleProcedure:
+			rackServiceRackSampleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -279,4 +341,12 @@ func (UnimplementedRackServiceHandler) RackUpdate(context.Context, *connect.Requ
 
 func (UnimplementedRackServiceHandler) RackDelete(context.Context, *connect.Request[v1.RackDeleteRequest]) (*connect.Response[v1.RackDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackDelete is not implemented"))
+}
+
+func (UnimplementedRackServiceHandler) RackMove(context.Context, *connect.Request[v1.RackMoveRequest]) (*connect.Response[v1.RackMoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackMove is not implemented"))
+}
+
+func (UnimplementedRackServiceHandler) RackSample(context.Context, *connect.Request[v1.RackSampleRequest]) (*connect.Response[v1.RackSampleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RackService.RackSample is not implemented"))
 }

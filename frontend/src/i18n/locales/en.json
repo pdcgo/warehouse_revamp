@@ -1641,6 +1641,8 @@
       "code": "Code",
       "name": "Name",
       "description": "Description",
+      "products": "Products",
+      "stock": "Stock",
       "actions": "Actions"
     },
     "form": {
@@ -1671,6 +1673,7 @@
       "invalidId": "Invalid rack id.",
       "contents": "Contents",
       "product": "Product",
+      "team": "Team",
       "onThisRack": "On this rack",
       "empty": "Nothing on this rack.",
       "productUnknown": "Unknown product #{{id}}",
@@ -1697,7 +1700,67 @@
         "prices": "Prices",
         "stockHistory": "Stock History",
         "placementHistory": "Placement History"
+      },
+      "actions": "Rack actions",
+      "pending": {
+        "countLock": {
+          "label": "Count lock",
+          "reason": "A product being counted is locked at 0 here, but what a count's lock blocks is not decided yet (opname Q4), and the stock count is not built — only the prototype ever sets it."
+        },
+        "sampleAgreedBy": {
+          "label": "Who agreed to the sample",
+          "reason": "Who on the owning team agreed to a sample is not on the form: who bears a sample is still open (transaction Q6)."
+        }
       }
+    },
+    "move": {
+      "action": "Move Goods",
+      "title": "Move Goods from {{code}}",
+      "defaultTo": "To rack",
+      "defaultToHelp": "Every line goes here unless you change it.",
+      "products": "Products on {{code}}",
+      "everything": "Move Everything",
+      "onRack": "{{count}} on this rack",
+      "quantity": "Quantity of {{name}} to move",
+      "to": "to",
+      "defaultMark": "(default)",
+      "noDefault": "the rack above",
+      "changeRack": "Change Rack",
+      "useDefault": "Use the default rack",
+      "split": "Split to Another Rack",
+      "remove": "Remove this line",
+      "counting": "Being counted",
+      "countingHelp": "Locked until the count ends.",
+      "note": "Note",
+      "notePlaceholder": "Optional, e.g. tidy the rack",
+      "summary": "{{units}} units of {{products}} product(s) to {{racks}} rack(s)",
+      "problem": {
+        "noRack": "Choose where {{name}} goes.",
+        "tooMany": "{{name}}: only {{count}} on this rack.",
+        "twice": "{{name}} goes to {{code}} twice — put it on one line.",
+        "counting": "{{name}} is being counted and cannot move."
+      },
+      "empty": "Nothing on this rack to move.",
+      "refused": "Nothing was moved",
+      "cancel": "Cancel",
+      "submit": "Move",
+      "done": "Moved {{count}} units off {{code}}"
+    },
+    "sample": {
+      "action": "Record Sample",
+      "title": "Record Sample from {{code}}",
+      "intro": "Units handed to a person at the warehouse. A sample is final: it cannot be undone.",
+      "quantity": "Quantity of {{name}} given",
+      "given": "given",
+      "recipient": "Given to",
+      "recipientPlaceholder": "Name of the person who received it",
+      "recipientHelp": "As the person gave it, so the sample can be traced later.",
+      "notePlaceholder": "Optional, e.g. for a product photo",
+      "summary": "{{units}} units of {{products}} product(s)",
+      "empty": "Nothing on this rack to give.",
+      "refused": "Nothing was recorded",
+      "submit": "Record Sample",
+      "done": "Recorded a sample of {{count}} units from {{code}}"
     }
   },
   "suppliers": {
@@ -2517,7 +2580,8 @@
       "pick": "Picked",
       "move": "Moved",
       "return": "Returned",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "sample": "Sample"
     },
     "incoming": "On its way",
     "lastOrder": "Last order",

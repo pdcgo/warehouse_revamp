@@ -101,3 +101,17 @@ export const WithoutTheUnplacedPile: Story = {
     await expect(canvas.queryByTestId(`rack-select-option-${UNPLACED}`)).toBeNull();
   },
 };
+
+// A move's SOURCE is never its destination (a-move-is-one-rack-to-one-or-more-racks): the Move dialog passes the rack
+// it opened on, and that rack is simply not offered — the others still are.
+export const LeavesOneRackOut: Story = {
+  args: { allowUnplaced: false, excludeRackId: racks[0]!.id, testId: "move-to" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("move-to"));
+    await canvas.findByTestId(`rack-select-option-${racks[1]!.id}`);
+
+    await expect(canvas.queryByTestId(`rack-select-option-${racks[0]!.id}`)).toBeNull();
+  },
+};

@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Card,
+  HStack,
   Heading,
   Icon,
+  IconButton,
+  Menu,
+  Portal,
   SimpleGrid,
   Spinner,
   Stack,
@@ -13,12 +17,14 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Gift, MoreHorizontal } from "lucide-react";
 import { productClient, rackClient, rpcError, teamClient } from "../../api/clients";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import type { Team } from "../../gen/warehouse/team/v1/team_pb";
+import { TeamItem } from "../../components/entity/TeamItem";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { rackHistoryFromList, rackHistoryRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
 import { useTeam } from "../../features/team/TeamContext";
@@ -27,6 +33,12 @@ import { ProductListItem } from "../../components/products/ProductListItem";
 import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";
+import { useIsMobile } from "../../layouts/shell";
+import { fetchActors } from "../../features/users/queries";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { MoveGoodsDialog } from "./components/MoveGoodsDialog";
+import { RecordSampleDialog } from "./components/RecordSampleDialog";
+import { RACK_DETAIL_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -81,15 +93,25 @@ export function RackDetailPage() {
   const [pageSize, setPageSize] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
 
-  // teamId -> name, for each row's team badge. The whole point of this page is that the shelf holds
-  // other teams' goods, so "whose is this?" is worth a name rather than an id. Batched (TeamByIds),
-  // never per row.
-  const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
+  // teamId -> team, for each row's Team column. The whole point of this page is that the shelf holds
+  // other teams' goods, so "whose is this?" gets its own column — avatar, name and type, the way a team
+  // is shown everywhere (TeamItem). Batched (TeamByIds), never per row.
+  const [teams, setTeams] = useState<Map<string, Team>>(new Map());
+  // The names alone, for the two dialogs, which show a team inside a product's line.
+  const teamNames = useMemo(() => new Map([...teams].map(([id, team]) => [id, team.name])), [teams]);
 
-  // Read inside the effect WITHOUT making it a dependency: `teamNames` grows as pages resolve, so
+  // The two writes off this rack (placement_decision.md): Move Goods, and Record Sample
+  // (a-sample-is-recorded-on-rack-detail). The reads below are hand-rolled effects rather than query hooks, so a
+  // write bumps `reloadKey` and every read on the page — header, contents, both histories — asks again.
+  const [dialog, setDialog] = useState<"move" | "sample" | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = () => setReloadKey((k) => k + 1);
+  const isMobile = useIsMobile();
+
+  // Read inside the effect WITHOUT making it a dependency: `teams` grows as pages resolve, so
   // depending on it would re-run the effect on its own result.
-  const teamNamesRef = useRef(teamNames);
-  teamNamesRef.current = teamNames;
+  const teamsRef = useRef(teams);
+  teamsRef.current = teams;
 
   // Which rack is this, and the two header numbers. Kept apart from the contents below so that paging
   // the shelf does not re-ask for the header, and a rack that fails to load fails the whole page —
@@ -129,7 +151,7 @@ export function RackDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [teamId, rackId, t]);
+  }, [teamId, rackId, t, reloadKey]);
 
   // What is on it, and what each thing IS. The two calls are deliberately SERIALISED into one effect
   // and committed together, rather than showing the lines and letting the names land after:
@@ -207,11 +229,11 @@ export function RackDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [teamId, rackId, page, pageSize]);
+  }, [teamId, rackId, page, pageSize, reloadKey]);
 
-  // The owning team's name per row, resolved in ONE batch and cached for the page's life — paging
-  // back, or a second page owned by the same teams, costs nothing. Deliberately does NOT gate
-  // `stockLoading`: rows render with ProductListItem's "Team #<id>" fallback and upgrade in place.
+  // The owning team per row, resolved in ONE batch and cached for the page's life — paging back, or a
+  // second page owned by the same teams, costs nothing. Deliberately does NOT gate `stockLoading`: rows
+  // render with TeamItem's "Team #<id>" fallback and upgrade in place.
   useEffect(() => {
     if (products.size === 0) return;
 
@@ -219,7 +241,7 @@ export function RackDetailPage() {
       ...new Set(
         [...products.values()]
           .map((product) => product.teamId)
-          .filter((id) => id > 0n && !teamNamesRef.current.has(id.toString())),
+          .filter((id) => id > 0n && !teamsRef.current.has(id.toString())),
       ),
     ];
 
@@ -229,19 +251,19 @@ export function RackDetailPage() {
 
     void (async () => {
       try {
-        const teams = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
+        const found = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
         if (ignore) return;
 
-        setTeamNames((prev) => {
+        setTeams((prev) => {
           const next = new Map(prev);
-          for (const [id, team] of Object.entries(teams)) {
-            next.set(id, team.name);
+          for (const [id, team] of Object.entries(found)) {
+            next.set(id, team);
           }
 
           return next;
         });
       } catch {
-        // A name is decoration: ProductListItem falls back to "Team #<id>".
+        // A name is decoration: TeamItem falls back to "Team #<id>".
       }
     })();
 
@@ -290,25 +312,66 @@ export function RackDetailPage() {
     <RackStockTable
       lines={lines}
       products={products}
-      teamNames={teamNames}
+      teams={teams}
       loading={stockLoading}
       error={stockError}
       showMoney={false}
     />
   );
 
+  // Two actions, so they stay inline on a desktop; on a phone they fold into `⋯`, as every phone header does.
+  const actions = isMobile ? (
+    <Menu.Root>
+      <Menu.Trigger asChild>
+        <IconButton size="sm" variant="ghost" aria-label={t("racks.detail.actions")} data-testid="rack-actions">
+          <Icon as={MoreHorizontal} boxSize="4" />
+        </IconButton>
+      </Menu.Trigger>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content>
+            <Menu.Item value="move" data-testid="rack-action-move" onClick={() => setDialog("move")}>
+              <Icon as={ArrowRightLeft} boxSize="4" />
+              {t("racks.move.action")}
+            </Menu.Item>
+            <Menu.Item value="sample" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
+              <Icon as={Gift} boxSize="4" />
+              {t("racks.sample.action")}
+            </Menu.Item>
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
+  ) : (
+    <HStack gap="2">
+      <Button size="sm" variant="outline" data-testid="rack-action-sample" onClick={() => setDialog("sample")}>
+        <Icon as={Gift} boxSize="4" />
+        {t("racks.sample.action")}
+      </Button>
+      <Button size="sm" colorPalette="brand" data-testid="rack-action-move" onClick={() => setDialog("move")}>
+        <Icon as={ArrowRightLeft} boxSize="4" />
+        {t("racks.move.action")}
+      </Button>
+    </HStack>
+  );
+
   return (
     <Stack gap="section" data-testid="rack-detail-page">
-      <Button
-        size="xs"
-        variant="ghost"
-        alignSelf="flex-start"
-        data-testid="rack-detail-back"
-        onClick={() => navigate("/inventories/racks")}
-      >
-        <Icon as={ArrowLeft} boxSize="4" />
-        {t("racks.detail.back")}
-      </Button>
+      <HStack justify="space-between">
+        <Button
+          size="xs"
+          variant="ghost"
+          data-testid="rack-detail-back"
+          onClick={() => navigate("/inventories/racks")}
+        >
+          <Icon as={ArrowLeft} boxSize="4" />
+          {t("racks.detail.back")}
+        </Button>
+        {actions}
+      </HStack>
+
+      {/* The Move and Record Sample writes are a prototype; this strip names the parts whose rule is not settled. */}
+      <NotImplementedSummary list={RACK_DETAIL_PENDING} />
 
       {/* THE HEADER (#197): the shelf's label, then the two numbers somebody wants at a glance. */}
       <SimpleGrid columns={{ base: 1, md: 3 }} gap="card" alignItems="stretch">
@@ -429,7 +492,7 @@ export function RackDetailPage() {
             <RackStockTable
               lines={lines}
               products={products}
-              teamNames={teamNames}
+              teams={teams}
               loading={stockLoading}
               error={stockError}
               showMoney
@@ -449,7 +512,7 @@ export function RackDetailPage() {
         </Tabs.Content>
 
         <Tabs.Content value="stockHistory" flex="1" data-testid="rack-stock-history-panel">
-          <RackHistory teamId={teamId} rackId={rackId} testId="rack-stock-history" />
+          <RackHistory teamId={teamId} rackId={rackId} reloadKey={reloadKey} testId="rack-stock-history" />
         </Tabs.Content>
 
         {/* PLACEMENT HISTORY is the same ledger narrowed to the movements that decided goods LIVE
@@ -459,10 +522,32 @@ export function RackDetailPage() {
             teamId={teamId}
             rackId={rackId}
             kinds={PLACEMENT_KINDS}
+            reloadKey={reloadKey}
             testId="rack-placement-history"
           />
         </Tabs.Content>
       </Tabs.Root>
+
+      {teamId !== undefined && (
+        <>
+          <MoveGoodsDialog
+            warehouseId={teamId}
+            rack={rack}
+            teamNames={teamNames}
+            open={dialog === "move"}
+            onOpenChange={(open) => setDialog(open ? "move" : null)}
+            onMoved={reload}
+          />
+          <RecordSampleDialog
+            warehouseId={teamId}
+            rack={rack}
+            teamNames={teamNames}
+            open={dialog === "sample"}
+            onOpenChange={(open) => setDialog(open ? "sample" : null)}
+            onRecorded={reload}
+          />
+        </>
+      )}
     </Stack>
   );
 }
@@ -481,7 +566,7 @@ function Field({ label, value, testId }: { label: string; value: string; testId:
 interface RackStockTableProps {
   lines: RackStockLine[];
   products: Map<string, Product>;
-  teamNames: Map<string, string>;
+  teams: Map<string, Team>;
   loading: boolean;
   error: string;
   // The Prices tab is this same table with the money columns shown. One component rather than two,
@@ -493,7 +578,7 @@ interface RackStockTableProps {
 function RackStockTable({
   lines,
   products,
-  teamNames,
+  teams,
   loading,
   error,
   showMoney,
@@ -528,6 +613,7 @@ function RackStockTable({
       <Table.Header>
         <Table.Row>
           <Table.ColumnHeader>{t("racks.detail.product")}</Table.ColumnHeader>
+          <Table.ColumnHeader>{t("racks.detail.team")}</Table.ColumnHeader>
           {/* NOT "On hand" — the app already uses that for the warehouse-wide number
               (inventory.table.onHand), and this is one shelf's share of it. Naming both the same is
               how someone reads a rack's count as the warehouse's. */}
@@ -556,15 +642,36 @@ function RackStockTable({
                     dropping or blanking it would hide stock someone can walk up and touch. It is
                     labelled as unknown rather than left to ProductListItem's neutral "Product #<id>"
                     fallback, which reads as a product that merely has no name. */}
+                {/* The product WITHOUT its team: the team has its own column (one context per column), so
+                    ProductListItem is given no teamId and does not print it a second time under the name. */}
                 <ProductListItem
                   product={
-                    product ?? {
-                      id: line.productId,
-                      name: t("racks.detail.productUnknown", { id: line.productId.toString() }),
-                    }
+                    product
+                      ? { ...product, teamId: undefined }
+                      : {
+                          id: line.productId,
+                          name: t("racks.detail.productUnknown", { id: line.productId.toString() }),
+                        }
                   }
-                  teamName={product ? teamNames.get(product.teamId.toString()) : undefined}
                 />
+              </Table.Cell>
+
+              {/* WHOSE IT IS — the reason this page exists: a warehouse holds other teams' goods. Shown the way a
+                  team is shown everywhere (TeamItem: avatar, name, type). A product the catalogue could not name
+                  has no known owner, and says so rather than guessing. */}
+              <Table.Cell data-testid={`rack-stock-team-${line.productId}`}>
+                {product ? (
+                  <TeamItem
+                    team={{
+                      teamId: product.teamId,
+                      teamName: teams.get(product.teamId.toString())?.name,
+                      teamType: teams.get(product.teamId.toString())?.type,
+                      imageUrl: teams.get(product.teamId.toString())?.imageUrl,
+                    }}
+                  />
+                ) : (
+                  <Text color="fg.muted">—</Text>
+                )}
               </Table.Cell>
 
               {/* Deliberately its own column rather than ProductListItem's `stock` badge: that badge
@@ -607,15 +714,44 @@ interface RackHistoryProps {
   rackId: bigint;
   // Omitted = every kind. The two history tabs are the same ledger asked two different questions.
   kinds?: number[];
+  // Bumped by a write on this page (a move, a sample), so the history asks again.
+  reloadKey: number;
   testId: string;
+}
+
+// The names of a page of history rows' products. Never throws: a product the catalogue cannot name keeps its row, as
+// "#id" — the same fallback the shelf's own table uses.
+async function productNamesFor(teamId: bigint, ids: bigint[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  const wanted = [...new Set(ids.filter((id) => id > 0n))];
+  if (wanted.length === 0) return names;
+
+  try {
+    const res = await productClient.productByIds({
+      teamId,
+      filter: { ids: wanted },
+      dataRequest: productByIdsRowData(),
+    });
+    for (const product of productsFromByIds(res)) {
+      names.set(product.id.toString(), product.name);
+    }
+  } catch {
+    // Deliberately empty — see above.
+  }
+
+  return names;
 }
 
 // RackHistory is what has happened to THIS SHELF (#197) — a read `StockHistory` cannot serve, since
 // it demands a product id and answers "what happened to this product".
-function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
+function RackHistory({ teamId, rackId, kinds, reloadKey, testId }: RackHistoryProps) {
   const { t } = useTranslation();
 
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  // userId → name, and productId → name, for the page of rows: WHO did it (any-warehouse-member-may-move-goods — every
+  // row names its person) and to WHAT. One batch each, committed with the rows; a failed lookup falls back to "#id".
+  const [actorNames, setActorNames] = useState<Map<string, string>>(new Map());
+  const [productNames, setProductNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -647,10 +783,24 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
         dataRequest: rackHistoryRowData(),
         page: { page, limit: pageSize },
       })
-      .then((res) => {
+      .then(async (res) => {
         if (ignore) return;
 
-        setMovements(rackHistoryFromList(res.items, res.ids));
+        const rows = rackHistoryFromList(res.items, res.ids);
+        const [actors, names] = await Promise.all([
+          fetchActors(rows.map((m) => m.actorUserId)),
+          productNamesFor(teamId, rows.map((m) => m.productId)),
+        ]);
+        if (ignore) return;
+
+        const people = new Map<string, string>();
+        for (const [id, user] of actors) {
+          people.set(id, user.name || user.username);
+        }
+
+        setMovements(rows);
+        setActorNames(people);
+        setProductNames(names);
         setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
       })
       .catch((err) => {
@@ -667,7 +817,7 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
     return () => {
       ignore = true;
     };
-  }, [teamId, rackId, page, pageSize, kindKey]);
+  }, [teamId, rackId, page, pageSize, kindKey, reloadKey]);
 
   if (error) {
     return (
@@ -697,7 +847,9 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
       <MovementTable
         movements={movements}
         testId={testId}
-        columns={["product"]}
+        columns={["product", "by"]}
+        actorNames={actorNames}
+        productLabel={(id) => productNames.get(id.toString()) ?? `#${id}`}
         afterLabel={t("racks.detail.after")}
         emptyText={t("racks.detail.noHistory")}
       />

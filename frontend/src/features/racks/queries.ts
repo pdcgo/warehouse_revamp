@@ -1,7 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { rackClient } from "../../api/clients";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { productClient, rackClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
-import { racksFromList, rackListRowData } from "./adapt";
+import type { RackStockLine } from "../../gen/warehouse/inventory/v1/rack_pb";
+import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import { useInvalidateStock } from "../inventory/queries";
+import { productByIdsRowData, productsFromByIds } from "../products/adapt";
+import { rackListRowData, rackStockFromList, rackStockRowData, racksFromList } from "./adapt";
 
 // A warehouse's rack id → CODE map.
 //
@@ -64,5 +68,77 @@ export function useRackCodes(args: { warehouseId: bigint; enabled?: boolean }) {
       }
       return codes;
     },
+  });
+}
+
+// ── One rack's whole contents, and the two writes off it ────────────────────────────────────────
+//
+// The Move and Record Sample dialogs act on EVERYTHING on a rack, not on the page of it the Products tab
+// is showing — "empty Rak A" must see the products on page 2 too. So they read the rack in one large
+// page, with each product resolved by ProductByIds (the shelf holds other teams' goods, which the
+// warehouse's own catalogue would silently omit). One rack holding more than this is not a rack.
+const RACK_CONTENTS_SIZE = 200;
+
+export interface RackContents {
+  lines: RackStockLine[];
+  // productId → product. ProductByIds answers unordered and may answer short, so a line is matched by id.
+  products: Map<string, Product>;
+}
+
+export function useRackContents(args: { warehouseId: bigint; rackId: bigint; enabled?: boolean }) {
+  const { warehouseId, rackId, enabled = true } = args;
+
+  return useQuery({
+    queryKey: key.racks(warehouseId, { contents: rackId.toString() }),
+    enabled: enabled && warehouseId > 0n && rackId > 0n,
+    queryFn: async (): Promise<RackContents> => {
+      const res = await rackClient.rackStock({
+        teamId: warehouseId,
+        filter: { rackId },
+        dataRequest: rackStockRowData(),
+        page: { page: 1, limit: RACK_CONTENTS_SIZE },
+      });
+      const lines = rackStockFromList(res.items, res.ids);
+
+      const ids = [...new Set(lines.map((line) => line.productId).filter((id) => id > 0n))];
+      const products = new Map<string, Product>();
+
+      if (ids.length > 0) {
+        try {
+          const productRes = await productClient.productByIds({
+            teamId: warehouseId,
+            filter: { ids },
+            dataRequest: productByIdsRowData(),
+          });
+          for (const product of productsFromByIds(productRes)) {
+            products.set(product.id.toString(), product);
+          }
+        } catch {
+          // A name is decoration here: the line still carries its count, and the dialog labels it unknown.
+        }
+      }
+
+      return { lines, products };
+    },
+  });
+}
+
+// The two writes. Both go through useInvalidateStock, the cross-domain fan-out (#177), so a move made here
+// is not still on the old shelf in the inventory screens.
+export function useRackMove() {
+  const invalidate = useInvalidateStock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof rackClient.rackMove>[0]) => rackClient.rackMove(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+export function useRackSample() {
+  const invalidate = useInvalidateStock();
+
+  return useMutation({
+    mutationFn: (vars: Parameters<typeof rackClient.rackSample>[0]) => rackClient.rackSample(vars),
+    onSuccess: () => invalidate(),
   });
 }

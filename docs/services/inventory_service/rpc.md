@@ -386,6 +386,56 @@ constraint never fires. Unguarded, #137 made this a live bug — the goods were 
 Moving them to unplaced instead was rejected: the boxes are still physically on that shelf until a
 person moves them, so recording them as "somewhere" would invent a location nobody observed.
 
+### `RackMove` and `RackSample` — the decided model (PROTOTYPE)
+
+The placement decisions ([placement_decision.md](../../business/inventory/placement_decision.md)) give a rack two writes
+of its own, both opened from Rack detail: **Move Goods** — staff reorganizing space, from one rack to one or more — and
+**Record Sample** — goods handed to a person at the warehouse
+([a-sample-is-handed-over-at-the-warehouse](../../business/inventory/transaction_decision.md#a-sample-is-handed-over-at-the-warehouse)).
+
+> ⚠ **PROTOTYPE — no handler exists.** Both are on `RackService`
+> ([rack.proto](../../../proto/warehouse/inventory/v1/rack.proto)) and answer **Unimplemented** (`rack_move.go`,
+> `rack_sample.go`); the dialogs run against the Storybook stub (`.storybook/rackStub.ts`) until design_accept. The
+> backend step writes them on the decided ledgers, which wait on the transaction and ledger questions. `RackMove`
+> supersedes `StockMove`, whose one product, one batch and *unplaced* end all go.
+
+| RPC | Who | What it writes |
+| --- | --- | --- |
+| `RackMove` | any warehouse member ([any-warehouse-member-may-move-goods](../../business/inventory/placement_decision.md#any-warehouse-member-may-move-goods)) | per owning team, one `move` transaction: per product, minus on the source rack and plus on each destination, nothing in the batch ledger ([a-move-writes-two-rack-rows-and-no-batch-row](../../business/inventory/placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row)) |
+| `RackSample` | any warehouse member | per owning team, one `sample` transaction: minus on the request's rack ([a-sample-names-the-rack-it-was-taken-from](../../business/inventory/placement_decision.md#a-sample-names-the-rack-it-was-taken-from)), oldest batch first. Final: never rolled back ([a-handed-over-sample-is-final](../../business/inventory/placement_decision.md#a-handed-over-sample-is-final)) |
+
+```mermaid
+sequenceDiagram
+  participant S as staff
+  participant R as RackMove
+  participant DB as Postgres
+  S->>R: from A-01-1 — Kopi 4 to A-01-2, Gula 5 to A-01-2
+  R->>DB: BEGIN
+  R->>DB: lock the source and destination shelf rows, in id order
+  R->>R: every line checked first — not counting, at most stock_count, no rack twice
+  alt any line does not fit
+    R->>DB: ROLLBACK
+    R-->>S: FailedPrecondition — names the product, nothing moved
+  else every line fits
+    R->>DB: tx 7001 move, team 11 — Kopi -4 on A-01-1, +4 on A-01-2
+    R->>DB: tx 7002 move, team 13 — Gula -5 on A-01-1, +5 on A-01-2
+    R->>DB: COMMIT
+    R-->>S: transactions 7001 and 7002
+  end
+```
+
+The rules the stub plays, and the backend step keeps:
+
+| | |
+| --- | --- |
+| one rack to one or more | every destination in the team's warehouse, never the source; a product may be split, never twice to one rack ([a-move-is-one-rack-to-one-or-more-racks](../../business/inventory/placement_decision.md#a-move-is-one-rack-to-one-or-more-racks)) |
+| all or nothing | one database transaction for every team's transaction; any line that does not fit refuses the whole write, naming the product ([a-move-is-all-or-nothing](../../business/inventory/placement_decision.md#a-move-is-all-or-nothing)) |
+| one transaction per owning team | the response lists them in team id order ([a-move-writes-one-transaction-per-owning-team](../../business/inventory/placement_decision.md#a-move-writes-one-transaction-per-owning-team)) |
+| the ceiling | a line takes at most the rack's stock count, so sold units waiting for the picker stay ([a-move-leaves-sold-units-on-their-rack](../../business/inventory/placement_decision.md#a-move-leaves-sold-units-on-their-rack)) |
+| a product being counted | refused; `RackStockLine.counting` tells the dialog to lock it at 0 — always false until the stock count is built |
+| `RackList` STOCK slice | real today: each rack's stock count and product count for the Racks page, one grouped `SUM`/`COUNT` over the page's racks, only when asked — a picker never pays for it |
+| `RackSample.recipient` | required, who received it — proposed at the prototype; who on the team agreed is not on the request (transaction Q6) |
+
 ---
 
 ## Accepting a delivery (#154, #155, #157)

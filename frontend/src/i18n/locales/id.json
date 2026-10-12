@@ -1637,6 +1637,8 @@
       "code": "Kode",
       "name": "Nama",
       "description": "Deskripsi",
+      "products": "Produk",
+      "stock": "Stok",
       "actions": "Aksi"
     },
     "form": {
@@ -1667,6 +1669,7 @@
       "invalidId": "ID rak tidak valid.",
       "contents": "Isi rak",
       "product": "Produk",
+      "team": "Tim",
       "onThisRack": "Di rak ini",
       "empty": "Tidak ada apa pun di rak ini.",
       "productUnknown": "Produk tidak diketahui #{{id}}",
@@ -1693,7 +1696,67 @@
         "prices": "Harga",
         "stockHistory": "Riwayat Stok",
         "placementHistory": "Riwayat Penempatan"
+      },
+      "actions": "Aksi rak",
+      "pending": {
+        "countLock": {
+          "label": "Kunci opname",
+          "reason": "Produk yang sedang diopname terkunci di 0 di sini, tetapi apa yang diblokir kunci opname belum diputuskan (opname Q4), dan opname belum dibangun — hanya prototipe yang mengisinya."
+        },
+        "sampleAgreedBy": {
+          "label": "Yang menyetujui sampel",
+          "reason": "Siapa dari tim pemilik yang menyetujui sampel tidak ada di formulir: siapa yang menanggung sampel masih terbuka (transaction Q6)."
+        }
       }
+    },
+    "move": {
+      "action": "Pindahkan Barang",
+      "title": "Pindahkan Barang dari {{code}}",
+      "defaultTo": "Ke rak",
+      "defaultToHelp": "Semua baris ke sini kecuali Anda mengubahnya.",
+      "products": "Produk di {{code}}",
+      "everything": "Pindahkan Semua",
+      "onRack": "{{count}} di rak ini",
+      "quantity": "Jumlah {{name}} yang dipindahkan",
+      "to": "ke",
+      "defaultMark": "(bawaan)",
+      "noDefault": "rak di atas",
+      "changeRack": "Ganti Rak",
+      "useDefault": "Pakai rak bawaan",
+      "split": "Bagi ke Rak Lain",
+      "remove": "Hapus baris ini",
+      "counting": "Sedang diopname",
+      "countingHelp": "Terkunci sampai opname selesai.",
+      "note": "Catatan",
+      "notePlaceholder": "Opsional, mis. merapikan rak",
+      "summary": "{{units}} unit dari {{products}} produk ke {{racks}} rak",
+      "problem": {
+        "noRack": "Pilih ke mana {{name}} dipindahkan.",
+        "tooMany": "{{name}}: hanya {{count}} di rak ini.",
+        "twice": "{{name}} ke {{code}} dua kali — jadikan satu baris.",
+        "counting": "{{name}} sedang diopname dan tidak bisa dipindahkan."
+      },
+      "empty": "Tidak ada yang bisa dipindahkan dari rak ini.",
+      "refused": "Tidak ada yang dipindahkan",
+      "cancel": "Batal",
+      "submit": "Pindahkan",
+      "done": "{{count}} unit dipindahkan dari {{code}}"
+    },
+    "sample": {
+      "action": "Catat Sampel",
+      "title": "Catat Sampel dari {{code}}",
+      "intro": "Unit yang diserahkan kepada seseorang di gudang. Sampel bersifat final: tidak bisa dibatalkan.",
+      "quantity": "Jumlah {{name}} yang diberikan",
+      "given": "diberikan",
+      "recipient": "Diberikan kepada",
+      "recipientPlaceholder": "Nama orang yang menerimanya",
+      "recipientHelp": "Sesuai yang disebutkan orangnya, agar sampel bisa dilacak nanti.",
+      "notePlaceholder": "Opsional, mis. untuk foto produk",
+      "summary": "{{units}} unit dari {{products}} produk",
+      "empty": "Tidak ada yang bisa diberikan dari rak ini.",
+      "refused": "Tidak ada yang dicatat",
+      "submit": "Catat Sampel",
+      "done": "Sampel {{count}} unit dari {{code}} dicatat"
     }
   },
   "suppliers": {
@@ -2513,7 +2576,8 @@
       "pick": "Diambil",
       "move": "Dipindahkan",
       "return": "Dikembalikan",
-      "unknown": "Tidak diketahui"
+      "unknown": "Tidak diketahui",
+      "sample": "Sampel"
     },
     "incoming": "Dalam perjalanan",
     "lastOrder": "Pesanan terakhir",

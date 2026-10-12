@@ -25,6 +25,7 @@ import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
 import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
+import { resetRackStub } from "./rackStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -384,6 +385,8 @@ const preview: Preview = {
     // …and the restocks, which every create, edit, sign-for, accept, lost and cancel writes to.
     resetRestockStub();
     resetWarehouseTransferStub();
+    // …and the shelves, which a move or a sample on Rack detail writes to.
+    resetRackStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();

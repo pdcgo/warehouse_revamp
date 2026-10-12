@@ -63,6 +63,7 @@ import { supplierAnalyticService, supplierChannelService, supplierService } from
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
+import { rackService } from "./rackStub";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
@@ -108,7 +109,6 @@ import {
   orders,
   productCosts,
   products,
-  racks,
   regionTree,
   regions,
   liabilityDays,
@@ -769,10 +769,9 @@ export const transport = createRouterTransport(({ service }) => {
   // Its figures — supplierFigureFixtures.ts, read as the folded table is (the-figures-screens-are-accepted).
   service(SupplierAnalyticService, supplierAnalyticService);
 
-  service(RackService, {
-    // Scoped by the warehouse, as the server is: the team in the request IS the warehouse whose shelves these are.
-    rackList: (req) => columnar("rack", racks.filter((r) => r.warehouseId === req.teamId)),
-  });
+  // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
+  // rackStub.ts plays them, writeable, with the placement decisions.
+  service(RackService, rackService);
 
   service(CategoryService, {
     // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
