@@ -55,9 +55,6 @@ const (
 	// LiabilityPaymentServiceLiabilityPaymentRejectProcedure is the fully-qualified name of the
 	// LiabilityPaymentService's LiabilityPaymentReject RPC.
 	LiabilityPaymentServiceLiabilityPaymentRejectProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentReject"
-	// LiabilityPaymentServiceLiabilityPaymentReverseProcedure is the fully-qualified name of the
-	// LiabilityPaymentService's LiabilityPaymentReverse RPC.
-	LiabilityPaymentServiceLiabilityPaymentReverseProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentReverse"
 	// LiabilityPaymentServiceLiabilityPaymentListProcedure is the fully-qualified name of the
 	// LiabilityPaymentService's LiabilityPaymentList RPC.
 	LiabilityPaymentServiceLiabilityPaymentListProcedure = "/warehouse.liability.v1.LiabilityPaymentService/LiabilityPaymentList"
@@ -210,7 +207,6 @@ type LiabilityPaymentServiceClient interface {
 	LiabilityPaymentRecord(context.Context, *connect.Request[v1.LiabilityPaymentRecordRequest]) (*connect.Response[v1.LiabilityPaymentRecordResponse], error)
 	LiabilityPaymentConfirm(context.Context, *connect.Request[v1.LiabilityPaymentConfirmRequest]) (*connect.Response[v1.LiabilityPaymentConfirmResponse], error)
 	LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error)
-	LiabilityPaymentReverse(context.Context, *connect.Request[v1.LiabilityPaymentReverseRequest]) (*connect.Response[v1.LiabilityPaymentReverseResponse], error)
 	LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error)
 }
 
@@ -244,12 +240,6 @@ func NewLiabilityPaymentServiceClient(httpClient connect.HTTPClient, baseURL str
 			connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentReject")),
 			connect.WithClientOptions(opts...),
 		),
-		liabilityPaymentReverse: connect.NewClient[v1.LiabilityPaymentReverseRequest, v1.LiabilityPaymentReverseResponse](
-			httpClient,
-			baseURL+LiabilityPaymentServiceLiabilityPaymentReverseProcedure,
-			connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentReverse")),
-			connect.WithClientOptions(opts...),
-		),
 		liabilityPaymentList: connect.NewClient[v1.LiabilityPaymentListRequest, v1.LiabilityPaymentListResponse](
 			httpClient,
 			baseURL+LiabilityPaymentServiceLiabilityPaymentListProcedure,
@@ -264,7 +254,6 @@ type liabilityPaymentServiceClient struct {
 	liabilityPaymentRecord  *connect.Client[v1.LiabilityPaymentRecordRequest, v1.LiabilityPaymentRecordResponse]
 	liabilityPaymentConfirm *connect.Client[v1.LiabilityPaymentConfirmRequest, v1.LiabilityPaymentConfirmResponse]
 	liabilityPaymentReject  *connect.Client[v1.LiabilityPaymentRejectRequest, v1.LiabilityPaymentRejectResponse]
-	liabilityPaymentReverse *connect.Client[v1.LiabilityPaymentReverseRequest, v1.LiabilityPaymentReverseResponse]
 	liabilityPaymentList    *connect.Client[v1.LiabilityPaymentListRequest, v1.LiabilityPaymentListResponse]
 }
 
@@ -286,12 +275,6 @@ func (c *liabilityPaymentServiceClient) LiabilityPaymentReject(ctx context.Conte
 	return c.liabilityPaymentReject.CallUnary(ctx, req)
 }
 
-// LiabilityPaymentReverse calls
-// warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReverse.
-func (c *liabilityPaymentServiceClient) LiabilityPaymentReverse(ctx context.Context, req *connect.Request[v1.LiabilityPaymentReverseRequest]) (*connect.Response[v1.LiabilityPaymentReverseResponse], error) {
-	return c.liabilityPaymentReverse.CallUnary(ctx, req)
-}
-
 // LiabilityPaymentList calls warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentList.
 func (c *liabilityPaymentServiceClient) LiabilityPaymentList(ctx context.Context, req *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error) {
 	return c.liabilityPaymentList.CallUnary(ctx, req)
@@ -303,7 +286,6 @@ type LiabilityPaymentServiceHandler interface {
 	LiabilityPaymentRecord(context.Context, *connect.Request[v1.LiabilityPaymentRecordRequest]) (*connect.Response[v1.LiabilityPaymentRecordResponse], error)
 	LiabilityPaymentConfirm(context.Context, *connect.Request[v1.LiabilityPaymentConfirmRequest]) (*connect.Response[v1.LiabilityPaymentConfirmResponse], error)
 	LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error)
-	LiabilityPaymentReverse(context.Context, *connect.Request[v1.LiabilityPaymentReverseRequest]) (*connect.Response[v1.LiabilityPaymentReverseResponse], error)
 	LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error)
 }
 
@@ -332,12 +314,6 @@ func NewLiabilityPaymentServiceHandler(svc LiabilityPaymentServiceHandler, opts 
 		connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentReject")),
 		connect.WithHandlerOptions(opts...),
 	)
-	liabilityPaymentServiceLiabilityPaymentReverseHandler := connect.NewUnaryHandler(
-		LiabilityPaymentServiceLiabilityPaymentReverseProcedure,
-		svc.LiabilityPaymentReverse,
-		connect.WithSchema(liabilityPaymentServiceMethods.ByName("LiabilityPaymentReverse")),
-		connect.WithHandlerOptions(opts...),
-	)
 	liabilityPaymentServiceLiabilityPaymentListHandler := connect.NewUnaryHandler(
 		LiabilityPaymentServiceLiabilityPaymentListProcedure,
 		svc.LiabilityPaymentList,
@@ -352,8 +328,6 @@ func NewLiabilityPaymentServiceHandler(svc LiabilityPaymentServiceHandler, opts 
 			liabilityPaymentServiceLiabilityPaymentConfirmHandler.ServeHTTP(w, r)
 		case LiabilityPaymentServiceLiabilityPaymentRejectProcedure:
 			liabilityPaymentServiceLiabilityPaymentRejectHandler.ServeHTTP(w, r)
-		case LiabilityPaymentServiceLiabilityPaymentReverseProcedure:
-			liabilityPaymentServiceLiabilityPaymentReverseHandler.ServeHTTP(w, r)
 		case LiabilityPaymentServiceLiabilityPaymentListProcedure:
 			liabilityPaymentServiceLiabilityPaymentListHandler.ServeHTTP(w, r)
 		default:
@@ -375,10 +349,6 @@ func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentConfirm(conte
 
 func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentReject(context.Context, *connect.Request[v1.LiabilityPaymentRejectRequest]) (*connect.Response[v1.LiabilityPaymentRejectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReject is not implemented"))
-}
-
-func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentReverse(context.Context, *connect.Request[v1.LiabilityPaymentReverseRequest]) (*connect.Response[v1.LiabilityPaymentReverseResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.liability.v1.LiabilityPaymentService.LiabilityPaymentReverse is not implemented"))
 }
 
 func (UnimplementedLiabilityPaymentServiceHandler) LiabilityPaymentList(context.Context, *connect.Request[v1.LiabilityPaymentListRequest]) (*connect.Response[v1.LiabilityPaymentListResponse], error) {

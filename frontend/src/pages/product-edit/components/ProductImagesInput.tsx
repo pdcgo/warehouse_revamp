@@ -155,7 +155,7 @@ export function ProductImagesInput({
                 right="1"
                 size="2xs"
                 variant="solid"
-                colorPalette="red"
+                colorPalette="error"
                 aria-label="Remove image"
                 data-testid={`remove-product-image-${i}`}
                 onClick={() => removeAt(i)}

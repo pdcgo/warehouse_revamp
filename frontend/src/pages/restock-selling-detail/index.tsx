@@ -17,7 +17,7 @@ import { rpcError } from "../../api/clients";
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamDetail } from "../../features/teams/queries";
-import { useSupplier } from "../../features/suppliers/queries";
+import { useSuppliersByIds } from "../../features/suppliers/queries";
 import {
   useCancelRestockRequest,
   useRestockActors,
@@ -85,9 +85,11 @@ export function RestockSellingDetailPage() {
   const supplierId = request?.supplierId ?? 0n;
   const warehouseId = request?.warehouseId ?? 0n;
 
-  // The supplier belongs to THIS team's catalogue, so this team is exactly who can resolve it —
-  // the warehouse side could not, which is why its page does not try.
-  const supplier = useSupplier({ teamId, supplierId });
+  // By ids, not SupplierDetail: the vendor may be ANOTHER selling team's supplier
+  // (a-team-restocks-from-another-teams-supplier), and it may have been deleted since — SupplierByIds still
+  // names it (a-deleted-supplier-is-kept-for-its-figures), where SupplierDetail answers live ones only.
+  const suppliers = useSuppliersByIds({ teamId, supplierIds: [supplierId] });
+  const supplier = suppliers.data?.get(supplierId.toString());
 
   // TeamDetail is unscoped (`allow_only_authenticated`), so the destination warehouse's NAME is
   // readable here. "Warehouse #3" is not somewhere goods go.
@@ -156,7 +158,7 @@ export function RestockSellingDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-detail-error">
+        <Text color="error.fg" data-testid="restock-detail-error">
           {error || t("restock.detail.notFound")}
         </Text>
       </Stack>
@@ -192,7 +194,7 @@ export function RestockSellingDetailPage() {
         </Heading>
         <RestockStatusBadge status={request.status} />
         {short > 0n && (
-          <Badge colorPalette="orange" data-testid="restock-detail-short">
+          <Badge colorPalette="warning" data-testid="restock-detail-short">
             {t("restock.table.shortBy", { count: Number(short) })}
           </Badge>
         )}
@@ -221,7 +223,7 @@ export function RestockSellingDetailPage() {
             confirmLabel={t("restock.cancel.confirm")}
             onConfirm={cancelRequest}
             trigger={
-              <Button variant="outline" colorPalette="red" data-testid="restock-detail-cancel">
+              <Button variant="outline" colorPalette="error" data-testid="restock-detail-cancel">
                 <Icon as={Ban} boxSize="4" />
                 {t("restock.cancel.action")}
               </Button>
@@ -261,7 +263,7 @@ export function RestockSellingDetailPage() {
             supplierName={
               supplierId === 0n
                 ? ""
-                : (supplier.data?.name ??
+                : (supplier?.name ??
                   t("restock.detail.supplierRef", { id: supplierId.toString() }))
             }
           />

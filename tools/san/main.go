@@ -8,6 +8,7 @@
 //	san region     reference data
 //	san user       operations on real data, through the real services
 //	san remote     serve this checkout to a coding agent (Connect RPC + MCP)
+//	san dev        set up and run the local stack — docker, the API and the UI, in one terminal
 //
 // # Why one binary and not two
 //
@@ -75,8 +76,12 @@ func main() {
 
 			// Operations on real data, and the workspace server.
 			userCommand(),
+			supplierCommand(),
 			pubsubCommand(),
 			remoteCommand(),
+
+			// The local stack.
+			devCommand(),
 		},
 	}
 

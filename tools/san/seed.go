@@ -26,10 +26,11 @@ func seedCommand() *cli.Command {
 				Name:      "root",
 				Usage:     "set the root account's password",
 				ArgsUsage: " ",
-				Description: "The root account (user 1, ROLE_ROOT in team 1) is created by a migration with\n" +
-					"an EMPTY password, which bcrypt can never match — so a freshly migrated system\n" +
-					"has a root user that cannot log in. This sets its password.\n\n" +
-					"A default password in the migration would ship to production. This cannot.",
+				Description: "The root account (user 1, ROLE_ROOT in team 1) is given the DEVELOPMENT password\n" +
+					"root1234 by a migration (00010), and only while it has none — so a fresh clone logs in\n" +
+					"as root with no extra step (the-migration-writes-the-dev-root-password).\n\n" +
+					"That password is public in the repository, so a PRODUCTION database runs this right after\n" +
+					"its first migration. This sets the password you give it.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "password",
@@ -95,22 +96,10 @@ type categorySeed struct {
 }
 
 func runSeedCategories(ctx context.Context, cmd *cli.Command) error {
-	raw, err := os.ReadFile(cmd.String("file"))
+	// The file is read BEFORE the database prompt, so a bad path fails without asking anything.
+	nodes, err := readCategorySeed(cmd.String("file"))
 	if err != nil {
-		return fmt.Errorf("reading category file: %w", err)
-	}
-
-	var doc struct {
-		Categories []categorySeed `json:"categories"`
-	}
-
-	err = json.Unmarshal(raw, &doc)
-	if err != nil {
-		return fmt.Errorf("parsing category file: %w", err)
-	}
-
-	if len(doc.Categories) == 0 {
-		return errors.New("the category file has no `categories`")
+		return err
 	}
 
 	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
@@ -119,7 +108,36 @@ func runSeedCategories(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer db.Close()
 
-	inserted, err := upsertCategories(ctx, db, doc.Categories, nil)
+	return seedCategories(ctx, db, target, nodes)
+}
+
+// readCategorySeed parses the taxonomy JSON.
+func readCategorySeed(path string) ([]categorySeed, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading category file: %w", err)
+	}
+
+	var doc struct {
+		Categories []categorySeed `json:"categories"`
+	}
+
+	err = json.Unmarshal(raw, &doc)
+	if err != nil {
+		return nil, fmt.Errorf("parsing category file: %w", err)
+	}
+
+	if len(doc.Categories) == 0 {
+		return nil, errors.New("the category file has no `categories`")
+	}
+
+	return doc.Categories, nil
+}
+
+// seedCategories is the work of `seed categories` on an already-open database — shared with
+// `dev setup`.
+func seedCategories(ctx context.Context, db *sql.DB, target string, nodes []categorySeed) error {
+	inserted, err := upsertCategories(ctx, db, nodes, nil)
 	if err != nil {
 		return err
 	}
@@ -235,8 +253,10 @@ func runSeedRoot(ctx context.Context, cmd *cli.Command) error {
 
 func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 	password := cmd.String("password")
-	if len(password) < 8 {
-		return errors.New("the dev password must be at least 8 characters")
+
+	err := checkDevPassword(password)
+	if err != nil {
+		return err
 	}
 
 	db, target, err := resolveDatabase(ctx, cmd.String("dsn"))
@@ -245,6 +265,22 @@ func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer db.Close()
 
+	return seedDev(ctx, db, target, password)
+}
+
+// checkDevPassword is the one rule on the dev fixture's password. Callers run it BEFORE connecting,
+// so a short password fails without a database prompt — or, for `dev setup`, before docker starts.
+func checkDevPassword(password string) error {
+	if len(password) < 8 {
+		return errors.New("the dev password must be at least 8 characters")
+	}
+
+	return nil
+}
+
+// seedDev is the work of `seed dev` on an already-open database — shared with `dev setup`. The
+// Production guard lives HERE, not in the command, so no caller can get past it.
+func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 	// THE GUARD. This fixture creates known-credential superusers, so it must never reach
 	// production. Refuse the Production target outright — do not even offer the type-"production"
 	// override that `root` allows.
@@ -279,12 +315,11 @@ func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 		teamID uint64
 		userID uint64
 		role   role_basev1.Role
-		alias  string
 		user   string
 	}{
-		{san_auth.RootTeamID, devID, role_basev1.Role_ROLE_ADMIN, "dev", "dev"},
-		{whID, devID, role_basev1.Role_ROLE_WAREHOUSE_OWNER, "dev", "dev"},
-		{sellID, devID, role_basev1.Role_ROLE_TEAM_OWNER, "dev", "dev"},
+		{san_auth.RootTeamID, devID, role_basev1.Role_ROLE_ADMINISTRATOR, "dev"},
+		{whID, devID, role_basev1.Role_ROLE_WAREHOUSE_OWNER, "dev"},
+		{sellID, devID, role_basev1.Role_ROLE_SELLING_OWNER, "dev"},
 	}
 
 	// A few scoped, non-admin users so screens have realistic data.
@@ -296,7 +331,7 @@ func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 	}{
 		{"wh_owner", "Warehouse Owner", whID, role_basev1.Role_ROLE_WAREHOUSE_OWNER},
 		{"wh_staff", "Warehouse Staff", whID, role_basev1.Role_ROLE_WAREHOUSE_STAFF},
-		{"seller", "Seller", sellID, role_basev1.Role_ROLE_TEAM_OWNER},
+		{"seller", "Seller", sellID, role_basev1.Role_ROLE_SELLING_OWNER},
 	}
 
 	for _, s := range scoped {
@@ -309,13 +344,12 @@ func runSeedDev(ctx context.Context, cmd *cli.Command) error {
 			teamID uint64
 			userID uint64
 			role   role_basev1.Role
-			alias  string
 			user   string
-		}{s.teamID, uid, s.role, s.username, s.username})
+		}{s.teamID, uid, s.role, s.username})
 	}
 
 	for _, m := range memberships {
-		err = ensureMembership(ctx, db, m.teamID, m.userID, m.role, m.alias)
+		err = ensureMembership(ctx, db, m.teamID, m.userID, m.role)
 		if err != nil {
 			return fmt.Errorf("membership %s@%d: %w", m.user, m.teamID, err)
 		}
@@ -377,12 +411,12 @@ func ensureUser(ctx context.Context, db *sql.DB, username, name, hash string) (u
 
 // ensureMembership upserts a (team, user) role. The UNIQUE (team_id, user_id) index makes this a
 // real ON CONFLICT upsert — at most one role per user per team.
-func ensureMembership(ctx context.Context, db *sql.DB, teamID, userID uint64, role role_basev1.Role, alias string) error {
+func ensureMembership(ctx context.Context, db *sql.DB, teamID, userID uint64, role role_basev1.Role) error {
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO user_team_roles (team_id, user_id, role, alias)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (team_id, user_id) DO UPDATE SET role = EXCLUDED.role, alias = EXCLUDED.alias`,
-		teamID, userID, int32(role), alias,
+		INSERT INTO user_team_roles (team_id, user_id, role)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (team_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+		teamID, userID, int32(role),
 	)
 
 	return err

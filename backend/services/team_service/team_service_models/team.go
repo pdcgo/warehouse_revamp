@@ -17,7 +17,7 @@ type Team struct {
 	// THE PRIORITY-PRODUCT FEATURE (owner), granted by ROOT and applying to the team's WHOLE
 	// catalogue — every product it owns is a priority product to everybody browsing.
 	//
-	// ⚠ NOT writable through TeamInfoUpdate: that message is callable by ROLE_TEAM_OWNER, and a
+	// ⚠ NOT writable through TeamInfoUpdate: that message is callable by ROLE_SELLING_OWNER, and a
 	// capability granted by root must not be settable by the team it is granted to. See the migration
 	// 00007_team_priority_product.sql for the whole reasoning.
 	PriorityProduct bool
@@ -42,10 +42,7 @@ type TeamInfo struct {
 	// The warehouse this SELLING team ships from by default (#145). NULL = not configured.
 	DefaultWarehouseID *uint64
 
-	ContactNumber     string
-	BankType          string
-	BankOwnerName     string
-	BankAccountNumber string
+	ContactNumber string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

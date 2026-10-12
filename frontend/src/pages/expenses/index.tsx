@@ -161,7 +161,7 @@ export function ExpensesPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="expenses-error">
+        <Text color="error.fg" data-testid="expenses-error">
           {error}
         </Text>
       )}
@@ -238,7 +238,7 @@ export function ExpensesPage() {
                               trigger={
                                 <Menu.Item
                                   value="void"
-                                  color="red.fg"
+                                  color="error.fg"
                                   data-testid={`expense-void-${cost.id}`}
                                   // The menu must NOT close on this one: it opens a confirm dialog,
                                   // and a menu that closes takes the dialog's trigger with it.

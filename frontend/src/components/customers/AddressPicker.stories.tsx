@@ -203,3 +203,94 @@ export const Interactive: Story = {
     );
   },
 };
+
+// ── THE SECOND WAY IN: THE KECAMATAN (owner) ────────────────────────────────────────────────────
+
+// It is OFF unless asked for, and that is what keeps every screen already using this picker exactly
+// as it was. A second search box appearing on the order form, the warehouse form and the user profile
+// because one screen wanted it is the change nobody asked for.
+export const KecamatanSearchIsOptIn: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.queryByTestId("address-kecamatan-search")).toBeNull();
+    // The kode pos path is untouched and still on top.
+    await expect(canvas.getByTestId("address-kodepos")).toBeInTheDocument();
+  },
+};
+
+// ⚠ THE RULE THIS PAIR EXISTS FOR: A KODE POS BELONGS TO A DESA, NOT A KECAMATAN.
+//
+// Cicendo holds one desa, so its postcode is not a guess — it is the only answer, and filling it
+// saves the person a pick. Sukajadi holds two desa with DIFFERENT codes (40162, 40163), and there the
+// field is left EMPTY on purpose: picking one of them would put orders in the wrong kelurahan and
+// give nobody a way to see it happen. The desa select below is what settles it.
+export const KecamatanWithOnePostcodeFillsIt: Story = {
+  args: { kecamatanSearch: true },
+  render: function Render(args) {
+    const [value, setValue] = useState<AddressValue>(emptyAddress);
+
+    return (
+      <>
+        <AddressPicker {...args} value={value} onChange={setValue} />
+        <pre data-testid="readout">
+          {[value.provinsiName, value.kabupatenName, value.kecamatanName].filter(Boolean).join(" › ")}
+          {` | ${value.kodePos || "—"}`}
+        </pre>
+      </>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(
+      within(canvas.getByTestId("address-kecamatan-search")).getByRole("combobox"),
+      "cice",
+      { delay: 40 },
+    );
+
+    const hit = await screen.findByTestId("address-kecamatan-option-327302", undefined, {
+      timeout: 3000,
+    });
+    await waitFor(() => expect(hit).toBeVisible());
+    await userEvent.click(hit);
+
+    // Everything above the kecamatan, and the one postcode its desa share.
+    await waitFor(
+      () =>
+        expect(canvas.getByTestId("readout")).toHaveTextContent(
+          "Jawa Barat › Kota Bandung › Cicendo | 40173",
+        ),
+      { timeout: 3000 },
+    );
+  },
+};
+
+export const KecamatanWithSeveralPostcodesLeavesItEmpty: Story = {
+  args: { kecamatanSearch: true },
+  render: KecamatanWithOnePostcodeFillsIt.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.type(
+      within(canvas.getByTestId("address-kecamatan-search")).getByRole("combobox"),
+      "sukaj",
+      { delay: 40 },
+    );
+
+    const hit = await screen.findByTestId("address-kecamatan-option-327301", undefined, {
+      timeout: 3000,
+    });
+    await waitFor(() => expect(hit).toBeVisible());
+    await userEvent.click(hit);
+
+    // Sukajadi's two desa carry 40162 and 40163 — so the code is the person's to settle, not ours.
+    await waitFor(
+      () =>
+        expect(canvas.getByTestId("readout")).toHaveTextContent(
+          "Jawa Barat › Kota Bandung › Sukajadi | —",
+        ),
+      { timeout: 3000 },
+    );
+  },
+};

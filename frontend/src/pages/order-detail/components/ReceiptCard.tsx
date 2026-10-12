@@ -15,6 +15,26 @@ import { toaster } from "../../../components/feedback/Toaster";
 // and opens it through a short-lived signed URL fetched on the click.
 export function ReceiptCard({ order, teamId }: { order: Order; teamId: bigint | undefined }) {
   const { t } = useTranslation();
+
+  return (
+    <Card.Root>
+      <Card.Body>
+        <Stack gap="card">
+          <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+            {t("orders.receipt")}
+          </Text>
+          <ReceiptFile order={order} teamId={teamId} />
+        </Stack>
+      </Card.Body>
+    </Card.Root>
+  );
+}
+
+// The row alone — the file's name and the button that opens it. The warehouse's tabbed page wraps it in
+// the card above; the seller's page of sections sets it as a fact of its Info section, where a card
+// inside a card would be one frame too many.
+export function ReceiptFile({ order, teamId }: { order: Order; teamId: bigint | undefined }) {
+  const { t } = useTranslation();
   const [opening, setOpening] = useState(false);
 
   // The URL is fetched at the moment somebody asks for it rather than when the page loads. Resolving
@@ -38,34 +58,25 @@ export function ReceiptCard({ order, teamId }: { order: Order; teamId: bigint | 
   }
 
   return (
-    <Card.Root>
-      <Card.Body>
-        <Stack gap="card">
-          <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-            {t("orders.receipt")}
-          </Text>
-          <Flex align="center" gap="2" data-testid="order-detail-receipt">
-            <Icon
-              as={order.receipt?.mimeType === "application/pdf" ? FileText : ImageIcon}
-              boxSize="4"
-              color="fg.muted"
-            />
-            <Text fontSize="sm" lineClamp={1} flex="1">
-              {order.receipt?.filename}
-            </Text>
-            <Button
-              size="xs"
-              variant="outline"
-              loading={opening}
-              data-testid="order-receipt-open"
-              onClick={() => void openReceipt()}
-            >
-              <Icon as={ExternalLink} boxSize="4" />
-              {t("orders.receiptOpen")}
-            </Button>
-          </Flex>
-        </Stack>
-      </Card.Body>
-    </Card.Root>
+    <Flex align="center" gap="2" data-testid="order-detail-receipt">
+      <Icon
+        as={order.receipt?.mimeType === "application/pdf" ? FileText : ImageIcon}
+        boxSize="4"
+        color="fg.muted"
+      />
+      <Text fontSize="sm" lineClamp={1} flex="1">
+        {order.receipt?.filename}
+      </Text>
+      <Button
+        size="xs"
+        variant="outline"
+        loading={opening}
+        data-testid="order-receipt-open"
+        onClick={() => void openReceipt()}
+      >
+        <Icon as={ExternalLink} boxSize="4" />
+        {t("orders.receiptOpen")}
+      </Button>
+    </Flex>
   );
 }

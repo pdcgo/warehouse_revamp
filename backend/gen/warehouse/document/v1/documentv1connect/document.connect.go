@@ -45,6 +45,9 @@ const (
 	// DocumentServiceShareDocumentProcedure is the fully-qualified name of the DocumentService's
 	// ShareDocument RPC.
 	DocumentServiceShareDocumentProcedure = "/warehouse.document.v1.DocumentService/ShareDocument"
+	// DocumentServiceProfilePictureEraseProcedure is the fully-qualified name of the DocumentService's
+	// ProfilePictureErase RPC.
+	DocumentServiceProfilePictureEraseProcedure = "/warehouse.document.v1.DocumentService/ProfilePictureErase"
 )
 
 // DocumentServiceClient is a client for the warehouse.document.v1.DocumentService service.
@@ -54,6 +57,9 @@ type DocumentServiceClient interface {
 	GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error)
 	// Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
 	ShareDocument(context.Context, *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error)
+	// Delete every profile picture one person uploaded — the stored files and their rows
+	// (erase-deletes-the-photo-file). Called by user_service's UserErase, with the caller's own bearer.
+	ProfilePictureErase(context.Context, *connect.Request[v1.ProfilePictureEraseRequest]) (*connect.Response[v1.ProfilePictureEraseResponse], error)
 }
 
 // NewDocumentServiceClient constructs a client for the warehouse.document.v1.DocumentService
@@ -91,15 +97,22 @@ func NewDocumentServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(documentServiceMethods.ByName("ShareDocument")),
 			connect.WithClientOptions(opts...),
 		),
+		profilePictureErase: connect.NewClient[v1.ProfilePictureEraseRequest, v1.ProfilePictureEraseResponse](
+			httpClient,
+			baseURL+DocumentServiceProfilePictureEraseProcedure,
+			connect.WithSchema(documentServiceMethods.ByName("ProfilePictureErase")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // documentServiceClient implements DocumentServiceClient.
 type documentServiceClient struct {
-	requestUpload  *connect.Client[v1.RequestUploadRequest, v1.RequestUploadResponse]
-	confirmUpload  *connect.Client[v1.ConfirmUploadRequest, v1.ConfirmUploadResponse]
-	getDownloadUrl *connect.Client[v1.GetDownloadUrlRequest, v1.GetDownloadUrlResponse]
-	shareDocument  *connect.Client[v1.ShareDocumentRequest, v1.ShareDocumentResponse]
+	requestUpload       *connect.Client[v1.RequestUploadRequest, v1.RequestUploadResponse]
+	confirmUpload       *connect.Client[v1.ConfirmUploadRequest, v1.ConfirmUploadResponse]
+	getDownloadUrl      *connect.Client[v1.GetDownloadUrlRequest, v1.GetDownloadUrlResponse]
+	shareDocument       *connect.Client[v1.ShareDocumentRequest, v1.ShareDocumentResponse]
+	profilePictureErase *connect.Client[v1.ProfilePictureEraseRequest, v1.ProfilePictureEraseResponse]
 }
 
 // RequestUpload calls warehouse.document.v1.DocumentService.RequestUpload.
@@ -122,6 +135,11 @@ func (c *documentServiceClient) ShareDocument(ctx context.Context, req *connect.
 	return c.shareDocument.CallUnary(ctx, req)
 }
 
+// ProfilePictureErase calls warehouse.document.v1.DocumentService.ProfilePictureErase.
+func (c *documentServiceClient) ProfilePictureErase(ctx context.Context, req *connect.Request[v1.ProfilePictureEraseRequest]) (*connect.Response[v1.ProfilePictureEraseResponse], error) {
+	return c.profilePictureErase.CallUnary(ctx, req)
+}
+
 // DocumentServiceHandler is an implementation of the warehouse.document.v1.DocumentService service.
 type DocumentServiceHandler interface {
 	RequestUpload(context.Context, *connect.Request[v1.RequestUploadRequest]) (*connect.Response[v1.RequestUploadResponse], error)
@@ -129,6 +147,9 @@ type DocumentServiceHandler interface {
 	GetDownloadUrl(context.Context, *connect.Request[v1.GetDownloadUrlRequest]) (*connect.Response[v1.GetDownloadUrlResponse], error)
 	// Let ONE OTHER TEAM read one of this team's documents (a-payment-must-carry-proof).
 	ShareDocument(context.Context, *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error)
+	// Delete every profile picture one person uploaded — the stored files and their rows
+	// (erase-deletes-the-photo-file). Called by user_service's UserErase, with the caller's own bearer.
+	ProfilePictureErase(context.Context, *connect.Request[v1.ProfilePictureEraseRequest]) (*connect.Response[v1.ProfilePictureEraseResponse], error)
 }
 
 // NewDocumentServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -162,6 +183,12 @@ func NewDocumentServiceHandler(svc DocumentServiceHandler, opts ...connect.Handl
 		connect.WithSchema(documentServiceMethods.ByName("ShareDocument")),
 		connect.WithHandlerOptions(opts...),
 	)
+	documentServiceProfilePictureEraseHandler := connect.NewUnaryHandler(
+		DocumentServiceProfilePictureEraseProcedure,
+		svc.ProfilePictureErase,
+		connect.WithSchema(documentServiceMethods.ByName("ProfilePictureErase")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.document.v1.DocumentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case DocumentServiceRequestUploadProcedure:
@@ -172,6 +199,8 @@ func NewDocumentServiceHandler(svc DocumentServiceHandler, opts ...connect.Handl
 			documentServiceGetDownloadUrlHandler.ServeHTTP(w, r)
 		case DocumentServiceShareDocumentProcedure:
 			documentServiceShareDocumentHandler.ServeHTTP(w, r)
+		case DocumentServiceProfilePictureEraseProcedure:
+			documentServiceProfilePictureEraseHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -195,4 +224,8 @@ func (UnimplementedDocumentServiceHandler) GetDownloadUrl(context.Context, *conn
 
 func (UnimplementedDocumentServiceHandler) ShareDocument(context.Context, *connect.Request[v1.ShareDocumentRequest]) (*connect.Response[v1.ShareDocumentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.document.v1.DocumentService.ShareDocument is not implemented"))
+}
+
+func (UnimplementedDocumentServiceHandler) ProfilePictureErase(context.Context, *connect.Request[v1.ProfilePictureEraseRequest]) (*connect.Response[v1.ProfilePictureEraseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.document.v1.DocumentService.ProfilePictureErase is not implemented"))
 }

@@ -85,7 +85,7 @@ export function ShopDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("shops.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="shop-detail-error">
+        <Text color="error.fg" data-testid="shop-detail-error">
           {error || t("shops.detail.notFound")}
         </Text>
       </Stack>
@@ -134,7 +134,12 @@ export function ShopDetailPage() {
 
       <Card.Root>
         <Card.Body>
-          <ShopUsersSection teamId={current.teamId} shopId={shop.id} />
+          <ShopUsersSection
+            teamId={current.teamId}
+            shopId={shop.id}
+            primaryUserId={shop.primaryUserId}
+            onChanged={() => void query.refetch()}
+          />
         </Card.Body>
       </Card.Root>
 

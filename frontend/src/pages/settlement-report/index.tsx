@@ -4,7 +4,7 @@ import { Badge, Box, Button, Flex, Group, Heading, Spacer, Stack, Text } from "@
 
 import { rpcError } from "../../api/clients";
 import { Pagination } from "../../components/chrome/Pagination";
-import { DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -14,30 +14,16 @@ import {
   useSettlementSummary,
   type SettlementGroupBy,
 } from "../../features/settlement/analytics";
+import { windowOf } from "../../features/settlement/window";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
-import { toDateInputValue } from "../../lib/datetime";
 import type { PeriodGrain } from "../../lib/period";
 import { GroupTable } from "./components/GroupTable";
 import { ReportSummary } from "./components/ReportSummary";
 import { SeriesTable } from "./components/SeriesTable";
 
 const PAGE_SIZE = 20;
-
-// A DateRange → the inclusive `yyyy-mm-dd` pair the report RPCs filter on.
-//
-// Through `resolveRange`, because a RELATIVE range stores a day COUNT and has no dates on it. The
-// instants come back in LOCAL time, so they are formatted back with the local formatter — `toISOString`
-// would shift the boundary by seven hours in Indonesia and ask for a window a day off the picker's.
-function windowOf(range: DateRange): { from: string; to: string } {
-  const { fromUnix, toUnix } = resolveRange(range);
-
-  return {
-    from: fromUnix > 0n ? toDateInputValue(new Date(Number(fromUnix) * 1000)) : "",
-    to: toUnix > 0n ? toDateInputValue(new Date(Number(toUnix) * 1000)) : "",
-  };
-}
 
 // SettlementReportPage — what the marketplace actually paid, against what buyers paid, over time
 // (docs/business/settlement/analytic_context.md).
@@ -48,9 +34,10 @@ function windowOf(range: DateRange): { from: string; to: string } {
 //   over time     which period moved it
 //   the ranking   which shop or which person carries it
 //
-// ⚠ THE WORD "BALANCE" IS NOT ON THIS SCREEN, and neither is "outstanding". The position is the
-// cumulative SHORTFALL (#the-position-is-the-shortfall-not-the-wallet) — money the platform kept and
-// nobody will collect (#hidden-cost-is-left-in-the-balance) — so it is labelled "hidden cost to date".
+// ⚠ THE WORD "BALANCE" IS NOT ON THIS SCREEN, and neither is "outstanding". The position is Σ change,
+// withdrawals included (#withdrawal-counts-in-the-position) — the shortfall PLUS what went to the bank —
+// so it is labelled "position to date", and Withdrawn stands beside Received
+// (#the-report-headline-is-position-to-date).
 //
 // ⚠ EVERY FIGURE IS FOLDED, not live. The reports are built from the ledger through the broker, so a
 // post made a moment ago can take a moment to appear here — the order page's ledger tab is the live view.

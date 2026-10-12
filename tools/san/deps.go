@@ -8,7 +8,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1/documentv1connect"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1/teamv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
@@ -62,4 +64,18 @@ func NewInternalHTTPClient() *internalHTTPClient {
 // keeping the tool's commands to handlers that touch one service.
 func NewTeamClient(cfg *Config, client *internalHTTPClient) teamv1connect.TeamServiceClient {
 	return teamv1connect.NewTeamServiceClient(client, cfg.InternalBaseURL)
+}
+
+// NewDocumentClient is document_service, which user_v1 needs to delete an erased person's photos
+// (erase-deletes-the-photo-file). No san command erases anybody, so san never calls it; the service is built whole.
+func NewDocumentClient(cfg *Config, client *internalHTTPClient) documentv1connect.DocumentServiceClient {
+	return documentv1connect.NewDocumentServiceClient(client, cfg.InternalBaseURL)
+}
+
+// NewEventSender completes user_service's construction: a removal announces itself to the shop side
+// (removing-a-member-drops-their-shop-access). No san command removes a member, so san validates the event and
+// drops it. ⚠ A san command that one day removes a member from a SELLING team must publish for real, or that
+// person keeps their shop grants.
+func NewEventSender() event_source.EventSender {
+	return event_source.EmptySender
 }

@@ -131,15 +131,21 @@ func (c MessageAttributeCarrier) Keys() []string {
 	return keys
 }
 
-// NewPubsubEmulator connects to a local Pub/Sub emulator (docker-compose `pubsub` profile).
-// The host comes from PUBSUB_EMULATOR_HOST, defaulting to localhost:8085.
-func NewPubsubEmulator(ctx context.Context, projectID string) (*pubsub.Client, error) {
+// EmulatorHost is where the local emulator is reached: PUBSUB_EMULATOR_HOST, defaulting to
+// localhost:8085. One answer for the client and for anything that checks the emulator is up.
+func EmulatorHost() string {
 	host := os.Getenv("PUBSUB_EMULATOR_HOST")
 	if host == "" {
-		host = defaultEmulatorHost
+		return defaultEmulatorHost
 	}
 
-	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	return host
+}
+
+// NewPubsubEmulator connects to a local Pub/Sub emulator (docker-compose `pubsub` profile),
+// at EmulatorHost.
+func NewPubsubEmulator(ctx context.Context, projectID string) (*pubsub.Client, error) {
+	conn, err := grpc.NewClient(EmulatorHost(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

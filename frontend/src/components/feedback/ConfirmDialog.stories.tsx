@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>;
 // Self-triggering — the products and categories screens still use this shape.
 export const WithTrigger: Story = {
   args: {
-    trigger: <Button colorPalette="red">Delete</Button>,
+    trigger: <Button colorPalette="error">Delete</Button>,
   },
 };
 
@@ -70,7 +70,7 @@ export const OpenControlledByThePage: Story = {
 };
 
 export const ConfirmRunsTheActionThenCloses: Story = {
-  args: { trigger: <Button colorPalette="red">Delete</Button> },
+  args: { trigger: <Button colorPalette="error">Delete</Button> },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -84,7 +84,7 @@ export const ConfirmRunsTheActionThenCloses: Story = {
 
 // Cancelling must NOT run the action — the whole point of the dialog.
 export const CancelDoesNothing: Story = {
-  args: { trigger: <Button colorPalette="red">Delete</Button> },
+  args: { trigger: <Button colorPalette="error">Delete</Button> },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -99,7 +99,7 @@ export const CancelDoesNothing: Story = {
 // A slow delete has to show it is running, or an impatient second click sends the request twice.
 export const ShowsBusyWhileTheActionRuns: Story = {
   args: {
-    trigger: <Button colorPalette="red">Delete</Button>,
+    trigger: <Button colorPalette="error">Delete</Button>,
     onConfirm: fn(() => new Promise<void>((resolve) => setTimeout(resolve, 400))),
   },
   play: async ({ canvasElement }) => {

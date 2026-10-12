@@ -55,6 +55,11 @@ func (s *AuthService) ResetPasswordWithOtp(
 
 	err = writePassword(ctx, s.db, s.resolver, user.ID, req.Msg.GetNewPassword(), time.Now())
 	if err != nil {
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return nil, connectErr
+		}
+
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

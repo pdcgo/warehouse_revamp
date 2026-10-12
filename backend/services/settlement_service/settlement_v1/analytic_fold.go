@@ -70,11 +70,16 @@ func (s *Service) fold(ctx context.Context, event *eventsv1.Event, posted *event
 	}
 
 	// WHO the user grain attributes this row to: the ORDER's creator for an order row
-	// (#the-user-is-the-order-creator), the row's ACTOR for a shop row
+	// (#the-user-is-the-order-creator); for a shop row, the person written on it when there is one — an
+	// imported shop row's primary CS (#settlement-asks-the-shop-for-its-primary-cs) — else its ACTOR
 	// (#a-shop-addressed-row-is-attributed-to-its-actor).
 	user := posted.GetActorId()
-	if posted.GetOrderId() != 0 {
+
+	switch {
+	case posted.GetOrderId() != 0:
 		user = posted.GetOrderCreatedByUserId()
+	case posted.GetUserId() != 0:
+		user = posted.GetUserId()
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

@@ -20,8 +20,6 @@ func NewRegister(
 ) san_grpc.RegisterHandler {
 	return func() san_grpc.ServiceReflectNames {
 		mux.Handle(inventoryv1connect.NewInventoryServiceHandler(inventory, opts))
-		mux.Handle(inventoryv1connect.NewSupplierServiceHandler(inventory, opts))
-		mux.Handle(inventoryv1connect.NewSupplierChannelServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRestockRequestServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRackServiceHandler(inventory, opts))
 
@@ -31,8 +29,6 @@ func NewRegister(
 
 		return san_grpc.ServiceReflectNames{
 			inventoryv1connect.InventoryServiceName,
-			inventoryv1connect.SupplierServiceName,
-			inventoryv1connect.SupplierChannelServiceName,
 			inventoryv1connect.RestockRequestServiceName,
 			inventoryv1connect.RackServiceName,
 		}

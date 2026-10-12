@@ -51,3 +51,17 @@ export const AllStatuses: Story = {
     await expect(canvas.getByTestId(`order-status-${OrderStatus.CANCELLED}`)).toHaveTextContent("Cancelled");
   },
 };
+
+/**
+ * A SCREEN'S OWN NAME, THE STATUS'S COLOUR — the warehouse calls PLACED "To confirm" because its tab does;
+ * the badge must say the same word as the tab above the row, and still be blue.
+ */
+export const ALabelReplacesTheNameNotTheColour: Story = {
+  args: { status: OrderStatus.PLACED, label: "To confirm" },
+  play: async ({ canvasElement }) => {
+    const badge = canvasElement.querySelector(`[data-testid="order-status-${OrderStatus.PLACED}"]`) as HTMLElement;
+
+    await expect(badge).toHaveTextContent("To confirm");
+    await expect(badge).not.toHaveTextContent("Placed");
+  },
+};

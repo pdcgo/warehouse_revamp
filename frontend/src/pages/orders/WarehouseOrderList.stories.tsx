@@ -57,6 +57,17 @@ const SHIPS_ELSEWHERE = orders.find((o) => o.warehouseId === OTHER_WAREHOUSE.id)
 
 export const Default: Story = {};
 
+// THE SAME QUEUE, ON A PHONE-SHAPED CANVAS (owner) — and this one matters more than the seller's: the
+// warehouse reads its queue with a scanner in the other hand. What to look at: the stat tiles, the
+// filter strip wrapping, and how much of the table a phone can actually show.
+//
+// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only, and the story runner has one
+// fixed viewport (MobileLayout.stories), so an assertion here would describe a width nothing renders
+// at. This is for looking. The shell around it is Layouts/Mobile/AppShell.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+};
+
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
 // ⚠ THE SCOPE IS THE BUILDING, NOT THE SELLER. Every order shipping from here is here — including

@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_dbtarget"
+	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 	user_v1 "github.com/pdcgo/warehouse_revamp/backend/services/user_service/user_v1"
 )
 
@@ -19,13 +20,16 @@ type San struct {
 	db    *gorm.DB
 	users *user_v1.Service
 
+	// supplier_service's fold, for `supplier backfill-figures` (past-accepts-are-backfilled-once).
+	suppliers *supplier_v1.Service
+
 	// target is the human label of the chosen database ("Database Local", …). Every command
 	// prints it, so the record of what happened always says WHERE it happened.
 	target string
 }
 
-func NewSan(db *gorm.DB, users *user_v1.Service) *San {
-	return &San{db: db, users: users}
+func NewSan(db *gorm.DB, users *user_v1.Service, suppliers *supplier_v1.Service) *San {
+	return &San{db: db, users: users, suppliers: suppliers}
 }
 
 // Close releases the pool. A CLI exits soon anyway, but a command that has finished should not be

@@ -143,7 +143,7 @@ export interface ProductPickerShellProps {
    * - `"table"` — product, on-the-way and ready as their own COLUMNS. Right when the numbers are
    *   what the decision rests on and rows get compared down a column, which is what buying is.
    *
-   * ⚠ The two disagree about ZERO, deliberately. A badge reading "On the way 0" on every row is
+   * ⚠ The two disagree about ZERO, deliberately. A badge reading "Ongoing 0" on every row is
    * noise, so the list hides it; a table cell left blank is a HOLE — it reads as "we did not check",
    * which is a different claim. So the table prints 0 and reserves "—" for genuinely unknown.
    */
@@ -631,7 +631,7 @@ export function ProductPickerShell({
     </Stack>
   );
 
-  // THE TABLE LAYOUT — product, on the way, ready (owner).
+  // THE TABLE LAYOUT — product, ongoing, ready (owner).
   //
   // The two figures stop being decoration on a name and become COLUMNS, because that is how the
   // decision is actually made: buying scans down "what is already coming" and "what is already
@@ -641,7 +641,7 @@ export function ProductPickerShell({
   // has to be wired by hand — see the row's onClick. The checkbox stays a real, focusable control so
   // keyboard use is unaffected.
   // The header rides along at the top of the rows box as it scrolls. A column of bare numbers whose
-  // heading has scrolled away is two columns that cannot be told apart — and "on the way" and "ready"
+  // heading has scrolled away is two columns that cannot be told apart — and "ongoing" and "ready"
   // are exactly the pair that must never be confused for one another.
   //
   // ⚠ ON THE CELLS, not on `Table.Header`. A sticky `<thead>` is honoured unevenly, and the background
@@ -823,7 +823,7 @@ export function ProductPickerShell({
                     dialog that quietly answers about the first 200 products it happened to see and
                     looks, to the person searching, exactly like "we do not stock that". */}
                 {searchCapped && (
-                  <Text fontSize="xs" color="orange.fg" data-testid="product-picker-search-capped">
+                  <Text fontSize="xs" color="warning.fg" data-testid="product-picker-search-capped">
                     {t("productPicker.searchCapped", { limit: SEARCH_RESOLVE_LIMIT })}
                   </Text>
                 )}
@@ -841,11 +841,21 @@ export function ProductPickerShell({
                       ref={rowsRef}
                       flex="1"
                       minH="0"
-                      overflow="auto"
+                      overflowX="auto"
+                      // The gap between the rows and the bar, and the reserved gutter that stops the
+                      // list shifting when a search narrows it — see `scrollList` in theme.ts.
+                      layerStyle="scrollList"
+                      // ⚠ THE BAR RIDES THE DIALOG'S EDGE (owner). The scroller is pulled OUT through
+                      // the dialog's 24px padding and given the same amount back as its own padding:
+                      // the scrollbar lands on the panel's right edge while every row stays exactly
+                      // where it was. Sitting inside the padding, the bar floated in the middle of
+                      // the white margin, which is what read as unfinished.
+                      me="-6"
+                      pe="6"
                       data-testid="product-picker-scroll"
                     >
                       {error && (
-                        <Text color="red.fg" data-testid="product-picker-error">
+                        <Text color="error.fg" data-testid="product-picker-error">
                           {error}
                         </Text>
                       )}

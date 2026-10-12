@@ -222,7 +222,7 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
 
                 <Button
                   variant="outline"
-                  colorPalette="red"
+                  colorPalette="error"
                   w="full"
                   data-testid="sign-out"
                   onClick={() => void logout()}

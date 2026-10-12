@@ -128,12 +128,14 @@ const (
 	paymentRecorded  = "recorded"
 	paymentConfirmed = "confirmed"
 	paymentRejected  = "rejected"
-	paymentReversed  = "reversed"
 )
 
 // paymentStatusProto maps storage to the wire enum. An unrecognised value reads as UNSPECIFIED rather
 // than failing the row: a list that refuses to render because one payment carries a status this build
 // does not know is worse than one line reading "unknown".
+//
+// ⚠ That includes "reversed", written by the reverse RPC that an-accepted-payment-is-final removed.
+// No screen ever called it, so no such row should exist — but if one does, it reads as unknown.
 func paymentStatusProto(text string) liabilityv1.LiabilityPaymentStatus {
 	switch text {
 	case paymentRecorded:
@@ -142,8 +144,6 @@ func paymentStatusProto(text string) liabilityv1.LiabilityPaymentStatus {
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_CONFIRMED
 	case paymentRejected:
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_REJECTED
-	case paymentReversed:
-		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_REVERSED
 	default:
 		return liabilityv1.LiabilityPaymentStatus_LIABILITY_PAYMENT_STATUS_UNSPECIFIED
 	}

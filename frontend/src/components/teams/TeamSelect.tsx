@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Box, Combobox, Portal, Spinner, Text, useListCollection } from "@chakra-ui/react";
+import { Box, Combobox, Portal, Spinner, Text, useListCollection } from "@chakra-ui/react";
 import { useTeams } from "../../features/teams/queries";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { TeamItem, typeLabel, typePalette } from "../entity/TeamItem";
+import { TeamTypeBadge } from "../badges/TeamTypeBadge";
+import { TeamItem } from "../entity/TeamItem";
 
 export interface TeamSelectProps {
   value?: bigint;
@@ -164,12 +165,18 @@ export function TeamSelect({
       openOnClick
       collection={collection}
       disabled={disabled}
-      value={value !== undefined ? [value.toString()] : []}
+      // `0n` is "no team" — the value the parent holds after a clear — so it maps to an EMPTY
+      // selection, never to a team id of 0 that the collection cannot resolve.
+      value={value !== undefined && value !== 0n ? [value.toString()] : []}
       onValueChange={(e) => {
+        // ⚠ CLEARING EMITS 0n — it does not do nothing (ShippingSelect's #131 lesson).
+        //
+        // The ✕ empties Zag's value, and swallowing that left the PARENT still holding the old team:
+        // the input showed its placeholder while the name-and-badge overlay, drawn from the parent's
+        // value, sat on top of it — and the form would still have submitted the team the field no
+        // longer showed.
         const picked = e.value[0];
-        if (picked !== undefined) {
-          onChange?.(BigInt(picked));
-        }
+        onChange?.(picked !== undefined ? BigInt(picked) : 0n);
       }}
       onInputValueChange={(e) => filter(e.inputValue)}
       onOpenChange={(e) => setOpen(e.open)}
@@ -212,9 +219,7 @@ export function TeamSelect({
             <Text lineClamp={1} minW="0">
               {selected.name}
             </Text>
-            <Badge colorPalette={typePalette(selected.type)} size="sm" flexShrink={0}>
-              {typeLabel(selected.type)}
-            </Badge>
+            <TeamTypeBadge type={selected.type} size="sm" flexShrink={0} />
           </Box>
         )}
 

@@ -57,7 +57,7 @@ export function TeamDetailPage({ backTo = "/teams" }: { backTo?: string }) {
           <Icon as={ArrowLeft} boxSize="4" />
           Back
         </Button>
-        <Text color="red.fg" data-testid="team-detail-error">
+        <Text color="error.fg" data-testid="team-detail-error">
           {error || "Team not found."}
         </Text>
       </Stack>

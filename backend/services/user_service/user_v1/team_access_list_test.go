@@ -24,7 +24,7 @@ func TestTeamAccessList_ReturnsMembershipsWithNames(t *testing.T) {
 
 	uid := insertUser(t, db, "multi", "pw12345678")
 	grantRole(t, db, 3, uid, role_basev1.Role_ROLE_WAREHOUSE_STAFF)
-	grantRole(t, db, 4, uid, role_basev1.Role_ROLE_TEAM_OWNER)
+	grantRole(t, db, 4, uid, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	ctx := ctxWithIdentity(uid, "multi")
 

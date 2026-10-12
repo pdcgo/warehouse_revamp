@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
+import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 
 // #185 — the Liability screens: the position list and one counterparty's history.
 //
@@ -128,6 +128,7 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
     name: `E2E Settle WH ${SUFFIX}`,
     teamCode: `SW${SUFFIX}`.slice(0, 10),
     type: "TEAM_TYPE_WAREHOUSE",
+    ownerUserId: ROOT_USER_ID,
   });
   expect(wh.status).toBe(200);
 

@@ -42,7 +42,8 @@ import { formatMarkup } from "../../lib/markup";
 import { BatchTab } from "./components/BatchTab";
 import { HistoryTab } from "./components/HistoryTab";
 import { PriceTab } from "./components/PriceTab";
-import { Field, Stat, WhenOrNever } from "./components/parts";
+import { Field, Stat } from "../../features/products/RecordField";
+import { WhenOrNever } from "./components/parts";
 
 function parseProductId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -207,7 +208,7 @@ export function ProductDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("products.backToProducts")}
         </Button>
-        <Text color="red.fg" data-testid="product-detail-error">
+        <Text color="error.fg" data-testid="product-detail-error">
           {error || t("products.detail.notFound")}
         </Text>
       </Stack>
@@ -291,7 +292,7 @@ export function ProductDetailPage() {
             <Button
               size="xs"
               variant="outline"
-              colorPalette="red"
+              colorPalette="error"
               data-testid="product-detail-archive"
               onClick={() => setArchiving(true)}
             >

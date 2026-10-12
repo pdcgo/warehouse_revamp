@@ -8,7 +8,6 @@ import {
   Flex,
   Heading,
   Icon,
-  Input,
   SimpleGrid,
   Spacer,
   Spinner,
@@ -30,6 +29,7 @@ import { formatRupiah } from "../../lib/money";
 import { useTeam } from "../../features/team/TeamContext";
 import { usePostOpname, useShelfContents } from "./queries";
 import type { CountRow } from "./queries";
+import { QuantityInput } from "../../components/inputs/QuantityInput";
 
 // What the person typed, keyed by product id. `""` means NOT COUNTED — and that is the whole reason
 // this is a string map rather than a number map.
@@ -172,7 +172,7 @@ export function OpnamePage() {
           Saying so beats a screen that silently shows nothing: RackStock is a per-rack read, and the
           pile has no rack id, so counting it needs a read this screen does not have. */}
       {rackId === UNPLACED && (
-        <Flex align="center" gap="2" color="orange.fg" data-testid="opname-unplaced-unsupported">
+        <Flex align="center" gap="2" color="warning.fg" data-testid="opname-unplaced-unsupported">
           <Icon as={TriangleAlert} boxSize="4" />
           <Text fontSize="sm">{t("opname.unplacedUnsupported")}</Text>
         </Flex>
@@ -183,7 +183,7 @@ export function OpnamePage() {
       {rackId !== "" && rackId !== UNPLACED && (
         <>
           {shelf.isError && (
-            <Text color="red.fg" data-testid="opname-error">
+            <Text color="error.fg" data-testid="opname-error">
               {rpcError(shelf.error)}
             </Text>
           )}
@@ -192,7 +192,7 @@ export function OpnamePage() {
               uncounted rows are safe — the server never touches a product it was not sent — but the
               person would believe they had finished, so this says otherwise. */}
           {shelf.data?.truncated && (
-            <Flex align="center" gap="2" color="orange.fg" data-testid="opname-truncated">
+            <Flex align="center" gap="2" color="warning.fg" data-testid="opname-truncated">
               <Icon as={TriangleAlert} boxSize="4" />
               <Text fontSize="sm">{t("opname.truncated")}</Text>
             </Flex>
@@ -227,13 +227,13 @@ export function OpnamePage() {
                       testId="opname-uncounted-count"
                       // Not an error — a partial count is legal and the uncounted rows are left alone.
                       // Amber because it is the thing somebody should look at before pressing post.
-                      tone={rows.length - counted.length > 0 ? "orange.fg" : undefined}
+                      tone={rows.length - counted.length > 0 ? "warning.fg" : undefined}
                     />
                     <Stat
                       label={t("opname.variances")}
                       value={String(variances.length)}
                       testId="opname-variance-count"
-                      tone={variances.length > 0 ? "orange.fg" : undefined}
+                      tone={variances.length > 0 ? "warning.fg" : undefined}
                     />
                   </SimpleGrid>
 
@@ -352,15 +352,12 @@ function CountTable({
                 <Table.Cell textAlign="end">{row.expected.toString()}</Table.Cell>
 
                 <Table.Cell textAlign="end">
-                  <Input
-                    type="number"
-                    min="0"
-                    w="24"
-                    textAlign="end"
+                  <QuantityInput
+                    min={0}
+                    width="24"
                     value={counts[id] ?? ""}
-                    placeholder="—"
-                    data-testid={`opname-count-${id}`}
-                    onChange={(e) => onCount(id, e.target.value)}
+                    testId={`opname-count-${id}`}
+                    onChange={(count) => onCount(id, count)}
                   />
                 </Table.Cell>
 
@@ -369,7 +366,7 @@ function CountTable({
                 <Table.Cell
                   textAlign="end"
                   fontWeight="medium"
-                  color={delta === 0n ? undefined : delta < 0n ? "red.fg" : "green.fg"}
+                  color={delta === 0n ? undefined : delta < 0n ? "error.fg" : "success.fg"}
                   data-testid={`opname-variance-${id}`}
                 >
                   {!valid ? "—" : delta === 0n ? "0" : delta > 0n ? `+${delta}` : delta.toString()}
@@ -423,7 +420,7 @@ function OpnameResult({ result, onDismiss }: { result: StockOpnameResponse; onDi
           </Flex>
 
           {result.totalValueLoss > 0n && (
-            <Flex align="center" gap="2" color="orange.fg" data-testid="opname-result-loss">
+            <Flex align="center" gap="2" color="warning.fg" data-testid="opname-result-loss">
               <Icon as={TriangleAlert} boxSize="4" />
               <Text fontSize="sm">
                 {/* `valueKnown` false means the figure is a FLOOR — some missing units came off a layer
@@ -456,7 +453,7 @@ function OpnameResult({ result, onDismiss }: { result: StockOpnameResponse; onDi
                     <Table.Cell>{v.productId.toString()}</Table.Cell>
                     <Table.Cell textAlign="end">{v.expectedQty.toString()}</Table.Cell>
                     <Table.Cell textAlign="end">{v.countedQty.toString()}</Table.Cell>
-                    <Table.Cell textAlign="end" color={v.delta < 0n ? "red.fg" : "green.fg"}>
+                    <Table.Cell textAlign="end" color={v.delta < 0n ? "error.fg" : "success.fg"}>
                       {v.delta > 0n ? `+${v.delta}` : v.delta.toString()}
                     </Table.Cell>
                     <Table.Cell textAlign="end">

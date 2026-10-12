@@ -33,6 +33,7 @@ type orderScopeFilter interface {
 	GetShopId() uint64
 	GetCreatedFromUnix() int64
 	GetCreatedToUnix() int64
+	GetCreatedByUserId() uint64
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
@@ -112,6 +113,12 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 
 	if to := filter.GetCreatedToUnix(); to > 0 {
 		query = query.Where("created_at <= ?", time.Unix(to, 0))
+	}
+
+	// WHO TYPED IT IN. An order whose creator was never recorded (0) matches nobody: the guard is the
+	// `> 0`, so a cleared picker is "anybody" and never "the unrecorded ones".
+	if createdBy := filter.GetCreatedByUserId(); createdBy > 0 {
+		query = query.Where("created_by_user_id = ?", createdBy)
 	}
 
 	return query

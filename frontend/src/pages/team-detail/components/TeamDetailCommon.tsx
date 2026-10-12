@@ -170,13 +170,10 @@ export function TeamDetailCommon({
 
       <Stack gap="card">
         <Text fontSize="sm" fontWeight="medium" color="fg.muted">
-          {t("teams.contactBank")}
+          {t("teams.contactInfo")}
         </Text>
         <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
           <DetailField label={t("teams.contactNumber")} value={info?.contactNumber ?? ""} />
-          <DetailField label={t("teams.bank")} value={info?.bankType ?? ""} />
-          <DetailField label={t("teams.accountHolder")} value={info?.bankOwnerName ?? ""} />
-          <DetailField label={t("teams.accountNumber")} value={info?.bankAccountNumber ?? ""} />
         </SimpleGrid>
       </Stack>
 
@@ -233,7 +230,7 @@ export function TeamDetailCommon({
                           <IconButton
                             size="xs"
                             variant="ghost"
-                            colorPalette="red"
+                            colorPalette="error"
                             aria-label={`Remove ${user.username}`}
                             data-testid={`remove-member-${user.username}`}
                             onClick={() => setRemoving(user)}

@@ -74,7 +74,7 @@ export function ConfirmDialog({
               </Dialog.ActionTrigger>
 
               <Button
-                colorPalette={destructive ? "red" : "brand"}
+                colorPalette={destructive ? "error" : "brand"}
                 loading={busy}
                 onClick={() => void confirm()}
                 data-testid="confirm-action"

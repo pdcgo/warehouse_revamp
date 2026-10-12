@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/warehouse.svg" />
     <title>PDC Warehouse</title>
+    <!-- The app typeface (theme.ts `fonts`). Storybook loads the same in .storybook/preview-head.html —
+         keep the two in step. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"
+    />
     <script>
       /* Apply the saved or system color mode before first paint, so there is no light-then-dark
          flash (#213). Chakra v3 reads dark mode off the `.dark` class on <html>. Kept in sync at

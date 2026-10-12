@@ -169,6 +169,39 @@ Local broker: `docker compose --profile pubsub up -d` (emulator on `:8085`, hono
 
 ---
 
+## An import, or placing an order, hangs for about a minute
+
+The Pub/Sub emulator is not running, or it has no topics. `go run ./tools/san dev run` starts it and makes its
+topics on every start ([the emulator and its topics](../tools/san.md#the-emulator-and-its-topics)), so restarting the
+dev stack is usually the fix. By hand, from the repo root:
+
+```sh
+docker compose --profile pubsub up -d                                  # the emulator, on :8085
+go run ./tools/san pubsub ensure --project warehouse-dev --emulator    # its topics
+```
+
+Under `dev run --no-docker` it only warns, *"⚠ the Pub/Sub emulator is not answering"*, and the stack starts anyway.
+
+A write that publishes an event waits up to **60 s** for the broker's ack
+([`publishTimeout`](../../backend/pkgs/event_source/sender.go)), then logs the failure and carries on,
+and the write itself is committed. So nothing fails and nothing warns you. It is just a minute per
+order placed, and a minute per row of a settlement statement, because each row is its own
+`SettlementPost`. The dev server boots without a broker on purpose
+([event_sender.go](../../backend/cmd/app_development/event_sender.go)). The e2e needs one too, and CI
+starts it before the e2e.
+
+**In the e2e it used to look like something else entirely:** the first test that places an order timed out after
+10 s on the order form, its *Create Order* button stuck in its loading state, which reads as a form that never became
+valid. Now the e2e setup checks first ([e2e/pubsub.ts](../../frontend/e2e/pubsub.ts)): with no emulator it stops in
+a few seconds with *"The Pub/Sub emulator is not answering on localhost:8085"* and the command above, and with one it
+runs `san pubsub ensure` itself — the topics live in the emulator's memory, so a restarted emulator has none.
+
+Until 2026-10-06 `dev run` and `dev setup` started Postgres and Redis but not the emulator, and `pubsub ensure` failed
+on its second run against the emulator (it sent an `expiration_policy` update the emulator refuses). Both are fixed. If
+your dev app still hangs, you are running an older checkout.
+
+---
+
 ## My MCP endpoint answers 403 to everything, but only through the tunnel
 
 You did not pass `--public-url`. Restart with it:
@@ -240,3 +273,22 @@ saying you may.** See
 Until that is answered: **do not widen `GetDownloadUrl`**, do not teach `document_service` what a
 payment is, and do not add an internal signing path that skips the scope check — one bug in the
 calling service would then leak every private file in the system.
+
+---
+
+## Why is my settlement import refused?
+
+Read the import's last line. A refused file ends on one `ERROR` line that says why, and **nothing
+was posted**:
+
+| the line says | because | do |
+| --- | --- | --- |
+| *… has no primary CS — choose a primary CS first* | a row naming no order (a withdrawal) is counted for the shop's primary CS ([a-shop-with-no-primary-cs-cannot-import](../business/settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)) | an owner or admin opens the shop and presses ★ beside one of its users |
+| *You have no access to …* | no grant on the shop, and not the team's owner or admin ([a-write-needs-a-grant-or-a-manager](../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager)) | ask for the shop to be granted to you |
+| *N of this file's orders belong to …* | one order in another shop refuses the whole file ([a-file-with-another-shops-orders-is-refused](../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)) | choose the shop the statement was downloaded from |
+| *This is not a Shopee statement* (or TikTok) | the file is another marketplace's, or not a statement | the right shop, or download it again |
+
+Then import the same file again: a row already posted reads *already there*, never twice
+([the-row-key-is-the-only-dedupe](../business/settlement/settlement_importer_decision.md#the-row-key-is-the-only-dedupe)).
+A **held** row is not a refusal — the file ran and that row waits. The whole flow:
+[rpc.md](../services/settlement_importer_service/rpc.md#one-import).

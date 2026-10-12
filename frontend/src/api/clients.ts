@@ -6,13 +6,15 @@ import { ShopService } from "../gen/warehouse/selling/v1/selling_pb";
 import { OrderService } from "../gen/warehouse/selling/v1/order_pb";
 import { OrderDraftService } from "../gen/warehouse/selling/v1/order_draft_pb";
 import { ShipmentChannelService } from "../gen/warehouse/shipment/v1/shipment_pb";
+import { ReceiptService } from "../gen/warehouse/shipment/v1/receipt_pb";
 import { CategoryService } from "../gen/warehouse/category/v1/category_pb";
 import { DocumentService } from "../gen/warehouse/document/v1/document_pb";
 import { InventoryService } from "../gen/warehouse/inventory/v1/inventory_pb";
-import { SupplierService } from "../gen/warehouse/inventory/v1/supplier_pb";
-import { SupplierChannelService } from "../gen/warehouse/inventory/v1/supplier_channel_pb";
 import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
+import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
+import { SupplierChannelService } from "../gen/warehouse/supplier/v1/supplier_channel_pb";
+import { SupplierAnalyticService } from "../gen/warehouse/supplier/v1/supplier_analytic_pb";
 import { RegionService } from "../gen/warehouse/region/v1/region_pb";
 import { ExpenseService } from "../gen/warehouse/expense/v1/expense_pb";
 import {
@@ -25,6 +27,11 @@ import {
   SettlementService,
   SettlementWriteService,
 } from "../gen/warehouse/settlement/v1/settlement_pb";
+import { SettlementImporterService } from "../gen/warehouse/settlement_importer/v1/settlement_importer_pb";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountService,
+} from "../gen/warehouse/financial_account/v1/financial_account_pb";
 import { transport } from "../transport";
 
 // One client per service, created once. The transport attaches the bearer token; the CURRENT
@@ -40,11 +47,17 @@ export const orderClient = createClient(OrderService, transport);
 export const orderDraftClient = createClient(OrderDraftService, transport);
 // The ONE courier catalogue (docs/business/shipment) — public reads, root writes.
 export const shipmentChannelClient = createClient(ShipmentChannelService, transport);
+// Reads an uploaded shipping label (receipt-check-is-shipments) — signed in, stores nothing.
+export const receiptClient = createClient(ReceiptService, transport);
 export const categoryClient = createClient(CategoryService, transport);
 export const documentClient = createClient(DocumentService, transport);
 export const inventoryClient = createClient(InventoryService, transport);
+// The vendors a selling team buys from, and their stores — served by supplier_service. Reads cross teams,
+// writes do not (the-supplier-gets-its-own-service).
 export const supplierClient = createClient(SupplierService, transport);
 export const supplierChannelClient = createClient(SupplierChannelService, transport);
+// A supplier's figures — folded from the restock's accept (the-figures-screens-are-accepted).
+export const supplierAnalyticClient = createClient(SupplierAnalyticService, transport);
 // Racks belong to ONE warehouse — the team in the request body IS that warehouse (#129).
 export const rackClient = createClient(RackService, transport);
 export const restockClient = createClient(RestockRequestService, transport);
@@ -64,6 +77,12 @@ export const settlementWriteClient = createClient(SettlementWriteService, transp
 // The REPORTS folded from that ledger. Its maintenance service (replay, prune) is a developer's tool
 // with a [ROOT, ADMIN] policy and no screen, so it has no client here.
 export const settlementAnalyticClient = createClient(SettlementAnalyticService, transport);
+// The platform statements that FEED that ledger — a file in, rows posted, the import streamed.
+export const settlementImporterClient = createClient(SettlementImporterService, transport);
+// The money a team actually HOLDS — its bank, wallet and cash accounts (docs/business/financial_account).
+// Served by backend/services/financial_account_service; its withdrawals arrive from settlement's event.
+export const financialAccountClient = createClient(FinancialAccountService, transport);
+export const financialAccountAnalyticClient = createClient(FinancialAccountAnalyticService, transport);
 
 // rpcError turns a Connect error into something a human can read.
 export function rpcError(err: unknown): string {

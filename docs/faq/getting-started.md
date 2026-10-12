@@ -28,37 +28,46 @@ Then get it running (below), click through the UI, and pick a **Ready** issue of
 Prerequisites: Go, Node, Docker. All commands from the **repo root** unless stated.
 
 ```sh
-docker compose up -d                          # Postgres :5433, Redis :6380
-go run ./tools/san migrate up    # prompts: database, then service — apply for EVERY service
-go run ./tools/san seed dev      # sample teams + logins (development only)
-cd backend && go run ./cmd/app_development    # the API on :8080
-cd frontend && npm install && npm run dev     # the UI on :5174
+go run ./tools/san dev setup     # docker, every migration, the dev logins, categories, regions, npm install
+go run ./tools/san dev run       # the API on :8080 + the UI on :5174, one terminal — Ctrl-C stops both
 ```
 
-Both servers must run — the UI talks to the API. Open <http://localhost:5174>.
+Open <http://localhost:5174> and log in as `dev` / `devpassword123`.
+
+- [`dev setup`](../tools/san.md#dev-setup) is safe to re-run. Run it again after a pull that brings
+  migrations. It acts only on the local docker database. It also resets the dev accounts' passwords.
+- [`dev run`](../tools/san.md#dev-run) starts both servers, because the UI talks to the API. If you
+  want them in separate terminals, start them by hand: `cd backend && go run ./cmd/app_development`
+  and `cd frontend && npm run dev`.
 
 ---
 
 ## How do I log in? The database has no users.
 
-A fresh migration creates the root account with an **empty password**, which bcrypt can never
-match — deliberately, so no default password can ever ship to production. Give it one, or seed the
-development fixture:
+A fresh database logs in as **`root` / `root1234`** (email `root@pdc.com`): a migration writes that password
+while root has none ([the-migration-writes-the-dev-root-password](../business/user/context_decision.md#the-migration-writes-the-dev-root-password)). Seed the development fixture for the other
+accounts, or give root another password:
 
 ```sh
-go run ./tools/san seed root --password <yours>   # just the root account
 go run ./tools/san seed dev                       # teams + several accounts (recommended)
+go run ./tools/san seed root --password <yours>   # root's password — RUN THIS on a production database
 ```
+
+⚠ `root1234` is public in this repository. A production database gets a real one with `seed root` right after its
+first migration.
+
+[`dev setup`](../tools/san.md#dev-setup) already runs `seed dev`, so after it you can log in.
 
 `seed dev` is idempotent, and **hard-refuses a production target**. It creates:
 
 | Username | Role | Team |
 | --- | --- | --- |
+| `root` | Root — from the migration, password `root1234` | the root team |
 | `dev` | ADMIN in the root team, owner in both sample teams | all |
 | `wh_owner` / `wh_staff` | warehouse owner / staff | Dev Warehouse |
 | `seller` | team owner | Dev Selling |
 
-Password for all of them: `devpassword123`, or whatever you pass to `--password`.
+Password for the seeded ones: `devpassword123`, or whatever you pass to `--password`. Root's is `root1234`.
 
 To change a password later, use the operations CLI:
 `go run ./tools/san user reset-password --username dev`.

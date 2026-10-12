@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -7,13 +7,16 @@ import {
   Field,
   Flex,
   Icon,
-  Input,
-  NativeSelect,
   Portal,
+  RadioCard,
+  Select,
+  SimpleGrid,
   Stack,
   Text,
+  Textarea,
+  createListCollection,
 } from "@chakra-ui/react";
-import { Info, TriangleAlert } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Info, TriangleAlert } from "lucide-react";
 
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../../components/datetime/DatePicker";
@@ -42,9 +45,15 @@ import { manualTypesFor, type OrderSettlement, type PostingRole, type Settlement
 // ── The sign is a CHOICE, not a number ──────────────────────────────────────────────────────────
 //
 // `change` is signed, and a signed text field is how somebody eventually posts −45.000 meaning
-// +45.000. So the amount is always positive and the DIRECTION is two buttons: money that reached us,
-// or money taken from us. The preview line underneath shows the signed figure that will actually be
-// written, in words, before anybody presses the button.
+// +45.000. So the amount is always positive and the DIRECTION is two radio cards: money that reached
+// us, or money taken from us. The preview line underneath shows the signed figure that will actually
+// be written, in words, before anybody presses the button.
+//
+// ── Chakra's own controls (owner, `the-add-entry-form-picks-with-chakra-controls`) ──────────────
+//
+// The type is Chakra's composable `Select` — a static, small list, so a plain list rather than a search
+// — and the direction a `RadioCard` pair, its chosen card in the main tone like the submit
+// (`a-chosen-option-is-in-the-main-tone`, set in theme.ts, not here).
 export interface EntryDraft {
   settlementType: SettlementType;
   /** Signed, whole rupiah — direction already applied. */
@@ -79,6 +88,16 @@ export function AddEntryDialog({
   const { t } = useTranslation();
 
   const types = manualTypesFor(role, settlement);
+  // Keyed on the list's CONTENT: `manualTypesFor` hands back a new array every render.
+  const typeKey = types.join(",");
+  const typeCollection = useMemo(
+    () =>
+      createListCollection({
+        items: types.map((type) => ({ value: type, label: t(`orderSettlement.type.${type}`) })),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [typeKey, t],
+  );
   const [settlementType, setSettlementType] = useState<SettlementType>("marketplace_adjustment");
   const [direction, setDirection] = useState<"in" | "out">("out");
   const [amount, setAmount] = useState("");
@@ -118,44 +137,68 @@ export function AddEntryDialog({
               <Stack gap="field">
                 <Field.Root>
                   <Field.Label>{t("orderSettlement.field.type")}</Field.Label>
-                  <NativeSelect.Root>
-                    <NativeSelect.Field
-                      value={settlementType}
-                      onChange={(e) => setSettlementType(e.target.value as SettlementType)}
-                      data-testid="entry-type"
-                    >
-                      {/* ⚠ `initial_total` appears here ONLY for a role that may author the sale
-                          AND on an account that has none — see `manualTypesFor`. */}
-                      {types.map((type) => (
-                        <option key={type} value={type}>
-                          {t(`orderSettlement.type.${type}`)}
-                        </option>
-                      ))}
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
+                  <Select.Root
+                    collection={typeCollection}
+                    value={[settlementType]}
+                    onValueChange={(e) => {
+                      const picked = e.value[0];
+                      if (picked) setSettlementType(picked as SettlementType);
+                    }}
+                  >
+                    <Select.HiddenSelect />
+                    <Select.Control>
+                      <Select.Trigger data-testid="entry-type">
+                        <Select.ValueText />
+                      </Select.Trigger>
+                      <Select.IndicatorGroup>
+                        <Select.Indicator />
+                      </Select.IndicatorGroup>
+                    </Select.Control>
+                    {/* No Portal: a portalled listbox renders OUTSIDE this modal, where the dialog makes
+                        it inert — the same reason as MarketplaceSelect. */}
+                    <Select.Positioner>
+                      <Select.Content>
+                        {/* ⚠ `initial_total` appears here ONLY for a role that may author the sale
+                            AND on an account that has none — see `manualTypesFor`. */}
+                        {typeCollection.items.map((item) => (
+                          <Select.Item item={item} key={item.value} data-testid={`entry-type-option-${item.value}`}>
+                            <Select.ItemText>{item.label}</Select.ItemText>
+                            <Select.ItemIndicator />
+                          </Select.Item>
+                        ))}
+                      </Select.Content>
+                    </Select.Positioner>
+                  </Select.Root>
                 </Field.Root>
 
                 <Field.Root>
                   <Field.Label>{t("orderSettlement.field.direction")}</Field.Label>
-                  <Flex gap="2">
-                    <Button
-                      size="sm"
-                      variant={direction === "in" ? "solid" : "outline"}
-                      onClick={() => setDirection("in")}
-                      data-testid="direction-in"
-                    >
-                      {t("orderSettlement.directionIn")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={direction === "out" ? "solid" : "outline"}
-                      onClick={() => setDirection("out")}
-                      data-testid="direction-out"
-                    >
-                      {t("orderSettlement.directionOut")}
-                    </Button>
-                  </Flex>
+                  {/* Two cards side by side, each the whole width of its half — a target a thumb finds
+                      on a phone, with the arrow saying which way before the words do. */}
+                  <RadioCard.Root
+                    size="sm"
+                    w="full"
+                    value={direction}
+                    onValueChange={(e) => e.value && setDirection(e.value as "in" | "out")}
+                    aria-label={t("orderSettlement.field.direction")}
+                  >
+                    <SimpleGrid columns={2} gap="2">
+                      {(["in", "out"] as const).map((d) => (
+                        <RadioCard.Item key={d} value={d} data-testid={`direction-${d}`}>
+                          <RadioCard.ItemHiddenInput />
+                          <RadioCard.ItemControl alignItems="center">
+                            <Icon as={d === "in" ? ArrowDownLeft : ArrowUpRight} boxSize="4" color="fg.muted" />
+                            <RadioCard.ItemContent>
+                              <RadioCard.ItemText>
+                                {t(d === "in" ? "orderSettlement.directionIn" : "orderSettlement.directionOut")}
+                              </RadioCard.ItemText>
+                            </RadioCard.ItemContent>
+                            <RadioCard.ItemIndicator />
+                          </RadioCard.ItemControl>
+                        </RadioCard.Item>
+                      ))}
+                    </SimpleGrid>
+                  </RadioCard.Root>
                 </Field.Root>
 
                 <Field.Root>
@@ -179,10 +222,14 @@ export function AddEntryDialog({
 
                 <Field.Root>
                   <Field.Label>{t("orderSettlement.field.note")}</Field.Label>
-                  <Input
+                  {/* A TEXTAREA (owner): a note says why a fee was charged, which is a sentence, not a
+                      word — three rows, and it grows by hand if the reason runs longer. */}
+                  <Textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     maxLength={200}
+                    rows={3}
+                    resize="vertical"
                     data-testid="entry-note"
                   />
                 </Field.Root>
@@ -232,7 +279,9 @@ export function AddEntryDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 {t("common.cancel")}
               </Button>
+              {/* The dialog's one action in the main tone, like every other form's submit (owner). */}
               <Button
+                colorPalette="brand"
                 disabled={!valid}
                 onClick={() => {
                   onSubmit({ settlementType, change, occurredOn, note });

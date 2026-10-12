@@ -40,7 +40,7 @@ message CategoryCreateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -59,7 +59,7 @@ message CategoryUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -81,7 +81,7 @@ message CategoryDeleteRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 

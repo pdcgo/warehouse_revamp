@@ -75,7 +75,9 @@ export function InventoryPage({ title }: { title?: string } = {}) {
         <TeamSelect
           value={warehouseId}
           onChange={(id) => {
-            setWarehouseId(id);
+            // A cleared picker emits 0n; this page's "no warehouse" is `undefined` (it shows the
+            // pick-a-warehouse prompt instead of reading warehouse 0).
+            setWarehouseId(id === 0n ? undefined : id);
             setPage(1);
           }}
           placeholder={t("inventory.pickWarehousePlaceholder")}
@@ -102,7 +104,7 @@ export function InventoryPage({ title }: { title?: string } = {}) {
           </HStack>
 
           {error && (
-            <Text color="red.fg" data-testid="inventory-error">
+            <Text color="error.fg" data-testid="inventory-error">
               {error}
             </Text>
           )}

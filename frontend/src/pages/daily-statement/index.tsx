@@ -200,14 +200,14 @@ export function DailyStatementPage() {
           last year for comparison — which is the only thing anybody wants a yearly row for. Naming the
           limit is the honest version of shipping it; lifting it is a contract change (see queries.ts). */}
       {grain === "year" && valid && (
-        <Flex align="center" gap="2" color="orange.fg" data-testid="statement-grain-capped">
+        <Flex align="center" gap="2" color="warning.fg" data-testid="statement-grain-capped">
           <Icon as={TriangleAlert} boxSize="4" />
           <Text fontSize="sm">{t("statement.grainCapped", { max: MAX_PERIOD_DAYS })}</Text>
         </Flex>
       )}
 
       {!valid && (
-        <Flex align="center" gap="2" color="orange.fg" data-testid="statement-range-invalid">
+        <Flex align="center" gap="2" color="warning.fg" data-testid="statement-range-invalid">
           <Icon as={TriangleAlert} boxSize="4" />
           <Text fontSize="sm">
             {span === 0
@@ -218,7 +218,7 @@ export function DailyStatementPage() {
       )}
 
       {error && (
-        <Text color="red.fg" data-testid="statement-error">
+        <Text color="error.fg" data-testid="statement-error">
           {error}
         </Text>
       )}

@@ -65,20 +65,39 @@ const (
 	// was lost — a dead-lettered event, a cascade that did not run — posting one overstates the log by
 	// exactly what it corrects the report by, and the two then disagree permanently.
 	SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT SettlementType = 8
+	// The marketplace WALLET paying our bank. NEGATIVE. SHOP-ADDRESSED — it names no order
+	// (#withdrawal-is-a-settlement-type). ⚠ It COUNTS in the position like every type
+	// (#withdrawal-counts-in-the-position), so the running balance is the shortfall PLUS what was withdrawn.
+	SettlementType_SETTLEMENT_TYPE_WITHDRAWAL SettlementType = 9
+	// A correction that belongs to the SHIPMENT — insurance compensation for a lost parcel is the sampled
+	// case. Signed either way.
+	SettlementType_SETTLEMENT_TYPE_SHIPMENT_ADJUSTMENT SettlementType = 10
+	// The platform paying back a shipping cost. Normally positive. ⚠ "logistic", singular — the owner's
+	// spelling, kept verbatim where TikTok writes "Logistics reimbursement".
+	SettlementType_SETTLEMENT_TYPE_LOGISTIC_REIMBURSEMENT SettlementType = 11
+	// The platform paying back something that is not shipping — compensation against an order.
+	SettlementType_SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT SettlementType = 12
+	// Earnings through a named platform PROGRAMME rather than an ordinary sale — Shopee's FLEXI export.
+	SettlementType_SETTLEMENT_TYPE_MARKETPLACE_PROGRAM SettlementType = 13
 )
 
 // Enum value maps for SettlementType.
 var (
 	SettlementType_name = map[int32]string{
-		0: "SETTLEMENT_TYPE_UNSPECIFIED",
-		1: "SETTLEMENT_TYPE_INITIAL_TOTAL",
-		2: "SETTLEMENT_TYPE_FUND",
-		3: "SETTLEMENT_TYPE_EXTERNAL_ADS_FEE",
-		4: "SETTLEMENT_TYPE_AFFILIATE_FEE",
-		5: "SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT",
-		6: "SETTLEMENT_TYPE_OTHER",
-		7: "SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL",
-		8: "SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT",
+		0:  "SETTLEMENT_TYPE_UNSPECIFIED",
+		1:  "SETTLEMENT_TYPE_INITIAL_TOTAL",
+		2:  "SETTLEMENT_TYPE_FUND",
+		3:  "SETTLEMENT_TYPE_EXTERNAL_ADS_FEE",
+		4:  "SETTLEMENT_TYPE_AFFILIATE_FEE",
+		5:  "SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT",
+		6:  "SETTLEMENT_TYPE_OTHER",
+		7:  "SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL",
+		8:  "SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT",
+		9:  "SETTLEMENT_TYPE_WITHDRAWAL",
+		10: "SETTLEMENT_TYPE_SHIPMENT_ADJUSTMENT",
+		11: "SETTLEMENT_TYPE_LOGISTIC_REIMBURSEMENT",
+		12: "SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT",
+		13: "SETTLEMENT_TYPE_MARKETPLACE_PROGRAM",
 	}
 	SettlementType_value = map[string]int32{
 		"SETTLEMENT_TYPE_UNSPECIFIED":            0,
@@ -90,6 +109,11 @@ var (
 		"SETTLEMENT_TYPE_OTHER":                  6,
 		"SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL":   7,
 		"SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT":      8,
+		"SETTLEMENT_TYPE_WITHDRAWAL":             9,
+		"SETTLEMENT_TYPE_SHIPMENT_ADJUSTMENT":    10,
+		"SETTLEMENT_TYPE_LOGISTIC_REIMBURSEMENT": 11,
+		"SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT": 12,
+		"SETTLEMENT_TYPE_MARKETPLACE_PROGRAM":    13,
 	}
 )
 
@@ -126,8 +150,10 @@ type SourceType int32
 
 const (
 	SourceType_SOURCE_TYPE_UNSPECIFIED SourceType = 0
-	// `export_service` — a parsed marketplace statement. Deferred, but the contract is settlement's.
-	SourceType_SOURCE_TYPE_EXPORTER SourceType = 1
+	// settlement_importer_service — a platform statement, posted line by line under the uploader's token.
+	// Renamed from EXPORTER before the first import wrote one (#the-source-is-named-importer); the number
+	// stays, so a stored binary reads the same.
+	SourceType_SOURCE_TYPE_IMPORTER SourceType = 1
 	// A person, on the order detail page. The only rows `manualEntries()` reviews.
 	SourceType_SOURCE_TYPE_MANUAL SourceType = 2
 	// `order_service`, on order create and on order cancel. The ONLY source that may post
@@ -139,13 +165,13 @@ const (
 var (
 	SourceType_name = map[int32]string{
 		0: "SOURCE_TYPE_UNSPECIFIED",
-		1: "SOURCE_TYPE_EXPORTER",
+		1: "SOURCE_TYPE_IMPORTER",
 		2: "SOURCE_TYPE_MANUAL",
 		3: "SOURCE_TYPE_ORDER",
 	}
 	SourceType_value = map[string]int32{
 		"SOURCE_TYPE_UNSPECIFIED": 0,
-		"SOURCE_TYPE_EXPORTER":    1,
+		"SOURCE_TYPE_IMPORTER":    1,
 		"SOURCE_TYPE_MANUAL":      2,
 		"SOURCE_TYPE_ORDER":       3,
 	}
@@ -178,6 +204,13 @@ func (SourceType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_settlement_v1_settlement_proto_rawDescGZIP(), []int{1}
 }
 
+// Which measure ranks the list. The direction (`sort_type`) applies to the NAMED measure: DESC is the
+// largest first — for LOSS the biggest loss — and UNSPECIFIED means DESC, so an empty sort opens on the
+// question the screen exists for (#the-settlement-list-sorts-by-its-headings).
+//
+// ⚠ An order whose sale was never recorded (`initial_total = 0`) sorts LAST under every money measure,
+// whichever direction: its figures are not real, so it must never lead a ranking. Ties break on
+// `order_id`, so a page never reshuffles rows of equal value between requests.
 type OrderSettlementSort int32
 
 const (
@@ -186,6 +219,8 @@ const (
 	OrderSettlementSort_ORDER_SETTLEMENT_SORT_LOSS          OrderSettlementSort = 1
 	OrderSettlementSort_ORDER_SETTLEMENT_SORT_ORDER_ID      OrderSettlementSort = 2
 	OrderSettlementSort_ORDER_SETTLEMENT_SORT_INITIAL_TOTAL OrderSettlementSort = 3
+	// What reached us: `last_balance + initial_total`.
+	OrderSettlementSort_ORDER_SETTLEMENT_SORT_RECEIVED OrderSettlementSort = 4
 )
 
 // Enum value maps for OrderSettlementSort.
@@ -195,12 +230,14 @@ var (
 		1: "ORDER_SETTLEMENT_SORT_LOSS",
 		2: "ORDER_SETTLEMENT_SORT_ORDER_ID",
 		3: "ORDER_SETTLEMENT_SORT_INITIAL_TOTAL",
+		4: "ORDER_SETTLEMENT_SORT_RECEIVED",
 	}
 	OrderSettlementSort_value = map[string]int32{
 		"ORDER_SETTLEMENT_SORT_UNSPECIFIED":   0,
 		"ORDER_SETTLEMENT_SORT_LOSS":          1,
 		"ORDER_SETTLEMENT_SORT_ORDER_ID":      2,
 		"ORDER_SETTLEMENT_SORT_INITIAL_TOTAL": 3,
+		"ORDER_SETTLEMENT_SORT_RECEIVED":      4,
 	}
 )
 
@@ -407,7 +444,12 @@ const (
 	AnalyticMetricSort_ANALYTIC_METRIC_SORT_CHANGE                 AnalyticMetricSort = 9
 	AnalyticMetricSort_ANALYTIC_METRIC_SORT_OPEN_BALANCE           AnalyticMetricSort = 10
 	// The default: the groups holding the largest shortfall first.
-	AnalyticMetricSort_ANALYTIC_METRIC_SORT_CLOSE_BALANCE AnalyticMetricSort = 11
+	AnalyticMetricSort_ANALYTIC_METRIC_SORT_CLOSE_BALANCE          AnalyticMetricSort = 11
+	AnalyticMetricSort_ANALYTIC_METRIC_SORT_WITHDRAWAL             AnalyticMetricSort = 12
+	AnalyticMetricSort_ANALYTIC_METRIC_SORT_SHIPMENT_ADJUSTMENT    AnalyticMetricSort = 13
+	AnalyticMetricSort_ANALYTIC_METRIC_SORT_LOGISTIC_REIMBURSEMENT AnalyticMetricSort = 14
+	AnalyticMetricSort_ANALYTIC_METRIC_SORT_PLATFORM_REIMBURSEMENT AnalyticMetricSort = 15
+	AnalyticMetricSort_ANALYTIC_METRIC_SORT_MARKETPLACE_PROGRAM    AnalyticMetricSort = 16
 )
 
 // Enum value maps for AnalyticMetricSort.
@@ -425,6 +467,11 @@ var (
 		9:  "ANALYTIC_METRIC_SORT_CHANGE",
 		10: "ANALYTIC_METRIC_SORT_OPEN_BALANCE",
 		11: "ANALYTIC_METRIC_SORT_CLOSE_BALANCE",
+		12: "ANALYTIC_METRIC_SORT_WITHDRAWAL",
+		13: "ANALYTIC_METRIC_SORT_SHIPMENT_ADJUSTMENT",
+		14: "ANALYTIC_METRIC_SORT_LOGISTIC_REIMBURSEMENT",
+		15: "ANALYTIC_METRIC_SORT_PLATFORM_REIMBURSEMENT",
+		16: "ANALYTIC_METRIC_SORT_MARKETPLACE_PROGRAM",
 	}
 	AnalyticMetricSort_value = map[string]int32{
 		"ANALYTIC_METRIC_SORT_UNSPECIFIED":            0,
@@ -439,6 +486,11 @@ var (
 		"ANALYTIC_METRIC_SORT_CHANGE":                 9,
 		"ANALYTIC_METRIC_SORT_OPEN_BALANCE":           10,
 		"ANALYTIC_METRIC_SORT_CLOSE_BALANCE":          11,
+		"ANALYTIC_METRIC_SORT_WITHDRAWAL":             12,
+		"ANALYTIC_METRIC_SORT_SHIPMENT_ADJUSTMENT":    13,
+		"ANALYTIC_METRIC_SORT_LOGISTIC_REIMBURSEMENT": 14,
+		"ANALYTIC_METRIC_SORT_PLATFORM_REIMBURSEMENT": 15,
+		"ANALYTIC_METRIC_SORT_MARKETPLACE_PROGRAM":    16,
 	}
 )
 
@@ -500,7 +552,11 @@ type SettlementEntry struct {
 	ReversesId uint64 `protobuf:"varint,13,opt,name=reverses_id,json=reversesId,proto3" json:"reverses_id,omitempty"`
 	Note       string `protobuf:"bytes,14,opt,name=note,proto3" json:"note,omitempty"`
 	// Display only, resolved by the handler so the panel needs no second call.
-	ActorName     string `protobuf:"bytes,15,opt,name=actor_name,json=actorName,proto3" json:"actor_name,omitempty"`
+	ActorName string `protobuf:"bytes,15,opt,name=actor_name,json=actorName,proto3" json:"actor_name,omitempty"`
+	// WHO THE PER-USER REPORT COUNTS THIS ROW FOR, when it is not the actor — the shop's primary CS on an
+	// IMPORTED SHOP ROW, asked of the shop by settlement itself (#settlement-asks-the-shop-for-its-primary-cs).
+	// 0 on every other row: an order row counts for its creator, a hand-posted shop row for its actor.
+	UserId        uint64 `protobuf:"varint,16,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -638,6 +694,13 @@ func (x *SettlementEntry) GetActorName() string {
 		return x.ActorName
 	}
 	return ""
+}
+
+func (x *SettlementEntry) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
 }
 
 // The state row — a PROJECTION of the log, recomputable from it alone.
@@ -1287,12 +1350,19 @@ type OrderSettlementListResponse struct {
 	// Keyed by `order_id` — the accounts' identity IS the order (#the-grain-is-the-order).
 	Ids      []uint64     `protobuf:"varint,2,rep,packed,name=ids,proto3" json:"ids,omitempty"`
 	PageInfo *v1.PageInfo `protobuf:"bytes,3,opt,name=page_info,json=pageInfo,proto3" json:"page_info,omitempty"`
-	// The implied take-rate card on the list screen: these are the WHOLE FILTERED SET, not this page.
-	// A card that changed as you turned pages would be reporting the page, which nobody asked about.
+	// The summary over the list: these are the WHOLE FILTERED SET, not this page. A figure that changed
+	// as you turned pages would be reporting the page, which nobody asked about.
+	//
+	// ⚠ Both sums skip accounts whose sale was never recorded (`initial_total = 0`): such an account's
+	// balance is its payouts with nothing to measure them against, and adding it would shrink the loss
+	// by money that was never a gain. They are counted instead, in `total_unrecorded`.
 	TotalInitialTotal int64 `protobuf:"varint,4,opt,name=total_initial_total,json=totalInitialTotal,proto3" json:"total_initial_total,omitempty"`
 	TotalLastBalance  int64 `protobuf:"varint,5,opt,name=total_last_balance,json=totalLastBalance,proto3" json:"total_last_balance,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// How many accounts in the filtered set have no recorded sale — counted in `page_info.total_items`,
+	// left out of the two sums.
+	TotalUnrecorded uint64 `protobuf:"varint,6,opt,name=total_unrecorded,json=totalUnrecorded,proto3" json:"total_unrecorded,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *OrderSettlementListResponse) Reset() {
@@ -1356,6 +1426,13 @@ func (x *OrderSettlementListResponse) GetTotalInitialTotal() int64 {
 func (x *OrderSettlementListResponse) GetTotalLastBalance() int64 {
 	if x != nil {
 		return x.TotalLastBalance
+	}
+	return 0
+}
+
+func (x *OrderSettlementListResponse) GetTotalUnrecorded() uint64 {
+	if x != nil {
+		return x.TotalUnrecorded
 	}
 	return 0
 }
@@ -1475,9 +1552,9 @@ func (x *OrderSettlementDetailResponse) GetEntries() []*SettlementEntry {
 // ⚠ SIGN CONVENTION IS THE LOG's: positive is money toward us, so `initial_total` is NEGATIVE and
 // `initial_total_cancel` positive. The screen derives `sales = −(initial_total + initial_total_cancel)`.
 //
-// ⚠ `open_balance` / `close_balance` are the CUMULATIVE SHORTFALL at the window's edges
-// (#the-position-is-the-shortfall-not-the-wallet) — never a wallet, never a receivable. Label them
-// "hidden cost", not "outstanding" (#hidden-cost-is-left-in-the-balance).
+// ⚠ `open_balance` / `close_balance` are the POSITION at the window's edges — Σ change over every row,
+// withdrawals included (#withdrawal-counts-in-the-position): the shortfall PLUS what was withdrawn. Never a
+// wallet, never a receivable. Label the end "Position to date" (#the-report-headline-is-position-to-date).
 type SettlementMetric struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	InitialTotal          int64                  `protobuf:"varint,1,opt,name=initial_total,json=initialTotal,proto3" json:"initial_total,omitempty"`
@@ -1488,13 +1565,20 @@ type SettlementMetric struct {
 	AffiliateFee          int64                  `protobuf:"varint,6,opt,name=affiliate_fee,json=affiliateFee,proto3" json:"affiliate_fee,omitempty"`
 	MarketplaceAdjustment int64                  `protobuf:"varint,7,opt,name=marketplace_adjustment,json=marketplaceAdjustment,proto3" json:"marketplace_adjustment,omitempty"`
 	SystemAdjustment      int64                  `protobuf:"varint,8,opt,name=system_adjustment,json=systemAdjustment,proto3" json:"system_adjustment,omitempty"`
-	// The window's net movement — the sum of the eight above. `close_balance − open_balance` equals it.
+	// The window's net movement — the sum of every type column. `close_balance − open_balance` equals it.
 	Change int64 `protobuf:"varint,9,opt,name=change,proto3" json:"change,omitempty"`
 	// The position at the START of the window, and at its END. Both carried across days with no movement.
-	OpenBalance   int64 `protobuf:"varint,10,opt,name=open_balance,json=openBalance,proto3" json:"open_balance,omitempty"`
-	CloseBalance  int64 `protobuf:"varint,11,opt,name=close_balance,json=closeBalance,proto3" json:"close_balance,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OpenBalance  int64 `protobuf:"varint,10,opt,name=open_balance,json=openBalance,proto3" json:"open_balance,omitempty"`
+	CloseBalance int64 `protobuf:"varint,11,opt,name=close_balance,json=closeBalance,proto3" json:"close_balance,omitempty"`
+	// The five of 2026-09-24. `withdrawal` is NOT part of what the screen calls Received — it is our own
+	// money moving on (#the-report-headline-is-position-to-date).
+	Withdrawal            int64 `protobuf:"varint,12,opt,name=withdrawal,proto3" json:"withdrawal,omitempty"`
+	ShipmentAdjustment    int64 `protobuf:"varint,13,opt,name=shipment_adjustment,json=shipmentAdjustment,proto3" json:"shipment_adjustment,omitempty"`
+	LogisticReimbursement int64 `protobuf:"varint,14,opt,name=logistic_reimbursement,json=logisticReimbursement,proto3" json:"logistic_reimbursement,omitempty"`
+	PlatformReimbursement int64 `protobuf:"varint,15,opt,name=platform_reimbursement,json=platformReimbursement,proto3" json:"platform_reimbursement,omitempty"`
+	MarketplaceProgram    int64 `protobuf:"varint,16,opt,name=marketplace_program,json=marketplaceProgram,proto3" json:"marketplace_program,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *SettlementMetric) Reset() {
@@ -1600,6 +1684,41 @@ func (x *SettlementMetric) GetOpenBalance() int64 {
 func (x *SettlementMetric) GetCloseBalance() int64 {
 	if x != nil {
 		return x.CloseBalance
+	}
+	return 0
+}
+
+func (x *SettlementMetric) GetWithdrawal() int64 {
+	if x != nil {
+		return x.Withdrawal
+	}
+	return 0
+}
+
+func (x *SettlementMetric) GetShipmentAdjustment() int64 {
+	if x != nil {
+		return x.ShipmentAdjustment
+	}
+	return 0
+}
+
+func (x *SettlementMetric) GetLogisticReimbursement() int64 {
+	if x != nil {
+		return x.LogisticReimbursement
+	}
+	return 0
+}
+
+func (x *SettlementMetric) GetPlatformReimbursement() int64 {
+	if x != nil {
+		return x.PlatformReimbursement
+	}
+	return 0
+}
+
+func (x *SettlementMetric) GetMarketplaceProgram() int64 {
+	if x != nil {
+		return x.MarketplaceProgram
 	}
 	return 0
 }
@@ -2414,7 +2533,7 @@ var File_warehouse_settlement_v1_settlement_proto protoreflect.FileDescriptor
 
 const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\n" +
-	"(warehouse/settlement/v1/settlement.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x82\x04\n" +
+	"(warehouse/settlement/v1/settlement.proto\x12\x17warehouse.settlement.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x9b\x04\n" +
 	"\x0fSettlementEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1b\n" +
 	"\tunique_id\x18\x02 \x01(\tR\buniqueId\x12\x19\n" +
@@ -2435,7 +2554,8 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"reversesId\x12\x12\n" +
 	"\x04note\x18\x0e \x01(\tR\x04note\x12\x1d\n" +
 	"\n" +
-	"actor_name\x18\x0f \x01(\tR\tactorName\"\xd3\x01\n" +
+	"actor_name\x18\x0f \x01(\tR\tactorName\x12\x17\n" +
+	"\auser_id\x18\x10 \x01(\x04R\x06userId\"\xd3\x01\n" +
 	"\x0fOrderSettlement\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12#\n" +
 	"\rinitial_total\x18\x02 \x01(\x03R\finitialTotal\x12!\n" +
@@ -2494,13 +2614,14 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\n" +
 	"settlement\x18\x02 \x01(\v2/.warehouse.settlement.v1.OrderSettlementMapItemH\x00R\n" +
 	"settlementB\x03\n" +
-	"\x01d\"\x99\x02\n" +
+	"\x01d\"\xc4\x02\n" +
 	"\x1bOrderSettlementListResponse\x12N\n" +
 	"\x05items\x18\x01 \x03(\v28.warehouse.settlement.v1.OrderSettlementListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
 	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\x12.\n" +
 	"\x13total_initial_total\x18\x04 \x01(\x03R\x11totalInitialTotal\x12,\n" +
-	"\x12total_last_balance\x18\x05 \x01(\x03R\x10totalLastBalance\"u\n" +
+	"\x12total_last_balance\x18\x05 \x01(\x03R\x10totalLastBalance\x12)\n" +
+	"\x10total_unrecorded\x18\x06 \x01(\x04R\x0ftotalUnrecorded\"u\n" +
 	"\x1cOrderSettlementDetailRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\"\n" +
 	"\border_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\aorderId:\v\x92\xb5\x18\a\n" +
@@ -2509,7 +2630,7 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\n" +
 	"settlement\x18\x01 \x01(\v2(.warehouse.settlement.v1.OrderSettlementR\n" +
 	"settlement\x12B\n" +
-	"\aentries\x18\x02 \x03(\v2(.warehouse.settlement.v1.SettlementEntryR\aentries\"\xa6\x03\n" +
+	"\aentries\x18\x02 \x03(\v2(.warehouse.settlement.v1.SettlementEntryR\aentries\"\x96\x05\n" +
 	"\x10SettlementMetric\x12#\n" +
 	"\rinitial_total\x18\x01 \x01(\x03R\finitialTotal\x120\n" +
 	"\x14initial_total_cancel\x18\x02 \x01(\x03R\x12initialTotalCancel\x12\x14\n" +
@@ -2522,7 +2643,14 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x06change\x18\t \x01(\x03R\x06change\x12!\n" +
 	"\fopen_balance\x18\n" +
 	" \x01(\x03R\vopenBalance\x12#\n" +
-	"\rclose_balance\x18\v \x01(\x03R\fcloseBalance\"\x97\x01\n" +
+	"\rclose_balance\x18\v \x01(\x03R\fcloseBalance\x12\x1e\n" +
+	"\n" +
+	"withdrawal\x18\f \x01(\x03R\n" +
+	"withdrawal\x12/\n" +
+	"\x13shipment_adjustment\x18\r \x01(\x03R\x12shipmentAdjustment\x125\n" +
+	"\x16logistic_reimbursement\x18\x0e \x01(\x03R\x15logisticReimbursement\x125\n" +
+	"\x16platform_reimbursement\x18\x0f \x01(\x03R\x15platformReimbursement\x12/\n" +
+	"\x13marketplace_program\x18\x10 \x01(\x03R\x12marketplaceProgram\"\x97\x01\n" +
 	"\x11AnalyticDateRange\x12B\n" +
 	"\n" +
 	"start_date\x18\x01 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\tstartDate\x12>\n" +
@@ -2586,7 +2714,7 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x02\x01\x02\"f\n" +
 	"\x1eAnalyticMaintenanceRunResponse\x12,\n" +
 	"\x12deleted_event_logs\x18\x01 \x01(\x03R\x10deletedEventLogs\x12\x16\n" +
-	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff*\xcf\x02\n" +
+	"\x06cutoff\x18\x02 \x01(\tR\x06cutoff*\x99\x04\n" +
 	"\x0eSettlementType\x12\x1f\n" +
 	"\x1bSETTLEMENT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dSETTLEMENT_TYPE_INITIAL_TOTAL\x10\x01\x12\x18\n" +
@@ -2596,18 +2724,25 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"&SETTLEMENT_TYPE_MARKETPLACE_ADJUSTMENT\x10\x05\x12\x19\n" +
 	"\x15SETTLEMENT_TYPE_OTHER\x10\x06\x12(\n" +
 	"$SETTLEMENT_TYPE_INITIAL_TOTAL_CANCEL\x10\a\x12%\n" +
-	"!SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT\x10\b*r\n" +
+	"!SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT\x10\b\x12\x1e\n" +
+	"\x1aSETTLEMENT_TYPE_WITHDRAWAL\x10\t\x12'\n" +
+	"#SETTLEMENT_TYPE_SHIPMENT_ADJUSTMENT\x10\n" +
+	"\x12*\n" +
+	"&SETTLEMENT_TYPE_LOGISTIC_REIMBURSEMENT\x10\v\x12*\n" +
+	"&SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT\x10\f\x12'\n" +
+	"#SETTLEMENT_TYPE_MARKETPLACE_PROGRAM\x10\r*r\n" +
 	"\n" +
 	"SourceType\x12\x1b\n" +
 	"\x17SOURCE_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
-	"\x14SOURCE_TYPE_EXPORTER\x10\x01\x12\x16\n" +
+	"\x14SOURCE_TYPE_IMPORTER\x10\x01\x12\x16\n" +
 	"\x12SOURCE_TYPE_MANUAL\x10\x02\x12\x15\n" +
-	"\x11SOURCE_TYPE_ORDER\x10\x03*\xa9\x01\n" +
+	"\x11SOURCE_TYPE_ORDER\x10\x03*\xcd\x01\n" +
 	"\x13OrderSettlementSort\x12%\n" +
 	"!ORDER_SETTLEMENT_SORT_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aORDER_SETTLEMENT_SORT_LOSS\x10\x01\x12\"\n" +
 	"\x1eORDER_SETTLEMENT_SORT_ORDER_ID\x10\x02\x12'\n" +
-	"#ORDER_SETTLEMENT_SORT_INITIAL_TOTAL\x10\x03*\xab\x01\n" +
+	"#ORDER_SETTLEMENT_SORT_INITIAL_TOTAL\x10\x03\x12\"\n" +
+	"\x1eORDER_SETTLEMENT_SORT_RECEIVED\x10\x04*\xab\x01\n" +
 	"\x1bOrderSettlementListDataType\x12/\n" +
 	"+ORDER_SETTLEMENT_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'ORDER_SETTLEMENT_LIST_DATA_TYPE_GENERAL\x10\x01\x12.\n" +
@@ -2621,7 +2756,7 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x1fANALYTIC_GROUP_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18ANALYTIC_GROUP_TYPE_TEAM\x10\x01\x12\x1c\n" +
 	"\x18ANALYTIC_GROUP_TYPE_SHOP\x10\x02\x12\x1c\n" +
-	"\x18ANALYTIC_GROUP_TYPE_USER\x10\x03*\xf0\x03\n" +
+	"\x18ANALYTIC_GROUP_TYPE_USER\x10\x03*\xd3\x05\n" +
 	"\x12AnalyticMetricSort\x12$\n" +
 	" ANALYTIC_METRIC_SORT_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ANALYTIC_METRIC_SORT_INITIAL_TOTAL\x10\x01\x12-\n" +
@@ -2635,7 +2770,12 @@ const file_warehouse_settlement_v1_settlement_proto_rawDesc = "" +
 	"\x1bANALYTIC_METRIC_SORT_CHANGE\x10\t\x12%\n" +
 	"!ANALYTIC_METRIC_SORT_OPEN_BALANCE\x10\n" +
 	"\x12&\n" +
-	"\"ANALYTIC_METRIC_SORT_CLOSE_BALANCE\x10\v2\x9f\x02\n" +
+	"\"ANALYTIC_METRIC_SORT_CLOSE_BALANCE\x10\v\x12#\n" +
+	"\x1fANALYTIC_METRIC_SORT_WITHDRAWAL\x10\f\x12,\n" +
+	"(ANALYTIC_METRIC_SORT_SHIPMENT_ADJUSTMENT\x10\r\x12/\n" +
+	"+ANALYTIC_METRIC_SORT_LOGISTIC_REIMBURSEMENT\x10\x0e\x12/\n" +
+	"+ANALYTIC_METRIC_SORT_PLATFORM_REIMBURSEMENT\x10\x0f\x12,\n" +
+	"(ANALYTIC_METRIC_SORT_MARKETPLACE_PROGRAM\x10\x102\x9f\x02\n" +
 	"\x11SettlementService\x12\x80\x01\n" +
 	"\x13OrderSettlementList\x123.warehouse.settlement.v1.OrderSettlementListRequest\x1a4.warehouse.settlement.v1.OrderSettlementListResponse\x12\x86\x01\n" +
 	"\x15OrderSettlementDetail\x125.warehouse.settlement.v1.OrderSettlementDetailRequest\x1a6.warehouse.settlement.v1.OrderSettlementDetailResponse2\x8b\x01\n" +

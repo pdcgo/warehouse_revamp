@@ -32,17 +32,28 @@ func resolveDatabase(ctx context.Context, dsnFlag string) (*sql.DB, string, erro
 		return nil, "", err
 	}
 
-	db, err := sql.Open("pgx", dsn)
+	db, err := openDatabase(ctx, dsn, label)
 	if err != nil {
 		return nil, "", err
+	}
+
+	return db, label, nil
+}
+
+// openDatabase connects to a DSN that has already been chosen, and pings it so a database that is
+// down fails here — naming the target — rather than on the first query.
+func openDatabase(ctx context.Context, dsn, label string) (*sql.DB, error) {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return nil, err
 	}
 
 	err = db.PingContext(ctx)
 	if err != nil {
 		db.Close()
 
-		return nil, "", fmt.Errorf("connecting to %s: %w", label, err)
+		return nil, fmt.Errorf("connecting to %s: %w", label, err)
 	}
 
-	return db, label, nil
+	return db, nil
 }

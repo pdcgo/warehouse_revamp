@@ -92,7 +92,7 @@ function BuildCard({ build }: { build: AppBuild }) {
             </Text>
           </Stack>
           {build.current && (
-            <Badge colorPalette="green" data-testid="current-badge">
+            <Badge colorPalette="success" data-testid="current-badge">
               Current
             </Badge>
           )}

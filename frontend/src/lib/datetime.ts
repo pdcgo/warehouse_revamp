@@ -73,6 +73,17 @@ export function toDateTimeInputValue(d: Date): string {
 }
 
 /** unix seconds → a `type="date"` value; `0n` → `""` (unset). */
+/**
+ * TODAY as a `yyyy-mm-dd` string, in the reader's own timezone.
+ *
+ * It exists so the two ends of a date rule cannot drift: an order may not be dated after today, a
+ * deadline may not fall before it, and both bounds come from here rather than from two `new Date()`
+ * calls that disagree the second one of them runs after midnight.
+ */
+export function todayDateInput(): string {
+  return toDateInputValue(new Date());
+}
+
 export function unixToDateInput(unix: bigint): string {
   return unix === 0n ? "" : toDateInputValue(new Date(Number(unix) * 1000));
 }

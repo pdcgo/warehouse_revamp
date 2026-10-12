@@ -651,12 +651,9 @@ func (x *WarehouseInfoUpdateResponse) GetInfo() *WarehouseInfo {
 }
 
 type TeamInfo struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	TeamId            uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	ContactNumber     string                 `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3" json:"contact_number,omitempty"`
-	BankType          string                 `protobuf:"bytes,3,opt,name=bank_type,json=bankType,proto3" json:"bank_type,omitempty"`
-	BankOwnerName     string                 `protobuf:"bytes,4,opt,name=bank_owner_name,json=bankOwnerName,proto3" json:"bank_owner_name,omitempty"`
-	BankAccountNumber string                 `protobuf:"bytes,5,opt,name=bank_account_number,json=bankAccountNumber,proto3" json:"bank_account_number,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ContactNumber string                 `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3" json:"contact_number,omitempty"`
 	// Opaque ids owned by other services. Not validated here — no FK is possible across a
 	// service boundary. 0 = unset.
 	ReturnWarehouseId uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3" json:"return_warehouse_id,omitempty"`
@@ -716,27 +713,6 @@ func (x *TeamInfo) GetContactNumber() string {
 	return ""
 }
 
-func (x *TeamInfo) GetBankType() string {
-	if x != nil {
-		return x.BankType
-	}
-	return ""
-}
-
-func (x *TeamInfo) GetBankOwnerName() string {
-	if x != nil {
-		return x.BankOwnerName
-	}
-	return ""
-}
-
-func (x *TeamInfo) GetBankAccountNumber() string {
-	if x != nil {
-		return x.BankAccountNumber
-	}
-	return ""
-}
-
 func (x *TeamInfo) GetReturnWarehouseId() uint64 {
 	if x != nil {
 		return x.ReturnWarehouseId
@@ -779,7 +755,7 @@ type Team struct {
 	// picker's *Priority Product* tab.
 	//
 	// ⚠ NOT settable through TeamInfoUpdate, and that is a policy decision rather than a layout one:
-	// that message is callable by TEAM_OWNER, so a capability granted by root must not live in it or a
+	// that message is callable by SELLING_OWNER, so a capability granted by root must not live in it or a
 	// team could grant itself the feature. How root sets it is not designed yet — the column and the
 	// read path land first.
 	PriorityProduct bool `protobuf:"varint,9,opt,name=priority_product,json=priorityProduct,proto3" json:"priority_product,omitempty"`
@@ -881,11 +857,18 @@ func (x *Team) GetPriorityProduct() bool {
 }
 
 type TeamCreateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	TeamCode      string                 `protobuf:"bytes,3,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Type        TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	TeamCode    string                 `protobuf:"bytes,3,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// The person who becomes the team's first Owner, picked or created on the Create Team form, and granted
+	// the team type's Owner role. The person creating the team is NOT made a member: Root and the
+	// Administrator reach every team from the switcher's All teams
+	// (the-create-team-form-names-the-first-owner, the-pass-1-prototype-is-accepted).
+	//
+	// An unknown or suspended person is refused, and then no team is created and its code stays free.
+	OwnerUserId   uint64 `protobuf:"varint,5,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -946,6 +929,13 @@ func (x *TeamCreateRequest) GetDescription() string {
 		return x.Description
 	}
 	return ""
+}
+
+func (x *TeamCreateRequest) GetOwnerUserId() uint64 {
+	if x != nil {
+		return x.OwnerUserId
+	}
+	return 0
 }
 
 type TeamCreateResponse struct {
@@ -2069,11 +2059,8 @@ type TeamInfoUpdateRequest struct {
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// ALL optional — explicit presence. Absent = leave alone. Present = write it, including
 	// present-and-zero = clear. Without presence there is no way to say "don't touch this", and
-	// a contact-number-only update silently blanks the bank details.
+	// a contact-number-only update silently blanks the return and default warehouse.
 	ContactNumber      *string `protobuf:"bytes,2,opt,name=contact_number,json=contactNumber,proto3,oneof" json:"contact_number,omitempty"`
-	BankType           *string `protobuf:"bytes,3,opt,name=bank_type,json=bankType,proto3,oneof" json:"bank_type,omitempty"`
-	BankOwnerName      *string `protobuf:"bytes,4,opt,name=bank_owner_name,json=bankOwnerName,proto3,oneof" json:"bank_owner_name,omitempty"`
-	BankAccountNumber  *string `protobuf:"bytes,5,opt,name=bank_account_number,json=bankAccountNumber,proto3,oneof" json:"bank_account_number,omitempty"`
 	ReturnWarehouseId  *uint64 `protobuf:"varint,6,opt,name=return_warehouse_id,json=returnWarehouseId,proto3,oneof" json:"return_warehouse_id,omitempty"`    // present & 0 = clear to NULL
 	ReturnUserId       *uint64 `protobuf:"varint,7,opt,name=return_user_id,json=returnUserId,proto3,oneof" json:"return_user_id,omitempty"`                   // present & 0 = clear to NULL
 	DefaultWarehouseId *uint64 `protobuf:"varint,8,opt,name=default_warehouse_id,json=defaultWarehouseId,proto3,oneof" json:"default_warehouse_id,omitempty"` // present & 0 = clear to NULL (#145)
@@ -2121,27 +2108,6 @@ func (x *TeamInfoUpdateRequest) GetTeamId() uint64 {
 func (x *TeamInfoUpdateRequest) GetContactNumber() string {
 	if x != nil && x.ContactNumber != nil {
 		return *x.ContactNumber
-	}
-	return ""
-}
-
-func (x *TeamInfoUpdateRequest) GetBankType() string {
-	if x != nil && x.BankType != nil {
-		return *x.BankType
-	}
-	return ""
-}
-
-func (x *TeamInfoUpdateRequest) GetBankOwnerName() string {
-	if x != nil && x.BankOwnerName != nil {
-		return *x.BankOwnerName
-	}
-	return ""
-}
-
-func (x *TeamInfoUpdateRequest) GetBankAccountNumber() string {
-	if x != nil && x.BankAccountNumber != nil {
-		return *x.BankAccountNumber
 	}
 	return ""
 }
@@ -2240,16 +2206,13 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x06\t\"S\n" +
 	"\x1bWarehouseInfoUpdateResponse\x124\n" +
-	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\xc7\x02\n" +
+	"\x04info\x18\x01 \x01(\v2 .warehouse.team.v1.WarehouseInfoR\x04info\"\x95\x02\n" +
 	"\bTeamInfo\x12\x17\n" +
 	"\ateam_id\x18\x01 \x01(\x04R\x06teamId\x12%\n" +
-	"\x0econtact_number\x18\x02 \x01(\tR\rcontactNumber\x12\x1b\n" +
-	"\tbank_type\x18\x03 \x01(\tR\bbankType\x12&\n" +
-	"\x0fbank_owner_name\x18\x04 \x01(\tR\rbankOwnerName\x12.\n" +
-	"\x13bank_account_number\x18\x05 \x01(\tR\x11bankAccountNumber\x12.\n" +
+	"\x0econtact_number\x18\x02 \x01(\tR\rcontactNumber\x12.\n" +
 	"\x13return_warehouse_id\x18\x06 \x01(\x04R\x11returnWarehouseId\x12$\n" +
 	"\x0ereturn_user_id\x18\a \x01(\x04R\freturnUserId\x120\n" +
-	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseId\"\xad\x02\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04R\x12defaultWarehouseIdJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\tbank_typeR\x0fbank_owner_nameR\x13bank_account_number\"\xad\x02\n" +
 	"\x04Team\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12/\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeR\x04type\x12\x12\n" +
@@ -2259,24 +2222,26 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\adeleted\x18\x06 \x01(\bR\adeleted\x12/\n" +
 	"\x04info\x18\a \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info\x12\x1b\n" +
 	"\timage_url\x18\b \x01(\tR\bimageUrl\x12)\n" +
-	"\x10priority_product\x18\t \x01(\bR\x0fpriorityProduct\"\xd0\x01\n" +
+	"\x10priority_product\x18\t \x01(\bR\x0fpriorityProduct\"\xfd\x01\n" +
 	"\x11TeamCreateRequest\x12=\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x1b.warehouse.team.v1.TeamTypeB\f\xbaH\t\x82\x01\x06\x10\x01 \x00 \x01R\x04type\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x04\x18\x80\x01R\x04name\x12&\n" +
 	"\tteam_code\x18\x03 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\n" +
 	"R\bteamCode\x12*\n" +
-	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02R\vdescription:\b\x92\xb5\x18\x04\n" +
+	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02R\vdescription\x12+\n" +
+	"\rowner_user_id\x18\x05 \x01(\x04B\a\xbaH\x042\x02 \x00R\vownerUserId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"A\n" +
 	"\x12TeamCreateResponse\x12+\n" +
-	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xf0\x01\n" +
+	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"\xf2\x01\n" +
 	"\x11TeamUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12#\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x04\x18\x80\x01H\x00R\x04name\x88\x01\x01\x12/\n" +
 	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xac\x02H\x01R\vdescription\x88\x01\x01\x12*\n" +
-	"\timage_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bH\x02R\bimageUrl\x88\x01\x01:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\tB\a\n" +
+	"\timage_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bH\x02R\bimageUrl\x88\x01\x01:\x0e\x92\xb5\x18\n" +
+	"\n" +
+	"\b\x01\x02\x03\x04\x06\t\v\fB\a\n" +
 	"\x05_nameB\x0e\n" +
 	"\f_descriptionB\f\n" +
 	"\n" +
@@ -2343,25 +2308,19 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12>\n" +
-	"\x05value\x18\x02 \x01(\v2(.warehouse.team.v1.TeamByIdsResponseListR\x05value:\x028\x01\"\xc8\x04\n" +
+	"\x05value\x18\x02 \x01(\v2(.warehouse.team.v1.TeamByIdsResponseListR\x05value:\x028\x01\"\xb3\x03\n" +
 	"\x15TeamInfoUpdateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x123\n" +
-	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x12)\n" +
-	"\tbank_type\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18<H\x01R\bbankType\x88\x01\x01\x125\n" +
-	"\x0fbank_owner_name\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x02R\rbankOwnerName\x88\x01\x01\x12<\n" +
-	"\x13bank_account_number\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18<H\x03R\x11bankAccountNumber\x88\x01\x01\x123\n" +
-	"\x13return_warehouse_id\x18\x06 \x01(\x04H\x04R\x11returnWarehouseId\x88\x01\x01\x12)\n" +
-	"\x0ereturn_user_id\x18\a \x01(\x04H\x05R\freturnUserId\x88\x01\x01\x125\n" +
-	"\x14default_warehouse_id\x18\b \x01(\x04H\x06R\x12defaultWarehouseId\x88\x01\x01:\f\x92\xb5\x18\b\n" +
-	"\x06\x01\x02\x03\x04\x06\tB\x11\n" +
-	"\x0f_contact_numberB\f\n" +
+	"\x0econtact_number\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18(H\x00R\rcontactNumber\x88\x01\x01\x123\n" +
+	"\x13return_warehouse_id\x18\x06 \x01(\x04H\x01R\x11returnWarehouseId\x88\x01\x01\x12)\n" +
+	"\x0ereturn_user_id\x18\a \x01(\x04H\x02R\freturnUserId\x88\x01\x01\x125\n" +
+	"\x14default_warehouse_id\x18\b \x01(\x04H\x03R\x12defaultWarehouseId\x88\x01\x01:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"_bank_typeB\x12\n" +
-	"\x10_bank_owner_nameB\x16\n" +
-	"\x14_bank_account_numberB\x16\n" +
+	"\b\x01\x02\x03\x04\x06\t\v\fB\x11\n" +
+	"\x0f_contact_numberB\x16\n" +
 	"\x14_return_warehouse_idB\x11\n" +
 	"\x0f_return_user_idB\x17\n" +
-	"\x15_default_warehouse_id\"I\n" +
+	"\x15_default_warehouse_idJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\tbank_typeR\x0fbank_owner_nameR\x13bank_account_number\"I\n" +
 	"\x16TeamInfoUpdateResponse\x12/\n" +
 	"\x04info\x18\x01 \x01(\v2\x1b.warehouse.team.v1.TeamInfoR\x04info*\xb6\x01\n" +
 	"\aWeekday\x12\x17\n" +

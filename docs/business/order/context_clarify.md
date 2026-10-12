@@ -46,6 +46,9 @@ are deleted, so this file is always the current open set; what was settled is in
 > [the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses) worse**: §Complete Journey
 > now omits three statuses, not two.
 
+> ⛔ **Found at the `hfrada → dev` merge (2026-10-02):** a decision made on that branch still reasons from eight
+> statuses and a return RECORD — [the-warehouse-steps-rule-met-the-return-status](#the-warehouse-steps-rule-met-the-return-status).
+
 Siblings: [business_level](../business_level_clarify.md) · [user_context](../user/context_clarify.md) ·
 [product_context](../product/context_clarify.md) · [balance_context](../balance/context_clarify.md) ·
 [inventory_context](../inventory/context_clarify.md) · [settlement_context](../settlement/context_clarify.md).
@@ -239,6 +242,69 @@ allowed `""` for a phone order, and `openSettlement` skips a platform total of 0
 check when this context is built, and deciding
 [a-lost-publish-is-not-tracked-on-the-order](./context_decision.md#a-lost-publish-is-not-tracked-on-the-order) item 3 in the same
 pass, since it is the same assumption.
+
+## the-build-lets-a-person-draft-and-promotes-on-the-server
+
+[drafts-exist-only-for-the-third-party-app](./context_decision.md#drafts-exist-only-for-the-third-party-app) — *a person
+never drafts* — and [the-frontend-finalizes-a-draft-not-the-backend](./context_decision.md#the-frontend-finalizes-a-draft-not-the-backend)
+— *the draft seeds the create form, there is no promote RPC* — while the build has **Save as Draft** on the order
+form (source `manual`) and an `OrderDraftPromote` RPC that the draft detail's Promote button calls. Found while
+aligning the draft list to the order list (2026-09-30); the list is unaffected, since every column on it holds
+either way.
+
+| | decided | built |
+| --- | --- | --- |
+| who creates a draft | the third-party app only | the app, **and** a person from the order form |
+| how a draft becomes an order | the create form, seeded from the draft, sends `order_draft_id` | `OrderDraftPromote` on the server |
+
+**Which is wrong:** the build — the decisions are the owner's current statement.
+**→ Recommend** removing Save as Draft and replacing Promote with *Open in the order form* (the form seeded from
+the draft, `OrderCreate` deleting it), in one pass with a migration of any `manual` drafts. ⚠ Until then the
+draft screens carry the build's behaviour, and the list's intro text still says drafts are *"saved from the
+order form"*.
+
+⚠ **Tried and reverted (2026-09-30):** the draft was opened IN the order create form for one round; the owner
+asked for the separate draft page back at `/order-drafts/:id`. The contradiction therefore stands as written.
+
+```mermaid
+flowchart LR
+  subgraph "decided"
+    A1["third-party app"] --> D1["draft"] --> F1["create form, seeded"] --> O1["OrderCreate + order_draft_id"]
+  end
+  subgraph "built"
+    A2["app, or Save as Draft"] --> D2["draft"] --> P2["OrderDraftPromote"]
+  end
+```
+
+## the-warehouse-steps-rule-met-the-return-status
+
+Two decisions made on two branches, which met at the `hfrada → dev` merge (2026-10-02). Neither saw the other.
+
+| [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) (2026-09-24) | [the-accept-is-the-status-return-completed](./context_decision.md#the-accept-is-the-status-return-completed) (2026-09-21) |
+| --- | --- |
+| its diagram puts *"return — being processed, received"* on **the record that owns the work** | the accept is a **status**, `return_completed` — *"a return record: **not built**"* |
+| cites *return-means-received-by-the-warehouse* as precedent: a return's transit lives on a return record | answered that same question the other way: `return` is the claim, *received* is the ninth status |
+| *"the set of eight"* | nine statuses |
+
+**Which is wrong:** the RETURN half of the warehouse-steps decision, not its verdict. The owner's answer on
+2026-09-24 was about `confirm · picking · packed · handover` folding into `processed` — the return line and the
+precedent were reasoning around it, and the precedent was overturned three days earlier.
+**→ Recommend:** scope the warehouse-steps verdict to the OUTBOUND steps, and let `return_completed` stand as a
+status. Then the order list's tabs ([design_clarify](../../technical/order/design_clarify.md)) need a ninth pile —
+I would give `return_completed` its own tab, because it is the warehouse's queue (`WHERE status = 'return'`) emptied,
+and a seller reads *"it is back"* differently from *"it is coming back"*.
+⚠ Its link to `./context_clarify.md#return-means-received-by-the-warehouse` is dead — the question was answered
+and deleted on dev.
+
+```mermaid
+flowchart LR
+  subgraph "outbound — the warehouse-steps rule holds"
+    P["processed"] --> S1["confirm · picking · packed · handover — on the warehouse task"]
+  end
+  subgraph "return — the status decision holds"
+    R["return — the claim"] --> RC["return_completed — the goods are here"]
+  end
+```
 
 ---
 

@@ -71,13 +71,17 @@ test("Read: the shop detail page opens from the row (#85)", async ({ page }) => 
   await expect(page.getByTestId("shops-table")).toBeVisible();
 });
 
-test("Users: grant and revoke a user's access to the shop (#86)", async ({ page }) => {
+test("Users: grant and revoke a user's access to the shop (#86) — the first grant is the primary CS", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoShops(page);
+
+  // the-primary-cs-is-a-flag-on-a-grant: a shop nobody is granted has no primary — and says so.
+  await expect(page.getByTestId(`shop-no-primary-${CODE}`)).toBeVisible();
 
   await page.getByTestId(`open-shop-${CODE}`).click();
   await expect(page.getByTestId("shop-users-section")).toBeVisible();
   await expect(page.getByTestId("shop-users-empty")).toBeVisible();
+  await expect(page.getByTestId("shop-no-primary")).toBeVisible();
 
   // Grant root access via the shared user picker.
   await page.getByTestId("user-select").locator("input").fill(ROOT_USERNAME);
@@ -86,10 +90,15 @@ test("Users: grant and revoke a user's access to the shop (#86)", async ({ page 
 
   await expect(page.getByTestId(`shop-user-row-${ROOT_USERNAME}`)).toBeVisible();
 
-  // Revoke it again.
+  // The first user granted becomes the primary CS — the badge, and the warning gone.
+  await expect(page.getByTestId(`shop-user-primary-${ROOT_USERNAME}`)).toBeVisible();
+  await expect(page.getByTestId("shop-no-primary")).toBeHidden();
+
+  // Revoke it again — and the shop is left with none.
   await page.getByTestId(`remove-shop-user-${ROOT_USERNAME}`).click();
   await page.getByTestId("confirm-action").click();
   await expect(page.getByTestId(`shop-user-row-${ROOT_USERNAME}`)).toBeHidden();
+  await expect(page.getByTestId("shop-no-primary")).toBeVisible();
 });
 
 test("Edit: rename and change marketplace; both persist", async ({ page }) => {

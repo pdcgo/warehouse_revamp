@@ -128,14 +128,38 @@ enum SettlementType {
   // was lost — a dead-lettered event, a cascade that did not run — posting one overstates the log by
   // exactly what it corrects the report by, and the two then disagree permanently.
   SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT = 8;
+
+  // ── The five of 2026-09-24, decided while mapping the platforms' statements ─────────────────────
+  // (the type list grew to thirteen). The importer produces all five.
+
+  // The marketplace WALLET paying our bank. NEGATIVE. SHOP-ADDRESSED — it names no order
+  // (#withdrawal-is-a-settlement-type). ⚠ It COUNTS in the position like every type
+  // (#withdrawal-counts-in-the-position), so the running balance is the shortfall PLUS what was withdrawn.
+  SETTLEMENT_TYPE_WITHDRAWAL = 9;
+
+  // A correction that belongs to the SHIPMENT — insurance compensation for a lost parcel is the sampled
+  // case. Signed either way.
+  SETTLEMENT_TYPE_SHIPMENT_ADJUSTMENT = 10;
+
+  // The platform paying back a shipping cost. Normally positive. ⚠ "logistic", singular — the owner's
+  // spelling, kept verbatim where TikTok writes "Logistics reimbursement".
+  SETTLEMENT_TYPE_LOGISTIC_REIMBURSEMENT = 11;
+
+  // The platform paying back something that is not shipping — compensation against an order.
+  SETTLEMENT_TYPE_PLATFORM_REIMBURSEMENT = 12;
+
+  // Earnings through a named platform PROGRAMME rather than an ordinary sale — Shopee's FLEXI export.
+  SETTLEMENT_TYPE_MARKETPLACE_PROGRAM = 13;
 }
 
 // WHICH WRITE PATH a row came from (#entries-arrive-by-api-or-by-hand, widened to three by
 // #the-third-source-is-order).
 enum SourceType {
   SOURCE_TYPE_UNSPECIFIED = 0;
-  // `export_service` — a parsed marketplace statement. Deferred, but the contract is settlement's.
-  SOURCE_TYPE_EXPORTER = 1;
+  // settlement_importer_service — a platform statement, posted line by line under the uploader's token.
+  // Renamed from EXPORTER before the first import wrote one (#the-source-is-named-importer); the number
+  // stays, so a stored binary reads the same.
+  SOURCE_TYPE_IMPORTER = 1;
   // A person, on the order detail page. The only rows `manualEntries()` reviews.
   SOURCE_TYPE_MANUAL = 2;
   // `order_service`, on order create and on order cancel. The ONLY source that may post
@@ -184,6 +208,11 @@ message SettlementEntry {
 
   // Display only, resolved by the handler so the panel needs no second call.
   string actor_name = 15;
+
+  // WHO THE PER-USER REPORT COUNTS THIS ROW FOR, when it is not the actor — the shop's primary CS on an
+  // IMPORTED SHOP ROW, asked of the shop by settlement itself (#settlement-asks-the-shop-for-its-primary-cs).
+  // 0 on every other row: an order row counts for its creator, a hand-posted shop row for its actor.
+  uint64 user_id = 16;
 }
 
 // The state row — a PROJECTION of the log, recomputable from it alone.
@@ -235,10 +264,10 @@ message SettlementPostRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -331,12 +360,21 @@ message OrderSettlementListFilter {
   string q = 4;
 }
 
+// Which measure ranks the list. The direction (`sort_type`) applies to the NAMED measure: DESC is the
+// largest first — for LOSS the biggest loss — and UNSPECIFIED means DESC, so an empty sort opens on the
+// question the screen exists for (#the-settlement-list-sorts-by-its-headings).
+//
+// ⚠ An order whose sale was never recorded (`initial_total = 0`) sorts LAST under every money measure,
+// whichever direction: its figures are not real, so it must never lead a ranking. Ties break on
+// `order_id`, so a page never reshuffles rows of equal value between requests.
 enum OrderSettlementSort {
   ORDER_SETTLEMENT_SORT_UNSPECIFIED = 0;
   // The default and the reason the screen exists: the orders that lost the most, first.
   ORDER_SETTLEMENT_SORT_LOSS = 1;
   ORDER_SETTLEMENT_SORT_ORDER_ID = 2;
   ORDER_SETTLEMENT_SORT_INITIAL_TOTAL = 3;
+  // What reached us: `last_balance + initial_total`.
+  ORDER_SETTLEMENT_SORT_RECEIVED = 4;
 }
 
 message OrderSettlementListFilterSort {
@@ -354,10 +392,10 @@ message OrderSettlementListRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -389,10 +427,17 @@ message OrderSettlementListResponse {
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
 
-  // The implied take-rate card on the list screen: these are the WHOLE FILTERED SET, not this page.
-  // A card that changed as you turned pages would be reporting the page, which nobody asked about.
+  // The summary over the list: these are the WHOLE FILTERED SET, not this page. A figure that changed
+  // as you turned pages would be reporting the page, which nobody asked about.
+  //
+  // ⚠ Both sums skip accounts whose sale was never recorded (`initial_total = 0`): such an account's
+  // balance is its payouts with nothing to measure them against, and adding it would shrink the loss
+  // by money that was never a gain. They are counted instead, in `total_unrecorded`.
   int64 total_initial_total = 4;
   int64 total_last_balance = 5;
+  // How many accounts in the filtered set have no recorded sale — counted in `page_info.total_items`,
+  // left out of the two sums.
+  uint64 total_unrecorded = 6;
 }
 
 // ⚠ THE LOG IS NOT PAGINATED, and that is a bounded choice rather than an oversight. Its length is
@@ -403,10 +448,10 @@ message OrderSettlementDetailRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -432,9 +477,9 @@ message OrderSettlementDetailResponse {
 // ⚠ SIGN CONVENTION IS THE LOG's: positive is money toward us, so `initial_total` is NEGATIVE and
 // `initial_total_cancel` positive. The screen derives `sales = −(initial_total + initial_total_cancel)`.
 //
-// ⚠ `open_balance` / `close_balance` are the CUMULATIVE SHORTFALL at the window's edges
-// (#the-position-is-the-shortfall-not-the-wallet) — never a wallet, never a receivable. Label them
-// "hidden cost", not "outstanding" (#hidden-cost-is-left-in-the-balance).
+// ⚠ `open_balance` / `close_balance` are the POSITION at the window's edges — Σ change over every row,
+// withdrawals included (#withdrawal-counts-in-the-position): the shortfall PLUS what was withdrawn. Never a
+// wallet, never a receivable. Label the end "Position to date" (#the-report-headline-is-position-to-date).
 message SettlementMetric {
   int64 initial_total = 1;
   int64 initial_total_cancel = 2;
@@ -445,12 +490,20 @@ message SettlementMetric {
   int64 marketplace_adjustment = 7;
   int64 system_adjustment = 8;
 
-  // The window's net movement — the sum of the eight above. `close_balance − open_balance` equals it.
+  // The window's net movement — the sum of every type column. `close_balance − open_balance` equals it.
   int64 change = 9;
 
   // The position at the START of the window, and at its END. Both carried across days with no movement.
   int64 open_balance = 10;
   int64 close_balance = 11;
+
+  // The five of 2026-09-24. `withdrawal` is NOT part of what the screen calls Received — it is our own
+  // money moving on (#the-report-headline-is-position-to-date).
+  int64 withdrawal = 12;
+  int64 shipment_adjustment = 13;
+  int64 logistic_reimbursement = 14;
+  int64 platform_reimbursement = 15;
+  int64 marketplace_program = 16;
 }
 
 // The grain a time series is read at.
@@ -486,10 +539,10 @@ message AnalyticTimeSearchRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -549,6 +602,11 @@ enum AnalyticMetricSort {
   ANALYTIC_METRIC_SORT_OPEN_BALANCE = 10;
   // The default: the groups holding the largest shortfall first.
   ANALYTIC_METRIC_SORT_CLOSE_BALANCE = 11;
+  ANALYTIC_METRIC_SORT_WITHDRAWAL = 12;
+  ANALYTIC_METRIC_SORT_SHIPMENT_ADJUSTMENT = 13;
+  ANALYTIC_METRIC_SORT_LOGISTIC_REIMBURSEMENT = 14;
+  ANALYTIC_METRIC_SORT_PLATFORM_REIMBURSEMENT = 15;
+  ANALYTIC_METRIC_SORT_MARKETPLACE_PROGRAM = 16;
 }
 
 message AnalyticGroupFilter {
@@ -564,10 +622,10 @@ message AnalyticGroupSearchRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -596,10 +654,10 @@ message AnalyticGroupMetricRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN,
-      ROLE_TEAM_OWNER,
-      ROLE_TEAM_ADMIN,
-      ROLE_TEAM_CUSTOMER_SERVICE
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
     ]
   };
 
@@ -631,7 +689,7 @@ message AnalyticReplayComputeRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 
@@ -658,7 +716,7 @@ message AnalyticMaintenanceRunRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [
       ROLE_ROOT,
-      ROLE_ADMIN
+      ROLE_ADMINISTRATOR
     ]
   };
 }

@@ -23,13 +23,13 @@ function postingRoleOf(role: Role | undefined): PostingRole | undefined {
   switch (role) {
     case Role.ROOT:
       return "root";
-    case Role.ADMIN:
+    case Role.ADMINISTRATOR:
       return "admin";
-    case Role.TEAM_OWNER:
+    case Role.SELLING_OWNER:
       return "team_owner";
-    case Role.TEAM_ADMIN:
+    case Role.SELLING_ADMIN:
       return "team_admin";
-    case Role.TEAM_CUSTOMER_SERVICE:
+    case Role.SELLING_CS:
       return "customer_service";
     default:
       // Everybody else reads and never writes. Returning undefined means the panel renders without
@@ -48,14 +48,21 @@ export interface SettlementTabProps {
    * shop and team names appear nowhere on it. Passing them would be props nothing reads.
    */
   orderRef: string;
-  cogs: bigint;
+  /**
+   * The page's own "total sistem" — what the order cost, everything included — for the panel's two
+   * margins. Undefined when the page does not know it; the margins then stay off.
+   */
+  totalBeli?: bigint;
+  /** Drop the panel's own card — the host is already one. See `OrderLedgerPanel`. */
+  bare?: boolean;
 }
 
 export function SettlementTab({
   orderId,
   shopId,
   orderRef,
-  cogs,
+  totalBeli,
+  bare = false,
 }: SettlementTabProps) {
   const { current } = useTeam();
   const teamId = current?.teamId;
@@ -64,7 +71,7 @@ export function SettlementTab({
   const query = useOrderSettlement({
     teamId,
     orderId,
-    known: { orderRef, cogs },
+    known: { orderRef },
   });
 
   const post = usePostSettlementEntry(teamId);
@@ -147,6 +154,8 @@ export function SettlementTab({
         role={role}
         onAddEntry={addEntry}
         onReverse={reverse}
+        bare={bare}
+        totalBeli={totalBeli}
       />
     </Stack>
   );

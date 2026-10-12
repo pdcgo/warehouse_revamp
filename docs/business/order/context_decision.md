@@ -12,6 +12,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) | no two live orders share `(shop_id, order_external_ref_id)` · the ref is never empty · checked in code |
 | [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
 | [superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses) | ⛔ reversed — a ninth status `return_completed` was added |
+| [the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses) | the order carries the milestone, the record that owns the work carries its steps |
+| [picked-is-a-warehouse-step](#picked-is-a-warehouse-step) | `processed` covers five steps — **picked** joins between picking and packed |
 | [the-accept-is-the-status-return-completed](#the-accept-is-the-status-return-completed) | the warehouse accepting a return is a STATUS, not a record — nine statuses now |
 | [an-own-line-never-touches-the-map](#an-own-line-never-touches-the-map) | a line the team already owns goes straight to the item list — it neither reads nor writes `product_return_maps` |
 | [lost-is-final](#lost-is-final) | an order marked `lost` never moves again |
@@ -348,6 +350,55 @@ stateDiagram-v2
 **The spec.** Every move out of `lost` is refused. **The consequence, stated so it is not rediscovered:** a
 parcel found after being declared lost does **not** come back through its order — its goods re-enter stock by
 some other path, which no doc describes yet (clarify *Awaiting*).
+
+---
+
+## the-warehouse-steps-are-not-order-statuses
+
+> Asked (2026-09-24), while building the order list's tabs: `processed` folds `confirm · picking ·
+> packed`, and the proto carries all three today — *"kru gudang kehilangan langkahnya, itu memang
+> maunya?"*
+> **Owner: yes — the warehouse's steps are not order statuses.**
+
+**The verdict.** The ORDER carries the milestone. The record that owns the work carries its steps.
+
+```mermaid
+flowchart TB
+  O["ORDER — what a seller and a buyer read"]
+  O --> O1["pending"]
+  O --> O2["processed"]
+  O --> O3["shipped"]
+  O --> O4["completed"]
+  W["THE RECORD THAT OWNS THE WORK"]
+  W --> W1["warehouse task — picking, packed"]
+  W --> W2["shipment — handed over, in transit, arrived"]
+  W --> W3["return — being processed, received"]
+```
+
+**The spec.** `processed` is one status covering **four** steps of work — `confirm · picking · packed ·
+sudah diserahkan`. The last one is **HANDED OVER**, not "ready to hand over": the parcel has already
+changed hands, and `shipped` begins when it starts MOVING. So the handover is the warehouse's last
+step rather than the shipment's first. The build sees only three of the four — `OrderStatus` ends at
+`PACKED` and has no value for the handover.
+
+The four are a way to NARROW the pile, not a set of figures to read (owner, 2026-09-24): the order
+list offers them as a filter under the `processed` tab. A per-step count line was built and taken
+out — what a seller does with these is pick one.
+
+**Why this is the same rule twice already recorded.**
+[return-means-received-by-the-warehouse](./context_clarify.md#return-means-received-by-the-warehouse)
+put a return's transit on a return record rather than on the order, and shipment tracking was
+deferred to the shipment. Picking and packed are the third instance, so the set of eight
+([superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses)) is not a simplification for its own
+sake — it is one boundary applied consistently.
+
+⚠ **The old system had already reached the same place by hand.** Its eleven statuses sat under a
+"diproses gudang" umbrella tab that hid exactly those four — somebody had found the leaves too
+granular to browse by and built a control to fold them. This makes that permanent.
+
+⚠ **What it does NOT settle:** where the warehouse's own QUEUE lives. Filtering by the four on the
+order list lets a seller find *which* orders are still being packed; it does not give the crew a
+screen to work from, and no doc describes that screen or that record yet.
 
 ---
 
@@ -1292,7 +1343,7 @@ flowchart LR
 
 **It rests on decisions settlement already made:** entries arrive by API or by hand
 ([entries-arrive-by-api-or-by-hand](../settlement/context_decision.md#entries-arrive-by-api-or-by-hand)), from the
-order detail page ([order-detail-manages-the-ledger](../settlement/context_decision.md#order-detail-manages-the-ledger)),
+order detail page ([order-detail-manages-the-ledger](../../technical/frontend/order_settlement_decision.md#order-detail-manages-the-ledger)),
 and an account that never fully settles is normal
 ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)). No change to
 settlement is needed.
@@ -1710,3 +1761,21 @@ it at the item list and the branch is clean.
 order` box is still on the own branch. It is stale twice —
 [the-return-warehouse-is-read-when-the-return-happens](#the-return-warehouse-is-read-when-the-return-happens)
 put the warehouse in the configuration rather than the order, and the diagram's own first box already read it.
+
+## picked-is-a-warehouse-step
+
+> Owner, in chat (2026-10-01), on the old warehouse system's statuses (`waiting · picking · picked ·
+> packing_completed · completed`): *"kalau belum ada bisa ditambahkan"*.
+
+`processed` covers **five** steps of work, not four: `confirm · picking · picked · packed · sudah diserahkan`.
+**Picked** is the goods off the shelves and not yet packed — the queue at the packing table when the person who
+picks is not the person who packs. It amends
+[the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses), which listed four.
+
+```mermaid
+flowchart LR
+  C["confirm"] --> PI["picking"] --> PD["picked — new"] --> PK["packed"] --> H["sudah diserahkan"]
+```
+
+The contract has no status for it yet (nor for the handover); both are asked for in
+[design_clarify.md](../../technical/order/design_clarify.md#question).

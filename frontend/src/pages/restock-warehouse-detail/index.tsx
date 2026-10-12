@@ -153,7 +153,7 @@ export function RestockWarehouseDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("restock.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="restock-detail-error">
+        <Text color="error.fg" data-testid="restock-detail-error">
           {error || t("restock.detail.notFound")}
         </Text>
       </Stack>
@@ -183,7 +183,7 @@ export function RestockWarehouseDetailPage() {
         </Heading>
         <RestockStatusBadge status={request.status} />
         {short > 0n && (
-          <Badge colorPalette="orange" data-testid="restock-detail-short">
+          <Badge colorPalette="warning" data-testid="restock-detail-short">
             {t("restock.table.shortBy", { count: Number(short) })}
           </Badge>
         )}

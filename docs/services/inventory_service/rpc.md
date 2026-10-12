@@ -59,8 +59,9 @@ the stock ledger can never diverge because the fulfil does both in **one transac
 - **`RestockRequestCreate`** — the SELLING team (`requesting_team_id`, `use_scope`) raises a `pending`
   request naming the target `warehouse_id`, a `shipping_code`, and **one or more priced lines**
   (product + `sku`/`name` snapshot + quantity + per-unit price, #124). Optionally an `order_ref` (free
-  text — the order lives in someone else's system, #127), a `receipt` (resi), a `supplier_id` (must be
-  the requesting team's own, else **NotFound**), plus the restock's own money and context: a
+  text — the order lives in someone else's system, #127), a `receipt` (resi), a `supplier_id` (a **live supplier of
+  any selling team**, asked of [supplier_service](../supplier_service/rpc.md#who-asks-the-supplier) — a deleted or
+  unknown one is **NotFound**), plus the restock's own money and context: a
   `shipping_cost` (the freight, on top of the per-line prices), a `payment_type`, and a `note`.
   No stock is touched.
 - **`RestockRequestList`** — returns rows where `requesting_team_id = team_id` **OR**
@@ -131,10 +132,13 @@ the stock ledger can never diverge because the fulfil does both in **one transac
     write must be atomic, or an edit racing the warehouse's acceptance could land just after the stock
     was received and change the quantities that were accepted. Both take the same row lock, so the
     loser sees the other's committed status and bails.
+  - **The supplier is asked BEFORE the row is locked** and the answer judged under the lock — a call to another service
+    never runs while the request is held `FOR UPDATE`, or a warehouse accepting the delivery would wait out a network
+    round-trip ([the audit](../../../audits/services/inventory_service/concurrency/RestockRequestUpdate.md)).
   - **The supplier is only re-validated when it CHANGES.** A full replace re-sends the supplier the
     form prefilled, so an unchanged id is the request *preserving* a reference it already holds, not
-    making a new one. Since `SupplierDelete` is a **soft** delete and `supplierExists()` requires
-    `deleted = false`, re-checking an untouched id would make deleting a supplier permanently brick
+    making a new one. Since `SupplierDelete` is a **soft** delete and supplier_service answers a deleted
+    supplier as not live, re-checking an untouched id would make deleting a supplier permanently brick
     every pending request that names it — rejecting the edit over a field the person never touched.
     *Adopting* a deleted supplier is still **NotFound**; *keeping* one that predates the deletion is
     not.
@@ -744,3 +748,29 @@ split the single-adjust path draws, and for the same reason.
 ⚠ **`StockAdjust` with reason `RECOUNT` still does neither** — no write-off and no reimbursement. It is
 now the only one of the three paths out of step, on both axes — an open **contradiction**, left
 standing deliberately: changing a shipped money path is the owner's call.
+
+## RestockRequestFulfill — announces the accept
+
+After the accept COMMITS, `RestockRequestFulfill` publishes `RestockAccepted` — the restock, its two teams, its
+supplier, the accept's Jakarta day, and per line the ordered count, the total, the good units, the broken and the short
+([each-figure-is-read-at-the-accept](../../business/supplier/context_decision.md#each-figure-is-read-at-the-accept)).
+supplier_service folds it into a supplier's figures ([its doc](../supplier_service/rpc.md#the-figures--a-fold-of-restock-accepted)).
+
+```mermaid
+sequenceDiagram
+  participant W as warehouse Staff
+  participant INV as inventory_service
+  participant PS as Pub/Sub — restock-accepted
+  W->>INV: RestockRequestFulfill — the count, the places, the damage
+  INV->>INV: one transaction — stock, batches, cost lines, the timeline, the COD obligation
+  INV-->>INV: COMMIT
+  INV->>PS: RestockAccepted — event_id restock-accepted N
+  Note over INV,PS: a failed publish is logged with its event_id, never fails the accept
+  INV-->>W: the restock, accepted
+```
+
+| | |
+| --- | --- |
+| after, never inside | an event for an accept that rolled back would fold goods that never arrived |
+| a failed publish | logged; the supplier's figures are short that restock until a replay or an adjustment — never wrong the other way (no-outbox-the-publish-is-trusted) |
+| `RestockAcceptedEvent` | the pure builder, exported — `san supplier backfill-figures` builds the very same event for a restock accepted before it existed |

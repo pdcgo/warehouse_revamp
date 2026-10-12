@@ -17,13 +17,15 @@
 import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
 
 import { CategoryService } from "../src/gen/warehouse/category/v1/category_pb";
-import { DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
+import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
 import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
-import { SupplierService } from "../src/gen/warehouse/inventory/v1/supplier_pb";
 import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
-import { RegionService } from "../src/gen/warehouse/region/v1/region_pb";
+import { SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
+import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
+import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
+import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
 import {
   LiabilityPaymentService,
   LiabilityService,
@@ -34,9 +36,10 @@ import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_p
 import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
 import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
+import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { TeamService, TeamType } from "../src/gen/warehouse/team/v1/team_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
-import { TeamService } from "../src/gen/warehouse/team/v1/team_pb";
 import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
 import {
@@ -48,6 +51,24 @@ import {
   SourceType as WireSourceType,
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
+import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
+import { sessionScenario, teamCreateScenario } from "./sessionScenario";
+import { userStub } from "./userStub";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountService,
+} from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
+import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
+import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
+import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import {
+  LogLevel,
+  SettlementImporterService,
+  UploadedFileLineOutcome,
+  UploadedFileLineReason,
+  UploadedFileStatus,
+} from "../src/gen/warehouse/settlement_importer/v1/settlement_importer_pb";
 
 // The prototype's string unions, back to the wire enums. Same mapping as src/features/settlement,
 // kept here rather than imported so the stub never depends on app code it is meant to replace.
@@ -62,24 +83,27 @@ const stubSettlementType: Record<string, WireSettlementType> = {
 };
 
 const stubSourceType: Record<string, WireSourceType> = {
-  exporter: WireSourceType.EXPORTER,
+  importer: WireSourceType.IMPORTER,
   manual: WireSourceType.MANUAL,
   order: WireSourceType.ORDER,
 };
 
 import {
   categories,
+  settlementImportLines,
+  settlementImports,
   shipmentChannels,
   dayKey,
   settlementReportDays,
   settlementReportGroups,
   expenseDays,
   orderDetailFor,
+  orderDraftDetailFor,
   orderDrafts,
+  pickLocationsFor,
   orders,
   productCosts,
   products,
-  publicUsers,
   racks,
   regionTree,
   regions,
@@ -90,7 +114,7 @@ import {
   liabilityPositions,
   liabilityTerms,
   liabilityTermsChanges,
-  suppliers,
+  receiptLabel,
   teams,
   users,
   warehouseStock,
@@ -218,6 +242,301 @@ export function resetLiabilityPayments() {
   paymentsTable = liabilityPayments.map((p) => ({ ...p }));
 }
 
+// ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
+//
+// The file list and each file's rows are WRITEABLE: an import started in a story adds its row and its
+// lines, so the list and the file's page show what the dialog just did. Reset per story.
+type StubImport = (typeof settlementImports)[number];
+type StubImportLine = (typeof settlementImportLines)[number];
+
+const seedImports = (): StubImport[] => settlementImports.map((f) => ({ ...f, tally: { ...f.tally } }));
+let importsTable: StubImport[] = seedImports();
+let importLinesTable: StubImportLine[] = [...settlementImportLines];
+let nextImportId = 950n;
+let nextImportLineId = 99_000n;
+
+
+export function resetSettlementImports() {
+  importsTable = seedImports();
+  importLinesTable = [...settlementImportLines];
+  nextImportId = 950n;
+  nextImportLineId = 99_000n;
+  resetSettlementImportScenario();
+}
+
+type ImportMessage = { level: LogLevel; message: string; step?: number; count?: number; file?: StubImport };
+
+type StubRow = {
+  sheet: string;
+  orderRef: string;
+  platformType: string;
+  settlementType: ImportSettlementType;
+  change: bigint;
+  outcome: UploadedFileLineOutcome;
+  reason: UploadedFileLineReason;
+  level: LogLevel;
+  text: string;
+};
+
+const posted = (sheet: string, orderRef: string, platformType: string, change: bigint, type = ImportSettlementType.FUND): StubRow => ({
+  sheet,
+  orderRef,
+  platformType,
+  settlementType: type,
+  change,
+  outcome: UploadedFileLineOutcome.POSTED,
+  reason: UploadedFileLineReason.UNSPECIFIED,
+  level: LogLevel.INFO,
+  text: `${platformType} ${orderRef} — posted`,
+});
+
+// The rows a stub statement yields. One is a type nobody mapped (held), one names an order that does
+// not exist (posted to the shop), one must not post (skipped); TikTok's first order carries an affiliate
+// commission, which posts as its own row (tiktok-affiliate-commission-posts-as-affiliate-fee).
+function stubImportRows(platform: Marketplace): StubRow[] {
+  if (platform === Marketplace.TIKTOK) {
+    const sheet = "Order details";
+    return [
+      posted(sheet, "577005550001", "Order", 185_000n),
+      { ...posted(sheet, "577005550001", "Affiliate commission", -9_250n, ImportSettlementType.AFFILIATE_FEE), text: "577005550001 — its affiliate commission, posted as its own row" },
+      posted(sheet, "577005550002", "Order", 92_000n),
+      { sheet, orderRef: "577005550003", platformType: "Seller shipping fee compensation", settlementType: ImportSettlementType.UNSPECIFIED, change: 8_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Seller shipping fee compensation” is not mapped — held" },
+      posted(sheet, "577005550004", "Order", 143_500n),
+      posted(sheet, "577005550005", "Order", 61_000n),
+      { ...posted(sheet, "577009990000", "Order", 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 577009990000 — posted to the shop" },
+      posted(sheet, "577005550006", "Order", 210_000n),
+      posted(sheet, "577005550007", "Order", 49_900n),
+      { sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", settlementType: ImportSettlementType.UNSPECIFIED, change: 1_020_400n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, level: LogLevel.INFO, text: "Earnings repeat the order rows — skipped" },
+      posted(sheet, "577005550008", "Order", 118_000n),
+      posted(sheet, "577005550009", "Order", 95_000n),
+    ];
+  }
+
+  const sheet = "Rincian Transaksi";
+  const income = "Penghasilan dari Pesanan";
+  return [
+    posted(sheet, "240928AAAA", income, 185_000n),
+    posted(sheet, "240928BBBB", income, 92_000n),
+    posted(sheet, "240928CCCC", income, 143_500n),
+    { sheet, orderRef: "", platformType: "Biaya Program Baru", settlementType: ImportSettlementType.UNSPECIFIED, change: -15_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Biaya Program Baru” is not mapped — held" },
+    posted(sheet, "240928DDDD", income, 61_000n),
+    posted(sheet, "240928EEEE", income, 210_000n),
+    { ...posted(sheet, "240928WXYZ", income, 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 240928WXYZ — posted to the shop" },
+    posted(sheet, "240928FFFF", income, 49_900n),
+    posted(sheet, "240928GGGG", income, 118_000n),
+    { sheet, orderRef: "", platformType: "Penarikan Dana", settlementType: ImportSettlementType.UNSPECIFIED, change: -2_500_000n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, level: LogLevel.INFO, text: "a withdrawal that did not succeed — skipped" },
+    posted(sheet, "240928HHHH", income, 95_000n),
+    posted(sheet, "240928IIII", income, 72_500n),
+  ];
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const snapshot = (f: StubImport): StubImport => ({ ...f, tally: { ...f.tally } });
+
+// ONE import. It runs as its own task and the stream only WATCHES it: when the client goes away the
+// generator is abandoned, but the task carries on and the row finishes — the decided behaviour
+// (an-import-finishes-whether-anyone-watches), so a story can close the dialog and find the row still going.
+function stubImport(
+  req: { teamId: bigint; shopId: bigint; fileContent: Uint8Array },
+  platform: Marketplace,
+): AsyncIterable<ImportMessage> {
+  const queue: ImportMessage[] = [];
+  let finished = false;
+  let wake: (() => void) | null = null;
+  const push = (m: ImportMessage) => {
+    queue.push(m);
+    wake?.();
+  };
+  const finish = () => {
+    finished = true;
+    wake?.();
+  };
+
+  void (async () => {
+    // THE SHOP CHECK — before anything is stored (the-shop-is-checked-before-the-file-is-stored).
+    const shop = shops.find((x) => x.id === req.shopId && x.teamId === req.teamId);
+    if (!shop) {
+      push({ level: LogLevel.ERROR, message: "This shop is not in your team — nothing was stored" });
+      return finish();
+    }
+    if (shop.marketplace !== platform) {
+      push({ level: LogLevel.ERROR, message: `${shop.name} is not a ${platform === Marketplace.TIKTOK ? "TikTok" : "Shopee"} shop — nothing was stored` });
+      return finish();
+    }
+    if (settlementImportScenario.noPrimaryCs.has(shop.id)) {
+      push({ level: LogLevel.ERROR, message: `${shop.name} has no primary CS — choose a primary CS first` });
+      return finish();
+    }
+    push({ level: LogLevel.INFO, message: `Shop checked — ${shop.name}` });
+
+    const now = timestampFromDate(new Date());
+    const id = nextImportId++;
+    const file: StubImport = {
+      id,
+      teamId: req.teamId,
+      shopId: shop.id,
+      platform,
+      documentId: `doc-${id}`,
+      contentSha256: "5e1a".repeat(16),
+      periodFrom: "",
+      periodTo: "",
+      status: UploadedFileStatus.RUNNING,
+      failure: "",
+      tally: { total: 0, posted: 0, existing: 0, held: 0, skipped: 0, postedToShop: 0 },
+      createdByUserId: 61n,
+      createdAt: now,
+      updatedAt: now,
+      finishedAt: undefined,
+    };
+    importsTable = [file, ...importsTable];
+    push({ level: LogLevel.INFO, message: `File stored — ${req.fileContent.length.toLocaleString()} bytes`, file: snapshot(file) });
+    await sleep(settlementImportScenario.stepMs);
+
+    file.periodFrom = "2026-09-28";
+    file.periodTo = "2026-09-28";
+
+    if (settlementImportScenario.wrongShopFile) {
+      file.status = UploadedFileStatus.FAILED;
+      file.failure = "3 of this file's orders belong to Melati Store — the whole file is refused, nothing was posted";
+      file.finishedAt = timestampFromDate(new Date());
+      push({ level: LogLevel.ERROR, message: file.failure, file: snapshot(file) });
+      return finish();
+    }
+
+    const rows = stubImportRows(platform);
+    file.tally.total = rows.length;
+    push({ level: LogLevel.INFO, message: `Read ${rows.length} rows, 2026-09-28`, count: rows.length, file: snapshot(file) });
+
+    for (const [i, row] of rows.entries()) {
+      await sleep(settlementImportScenario.stepMs);
+
+      if (row.outcome === UploadedFileLineOutcome.POSTED) file.tally.posted += 1;
+      if (row.outcome === UploadedFileLineOutcome.HELD) file.tally.held += 1;
+      if (row.outcome === UploadedFileLineOutcome.SKIPPED) file.tally.skipped += 1;
+      if (row.reason === UploadedFileLineReason.NO_ORDER) file.tally.postedToShop += 1;
+      file.updatedAt = timestampFromDate(new Date());
+
+      // The file's page lists only the rows worth a look — held, skipped, posted to the shop.
+      if (row.outcome !== UploadedFileLineOutcome.POSTED || row.reason === UploadedFileLineReason.NO_ORDER) {
+        importLinesTable.push({
+          id: nextImportLineId++,
+          uploadedFileId: id,
+          sheet: row.sheet,
+          orderRef: row.orderRef,
+          platformType: row.platformType,
+          description: row.platformType,
+          settlementType: row.settlementType,
+          change: row.change,
+          occurredOn: "2026-09-28",
+          orderId: 0n,
+          outcome: row.outcome,
+          reason: row.reason,
+          detail: "",
+          settlementLogId: 0n,
+        });
+      }
+
+      push({ level: row.level, message: `Row ${i + 1}: ${row.text}`, step: i + 1, count: rows.length, file: snapshot(file) });
+    }
+
+    file.status = UploadedFileStatus.DONE;
+    file.finishedAt = timestampFromDate(new Date());
+    push({
+      level: LogLevel.INFO,
+      message: `Done — ${file.tally.posted} posted, ${file.tally.held} held, ${file.tally.skipped} skipped`,
+      step: rows.length,
+      count: rows.length,
+      file: snapshot(file),
+    });
+    finish();
+  })();
+
+  return (async function* () {
+    for (;;) {
+      if (queue.length > 0) {
+        yield queue.shift()!;
+        continue;
+      }
+      if (finished) return;
+      await new Promise<void>((resolve) => {
+        wake = resolve;
+      });
+      wake = null;
+    }
+  })();
+}
+
+// ── UPLOADS ──────────────────────────────────────────────────────────────────────────────────────
+//
+// document_service's two-phase upload — RequestUpload → PUT the bytes to a signed URL → ConfirmUpload
+// — end to end, IN-PROCESS. Every attachment in the app goes this way (an order's receipt, a product
+// image, a payment proof, a profile or team picture), and without it every one of them ended in a
+// toast reading "[unimplemented] … RequestUpload is not implemented".
+//
+// The middle step is a real `fetch` PUT, which a router transport never sees, so `stubUploads()` (run
+// per story from preview.tsx) wraps `window.fetch` for ONE made-up origin and lets everything else
+// through. The PUT's body becomes an object URL, so a public image (product, profile, team) comes back
+// showing the very picture that was picked, and a private one (receipt, proof) opens it.
+const STUB_UPLOAD_ORIGIN = "https://storybook-upload.invalid";
+
+// The answers a story can ask ReceiptCheck for, by the marker's name.
+const RECEIPT_STUB_RESULTS: Record<string, ReceiptCheckResult> = {
+  unknown_label: ReceiptCheckResult.UNKNOWN_LABEL,
+  multiple_labels: ReceiptCheckResult.MULTIPLE_LABELS,
+  not_shipping_label: ReceiptCheckResult.NOT_SHIPPING_LABEL,
+  unreadable: ReceiptCheckResult.UNREADABLE,
+};
+
+interface PendingUpload {
+  teamId: bigint;
+  resourceType: DocumentResourceType;
+  filename: string;
+  mimeType: string;
+  sizeBytes: bigint;
+  // Set by the PUT; a confirm without one is an upload whose bytes never arrived.
+  objectUrl?: string;
+}
+
+const pendingUploads = new Map<string, PendingUpload>();
+// documentId → the object URL its bytes live at, for GetDownloadUrl.
+const uploadedDocs = new Map<string, string>();
+let uploadSeq = 0;
+
+// The resource types a real Document carries a PUBLIC url for (document.proto). A receipt or a proof is
+// private: it has no public url and is opened through GetDownloadUrl instead.
+const PUBLIC_DOCUMENTS = new Set([DocumentResourceType.PROFILE_PICTURE, DocumentResourceType.PRODUCT_IMAGE]);
+
+export function stubUploads() {
+  for (const url of [...uploadedDocs.values(), ...[...pendingUploads.values()].map((p) => p.objectUrl)]) {
+    if (url) URL.revokeObjectURL(url);
+  }
+  pendingUploads.clear();
+  uploadedDocs.clear();
+  uploadSeq = 0;
+
+  // Wrapped ONCE and kept: re-wrapping per story would nest a wrapper around a wrapper each time.
+  const w = window as unknown as { __storybookRealFetch?: typeof fetch };
+  if (w.__storybookRealFetch) return;
+
+  const real = window.fetch.bind(window);
+  w.__storybookRealFetch = real;
+
+  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.startsWith(STUB_UPLOAD_ORIGIN + "/")) {
+      return real(input, init);
+    }
+
+    const pending = pendingUploads.get(url.slice(STUB_UPLOAD_ORIGIN.length + 1));
+    if (!pending) {
+      return new Response(null, { status: 404, statusText: "Unknown upload token" });
+    }
+
+    pending.objectUrl = URL.createObjectURL(init?.body instanceof Blob ? init.body : new Blob([]));
+    return new Response(null, { status: 200 });
+  }) as typeof fetch;
+}
+
 // ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
 function byIds<C extends string, R extends Row>(slice: C, rows: R[], wanted: bigint[]) {
   const items: Record<string, { items: { d: { case: C; value: { mapData: Record<string, R> } } }[] }> = {};
@@ -253,7 +572,7 @@ const WAREHOUSE_ID = teams[0]!.id;
 // table, so if the two narrowed differently the tab counts would describe a different population
 // than the rows under them — and nothing on screen would explain the gap.
 type OrderScopeFilter =
-  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint }
+  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint; createdByUserId?: bigint }
   | undefined;
 
 // Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
@@ -277,8 +596,18 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     // 0 on a side is an OPEN end, so {0,0} means every date.
     .filter((o) => !filter?.createdFromUnix || o.createdAtUnix >= filter.createdFromUnix)
     .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
+    // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
+    .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
+}
+
+// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
+function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
+  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
+  if (!order) throw new ConnectError("order not found", Code.NotFound);
+
+  return order;
 }
 
 // ── The daily statement, from three services at once ────────────────────────────────────────────
@@ -326,6 +655,10 @@ export const transport = createRouterTransport(({ service }) => {
             // then narrows a ProductDiscover by the ids — so a stub that ignored the filter would
             // hand back every team and make the Priority tab indistinguishable from Other.
             (!req.filter?.priorityProductOnly || t.priorityProduct) &&
+            // THE TYPE FILTER, as team_service applies it (`type = ?` when set). A stub that ignored it
+            // handed the order form's WAREHOUSE picker every selling team too — a bug that existed only
+            // here, and so read as a real one to anybody reviewing the form in Storybook.
+            (!req.filter?.teamType || t.type === req.filter.teamType) &&
             match(req.filter?.q, t.name, t.teamCode),
         ),
       ),
@@ -337,6 +670,14 @@ export const transport = createRouterTransport(({ service }) => {
     // Every fixture team names the warehouse team as its default, so the form opens pre-filled —
     // the state the page is actually in for the people using it, rather than an empty select
     // nobody ever really sees.
+    // Records what the Create Team form sent — the Owner it names (the-create-team-form-names-the-first-owner).
+    teamCreate: (req) => {
+      teamCreateScenario.last = { name: req.name, ownerUserId: req.ownerUserId };
+
+      return {
+        team: { id: 99n, type: req.type, name: req.name, teamCode: req.teamCode, description: req.description, deleted: false, imageUrl: "" },
+      };
+    },
     teamDetail: (req) => ({
       team: {
         ...teams.find((t) => t.id === req.teamId),
@@ -358,56 +699,58 @@ export const transport = createRouterTransport(({ service }) => {
   service(UserService, {
     // The caller's memberships — what TeamProvider loads, and therefore what `useTeam().current`
     // resolves to. The warehouse team is first so it becomes the default selection.
-    teamAccessList: () => ({
-      items: [
-        {
-          d: {
-            case: "teamAccess" as const,
-            value: {
-              mapData: Object.fromEntries(
-                teams.map((t) => [
-                  t.id.toString(),
-                  {
-                    teamId: t.id,
-                    role: Role.WAREHOUSE_ADMIN,
-                    alias: "",
-                    teamName: t.name,
-                    teamType: t.type,
-                    imageUrl: "",
-                  },
-                ]),
-              ),
+    teamAccessList: () => {
+      // Every fixture team, unless a story narrows it (sessionScenario.memberOf) — then those teams, plus the
+      // root team for Root or the Administrator, whose reach comes from there.
+      const mine = sessionScenario.memberOf === null ? teams : teams.filter((t) => sessionScenario.memberOf!.includes(t.id));
+      const platform = sessionScenario.role === Role.ROOT || sessionScenario.role === Role.ADMINISTRATOR;
+      const rows = mine.map((t) => ({ teamId: t.id, teamName: t.name, teamType: t.type }));
+
+      if (sessionScenario.memberOf !== null && platform) {
+        rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });
+      }
+
+      return {
+        items: [
+          {
+            d: {
+              case: "teamAccess" as const,
+              value: {
+                mapData: Object.fromEntries(
+                  rows.map((t) => [
+                    t.teamId.toString(),
+                    {
+                      teamId: t.teamId,
+                      // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
+                      role: sessionScenario.role,
+                      teamName: t.teamName,
+                      teamType: t.teamType,
+                      imageUrl: "",
+                    },
+                  ]),
+                ),
+              },
             },
           },
-        },
-      ],
-      ids: teams.map((t) => t.id),
-      pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(teams.length) },
-    }),
-    // UserList is the TEAM-scoped search; SearchUser is the global typeahead. The two return
-    // different messages (User vs the narrower PublicUser), which is exactly why UserSelect has two
-    // paths — so the stub keeps them distinct rather than serving one shape for both.
-    userList: (req) => columnar("user", users.filter((u) => match(req.filter?.q, u.name, u.username))),
-    // THE ACTORS BEHIND A TIMELINE. `fetchActors` SWALLOWS a failure here and returns an empty map,
-    // so leaving this unstubbed does not throw — it silently degrades every history to "User #61".
-    // That is the one shape of broken stub this file's `unimplemented` default cannot shout about,
-    // which is exactly why it is stubbed rather than left out.
-    //
-    // ⚠ AN UNKNOWN ID IS ABSENT, never a null row — `byIds` already enforces that, and the pages
-    // depend on it: id 0 means "not recorded" and must fall through to the page's own fallback.
-    userByIDs: (req) => byIds("publicUser", publicUsers, req.filter?.ids ?? []),
-    searchUser: (req) => ({
-      users: publicUsers.filter((u) => match(req.q, u.name, u.username)).slice(0, req.limit || 10),
-    }),
+        ],
+        ids: rows.map((t) => t.teamId),
+        pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(rows.length) },
+      };
+    },
+    // Everything else — the member list, the search, the membership writes, the history — is the
+    // writeable stub in userStub.ts, which plays the user decisions (docs/business/user).
+    ...userStub,
   });
 
   service(ShopService, {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
   });
 
-  service(SupplierService, {
-    supplierList: (req) => columnar("supplier", suppliers.filter((s) => match(req.filter?.q, s.name, s.code))),
-  });
+  // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
+  service(SupplierService, supplierService);
+  service(SupplierChannelService, supplierChannelService);
+  // Its figures — supplierFigureFixtures.ts, read as the folded table is (the-figures-screens-are-accepted).
+  service(SupplierAnalyticService, supplierAnalyticService);
 
   service(RackService, {
     rackList: () => columnar("rack", racks),
@@ -474,6 +817,25 @@ export const transport = createRouterTransport(({ service }) => {
     },
   });
 
+  // THE LABEL READER, without the reader. The Go package cannot run here, so a story NAMES the answer
+  // it wants by writing `stub-result:<name>` into its fake PDF (see `receiptLabelFile`); a file with no
+  // marker is a label that reads. What is kept from the real service is the shape of every answer: a
+  // RESULT in a successful response, never an error (a-label-outcome-is-a-result-not-an-error), and
+  // every field "" unless the result is READ.
+  service(ReceiptService, {
+    receiptCheck: (req) => {
+      const head = new TextDecoder().decode(req.fileContent.subarray(0, 512));
+      if (!head.startsWith("%PDF-")) {
+        return { result: ReceiptCheckResult.UNREADABLE };
+      }
+
+      const named = /stub-result:([a-z_]+)/.exec(head)?.[1] ?? "";
+      const result = RECEIPT_STUB_RESULTS[named] ?? ReceiptCheckResult.READ;
+
+      return result === ReceiptCheckResult.READ ? { result, ...receiptLabel } : { result };
+    },
+  });
+
   service(RegionService, {
     // The cascade: each level asks for its parent's children, so the empty parentCode is the top.
     regionList: (req) => ({
@@ -482,6 +844,41 @@ export const transport = createRouterTransport(({ service }) => {
     regionSearchByKodePos: (req) => ({
       results: regions.filter((r) => r.kodePos.startsWith(req.kodePos)).slice(0, req.limit || 10),
     }),
+    // The name typeahead, narrowed to one level — "find the kecamatan called X".
+    //
+    // ⚠ A HIT STOPS AT ITS OWN LEVEL. The real service returns an ancestry filled from provinsi DOWN
+    // TO the hit and empty below it, so a kecamatan hit carries no desa and no kode pos — which is
+    // exactly the case AddressPicker's derivation exists for. A stub that helpfully returned the
+    // desa's postcode would make that code path untestable and the picker look like it worked.
+    regionSearch: (req) => {
+      const q = req.q.toLowerCase();
+      const level = req.level;
+
+      const matches = regions.filter((r) =>
+        level === RegionLevel.KECAMATAN
+          ? r.kecamatanName.toLowerCase().includes(q)
+          : level === RegionLevel.KABUPATEN
+            ? r.kabupatenName.toLowerCase().includes(q)
+            : level === RegionLevel.PROVINSI
+              ? r.provinsiName.toLowerCase().includes(q)
+              : r.desaName.toLowerCase().includes(q),
+      );
+
+      if (level !== RegionLevel.KECAMATAN) {
+        return { results: matches.slice(0, req.limit || 10) };
+      }
+
+      // One row per kecamatan: the fixtures hold an ancestry per DESA, and two desa of the same
+      // kecamatan would otherwise come back as two identical-looking hits.
+      const byKecamatan = new Map<string, (typeof regions)[number]>();
+      for (const r of matches) {
+        if (!byKecamatan.has(r.kecamatanCode)) {
+          byKecamatan.set(r.kecamatanCode, { ...r, desaCode: "", desaName: "", kodePos: "" });
+        }
+      }
+
+      return { results: [...byKecamatan.values()].slice(0, req.limit || 10) };
+    },
     // Hydration: a consumer may hold a saved address as CODES ONLY, and one resolve back-fills every
     // label. Matching on the DESA code is enough for the fixtures, which is the deepest level.
     regionResolve: (req) => ({
@@ -563,10 +960,14 @@ export const transport = createRouterTransport(({ service }) => {
     // that this RPC does NOT use the "absent means zero" convention: a screen deciding whether it may
     // promise goods to a buyer must not have to infer a zero from a gap, because a partial answer
     // looks identical. Filtering the zeros out here would make the stub kinder than the server.
+    //
+    // ⚠ PER WAREHOUSE. The fixture stock is one building's (WAREHOUSE_ID), so any other warehouse
+    // answers zeros. Answering every warehouse with the same shelf made a screen that lists several
+    // warehouses side by side (the discover detail) show one stock as if it were held twice.
     stockAvailability: (req) => ({
       items: req.productIds.map((id) => ({
         productId: id,
-        available: warehouseStock[id.toString()] ?? 0n,
+        available: req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n,
       })),
     }),
 
@@ -649,6 +1050,14 @@ export const transport = createRouterTransport(({ service }) => {
         ]),
       ),
     }),
+
+    // The shelves an order's goods were drawn from, keyed by the ref selling_service recorded the draw
+    // under (`order:<id>`). A ref this stub does not recognise answers EMPTY, as the server would —
+    // "nothing was drawn" is a real answer, not an error.
+    stockPickLocations: (req) => {
+      const match = /^order:(\d+)$/.exec(req.ref);
+      return { locations: match ? pickLocationsFor(BigInt(match[1]!)) : [] };
+    },
   });
 
   service(OrderService, {
@@ -692,11 +1101,47 @@ export const transport = createRouterTransport(({ service }) => {
       return { order };
     },
 
+    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
+    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
+    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    //
+    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
+    // selling team pressing these would be refused by the policy long before the handler.
+    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
+    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
+
     // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
     // read to decide which tab to open, so computing them per tab would empty the number you were
     // about to click. Every OTHER filter does apply, and that is the same rule from the other side —
     // a header counting a bigger population than the rows below it is a gap nothing on screen
     // explains.
+    // The "created by" filter's feed (a-who-filter-lists-the-people-on-its-rows): everyone who typed in an order
+    // this team may list, the latest first — never a member list. 0 is nobody.
+    orderCreatorList: (req) => {
+      const last = new Map<bigint, bigint>();
+      for (const o of visibleOrders(req.teamId, undefined)) {
+        if (o.createdByUserId === 0n) continue;
+        if ((last.get(o.createdByUserId) ?? -1n) < o.createdAtUnix) last.set(o.createdByUserId, o.createdAtUnix);
+      }
+
+      const ids = [...last.keys()].sort((a, b) => (last.get(a)! < last.get(b)! ? 1 : -1));
+
+      return {
+        items: [
+          {
+            d: {
+              case: "creator" as const,
+              value: { mapData: Object.fromEntries(ids.map((id) => [id.toString(), { userId: id, lastAtUnix: last.get(id)! }])) },
+            },
+          },
+        ],
+        ids,
+        pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(ids.length) },
+      };
+    },
+
     orderStat: (req) => {
       const rows = visibleOrders(req.teamId, req.filter);
 
@@ -727,12 +1172,19 @@ export const transport = createRouterTransport(({ service }) => {
     // A draft is team-scoped AND personal, and — unlike an order — it has only ONE side: it belongs
     // to the team that typed it. So this is a plain `teamId` match, and a warehouse's list is empty
     // because a warehouse never types one.
+    // Newest first unless ASC is asked for — the server's `id DESC` default, which the drafts screen's
+    // "oldest" card reverses to read the first draft ever written.
     orderDraftList: (req) =>
       pagedColumnar(
         "orderDraft",
         orderDrafts
           .filter((d) => d.teamId === req.teamId)
-          .filter((d) => !req.filter?.source || d.source === req.filter.source),
+          .filter((d) => !req.filter?.source || d.source === req.filter.source)
+          .slice()
+          .sort((a, b) => {
+            const asc = req.sort?.sortType === CommonSortType.ASC;
+            return (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) * (asc ? 1 : -1);
+          }),
         req.page,
       ),
 
@@ -755,6 +1207,28 @@ export const transport = createRouterTransport(({ service }) => {
       },
     }),
     orderDraftUpdate: (req) => ({ draft: { id: req.draftId } }),
+
+    // ONE side, like the list: a draft another team typed is NotFound, never "forbidden".
+    orderDraftDetail: (req) => {
+      const draft = orderDraftDetailFor(req.draftId);
+      if (!draft || draft.teamId !== req.teamId) {
+        throw new ConnectError("draft not found", Code.NotFound);
+      }
+
+      return { draft };
+    },
+
+    // Counts only the ids that are this team's — an id that is not the caller's is SKIPPED, not a
+    // failure (order_draft.proto), so `deleted` can be smaller than what was asked. Stateless, like the
+    // fulfilment steps: the list keeps its rows, and the story asserts on the toast.
+    orderDraftDelete: (req) => ({
+      deleted: req.draftIds.filter((id) => orderDrafts.some((d) => d.id === id && d.teamId === req.teamId))
+        .length,
+    }),
+
+    // The draft becomes an order with a new id — the page navigates there, which is what a story
+    // asserts on.
+    orderDraftPromote: () => ({ order: { id: 902n } }),
   });
 
   service(LiabilityService, {
@@ -861,11 +1335,56 @@ export const transport = createRouterTransport(({ service }) => {
     },
   });
 
-  // Proof is uploaded by the PAYER and read by the CREDITOR (a-payment-must-carry-proof). The stub
-  // only needs the READ half: `useProofUpload` PUTs bytes to a signed URL, which no in-process fake
-  // can stand in for, so the upload path is exercised by e2e rather than here.
+  // UPLOADS — see `stubUploads()` above for the PUT in the middle. The e2e still exercise the real
+  // storage path; this only lets a story (and the person reviewing it) actually attach a file.
   service(DocumentService, {
-    getDownloadUrl: (req) => ({ url: `https://example.invalid/proof/${req.documentId}` }),
+    requestUpload: (req) => {
+      const token = `upload-${++uploadSeq}`;
+      pendingUploads.set(token, {
+        teamId: req.teamId,
+        resourceType: req.resourceType,
+        filename: req.filename,
+        mimeType: req.contentType,
+        sizeBytes: req.sizeBytes,
+      });
+
+      return {
+        uploadUrl: `${STUB_UPLOAD_ORIGIN}/${token}`,
+        method: "PUT",
+        headers: { "Content-Type": req.contentType },
+        uploadToken: token,
+        expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 15 * 60),
+      };
+    },
+    confirmUpload: (req) => {
+      const pending = pendingUploads.get(req.uploadToken);
+      if (!pending?.objectUrl) {
+        throw new ConnectError("upload not found, or its bytes were never PUT", Code.NotFound);
+      }
+      pendingUploads.delete(req.uploadToken);
+
+      const id = `stub-${req.uploadToken}`;
+      uploadedDocs.set(id, pending.objectUrl);
+      const publicUrl = PUBLIC_DOCUMENTS.has(pending.resourceType) ? pending.objectUrl : "";
+
+      return {
+        document: {
+          id,
+          teamId: pending.teamId,
+          resourceType: pending.resourceType,
+          filename: pending.filename,
+          mimeType: pending.mimeType,
+          sizeBytes: pending.sizeBytes,
+          publicUrl,
+          thumbnailUrl: publicUrl,
+        },
+      };
+    },
+    // A document uploaded in this story opens its own bytes; a fixture id (a proof the fixtures name)
+    // gets a placeholder, as before.
+    getDownloadUrl: (req) => ({
+      url: uploadedDocs.get(req.documentId) ?? `https://example.invalid/proof/${req.documentId}`,
+    }),
   });
 
   service(LiabilityTermsService, {
@@ -1084,6 +1603,47 @@ export const transport = createRouterTransport(({ service }) => {
       };
     },
   });
+
+  // The settlement importer, served with the rules it owns: another team's file is absent, and each
+  // import runs whether or not its stream is still being read.
+  // The financial accounts — the prototype stub, in its own module because it is the whole service
+  // (financialAccountStub.ts): a writeable ledger plus the reports read from it.
+  service(FinancialAccountService, financialAccountService);
+  service(FinancialAccountAnalyticService, financialAccountAnalyticService);
+
+  service(SettlementImporterService, {
+    uploadedFileList: (req) => {
+      const rows = importsTable
+        .filter((f) => f.teamId === req.teamId)
+        .filter((f) => !req.filter?.shopId || f.shopId === req.filter.shopId)
+        .filter((f) => !req.filter?.platform || f.platform === req.filter.platform)
+        .filter((f) => !req.filter?.statuses?.length || req.filter.statuses.includes(f.status));
+
+      return pagedColumnar("file", rows, req.page as PageReq);
+    },
+    uploadedFileByIds: (req) =>
+      byIds(
+        "file",
+        importsTable.filter((f) => f.teamId === req.teamId),
+        req.filter?.ids ?? [],
+      ),
+    uploadedFileLineList: (req) => {
+      const fileId = req.filter?.uploadedFileId ?? 0n;
+      const owned = importsTable.some((f) => f.id === fileId && f.teamId === req.teamId);
+      const outcomes = req.filter?.outcomes ?? [];
+      const reasons = req.filter?.reasons ?? [];
+      const rows = owned
+        ? importLinesTable
+            .filter((l) => l.uploadedFileId === fileId)
+            .filter((l) => outcomes.length === 0 || outcomes.includes(l.outcome))
+            .filter((l) => reasons.length === 0 || reasons.includes(l.reason))
+        : [];
+
+      return pagedColumnar("line", rows, req.page as PageReq);
+    },
+    tiktokSettlementImport: (req) => stubImport(req, Marketplace.TIKTOK),
+    shopeeSettlementImport: (req) => stubImport(req, Marketplace.SHOPEE),
+  });
 });
 
 // ── The settlement reports' arithmetic ──────────────────────────────────────────────────────────
@@ -1097,7 +1657,7 @@ function reportBook(teamId: bigint): ReportDay[] {
 }
 
 const changeOf = (d: ReportDay) =>
-  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment;
+  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment + d.withdrawal;
 
 const sumOf = (rows: ReportDay[], pick: (d: ReportDay) => bigint) =>
   rows.reduce((total, d) => total + pick(d), 0n);
@@ -1116,6 +1676,11 @@ function reportMetric(movements: ReportDay[], upToEnd: ReportDay[]) {
     affiliateFee: 0n,
     marketplaceAdjustment: sumOf(movements, (d) => d.marketplaceAdjustment),
     systemAdjustment: 0n,
+    withdrawal: sumOf(movements, (d) => d.withdrawal),
+    shipmentAdjustment: 0n,
+    logisticReimbursement: 0n,
+    platformReimbursement: 0n,
+    marketplaceProgram: 0n,
     change,
     openBalance: close - change,
     closeBalance: close,

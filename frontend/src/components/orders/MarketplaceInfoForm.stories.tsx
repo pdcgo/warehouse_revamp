@@ -230,7 +230,7 @@ export const Interactive: Story = {
     await userEvent.clear(canvas.getByTestId("order-marketplace-total"));
     await userEvent.type(canvas.getByTestId("order-marketplace-total"), "250000", { delay: 40 });
 
-    await expect(canvas.getByTestId("shop-select")).toHaveTextContent(TOKOPEDIA_SHOP.name);
+    await expect(canvas.getByTestId("shop-select")).toHaveValue(TOKOPEDIA_SHOP.name);
     await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue(REF);
     await expect(canvas.getByTestId("order-marketplace-total")).toHaveValue("250.000");
   },

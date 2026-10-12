@@ -78,18 +78,23 @@ func (s *Service) setPassword(
 		return "", connect.NewError(connect.CodeInternal, err)
 	}
 
-	err = s.db.
+	res := s.db.
 		WithContext(ctx).
 		Model(&user_service_models.User{}).
-		Where("id = ?", user.ID).
+		Where("id = ? AND erased_at IS NULL", user.ID).
 		Updates(map[string]any{
 			"password":            string(hash),
 			"last_password_reset": now,
 			"updated_at":          gorm.Expr("NOW()"),
-		}).
-		Error
-	if err != nil {
-		return "", connect.NewError(connect.CodeInternal, err)
+		})
+	if res.Error != nil {
+		return "", connect.NewError(connect.CodeInternal, res.Error)
+	}
+
+	// The account was just read, so no row means it is erased — and an erased account stays without a password
+	// (an-erased-account-is-final), whoever asks.
+	if res.RowsAffected == 0 {
+		return "", errErased("is never given a password")
 	}
 
 	// The roles have not changed, but a password reset is a security event — drop the cached

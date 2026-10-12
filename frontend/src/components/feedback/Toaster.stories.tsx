@@ -33,7 +33,7 @@ export const Kinds: Story = {
       </Button>
       <Button
         size="sm"
-        colorPalette="red"
+        colorPalette="error"
         onClick={() =>
           toaster.create({
             title: "Could not cancel order",
@@ -78,7 +78,7 @@ export const ErrorCarriesTheReason: Story = {
   render: () => (
     <Button
       data-testid="fire"
-      colorPalette="red"
+      colorPalette="error"
       onClick={() =>
         toaster.create({
           title: "Could not cancel order",

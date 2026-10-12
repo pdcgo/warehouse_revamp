@@ -20,7 +20,10 @@ func (s *Service) UpdateProfile(
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	updates := profileUpdates(req.Msg.Name, req.Msg.Email, req.Msg.PhoneNumber)
+	updates, err := profileUpdates(req.Msg.Name, req.Msg.Email, req.Msg.PhoneNumber)
+	if err != nil {
+		return nil, err
+	}
 
 	// The avatar URL comes from document_service after the client uploads a profile picture.
 	if req.Msg.AvatarUrl != nil {

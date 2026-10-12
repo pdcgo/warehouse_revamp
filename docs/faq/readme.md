@@ -118,6 +118,8 @@ second time will be slightly different. That drift is the actual cost.
 - [Where do I put a new file?](frontend.md#where-do-i-put-a-new-file)
 - [Do I write the component myself?](frontend.md#do-i-write-the-component-myself)
 - [Can I use a raw `<button>` / `<input>` / `<select>` / `<div>`?](frontend.md#can-i-use-a-raw-button--input--select--div)
+- [Should a picker be a search select or a plain dropdown?](frontend.md#should-a-picker-be-a-search-select-or-a-plain-dropdown)
+- [A list needs a "created by" / "accepted by" filter. Do I use `UserSelect`?](frontend.md#a-list-needs-a-created-by--accepted-by-filter-do-i-use-userselect)
 - [Where do sizes, spacing and colours come from?](frontend.md#where-do-sizes-spacing-and-colours-come-from)
 - [How do I add an icon?](frontend.md#how-do-i-add-an-icon)
 - [Why does my list flicker, or show stale numbers?](frontend.md#why-does-my-list-flicker-or-show-stale-numbers)
@@ -127,6 +129,10 @@ second time will be slightly different. That drift is the actual cost.
 - [Does my component need a Storybook story?](frontend.md#does-my-component-need-a-storybook-story)
 - [What bites when writing a story?](frontend.md#what-bites-when-writing-a-story)
 - [How do I run the e2e?](frontend.md#how-do-i-run-the-e2e)
+- [How do I see a screen without the ⚠ "not implemented yet" marks?](frontend.md#how-do-i-see-a-screen-without-the--not-implemented-yet-marks)
+- [Why doesn't the total on an order row equal `Order.total`?](frontend.md#why-doesnt-the-total-on-an-order-row-equal-ordertotal)
+- [How is the margin on an order computed?](frontend.md#how-is-the-margin-on-an-order-computed)
+- [Why does one order show a marketplace date but no marketplace total?](frontend.md#why-does-one-order-show-a-marketplace-date-but-no-marketplace-total)
 
 ### Troubleshooting
 
@@ -143,10 +149,12 @@ second time will be slightly different. That drift is the actual cost.
 - [Permission denied calling an RPC](troubleshooting.md#permission-denied-calling-an-rpc)
 - [Something cached is stale after I changed a role/permission](troubleshooting.md#something-cached-is-stale-after-i-changed-a-rolepermission)
 - [A Pub/Sub message keeps being redelivered forever](troubleshooting.md#a-pubsub-message-keeps-being-redelivered-forever)
+- [An import, or placing an order, hangs for about a minute — or an order e2e times out on the order form](troubleshooting.md#an-import-or-placing-an-order-hangs-for-about-a-minute)
 - [My MCP endpoint answers 403 to everything, but only through the tunnel](troubleshooting.md#my-mcp-endpoint-answers-403-to-everything-but-only-through-the-tunnel)
 - [My MCP client re-initializes on every call and loses its state](troubleshooting.md#my-mcp-client-re-initializes-on-every-call-and-loses-its-state)
 - [My MCP client connects but every tool call comes back unauthorized](troubleshooting.md#my-mcp-client-connects-but-every-tool-call-comes-back-unauthorized)
 - [`GetDownloadUrl` says NotFound for a document I know exists](troubleshooting.md#getdownloadurl-says-notfound-for-a-document-i-know-exists)
+- [Why is my settlement import refused?](troubleshooting.md#why-is-my-settlement-import-refused)
 
 ---
 

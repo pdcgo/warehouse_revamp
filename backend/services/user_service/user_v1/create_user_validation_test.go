@@ -17,9 +17,9 @@ func TestCreateUserRequest_UsernameLowercaseAlnum(t *testing.T) {
 		t.Fatalf("protovalidate.New: %v", err)
 	}
 
-	// Only username varies; password is the other constrained field.
+	// Only username varies; password and name are the other constrained fields.
 	req := func(username string) *userv1.CreateUserRequest {
-		return &userv1.CreateUserRequest{Username: username, Password: "password1"}
+		return &userv1.CreateUserRequest{Username: username, Password: "password1", Name: "Test"}
 	}
 
 	for _, ok := range []string{"john", "john123", "abc", "user2024"} {

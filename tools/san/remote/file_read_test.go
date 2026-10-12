@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -94,7 +95,15 @@ func TestFileReadMissingIsNotFound(t *testing.T) {
 func TestFileReadRefusesEscapes(t *testing.T) {
 	h := newHarness(t, nil)
 
-	for _, path := range []string{"../outside.txt", "/etc/passwd", `C:\Windows\win.ini`} {
+	escapes := []string{"../outside.txt", "/etc/passwd"}
+	if runtime.GOOS == "windows" {
+		// A drive path escapes only where drives exist. On Linux `C:\Windows\win.ini` is one legal
+		// file name INSIDE the workspace, and the guard is right to read it as one — which is why CI,
+		// on Linux, failed this case for as long as it was unconditional.
+		escapes = append(escapes, `C:\Windows\win.ini`)
+	}
+
+	for _, path := range escapes {
 		_, err := h.read(t, path)
 		if err == nil {
 			t.Fatalf("FileRead(%q) succeeded — it is outside the workspace", path)

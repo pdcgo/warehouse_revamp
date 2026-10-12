@@ -165,7 +165,7 @@ export function RestockLabelsPage() {
     return (
       <Stack gap="section">
         {back}
-        <Text color="red.fg" data-testid="labels-error">
+        <Text color="error.fg" data-testid="labels-error">
           {query.isError ? rpcError(query.error) : t("restock.labels.notFound")}
         </Text>
       </Stack>
@@ -185,7 +185,7 @@ export function RestockLabelsPage() {
           print dialog, which is where a PDF is saved too). */}
       <Flex align="center" gap="card" wrap="wrap" className="no-print">
         <Heading size="md">{t("restock.labels.heading", { id: data.restockId.toString() })}</Heading>
-        <Badge colorPalette="green">
+        <Badge colorPalette="success">
           <Icon as={Check} boxSize="3.5" />
           {t("restock.labels.accepted")}
         </Badge>
@@ -298,7 +298,7 @@ export function RestockLabelsPage() {
                 fontSize="sm"
                 data-testid="labels-excluded"
               >
-                <Icon as={TriangleAlert} boxSize="4" color="orange.fg" />
+                <Icon as={TriangleAlert} boxSize="4" color="warning.fg" />
                 <Text>{t("restock.labels.excluded", { count: Number(data.excludedCount) })}</Text>
               </Flex>
             )}

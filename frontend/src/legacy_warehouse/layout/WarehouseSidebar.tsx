@@ -51,7 +51,7 @@ export function WarehouseSidebar({ pathname, user, badges, onNavigate, onSignOut
       <Box borderTopWidth="1px" bg="bg.subtle">
         <Button
           variant="ghost"
-          colorPalette="red"
+          colorPalette="error"
           w="full"
           justifyContent="center"
           borderRadius="0"

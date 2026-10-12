@@ -38,7 +38,7 @@ async function gotoWarehouses(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 
-test("Create: a new warehouse appears, typed WAREHOUSE and owned by its creator", async ({ page }) => {
+test("Create: a new warehouse appears, typed WAREHOUSE and owned by the person it names", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
   await gotoWarehouses(page);
 
@@ -50,6 +50,10 @@ test("Create: a new warehouse appears, typed WAREHOUSE and owned by its creator"
   await page.getByTestId("new-team-name").fill(NAME);
   await page.getByTestId("new-team-code").fill(CODE);
   await page.getByTestId("new-team-description").fill("created by e2e");
+
+  // The form names the Owner (the-create-team-form-names-the-first-owner) — root, so it is a member below.
+  await page.getByTestId("new-team-owner").getByRole("combobox").fill(ROOT_USERNAME);
+  await page.getByTestId(`user-select-option-${ROOT_USERNAME}`).click();
   await page.getByTestId("submit-create-team").click();
 
   await expect(page.getByTestId(`team-row-${CODE}`)).toBeVisible();
@@ -71,7 +75,7 @@ test("Read: the dedicated warehouse detail page opens from the row", async ({ pa
 
   // Members live under the Member tab now (#89).
   await page.getByTestId("team-detail-tab-member").click();
-  // TeamCreate makes the creator the owner, so root is a member of this warehouse team.
+  // The create form named root as the Owner, so root is a member of this warehouse team.
   await expect(page.getByTestId("team-detail-members")).toContainText(ROOT_USERNAME);
 
   // Back returns to the Teams page (the detail route's backTo is /teams).

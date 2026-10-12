@@ -3,8 +3,11 @@ import {
   type TeamAccessItem,
   type TeamAccessListResponseItem,
   TeamAccessDataType,
+  type TeamMemberLogEntry,
+  type TeamMemberLogListResponseItem,
   type User,
   UserByIdsDataType,
+  type UserMembership,
   type UserByIDsResponse,
   UserListDataType,
   type UserListResponseItem,
@@ -16,6 +19,9 @@ import {
 // boundary — the screens keep their existing shapes.
 
 export const userListRowData = (): UserListDataType[] => [UserListDataType.USER];
+// The member list also asks for each person's role in the scoped team (USER_LIST_DATA_TYPE_MEMBERSHIP).
+// ⚠ The server returns no such slice until the user decisions are built, so the map comes back empty.
+export const memberListRowData = (): UserListDataType[] => [UserListDataType.USER, UserListDataType.MEMBERSHIP];
 export const userByIdsRowData = (): UserByIdsDataType[] => [UserByIdsDataType.PUBLIC_USER];
 export const teamAccessRowData = (): TeamAccessDataType[] => [TeamAccessDataType.TEAM_ACCESS];
 
@@ -67,6 +73,39 @@ export function teamAccessFromList(
   }
 
   const out: TeamAccessItem[] = [];
+  for (const id of ids) {
+    const r = rowMap[id.toString()];
+    if (r) out.push(r);
+  }
+
+  return out;
+}
+
+// membershipsFromList pulls the MEMBERSHIP slice out of a list response: user id → their place in the
+// scoped team. Empty when the server did not send the slice.
+export function membershipsFromList(items: UserListResponseItem[]): Map<string, UserMembership> {
+  const out = new Map<string, UserMembership>();
+  for (const it of items) {
+    if (it.d.case === "membership") {
+      for (const [id, m] of Object.entries(it.d.value.mapData)) {
+        out.set(id, m);
+      }
+    }
+  }
+
+  return out;
+}
+
+// logEntriesFromList rebuilds the membership log in the response's sorted id order (newest first).
+export function logEntriesFromList(items: TeamMemberLogListResponseItem[], ids: bigint[]): TeamMemberLogEntry[] {
+  let rowMap: { [key: string]: TeamMemberLogEntry } = {};
+  for (const it of items) {
+    if (it.d.case === "entry") {
+      rowMap = it.d.value.mapData;
+    }
+  }
+
+  const out: TeamMemberLogEntry[] = [];
   for (const id of ids) {
     const r = rowMap[id.toString()];
     if (r) out.push(r);

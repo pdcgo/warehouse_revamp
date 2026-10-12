@@ -91,7 +91,7 @@ export function BillingTeamBalancePage({ teams, loading }: BillingTeamBalancePag
           <Stack gap="0" align="flex-end" lineHeight="short">
             <StatisticCell value={net} kind="price" compact />
             {/* The direction, in words. */}
-            <Text fontSize="xs" color={inOurFavour ? "green.fg" : "orange.fg"}>
+            <Text fontSize="xs" color={inOurFavour ? "success.fg" : "warning.fg"}>
               {inOurFavour ? "Owed to us" : "We owe"}
             </Text>
           </Stack>

@@ -38,6 +38,21 @@ export const OpensOnClickWithTheWholeCatalogue: Story = {
   },
 };
 
+// A courier is shown the SAME WAY everywhere, this list included: the option is a ShippingBadge, not a
+// line of text. The colour is what the eye finds in a list of couriers it already knows; the name is
+// inside the badge, so the colour is never the only cue.
+export const OptionsCarryTheCourierBadge: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+
+    const option = await screen.findByTestId(`shipping-select-option-${couriers[0]!.code}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(within(option).getByTestId(`shipping-badge-${couriers[0]!.code}`)).toBeVisible();
+  },
+};
+
 // DELETED channels are not offered for new work — the shared catalogue carries them for the badges, and
 // the picker filters them out ("pos" is deleted in the fixtures).
 export const InactiveCouriersAreNotOffered: Story = {

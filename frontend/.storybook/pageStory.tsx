@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { RouteObject } from "react-router-dom";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { Text } from "@chakra-ui/react";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { CURRENT_TEAM_KEY } from "../src/features/team/TeamContext";
 
@@ -69,4 +70,20 @@ export function routedPage(routes: RouteObject[], initialEntry: string) {
  */
 export function marker(path: string, testId: string): RouteObject {
   return { path, element: <Text data-testid={testId}>{testId}</Text> };
+}
+
+// ── Picking a team in a filter ──────────────────────────────────────────────────────────────────
+
+/**
+ * Pick `teamCode` in the TeamSelect inside `field` — a filter strip's slot, found by its testId.
+ *
+ * TeamSelect PORTALS its listbox, so the option is found on `screen`, never inside the canvas; and the list animates
+ * in, so the option is waited visible before it is clicked (until then `pointer-events: none` refuses the click).
+ */
+export async function pickTeam(field: HTMLElement, teamCode: string) {
+  await userEvent.click(within(field).getByRole("combobox"));
+
+  const option = await screen.findByTestId(`team-select-option-${teamCode}`);
+  await waitFor(() => expect(option).toBeVisible());
+  await userEvent.click(option);
 }

@@ -78,7 +78,7 @@ export function EditCategoryDialog({ category }: { category: Category }) {
               <Dialog.Body>
                 <Stack gap="card">
                   {error && (
-                    <Text color="red.fg" data-testid="edit-category-error">
+                    <Text color="error.fg" data-testid="edit-category-error">
                       {error}
                     </Text>
                   )}

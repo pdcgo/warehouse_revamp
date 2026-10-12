@@ -25,7 +25,8 @@ export const Compact: Story = { args: { marketplace: Marketplace.LAZADA, size: "
 
 // The whole point of the component: ONE place owns marketplace → colour, so a marketplace looks the
 // same in every table, dropdown and detail panel. Seeing them together is how that mapping stays a
-// decision rather than six independent guesses.
+// decision rather than independent guesses — review it in BOTH colour modes (toolbar), since every
+// colour here is tuned per mode.
 export const EveryMarketplace: Story = {
   render: () => (
     <HStack gap="2" wrap="wrap">
@@ -36,6 +37,7 @@ export const EveryMarketplace: Story = {
         Marketplace.TIKTOK,
         Marketplace.BLIBLI,
         Marketplace.BUKALAPAK,
+        Marketplace.OTHER,
       ].map((m) => (
         <MarketplaceBadge key={m} marketplace={m} />
       ))}

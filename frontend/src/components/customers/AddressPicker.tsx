@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Combobox,
   Field,
@@ -11,8 +11,13 @@ import {
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { regionClient, rpcError } from "../../api/clients";
-import { useRegionByKodePos } from "../../features/region/queries";
+import {
+  useDesaOfKecamatans,
+  useRegionByKodePos,
+  useRegionSearch,
+} from "../../features/region/queries";
 import { useDebounced } from "../../lib/useDebounced";
+import { RegionLevel } from "../../gen/warehouse/region/v1/region_pb";
 import type { Region, RegionAncestry } from "../../gen/warehouse/region/v1/region_pb";
 
 // What the picker emits — codes AND names, so a consumer can SNAPSHOT the address onto its own
@@ -52,6 +57,15 @@ export interface AddressPickerProps {
   value: AddressValue;
   onChange: (next: AddressValue) => void;
   disabled?: boolean;
+  /**
+   * Offer a SECOND way in: search the kecamatan by name (owner).
+   *
+   * Off by default, so every screen using this control today is untouched. On, a search box appears
+   * under the kode pos: picking a kecamatan fills provinsi → kecamatan, and the postcode too WHEN
+   * that kecamatan has only one (see KecamatanField). It is for the buyer who names their district
+   * and quotes no code — the case the postcode path cannot serve at all.
+   */
+  kecamatanSearch?: boolean;
 }
 
 // A level is dozens of rows (a kecamatan's desa), never the whole 83.762 — so one page per level is
@@ -67,6 +81,11 @@ const SEARCH_LIMIT = 10;
 // Three digits before we ask — the floor the proto enforces. One digit covers a tenth of the
 // country's desa, and twenty rows out of thousands is a lottery, not a suggestion.
 const SEARCH_MIN_DIGITS = 3;
+// How many of the kecamatan hits get their desa listed underneath. See KecamatanField.
+const KECAMATAN_EXPAND = 4;
+// The name typeahead's floor, and the proto's own (`RegionSearch.q` min_len 2): one letter over
+// 91.599 rows is a table scan nobody can read.
+const SEARCH_MIN_NAME_CHARS = 2;
 // An Indonesian kode pos is five digits, always.
 const KODE_POS_DIGITS = 5;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -104,6 +123,11 @@ function hitPath(a: RegionAncestry): string {
 
   return above.filter(Boolean).join(", ");
 }
+
+/** A row in the kecamatan search: the district itself, or one of the desa inside it. */
+type KecamatanOption =
+  | { key: string; kind: "kecamatan"; hit: RegionAncestry }
+  | { key: string; kind: "desa"; hit: RegionAncestry; desa: Region };
 
 interface LevelSelectProps {
   label: string;
@@ -368,6 +392,186 @@ function KodePosField({
   );
 }
 
+// THE OTHER WAY IN: TYPE THE KECAMATAN (owner, optional).
+//
+// The postcode is the fast path and stays first — but a buyer who gives no code at all leaves the
+// person walking the cascade from the province down, which is four picks to reach the level they
+// already know. This searches kecamatan by name and fills everything above it in one.
+//
+// ⚠ THE KODE POS IS DERIVED, NOT RETURNED. A kode pos belongs to a DESA, so a kecamatan hit carries
+// none. What this does instead is read the kecamatan's desa and fill the postcode ONLY when they all
+// share one — which is the common case outside the cities. Where they differ, the field is left
+// empty and the desa select below is what settles it: picking one of several codes for somebody
+// would put orders in the wrong kelurahan and give them no way to see it happen.
+function KecamatanField({
+  onPickKecamatan,
+  onPickDesa,
+  disabled,
+}: {
+  onPickKecamatan: (ancestry: RegionAncestry, kodePos: string) => void;
+  onPickDesa: (ancestry: RegionAncestry) => void;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+
+  const [typed, setTyped] = useState("");
+
+  const { collection, set } = useListCollection<KecamatanOption>({
+    initialItems: [],
+    itemToString: (o) => (o.kind === "desa" ? o.desa.name : o.hit.kecamatanName),
+    itemToValue: (o) => o.key,
+  });
+
+  const q = useDebounced(typed, SEARCH_DEBOUNCE_MS);
+  const results = useRegionSearch({
+    q,
+    level: RegionLevel.KECAMATAN,
+    limit: SEARCH_LIMIT,
+    minChars: SEARCH_MIN_NAME_CHARS,
+  });
+  // ⚠ MEMOISED, and it is not a micro-optimisation. `results.data ?? []` is a NEW array on every
+  // render while the query is empty, and the effect below depends on it — an unstable dependency
+  // there means set() on every render, which means another render.
+  const hits = useMemo(() => results.data ?? [], [results.data]);
+
+  // ⚠ ONLY THE FIRST FEW HITS ARE EXPANDED. Ten kecamatan with fifty desa each is five hundred rows
+  // and ten requests for one keystroke — a list nobody can read, paid for twice. Four is what fits on
+  // a screen; the rest stay as kecamatan rows and expand as soon as the search narrows to them.
+  const expanded = hits.slice(0, KECAMATAN_EXPAND).map((h) => h.kecamatanCode);
+  const desaQuery = useDesaOfKecamatans({ codes: expanded, limit: LEVEL_LIMIT });
+  const desaByKecamatan = desaQuery.data;
+
+  const loading =
+    q.length >= SEARCH_MIN_NAME_CHARS &&
+    (results.isPending || (expanded.length > 0 && desaQuery.isPending));
+
+  useEffect(() => {
+    if (q.length < SEARCH_MIN_NAME_CHARS) {
+      set([]);
+      return;
+    }
+
+    // THE KECAMATAN LEADS ITS OWN GROUP, then its desa (owner: the kecamatan stays the main one).
+    // Reading order is what carries the hierarchy here — a desa row indented under the district it
+    // belongs to needs no extra chrome to say so.
+    const options: KecamatanOption[] = [];
+
+    for (const hit of hits) {
+      options.push({ key: `k:${hit.kecamatanCode}`, kind: "kecamatan", hit });
+
+      for (const desa of desaByKecamatan?.get(hit.kecamatanCode) ?? []) {
+        options.push({ key: `d:${desa.code}`, kind: "desa", hit, desa });
+      }
+    }
+
+    set(options);
+  }, [q, hits, desaByKecamatan, set]);
+
+  function apply(option: KecamatanOption) {
+    if (option.kind === "desa") {
+      // A DESA PICK IS A COMPLETE ADDRESS. The hit already carries everything above the kecamatan, so
+      // the row's own code and postcode finish it — with no second round-trip.
+      onPickDesa({
+        ...option.hit,
+        desaCode: option.desa.code,
+        desaName: option.desa.name,
+        kodePos: option.desa.kodePos,
+      });
+      return;
+    }
+
+    // THE KECAMATAN ITSELF: everything above it, and the postcode only when its desa agree on one.
+    // The list is already loaded for an expanded hit, so this is a lookup rather than a call.
+    const desa = desaByKecamatan?.get(option.hit.kecamatanCode) ?? [];
+    const codes = new Set(desa.map((d) => d.kodePos).filter(Boolean));
+
+    onPickKecamatan(option.hit, codes.size === 1 ? [...codes][0]! : "");
+  }
+
+  return (
+    <Field.Root disabled={disabled}>
+      <Field.Label>{t("address.kecamatanSearch")}</Field.Label>
+
+      <Combobox.Root
+        collection={collection}
+        disabled={disabled}
+        // Like the kode pos field: it holds no value of its own. What it produces is the address
+        // below, so leaving the picked name in the box would make it look like a fifth field.
+        value={[]}
+        inputValue={typed}
+        selectionBehavior="clear"
+        onValueChange={(e) => {
+          const option = e.items[0] as KecamatanOption | undefined;
+          if (option) {
+            setTyped("");
+            apply(option);
+          }
+        }}
+        onInputValueChange={(e) => setTyped(e.inputValue)}
+        data-testid="address-kecamatan-search"
+      >
+        <Combobox.Control>
+          <Combobox.Input placeholder={t("address.kecamatanSearchPlaceholder")} />
+          {loading && (
+            <Combobox.IndicatorGroup>
+              <Spinner size="xs" colorPalette="brand" />
+            </Combobox.IndicatorGroup>
+          )}
+        </Combobox.Control>
+
+        <Portal>
+          <Combobox.Positioner>
+            <Combobox.Content maxH="80" overflowY="auto">
+              <Combobox.Empty>
+                {q.length < SEARCH_MIN_NAME_CHARS
+                  ? t("address.kecamatanSearchMinChars", { min: SEARCH_MIN_NAME_CHARS })
+                  : loading
+                    ? t("address.loading")
+                    : t("address.kecamatanSearchNoResults")}
+              </Combobox.Empty>
+
+              {collection.items.map((option) =>
+                option.kind === "kecamatan" ? (
+                  <Combobox.Item
+                    item={option}
+                    key={option.key}
+                    data-testid={`address-kecamatan-option-${option.hit.kecamatanCode}`}
+                  >
+                    <Stack gap="0">
+                      <Span fontWeight="medium">{option.hit.kecamatanName}</Span>
+                      {/* The path is what makes a name pickable: kecamatan names repeat across the
+                          country exactly as desa names do. */}
+                      <Span fontSize="xs" color="fg.muted">
+                        {hitPath(option.hit)}
+                      </Span>
+                    </Stack>
+                  </Combobox.Item>
+                ) : (
+                  <Combobox.Item
+                    item={option}
+                    key={option.key}
+                    ps="6"
+                    data-testid={`address-desa-option-${option.desa.code}`}
+                  >
+                    {/* INDENTED, and quieter than its kecamatan: the district is what was searched
+                        for, and these are the ways of finishing it. */}
+                    <Span fontSize="sm">
+                      {option.desa.name}
+                      {option.desa.kodePos && <Span color="fg.muted"> · {option.desa.kodePos}</Span>}
+                    </Span>
+                  </Combobox.Item>
+                ),
+              )}
+            </Combobox.Content>
+          </Combobox.Positioner>
+        </Portal>
+      </Combobox.Root>
+
+      <Field.HelperText>{t("address.kecamatanSearchHelp")}</Field.HelperText>
+    </Field.Root>
+  );
+}
+
 // AddressPicker is the shared Indonesian address entry control (#112/#117) — the one place every
 // screen that takes an address (order customer, warehouse, shop, user profile) reuses, so they all
 // produce the same shape.
@@ -380,7 +584,7 @@ function KodePosField({
 export const description =
   "Indonesian address entry (#117): the kode pos on top doubles as the search — type a postcode and pick from the desa it covers, which back-fills every level. Below it four cascading searchable region Selects (provinsi → kabupaten/kota → kecamatan → desa/kelurahan) loaded level-by-level, and free-text street detail. Controlled — emits an AddressValue (codes + names) a consumer can snapshot.";
 
-export function AddressPicker({ value, onChange, disabled }: AddressPickerProps) {
+export function AddressPicker({ value, onChange, disabled, kecamatanSearch }: AddressPickerProps) {
   const { t } = useTranslation();
 
   // Hydration guards: remember which code we already resolved, and read the live value/onChange
@@ -482,6 +686,25 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
     });
   }
 
+  // A KECAMATAN HIT STOPS AT THE KECAMATAN. Everything above it is filled in, the two levels below
+  // are cleared (a desa from the previous district is a wrong address that still looks complete), and
+  // the postcode is whatever the field could derive — "" when the kecamatan has more than one.
+  function applyKecamatanHit(a: RegionAncestry, kodePos: string) {
+    resolvedRef.current = a.kecamatanCode;
+    onChange({
+      ...value,
+      provinsiCode: a.provinsiCode,
+      provinsiName: a.provinsiName,
+      kabupatenCode: a.kabupatenCode,
+      kabupatenName: a.kabupatenName,
+      kecamatanCode: a.kecamatanCode,
+      kecamatanName: a.kecamatanName,
+      desaCode: "",
+      desaName: "",
+      kodePos,
+    });
+  }
+
   function applyHit(a: RegionAncestry) {
     resolvedRef.current = a.desaCode || a.kecamatanCode || a.kabupatenCode || a.provinsiCode;
     onChange({
@@ -511,6 +734,17 @@ export function AddressPicker({ value, onChange, disabled }: AddressPickerProps)
         onPick={applyHit}
         disabled={disabled}
       />
+
+      {/* …AND THE KECAMATAN, for the buyer who gives a district and no code. Under the postcode
+          rather than above it: the code is still the fastest path when there is one, and this is the
+          fallback for when there is not. */}
+      {kecamatanSearch && (
+        <KecamatanField
+          onPickKecamatan={applyKecamatanHit}
+          onPickDesa={applyHit}
+          disabled={disabled}
+        />
+      )}
 
       <LevelSelect
         label={t("address.provinsi")}

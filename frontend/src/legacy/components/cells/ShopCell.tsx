@@ -61,7 +61,7 @@ export function ShopCell({ shop, shopId, loading }: ShopCellProps) {
               boxSize="5"
               p="1"
               borderRadius="full"
-              colorPalette="red"
+              colorPalette="error"
               bg="colorPalette.subtle"
               color="colorPalette.fg"
               data-testid="shop-deleted"

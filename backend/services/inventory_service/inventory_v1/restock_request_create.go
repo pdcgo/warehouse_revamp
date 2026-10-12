@@ -13,8 +13,9 @@ import (
 // RestockRequestCreate records a selling team's restock request (status PENDING) with its priced
 // lines (#105/#124). It does NOT touch stock — the target warehouse does that when it fulfils.
 //
-// The optional supplier must belong to the REQUESTING team: suppliers are team-scoped, and letting a
-// request point at another team's supplier would leak that team's vendor list by id.
+// The optional supplier must be a LIVE supplier — any selling team's, since team B restocks from team A's
+// supplier on its own restock (a-team-restocks-from-another-teams-supplier). It is asked of supplier_service,
+// which owns suppliers (the-supplier-gets-its-own-service); a deleted or unknown one is NotFound.
 func (s *Service) RestockRequestCreate(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestCreateRequest],
@@ -39,20 +40,22 @@ func (s *Service) RestockRequestCreate(
 
 	if supplierID := req.Msg.GetSupplierId(); supplierID != 0 {
 		rr.SupplierID = &supplierID
+
+		// Asked BEFORE the transaction, never inside one: a call to another service would hold a pooled
+		// connection — and any lock already taken — for a network round-trip
+		// (audits/services/inventory_service/concurrency/lock-order.md). A supplier deleted between this
+		// answer and the commit leaves the same state as "restock first, then delete", which is kept on purpose.
+		live, checkErr := s.suppliers.SupplierIsLive(ctx, teamID, supplierID)
+		if checkErr == nil && !live {
+			checkErr = errRestockSupplierMissing
+		}
+
+		if checkErr != nil {
+			return nil, restockErr(checkErr)
+		}
 	}
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if rr.SupplierID != nil {
-			exists, checkErr := supplierExists(tx, teamID, *rr.SupplierID)
-			if checkErr != nil {
-				return checkErr
-			}
-
-			if !exists {
-				return errRestockSupplierMissing
-			}
-		}
-
 		// GORM inserts the request and its lines in this transaction, stamping their
 		// RestockRequestID — a request without its lines is not a request.
 		createErr := tx.Create(&rr).Error

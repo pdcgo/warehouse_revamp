@@ -2,9 +2,11 @@ import { execSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { ADMIN_DSN, TEST_DSN } from "./db";
 import { acquireRunLock } from "./lock";
+import { ensurePubsubTopicsCommand, requirePubsubEmulator } from "./pubsub";
 
 // The e2e drives the REAL backend against a REAL database — but the DEDICATED test database
-// (warehouse_test), never the dev one. Requires `docker compose up -d` (postgres on :5433).
+// (warehouse_test), never the dev one. Requires `docker compose up -d` (postgres on :5433) AND the Pub/Sub
+// emulator, `docker compose --profile pubsub up -d pubsub` (:8085) — checked first, see e2e/pubsub.ts.
 //
 // Migration order is a CONTRACT, not a preference: team_service seeds team 1, and user_service's
 // root-user seed puts ROLE_ROOT *in team 1*. There is no cross-service foreign key to enforce it,
@@ -12,6 +14,11 @@ import { acquireRunLock } from "./lock";
 
 export const ROOT_USERNAME = "root";
 export const ROOT_PASSWORD = "rootpassword123";
+
+// Root is seeded as user 1 (user_service 00003_seed_root_user.sql). A spec that creates a team through the API
+// names it as the Owner: TeamCreate makes the NAMED person the Owner, never the caller
+// (the-create-team-form-names-the-first-owner).
+export const ROOT_USER_ID = "1";
 
 // The services whose migrations run, DISCOVERED FROM THE FILESYSTEM rather than listed.
 //
@@ -22,10 +29,11 @@ export const ROOT_PASSWORD = "rootpassword123";
 //
 // SEEDED FIRST is a contract, not a preference: team_service seeds team 1, and user_service's root-user
 // seed puts ROLE_ROOT *in team 1*. There is no cross-service foreign key to enforce that, so the wrong
-// order produces a role pointing at a team that does not exist yet. Everything after them is
-// independent by design (HARD RULE 3), so discovery order is fine.
+// order produces a role pointing at a team that does not exist yet. inventory_service follows them: its
+// 00023 frees the table names supplier_service's 00001 creates (the-supplier-gets-its-own-service).
+// Everything after them is independent by design (HARD RULE 3), so discovery order is fine.
 function servicesToMigrate(): string[] {
-  const seededFirst = ["team_service", "user_service"];
+  const seededFirst = ["team_service", "user_service", "inventory_service"];
 
   const discovered = readdirSync("../backend/services", { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.endsWith("_service"))
@@ -36,14 +44,21 @@ function servicesToMigrate(): string[] {
   return [...seededFirst, ...discovered];
 }
 
-export default function globalSetup(): void {
-  // FIRST, before anything destructive: refuse to start if another run is already going. The next
+export default async function globalSetup(): Promise<void> {
+  // Before ANYTHING: is the Pub/Sub emulator up? Without it the suite fails slowly and far from the cause
+  // (e2e/pubsub.ts). Nothing has been touched yet, so stopping here costs nothing.
+  await requirePubsubEmulator();
+
+  // Then, before anything destructive: refuse to start if another run is already going. The next
   // line drops the shared database, and doing that under a live run is what made this suite look
   // flaky for a whole session. See e2e/lock.ts.
   acquireRunLock();
 
   const run = (cmd: string) =>
     execSync(cmd, { cwd: "../backend", stdio: "inherit", env: { ...process.env } });
+
+  // The topics live in the emulator's memory, so a restarted emulator has none. Idempotent.
+  run(ensurePubsubTopicsCommand());
 
   // Start from a fresh, EMPTY test database every run — the dev database is never touched.
   run(`go run ../tools/san db reset-test --admin-dsn "${ADMIN_DSN}"`);

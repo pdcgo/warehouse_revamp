@@ -26,7 +26,8 @@ that policy from sitting beside team-scoped reads.
 flowchart LR
   O["selling_service — order placed, order cancelled"] -->|"in-process, after commit"| W["SettlementPost write path"]
   P["a person on the order page"] -->|"SettlementPost"| W
-  X["export_service — deferred"] -->|"SettlementPost"| W
+  X["settlement_importer_service — a statement, line by line"] -->|"SettlementPost, under the uploader's token"| W
+  W -.->|"an imported shop row only — its primary CS"| SH["ShopAccessCheck"]
   W --> L[("settlement_logs + the two accounts")]
   W -->|"after commit"| E["SettlementLogPosted"]
   E --> T["topic settlement-log-posted"]
@@ -39,9 +40,10 @@ flowchart LR
 
 ## SettlementPost — the only write
 
-**One write path for three writers**, differing only in `source_type`. All three retry: the exporter
-re-imports an overlapping statement, a person double-submits, and `order_service` retries across a
-timeout. `PostEntry` and `CancelSale` are the same path called in-process.
+**One write path for three writers**, differing only in `source_type` — `importer`, `manual`, `order`
+([the-source-is-named-importer](../../business/settlement/settlement_importer_decision.md#the-source-is-named-importer)).
+All three retry: the importer re-imports an overlapping statement, a person double-submits, and
+`order_service` retries across a timeout. `PostEntry` and `CancelSale` are the same path called in-process.
 
 ```mermaid
 sequenceDiagram
@@ -52,6 +54,9 @@ sequenceDiagram
 
   C->>+S: SettlementPost — order or shop, unique_id, type, source, change
   S->>S: a cancel not from source order? refuse. Type against grain? refuse
+  opt an imported SHOP row — source importer, no order
+    S->>S: ask the shop for its primary CS — BEFORE the transaction, see below
+  end
   S->>+DB: INSERT the account ON CONFLICT DO NOTHING — stamps created_by_user_id only here
   Note over S,DB: the account must EXIST before it can be locked
   DB-->>-S: ok
@@ -60,8 +65,10 @@ sequenceDiagram
   S->>S: account's team and shop match? else refuse
   S->>+DB: SELECT settlement_logs WHERE unique_id
   DB-->>-S: found or not
-  alt already written
+  alt already written, on this account
     S-->>C: the existing row, created = false
+  else already written, on another account — another order, or another shop's row
+    S-->>C: InvalidArgument — refused, nothing written
   else new
     S->>S: live-sale rules — see below
     S->>+DB: INSERT settlement_logs — posted_on from the column default
@@ -72,6 +79,45 @@ sequenceDiagram
   end
   S-)B: SettlementLogPosted — after commit, never fatal, also on a retry
 ```
+
+### An imported shop row asks the shop — before the transaction
+
+[settlement-asks-the-shop-for-its-primary-cs](../../business/settlement/settlement_importer_decision.md#settlement-asks-the-shop-for-its-primary-cs):
+a row the importer posts to a SHOP counts, in the per-user report, for the shop's primary CS. Settlement asks
+the shop itself and writes the person on the row as `user_id`; the importer passes no person. **Its one call
+into another service.**
+
+```mermaid
+sequenceDiagram
+  participant I as the importer
+  participant S as SettlementPost
+  participant SH as ShopAccessCheck
+  participant DB as postgres
+  I->>S: a shop row, source importer — under the uploader's token
+  S->>SH: team_id, shop_id, the actor — the same token, forwarded
+  alt the shop answers a primary CS
+    SH-->>S: primary_user_id
+    S->>DB: the transaction — the row carries user_id, the actor stays the uploader
+    S-->>I: created, or already there
+  else no primary CS, not the team's shop, or no answer
+    SH-->>S: 0, NotFound or an error — HELD, not returned yet
+    S->>DB: the transaction — the key looked up under the account's lock
+    alt the key is stored — a retry
+      S-->>I: already there — its user_id was settled when it was first written
+    else a new row
+      S-->>I: FailedPrecondition, NotFound or Unavailable — nothing written, the line is held
+    end
+  end
+```
+
+| | |
+| --- | --- |
+| which rows ask | an imported shop row only — an order row counts for its stamped creator, and a shop row posted by hand for its actor |
+| when | ⚠ **before** the transaction — never while the shop's account row is locked `FOR UPDATE`, or every post on the shop waits on the network |
+| how | `ShopPrimary`, an interface settlement owns; the composition root answers it with a Connect client to `ShopAccessCheck` that forwards the caller's token (`san_auth.ForwardBearer`). A client, not the handler in-process: the shop lives in `selling_service`, which calls settlement on every placed order, so holding it would be a cycle — and the shop moving to its own service (the-shop-gets-its-own-service) changes only the adapter |
+| a failed ask | a NEW row is **refused**, with the ask's reason — never a quiet fallback to the actor, which would count the row for the wrong person for good. ⚠ The failure is **held** until the transaction's idempotency check, so a RETRY of a stored row is answered from the ledger whatever the shop says: the retry this RPC absorbs, and the re-post that republishes a lost event, never depend on the shop being up |
+| carried | `user_id` is on `SettlementLogPosted`, and the fold counts a shop row for it when set — a replay folds the person the row was written with, never asking again |
+| the cost | one call per imported shop row — a whole Shopee file when no order is found, and a retry asks too. [The performance audit](../../../audits/services/settlement_service/performances/SettlementPost.md) finds it heavy by the N+1 rule. A cache per `(team, shop)` is its open question |
 
 ### The live-sale rules — read under the account's lock
 
@@ -216,7 +262,20 @@ while a live fold inserts a new one, and the two cannot conflict.
 
 `OrderSettlementList` follows the guideline's list shape — `ids` carries the ranking, map-slices carry
 the data. **Sorted worst-loss-first by default**, and the totals are the **whole filtered set**, not the
-page. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
+page.
+
+| sort | SQL (`DESC` shown — the default) |
+| --- | --- |
+| `LOSS` | `(initial_total = 0), last_balance ASC, order_id DESC` — loss is `−last_balance`, so its DESC is the balance's ASC |
+| `INITIAL_TOTAL` | `(initial_total = 0), initial_total DESC, order_id DESC` |
+| `RECEIVED` | `(initial_total = 0), (last_balance + initial_total) DESC, order_id DESC` |
+| `ORDER_ID` | `order_id DESC` — an id is real whether or not the sale was recorded |
+
+- The direction is the **named measure's**; `UNSPECIFIED` is `DESC`.
+- An **unrecorded sale** (`initial_total = 0`) sorts **last** under every money measure, either way, and is
+  **left out of both sums** — its balance is payout with nothing to measure against. `total_unrecorded`
+  counts it.
+- `order_id` breaks ties, so equal rows keep one order across pages. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
 activity — and an order with no account is **`NotFound`**, never a zeroed row.
 
 ### The reports

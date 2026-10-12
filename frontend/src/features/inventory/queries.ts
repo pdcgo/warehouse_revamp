@@ -17,6 +17,7 @@ import {
   productsFromList,
 } from "../products/adapt";
 import { teamByIdsRowData, teamsByIds } from "../teams/adapt";
+import { supplierByIdsRowData, suppliersFromByIds } from "../suppliers/adapt";
 import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
 import { orderListRowData, ordersFromList } from "../orders/adapt";
 import { restocksFromList, restockListRowData } from "../restock/adapt";
@@ -352,6 +353,41 @@ export function useStockAvailability(args: {
   });
 }
 
+// What EACH warehouse holds of ONE product — the discover detail's "where can I get it from".
+//
+// StockAvailability answers for one building, so it is asked once per warehouse: stock is held per
+// building, and an order ships from exactly one. The fan-out is bounded by the warehouse list (a
+// handful of buildings), never by the catalogue, and the answers arrive together as one entry so the
+// table never renders half its rows.
+//
+// PRESENCE, not ownership — the figure a pick would find. OwnerStockByIds would answer 0 for a product
+// the caller does not own, which on the discover detail is every product. An absent answer stays
+// undefined (unknown), never 0.
+export function useAvailabilityByWarehouse(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseIds: bigint[];
+}) {
+  const { teamId, productId } = args;
+  const warehouses = Array.from(new Set(args.warehouseIds.map((id) => id.toString()))).sort();
+
+  return useQuery({
+    queryKey: key.inventory(teamId, { availabilityOf: productId.toString(), warehouses }),
+    enabled: teamId !== undefined && productId > 0n && warehouses.length > 0,
+    queryFn: async () => {
+      const answers = await Promise.all(
+        warehouses.map((w) =>
+          inventoryClient.stockAvailability({ teamId: teamId!, warehouseId: BigInt(w), productIds: [productId] }),
+        ),
+      );
+
+      return new Map(
+        warehouses.map((w, i) => [w, answers[i]!.items.find((it) => it.productId === productId)?.available]),
+      );
+    },
+  });
+}
+
 // The HPP — what each product COST at a warehouse — for a whole set of products at once.
 //
 // The same read `OrderCreate` uses to freeze `unit_cost` on every line (#74), so what the order form
@@ -596,14 +632,21 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
 
       // Restock info (#218): the supplier who delivered it, and who accepted it — names resolved
       // best-effort, an unknown id just leaves "".
+      //
+      // SupplierByIds, not SupplierDetail: the vendor is a SELLING team's supplier read from the warehouse, and
+      // it may have been deleted since the delivery — by-ids still answers with it, marked
+      // (a-deleted-supplier-is-kept-for-its-figures), so a past batch keeps its vendor's name.
       let supplierName = "";
       if (batch.supplierId > 0n) {
         try {
-          const s = await supplierClient.supplierDetail({
-            teamId: warehouseId!,
-            supplierId: batch.supplierId,
-          });
-          supplierName = s.supplier?.name ?? "";
+          const found = suppliersFromByIds(
+            await supplierClient.supplierByIds({
+              teamId: warehouseId!,
+              filter: { ids: [batch.supplierId] },
+              dataRequest: supplierByIdsRowData(),
+            }),
+          );
+          supplierName = found.get(batch.supplierId.toString())?.name ?? "";
         } catch {
           supplierName = "";
         }

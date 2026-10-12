@@ -279,7 +279,7 @@ export function RackDetailPage() {
           <Icon as={ArrowLeft} boxSize="4" />
           {t("racks.detail.back")}
         </Button>
-        <Text color="red.fg" data-testid="rack-detail-error">
+        <Text color="error.fg" data-testid="rack-detail-error">
           {error || t("racks.detail.notFound")}
         </Text>
       </Stack>
@@ -344,7 +344,7 @@ export function RackDetailPage() {
                   nothing to it, so a shelf of never-restocked goods would otherwise read as a
                   confident small number. */}
               {(summary?.unknownCostProducts ?? 0) > 0 && (
-                <Text fontSize="xs" color="orange.fg" data-testid="rack-summary-unknown-cost">
+                <Text fontSize="xs" color="warning.fg" data-testid="rack-summary-unknown-cost">
                   {t("racks.detail.unknownCost", { count: summary?.unknownCostProducts ?? 0 })}
                 </Text>
               )}
@@ -502,7 +502,7 @@ function RackStockTable({
 
   if (error) {
     return (
-      <Text color="red.fg" data-testid="rack-detail-stock-error">
+      <Text color="error.fg" data-testid="rack-detail-stock-error">
         {error}
       </Text>
     );
@@ -671,7 +671,7 @@ function RackHistory({ teamId, rackId, kinds, testId }: RackHistoryProps) {
 
   if (error) {
     return (
-      <Text color="red.fg" data-testid={`${testId}-error`}>
+      <Text color="error.fg" data-testid={`${testId}-error`}>
         {error}
       </Text>
     );

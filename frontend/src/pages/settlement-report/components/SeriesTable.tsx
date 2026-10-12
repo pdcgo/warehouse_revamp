@@ -51,7 +51,7 @@ export function SeriesTable({ grain, points }: { grain: PeriodGrain; points: Set
   );
 }
 
-// The five measure columns, shared with the ranking so the two tables read identically.
+// The six measure columns, shared with the ranking so the two tables read identically.
 export function MeasureHeaders() {
   const { t } = useTranslation();
 
@@ -59,9 +59,10 @@ export function MeasureHeaders() {
     <>
       <Table.ColumnHeader textAlign="end">{t("settlementReport.col.sales")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("settlementReport.col.received")}</Table.ColumnHeader>
+      <Table.ColumnHeader textAlign="end">{t("settlementReport.col.withdrawn")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("settlementReport.col.gap")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("settlementReport.col.takeRate")}</Table.ColumnHeader>
-      <Table.ColumnHeader textAlign="end">{t("settlementReport.col.hiddenCost")}</Table.ColumnHeader>
+      <Table.ColumnHeader textAlign="end">{t("settlementReport.col.positionToDate")}</Table.ColumnHeader>
     </>
   );
 }
@@ -78,6 +79,9 @@ export function MeasureCells({ measure }: { measure: SettlementMeasure }) {
         <Text fontSize="sm">{formatRupiah(measure.received)}</Text>
       </Table.Cell>
       <Table.Cell textAlign="end">
+        <Text fontSize="sm">{formatRupiah(measure.withdrawn)}</Text>
+      </Table.Cell>
+      <Table.Cell textAlign="end">
         <Text fontSize="sm" color={measure.gap > 0n ? "fg.error" : undefined}>
           {formatRupiah(measure.gap)}
         </Text>
@@ -91,7 +95,7 @@ export function MeasureCells({ measure }: { measure: SettlementMeasure }) {
       </Table.Cell>
       <Table.Cell textAlign="end">
         <Text fontSize="sm" color="fg.muted">
-          {formatRupiah(measure.hiddenCostToDate)}
+          {formatRupiah(measure.positionToDate)}
         </Text>
       </Table.Cell>
     </>

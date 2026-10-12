@@ -175,7 +175,7 @@ system lets any logged-in user reset any other account.
 | You are | Path | RPC | Needs |
 | --- | --- | --- | --- |
 | the user | Profile → Change Password | `ResetPassword` | the **old** password; no `user_id` exists — the subject is the token holder |
-| an admin | Users → the row's overflow menu → Reset Password | `AdminResetPassword` | `ROLE_ROOT` / `ROLE_ADMIN` (unscoped); the item is hidden on your own row |
+| an admin | Users → the row's overflow menu → Reset Password | `AdminResetPassword` | `ROLE_ROOT` / `ROLE_ADMINISTRATOR` (unscoped); the item is hidden on your own row |
 | locked out | Login → Forgot password → OTP by phone | `ResetPasswordWithOtp` | nothing — see [the flow](../services/user_service/rpc.md#the-forgot-password-flow-requestpasswordresetotp--resetpasswordwithotp) |
 | an operator, no UI | `go run ./tools/san user reset-password --username ani` (repo root) | calls `AdminResetPassword` | database access |
 
@@ -198,9 +198,9 @@ Common causes, in order:
 
 1. No `request_policy` on the request **message**. It extends `MessageOptions`, not
    `MethodOptions` — it does not go on the `rpc`.
-2. A team-level role (`TEAM_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with **no `use_scope`
+2. A team-level role (`SELLING_OWNER`, `WAREHOUSE_ADMIN`, …) on a message with **no `use_scope`
    field**. An unscoped roles-policy is evaluated against the root team, so those entries become
-   dead letters. Give it a scope, or narrow the policy to `[ROOT, ADMIN]`.
+   dead letters. Give it a scope, or narrow the policy to `[ROOT, ADMINISTRATOR]`.
 3. The caller did not send `team_id` in the **request body**. Team scope is a message field, never
    a header — no interceptor can supply it.
 4. The generated option package is not linked into the binary, so `proto.HasExtension` silently
@@ -218,7 +218,7 @@ reading the proto options, descriptor validation) are in
 
 **No — identity only.** Roles are read from the database per request (cached about a minute,
 invalidated on every membership change), so revoking a role takes effect without reissuing tokens.
-ROOT/ADMIN in team 1 (the root team) bypass every scope check.
+ROOT/ADMINISTRATOR in team 1 (the root team) bypass every scope check.
 
 ---
 
@@ -237,26 +237,23 @@ Break long method chains one step per line. One handler method per file as a ser
 use `golang.org/x/net/http2/h2c` — it is deprecated; `net/http` speaks unencrypted HTTP/2 natively
 through `http.Protocols`.
 
-## What is the difference between rejecting a payment and reversing one?
+## Can an accepted payment be reversed?
 
-**They are different failures and they must never share a code path.**
+**No. Accepting is final** — [an-accepted-payment-is-final](../business/balance/context_decision.md#an-accepted-payment-is-final).
+The creditor checks the proof **before** accepting; once accepted, the payment never changes.
 
-| | refuses | posts to the ledger | when |
+| | refuses | posts to the ledger | after it |
 | --- | --- | --- | --- |
-| `LiabilityPaymentReject` | a **claim** | **nothing** | the creditor checked the proof and the money is not there |
-| `LiabilityPaymentReverse` | a **confirmation** | a **compensating entry** | the creditor already agreed, in error |
+| `LiabilityPaymentReject` | a **claim** | **nothing** | final — the payer re-records if they still mean to pay |
+| `LiabilityPaymentConfirm` | — | the settling entry | final — no undo, by decision |
 
-Both are terminal, and both are drawn in `balance_context.md` §Payment Flow — the `no` arm of *"Is
-Payment Correct?"* is a reject.
+⚠ **A `LiabilityPaymentReverse` RPC existed and was removed** (2026-10-01). It shipped before
+`balance_context.md` §Payment Flow drew `accept` as terminal, and no screen ever called it. Do not
+bring one back without reopening the decision — a reverse would also have to un-post the two
+`team_payment` rows in the financial accounts.
 
-⛔ **Why it matters.** Before `rejected` existed, a creditor facing a payment that never landed could
-only leave it at `recorded` forever, or **confirm it and then reverse it** — which writes two real
-ledger movements for money that never moved, and leaves the pair's history telling a story that did
-not happen.
-
-They share one `reason` column, because the `status` already says which act filled it. A reject also
-leaves `confirmed_by` / `confirmed_at` **empty** — borrowing them would make every *"when was this
-agreed"* query count refusals as agreements.
+A reject fills `reason` and leaves `confirmed_by` / `confirmed_at` **empty** — borrowing them would
+make every *"when was this agreed"* query count refusals as agreements.
 
 Details: [docs/services/liability_service/rpc.md](../services/liability_service/rpc.md).
 

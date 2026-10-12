@@ -61,6 +61,8 @@ export function MarketplaceInfoForm({
   onChange,
   disabled,
   required = false,
+  hideTotal = false,
+  hideOrderRef = false,
 }: {
   /** The selling team whose shops can be picked — a shop is team-scoped. */
   teamId: bigint;
@@ -69,6 +71,24 @@ export function MarketplaceInfoForm({
   disabled?: boolean;
   /** Marks the shop as required. The reference stays optional — a phone order never has one. */
   required?: boolean;
+  /**
+   * Leave the money field out — for a screen that collects the same number under its own name.
+   *
+   * ⚠ IT DOES NOT STOP CARRYING THE VALUE. `value.marketplaceTotal` is still part of what this
+   * component emits; the caller is taking over the FIELD, not the fact, and a screen that hides it
+   * and never renders one of its own would silently drop what the storefront took.
+   */
+  hideTotal?: boolean;
+  /**
+   * Leave the storefront's order-reference field out — for a screen that collects it somewhere the
+   * relationship is stronger.
+   *
+   * There is one: the marketplace's SHIPPING LABEL carries the order id and the tracking number
+   * together, so a form that shows the label puts both numbers beside it (owner). Same contract as
+   * `hideTotal` — the VALUE still travels in and out of this component, only the field is the
+   * caller's to render.
+   */
+  hideOrderRef?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -110,6 +130,7 @@ export function MarketplaceInfoForm({
 
       {/* The storefront's own name for the order. Left as free text on purpose: every marketplace
           formats its reference differently, and a mask would refuse the next one we meet. */}
+      {!hideOrderRef && (
       <Field.Root disabled={disabled}>
         <Field.Label>{t("orders.orderExternalRefId")}</Field.Label>
         <Input
@@ -121,10 +142,12 @@ export function MarketplaceInfoForm({
         />
         <Field.HelperText>{t("orders.orderExternalRefIdHelp")}</Field.HelperText>
       </Field.Root>
+      )}
 
       {/* What the storefront actually took, after its vouchers, coin subsidies and promotions. It sits
           HERE rather than beside the order's own totals on purpose: a money field placed under a Total
           reads as a term of it whatever the caption says, and this one is never summed into anything. */}
+      {!hideTotal && (
       <Field.Root disabled={disabled}>
         <Field.Label>{t("orders.marketplaceTotal")}</Field.Label>
         <CurrencyInput
@@ -134,6 +157,7 @@ export function MarketplaceInfoForm({
         />
         <Field.HelperText>{t("orders.marketplaceTotalHelp")}</Field.HelperText>
       </Field.Root>
+      )}
     </Stack>
   );
 }

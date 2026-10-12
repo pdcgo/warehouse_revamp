@@ -16,6 +16,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1/inventoryv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
@@ -28,19 +29,42 @@ type Service struct {
 	// Where the value of written-off stock goes when a batch is adjusted DAMAGED/LOST (#211) — an
 	// interface this service owns, so inventory never imports expense_service. See expense_poster.go.
 	expense ExpensePoster
+	// Whether a restock's supplier is a live one — asked of supplier_service, which owns suppliers since
+	// the-supplier-gets-its-own-service. See supplier_checker.go in the composition root.
+	suppliers SupplierChecker
+	// Where an accepted restock is announced (`RestockAccepted`) — supplier_service folds it into a supplier's figures
+	// (the-report-is-processed-like-settlement). Inventory does not know who listens.
+	events event_source.EventSender
 }
 
-// compile-time proof Service satisfies both generated handler interfaces (one inventory_service
-// impl serves InventoryService and SupplierService).
+// SupplierChecker answers whether a supplier is LIVE — any selling team's
+// (a-team-restocks-from-another-teams-supplier), not deleted. teamID is the CALLER's scope for the question,
+// not the supplier's team. Asked of supplier_service under the caller's token.
+type SupplierChecker interface {
+	SupplierIsLive(ctx context.Context, teamID, supplierID uint64) (bool, error)
+}
+
+// noSuppliers refuses every supplier — with nothing to ask, a restock naming one is not trusted.
+type noSuppliers struct{}
+
+func (noSuppliers) SupplierIsLive(context.Context, uint64, uint64) (bool, error) {
+	return false, errors.New("no supplier service to ask")
+}
+
+// compile-time proof Service satisfies the generated handler interfaces it serves.
 var (
-	_ inventoryv1connect.InventoryServiceHandler       = (*Service)(nil)
-	_ inventoryv1connect.SupplierServiceHandler        = (*Service)(nil)
-	_ inventoryv1connect.SupplierChannelServiceHandler = (*Service)(nil)
-	_ inventoryv1connect.RestockRequestServiceHandler  = (*Service)(nil)
-	_ inventoryv1connect.RackServiceHandler            = (*Service)(nil)
+	_ inventoryv1connect.InventoryServiceHandler      = (*Service)(nil)
+	_ inventoryv1connect.RestockRequestServiceHandler = (*Service)(nil)
+	_ inventoryv1connect.RackServiceHandler           = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, liability LiabilityPoster, expense ExpensePoster) *Service {
+func NewService(
+	db *gorm.DB,
+	liability LiabilityPoster,
+	expense ExpensePoster,
+	suppliers SupplierChecker,
+	events event_source.EventSender,
+) *Service {
 	// A nil poster drops COD obligations silently, which is the right default for a test receiving a
 	// box and the wrong one for production — the composition root always wires the real thing, and
 	// the reconciliation report (#187) is what would catch it if it ever did not.
@@ -54,7 +78,19 @@ func NewService(db *gorm.DB, liability LiabilityPoster, expense ExpensePoster) *
 		expense = noExpense{}
 	}
 
-	return &Service{db: db, liability: liability, expense: expense}
+	// A nil supplier checker refuses every supplier rather than trusting one — a test that names no
+	// supplier never asks.
+	if suppliers == nil {
+		suppliers = noSuppliers{}
+	}
+
+	// A nil sender would panic on the first accept. EmptySender still VALIDATES the event, so a malformed one is
+	// caught with no broker in sight — the right default for a test receiving a box.
+	if events == nil {
+		events = event_source.EmptySender
+	}
+
+	return &Service{db: db, liability: liability, expense: expense, suppliers: suppliers, events: events}
 }
 
 // errInsufficientStock is returned when a movement would drive on-hand below zero.

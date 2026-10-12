@@ -4,11 +4,12 @@ import { Box, Flex, Text } from "@chakra-ui/react";
 import type { SettlementMeasure } from "../../../features/settlement/measure";
 import { formatRupiah } from "../../../lib/money";
 
-// The window, in the four numbers that answer it — plus where the shortfall stands at its end.
+// The window, in the numbers that answer it — plus where the position stands at its end.
 //
-// ⚠ `gap` and `hidden cost to date` are DIFFERENT numbers and both are here on purpose. The gap is what
-// THIS window's sales lost; the hidden cost is everything lost up to the window's end. A shop with a bad
-// month and a good one reads the same gap twice and a growing hidden cost.
+// ⚠ `gap` and `position to date` are DIFFERENT numbers and both are here on purpose. The gap is what
+// THIS window's sales lost; the position is everything up to the window's end — the losses AND every
+// withdrawal, which count in it (#withdrawal-counts-in-the-position). Withdrawn stands beside Received so
+// the two can be told apart (#the-report-headline-is-position-to-date).
 export function ReportSummary({ measure }: { measure: SettlementMeasure | undefined }) {
   const { t } = useTranslation();
 
@@ -34,6 +35,12 @@ export function ReportSummary({ measure }: { measure: SettlementMeasure | undefi
         testId="report-received"
       />
       <Tile
+        label={t("settlementReport.withdrawn")}
+        hint={t("settlementReport.withdrawnHint")}
+        value={measure ? formatRupiah(measure.withdrawn) : "—"}
+        testId="report-withdrawn"
+      />
+      <Tile
         label={t("settlementReport.gap")}
         hint={t("settlementReport.gapHint")}
         value={measure ? formatRupiah(measure.gap) : "—"}
@@ -50,10 +57,10 @@ export function ReportSummary({ measure }: { measure: SettlementMeasure | undefi
         testId="report-take-rate"
       />
       <Tile
-        label={t("settlementReport.hiddenCost")}
-        hint={t("settlementReport.hiddenCostHint")}
-        value={measure ? formatRupiah(measure.hiddenCostToDate) : "—"}
-        testId="report-hidden-cost"
+        label={t("settlementReport.positionToDate")}
+        hint={t("settlementReport.positionToDateHint")}
+        value={measure ? formatRupiah(measure.positionToDate) : "—"}
+        testId="report-position"
       />
     </Flex>
   );

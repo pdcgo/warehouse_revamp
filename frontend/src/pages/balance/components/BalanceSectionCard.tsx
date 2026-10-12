@@ -78,7 +78,7 @@ export function BalanceSectionCard({
                           are ordinary, because the point of the ideal screen is what it would look
                           like if the ledger existed. */}
                       {showGaps && untracked && (
-                        <Flex align="center" gap="1" color="orange.fg">
+                        <Flex align="center" gap="1" color="warning.fg">
                           <Icon as={TriangleAlert} boxSize="3.5" />
                           <Text as="span" fontSize="xs">
                             {t("balance.notTracked")}

@@ -46,7 +46,9 @@ sequenceDiagram
   UI load a light preview fast. Generation is best-effort: a non-decodable image just yields no
   thumbnail, never a failed upload.
 - **Resource types split public from private.** `PROFILE_PICTURE` and `PRODUCT_IMAGE` are public —
-  shown inline from a stable URL. `GENERAL` and `ORDER_RECEIPT` are private: an order's courier slip
+  shown inline from a stable URL. `GENERAL`, `ORDER_RECEIPT`, `PAYMENT_PROOF` and `SETTLEMENT_STATEMENT`
+  are private — a statement is the .xlsx the settlement importer uploads **as a client of this contract**,
+  under the uploader's own token, before it reads it. The rest of this point is the receipt's case: an order's courier slip
   (image or PDF) names a buyer and where their parcel went, so it is opened through a signed URL by
   somebody who belongs to the team. Adding a type means four edits in step — the proto enum,
   `resourceTypeToText`/`FromText`, `isPublic`, and the `documents_resource_type_valid` CHECK.
@@ -56,3 +58,31 @@ sequenceDiagram
 
 Code: `backend/services/document_service/document_v1/{request_upload,confirm_upload,get_download_url}.go`,
 `backend/services/document_service/docstore/`.
+
+## ProfilePictureErase — the photos of an erased person
+
+Called by user_service's `UserErase` ([erase-deletes-the-photo-file](../../business/user/context_decision.md#erase-deletes-the-photo-file)),
+with the caller's own bearer, so the policy (Root and the Administrator) is checked against the person erasing.
+
+```mermaid
+sequenceDiagram
+    participant U as user_service
+    participant D as document_service
+    participant S as object storage
+    U->>D: ProfilePictureErase(user_id)
+    D->>D: every PROFILE_PICTURE row this person uploaded — partial index on created_by_id
+    loop each photo
+        D->>S: delete the file, then its thumbnail — a missing one is not an error
+    end
+    D->>D: one transaction - delete their share rows, then the rows
+    D-->>U: how many
+```
+
+- **Files first, rows last.** A file that fails to delete stops the call with its row still there, so the next erase
+  finds it again. The other order would leave a file no row points to — the one state nothing can clean up.
+- **Idempotent.** No rows is `erased = 0`, not an error; a file already gone is skipped. Two erases of one person at
+  once both succeed — the local store retries a delete Windows refuses while another one is finishing
+  ([lock order](../../../audits/services/document_service/concurrency/lock-order.md)).
+- **Every photo, not the current one:** a photo the person replaced is as personal as the one they kept.
+
+Code: `backend/services/document_service/document_v1/profile_picture_erase.go`.

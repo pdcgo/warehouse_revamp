@@ -24,9 +24,9 @@ import (
 //     produced two rows for one team. We upsert against a UNIQUE index instead, so the database
 //     makes the race impossible rather than the code trying to avoid it.
 //
-//  2. SILENT BLANKING. The source assigned all six fields unconditionally, so a client sending
-//     only contact_number wiped the bank details. Every field is now `optional` — absent means
-//     leave alone, present-and-zero means clear.
+//  2. SILENT BLANKING. The source assigned every field unconditionally, so a client sending
+//     only contact_number wiped the rest. Every field is now `optional` — absent means leave
+//     alone, present-and-zero means clear.
 func (s *Service) TeamInfoUpdate(
 	ctx context.Context,
 	req *connect.Request[teamv1.TeamInfoUpdateRequest],
@@ -39,18 +39,6 @@ func (s *Service) TeamInfoUpdate(
 
 	if req.Msg.ContactNumber != nil {
 		updates["contact_number"] = req.Msg.GetContactNumber()
-	}
-
-	if req.Msg.BankType != nil {
-		updates["bank_type"] = req.Msg.GetBankType()
-	}
-
-	if req.Msg.BankOwnerName != nil {
-		updates["bank_owner_name"] = req.Msg.GetBankOwnerName()
-	}
-
-	if req.Msg.BankAccountNumber != nil {
-		updates["bank_account_number"] = req.Msg.GetBankAccountNumber()
 	}
 
 	// present-and-zero clears to NULL; absent leaves the existing value alone.
@@ -121,18 +109,6 @@ func (s *Service) TeamInfoUpdate(
 func applyInfoValues(row *team_service_models.TeamInfo, updates map[string]any) {
 	if v, ok := updates["contact_number"].(string); ok {
 		row.ContactNumber = v
-	}
-
-	if v, ok := updates["bank_type"].(string); ok {
-		row.BankType = v
-	}
-
-	if v, ok := updates["bank_owner_name"].(string); ok {
-		row.BankOwnerName = v
-	}
-
-	if v, ok := updates["bank_account_number"].(string); ok {
-		row.BankAccountNumber = v
 	}
 
 	// Present return ids are stored as *uint64 (nullableID gives nil for a present-zero clear).

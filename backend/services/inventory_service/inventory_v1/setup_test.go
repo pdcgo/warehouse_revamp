@@ -18,7 +18,22 @@ func newService(t *testing.T, db *gorm.DB) *inventory_v1.Service {
 
 	// nil posters — NewService substitutes no-ops, so a test receiving a box onto a shelf does not
 	// have to construct a liability ledger (#184) or an expense ledger (#211) it has no opinion about.
-	return inventory_v1.NewService(db, nil, nil)
+	return inventory_v1.NewService(db, nil, nil, nil, nil)
+}
+
+// fakeSuppliers is the SupplierChecker fake: supplier id → live. A deleted supplier is false; an id that
+// exists nowhere is simply absent — both refused, as supplier_service refuses them.
+type fakeSuppliers map[uint64]bool
+
+func (f fakeSuppliers) SupplierIsLive(_ context.Context, _ uint64, supplierID uint64) (bool, error) {
+	return f[supplierID], nil
+}
+
+// newServiceWithSuppliers is newService with suppliers to name — a restock naming one asks supplier_service.
+func newServiceWithSuppliers(t *testing.T, db *gorm.DB, suppliers fakeSuppliers) *inventory_v1.Service {
+	t.Helper()
+
+	return inventory_v1.NewService(db, nil, nil, suppliers, nil)
 }
 
 // recordingExpense captures the stock-loss values an adjust posts, so a test can assert on WHAT was
@@ -42,7 +57,7 @@ func (e *recordingExpense) PostStockLoss(_ context.Context, warehouseID uint64, 
 func newServiceWithExpense(t *testing.T, db *gorm.DB, expense inventory_v1.ExpensePoster) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, nil, expense)
+	return inventory_v1.NewService(db, nil, expense, nil, nil)
 }
 
 // recordingPoster captures the COD obligations a fulfil posts, so a test can assert on WHAT was
@@ -108,7 +123,7 @@ func newServiceWithLiability(
 ) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(db, poster, nil)
+	return inventory_v1.NewService(db, poster, nil, nil, nil)
 }
 
 // page1 is the first page at a generous limit — enough for the tiny fixtures here. Every inventory

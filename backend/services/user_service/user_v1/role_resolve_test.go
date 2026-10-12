@@ -19,7 +19,7 @@ func TestRoleResolve_ReturnsRoleAndRootRole(t *testing.T) {
 
 	uid := insertUser(t, db, "resolveme", "pw12345678")
 	grantRole(t, db, 5, uid, role_basev1.Role_ROLE_WAREHOUSE_ADMIN)
-	grantRole(t, db, san_auth.RootTeamID, uid, role_basev1.Role_ROLE_ADMIN)
+	grantRole(t, db, san_auth.RootTeamID, uid, role_basev1.Role_ROLE_ADMINISTRATOR)
 
 	ctx := ctxWithIdentity(uid, "resolveme")
 
@@ -32,7 +32,7 @@ func TestRoleResolve_ReturnsRoleAndRootRole(t *testing.T) {
 		t.Errorf("role = %v, want WAREHOUSE_ADMIN", res.Msg.GetRole())
 	}
 
-	if res.Msg.GetRootRole() != role_basev1.Role_ROLE_ADMIN {
+	if res.Msg.GetRootRole() != role_basev1.Role_ROLE_ADMINISTRATOR {
 		t.Errorf("root_role = %v, want ADMIN", res.Msg.GetRootRole())
 	}
 

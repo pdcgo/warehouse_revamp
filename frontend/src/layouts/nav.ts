@@ -1,9 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
-import { canManageUsers, isTeamManager } from "../lib/roles";
+import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
 
 export interface MenuItem {
   to: string;
@@ -143,6 +143,17 @@ const SETTLEMENT_REPORT: MenuItem = {
   label: "nav.settlementReport",
   icon: TrendingDown,
 };
+// The platform statements that FEED that ledger. A wider audience than the two above: CS and up import
+// (cs-and-up-import-daily), so a CS who never opens the ledger still finds the screen they upload on.
+const SETTLEMENT_IMPORTS: MenuItem = {
+  to: "/settlement/imports",
+  label: "nav.settlementImports",
+  icon: FileUp,
+};
+// The money a team actually HOLDS — its bank, wallet and cash accounts (docs/business/financial_account).
+// Every member of a selling or warehouse team sees it (seeing-is-team-wide-moving-is-admin-and-up); the
+// page hides the buttons that move money from anyone below admin, and the server refuses them anyway.
+const FINANCIAL_ACCOUNTS: MenuItem = { to: "/financial-accounts", label: "nav.financialAccounts", icon: Landmark };
 const USERS: MenuItem = { to: "/users", label: "nav.users", icon: Users };
 const SETTINGS: MenuItem = { to: "/settings", label: "nav.settings", icon: Settings };
 const PROFILE: MenuItem = { to: "/profile", label: "nav.profile", icon: CircleUser };
@@ -159,6 +170,24 @@ const PRODUCTS_GROUP: MenuGroup = {
   ],
 };
 
+// A selling team's Suppliers is a sub-menu of its own, the same shape as Products (owner): "My Supplier" — the
+// suppliers this team keeps — "Discover Supplier" — every team's, searched across teams
+// (manage-and-discover-are-two-pages) — and "Supplier Report", suppliers ranked by what every team restocked from them
+// (the-figures-are-a-statistics-tab-and-a-supplier-report). It used to be three children of Inventories, where it
+// read as a kind of stock; a supplier is who the stock comes FROM.
+//
+// ⚠ The routes stay under /inventories/suppliers — only the menu moved. "Where am I" matches the longest prefix, so
+// these three still win over Inventories' own children.
+const SUPPLIERS_GROUP: MenuGroup = {
+  label: "nav.suppliers",
+  icon: Factory,
+  children: [
+    { to: "/inventories/suppliers", label: "nav.mySupplier", icon: Factory },
+    { to: "/inventories/suppliers/discover", label: "nav.discoverSupplier", icon: Compass },
+    { to: "/inventories/suppliers/report", label: "nav.supplierReport", icon: ChartColumn },
+  ],
+};
+
 // Inventories is a sub-menu (#95).
 //
 // "Restock" is ONE entry (#122): there used to be a Restock that was really the stock list (a
@@ -170,7 +199,7 @@ const PRODUCTS_GROUP: MenuGroup = {
 // "Placements" is a stub until the warehouse core / locations are designed (plan.md §1).
 //
 // The group is BUILT PER TEAM TYPE rather than being a fixed const, because the children are not
-// common to both: "Racks" (#129) is a warehouse's own, while "Supplier" and "Placements" are the
+// common to both: "Racks" (#129) is a warehouse's own, while the suppliers and "Placements" are the
 // requesting side's — a supplier belongs to the SELLING team that raises the restock, not the
 // warehouse that fulfils it. Only "Restock" and "Stock" are shared.
 //
@@ -188,12 +217,10 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
     children.push({ to: "/inventories/returns", label: "nav.returns", icon: Undo2 });
   }
 
-  // Supplier and Placements are dropped from the WAREHOUSE menu (#212): a warehouse does not own the
-  // suppliers a selling team orders from, and Placements is a stub that only ever belonged to the
-  // stock-locating side. They stay for a selling team.
+  // Placements is dropped from the WAREHOUSE menu (#212): it is a stub that only ever belonged to the stock-locating
+  // side. The suppliers moved out to their own group (SUPPLIERS_GROUP), still a selling team's alone.
   if (teamType === TeamType.SELLING) {
     children.push({ to: "/inventories/placements", label: "nav.placements", icon: MapPin });
-    children.push({ to: "/inventories/suppliers", label: "nav.supplier", icon: Factory });
   }
 
   // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).
@@ -257,6 +284,9 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
     // A WAREHOUSE keeps it further down (see below): stock is not a footnote to a catalogue there,
     // it is the job, and its Inventories group holds different children.
     menu.push(inventoriesFor(teamType));
+    // Suppliers right under it — who the restocks in Inventories come from. A selling team's alone: a warehouse
+    // does not own the suppliers a selling team orders from (#212).
+    menu.push(SUPPLIERS_GROUP);
   }
 
   // Shops and orders are SELLING-team concepts (#66/#68).
@@ -305,6 +335,15 @@ export function menuFor(teamType: TeamType | undefined, role: Role | undefined):
   if (teamType === TeamType.SELLING && isTeamManager(role)) {
     menu.push(SETTLEMENT);
     menu.push(SETTLEMENT_REPORT);
+  }
+
+  if (teamType === TeamType.SELLING && canImportSettlement(role)) {
+    menu.push(SETTLEMENT_IMPORTS);
+  }
+
+  // The accounts close the money section, for EVERY member — the one money screen not gated on a role.
+  if (teamType === TeamType.SELLING || teamType === TeamType.WAREHOUSE) {
+    menu.push(FINANCIAL_ACCOUNTS);
   }
 
   // Inventories sub-menu — restock, racks, batches, opname — for a WAREHOUSE (#95). A selling team

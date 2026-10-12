@@ -73,6 +73,7 @@ func postedEvent(result PostResult) *eventsv1.Event {
 				OccurredOn:           entry.OccurredOn.Format(dateLayout),
 				ReversesId:           reverses,
 				Note:                 entry.Note,
+				UserId:               entry.UserID,
 			},
 		},
 	}

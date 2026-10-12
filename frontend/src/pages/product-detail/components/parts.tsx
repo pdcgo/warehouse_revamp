@@ -1,56 +1,14 @@
-import { Box, HStack, Stack, Text } from "@chakra-ui/react";
+import { Box, HStack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { TeamSelect } from "../../../components/teams/TeamSelect";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDate } from "../../../lib/datetime";
 
-// The small shared pieces of the product detail — the labelled field, the two "we do not know yet"
-// renderers, and the warehouse lens. Used by the page's own Info panel and by all three tab panels
-// beside this file, which is what makes them page components rather than one panel's.
-
-// A labelled read-only field; a dash keeps the layout from collapsing on an empty value.
-export function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3}>
-        {value || "—"}
-      </Text>
-    </Stack>
-  );
-}
-
-// The same shape as Field, for a value that is a component rather than a string.
-export function Stat({
-  label,
-  hint,
-  testId,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  testId?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Stack gap="0.5" minW="0" data-testid={testId}>
-      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" asChild>
-        <div>{children}</div>
-      </Text>
-      {hint && (
-        <Text fontSize="xs" color="fg.subtle">
-          {hint}
-        </Text>
-      )}
-    </Stack>
-  );
-}
+// The small shared pieces of the product detail — the two "we do not know yet" renderers, and the
+// warehouse lens. Used by the page's own Info panel and by all three tab panels beside this file,
+// which is what makes them page components rather than one panel's. (The labelled Field and Stat
+// moved to features/products/RecordField once the discover detail needed them too.)
 
 // A figure whose read has not answered yet. It renders as a dash with the reason beside it rather
 // than as a 0: an unknown figure is not a zero one (#74), and a screen that prints Rp 0 where it means

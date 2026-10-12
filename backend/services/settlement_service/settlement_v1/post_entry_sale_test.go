@@ -41,7 +41,7 @@ func cancelInput(uniqueID string) settlement_v1.CancelInput {
 // option is a convenience, and manual posting is the repair path (#a-missing-account-is-fixed-by-hand).
 func TestSettlementPost_RefusesASecondLiveSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -58,7 +58,7 @@ func TestSettlementPost_RefusesASecondLiveSale(t *testing.T) {
 // sale down — so the guard must let the repost through once it has.
 func TestSettlementPost_ReverseThenRepostCorrectsTheSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	wrong, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -95,7 +95,7 @@ func TestSettlementPost_ReverseThenRepostCorrectsTheSale(t *testing.T) {
 // to 110.000, cancelling by the order's number would leave a live sale of −10.000.
 func TestCancelSale_TakesTheAmountFromTheLiveSale(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	wrong, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -146,7 +146,7 @@ func TestCancelSale_TakesTheAmountFromTheLiveSale(t *testing.T) {
 // empty account would read as a settlement nobody performed.
 func TestCancelSale_WithNoLiveSaleOpensNothing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := svc.CancelSale(context.Background(), cancelInput("order-5001-cancel"))
 	if !errors.Is(err, settlement_v1.ErrNothingToCancel) {
@@ -166,7 +166,7 @@ func TestCancelSale_WithNoLiveSaleOpensNothing(t *testing.T) {
 // refused because the sale is now zero, and never credit the account a second time.
 func TestCancelSale_RetryIsAbsorbed(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := post(t, svc, initialTotal("order-5001-initial"))
 	if err != nil {
@@ -197,7 +197,7 @@ func TestCancelSale_RetryIsAbsorbed(t *testing.T) {
 // with the live fold that already ran.
 func TestSettlementPost_TheCreatorIsStampedOnlyByTheOpeningPost(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	opening := initialTotal("order-5001-initial")
 	opening.CreatedByUserID = 7
@@ -210,7 +210,7 @@ func TestSettlementPost_TheCreatorIsStampedOnlyByTheOpeningPost(t *testing.T) {
 	later, err := post(t, svc, settlement_v1.PostInput{
 		UniqueID:        "fund-1",
 		SettlementType:  settlementv1.SettlementType_SETTLEMENT_TYPE_FUND,
-		SourceType:      settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+		SourceType:      settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 		Change:          arrived,
 		CreatedByUserID: 9,
 	})
@@ -228,7 +228,7 @@ func TestSettlementPost_TheCreatorIsStampedOnlyByTheOpeningPost(t *testing.T) {
 func TestSettlementPost_PublishesTheCommittedRow(t *testing.T) {
 	db := san_testdb.DB(t)
 	capture := &captureEvents{}
-	svc := settlement_v1.NewService(db, capture.send, nil)
+	svc := settlement_v1.NewService(db, capture.send, nil, nil)
 
 	opening := initialTotal("order-5001-initial")
 	opening.CreatedByUserID = 7

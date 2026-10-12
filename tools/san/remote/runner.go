@@ -12,6 +12,7 @@ import (
 	"time"
 
 	remotev1 "github.com/pdcgo/warehouse_revamp/backend/gen/san/remote/v1"
+	"github.com/pdcgo/warehouse_revamp/tools/san/proctree"
 )
 
 // readChunk is how much output is taken per read. Big enough that a chatty build does not turn
@@ -94,8 +95,8 @@ func (s *Service) run(ctx context.Context, p runParams, out outputSink) (*remote
 	// Kill the whole TREE, not just the shell. `sh -c "go build ./..."` is a shell that spawns a
 	// compiler; killing the shell alone on a timeout leaves the compiler running and the operator
 	// wondering why the machine is still hot.
-	configureProcessGroup(cmd)
-	cmd.Cancel = func() error { return killProcessTree(cmd) }
+	proctree.Configure(cmd)
+	cmd.Cancel = func() error { return proctree.KillTree(cmd) }
 
 	// A child that ignores the kill must not hold the call open forever.
 	cmd.WaitDelay = 5 * time.Second

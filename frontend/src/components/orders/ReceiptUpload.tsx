@@ -44,16 +44,26 @@ function isPdf(mimeType: string): boolean {
 //
 // ONE receipt, replaced rather than accumulated: an order ships once, and a list of receipts would
 // leave "which of these is the real one?" for somebody to answer later.
-export function ReceiptUpload({
+/**
+ * THE UPLOAD ITSELF, without any markup — so a second control can perform it.
+ *
+ * ⚠ IT EXISTS BECAUSE THERE ARE TWO WAYS IN NOW (owner): the button below, and DROPPING a file on
+ * the receipt preview. Both are the same three steps (RequestUpload → PUT → ConfirmUpload), the same
+ * size guard and the same error toast — and a second copy of that sequence is a copy that falls
+ * behind the first the day the flow changes.
+ */
+export function useReceiptUpload({
   teamId,
-  value,
   onChange,
-  disabled,
+  onFile,
 }: {
   teamId: bigint;
-  value: ReceiptValue;
   onChange: (receipt: ReceiptValue) => void;
-  disabled?: boolean;
+  /**
+   * The picked FILE itself, the moment its upload starts — and `null` if that upload fails. The label
+   * check reads these bytes BESIDE the upload (receipt-check-takes-the-file-bytes), never the stored copy.
+   */
+  onFile?: (file: File | null) => void;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -81,6 +91,7 @@ export function ReceiptUpload({
 
     uploadingRef.current = true;
     setBusy(true);
+    onFile?.(file);
 
     try {
       // 1. Ask where to put the bytes. A receipt is PRIVATE, so no public URL comes back — the id is
@@ -118,6 +129,8 @@ export function ReceiptUpload({
         mimeType: doc.mimeType || file.type,
       });
     } catch (err) {
+      // A file that never arrived is not one to read numbers from.
+      onFile?.(null);
       toaster.create({ type: "error", title: t("orders.receiptFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
@@ -125,6 +138,28 @@ export function ReceiptUpload({
       setPickerKey((k) => k + 1);
     }
   }
+
+  return { upload, busy, pickerKey };
+}
+
+// ReceiptUpload attaches ONE shipping receipt to the order being written (owner) — the button half.
+// The preview beside it (see ShippingReceiptCard) is the other, and both share `useReceiptUpload`.
+export function ReceiptUpload({
+  teamId,
+  value,
+  onChange,
+  onFile,
+  disabled,
+}: {
+  teamId: bigint;
+  value: ReceiptValue;
+  onChange: (receipt: ReceiptValue) => void;
+  /** See `useReceiptUpload`. */
+  onFile?: (file: File | null) => void;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { upload, busy, pickerKey } = useReceiptUpload({ teamId, onChange, onFile });
 
   return (
     <Stack gap="card" data-testid="order-receipt-upload">

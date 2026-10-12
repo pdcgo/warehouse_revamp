@@ -49,7 +49,7 @@ func logPosted(
 				ActorId:              actor,
 				OrderCreatedByUserId: orderCreator,
 				SettlementType:       settlementType,
-				SourceType:           settlementv1.SourceType_SOURCE_TYPE_EXPORTER,
+				SourceType:           settlementv1.SourceType_SOURCE_TYPE_IMPORTER,
 				Change:               change,
 				PostedOn:             day,
 				OccurredOn:           day,
@@ -160,7 +160,7 @@ var workedExampleDays = []dayWant{
 // would hold on every row while every figure after 01-02 was wrong.
 func TestFold_BuildsTheShopAndUserDaysAndShiftsLaterDays(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -190,7 +190,7 @@ func TestFold_BuildsTheShopAndUserDaysAndShiftsLaterDays(t *testing.T) {
 // At-least-once delivery: the same event twice is folded once.
 func TestFold_IsIdempotentOnTheEventID(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	first := workedExample()[0]
 	fold(t, svc, first, first)
@@ -203,7 +203,7 @@ func TestFold_IsIdempotentOnTheEventID(t *testing.T) {
 // redelivers it later — and nothing is claimed, so the redelivery is folded.
 func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = '{"lock":true}' WHERE key = 'process_event_lock'`).Error
 	if err != nil {
@@ -231,7 +231,7 @@ func TestFold_RefusesWhileTheEventLockIsHeld(t *testing.T) {
 // it is misconfigured.
 func TestFold_RefusesAnUnparseableLock(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	err := db.Exec(`UPDATE settlement_service_metadata SET value = 'off' WHERE key = 'process_event_lock'`).Error
 	if err != nil {
@@ -247,7 +247,7 @@ func TestFold_RefusesAnUnparseableLock(t *testing.T) {
 // A shop-addressed row has no order and so no creator — the user grain files it under its ACTOR.
 func TestFold_AttributesAShopRowToItsActor(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, logPosted(9, "2026-01-05", shop, 0, 0, 9,
 		settlementv1.SettlementType_SETTLEMENT_TYPE_SYSTEM_ADJUSTMENT, -5_000))
@@ -294,7 +294,7 @@ func timeSearch(
 // Every day in the window is a point — 01-04 had no movement and still carries the shortfall forward.
 func TestAnalyticTimeSearch_DailyCarriesTheQuietDay(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -324,7 +324,7 @@ func TestAnalyticTimeSearch_DailyCarriesTheQuietDay(t *testing.T) {
 // A month is ROLLED UP from its days: movements summed, open at the month's start, close at its end.
 func TestAnalyticTimeSearch_MonthlyRollsUpTheDays(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -346,7 +346,7 @@ func TestAnalyticTimeSearch_MonthlyRollsUpTheDays(t *testing.T) {
 // DESC pages from the newest bucket, and the page window is over buckets.
 func TestAnalyticTimeSearch_PagesNewestFirst(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -366,7 +366,7 @@ func TestAnalyticTimeSearch_PagesNewestFirst(t *testing.T) {
 // has no shop to narrow by.
 func TestAnalyticTimeSearch_ByUserAndTheUserShopConflict(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 
@@ -396,7 +396,7 @@ func TestAnalyticTimeSearch_ByUserAndTheUserShopConflict(t *testing.T) {
 // The span cap is what stops a daily read of a decade.
 func TestAnalyticTimeSearch_CapsTheSpan(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	_, err := svc.AnalyticTimeSearch(context.Background(), connect.NewRequest(&settlementv1.AnalyticTimeSearchRequest{
 		TeamId:    team,
@@ -422,7 +422,7 @@ func groupWindow(groupType settlementv1.AnalyticGroupType) *settlementv1.Analyti
 // SAME definition — so the order and the numbers agree.
 func TestAnalyticGroup_RanksAndFillsShops(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(20, "2026-01-02", otherShop, otherOrder, 8, 8,
@@ -470,7 +470,7 @@ func TestAnalyticGroup_RanksAndFillsShops(t *testing.T) {
 // A team is the sum of its shops, and users group by who created the order.
 func TestAnalyticGroup_TeamsAndUsers(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	fold(t, svc, workedExample()...)
 	fold(t, svc, logPosted(20, "2026-01-02", otherShop, otherOrder, 8, 8,
@@ -543,7 +543,7 @@ func lockValue(t *testing.T, db *gorm.DB) string {
 func TestAnalyticReplayCompute_ClearsTheRangeAndSeeks(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker)
+	svc := settlement_v1.NewService(db, nil, broker, nil)
 
 	fold(t, svc,
 		logPosted(1, jakartaDay(-1), shop, order, creator, creator,
@@ -584,7 +584,7 @@ func TestAnalyticReplayCompute_ClearsTheRangeAndSeeks(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesOutsideTheRetention(t *testing.T) {
 	db := san_testdb.DB(t)
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	svc := settlement_v1.NewService(db, nil, broker)
+	svc := settlement_v1.NewService(db, nil, broker, nil)
 
 	_, err := svc.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(-30),
@@ -603,7 +603,7 @@ func TestAnalyticReplayCompute_RefusesOutsideTheRetention(t *testing.T) {
 func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.T) {
 	db := san_testdb.DB(t)
 
-	unreadable := settlement_v1.NewService(db, nil, &fakeBroker{err: errors.New("admin API down")})
+	unreadable := settlement_v1.NewService(db, nil, &fakeBroker{err: errors.New("admin API down")}, nil)
 
 	_, err := unreadable.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(0),
@@ -618,7 +618,7 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 	}
 
 	broker := &fakeBroker{window: 7 * 24 * time.Hour}
-	locked := settlement_v1.NewService(db, nil, broker)
+	locked := settlement_v1.NewService(db, nil, broker, nil)
 
 	_, err = locked.AnalyticReplayCompute(context.Background(), connect.NewRequest(&settlementv1.AnalyticReplayComputeRequest{
 		StartDate: jakartaDay(0),
@@ -635,7 +635,7 @@ func TestAnalyticReplayCompute_RefusesAnUnreadableWindowAndAHeldLock(t *testing.
 // Maintenance prunes dedup rows by when they were RECEIVED, keeping everything inside the retention.
 func TestAnalyticMaintenanceRun_PrunesOnlyExpiredClaims(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := settlement_v1.NewService(db, nil, nil)
+	svc := settlement_v1.NewService(db, nil, nil, nil)
 
 	err := db.Exec(`
 INSERT INTO settlement_event_logs (id, raw, day, created_at) VALUES

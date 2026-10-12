@@ -20,29 +20,63 @@ import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
 // ⚠ Not `features/liability`, which is what teams owe each other. Two ledgers, two services, and the
 // only thing they share is that both are order-aware — this one is allowed to never balance.
 
+/** The list's sortable measures — one per sortable heading (`the-settlement-list-sorts-by-its-headings`). */
+export type SettlementSortKey = "orderId" | "sold" | "received" | "loss";
+export type SettlementSortDir = "desc" | "asc";
+export interface SettlementSort {
+  by: SettlementSortKey;
+  dir: SettlementSortDir;
+}
+/** Worst loss first — the question the screen exists to answer. */
+export const DEFAULT_SETTLEMENT_SORT: SettlementSort = { by: "loss", dir: "desc" };
+
+const WIRE_SORT: Record<SettlementSortKey, OrderSettlementSort> = {
+  orderId: OrderSettlementSort.ORDER_ID,
+  sold: OrderSettlementSort.INITIAL_TOTAL,
+  received: OrderSettlementSort.RECEIVED,
+  loss: OrderSettlementSort.LOSS,
+};
+
 export function useOrderSettlements(args: {
   teamId: bigint | undefined;
   shopId?: bigint;
   q?: string;
+  /** The window the ACCOUNT last moved in, inclusive `yyyy-mm-dd` — not the order date. Empty = open. */
+  from?: string;
+  to?: string;
+  sort?: SettlementSort;
   page: number;
   pageSize: number;
 }) {
-  const { teamId, shopId, q, page, pageSize } = args;
+  const { teamId, shopId, q, from, to, page, pageSize } = args;
+  const sort = args.sort ?? DEFAULT_SETTLEMENT_SORT;
 
   return useQuery({
     // `listQuery` — a key change here REFINES the same question (page 2, this shop, this search), so
     // the previous rows stay on screen while the next ones load.
     ...listQuery,
-    queryKey: key.settlement(teamId, { page, pageSize, shopId: String(shopId ?? ""), q: q ?? "" }),
+    queryKey: key.settlement(teamId, {
+      page,
+      pageSize,
+      shopId: String(shopId ?? ""),
+      q: q ?? "",
+      from: from ?? "",
+      to: to ?? "",
+      sortBy: sort.by,
+      sortDir: sort.dir,
+    }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await settlementClient.orderSettlementList({
         teamId: teamId!,
-        filter: { shopId: shopId ?? 0n, q: q ?? "" },
+        filter: { shopId: shopId ?? 0n, q: q ?? "", from: from ?? "", to: to ?? "" },
         dataRequest: settlementRowData(),
         page: { page, limit: pageSize },
-        // Worst loss first — the question the screen exists to answer.
-        sort: { sort: OrderSettlementSort.LOSS, sortType: CommonSortType.ASC },
+        // The direction is the NAMED measure's — DESC is the biggest loss, the most received.
+        sort: {
+          sort: WIRE_SORT[sort.by],
+          sortType: sort.dir === "desc" ? CommonSortType.DESC : CommonSortType.ASC,
+        },
       });
 
       return {
@@ -50,6 +84,7 @@ export function useOrderSettlements(args: {
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
         totalInitialTotal: res.totalInitialTotal,
         totalLastBalance: res.totalLastBalance,
+        totalUnrecorded: Number(res.totalUnrecorded),
       };
     },
   });

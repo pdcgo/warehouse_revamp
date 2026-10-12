@@ -30,15 +30,14 @@ import { ArrowLeft, Paperclip, Plus, X } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { TermsPanel } from "./components/TermsPanel";
+import { LiabilityLedgerTable } from "./components/LiabilityLedgerTable";
+import { fmtDate } from "./format";
 import { PaymentProof } from "./components/PaymentProof";
 import { RejectPaymentDialog } from "./components/RejectPaymentDialog";
 import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import {
-  LiabilityPaymentStatus,
-  LiabilitySourceType,
-} from "../../gen/warehouse/liability/v1/liability_pb";
+import { LiabilityPaymentStatus } from "../../gen/warehouse/liability/v1/liability_pb";
 import type { LiabilityPayment } from "../../gen/warehouse/liability/v1/liability_pb";
 import { formatRupiah } from "../../lib/money";
 import {
@@ -76,43 +75,12 @@ function teamKindKey(type: TeamType): string {
   }
 }
 
-// WHAT CAUSED an entry, in words, from the typed `(source_type, source_id)` pair — never free text. A
-// line reads "Product fee · order #412", so "why do I owe this?" is answerable, filterable and
-// countable.
-function causeKey(type: LiabilitySourceType): string {
-  switch (type) {
-    case LiabilitySourceType.ORDER_FEE:
-      return "liabilityDetail.causeOrderFee";
-    case LiabilitySourceType.INCIDENTAL_FEE:
-      return "liabilityDetail.causeIncidentalFee";
-    case LiabilitySourceType.PRODUCT_FEE:
-      return "liabilityDetail.causeProductFee";
-    case LiabilitySourceType.PAYMENT:
-      return "liabilityDetail.causePayment";
-    // ⚠ CAUSES 4 AND 5 USED TO SHARE ONE LABEL, because they shared one source type. They no longer
-    // do: broken and lost are different questions to answer, and a find is a giving-back movement
-    // rather than a third kind of loss. The REVERSAL badge still marks the find — the type carries
-    // the cause and the flag carries the direction.
-    case LiabilitySourceType.BROKEN_GOOD:
-      return "liabilityDetail.causeBrokenGood";
-    case LiabilitySourceType.LOST_GOOD:
-      return "liabilityDetail.causeLostGood";
-    case LiabilitySourceType.FOUND:
-      return "liabilityDetail.causeFound";
-    default:
-      // A source this build does not know renders as "unknown" rather than breaking the page.
-      return "liabilityDetail.causeUnknown";
-  }
-}
-
 function statusKey(status: LiabilityPaymentStatus): string {
   switch (status) {
     case LiabilityPaymentStatus.RECORDED:
       return "liabilityDetail.statusRecorded";
     case LiabilityPaymentStatus.CONFIRMED:
       return "liabilityDetail.statusConfirmed";
-    case LiabilityPaymentStatus.REVERSED:
-      return "liabilityDetail.statusReversed";
     case LiabilityPaymentStatus.REJECTED:
       return "liabilityDetail.statusRejected";
     default:
@@ -123,22 +91,15 @@ function statusKey(status: LiabilityPaymentStatus): string {
 function statusPalette(status: LiabilityPaymentStatus): string {
   switch (status) {
     case LiabilityPaymentStatus.RECORDED:
-      return "orange";
+      return "warning";
     case LiabilityPaymentStatus.CONFIRMED:
-      return "green";
-    // ⚠ RED, and REVERSED stays grey. A refusal is an outcome the payer has to act on — re-send the
-    // slip, or the money — while a reversal is a correction already made. Giving them one colour
-    // would flatten "you must do something" into "something happened".
+      return "success";
+    // ⚠ RED. A refusal is an outcome the payer has to act on — re-send the slip, or the money.
     case LiabilityPaymentStatus.REJECTED:
-      return "red";
+      return "error";
     default:
       return "gray";
   }
-}
-
-function fmtDate(unix: bigint): string {
-  if (unix === 0n) return "—";
-  return new Date(Number(unix) * 1000).toLocaleDateString();
 }
 
 // LiabilityDetailPage is the running history of ONE relationship (#222/§5.1 B) — a PAGE, not a dialog
@@ -259,60 +220,6 @@ export function LiabilityDetailPage() {
       ? rpcError(paymentsQuery.error)
       : "";
 
-  function renderEntryTable(rows: typeof entries, emptyKey: string) {
-    if (rows.length === 0) {
-      return (
-        <Text color="fg.muted" py="card">
-          {t(emptyKey)}
-        </Text>
-      );
-    }
-
-    return (
-      <Table.Root size="sm">
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader>{t("liabilityDetail.colDate")}</Table.ColumnHeader>
-            <Table.ColumnHeader>{t("liabilityDetail.colCause")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colAmount")}</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="end">{t("liabilityDetail.colBalance")}</Table.ColumnHeader>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {rows.map((e) => (
-            <Table.Row
-              key={e.id.toString()}
-              bg={e.reversal ? "bg.muted" : undefined}
-              data-testid={`liability-detail-entry-${e.id}`}
-            >
-              <Table.Cell whiteSpace="nowrap">{fmtDate(e.createdAtUnix)}</Table.Cell>
-              <Table.Cell>
-                <Flex align="center" gap="2">
-                  <Text>{t(causeKey(e.sourceType), { id: e.sourceId.toString() })}</Text>
-                  {/* A reversal is labelled, not left to be inferred from a sign. */}
-                  {e.reversal && (
-                    <Badge colorPalette="orange" data-testid={`liability-detail-reversal-${e.id}`}>
-                      {t("liabilityDetail.reversal")}
-                    </Badge>
-                  )}
-                </Flex>
-              </Table.Cell>
-              {/* The one place a sign is legitimate: an entry is a MOVEMENT, and +/− means "this made
-                  the balance go up / down". */}
-              <Table.Cell textAlign="end" whiteSpace="nowrap">
-                {e.amount > 0n ? "+" : "−"}
-                {formatRupiah(e.amount < 0n ? -e.amount : e.amount)}
-              </Table.Cell>
-              <Table.Cell textAlign="end" color="fg.muted" whiteSpace="nowrap">
-                {formatRupiah(e.balanceAfter)}
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-    );
-  }
-
   // ⚠ NARROWED ONCE, HERE. `current` is guarded above, but TypeScript drops that narrowing inside a
   // closure, and the proof links need a concrete reader team — a `?? 0n` fallback would send a
   // GetDownloadUrl for team 0 rather than fail loudly.
@@ -352,7 +259,7 @@ export function LiabilityDetailPage() {
                   {/* ⚠ THE REASON IS SHOWN ON BOTH SIDES, and to the payer above all: a refusal they
                       cannot read is a debt they cannot fix. */}
                   {p.reason !== "" && (
-                    <Text fontSize="xs" color="red.fg" data-testid={`liability-detail-reason-${p.id}`}>
+                    <Text fontSize="xs" color="error.fg" data-testid={`liability-detail-reason-${p.id}`}>
                       {p.reason}
                     </Text>
                   )}
@@ -369,7 +276,7 @@ export function LiabilityDetailPage() {
                     <>
                       <Button
                         size="xs"
-                        colorPalette="green"
+                        colorPalette="success"
                         data-testid={`liability-detail-confirm-${p.id}`}
                         onClick={() => setConfirmTarget(p)}
                       >
@@ -378,7 +285,7 @@ export function LiabilityDetailPage() {
                       <Button
                         size="xs"
                         variant="outline"
-                        colorPalette="red"
+                        colorPalette="error"
                         data-testid={`liability-detail-reject-${p.id}`}
                         onClick={() => setRejectTarget(p)}
                       >
@@ -436,12 +343,12 @@ export function LiabilityDetailPage() {
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("liabilityDetail.receivableLabel")}</Stat.Label>
-          <Stat.ValueText color="green.fg">{formatRupiah(receivable)}</Stat.ValueText>
+          <Stat.ValueText color="success.fg">{formatRupiah(receivable)}</Stat.ValueText>
           <Stat.HelpText>{t("liabilityDetail.receivableHint")}</Stat.HelpText>
         </Stat.Root>
         <Stat.Root>
           <Stat.Label>{t("liabilityDetail.payableLabel")}</Stat.Label>
-          <Stat.ValueText color="orange.fg">{formatRupiah(payable)}</Stat.ValueText>
+          <Stat.ValueText color="warning.fg">{formatRupiah(payable)}</Stat.ValueText>
           <Stat.HelpText>{t("liabilityDetail.payableHint")}</Stat.HelpText>
         </Stat.Root>
       </SimpleGrid>
@@ -458,7 +365,7 @@ export function LiabilityDetailPage() {
       </Flex>
 
       {error && (
-        <Text color="red.fg" data-testid="liability-detail-error">
+        <Text color="error.fg" data-testid="liability-detail-error">
           {error}
         </Text>
       )}
@@ -501,7 +408,7 @@ export function LiabilityDetailPage() {
 
           <Tabs.Content value="receivable">
             <Stack gap="card" data-testid="liability-detail-receivable">
-              {renderEntryTable(receivableRows, "liabilityDetail.emptyReceivable")}
+              <LiabilityLedgerTable rows={receivableRows} emptyText={t("liabilityDetail.emptyReceivable")} />
               <Pagination
                 page={entryPage}
                 pageSize={ENTRY_PAGE_SIZE}
@@ -513,7 +420,7 @@ export function LiabilityDetailPage() {
 
           <Tabs.Content value="payable">
             <Stack gap="card" data-testid="liability-detail-payable">
-              {renderEntryTable(payableRows, "liabilityDetail.emptyPayable")}
+              <LiabilityLedgerTable rows={payableRows} emptyText={t("liabilityDetail.emptyPayable")} />
               <Pagination
                 page={entryPage}
                 pageSize={ENTRY_PAGE_SIZE}
@@ -710,7 +617,6 @@ function MakePaymentDialog({
                       value={amount}
                       onChange={setAmount}
                       disabled={busy}
-                      placeholder="0"
                       data-testid="record-amount"
                     />
                   </Field.Root>
@@ -780,7 +686,7 @@ function MakePaymentDialog({
                   </Field.Root>
 
                   {error && (
-                    <Dialog.Description color="red.fg" data-testid="record-error">
+                    <Dialog.Description color="error.fg" data-testid="record-error">
                       {error}
                     </Dialog.Description>
                   )}

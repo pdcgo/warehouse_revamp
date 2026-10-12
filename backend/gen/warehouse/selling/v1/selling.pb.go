@@ -175,14 +175,17 @@ func (ShopUserListDataType) EnumDescriptor() ([]byte, []int) {
 }
 
 type Shop struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	TeamId        uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	ShopCode      string                 `protobuf:"bytes,4,opt,name=shop_code,json=shopCode,proto3" json:"shop_code,omitempty"`
-	Marketplace   v1.Marketplace         `protobuf:"varint,5,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
-	Description   string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
-	Deleted       bool                   `protobuf:"varint,7,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	TeamId      uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	ShopCode    string                 `protobuf:"bytes,4,opt,name=shop_code,json=shopCode,proto3" json:"shop_code,omitempty"`
+	Marketplace v1.Marketplace         `protobuf:"varint,5,opt,name=marketplace,proto3,enum=warehouse.marketplace.v1.Marketplace" json:"marketplace,omitempty"`
+	Description string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	Deleted     bool                   `protobuf:"varint,7,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	// The shop's primary CS — one of its granted users, flagged (the-primary-cs-is-a-flag-on-a-grant).
+	// 0 = none: the shop cannot import until someone is made primary.
+	PrimaryUserId uint64 `protobuf:"varint,8,opt,name=primary_user_id,json=primaryUserId,proto3" json:"primary_user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -264,6 +267,13 @@ func (x *Shop) GetDeleted() bool {
 		return x.Deleted
 	}
 	return false
+}
+
+func (x *Shop) GetPrimaryUserId() uint64 {
+	if x != nil {
+		return x.PrimaryUserId
+	}
+	return 0
 }
 
 type ShopCreateRequest struct {
@@ -1610,11 +1620,241 @@ func (*ShopUserRemoveResponse) Descriptor() ([]byte, []int) {
 	return file_warehouse_selling_v1_selling_proto_rawDescGZIP(), []int{23}
 }
 
+type ShopUserSetPrimaryRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// Must already hold a grant on the shop — a primary is never someone without access.
+	UserId        uint64 `protobuf:"varint,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShopUserSetPrimaryRequest) Reset() {
+	*x = ShopUserSetPrimaryRequest{}
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShopUserSetPrimaryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShopUserSetPrimaryRequest) ProtoMessage() {}
+
+func (x *ShopUserSetPrimaryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShopUserSetPrimaryRequest.ProtoReflect.Descriptor instead.
+func (*ShopUserSetPrimaryRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_selling_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ShopUserSetPrimaryRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ShopUserSetPrimaryRequest) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *ShopUserSetPrimaryRequest) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+type ShopUserSetPrimaryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Shop          *Shop                  `protobuf:"bytes,1,opt,name=shop,proto3" json:"shop,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShopUserSetPrimaryResponse) Reset() {
+	*x = ShopUserSetPrimaryResponse{}
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShopUserSetPrimaryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShopUserSetPrimaryResponse) ProtoMessage() {}
+
+func (x *ShopUserSetPrimaryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShopUserSetPrimaryResponse.ProtoReflect.Descriptor instead.
+func (*ShopUserSetPrimaryResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_selling_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ShopUserSetPrimaryResponse) GetShop() *Shop {
+	if x != nil {
+		return x.Shop
+	}
+	return nil
+}
+
+type ShopAccessCheckRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	ShopId uint64                 `protobuf:"varint,2,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// Whose access to answer for.
+	UserId        uint64 `protobuf:"varint,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShopAccessCheckRequest) Reset() {
+	*x = ShopAccessCheckRequest{}
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShopAccessCheckRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShopAccessCheckRequest) ProtoMessage() {}
+
+func (x *ShopAccessCheckRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShopAccessCheckRequest.ProtoReflect.Descriptor instead.
+func (*ShopAccessCheckRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_selling_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ShopAccessCheckRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ShopAccessCheckRequest) GetShopId() uint64 {
+	if x != nil {
+		return x.ShopId
+	}
+	return 0
+}
+
+func (x *ShopAccessCheckRequest) GetUserId() uint64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+type ShopAccessCheckResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A live shop of the request's team. Another team's shop, or a deleted one, is NotFound.
+	Shop *Shop `protobuf:"bytes,1,opt,name=shop,proto3" json:"shop,omitempty"`
+	// The shop's primary CS — 0 = none (a-shop-with-no-primary-cs-cannot-import).
+	PrimaryUserId uint64 `protobuf:"varint,2,opt,name=primary_user_id,json=primaryUserId,proto3" json:"primary_user_id,omitempty"`
+	// May the user WRITE on the shop (a-write-needs-a-grant-or-a-manager): granted it, or the team's
+	// owner or admin, or root or admin.
+	IsHaveAccess  bool `protobuf:"varint,3,opt,name=is_have_access,json=isHaveAccess,proto3" json:"is_have_access,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShopAccessCheckResponse) Reset() {
+	*x = ShopAccessCheckResponse{}
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShopAccessCheckResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShopAccessCheckResponse) ProtoMessage() {}
+
+func (x *ShopAccessCheckResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_selling_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShopAccessCheckResponse.ProtoReflect.Descriptor instead.
+func (*ShopAccessCheckResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_selling_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ShopAccessCheckResponse) GetShop() *Shop {
+	if x != nil {
+		return x.Shop
+	}
+	return nil
+}
+
+func (x *ShopAccessCheckResponse) GetPrimaryUserId() uint64 {
+	if x != nil {
+		return x.PrimaryUserId
+	}
+	return 0
+}
+
+func (x *ShopAccessCheckResponse) GetIsHaveAccess() bool {
+	if x != nil {
+		return x.IsHaveAccess
+	}
+	return false
+}
+
 var File_warehouse_selling_v1_selling_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/selling/v1/selling.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\xe5\x01\n" +
+	"\"warehouse/selling/v1/selling.proto\x12\x14warehouse.selling.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a*warehouse/marketplace/v1/marketplace.proto\x1a!warehouse/role_base/v1/role.proto\"\x8d\x02\n" +
 	"\x04Shop\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x12\n" +
@@ -1622,7 +1862,8 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\tshop_code\x18\x04 \x01(\tR\bshopCode\x12G\n" +
 	"\vmarketplace\x18\x05 \x01(\x0e2%.warehouse.marketplace.v1.MarketplaceR\vmarketplace\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x18\n" +
-	"\adeleted\x18\a \x01(\bR\adeleted\"\x8e\x02\n" +
+	"\adeleted\x18\a \x01(\bR\adeleted\x12&\n" +
+	"\x0fprimary_user_id\x18\b \x01(\x04R\rprimaryUserId\"\x8e\x02\n" +
 	"\x11ShopCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
@@ -1725,7 +1966,24 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\auser_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"\x18\n" +
-	"\x16ShopUserRemoveResponse*v\n" +
+	"\x16ShopUserRemoveResponse\"\x91\x01\n" +
+	"\x19ShopUserSetPrimaryRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
+	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12 \n" +
+	"\auser_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"L\n" +
+	"\x1aShopUserSetPrimaryResponse\x12.\n" +
+	"\x04shop\x18\x01 \x01(\v2\x1a.warehouse.selling.v1.ShopR\x04shop\"\x8f\x01\n" +
+	"\x16ShopAccessCheckRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12 \n" +
+	"\ashop_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06shopId\x12 \n" +
+	"\auser_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06userId:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"\x97\x01\n" +
+	"\x17ShopAccessCheckResponse\x12.\n" +
+	"\x04shop\x18\x01 \x01(\v2\x1a.warehouse.selling.v1.ShopR\x04shop\x12&\n" +
+	"\x0fprimary_user_id\x18\x02 \x01(\x04R\rprimaryUserId\x12$\n" +
+	"\x0eis_have_access\x18\x03 \x01(\bR\fisHaveAccess*v\n" +
 	"\x10ShopListDataType\x12#\n" +
 	"\x1fSHOP_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSHOP_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1c\n" +
@@ -1737,7 +1995,7 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"\x17SHOP_ROW_SORT_SHOP_CODE\x10\x03*f\n" +
 	"\x14ShopUserListDataType\x12(\n" +
 	"$SHOP_USER_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12$\n" +
-	" SHOP_USER_LIST_DATA_TYPE_GENERAL\x10\x012\xa4\x06\n" +
+	" SHOP_USER_LIST_DATA_TYPE_GENERAL\x10\x012\x8d\b\n" +
 	"\vShopService\x12_\n" +
 	"\n" +
 	"ShopCreate\x12'.warehouse.selling.v1.ShopCreateRequest\x1a(.warehouse.selling.v1.ShopCreateResponse\x12Y\n" +
@@ -1750,7 +2008,9 @@ const file_warehouse_selling_v1_selling_proto_rawDesc = "" +
 	"ShopDelete\x12'.warehouse.selling.v1.ShopDeleteRequest\x1a(.warehouse.selling.v1.ShopDeleteResponse\x12e\n" +
 	"\fShopUserList\x12).warehouse.selling.v1.ShopUserListRequest\x1a*.warehouse.selling.v1.ShopUserListResponse\x12b\n" +
 	"\vShopUserAdd\x12(.warehouse.selling.v1.ShopUserAddRequest\x1a).warehouse.selling.v1.ShopUserAddResponse\x12k\n" +
-	"\x0eShopUserRemove\x12+.warehouse.selling.v1.ShopUserRemoveRequest\x1a,.warehouse.selling.v1.ShopUserRemoveResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\x0eShopUserRemove\x12+.warehouse.selling.v1.ShopUserRemoveRequest\x1a,.warehouse.selling.v1.ShopUserRemoveResponse\x12w\n" +
+	"\x12ShopUserSetPrimary\x12/.warehouse.selling.v1.ShopUserSetPrimaryRequest\x1a0.warehouse.selling.v1.ShopUserSetPrimaryResponse\x12n\n" +
+	"\x0fShopAccessCheck\x12,.warehouse.selling.v1.ShopAccessCheckRequest\x1a-.warehouse.selling.v1.ShopAccessCheckResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_selling_proto_rawDescOnce sync.Once
@@ -1765,93 +2025,103 @@ func file_warehouse_selling_v1_selling_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_selling_v1_selling_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_warehouse_selling_v1_selling_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_warehouse_selling_v1_selling_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_warehouse_selling_v1_selling_proto_goTypes = []any{
-	(ShopListDataType)(0),            // 0: warehouse.selling.v1.ShopListDataType
-	(ShopRowSort)(0),                 // 1: warehouse.selling.v1.ShopRowSort
-	(ShopUserListDataType)(0),        // 2: warehouse.selling.v1.ShopUserListDataType
-	(*Shop)(nil),                     // 3: warehouse.selling.v1.Shop
-	(*ShopCreateRequest)(nil),        // 4: warehouse.selling.v1.ShopCreateRequest
-	(*ShopCreateResponse)(nil),       // 5: warehouse.selling.v1.ShopCreateResponse
-	(*ShopListRequest)(nil),          // 6: warehouse.selling.v1.ShopListRequest
-	(*ShopListFilter)(nil),           // 7: warehouse.selling.v1.ShopListFilter
-	(*ShopListFilterSort)(nil),       // 8: warehouse.selling.v1.ShopListFilterSort
-	(*ShopRowMapItem)(nil),           // 9: warehouse.selling.v1.ShopRowMapItem
-	(*ShopListResponseItem)(nil),     // 10: warehouse.selling.v1.ShopListResponseItem
-	(*ShopListResponse)(nil),         // 11: warehouse.selling.v1.ShopListResponse
-	(*ShopDetailRequest)(nil),        // 12: warehouse.selling.v1.ShopDetailRequest
-	(*ShopDetailResponse)(nil),       // 13: warehouse.selling.v1.ShopDetailResponse
-	(*ShopUpdateRequest)(nil),        // 14: warehouse.selling.v1.ShopUpdateRequest
-	(*ShopUpdateResponse)(nil),       // 15: warehouse.selling.v1.ShopUpdateResponse
-	(*ShopDeleteRequest)(nil),        // 16: warehouse.selling.v1.ShopDeleteRequest
-	(*ShopDeleteResponse)(nil),       // 17: warehouse.selling.v1.ShopDeleteResponse
-	(*ShopUserListRequest)(nil),      // 18: warehouse.selling.v1.ShopUserListRequest
-	(*ShopUserListFilter)(nil),       // 19: warehouse.selling.v1.ShopUserListFilter
-	(*ShopUserListFilterSort)(nil),   // 20: warehouse.selling.v1.ShopUserListFilterSort
-	(*ShopUserListResponseItem)(nil), // 21: warehouse.selling.v1.ShopUserListResponseItem
-	(*ShopUserListResponse)(nil),     // 22: warehouse.selling.v1.ShopUserListResponse
-	(*ShopUserAddRequest)(nil),       // 23: warehouse.selling.v1.ShopUserAddRequest
-	(*ShopUserAddResponse)(nil),      // 24: warehouse.selling.v1.ShopUserAddResponse
-	(*ShopUserRemoveRequest)(nil),    // 25: warehouse.selling.v1.ShopUserRemoveRequest
-	(*ShopUserRemoveResponse)(nil),   // 26: warehouse.selling.v1.ShopUserRemoveResponse
-	nil,                              // 27: warehouse.selling.v1.ShopRowMapItem.MapDataEntry
-	(v1.Marketplace)(0),              // 28: warehouse.marketplace.v1.Marketplace
-	(*v11.CommonPagination)(nil),     // 29: warehouse.common.v1.CommonPagination
-	(v11.CommonSortType)(0),          // 30: warehouse.common.v1.CommonSortType
-	(v11.GeneralSort)(0),             // 31: warehouse.common.v1.GeneralSort
-	(*v11.GeneralMapItem)(nil),       // 32: warehouse.common.v1.GeneralMapItem
-	(*v11.PageInfo)(nil),             // 33: warehouse.common.v1.PageInfo
+	(ShopListDataType)(0),              // 0: warehouse.selling.v1.ShopListDataType
+	(ShopRowSort)(0),                   // 1: warehouse.selling.v1.ShopRowSort
+	(ShopUserListDataType)(0),          // 2: warehouse.selling.v1.ShopUserListDataType
+	(*Shop)(nil),                       // 3: warehouse.selling.v1.Shop
+	(*ShopCreateRequest)(nil),          // 4: warehouse.selling.v1.ShopCreateRequest
+	(*ShopCreateResponse)(nil),         // 5: warehouse.selling.v1.ShopCreateResponse
+	(*ShopListRequest)(nil),            // 6: warehouse.selling.v1.ShopListRequest
+	(*ShopListFilter)(nil),             // 7: warehouse.selling.v1.ShopListFilter
+	(*ShopListFilterSort)(nil),         // 8: warehouse.selling.v1.ShopListFilterSort
+	(*ShopRowMapItem)(nil),             // 9: warehouse.selling.v1.ShopRowMapItem
+	(*ShopListResponseItem)(nil),       // 10: warehouse.selling.v1.ShopListResponseItem
+	(*ShopListResponse)(nil),           // 11: warehouse.selling.v1.ShopListResponse
+	(*ShopDetailRequest)(nil),          // 12: warehouse.selling.v1.ShopDetailRequest
+	(*ShopDetailResponse)(nil),         // 13: warehouse.selling.v1.ShopDetailResponse
+	(*ShopUpdateRequest)(nil),          // 14: warehouse.selling.v1.ShopUpdateRequest
+	(*ShopUpdateResponse)(nil),         // 15: warehouse.selling.v1.ShopUpdateResponse
+	(*ShopDeleteRequest)(nil),          // 16: warehouse.selling.v1.ShopDeleteRequest
+	(*ShopDeleteResponse)(nil),         // 17: warehouse.selling.v1.ShopDeleteResponse
+	(*ShopUserListRequest)(nil),        // 18: warehouse.selling.v1.ShopUserListRequest
+	(*ShopUserListFilter)(nil),         // 19: warehouse.selling.v1.ShopUserListFilter
+	(*ShopUserListFilterSort)(nil),     // 20: warehouse.selling.v1.ShopUserListFilterSort
+	(*ShopUserListResponseItem)(nil),   // 21: warehouse.selling.v1.ShopUserListResponseItem
+	(*ShopUserListResponse)(nil),       // 22: warehouse.selling.v1.ShopUserListResponse
+	(*ShopUserAddRequest)(nil),         // 23: warehouse.selling.v1.ShopUserAddRequest
+	(*ShopUserAddResponse)(nil),        // 24: warehouse.selling.v1.ShopUserAddResponse
+	(*ShopUserRemoveRequest)(nil),      // 25: warehouse.selling.v1.ShopUserRemoveRequest
+	(*ShopUserRemoveResponse)(nil),     // 26: warehouse.selling.v1.ShopUserRemoveResponse
+	(*ShopUserSetPrimaryRequest)(nil),  // 27: warehouse.selling.v1.ShopUserSetPrimaryRequest
+	(*ShopUserSetPrimaryResponse)(nil), // 28: warehouse.selling.v1.ShopUserSetPrimaryResponse
+	(*ShopAccessCheckRequest)(nil),     // 29: warehouse.selling.v1.ShopAccessCheckRequest
+	(*ShopAccessCheckResponse)(nil),    // 30: warehouse.selling.v1.ShopAccessCheckResponse
+	nil,                                // 31: warehouse.selling.v1.ShopRowMapItem.MapDataEntry
+	(v1.Marketplace)(0),                // 32: warehouse.marketplace.v1.Marketplace
+	(*v11.CommonPagination)(nil),       // 33: warehouse.common.v1.CommonPagination
+	(v11.CommonSortType)(0),            // 34: warehouse.common.v1.CommonSortType
+	(v11.GeneralSort)(0),               // 35: warehouse.common.v1.GeneralSort
+	(*v11.GeneralMapItem)(nil),         // 36: warehouse.common.v1.GeneralMapItem
+	(*v11.PageInfo)(nil),               // 37: warehouse.common.v1.PageInfo
 }
 var file_warehouse_selling_v1_selling_proto_depIdxs = []int32{
-	28, // 0: warehouse.selling.v1.Shop.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
-	28, // 1: warehouse.selling.v1.ShopCreateRequest.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	32, // 0: warehouse.selling.v1.Shop.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	32, // 1: warehouse.selling.v1.ShopCreateRequest.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
 	3,  // 2: warehouse.selling.v1.ShopCreateResponse.shop:type_name -> warehouse.selling.v1.Shop
 	7,  // 3: warehouse.selling.v1.ShopListRequest.filter:type_name -> warehouse.selling.v1.ShopListFilter
 	8,  // 4: warehouse.selling.v1.ShopListRequest.sort:type_name -> warehouse.selling.v1.ShopListFilterSort
 	0,  // 5: warehouse.selling.v1.ShopListRequest.data_request:type_name -> warehouse.selling.v1.ShopListDataType
-	29, // 6: warehouse.selling.v1.ShopListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	30, // 7: warehouse.selling.v1.ShopListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	31, // 8: warehouse.selling.v1.ShopListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	33, // 6: warehouse.selling.v1.ShopListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	34, // 7: warehouse.selling.v1.ShopListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	35, // 8: warehouse.selling.v1.ShopListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
 	1,  // 9: warehouse.selling.v1.ShopListFilterSort.shop:type_name -> warehouse.selling.v1.ShopRowSort
-	27, // 10: warehouse.selling.v1.ShopRowMapItem.map_data:type_name -> warehouse.selling.v1.ShopRowMapItem.MapDataEntry
-	32, // 11: warehouse.selling.v1.ShopListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	31, // 10: warehouse.selling.v1.ShopRowMapItem.map_data:type_name -> warehouse.selling.v1.ShopRowMapItem.MapDataEntry
+	36, // 11: warehouse.selling.v1.ShopListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	9,  // 12: warehouse.selling.v1.ShopListResponseItem.shop:type_name -> warehouse.selling.v1.ShopRowMapItem
 	10, // 13: warehouse.selling.v1.ShopListResponse.items:type_name -> warehouse.selling.v1.ShopListResponseItem
-	33, // 14: warehouse.selling.v1.ShopListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	37, // 14: warehouse.selling.v1.ShopListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
 	3,  // 15: warehouse.selling.v1.ShopDetailResponse.shop:type_name -> warehouse.selling.v1.Shop
-	28, // 16: warehouse.selling.v1.ShopUpdateRequest.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
+	32, // 16: warehouse.selling.v1.ShopUpdateRequest.marketplace:type_name -> warehouse.marketplace.v1.Marketplace
 	3,  // 17: warehouse.selling.v1.ShopUpdateResponse.shop:type_name -> warehouse.selling.v1.Shop
 	19, // 18: warehouse.selling.v1.ShopUserListRequest.filter:type_name -> warehouse.selling.v1.ShopUserListFilter
 	20, // 19: warehouse.selling.v1.ShopUserListRequest.sort:type_name -> warehouse.selling.v1.ShopUserListFilterSort
 	2,  // 20: warehouse.selling.v1.ShopUserListRequest.data_request:type_name -> warehouse.selling.v1.ShopUserListDataType
-	29, // 21: warehouse.selling.v1.ShopUserListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	30, // 22: warehouse.selling.v1.ShopUserListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	31, // 23: warehouse.selling.v1.ShopUserListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	32, // 24: warehouse.selling.v1.ShopUserListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	33, // 21: warehouse.selling.v1.ShopUserListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	34, // 22: warehouse.selling.v1.ShopUserListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	35, // 23: warehouse.selling.v1.ShopUserListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	36, // 24: warehouse.selling.v1.ShopUserListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
 	21, // 25: warehouse.selling.v1.ShopUserListResponse.items:type_name -> warehouse.selling.v1.ShopUserListResponseItem
-	33, // 26: warehouse.selling.v1.ShopUserListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	3,  // 27: warehouse.selling.v1.ShopRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.Shop
-	4,  // 28: warehouse.selling.v1.ShopService.ShopCreate:input_type -> warehouse.selling.v1.ShopCreateRequest
-	6,  // 29: warehouse.selling.v1.ShopService.ShopList:input_type -> warehouse.selling.v1.ShopListRequest
-	12, // 30: warehouse.selling.v1.ShopService.ShopDetail:input_type -> warehouse.selling.v1.ShopDetailRequest
-	14, // 31: warehouse.selling.v1.ShopService.ShopUpdate:input_type -> warehouse.selling.v1.ShopUpdateRequest
-	16, // 32: warehouse.selling.v1.ShopService.ShopDelete:input_type -> warehouse.selling.v1.ShopDeleteRequest
-	18, // 33: warehouse.selling.v1.ShopService.ShopUserList:input_type -> warehouse.selling.v1.ShopUserListRequest
-	23, // 34: warehouse.selling.v1.ShopService.ShopUserAdd:input_type -> warehouse.selling.v1.ShopUserAddRequest
-	25, // 35: warehouse.selling.v1.ShopService.ShopUserRemove:input_type -> warehouse.selling.v1.ShopUserRemoveRequest
-	5,  // 36: warehouse.selling.v1.ShopService.ShopCreate:output_type -> warehouse.selling.v1.ShopCreateResponse
-	11, // 37: warehouse.selling.v1.ShopService.ShopList:output_type -> warehouse.selling.v1.ShopListResponse
-	13, // 38: warehouse.selling.v1.ShopService.ShopDetail:output_type -> warehouse.selling.v1.ShopDetailResponse
-	15, // 39: warehouse.selling.v1.ShopService.ShopUpdate:output_type -> warehouse.selling.v1.ShopUpdateResponse
-	17, // 40: warehouse.selling.v1.ShopService.ShopDelete:output_type -> warehouse.selling.v1.ShopDeleteResponse
-	22, // 41: warehouse.selling.v1.ShopService.ShopUserList:output_type -> warehouse.selling.v1.ShopUserListResponse
-	24, // 42: warehouse.selling.v1.ShopService.ShopUserAdd:output_type -> warehouse.selling.v1.ShopUserAddResponse
-	26, // 43: warehouse.selling.v1.ShopService.ShopUserRemove:output_type -> warehouse.selling.v1.ShopUserRemoveResponse
-	36, // [36:44] is the sub-list for method output_type
-	28, // [28:36] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	37, // 26: warehouse.selling.v1.ShopUserListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	3,  // 27: warehouse.selling.v1.ShopUserSetPrimaryResponse.shop:type_name -> warehouse.selling.v1.Shop
+	3,  // 28: warehouse.selling.v1.ShopAccessCheckResponse.shop:type_name -> warehouse.selling.v1.Shop
+	3,  // 29: warehouse.selling.v1.ShopRowMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.Shop
+	4,  // 30: warehouse.selling.v1.ShopService.ShopCreate:input_type -> warehouse.selling.v1.ShopCreateRequest
+	6,  // 31: warehouse.selling.v1.ShopService.ShopList:input_type -> warehouse.selling.v1.ShopListRequest
+	12, // 32: warehouse.selling.v1.ShopService.ShopDetail:input_type -> warehouse.selling.v1.ShopDetailRequest
+	14, // 33: warehouse.selling.v1.ShopService.ShopUpdate:input_type -> warehouse.selling.v1.ShopUpdateRequest
+	16, // 34: warehouse.selling.v1.ShopService.ShopDelete:input_type -> warehouse.selling.v1.ShopDeleteRequest
+	18, // 35: warehouse.selling.v1.ShopService.ShopUserList:input_type -> warehouse.selling.v1.ShopUserListRequest
+	23, // 36: warehouse.selling.v1.ShopService.ShopUserAdd:input_type -> warehouse.selling.v1.ShopUserAddRequest
+	25, // 37: warehouse.selling.v1.ShopService.ShopUserRemove:input_type -> warehouse.selling.v1.ShopUserRemoveRequest
+	27, // 38: warehouse.selling.v1.ShopService.ShopUserSetPrimary:input_type -> warehouse.selling.v1.ShopUserSetPrimaryRequest
+	29, // 39: warehouse.selling.v1.ShopService.ShopAccessCheck:input_type -> warehouse.selling.v1.ShopAccessCheckRequest
+	5,  // 40: warehouse.selling.v1.ShopService.ShopCreate:output_type -> warehouse.selling.v1.ShopCreateResponse
+	11, // 41: warehouse.selling.v1.ShopService.ShopList:output_type -> warehouse.selling.v1.ShopListResponse
+	13, // 42: warehouse.selling.v1.ShopService.ShopDetail:output_type -> warehouse.selling.v1.ShopDetailResponse
+	15, // 43: warehouse.selling.v1.ShopService.ShopUpdate:output_type -> warehouse.selling.v1.ShopUpdateResponse
+	17, // 44: warehouse.selling.v1.ShopService.ShopDelete:output_type -> warehouse.selling.v1.ShopDeleteResponse
+	22, // 45: warehouse.selling.v1.ShopService.ShopUserList:output_type -> warehouse.selling.v1.ShopUserListResponse
+	24, // 46: warehouse.selling.v1.ShopService.ShopUserAdd:output_type -> warehouse.selling.v1.ShopUserAddResponse
+	26, // 47: warehouse.selling.v1.ShopService.ShopUserRemove:output_type -> warehouse.selling.v1.ShopUserRemoveResponse
+	28, // 48: warehouse.selling.v1.ShopService.ShopUserSetPrimary:output_type -> warehouse.selling.v1.ShopUserSetPrimaryResponse
+	30, // 49: warehouse.selling.v1.ShopService.ShopAccessCheck:output_type -> warehouse.selling.v1.ShopAccessCheckResponse
+	40, // [40:50] is the sub-list for method output_type
+	30, // [30:40] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_selling_proto_init() }
@@ -1880,7 +2150,7 @@ func file_warehouse_selling_v1_selling_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_selling_proto_rawDesc), len(file_warehouse_selling_v1_selling_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   25,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
