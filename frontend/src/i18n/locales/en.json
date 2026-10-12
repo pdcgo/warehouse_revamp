@@ -1498,7 +1498,8 @@
         "supplier": "Supplier",
         "team": "Team",
         "channels": "Supplier stores",
-        "contact": "Contact"
+        "contact": "Contact",
+        "description": "Description"
       },
       "pending": {
         "products": {

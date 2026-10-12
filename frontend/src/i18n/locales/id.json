@@ -1493,7 +1493,8 @@
         "supplier": "Pemasok",
         "team": "Tim",
         "channels": "Toko pemasok",
-        "contact": "Kontak"
+        "contact": "Kontak",
+        "description": "Deskripsi"
       },
       "pending": {
         "products": {

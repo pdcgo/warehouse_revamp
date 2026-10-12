@@ -41,6 +41,9 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [discover-is-cards-or-a-table](#discover-is-cards-or-a-table) | Discover shows its suppliers as cards (the default) or as a table, by a switch; a phone always shows cards |
 | [a-discover-card-reads-who-whose-where](#a-discover-card-reads-who-whose-where) | a Discover card is the owner's reference card — name and address, a rule, the team and the stores, the contact with ↗ bottom right; four a row on a 2K screen |
 | [a-store-type-filter-is-chips](#a-store-type-filter-is-chips) | Discover's store type is a row of chips under the filters — *Semua* then every type, one chosen, in the main tone |
+| [discover-table-shows-the-description](#discover-table-shows-the-description) | Discover's table view carries the supplier's description, a column of its own after Kontak |
+| [the-discover-detail-reads-as-the-supplier-page](#the-discover-detail-reads-as-the-supplier-page) | the Discover detail reads as the supplier's own page — the name, the team that keeps it, then the same identity line; no actions |
+| [discover-detail-puts-the-team-left-and-the-contact-right](#discover-detail-puts-the-team-left-and-the-contact-right) | under the Discover detail's name: the team on the left, the identity line right beside it; stacked on a phone |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -666,3 +669,70 @@ on a phone
 | the Filter count | leaves the type out — its chips are on screen; **Hapus Filter** still resets it |
 | not RadioPills | that is a field's answer on a form, with a radio mark and two to four options; this is a list's quick narrowing |
 | was | a `MarketplaceSelect` dropdown in the filter row |
+
+## discover-table-shows-the-description
+
+> Owner, in chat (2026-10-12), asked whether Discover shows a supplier's description — then: *"deskripsi di tabel"*.
+
+```
+Pemasok                    Tim            Toko pemasok          Kontak         Deskripsi
+PT Tekstil Nusantara       [TA] Toko …    [Lazada] [Blibli] …   021-555-0101   Kain tekstil grosir untuk konveksi.
+Kawasan Industri Pulo…
+Linen House                [TA] Toko …    [Shopee] [TikTok]     0812-9090-1010 —
+```
+
+| | |
+| --- | --- |
+| the column | **Deskripsi**, last, after Kontak — what the supplier sells, in its own words |
+| the cell | two lines at most, muted; a dash when the supplier has none |
+| why its own column | it is not the name's context — the name's second line is where it is ([one-context-per-column-and-never-three-lines](context_decision.md#one-context-per-column-and-never-three-lines)) |
+| the cards | unchanged — the address under the name ([a-discover-card-reads-who-whose-where](#a-discover-card-reads-who-whose-where)) |
+
+## the-discover-detail-reads-as-the-supplier-page
+
+> Owner, in chat (2026-10-12), after asking why the supplier's own page does not name Toko Anggrek: *"aha, kalau gitu
+> discover detailnya sesuaikan dengan detail biasa"* — and *"masih ada teamnya ya untuk di discover"*.
+
+```
+before                                         now
+PT Tekstil Nusantara                           PT Tekstil Nusantara
+[TA] Toko Anggrek                              [TA] Toko Anggrek  Selling        ← kept — Discover's own line
+┌ KONTAK       ALAMAT        DESKRIPSI    ┐    ☎ 021-555-0101 ⧉   📍 Kawasan Industri Pulogadung, Jakarta
+│ 021-555-0101 Kawasan …     Kain tekstil … │    Kain tekstil grosir untuk konveksi.               ← muted
+└──────────────────────────────────────────┘    Toko | Produk | Statistik
+```
+
+| | |
+| --- | --- |
+| the header | the name · **the team that keeps it** (`TeamItem`, Discover only — a cross-team page's first question) · the supplier page's identity line ([the-supplier-is-described-under-its-name](#the-supplier-is-described-under-its-name)) |
+| gone | the card of three uppercase-labelled fields — the shape the owner rejected on the supplier's own page |
+| actions | none — another team's supplier is read-only |
+| an empty supplier | its name and its team; no identity line |
+| shared | `SupplierMeta` moved to `features/suppliers/` — two pages draw it now; each passes its own test-id prefix |
+| with it | a Mobile story right after Default ([every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story)) |
+| the supplier's own page | unchanged — no team: it is always the viewer's team's supplier |
+
+## discover-detail-puts-the-team-left-and-the-contact-right
+
+> Owner, in chat (2026-10-12): *"untuk discover … team di kiri, tengah ke kanan detail kontak dll"* — then, on seeing it
+> start at the middle: *"space terlalu jauh ternyata"*.
+
+```
+PT Tekstil Nusantara
+[TA] Toko Anggrek    ☎ 021-555-0101 ⧉   📍 Kawasan Industri Pulogadung, Jakarta
+     Selling         Kain tekstil grosir untuk konveksi.
+ ↑ whose             ↑ who it is — right after the team, top-aligned
+
+on a phone — stacked
+[TA] Toko Anggrek
+☎ 021-555-0101 ⧉
+📍 Kawasan Industri Pulogadung, Jakarta
+Kain tekstil grosir untuk konveksi.
+```
+
+| | |
+| --- | --- |
+| a desktop | the team on the left; the identity line **right beside it**, a moderate gap (`8`), top-aligned |
+| tried first | two halves — the identity line from the middle of the page; beside a short team name the hole between them was too wide |
+| a phone | stacked — the team, then the identity line |
+| refines | the header order in [the-discover-detail-reads-as-the-supplier-page](#the-discover-detail-reads-as-the-supplier-page) |

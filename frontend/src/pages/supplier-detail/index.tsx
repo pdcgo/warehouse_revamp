@@ -13,7 +13,7 @@ import { ProductBrowser } from "../../features/suppliers/ProductBrowser";
 import { SupplierStatistics } from "../../features/suppliers/SupplierStatistics";
 import { useIsMobile } from "../../layouts/shell";
 import { SUPPLIER_DETAIL_PENDING } from "./pending";
-import { SupplierMeta } from "./components/SupplierMeta";
+import { SupplierMeta } from "../../features/suppliers/SupplierMeta";
 import { SupplierHeaderActions } from "./components/SupplierHeaderActions";
 
 function parseSupplierId(raw: string | undefined): bigint {

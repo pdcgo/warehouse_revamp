@@ -401,7 +401,7 @@ export const TheSupplierIsDescribedUnderItsName: Story = {
     const canvas = await loaded(canvasElement);
 
     const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
-    const meta = canvas.getByTestId("supplier-meta");
+    const meta = canvas.getByTestId("supplier-detail-meta");
     await expect(meta.getBoundingClientRect().top).toBeGreaterThanOrEqual(name.bottom);
     await expect(meta.getBoundingClientRect().bottom).toBeLessThan(canvas.getByRole("tablist").getBoundingClientRect().top);
     await expect(within(meta).queryByText("CONTACT")).toBeNull();
@@ -414,7 +414,7 @@ export const AnEmptyFieldIsLeftOut: Story = {
   render: () => <AtSinar />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(canvas.queryByTestId("supplier-meta")).toBeNull();
+    await expect(canvas.queryByTestId("supplier-detail-meta")).toBeNull();
   },
 };
 

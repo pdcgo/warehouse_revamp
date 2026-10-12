@@ -120,6 +120,7 @@ export function DiscoverSuppliersPage() {
             <Table.ColumnHeader>{t("suppliers.discover.table.team")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.discover.table.channels")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.discover.table.contact")}</Table.ColumnHeader>
+            <Table.ColumnHeader>{t("suppliers.discover.table.description")}</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
 
@@ -148,6 +149,13 @@ export function DiscoverSuppliersPage() {
                 <ChannelTypes channels={s.channels} />
               </Table.Cell>
               <Table.Cell>{s.contact || "—"}</Table.Cell>
+              {/* WHAT IT SELLS, in its own words (owner: *"deskripsi di tabel"*, `discover-table-shows-the-description`) —
+                  its own column, since it is not the name's context; two lines at most, muted, a dash when it has none. */}
+              <Table.Cell maxW="xs">
+                <Text fontSize="sm" color="fg.muted" lineClamp={2} data-testid={`discover-table-description-${s.id}`}>
+                  {s.description || "—"}
+                </Text>
+              </Table.Cell>
             </Table.Row>
           ))}
         </Table.Body>

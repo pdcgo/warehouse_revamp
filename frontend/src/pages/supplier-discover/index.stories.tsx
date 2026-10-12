@@ -289,3 +289,18 @@ export const TheCardEndsWithItsContactAndAnArrow: Story = {
     await expect(canvas.getByTestId(`discover-card-contact-${SINAR.id}`)).toHaveTextContent("No contact yet");
   },
 };
+
+// THE TABLE SHOWS THE DESCRIPTION — what the supplier sells, in its own column; a dash when it has none
+// (discover-table-shows-the-description).
+export const TheTableShowsTheDescription: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("discover-suppliers-view-table"));
+
+    await waitFor(() =>
+      expect(within(canvas.getByTestId("discover-suppliers-table")).getByRole("columnheader", { name: "Description" })).toBeVisible(),
+    );
+    await expect(canvas.getByTestId(`discover-table-description-${NUSANTARA.id}`)).toHaveTextContent(NUSANTARA.description);
+    await expect(canvas.getByTestId(`discover-table-description-${SINAR.id}`)).toHaveTextContent("—");
+  },
+};
