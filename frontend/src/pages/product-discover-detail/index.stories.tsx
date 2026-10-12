@@ -60,7 +60,7 @@ function tehIs(flag: "crossLocked" | "deleted") {
 const meta = {
   title: "Pages/Products/DiscoverProductDetail",
   component: AtGula,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(SELLING_TEAM)();
     asRole(Role.SELLING_OWNER)();

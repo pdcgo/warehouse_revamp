@@ -7,7 +7,6 @@ import {
   Flex,
   Icon,
   Portal,
-  SegmentGroup,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -17,12 +16,8 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "../../features/auth/AuthContext";
 import { useTeam } from "../../features/team/TeamContext";
-import { LANGUAGES, useLanguage } from "../../i18n/language";
-import type { Lang } from "../../i18n/language";
-import { setColorMode, useColorMode } from "../../lib/colorMode";
-import type { ColorMode } from "../../lib/colorMode";
 import { roleLabel } from "../../lib/roles";
-import { TeamSwitcher } from "../TeamSwitcher";
+import { LanguageSwitch, ThemeSwitch } from "../PreferenceSwitches";
 import { activeRoute, isMenuGroup, menuFor } from "../nav";
 import type { MenuEntry, MenuItem } from "../nav";
 
@@ -45,9 +40,7 @@ import type { MenuEntry, MenuItem } from "../nav";
 export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { identity, logout } = useAuth();
   const { current } = useTeam();
-  const { lang, setLang } = useLanguage();
   const { t } = useTranslation();
-  const colorMode = useColorMode();
   const location = useLocation();
 
   const menu = menuFor(current?.teamType, current?.role);
@@ -110,34 +103,42 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
         }
       }}
       // FROM THE BOTTOM, because that is the edge the trigger is on — a sheet that flies in from the
-      // opposite side of the screen from the tab that opened it breaks the connection between them.
+      // opposite side of the screen from the tab that opened it breaks the connection between them. A DRAWER, not the
+      // whole screen (`the-phone-opens-its-panels-from-the-bottom`): the page stays visible above it.
       placement="bottom"
-      size="full"
     >
       <Portal>
         <Drawer.Backdrop />
         <Drawer.Positioner>
-          <Drawer.Content data-testid="menu-sheet">
-            {/* The team switcher IS the header — the sheet is the one screen with room for the full
-                card, and re-scoping the app is the highest-consequence thing in this menu. */}
+          <Drawer.Content roundedTop="l3" maxH="90dvh" data-testid="menu-sheet">
+            {/* THE ACCOUNT IS THE HEADER (owner, `the-more-sheet-starts-with-the-account`) — who is signed in, and as
+                what here. The workspace is NOT in this sheet: the top bar's team chip is where a phone switches team. */}
             <Drawer.Header
               display="flex"
               alignItems="center"
+              gap="2.5"
               borderBottomWidth="1px"
               borderColor="border"
               px="card"
               py="3"
+              data-testid="menu-sheet-account"
             >
-              {/* A dialog needs an accessible name, and the one thing on this header is a control
-                  rather than a heading — so the name is stated for a screen reader and the sighted
-                  layout keeps its space. */}
+              {/* A dialog needs an accessible name; the header's visible text is a person, not a title. */}
               <Drawer.Title srOnly>{t("shell.menu")}</Drawer.Title>
 
+              <Avatar.Root size="sm" colorPalette="brand">
+                <Avatar.Fallback name={identity?.username} />
+              </Avatar.Root>
               <Box flex="1" minW="0">
-                <TeamSwitcher />
+                <Text fontSize="sm" fontWeight="semibold" truncate data-testid="current-user">
+                  {identity?.username}
+                </Text>
+                <Text fontSize="xs" color="fg.subtle" truncate>
+                  {roleLabel(current?.role)}
+                </Text>
               </Box>
               <Drawer.CloseTrigger asChild>
-                <CloseButton size="sm" ms="2.5" />
+                <CloseButton size="sm" />
               </Drawer.CloseTrigger>
             </Drawer.Header>
 
@@ -150,9 +151,9 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
               </Stack>
             </Drawer.Body>
 
-            {/* THE ACCOUNT BLOCK — identity, the two app-wide preferences, and the way out. The
-                desktop puts these behind a popup menu on the user card; inside a sheet that would be
-                a layer on a layer, so they are laid out flat and reachable in one tap each. */}
+            {/* THE PREFERENCES AND THE WAY OUT — the person's name heads the sheet. The desktop puts these behind a
+                popup menu on the user card; inside a sheet that would be a layer on a layer, so they are laid out
+                flat and reachable in one tap each. */}
             <Drawer.Footer
               borderTopWidth="1px"
               borderColor="border"
@@ -161,63 +162,22 @@ export function MenuSheet({ open, onClose }: { open: boolean; onClose: () => voi
               pb="calc(env(safe-area-inset-bottom) + var(--chakra-spacing-3))"
               display="block"
             >
-              <Flex align="center" gap="2.5" mb="3">
-                <Avatar.Root size="sm" colorPalette="brand">
-                  <Avatar.Fallback name={identity?.username} />
-                </Avatar.Root>
-                <Box flex="1" minW="0">
-                  <Text fontSize="sm" fontWeight="semibold" truncate data-testid="current-user">
-                    {identity?.username}
-                  </Text>
-                  <Text fontSize="xs" color="fg.subtle" truncate>
-                    {roleLabel(current?.role)}
-                  </Text>
-                </Box>
-              </Flex>
-
               <Stack gap="2.5">
+                {/* TWO SWITCHES (owner: *"di tema … buat jadi switch icon matahari bulan, untuk bahasa switch ID dan EN"*,
+                    `the-more-sheet-switches-theme-and-language`) — each a thumb that carries what is on: ☀ or ☾, ID or EN.
+                    The same switches the desktop's account menu draws (PreferenceSwitches). */}
                 <Flex align="center" justify="space-between" gap="3">
                   <Text fontSize="sm" color="fg.muted">
                     {t("menu.theme")}
                   </Text>
-                  <SegmentGroup.Root
-                    size="xs"
-                    value={colorMode}
-                    onValueChange={(e) => setColorMode(e.value as ColorMode)}
-                  >
-                    <SegmentGroup.Indicator />
-                    <SegmentGroup.Item value="light" data-testid="theme-light">
-                      <SegmentGroup.ItemText>{t("menu.themeLight")}</SegmentGroup.ItemText>
-                      <SegmentGroup.ItemHiddenInput />
-                    </SegmentGroup.Item>
-                    <SegmentGroup.Item value="dark" data-testid="theme-dark">
-                      <SegmentGroup.ItemText>{t("menu.themeDark")}</SegmentGroup.ItemText>
-                      <SegmentGroup.ItemHiddenInput />
-                    </SegmentGroup.Item>
-                  </SegmentGroup.Root>
+                  <ThemeSwitch />
                 </Flex>
 
                 <Flex align="center" justify="space-between" gap="3">
                   <Text fontSize="sm" color="fg.muted">
                     {t("menu.language")}
                   </Text>
-                  <SegmentGroup.Root
-                    size="xs"
-                    value={lang}
-                    onValueChange={(e) => setLang(e.value as Lang)}
-                  >
-                    <SegmentGroup.Indicator />
-                    {LANGUAGES.map((l) => (
-                      <SegmentGroup.Item
-                        key={l.value}
-                        value={l.value}
-                        data-testid={`lang-${l.value}`}
-                      >
-                        <SegmentGroup.ItemText>{l.label}</SegmentGroup.ItemText>
-                        <SegmentGroup.ItemHiddenInput />
-                      </SegmentGroup.Item>
-                    ))}
-                  </SegmentGroup.Root>
+                  <LanguageSwitch />
                 </Flex>
 
                 <Button

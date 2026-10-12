@@ -99,6 +99,7 @@ export function SummaryCard({
       py="2.5"
       minW="0"
       data-testid={testId}
+      data-emphasis={emphasis || undefined}
     >
       {label ? (
         <Flex gap="1" align="center">

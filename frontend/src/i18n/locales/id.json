@@ -34,7 +34,10 @@
     "mySupplier": "Pemasok Saya",
     "discoverSupplier": "Temukan Pemasok",
     "supplierReport": "Laporan Pemasok",
-    "warehouseTransfer": "Transfer Stok"
+    "warehouseTransfer": "Transfer Stok",
+    "sectionOperations": "Operasional",
+    "sectionFinance": "Keuangan",
+    "sectionTeam": "Tim"
   },
   "menu": {
     "theme": "Tema",
@@ -44,17 +47,17 @@
     "signOut": "Keluar"
   },
   "shell": {
-    "openMenu": "Buka menu",
-    "search": "Cari…",
-    "notifications": "Notifikasi",
     "menu": "Menu",
     "notMember": "Bukan anggota tim ini — bertindak sebagai {{role}}.",
     "switchTeam": "Ganti Tim",
-    "searchTeams": "Cari tim",
     "noTeams": "Tidak ada tim.",
     "myTeams": "Tim saya",
     "allTeams": "Semua tim",
-    "notMemberBadge": "Bukan anggota"
+    "notMemberBadge": "Bukan anggota",
+    "collapseMenu": "Ciutkan menu",
+    "expandMenu": "Buka menu",
+    "searchIn": "Cari di {{section}}",
+    "closeSearch": "Tutup pencarian"
   },
   "liability": {
     "title": "Kewajiban",
@@ -189,6 +192,10 @@
     "copyFailed": "Gagal menyalin — pilih teksnya dan salin manual",
     "filters": "Filter",
     "done": "Selesai",
+    "sortBy": "Urutkan menurut {{column}}",
+    "previousPage": "Halaman sebelumnya",
+    "nextPage": "Halaman berikutnya",
+    "goToPage": "Ke halaman {{page}}",
     "deleted": "Dihapus"
   },
   "dateRange": {
@@ -1762,7 +1769,6 @@
   "suppliers": {
     "title": "Pemasok",
     "selectTeam": "Pilih tim untuk mengelola pemasoknya.",
-    "searchPlaceholder": "Cari berdasarkan nama",
     "deleted": "Pemasok \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
     "deleteSupplier": "Hapus Pemasok",
@@ -1770,25 +1776,29 @@
     "delete": "Hapus",
     "empty": "Tidak ada pemasok ditemukan.",
     "table": {
-      "name": "Nama",
       "contact": "Kontak",
-      "address": "Alamat",
-      "actions": "Aksi"
+      "actions": "Aksi",
+      "supplier": "Pemasok",
+      "channels": "Toko pemasok"
     },
     "form": {
       "saved": "Pemasok disimpan",
       "created": "Pemasok \"{{name}}\" dibuat",
-      "newSupplier": "Pemasok Baru",
+      "newSupplier": "Tambah Pemasok",
       "editTitle": "Ubah Pemasok",
-      "createTitle": "Pemasok Baru",
+      "createTitle": "Tambah Pemasok",
       "name": "Nama",
       "contact": "Kontak",
       "address": "Alamat",
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat",
-      "contactHelp": "Nomor telepon atau WhatsApp."
+      "create": "Tambah",
+      "contactHelp": "Nomor telepon atau WhatsApp.",
+      "namePlaceholder": "Contoh: PT Sumber Makmur",
+      "contactPlaceholder": "Contoh: 0812-3456-7890",
+      "addressPlaceholder": "Contoh: Jl. Soekarno-Hatta 112, Bandung",
+      "descriptionPlaceholder": "Contoh: grosir kain dan benang, minimal order 1 rol"
     },
     "select": {
       "placeholder": "Pilih pemasok",
@@ -1796,12 +1806,11 @@
       "empty": "Pemasok tidak ditemukan"
     },
     "sellingOnly": "Hanya tim penjual yang memiliki pemasok.",
-    "edit": "Ubah pemasok",
     "discover": {
       "title": "Temukan Pemasok",
-      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko.",
+      "lead": "Pemasok tempat setiap tim penjual membeli — cari berdasarkan nama, alamat, kontak, atau toko pemasok.",
       "search": "Cari pemasok, alamat, atau toko",
-      "typeAll": "Semua jenis saluran",
+      "typeAll": "Semua jenis toko",
       "empty": "Belum ada pemasok.",
       "none": "Tidak ada pemasok yang cocok.",
       "back": "Kembali ke Temukan Pemasok",
@@ -1809,29 +1818,52 @@
       "table": {
         "supplier": "Pemasok",
         "team": "Tim",
-        "channels": "Saluran",
-        "contact": "Kontak"
+        "channels": "Toko pemasok",
+        "contact": "Kontak",
+        "description": "Deskripsi"
       },
       "pending": {
         "products": {
           "label": "Produk",
-          "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun"
+          "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun"
         }
       },
-      "teamAll": "Semua tim"
-    }
+      "teamAll": "Semua tim",
+      "view": {
+        "label": "Tampilan",
+        "cards": "Kartu",
+        "table": "Tabel"
+      },
+      "noContact": "Belum ada kontak",
+      "typeChipAll": "Semua"
+    },
+    "lead": "Pemasok yang dikelola tim ini — vendor tempat tim membeli stoknya.",
+    "search": "Cari pemasok, alamat, atau toko",
+    "typeAll": "Semua jenis toko",
+    "none": "Tidak ada pemasok yang cocok.",
+    "noStores": "Belum ada toko pemasok",
+    "sort": {
+      "label": "Urutkan",
+      "default": "Terbaru dulu",
+      "name": {
+        "asc": "Nama, A ke Z",
+        "desc": "Nama, Z ke A"
+      }
+    },
+    "editAction": "Ubah",
+    "actions": "Aksi pemasok"
   },
   "supplierChannel": {
-    "deleted": "Saluran \"{{name}}\" dihapus",
+    "deleted": "Toko \"{{name}}\" dihapus",
     "deleteFailed": "Gagal menghapus",
-    "deleteTitle": "Hapus Saluran",
+    "deleteTitle": "Hapus Toko",
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
     "section": {
-      "empty": "Belum ada saluran."
+      "empty": "Belum ada toko pemasok."
     },
     "table": {
-      "channel": "Saluran",
+      "channel": "Toko pemasok",
       "uri": "Tautan",
       "description": "Deskripsi",
       "actions": "Aksi"
@@ -1847,45 +1879,51 @@
       "description": "Deskripsi"
     },
     "form": {
-      "saved": "Saluran disimpan",
-      "created": "Saluran \"{{name}}\" dibuat",
-      "addChannel": "Tambah Saluran",
-      "editTitle": "Ubah Saluran",
-      "createTitle": "Tambah Saluran",
+      "saved": "Toko disimpan",
+      "created": "Toko \"{{name}}\" dibuat",
+      "addChannel": "Tambah Toko",
+      "editTitle": "Ubah Toko",
+      "createTitle": "Tambah Toko",
       "name": "Nama",
+      "namePlaceholder": "Contoh: Sumber Makmur Official",
       "cancel": "Batal",
       "save": "Simpan",
       "create": "Tambah",
-      "channelType": "Jenis saluran",
-      "channelTypePlaceholder": "Pilih jenis saluran",
-      "nameHelp": "Nama toko di saluran tersebut.",
+      "channelType": "Jenis toko",
+      "channelTypePlaceholder": "Pilih jenis toko",
+      "nameHelp": "Nama toko pemasok di marketplace atau situsnya.",
       "uri": "Tautan",
-      "description": "Deskripsi"
+      "uriPlaceholder": "Contoh: https://shopee.co.id/sumbermakmur",
+      "description": "Deskripsi",
+      "descriptionPlaceholder": "Contoh: gratis ongkir di atas 5 rol"
     },
-    "edit": "Ubah saluran",
+    "editAction": "Ubah",
     "pending": {
       "products": {
         "label": "Produk",
-        "reason": "data contoh — produk ditautkan ke saluran saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
+        "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
       }
     },
     "tab": {
-      "channels": "Saluran",
+      "channels": "Toko",
       "products": "Produk",
       "statistics": "Statistik"
     },
     "products": {
       "product": "Produk",
-      "sku": "SKU",
-      "channel": "Saluran",
+      "team": "Tim",
+      "channel": "Toko pemasok",
+      "lastBought": "Terakhir dibeli",
+      "firstBought": "pertama {{date}}",
       "empty": "Belum ada produk.",
-      "search": "Cari produk, SKU, atau saluran",
+      "search": "Cari produk, SKU, atau toko",
+      "storeAll": "Semua toko",
       "none": "Tidak ada produk yang cocok."
     },
     "filter": {
       "search": "Cari nama, tautan, atau deskripsi",
-      "typeAll": "Semua jenis saluran",
-      "none": "Tidak ada saluran yang cocok."
+      "typeAll": "Semua jenis toko",
+      "none": "Tidak ada toko pemasok yang cocok."
     }
   },
   "supplierFigures": {
@@ -1900,10 +1938,14 @@
     "units_one": "{{n}} unit",
     "units_other": "{{n}} unit",
     "rate": "{{rate}}%",
+    "total": "Total",
+    "totalHint": "semua unit yang diterima dari pemasok",
+    "ofTotal": "dari total",
     "rateBroken": "{{rate}}% rusak",
     "line": {
       "restocked": "Direstok {{n}} · {{value}}",
-      "lostBroken": "Hilang {{lost}} ({{lostRate}}) · rusak {{broken}}"
+      "lost": "Hilang {{n}}",
+      "broken": "Rusak {{n}}"
     },
     "col": {
       "period": "Periode",
@@ -1911,6 +1953,7 @@
       "team": "Tim",
       "restocked": "Direstok",
       "lost": "Hilang di pengiriman",
+      "lostRate": "Tingkat hilang",
       "broken": "Rusak di pengiriman",
       "brokenRate": "Tingkat rusak"
     },
@@ -1924,7 +1967,8 @@
     "byProduct": "Per Produk",
     "empty": "Tidak ada restok dari pemasok ini pada periode ini.",
     "noProducts": "Tidak ada produk pada periode ini.",
-    "emptyTeam": "Tim itu tidak merestok dari pemasok ini pada periode ini."
+    "emptyTeam": "Tim itu tidak merestok dari pemasok ini pada periode ini.",
+    "quietPeriod": "tidak ada restok"
   },
   "supplierReport": {
     "title": "Laporan Pemasok",
@@ -3295,6 +3339,7 @@
     "title": "Akun Keuangan",
     "selectTeam": "Pilih tim untuk melihat akunnya.",
     "subtitle": "Uang yang dipegang tim, dan di mana. Saldo hanya berubah lewat baris — buka akun untuk membacanya.",
+    "openReport": "Laporan",
     "report": {
       "title": "Laporan Akun",
       "subtitle": "Apa yang menggerakkan uang tim, menurut hari uang berpindah. Selalu sejalan dengan saldo.",
@@ -3302,35 +3347,51 @@
       "open": "Saldo awal",
       "change": "Perubahan bersih",
       "close": "Saldo akhir",
-      "overTime": "Dari waktu ke waktu",
-      "ranking": "Yang menggerakkannya",
       "period": "Periode",
       "empty": "Tidak ada pergerakan di rentang ini.",
       "wholeTeam": "Seluruh tim",
+      "allAccounts": "Semua akun",
       "by": {
         "account": "Akun",
         "provider": "Penyedia",
         "changeType": "Jenis"
+      },
+      "seeDetail": "Rincian",
+      "changeDetail": "Rincian Perubahan Bersih",
+      "openAt": "Awal {{date}}",
+      "ofOpen": "{{share}} dari saldo awal",
+      "closeAt": "Akhir {{date}}",
+      "closeIs": "Saldo awal + perubahan bersih",
+      "topOfAccounts_one": "Terbesar dari {{count}} akun",
+      "topOfAccounts_other": "Terbesar dari {{count}} akun",
+      "topOfProviders_one": "Terbesar dari {{count}} penyedia",
+      "topOfProviders_other": "Terbesar dari {{count}} penyedia",
+      "byAccountTitle": "Perubahan per Akun",
+      "byProviderTitle": "Perubahan per Penyedia",
+      "total": "Total",
+      "export": "Ekspor",
+      "pending": {
+        "export": {
+          "label": "Ekspor",
+          "reason": "Belum ada yang membuat file — isinya periode dengan sembilan jenisnya atau juga rincian per akun dan penyedia, dan sehalaman atau seluruh rentang, masih terbuka."
+        }
       }
     },
     "newAccount": "Akun Baru",
     "searchPlaceholder": "Cari nama, atas nama, atau nomor",
-    "showArchived": "Tampilkan akun yang diarsipkan",
+    "allTypes": "Semua",
     "archived": "Diarsipkan",
     "operational": "Operasional",
-    "bankNotNamed": "Bank belum disebut",
     "neverChecked": "Belum pernah dicek",
+    "accountNotSet": "Rekening belum ditentukan",
     "noStatement": "Tidak ada mutasi untuk dicek",
     "notFound": "Akun ini bukan milik tim ini.",
     "empty": "Belum ada akun. Admin menambahkan rekening bank, dompet, dan kas tim di sini.",
     "emptySearch": "Tidak ada akun yang cocok.",
     "belowZero": "Di bawah nol",
-    "belowZeroBanner_one": "{{count}} akun di bawah nol. Itu boleh — cocokkan dengan bank.",
-    "belowZeroBanner_other": "{{count}} akun di bawah nol. Itu boleh — cocokkan dengan bank.",
-    "unknownBanner_one": "{{count}} akun menampung penarikan dari toko yang banknya belum disebut. Buka dan pilih Akun Yang Mana Ini?",
-    "unknownBanner_other": "{{count}} akun menampung penarikan dari toko yang banknya belum disebut. Buka satu per satu dan pilih Akun Yang Mana Ini?",
     "unknownExplained": "Penarikan dari {{shops}} masuk sebelum banknya disebut, jadi akun ini dibuat untuk menampungnya. Sebut banknya, atau pindahkan uangnya ke akun yang sudah ada.",
     "belowZeroExplained": "Di bawah nol di pembukuan — biasanya pembayaran tercatat sebelum top-up. Rekonsiliasi dengan bank.",
+    "belowZeroHint": "Di bawah nol · cocokkan dengan bank",
     "cancel": "Batal",
     "save": "Simpan",
     "failed": "Gagal diproses",
@@ -3340,18 +3401,17 @@
     "col": {
       "account": "Akun",
       "provider": "Penyedia",
-      "number": "Nomor",
       "balance": "Saldo",
       "lastChecked": "Terakhir dicek",
-      "usedFor": "Dipakai untuk",
+      "linkedTo": "Terhubung ke",
       "actions": "Aksi"
     },
     "totals": {
       "bank": "Rekening bank",
       "wallet": "Dompet digital",
       "cash": "Kas",
-      "unknown": "Bank belum disebut",
-      "team": "Total tim",
+      "unknown": "Lainnya",
+      "team": "Total saldo",
       "accounts_one": "{{count}} akun",
       "accounts_other": "{{count}} akun",
       "belowZero_one": "{{count}} di bawah nol",
@@ -3363,13 +3423,13 @@
       "bni": "BNI",
       "jago": "Jago",
       "shopeepay": "ShopeePay",
-      "unknown": "Tidak diketahui"
+      "unknown": "Lainnya"
     },
     "type": {
-      "wallet": "Dompet",
+      "wallet": "Dompet digital",
       "bankAccount": "Rekening bank",
       "cash": "Kas",
-      "unknown": "Tidak diketahui"
+      "unknown": "Lainnya"
     },
     "changeType": {
       "unspecified": "—",
@@ -3405,7 +3465,12 @@
       "opening": "Saldo awal (Rp)",
       "openingHelp": "Dicatat sebagai baris pertama akun — 0 boleh.",
       "openingOn": "Per tanggal",
-      "fixedHelp": "tetap: nomor lain berarti akun lain"
+      "fixedHelp": "tetap: nomor lain berarti akun lain",
+      "namePlaceholder": "mis. BCA Operasional",
+      "numberPlaceholder": "mis. 1234567890",
+      "holderPlaceholder": "mis. PT Melati Sejahtera",
+      "descriptionPlaceholder": "mis. Menampung penarikan toko dan membayar restock",
+      "otherTypeWarning": "Server belum menerima jenis Lainnya — menyimpan akun ini akan ditolak."
     },
     "transfer": {
       "title": "Transfer Dari {{name}}",
@@ -3416,14 +3481,15 @@
       "save": "Transfer"
     },
     "capital": {
-      "title": "Modal — {{name}}",
+      "title": "Setor / Tarik Modal — {{name}}",
       "direction": "Arah",
-      "in": "Uang masuk",
-      "out": "Uang keluar",
-      "help": "Uang pemilik usaha sendiri, dimasukkan atau diambil."
+      "in": "Setor modal",
+      "out": "Tarik modal",
+      "help": "Uang pemilik usaha sendiri, dimasukkan atau diambil.",
+      "notePlaceholder": "mis. setoran modal bulanan dari pemilik"
     },
     "reconcile": {
-      "title": "Rekonsiliasi {{name}}",
+      "title": "Cocokkan Saldo — {{name}}",
       "books": "Menurut pembukuan",
       "shows": "Berapa yang tampil di aplikasi bank? (Rp)",
       "counted": "Berapa hasil hitung kas? (Rp)",
@@ -3433,28 +3499,32 @@
       "why": "Kenapa berbeda?",
       "whyPlaceholder": "mis. biaya admin bank",
       "whyHelp": "Wajib bila ada selisih — inilah satu-satunya baris yang bisa menyembunyikan uang hilang.",
-      "save": "Rekonsiliasi"
+      "save": "Cocokkan",
+      "description": "Rekonsiliasi: cocokkan pembukuan dengan yang tampil di aplikasi bank, atau hasil hitung kas. Selisihnya dicatat sebagai penyesuaian."
     },
     "identify": {
-      "title": "Akun Yang Mana Ini?",
+      "title": "Tentukan Rekening",
       "intro": "{{amount}} masuk dari {{shops}} sebelum banknya disebut.",
       "itsShop": "tokonya",
-      "fill": "Belum tercatat — isi datanya",
-      "move": "Sudah ada di daftar",
+      "fill": "Lengkapi data",
+      "move": "Pindah saldo",
+      "fillWhen": "Kalau rekening aslinya belum ada di daftar — akun ini menjadi rekening itu.",
+      "moveWhen": "Kalau rekening aslinya sudah ada di daftar — saldonya dipindah ke sana.",
       "fillHelp": "Akun ini menjadi akun tersebut — barisnya tetap, tiap penarikan di harinya sendiri.",
       "into": "Pindahkan uangnya ke",
-      "moveHelp": "{{amount}} pindah ke akun itu, {{shops}} menarik ke sana mulai sekarang, dan akun ini diarsipkan."
+      "moveHelp": "{{amount}} pindah ke akun itu, {{shops}} menarik ke sana mulai sekarang, dan akun ini diarsipkan.",
+      "namePlaceholder": "mis. BCA TikTok"
     },
     "actions": {
       "label": "Aksi akun",
       "transfer": "Transfer",
-      "transferOut": "Transfer keluar",
-      "reconcile": "Rekonsiliasi",
-      "capital": "Modal masuk / keluar",
+      "transferOut": "Transfer Keluar",
+      "reconcile": "Cocokkan Saldo",
+      "capital": "Setor / Tarik Modal",
       "edit": "Ubah",
-      "markOperational": "Tandai operasional",
-      "unmarkOperational": "Hapus tanda operasional",
-      "identify": "Akun yang mana ini?",
+      "markOperational": "Tandai Operasional",
+      "unmarkOperational": "Hapus Tanda Operasional",
+      "identify": "Tentukan Rekening",
       "archive": "Arsipkan",
       "archiveOnlyAtZero": "hanya saat nol",
       "restore": "Pulihkan"
@@ -3487,7 +3557,12 @@
       "shop": "Toko",
       "already": "{{shop}} sudah menarik ke sini.",
       "moves": "{{shop}} saat ini menarik ke {{from}} — akan pindah ke {{to}}.",
-      "first": "{{shop}} belum punya akun — penarikannya mulai masuk ke sini."
+      "first": "{{shop}} belum punya akun — penarikannya mulai masuk ke sini.",
+      "shopPlaceholder": "Pilih toko",
+      "linked": "Toko terhubung",
+      "pointShort": "Arahkan",
+      "count_one": "{{count}} toko",
+      "count_other": "{{count}} toko"
     },
     "log": {
       "title": "Mutasi",
@@ -3496,11 +3571,56 @@
       "type": "Jenis",
       "description": "Keterangan",
       "change": "Perubahan",
-      "balanceAfter": "Saldo setelah",
+      "balanceAfter": "Saldo",
+      "detailTitle": "Detail Mutasi",
+      "by": "Oleh",
+      "recorded": "Dicatat",
       "recordedOn": "dicatat {{date}}",
       "byHand": "manual · {{name}}",
       "automatic": "otomatis — dari tempat kejadiannya",
-      "allTypes": "Semua jenis"
+      "allTypes": "Semua jenis",
+      "searchType": "Cari jenis",
+      "noType": "Tidak ada jenis yang cocok."
+    },
+    "allShops": "Semua toko",
+    "operationalOnly": "Hanya operasional",
+    "sort": {
+      "label": "Urutkan",
+      "default": "Bawaan — aktif dulu, lalu nama",
+      "name": {
+        "asc": "Nama A–Z",
+        "desc": "Nama Z–A"
+      },
+      "provider": {
+        "asc": "Penyedia A–Z",
+        "desc": "Penyedia Z–A"
+      }
+    },
+    "links": {
+      "showAll": "Lihat semua yang terhubung ke akun ini",
+      "operationalHelp": "Ditandai operasional — restock dan biaya boleh dibayar dari akun ini."
+    },
+    "archivedView": {
+      "open": "Arsip",
+      "title": "Arsip Akun",
+      "subtitle": "Akun yang ditutup saat saldonya nol. Pulihkan untuk memakainya lagi.",
+      "back": "Akun Aktif"
+    },
+    "pending": {
+      "archivedOnly": {
+        "label": "Daftar arsip",
+        "reason": "Kontrak hanya bisa menambahkan akun arsip ke akun aktif, belum bisa menampilkan arsip saja — jadi tampilan ini mengambil 200 akun pertama lalu menyaring arsipnya sendiri. Lewat dari 200 akun ada yang terlewat, dan jumlah serta halamannya dihitung di layar."
+      },
+      "otherType": {
+        "label": "Jenis Lainnya",
+        "reason": "Akun Baru menawarkan jenis Lainnya — penyedianya Lainnya, nomornya tidak wajib — tapi kontrak dan server masih menolak jenis dan penyedia Lainnya, jadi menyimpannya ditolak sampai backend mengizinkan. Demo Storybook sudah bisa."
+      }
+    },
+    "operationalDialog": {
+      "markTitle": "Tandai {{name}} sebagai Operasional",
+      "markMessage": "{{name}} akan bisa dipilih untuk membayar restock dan biaya.",
+      "unmarkTitle": "Hapus Tanda Operasional {{name}}",
+      "unmarkMessage": "{{name}} tidak lagi bisa dipilih untuk membayar restock dan biaya."
     }
   },
   "pending": {

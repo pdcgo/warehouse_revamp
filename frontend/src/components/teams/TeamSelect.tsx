@@ -5,6 +5,7 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamTypeBadge } from "../badges/TeamTypeBadge";
 import { TeamItem } from "../entity/TeamItem";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 export interface TeamSelectProps {
   value?: bigint;
@@ -138,6 +139,8 @@ export function TeamSelect({
   const [open, setOpen] = useState(false);
   const showSelected = selected !== undefined && !open;
 
+  const search = searchOnlyWhatIsTyped(filter);
+
   return (
     <Combobox.Root
       // Remounted once, the moment the team list lands — this is load-bearing, not a hack.
@@ -178,8 +181,12 @@ export function TeamSelect({
         const picked = e.value[0];
         onChange?.(picked !== undefined ? BigInt(picked) : 0n);
       }}
-      onInputValueChange={(e) => filter(e.inputValue)}
-      onOpenChange={(e) => setOpen(e.open)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      onInputValueChange={search.onInputValueChange}
+      onOpenChange={(e) => {
+        setOpen(e.open);
+        search.onOpenChange(e);
+      }}
       data-testid="team-select"
     >
       <Combobox.Control position="relative">

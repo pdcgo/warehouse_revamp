@@ -19,9 +19,31 @@ export const PROVIDER_KEY: Record<number, string> = {
   [P.UNKNOWN]: "financialAccounts.provider.unknown",
 };
 
-// The providers a person may PICK — never `unknown`, which only a withdrawal makes
-// (a-shop-with-no-account-gets-an-unknown-one).
-export const PICKABLE_PROVIDERS: P[] = [P.BCA, P.BNI, P.JAGO, P.SHOPEEPAY, P.CASH];
+// THE TYPE DECIDES THE PROVIDER (owner, `the-type-decides-the-provider`) — a bank account picks among the banks, a
+// digital wallet among the wallets (ShopeePay, for now), and a cash box and type Lainnya have theirs set for them.
+// It replaces type-and-provider-are-picked-apart on the screens; the server still takes any pair.
+export const PROVIDERS_BY_TYPE: Record<number, P[]> = {
+  [FinancialAccountType.BANK_ACCOUNT]: [P.BCA, P.BNI, P.JAGO],
+  [FinancialAccountType.WALLET]: [P.SHOPEEPAY],
+  [FinancialAccountType.CASH]: [P.CASH],
+  [FinancialAccountType.UNKNOWN]: [P.UNKNOWN],
+};
+
+/** The provider a type sets by itself — Kas for a cash box, Lainnya for type Lainnya. None where a person picks. */
+export function fixedProvider(type: FinancialAccountType): P | undefined {
+  if (type === FinancialAccountType.CASH) return P.CASH;
+  if (type === FinancialAccountType.UNKNOWN) return P.UNKNOWN;
+  return undefined;
+}
+
+/**
+ * The provider to hold once the type changes: the one it sets, the only one it offers, the current one if the
+ * new type still offers it — else none, and the person picks.
+ */
+export function providerFor(type: FinancialAccountType, current: P): P {
+  const offered = PROVIDERS_BY_TYPE[type] ?? [];
+  return fixedProvider(type) ?? (offered.length === 1 ? offered[0]! : offered.includes(current) ? current : P.UNSPECIFIED);
+}
 
 export const TYPE_KEY: Record<number, string> = {
   [FinancialAccountType.UNSPECIFIED]: "financialAccounts.type.unknown",
@@ -31,8 +53,17 @@ export const TYPE_KEY: Record<number, string> = {
   [FinancialAccountType.UNKNOWN]: "financialAccounts.type.unknown",
 };
 
-// Picked APART from the provider — a mismatched pair saves (type-and-provider-are-picked-apart).
+// The types New Account offers — Lainnya last, for an account outside the three (owner,
+// `the-type-decides-the-provider`). The server does not accept it yet (`FINANCIAL_ACCOUNT_PENDING`, otherType).
 export const PICKABLE_TYPES: FinancialAccountType[] = [
+  FinancialAccountType.BANK_ACCOUNT,
+  FinancialAccountType.WALLET,
+  FinancialAccountType.CASH,
+  FinancialAccountType.UNKNOWN,
+];
+
+/** The types Tentukan Rekening can make an unknown account into — the real ones, never Lainnya again. */
+export const IDENTIFIABLE_TYPES: FinancialAccountType[] = [
   FinancialAccountType.BANK_ACCOUNT,
   FinancialAccountType.WALLET,
   FinancialAccountType.CASH,
@@ -100,4 +131,26 @@ export const isUnknown = (account: { type: FinancialAccountType }) => account.ty
 // team's shops do not resolve is left as written.
 export function withShopNames(text: string, nameOf: (shopId: bigint) => string | undefined): string {
   return text.replace(/shop #(\d+)/g, (written, id: string) => nameOf(BigInt(id)) ?? written);
+}
+
+/**
+ * THE NAME AN ACCOUNT IS SHOWN BY (owner, `the-unknown-account-reads-lainnya`).
+ *
+ * An unknown account is shown by the SHOP whose withdrawals it holds — "Melati TikTok", not "Unknown — shop #25":
+ * its provider badge already says *Lainnya*, so a prefix and a badge said it twice more. Every other account is
+ * its own name, with any shop id the server wrote put back as the shop's name (`withShopNames`). An unknown
+ * account whose shop the screen does not hold falls back to its stored name, prefix dropped.
+ */
+export function accountName(
+  account: { name: string; type: FinancialAccountType; shopIds: bigint[] },
+  nameOf: (shopId: bigint) => string | undefined,
+): string {
+  if (isUnknown(account)) {
+    const shops = account.shopIds.map(nameOf).filter((name): name is string => !!name);
+    if (shops.length > 0) return shops.join(", ");
+
+    return withShopNames(account.name, nameOf).replace(/^Unknown — /, "");
+  }
+
+  return withShopNames(account.name, nameOf);
 }

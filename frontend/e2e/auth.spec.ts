@@ -130,9 +130,10 @@ test("the user menu switches the theme, and the choice sticks across a reload (#
 
   const html = page.locator("html");
 
-  // Theme lives in the sidebar-foot user menu. Pick Dark → the `.dark` class Chakra reads goes on <html>.
+  // Theme lives in the sidebar-foot user menu, as a switch row (the-account-menu-switches-theme-and-language).
+  // Switch it on → Dark → the `.dark` class Chakra reads goes on <html>.
   await page.getByTestId("user-menu").click();
-  await page.getByTestId("theme-dark").click();
+  await page.getByTestId("theme-switch").click();
   await expect(html).toHaveClass(/dark/);
 
   // The choice is persisted (localStorage), so it survives a full reload rather than snapping back.
@@ -140,8 +141,8 @@ test("the user menu switches the theme, and the choice sticks across a reload (#
   await expect(page.getByTestId("home-user")).toContainText("root");
   await expect(html).toHaveClass(/dark/);
 
-  // And back to Light removes it.
+  // And switched off again, back to Light, removes it.
   await page.getByTestId("user-menu").click();
-  await page.getByTestId("theme-light").click();
+  await page.getByTestId("theme-switch").click();
   await expect(html).not.toHaveClass(/dark/);
 });

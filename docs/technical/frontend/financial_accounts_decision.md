@@ -1,0 +1,927 @@
+# Decisions — the financial account screens
+
+The owner's decisions about **`/financial-accounts`** (the accounts list), an account's page and the report.
+**Append-only** (RULE 12): a reversed decision is renamed and its references grepped.
+
+The rules every screen follows are in [context_decision.md](context_decision.md); the financial account *business*
+decisions stay in [financial_account/context_decision.md](../../business/financial_account/context_decision.md), where
+the prototype these screens grew from was accepted
+([the-prototype-and-its-contract-are-accepted](../../business/financial_account/context_decision.md#the-prototype-and-its-contract-are-accepted)).
+
+| decision | what it decided |
+| --- | --- |
+| [the-accounts-subtitle-sits-under-the-title](#the-accounts-subtitle-sits-under-the-title) | the accounts page's subtitle sits directly under its title, one block, the actions beside it |
+| [the-accounts-totals-are-the-order-lists-cards](#the-accounts-totals-are-the-order-lists-cards) | the totals by type are the order list's card strip — a label, one figure, a quiet line |
+| [the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners) | no below-zero or unknown-account banner — the cards and the rows already say it, the below-zero count in red |
+| [the-accounts-type-is-a-tab-row](#the-accounts-type-is-a-tab-row) | the type is a **tab row** over the table — *Semua* and each type the team holds, with counts (was a Select, the same day) |
+| [the-total-leads-until-a-type-is-picked](#the-total-leads-until-a-type-is-picked) | **Total saldo** (was *Total tim*) leads in pale blue; a picked type's card takes the lead |
+| [the-total-saldo-comes-first](#the-total-saldo-comes-first) | **Total saldo** is the strip's first card, left of the types |
+| [the-provider-cell-carries-the-number](#the-provider-cell-carries-the-number) | **Penyedia** and **Nomor** are one column — the badge, the number under it; it sorts by the provider |
+| [a-balance-is-bold](#a-balance-is-bold) | the list's **Saldo** figure is bold |
+| [the-unknown-account-reads-lainnya](#the-unknown-account-reads-lainnya) | an unknown account is **Lainnya** (EN *Other*) and shown by its shop's name — no *Unknown —*, no badge |
+| [the-linked-column-shows-three-then-more](#the-linked-column-shows-three-then-more) | **Terhubung ke** (was *Dipakai untuk*): three badges at most, then **+N** opening them all in a dialog |
+| [transfer-and-reconcile-sit-on-the-row](#transfer-and-reconcile-sit-on-the-row) | **Transfer** and **Rekonsiliasi** are buttons on the row; the rest stay in `⋯`, never twice |
+| [operational-and-archived-share-one-filter-panel](#operational-and-archived-share-one-filter-panel) | *Hanya operasional* and *Tampilkan yang diarsipkan* sit in one panel behind a **Filter** trigger |
+| [the-unknown-row-warns-and-sets-from-the-menu](#the-unknown-row-warns-and-sets-from-the-menu) | a Lainnya row says *⚠ Rekening belum ditentukan* under its name; **Tentukan Rekening** (was *Akun yang Mana Ini?*) is in `⋯` |
+| [the-archive-is-its-own-view](#the-archive-is-its-own-view) | **Arsip** beside *Akun Baru* turns the screen into the archived list — no totals, search + shop + type tabs; archived-only is marked unimplemented |
+| [the-accounts-pager-grows-with-the-pages-opened](#the-accounts-pager-grows-with-the-pages-opened) | the accounts list's pager needs no total: every page opened keeps its number until the screen is left (`GrowingPager`) |
+| [reconcile-reads-cocokkan-saldo](#reconcile-reads-cocokkan-saldo) | the action is **Cocokkan Saldo**; *rekonsiliasi* is its dialog's description |
+| [capital-reads-setor-tarik-modal](#capital-reads-setor-tarik-modal) | the action is **Setor / Tarik Modal**, its choice *Setor modal* · *Tarik modal* |
+| [a-dialog-choice-is-a-radio-pill](#a-dialog-choice-is-a-radio-pill) | a dialog's either/or is radio pills (`RadioPills`), not a segmented switch |
+| [operational-asks-before-it-changes](#operational-asks-before-it-changes) | marking or unmarking operational confirms first, saying what it changes |
+| [an-account-note-is-a-textarea](#an-account-note-is-a-textarea) | every note in the account dialogs is a three-row textarea, and every field carries a placeholder |
+| [lainnya-is-offered-with-a-warning](#lainnya-is-offered-with-a-warning) | provider **Lainnya** is in the picker, marked unimplemented, with a warning once picked |
+| [the-wallet-reads-dompet-digital](#the-wallet-reads-dompet-digital) | the wallet type reads **Dompet digital** everywhere, not *Dompet* |
+| [the-form-asks-the-type-first](#the-form-asks-the-type-first) | New Account's type pills include **Lainnya**; the provider field follows the type — a picker of its own options, or the provider it sets, said in words |
+| [kas-and-lainnya-ask-no-provider](#kas-and-lainnya-ask-no-provider) | Kas and Lainnya show no provider field at all; a bank and a wallet keep their picker |
+| [set-account-reads-lengkapi-data-or-pindah-saldo](#set-account-reads-lengkapi-data-or-pindah-saldo) | Tentukan Rekening's two choices read **Lengkapi data** · **Pindah saldo**, with a line saying when to pick each |
+| [the-report-follows-the-screen-rules](#the-report-follows-the-screen-rules) | the account report applies the screen rules: title block, FilterBar, the order list's cards, tabs for the ranking, sort from the headings |
+| [the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table) | the account report is five cards — the three balances, then what moved it by account and by provider — and one table of periods with every type; breakdowns open from *Rincian ›* |
+| [a-phone-reads-an-account-as-a-block](#a-phone-reads-an-account-as-a-block) | on a phone the accounts list is one block per account — name and balance, provider and ⋯, last checked and links — and the header's actions wrap under the subtitle |
+| [the-change-sits-under-the-close-on-a-phone](#the-change-sits-under-the-close-on-a-phone) | a report period on a phone is two top-aligned columns: date and types left, close and change right — the change right under the close |
+| [the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules) | an account's page applies the screen rules: the order list's cards, the shared FilterBar over the statement, the growing pager; on a phone the header is the name and ⋯, and a statement row is a block |
+| [linked-shops-sit-beside-the-cards](#linked-shops-sit-beside-the-cards) | an account's linked shops are the third card of its row — *Toko terhubung*, a fifth wide, two shops then +N in their marketplace's colour, *Arahkan ›* |
+| [the-statement-filters-several-types](#the-statement-filters-several-types) | the statement's type filter is a multi-pick search select — the options and the picks are the type's own coloured badge |
+| [the-type-filter-starts-at-a-fields-height](#the-type-filter-starts-at-a-fields-height) | the type filter is the date field's 36px to start, shows three picks whole and "+N" past that, and keeps its × and ⌄ outside the box the picks wrap in |
+| [the-type-filter-shows-four-picks](#the-type-filter-shows-four-picks) | four picks' badges before "+N", not three |
+| [a-phone-statement-row-opens-its-detail](#a-phone-statement-row-opens-its-detail) | on a phone the statement is Tanggal · Jenis · Saldo under their headings, the change under the balance; a tap opens the description, who and when it was typed |
+| [the-balance-column-reads-saldo](#the-balance-column-reads-saldo) | the statement's balance column reads **Saldo**, not *Saldo setelah* |
+| [a-statement-row-lights-up](#a-statement-row-lights-up) | a statement row lights up under the pointer, and on a phone while pressed |
+| [the-type-sits-under-the-date-on-a-phone](#the-type-sits-under-the-date-on-a-phone) | on a phone the statement is two columns, Tanggal · Saldo — the type under the date, the change under the balance |
+| [a-balance-below-zero-says-to-check-the-bank](#a-balance-below-zero-says-to-check-the-bank) | under a balance below zero, a small red line with the ⚠: *Di bawah nol · cocokkan dengan bank* · the figures right-aligned |
+| [the-accounts-list-has-every-filter-the-contract-has](#the-accounts-list-has-every-filter-the-contract-has) | search · type · shop · operational only · archived, in the shared `FilterBar` — a sheet on a phone |
+| [the-accounts-table-sorts-from-its-headings](#the-accounts-table-sorts-from-its-headings) | **Akun** and **Penyedia** sort from their headings, A to Z first, then flip |
+
+## the-accounts-subtitle-sits-under-the-title
+
+> Owner, in chat (2026-10-05), on `/financial-accounts`: *"subjudul lebih baik di bawah judul langsung"* — and *"tombol
+> laporan teksnya tidak dapat"*.
+
+```
+Akun Keuangan [Tim A]                                   [Laporan] [+ Akun Baru]
+Uang yang dipegang tim, dan di mana. …
+```
+
+| | |
+| --- | --- |
+| the block | the title, the team badge and the subtitle in one stack (`gap 1`); **Laporan** and **Akun Baru** to its right |
+| was | the subtitle a section's gap below the title row, reading as a separate paragraph |
+| **Laporan** | its own label, `financialAccounts.openReport` — it pointed at `financialAccounts.report`, the report page's whole namespace, and rendered i18next's *returned an object instead of string* |
+
+## the-accounts-totals-are-the-order-lists-cards
+
+> Owner, in chat (2026-10-05): *"format statistic ubah jadi seperti sebelumnya"*.
+
+*Applies [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip)
+and [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border).*
+
+```
+┌ Rekening bank ┐ ┌ Dompet digital ┐ ┌ Kas ──────┐ ┌ Bank belum disebut ┐ ┌ Total tim ────┐
+│ Rp 12.043.500 │ │ −Rp 150.000    │ │ Rp 800.000│ │ Rp 4.200.000       │ │ Rp 16.093.500 │
+│ 2 akun        │ │ 1 akun · 1 di… │ │ 1 akun    │ │ 1 akun             │ │ 5 akun        │
+└───────────────┘ └────────────────┘ └───────────┘ └────────────────────┘ └───────────────┘
+```
+
+| | |
+| --- | --- |
+| the cards | `SummaryStrip` of `SummaryCard` — one per type the team holds money in, then **Total saldo** |
+| a card | the type's label · its balance · *n akun*, and *· n di bawah nol* when any is |
+| below zero | the figure stays red — [below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused) |
+| which types | only those with an active account — the server's `TYPE_TOTAL` returns no empty type, so *Bank belum disebut* appears only while an unknown account exists |
+| was | one bordered box of blocks, each value in `BalanceText` |
+| unchanged | the figures — asked of the server over every active account, never summed from the visible page |
+
+## the-accounts-page-has-no-banners
+
+> Owner, in chat (2026-10-05): *"alert terlalu memakan space, aku ingin dengar pendapatmu dulu"* — then, to the
+> recommendation to drop both and let the cards and rows carry them: *"4 oke"*.
+
+```mermaid
+flowchart LR
+  B1["banner — n accounts below zero"] -->|"removed"| C1["the card's line — n di bawah nol, in red"]
+  B1 --> R1["the row — the balance red with its warning"]
+  B2["banner — n accounts with no bank named"] -->|"removed"| C2["the Bank belum disebut card — only while one exists"]
+  B2 --> R2["the row — the Bank belum disebut badge"]
+  C2 --> F["the Bank belum disebut tab"]
+```
+
+| | |
+| --- | --- |
+| below zero | the card's *· n di bawah nol* in `fg.error` · the row's balance red with ⚠ — unchanged |
+| unknown | the **Bank belum disebut** card (the server returns it only while such an account exists) · the row's badge · its tab finds them all |
+| what went with the banners | *"Itu boleh, cocokkan dengan bank"* and *"pilih Akun Yang Mana Ini?"* — both still said on the account's own page |
+| not a card click | a card does not filter — `SummaryCard` is not a control; the filter is the way to the list |
+
+## the-accounts-type-is-a-tab-row
+
+> Owner, in chat (2026-10-05): *"4 oke"* — a type filter beside the search — then, the same day: *"filter jenis jadi
+> tab atau radio, mana yang lebih bagus?"* — tabs, as recommended.
+
+```
+[Semua 5] [Rekening bank 2] [Dompet digital 1] [Kas 1] [Bank belum disebut 1]
+```
+
+| | |
+| --- | --- |
+| the control | a Chakra `Tabs` row, right over the table — between the filter strip and the rows it narrows |
+| the tabs | **Semua**, then each type the team holds an active account in, in the totals' order and words · each with its count of active accounts |
+| why tabs, not radios | it is a view of one list, not a value on a form — read like the order list's status tabs, counts included; radios would read as a field to fill |
+| a type with no account | no tab, as it has no card — unless it is the one picked |
+| a change | back to page 1 · Clear leaves it — a tab is not a filter |
+| was | a `Select` in the filter strip (*Semua jenis* · …), the same day |
+
+## a-balance-below-zero-says-to-check-the-bank
+
+> Owner, in chat (2026-10-05), after [the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners): *"warningnya
+> tadi di bawah saldo, kasih keterangan dikit"* — then *"angkanya juga tidak right"* and *"iconnya di bawah saja"*.
+
+```
+                                Saldo
+                          −Rp 150.000
+⚠ Di bawah nol · cocokkan dengan bank
+```
+
+| | |
+| --- | --- |
+| where | the **Saldo** cell of an account whose balance is below zero |
+| the figure | alone, red, right-aligned — no ⚠ beside it |
+| the line under it | ⚠ *Di bawah nol · cocokkan dengan bank* (EN *Below zero · check it against the bank*), `xs`, `fg.error`, one line — `BalanceText`'s `hint` |
+| why there | the banner's message, kept, next to the one number it is about — allowed, and what to do ([below-zero-is-warned-never-refused](../../business/financial_account/context_decision.md#below-zero-is-warned-never-refused)) |
+| a balance at or above zero | no line |
+| right-aligned | `BalanceText` is inline now, so a cell's `textAlign="end"` reaches it — it was a block flex row that sat at the cell's left under a right-aligned heading. The fix reaches every table that uses it: the account's statement and the report |
+
+## the-accounts-list-has-every-filter-the-contract-has
+
+> Owner, in chat (2026-10-05), after reading what `FinancialAccountList` can filter: *"oke kasih semua filternya, sort
+> langsung di tabel aja"*.
+
+```
+[Cari nama, atas nama, atau nomor] [Semua toko ⌄] ☐ Hanya operasional ☐ Tampilkan yang diarsipkan  Hapus filter
+```
+
+| filter | the contract's field | the control |
+| --- | --- | --- |
+| search | `q` — name, holder, number | `FilterSearch` |
+| type | `types` — one at a time | the tab row over the table ([the-accounts-type-is-a-tab-row](#the-accounts-type-is-a-tab-row)) |
+| shop | `shop_id` — the account the shop withdraws into, so at most one row ([a-shop-has-one-account](../../business/financial_account/context_decision.md#a-shop-has-one-account)) | `ShopSelect`, *Semua toko* · shown only where the team runs shops |
+| operational only | `operational_only` | a checkbox |
+| archived | `include_archived` | a checkbox — unchanged |
+| the strip | the shared [`FilterBar`](../../../frontend/src/components/chrome/FilterBar.tsx) — Clear while anything is set, and on a phone the search in the row and the rest in a bottom sheet ([a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet)) — closing the ⚠ of [the-accounts-type-is-a-tab-row](#the-accounts-type-is-a-tab-row) |
+| a change | back to page 1 |
+
+## the-accounts-table-sorts-from-its-headings
+
+> The same answer — *"sort langsung di tabel aja"*.
+
+*Applies [a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings).*
+
+```mermaid
+stateDiagram-v2
+  [*] --> Opening: active first, then name
+  Opening --> AtoZ: click Akun or Penyedia
+  AtoZ --> ZtoA: click it again
+  ZtoA --> AtoZ: click it again
+```
+
+| | |
+| --- | --- |
+| sortable | **Akun** (`NAME`) and **Penyedia** (`PROVIDER`) — the two columns the contract orders by |
+| first click | **A to Z** — a name reads alphabetically; *largest first* is for a measure, and these are words |
+| not sortable | **Saldo** and **Terakhir dicek** come from `FinancialAccountOverview`, so the server cannot order a page by them · **Nomor**, **Dipakai untuk** — the contract does not order by them |
+| the opening order | the list's own: active before archived, then by name — no heading marked |
+| ⚠ Penyedia's order | the server orders the stored word — bca, bni, cash, jago, shopeepay, unknown — so *Kas* sits between BNI and Jago |
+| on a phone | the sheet's **Urutkan** — the four sorts and the opening order |
+| the heading | the shared [`SortableHeader`](../../../frontend/src/components/chrome/SortableHeader.tsx) — the settlement list's heading moved into `components/chrome/` so the two lists share one |
+| `CREATED_AT` | the contract can sort by it, but no column shows the date — not offered |
+
+## the-total-leads-until-a-type-is-picked
+
+> Owner, in chat (2026-10-05): *"total tim jadi total saja atau total apa gitu, defaultnya highlight biru pudar … ketika
+> filter jenis ada, highlight statistic pindah sesuai jenisnya"*.
+
+*Applies [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border) —
+one card per strip may lead, in pale blue.*
+
+```mermaid
+stateDiagram-v2
+  [*] --> TotalLeads: the Semua tab
+  TotalLeads --> TypeLeads: a type tab
+  TypeLeads --> TypeLeads: another type tab
+  TypeLeads --> TotalLeads: Semua
+```
+
+| | |
+| --- | --- |
+| the name | **Total saldo** (EN *Total balance*) — was *Total tim*: the strip is the team's already, the word says what is added |
+| on Semua | **Total saldo** leads — `SummaryCard emphasis`, the `lead.*` pale blue |
+| on a type tab | that type's card leads, the total goes back to grey — the strip says which pile the table holds |
+| a picked type with no card | nothing leads |
+| still not a control | a card does not pick a tab — the tabs are the control, the lead is its echo |
+
+## the-total-saldo-comes-first
+
+> Owner, in chat (2026-10-05): *"total saldo paling kiri"*.
+
+```
+┌ Total saldo ──┐ ┌ Rekening bank ┐ ┌ Dompet digital ┐ ┌ Kas ──────┐ ┌ Bank belum disebut ┐
+│ Rp 16.443.500 │ │ Rp 12.043.500 │ │ −Rp 150.000    │ │ Rp 350.000│ │ Rp 4.200.000       │
+└───────────────┘ └───────────────┘ └────────────────┘ └───────────┘ └────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the order | **Total saldo**, then bank · wallet · cash · bank not named — the whole, then what it is made of |
+| was | the total last, after the types |
+| the lead | unchanged — [the-total-leads-until-a-type-is-picked](#the-total-leads-until-a-type-is-picked) |
+
+## the-provider-cell-carries-the-number
+
+> Owner, in chat (2026-10-05): *"penyedia dan nomor jadikan 1, sort by penyedia, saldo bold"*.
+
+```
+Akun                   Penyedia ⇅      Saldo
+BCA Operasional        [BCA]           Rp 11.443.500
+PT Melati Sejahtera    1234567890
+Kas Melati             [Kas]           Rp 350.000
+```
+
+| | |
+| --- | --- |
+| the column | **Penyedia** — the `ProviderBadge`, and the number under it in quiet mono (`xs`, `fg.muted`) |
+| no number | a cash box or an unknown account — the badge alone, one line |
+| the sort | the heading sorts by the provider ([the-accounts-table-sorts-from-its-headings](#the-accounts-table-sorts-from-its-headings)) — the badge leads the cell because it is what the column is ordered by |
+| was | two columns, **Penyedia** · **Nomor** |
+| why badge first here | [a-badge-stacks-under-its-text-when-the-table-is-cramped](context_decision.md#a-badge-stacks-under-its-text-when-the-table-is-cramped) puts a QUALIFYING badge under its text; here the badge is the value itself and the number qualifies it |
+
+## a-balance-is-bold
+
+> The same message — *"saldo bold"*.
+
+| | |
+| --- | --- |
+| where | the accounts list's **Saldo** cell — `BalanceText bold` |
+| below zero | bold and red, the ⚠ line under it unchanged ([a-balance-below-zero-says-to-check-the-bank](#a-balance-below-zero-says-to-check-the-bank)) |
+| elsewhere | unchanged — the statement's *Saldo setelah* and the report keep their weight |
+
+## the-unknown-account-reads-lainnya
+
+> Owner, in chat (2026-10-06), on `/financial-accounts`: *"Bank no named bukan nama yang bagus … yang unknown tidak
+> perlu ada badge bank belum disebut dan unknown di depannya … dipakai untuk mungkin dipakai oleh atau istilah lain …
+> badgenya maksimal 3 … aksi utama … keluarkan 2 … filter operasional dan tampilkan arsip jadikan dalam 1 panel"*.
+
+After three rounds of names (*Belum teridentifikasi*, *Tanpa bank*, *Belum terdaftar* and others), the owner chose the
+direction: *"semacam lainnya atau semacamnya"*.
+
+```
+Akun              Penyedia      Saldo
+Melati TikTok     [Lainnya]     Rp 4.200.000      [Akun yang Mana Ini?] [Transfer Keluar] ⋯
+```
+
+| | |
+| --- | --- |
+| the word | **Lainnya** (EN *Other*) — the card, the tab and the provider badge; it replaces *Bank belum disebut* |
+| the row's name | the shop it holds withdrawals for — *Melati TikTok* — not the server's *Unknown — shop #25*; `accountName` in `features/financialAccount/vocab.ts`, on the list, the account's page, the report and the shop dialog |
+| no badge | the orange *Bank belum disebut* badge is gone — the provider badge already says it |
+| still shown | the action that fixes it — **Akun yang Mana Ini?** — on the row ([transfer-and-reconcile-sit-on-the-row](#transfer-and-reconcile-sit-on-the-row)) |
+| the server | unchanged — it still names the account *Unknown — shop #25*; the screens choose how to show it |
+
+⚠ It changes the words of [the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners),
+[the-accounts-type-is-a-tab-row](#the-accounts-type-is-a-tab-row) and
+[the-accounts-totals-are-the-order-lists-cards](#the-accounts-totals-are-the-order-lists-cards): read their
+*Bank belum disebut* as **Lainnya**, and the row badge they mention as gone.
+
+## the-linked-column-shows-three-then-more
+
+> The same message — *"dipakai untuk mungkin dipakai oleh atau istilah lain, soalnya ada operasional di situ, badgenya
+> maksimal 3, lalu ada tanda + kalau lebih … dan bisa didetailkan dengan modal"* — and the heading picked: **Terhubung ke**.
+
+```
+Terhubung ke
+[Operasional] [Melati Official] [Melati Store] [+1]   ← +1 opens every link in a dialog
+```
+
+| | |
+| --- | --- |
+| the heading | **Terhubung ke** (EN *Linked to*) — was *Dipakai untuk*; it fits both kinds: Operasional and the shops that withdraw in |
+| the badges | Operasional first, then the shops — **three** at most |
+| more than three | a small **+N** button; it opens a dialog with the account's name, Operasional with what it allows, and every shop as a `ShopItem` |
+| the row | the +N and the dialog stop the click — the row does not open the account's page underneath |
+| where | `AccountLinks`, `pages/financial-accounts/components/` |
+
+## transfer-and-reconcile-sit-on-the-row
+
+> The same message — *"aksi utama, atau yang mungkin sering dipakai keluarkan 2 dan sisanya tetap ..."* — and the
+> pair picked: **Transfer + Rekonsiliasi**.
+
+| state | on the row | in `⋯` |
+| --- | --- | --- |
+| active | **Transfer** · **Rekonsiliasi** | Modal · Ubah · Tandai / Hapus Tanda Operasional · Arsipkan |
+| Lainnya (unknown) | **Akun yang Mana Ini?** · **Transfer Keluar** | Arsipkan |
+| archived | **Pulihkan** | no `⋯` — nothing else to do |
+
+| | |
+| --- | --- |
+| never twice | a button is not repeated in the menu — on the list and on the account's page alike (`AccountActions buttons`) |
+| labels | Title Case, as every button and menu item — *Transfer Keluar*, *Modal Masuk / Keluar*, *Tandai Operasional*, *Akun yang Mana Ini?* were sentence case and are fixed with it |
+
+## operational-and-archived-share-one-filter-panel
+
+> The same message — *"filter operasional dan tampilkan arsip jadikan dalam 1 panel dengan 1 filter trigger sendiri"*.
+
+```
+[Cari …] [Semua toko ⌄] [⚙ Filter 1]  Hapus filter
+                         ┌───────────────────────────┐
+                         │ ☑ Hanya operasional        │
+                         │ ☐ Tampilkan yang diarsipkan│
+                         └───────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the trigger | **Filter**, the sliders icon, and a count of the options that are on (`AccountOptionsFilter`) |
+| the panel | a popover with the two checkboxes — they apply as they change |
+| on a phone | the FilterBar's sheet already holds every control, so the two checkboxes stand in it directly — no panel inside a panel |
+| Clear | unchanged — both still count as filters ([the-accounts-list-has-every-filter-the-contract-has](#the-accounts-list-has-every-filter-the-contract-has)) |
+
+## the-unknown-row-warns-and-sets-from-the-menu
+
+> Owner, in chat (2026-10-06), on what *Akun yang Mana Ini?* means and whether the context makes it mandatory: *"kasih
+> warning tapi dimana enaknya?"* — then *"oke posisi di situ seperti itu, lalu untuk akun yang mana ini, taruh saja di
+> ..., tapi nama actionnya bukan akun yang mana ini"* — and the name picked: **Tentukan Rekening**.
+
+```
+Akun                              Penyedia     …   Aksi
+Melati TikTok                     [Lainnya]        [Transfer Keluar] ⋯  → Tentukan Rekening · Arsipkan
+⚠ Rekening belum ditentukan
+```
+
+| | |
+| --- | --- |
+| the warning | *⚠ Rekening belum ditentukan* (EN *No account set yet*), `xs`, `fg.warning`, on the Akun cell's second line — where the holder is, and where the type only repeated the provider badge |
+| why warn | not mandatory — nothing in the context sets a deadline ([a-shop-with-no-account-gets-an-unknown-one](../../business/financial_account/context_decision.md#a-shop-with-no-account-gets-an-unknown-one)) — but every later withdrawal from the shop lands in Lainnya until it is set, and reconciling the real bank first posts the same money as an adjustment, counting it twice |
+| the action | **Tentukan Rekening** (EN *Set Account*) — was *Akun yang Mana Ini?* — the same dialog, fill in or move in ([an-unknown-account-is-filled-in-or-moved-in](../../business/financial_account/context_decision.md#an-unknown-account-is-filled-in-or-moved-in)); its title says the same |
+| where | the row's `⋯`, above Arsipkan — on the list and on the account's page; the row keeps **Transfer Keluar** |
+
+⚠ It changes [transfer-and-reconcile-sit-on-the-row](#transfer-and-reconcile-sit-on-the-row)'s Lainnya row — one
+button, *Transfer Keluar*, not two — and [the-unknown-account-reads-lainnya](#the-unknown-account-reads-lainnya)'s
+*still shown … on the row*: the action is in `⋯`, the warning is on the row.
+
+## the-archive-is-its-own-view
+
+> Owner, in chat (2026-10-06): *"apa yang kuinginkan untuk arsip adalah apinya bisa filter arsip saja, bukan tampilkan
+> sekalian arsip, tapi aku tidak akan mengubah be nya jadi kasih saja warning unimplemented, lalu untuk melihat arsip
+> klik button di atas, satu deret dengan buat akun, tampilannya tetap di sini saja, cuma ada tab status dan filter cari
+> dan toko maybe, stat tidak ada"*.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Active
+  Active --> Archived: Arsip — beside Akun Baru
+  Archived --> Active: Akun Aktif
+  Active: the totals, the filters, the type tabs, the accounts
+  Archived: archived only — search, shop, type tabs, no totals
+```
+
+| | |
+| --- | --- |
+| the way in | **Arsip** (EN *Archive*), an outline button in the header row: *Laporan* · *Arsip* · *Akun Baru* |
+| the view | the same screen at `?view=archived` — title **Arsip Akun**, a subtitle saying they were closed at zero, **Akun Aktif** to go back |
+| on it | the search, the shop and the type tabs (their counts of the archived) · the table, each row offering **Pulihkan** only |
+| not on it | the totals — every archived account holds zero — and the Filter panel |
+| the panel | *Tampilkan yang diarsipkan* left it; it holds *Hanya operasional* alone ([operational-and-archived-share-one-filter-panel](#operational-and-archived-share-one-filter-panel)) |
+| ⚠ unimplemented | the contract's `include_archived` only ADDS the archived to the active. The view asks for the first 200 with them included, keeps the archived on screen, and counts and pages there — a `derived` pending mark beside the title and the strip at the top say so (`pages/financial-accounts/pending.ts`). The backend is not changed |
+| "tab status" | read as the existing type tabs — the archive has one status, so a status tab would hold one option |
+
+## the-accounts-pager-grows-with-the-pages-opened
+
+> Owner, in chat (2026-10-06): *"aku ingin desain paginasi yang baru"* — *"page kebanyakan tidak punya total, cuma next
+> dan prev"* — *"halaman yang punya angka tambahan lebih bagus … ada menyimpan statenya sementara jadi paginasi halamannya
+> nanti tidak perlu kembali dari awal lagi kalau mau akses last page yang pernah diakses, tapi cuma bertahan sampai
+> halaman belum refresh atau belum navigasi"* — the growing numbers picked, on the accounts page first.
+
+```mermaid
+stateDiagram-v2
+  [*] --> P1: ‹ [1] 2 ›
+  P1 --> P3: › twice
+  P3 --> P5: › twice
+  P5 --> P2: click 2 — 1 [2] 3 4 5
+  P2 --> P5: click 5 — one click back
+  P5 --> [*]: refresh or leave — forgotten
+  P3: 1 2 [3] 4
+  P5: 1 2 3 4 [5]
+```
+
+| | |
+| --- | --- |
+| what it needs | only whether a page AFTER this one exists — no total. This contract has one, so it is exact here; for one without, "this page came back full" |
+| the numbers | every page from 1 to the furthest opened, and one more while that furthest had a next · Chakra's ellipsis keeps a long trail short: `1 … 7 [8] 9 … 15` |
+| › | opens the next new page; off on the last known number once the data has ended |
+| the current page | filled rose, `brand.solid` ([a-chosen-option-is-in-the-main-tone](context_decision.md#a-chosen-option-is-in-the-main-tone)) |
+| the memory | component state — kept while the screen is open, forgotten on a refresh or on leaving it; a new filter, tab, sort, page size or the archive view starts it over |
+| one page | `‹ [1] ›`, both arrows off — always on screen ([the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen)) |
+| per page | the selector on the left, 10 / 20 / 50, as before |
+| where | `GrowingPager`, `components/chrome/` — on the accounts list only; every other list keeps `Pagination` until the owner decides |
+
+### the pager's look — one row of equal boxes
+
+> Owner, in chat (2026-10-06): *"kurang serasi antara page dan perpage"*.
+
+```
+                                  Per halaman [20⌄]   [‹] [1] [2] [3] [›]
+```
+
+| | |
+| --- | --- |
+| placement | the per-page selector and the page buttons together on the right — was the selector far left, the pages far right |
+| size | everything `xs`, 32px — the page buttons were 36px |
+| style | the page buttons outlined like the selector's box, one radius, `xs` type; the current page filled rose, its border with it |
+
+## reconcile-reads-cocokkan-saldo
+
+> Owner, in chat (2026-10-06): *"theme checkbox sesuaikan · rekonsiliasi jadikan deskripsi di modalnya, untuk nama
+> aksinya ganti dengan yang lebih familiar · modal masuk keluar bisa diganti namanya · pill di modal form ganti jadi
+> radio pill · set operasional kasih confirm dulu · catatan tolong textarea · dan sebisa mungkin form ada
+> placeholdernya"* — the names picked: **Cocokkan Saldo** and **Setor / Tarik Modal**.
+
+```
+[Transfer] [Cocokkan Saldo] ⋯
+
+┌ Cocokkan Saldo — BCA Operasional ─────────────────────────────────┐
+│ Rekonsiliasi: cocokkan pembukuan dengan yang tampil di aplikasi    │
+│ bank, atau hasil hitung kas. Selisihnya dicatat sebagai penyesuaian.│
+```
+
+| | |
+| --- | --- |
+| the action | **Cocokkan Saldo** (EN *Match Balance*) — was *Rekonsiliasi*: the word a person uses, for a bank and a cash box alike |
+| the dialog | titled *Cocokkan Saldo — {name}*, with *Rekonsiliasi: …* as its description (`FormDialog description`) · its button **Cocokkan** |
+| unchanged | what it does — [adjustment-is-for-reconciling-only](../../business/financial_account/context_decision.md#adjustment-is-for-reconciling-only) |
+
+⚠ Earlier entries' *Rekonsiliasi* — [transfer-and-reconcile-sit-on-the-row](#transfer-and-reconcile-sit-on-the-row) — reads **Cocokkan Saldo** now.
+
+## capital-reads-setor-tarik-modal
+
+The same message — *"modal masuk keluar bisa diganti namanya"*.
+
+| | |
+| --- | --- |
+| the action | **Setor / Tarik Modal** (EN *Add / Withdraw Capital*) — was *Modal Masuk / Keluar* |
+| the dialog | *Setor / Tarik Modal — {name}*, the direction as radio pills **Setor modal** · **Tarik modal** (were *Uang masuk* · *Uang keluar*) |
+| unchanged | [capital-joins-the-types](../../business/financial_account/context_decision.md#capital-joins-the-types) — the owner's own money, a direction and a positive amount |
+
+## a-dialog-choice-is-a-radio-pill
+
+The same message — *"pill di modal form ganti jadi radio pill"*.
+
+```
+Arah     ( ◉ Setor modal )  ( ○ Tarik modal )
+Jenis    ( ◉ Rekening bank )  ( ○ Dompet )  ( ○ Kas )
+```
+
+| | |
+| --- | --- |
+| the control | `RadioPills` (`components/inputs/`) — rounded pills, each with its radio mark and label, sized to its words, the chosen one rose (`radioCard` in theme.ts) |
+| where | Setor / Tarik Modal's direction · New Account's and Tentukan Rekening's type · Tentukan Rekening's *isi data* / *pindahkan* |
+| was | Chakra's `SegmentGroup` — a segmented switch, which reads as a view toggle, not a field to answer |
+
+## operational-asks-before-it-changes
+
+The same message — *"set operasional kasih confirm dulu"*.
+
+| | |
+| --- | --- |
+| mark | `ConfirmDialog` *Tandai {name} sebagai Operasional* — *{name} akan bisa dipilih untuk membayar restock dan biaya.* |
+| unmark | *Hapus Tanda Operasional {name}* — *{name} tidak lagi bisa dipilih untuk membayar restock dan biaya.* |
+| why | it changes what everybody on the team is offered as *Paid from* — it was one click, unannounced |
+| not destructive | the confirm button stays the plain action, not red — the mark can be set back |
+
+## an-account-note-is-a-textarea
+
+The same message — *"catatan tolong textarea · dan sebisa mungkin form ada placeholdernya"*. Applies
+[chakra-first-whenever-it-has-the-component](context_decision.md#chakra-first-whenever-it-has-the-component).
+
+| | |
+| --- | --- |
+| the notes | Transfer's *Catatan*, Setor / Tarik Modal's *Catatan* and Cocokkan Saldo's *Kenapa berbeda?* — a `Textarea`, three rows, resizable downwards; New Account's *Keterangan* the same |
+| placeholders | every typed field: name *mis. BCA Operasional* · number *mis. 1234567890* · holder *mis. PT Melati Sejahtera* · description, notes, Tentukan Rekening's name · the shop picker *Pilih toko* (it read the English default) · money fields *0* and dates *Pilih tanggal* already had theirs |
+
+## lainnya-is-offered-with-a-warning
+
+> Owner, in chat (2026-10-06): *"oke buat dengan warning saja"* — the business side is
+> [another-bank-is-provider-lainnya](../../business/financial_account/context_decision.md#another-bank-is-provider-lainnya).
+
+```
+Penyedia   [Lainnya ⚠2 ⌄]
+⚠ Server belum menerima penyedia Lainnya — menyimpan akun ini akan ditolak.
+```
+
+| | |
+| --- | --- |
+| the picker | `ProviderPicker` offers **Lainnya** last, its option carrying the pending mark `⚠2` |
+| once picked | a warning under the field, on New Account and on Tentukan Rekening |
+| the list | `features/financialAccount/pending.ts` — the domain's, since the dialogs open on more than one page; *the archive list* is 1, *provider Lainnya* 2 · the accounts page shows its summary strip on both views now |
+| the demo | Storybook's stub ACCEPTS provider Lainnya, and the book has *Mandiri Usaha* (provider Lainnya, a bank account) — owner: *"untuk lainnya buat aja dulu demonya saja … kita tidak akan mengubah api apapun"*. No API changes; the real server still refuses it, and the mark and the warning stay |
+
+## the-wallet-reads-dompet-digital
+
+> Owner, in chat (2026-10-06): *"dompet itu dompet digital"*.
+
+| | |
+| --- | --- |
+| the word | **Dompet digital** (EN *Digital wallet*, plural *Digital wallets*) — the type's label on the forms' radio pills, the account's identity line and the card — was *Dompet* on the forms |
+
+## the-form-asks-the-type-first
+
+> The business side is [the-type-decides-the-provider](../../business/financial_account/context_decision.md#the-type-decides-the-provider).
+
+```
+Jenis      ( ◉ Rekening bank )  ( ○ Dompet digital )  ( ○ Kas )  ( ○ Lainnya )
+Penyedia   [Pilih bank atau dompet ⌄]   ← BCA · BNI · Jago
+
+Jenis      ( ○ … )  ( ◉ Kas )
+Penyedia   Kas — otomatis dari jenisnya   (no number field)
+
+Jenis      ( ○ … )  ( ◉ Lainnya )
+⚠2 Server belum menerima jenis Lainnya — menyimpan akun ini akan ditolak.
+Penyedia   Lainnya — otomatis dari jenisnya
+Nomor rekening (tidak wajib)
+```
+
+| | |
+| --- | --- |
+| the type pills | Rekening bank · Dompet digital · Kas · **Lainnya** on New Account; Tentukan Rekening keeps the three real ones (`IDENTIFIABLE_TYPES`) |
+| the provider field | a picker of the type's own options (`PROVIDERS_BY_TYPE`) — the only option pre-picked — or, for Kas and Lainnya, the provider in words, *… — otomatis dari jenisnya* |
+| switching the type | keeps the provider if the new type offers it, else resets it (`providerFor`) |
+| the number | required for a bank and a wallet · optional for Lainnya · none for Kas |
+| the mark | `⚠2` moved from the provider option to the type: *Jenis Lainnya* (`otherType`) |
+| the row | a Lainnya account a person opened shows its holder under its name — the *Rekening belum ditentukan* warning only where a shop's withdrawals land |
+| the demo | *Mandiri Usaha* is type Lainnya now · creating one saves in Storybook, without a number |
+
+⚠ It replaces [lainnya-is-offered-with-a-warning](#lainnya-is-offered-with-a-warning) — Lainnya is no longer a provider
+option on a bank account.
+
+## kas-and-lainnya-ask-no-provider
+
+> Owner, in chat (2026-10-06): *"yang tidak perlu pilih penyedia kecuali dompet, hilangkan saja field penyedianya"*.
+
+```
+Jenis  ( ◉ Kas )           → no Penyedia field, no number
+Jenis  ( ◉ Lainnya )       → no Penyedia field, number optional
+Jenis  ( ◉ Dompet digital ) → Penyedia [ShopeePay ⌄]  — kept, though it is the only one
+```
+
+| | |
+| --- | --- |
+| Kas, Lainnya | no provider field — the type sets it; the line *… — otomatis dari jenisnya* that stood there is gone |
+| digital wallet | the picker stays, ShopeePay pre-picked — more wallets will join it |
+| bank account | the picker, BCA · BNI · Jago |
+| where | New Account and Tentukan Rekening alike |
+
+It narrows [the-form-asks-the-type-first](#the-form-asks-the-type-first)'s *the provider in words*.
+
+## set-account-reads-lengkapi-data-or-pindah-saldo
+
+> Owner, in chat (2026-10-06): *"Belum tercatat — isi datanya jadikan lengkapi data, Sudah ada di daftar ganti pindah
+> saldo"*.
+
+```
+( ◉ Lengkapi data )  ( ○ Pindah saldo )
+Kalau rekening aslinya belum ada di daftar — akun ini menjadi rekening itu.
+```
+
+| | |
+| --- | --- |
+| the pills | **Lengkapi data** (EN *Complete details*) — was *Belum tercatat — isi datanya* · **Pindah saldo** (EN *Move balance*) — was *Sudah ada di daftar* |
+| the line under | the old labels said WHEN, the new ones say WHAT — so a quiet line under the pills says when, changing with the pick: *Kalau rekening aslinya belum / sudah ada di daftar — …* |
+| unchanged | what each does — [an-unknown-account-is-filled-in-or-moved-in](../../business/financial_account/context_decision.md#an-unknown-account-is-filled-in-or-moved-in) |
+
+## the-report-follows-the-screen-rules
+
+> Owner, in chat (2026-10-07), after reading the report's context: *"coba normalize seperti keputusanku sebelumnya,
+> biar aku lihat hasilnya dulu"* — a preview, to be reviewed.
+
+```
+← Akun Keuangan
+Laporan Akun [Tim A]
+Apa yang menggerakkan uang tim, menurut hari uang berpindah. …
+[Seluruh tim ⌄]  [30 hari terakhir ⌄]  (Hari | Bulan | Tahun)            Hapus filter
+┌ Saldo awal ┐ ┌ Perubahan bersih ┐ ┌ Saldo akhir ───┐   ← the close leads, pale blue
+┌ [Penarikan] +Rp 11.000.000 ┐ ┌ [Biaya] −Rp 3.600.000 ┐ …   ← one card per type that moved
+Dari Waktu ke Waktu      Periode ↓ · the nine types · Perubahan bersih · Saldo akhir (bold)
+Yang Menggerakkannya     [Akun] [Penyedia] [Jenis]
+                         Akun · Penyedia · Saldo awal · Perubahan bersih ↓ · Saldo akhir ⇅
+```
+
+| rule | applied |
+| --- | --- |
+| [the-accounts-subtitle-sits-under-the-title](#the-accounts-subtitle-sits-under-the-title) | title, team badge and subtitle in one block; the filters moved out of the title row |
+| [a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet) · [clear-filters-is-red-and-bold](context_decision.md#clear-filters-is-red-and-bold) | the shared `FilterBar` — account, window, grain; Clear (red, bold) puts all three back; a sheet on a phone |
+| a picker over growing data is a search select (CLAUDE.md) · [a-search-select-reopens-whole](context_decision.md#a-search-select-reopens-whole) | the account filter is a `Combobox` — no pick reads *Seluruh tim*, clearing returns to it |
+| [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip) · [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border) | Saldo awal · Perubahan bersih · **Saldo akhir** (leading, as [the-total-leads-until-a-type-is-picked](#the-total-leads-until-a-type-is-picked)); one card per change type that moved, named by its badge |
+| [a-negative-amount-puts-its-minus-before-rp](context_decision.md#a-negative-amount-puts-its-minus-before-rp) | every movement signed and coloured — green in, red out; a balance below zero red |
+| [the-accounts-type-is-a-tab-row](#the-accounts-type-is-a-tab-row) · [a-selected-tab-is-in-the-main-tone](context_decision.md#a-selected-tab-is-in-the-main-tone) | the ranking's Akun · Penyedia · Jenis is a tab row, not an attached button group |
+| [a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings) | the series from **Periode** (newest first, flips); the ranking from **Perubahan bersih** (by size, the default) and **Saldo akhir** — the contract's `AnalyticMetricSort` |
+| [the-provider-cell-carries-the-number](#the-provider-cell-carries-the-number) · [a-balance-is-bold](#a-balance-is-bold) | ranked by account: the provider in its own column, as on the accounts list; every closing balance bold |
+| [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block) | on a phone a period is a block — the date and the close, then the types that moved and the net change — and so is a ranked row |
+| Title Case | the section headings *Dari Waktu ke Waktu*, *Yang Menggerakkannya* |
+| [the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen) | unchanged — `Pagination` under both tables; the growing pager stays the accounts list's trial |
+
+## the-report-is-five-cards-and-one-table
+
+> Owner, in chat (2026-10-07), after three redesign drafts were rejected (*"tidak ada yang bagus"*): *"kita akan memulai
+> dengan 1 halaman simple, statistic dan tabel"* — built beside the page as a draft (*"jadikan draft dulu, yang lama
+> tetap"*), detailed one instruction at a time, then *"siap apply ke report utama"*.
+
+```
+← Akun Keuangan
+Laporan Akun [Tim A]                                                        [⤓ Ekspor ⚠1]
+Apa yang menggerakkan uang tim, menurut hari uang berpindah. …
+⚠ 1 bagian layar ini belum diimplementasikan                                 (folded)
+[Semua akun ⌄]  [30 hari terakhir ⌄]  │▣ Harian│▦ Bulanan│▤ Tahunan│        Hapus filter
+┌ Saldo awal ─┐ ┌ Perubahan bersih  Rincian › ┐ ┌ Saldo akhir ──────┐ ┌ Akun  Rincian › ┐ ┌ Penyedia  Rincian › ┐
+│ 11.300.000  │ │ +5.143.500                  │ │ 16.443.500        │ │ +4.200.000      │ │ +4.200.000          │
+│ Awal 8 Sep  │ │ +45,5% dari saldo awal      │ │ Akhir 7 Okt       │ │ Melati TikTok   │ │ [Lainnya]           │
+└─────────────┘ └─────────────────────────────┘ │ Saldo awal + per… │ │ Terbesar dari 7 │ │ Terbesar dari 5     │
+Periode ↓ │ Penarikan · Modal · … nine types … · Perubahan bersih │ Saldo akhir      ← edges held, a row lights up
+                                                     Per halaman [20 ⌄]  ‹ [1] 2 ›
+```
+
+| part | spec |
+| --- | --- |
+| header | back link · title, team badge, subtitle under it ([the-accounts-subtitle-sits-under-the-title](#the-accounts-subtitle-sits-under-the-title)) · **Ekspor** on the title's row — a grey outline with a download icon, marked `dropped` (nothing builds a file; `pages/financial-account-report/pending.ts`) |
+| filters | `FilterBar`: the account (a search select; no pick reads **Semua akun**, as the shop filter reads *Semua toko*), the window, the grain · Clear puts all three back |
+| Saldo awal | the window's opening balance · *Awal {date}* |
+| Perubahan bersih | signed, coloured · *{share} dari saldo awal* (hidden when the opening is 0 or below) · **Rincian ›** at the end of the label row opens the nine types that moved, in first then out, summing to it, with *Saldo awal → Saldo akhir* under them |
+| Saldo akhir | leads, pale blue · *Akhir {date}* · *Saldo awal + perubahan bersih* |
+| Akun · Penyedia | the one that moved most (the server ranks by the size of the change) and *Terbesar dari n* · the provider named by its coloured badge · **Rincian ›** opens all of them — name, net change, close, a **Total** row equal to the two cards; an account row opens the account's page · **not drawn while one account is picked**, and not fetched |
+| table | one row per period, quiet ones included, newest first, flipped from **Periode** · the nine type columns, Perubahan bersih, Saldo akhir bold · **Periode held left, Saldo akhir held right** while the types scroll · a row lights up under the pointer, held cells included · a block per period on a phone |
+| pager | `GrowingPager`, as [the-accounts-pager-grows-with-the-pages-opened](#the-accounts-pager-grows-with-the-pages-opened) — 10 / 20 / 50 a page |
+| a card is not a control | only the word *Rincian* is pressed ([the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners)), as on the settlement margin card |
+
+**Supersedes**, in [the-report-follows-the-screen-rules](#the-report-follows-the-screen-rules): the per-type card strip,
+the ranking table with its Akun · Penyedia · Jenis tab row and its sort from Perubahan bersih and Saldo akhir, the
+section headings *Dari Waktu ke Waktu* / *Yang Menggerakkannya*, and `Pagination` — the change types now open from the
+net change card, the accounts and providers from their own cards. The contract is untouched: the same three analytic
+RPCs feed every figure.
+
+## a-phone-reads-an-account-as-a-block
+
+> Owner, in chat (2026-10-07), on the Mobile stories: *"deskripsi di mobile bug, actionnya masih bug juga"*, then *"di
+> mobile header masih ada"* — the table's headings still over a table 929px wide in a 318px screen.
+
+```
+Akun Keuangan [Tim A]
+Apa yang dipegang tim, dan di mana. …              ← the subtitle a sentence again
+[▥ Laporan] [▤ Arsip] [+ Akun Baru]                ← the actions wrap under it
+BCA Operasional                     Rp 11.443.500
+[BCA] 1234567890 · PT Melati Sejahtera          ⋯
+Terakhir dicek kemarin · [Operasional] [Melati Official] +1
+```
+
+| | |
+| --- | --- |
+| the header | the title block takes `flex="1 1 16rem"`, not `flex="1"` — with a zero basis it shrank to 40px on a phone (the subtitle one word a line, 399px tall) while the actions stayed on its row, Laporan over the title. Now the actions wrap onto a row of their own; a desktop is unchanged |
+| the list | `AccountBlock` per account, by the JS breakpoint (`a-phone-reads-each-line-as-a-block`): the name (archived marked) and the bold balance with its below-zero line · the provider badge, the number, the holder or *Rekening belum disebut* · the ⋯ menu with every action · last checked and the links — that line left out for an unknown account with nothing linked |
+| kept | the same test ids as the table row; the block opens the account; the sort is the Filter sheet's select |
+| still open | the type tabs wrap onto two rows on a phone; card notes clip on a two-column strip; a dialog meets the screen's edges — listed, not asked yet |
+
+## the-change-sits-under-the-close-on-a-phone
+
+> Owner, in chat (2026-10-07): *"yang perubahan taruh di bawah saldo pas atau tidak center dari tiap tipenya"*.
+
+```
+2026-10-05                           Rp 16.450.000
+[Modal] +Rp 1.000.000                  +Rp 600.000   ← right under the close
+[Restok] −Rp 400.000
+```
+
+| | |
+| --- | --- |
+| before | two rows — the date and the close, then the types and the change — with the change centred against however many type badges had wrapped |
+| now | two top-aligned columns: the date over the types on the left, the close over the change on the right |
+| pinned | the report's Mobile story checks every block: the change starts under the close, within 12px, on its right edge |
+
+## the-account-page-follows-the-screen-rules
+
+> Owner, in chat (2026-10-08): *"sekarang masuk ke detail account … sesuaikan sedikit sesuai keputusan sebelumnya"*.
+
+```
+← Akun Keuangan
+BCA Operasional [BCA] [Operasional]                    [⇄ Transfer] [⚖ Cocokkan Saldo] ⋯
+Rekening bank · 1234567890 · PT Melati Sejahtera
+┌ Saldo ────────────┐ ┌ Terakhir dicek ┐          ← the order list's cards, the balance leading
+│ Rp 11.443.500     │ │ kemarin        │
+└───────────────────┘ │ 7 Okt 2026     │
+                      └────────────────┘
+Toko yang menarik ke sini …
+Mutasi
+[Semua jenis ⌄] [Semua tanggal ⌄]                    Hapus filter   ← the shared FilterBar
+Tanggal · Jenis · Kenapa · Perubahan · Saldo setelah
+                                     Per halaman [20 ⌄]  ‹ [1] ›    ← the growing pager
+
+on a phone
+BCA Operasional [BCA] [Operasional]                ⋯   ← every action in the menu
+7 Okt 2026 [Penyesuaian]                  −Rp 6.500
+Cocokkan saldo — aplikasi menunjukkan …
+manual · Ani Rahayu    Saldo setelah Rp 11.443.500     ← a statement row is a block
+```
+
+| rule | applied |
+| --- | --- |
+| [a-list-summary-is-the-order-lists-card-strip](context_decision.md#a-list-summary-is-the-order-lists-card-strip) · [a-summary-card-is-grey-with-a-thin-border](context_decision.md#a-summary-card-is-grey-with-a-thin-border) | *Saldo* (leading, pale blue, as [the-total-leads-until-a-type-is-picked](#the-total-leads-until-a-type-is-picked)) and *Terakhir dicek* (relative, the date under it; muted when never checked or an unknown account) — they were a bordered box drawn by hand |
+| below-zero-is-warned-never-refused | the balance red with its ⚠ in the card; the sentence that says what to do under the strip — a card's line is too short for it |
+| [a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet) · [clear-filters-is-red-and-bold](context_decision.md#clear-filters-is-red-and-bold) | the statement's type and window in the shared `FilterBar`, under the *Mutasi* heading; Clear puts both back; a sheet on a phone |
+| [the-accounts-pager-grows-with-the-pages-opened](#the-accounts-pager-grows-with-the-pages-opened) | `GrowingPager`, 10 / 20 / 50 a page, as the accounts list and the report |
+| [the-phone-header-is-one-row](context_decision.md#the-phone-header-is-one-row) | on a phone the name, its badges and ⋯ — Transfer and Cocokkan Saldo fold into the menu with the rest; on a desktop they stay on the row ([transfer-and-reconcile-sit-on-the-row](#transfer-and-reconcile-sit-on-the-row)) |
+| [a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block) | a statement row on a phone: the date, the type and the change · the description at the full width · who (or *otomatis*) and *Saldo setelah* |
+| the header on a desktop | the title block takes a basis (`1 1 16rem`), as the accounts list's header learned in [a-phone-reads-an-account-as-a-block](#a-phone-reads-an-account-as-a-block) |
+| unchanged | the unknown account's explanation stays on its page ([the-accounts-page-has-no-banners](#the-accounts-page-has-no-banners) moved it here); the shops section; the statement's columns and *Saldo setelah*'s weight |
+
+## linked-shops-sit-beside-the-cards
+
+> Owner, in chat (2026-10-08): *"karena statistik cuma 2 dan itu sangat menyisakan ruang, aku ingin toko ada
+> disebelahnya"* — titled *"toko terhubung"*, then *"kalau toko terhubung cuma 1/5"*, and *"toko ada badgenya?"*.
+
+```
+┌ Saldo ───────┐ ┌ Terakhir dicek ┐ ┌ Toko terhubung       Arahkan › ┐
+│ Rp 11.443.500│ │ kemarin        │ │ [Melati Official] [Melati Store] [+1]
+│              │ │ 7 Okt 2026     │ │ 3 toko                         │
+└──────────────┘ └────────────────┘ └────────────────────────────────┘
+      1/5               1/5                       1/5        ← three equal cards, one row
+on a tablet and a phone: the two cards, then Toko terhubung across the whole row
+```
+
+| | |
+| --- | --- |
+| where | the third child of the card strip — one column, as wide and as tall as the two beside it; the whole row below `lg`, where a column is too narrow for two names |
+| what it is | drawn as a summary card is (grey ground, thin line), not a `SummaryCard`: its body is a row of shops, not one figure |
+| the title | **Toko terhubung** — sentence case, as every card label |
+| the shops | `AccountLinks` — the accounts list's own component — at **two** then *+N* (the list keeps three: three names do not fit a fifth on one line, and a second line would stretch the cards beside it); no Operasional, the header says it |
+| the colour | each shop chip in its marketplace's `marketplace.<key>` pair, the one `MarketplaceBadge` wears — on the list's *Terhubung ke* too, since it is one component; the +N dialog keeps `ShopItem`, the marketplace written out |
+| under them | *n toko* |
+| the action | **Arahkan ›** at the end of the label row, only the word pressed (the report cards' *Rincian ›*) — admin and up, an active account that is not Lainnya |
+| none linked | *Belum ada toko yang menarik ke akun ini* (subtle), Arahkan still offered |
+| a warehouse | no card — its team has no shops — and the row is the two cards |
+
+**Supersedes** the *"the shops section"* left unchanged in
+[the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules): the section under the cards is gone.
+`AccountLinks` moved to `features/financialAccount/` with it, since two pages now use it.
+
+## the-statement-filters-several-types
+
+> Owner, in chat (2026-10-08), after asking whether the contract allowed it: *"kalau gitu multi select saja, bisa search,
+> dan badge berwarna sesuai di tabel"*.
+
+```
+┌ [Biaya ×] [Iklan ×]  Cari jenis        × ⌄ ┐   ← the picks inside the field
+├────────────────────────────────────────────┤
+│ [Penarikan]                                │
+│ [Biaya]                                  ✓ │   ← each option the type's badge, the colour of the
+│ [Iklan]                                  ✓ │     statement's Jenis column
+│ …                                          │
+└────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the contract | `FinancialAccountLogListFilter.change_types` is a list (≤ 9, empty = every type), and the server reads it as `change_type IN (…)` — the screen had narrowed it to one |
+| the control | a Chakra `Combobox`, `multiple`, `closeOnSelect={false}` — the panel stays open for the next pick; typing narrows the nine, by `searchOnlyWhatIsTyped` (a pick or a reopen shows them all again, [a-search-select-reopens-whole](context_decision.md#a-search-select-reopens-whole)) |
+| the options | `ChangeTypeBadge` — the colour the Jenis column wears — and a ✓ when picked |
+| the picks | the same badges inside the field, each with an × that takes it out; the field's own × clears them all; nothing picked reads *Semua jenis* |
+| the field | the control draws the box, as every field does (thin border, the field hover, the main tone on focus); the input inside is bare, so the badges and the typing wrap together. 20rem in the FilterBar; full width in the phone's sheet; inline, not portalled |
+| Clear and the count | *Hapus filter* empties it; a non-empty pick counts as one filter on the phone's Filter button |
+
+## the-type-filter-starts-at-a-fields-height
+
+> Owner, in chat (2026-10-08), over five turns on how big the field was: *"multi select sebesar ini memang?"*, *"tampilkan
+> maksimal 3 … + kalau lebih dari 3"*, *"jangan ellipsis, boleh 2/3 line"*, and last *"aku ingin insialnya tinggi sama,
+> maksimal 3 dan ++, lalu untuk closeable dan selector iconnya tidak masuk ke containernya selected"*.
+
+```
+empty, 1–2 picks — 36px, the date's height
+┌ Semua jenis                       × ⌄ ┐  ┌ Semua tanggal    ⌄ ┐
+└───────────────────────────────────────┘  └────────────────────┘
+
+3 picks and more — the badges wrap, × ⌄ stay put
+┌ [Biaya] [Iklan] [Penarikan] [+2] │      ┐
+│ ▏(typing)                        │ × ⌄  │   ← the picks' box │ the indicators, outside it
+└───────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the height | **36px to start**, equal to the date field beside it. The input drops the recipe's own 36px minimum (`minH="0"`, 28px tall): inside a bordered box that minimum made the field 42 |
+| the picks | **three badges at most**, each written whole — no ellipsis — and an outline **"+N"** for the rest. Past what one line holds they wrap; the field grows a line rather than cut a name |
+| × and ⌄ | **outside the box the picks wrap in**: the control is a row of two — the picks and the typing on the left, wrapping; the clear and the open indicator on the right, never wrapping. A badge never sits under them |
+| taking one back | in the list, by its ✓ — the badges in the field carry no × of their own; the field's × clears them all |
+| the width | 16rem in the FilterBar — on a phone the sheet's full width, where five picks still hold one line |
+
+**Supersedes** three rows of [the-statement-filters-several-types](#the-statement-filters-several-types): *the picks*
+(no × per badge, three and "+N"), and *the field* (16rem, not 20rem, and × ⌄ no longer wrap with the badges).
+
+Measured in Storybook (1280 and 414 wide):
+
+| picks | desktop, 16rem | phone sheet |
+| --- | --- | --- |
+| 0 – 2 | 36px | 36px |
+| 3 – 5 | 58px — line 2 holds the typing | 36px |
+
+## the-type-filter-shows-four-picks
+
+> Owner, in chat (2026-10-08), looking at three badges and an empty typing line under them: *"maksimalnya tambah 1 jadi 4"*.
+
+```
+desktop, 16rem — five picks                  phone sheet — five picks
+┌ [Biaya] [Iklan] [Penarikan] │      ┐       ┌ [Biaya] [Iklan] [Penarikan] [Restok] [+1] │ × ⌄ ┐
+│ [Restok] [+1] ▏(typing)     │ × ⌄  │       └──────────────────────────────────────────────────┘
+└────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the picks | **four badges** at most, then "+N" — `SHOWN = 4` in `ChangeTypeFilter` |
+| the height | unchanged: 36px with 0 – 2 picks. On a desktop the fourth badge takes the second line beside the typing, so that line is no longer empty; 58px from three picks on. The phone sheet holds all of it on one line, 36px |
+
+**Supersedes** the *three badges at most* of
+[the-type-filter-starts-at-a-fields-height](#the-type-filter-starts-at-a-fields-height); the rest of it stands.
+
+## a-phone-statement-row-opens-its-detail
+
+> Owner, in chat (2026-10-08): *"keterangan di mobile lebih baik dihidden saja, atau buat modal detail untuk mobile,
+> heading tolong tetap ada, perubahan tolong di bawah saldo langsung"*. Built as both halves of the "or": hidden on the
+> row, and a tap opens it.
+
+```
+Tanggal       Jenis               Saldo        ← the headings stay
+7 Okt 2026    [Penyesuaian]   Rp 11.443.500    ← the balance, the figure the row is read for
+                                  −Rp 6.500    ← the change right under it, on the same right edge
+─────────────────────────────────────────── tap ↓
+┌ Detail Mutasi                       × ┐
+│ 7 Okt 2026                            │
+│ [Penyesuaian]               −Rp 6.500 │
+│ Saldo                   Rp 11.443.500 │
+│ ───────────────────────────────────── │
+│ Keterangan                            │
+│ Reconcile — the app showed …          │
+│ Oleh              manual · Ani Rahayu │
+│ Dicatat                    7 Okt 2026 │
+│                               [Tutup] │
+└───────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the row | a `Table` with its headings — **Tanggal · Jenis · Saldo** — top-aligned; the change under the balance in the Saldo cell |
+| left out of the row | the description, who (or *otomatis*) and *dicatat* — all in the dialog |
+| the dialog | `AccountLogDetailDialog`: the day the money moved under the title; the type and the change; the balance; the description whole; **Oleh**; **Dicatat** — always, where the desktop row shows it only when it differs |
+| opening it | a tap, or Enter / Space on a focused row; the row lights up while pressed |
+| the desktop | unchanged: five columns, no dialog |
+
+**Supersedes** the statement's phone block in [the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules)
+(*"a statement row is a block"*, the description at the full width). Not a contradiction of
+[a-phone-reads-each-line-as-a-block](context_decision.md#a-phone-reads-each-line-as-a-block): that rule is for a WIDE
+table, and without the description the statement is three columns that fit a phone.
+
+## the-balance-column-reads-saldo
+
+> Owner, in chat (2026-10-08): *"saldo setelah jadi saldo saja"*.
+
+| | |
+| --- | --- |
+| the label | **Saldo** (en *Balance*) — was *Saldo setelah* / *Balance after* |
+| where | the statement's last column on a desktop, its heading on a phone, the detail dialog — one key, `financialAccounts.log.balanceAfter` |
+| the figure | unchanged — still `balance_after`, the balance once that row posted |
+
+Earlier entries that write *Saldo setelah* — [a-balance-is-bold](#a-balance-is-bold),
+[the-account-page-follows-the-screen-rules](#the-account-page-follows-the-screen-rules) — describe the same column, now
+labelled **Saldo**.
+
+## a-statement-row-lights-up
+
+> Owner, in chat (2026-10-08), with the phone change: *"hoverable juga"*.
+
+| | |
+| --- | --- |
+| the desktop | a statement row lights up under the pointer, every cell in `bg.muted` — as the report's table does ([the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table)) |
+| the phone | the same, while a row is pressed — the row is a control there, it opens its detail |
+| a story | drives it with `data-hover`, which Chakra's `_hover` honours — a synthetic pointer sets no CSS `:hover` |
+
+## the-type-sits-under-the-date-on-a-phone
+
+> Owner, in chat (2026-10-08), looking at the three phone columns: *"mobile tipe di bawah tanggal"*.
+
+```
+Tanggal                       Saldo     ← each heading names its column's top line
+7 Okt 2026            Rp 11.443.500
+[Penyesuaian]             −Rp 6.500     ← the type under the day, the change under the balance
+```
+
+| | |
+| --- | --- |
+| the columns | **two**: Tanggal on the left, Saldo on the right — both top-aligned, both two lines |
+| the left cell | the day the money moved, its type badge right under it, on the same left edge |
+| the right cell | unchanged — the balance, the change right under it |
+| the headings | **Tanggal · Saldo**; the *Jenis* heading goes with its column — a badge reads as a type without one |
+
+**Supersedes** the three columns (*Tanggal · Jenis · Saldo*) of
+[a-phone-statement-row-opens-its-detail](#a-phone-statement-row-opens-its-detail); its dialog and the tap stand.

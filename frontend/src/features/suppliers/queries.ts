@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierChannelClient, supplierClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
-import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
-import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import type { SortState } from "../../components/chrome/SortableHeader";
+import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import { SupplierListScope, SupplierRowSort } from "../../gen/warehouse/supplier/v1/supplier_pb";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import {
   type ChannelFields,
+  type SupplierChannelRecord,
   type SupplierFields,
+  type SupplierRecord,
   channelCreateRequest,
   channelUpdateRequest,
   channelsFromList,
@@ -16,7 +20,8 @@ import {
   suppliersFromList,
   supplierByIdsRowData,
   supplierChannelRowData,
-  supplierListRowData,
+  supplierChannelsFromList,
+  supplierListWithChannelsData,
 } from "./adapt";
 
 // The supplier screens' reads (#176), against supplier_service (warehouse.supplier.v1). Every one returns
@@ -33,32 +38,55 @@ import {
 
 // The suppliers THIS team keeps — the My Supplier page, and the restock form's picker. Another team's are
 // Discover's question (features/suppliers/discover.ts).
+/** A row of the team's own list: the supplier and its live stores (the list's CHANNELS slice). */
+export interface ManagedSupplier extends SupplierRecord {
+  channels: SupplierChannelRecord[];
+}
+
+export type SupplierSortKey = "name";
+
 export function useSuppliers(args: {
   teamId: bigint | undefined;
   q: string;
+  /** `UNSPECIFIED` = any; otherwise suppliers with at least one live store of this type. */
+  channelType?: Marketplace;
+  /** `null` = the list's own order, newest first; otherwise by name, A to Z or back (the server sorts). */
+  sort?: SortState<SupplierSortKey> | null;
   page: number;
   pageSize: number;
 }) {
   const { teamId, q, page, pageSize } = args;
+  const channelType = args.channelType ?? Marketplace.UNSPECIFIED;
+  const sort = args.sort ?? null;
 
   return useQuery({
-    // A search and a page refine the same question, so the previous rows stay up while it runs
+    // A search, a filter, a sort and a page refine the same question, so the previous rows stay up while it runs
     // (HARD RULE 10). The page wraps its table in a RefreshOverlay for the same reason.
     ...listQuery,
-    queryKey: key.suppliers(teamId, { q, page, pageSize }),
+    queryKey: key.suppliers(teamId, { q, channelType, sort: sort ? `${sort.by}:${sort.dir}` : "", page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await supplierClient.supplierList({
         teamId: teamId!,
-        filter: { q, scope: SupplierListScope.OWN },
-        dataRequest: supplierListRowData(),
+        filter: { q, scope: SupplierListScope.OWN, channelType },
+        sort: sort
+          ? {
+              sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
+              s: { case: "supplier", value: SupplierRowSort.NAME },
+            }
+          : undefined,
+        // The rows AND each supplier's live stores — the list shows them as badges, as Discover does.
+        dataRequest: supplierListWithChannelsData(),
         page: { page, limit: pageSize },
       });
 
-      return {
-        suppliers: suppliersFromList(res.items, res.ids),
-        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
-      };
+      const channels = supplierChannelsFromList(res.items);
+      const suppliers: ManagedSupplier[] = suppliersFromList(res.items, res.ids).map((s) => ({
+        ...s,
+        channels: channels.get(s.id.toString()) ?? [],
+      }));
+
+      return { suppliers, totalItems: Number(res.pageInfo?.totalItems ?? 0n) };
     },
   });
 }

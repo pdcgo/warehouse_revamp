@@ -34,7 +34,10 @@
     "mySupplier": "My Supplier",
     "discoverSupplier": "Discover Supplier",
     "supplierReport": "Supplier Report",
-    "warehouseTransfer": "Transfers"
+    "warehouseTransfer": "Transfers",
+    "sectionOperations": "Operations",
+    "sectionFinance": "Finance",
+    "sectionTeam": "Team"
   },
   "menu": {
     "theme": "Theme",
@@ -44,17 +47,17 @@
     "signOut": "Sign Out"
   },
   "shell": {
-    "openMenu": "Open menu",
-    "search": "Search…",
-    "notifications": "Notifications",
     "menu": "Menu",
     "notMember": "Not a member of this team — acting as {{role}}.",
     "switchTeam": "Switch Team",
-    "searchTeams": "Search teams",
     "noTeams": "No teams found.",
     "myTeams": "My teams",
     "allTeams": "All teams",
-    "notMemberBadge": "Not a member"
+    "notMemberBadge": "Not a member",
+    "collapseMenu": "Collapse menu",
+    "expandMenu": "Expand menu",
+    "searchIn": "Search in {{section}}",
+    "closeSearch": "Close search"
   },
   "liability": {
     "title": "Liability",
@@ -189,6 +192,10 @@
     "copyFailed": "Could not copy — select the text and copy it by hand",
     "filters": "Filters",
     "done": "Done",
+    "sortBy": "Sort by {{column}}",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "goToPage": "Go to page {{page}}",
     "deleted": "Deleted"
   },
   "dateRange": {
@@ -1766,7 +1773,6 @@
   "suppliers": {
     "title": "Suppliers",
     "selectTeam": "Select a team to manage its suppliers.",
-    "searchPlaceholder": "Search by name",
     "deleted": "Supplier \"{{name}}\" deleted",
     "deleteFailed": "Delete failed",
     "deleteSupplier": "Delete Supplier",
@@ -1774,25 +1780,29 @@
     "delete": "Delete",
     "empty": "No suppliers found.",
     "table": {
-      "name": "Name",
       "contact": "Contact",
-      "address": "Address",
-      "actions": "Actions"
+      "actions": "Actions",
+      "supplier": "Supplier",
+      "channels": "Supplier stores"
     },
     "form": {
       "saved": "Supplier saved",
       "created": "Supplier \"{{name}}\" created",
-      "newSupplier": "New Supplier",
+      "newSupplier": "Add Supplier",
       "editTitle": "Edit Supplier",
-      "createTitle": "New Supplier",
+      "createTitle": "Add Supplier",
       "name": "Name",
       "contact": "Contact",
       "address": "Address",
       "description": "Description",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create",
-      "contactHelp": "A phone or WhatsApp number."
+      "create": "Add",
+      "contactHelp": "A phone or WhatsApp number.",
+      "namePlaceholder": "e.g. PT Sumber Makmur",
+      "contactPlaceholder": "e.g. 0812-3456-7890",
+      "addressPlaceholder": "e.g. Jl. Soekarno-Hatta 112, Bandung",
+      "descriptionPlaceholder": "e.g. fabric and thread wholesale, minimum order 1 roll"
     },
     "select": {
       "placeholder": "Select a supplier",
@@ -1800,12 +1810,11 @@
       "empty": "No suppliers found"
     },
     "sellingOnly": "Only a selling team has suppliers.",
-    "edit": "Edit supplier",
     "discover": {
       "title": "Discover Suppliers",
-      "lead": "Suppliers every selling team buys from — search them by name, address, contact or store.",
+      "lead": "Suppliers every selling team buys from — search them by name, address, contact or supplier store.",
       "search": "Search supplier, address or store",
-      "typeAll": "Any channel type",
+      "typeAll": "All store types",
       "empty": "No suppliers yet.",
       "none": "No suppliers match.",
       "back": "Back to Discover Suppliers",
@@ -1813,29 +1822,52 @@
       "table": {
         "supplier": "Supplier",
         "team": "Team",
-        "channels": "Channels",
-        "contact": "Contact"
+        "channels": "Supplier stores",
+        "contact": "Contact",
+        "description": "Description"
       },
       "pending": {
         "products": {
           "label": "Products",
-          "reason": "sample rows — a product is linked to a channel when a restock bought there is accepted, and that is not built yet"
+          "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet"
         }
       },
-      "teamAll": "Any team"
-    }
+      "teamAll": "Any team",
+      "view": {
+        "label": "View",
+        "cards": "Cards",
+        "table": "Table"
+      },
+      "noContact": "No contact yet",
+      "typeChipAll": "All"
+    },
+    "lead": "The suppliers this team keeps — the vendors it buys its stock from.",
+    "search": "Search a supplier, address or store",
+    "typeAll": "All store types",
+    "none": "No supplier matches.",
+    "noStores": "No supplier stores yet",
+    "sort": {
+      "label": "Sort",
+      "default": "Newest first",
+      "name": {
+        "asc": "Name, A to Z",
+        "desc": "Name, Z to A"
+      }
+    },
+    "editAction": "Edit",
+    "actions": "Supplier actions"
   },
   "supplierChannel": {
-    "deleted": "Channel \"{{name}}\" deleted",
+    "deleted": "Store \"{{name}}\" deleted",
     "deleteFailed": "Delete failed",
-    "deleteTitle": "Delete Channel",
+    "deleteTitle": "Delete Store",
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
     "delete": "Delete",
     "section": {
-      "empty": "No channels yet."
+      "empty": "No supplier stores yet."
     },
     "table": {
-      "channel": "Channel",
+      "channel": "Supplier store",
       "uri": "Link",
       "description": "Description",
       "actions": "Actions"
@@ -1851,45 +1883,51 @@
       "description": "Description"
     },
     "form": {
-      "saved": "Channel saved",
-      "created": "Channel \"{{name}}\" created",
-      "addChannel": "Add Channel",
-      "editTitle": "Edit Channel",
-      "createTitle": "Add Channel",
+      "saved": "Store saved",
+      "created": "Store \"{{name}}\" created",
+      "addChannel": "Add Store",
+      "editTitle": "Edit Store",
+      "createTitle": "Add Store",
       "name": "Name",
+      "namePlaceholder": "e.g. Sumber Makmur Official",
       "cancel": "Cancel",
       "save": "Save",
       "create": "Add",
-      "channelType": "Channel type",
-      "channelTypePlaceholder": "Select a channel type",
-      "nameHelp": "The store's name on that channel.",
+      "channelType": "Store type",
+      "channelTypePlaceholder": "Select a store type",
+      "nameHelp": "The supplier store's name on its marketplace or site.",
       "uri": "Link",
-      "description": "Description"
+      "uriPlaceholder": "e.g. https://shopee.co.id/sumbermakmur",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g. free shipping over 5 rolls"
     },
-    "edit": "Edit channel",
+    "editAction": "Edit",
     "pending": {
       "products": {
         "label": "Products",
-        "reason": "sample rows — a product is linked to a channel when a restock bought there is accepted, and that is not built yet, so these are invented"
+        "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet, so these are invented"
       }
     },
     "tab": {
-      "channels": "Channels",
+      "channels": "Stores",
       "products": "Products",
       "statistics": "Statistics"
     },
     "products": {
       "product": "Product",
-      "sku": "SKU",
-      "channel": "Channel",
+      "team": "Team",
+      "channel": "Supplier store",
+      "lastBought": "Last bought",
+      "firstBought": "first {{date}}",
       "empty": "No products yet.",
-      "search": "Search product, SKU or channel",
+      "search": "Search product, SKU or store",
+      "storeAll": "Every store",
       "none": "No products match."
     },
     "filter": {
       "search": "Search name, link or description",
-      "typeAll": "All channel types",
-      "none": "No channels match."
+      "typeAll": "All store types",
+      "none": "No supplier stores match."
     }
   },
   "supplierFigures": {
@@ -1904,10 +1942,14 @@
     "units_one": "{{n}} unit",
     "units_other": "{{n}} units",
     "rate": "{{rate}}%",
+    "total": "Total",
+    "totalHint": "every unit received from the supplier",
+    "ofTotal": "of total",
     "rateBroken": "{{rate}}% broken",
     "line": {
       "restocked": "Restocked {{n}} · {{value}}",
-      "lostBroken": "Lost {{lost}} ({{lostRate}}) · broken {{broken}}"
+      "lost": "Lost {{n}}",
+      "broken": "Broken {{n}}"
     },
     "col": {
       "period": "Period",
@@ -1915,6 +1957,7 @@
       "team": "Team",
       "restocked": "Restocked",
       "lost": "Lost in shipping",
+      "lostRate": "Lost rate",
       "broken": "Broken in shipping",
       "brokenRate": "Broken rate"
     },
@@ -1928,7 +1971,8 @@
     "byProduct": "By Product",
     "empty": "Nothing was restocked from this supplier in this period.",
     "noProducts": "No products in this period.",
-    "emptyTeam": "That team restocked nothing from this supplier in this period."
+    "emptyTeam": "That team restocked nothing from this supplier in this period.",
+    "quietPeriod": "nothing restocked"
   },
   "supplierReport": {
     "title": "Supplier Report",
@@ -3305,6 +3349,7 @@
     "title": "Accounts",
     "selectTeam": "Pick a team to see its accounts.",
     "subtitle": "What the team holds, and where. A balance moves only with a row — open an account to read them.",
+    "openReport": "Report",
     "report": {
       "title": "Account Report",
       "subtitle": "What moved the team's money, by the day it moved. Always up to date with the balances.",
@@ -3312,35 +3357,51 @@
       "open": "Opening balance",
       "change": "Net change",
       "close": "Closing balance",
-      "overTime": "Over time",
-      "ranking": "What moved it",
       "period": "Period",
       "empty": "Nothing moved in this window.",
       "wholeTeam": "The whole team",
+      "allAccounts": "All accounts",
       "by": {
         "account": "Account",
         "provider": "Provider",
         "changeType": "Type"
+      },
+      "seeDetail": "Details",
+      "changeDetail": "Net Change Breakdown",
+      "openAt": "At the start of {{date}}",
+      "ofOpen": "{{share}} of the opening balance",
+      "closeAt": "At the end of {{date}}",
+      "closeIs": "Opening balance + net change",
+      "topOfAccounts_one": "Of {{count}} account",
+      "topOfAccounts_other": "Biggest of {{count}} accounts",
+      "topOfProviders_one": "Of {{count}} provider",
+      "topOfProviders_other": "Biggest of {{count}} providers",
+      "byAccountTitle": "Change by Account",
+      "byProviderTitle": "Change by Provider",
+      "total": "Total",
+      "export": "Export",
+      "pending": {
+        "export": {
+          "label": "Export",
+          "reason": "Nothing builds a file yet — whether it holds the periods with their nine types or the account and provider breakdowns too, and this page or the whole window, is still open."
+        }
       }
     },
     "newAccount": "New Account",
     "searchPlaceholder": "Search a name, holder or number",
-    "showArchived": "Show archived accounts",
+    "allTypes": "All",
     "archived": "Archived",
     "operational": "Operational",
-    "bankNotNamed": "Bank not named",
     "neverChecked": "Never checked",
+    "accountNotSet": "No account set yet",
     "noStatement": "No statement to check",
     "notFound": "This account is not in this team.",
     "empty": "No accounts yet. An admin adds the team's bank, wallet and cash accounts here.",
     "emptySearch": "No account matches that search.",
     "belowZero": "Below zero",
-    "belowZeroBanner_one": "{{count}} account is below zero. That is allowed — check it against the bank.",
-    "belowZeroBanner_other": "{{count}} accounts are below zero. That is allowed — check them against the bank.",
-    "unknownBanner_one": "{{count}} account holds withdrawals from a shop whose bank is not named yet. Open it and choose Which Account Is This?",
-    "unknownBanner_other": "{{count}} accounts hold withdrawals from shops whose bank is not named yet. Open each and choose Which Account Is This?",
     "unknownExplained": "A withdrawal from {{shops}} arrived before anyone named its bank, so this account was made to hold it. Name the bank, or move the money into an account you already have.",
     "belowZeroExplained": "Below zero in the books — usually a payment recorded before the top-up. Reconcile against the bank.",
+    "belowZeroHint": "Below zero · check it against the bank",
     "cancel": "Cancel",
     "save": "Save",
     "failed": "That did not go through",
@@ -3350,18 +3411,17 @@
     "col": {
       "account": "Account",
       "provider": "Provider",
-      "number": "Number",
       "balance": "Balance",
       "lastChecked": "Last checked",
-      "usedFor": "Used for",
+      "linkedTo": "Linked to",
       "actions": "Actions"
     },
     "totals": {
       "bank": "Bank accounts",
-      "wallet": "Wallets",
+      "wallet": "Digital wallets",
       "cash": "Cash",
-      "unknown": "Bank not named",
-      "team": "The team holds",
+      "unknown": "Other",
+      "team": "Total balance",
       "accounts_one": "{{count}} account",
       "accounts_other": "{{count}} accounts",
       "belowZero_one": "{{count}} below zero",
@@ -3373,13 +3433,13 @@
       "bni": "BNI",
       "jago": "Jago",
       "shopeepay": "ShopeePay",
-      "unknown": "Unknown"
+      "unknown": "Other"
     },
     "type": {
-      "wallet": "Wallet",
+      "wallet": "Digital wallet",
       "bankAccount": "Bank account",
       "cash": "Cash",
-      "unknown": "Unknown"
+      "unknown": "Other"
     },
     "changeType": {
       "unspecified": "—",
@@ -3415,7 +3475,12 @@
       "opening": "Opening balance (Rp)",
       "openingHelp": "Posted as the account's first row — 0 is fine.",
       "openingOn": "True on",
-      "fixedHelp": "fixed: another number is another account"
+      "fixedHelp": "fixed: another number is another account",
+      "namePlaceholder": "e.g. BCA Operasional",
+      "numberPlaceholder": "e.g. 1234567890",
+      "holderPlaceholder": "e.g. PT Melati Sejahtera",
+      "descriptionPlaceholder": "e.g. Takes the shops' withdrawals and pays restocks",
+      "otherTypeWarning": "The server does not accept type Other yet — saving this account will be refused."
     },
     "transfer": {
       "title": "Transfer From {{name}}",
@@ -3426,14 +3491,15 @@
       "save": "Transfer"
     },
     "capital": {
-      "title": "Capital — {{name}}",
+      "title": "Add / Withdraw Capital — {{name}}",
       "direction": "Direction",
-      "in": "Money in",
-      "out": "Money out",
-      "help": "The business owner's own money, put in or taken out."
+      "in": "Add capital",
+      "out": "Withdraw capital",
+      "help": "The business owner's own money, put in or taken out.",
+      "notePlaceholder": "e.g. monthly top-up from the owner"
     },
     "reconcile": {
-      "title": "Reconcile {{name}}",
+      "title": "Match Balance — {{name}}",
       "books": "The books say",
       "shows": "What does the bank app show? (Rp)",
       "counted": "What does the box count? (Rp)",
@@ -3443,28 +3509,32 @@
       "why": "Why do they differ?",
       "whyPlaceholder": "e.g. bank fee",
       "whyHelp": "Needed when there is a difference — it is the one row that can hide missing cash.",
-      "save": "Reconcile"
+      "save": "Match",
+      "description": "Reconciliation: match the books against what the bank app shows, or what the cash box counts. Any difference is posted as an adjustment."
     },
     "identify": {
-      "title": "Which Account Is This?",
+      "title": "Set Account",
       "intro": "{{amount}} came in from {{shops}} before its bank was named.",
       "itsShop": "its shop",
-      "fill": "Not recorded yet — fill it in",
-      "move": "It is one we already have",
+      "fill": "Complete details",
+      "move": "Move balance",
+      "fillWhen": "When the real account is not in the list yet — this account becomes it.",
+      "moveWhen": "When the real account is already in the list — the balance moves into it.",
       "fillHelp": "This account becomes it — its rows stay, each withdrawal on its own day.",
       "into": "Move the money into",
-      "moveHelp": "{{amount}} moves into it, {{shops}} withdraws there from now on, and this account is archived."
+      "moveHelp": "{{amount}} moves into it, {{shops}} withdraws there from now on, and this account is archived.",
+      "namePlaceholder": "e.g. BCA TikTok"
     },
     "actions": {
       "label": "Account actions",
       "transfer": "Transfer",
-      "transferOut": "Transfer out",
-      "reconcile": "Reconcile",
-      "capital": "Capital in / out",
+      "transferOut": "Transfer Out",
+      "reconcile": "Match Balance",
+      "capital": "Add / Withdraw Capital",
       "edit": "Edit",
-      "markOperational": "Mark operational",
-      "unmarkOperational": "Unmark operational",
-      "identify": "Which account is this?",
+      "markOperational": "Mark Operational",
+      "unmarkOperational": "Unmark Operational",
+      "identify": "Set Account",
       "archive": "Archive",
       "archiveOnlyAtZero": "only at zero",
       "restore": "Restore"
@@ -3497,7 +3567,12 @@
       "shop": "Shop",
       "already": "{{shop}} already withdraws here.",
       "moves": "{{shop}} withdraws into {{from}} now — it moves to {{to}}.",
-      "first": "{{shop}} names no account yet — its withdrawals start landing here."
+      "first": "{{shop}} names no account yet — its withdrawals start landing here.",
+      "shopPlaceholder": "Choose a shop",
+      "linked": "Linked shops",
+      "pointShort": "Point a Shop",
+      "count_one": "{{count}} shop",
+      "count_other": "{{count}} shops"
     },
     "log": {
       "title": "Statement",
@@ -3506,11 +3581,56 @@
       "type": "Type",
       "description": "Why",
       "change": "Change",
-      "balanceAfter": "Balance after",
+      "balanceAfter": "Balance",
+      "detailTitle": "Statement Entry",
+      "by": "By",
+      "recorded": "Recorded",
       "recordedOn": "recorded {{date}}",
       "byHand": "by hand · {{name}}",
       "automatic": "automatic — from where it happened",
-      "allTypes": "All types"
+      "allTypes": "All types",
+      "searchType": "Search a type",
+      "noType": "No type matches."
+    },
+    "allShops": "All shops",
+    "operationalOnly": "Operational only",
+    "sort": {
+      "label": "Sort",
+      "default": "Default — active first, then name",
+      "name": {
+        "asc": "Name A–Z",
+        "desc": "Name Z–A"
+      },
+      "provider": {
+        "asc": "Provider A–Z",
+        "desc": "Provider Z–A"
+      }
+    },
+    "links": {
+      "showAll": "Show everything this account is linked to",
+      "operationalHelp": "Marked operational — a restock or an expense may be paid from it."
+    },
+    "archivedView": {
+      "open": "Archive",
+      "title": "Archived Accounts",
+      "subtitle": "Accounts closed at zero. Restore one to use it again.",
+      "back": "Active Accounts"
+    },
+    "pending": {
+      "archivedOnly": {
+        "label": "The archive list",
+        "reason": "The contract can only add archived accounts to the active ones, not list the archived alone — so this view asks for the first 200 accounts and keeps the archived itself. Past 200 accounts some are missed, and the counts and pages here are worked out on screen."
+      },
+      "otherType": {
+        "label": "Type Other",
+        "reason": "New Account offers type Other — its provider Other, its number optional — but the contract and the server still refuse type and provider Other, so saving one is refused until the backend allows it. The Storybook demo accepts it."
+      }
+    },
+    "operationalDialog": {
+      "markTitle": "Mark {{name}} as Operational",
+      "markMessage": "{{name}} can then be picked to pay restocks and expenses.",
+      "unmarkTitle": "Unmark {{name}} as Operational",
+      "unmarkMessage": "{{name}} will no longer be offered to pay restocks and expenses."
     }
   },
   "pending": {

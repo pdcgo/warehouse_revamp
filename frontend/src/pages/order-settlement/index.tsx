@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Flex, Heading, Icon, NativeSelect, Stack, Table, Text } from "@chakra-ui/react";
-import { ArrowDown, ArrowUp, ArrowUpDown, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
+import { SortableHeader } from "../../components/chrome/SortableHeader";
 import { Pagination } from "../../components/chrome/Pagination";
 import { ALL_DATES, DateRangePicker, isAllDates } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
@@ -252,9 +252,8 @@ function SettlementSummary({ totals }: { totals: SettlementTotals }) {
 
 // ── The sortable heading ────────────────────────────────────────────────────────────────────────
 
-// Click to sort by this column, LARGEST first; click again to flip (owner: *"cukup bolak-balik"* — no
-// third click back to the default). The arrow shows on the active column; the others show that they
-// can be sorted.
+// The shared `SortableHeader` (`a-table-sorts-from-its-headings`): LARGEST first, then flips — no third click
+// back to the default (owner: *"cukup bolak-balik"*).
 function SortHeader({
   by,
   sort,
@@ -263,42 +262,18 @@ function SortHeader({
 }: {
   by: SettlementSortKey;
   sort?: OrderSettlementSorting;
-  label: ReactNode;
+  label: string;
   end?: boolean;
 }) {
-  const { t } = useTranslation();
-
-  if (!sort) {
-    return <Table.ColumnHeader textAlign={end ? "end" : undefined}>{label}</Table.ColumnHeader>;
-  }
-
-  const active = sort.by === by;
-  const icon = !active ? ArrowUpDown : sort.dir === "desc" ? ArrowDown : ArrowUp;
-
   return (
-    <Table.ColumnHeader
-      textAlign={end ? "end" : undefined}
-      aria-sort={active ? (sort.dir === "desc" ? "descending" : "ascending") : "none"}
-    >
-      <Flex
-        as="button"
-        align="center"
-        justify={end ? "flex-end" : "flex-start"}
-        gap="1"
-        w="full"
-        cursor="pointer"
-        fontWeight={active ? "bold" : undefined}
-        aria-label={t("orderSettlement.sortBy", { column: label })}
-        data-testid={`settlement-sort-${by}`}
-        data-sort={active ? sort.dir : undefined}
-        onClick={() =>
-          sort.onChange({ by, dir: active && sort.dir === "desc" ? "asc" : "desc" })
-        }
-      >
-        {label}
-        <Icon as={icon} boxSize="3.5" color={active ? "fg" : "fg.subtle"} />
-      </Flex>
-    </Table.ColumnHeader>
+    <SortableHeader
+      column={by}
+      label={label}
+      sort={sort ? { by: sort.by, dir: sort.dir } : null}
+      onSortChange={sort?.onChange}
+      end={end}
+      testId={`settlement-sort-${by}`}
+    />
   );
 }
 

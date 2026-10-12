@@ -716,7 +716,12 @@ export const transport = createRouterTransport(({ service }) => {
       // root team for Root or the Administrator, whose reach comes from there.
       const mine = sessionScenario.memberOf === null ? teams : teams.filter((t) => sessionScenario.memberOf!.includes(t.id));
       const platform = sessionScenario.role === Role.ROOT || sessionScenario.role === Role.ADMINISTRATOR;
-      const rows = mine.map((t) => ({ teamId: t.id, teamName: t.name, teamType: t.type }));
+      // A story may rename one (sessionScenario.teamNames) — a long name, to see how it is cut.
+      const rows = mine.map((t) => ({
+        teamId: t.id,
+        teamName: sessionScenario.teamNames[t.id.toString()] ?? t.name,
+        teamType: t.type,
+      }));
 
       if (sessionScenario.memberOf !== null && platform) {
         rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });
@@ -1264,7 +1269,9 @@ export const transport = createRouterTransport(({ service }) => {
 
       return {
         ...pagedColumnarBy("position", set, (p) => p.counterpartyId, req.page),
-        awaitingConfirmation: 0,
+        // Whole-set, as the server counts it: every payment recorded TO this team and not yet confirmed or
+        // refused — the menu's count on Kewajiban reads it (`the-sidebar-is-in-sections`).
+        awaitingConfirmation: paymentsTable.filter((p) => p.creditorTeamId === req.teamId && p.status === 1).length,
         totalReceivable: set.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n),
         // A MAGNITUDE, as the wire carries it — direction is words on this screen, never a sign.
         totalPayable: set.reduce((s, p) => (p.balance < 0n ? s - p.balance : s), 0n),

@@ -29,6 +29,7 @@ import {
   FinancialAccountLogSort,
   FinancialAccountMetricDataType,
   FinancialAccountProvider,
+  FinancialAccountRowSort,
   FinancialAccountService,
   FinancialAccountStatus,
   FinancialAccountType,
@@ -263,6 +264,22 @@ const matches = (q: string | undefined, ...fields: string[]) => {
 
 // ── FinancialAccountService ─────────────────────────────────────────────────────────────────────
 
+// The server's `listOrder`: a heading's sort when one is asked — the provider by its stored word, as the
+// column is text — else active before archived, then by name.
+function listOrder(sort: { sortType: CommonSortType; s: { case: string | undefined; value?: unknown } } | undefined) {
+  const flip = sort?.sortType === CommonSortType.DESC ? -1 : 1;
+  const by = sort?.s.case === "account" ? (sort.s.value as FinancialAccountRowSort) : undefined;
+
+  return (x: StubAccount, y: StubAccount) => {
+    if (by === FinancialAccountRowSort.NAME) return flip * x.name.localeCompare(y.name);
+    if (by === FinancialAccountRowSort.PROVIDER) {
+      const word = (a: StubAccount) => FinancialAccountProvider[a.provider].toLowerCase();
+      return flip * word(x).localeCompare(word(y)) || x.name.localeCompare(y.name);
+    }
+    return x.status - y.status || x.name.localeCompare(y.name);
+  };
+}
+
 export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccountService>> = {
   financialAccountList: (req) => {
     const f = req.filter;
@@ -273,8 +290,7 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
       .filter((a) => !f?.types?.length || f.types.includes(a.type))
       .filter((a) => !f?.shopId || a.shopIds.includes(f.shopId))
       .filter((a) => matches(f?.q, a.name, a.holderName, a.accountNumber))
-      // Active before archived, then by name — the list's default order.
-      .sort((x, y) => x.status - y.status || x.name.localeCompare(y.name));
+      .sort(listOrder(req.sort));
 
     const { rows: page, pageInfo } = window(rows, req.page);
     const mapData = Object.fromEntries(page.map((a) => [a.id.toString(), wireAccount(a)]));
@@ -370,11 +386,15 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
   },
 
   // Posts `opening_balance` in the same act — even at 0 (an-account-opens-with-a-log-row).
+  //
+  // ⚠ THE DEMO ACCEPTS TYPE LAINNYA (`unknown`, its provider Lainnya, its number optional) — the real server does
+  // NOT yet (owner: *"untuk lainnya buat aja dulu demonya saja … kita tidak akan mengubah api apapun"*,
+  // the-type-decides-the-provider). The screens mark it unimplemented.
   financialAccountCreate: (req) => {
-    if (req.type === FinancialAccountType.UNKNOWN || req.provider === FinancialAccountProvider.UNKNOWN) {
-      throw new ConnectError("an unknown account is made only by a withdrawal", Code.InvalidArgument);
+    if ((req.type === FinancialAccountType.UNKNOWN) !== (req.provider === FinancialAccountProvider.UNKNOWN)) {
+      throw new ConnectError("type Lainnya and provider Lainnya go together", Code.InvalidArgument);
     }
-    if (req.type !== FinancialAccountType.CASH && req.accountNumber.trim() === "") {
+    if (req.type !== FinancialAccountType.CASH && req.type !== FinancialAccountType.UNKNOWN && req.accountNumber.trim() === "") {
       throw new ConnectError("a bank account or a wallet needs its number", Code.InvalidArgument);
     }
     if (!req.name.trim()) throw new ConnectError("name the account", Code.InvalidArgument);

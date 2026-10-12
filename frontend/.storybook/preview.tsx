@@ -119,7 +119,11 @@ function StoryProviders({
   // Wrapping outside would leave the page's padding keyed to a subtree that may now render nothing.
   const marked = <PendingMarksProvider show={pendingMarks}>{children}</PendingMarksProvider>;
 
-  const content = pageGutter ? <Box p="page">{marked}</Box> : marked;
+  // ⚠ THE PHONE SHELL'S GUTTER ON A PHONE — `card`, as MobileLayout's <main> has it — and `page` from `md` up, as
+  // DesktopLayout's. A page story on a phone viewport used to get the desktop's 20px, and with a story's own
+  // `layout: "padded"` (Storybook's 16px) on top it showed 36px a side where the app has 12 (owner: *"di mobile, padding
+  // xnya kebesaran"* — *"padding semuanya kayaknya"*). A page story never sets `layout: "padded"`: the gutter is this.
+  const content = pageGutter ? <Box p={{ base: "card", md: "page" }}>{marked}</Box> : marked;
 
   return (
     <ChakraProvider value={system}>
@@ -360,6 +364,8 @@ const preview: Preview = {
     // …and for the legacy sidebar's collapse preference, which is persisted on purpose (an operator
     // sets it once) and would otherwise leave every later sidebar story rendering collapsed.
     localStorage.removeItem("legacy-sidebar-collapsed");
+    // …and the desktop sidebar's, persisted the same way (the-sidebar-collapses-to-its-icons).
+    localStorage.removeItem("wh-sidebar-collapsed");
     // …and for the auth token, so a `signedIn` story cannot leave the next one authenticated. The
     // selected team is sessionStorage, and is cleared with it.
     clearToken();

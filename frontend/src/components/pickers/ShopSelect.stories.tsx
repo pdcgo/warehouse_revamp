@@ -71,6 +71,33 @@ export const EmitsTheShopId: Story = {
   },
 };
 
+/**
+ * OPENED AGAIN AFTER A PICK, EVERY SHOP IS THERE (owner) — the picked name in the field is not a search.
+ * It used to filter the list by that name, so the panel reopened with one option.
+ */
+export const ReopeningAfterAPickShowsEveryShop: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<bigint>(0n);
+
+    return <ShopSelect {...args} value={value} onChange={setValue} />;
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const teamShops = shops.filter((s) => s.teamId === 12n && !s.deleted);
+
+    await userEvent.click(canvas.getByTestId("shop-select"));
+    const option = await canvas.findByTestId(`shop-select-option-${teamShops[1]!.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(canvas.getByTestId("shop-select")).toHaveValue(teamShops[1]!.name));
+
+    await userEvent.click(canvas.getByRole("button", { name: /toggle/i }));
+    for (const shop of teamShops) {
+      await waitFor(() => expect(canvas.getByTestId(`shop-select-option-${shop.id}`)).toBeVisible());
+    }
+  },
+};
+
 // A team with no shops shows the placeholder rather than an error — a selling team that has not
 // connected a storefront yet is a normal state, not a failure.
 export const TeamWithNoShops: Story = {

@@ -321,6 +321,9 @@ const customConfig = defineConfig({
       // never reaches.
       radioGroup: { base: { root: { colorPalette: "brand" } } },
       radioCard: { base: { root: { colorPalette: "brand" } } },
+      // A ticked box is a chosen option too (owner, `a-checked-box-is-in-the-main-tone`) — it was the default
+      // near-black beside rose radios.
+      checkbox: { base: { root: { colorPalette: "brand" } } },
       status: { defaultVariants: { size: "sm" } },
       // ── A TABLE ROW TAKES THE SURFACE IT SITS ON (owner) ────────────────────────────────────────
       //
@@ -337,6 +340,70 @@ const customConfig = defineConfig({
       // nothing at all and the rows stayed gray-950 in dark. Same trap as `nativeSelect` above.
       table: {
         variants: { variant: { line: { row: { bg: "transparent" } } } },
+      },
+      // ── A SELECTED TAB IS IN THE MAIN TONE (owner, `a-selected-tab-is-in-the-main-tone`) ─────────────
+      //
+      // Chakra draws the picked tab's text in `fg` and its underline in the root palette — gray, so near-black.
+      // Rose instead, like a chosen radio and the calendar's day: the tab is the choice the list answers.
+      //
+      // ⚠ BY TOKEN, NOT BY `colorPalette`. A palette on the root is inherited by everything inside it, and a
+      // tab's count `Badge` would turn pink with it. Named on the `line` variant — the default, and a
+      // variant beats `base`, the trap `table` above walked into.
+      tabs: {
+        variants: {
+          variant: {
+            line: {
+              trigger: {
+                _selected: {
+                  color: "brand.fg",
+                  _horizontal: { "--indicator-color": "colors.brand.solid" },
+                  _vertical: { "--indicator-color": "colors.brand.solid" },
+                },
+              },
+            },
+          },
+        },
+      },
+      // ── A SEGMENTED CHOICE IS IN THE MAIN TONE (owner, `a-segmented-choice-is-in-the-main-tone`) ─────────
+      //
+      // Chakra draws a segmented control as a grey trough with a white raised chip — a look nothing else in this app
+      // has, and at `md` it stood a size taller than the fields beside it. Instead: a box drawn like a field (white,
+      // a thin border, the field's height at `sm`), and the chosen segment filled in pale rose with its label in the
+      // main tone — the tab's and the chosen radio's colour, so a pick looks like a pick everywhere.
+      //
+      // ⚠ The colour is the label's only: no bold on the chosen segment, because the wider word would shift the
+      // others sideways each time the choice moves. A hovered segment turns rose too, the chosen one included —
+      // never black (owner: *"activenya saat hover bukan hitam"*).
+      segmentGroup: {
+        defaultVariants: { size: "sm" },
+        base: {
+          root: {
+            "--segment-indicator-bg": "colors.brand.subtle",
+            "--segment-indicator-shadow": "none",
+            bg: "bg",
+            boxShadow: "none",
+            borderWidth: "1px",
+            borderColor: "border",
+            // 1px inside a 1px border around a 32px segment — 36px, the height of a field at `sm`.
+            p: "1px",
+          },
+          item: {
+            color: "fg.muted",
+            _checked: { color: "brand.fg" },
+            _hover: { color: "brand.fg" },
+          },
+        },
+        variants: { size: { sm: { item: { height: "8", px: "3", gap: "1.5" } } } },
+      },
+      // A SWITCH A THUMB FINDS (owner: *"switch tema dan bahasa kurang besar dikit"*, `the-more-sheet-switches-theme-and-language`).
+      // Chakra's `lg` is 48×24; ours is a step past it, 56×28 — it is the whole control on its row in the phone's More
+      // sheet, worked with a thumb. Only those two switches use `lg`.
+      switch: {
+        variants: {
+          size: {
+            lg: { root: { "--switch-width": "sizes.14", "--switch-height": "sizes.7" } },
+          },
+        },
       },
       // ── TYPE HIERARCHY (owner) ──────────────────────────────────────────────────────────────────
       //

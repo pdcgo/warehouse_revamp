@@ -17,6 +17,11 @@ export const sessionScenario = {
    * (the-switcher-offers-every-team). That is the only way a story can show a team you are NOT in.
    */
   memberOf: null as bigint[] | null,
+  /**
+   * A team's name as the person's memberships read it, by team id — so a story can show a LONG name (how the
+   * workspace bubble and the switcher cut it) without renaming a fixture every other story counts on.
+   */
+  teamNames: {} as Record<string, string>,
 };
 
 /** What the last TeamCreate carried, so a story can assert the form sent the Owner it names. */
@@ -27,7 +32,15 @@ export const teamCreateScenario = {
 export function resetSessionScenario() {
   sessionScenario.role = Role.WAREHOUSE_ADMIN;
   sessionScenario.memberOf = null;
+  sessionScenario.teamNames = {};
   teamCreateScenario.last = undefined;
+}
+
+/** A `beforeEach` that gives one team another name in the person's memberships — a long one, typically. */
+export function withTeamName(teamId: bigint, name: string) {
+  return () => {
+    sessionScenario.teamNames = { ...sessionScenario.teamNames, [teamId.toString()]: name };
+  };
 }
 
 /** A `beforeEach`: Root or the Administrator, a member of the root team and of `memberOf` only. */

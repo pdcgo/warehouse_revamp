@@ -19,7 +19,7 @@ const Routed = routedPage([{ path: "/users", element: <UsersPage /> }, marker("/
 const meta = {
   title: "Pages/Users/Users",
   component: Routed,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: asTeam(11n),
 } satisfies Meta<typeof Routed>;
 
