@@ -130,6 +130,16 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [resi-unik-lintas-jasa-kirim](#resi-unik-lintas-jasa-kirim) | resi dari jasa kirim berbeda tidak pernah sama — resi saja menunjuk satu paket |
 | [nilai-ongkir-tambahan-bertipe-double](#nilai-ongkir-tambahan-bertipe-double) | ongkir tambahan dikirim sebagai `additional_shipping_fee.value`, `double` |
 | [foto-nota-dikirim-sebagai-link](#foto-nota-dikirim-sebagai-link) | foto nota ongkir dikirim sebagai link yang sudah diunggah, sama dengan foto barang rusak |
+| [take-dicatat-per-slot-di-order-slot-map](#take-dicatat-per-slot-di-order-slot-map) | setiap take menulis satu baris per slot yang dipotong — order, slot, jumlah — dibaca batal dan retur |
+| [count-slot-adalah-sisa](#count-slot-adalah-sisa) | `SKU_SLOT.count` = sisa di slot itu — turun saat take |
+| [take-kunci-statement-lalu-periksa-stok](#take-kunci-statement-lalu-periksa-stok) | take dalam satu transaksi DB: kunci statement, periksa stok, gagal berarti tidak ada yang tertulis |
+| [markup-dibaca-dari-product-service-saat-take](#markup-dibaca-dari-product-service-saat-take) | markup dan data product dibaca dari Product Service saat take — `products.cross_markup_bps` |
+| [slot-dipilih-tertua-dulu](#slot-dipilih-tertua-dulu) | take memotong slot tertua dulu, lanjut ke slot berikutnya; harga dihitung dari slot yang terpilih |
+| [slot-map-ditandai-taken-atau-released](#slot-map-ditandai-taken-atau-released) | baris map bertanda `taken` saat take, `released` saat dikembalikan — tidak dihapus |
+| [silang-ditolak-kalau-dikunci-atau-melewati-cadangan](#silang-ditolak-kalau-dikunci-atau-melewati-cadangan) | take ditolak kalau product dikunci atau stok melewati cadangan — hanya untuk tim lain (13:15) |
+| [product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci) | data product dibaca sebelum transaksi DB take dibuka — kunci statement tidak menunggu service lain |
+| [take-punya-baris-kepala-di-inventory](#take-punya-baris-kepala-di-inventory) | setiap take membuat satu baris kepala di inventory; baris map menunjuk id-nya — `ORDER_TAKES` (13:36) |
+| [take-dirujuk-lewat-transaction-id](#take-dirujuk-lewat-transaction-id) | response mengembalikan `ORDER_TAKES.id` sebagai `transaction_id`; pembatalan order mengirimnya kembali |
 
 ---
 
@@ -3322,3 +3332,320 @@ sequenceDiagram
 | --- | --- | --- |
 | nota ongkir tambahan | `AdditionalShippingFee.image_of_proof_url` | `TRANSACTIONS.additional_shipping_proof_url` |
 | barang rusak | `BrokenSlotPlacement.image_of_proof_url` | `SKU_BROKEN_SLOT.image_of_proof_url` |
+
+---
+
+## take-dicatat-per-slot-di-order-slot-map
+
+> [model.md](./model.md) (2026-10-12) baris 124–129 — `ORDER_SLOT_MAP` (`order_id`, `slot_id`, `count`), dengan garis
+> `SKU_SLOT ||--o{ ORDER_SLOT_MAP`; di chat: *"untuk menyimpan slot mana saja yang diambil ketika ada order, dan ini juga
+> berguna saat order cancel atau order return"*. Menjawab *take-dicatat-di-mana*. **Berbeda dari rekomendasi**
+> (`ORDER_TAKES` + `SLOT_LOGS`) — diterima: satu baris per slot yang dipotong sudah cukup untuk mengembalikan stok ke
+> slot asalnya. Log umum per perubahan tetap pertanyaan tersendiri
+> ([angka-sekarang-dan-riwayat](./context_clarify.md#angka-sekarang-dan-riwayat)).
+
+**Putusannya.** Setiap take menulis **satu baris per slot yang dipotong**: order mana, slot mana, berapa. Batal dan
+retur membaca baris-baris itu — jadi stok kembali ke slot asalnya, dan harga per unitnya tetap harga slot itu.
+
+```mermaid
+flowchart LR
+  O["order 77 — 3 kaos, gudang 3"] --> S1["slot 1, Rak A — sisa 1, 11.200 per unit"]
+  O --> S2["slot 2, Rak B — 11.700 per unit"]
+  S1 --> M1["ORDER_SLOT_MAP — order 77, slot 1, 1"]
+  S2 --> M2["ORDER_SLOT_MAP — order 77, slot 2, 2"]
+  M1 --> C["batal — 1 kembali ke slot 1, 2 kembali ke slot 2"]
+  M2 --> C
+```
+
+| | order 77 — 3 kaos |
+| --- | --- |
+| baris map | slot 1 × 1 · slot 2 × 2 |
+| biaya barang untuk order | 1 × 11.200 + 2 × 11.700 = **34.600** — dari slot, bukan dari harga rata-rata |
+| batal | 1 ke Rak A, 2 ke Rak B — rak yang sama dengan tempat diambil |
+
+⚠ **Yang TIDAK ikut diputuskan:** `SKU_SLOT.count` beku atau sisa
+([count-slot-beku-atau-sisa](./context_clarify.md#count-slot-beku-atau-sisa)) · baris map sesudah batal — dihapus atau
+ditandai ([slot-map-saat-batal](./context_clarify.md#slot-map-saat-batal)) · ⏸ retur — kembali ke slot asal atau slot baru,
+ditanyakan saat alur retur ditulis.
+
+> ⚠ **2026-10-12 12:32** — alur take di [order_creation_provide.md](./order_creation_provide.md) belum menulis baris map ini
+> ([map-tidak-ditulis](./order_creation_provide_clarify.md#critique)). `count` slot kini sisa:
+> [count-slot-adalah-sisa](#count-slot-adalah-sisa).
+>
+> ✅ **2026-10-12 12:46** — alur kini menulis baris map, bertanda `taken`:
+> [slot-map-ditandai-taken-atau-released](#slot-map-ditandai-taken-atau-released).
+
+---
+
+## count-slot-adalah-sisa
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 12:32) baris 50 — *"Kurangi `count` pada SKU Slot
+> terkait."* Menjawab *count-slot-beku-atau-sisa*. Sesuai rekomendasi.
+
+**Putusannya.** `SKU_SLOT.count` adalah **sisa** di slot itu: turun saat take. Jumlah yang tiba tetap tercatat di
+`TRANSACTION_ITEMS.count`, dan riwayat keluarnya di `ORDER_SLOT_MAP`.
+
+```mermaid
+flowchart LR
+  r["restock diterima — slot 1, count 100"] --> t["order 77 mengambil 2"]
+  t --> s["slot 1, count 98"]
+  t --> m["ORDER_SLOT_MAP — order 77, slot 1, 2"]
+```
+
+| | dengan `count` = sisa |
+| --- | --- |
+| slot Januari sudah habis | `count` 0 — FIFO langsung melewatinya, tanpa menjumlah riwayat |
+| berapa yang dulu tiba | `TRANSACTION_ITEMS.count` — tidak disimpan dua kali |
+
+⚠ **Yang TIDAK ikut diputuskan:** `updated_at` belum kembali ke `SKU_SLOT` — kapan sisa itu terakhir berubah.
+
+---
+
+## take-kunci-statement-lalu-periksa-stok
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 12:32) baris 9–15 dan 32–38 — kotak *DB Transaction*;
+> *"kunci SKU_STATEMENT dengan `product_id == sku_id` terkait, kemudian validasi"*; *"Tutup DB transaction kemudian lempar
+> error validasi gagal"*. Sesuai rekomendasi — pola yang sama dengan restock
+> ([kunci-statement-lalu-periksa-ongoing](#kunci-statement-lalu-periksa-ongoing)).
+
+**Putusannya.** Take berjalan dalam **satu** transaksi DB: kunci baris statement dulu, lalu periksa stok. Gagal berarti
+transaksi ditutup dan tidak ada yang tertulis. Response dikirim sesudah commit.
+
+```mermaid
+sequenceDiagram
+  participant A as CS tim 5
+  participant K as statement kaos gudang 3 — stock_ready 1
+  participant B as CS tim 7
+  A->>K: kunci — 1 cukup untuk 1, lanjut
+  B->>K: kunci — menunggu A
+  A->>K: ambil 1 — stock_ready 0, commit
+  K-->>B: giliran B — stock_ready 0
+  B-->>B: ditolak — tidak ada yang tertulis
+```
+
+| di detik yang sama | tanpa kunci | dengan kunci |
+| --- | --- | --- |
+| dua CS menjual kaos terakhir | dua order, satu kaos — `stock_ready` −1 | satu order, yang kedua ditolak |
+
+⚠ **Yang TIDAK ikut diputuskan:** Product Service dipanggil di dalam kunci
+([product-service-di-dalam-kunci](./order_creation_provide_clarify.md#critique)) · angka yang diperiksa
+([validasi-belum-menyebut-angka](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-12 13:15** — Product Service kini di luar kunci
+> ([product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci)), dan statement *"kurangi stock ready"*
+> (baris 62).
+
+---
+
+## markup-dibaca-dari-product-service-saat-take
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 12:32) baris 40–46 — *"Hubungi Product Service untuk
+> mendapatkan data-data yang bakalan digunakan untuk proses perhitungan."* Sejalan dengan
+> [sku-adalah-product](#sku-adalah-product) dan [inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup).
+
+**Putusannya.** Markup dan data product lain dibaca dari **Product Service** saat take, tidak disimpan di inventory. Jadi
+markup yang dipakai adalah `products.cross_markup_bps` — bukan `liability_terms.product_markup_bp` — yang menjawab
+*"inventory has to be told which one is the rate"* di keputusan order itu.
+
+```mermaid
+flowchart LR
+  I["inventory — take"] -->|"ProductByIds"| P["Product Service"]
+  P -->|"pemilik, cross_markup_bps, cross_locked, reserved_stock"| I
+```
+
+| `cross_markup_bps` | artinya | 11.200 menjadi |
+| --- | --- | --- |
+| 2000 | 20% | 13.440 |
+| 0 | tanpa markup — tim lain membayar harga yang sama | 11.200 |
+
+⚠ **Yang TIDAK ikut diputuskan:** dipanggil di dalam kunci
+([product-service-di-dalam-kunci](./order_creation_provide_clarify.md#critique)) · kalau Product Service gagal, take
+gagal dan order ikut gagal — harga yang sudah diterima di
+[inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup).
+
+---
+
+## slot-dipilih-tertua-dulu
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 12:46) baris 67–69 — *"Pemilihan Slot diurutkan dari
+> `created_at` tertua, jika tidak mencukupi maka cari slot lain tapi tetap urutan dari yang tertua untuk FIFO."* Diagram
+> baris 25–27: *Pilih Slot* sebelum *Hitung data Markup*. Menjawab *slot-mana-yang-dipotong* dan
+> *markup-dihitung-sebelum-slot-dipilih*. Sesuai rekomendasi.
+
+**Putusannya.** Take memotong slot **tertua dulu** menurut `created_at`; kalau satu slot kurang, lanjut ke slot tertua
+berikutnya. Harga dan markup dihitung **sesudah** slot terpilih, dari harga slot-slot itu.
+
+```mermaid
+flowchart LR
+  o["order 77 — 3 kaos"] --> s1["slot 1, Januari — sisa 1, ambil 1"]
+  s1 -->|"kurang 2"| s2["slot 2, Maret — sisa 50, ambil 2"]
+  s2 --> h["harga — 11.200 + 2 x 11.700 = 34.600"]
+```
+
+| tanpa urutan | dengan tertua dulu |
+| --- | --- |
+| slot 2 saja dipotong karena cukup — kaos Januari tidak pernah terjual, biaya tercatat 3 × 11.700 = 35.100 | kaos Januari keluar lebih dulu, biaya 34.600 |
+
+⚠ **Yang TIDAK ikut diputuskan:** slot **di gudang permintaan** belum tertulis
+([validasi-belum-menyebut-angka](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-12 13:15** — baris 70: *"Tentunya cocokan juga gudang nya."* Slot dipilih dari gudang permintaan.
+
+---
+
+## slot-map-ditandai-taken-atau-released
+
+> [model.md](./model.md) (2026-10-12 12:46) — `ORDER_SLOT_MAP` mendapat `string type "taken | released"`;
+> [order_creation_provide.md](./order_creation_provide.md) baris 71–73 — *"Catat ke tabel `ORDER_SLOT_MAP` … kemudian tandai
+> dengan `taken`"*. Menjawab *slot-map-saat-batal*. Sesuai rekomendasi — kolomnya bernama `type`, bukan `status`.
+
+**Putusannya.** Baris map **tidak dihapus**: bertanda `taken` saat take, dan `released` saat stoknya dikembalikan.
+Pengembalian hanya dari `taken`, jadi event batal yang datang dua kali tidak mengembalikan stok dua kali — dan
+riwayatnya tetap terbaca.
+
+```mermaid
+sequenceDiagram
+  participant E as event batal order 77
+  participant M as ORDER_SLOT_MAP order 77
+  participant S as slot 1 dan slot 2
+  E->>M: kiriman pertama — baris taken
+  M->>S: kembalikan 1 dan 2
+  M->>M: tandai released
+  E->>M: kiriman kedua — baris released
+  M-->>E: tidak ada yang dikembalikan
+```
+
+| | hapus baris | tandai `released` — putusannya |
+| --- | --- | --- |
+| event batal kedua | aman | aman |
+| *order 77 pernah mengambil dari Rak A?* | tidak terbaca lagi | terbaca |
+
+⏸ **Ditanyakan saat alur pembatalan ditulis:** baris yang sama diubah menjadi `released`, atau baris baru bertipe
+`released` ditambahkan — nama `type` cocok dengan yang kedua, `status` dengan yang pertama · `created_at` belum ada.
+
+---
+
+## silang-ditolak-kalau-dikunci-atau-melewati-cadangan
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 12:46) baris 27–29 — *"Tidak dikunci atau reserved"*
+> → *Hitung data Markup*, *"dikunci atau reserved"* → *Lempar error Validasi*. Sejalan dengan
+> [product/context.md](../product/context.md) §Cross/Shared Products Rule.
+
+**Putusannya.** Take ditolak kalau product **dikunci** (`cross_locked`) atau stoknya **melewati cadangan**
+(`reserved_stock`) — dua aturan product, dijalankan oleh inventory saat take.
+
+```mermaid
+flowchart LR
+  t["take kaos tim 2, oleh tim 5"] --> k{"cross_locked?"}
+  k -->|"ya"| r["ditolak"]
+  k -->|"tidak"| c{"sisa sesudah diambil di bawah cadangan?"}
+  c -->|"ya"| r
+  c -->|"tidak"| ok["lanjut"]
+```
+
+| `cross_locked` | `reserved_stock` 5, stok 8, pesan 2 | hasil untuk tim 5 |
+| --- | --- | --- |
+| mati | sisa 6 | lanjut |
+| mati | pesan 4 → sisa 4 | ditolak |
+| nyala | — | ditolak |
+
+⚠ **Yang TIDAK ikut diputuskan:** aturan ini hanya untuk **tim lain** — tanpa tim pemesan di permintaan, tim 2 ikut
+ditolak saat menjual kaosnya sendiri ([permintaan-tanpa-order-dan-tim](./order_creation_provide_clarify.md#critique)) ·
+cadangan per gudang atau total ([reserved-stock-per-gudang-atau-total](./order_creation_provide_clarify.md#reserved-stock-per-gudang-atau-total)) ·
+Product Service dipanggil di dalam kunci ([product-service-di-dalam-kunci](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-12 13:15** — baris 30: *"hanya kalau tim pemesan bukan pemilik"* — aturan ini kini hanya untuk tim lain, dan
+> Product Service kini dibaca sebelum kunci ([product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci)). ⚠ Tim
+> pemesan belum ada di permintaan ([tim-pemesan-tidak-dikirim](./order_creation_provide_clarify.md#critique)) · cadangan
+> kini dibandingkan di luar kunci ([cadangan-diperiksa-di-luar-kunci](./order_creation_provide_clarify.md#critique)).
+
+---
+
+## product-service-dibaca-sebelum-kunci
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 13:15) baris 11 dan 26 — *Kontak Product Service* kini
+> di luar kotak *DB Transaction*, sebelum *Kunci baris SKU_STATEMENT*. Menjawab *product-service-di-dalam-kunci*. Sesuai
+> rekomendasi — pola yang sama dengan [service-lain-di-luar-transaksi-db](#service-lain-di-luar-transaksi-db).
+
+**Putusannya.** Data product — pemilik, markup, `cross_locked`, `reserved_stock` — dibaca **sebelum** transaksi DB take
+dibuka. Selama statement terkunci, take tidak menunggu service lain. Kalau Product Service gagal, take ditolak sebelum ada
+yang dikunci.
+
+```mermaid
+sequenceDiagram
+  participant O as Order Service
+  participant I as inventory
+  participant P as Product Service
+  participant D as database
+  O->>I: take — 3 kaos, gudang 3
+  I->>P: data product kaos
+  P-->>I: pemilik tim 2, 2000 bps, tidak dikunci, cadangan 5
+  I->>D: mulai transaksi DB — kunci statement kaos gudang 3
+  I->>D: periksa, pilih slot, tulis — commit
+  I-->>O: response
+```
+
+| Product Service lambat 3 detik | di dalam kunci | sebelum kunci — putusannya |
+| --- | --- | --- |
+| statement kaos gudang 3 | terkunci 3 detik — order dan restock kaos lain ikut menunggu | tidak terkunci selama menunggu |
+
+---
+
+## take-punya-baris-kepala-di-inventory
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 13:15) baris 76–78 — *"Buat row baru order, yang
+> nantinya ID nya akan digunakan di `ORDER_SLOT_MAP`"*; [model.md](./model.md) — `ORDERS` (`id`, `created_at`) dan
+> `ORDERS ||--o{ ORDER_SLOT_MAP`. Sejalan dengan rekomendasi lama `ORDER_TAKES`.
+
+**Putusannya.** Setiap take membuat **satu baris kepala** di inventory, di dalam transaksi DB take. Baris
+`ORDER_SLOT_MAP` menunjuk id baris itu — jadi semua slot yang dipotong satu order terkumpul di satu kepala.
+
+```mermaid
+flowchart LR
+  h["baris kepala take #5"] --> m1["ORDER_SLOT_MAP — slot 1, 1, taken"]
+  h --> m2["ORDER_SLOT_MAP — slot 2, 2, taken"]
+```
+
+| | |
+| --- | --- |
+| dibuat | sesudah slot dipotong, sebelum baris map — di transaksi DB yang sama |
+| dipakai | baris map menunjuknya |
+
+⚠ **Yang TIDAK ikut diputuskan:** baris kepala belum menyimpan **id order dari Order Service**, jadi pembatalan dan
+`InventoryTxCancel` tidak bisa menemukannya · namanya `ORDERS`, sama dengan tabel Order Service
+([orders-tanpa-order-asli](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-12 13:36** — namanya kini `ORDER_TAKES`; pembatalan biasa menemukannya lewat `transaction_id`
+> ([take-dirujuk-lewat-transaction-id](#take-dirujuk-lewat-transaction-id)). ⚠ Masih tanpa rujukan untuk kasus timeout
+> ([timeout-tanpa-rujukan](./order_creation_provide_clarify.md#critique)) · garis relasi di ERD masih menyebut `ORDERS`
+> ([relasi-masih-orders](./context_clarify.md#relasi-masih-orders)).
+
+---
+
+## take-dirujuk-lewat-transaction-id
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-12 13:36) baris 66 — *"Isi `transaction_id` dengan
+> `ORDER_TAKES` id, ini berguna ketika order cancel, saat cancel Order service akan mengirim transaction_id yang
+> mereference ke id `order_takes`"*. Menjawab *transaction-id-tanpa-transaksi* dan separuh *orders-tanpa-order-asli*.
+> **Berbeda dari rekomendasi** (inventory menyimpan `order_id`) — diterima untuk pembatalan biasa.
+
+**Putusannya.** Response take mengisi `transaction_id` dengan `ORDER_TAKES.id`. Order Service menyimpannya, dan saat order
+dibatalkan, event pembatalan membawa id itu — inventory menemukan take-nya langsung.
+
+```mermaid
+sequenceDiagram
+  participant O as Order Service
+  participant I as inventory
+  O->>I: take untuk order 77
+  I-->>O: transaction_id 5 — ORDER_TAKES 5
+  O->>O: simpan 5 di order 77
+  O-)I: dua hari kemudian — Order Cancel, transaction_id 5
+  I->>I: ORDER_TAKES 5 — kembalikan baris map yang taken
+```
+
+| | |
+| --- | --- |
+| yang harus dilakukan Order Service | menyimpan `transaction_id` di ordernya, dan mengirimnya di event pembatalan — ditanyakan ke penulisnya: [does-the-order-keep-the-take-id](../order/order_creation_clarify.md#does-the-order-keep-the-take-id) |
+
+⚠ **Yang TIDAK ikut diputuskan:** kasus **timeout** — take sudah tercatat, tapi balasannya tidak pernah sampai, jadi
+Order Service tidak pernah tahu `transaction_id`-nya ([timeout-tanpa-rujukan](./order_creation_provide_clarify.md#critique)).

@@ -93,6 +93,18 @@ bug or a hostile caller sending another team's K would be handed **another team'
 because it checks the request's `team_id`, not the order found.
 **→ Match K and the request's team.** A K found under another team is refused as a used key, never returned.
 
+### does-the-order-keep-the-take-id
+🆕 2026-10-12, from inventory's side. Inventory's take now answers with `transaction_id` = the id of its take header
+(`ORDER_TAKES`), and its owner decided a cancellation finds the take by that id
+([take-dirujuk-lewat-transaction-id](../stock_thoni/context_decision.md#take-dirujuk-lewat-transaction-id)). So does
+`order_service` **store** `transaction_id` on the order, and send it in **Order Cancel**? **→ Recommend: yes** — one column
+on the order, carried by the event. ⚠ It cannot cover a timed-out take: the order never received the id, so
+`InventoryTxCancel` has nothing to name — and the order id does not exist yet either, because the order row is inserted
+**after** the take. So the take request should carry a reference order_service makes **before** calling (`take_ref`, a
+UUID), which inventory stores on its take header and `InventoryTxCancel` carries
+([timeout-tanpa-rujukan](../stock_thoni/order_creation_provide_clarify.md#critique) ·
+[a-timed-out-take-cannot-be-named](#critique)).
+
 ---
 
 # Contradiction

@@ -27,13 +27,13 @@ rpc-->tx: bring idempotency key
 tx: Open Database Transaction
 
 note right of tx
-    If Any Step Fails, Rollback Transaction and Return Error 
+    If Any Step Fails, Rollback Transaction and Return Error
 end note
 
 state tx {
     direction TB
 
-    
+
 
     state "Order Created" as create
     state "Insert Order Table" as ordtable
@@ -47,14 +47,14 @@ state tx {
     [*]-->inv: call for take stock & placement, and bring idempotency key
     inv-->sub: returning subtotal info.
     sub-->wh: call for get warehouse fee
-    
+
     wh-->whfee
 
     whfee-->ordtable: bring warehouse fee
     sub-->ordtable: bring total & subtotal
     ordtable-->orditem: bring `order_id`
     sub-->orditem: bring detail order items
-    
+
     ordtable-->create
     orditem-->create
     create-->[*]
@@ -87,7 +87,7 @@ state srv {
 
     }
 
-    
+
 
     settle: Settlement Service
     state settle {
@@ -115,7 +115,9 @@ cominvevt-->srv
 ```
 
 ## How We Call Inventory Service to Take Stock.
+
 Propossed Contracts.
+
 ```proto
 message ProductItem {
     uint64 product_id

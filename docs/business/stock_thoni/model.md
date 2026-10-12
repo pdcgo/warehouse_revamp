@@ -13,6 +13,8 @@ TRANSACTIONS ||--|{ TRANSACTION_STATUS_LOGS: "memiliki beberapa"
 TRANSACTIONS ||--o{ SKU_SLOT: "terhubung dengan"
 TRANSACTIONS ||--o{ SKU_LOST_SLOT: ""
 TRANSACTIONS ||--o{ SKU_BROKEN_SLOT: ""
+SKU_SLOT ||--o{ ORDER_SLOT_MAP: ""
+ORDERS ||--o{ ORDER_SLOT_MAP: ""
 
 SKU_STATEMENT {
     int id pk
@@ -119,9 +121,21 @@ SKU_BROKEN_SLOT {
 
     date created_at
 }
-```
 
-<!-- // Todo table save map transaction_id order to slot_id -->
+ORDER_TAKES {
+    int id pk
+    date created_at
+}
+
+ORDER_SLOT_MAP {
+    int id pk
+    int order_id "ref to ORDER_TAKES"
+    int slot_id fk "ref to SKU_SLOT"
+    int count
+    string type "taken | released"
+}
+
+```
 
 ERD di atas dibuat untuk mendukung mekanisme FIFO.
 SKU_SLOT akan dibuat ketika barang sampai di gudang.
