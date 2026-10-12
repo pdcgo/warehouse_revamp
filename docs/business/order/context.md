@@ -25,6 +25,7 @@ when order created. its bring 4 things.
 
     field that must have:
     - `id`, primary key
+    - `idempotency_id`
     - `order_external_ref_id`, its for order uniqueness, its cannot empty
     - `shop_id`
     - `team_id`
