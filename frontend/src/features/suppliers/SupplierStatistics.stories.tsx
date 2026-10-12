@@ -347,3 +347,44 @@ export const AProductShowsItsPicture: Story = {
     await expect(within(gula).queryByRole("img")).toBeNull();
   },
 };
+
+// ── A period reads at its grain (`a-period-reads-as-its-grain`) ────────────────────────────────────────────
+
+const monthName = (at: string) =>
+  new Date(Number(at.slice(0, 4)), Number(at.slice(5, 7)) - 1, 1).toLocaleDateString("en", { month: "long", year: "numeric" });
+
+// MONTHLY: the month's name and its year — "October 2026", never "2026-10-01".
+export const AMonthReadsAsItsName: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("statistics-grain-month"));
+
+    const month = `${dayAgo(2).slice(0, 7)}-01`;
+    const row = await canvas.findByTestId(`statistics-series-row-${month}`);
+    await expect(row).toHaveTextContent(monthName(month));
+    await expect(row).not.toHaveTextContent(month);
+  },
+};
+
+// YEARLY: the year alone.
+export const AYearReadsAsTheYear: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("statistics-grain-year"));
+
+    const year = `${dayAgo(2).slice(0, 4)}-01-01`;
+    const row = await canvas.findByTestId(`statistics-series-row-${year}`);
+    await waitFor(() => expect(within(row).getAllByRole("cell")[0]).toHaveTextContent(new RegExp(`^${year.slice(0, 4)}$`)));
+  },
+};
+
+// THE TWO VIEWS ARE PER PERIODE AND PER PRODUK — a pair of names (the-first-view-is-per-periode).
+export const TheViewsArePerPeriodAndPerProduct: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(within(canvas.getByTestId("statistics-views")).getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "By Period",
+      "By Product",
+    ]);
+  },
+};

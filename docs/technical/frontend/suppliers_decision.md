@@ -44,6 +44,11 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [discover-table-shows-the-description](#discover-table-shows-the-description) | Discover's table view carries the supplier's description, a column of its own after Kontak |
 | [the-discover-detail-reads-as-the-supplier-page](#the-discover-detail-reads-as-the-supplier-page) | the Discover detail reads as the supplier's own page — the name, the team that keeps it, then the same identity line; no actions |
 | [discover-detail-puts-the-team-left-and-the-contact-right](#discover-detail-puts-the-team-left-and-the-contact-right) | under the Discover detail's name: the team on the left, the identity line right beside it; stacked on a phone |
+| [a-period-reads-as-its-grain](#a-period-reads-as-its-grain) | in the supplier figures, a month reads as its name and year (*Oktober 2026*), a year as the year alone |
+| [the-first-view-is-per-periode](#the-first-view-is-per-periode) | the Statistik tab's first view is named *Per Periode* (en *By Period*) — a pair with *Per Produk* |
+| [the-supplier-report-follows-the-screen-rules](#the-supplier-report-follows-the-screen-rules) | the Supplier Report applies the every-screen rules: the growing pager, every row lighting up, the order as a segmented choice, a Mobile story |
+| [the-report-order-shows-its-arrow](#the-report-order-shows-its-arrow) | the report's order reads as an order — *Urutkan* before it, each segment the sort-down arrow; not moved into the headings |
+| [the-report-export-is-marked](#the-report-export-is-marked) | the Supplier Report carries an *Ekspor* action on its title's row, marked not built (`dropped`) |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -736,3 +741,96 @@ Kain tekstil grosir untuk konveksi.
 | tried first | two halves — the identity line from the middle of the page; beside a short team name the hole between them was too wide |
 | a phone | stacked — the team, then the identity line |
 | refines | the header order in [the-discover-detail-reads-as-the-supplier-page](#the-discover-detail-reads-as-the-supplier-page) |
+
+## a-period-reads-as-its-grain
+
+> Owner, in chat (2026-10-12): *"statistik kan ada tahunan bulanan harian, untuk bulanan tahun dan nama bulan, untuk
+> tahun cuma tahun saja"*.
+
+```
+Harian                Bulanan                 Tahunan
+2026-10-07            Oktober 2026            2026
+2026-10-06            September 2026          2025
+```
+
+| grain | the period reads | was |
+| --- | --- | --- |
+| day | `2026-10-07` — unchanged | `2026-10-07` |
+| month | **the month's name and its year**, in the app's language — *Oktober 2026* (en *October 2026*) | `2026-10-01` — the bucket's first day |
+| year | **the year alone** — *2026* | `2026-01-01` |
+
+| | |
+| --- | --- |
+| where | the Statistik tab's Over Time — the desktop table and the phone blocks, quiet periods included |
+| the helper | `formatPeriod(at, grain)` in `lib/datetime.ts` — the app's language ([a-date-speaks-the-apps-language](context_decision.md#a-date-speaks-the-apps-language)) |
+| not yet | the account report and the settlement report each keep their own label — `2026-10` for a month |
+
+## the-first-view-is-per-periode
+
+> Owner, in chat (2026-10-12): *"dari waktu ke waktu itu per periode"*.
+
+```
+before                                   now
+Dari Waktu ke Waktu | Per Produk         Per Periode | Per Produk
+```
+
+| | |
+| --- | --- |
+| the name | **Per Periode** (en *By Period*) — the two views read as a pair: by period, by product |
+| was | *Dari Waktu ke Waktu* (en *Over Time*) — the i18n key moved with it, `supplierStats.overTime` → `supplierStats.byPeriod` |
+| earlier entries | [the-statistics-tab-is-two-views](#the-statistics-tab-is-two-views) and those after it say *Dari Waktu ke Waktu* — read it as *Per Periode* |
+
+## the-supplier-report-follows-the-screen-rules
+
+> Owner, in chat (2026-10-12), after the report's filters, data and orders were listed: *"terapkan yang umum dulu"* —
+> the every-screen rules first; moving the order into the headings stays open.
+
+```
+Peringkat                                      (▣ Nilai Restok | ⊠ Tingkat Rusak)   ← a segmented choice
+#  Pemasok              Dikelola oleh   Direstok  Hilang  Tingkat hilang  Rusak  Tingkat rusak
+1  PT Sumber Makmur     [TM] Toko …     130 …     1 …     0,7%            6 …    4,4%          ← lights up, every cell
+                                                                                  ‹ [1] ›     ← the growing pager
+```
+
+| rule | applied |
+| --- | --- |
+| [every-list-pages-with-the-growing-pager](context_decision.md#every-list-pages-with-the-growing-pager) | `GrowingPager`, 20 a page as before, no size picker (it had none); centred on a phone |
+| [a-table-row-lights-up](context_decision.md#a-table-row-lights-up) | every cell in `bg.muted` — a deleted supplier's row too, read across though it opens nothing; a phone block lights up while pressed when it opens a supplier |
+| [a-segmented-choice-is-in-the-main-tone](context_decision.md#a-segmented-choice-is-in-the-main-tone) | *Urutkan menurut* — **Nilai Restok · Tingkat Rusak** — is a `SegmentGroup` with an icon each, the chosen segment pale rose; it was an attached pair of solid and outline buttons |
+| [every-page-has-a-mobile-story](context_decision.md#every-page-has-a-mobile-story) | the phone story is **Mobile**, right after Default — it was *Phone*, fourth |
+| still open | the order from the headings ([a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings)) — the contract sorts one way only, so a heading could choose the order but not flip it |
+
+## the-report-order-shows-its-arrow
+
+> Owner, in chat (2026-10-12): *"sortnya kasih panah biar kelihatan itu sort?"* — offered the arrows in the segmented
+> choice (A) or in the table's headings (B, one direction only); asked how B works without an ascending order, then:
+> *"janagan deh, a aja"* — and, on seeing it: *"urutkan saja"*.
+
+```
+before                                         now
+Peringkat         (▣ Nilai Restok | ⊠ Tingkat Rusak)   Peringkat   Urutkan (⇣ Nilai Restok | ⇣ Tingkat Rusak)
+                   ↑ a money and a box icon — read as a filter       ↑ said in words   ↑ the sort-down arrow, each
+```
+
+| | |
+| --- | --- |
+| the label | **Urutkan** (en *Sort*), visible, before the choice — first drawn as *Urutkan menurut* |
+| the icons | the sort-down arrow (`ArrowDownWideNarrow`) on both segments — the contract ranks **one way only**, largest first, so there is no other arrow to show |
+| not chosen | the arrows in the headings ([a-table-sorts-from-its-headings](context_decision.md#a-table-sorts-from-its-headings)) — a heading that cannot flip reads as broken; the order stays one control above the table |
+| closes | the open point in [the-supplier-report-follows-the-screen-rules](#the-supplier-report-follows-the-screen-rules) |
+
+## the-report-export-is-marked
+
+> Owner, in chat (2026-10-12), on the Supplier Report: *"ada export di sini, kasih unimplemented jadinya"*.
+
+```
+Laporan Pemasok                                                        [⤓ Ekspor ⚠1]
+Pemasok mana yang paling banyak direstok, …
+⚠ 1 bagian layar ini belum diimplementasi        (folded)
+```
+
+| | |
+| --- | --- |
+| the action | **Ekspor** on the title's row — a grey outline with its download icon ([an-action-button-carries-its-icon](context_decision.md#an-action-button-carries-its-icon)), as the account report's |
+| not built | marked `dropped` in `pages/supplier-report/pending.ts` — nothing builds a file; whether it carries the ranking with its figures, this page or the whole ranking, is open |
+| the header | the title and its subtitle one block, the action beside it; the subtitle wraps under on a phone |

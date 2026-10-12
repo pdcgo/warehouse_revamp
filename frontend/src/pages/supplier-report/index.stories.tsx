@@ -66,6 +66,16 @@ function order(canvas: ReturnType<typeof within>): string[] {
 
 export const Default: Story = {};
 
+// A PHONE reads each supplier as a block (a-phone-reads-each-line-as-a-block) — named Mobile, right after Default
+// (every-page-has-a-mobile-story). A block that opens a supplier lights up while pressed.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(within(canvas.getByTestId("supplier-report-table")).queryAllByRole("columnheader")).toHaveLength(0);
+  },
+};
+
 export const ByBrokenRate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -78,12 +88,6 @@ export const OneTeamPicked: Story = {
     const canvas = await loaded(canvasElement);
     await pickTeam(canvas.getByTestId("supplier-report-team"), KENANGA.teamCode);
   },
-};
-
-// A phone reads each supplier as a block (a-phone-reads-each-line-as-a-block).
-// ⚠ No `play()`: the `viewport` global resizes the WORKBENCH canvas only.
-export const Phone: Story = {
-  globals: { viewport: { value: "mobile2" } },
 };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
@@ -184,5 +188,66 @@ export const ADeletedSupplierOpensNothing: Story = {
     await userEvent.click(canvas.getByTestId("supplier-report-row-38"));
     await expect(canvas.queryByTestId("at-own-supplier")).toBeNull();
     await expect(canvas.getByTestId("supplier-report-table")).toBeVisible();
+  },
+};
+
+// ── The screen rules (a-table-row-lights-up, a-segmented-choice-is-in-the-main-tone, every-list-pages-with-the-growing-pager) ─
+
+// A ROW LIGHTS UP under the pointer, every cell — driven by `data-hover`, which Chakra's `_hover` honours.
+export const ARankedRowLightsUp: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const row = within(canvas.getByTestId("supplier-report-table")).getAllByRole("row")[1]!;
+    const cells = within(row).getAllByRole("cell");
+    const resting = getComputedStyle(cells[0]!).backgroundColor;
+    row.setAttribute("data-hover", "");
+    await waitFor(() => expect(getComputedStyle(cells[0]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[cells.length - 1]!).backgroundColor).toBe(getComputedStyle(cells[0]!).backgroundColor);
+  },
+};
+
+// THE ORDER IS A SEGMENTED CHOICE — a radio group, Nilai direstok chosen first; choosing the other moves the choice.
+export const TheOrderIsASegmentedChoice: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const group = canvas.getByTestId("supplier-report-rank-by");
+    await expect(group).toHaveAttribute("role", "radiogroup");
+    await expect(within(group).getByRole("radio", { name: "Restocked Value" })).toBeChecked();
+
+    await userEvent.click(canvas.getByTestId("supplier-report-rank-by-rate"));
+    await waitFor(() => expect(within(group).getByRole("radio", { name: "Broken Rate" })).toBeChecked());
+  },
+};
+
+// The ranking pages with the growing pager.
+export const TheRankingPagesWithTheGrowingPager: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("supplier-report-pager")).toBeVisible();
+    await expect(canvas.getByTestId("supplier-report-pager-page-1")).toBeVisible();
+  },
+};
+
+// THE ORDER READS AS AN ORDER — "Sort" before it, and each segment the sort-down arrow (the-report-order-shows-its-arrow).
+export const TheOrderShowsItsArrow: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const group = canvas.getByTestId("supplier-report-rank-by");
+    await expect(group.parentElement).toHaveTextContent(/^Sort/);
+    await expect(group.querySelectorAll("svg.lucide-arrow-down-wide-narrow")).toHaveLength(2);
+  },
+};
+
+// EXPORT IS ON THE TITLE'S ROW, NOT BUILT — its icon, and the ⚠ number pointing at the not-implemented list
+// (the-report-export-is-marked).
+export const ExportIsMarkedNotBuilt: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const exportButton = canvas.getByTestId("supplier-report-export");
+    await expect(exportButton).toHaveTextContent("Export");
+    await expect(exportButton.querySelector("svg.lucide-download")).not.toBeNull();
+    await expect(within(exportButton).getByTestId("not-implemented-export")).toHaveTextContent("1");
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
   },
 };

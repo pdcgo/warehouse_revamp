@@ -11,6 +11,7 @@ import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 import type { PeriodGrain } from "../../lib/period";
 import { windowOf } from "../settlement/window";
+import { formatPeriod } from "../../lib/datetime";
 import { useTeam } from "../team/TeamContext";
 import {
   type SupplierFigurePoint,
@@ -45,7 +46,7 @@ type StatisticsView = "time" | "product";
 // TWO VIEWS, each its own page within the tab (owner: *"dari waktu dan per produk bedakan halamannya"*,
 // `the-statistics-tab-is-two-views`) — they were two tables stacked, the second under a pager of the first:
 //
-//   Dari Waktu ke Waktu | Per Produk                                  ← which view — a tab row, over the filters
+//   Per Periode | Per Produk                                          ← which view — a tab row, over the filters (the-first-view-is-per-periode)
 //   [Semua tim ⌄] [30 hari terakhir ⌄] [Harian|Bulanan|Tahunan]     ← the grain right of the window, Over Time only
 //   Total · Direstok · Hilang · Rusak                                 ← the headline: the whole window, both views
 //   the view's table, and its pager
@@ -140,7 +141,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
             (a-selected-tab-is-in-the-main-tone). */}
         <Tabs.List data-testid="statistics-views">
           <Tabs.Trigger value="time" data-testid="statistics-view-time">
-            {t("supplierStats.overTime")}
+            {t("supplierStats.byPeriod")}
           </Tabs.Trigger>
           <Tabs.Trigger value="product" data-testid="statistics-view-product">
             {t("supplierStats.byProduct")}
@@ -185,7 +186,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={series.isFetching && !series.isPending}>
-                  <SeriesTable points={series.data?.points ?? []} />
+                  <SeriesTable points={series.data?.points ?? []} grain={grain} />
                 </RefreshOverlay>
 
                 {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
@@ -228,8 +229,8 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
 }
 
 // One row per period, NEWEST first — every period in the window, the quiet ones included: a missing row reads as a
-// period that did not load. The bucket is its own label: `2026-10-07`, `2026-10`, `2026`.
-function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
+// period that did not load. Each reads at its grain (a-period-reads-as-its-grain): `2026-10-07`, `Oktober 2026`, `2026`.
+function SeriesTable({ points, grain }: { points: SupplierFigurePoint[]; grain: PeriodGrain }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -253,12 +254,12 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
               data-testid={`statistics-series-row-${point.at}`}
               data-quiet="true"
             >
-              {point.at} · {t("supplierStats.quietPeriod")}
+              {formatPeriod(point.at, grain)} · {t("supplierStats.quietPeriod")}
             </Text>
           ) : (
             <FigureBlock
               key={point.at}
-              title={point.at}
+              title={formatPeriod(point.at, grain)}
               figures={point.figures}
               testId={`statistics-series-row-${point.at}`}
             />
@@ -281,7 +282,7 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
           {points.map((point) => (
             <Table.Row key={point.at} data-testid={`statistics-series-row-${point.at}`} css={LIGHTS_UP}>
               <Table.Cell>
-                <Text fontSize="sm">{point.at}</Text>
+                <Text fontSize="sm">{formatPeriod(point.at, grain)}</Text>
               </Table.Cell>
               <FigureCells figures={point.figures} />
             </Table.Row>

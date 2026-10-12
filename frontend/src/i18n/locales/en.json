@@ -1642,7 +1642,7 @@
     "productNumber": "Product #{{id}}"
   },
   "supplierStats": {
-    "overTime": "Over Time",
+    "byPeriod": "By Period",
     "byProduct": "By Product",
     "empty": "Nothing was restocked from this supplier in this period.",
     "noProducts": "No products in this period.",
@@ -1654,7 +1654,7 @@
     "subtitle": "Which suppliers are restocked from most, and which of them break or lose the most on the way. Open a supplier for its figures over time.",
     "selectTeam": "Select a team to see the supplier report.",
     "ranking": "Ranking",
-    "rankBy": "Rank by",
+    "rankBy": "Sort",
     "byValue": "Restocked Value",
     "byBrokenRate": "Broken Rate",
     "rankedName": "{{rank}}. {{name}}",
@@ -1670,7 +1670,14 @@
     "supplierNumber": "Supplier #{{id}}",
     "deleted": "Deleted",
     "rateTooFew": "Fewer than {{n}} units in this period — not rated against the others",
-    "rateMinNote": "A supplier with fewer than {{n}} units in this period is ranked after the others, its rate muted — a handful of units cannot say how a supplier packs."
+    "rateMinNote": "A supplier with fewer than {{n}} units in this period is ranked after the others, its rate muted — a handful of units cannot say how a supplier packs.",
+    "export": "Export",
+    "pending": {
+      "export": {
+        "label": "Export",
+        "reason": "Nothing builds a file yet — whether it carries the ranking with its figures, and this page or the whole ranking, is still open."
+      }
+    }
   },
   "teams": {
     "name": "Name",

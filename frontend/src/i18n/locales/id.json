@@ -1637,7 +1637,7 @@
     "productNumber": "Produk #{{id}}"
   },
   "supplierStats": {
-    "overTime": "Dari Waktu ke Waktu",
+    "byPeriod": "Per Periode",
     "byProduct": "Per Produk",
     "empty": "Tidak ada restok dari pemasok ini pada periode ini.",
     "noProducts": "Tidak ada produk pada periode ini.",
@@ -1649,7 +1649,7 @@
     "subtitle": "Pemasok mana yang paling banyak direstok, dan mana yang paling banyak rusak atau hilang di jalan. Buka pemasok untuk melihat angkanya dari waktu ke waktu.",
     "selectTeam": "Pilih tim untuk melihat laporan pemasok.",
     "ranking": "Peringkat",
-    "rankBy": "Urutkan menurut",
+    "rankBy": "Urutkan",
     "byValue": "Nilai Restok",
     "byBrokenRate": "Tingkat Rusak",
     "rankedName": "{{rank}}. {{name}}",
@@ -1665,7 +1665,14 @@
     "supplierNumber": "Pemasok #{{id}}",
     "deleted": "Dihapus",
     "rateTooFew": "Kurang dari {{n}} unit pada periode ini — tidak diperingkat bersama yang lain",
-    "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas."
+    "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas.",
+    "export": "Ekspor",
+    "pending": {
+      "export": {
+        "label": "Ekspor",
+        "reason": "Belum ada yang membuat file — isinya peringkat dengan angkanya, dan sehalaman atau seluruh peringkat, masih terbuka."
+      }
+    }
   },
   "teams": {
     "name": "Nama",
