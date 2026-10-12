@@ -1713,10 +1713,6 @@
         "countLock": {
           "label": "Count lock",
           "reason": "A product being counted is locked at 0 here, but what a count's lock blocks is not decided yet (opname Q4), and the stock count is not built — only the prototype ever sets it."
-        },
-        "sampleAgreedBy": {
-          "label": "Who agreed to the sample",
-          "reason": "Who on the owning team agreed to a sample is not on the form: who bears a sample is still open (transaction Q6)."
         }
       }
     },

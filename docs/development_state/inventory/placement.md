@@ -51,7 +51,9 @@ flowchart LR
 | mark | kind | why |
 | --- | --- | --- |
 | `countLock` | derived | a counted product locks at 0, but what a count's lock blocks is [opname Q4](../../business/inventory/opname_clarify.md#question), and opname is not built |
-| `sampleAgreedBy` | missing | who on the owning team agreed to a sample is not on the form: who bears a sample is [transaction Q6](../../business/inventory/transaction_clarify.md#question) |
+
+✅ *(2026-10-12)* `sampleAgreedBy` is removed: a sample names no member of the owning team and moves no money
+([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)).
 
 ## Proposed at the prototype — accepted as built
 
@@ -63,11 +65,14 @@ flowchart LR
 
 ## The backend step: what it has to do
 
-1. Wait for the ledgers (transaction Q1–Q8, context Q14, the template, technical stock Q5–Q6).
+1. Wait for the ledgers (transaction Q1–Q5 and Q7–Q9, context Q14, the template, technical stock Q5–Q6).
 2. `RackMove`: lock the source and destination shelf rows in id order; check every line first (not counting, at most
    `stock_count`, no rack twice, every rack in the warehouse, never the source); one `move` transaction per owning team;
    a placement row per rack touched; no batch row; all in one database transaction.
-3. `RackSample`: the same checks on one rack; one `sample` transaction per owning team; the batch ledger takes oldest first.
+3. `RackSample`: the same checks on one rack; one `sample` transaction per owning team; the batch ledger takes oldest first;
+   no balance entry ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)).
+   Keep `recipient` where [transaction Q9](../../business/inventory/transaction_clarify.md#question) decides, so the owning
+   team sees who received each sample.
 4. `RackStockLine.counting` from the count's snapshot row, once opname exists.
 5. **Lowercase rack codes** ([rack-codes-are-saved-lowercase](../../business/inventory/placement_decision.md#rack-codes-are-saved-lowercase)) — not built: create and update store the code as typed. Trim and lowercase on save, plus a migration for today's codes; two codes differing only by case collide, so the migration has to find them first.
 6. When RackList moves onto `product_placements`, `rackStockTotals` sums `stock_count` there instead of `stock_levels.on_hand`.

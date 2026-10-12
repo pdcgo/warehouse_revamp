@@ -3,6 +3,12 @@
 [transaction.md](./transaction.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded
 in [transaction_decision.md](./transaction_decision.md).
 
+> ✅ **Answered 2026-10-12, in chat:** Q6, who bears a sample — nobody pays anybody: a sample is a stock-out at batch value
+> from the owning team's stock, with no agreement asked
+> ([a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)), against my
+> *named member, else the warehouse*. 🆕 **Opened:** Q9, where the sample's recipient is kept — the team is to see it, and no
+> decided column holds it.
+>
 > 🆕 **Opened 2026-10-12:** Q8, where *picked* is stored, from [placement Q4](./placement_clarify.md#question).
 >
 > 🔄 **Narrowed 2026-10-12:** Q5. `move` was added in chat ([a-move-has-its-own-type](./transaction_decision.md#a-move-has-its-own-type)), so only `revaluation` and
@@ -41,6 +47,7 @@ erDiagram
     uint team_id
     string tx_type
     uint ref_id "NEW - the order, restock, return or transfer it is for"
+    string recipient "NEW - Q9, who received a sample, null otherwise"
     uint create_by_user_id
     bool is_rollback
     string description
@@ -110,21 +117,7 @@ flowchart LR
    [context Q13c](./context_clarify.md#question). A revaluation and a count each write ledger rows and have no type.
    **→ Recommend:** add **`revaluation`** and **`opname`**, not `adjustment` for both: a revaluation moves no units, and a
    count can create a debt that a reader must be able to tell from a broken or lost unit.
-6. 🔄 *(2026-10-12)* **A sample: who bears it, and must the owning team agree?** ✅ *What it is* is answered: a person
-   asks at the warehouse, and staff pick the goods and hand them over
-   ([a-sample-is-handed-over-at-the-warehouse](./transaction_decision.md#a-sample-is-handed-over-at-the-warehouse)). ➡ Was
-   [context Q13d](./context_clarify.md#question). My *"the owning team asks"* is withdrawn. **The warehouse decides now**,
-   and the goods are the team's.
-
-   | | who bears it | + | − |
-   | --- | --- | --- | --- |
-   | **a** | the owning team, always | simple | staff can give away a team's goods and the team pays; a missing unit can be written down as a *sample* instead of a shortfall |
-   | **b** | the owning team, **when one of its members agreed**: staff name that member on the record | the team stays in control; the record says who said yes | staff must reach someone before handing over |
-   | **c** | the warehouse, always | nothing to abuse | the warehouse pays for the team's marketing, so staff will refuse every request |
-
-   **→ Recommend b.** It is one field on the form, a member of the owning team, picked by staff. If the person asking is
-   from the owning team, they name themselves. A sample with nobody named is the warehouse's, like any other shortfall in
-   its custody. *Who usually asks: someone from the owning team, or an outsider?*
+6. ✅ *(2026-10-12)* **Answered** — [a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value).
 7. **Whose `team_id` when team B sells team A's goods?** ➡ Was [context Q13f](./context_clarify.md#question).
    **→ Recommend: the stock's owner, A** — both ledgers are keyed by the owning team; the seller is on the order. An order
    holding two owners' goods writes two transactions.
@@ -144,6 +137,27 @@ flowchart LR
      S -->|"picked_at 13:40"| D["off the rack"]
      T["transfer out"] -->|"picked_at null - waiting"| P["Warehouse A processes"]
      P -->|"picked_at set"| D
+   ```
+
+9. 🆕 *(2026-10-12, from [a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value))*
+   **Where is a sample's recipient kept?** The team is to see who received each sample of its goods, and
+   `RackSample.recipient` is required on the request — but `inventory_transactions` has no column for it, so today it would
+   be dropped at the ledger.
+
+   | | where | + | − |
+   | --- | --- | --- | --- |
+   | **a** | 🆕 `recipient`, nullable, on `inventory_transactions`; set by a sample only | the team's history shows it as its own fact; the staff's note stays the note | a column most rows leave empty |
+   | **b** | written into `description` | no new column | `RackSample` already has both a recipient and a note, so one of them is squeezed into the other, and the history cannot show *who received it* on its own |
+
+   **→ Recommend a.** Who received the goods is the one fact the team checks a sample by — it is what makes the decision's
+   guard ("the team sees it") a guard.
+
+   ```mermaid
+   flowchart LR
+     D["Record Sample - recipient Budi, note for a review video"] --> T["inventory_transactions - sample"]
+     T -->|"a"| R["recipient Budi - description for a review video"]
+     T -.->|"b"| X["description - Budi, for a review video"]
+     R --> H["Melati's history - to Budi"]
    ```
 
 ---

@@ -208,6 +208,9 @@ flowchart LR
 **What it does NOT settle**: who bears the sample, and whether a member of the owning team must agree first
 ([transaction Q6](./transaction_clarify.md#question)).
 
+✅ *(2026-10-12)* Settled: nobody pays anybody and nobody has to agree —
+[a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value).
+
 ## a-handed-over-sample-is-final
 
 > Owner, in chat *(2026-10-12)*: *"for 1b and 1c follow your recomendation"*. It answers
@@ -620,6 +623,10 @@ flowchart LR
 ([transaction Q6](./transaction_clarify.md#question)); the prototype marks that field as pending · what the dialog records
 about the person who received it, judged at the prototype.
 
+✅ *(2026-10-12)* Settled: no member is named, so the field and its pending mark are gone —
+[a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value). Where the
+recipient is kept is [transaction Q9](./transaction_clarify.md#question).
+
 ## the-move-dialog-shows-stock-count-only-for-now
 
 > Owner, in chat *(2026-10-12)*, choosing *"Drop the note"* for
@@ -672,3 +679,7 @@ flowchart LR
 | the Products tab | the column keeps the label *On this rack*, now meaning the stock count |
 | still pending on the screen | the count's lock ([opname Q4](./opname_clarify.md#question)) · who on the owning team agreed to a sample ([transaction Q6](./transaction_clarify.md#question)) |
 | next | backend analysis, which the ledgers come before ([the-decided-ledgers-come-before-the-transfer](./warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)) |
+
+✅ *(2026-10-12)* The sample's pending mark is gone: no member of the owning team is named
+([a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)). Only the
+count's lock stays pending on the screen.

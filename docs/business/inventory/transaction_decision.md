@@ -10,6 +10,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once) | an undo finds and locks the existing transaction, reverses it in both ledgers and sets `is_rollback`; a second undo does nothing | your transaction.md, 2026-10-09 — answers context Q13e, against my new reversing transaction |
 | [a-sample-is-handed-over-at-the-warehouse](#a-sample-is-handed-over-at-the-warehouse) | a sample is goods going OUT: a person asks at the warehouse, staff pick the goods and hand them over | chat, 2026-10-12 — answers placement Q1a and the *what is it* half of Q6; my *asked ahead in the app* is withdrawn |
 | [a-move-has-its-own-type](#a-move-has-its-own-type) | `move` joins the `tx_type` list: goods carried between racks, never typed `adjustment` | chat, 2026-10-12 — answers placement Q3a choice 1 and the `move` part of Q5, as recommended |
+| [a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value) | a sample is a stock-out and nothing more: its units and their batch value leave the owning team's stock; no money moves, nobody has to agree, and the team sees every sample of its goods | chat, 2026-10-12 — answers Q6, **against** my *the team bears it only when a named member agreed* |
 
 ---
 
@@ -132,6 +133,10 @@ flowchart LR
 sample ever comes back (placement Q1) · who bears it, and whether the owning team has to agree first
 ([transaction Q6](./transaction_clarify.md#question)).
 
+✅ *(2026-10-12)* All three are settled since: the rack and the return in
+[placement_decision.md](./placement_decision.md#a-sample-names-the-rack-it-was-taken-from), who bears it in
+[a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value).
+
 ## a-move-has-its-own-type
 
 > Owner, in chat *(2026-10-12)*: *"3a, use `move`, and choice 1"*, choosing the first of three choices offered for
@@ -160,3 +165,47 @@ flowchart LR
 
 **What it does NOT settle**: `revaluation` and `opname`, the rest of [transaction Q5](./transaction_clarify.md#question) ·
 ⚠ the lists in [transaction.md](./transaction.md) and [placement.md](./placement.md) are yours to add `move` to.
+
+## a-sample-is-a-stock-out-at-batch-value
+
+> Owner, in chat *(2026-10-12)*, on [transaction Q6](./transaction_clarify.md#question): *"why selling team should pay ?
+> isn't that we can just record stock out with qty and valuation out of warehouse as sample ?"* — then *"yes"* to the rule
+> restated from it. **Against my recommendation**, which was that the team bears a sample only when a member of it is named
+> as having agreed, and otherwise the warehouse owes the team for it.
+
+**The verdict.** A sample is a **stock-out and nothing more**. Its units leave the rack and the batch, and its value leaves
+with them, typed `sample`. No money moves between the warehouse and the team, and nobody on the team has to agree first.
+The goods are the owning team's ([business_level.md](../business_level.md) §Warehouse 4: *"Ownership of stock is by selling
+team"*), so the value that leaves is the team's — and **the team sees every sample of its goods** in its history.
+
+```mermaid
+flowchart LR
+  S["staff record a sample - 2 Gelas Kaca, Rak A, to Budi"] --> T["inventory_transactions - sample, team Melati"]
+  T --> B["batch_logs - batch 7, -2, -Rp 30.000"]
+  T --> P["product_placement_logs - Rak A, -2"]
+  T -.->|"never"| M["balance - no payable, no receivable"]
+  T --> H["Melati's history - product, quantity, value, recipient, who recorded it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the transaction | `tx_type` `sample`; `team_id` the owning team, one transaction per owning team ([a-sample-is-recorded-on-rack-detail](./placement_decision.md#a-sample-is-recorded-on-rack-detail)) |
+| the batch side | oldest batch first, the value taken being the batch's, as for every take ([a-sample-names-the-rack-it-was-taken-from](./placement_decision.md#a-sample-names-the-rack-it-was-taken-from)) |
+| the rack side | the rack staff took it from — same decision |
+| the item | the quantity and the value taken ([Q2](./transaction_clarify.md#question)) |
+| money | **none**: no balance entry, whoever records it and whoever receives it |
+| agreement | **none required**: the Record Sample dialog has no *Agreed By* field |
+| the team sees | every sample of its goods: product, quantity, value, recipient, and the staff member who recorded it (`create_by_user_id`, the log rows' `actor_id`) |
+| withdrawn | my *named member, else the warehouse pays*, and with it the 7-day rejection by the team |
+
+⚠ **The trade it accepts.** A unit lost in the warehouse's custody is the warehouse's debt
+([in-custody-shortfall-is-the-warehouses](./context_clarify.md#in-custody-shortfall-is-the-warehouses)); a unit recorded as a
+sample costs the warehouse nothing. So a shortfall recorded as a sample lands on the team, and the only guard is that the
+team sees it. If that is ever abused, an optional *Agreed By* comes back as one nullable column — nothing stored today
+changes.
+
+**What it does NOT settle**: where the recipient is kept — `RackSample.recipient` is required on the request, and
+[transaction.md](./transaction.md)'s `inventory_transactions` has no column for it ([Q9](./transaction_clarify.md#question)) ·
+`batch_logs.change_type` still lacks `sample` ([the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up)).

@@ -434,7 +434,7 @@ The rules the stub plays, and the backend step keeps:
 | the ceiling | a line takes at most the rack's stock count, so sold units waiting for the picker stay ([a-move-leaves-sold-units-on-their-rack](../../business/inventory/placement_decision.md#a-move-leaves-sold-units-on-their-rack)) |
 | a product being counted | refused; `RackStockLine.counting` tells the dialog to lock it at 0 — always false until the stock count is built |
 | `RackList` STOCK slice | real today: each rack's stock count and product count for the Racks page, one grouped `SUM`/`COUNT` over the page's racks, only when asked — a picker never pays for it |
-| `RackSample.recipient` | required, who received it — proposed at the prototype; who on the team agreed is not on the request (transaction Q6) |
+| `RackSample.recipient` | required, who received it — proposed at the prototype. No member of the owning team is asked to agree, and the sample posts nothing to balance ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)); which column keeps the recipient is [transaction Q9](../../business/inventory/transaction_clarify.md#question) |
 
 ---
 

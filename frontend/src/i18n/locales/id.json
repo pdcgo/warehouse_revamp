@@ -1709,10 +1709,6 @@
         "countLock": {
           "label": "Kunci opname",
           "reason": "Produk yang sedang diopname terkunci di 0 di sini, tetapi apa yang diblokir kunci opname belum diputuskan (opname Q4), dan opname belum dibangun — hanya prototipe yang mengisinya."
-        },
-        "sampleAgreedBy": {
-          "label": "Yang menyetujui sampel",
-          "reason": "Siapa dari tim pemilik yang menyetujui sampel tidak ada di formulir: siapa yang menanggung sampel masih terbuka (transaction Q6)."
         }
       }
     },

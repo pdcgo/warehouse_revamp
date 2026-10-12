@@ -18,7 +18,7 @@ flowchart LR
 
 | blocking | where |
 | --- | --- |
-| what a transaction is: `ref_id`, items, rollback, below-zero rollback, the missing types, `sample`, the team on a cross-team order | [transaction_clarify Q1–Q7](../../business/inventory/transaction_clarify.md#question) |
+| what a transaction is: `ref_id`, items, rollback, below-zero rollback, the missing types, the team on a cross-team order, where *picked* and a sample's recipient are kept | [transaction_clarify Q1–Q5, Q7–Q9](../../business/inventory/transaction_clarify.md#question) — `sample` settled 2026-10-12 |
 | the two ledgers' rules: same units in both, a found unit's batch, zero money at zero units, a late cost, `batches.supplier_id` | [context_clarify Q14a–d, h](../../business/inventory/context_clarify.md#question) |
 | one `change_type` list for both ledgers | [the-two-type-lists-do-not-line-up](../../business/inventory/transaction_clarify.md#the-two-type-lists-do-not-line-up) |
 | the ledger template: idempotency, append-only logs, who opens the transaction | [mutation_and_ledger_clarify Q1, Q3, Q4](../../technical/ledger/mutation_and_ledger_clarify.md#question) |
