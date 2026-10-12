@@ -1,0 +1,1735 @@
+// The Connect transport Storybook runs against — an IN-PROCESS fake, no network, no Go server.
+//
+// ⚠ This module REPLACES `src/transport.ts` when Storybook (or the story test run) builds the app.
+// The swap is done by stubTransportPlugin.ts, and it works because `src/transport.ts` has exactly
+// ONE importer — `src/api/clients.ts`. Every one of the ~106 modules that reads a client therefore
+// gets the fake without knowing it, and no component needs a Storybook-only prop or provider.
+//
+// Stubbing at the TRANSPORT is deliberate, rather than mocking each hook:
+//
+//   - the component under test runs its REAL query hook, its real adapter and its real loading and
+//     error states, so a story exercises the same code path production does;
+//   - the columnar list envelope (`items`/`ids`) is built here once, so a change to that contract
+//     breaks the fixtures loudly instead of silently diverging from the server;
+//   - a method nobody stubbed throws `unimplemented`, which surfaces in the story as a visible error
+//     rather than an empty dropdown that looks like a styling bug.
+
+import { Code, ConnectError, createRouterTransport } from "@connectrpc/connect";
+
+import { CategoryService } from "../src/gen/warehouse/category/v1/category_pb";
+import { DocumentResourceType, DocumentService } from "../src/gen/warehouse/document/v1/document_pb";
+import { ExpenseKind, ExpenseService } from "../src/gen/warehouse/expense/v1/expense_pb";
+import { InventoryService } from "../src/gen/warehouse/inventory/v1/inventory_pb";
+import { RackService } from "../src/gen/warehouse/inventory/v1/rack_pb";
+import { ProductService } from "../src/gen/warehouse/product/v1/product_pb";
+import { SupplierService } from "../src/gen/warehouse/supplier/v1/supplier_pb";
+import { SupplierChannelService } from "../src/gen/warehouse/supplier/v1/supplier_channel_pb";
+import { SupplierAnalyticService } from "../src/gen/warehouse/supplier/v1/supplier_analytic_pb";
+import { RegionLevel, RegionService } from "../src/gen/warehouse/region/v1/region_pb";
+import {
+  LiabilityPaymentService,
+  LiabilityService,
+  LiabilitySourceType,
+  LiabilityTermsService,
+} from "../src/gen/warehouse/liability/v1/liability_pb";
+import { OrderDraftService } from "../src/gen/warehouse/selling/v1/order_draft_pb";
+import { OrderService, OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
+import { ShopService } from "../src/gen/warehouse/selling/v1/selling_pb";
+import { ShipmentChannelService } from "../src/gen/warehouse/shipment/v1/shipment_pb";
+import { ReceiptCheckResult, ReceiptService } from "../src/gen/warehouse/shipment/v1/receipt_pb";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { TeamService, TeamType } from "../src/gen/warehouse/team/v1/team_pb";
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
+import { AuthService, UserService } from "../src/gen/warehouse/user/v1/user_pb";
+import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
+import {
+  AnalyticGroupType,
+  AnalyticTimeframe,
+  SettlementAnalyticService,
+  SettlementService,
+  SettlementType as WireSettlementType,
+  SourceType as WireSourceType,
+} from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
+import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
+import { sessionScenario, teamCreateScenario } from "./sessionScenario";
+import { userStub } from "./userStub";
+import {
+  FinancialAccountAnalyticService,
+  FinancialAccountService,
+} from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
+import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
+import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
+import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
+import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
+import {
+  LogLevel,
+  SettlementImporterService,
+  UploadedFileLineOutcome,
+  UploadedFileLineReason,
+  UploadedFileStatus,
+} from "../src/gen/warehouse/settlement_importer/v1/settlement_importer_pb";
+
+// The prototype's string unions, back to the wire enums. Same mapping as src/features/settlement,
+// kept here rather than imported so the stub never depends on app code it is meant to replace.
+const stubSettlementType: Record<string, WireSettlementType> = {
+  initial_total: WireSettlementType.INITIAL_TOTAL,
+  initial_total_cancel: WireSettlementType.INITIAL_TOTAL_CANCEL,
+  fund: WireSettlementType.FUND,
+  external_ads_fee: WireSettlementType.EXTERNAL_ADS_FEE,
+  affiliate_fee: WireSettlementType.AFFILIATE_FEE,
+  marketplace_adjustment: WireSettlementType.MARKETPLACE_ADJUSTMENT,
+  other: WireSettlementType.OTHER,
+};
+
+const stubSourceType: Record<string, WireSourceType> = {
+  importer: WireSourceType.IMPORTER,
+  manual: WireSourceType.MANUAL,
+  order: WireSourceType.ORDER,
+};
+
+import {
+  categories,
+  settlementImportLines,
+  settlementImports,
+  shipmentChannels,
+  dayKey,
+  settlementReportDays,
+  settlementReportGroups,
+  expenseDays,
+  orderDetailFor,
+  orderDraftDetailFor,
+  orderDrafts,
+  pickLocationsFor,
+  orders,
+  productCosts,
+  products,
+  racks,
+  regionTree,
+  regions,
+  liabilityDays,
+  shops,
+  liabilityEntries,
+  liabilityPayments,
+  liabilityPositions,
+  liabilityTerms,
+  liabilityTermsChanges,
+  receiptLabel,
+  teams,
+  users,
+  warehouseStock,
+} from "./fixtures";
+
+// ── The list envelope ───────────────────────────────────────────────────────────────────────────
+//
+// Every governed List RPC answers in the guideline's COLUMNAR shape: one slice per requested data
+// type, each a map keyed by id, plus a separate `ids` array carrying the ORDER. Rebuilding it here
+// (rather than returning a flat array) is what makes the adapters under features/*/adapt.ts run for
+// real in a story.
+type Row = { id: bigint };
+
+function columnar<C extends string, R extends Row>(slice: C, rows: R[]) {
+  const mapData: Record<string, R> = {};
+  for (const row of rows) {
+    mapData[row.id.toString()] = row;
+  }
+
+  return {
+    items: [{ d: { case: slice, value: { mapData } } }],
+    ids: rows.map((r) => r.id),
+    pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(rows.length) },
+  };
+}
+
+// The same envelope, PAGED — it honours the request's page rather than claiming one page of
+// everything. A screen's pager reads `totalItems`, so a stub that always answers "1 of 1" would make
+// every pagination rule untestable and, worse, make a page-turn look like it worked.
+type PageReq = { page?: bigint; limit?: bigint } | undefined;
+
+function pagedColumnar<C extends string, R extends Row>(slice: C, rows: R[], page: PageReq) {
+  const limit = Number(page?.limit ?? 20n) || 20;
+  const current = Number(page?.page ?? 1n) || 1;
+  const window = rows.slice((current - 1) * limit, current * limit);
+
+  const mapData: Record<string, R> = {};
+  for (const row of window) {
+    mapData[row.id.toString()] = row;
+  }
+
+  return {
+    items: [{ d: { case: slice, value: { mapData } } }],
+    ids: window.map((r) => r.id),
+    pageInfo: {
+      currentPage: current,
+      totalPage: Math.max(1, Math.ceil(rows.length / limit)),
+      // The WHOLE filtered set, not the window — that is what the pager counts.
+      totalItems: BigInt(rows.length),
+    },
+  };
+}
+
+// The same envelope for a slice keyed by something OTHER than `id`.
+//
+// ⚠ The liability POSITION and TERMS slices are keyed by `counterparty_id`, and `0` is a real key
+// there — the creditor's default row. So this cannot reuse `pagedColumnar`, which assumes `row.id`,
+// and it must not treat a 0 key as missing.
+function pagedColumnarBy<C extends string, R>(
+  slice: C,
+  rows: R[],
+  keyOf: (row: R) => bigint,
+  page: PageReq,
+) {
+  const limit = Number(page?.limit ?? 20n) || 20;
+  const current = Number(page?.page ?? 1n) || 1;
+  const window = rows.slice((current - 1) * limit, current * limit);
+
+  const mapData: Record<string, R> = {};
+  for (const row of window) {
+    mapData[keyOf(row).toString()] = row;
+  }
+
+  return {
+    items: [{ d: { case: slice, value: { mapData } } }],
+    ids: window.map(keyOf),
+    pageInfo: {
+      currentPage: current,
+      totalPage: Math.max(1, Math.ceil(rows.length / limit)),
+      totalItems: BigInt(rows.length),
+    },
+  };
+}
+
+// The terms table is WRITEABLE in the stub, so a story can set a limit and see the row change — the
+// whole point of the screen is the write, and echoing the request back would test the dialog without
+// testing that anything landed.
+//
+// ⚠ MODULE STATE SURVIVES BETWEEN STORIES in one browser tab, so preview.tsx resets it in
+// `beforeEach`. Without that, a story that freezes a team decides what every later story renders.
+type StubTerms = (typeof liabilityTerms)[number];
+let termsTable: StubTerms[] = [...liabilityTerms];
+
+// The payments the stub serves — WRITEABLE, because rejecting one changes it. Reset per story.
+let paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+
+// The shipment channel table — WRITEABLE, because create, edit, delete and restore are the screen. The
+// rows carry real timestamps so the Updated column moves when a write lands. Reset per story.
+type StubChannel = (typeof shipmentChannels)[number] & { createdAt: ReturnType<typeof timestampFromDate>; updatedAt: ReturnType<typeof timestampFromDate> };
+const channelSeedDate = new Date("2026-09-01T09:00:00+07:00");
+const seedChannels = (): StubChannel[] =>
+  shipmentChannels.map((c) => ({ ...c, createdAt: timestampFromDate(channelSeedDate), updatedAt: timestampFromDate(channelSeedDate) }));
+let channelTable: StubChannel[] = seedChannels();
+
+export function resetShipmentChannels() {
+  channelTable = seedChannels();
+}
+
+function channelById(id: bigint): StubChannel {
+  const row = channelTable.find((c) => c.id === id);
+  if (!row) throw new ConnectError(`shipment channel ${id} not found`, Code.NotFound);
+  return row;
+}
+
+export function resetLiabilityTerms() {
+  termsTable = [...liabilityTerms];
+}
+
+
+// ⚠ SAME REASON, AND A DEEP COPY. `liabilityPaymentReject` writes `status` and `reason` onto the row
+// itself, so a shallow spread of the array would still hand the next story the mutated object — and
+// a claim another story already refused would render as terminal, making "there is a Reject button"
+// depend on which story ran first.
+export function resetLiabilityPayments() {
+  paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+}
+
+// ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
+//
+// The file list and each file's rows are WRITEABLE: an import started in a story adds its row and its
+// lines, so the list and the file's page show what the dialog just did. Reset per story.
+type StubImport = (typeof settlementImports)[number];
+type StubImportLine = (typeof settlementImportLines)[number];
+
+const seedImports = (): StubImport[] => settlementImports.map((f) => ({ ...f, tally: { ...f.tally } }));
+let importsTable: StubImport[] = seedImports();
+let importLinesTable: StubImportLine[] = [...settlementImportLines];
+let nextImportId = 950n;
+let nextImportLineId = 99_000n;
+
+
+export function resetSettlementImports() {
+  importsTable = seedImports();
+  importLinesTable = [...settlementImportLines];
+  nextImportId = 950n;
+  nextImportLineId = 99_000n;
+  resetSettlementImportScenario();
+}
+
+type ImportMessage = { level: LogLevel; message: string; step?: number; count?: number; file?: StubImport };
+
+type StubRow = {
+  sheet: string;
+  orderRef: string;
+  platformType: string;
+  settlementType: ImportSettlementType;
+  change: bigint;
+  outcome: UploadedFileLineOutcome;
+  reason: UploadedFileLineReason;
+  level: LogLevel;
+  text: string;
+};
+
+const posted = (sheet: string, orderRef: string, platformType: string, change: bigint, type = ImportSettlementType.FUND): StubRow => ({
+  sheet,
+  orderRef,
+  platformType,
+  settlementType: type,
+  change,
+  outcome: UploadedFileLineOutcome.POSTED,
+  reason: UploadedFileLineReason.UNSPECIFIED,
+  level: LogLevel.INFO,
+  text: `${platformType} ${orderRef} — posted`,
+});
+
+// The rows a stub statement yields. One is a type nobody mapped (held), one names an order that does
+// not exist (posted to the shop), one must not post (skipped); TikTok's first order carries an affiliate
+// commission, which posts as its own row (tiktok-affiliate-commission-posts-as-affiliate-fee).
+function stubImportRows(platform: Marketplace): StubRow[] {
+  if (platform === Marketplace.TIKTOK) {
+    const sheet = "Order details";
+    return [
+      posted(sheet, "577005550001", "Order", 185_000n),
+      { ...posted(sheet, "577005550001", "Affiliate commission", -9_250n, ImportSettlementType.AFFILIATE_FEE), text: "577005550001 — its affiliate commission, posted as its own row" },
+      posted(sheet, "577005550002", "Order", 92_000n),
+      { sheet, orderRef: "577005550003", platformType: "Seller shipping fee compensation", settlementType: ImportSettlementType.UNSPECIFIED, change: 8_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Seller shipping fee compensation” is not mapped — held" },
+      posted(sheet, "577005550004", "Order", 143_500n),
+      posted(sheet, "577005550005", "Order", 61_000n),
+      { ...posted(sheet, "577009990000", "Order", 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 577009990000 — posted to the shop" },
+      posted(sheet, "577005550006", "Order", 210_000n),
+      posted(sheet, "577005550007", "Order", 49_900n),
+      { sheet: "Withdrawal records", orderRef: "", platformType: "Earnings", settlementType: ImportSettlementType.UNSPECIFIED, change: 1_020_400n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.REPEATS_ORDER_DETAILS, level: LogLevel.INFO, text: "Earnings repeat the order rows — skipped" },
+      posted(sheet, "577005550008", "Order", 118_000n),
+      posted(sheet, "577005550009", "Order", 95_000n),
+    ];
+  }
+
+  const sheet = "Rincian Transaksi";
+  const income = "Penghasilan dari Pesanan";
+  return [
+    posted(sheet, "240928AAAA", income, 185_000n),
+    posted(sheet, "240928BBBB", income, 92_000n),
+    posted(sheet, "240928CCCC", income, 143_500n),
+    { sheet, orderRef: "", platformType: "Biaya Program Baru", settlementType: ImportSettlementType.UNSPECIFIED, change: -15_000n, outcome: UploadedFileLineOutcome.HELD, reason: UploadedFileLineReason.UNMAPPED_TYPE, level: LogLevel.WARN, text: "type “Biaya Program Baru” is not mapped — held" },
+    posted(sheet, "240928DDDD", income, 61_000n),
+    posted(sheet, "240928EEEE", income, 210_000n),
+    { ...posted(sheet, "240928WXYZ", income, 77_000n), reason: UploadedFileLineReason.NO_ORDER, level: LogLevel.WARN, text: "no order 240928WXYZ — posted to the shop" },
+    posted(sheet, "240928FFFF", income, 49_900n),
+    posted(sheet, "240928GGGG", income, 118_000n),
+    { sheet, orderRef: "", platformType: "Penarikan Dana", settlementType: ImportSettlementType.UNSPECIFIED, change: -2_500_000n, outcome: UploadedFileLineOutcome.SKIPPED, reason: UploadedFileLineReason.FAILED_WITHDRAWAL, level: LogLevel.INFO, text: "a withdrawal that did not succeed — skipped" },
+    posted(sheet, "240928HHHH", income, 95_000n),
+    posted(sheet, "240928IIII", income, 72_500n),
+  ];
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const snapshot = (f: StubImport): StubImport => ({ ...f, tally: { ...f.tally } });
+
+// ONE import. It runs as its own task and the stream only WATCHES it: when the client goes away the
+// generator is abandoned, but the task carries on and the row finishes — the decided behaviour
+// (an-import-finishes-whether-anyone-watches), so a story can close the dialog and find the row still going.
+function stubImport(
+  req: { teamId: bigint; shopId: bigint; fileContent: Uint8Array },
+  platform: Marketplace,
+): AsyncIterable<ImportMessage> {
+  const queue: ImportMessage[] = [];
+  let finished = false;
+  let wake: (() => void) | null = null;
+  const push = (m: ImportMessage) => {
+    queue.push(m);
+    wake?.();
+  };
+  const finish = () => {
+    finished = true;
+    wake?.();
+  };
+
+  void (async () => {
+    // THE SHOP CHECK — before anything is stored (the-shop-is-checked-before-the-file-is-stored).
+    const shop = shops.find((x) => x.id === req.shopId && x.teamId === req.teamId);
+    if (!shop) {
+      push({ level: LogLevel.ERROR, message: "This shop is not in your team — nothing was stored" });
+      return finish();
+    }
+    if (shop.marketplace !== platform) {
+      push({ level: LogLevel.ERROR, message: `${shop.name} is not a ${platform === Marketplace.TIKTOK ? "TikTok" : "Shopee"} shop — nothing was stored` });
+      return finish();
+    }
+    if (settlementImportScenario.noPrimaryCs.has(shop.id)) {
+      push({ level: LogLevel.ERROR, message: `${shop.name} has no primary CS — choose a primary CS first` });
+      return finish();
+    }
+    push({ level: LogLevel.INFO, message: `Shop checked — ${shop.name}` });
+
+    const now = timestampFromDate(new Date());
+    const id = nextImportId++;
+    const file: StubImport = {
+      id,
+      teamId: req.teamId,
+      shopId: shop.id,
+      platform,
+      documentId: `doc-${id}`,
+      contentSha256: "5e1a".repeat(16),
+      periodFrom: "",
+      periodTo: "",
+      status: UploadedFileStatus.RUNNING,
+      failure: "",
+      tally: { total: 0, posted: 0, existing: 0, held: 0, skipped: 0, postedToShop: 0 },
+      createdByUserId: 61n,
+      createdAt: now,
+      updatedAt: now,
+      finishedAt: undefined,
+    };
+    importsTable = [file, ...importsTable];
+    push({ level: LogLevel.INFO, message: `File stored — ${req.fileContent.length.toLocaleString()} bytes`, file: snapshot(file) });
+    await sleep(settlementImportScenario.stepMs);
+
+    file.periodFrom = "2026-09-28";
+    file.periodTo = "2026-09-28";
+
+    if (settlementImportScenario.wrongShopFile) {
+      file.status = UploadedFileStatus.FAILED;
+      file.failure = "3 of this file's orders belong to Melati Store — the whole file is refused, nothing was posted";
+      file.finishedAt = timestampFromDate(new Date());
+      push({ level: LogLevel.ERROR, message: file.failure, file: snapshot(file) });
+      return finish();
+    }
+
+    const rows = stubImportRows(platform);
+    file.tally.total = rows.length;
+    push({ level: LogLevel.INFO, message: `Read ${rows.length} rows, 2026-09-28`, count: rows.length, file: snapshot(file) });
+
+    for (const [i, row] of rows.entries()) {
+      await sleep(settlementImportScenario.stepMs);
+
+      if (row.outcome === UploadedFileLineOutcome.POSTED) file.tally.posted += 1;
+      if (row.outcome === UploadedFileLineOutcome.HELD) file.tally.held += 1;
+      if (row.outcome === UploadedFileLineOutcome.SKIPPED) file.tally.skipped += 1;
+      if (row.reason === UploadedFileLineReason.NO_ORDER) file.tally.postedToShop += 1;
+      file.updatedAt = timestampFromDate(new Date());
+
+      // The file's page lists only the rows worth a look — held, skipped, posted to the shop.
+      if (row.outcome !== UploadedFileLineOutcome.POSTED || row.reason === UploadedFileLineReason.NO_ORDER) {
+        importLinesTable.push({
+          id: nextImportLineId++,
+          uploadedFileId: id,
+          sheet: row.sheet,
+          orderRef: row.orderRef,
+          platformType: row.platformType,
+          description: row.platformType,
+          settlementType: row.settlementType,
+          change: row.change,
+          occurredOn: "2026-09-28",
+          orderId: 0n,
+          outcome: row.outcome,
+          reason: row.reason,
+          detail: "",
+          settlementLogId: 0n,
+        });
+      }
+
+      push({ level: row.level, message: `Row ${i + 1}: ${row.text}`, step: i + 1, count: rows.length, file: snapshot(file) });
+    }
+
+    file.status = UploadedFileStatus.DONE;
+    file.finishedAt = timestampFromDate(new Date());
+    push({
+      level: LogLevel.INFO,
+      message: `Done — ${file.tally.posted} posted, ${file.tally.held} held, ${file.tally.skipped} skipped`,
+      step: rows.length,
+      count: rows.length,
+      file: snapshot(file),
+    });
+    finish();
+  })();
+
+  return (async function* () {
+    for (;;) {
+      if (queue.length > 0) {
+        yield queue.shift()!;
+        continue;
+      }
+      if (finished) return;
+      await new Promise<void>((resolve) => {
+        wake = resolve;
+      });
+      wake = null;
+    }
+  })();
+}
+
+// ── UPLOADS ──────────────────────────────────────────────────────────────────────────────────────
+//
+// document_service's two-phase upload — RequestUpload → PUT the bytes to a signed URL → ConfirmUpload
+// — end to end, IN-PROCESS. Every attachment in the app goes this way (an order's receipt, a product
+// image, a payment proof, a profile or team picture), and without it every one of them ended in a
+// toast reading "[unimplemented] … RequestUpload is not implemented".
+//
+// The middle step is a real `fetch` PUT, which a router transport never sees, so `stubUploads()` (run
+// per story from preview.tsx) wraps `window.fetch` for ONE made-up origin and lets everything else
+// through. The PUT's body becomes an object URL, so a public image (product, profile, team) comes back
+// showing the very picture that was picked, and a private one (receipt, proof) opens it.
+const STUB_UPLOAD_ORIGIN = "https://storybook-upload.invalid";
+
+// The answers a story can ask ReceiptCheck for, by the marker's name.
+const RECEIPT_STUB_RESULTS: Record<string, ReceiptCheckResult> = {
+  unknown_label: ReceiptCheckResult.UNKNOWN_LABEL,
+  multiple_labels: ReceiptCheckResult.MULTIPLE_LABELS,
+  not_shipping_label: ReceiptCheckResult.NOT_SHIPPING_LABEL,
+  unreadable: ReceiptCheckResult.UNREADABLE,
+};
+
+interface PendingUpload {
+  teamId: bigint;
+  resourceType: DocumentResourceType;
+  filename: string;
+  mimeType: string;
+  sizeBytes: bigint;
+  // Set by the PUT; a confirm without one is an upload whose bytes never arrived.
+  objectUrl?: string;
+}
+
+const pendingUploads = new Map<string, PendingUpload>();
+// documentId → the object URL its bytes live at, for GetDownloadUrl.
+const uploadedDocs = new Map<string, string>();
+let uploadSeq = 0;
+
+// The resource types a real Document carries a PUBLIC url for (document.proto). A receipt or a proof is
+// private: it has no public url and is opened through GetDownloadUrl instead.
+const PUBLIC_DOCUMENTS = new Set([DocumentResourceType.PROFILE_PICTURE, DocumentResourceType.PRODUCT_IMAGE]);
+
+export function stubUploads() {
+  for (const url of [...uploadedDocs.values(), ...[...pendingUploads.values()].map((p) => p.objectUrl)]) {
+    if (url) URL.revokeObjectURL(url);
+  }
+  pendingUploads.clear();
+  uploadedDocs.clear();
+  uploadSeq = 0;
+
+  // Wrapped ONCE and kept: re-wrapping per story would nest a wrapper around a wrapper each time.
+  const w = window as unknown as { __storybookRealFetch?: typeof fetch };
+  if (w.__storybookRealFetch) return;
+
+  const real = window.fetch.bind(window);
+  w.__storybookRealFetch = real;
+
+  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.startsWith(STUB_UPLOAD_ORIGIN + "/")) {
+      return real(input, init);
+    }
+
+    const pending = pendingUploads.get(url.slice(STUB_UPLOAD_ORIGIN.length + 1));
+    if (!pending) {
+      return new Response(null, { status: 404, statusText: "Unknown upload token" });
+    }
+
+    pending.objectUrl = URL.createObjectURL(init?.body instanceof Blob ? init.body : new Blob([]));
+    return new Response(null, { status: 200 });
+  }) as typeof fetch;
+}
+
+// ByIds answers a map of id → the same slice list, so an anti-join can look one id up directly.
+function byIds<C extends string, R extends Row>(slice: C, rows: R[], wanted: bigint[]) {
+  const items: Record<string, { items: { d: { case: C; value: { mapData: Record<string, R> } } }[] }> = {};
+
+  for (const id of wanted) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) continue; // an unknown id is simply ABSENT — never a null row (see the adapters).
+
+    items[id.toString()] = {
+      items: [{ d: { case: slice, value: { mapData: { [id.toString()]: row } } } }],
+    };
+  }
+
+  return { items };
+}
+
+// The server-side searches (`filter.q`) match on the fields a person would actually type.
+const match = (q: string | undefined, ...fields: string[]) => {
+  const needle = (q ?? "").trim().toLowerCase();
+  if (!needle) return true;
+
+  return fields.some((f) => f.toLowerCase().includes(needle));
+};
+
+// The one warehouse the fixtures describe. Named rather than repeated as `11n`, because stock, HPP
+// and the team's default all have to agree about WHICH BUILDING they are talking about — three
+// literals is three chances for them to drift apart and for a story to fail with an empty table.
+const WAREHOUSE_ID = teams[0]!.id;
+
+// ── The order list's scope and filters, shared by OrderList and OrderStat ───────────────────────
+//
+// ONE function for both, mirroring the server's one query builder. The stat sits directly above the
+// table, so if the two narrowed differently the tab counts would describe a different population
+// than the rows under them — and nothing on screen would explain the gap.
+type OrderScopeFilter =
+  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint; createdByUserId?: bigint }
+  | undefined;
+
+// Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
+// order id, matched WHOLE. Substring-matching the id would make "1" select every order, which is
+// neither what the server does nor what somebody quoting an order number means.
+function matchOrder(q: string | undefined, o: (typeof orders)[number]): boolean {
+  const needle = (q ?? "").trim().toLowerCase();
+  if (!needle) return true;
+
+  if (/^\d+$/.test(needle) && o.id.toString() === needle) return true;
+
+  return [o.customerName, o.customerPhone].some((f) => f.toLowerCase().includes(needle));
+}
+
+function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
+  return orders
+    // EITHER SIDE — see OrderList below.
+    .filter((o) => o.teamId === teamId || o.warehouseId === teamId)
+    .filter((o) => matchOrder(filter?.search, o))
+    .filter((o) => !filter?.shopId || o.shopId === filter.shopId)
+    // 0 on a side is an OPEN end, so {0,0} means every date.
+    .filter((o) => !filter?.createdFromUnix || o.createdAtUnix >= filter.createdFromUnix)
+    .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
+    // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
+    .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
+    // Newest first, which is the order the list promises.
+    .sort((a, b) => (a.id < b.id ? 1 : -1));
+}
+
+// The order a fulfilment step acts on — found only from the WAREHOUSE side it ships from.
+function fulfilmentOrder(req: { teamId: bigint; orderId: bigint }) {
+  const order = orders.find((o) => o.id === req.orderId && o.warehouseId === req.teamId);
+  if (!order) throw new ConnectError("order not found", Code.NotFound);
+
+  return order;
+}
+
+// ── The daily statement, from three services at once ────────────────────────────────────────────
+//
+// The statement is the one screen here that subtracts one service from another (revenue or
+// liability, minus expenses), so all three Daily RPCs are stubbed together and share this period
+// filter. They are the sparse series the client's date spine is built to fill.
+//
+// A plain string compare is the whole period test — a `yyyy-mm-dd` sorts lexically, which is why the
+// contract uses it — and both ends are INCLUSIVE, as the filter says.
+const inPeriod = (date: string, filter: { from?: string; to?: string } | undefined) =>
+  (!filter?.from || date >= filter.from) && (!filter?.to || date <= filter.to);
+
+// The days one team has in a series, resolved to real dates and ASCENDING — the order every Daily
+// response promises, and the order the screen's running total depends on.
+function periodDays<T extends { teamId: bigint; ago: number }>(
+  rows: T[],
+  teamId: bigint,
+  filter: { from?: string; to?: string } | undefined,
+) {
+  return rows
+    .filter((r) => r.teamId === teamId)
+    .map((r) => ({ ...r, date: dayKey(r.ago) }))
+    .filter((r) => inPeriod(r.date, filter))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// Sum a per-key money map into an accumulator — how every by-kind / by-source total is built.
+function addInto(total: Record<number, bigint>, part: Record<number, bigint>) {
+  for (const [k, v] of Object.entries(part)) {
+    total[Number(k)] = (total[Number(k)] ?? 0n) + v;
+  }
+}
+
+const sumMap = (m: Record<number, bigint>) => Object.values(m).reduce((a, b) => a + b, 0n);
+
+export const transport = createRouterTransport(({ service }) => {
+  service(TeamService, {
+    teamList: (req) =>
+      columnar(
+        "team",
+        teams.filter(
+          (t) =>
+            // WHICH TEAMS CARRY THE PRIORITY-PRODUCT FEATURE. The product picker asks this first and
+            // then narrows a ProductDiscover by the ids — so a stub that ignored the filter would
+            // hand back every team and make the Priority tab indistinguishable from Other.
+            (!req.filter?.priorityProductOnly || t.priorityProduct) &&
+            // THE TYPE FILTER, as team_service applies it (`type = ?` when set). A stub that ignored it
+            // handed the order form's WAREHOUSE picker every selling team too — a bug that existed only
+            // here, and so read as a real one to anybody reviewing the form in Storybook.
+            (!req.filter?.teamType || t.type === req.filter.teamType) &&
+            match(req.filter?.q, t.name, t.teamCode),
+        ),
+      ),
+    // ⚠ The ids live under `filter`, NOT at the top level — both ByIds RPCs read `filter.ids`, and
+    // the guideline's ByIds shape is what puts them there. Reaching for `req.ids` yields `undefined`
+    // and the helper throws on iterating it; that stayed invisible while no story called a ByIds.
+    teamByIds: (req) => byIds("team", teams, req.filter?.ids ?? []),
+    // The team's SETTINGS, which is where the order form reads its default warehouse from (#145).
+    // Every fixture team names the warehouse team as its default, so the form opens pre-filled —
+    // the state the page is actually in for the people using it, rather than an empty select
+    // nobody ever really sees.
+    // Records what the Create Team form sent — the Owner it names (the-create-team-form-names-the-first-owner).
+    teamCreate: (req) => {
+      teamCreateScenario.last = { name: req.name, ownerUserId: req.ownerUserId };
+
+      return {
+        team: { id: 99n, type: req.type, name: req.name, teamCode: req.teamCode, description: req.description, deleted: false, imageUrl: "" },
+      };
+    },
+    teamDetail: (req) => ({
+      team: {
+        ...teams.find((t) => t.id === req.teamId),
+        info: { teamId: req.teamId, defaultWarehouseId: WAREHOUSE_ID },
+      },
+    }),
+  });
+
+  service(AuthService, {
+    // Only ever called when a token is present, which the `signedIn` decorator plants. Stories that
+    // do not opt in never reach this.
+    checkAccess: () => ({
+      identity: { identityId: users[0]!.id, username: users[0]!.username, agent: "storybook" },
+      token: "",
+    }),
+    logout: () => ({}),
+  });
+
+  service(UserService, {
+    // The caller's memberships — what TeamProvider loads, and therefore what `useTeam().current`
+    // resolves to. The warehouse team is first so it becomes the default selection.
+    teamAccessList: () => {
+      // Every fixture team, unless a story narrows it (sessionScenario.memberOf) — then those teams, plus the
+      // root team for Root or the Administrator, whose reach comes from there.
+      const mine = sessionScenario.memberOf === null ? teams : teams.filter((t) => sessionScenario.memberOf!.includes(t.id));
+      const platform = sessionScenario.role === Role.ROOT || sessionScenario.role === Role.ADMINISTRATOR;
+      const rows = mine.map((t) => ({ teamId: t.id, teamName: t.name, teamType: t.type }));
+
+      if (sessionScenario.memberOf !== null && platform) {
+        rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });
+      }
+
+      return {
+        items: [
+          {
+            d: {
+              case: "teamAccess" as const,
+              value: {
+                mapData: Object.fromEntries(
+                  rows.map((t) => [
+                    t.teamId.toString(),
+                    {
+                      teamId: t.teamId,
+                      // WAREHOUSE_ADMIN unless a story stands as someone else (sessionScenario.ts).
+                      role: sessionScenario.role,
+                      teamName: t.teamName,
+                      teamType: t.teamType,
+                      imageUrl: "",
+                    },
+                  ]),
+                ),
+              },
+            },
+          },
+        ],
+        ids: rows.map((t) => t.teamId),
+        pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(rows.length) },
+      };
+    },
+    // Everything else — the member list, the search, the membership writes, the history — is the
+    // writeable stub in userStub.ts, which plays the user decisions (docs/business/user).
+    ...userStub,
+  });
+
+  service(ShopService, {
+    shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
+  });
+
+  // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
+  service(SupplierService, supplierService);
+  service(SupplierChannelService, supplierChannelService);
+  // Its figures — supplierFigureFixtures.ts, read as the folded table is (the-figures-screens-are-accepted).
+  service(SupplierAnalyticService, supplierAnalyticService);
+
+  service(RackService, {
+    rackList: () => columnar("rack", racks),
+  });
+
+  service(CategoryService, {
+    // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
+    // tree), so there is no filter here — the drill-down happens in the component.
+    categoryList: () => ({ categories }),
+  });
+
+  // The courier catalogue, served with the rules shipment_service owns — so a story that passes here is
+  // asserting on the decisions, not on a permissive echo. ShippingSelect and ShippingBadge read it too.
+  service(ShipmentChannelService, {
+    shipmentChannelList: (req) => {
+      const rows = channelTable
+        .filter((c) => req.filter?.includeDeleted || !c.isDeleted)
+        .filter((c) => match(req.filter?.q, c.code, c.name));
+
+      return pagedColumnar("channel", rows, req.page as PageReq);
+    },
+    // Deleted channels ARE returned (a-deleted-channel-still-resolves-by-id).
+    shipmentChannelByIds: (req) => byIds("channel", channelTable, req.filter?.ids ?? []),
+    shipmentChannelCreate: (req) => {
+      const existing = channelTable.find((c) => c.code === req.code);
+      if (existing) {
+        // a-deleted-code-is-restored-not-recreated — the message says which way out.
+        throw new ConnectError(
+          existing.isDeleted
+            ? `code "${req.code}" belongs to a deleted channel — restore it instead`
+            : `code "${req.code}" already exists`,
+          Code.AlreadyExists,
+        );
+      }
+
+      const now = timestampFromDate(new Date());
+      const row: StubChannel = {
+        id: channelTable.reduce((max, c) => (c.id > max ? c.id : max), 0n) + 1n,
+        code: req.code,
+        name: req.name,
+        desc: req.desc,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      channelTable = [...channelTable, row];
+
+      return { channel: row };
+    },
+    shipmentChannelUpdate: (req) => {
+      const row = channelById(req.channelId);
+      Object.assign(row, { name: req.name, desc: req.desc, updatedAt: timestampFromDate(new Date()) });
+      return { channel: row };
+    },
+    shipmentChannelDelete: (req) => {
+      const row = channelById(req.channelId);
+      Object.assign(row, { isDeleted: true, updatedAt: timestampFromDate(new Date()) });
+      return { channel: row };
+    },
+    shipmentChannelRestore: (req) => {
+      const row = channelById(req.channelId);
+      Object.assign(row, { isDeleted: false, updatedAt: timestampFromDate(new Date()) });
+      return { channel: row };
+    },
+  });
+
+  // THE LABEL READER, without the reader. The Go package cannot run here, so a story NAMES the answer
+  // it wants by writing `stub-result:<name>` into its fake PDF (see `receiptLabelFile`); a file with no
+  // marker is a label that reads. What is kept from the real service is the shape of every answer: a
+  // RESULT in a successful response, never an error (a-label-outcome-is-a-result-not-an-error), and
+  // every field "" unless the result is READ.
+  service(ReceiptService, {
+    receiptCheck: (req) => {
+      const head = new TextDecoder().decode(req.fileContent.subarray(0, 512));
+      if (!head.startsWith("%PDF-")) {
+        return { result: ReceiptCheckResult.UNREADABLE };
+      }
+
+      const named = /stub-result:([a-z_]+)/.exec(head)?.[1] ?? "";
+      const result = RECEIPT_STUB_RESULTS[named] ?? ReceiptCheckResult.READ;
+
+      return result === ReceiptCheckResult.READ ? { result, ...receiptLabel } : { result };
+    },
+  });
+
+  service(RegionService, {
+    // The cascade: each level asks for its parent's children, so the empty parentCode is the top.
+    regionList: (req) => ({
+      regions: regionTree.filter((r) => r.parentCode === req.parentCode),
+    }),
+    regionSearchByKodePos: (req) => ({
+      results: regions.filter((r) => r.kodePos.startsWith(req.kodePos)).slice(0, req.limit || 10),
+    }),
+    // The name typeahead, narrowed to one level — "find the kecamatan called X".
+    //
+    // ⚠ A HIT STOPS AT ITS OWN LEVEL. The real service returns an ancestry filled from provinsi DOWN
+    // TO the hit and empty below it, so a kecamatan hit carries no desa and no kode pos — which is
+    // exactly the case AddressPicker's derivation exists for. A stub that helpfully returned the
+    // desa's postcode would make that code path untestable and the picker look like it worked.
+    regionSearch: (req) => {
+      const q = req.q.toLowerCase();
+      const level = req.level;
+
+      const matches = regions.filter((r) =>
+        level === RegionLevel.KECAMATAN
+          ? r.kecamatanName.toLowerCase().includes(q)
+          : level === RegionLevel.KABUPATEN
+            ? r.kabupatenName.toLowerCase().includes(q)
+            : level === RegionLevel.PROVINSI
+              ? r.provinsiName.toLowerCase().includes(q)
+              : r.desaName.toLowerCase().includes(q),
+      );
+
+      if (level !== RegionLevel.KECAMATAN) {
+        return { results: matches.slice(0, req.limit || 10) };
+      }
+
+      // One row per kecamatan: the fixtures hold an ancestry per DESA, and two desa of the same
+      // kecamatan would otherwise come back as two identical-looking hits.
+      const byKecamatan = new Map<string, (typeof regions)[number]>();
+      for (const r of matches) {
+        if (!byKecamatan.has(r.kecamatanCode)) {
+          byKecamatan.set(r.kecamatanCode, { ...r, desaCode: "", desaName: "", kodePos: "" });
+        }
+      }
+
+      return { results: [...byKecamatan.values()].slice(0, req.limit || 10) };
+    },
+    // Hydration: a consumer may hold a saved address as CODES ONLY, and one resolve back-fills every
+    // label. Matching on the DESA code is enough for the fixtures, which is the deepest level.
+    regionResolve: (req) => ({
+      ancestry: regions.find((r) => r.desaCode === req.code),
+    }),
+  });
+
+  service(ProductService, {
+    // PAGED, because a caller genuinely walks it: OwnStockedProductPicker collects a team's whole
+    // catalogue 200 ids at a time to narrow a warehouse by it, and stops on a short page. An
+    // always-"1 of 1" stub would make that loop untestable.
+    productList: (req) =>
+      pagedColumnar(
+        "product",
+        products.filter((p) => p.teamId === req.teamId && match(req.filter?.q, p.name, p.sku)),
+        req.page,
+      ),
+    // Discovery looks ACROSS teams — that is the whole difference from ProductList, so `team_id` is
+    // an authorization scope here and must NOT narrow the rows, or the "all" picker would be
+    // indistinguishable from the "own" one.
+    //
+    // Its two real narrowings do apply, because both are how AllProductPicker earns its keep:
+    // `ownerTeamId` is the in-dialog team filter, `excludeOwnTeam` is the "other teams only" case.
+    //
+    // PAGED, for the same reason ProductList is: the picker sends `page` and reads `total_items` off
+    // the answer, so a stub that always claimed "1 of 1" would hand back the whole catalogue in one
+    // page — the pager would never appear, and the dialog would never be seen holding the ten rows it
+    // actually holds. Discover is the RPC behind two of the three tabs, so that was the tabbed
+    // picker's entire overflow behaviour going untested.
+    productDiscover: (req) =>
+      pagedColumnar(
+        "product",
+        products.filter(
+          (p) =>
+            (req.ownerTeamId === 0n || p.teamId === req.ownerTeamId) &&
+            (!req.excludeOwnTeam || p.teamId !== req.teamId) &&
+            // ⚠ THE PRIORITY PARTITION, and an EMPTY LIST IS NO NARROWING on both — exactly as the
+            // server behaves. Treating empty as "match nothing" here would hide the trap the real
+            // contract sets: a caller sending `owner_team_ids: []` gets the whole catalogue back, and
+            // the stub has to reproduce that or the Priority tab's guard would look unnecessary.
+            (req.ownerTeamIds.length === 0 || req.ownerTeamIds.includes(p.teamId)) &&
+            (req.excludeOwnerTeamIds.length === 0 || !req.excludeOwnerTeamIds.includes(p.teamId)) &&
+            match(req.filter?.q, p.name, p.sku),
+        ),
+        req.page,
+      ),
+    productByIds: (req) => byIds("product", products, req.filter?.ids ?? []),
+  });
+
+  service(InventoryService, {
+    // What the warehouse HOLDS, paged — the catalogue the order form's picker browses. Note the
+    // shape: a flat `items` array of {product_id, available}, NOT the columnar envelope the governed
+    // List RPCs use. Inventory answers with the figure the list was built from, so there is no second
+    // read to disagree with it.
+    stockedProductList: (req) => {
+      const wanted = req.filter?.productIds ?? [];
+      // An EMPTY id list is "no narrowing", not "nothing matches" — the picker says the latter by
+      // never calling. Getting this backwards makes the dialog open empty on first paint.
+      const rows = products
+        .filter((p) => (warehouseStock[p.id.toString()] ?? 0n) > 0n)
+        .filter((p) => wanted.length === 0 || wanted.some((id) => id === p.id));
+
+      const limit = Number(req.page?.limit ?? 10n) || 10;
+      const page = Number(req.page?.page ?? 1n) || 1;
+      const window = rows.slice((page - 1) * limit, page * limit);
+
+      return {
+        items: window.map((p) => ({ productId: p.id, available: warehouseStock[p.id.toString()]! })),
+        ids: window.map((p) => p.id),
+        pageInfo: {
+          currentPage: page,
+          totalPage: Math.max(1, Math.ceil(rows.length / limit)),
+          totalItems: BigInt(rows.length),
+        },
+      };
+    },
+
+    // ⚠ ONE ENTRY PER PRODUCT ASKED ABOUT, including the ones with nothing. The proto is explicit
+    // that this RPC does NOT use the "absent means zero" convention: a screen deciding whether it may
+    // promise goods to a buyer must not have to infer a zero from a gap, because a partial answer
+    // looks identical. Filtering the zeros out here would make the stub kinder than the server.
+    //
+    // ⚠ PER WAREHOUSE. The fixture stock is one building's (WAREHOUSE_ID), so any other warehouse
+    // answers zeros. Answering every warehouse with the same shelf made a screen that lists several
+    // warehouses side by side (the discover detail) show one stock as if it were held twice.
+    stockAvailability: (req) => ({
+      items: req.productIds.map((id) => ({
+        productId: id,
+        available: req.warehouseId === WAREHOUSE_ID ? (warehouseStock[id.toString()] ?? 0n) : 0n,
+      })),
+    }),
+
+    // The SELLING side's own-stock read — what this team owns at a warehouse, plus what it has on
+    // order elsewhere. Two lenses over one message, so `filter.warehouseId` decides which one the
+    // caller gets: set = that building's READY, 0 = every warehouse's ONGOING.
+    //
+    // The catalogue pickers call this twice per page (once per lens); the stocked ones never call it,
+    // because their READY arrives with the list.
+    ownerStockByIds: (req) => ({
+      items: Object.fromEntries(
+        (req.filter?.productIds ?? []).map((id) => {
+          const key = id.toString();
+
+          // ⚠ OWNERSHIP, not presence. This RPC establishes ownership through
+          // `restock_requests.requesting_team_id`, so it can only answer about goods the CALLER
+          // brought in — another team's product reads 0 even when the warehouse plainly holds some.
+          //
+          // The stub honours that rather than answering with the shelf figure, because it is the one
+          // thing a picker built on this read gets wrong in a way nobody notices: "0 ready, 0 on the
+          // way" on screen says "we have none" when the truth is "not mine to know".
+          const mine = products.find((p) => p.id === id)?.teamId === req.teamId;
+          const ready = mine && req.filter?.warehouseId ? (warehouseStock[key] ?? 0n) : 0n;
+
+          return [
+            key,
+            {
+              items: [
+                {
+                  d: {
+                    case: "stock" as const,
+                    value: {
+                      mapData: {
+                        [key]: {
+                          readyQty: ready,
+                          readyValue: ready * (productCosts[key] ?? 0n),
+                          // A fixed ONGOING on one product, so the "already on order" figure has
+                          // something to render — it is what stops the same restock being placed
+                          // twice, and an all-zero fixture would never show it. Same ownership rule.
+                          ongoingQty: mine && key === "72" ? 6n : 0n,
+                          ongoingValueEst: 0n,
+                          costMin: productCosts[key] ?? 0n,
+                          costMax: productCosts[key] ?? 0n,
+                          costKnown: (productCosts[key] ?? 0n) > 0n,
+                          oldestBatchUnix: 0n,
+                          lastRestockUnix: 0n,
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ];
+        }),
+      ),
+    }),
+
+    // The HPP per product, in the by-ids map shape: outer key is the product id, and the `cost` slice
+    // repeats that id inside its own mapData — which is what features/inventory/adapt.ts reads.
+    stockCost: (req) => ({
+      items: Object.fromEntries(
+        (req.filter?.ids ?? []).map((id) => [
+          id.toString(),
+          {
+            items: [
+              {
+                d: {
+                  case: "cost" as const,
+                  value: {
+                    mapData: {
+                      // 0 = UNKNOWN, never free. Product 73 carries one on purpose.
+                      [id.toString()]: { productId: id, unitCost: productCosts[id.toString()] ?? 0n },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ]),
+      ),
+    }),
+
+    // The shelves an order's goods were drawn from, keyed by the ref selling_service recorded the draw
+    // under (`order:<id>`). A ref this stub does not recognise answers EMPTY, as the server would —
+    // "nothing was drawn" is a real answer, not an error.
+    stockPickLocations: (req) => {
+      const match = /^order:(\d+)$/.exec(req.ref);
+      return { locations: match ? pickLocationsFor(BigInt(match[1]!)) : [] };
+    },
+  });
+
+  service(OrderService, {
+    // The write the order form exists to make. It answers with an id so the page can navigate to the
+    // order it just placed — which is also what tells the unsaved-work blocker to stand down.
+    orderCreate: () => ({ order: { id: 900n } }),
+
+    // ⚠ THE TWO-SIDED READ (#151), and it is the reason the order list has two versions at all.
+    // `team_id` means "the team you hold a role in", NOT "the team whose orders you get": the handler
+    // matches it against EITHER side, so a selling team sees what it placed and a warehouse sees what
+    // ships from it. Stubbing this as `o.teamId === req.teamId` would make the warehouse's list a
+    // permanently empty table — and empty reads as "no work today" rather than as a broken stub.
+    orderList: (req) =>
+      pagedColumnar(
+        "order",
+        visibleOrders(req.teamId, req.filter).filter(
+          // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
+          // order can hold — so it must not be compared against one.
+          (o) => !req.filter?.status || o.status === req.filter.status,
+        ),
+        req.page,
+      ),
+
+    // THE DETAIL READ, and it is a DIFFERENT MESSAGE from a list row — `items` and `events` are
+    // populated here and nowhere else (order.proto). That is why it cannot be served by finding the
+    // row in `orders` and handing it back: the whole detail page is built from the two tables a list
+    // row does not carry, so a stub returning the summary would render an order with no lines and no
+    // history and look, on screen, exactly like a bug in the page.
+    //
+    // ⚠ `team_id` IS THE TWO-SIDED SCOPE HERE TOO, not an owner check. A warehouse opens an order it
+    // did not place, every day — refusing that would make the picking crew unable to read the job
+    // they are picking.
+    orderDetail: (req) => {
+      const order = orderDetailFor(req.orderId);
+      if (!order) throw new ConnectError("order not found", Code.NotFound);
+
+      if (order.teamId !== req.teamId && order.warehouseId !== req.teamId) {
+        throw new ConnectError("order not found", Code.NotFound);
+      }
+
+      return { order };
+    },
+
+    // The crew's four steps. STATELESS on purpose: the page reads the new status back through the
+    // invalidation, and a stub that remembered a step would leak it into the next story. So a story
+    // asserts the step was ACCEPTED (the toast), not that the badge moved.
+    //
+    // The scope is the WAREHOUSE side only — the crew advances what ships from its building, and a
+    // selling team pressing these would be refused by the policy long before the handler.
+    orderConfirm: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPick: (req) => ({ order: fulfilmentOrder(req) }),
+    orderPack: (req) => ({ order: fulfilmentOrder(req) }),
+    orderShip: (req) => ({ order: fulfilmentOrder(req) }),
+
+    // The header above the table. Deliberately NOT narrowed by the STATUS: the counts are what you
+    // read to decide which tab to open, so computing them per tab would empty the number you were
+    // about to click. Every OTHER filter does apply, and that is the same rule from the other side —
+    // a header counting a bigger population than the rows below it is a gap nothing on screen
+    // explains.
+    // The "created by" filter's feed (a-who-filter-lists-the-people-on-its-rows): everyone who typed in an order
+    // this team may list, the latest first — never a member list. 0 is nobody.
+    orderCreatorList: (req) => {
+      const last = new Map<bigint, bigint>();
+      for (const o of visibleOrders(req.teamId, undefined)) {
+        if (o.createdByUserId === 0n) continue;
+        if ((last.get(o.createdByUserId) ?? -1n) < o.createdAtUnix) last.set(o.createdByUserId, o.createdAtUnix);
+      }
+
+      const ids = [...last.keys()].sort((a, b) => (last.get(a)! < last.get(b)! ? 1 : -1));
+
+      return {
+        items: [
+          {
+            d: {
+              case: "creator" as const,
+              value: { mapData: Object.fromEntries(ids.map((id) => [id.toString(), { userId: id, lastAtUnix: last.get(id)! }])) },
+            },
+          },
+        ],
+        ids,
+        pageInfo: { currentPage: 1, totalPage: 1, totalItems: BigInt(ids.length) },
+      };
+    },
+
+    orderStat: (req) => {
+      const rows = visibleOrders(req.teamId, req.filter);
+
+      const counts = new Map<OrderStatus, { status: OrderStatus; count: bigint; value: bigint }>();
+      for (const o of rows) {
+        const row = counts.get(o.status) ?? { status: o.status, count: 0n, value: 0n };
+        counts.set(o.status, { status: o.status, count: row.count + 1n, value: row.value + o.total });
+      }
+
+      // The money half: a rolling 30 days, CANCELLED excluded — a cancelled order is not a sale, and
+      // counting one would let a team read revenue it never took.
+      const cutoff = BigInt(Math.floor(Date.now() / 1000) - 30 * 86_400);
+      const recent = rows.filter((o) => o.status !== OrderStatus.CANCELLED && o.createdAtUnix >= cutoff);
+
+      return {
+        preview: {
+          orders30d: BigInt(recent.length),
+          revenue30d: recent.reduce((sum, o) => sum + o.total, 0n),
+        },
+        // One entry per status that HAS orders; a status with none is ABSENT rather than a zero row,
+        // exactly as the proto says. The page renders the gaps itself.
+        byStatus: [...counts.values()],
+      };
+    },
+  });
+
+  service(OrderDraftService, {
+    // A draft is team-scoped AND personal, and — unlike an order — it has only ONE side: it belongs
+    // to the team that typed it. So this is a plain `teamId` match, and a warehouse's list is empty
+    // because a warehouse never types one.
+    // Newest first unless ASC is asked for — the server's `id DESC` default, which the drafts screen's
+    // "oldest" card reverses to read the first draft ever written.
+    orderDraftList: (req) =>
+      pagedColumnar(
+        "orderDraft",
+        orderDrafts
+          .filter((d) => d.teamId === req.teamId)
+          .filter((d) => !req.filter?.source || d.source === req.filter.source)
+          .slice()
+          .sort((a, b) => {
+            const asc = req.sort?.sortType === CommonSortType.ASC;
+            return (a.id < b.id ? -1 : a.id > b.id ? 1 : 0) * (asc ? 1 : -1);
+          }),
+        req.page,
+      ),
+
+    // Save-as-draft is TWO calls, and the stub has to honour that or the second half is untested:
+    // PUSH writes the draft but IGNORES product_id on every line, then UPDATE carries the mapping.
+    // So the lines come back here with `productId: 0n` — exactly as the server would return them —
+    // and the page's follow-up update is what fills them in.
+    orderDraftPush: (req) => ({
+      created: true,
+      draft: {
+        id: 901n,
+        items: req.items.map((item, i) => ({
+          id: BigInt(910 + i),
+          externalSku: item.externalSku,
+          externalName: item.externalName,
+          productId: 0n,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      },
+    }),
+    orderDraftUpdate: (req) => ({ draft: { id: req.draftId } }),
+
+    // ONE side, like the list: a draft another team typed is NotFound, never "forbidden".
+    orderDraftDetail: (req) => {
+      const draft = orderDraftDetailFor(req.draftId);
+      if (!draft || draft.teamId !== req.teamId) {
+        throw new ConnectError("draft not found", Code.NotFound);
+      }
+
+      return { draft };
+    },
+
+    // Counts only the ids that are this team's — an id that is not the caller's is SKIPPED, not a
+    // failure (order_draft.proto), so `deleted` can be smaller than what was asked. Stateless, like the
+    // fulfilment steps: the list keeps its rows, and the story asserts on the toast.
+    orderDraftDelete: (req) => ({
+      deleted: req.draftIds.filter((id) => orderDrafts.some((d) => d.id === id && d.teamId === req.teamId))
+        .length,
+    }),
+
+    // The draft becomes an order with a new id — the page navigates there, which is what a story
+    // asserts on.
+    orderDraftPromote: () => ({ order: { id: 902n } }),
+  });
+
+  service(LiabilityService, {
+    // One row per counterparty — what each of them owes this team, which is what a credit limit is
+    // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
+    // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
+    liabilityPositionList: (req) => {
+      const set = liabilityPositions.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
+
+      // ⚠ THE SUMMARY IS COMPUTED OVER `set`, NEVER OVER THE PAGE — the stub models the server, and
+      // the whole point of these fields is that the tiles cannot be a reduce of what loaded. A stub
+      // that summed the page would make the bug they retire untestable.
+      const oldest = set
+        .filter((p) => p.oldestUnsettledAtUnix > 0n)
+        .sort((a, b) => Number(a.oldestUnsettledAtUnix - b.oldestUnsettledAtUnix))[0];
+
+      return {
+        ...pagedColumnarBy("position", set, (p) => p.counterpartyId, req.page),
+        awaitingConfirmation: 0,
+        totalReceivable: set.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n),
+        // A MAGNITUDE, as the wire carries it — direction is words on this screen, never a sign.
+        totalPayable: set.reduce((s, p) => (p.balance < 0n ? s - p.balance : s), 0n),
+        oldestUnsettledCounterpartyId: oldest?.counterpartyId ?? 0n,
+        oldestUnsettledAtUnix: oldest?.oldestUnsettledAtUnix ?? 0n,
+      };
+    },
+
+    // The pair ledger — what the pair detail page reads.
+    //
+    // ⚠ `balance` is the pair's CURRENT net, not the sum of the returned window. The screen shows
+    // both, and a stub deriving one from the other would hide a real difference between them.
+    liabilityLogList: (req) => ({
+      ...pagedColumnar(
+        "entry",
+        liabilityEntries.filter((e) => e.counterpartyId === req.filter?.counterpartyId),
+        req.page,
+      ),
+      balance:
+        liabilityPositions.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
+    }),
+
+    // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
+    // it treats as earnings. It picks ORDER_FEE alone: COD reimburses cash already handed to a
+    // courier, so summing every source and calling it income counts money nobody earned.
+    liabilityDaily: (req) => {
+      const days = periodDays(liabilityDays, req.teamId, req.filter);
+      const bySource: Record<number, bigint> = {};
+
+      const perDay = days.map((d) => {
+        // A source with nothing that day is ABSENT rather than 0 — the contract's choice, and the
+        // reason every reader of these maps has to default rather than index blindly.
+        const sources: Record<number, bigint> = {};
+        if (d.handlingFee !== 0n) sources[LiabilitySourceType.ORDER_FEE] = d.handlingFee;
+        if (d.codFee !== 0n) sources[LiabilitySourceType.INCIDENTAL_FEE] = d.codFee;
+
+        addInto(bySource, sources);
+
+        return {
+          date: d.date,
+          entries: BigInt(Object.keys(sources).length),
+          net: sumMap(sources),
+          bySource: sources,
+        };
+      });
+
+      return { days: perDay, totals: { net: sumMap(bySource), bySource } };
+    },
+  });
+
+  service(LiabilityPaymentService, {
+    // Both sides' payments for one pair. `awaitingMyConfirmation` is a SERVER-side filter, so the
+    // stub honours it rather than letting the screen narrow — a paginated list filtered on the
+    // client reports the unfiltered total beside the wrong rows.
+    liabilityPaymentList: (req) =>
+      pagedColumnar(
+        "payment",
+        paymentsTable.filter(
+          (p) =>
+            (p.payerTeamId === req.filter?.counterpartyId ||
+              p.creditorTeamId === req.filter?.counterpartyId) &&
+            (!req.filter?.awaitingMyConfirmation || p.status === 1),
+        ),
+        req.page,
+      ),
+
+    // REJECT — the `no` arm of §Payment Flow. ⚠ IT POSTS NOTHING, so unlike confirm the stub mutates
+    // only the claim's own row: a stub that also moved a balance would be modelling the bug this
+    // state exists to prevent.
+    liabilityPaymentReject: (req) => {
+      const row = paymentsTable.find((p) => p.id === req.paymentId);
+
+      if (!row) {
+        throw new ConnectError("payment not found", Code.NotFound);
+      }
+
+      if (row.status !== 1) {
+        throw new ConnectError("only a recorded payment can be rejected", Code.FailedPrecondition);
+      }
+
+      row.status = 4;
+      row.reason = req.reason;
+
+      return { payment: row };
+    },
+  });
+
+  // UPLOADS — see `stubUploads()` above for the PUT in the middle. The e2e still exercise the real
+  // storage path; this only lets a story (and the person reviewing it) actually attach a file.
+  service(DocumentService, {
+    requestUpload: (req) => {
+      const token = `upload-${++uploadSeq}`;
+      pendingUploads.set(token, {
+        teamId: req.teamId,
+        resourceType: req.resourceType,
+        filename: req.filename,
+        mimeType: req.contentType,
+        sizeBytes: req.sizeBytes,
+      });
+
+      return {
+        uploadUrl: `${STUB_UPLOAD_ORIGIN}/${token}`,
+        method: "PUT",
+        headers: { "Content-Type": req.contentType },
+        uploadToken: token,
+        expiresAtUnix: BigInt(Math.floor(Date.now() / 1000) + 15 * 60),
+      };
+    },
+    confirmUpload: (req) => {
+      const pending = pendingUploads.get(req.uploadToken);
+      if (!pending?.objectUrl) {
+        throw new ConnectError("upload not found, or its bytes were never PUT", Code.NotFound);
+      }
+      pendingUploads.delete(req.uploadToken);
+
+      const id = `stub-${req.uploadToken}`;
+      uploadedDocs.set(id, pending.objectUrl);
+      const publicUrl = PUBLIC_DOCUMENTS.has(pending.resourceType) ? pending.objectUrl : "";
+
+      return {
+        document: {
+          id,
+          teamId: pending.teamId,
+          resourceType: pending.resourceType,
+          filename: pending.filename,
+          mimeType: pending.mimeType,
+          sizeBytes: pending.sizeBytes,
+          publicUrl,
+          thumbnailUrl: publicUrl,
+        },
+      };
+    },
+    // A document uploaded in this story opens its own bytes; a fixture id (a proof the fixtures name)
+    // gets a placeholder, as before.
+    getDownloadUrl: (req) => ({
+      url: uploadedDocs.get(req.documentId) ?? `https://example.invalid/proof/${req.documentId}`,
+    }),
+  });
+
+  service(LiabilityTermsService, {
+    // ⚠ Keyed by counterparty, and the DEFAULT row's key is 0 — see pagedColumnarBy.
+    liabilityTermsList: (req) =>
+      pagedColumnarBy(
+        "terms",
+        termsTable.filter((x) => x.teamId === req.teamId),
+        (x) => x.counterpartyId,
+        req.page,
+      ),
+
+    // Create-or-update on (team, counterparty), as the server does.
+    //
+    // ⚠ `creditLimit` is carried through as `undefined` when absent, NEVER coerced to 0. That
+    // coercion is the exact bug the optional field exists to prevent, and a stub that flattened it
+    // would make the screen's three-way control untestable.
+    liabilityTermsSet: (req) => {
+      const row = {
+        teamId: req.teamId,
+        counterpartyId: req.counterpartyId,
+        handlingFee: req.handlingFee,
+        productMarkupBp: req.productMarkupBp,
+        creditLimit: req.creditLimit,
+        reason: req.reason,
+      };
+
+      const at = termsTable.findIndex(
+        (x) => x.teamId === req.teamId && x.counterpartyId === req.counterpartyId,
+      );
+      if (at >= 0) termsTable[at] = row;
+      else termsTable = [...termsTable, row];
+
+      return { terms: row };
+    },
+
+    // A real delete — the only way to say "unlimited" once a limit exists.
+    liabilityTermsDelete: (req) => {
+      termsTable = termsTable.filter(
+        (x) => !(x.teamId === req.teamId && x.counterpartyId === req.counterpartyId),
+      );
+      return {};
+    },
+
+    liabilityTermsHistoryList: (req) =>
+      pagedColumnarBy(
+        "change",
+        liabilityTermsChanges.filter(
+          (c) => req.filter?.counterpartyId === undefined || c.counterpartyId === req.filter.counterpartyId,
+        ),
+        (c) => c.id,
+        req.page,
+      ),
+  });
+
+  service(ExpenseService, {
+    // The half BOTH modes subtract. One expense record per kind per day, so a day's total and its
+    // entry count are both derived from the fixture's map and cannot disagree with each other.
+    expenseDaily: (req) => {
+      const wanted = req.filter?.kind ?? ExpenseKind.UNSPECIFIED;
+      const byKindTotal: Record<number, bigint> = {};
+
+      const perDay = periodDays(expenseDays, req.teamId, req.filter)
+        .map((d) => {
+          // UNSPECIFIED is the "any kind" filter (#170), not a kind of its own — so narrowing is
+          // exactly dropping the other keys, and a day left holding nothing drops out of the series
+          // rather than reporting a 0 the sparse contract says should be absent.
+          const only = d.byKind[wanted];
+          const byKind: Record<number, bigint> =
+            wanted === ExpenseKind.UNSPECIFIED
+              ? { ...d.byKind }
+              : only === undefined
+                ? {}
+                : { [wanted]: only };
+
+          addInto(byKindTotal, byKind);
+
+          return {
+            date: d.date,
+            entries: BigInt(Object.keys(byKind).length),
+            total: sumMap(byKind),
+            byKind,
+          };
+        })
+        .filter((d) => d.entries > 0n);
+
+      return { days: perDay, totals: { total: sumMap(byKindTotal), byKind: byKindTotal } };
+    },
+  });
+
+  // The MARKETPLACE payout ledger. The fixtures are the design prototype's own
+  // (src/pages/order-settlement/fixtures.ts), so a story asserts against the same numbers the
+  // accepted design was reviewed with.
+  service(SettlementService, {
+    orderSettlementDetail: (req) => {
+      // ⚠ THE TWO FIXTURE SETS WERE AUTHORED INDEPENDENTLY. The settlement prototype predates this
+      // contract and numbers its orders 1-6; the order fixtures use 101+. Rather than renumber either
+      // (both are reviewed artefacts), order 101 — the one written out in full — is bridged to the
+      // WORKED example, which is the settlement design's own headline case.
+      const found =
+        req.orderId === 101n
+          ? settlementFixtures.worked
+          : settlementFixtures.allOrders.find((o) => o.orderId === req.orderId);
+
+      // ⚠ ABSENT IS NOT EMPTY — the real service answers NotFound for an order never settled, and
+      // the tab renders "not settled yet" rather than a zeroed panel.
+      if (!found) throw new ConnectError("no settlement account", Code.NotFound);
+
+      return {
+        settlement: {
+          orderId: found.orderId,
+          initialTotal: found.initialTotal,
+          lastBalance: found.lastBalance,
+          teamId: 1n,
+          shopId: 1n,
+        },
+        entries: found.entries.map((e, i) => ({
+          id: BigInt(i + 1),
+          uniqueId: e.uniqueId,
+          orderId: found.orderId,
+          shopId: 1n,
+          teamId: 1n,
+          actorId: 1n,
+          sourceType: stubSourceType[e.sourceType],
+          settlementType: stubSettlementType[e.settlementType],
+          change: e.change,
+          balance: e.balance,
+          occurredOn: e.occurredOn,
+          postedOn: e.postedOn,
+          reversesId: e.reversesId ? BigInt(e.reversesId) : 0n,
+          note: e.note ?? "",
+          actorName: e.actorName,
+        })),
+      };
+    },
+  });
+
+  // THE SETTLEMENT REPORTS, folded from one consistent book (fixtures: settlementReportDays). The stub
+  // does the server's arithmetic — every bucket in the window including the quiet ones, movements
+  // summed, the position carried — so a story checks the screen against the same rules the RPC keeps.
+  service(SettlementAnalyticService, {
+    analyticTimeSearch: (req) => {
+      const start = req.filter?.dateRange?.startDate ?? "";
+      const end = req.filter?.dateRange?.endDate ?? "";
+      const width =
+        req.timeframe === AnalyticTimeframe.MONTHLY ? 7 : req.timeframe === AnalyticTimeframe.YEARLY ? 4 : 10;
+
+      const book = reportBook(req.teamId);
+
+      const points = reportBuckets(start, end, width).map((bucket) => ({
+        at: width === 10 ? bucket : width === 7 ? `${bucket}-01` : `${bucket}-01-01`,
+        metric: reportMetric(
+          book.filter((d) => d.date >= start && d.date <= end && d.date.slice(0, width) === bucket),
+          book.filter((d) => d.date <= end && d.date.slice(0, width) <= bucket),
+        ),
+      }));
+
+      if (req.sortType === CommonSortType.DESC) points.reverse();
+
+      const limit = req.page?.limit ?? 20;
+      const page = req.page?.page ?? 1;
+
+      return {
+        datas: points.slice((page - 1) * limit, page * limit),
+        pageInfo: {
+          currentPage: page,
+          totalPage: Math.ceil(points.length / limit),
+          totalItems: BigInt(points.length),
+        },
+      };
+    },
+
+    analyticGroupSearch: (req) => {
+      const rows = reportGroups(req.filter?.groupType);
+      const limit = req.page?.limit ?? 20;
+      const page = req.page?.page ?? 1;
+
+      return {
+        // Ranked by the shortfall carried — the most negative position first.
+        ids: rows.slice((page - 1) * limit, page * limit).map((g) => g.id),
+        pageInfo: {
+          currentPage: page,
+          totalPage: Math.ceil(rows.length / limit),
+          totalItems: BigInt(rows.length),
+        },
+      };
+    },
+
+    analyticGroupMetric: (req) => {
+      const start = req.filter?.dateRange?.startDate ?? "";
+      const end = req.filter?.dateRange?.endDate ?? "";
+
+      if (req.filter?.groupType === AnalyticGroupType.TEAM) {
+        const book = reportBook(req.teamId);
+
+        return {
+          metrics: {
+            [req.teamId.toString()]: reportMetric(
+              book.filter((d) => d.date >= start && d.date <= end),
+              book.filter((d) => d.date <= end),
+            ),
+          },
+        };
+      }
+
+      const rows = reportGroups(req.filter?.groupType);
+
+      return {
+        metrics: Object.fromEntries(
+          req.ids.map((id) => {
+            const group = rows.find((g) => g.id === id);
+
+            return [id.toString(), group ? groupMetric(group) : reportMetric([], [])];
+          }),
+        ),
+      };
+    },
+  });
+
+  // The settlement importer, served with the rules it owns: another team's file is absent, and each
+  // import runs whether or not its stream is still being read.
+  // The financial accounts — the prototype stub, in its own module because it is the whole service
+  // (financialAccountStub.ts): a writeable ledger plus the reports read from it.
+  service(FinancialAccountService, financialAccountService);
+  service(FinancialAccountAnalyticService, financialAccountAnalyticService);
+
+  service(SettlementImporterService, {
+    uploadedFileList: (req) => {
+      const rows = importsTable
+        .filter((f) => f.teamId === req.teamId)
+        .filter((f) => !req.filter?.shopId || f.shopId === req.filter.shopId)
+        .filter((f) => !req.filter?.platform || f.platform === req.filter.platform)
+        .filter((f) => !req.filter?.statuses?.length || req.filter.statuses.includes(f.status));
+
+      return pagedColumnar("file", rows, req.page as PageReq);
+    },
+    uploadedFileByIds: (req) =>
+      byIds(
+        "file",
+        importsTable.filter((f) => f.teamId === req.teamId),
+        req.filter?.ids ?? [],
+      ),
+    uploadedFileLineList: (req) => {
+      const fileId = req.filter?.uploadedFileId ?? 0n;
+      const owned = importsTable.some((f) => f.id === fileId && f.teamId === req.teamId);
+      const outcomes = req.filter?.outcomes ?? [];
+      const reasons = req.filter?.reasons ?? [];
+      const rows = owned
+        ? importLinesTable
+            .filter((l) => l.uploadedFileId === fileId)
+            .filter((l) => outcomes.length === 0 || outcomes.includes(l.outcome))
+            .filter((l) => reasons.length === 0 || reasons.includes(l.reason))
+        : [];
+
+      return pagedColumnar("line", rows, req.page as PageReq);
+    },
+    tiktokSettlementImport: (req) => stubImport(req, Marketplace.TIKTOK),
+    shopeeSettlementImport: (req) => stubImport(req, Marketplace.SHOPEE),
+  });
+});
+
+// ── The settlement reports' arithmetic ──────────────────────────────────────────────────────────
+
+type ReportDay = (typeof settlementReportDays)[number] & { date: string };
+
+function reportBook(teamId: bigint): ReportDay[] {
+  return settlementReportDays
+    .filter((d) => d.teamId === teamId)
+    .map((d) => ({ ...d, date: dayKey(d.ago) }));
+}
+
+const changeOf = (d: ReportDay) =>
+  d.initialTotal + d.initialTotalCancel + d.fund + d.externalAdsFee + d.marketplaceAdjustment + d.withdrawal;
+
+const sumOf = (rows: ReportDay[], pick: (d: ReportDay) => bigint) =>
+  rows.reduce((total, d) => total + pick(d), 0n);
+
+// One SettlementMetric: the movements in the bucket, and the position carried up to its end.
+function reportMetric(movements: ReportDay[], upToEnd: ReportDay[]) {
+  const change = sumOf(movements, changeOf);
+  const close = sumOf(upToEnd, changeOf);
+
+  return {
+    initialTotal: sumOf(movements, (d) => d.initialTotal),
+    initialTotalCancel: sumOf(movements, (d) => d.initialTotalCancel),
+    other: 0n,
+    fund: sumOf(movements, (d) => d.fund),
+    externalAdsFee: sumOf(movements, (d) => d.externalAdsFee),
+    affiliateFee: 0n,
+    marketplaceAdjustment: sumOf(movements, (d) => d.marketplaceAdjustment),
+    systemAdjustment: 0n,
+    withdrawal: sumOf(movements, (d) => d.withdrawal),
+    shipmentAdjustment: 0n,
+    logisticReimbursement: 0n,
+    platformReimbursement: 0n,
+    marketplaceProgram: 0n,
+    change,
+    openBalance: close - change,
+    closeBalance: close,
+  };
+}
+
+// Every bucket label from start to end, ascending — `yyyy-mm-dd`, `yyyy-mm` or `yyyy` by width.
+function reportBuckets(start: string, end: string, width: number): string[] {
+  const first = Date.parse(`${start}T00:00:00Z`);
+  const last = Date.parse(`${end}T00:00:00Z`);
+
+  if (Number.isNaN(first) || Number.isNaN(last)) return [];
+
+  const out: string[] = [];
+
+  for (let at = first; at <= last && out.length < 800; at += 86_400_000) {
+    const label = new Date(at).toISOString().slice(0, width);
+    if (out[out.length - 1] !== label) out.push(label);
+  }
+
+  return out;
+}
+
+function reportGroups(groupType: AnalyticGroupType | undefined) {
+  const rows = groupType === AnalyticGroupType.USER ? settlementReportGroups.user : settlementReportGroups.shop;
+
+  return [...rows].sort((a, b) => {
+    const shortfallA = a.received - a.sales;
+    const shortfallB = b.received - b.sales;
+
+    return shortfallA < shortfallB ? -1 : shortfallA > shortfallB ? 1 : 0;
+  });
+}
+
+// A group's whole-window metric: a sale with no cancel, what arrived, and the shortfall that leaves.
+function groupMetric(group: { sales: bigint; received: bigint }) {
+  const change = group.received - group.sales;
+
+  return {
+    initialTotal: -group.sales,
+    initialTotalCancel: 0n,
+    other: 0n,
+    fund: group.received,
+    externalAdsFee: 0n,
+    affiliateFee: 0n,
+    marketplaceAdjustment: 0n,
+    systemAdjustment: 0n,
+    change,
+    openBalance: 0n,
+    closeBalance: change,
+  };
+}

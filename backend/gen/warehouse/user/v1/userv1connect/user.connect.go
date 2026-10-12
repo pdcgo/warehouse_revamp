@@ -41,9 +41,17 @@ const (
 	AuthServiceLogoutProcedure = "/warehouse.user.v1.AuthService/Logout"
 	// AuthServiceCheckAccessProcedure is the fully-qualified name of the AuthService's CheckAccess RPC.
 	AuthServiceCheckAccessProcedure = "/warehouse.user.v1.AuthService/CheckAccess"
+	// AuthServiceRequestPasswordResetOtpProcedure is the fully-qualified name of the AuthService's
+	// RequestPasswordResetOtp RPC.
+	AuthServiceRequestPasswordResetOtpProcedure = "/warehouse.user.v1.AuthService/RequestPasswordResetOtp"
+	// AuthServiceResetPasswordWithOtpProcedure is the fully-qualified name of the AuthService's
+	// ResetPasswordWithOtp RPC.
+	AuthServiceResetPasswordWithOtpProcedure = "/warehouse.user.v1.AuthService/ResetPasswordWithOtp"
 	// UserServiceTeamAccessListProcedure is the fully-qualified name of the UserService's
 	// TeamAccessList RPC.
 	UserServiceTeamAccessListProcedure = "/warehouse.user.v1.UserService/TeamAccessList"
+	// UserServiceUserTeamsProcedure is the fully-qualified name of the UserService's UserTeams RPC.
+	UserServiceUserTeamsProcedure = "/warehouse.user.v1.UserService/UserTeams"
 	// UserServiceTeamUserUpdateProcedure is the fully-qualified name of the UserService's
 	// TeamUserUpdate RPC.
 	UserServiceTeamUserUpdateProcedure = "/warehouse.user.v1.UserService/TeamUserUpdate"
@@ -64,8 +72,11 @@ const (
 	UserServiceUpdateUserProcedure = "/warehouse.user.v1.UserService/UpdateUser"
 	// UserServiceSuspendUserProcedure is the fully-qualified name of the UserService's SuspendUser RPC.
 	UserServiceSuspendUserProcedure = "/warehouse.user.v1.UserService/SuspendUser"
-	// UserServiceDeleteUserProcedure is the fully-qualified name of the UserService's DeleteUser RPC.
-	UserServiceDeleteUserProcedure = "/warehouse.user.v1.UserService/DeleteUser"
+	// UserServiceUserEraseProcedure is the fully-qualified name of the UserService's UserErase RPC.
+	UserServiceUserEraseProcedure = "/warehouse.user.v1.UserService/UserErase"
+	// UserServiceTeamMemberLogListProcedure is the fully-qualified name of the UserService's
+	// TeamMemberLogList RPC.
+	UserServiceTeamMemberLogListProcedure = "/warehouse.user.v1.UserService/TeamMemberLogList"
 	// UserServiceUserListProcedure is the fully-qualified name of the UserService's UserList RPC.
 	UserServiceUserListProcedure = "/warehouse.user.v1.UserService/UserList"
 	// UserServiceUserByIDsProcedure is the fully-qualified name of the UserService's UserByIDs RPC.
@@ -79,6 +90,10 @@ type AuthServiceClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	CheckAccess(context.Context, *connect.Request[v1.CheckAccessRequest]) (*connect.Response[v1.CheckAccessResponse], error)
+	// The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+	// the account's phone, then reset the password with it.
+	RequestPasswordResetOtp(context.Context, *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error)
+	ResetPasswordWithOtp(context.Context, *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the warehouse.user.v1.AuthService service. By
@@ -110,14 +125,28 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("CheckAccess")),
 			connect.WithClientOptions(opts...),
 		),
+		requestPasswordResetOtp: connect.NewClient[v1.RequestPasswordResetOtpRequest, v1.RequestPasswordResetOtpResponse](
+			httpClient,
+			baseURL+AuthServiceRequestPasswordResetOtpProcedure,
+			connect.WithSchema(authServiceMethods.ByName("RequestPasswordResetOtp")),
+			connect.WithClientOptions(opts...),
+		),
+		resetPasswordWithOtp: connect.NewClient[v1.ResetPasswordWithOtpRequest, v1.ResetPasswordWithOtpResponse](
+			httpClient,
+			baseURL+AuthServiceResetPasswordWithOtpProcedure,
+			connect.WithSchema(authServiceMethods.ByName("ResetPasswordWithOtp")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	login       *connect.Client[v1.LoginRequest, v1.LoginResponse]
-	logout      *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
-	checkAccess *connect.Client[v1.CheckAccessRequest, v1.CheckAccessResponse]
+	login                   *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	logout                  *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
+	checkAccess             *connect.Client[v1.CheckAccessRequest, v1.CheckAccessResponse]
+	requestPasswordResetOtp *connect.Client[v1.RequestPasswordResetOtpRequest, v1.RequestPasswordResetOtpResponse]
+	resetPasswordWithOtp    *connect.Client[v1.ResetPasswordWithOtpRequest, v1.ResetPasswordWithOtpResponse]
 }
 
 // Login calls warehouse.user.v1.AuthService.Login.
@@ -135,11 +164,25 @@ func (c *authServiceClient) CheckAccess(ctx context.Context, req *connect.Reques
 	return c.checkAccess.CallUnary(ctx, req)
 }
 
+// RequestPasswordResetOtp calls warehouse.user.v1.AuthService.RequestPasswordResetOtp.
+func (c *authServiceClient) RequestPasswordResetOtp(ctx context.Context, req *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error) {
+	return c.requestPasswordResetOtp.CallUnary(ctx, req)
+}
+
+// ResetPasswordWithOtp calls warehouse.user.v1.AuthService.ResetPasswordWithOtp.
+func (c *authServiceClient) ResetPasswordWithOtp(ctx context.Context, req *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error) {
+	return c.resetPasswordWithOtp.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the warehouse.user.v1.AuthService service.
 type AuthServiceHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	CheckAccess(context.Context, *connect.Request[v1.CheckAccessRequest]) (*connect.Response[v1.CheckAccessResponse], error)
+	// The forgot-password flow — UNAUTHENTICATED, for a user who cannot log in. Request an OTP to
+	// the account's phone, then reset the password with it.
+	RequestPasswordResetOtp(context.Context, *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error)
+	ResetPasswordWithOtp(context.Context, *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -167,6 +210,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("CheckAccess")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceRequestPasswordResetOtpHandler := connect.NewUnaryHandler(
+		AuthServiceRequestPasswordResetOtpProcedure,
+		svc.RequestPasswordResetOtp,
+		connect.WithSchema(authServiceMethods.ByName("RequestPasswordResetOtp")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceResetPasswordWithOtpHandler := connect.NewUnaryHandler(
+		AuthServiceResetPasswordWithOtpProcedure,
+		svc.ResetPasswordWithOtp,
+		connect.WithSchema(authServiceMethods.ByName("ResetPasswordWithOtp")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.user.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceLoginProcedure:
@@ -175,6 +230,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceLogoutHandler.ServeHTTP(w, r)
 		case AuthServiceCheckAccessProcedure:
 			authServiceCheckAccessHandler.ServeHTTP(w, r)
+		case AuthServiceRequestPasswordResetOtpProcedure:
+			authServiceRequestPasswordResetOtpHandler.ServeHTTP(w, r)
+		case AuthServiceResetPasswordWithOtpProcedure:
+			authServiceResetPasswordWithOtpHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -196,10 +255,22 @@ func (UnimplementedAuthServiceHandler) CheckAccess(context.Context, *connect.Req
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.AuthService.CheckAccess is not implemented"))
 }
 
+func (UnimplementedAuthServiceHandler) RequestPasswordResetOtp(context.Context, *connect.Request[v1.RequestPasswordResetOtpRequest]) (*connect.Response[v1.RequestPasswordResetOtpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.AuthService.RequestPasswordResetOtp is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) ResetPasswordWithOtp(context.Context, *connect.Request[v1.ResetPasswordWithOtpRequest]) (*connect.Response[v1.ResetPasswordWithOtpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.AuthService.ResetPasswordWithOtp is not implemented"))
+}
+
 // UserServiceClient is a client for the warehouse.user.v1.UserService service.
 type UserServiceClient interface {
 	// TeamAccessList — the session bootstrap: which teams am I in, and as what.
 	TeamAccessList(context.Context, *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error)
+	// UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+	// only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+	// go blank if it is unreachable, never failing the call.
+	UserTeams(context.Context, *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error)
 	// TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
 	TeamUserUpdate(context.Context, *connect.Request[v1.TeamUserUpdateRequest]) (*connect.Response[v1.TeamUserUpdateResponse], error)
 	// RoleResolve is how OTHER services check a caller's role without reading this service's
@@ -219,8 +290,18 @@ type UserServiceClient interface {
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
 	SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error)
-	// DeleteUser removes an account and, by FK cascade, all of its memberships.
-	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
+	// they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
+	// Administrator, and never a Root or another Administrator.
+	//
+	// ⚠ CONTRACT ONLY — accepted at design_accept with the screens. The handler answers Unimplemented
+	// until the backend is built.
+	UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error)
+	// TeamMemberLogList — the history of one team's membership: every add, role change and removal,
+	// who did it, and when (every-role-change-is-logged). Newest first.
+	//
+	// ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
+	TeamMemberLogList(context.Context, *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error)
 	// UserList — paginated, team-scoped.
 	UserList(context.Context, *connect.Request[v1.UserListRequest]) (*connect.Response[v1.UserListResponse], error)
 	// UserByIDs bulk-resolves users by id, for turning an id into a name.
@@ -244,6 +325,12 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+UserServiceTeamAccessListProcedure,
 			connect.WithSchema(userServiceMethods.ByName("TeamAccessList")),
+			connect.WithClientOptions(opts...),
+		),
+		userTeams: connect.NewClient[v1.UserTeamsRequest, v1.UserTeamsResponse](
+			httpClient,
+			baseURL+UserServiceUserTeamsProcedure,
+			connect.WithSchema(userServiceMethods.ByName("UserTeams")),
 			connect.WithClientOptions(opts...),
 		),
 		teamUserUpdate: connect.NewClient[v1.TeamUserUpdateRequest, v1.TeamUserUpdateResponse](
@@ -294,10 +381,16 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceMethods.ByName("SuspendUser")),
 			connect.WithClientOptions(opts...),
 		),
-		deleteUser: connect.NewClient[v1.DeleteUserRequest, v1.DeleteUserResponse](
+		userErase: connect.NewClient[v1.UserEraseRequest, v1.UserEraseResponse](
 			httpClient,
-			baseURL+UserServiceDeleteUserProcedure,
-			connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
+			baseURL+UserServiceUserEraseProcedure,
+			connect.WithSchema(userServiceMethods.ByName("UserErase")),
+			connect.WithClientOptions(opts...),
+		),
+		teamMemberLogList: connect.NewClient[v1.TeamMemberLogListRequest, v1.TeamMemberLogListResponse](
+			httpClient,
+			baseURL+UserServiceTeamMemberLogListProcedure,
+			connect.WithSchema(userServiceMethods.ByName("TeamMemberLogList")),
 			connect.WithClientOptions(opts...),
 		),
 		userList: connect.NewClient[v1.UserListRequest, v1.UserListResponse](
@@ -324,6 +417,7 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
 	teamAccessList     *connect.Client[v1.TeamAccessListRequest, v1.TeamAccessListResponse]
+	userTeams          *connect.Client[v1.UserTeamsRequest, v1.UserTeamsResponse]
 	teamUserUpdate     *connect.Client[v1.TeamUserUpdateRequest, v1.TeamUserUpdateResponse]
 	roleResolve        *connect.Client[v1.RoleResolveRequest, v1.RoleResolveResponse]
 	createUser         *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
@@ -332,7 +426,8 @@ type userServiceClient struct {
 	updateProfile      *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 	updateUser         *connect.Client[v1.UpdateUserRequest, v1.UpdateUserResponse]
 	suspendUser        *connect.Client[v1.SuspendUserRequest, v1.SuspendUserResponse]
-	deleteUser         *connect.Client[v1.DeleteUserRequest, v1.DeleteUserResponse]
+	userErase          *connect.Client[v1.UserEraseRequest, v1.UserEraseResponse]
+	teamMemberLogList  *connect.Client[v1.TeamMemberLogListRequest, v1.TeamMemberLogListResponse]
 	userList           *connect.Client[v1.UserListRequest, v1.UserListResponse]
 	userByIDs          *connect.Client[v1.UserByIDsRequest, v1.UserByIDsResponse]
 	searchUser         *connect.Client[v1.SearchUserRequest, v1.SearchUserResponse]
@@ -341,6 +436,11 @@ type userServiceClient struct {
 // TeamAccessList calls warehouse.user.v1.UserService.TeamAccessList.
 func (c *userServiceClient) TeamAccessList(ctx context.Context, req *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error) {
 	return c.teamAccessList.CallUnary(ctx, req)
+}
+
+// UserTeams calls warehouse.user.v1.UserService.UserTeams.
+func (c *userServiceClient) UserTeams(ctx context.Context, req *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error) {
+	return c.userTeams.CallUnary(ctx, req)
 }
 
 // TeamUserUpdate calls warehouse.user.v1.UserService.TeamUserUpdate.
@@ -383,9 +483,14 @@ func (c *userServiceClient) SuspendUser(ctx context.Context, req *connect.Reques
 	return c.suspendUser.CallUnary(ctx, req)
 }
 
-// DeleteUser calls warehouse.user.v1.UserService.DeleteUser.
-func (c *userServiceClient) DeleteUser(ctx context.Context, req *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
-	return c.deleteUser.CallUnary(ctx, req)
+// UserErase calls warehouse.user.v1.UserService.UserErase.
+func (c *userServiceClient) UserErase(ctx context.Context, req *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error) {
+	return c.userErase.CallUnary(ctx, req)
+}
+
+// TeamMemberLogList calls warehouse.user.v1.UserService.TeamMemberLogList.
+func (c *userServiceClient) TeamMemberLogList(ctx context.Context, req *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error) {
+	return c.teamMemberLogList.CallUnary(ctx, req)
 }
 
 // UserList calls warehouse.user.v1.UserService.UserList.
@@ -407,6 +512,10 @@ func (c *userServiceClient) SearchUser(ctx context.Context, req *connect.Request
 type UserServiceHandler interface {
 	// TeamAccessList — the session bootstrap: which teams am I in, and as what.
 	TeamAccessList(context.Context, *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error)
+	// UserTeams — the teams a GIVEN user has joined, for the admin user-detail view. Root/admin
+	// only, and the same cross-service degrade as TeamAccessList: names come from team_service and
+	// go blank if it is unreachable, never failing the call.
+	UserTeams(context.Context, *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error)
 	// TeamUserUpdate — add / remove a team membership. The canonical SCOPED RPC.
 	TeamUserUpdate(context.Context, *connect.Request[v1.TeamUserUpdateRequest]) (*connect.Response[v1.TeamUserUpdateResponse], error)
 	// RoleResolve is how OTHER services check a caller's role without reading this service's
@@ -426,8 +535,18 @@ type UserServiceHandler interface {
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 	// SuspendUser blocks (or unblocks) an account.
 	SuspendUser(context.Context, *connect.Request[v1.SuspendUserRequest]) (*connect.Response[v1.SuspendUserResponse], error)
-	// DeleteUser removes an account and, by FK cascade, all of its memberships.
-	DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error)
+	// UserErase blanks a FORMER user's personal data and keeps the row and the id, so every record
+	// they made still resolves (erase-keeps-the-row). Only an already-suspended account; Root and the
+	// Administrator, and never a Root or another Administrator.
+	//
+	// ⚠ CONTRACT ONLY — accepted at design_accept with the screens. The handler answers Unimplemented
+	// until the backend is built.
+	UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error)
+	// TeamMemberLogList — the history of one team's membership: every add, role change and removal,
+	// who did it, and when (every-role-change-is-logged). Newest first.
+	//
+	// ⚠ CONTRACT ONLY — the handler answers Unimplemented until the log table exists.
+	TeamMemberLogList(context.Context, *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error)
 	// UserList — paginated, team-scoped.
 	UserList(context.Context, *connect.Request[v1.UserListRequest]) (*connect.Response[v1.UserListResponse], error)
 	// UserByIDs bulk-resolves users by id, for turning an id into a name.
@@ -447,6 +566,12 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		UserServiceTeamAccessListProcedure,
 		svc.TeamAccessList,
 		connect.WithSchema(userServiceMethods.ByName("TeamAccessList")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceUserTeamsHandler := connect.NewUnaryHandler(
+		UserServiceUserTeamsProcedure,
+		svc.UserTeams,
+		connect.WithSchema(userServiceMethods.ByName("UserTeams")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceTeamUserUpdateHandler := connect.NewUnaryHandler(
@@ -497,10 +622,16 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceMethods.ByName("SuspendUser")),
 		connect.WithHandlerOptions(opts...),
 	)
-	userServiceDeleteUserHandler := connect.NewUnaryHandler(
-		UserServiceDeleteUserProcedure,
-		svc.DeleteUser,
-		connect.WithSchema(userServiceMethods.ByName("DeleteUser")),
+	userServiceUserEraseHandler := connect.NewUnaryHandler(
+		UserServiceUserEraseProcedure,
+		svc.UserErase,
+		connect.WithSchema(userServiceMethods.ByName("UserErase")),
+		connect.WithHandlerOptions(opts...),
+	)
+	userServiceTeamMemberLogListHandler := connect.NewUnaryHandler(
+		UserServiceTeamMemberLogListProcedure,
+		svc.TeamMemberLogList,
+		connect.WithSchema(userServiceMethods.ByName("TeamMemberLogList")),
 		connect.WithHandlerOptions(opts...),
 	)
 	userServiceUserListHandler := connect.NewUnaryHandler(
@@ -525,6 +656,8 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case UserServiceTeamAccessListProcedure:
 			userServiceTeamAccessListHandler.ServeHTTP(w, r)
+		case UserServiceUserTeamsProcedure:
+			userServiceUserTeamsHandler.ServeHTTP(w, r)
 		case UserServiceTeamUserUpdateProcedure:
 			userServiceTeamUserUpdateHandler.ServeHTTP(w, r)
 		case UserServiceRoleResolveProcedure:
@@ -541,8 +674,10 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 			userServiceUpdateUserHandler.ServeHTTP(w, r)
 		case UserServiceSuspendUserProcedure:
 			userServiceSuspendUserHandler.ServeHTTP(w, r)
-		case UserServiceDeleteUserProcedure:
-			userServiceDeleteUserHandler.ServeHTTP(w, r)
+		case UserServiceUserEraseProcedure:
+			userServiceUserEraseHandler.ServeHTTP(w, r)
+		case UserServiceTeamMemberLogListProcedure:
+			userServiceTeamMemberLogListHandler.ServeHTTP(w, r)
 		case UserServiceUserListProcedure:
 			userServiceUserListHandler.ServeHTTP(w, r)
 		case UserServiceUserByIDsProcedure:
@@ -560,6 +695,10 @@ type UnimplementedUserServiceHandler struct{}
 
 func (UnimplementedUserServiceHandler) TeamAccessList(context.Context, *connect.Request[v1.TeamAccessListRequest]) (*connect.Response[v1.TeamAccessListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.TeamAccessList is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) UserTeams(context.Context, *connect.Request[v1.UserTeamsRequest]) (*connect.Response[v1.UserTeamsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.UserTeams is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) TeamUserUpdate(context.Context, *connect.Request[v1.TeamUserUpdateRequest]) (*connect.Response[v1.TeamUserUpdateResponse], error) {
@@ -594,8 +733,12 @@ func (UnimplementedUserServiceHandler) SuspendUser(context.Context, *connect.Req
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.SuspendUser is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) DeleteUser(context.Context, *connect.Request[v1.DeleteUserRequest]) (*connect.Response[v1.DeleteUserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.DeleteUser is not implemented"))
+func (UnimplementedUserServiceHandler) UserErase(context.Context, *connect.Request[v1.UserEraseRequest]) (*connect.Response[v1.UserEraseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.UserErase is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) TeamMemberLogList(context.Context, *connect.Request[v1.TeamMemberLogListRequest]) (*connect.Response[v1.TeamMemberLogListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.user.v1.UserService.TeamMemberLogList is not implemented"))
 }
 
 func (UnimplementedUserServiceHandler) UserList(context.Context, *connect.Request[v1.UserListRequest]) (*connect.Response[v1.UserListResponse], error) {

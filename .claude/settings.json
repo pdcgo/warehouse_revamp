@@ -1,4 +1,25 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(graphify:*)",
+      "Bash(.venv/Scripts/graphify.exe:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(go test:*)",
+      "Bash(go doc:*)",
+      "Bash(go tool wire:*)",
+      "Bash(buf lint:*)",
+      "Bash(buf generate)",
+      "Bash(npm run build)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run e2e)",
+      "Bash(npm run lint:mermaid)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(make proto-gen)",
+      "Bash(gh project item-list:*)",
+      "Bash(docker compose config:*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
