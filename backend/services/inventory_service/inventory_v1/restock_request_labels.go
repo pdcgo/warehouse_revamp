@@ -45,8 +45,8 @@ func (s *Service) RestockRequestLabels(
 
 	// Only a delivery that HAPPENED has anything to print. A pending request has no placements yet and
 	// a cancelled one never will — refused rather than returned empty, so the screen can say why.
-	if rr.Status != restockStatusFulfilled {
-		return nil, restockErr(errRestockNotFulfilled)
+	if rr.Status != restockStatusAccepted {
+		return nil, restockErr(errRestockNotAccepted)
 	}
 
 	// One row per placement. The HPP is the accept screen's figure (#155) recomputed for THIS receipt —
@@ -96,7 +96,7 @@ func (s *Service) RestockRequestLabels(
 			  AND r.status = ?
 			  AND i.received_quantity > 0
 			ORDER BY i.id, p.rack_id NULLS LAST`,
-			requestID, warehouseID, restockStatusFulfilled,
+			requestID, warehouseID, restockStatusAccepted,
 		).
 		Scan(&rows).
 		Error
@@ -135,12 +135,10 @@ func (s *Service) RestockRequestLabels(
 			Hpp:       rows[i].HPP,
 		}
 
-		// A nil rack is the unplaced/holding pile — a real place (#135), said out loud rather than
-		// printed as a blank shelf a picker would go looking for.
+		// Every unit in stock is on a placement (there-is-no-unplaced-pile). A row from the old unplaced pile prints
+		// with no code rather than a placement a picker would go looking for.
 		if rows[i].RackID != nil && rows[i].RackCode != nil {
-			label.RackCode = *rows[i].RackCode
-		} else {
-			label.Unplaced = true
+			label.PlacementCode = *rows[i].RackCode
 		}
 
 		labels = append(labels, label)

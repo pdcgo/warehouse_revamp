@@ -41,6 +41,9 @@ func rackOrderClause(sort *inventoryv1.RackListFilterSort) string {
 func rackListItems(
 	racks []inventory_service_models.Rack,
 	types []inventoryv1.RackListDataType,
+	// Each rack's stock and product count, read only when the STOCK slice is asked for (rackStockTotals). A rack missing from it
+	// holds nothing.
+	totals map[uint64]rackTotal,
 ) ([]*inventoryv1.RackListResponseItem, []uint64) {
 	if len(types) == 0 {
 		types = []inventoryv1.RackListDataType{inventoryv1.RackListDataType_RACK_LIST_DATA_TYPE_RACK}
@@ -69,6 +72,19 @@ func rackListItems(
 			}
 			items = append(items, &inventoryv1.RackListResponseItem{
 				D: &inventoryv1.RackListResponseItem_Rack{Rack: &inventoryv1.RackRowMapItem{MapData: m}},
+			})
+		case inventoryv1.RackListDataType_RACK_LIST_DATA_TYPE_STOCK:
+			m := make(map[uint64]*inventoryv1.RackStockTotal, len(racks))
+			for i := range racks {
+				t := totals[racks[i].ID]
+				m[racks[i].ID] = &inventoryv1.RackStockTotal{
+					RackId:       racks[i].ID,
+					StockCount:   t.StockCount,
+					ProductCount: t.ProductCount,
+				}
+			}
+			items = append(items, &inventoryv1.RackListResponseItem{
+				D: &inventoryv1.RackListResponseItem_Stock{Stock: &inventoryv1.RackStockTotalMapItem{MapData: m}},
 			})
 		}
 	}

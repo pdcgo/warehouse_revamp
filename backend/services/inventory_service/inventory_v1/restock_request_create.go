@@ -25,12 +25,10 @@ func (s *Service) RestockRequestCreate(
 	rr := inventory_service_models.RestockRequest{
 		RequestingTeamID: teamID,
 		WarehouseID:      req.Msg.GetWarehouseId(),
-		ShippingCode:     req.Msg.GetShippingCode(),
-		Status:           restockStatusPending,
-		OrderRef:         req.Msg.GetOrderRef(),
+		Status:           restockStatusOngoing,
+		OrderRef:         req.Msg.GetInvoiceRefId(),
 		Receipt:          req.Msg.GetReceipt(),
-		ShippingCost:     req.Msg.GetShippingCost(),
-		PaymentType:      restockPaymentToText(req.Msg.GetPaymentType()),
+		ShippingCost:     req.Msg.GetShipmentCost(),
 		Note:             req.Msg.GetNote(),
 		Items:            restockItemModels(req.Msg.GetItems()),
 		// WHO RAISED IT, from the caller's identity rather than the request body — a client that
@@ -38,7 +36,10 @@ func (s *Service) RestockRequestCreate(
 		CreatedByUserID: actorFrom(ctx),
 	}
 
-	if supplierID := req.Msg.GetSupplierId(); supplierID != 0 {
+	// The supplier the lines name, carried at the restock level until lines store their own (restockLineSupplier).
+	// ⚠ finance_account_id, shipment_id, receipt_file and the line notes have no column until the backend step.
+	if supplier := restockLineSupplier(req.Msg.GetItems()); supplier != nil {
+		supplierID := *supplier
 		rr.SupplierID = &supplierID
 
 		// Asked BEFORE the transaction, never inside one: a call to another service would hold a pooled

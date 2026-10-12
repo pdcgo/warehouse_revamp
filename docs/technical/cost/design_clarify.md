@@ -8,6 +8,12 @@ mine. Answered points are **deleted**, so this is always the current open set.
 > ✅ **No overlap with `stock_design.md`'s COGS** — I had flagged that risk when this file was empty and
 > it did not materialise. That is landed cost *per unit of stock*; this is operating cost *per team*.
 > Different grain, different question. (One link between them is worth checking — see #4.)
+>
+> ✅ **Answered 2026-10-10 and deleted:** Critique 3, my `int64` for cost — decided at the template, as I asked, and the
+> other way: every ledger keeps money as `float64`
+> ([every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
+> It was written before [rupiah-is-floating-point](../../business/order/context_decision.md#rupiah-is-floating-point) and
+> never re-checked after it: [my-clarifies-kept-int64-after-double-was-decided](../../business/teams/warehouse/context_clarify.md#my-clarifies-kept-int64-after-double-was-decided).
 
 ---
 
@@ -17,7 +23,6 @@ mine. Answered points are **deleted**, so this is always the current open set.
 | --- | --- | --- |
 | **1** | **`costs` holds a balance and `cost_logs` holds the costs — the names are the wrong way round.** A "cost" is a thing that happened: an electricity bill, an internet invoice. Those are the **log** rows. `costs` is one accumulator per team, which is not a set of costs at all. Every other ledger here reads correctly because its state table is a real entity — `batches` is a lot of goods, `product_placements` is stock on a shelf — but there is no entity called "a cost" with one row per team. | Name the state for what it is: **`team_cost_balances`** (or `cost_balances`), keeping `cost_logs` as it is — that one is already right, since a log row genuinely *is* one cost. |
 | **2** | **Is `balance` cumulative or outstanding?** The two are different columns with different rules. A lifetime total *"we have spent 40M on electricity"* only ever rises, never decreases, and "balance" is a misleading word for it. An outstanding amount *"we owe 3M for electricity"* falls when paid — which makes it a **liability**, and something must write the decrease. | Say which. If cumulative, call it `spent_total` and note it is monotonic — that also makes the reconcile check trivial (`sum(change)` where every change is positive). If outstanding, the payment that clears it is a second movement this doc has not described yet. |
-| **3** | **No money type stated, and the template's default is `float64`.** Stock justified float by COGS division (`fee / qty`). **Cost has no division** — an electricity bill is an exact amount of rupiah. Inheriting float here imports a rounding problem for a reason that does not apply. | **`int64` rupiah.** This is the second money-only ledger where the stock rationale does not reach (the Payment/Balance one is the other) — worth deciding at the template rather than per doc. |
 | **4** | **`warehouse_ops_fee` may belong to both docs.** `stock_design.md`'s `restock_cost_detail` charges a `warehouse_ops_fee` into COGS. If that fee is *derived from* operating costs tracked here, then one number feeds two ledgers and nothing says how. If it is an unrelated per-restock charge, that is fine — but the name suggests otherwise. | Say whether they are connected. If a restock's ops fee is an allocation out of this ledger, that allocation is itself a movement and needs a log entry on this side. |
 | **5** | **The grain is `team_id` and nothing states the constraint.** A single-column grain makes it obvious, which is exactly why it gets skipped — but it is still the ledger's `ON CONFLICT` target. Without a unique index, two concurrent cost writes for one team insert two state rows and the balance splits. | State `team_id` unique, as `product_placements` states its composite. |
 

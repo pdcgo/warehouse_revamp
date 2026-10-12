@@ -12,9 +12,32 @@
 5. managing placements.
 6. provide solid api for other service. like order for creating order.
 
+## How We Breakdown Complexity in Inventory Service.
+First, we have named `mutations`. Its collection of ready use function that acomodated batch ledger and placement ledger inside opened database transaction.
+
+This is For Example:
+```mermaid
+stateDiagram-v2
+direction LR
+
+state "Api Called" as call
+
+call-->db
+
+db: Database Transaction
+state db {
+    state "Gorm Tx Object" as tx
+    state "PlacementLedgerMutation" as pleg
+    state "Order Function" as ord
+    state "Adjust Function" as adj
+
+    tx-->pleg: pass Tx Object as Parameter
+    pleg-->ord: calling function
+    pleg-->adj: calling function
+}
 
 
-
+```
 
 ## Placements.
 Placement is like warehouse rack or physical placement in warehouse. like "rak 1", "rak ruang tengah" and other.
@@ -28,40 +51,6 @@ Placement have own ledger. [see this](./placement_ledger.md)
 
 ## Batches.
 We have batch in inventory service. Because our product have different price unit across team and across time. for the reference [see this](./batch_ledger.md)
-
-
-
-
-Still Confused.
-
-3. Table `inventory_transactions`
-
-    Field that must have:
-    - `id` as primary key
-
-
-3. Table `inventory_transaction_items`
-
-    Field that must have:
-    - `id` as primary key
-
-
-## Placement Recomendation Feature
-
-## QR Code Labelling
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## Stock loss.

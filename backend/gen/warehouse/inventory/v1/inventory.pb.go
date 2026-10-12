@@ -49,6 +49,9 @@ const (
 	// back because the order died" are different events, and a ledger that could not tell them apart
 	// would make a cancelled order look like a delivery that never happened.
 	MovementKind_MOVEMENT_KIND_RETURN MovementKind = 7
+	// A SAMPLE handed to a person at the warehouse (a-sample-is-handed-over-at-the-warehouse) — the owning team's units
+	// leaving with no sale, off the rack staff took them from. Final: never rolled back (a-handed-over-sample-is-final).
+	MovementKind_MOVEMENT_KIND_SAMPLE MovementKind = 8
 )
 
 // Enum value maps for MovementKind.
@@ -62,6 +65,7 @@ var (
 		5: "MOVEMENT_KIND_PICK",
 		6: "MOVEMENT_KIND_MOVE",
 		7: "MOVEMENT_KIND_RETURN",
+		8: "MOVEMENT_KIND_SAMPLE",
 	}
 	MovementKind_value = map[string]int32{
 		"MOVEMENT_KIND_UNSPECIFIED":  0,
@@ -72,6 +76,7 @@ var (
 		"MOVEMENT_KIND_PICK":         5,
 		"MOVEMENT_KIND_MOVE":         6,
 		"MOVEMENT_KIND_RETURN":       7,
+		"MOVEMENT_KIND_SAMPLE":       8,
 	}
 )
 
@@ -9068,7 +9073,7 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x19OwnerStockHistoryResponse\x12K\n" +
 	"\x05items\x18\x01 \x03(\v25.warehouse.inventory.v1.OwnerStockHistoryResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xeb\x01\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\x85\x02\n" +
 	"\fMovementKind\x12\x1d\n" +
 	"\x19MOVEMENT_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15MOVEMENT_KIND_RECEIVE\x10\x01\x12\x18\n" +
@@ -9077,7 +9082,8 @@ const file_warehouse_inventory_v1_inventory_proto_rawDesc = "" +
 	"\x19MOVEMENT_KIND_TRANSFER_IN\x10\x04\x12\x16\n" +
 	"\x12MOVEMENT_KIND_PICK\x10\x05\x12\x16\n" +
 	"\x12MOVEMENT_KIND_MOVE\x10\x06\x12\x18\n" +
-	"\x14MOVEMENT_KIND_RETURN\x10\a*{\n" +
+	"\x14MOVEMENT_KIND_RETURN\x10\a\x12\x18\n" +
+	"\x14MOVEMENT_KIND_SAMPLE\x10\b*{\n" +
 	"\x11StockListDataType\x12$\n" +
 	" STOCK_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cSTOCK_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1e\n" +

@@ -53,7 +53,7 @@ func TestRestockActorList_ThePeopleOnTheRows(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctxUser(author), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: team, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2, TotalPrice: 200},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 2, Total: 200},
 			},
 		}))
 		if err != nil {
@@ -66,11 +66,11 @@ func TestRestockActorList_ThePeopleOnTheRows(t *testing.T) {
 	accept := func(by uint64, r *inventoryv1.RestockRequest) {
 		t.Helper()
 
-		_, err := svc.RestockRequestFulfill(ctxUser(by), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-			TeamId: warehouse, RequestId: r.GetId(), Lines: allArrived(r),
+		_, err := svc.RestockRequestAccept(ctxUser(by), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+			TeamId: warehouse, RequestId: r.GetId(), Lines: allArrived(t, db, r),
 		}))
 		if err != nil {
-			t.Fatalf("fulfil: %v", err)
+			t.Fatalf("accept: %v", err)
 		}
 	}
 
@@ -151,7 +151,7 @@ func TestRestockActorList_ZeroIsNobody(t *testing.T) {
 
 	resp, err := svc.RestockRequestCreate(ctxUser(7), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: 5,
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100}},
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100}},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)

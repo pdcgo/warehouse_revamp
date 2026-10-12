@@ -170,7 +170,7 @@ func ownerOngoingRows(
 		        COALESCE(SUM(ri.total_price), 0) AS value`).
 		Joins("JOIN restock_requests r ON r.id = ri.restock_request_id").
 		Where("r.requesting_team_id = ?", teamID).
-		Where("r.status = ?", restockStatusPending).
+		Where("r.status IN ?", restockInboundStatuses).
 		Where("ri.product_id IN ?", productIDs).
 		Group("ri.product_id")
 

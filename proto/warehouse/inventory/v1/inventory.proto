@@ -127,6 +127,9 @@ enum MovementKind {
   // back because the order died" are different events, and a ledger that could not tell them apart
   // would make a cancelled order look like a delivery that never happened.
   MOVEMENT_KIND_RETURN = 7;
+  // A SAMPLE handed to a person at the warehouse (a-sample-is-handed-over-at-the-warehouse) — the owning team's units
+  // leaving with no sale, off the rack staff took them from. Final: never rolled back (a-handed-over-sample-is-final).
+  MOVEMENT_KIND_SAMPLE = 8;
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).

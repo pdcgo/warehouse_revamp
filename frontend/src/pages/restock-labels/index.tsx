@@ -22,9 +22,10 @@ import { ArrowLeft, Check, Download, Info, Printer, TriangleAlert } from "lucide
 
 import { rpcError } from "../../api/clients";
 import type { RestockLabel } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { useRestockLabels } from "../../features/restock/queries";
+import { useRestockLabels, useRestockRequest } from "../../features/restock/queries";
 import { formatRupiah } from "../../lib/money";
 
 // One printable job entry — a label to draw, plus which copy of how many it is (piece mode).
@@ -62,15 +63,19 @@ function formatDate(unix: bigint): string {
   });
 }
 
-// RestockLabelsPage prints the stickers for an accepted delivery (#207) — the step after accept-rack:
-// one label per shelved unit (or per shelf) so a picker can find and scan what just landed.
+// RestockLabelsPage prints the stickers for an ACCEPTED delivery — the step after counting it in: one label per
+// shelved unit (or per placement) so a picker can find and scan what just landed.
 //
 // It is warehouse-only, like accepting: the crew that shelved the goods prints them. The QR encodes
-// `sku/batch-id` — the batch being the delivery line (#160) — while WHERE it went rides beside it as
-// the rack chip, because a product+batch split across two shelves is one code in two places.
+// `sku/batch-id` — one batch per line (one-batch-per-line) — while WHERE it went rides beside it as the
+// placement chip, because a line split across two placements is one code in two places. Every good unit is on
+// a placement (there-is-no-unplaced-pile), so every label has one; there is no holding pile to print.
 //
-// Broken/lost units are absent by construction: the server returns a label per placement, and damaged
-// units never produced one. The count of what was left out is shown so a short run reads as deliberate.
+// ONLY AN ACCEPTED RESTOCK HAS LABELS: before the count nothing became stock, so there is nothing to stick on.
+// The page reads the restock first and says so, rather than asking for labels the server would refuse.
+//
+// Broken and missing units are absent by construction: they never became stock, so the server returns no
+// label for them. The count of what was left out is shown so a short run reads as deliberate.
 export function RestockLabelsPage() {
   const { current } = useTeam();
   const { requestId: rawId } = useParams();
@@ -82,12 +87,16 @@ export function RestockLabelsPage() {
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
   const teamId = isWarehouse ? current?.teamId : undefined;
 
-  const query = useRestockLabels({ teamId, requestId });
+  // The restock first — only an ACCEPTED one has labels, and asking for any other's is a refusal dressed as an error.
+  const restock = useRestockRequest({ teamId, requestId });
+  const accepted = restock.data?.status === RestockRequestStatus.ACCEPTED;
+
+  const query = useRestockLabels({ teamId: accepted ? teamId : undefined, requestId });
   const data = query.data ?? null;
 
   const [mode, setMode] = useState<"piece" | "shelf">("piece");
   const [size, setSize] = useState<LabelSize>("40x25");
-  const [showRack, setShowRack] = useState(true);
+  const [showPlacement, setShowPlacement] = useState(true);
   const [showRef, setShowRef] = useState(true);
   const [showHpp, setShowHpp] = useState(false);
 
@@ -152,7 +161,7 @@ export function RestockLabelsPage() {
     );
   }
 
-  if (query.isPending && teamId !== undefined && requestId !== 0n) {
+  if (restock.isPending && teamId !== undefined && requestId !== 0n) {
     return (
       <Stack gap="section">
         {back}
@@ -161,12 +170,36 @@ export function RestockLabelsPage() {
     );
   }
 
-  if (query.isError || !data) {
+  if (restock.data && !accepted) {
+    return (
+      <Stack gap="section">
+        {back}
+        <Text color="fg.muted" data-testid="labels-not-accepted">
+          {t("restock.labels.notAccepted")}
+        </Text>
+      </Stack>
+    );
+  }
+
+  if (query.isPending && accepted) {
+    return (
+      <Stack gap="section">
+        {back}
+        <Spinner colorPalette="brand" />
+      </Stack>
+    );
+  }
+
+  if (restock.isError || query.isError || !data) {
     return (
       <Stack gap="section">
         {back}
         <Text color="error.fg" data-testid="labels-error">
-          {query.isError ? rpcError(query.error) : t("restock.labels.notFound")}
+          {restock.isError
+            ? rpcError(restock.error)
+            : query.isError
+              ? rpcError(query.error)
+              : t("restock.labels.notFound")}
         </Text>
       </Stack>
     );
@@ -268,9 +301,9 @@ export function RestockLabelsPage() {
                 </Text>
                 <Stack gap="1.5">
                   <LabelToggle
-                    checked={showRack}
-                    onChange={setShowRack}
-                    label={t("restock.labels.showRack")}
+                    checked={showPlacement}
+                    onChange={setShowPlacement}
+                    label={t("restock.labels.showPlacement")}
                   />
                   <LabelToggle
                     checked={showRef}
@@ -286,7 +319,7 @@ export function RestockLabelsPage() {
               </Stack>
             </Flex>
 
-            {/* The honest hard case: broken/lost never entered stock, so they got no label. */}
+            {/* The honest hard case: broken and missing units never entered stock, so they got no label. */}
             {data.excludedCount > 0n && (
               <Flex
                 align="center"
@@ -318,7 +351,7 @@ export function RestockLabelsPage() {
                 key={`p${i}`}
                 entry={entry}
                 size={size}
-                showRack={showRack}
+                showPlacement={showPlacement}
                 showRef={showRef}
                 showHpp={showHpp}
                 restockRef={restockRef}
@@ -332,7 +365,7 @@ export function RestockLabelsPage() {
                 <LabelCard
                   entry={entry}
                   size={size}
-                  showRack={showRack}
+                  showPlacement={showPlacement}
                   showRef={showRef}
                   showHpp={showHpp}
                   restockRef={restockRef}
@@ -379,11 +412,11 @@ function LabelToggle({
 }
 
 // One sticker. The QR (vector, so it prints crisp at any size) sets the square height; the text
-// stacks beside it. A nil rack is the holding pile, said as "HOLDING" (#135).
+// stacks beside it, with the placement's code — what is painted on the aisle — as a chip.
 function LabelCard({
   entry,
   size,
-  showRack,
+  showPlacement,
   showRef,
   showHpp,
   restockRef,
@@ -391,16 +424,14 @@ function LabelCard({
 }: {
   entry: JobEntry;
   size: LabelSize;
-  showRack: boolean;
+  showPlacement: boolean;
   showRef: boolean;
   showHpp: boolean;
   restockRef: string;
   receivedOn: string;
 }) {
-  const { t } = useTranslation();
   const { label } = entry;
   const payload = `${label.sku}/${label.batchId.toString()}`;
-  const place = label.unplaced ? t("restock.labels.holding") : label.rackCode;
 
   const meta: string[] = [];
   if (entry.copyTotal > 1) meta.push(`${entry.copyIndex}/${entry.copyTotal}`);
@@ -414,8 +445,10 @@ function LabelCard({
       <div className="label-main">
         <div className="label-top">
           <span className="label-name">{label.name}</span>
-          {showRack && (
-            <span className={`label-rack${label.unplaced ? " holding" : ""}`}>{place}</span>
+          {showPlacement && label.placementCode && (
+            <span className="label-rack" data-testid="label-placement">
+              {label.placementCode}
+            </span>
           )}
         </div>
         <div className="label-foot">
@@ -437,7 +470,7 @@ function PrintStyles() {
     <style>{`
       .labels-sheet {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 12px;
       }
       .print-only-label { display: none; }
@@ -469,7 +502,6 @@ function PrintStyles() {
         background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe;
         padding: 2px 7px; border-radius: 5px; white-space: nowrap;
       }
-      .label-rack.holding { background: #fffaeb; color: #b54708; border-color: #fedf89; }
       .label-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: auto; }
       .label-sku { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: #475467; }
       .label-hpp { font-size: 11px; font-weight: 700; color: #101828; font-variant-numeric: tabular-nums; }

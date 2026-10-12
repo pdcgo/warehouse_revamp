@@ -94,7 +94,7 @@ func TestRestockRequest_RecordsWhoRaisedAndWhoAccepted(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 1000},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 1000},
 			},
 		}))
 		if err != nil {
@@ -123,11 +123,11 @@ func TestRestockRequest_RecordsWhoRaisedAndWhoAccepted(t *testing.T) {
 	// ACCEPTED — by the warehouse hand, not by the buyer who raised it.
 	before := time.Now().Add(-time.Second).Unix()
 
-	accepted, err := svc.RestockRequestFulfill(handCtx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: raised.GetId(), Lines: allArrived(raised),
+	accepted, err := svc.RestockRequestAccept(handCtx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: raised.GetId(), Lines: allArrived(t, db, raised),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	got := accepted.Msg.GetRequest()
@@ -195,7 +195,7 @@ func TestRestockRequestList_FilterByWarehouse(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -243,7 +243,7 @@ func TestRestockRequestList_FilterByDateField(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -256,11 +256,11 @@ func TestRestockRequestList_FilterByDateField(t *testing.T) {
 	create() // stays pending — the row every "accepted"/"cancelled" range must leave out
 
 	toAccept := create()
-	_, err := svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: toAccept.GetId(), Lines: allArrived(toAccept),
+	_, err := svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: toAccept.GetId(), Lines: allArrived(t, db, toAccept),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	toCancel := create()
@@ -336,9 +336,9 @@ func TestRestockRequestList_Search(t *testing.T) {
 
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
-			OrderRef: orderRef, Receipt: receipt,
+			InvoiceRefId: orderRef, Receipt: receipt,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: sku, Name: name, Quantity: 1, TotalPrice: 100},
+				{ProductId: 100, Sku: sku, Name: name, Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -456,7 +456,7 @@ func TestRestockRequestList_FilterByRequestingTeam(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: seller, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
 			},
 		}))
 		if err != nil {
@@ -513,7 +513,7 @@ func TestRestockRequestList_FilterByActor(t *testing.T) {
 		resp, err := svc.RestockRequestCreate(ctxUser(author), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 			TeamId: sellingTeam, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 2, TotalPrice: 200},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 2, Total: 200},
 			},
 		}))
 		if err != nil {
@@ -526,11 +526,11 @@ func TestRestockRequestList_FilterByActor(t *testing.T) {
 	accept := func(by uint64, r *inventoryv1.RestockRequest) {
 		t.Helper()
 
-		_, err := svc.RestockRequestFulfill(ctxUser(by), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-			TeamId: warehouse, RequestId: r.GetId(), Lines: allArrived(r),
+		_, err := svc.RestockRequestAccept(ctxUser(by), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+			TeamId: warehouse, RequestId: r.GetId(), Lines: allArrived(t, db, r),
 		}))
 		if err != nil {
-			t.Fatalf("fulfil: %v", err)
+			t.Fatalf("accept: %v", err)
 		}
 	}
 
@@ -612,7 +612,7 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 	created, err := svc.RestockRequestCreate(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 1000},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 10, Total: 1000},
 		},
 	}))
 	if err != nil {
@@ -627,7 +627,7 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 		_, updErr := svc.RestockRequestUpdate(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
 			TeamId: sellingTeam, RequestId: id, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
-				{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: qty, TotalPrice: 1000},
+				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: qty, Total: 1000},
 			},
 		}))
 		if updErr != nil {
@@ -643,11 +643,11 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 		t.Fatalf("detail before accept: %v", err)
 	}
 
-	_, err = svc.RestockRequestFulfill(handCtx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: id, Lines: allArrived(reread.Msg.GetRequest()),
+	_, err = svc.RestockRequestAccept(handCtx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: id, Lines: allArrived(t, db, reread.Msg.GetRequest()),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	detail, err := svc.RestockRequestDetail(buyerCtx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
@@ -657,27 +657,25 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 		t.Fatalf("detail: %v", err)
 	}
 
-	events := detail.Msg.GetRequest().GetEvents()
+	// The trail (every-status-change-is-logged): the edits sit in it too, as rows that leave the status where it was
+	// (edits-are-in-the-same-trail).
+	events := detail.Msg.GetRequest().GetLogs()
+	steps := trail(detail.Msg.GetRequest())
 
-	wantKinds := []inventoryv1.RestockRequestEventKind{
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CREATED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_EDITED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_EDITED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_ACCEPTED,
-	}
+	wantSteps := []trailStep{stepCreated, stepEdited, stepEdited, stepAccepted}
 
-	if len(events) != len(wantKinds) {
-		t.Fatalf("history has %d events, want %d: %+v", len(events), len(wantKinds), events)
+	if len(steps) != len(wantSteps) {
+		t.Fatalf("history has %d steps, want %d: %+v", len(steps), len(wantSteps), steps)
 	}
 
 	// ORDER IS THE POINT of a timeline, so it is asserted rather than the set being counted.
-	for i := range wantKinds {
-		if events[i].GetKind() != wantKinds[i] {
-			t.Fatalf("event %d is %v, want %v", i, events[i].GetKind(), wantKinds[i])
+	for i := range wantSteps {
+		if steps[i] != wantSteps[i] {
+			t.Fatalf("step %d is %+v, want %+v", i, steps[i], wantSteps[i])
 		}
 
 		if events[i].GetAtUnix() == 0 {
-			t.Fatalf("event %d (%v) has no timestamp", i, events[i].GetKind())
+			t.Fatalf("step %d (%+v) has no timestamp", i, steps[i])
 		}
 	}
 
@@ -685,13 +683,13 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 	// that took the actor from the row instead of the caller would put the buyer on all four.
 	for i := 0; i < 3; i++ {
 		if events[i].GetActorUserId() != buyer {
-			t.Fatalf("event %d (%v) actor = %d, want the buyer %d",
-				i, events[i].GetKind(), events[i].GetActorUserId(), buyer)
+			t.Fatalf("step %d (%+v) actor = %d, want the buyer %d",
+				i, steps[i], events[i].GetActorUserId(), buyer)
 		}
 	}
 
 	if events[3].GetActorUserId() != warehouseHand {
-		t.Fatalf("accepted event actor = %d, want the warehouse hand %d",
+		t.Fatalf("accepted step actor = %d, want the warehouse hand %d",
 			events[3].GetActorUserId(), warehouseHand)
 	}
 
@@ -705,8 +703,8 @@ func TestRestockRequest_EventHistory(t *testing.T) {
 	// ⚠ THE LIST MUST NOT CARRY THE HISTORY (see the proto): a page of restocks would pull every event
 	// of each to render a table that shows none.
 	for _, r := range listRestocks(t, svc, buyerCtx, sellingTeam, &inventoryv1.RestockRequestListFilter{}) {
-		if len(r.GetEvents()) != 0 {
-			t.Fatalf("list row #%d carries %d events; the list must not load them", r.GetId(), len(r.GetEvents()))
+		if len(r.GetLogs()) != 0 {
+			t.Fatalf("list row #%d carries %d trail rows; the list must not load them", r.GetId(), len(r.GetLogs()))
 		}
 	}
 }
@@ -723,7 +721,7 @@ func TestRestockRequest_CancelRecordsWho(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctxUser(buyer), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100},
+			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
 		},
 	}))
 	if err != nil {
@@ -757,11 +755,12 @@ func TestRestockRequest_CancelRecordsWho(t *testing.T) {
 		t.Fatalf("detail: %v", err)
 	}
 
-	events := detail.Msg.GetRequest().GetEvents()
+	events := detail.Msg.GetRequest().GetLogs()
 	last := events[len(events)-1]
 
-	if last.GetKind() != inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CANCELLED {
-		t.Fatalf("last event is %v, want CANCELLED", last.GetKind())
+	steps := trail(detail.Msg.GetRequest())
+	if steps[len(steps)-1] != stepCancelled {
+		t.Fatalf("last step is %+v, want ongoing → cancelled", steps[len(steps)-1])
 	}
 
 	if last.GetActorUserId() != colleague {

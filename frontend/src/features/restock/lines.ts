@@ -1,55 +1,39 @@
 import type { TFunction } from "i18next";
 import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 
-// How a restock LINE reads, shared by the two detail pages (#105 / #133).
+// How a restock LINE reads, shared by the two detail pages.
 //
-// The tables themselves are not shared — a buyer's table and a receiving warehouse's table show
-// different columns, which is the whole reason the pages were split — but what a single line MEANS
-// is one answer, and two copies of it is how one page starts rounding a unit price differently from
-// the other.
+// The tables themselves are not shared — a buyer's table and a receiving warehouse's table show different columns —
+// but what a single line MEANS is one answer, and two copies of it is how one page starts rounding a unit price
+// differently from the other.
 
-// A line's money is STORED as the total (#140) — the number typed off the invoice — so there is
-// nothing left to compute.
+// A line's money is STORED as the total, as the invoice prints it (a-line-is-typed-as-its-total).
 export function lineTotal(item: RestockRequestItem): bigint {
-  return item.totalPrice;
+  return item.total;
 }
 
-// What one piece cost, DERIVED and openly a rounding: 10.000 over 3 pieces shows 3.333 while the
-// line still totals 10.000. The two columns can therefore look a rupiah apart, and that is the
-// honest picture — the invoice said 10.000, and no per-piece figure divides it exactly.
+// What one piece cost, DERIVED and openly a rounding: 10.000 over 3 pieces shows 3.333 while the line still totals
+// 10.000. The server sends the same figure as `price_unit`.
 export function unitPrice(item: RestockRequestItem): bigint {
-  if (item.quantity <= 0n) return 0n;
+  if (item.count <= 0n) return 0n;
 
-  return item.totalPrice / item.quantity;
+  return item.total / item.count;
 }
 
-// Where a line's goods ended up, as a person would say it (#137). Three cases, and collapsing any
-// two of them would misreport where the stock physically is:
+// Where a line's good units went, as a person would say it — "A-01-1 (60), B-02-1 (30)". Every unit in stock is on a
+// placement (there-is-no-unplaced-pile), so there are two cases:
 //
-//   nothing arrived → "" (rendered "—"). There are no placements at all, and saying "Unplaced" would
-//                     invent a pile of nothing for someone to go looking for.
-//   unplaced        → the not-yet-shelved pile — a REAL place, not an absence. Worded by RackSelect's
-//                     own key, so the accept screen and this page cannot phrase one state two ways.
-//   a rack id       → the rack's CODE. "A-01-3" is painted on the aisle; "7" is not, so an id we
-//                     cannot resolve (the list failed, or the rack has since been deleted) says
-//                     exactly that instead of showing a number nobody can walk to. It must not fall
-//                     back to "Unplaced" either — that is a different fact, and it would send someone
-//                     to the wrong end of the warehouse.
-//
-// SEVERAL PLACES ARE ORDINARY (#154): a delivery of 100 across three shelves reads as
-// "A-01-1 (60), B-02-1 (30), Unplaced (10)". The quantity is shown per place because "it is on three
-// shelves" without saying how many are on each is not enough to go and pick it.
-export function rackLabel(
+//   nothing arrived good → "" (rendered "—").
+//   a placement id       → its CODE, because "A-01-3" is painted on the aisle and "7" is not. An id that cannot be
+//                          resolved says so, rather than showing a number nobody can walk to.
+export function placementLabel(
   t: TFunction,
   item: RestockRequestItem,
   codes: Record<string, string>,
 ): string {
   return item.placements
     .map((p) => {
-      const where =
-        p.place.case === "rackId"
-          ? (codes[p.place.value.toString()] ?? t("restock.detail.rackUnknown"))
-          : t("racks.select.unplaced");
+      const where = codes[p.placementId.toString()] ?? t("restock.detail.rackUnknown");
 
       return `${where} (${p.quantity})`;
     })

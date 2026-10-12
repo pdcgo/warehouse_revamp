@@ -30,6 +30,16 @@ service RackService {
   rpc RackHistory(RackHistoryRequest) returns (RackHistoryResponse);
   rpc RackUpdate(RackUpdateRequest) returns (RackUpdateResponse);
   rpc RackDelete(RackDeleteRequest) returns (RackDeleteResponse);
+
+  // ⚠ PROTOTYPE until design_accept — the server answers Unimplemented, and the screens run against the Storybook
+  // stub (docs/business/inventory/placement_decision.md).
+  //
+  // MOVE GOODS off ONE rack onto one or more racks of the same warehouse: staff reorganizing space
+  // (a-move-is-one-rack-to-one-or-more-racks). All or nothing (a-move-is-all-or-nothing).
+  rpc RackMove(RackMoveRequest) returns (RackMoveResponse);
+  // RECORD A SAMPLE taken from ONE rack and handed to a person at the warehouse
+  // (a-sample-is-handed-over-at-the-warehouse, a-sample-is-recorded-on-rack-detail).
+  rpc RackSample(RackSampleRequest) returns (RackSampleResponse);
 }
 
 message Rack {
@@ -101,6 +111,9 @@ enum RackListDataType {
   RACK_LIST_DATA_TYPE_UNSPECIFIED = 0;
   RACK_LIST_DATA_TYPE_GENERAL = 1;
   RACK_LIST_DATA_TYPE_RACK = 2;
+  // Each rack's STOCK COUNT — the sum of its products' stock counts, as Rack detail shows them
+  // (a-rack-shows-its-stock-count-for-now). Asked for by the Racks page; a picker that only needs codes leaves it out.
+  RACK_LIST_DATA_TYPE_STOCK = 3;
 }
 
 enum RackRowSort {
@@ -121,10 +134,25 @@ message RackRowMapItem {
   map<uint64, Rack> map_data = 1;
 }
 
+// One rack's stock count, and how many products make it up, for the Racks list. A rack holding nothing is in the map
+// with 0 and 0 — an empty rack is an answer, not a missing one.
+message RackStockTotal {
+  uint64 rack_id = 1;
+  int64 stock_count = 2;
+  // How many DIFFERENT products are on the rack — a product counts once however many units it has, and a product
+  // whose count fell to 0 is not on the rack.
+  uint32 product_count = 3;
+}
+
+message RackStockTotalMapItem {
+  map<uint64, RackStockTotal> map_data = 1;
+}
+
 message RackListResponseItem {
   oneof d {
     warehouse.common.v1.GeneralMapItem general = 1;
     RackRowMapItem rack = 2;
+    RackStockTotalMapItem stock = 3;
   }
 }
 
@@ -212,6 +240,105 @@ message RackStockLine {
   // `on_hand × unit_cost`, whole rupiah — 0 when the cost is unknown. Computed here rather than in the
   // client so the line and the header tile cannot disagree about the same multiplication.
   int64 value = 5;
+
+  // A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
+  // it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing).
+  //
+  // ⚠ Always false until the stock count (opname) is built; only the Storybook stub sets it.
+  bool counting = 6;
+}
+
+// One owning team's share of a rack write. A product belongs to one selling team and a rack holds several teams'
+// goods, so a move or a sample carrying two teams' goods writes ONE TRANSACTION PER OWNING TEAM
+// (a-move-writes-one-transaction-per-owning-team), all in one database transaction.
+message RackTransaction {
+  uint64 transaction_id = 1;
+  uint64 team_id = 2;
+}
+
+message RackMoveRequest {
+  // Any warehouse member, staff included — they are the ones carrying the box (any-warehouse-member-may-move-goods).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse. Every rack on the request must stand in it: a move never leaves the building (a transfer does).
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The ONE rack the goods leave.
+  uint64 from_rack_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // One line per (product, destination). A product may appear on several lines with different destinations — a
+  // split (a-move-is-one-rack-to-one-or-more-racks) — but never twice to the same rack.
+  repeated RackMoveLine lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+  // Optional, for a person reading the history later: "tidy Rak A".
+  string description = 4 [(buf.validate.field).string.max_len = 500];
+}
+
+message RackMoveLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // At most what the source rack's line holds, summed over the product's lines — refused otherwise, and the WHOLE
+  // move with it (a-move-is-all-or-nothing, a-move-leaves-sold-units-on-their-rack).
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+  // Never the source rack.
+  uint64 to_rack_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message RackMoveResponse {
+  // One per owning team among the lines, in team id order.
+  repeated RackTransaction transactions = 1;
+}
+
+message RackSampleRequest {
+  // Any warehouse member: staff pick the goods and hand them over (a-sample-is-handed-over-at-the-warehouse).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The rack staff took it from — the page's rack, never chosen (a-sample-names-the-rack-it-was-taken-from).
+  uint64 rack_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // One line per product, each at most that product's stock on this rack.
+  repeated RackSampleLine lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+  // WHO RECEIVED IT — a name as the person gave it. Proposed at the prototype: nothing in the decisions requires it,
+  // and design_accept decides whether it stays.
+  string recipient = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string description = 5 [(buf.validate.field).string.max_len = 500];
+}
+
+message RackSampleLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+message RackSampleResponse {
+  // One per owning team, like a move. A sample is final: it is never rolled back (a-handed-over-sample-is-final).
+  repeated RackTransaction transactions = 1;
 }
 
 message RackStockRequest {

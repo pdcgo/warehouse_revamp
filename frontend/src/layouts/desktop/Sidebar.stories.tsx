@@ -128,10 +128,12 @@ export const ASellingTeamGetsTheSellingMenu: Story = {
     await waitFor(() => expect(canvas.getByRole("link", { name: "My Product" })).toBeVisible());
     await expect(canvas.getByRole("link", { name: "Discover Product" })).toBeVisible();
 
-    // A rack belongs to the building that holds it, not to the team that raises the restock.
+    // A rack belongs to the building that holds it, not to the team that raises the restock — so a
+    // selling team gets no placement screen at all (the-racks-page-is-the-placement-list).
     await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.inventories"));
-    await waitFor(() => expect(canvas.getByRole("link", { name: "Placements" })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Restock" })).toBeVisible());
     await expect(canvas.queryByRole("link", { name: "Racks" })).toBeNull();
+    await expect(canvas.queryByRole("link", { name: "Placements" })).toBeNull();
 
     // Suppliers is a group of its own, shaped like Products: My Supplier, Discover Supplier, Supplier Report.
     await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.suppliers"));

@@ -18,9 +18,11 @@ import {
 import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
+import type { RackTotals } from "../../features/racks/adapt";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDeleteRack, useRacks } from "./queries";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { Pagination } from "../../components/chrome/Pagination";
 import { toaster } from "../../components/feedback/Toaster";
 import { RackFormDialog } from "./components/RackFormDialog";
@@ -53,6 +55,7 @@ export function RacksPage() {
   const deleteRack = useDeleteRack();
 
   const racks = query.data?.racks ?? [];
+  const stockTotals = query.data?.stockTotals ?? new Map<string, RackTotals>();
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
@@ -117,67 +120,80 @@ export function RacksPage() {
       {loading ? (
         <Spinner colorPalette="brand" />
       ) : (
-        <Table.Root size="sm" data-testid="racks-table">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader>{t("racks.table.code")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("racks.table.name")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("racks.table.description")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("racks.table.actions")}</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-
-          <Table.Body>
-            {racks.map((rack) => (
-              <Table.Row
-                key={rack.id.toString()}
-                data-testid={`rack-row-${rack.code}`}
-                cursor="pointer"
-                _hover={{ bg: "bg.subtle" }}
-                onClick={() => navigate(`/inventories/racks/${rack.id}`)}
-              >
-                {/* The code is what is painted on the shelf — it IS the rack's identity, so it
-                    carries the row. */}
-                <Table.Cell fontWeight="medium">{rack.code}</Table.Cell>
-                <Table.Cell>{rack.name}</Table.Cell>
-                <Table.Cell color="fg.muted">{rack.description}</Table.Cell>
-
-                {/* Stop the row's navigate from firing when a row action is used. */}
-                <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                  <HStack justify="end" gap="1">
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      aria-label="Edit"
-                      data-testid={`edit-rack-${rack.code}`}
-                      onClick={() => setEditing(rack)}
-                    >
-                      <Icon as={Pencil} boxSize="4" />
-                    </IconButton>
-
-                    <ConfirmDialog
-                      title={t("racks.deleteRack")}
-                      message={t("racks.deleteConfirm", { code: rack.code })}
-                      confirmLabel={t("racks.delete")}
-                      onConfirm={() => remove(rack)}
-                      trigger={
-                        <IconButton
-                          size="xs"
-                          variant="ghost"
-                          colorPalette="error"
-                          aria-label="Delete"
-                          data-testid={`delete-rack-${rack.code}`}
-                        >
-                          <Icon as={Trash2} boxSize="4" />
-                        </IconButton>
-                      }
-                    />
-                  </HStack>
-                </Table.Cell>
+        <RefreshOverlay busy={query.isFetching && !query.isPending}>
+          <Table.Root size="sm" data-testid="racks-table">
+            <Table.Header>
+              <Table.Row>
+                <Table.ColumnHeader>{t("racks.table.code")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("racks.table.name")}</Table.ColumnHeader>
+                <Table.ColumnHeader>{t("racks.table.description")}</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">{t("racks.table.products")}</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">{t("racks.table.stock")}</Table.ColumnHeader>
+                <Table.ColumnHeader textAlign="end">{t("racks.table.actions")}</Table.ColumnHeader>
               </Table.Row>
-            ))}
-          </Table.Body>
-        </Table.Root>
+            </Table.Header>
+
+            <Table.Body>
+              {racks.map((rack) => (
+                <Table.Row
+                  key={rack.id.toString()}
+                  data-testid={`rack-row-${rack.code}`}
+                  cursor="pointer"
+                  _hover={{ bg: "bg.subtle" }}
+                  onClick={() => navigate(`/inventories/racks/${rack.id}`)}
+                >
+                  {/* The code is what is painted on the shelf — it IS the rack's identity, so it
+                      carries the row. */}
+                  <Table.Cell fontWeight="medium">{rack.code}</Table.Cell>
+                  <Table.Cell>{rack.name}</Table.Cell>
+                  <Table.Cell color="fg.muted">{rack.description}</Table.Cell>
+                  {/* HOW MANY PRODUCTS, then the rack's STOCK COUNT, its products summed
+                      (a-rack-shows-its-stock-count-for-now). Both shown at 0 too: an empty rack is the one that can be
+                      deleted, and the one worth knowing about. */}
+                  <Table.Cell textAlign="end" data-testid={`rack-products-${rack.code}`}>
+                    {stockTotals.get(rack.id.toString())?.productCount ?? 0}
+                  </Table.Cell>
+                  <Table.Cell textAlign="end" fontWeight="medium" data-testid={`rack-stock-${rack.code}`}>
+                    {(stockTotals.get(rack.id.toString())?.stockCount ?? 0n).toString()}
+                  </Table.Cell>
+
+                  {/* Stop the row's navigate from firing when a row action is used. */}
+                  <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                    <HStack justify="end" gap="1">
+                      <IconButton
+                        size="xs"
+                        variant="ghost"
+                        aria-label="Edit"
+                        data-testid={`edit-rack-${rack.code}`}
+                        onClick={() => setEditing(rack)}
+                      >
+                        <Icon as={Pencil} boxSize="4" />
+                      </IconButton>
+
+                      <ConfirmDialog
+                        title={t("racks.deleteRack")}
+                        message={t("racks.deleteConfirm", { code: rack.code })}
+                        confirmLabel={t("racks.delete")}
+                        onConfirm={() => remove(rack)}
+                        trigger={
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            colorPalette="error"
+                            aria-label="Delete"
+                            data-testid={`delete-rack-${rack.code}`}
+                          >
+                            <Icon as={Trash2} boxSize="4" />
+                          </IconButton>
+                        }
+                      />
+                    </HStack>
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </RefreshOverlay>
       )}
 
       {!loading && racks.length === 0 && !error && (

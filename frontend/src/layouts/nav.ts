@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, MapPin, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  ArrowLeftRight, Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -197,12 +197,9 @@ const SUPPLIERS_GROUP: MenuGroup = {
 // differently depending on who you are: a SELLING team creates requests, a WAREHOUSE team accepts
 // them. The on-hand list survives under the name it actually deserves — "Stock".
 //
-// "Placements" is a stub until the warehouse core / locations are designed (plan.md §1).
-//
 // The group is BUILT PER TEAM TYPE rather than being a fixed const, because the children are not
-// common to both: "Racks" (#129) is a warehouse's own, while the suppliers and "Placements" are the
-// requesting side's — a supplier belongs to the SELLING team that raises the restock, not the
-// warehouse that fulfils it. Only "Restock" and "Stock" are shared.
+// common to both: "Racks" (#129), "Returns", "Batches" and "Opname" are a warehouse's own. Only
+// "Restock" and the transfer are shared.
 //
 // ⚠ The warehouse's ORDER QUEUE is NOT in here. It was briefly, as "Picking", and that was wrong on
 // both counts (owner): the screen is a list of ORDERS, so it says Orders, and orders are not a kind
@@ -210,6 +207,9 @@ const SUPPLIERS_GROUP: MenuGroup = {
 function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
   const children: MenuItem[] = [
     { to: "/inventories/restock", label: "nav.restock", icon: ClipboardList },
+    // Both sides: the selling team opens a transfer, the warehouses send and receive it
+    // (the-team-opens-the-sender-ships-the-receiver-accepts). A prototype until design_accept.
+    { to: "/inventories/transfer", label: "nav.warehouseTransfer", icon: ArrowLeftRight },
   ];
 
   // Returns sit directly UNDER Restock — a return is a restock's mirror image (#163), goods arriving
@@ -218,13 +218,8 @@ function inventoriesFor(teamType: TeamType | undefined): MenuGroup {
     children.push({ to: "/inventories/returns", label: "nav.returns", icon: Undo2 });
   }
 
-  // Placements is dropped from the WAREHOUSE menu (#212): it is a stub that only ever belonged to the stock-locating
-  // side. The suppliers moved out to their own group (SUPPLIERS_GROUP), still a selling team's alone.
-  if (teamType === TeamType.SELLING) {
-    children.push({ to: "/inventories/placements", label: "nav.placements", icon: MapPin });
-  }
-
-  // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129).
+  // Racks are the WAREHOUSE's own registry of its shelves — warehouse teams only (#129). It IS the placement list
+  // (the-racks-page-is-the-placement-list): a selling team never reads a rack, so it has no placement screen at all.
   if (teamType === TeamType.WAREHOUSE) {
     children.push({ to: "/inventories/racks", label: "nav.racks", icon: Grid3x3 });
   }

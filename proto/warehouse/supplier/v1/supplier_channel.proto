@@ -21,6 +21,9 @@ service SupplierChannelService {
   rpc SupplierChannelCreate(SupplierChannelCreateRequest) returns (SupplierChannelCreateResponse);
   rpc SupplierChannelUpdate(SupplierChannelUpdateRequest) returns (SupplierChannelUpdateResponse);
   rpc SupplierChannelDelete(SupplierChannelDeleteRequest) returns (SupplierChannelDeleteResponse);
+  // Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
+  // (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
+  rpc SupplierChannelByIds(SupplierChannelByIdsRequest) returns (SupplierChannelByIdsResponse);
 }
 
 message SupplierChannel {
@@ -32,6 +35,8 @@ message SupplierChannel {
   // A link to the store (optional).
   string uri = 5;
   string description = 6;
+  // Soft-deleted. Only SupplierChannelByIds ever returns a deleted store.
+  bool deleted = 7;
 }
 
 // A supplier's stores, as one value — SupplierList's CHANNELS slice.
@@ -196,3 +201,34 @@ message SupplierChannelDeleteRequest {
 }
 
 message SupplierChannelDeleteResponse {}
+
+message SupplierChannelByIdsRequest {
+  // Whoever can see a restock line can read its store's name — the same roles as SupplierChannelList.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Bounded by the lines of one restock page.
+  repeated uint64 ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+message SupplierChannelByIdsResponse {
+  // Keyed by store id; an unknown id is simply absent.
+  map<uint64, SupplierChannel> channels = 1;
+}

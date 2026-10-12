@@ -13,16 +13,16 @@ sequenceDiagram
     participant I as inventory_service
     participant S as liability_service
 
-    W->>I: RestockRequestFulfill — counts, placements, cod_shipping_fee
+    W->>I: RestockRequestAccept — counts, placements, the courier charge and its note
     rect rgb(240, 240, 240)
         Note over I,S: ONE transaction
-        I->>I: record what arrived, and what arrived damaged
+        I->>I: record what arrived, what was broken and what was missing
         I->>I: move stock onto the named shelves
-        I->>I: status FULFILLED, cod_shipping_fee onto the request
+        I->>I: status ACCEPTED, the courier charge as one cost line
         I->>S: PostEntry — the selling team owes the warehouse
         S->>S: two legs, one group id, both balances moved
     end
-    I-->>W: the fulfilled request
+    I-->>W: the accepted restock
 ```
 
 **Why in the transaction and not after it.** If the stock movement commits and the obligation does

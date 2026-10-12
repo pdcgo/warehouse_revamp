@@ -32,26 +32,26 @@ func TestBatchDetailAndPlacements(t *testing.T) {
 
 	// One delivery of 100, split 60/40 across two shelves.
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: 2, WarehouseId: warehouse, ShippingCode: "jne", Receipt: "GRN-0721",
-		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "KPH-001", Name: "Kaos", Quantity: 100, TotalPrice: 4000000}},
+		TeamId: 2, WarehouseId: warehouse, Receipt: "GRN-0721",
+		Items: []*inventoryv1.RestockRequestItem{{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000}},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	item := created.Msg.GetRequest().GetItems()[0]
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{{
-			ItemId:           item.GetId(),
-			ReceivedQuantity: 100,
+			ItemId:        item.GetId(),
+			ReceivedCount: 100,
 			Placements: []*inventoryv1.RestockPlacement{
-				{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackAID}, Quantity: 60},
-				{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackBID}, Quantity: 40},
+				{PlacementId: rackAID, Quantity: 60},
+				{PlacementId: rackBID, Quantity: 40},
 			},
 		}},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))

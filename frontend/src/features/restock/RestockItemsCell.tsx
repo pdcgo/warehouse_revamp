@@ -40,14 +40,14 @@ export function RestockItemsCell({
     );
   }
 
-  // A restock line in the popover's terms. `total_price` is already THE LINE TOTAL (#140), which is
+  // A restock line in the popover's terms. `total` is already THE LINE TOTAL (#140), which is
   // exactly what ProductLine wants — the per-piece figure is derived there.
   const lines: ProductLine[] = items.map((item) => ({
     id: item.id.toString(),
     sku: item.sku,
     name: item.name,
-    quantity: item.quantity,
-    totalPrice: item.totalPrice,
+    quantity: item.count,
+    totalPrice: item.total,
   }));
 
   return (

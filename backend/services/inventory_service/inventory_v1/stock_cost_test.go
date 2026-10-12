@@ -12,7 +12,7 @@ import (
 // #74 — what a product cost this warehouse is the LATEST FULFILLED restock's price. Two things it must
 // get right, and both are easy to get wrong: only fulfilled requests count, and "latest" is by the
 // REQUEST, not by the line.
-func TestStockCost_LatestFulfilledRestockPrice(t *testing.T) {
+func TestStockCost_LatestAcceptedRestockPrice(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
@@ -32,7 +32,7 @@ func TestStockCost_LatestFulfilledRestockPrice(t *testing.T) {
 			Items: []*inventoryv1.RestockRequestItem{
 				{
 					ProductId: productX, Sku: "SKU1", Name: "Widget",
-					Quantity: lineQty, TotalPrice: unitPrice * lineQty,
+					Count: lineQty, Total: unitPrice * lineQty,
 				},
 			},
 		}))
@@ -44,12 +44,12 @@ func TestStockCost_LatestFulfilledRestockPrice(t *testing.T) {
 			return
 		}
 
-		_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+		_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 			TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
-			Lines: allArrived(created.Msg.GetRequest()),
+			Lines: allArrived(t, db, created.Msg.GetRequest()),
 		}))
 		if err != nil {
-			t.Fatalf("fulfil: %v", err)
+			t.Fatalf("accept: %v", err)
 		}
 	}
 
@@ -106,19 +106,19 @@ func TestStockCost_ScopedToTheWarehouse(t *testing.T) {
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: theirs,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 5, TotalPrice: 4242},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 5, Total: 4242},
 		},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: theirs, RequestId: created.Msg.GetRequest().GetId(),
-		Lines: allArrived(created.Msg.GetRequest()),
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
@@ -150,7 +150,7 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			// Deliberately indivisible: 10.000 / 3 = 3.333,33…
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 3, TotalPrice: 10000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 3, Total: 10000},
 		},
 	}))
 	if err != nil {
@@ -158,16 +158,16 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 	}
 
 	// The stored total is untouched by the awkward division — this is what the old contract could not do.
-	if got := created.Msg.GetRequest().GetItems()[0].GetTotalPrice(); got != 10000 {
+	if got := created.Msg.GetRequest().GetItems()[0].GetTotal(); got != 10000 {
 		t.Fatalf("stored total = %d, want the typed 10000", got)
 	}
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
-		Lines: allArrived(created.Msg.GetRequest()),
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
@@ -206,23 +206,23 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
-		ShippingCost: 15000,
+		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 100000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
-		Lines: allArrived(created.Msg.GetRequest()),
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 		// The fee the courier took at the door — known only now, and only to the warehouse.
-		CostLines: codLines(5000),
+		WarehouseAdditionalCost: 5000, WarehouseAdditionalCostNote: courierNote,
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
@@ -251,9 +251,9 @@ func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
-		ShippingCost: 20000,
+		ShipmentCost: 20000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 100000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 10, Total: 100000},
 		},
 	}))
 	if err != nil {
@@ -262,23 +262,19 @@ func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
 
 	req := created.Msg.GetRequest()
 
-	// 10 turned up, 2 crushed: 8 sellable.
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	// 10 turned up, 2 crushed: 8 sellable, onto the staging placement (there-is-no-unplaced-pile).
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: req.GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
-				ItemId: req.GetItems()[0].GetId(), ReceivedQuantity: 8,
-				Placements: []*inventoryv1.RestockPlacement{
-					{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 8},
-				},
-				Damaged: []*inventoryv1.RestockDamagedUnits{
-					{Quantity: 2, Reason: "crushed in transit", Type: broken},
-				},
+				ItemId: req.GetItems()[0].GetId(), ReceivedCount: 10,
+				BrokenCount: 2, BrokenNote: "crushed in transit",
+				Placements: placedOn(stagingPlacement(t, db, warehouse), 8),
 			},
 		},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{
@@ -307,22 +303,22 @@ func TestStockCost_FreightIsSplitAcrossLinesByUnitCount(t *testing.T) {
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
-		ShippingCost: 20000,
+		ShipmentCost: 20000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: productX, Sku: "SKU1", Name: "Widget", Quantity: 8, TotalPrice: 80000},
-			{ProductId: productY, Sku: "SKU2", Name: "Gadget", Quantity: 2, TotalPrice: 40000},
+			{ProductId: productX, Sku: "SKU1", Name: "Widget", Count: 8, Total: 80000},
+			{ProductId: productY, Sku: "SKU2", Name: "Gadget", Count: 2, Total: 40000},
 		},
 	}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
-		Lines: allArrived(created.Msg.GetRequest()),
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	res, err := svc.StockCost(ctx, connect.NewRequest(&inventoryv1.StockCostRequest{

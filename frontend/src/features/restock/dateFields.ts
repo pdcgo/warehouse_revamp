@@ -1,17 +1,15 @@
 import { RestockDateField } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 
-// THE THREE DATES A RESTOCK HAS, offered as the range picker's field segment (#224's `fields` API).
-// One control therefore picks BOTH which timestamp and which window.
+// THE DATES A RESTOCK HAS, offered as the range picker's field segment — one control picks both which timestamp and
+// which window. In the order a restock lives them; ARRIVED is the one a supplier's lead time is measured to
+// (every-status-change-is-logged).
 //
-// It lives in features/ rather than on a page because BOTH restock lists now offer it — the buyer's
-// and the warehouse's. A restock has exactly three dates whatever screen you read it on, and two
-// copies of that list is how one list quietly gains a fourth option, or drops `cancelled`, and the
-// two screens start disagreeing about what "the date" means.
-//
-// The labels are KEYS, not text: the picker is rendered inside a component that has `t`, and putting
-// resolved strings here would make this module need one too.
+// It lives in features/ because both restock lists offer it, and two copies of this list is how the two screens start
+// disagreeing about what "the date" means. The labels are KEYS, resolved where `t` is.
 export const RESTOCK_DATE_FIELDS: { value: RestockDateField; labelKey: string }[] = [
   { value: RestockDateField.CREATED, labelKey: "restock.dateField.created" },
+  { value: RestockDateField.ARRIVED, labelKey: "restock.dateField.arrived" },
   { value: RestockDateField.ACCEPTED, labelKey: "restock.dateField.accepted" },
+  { value: RestockDateField.LOST, labelKey: "restock.dateField.lost" },
   { value: RestockDateField.CANCELLED, labelKey: "restock.dateField.cancelled" },
 ];

@@ -12,18 +12,19 @@ import (
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
-// WHAT THE COURIER TOOK AT THE DOOR IS WRITTEN DOWN, AND IT CHANGES WHAT THE DELIVERY COST (owner).
+// WHAT THE COURIER TOOK AT THE DOOR IS WRITTEN DOWN — AND KEPT OUT OF THE RESTOCK'S TOTAL.
 //
-// Two claims, and the second is the one that decays quietly: a fee can land in its column and still
-// never reach the number a person reads. The COD fee is entered by the WAREHOUSE at acceptance (#155)
-// but it is the REQUESTING TEAM that pays for the goods, so the total on the requesting team's screen
-// is the only place that fee becomes real to the side settling it (#184). A stored column nobody adds
-// up is a fee that was recorded and forgotten.
+// The courier's charge is entered by the WAREHOUSE at acceptance (#155), paid from the warehouse's cash, and owed back
+// by the selling team as its own debt (the-warehouse-cost-is-the-couriers-charge-at-the-door). It reads back as the
+// restock's one `warehouse_additional_cost` (the-courier-is-paid-once-per-restock).
 //
-// ⚠ THE TOTAL IS ASSERTED AS A DELTA, not as a constant. Goods 500.000 + freight 15.000 + COD 25.000 is
-// an arithmetic anybody can restate; "the same request accepted with and without the fee differs by
-// exactly the fee" is the property that survives someone changing the fixture's prices, and it is the
-// one that breaks if the fee is ever double-counted or dropped from the sum.
+// ⚠ the-couriers-charge-stays-out-of-total REVERSED what these tests used to assert. They pinned the charge INSIDE
+// the total ("the fee moved the total"); the decision is that `total` is what the selling team's paying account paid —
+// goods plus agreed shipping — and adding a charge the warehouse paid later would make it disagree with that account.
+//
+// ⚠ STILL ASSERTED AS A DELTA, not as a constant: "the same request accepted with and without the charge has the SAME
+// total, and the charge differs by exactly the charge" survives someone changing the fixture's prices, and breaks if
+// the charge is ever folded into the total or dropped from its own field.
 
 const (
 	feeSellingTeam uint64 = 2
@@ -53,10 +54,10 @@ func acceptWithFee(
 	ctx := ctxUser(7)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: feeSellingTeam, WarehouseId: feeWarehouse, ShippingCode: "jne",
-		ShippingCost: 15000,
+		TeamId: feeSellingTeam, WarehouseId: feeWarehouse,
+		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU-COD", Name: "Widget", Quantity: 10, TotalPrice: 500000},
+			{ProductId: product, Sku: "SKU-COD", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -65,16 +66,16 @@ func acceptWithFee(
 
 	reqID := created.Msg.GetRequest().GetId()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: feeWarehouse, RequestId: reqID,
-		CostLines: codLines(codFee),
-		Lines:     allArrived(created.Msg.GetRequest()),
+		WarehouseAdditionalCost: codFee, WarehouseAdditionalCostNote: courierNote,
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
-	// Read back through DETAIL rather than off the fulfil response: the response is built from the
+	// Read back through DETAIL rather than off the accept response: the response is built from the
 	// struct the handler just mutated in memory, so it would agree with itself even if nothing was
 	// written. Detail goes to the row.
 	detail, err := svc.RestockRequestDetail(ctx, connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
@@ -106,74 +107,75 @@ func acceptWithFee(
 	return detail.Msg.GetRequest()
 }
 
-// codFeeOf is what the delivery cost the warehouse at the door, read off the cost lines (00021).
+// codFeeOf is what the delivery cost the warehouse at the door — the restock's one courier's charge.
 func codFeeOf(r *inventoryv1.RestockRequest) int64 {
-	var total int64
-	for _, line := range r.GetCostLines() {
-		total += line.GetAmount()
-	}
-
-	return total
+	return r.GetWarehouseAdditionalCost()
 }
 
-// committed is what the whole restock cost — goods plus every freight charge on them. The same sum
-// the selling detail screen puts under its lines (summary.ts committedValue).
-func committed(r *inventoryv1.RestockRequest) int64 {
-	var goods int64
-	for _, item := range r.GetItems() {
-		goods += item.GetTotalPrice()
-	}
-
-	return goods + r.GetShippingCost() + codFeeOf(r)
+// owed is everything the selling team is out of pocket for this restock: what its account paid (the total) plus the
+// courier's charge it owes the warehouse — the charge counted ONCE, on its own field.
+func owed(r *inventoryv1.RestockRequest) int64 {
+	return r.GetTotal() + codFeeOf(r)
 }
 
-func TestRestockFulfil_TheCODFeeIsRecordedAndMovesTheTotal(t *testing.T) {
+// the-couriers-charge-stays-out-of-total: the charge is recorded with its note, and the total is still goods plus
+// shipping.
+func TestRestockAccept_TheCODFeeIsRecordedAndStaysOutOfTheTotal(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	req := acceptWithFee(t, db, newService(t, db), feeProduct, 25000)
 
 	if codFeeOf(req) != 25000 {
-		t.Fatalf("cod fee reads back as %d, want 25000 — the requesting team cannot settle a fee it "+
+		t.Fatalf("courier's charge reads back as %d, want 25000 — the requesting team cannot settle a fee it "+
 			"is never shown", codFeeOf(req))
 	}
+	if req.GetWarehouseAdditionalCostNote() != courierNote {
+		t.Fatalf("the charge's note = %q, want %q", req.GetWarehouseAdditionalCostNote(), courierNote)
+	}
 
-	// 500.000 goods + 15.000 freight + 25.000 at the door.
-	if got := committed(req); got != 540000 {
-		t.Fatalf("committed total = %d, want 540000 — the fee is on the record but not in the sum", got)
+	// 500.000 goods + 15.000 freight — and NOT the 25.000 at the door.
+	if req.GetSubtotal() != 500000 || req.GetTotal() != 515000 {
+		t.Fatalf("subtotal/total = %d/%d, want 500000/515000 — the courier's charge stays out of the total",
+			req.GetSubtotal(), req.GetTotal())
 	}
 }
 
-// THE CONTROL. Without it the assertion above passes on a total that simply happens to be 540.000 for
-// some other reason, and "the fee moved the total" is not what was tested.
-func TestRestockFulfil_NoCODFeeLeavesTheTotalAtTheOrderedValue(t *testing.T) {
+// THE CONTROL. Without it the assertion above passes on a total that simply happens to be 515.000 for
+// some other reason.
+func TestRestockAccept_NoCODFeeLeavesTheTotalAtTheOrderedValue(t *testing.T) {
 	db := san_testdb.DB(t)
 
 	req := acceptWithFee(t, db, newService(t, db), feeProduct, 0)
 
 	if codFeeOf(req) != 0 {
-		t.Fatalf("cod fee = %d on a delivery nobody paid for at the door, want 0",
+		t.Fatalf("courier's charge = %d on a delivery nobody paid for at the door, want 0",
 			codFeeOf(req))
 	}
 
-	if got := committed(req); got != 515000 {
-		t.Fatalf("committed total = %d, want 515000 (goods + freight, no door fee)", got)
+	if got := req.GetTotal(); got != 515000 {
+		t.Fatalf("total = %d, want 515000 (goods + freight, no door fee)", got)
 	}
 }
 
-// THE DELTA IS EXACTLY THE FEE — the property the two tests above only imply. Counting the fee twice
-// (once into a stored total and once into the sum) or spreading it into the line prices would leave
-// both of those passing and this one failing.
-func TestRestockFulfil_TheTotalRisesByExactlyTheCODFee(t *testing.T) {
+// THE TOTAL DOES NOT MOVE, AND WHAT IS OWED MOVES BY EXACTLY THE FEE — the property the two tests above only imply.
+// Folding the charge into the total, counting it twice, or spreading it into the line prices would leave both of those
+// passing and this one failing (the-couriers-charge-stays-out-of-total).
+func TestRestockAccept_TheTotalStaysPutAndTheChargeIsCountedOnce(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
 	// Two products, one transaction — see acceptWithFee's note. Same prices, same freight, so the only
-	// difference between the two totals is the fee.
-	withFee := committed(acceptWithFee(t, db, svc, feeProduct, 25000))
-	without := committed(acceptWithFee(t, db, svc, feeProductB, 0))
+	// difference between the two restocks is the charge.
+	withFee := acceptWithFee(t, db, svc, feeProduct, 25000)
+	without := acceptWithFee(t, db, svc, feeProductB, 0)
 
-	if withFee-without != 25000 {
-		t.Fatalf("the fee moved the total by %d, want exactly the 25000 paid at the door",
-			withFee-without)
+	if withFee.GetTotal() != without.GetTotal() {
+		t.Fatalf("the charge moved the total from %d to %d — it must stay out of it",
+			without.GetTotal(), withFee.GetTotal())
+	}
+
+	if owed(withFee)-owed(without) != 25000 {
+		t.Fatalf("the charge moved what is owed by %d, want exactly the 25000 paid at the door",
+			owed(withFee)-owed(without))
 	}
 }

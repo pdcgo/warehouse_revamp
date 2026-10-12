@@ -23,11 +23,20 @@ func seedTwoBatches(t *testing.T, svc *inventory_v1.Service, warehouse uint64) *
 	}
 	rackID := rack.Msg.GetRack().GetId()
 
+	// there-is-no-unplaced-pile: the hats that are not shelved yet go to the staging placement, an ordinary placement.
+	staging, err := svc.RackCreate(ctx, connect.NewRequest(&inventoryv1.RackCreateRequest{
+		TeamId: warehouse, Code: stagingCode, Name: "Area Terima",
+	}))
+	if err != nil {
+		t.Fatalf("staging placement: %v", err)
+	}
+	stagingID := staging.Msg.GetRack().GetId()
+
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: 2, WarehouseId: warehouse, ShippingCode: "jne", ShippingCost: 80000, Receipt: "GRN-0721",
+		TeamId: 2, WarehouseId: warehouse, ShipmentCost: 80000, Receipt: "GRN-0721",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "KPH-001", Name: "Kaos", Quantity: 100, TotalPrice: 4000000},
-			{ProductId: 200, Sku: "TTM-207", Name: "Topi", Quantity: 30, TotalPrice: 840000},
+			{ProductId: 100, Sku: "KPH-001", Name: "Kaos", Count: 100, Total: 4000000},
+			{ProductId: 200, Sku: "TTM-207", Name: "Topi", Count: 30, Total: 840000},
 		},
 	}))
 	if err != nil {
@@ -36,24 +45,26 @@ func seedTwoBatches(t *testing.T, svc *inventory_v1.Service, warehouse uint64) *
 	req := created.Msg.GetRequest()
 	items := req.GetItems()
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
-		TeamId: warehouse, RequestId: req.GetId(), CostLines: codLines(50000),
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
+		TeamId: warehouse, RequestId: req.GetId(), WarehouseAdditionalCost: 50000, WarehouseAdditionalCostNote: courierNote,
 		Lines: []*inventoryv1.RestockRequestReceivedLine{
 			{
-				ItemId:           items[0].GetId(),
-				ReceivedQuantity: 100,
-				Placements:       []*inventoryv1.RestockPlacement{{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackID}, Quantity: 100}},
+				ItemId:        items[0].GetId(),
+				ReceivedCount: 100,
+				Placements:    []*inventoryv1.RestockPlacement{{PlacementId: rackID, Quantity: 100}},
 			},
 			{
-				ItemId:           items[1].GetId(),
-				ReceivedQuantity: 28,
-				Placements:       []*inventoryv1.RestockPlacement{{Place: &inventoryv1.RestockPlacement_Unplaced{Unplaced: true}, Quantity: 28}},
-				Damaged:          []*inventoryv1.RestockDamagedUnits{{Quantity: 2, Reason: "crushed", Type: broken}},
+				// 30 in the box, 2 of them crushed — 28 go to the staging placement.
+				ItemId:        items[1].GetId(),
+				ReceivedCount: 30,
+				BrokenCount:   2,
+				BrokenNote:    "crushed",
+				Placements:    []*inventoryv1.RestockPlacement{{PlacementId: stagingID, Quantity: 28}},
 			},
 		},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	return req

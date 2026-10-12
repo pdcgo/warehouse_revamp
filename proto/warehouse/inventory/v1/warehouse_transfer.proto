@@ -1,0 +1,538 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// WarehouseTransferService — a SELLING team moves its own stock from one warehouse (A) to another (B).
+//
+// The design is docs/business/inventory/warehouse_transfer.md and its decisions in warehouse_transfer_decision.md.
+// The selling team opens a transfer to rebalance (the-team-opens-the-sender-ships-the-receiver-accepts); the stock
+// leaves A's book at create (a-transfer-takes-from-the-sender-at-create); A processes and ships; B signs and accepts.
+// A transfer has seven statuses (a-transfer-has-seven-statuses), and EVERY status change locks the transfer row first
+// (a-transfer-is-locked-before-any-status-change).
+//
+// ⚠ PROTOTYPE: no handler exists yet. The service is mounted answering Unimplemented, and the screens run against the
+// Storybook stub until the backend step. It supersedes InventoryService.StockTransfer, the instant one-product move.
+service WarehouseTransferService {
+  // The selling team opens a transfer. Its transfer_out is written in the same transaction — shelves fewest first,
+  // batches oldest first — and too few at A fails the create.
+  rpc WarehouseTransferCreate(WarehouseTransferCreateRequest) returns (WarehouseTransferCreateResponse);
+  // Every side lists: the selling team its own transfers, a warehouse those leaving it and those coming to it.
+  rpc WarehouseTransferList(WarehouseTransferListRequest) returns (WarehouseTransferListResponse);
+  // One transfer in full, with its lines, its pick list, its problems and its trail. Same scope as List.
+  rpc WarehouseTransferDetail(WarehouseTransferDetailRequest) returns (WarehouseTransferDetailResponse);
+  // The selling team edits the shipping cost, its paying account and the note — until accepted. The lines are never
+  // edited (a-transfers-lines-are-never-edited).
+  rpc WarehouseTransferUpdate(WarehouseTransferUpdateRequest) returns (WarehouseTransferUpdateResponse);
+  // The selling team calls it off: created → cancelled, rolling the transfer_out back
+  // (cancel-before-processed-lost-only-in-transit).
+  rpc WarehouseTransferCancel(WarehouseTransferCancelRequest) returns (WarehouseTransferCancelResponse);
+  // The selling team gives the box up: shipped → lost. The loss is the team's
+  // (the-selling-team-bears-broken-missing-and-lost).
+  rpc WarehouseTransferMarkLost(WarehouseTransferMarkLostRequest) returns (WarehouseTransferMarkLostResponse);
+  // Warehouse A confirms and prints the pick list: created → process. From here on there is no cancel.
+  rpc WarehouseTransferProcess(WarehouseTransferProcessRequest) returns (WarehouseTransferProcessResponse);
+  // Warehouse A hands the box over: process → shipped, with the courier, the tracking number and the label photo
+  // (the-sender-enters-the-courier-at-ship).
+  rpc WarehouseTransferShip(WarehouseTransferShipRequest) returns (WarehouseTransferShipResponse);
+  // Warehouse B signs for the box: shipped or lost → arrived.
+  rpc WarehouseTransferArrive(WarehouseTransferArriveRequest) returns (WarehouseTransferArriveResponse);
+  // Warehouse B counts the box in: shipped or arrived → accepted. Its transfer_in mints one batch per source batch
+  // (the-receiver-mints-one-batch-per-source-batch), and the courier's on-site charge becomes the team's debt to B
+  // inside the same transaction (the-on-site-charge-is-paid-by-b-at-accept).
+  rpc WarehouseTransferAccept(WarehouseTransferAcceptRequest) returns (WarehouseTransferAcceptResponse);
+}
+
+// Where a transfer is (a-transfer-has-seven-statuses). APPEND ONLY.
+enum WarehouseTransferStatus {
+  WAREHOUSE_TRANSFER_STATUS_UNSPECIFIED = 0;
+  // Opened by the selling team. The units are taken from A's book and wait on A's racks for the picker. Only here may
+  // the team cancel.
+  WAREHOUSE_TRANSFER_STATUS_CREATED = 1;
+  // Warehouse A confirmed and printed the pick list — it is being picked and packed.
+  WAREHOUSE_TRANSFER_STATUS_PROCESS = 2;
+  // Handed to the courier. Only here may the team set it lost.
+  WAREHOUSE_TRANSFER_STATUS_SHIPPED = 3;
+  // Warehouse B signed for the box; it is at B's door, not yet counted.
+  WAREHOUSE_TRANSFER_STATUS_ARRIVED = 4;
+  // Counted in by B. Its good units are B's stock. Whether it had problems is read from its problem rows.
+  WAREHOUSE_TRANSFER_STATUS_ACCEPTED = 5;
+  // Called off by the selling team while created.
+  WAREHOUSE_TRANSFER_STATUS_CANCELLED = 6;
+  // The box never came. A box that turns up is signed for as arrived.
+  WAREHOUSE_TRANSFER_STATUS_LOST = 7;
+}
+
+// Which way a transfer runs, seen from a WAREHOUSE. APPEND ONLY.
+enum WarehouseTransferDirection {
+  // Both ways — and the only value a selling team's list uses.
+  WAREHOUSE_TRANSFER_DIRECTION_UNSPECIFIED = 0;
+  // Leaving this warehouse — it is A.
+  WAREHOUSE_TRANSFER_DIRECTION_OUTGOING = 1;
+  // Coming to this warehouse — it is B.
+  WAREHOUSE_TRANSFER_DIRECTION_INCOMING = 2;
+}
+
+// What went wrong with units at B's door (broken-and-missing-at-the-door-are-problem-rows). APPEND ONLY.
+enum WarehouseTransferProblemType {
+  WAREHOUSE_TRANSFER_PROBLEM_TYPE_UNSPECIFIED = 0;
+  // In the box, unusable.
+  WAREHOUSE_TRANSFER_PROBLEM_TYPE_BROKEN = 1;
+  // Sent, not in the box — the line's count minus what arrived.
+  WAREHOUSE_TRANSFER_PROBLEM_TYPE_MISSING = 2;
+}
+
+// How many units of one line sit on ONE placement — where A takes them from (a pick), or where B put them.
+message WarehouseTransferPlacement {
+  uint64 placement_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+// Units of one line that did not become B's stock. One row per product per kind
+// (a-product-appears-once-per-transfer).
+message WarehouseTransferProblem {
+  WarehouseTransferProblemType type = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  int64 count = 2 [(buf.validate.field).int64.gt = 0];
+  // What they were worth, FILLED BY THE SYSTEM from the layer the units came off — the newest first
+  // (the-system-fills-a-transfers-prices). `total` is exact; `price_unit` is total ÷ count, for display.
+  int64 price_unit = 3;
+  int64 total = 4;
+  // Warehouse B's note on the row (a-transfer-problem-row-carries-a-note). Optional.
+  string note = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+// One line of a transfer: one product (a-product-appears-once-per-transfer). Never edited after create.
+message WarehouseTransferItem {
+  uint64 id = 1;
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // sku/name snapshot at create.
+  string sku = 3;
+  string name = 4;
+  // How many were sent.
+  int64 count = 5 [(buf.validate.field).int64.gt = 0];
+  // The value the out-leg took for this product — the sum of its batch rows, each at its own price. Exact, and filled
+  // by the system (the-system-fills-a-transfers-prices).
+  int64 total = 6;
+  // total ÷ count, for display only. Different batch prices live in the ledger, never on the line.
+  int64 price_unit = 7;
+  // Where A takes the units from — A's pick list, chosen by the system at create, fewest first.
+  repeated WarehouseTransferPlacement picks = 8;
+  // What arrived in the box, broken units included. 0 until accepted.
+  int64 arrived_count = 9;
+  // Where B put the GOOD units — arrived − broken, exactly. Empty until accepted.
+  repeated WarehouseTransferPlacement placements = 10;
+  // Broken and missing rows, written by the accept.
+  repeated WarehouseTransferProblem problems = 11;
+}
+
+// One row of the trail (every-transfer-status-change-is-logged).
+message WarehouseTransferLog {
+  uint64 id = 1;
+  // UNSPECIFIED on the first row.
+  WarehouseTransferStatus from_status = 2;
+  WarehouseTransferStatus to_status = 3;
+  // user_service id; resolved to a name at read time.
+  uint64 actor_user_id = 4;
+  string description = 5;
+  int64 at_unix = 6;
+}
+
+message WarehouseTransfer {
+  uint64 id = 1;
+  // The selling team that owns the goods (one team per transfer).
+  uint64 team_id = 2;
+  // A — the sending warehouse — and B, the receiving one. Never equal
+  // (a-transfer-never-goes-to-its-own-warehouse).
+  uint64 from_warehouse_id = 3;
+  uint64 to_warehouse_id = 4;
+  WarehouseTransferStatus status = 5;
+  // The selling team's note.
+  string note = 6;
+
+  // The lines. At least one.
+  repeated WarehouseTransferItem items = 7;
+  // Σ line totals — the value of the goods moved. Both costs sit outside it.
+  int64 total = 8;
+
+  // The trip — entered by A when it ships (the-sender-enters-the-courier-at-ship); all optional
+  // (a-transfer-may-travel-without-a-courier).
+  uint64 shipment_id = 9;
+  string receipt = 10;
+  string receipt_file = 11;
+
+  // The shipping expense — the selling team's, from its own account (a-transfer-has-the-restocks-two-costs).
+  // Never in a unit's price (a-transfer-never-changes-a-units-price).
+  int64 shipment_cost = 12;
+  // Required when shipment_cost is above 0 (a-transfer-names-its-paying-account).
+  uint64 finance_account_id = 13;
+  // The courier's charge at B's door — B pays it, the team owes B. Entered at accept; 0 until then.
+  int64 warehouse_additional_cost = 14;
+  // Required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for).
+  string warehouse_additional_cost_note = 15;
+
+  // The two legs; 0 = not yet written.
+  uint64 outbound_transaction_id = 16;
+  uint64 inbound_transaction_id = 17;
+
+  // Who did what, and when — user_service ids, 0 = not yet; unix seconds, 0 = not yet.
+  uint64 created_by_user_id = 18;
+  int64 created_at_unix = 19;
+  uint64 processed_by_user_id = 20;
+  int64 processed_at_unix = 21;
+  uint64 shipped_by_user_id = 22;
+  int64 shipped_at_unix = 23;
+  uint64 arrived_by_user_id = 24;
+  int64 arrived_at_unix = 25;
+  uint64 accepted_by_user_id = 26;
+  int64 accepted_at_unix = 27;
+  uint64 cancelled_by_user_id = 28;
+  int64 cancelled_at_unix = 29;
+  uint64 lost_by_user_id = 30;
+  int64 lost_at_unix = 31;
+
+  // The trail, oldest first. DETAIL ONLY — List leaves it empty.
+  repeated WarehouseTransferLog logs = 32;
+}
+
+// ── Create ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+// One product to send. The system fills the rest at create.
+message WarehouseTransferLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 count = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+message WarehouseTransferCreateRequest {
+  // The SELLING team that owns the goods opens it (a-warehouse-asks-the-team-to-open-a-transfer).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // A and B. Never equal — the handler checks, since a rule across two fields cannot be written here.
+  uint64 from_warehouse_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 to_warehouse_id = 3 [(buf.validate.field).uint64.gt = 0];
+  // At least one line, each product once — the handler checks the once.
+  repeated WarehouseTransferLine lines = 4 [(buf.validate.field).repeated.min_items = 1];
+  string note = 5 [(buf.validate.field).string.max_len = 1000];
+  // Optional now; editable until accepted. finance_account_id is required when shipment_cost is above 0 — the handler
+  // checks.
+  int64 shipment_cost = 6 [(buf.validate.field).int64.gte = 0];
+  uint64 finance_account_id = 7;
+}
+
+message WarehouseTransferCreateResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+// ── List and detail ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+message WarehouseTransferListRequest {
+  // Every side — the selling team that owns it, A, or B.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  WarehouseTransferListFilter filter = 2;
+  repeated WarehouseTransferListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message WarehouseTransferListFilter {
+  // ONE status; UNSPECIFIED = all of them.
+  WarehouseTransferStatus status = 1 [(buf.validate.field).enum.defined_only = true];
+  // Warehouse side only: leaving or coming. UNSPECIFIED = both.
+  WarehouseTransferDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
+  // Only transfers touching THIS warehouse, at either end; 0 = any. For a warehouse, it is the other end.
+  uint64 warehouse_id = 3;
+  // Warehouse side only: only this selling team's transfers. 0 = every team.
+  uint64 owner_team_id = 4;
+  // Created within the period. Both 0 = any time.
+  int64 from_unix = 5;
+  int64 to_unix = 6;
+  // Free text over its number (a whole id only), the tracking number, and a line's SKU or name.
+  string q = 7 [(buf.validate.field).string.max_len = 100];
+}
+
+enum WarehouseTransferListDataType {
+  WAREHOUSE_TRANSFER_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  WAREHOUSE_TRANSFER_LIST_DATA_TYPE_GENERAL = 1;
+  WAREHOUSE_TRANSFER_LIST_DATA_TYPE_WAREHOUSE_TRANSFER = 2;
+}
+
+message WarehouseTransferMapItem {
+  map<uint64, WarehouseTransfer> map_data = 1;
+}
+
+message WarehouseTransferListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    WarehouseTransferMapItem warehouse_transfer = 2;
+  }
+}
+
+message WarehouseTransferListResponse {
+  repeated WarehouseTransferListResponseItem items = 1;
+  // Newest first.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+message WarehouseTransferDetailRequest {
+  // Every side, as List. A transfer the team is no side of reads as NotFound.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseTransferDetailResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+// ── The selling team's acts ─────────────────────────────────────────────────────────────────────────────────────────
+
+message WarehouseTransferUpdateRequest {
+  // The SELLING team that owns it, until accepted.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A full replace of the three editable fields. A cost change sends the difference to the paying account, and an
+  // account change moves the whole amount (the-shipping-expense-reaches-the-account-by-event).
+  int64 shipment_cost = 3 [(buf.validate.field).int64.gte = 0];
+  uint64 finance_account_id = 4;
+  string note = 5 [(buf.validate.field).string.max_len = 1000];
+}
+
+message WarehouseTransferUpdateResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+message WarehouseTransferCancelRequest {
+  // The SELLING team, only while created.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Why — kept on the trail row. Optional.
+  string description = 3 [(buf.validate.field).string.max_len = 200];
+}
+
+message WarehouseTransferCancelResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+message WarehouseTransferMarkLostRequest {
+  // The SELLING team, only while shipped.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+  string description = 3 [(buf.validate.field).string.max_len = 200];
+}
+
+message WarehouseTransferMarkLostResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+// ── Warehouse A's acts ──────────────────────────────────────────────────────────────────────────────────────────────
+
+message WarehouseTransferProcessRequest {
+  // The SENDING warehouse, any member.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // Warehouse A — must be the transfer's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseTransferProcessResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+message WarehouseTransferShipRequest {
+  // The SENDING warehouse, any member.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // Warehouse A — must be the transfer's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // All optional: a warehouse's own vehicle has none of them.
+  uint64 shipment_id = 3;
+  string receipt = 4 [(buf.validate.field).string.max_len = 100];
+  string receipt_file = 5 [(buf.validate.field).string.max_len = 500];
+}
+
+message WarehouseTransferShipResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+// ── Warehouse B's acts ──────────────────────────────────────────────────────────────────────────────────────────────
+
+message WarehouseTransferArriveRequest {
+  // The RECEIVING warehouse, any member.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // Warehouse B — must be the transfer's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message WarehouseTransferArriveResponse {
+  WarehouseTransfer transfer = 1;
+}
+
+message WarehouseTransferAcceptRequest {
+  // The RECEIVING warehouse, any member.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // Warehouse B — must be the transfer's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // One entry per line, EVERY line exactly once — accepting IS the count.
+  repeated WarehouseTransferCountedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
+  // The courier's charge at B's door, whole rupiah; 0 = none. Its note is required when it is above 0 — the handler
+  // checks.
+  int64 warehouse_additional_cost = 4 [(buf.validate.field).int64.gte = 0];
+  string warehouse_additional_cost_note = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+// One line's count at B's door.
+message WarehouseTransferCountedLine {
+  uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // What is IN THE BOX, broken units included. Never above the line's count; below it, the difference is a MISSING row.
+  int64 arrived_count = 2 [(buf.validate.field).int64.gte = 0];
+  // How many of those are broken; never above arrived_count.
+  int64 broken_count = 3 [(buf.validate.field).int64.gte = 0];
+  string broken_note = 4 [(buf.validate.field).string.max_len = 200];
+  string missing_note = 5 [(buf.validate.field).string.max_len = 200];
+  // Where the GOOD units went — arrived − broken, exactly. Empty when there are none.
+  repeated WarehouseTransferPlacement placements = 6;
+}
+
+message WarehouseTransferAcceptResponse {
+  WarehouseTransfer transfer = 1;
+}

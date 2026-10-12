@@ -13,27 +13,25 @@ import (
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
-// firstBatchID accepts one line on rackID (received sellable units, plus optional damage) and returns
-// the minted batch's id. `damaged` is applied as-is so a caller can mix broken and lost.
+// acceptLine accepts one line on rackID — `good` sellable units, plus `broken` in the box and `missing` short of it —
+// and returns the minted batch's id.
+//
+// The line is ordered as all three together. The warehouse types what was IN THE BOX (good + broken) and how many of
+// those are broken; the missing are worked out as count − received (a-short-unit-at-the-door-is-missing) — nobody
+// types them.
 func acceptLine(
 	t *testing.T,
 	svc *inventory_v1.Service,
 	warehouse, rackID, product uint64,
-	received, total int64,
-	damaged []*inventoryv1.RestockDamagedUnits,
+	good, total, broken, missing int64,
 ) uint64 {
 	t.Helper()
 	ctx := ctxUser(1)
 
-	var damagedQty int64
-	for _, d := range damaged {
-		damagedQty += d.GetQuantity()
-	}
-
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: 2, WarehouseId: warehouse, ShippingCode: "jne", Receipt: "GRN-BK",
+		TeamId: 2, WarehouseId: warehouse, Receipt: "GRN-BK",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "KPH-001", Name: "Kaos", Quantity: received + damagedQty, TotalPrice: total},
+			{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: total},
 		},
 	}))
 	if err != nil {
@@ -41,17 +39,17 @@ func acceptLine(
 	}
 	item := created.Msg.GetRequest().GetItems()[0]
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{{
-			ItemId:           item.GetId(),
-			ReceivedQuantity: received,
-			Placements:       []*inventoryv1.RestockPlacement{{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackID}, Quantity: received}},
-			Damaged:          damaged,
+			ItemId:        item.GetId(),
+			ReceivedCount: good + broken,
+			BrokenCount:   broken,
+			Placements:    []*inventoryv1.RestockPlacement{{PlacementId: rackID, Quantity: good}},
 		}},
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	list, err := svc.BatchList(ctx, connect.NewRequest(&inventoryv1.BatchListRequest{TeamId: warehouse, Filter: &inventoryv1.BatchListFilter{ProductId: product}, Page: page1()}))
@@ -79,12 +77,8 @@ func TestBatch_SplitsBrokenLost_AndOriginRestock(t *testing.T) {
 		t.Fatalf("rack: %v", err)
 	}
 
-	// Received 10 sellable, plus 2 broken and 3 lost → arrived 15.
-	batchID := acceptLine(t, svc, warehouse, rack.Msg.GetRack().GetId(), product, 10, 1500000,
-		[]*inventoryv1.RestockDamagedUnits{
-			{Quantity: 2, Reason: "crushed", Type: broken},
-			{Quantity: 3, Reason: "missing", Type: lost},
-		})
+	// Received 10 sellable, plus 2 broken, and 3 missing from the box (the batch's "lost") → arrived 15.
+	batchID := acceptLine(t, svc, warehouse, rack.Msg.GetRack().GetId(), product, 10, 1500000, 2, 3)
 
 	assertLifecycle := func(what string, b *inventoryv1.StockBatch) {
 		if b.GetArrived() != 15 || b.GetBroken() != 2 || b.GetLost() != 3 || b.GetReady() != 10 || b.GetUsed() != 0 {
@@ -126,7 +120,7 @@ func TestBatchPlacement_LastOpname(t *testing.T) {
 		t.Fatalf("rack: %v", err)
 	}
 	rackID := rack.Msg.GetRack().GetId()
-	batchID := acceptLine(t, svc, warehouse, rackID, product, 10, 1000000, nil)
+	batchID := acceptLine(t, svc, warehouse, rackID, product, 10, 1000000, 0, 0)
 
 	shelf := func() *inventoryv1.BatchShelf {
 		res, pErr := svc.BatchPlacementList(context.Background(), connect.NewRequest(&inventoryv1.BatchPlacementListRequest{
@@ -182,7 +176,7 @@ func TestBatchDetail_ReturnAggregate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("rack: %v", err)
 	}
-	batchID := acceptLine(t, svc, warehouse, rack.Msg.GetRack().GetId(), product, 10, 1000000, nil)
+	batchID := acceptLine(t, svc, warehouse, rack.Msg.GetRack().GetId(), product, 10, 1000000, 0, 0)
 
 	detail := func() *inventoryv1.BatchDetailResponse {
 		res, dErr := svc.BatchDetail(context.Background(), connect.NewRequest(&inventoryv1.BatchDetailRequest{TeamId: warehouse, BatchId: batchID}))

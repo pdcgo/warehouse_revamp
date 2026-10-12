@@ -43,3 +43,25 @@ export function rackHistoryFromList(
   }
   return ids.map((id) => m[id.toString()]).filter((mv): mv is StockMovement => !!mv);
 }
+
+// The Racks PAGE asks for each rack's stock count beside the rack itself (a-rack-shows-its-stock-count-for-now); a
+// picker keeps to `rackListRowData`, so it never makes the server sum a shelf.
+export const rackListPageRowData = (): RackListDataType[] => [RackListDataType.RACK, RackListDataType.STOCK];
+
+// One rack's line in the Racks list: its stock count, and how many different products make it up.
+export interface RackTotals {
+  stockCount: bigint;
+  productCount: number;
+}
+
+// rack id → its totals. A rack the slice does not mention holds nothing, which the caller reads as 0 and 0.
+export function rackStockTotalsFromList(items: RackListResponseItem[]): Map<string, RackTotals> {
+  const out = new Map<string, RackTotals>();
+  for (const it of items) {
+    if (it.d.case !== "stock") continue;
+    for (const [id, total] of Object.entries(it.d.value.mapData)) {
+      out.set(id, { stockCount: total.stockCount, productCount: total.productCount });
+    }
+  }
+  return out;
+}

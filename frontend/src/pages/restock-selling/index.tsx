@@ -6,11 +6,8 @@ import {
   Box,
   Button,
   Flex,
-  Icon,
-  IconButton,
+  HStack,
   Input,
-  Menu,
-  Portal,
   SimpleGrid,
   Spacer,
   Spinner,
@@ -21,7 +18,6 @@ import {
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Ban, MoreHorizontal, Pencil } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
@@ -33,30 +29,29 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
-import { useSuppliersByIds } from "../../features/suppliers/queries";
-import {
-  useRestockOngoing,
-  useRestockPeople,
-  useRestockRequests,
-  useCancelRestockRequest,
-} from "../../features/restock/queries";
+import { useShipmentChannelsByIds } from "../../features/shipment/queries";
+import { useRestockOngoing, useRestockPeople, useRestockRequests } from "../../features/restock/queries";
+import { LineSupplier, useLineSuppliers } from "../../features/restock/LineSupplier";
+import type { LineSupplierProps } from "../../features/restock/LineSupplier";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
 import { RESTOCK_DATE_FIELDS } from "../../features/restock/dateFields";
 import { committedValue, shortfall } from "../../features/restock/summary";
-import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { ALL_DATES, DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { Pagination } from "../../components/chrome/Pagination";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
-import { ShippingBadge } from "../../components/badges/ShippingBadge";
+import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
-import { toaster } from "../../components/feedback/Toaster";
+import { NotImplemented } from "../../features/pending/NotImplemented";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
+import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
+import { RESTOCK_SELLING_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -74,13 +69,15 @@ const NAME_LOOKUP_SIZE = 200;
 // to count and shelve"), while a selling team is looking at PURCHASING — what it has bought, what it
 // has committed money to, and whether it got what it paid for. The columns follow from that:
 //
-//   - the SUPPLIER leads, because buying is organised by who you bought from;
+//   - the SUPPLIER leads, because buying is organised by who you bought from — read off the LINES now, since a
+//     line names the store it was bought from (a-line-names-the-channel-it-was-bought-from);
 //   - the DESTINATION is a warehouse NAME, not "warehouse #3" — an id is not somewhere goods go;
-//   - the VALUE is on the row, because a restock is where this team commits money and "what do I owe
-//     on goods in flight" is the question this screen exists to answer;
-//   - a SHORT delivery is flagged in the list, not only on the detail page. The gap between asked and
-//     received is what someone chases the supplier about, and a discrepancy nobody scrolls to is a
-//     discrepancy nobody chases.
+//   - the VALUE is on the row — goods plus shipping, what the paying account was charged, and NEVER the courier's
+//     charge at the door, which the warehouse paid and is owed back on its own (the-couriers-charge-stays-out-of-total);
+//   - MISSING units are flagged in the list, not only on the detail page (a-short-unit-at-the-door-is-missing). The
+//     gap is what someone chases the supplier about, and a discrepancy nobody scrolls to is one nobody chases;
+//   - each row's ⋯ offers what the status allows — Edit · Cancel · Mark Lost while ongoing, Edit Lines once arrived
+//     (SellingRestockActions holds the matrix).
 //
 // What is NOT here is as deliberate: no "Requested by" column, because every row on this screen was
 // raised by the team reading it — RestockRequestList returns `requesting_team_id = team` OR
@@ -136,8 +133,6 @@ export function RestockSellingPage() {
   // search box and a date range deliberately do not move it.
   const ongoing = useRestockOngoing({ teamId, warehouseId: warehouseFilter });
 
-  const cancelMutation = useCancelRestockRequest();
-
   // The two "who" filters' people — everyone on this team's restocks who raised one, and who accepted one.
   const createdBy = useRestockPeople({ teamId, role: RestockActorRole.CREATED });
   const acceptedBy = useRestockPeople({ teamId, role: RestockActorRole.ACCEPTED });
@@ -151,13 +146,14 @@ export function RestockSellingPage() {
     pageSize: NAME_LOOKUP_SIZE,
     reference: true,
   });
-  // The suppliers are resolved BY ID, for the rows on this page — not from this team's supplier list. A
-  // restock may name another selling team's supplier (a-team-restocks-from-another-teams-supplier), or one
-  // deleted since (a-deleted-supplier-is-kept-for-its-figures); SupplierByIds names both, the list neither.
-  const suppliers = useSuppliersByIds({
-    teamId,
-    supplierIds: (query.data?.requests ?? []).map((request) => request.supplierId),
-  });
+  // WHERE EACH ROW WAS BOUGHT — the lines' suppliers and stores, resolved by id for every line on this page in two
+  // reads (useLineSuppliers). By id, never from this team's list: a line may name another team's supplier
+  // (a-line-connects-to-any-teams-supplier-from-a-popup), or a deleted one, still named and badged
+  // (a-deleted-supplier-still-shows-with-a-badge).
+  const pageLines = useMemo(() => (query.data?.requests ?? []).flatMap((r) => r.items), [query.data]);
+  const { suppliers, channels: stores } = useLineSuppliers(teamId, pageLines);
+  // The couriers — a restock names a shipment channel by id; one read for the page.
+  const couriers = useShipmentChannelsByIds((query.data?.requests ?? []).map((r) => r.shipmentId));
 
   // Keyed to the whole TEAM, not just its name: the Destination cell renders the shared TeamItem
   // (owner), which wants the avatar and the type badge as well.
@@ -166,14 +162,6 @@ export function RestockSellingPage() {
     for (const team of warehouses.data?.teams ?? []) out[team.id.toString()] = team;
     return out;
   }, [warehouses.data]);
-
-  const supplierNames = useMemo(() => {
-    const out: Record<string, string> = {};
-    for (const [id, supplier] of suppliers.data ?? []) {
-      out[id] = supplier.name;
-    }
-    return out;
-  }, [suppliers.data]);
 
   const requests = query.data?.requests ?? [];
   const actors = query.data?.actors;
@@ -192,13 +180,6 @@ export function RestockSellingPage() {
     setPage(1);
   }
 
-  // A restock legitimately has NO supplier (a transfer, a sample), so an unset id is an em dash and
-  // not an error — only a set-but-unresolved id falls back to naming the number.
-  function supplierLabel(id: bigint): string {
-    if (id === 0n) return "";
-    return supplierNames[id.toString()] ?? t("restock.detail.supplierRef", { id: id.toString() });
-  }
-
   // Who did it. 0 is "not recorded" — every restock raised before the actor columns existed, and the
   // honest answer there is nothing rather than a name we would have to invent.
   function actorLabel(id: bigint): string {
@@ -208,23 +189,6 @@ export function RestockSellingPage() {
     const user = actors?.get(id.toString());
 
     return user ? user.name || user.username : t("restock.table.userRef", { id: id.toString() });
-  }
-
-  async function cancelRequest(request: RestockRequest) {
-    if (teamId === undefined) {
-      return;
-    }
-
-    try {
-      await cancelMutation.mutateAsync({ teamId, requestId: request.id });
-      toaster.create({ type: "success", title: t("restock.toast.cancelled") });
-    } catch (err) {
-      toaster.create({
-        type: "error",
-        title: t("restock.toast.cancelFailed"),
-        description: rpcError(err),
-      });
-    }
   }
 
   if (!current) {
@@ -239,6 +203,8 @@ export function RestockSellingPage() {
 
   return (
     <Stack gap="section">
+      <NotImplementedSummary list={RESTOCK_SELLING_PENDING} />
+
       <Flex align="center" gap="card">
         <Spacer />
         <Button
@@ -252,7 +218,7 @@ export function RestockSellingPage() {
       </Flex>
 
       {/* WHAT IS IN FLIGHT — the two numbers a buyer opens this screen for. Server-side totals over
-          every pending restock, so they describe the team rather than the visible page. */}
+          every restock still in flight, so they describe the team rather than the visible page. */}
       <SimpleGrid columns={{ base: 1, sm: 2 }} gap="card">
         <Stat.Root>
           <Stat.Label>{t("restock.stat.ongoing")}</Stat.Label>
@@ -276,7 +242,7 @@ export function RestockSellingPage() {
       <Flex gap="card" wrap="wrap" align="center">
         <Input
           maxW="sm"
-          placeholder={t("restock.searchPlaceholder")}
+          placeholder={t("restock.selling.searchPlaceholder")}
           value={search}
           data-testid="restock-search"
           onChange={(e) => refilter(() => setSearch(e.target.value))}
@@ -365,13 +331,23 @@ export function RestockSellingPage() {
                 <Table.Header>
                   <Table.Row>
                     <Table.ColumnHeader>{t("restock.table.restock")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("restock.table.supplier")}</Table.ColumnHeader>
+                    <Table.ColumnHeader>
+                      <HStack gap="1.5">
+                        {t("restock.table.supplier")}
+                        <NotImplemented list={RESTOCK_SELLING_PENDING} id="lineSupplier" />
+                      </HStack>
+                    </Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.destination")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.status")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.accepted")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.product")}</Table.ColumnHeader>
                     <Table.ColumnHeader>{t("restock.table.reference")}</Table.ColumnHeader>
-                    <Table.ColumnHeader>{t("restock.table.shipment")}</Table.ColumnHeader>
+                    <Table.ColumnHeader>
+                      <HStack gap="1.5">
+                        {t("restock.table.shipment")}
+                        <NotImplemented list={RESTOCK_SELLING_PENDING} id="courier" />
+                      </HStack>
+                    </Table.ColumnHeader>
                     <Table.ColumnHeader textAlign="end">
                       {t("restock.table.value")}
                     </Table.ColumnHeader>
@@ -383,8 +359,7 @@ export function RestockSellingPage() {
 
                 <Table.Body>
                   {requests.map((request) => {
-                    const isPending = request.status === RestockRequestStatus.PENDING;
-                    const short = shortfall(request);
+                    const missing = shortfall(request);
                     const createdBy = actorLabel(request.createdByUserId);
                     const acceptedBy = actorLabel(request.acceptedByUserId);
 
@@ -405,7 +380,7 @@ export function RestockSellingPage() {
                             {/* Date AND TIME (owner) — several restocks are raised in one morning,
                                 and the day alone cannot put them in order for the person who raised
                                 them. Same on Accepted, where the clock is what someone remembers. */}
-                            <Span fontSize="xs" color="fg.muted">
+                            <Span fontSize="xs" color="fg.muted" whiteSpace="nowrap">
                               {formatUnixDateTime(request.createdAtUnix)}
                             </Span>
                             {createdBy && (
@@ -419,7 +394,9 @@ export function RestockSellingPage() {
                             )}
                           </Stack>
                         </Table.Cell>
-                        <Table.Cell>{supplierLabel(request.supplierId) || "—"}</Table.Cell>
+                        <Table.Cell minW="44" data-testid={`restock-supplier-${request.id}`}>
+                          <RowSupplier request={request} suppliers={suppliers} stores={stores} />
+                        </Table.Cell>
                         {/* The shared TeamItem (owner) — avatar, name and type badge, so a warehouse
                             reads the same here as it does in the switcher and on the returns list.
                             An unresolved id still renders: TeamItem falls back to "Team #id" rather
@@ -437,15 +414,14 @@ export function RestockSellingPage() {
                         <Table.Cell>
                           <Stack gap="1" align="start">
                             <RestockStatusBadge status={request.status} />
-                            {/* Only ever rendered on a FULFILLED row — shortfall() returns 0 before
-                                the warehouse has counted, because an uncounted line is not a line
-                                that arrived empty. */}
-                            {short > 0n && (
+                            {/* Only ever rendered on an ACCEPTED row — shortfall() returns 0 before
+                                the warehouse has counted, because an uncounted box is not a short one. */}
+                            {missing > 0n && (
                               <Badge
                                 colorPalette="warning"
-                                data-testid={`restock-short-${request.id}`}
+                                data-testid={`restock-missing-${request.id}`}
                               >
-                                {t("restock.table.shortBy", { count: Number(short) })}
+                                {t("restock.table.missingBadge", { count: Number(missing) })}
                               </Badge>
                             )}
                           </Stack>
@@ -476,17 +452,17 @@ export function RestockSellingPage() {
                         <Table.Cell>
                           <RestockItemsCell items={request.items} />
                         </Table.Cell>
-                        {/* THE TWO NUMBERS PEOPLE QUOTE AT EACH OTHER (owner): the order this
-                            restock was bought against, and the courier's tracking number. Both are
+                        {/* THE TWO NUMBERS PEOPLE QUOTE AT EACH OTHER (owner): the store invoice
+                            this restock was paid against (a-restock-has-one-invoice), and the courier's tracking number. Both are
                             LABELLED rather than stacked bare — "MP-4127" and "JP1830042" are two
                             opaque strings, and a reader cannot tell which is which without being
                             told. Either may legitimately be absent; the cell shows what it has. */}
                         <Table.Cell>
-                          {request.orderRef || request.receipt ? (
+                          {request.invoiceRefId || request.receipt ? (
                             <Stack gap="0" minW="0">
-                              {request.orderRef && (
-                                <Span fontSize="xs" data-testid={`restock-order-ref-${request.id}`}>
-                                  {t("restock.table.orderRefValue", { value: request.orderRef })}
+                              {request.invoiceRefId && (
+                                <Span fontSize="xs" data-testid={`restock-invoice-${request.id}`}>
+                                  {t("restock.table.invoiceValue", { value: request.invoiceRefId })}
                                 </Span>
                               )}
                               {request.receipt && (
@@ -504,74 +480,27 @@ export function RestockSellingPage() {
                           )}
                         </Table.Cell>
                         <Table.Cell>
-                          <ShippingBadge code={request.shippingCode} />
+                          <ShipmentChannelBadge
+                            channelId={request.shipmentId}
+                            channel={couriers.data?.get(request.shipmentId.toString())}
+                          />
                         </Table.Cell>
-                        <Table.Cell textAlign="end">
+                        <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`restock-value-${request.id}`}>
                           {formatRupiah(committedValue(request))}
                         </Table.Cell>
 
                         {/* Stop the row's navigate from firing when a row action is used. */}
                         <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                          {/* An overflow MENU rather than two bare icons (owner): a pencil and a
-                              circle-slash at xs, ghost, in the last column read as decoration — the
-                              actions were there and nobody could find them. Named items with leading
-                              icons are the house pattern for row actions, and they say what they do.
-
-                              Both are the REQUESTER's, and both are gated on PENDING for the same
-                              physical reason (#131): until the warehouse accepts, nothing has moved
-                              and the request is still an intention its author owns. A fulfilled or
-                              cancelled row therefore has no menu at all rather than a disabled one —
-                              there is nothing it could offer. */}
-                          {isPending && (
-                            <Menu.Root>
-                              <Menu.Trigger asChild>
-                                <IconButton
-                                  size="xs"
-                                  variant="ghost"
-                                  aria-label={t("restock.table.actions")}
-                                  data-testid={`restock-actions-${request.id}`}
-                                >
-                                  <Icon as={MoreHorizontal} boxSize="4" />
-                                </IconButton>
-                              </Menu.Trigger>
-                              <Portal>
-                                <Menu.Positioner>
-                                  <Menu.Content>
-                                    <Menu.Item
-                                      value="edit"
-                                      data-testid={`edit-${request.id}`}
-                                      onClick={() =>
-                                        navigate(`/inventories/restock/${request.id}/edit`)
-                                      }
-                                    >
-                                      <Icon as={Pencil} boxSize="4" />
-                                      {t("restock.edit")}
-                                    </Menu.Item>
-
-                                    {/* Cancelling is not trivially reversible, so it confirms. */}
-                                    <ConfirmDialog
-                                      title={t("restock.cancel.title")}
-                                      message={t("restock.cancel.message")}
-                                      confirmLabel={t("restock.cancel.confirm")}
-                                      onConfirm={() => cancelRequest(request)}
-                                      trigger={
-                                        <Menu.Item
-                                          value="cancel"
-                                          color="error.fg"
-                                          data-testid={`cancel-${request.id}`}
-                                          // The menu must NOT close on this one: it opens a confirm
-                                          // dialog, and a menu that closes takes the trigger with it.
-                                          closeOnSelect={false}
-                                        >
-                                          <Icon as={Ban} boxSize="4" />
-                                          {t("restock.cancel.action")}
-                                        </Menu.Item>
-                                      }
-                                    />
-                                  </Menu.Content>
-                                </Menu.Positioner>
-                              </Portal>
-                            </Menu.Root>
+                          {/* An overflow MENU (owner): ongoing has three actions, and named items with leading
+                              icons are the house pattern for row actions. A row whose status allows nothing has
+                              no menu at all rather than a disabled one. */}
+                          {teamId !== undefined && (
+                            <SellingRestockActions
+                              request={request}
+                              teamId={teamId}
+                              variant="menu"
+                              pending={RESTOCK_SELLING_PENDING}
+                            />
                           )}
                         </Table.Cell>
                       </Table.Row>
@@ -609,6 +538,44 @@ export function RestockSellingPage() {
           </RefreshOverlay>
         </Tabs.Content>
       </Tabs.Root>
+    </Stack>
+  );
+}
+
+// WHERE A ROW WAS BOUGHT — its first line's supplier and store, and how many OTHER suppliers its lines name. In practice
+// a restock is one invoice from one store (a-restock-has-one-invoice), so this is usually the whole answer; the detail
+// page lists every line's.
+function RowSupplier({
+  request,
+  suppliers,
+  stores,
+}: {
+  request: RestockRequest;
+  suppliers: LineSupplierProps["suppliers"];
+  stores: LineSupplierProps["channels"];
+}) {
+  const { t } = useTranslation();
+  const named = request.items.filter((item) => item.supplierId > 0n);
+  const first = named[0] ?? request.items[0];
+
+  if (!first) return <Span color="fg.muted">—</Span>;
+
+  const others = new Set(named.map((item) => item.supplierId.toString()));
+  others.delete(first.supplierId.toString());
+
+  return (
+    <Stack gap="0.5" minW="0">
+      <LineSupplier
+        supplierId={first.supplierId}
+        supplierChannelId={first.supplierChannelId}
+        suppliers={suppliers}
+        channels={stores}
+      />
+      {others.size > 0 && (
+        <Span fontSize="xs" color="fg.muted">
+          {t("restock.table.moreSuppliers", { count: others.size })}
+        </Span>
+      )}
     </Stack>
   );
 }

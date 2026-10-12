@@ -134,7 +134,7 @@ func (s *Service) unitCosts(
 			  -- the product falls back to its previous delivery rather than to a fabricated figure.
 			  AND i.received_quantity > 0
 			ORDER BY i.product_id, r.id DESC`,
-			warehouseID, restockStatusFulfilled, productIDs,
+			warehouseID, restockStatusAccepted, productIDs,
 		).
 		Scan(&rows).
 		Error
