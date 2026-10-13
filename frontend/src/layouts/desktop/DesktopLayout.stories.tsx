@@ -1,13 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { RouteObject } from "react-router-dom";
 import { Text } from "@chakra-ui/react";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
-import { asPlatformOnly } from "../../../.storybook/sessionScenario";
+import { manySuppliers } from "../../../.storybook/supplierFixtures";
+import { addSupplierRows } from "../../../.storybook/supplierStub";
+import { asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { DesktopLayout } from "./DesktopLayout";
+import { SUPPLIER_ROUTES } from "../../../.storybook/supplierRoutes";
 
 // THE DESKTOP APP SHELL — the sidebar beside the routed page, nothing above it (`the-desktop-shell-has-no-top-bar`).
 // (The phone's shell is a different component with its own stories: Layouts/Mobile.)
@@ -48,6 +51,17 @@ const SHELL: RouteObject = {
 
 const at = (path: string) => routedPage([SHELL], path);
 
+// …and ONE REAL SCREEN, for looking at a page in its frame (owner: *"di appshell desktop aku mau ada story untuk contoh
+// pagenya"*): the team's supplier list. It is the screen that carries every rule a page owes the shell — a title with
+// its subtitle, the shared FilterBar, a table that lights up, labelled actions, the growing pager — so it is the one
+// to judge the frame against. Only the stories that NAME it mount it; the rule stories above stay on markers.
+const WITH_A_PAGE: RouteObject = {
+  ...SHELL,
+  // The list and everything it opens — a supplier's page, Discover, the report — the app's own paths.
+  children: [...SUPPLIER_ROUTES, marker("*", "at-elsewhere")],
+};
+const AtTheSupplierList = routedPage([WITH_A_PAGE], "/inventories/suppliers");
+
 const AtHome = at("/");
 const AtDrafts = at("/order-drafts");
 const AtBatchDetail = at("/inventories/batches/301");
@@ -78,6 +92,57 @@ export const WarehouseTeam: Story = {};
 // …and a selling team's, from the same component: a different sidebar, the same frame.
 export const SellingTeam: Story = {
   beforeEach: asTeam(SELLING.id),
+};
+
+// AN EXAMPLE PAGE IN THE FRAME — Toko Melati's supplier list, as its owner sees it: the sidebar with *My Supplier* lit,
+// the page in the page gutter beside it.
+export const AnExamplePage: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+    // A FULL LIST (owner: *"mobile dan desktop suppliernya full"*) — 24 more of Toko Melati's suppliers for this story
+    // alone, so the page is seen full: a page of twenty and a second one in the pager.
+    addSupplierRows(manySuppliers(SELLING.id, 24));
+  },
+  render: () => <AtTheSupplierList />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const main = within(canvas.getByRole("main"));
+
+    await main.findByTestId("suppliers-page", {}, { timeout: 4000 });
+    const table = await main.findByTestId("suppliers-table", {}, { timeout: 4000 });
+    // Full: a page of twenty, and a second page waiting in the pager.
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(1 + 20));
+    await expect(main.getByTestId("suppliers-pager-page-2")).toBeVisible();
+    await waitFor(() =>
+      expect(within(canvas.getByRole("complementary")).getByRole("link", { name: "My Supplier" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      ),
+    );
+  },
+};
+
+// …AND IT OPENS ITS DETAIL — a supplier opens its page inside the frame, *My Supplier* still lit, and Back returns to
+// the list (the shell's example page walks the app's own routes, .storybook/supplierRoutes.tsx).
+export const AnExamplePageOpensItsDetail: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  render: () => <AtTheSupplierList />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const main = within(canvas.getByRole("main"));
+
+    await userEvent.click(await main.findByTestId("supplier-row-31", {}, { timeout: 4000 }));
+    await main.findByTestId("supplier-detail-page", {}, { timeout: 4000 });
+    await expect(main.getByTestId("supplier-detail-name")).toHaveTextContent("PT Sumber Makmur");
+    await expect(within(canvas.getByRole("complementary")).getByRole("link", { name: "My Supplier" })).toHaveAttribute("aria-current", "page");
+
+    await userEvent.click(main.getByTestId("supplier-detail-back"));
+    await main.findByTestId("suppliers-page", {}, { timeout: 4000 });
+  },
 };
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────

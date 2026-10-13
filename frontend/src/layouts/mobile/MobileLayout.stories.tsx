@@ -5,11 +5,14 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
-import { asPlatformOnly, withTeamName } from "../../../.storybook/sessionScenario";
+import { manySuppliers } from "../../../.storybook/supplierFixtures";
+import { addSupplierRows } from "../../../.storybook/supplierStub";
+import { asPlatformOnly, asRole, withTeamName } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { MobileLayout } from "./MobileLayout";
+import { SUPPLIER_ROUTES } from "../../../.storybook/supplierRoutes";
 
-// THE MOBILE APP SHELL — a compact top bar, the page, and a bottom tab bar.
+// THE MOBILE APP SHELL — the page and a bottom tab bar; no top bar (`the-phone-shell-has-no-top-bar`).
 //
 // Its halves' own rules live beside them (BottomNav.stories, MenuSheet.stories). What is left here is
 // what only exists once they are ASSEMBLED — and every one of these is a seam where the halves have
@@ -17,7 +20,7 @@ import { MobileLayout } from "./MobileLayout";
 //
 //   | the seam           | what goes wrong if it slips                                          |
 //   | ------------------ | -------------------------------------------------------------------- |
-//   | title ↔ tab bar    | the header names one screen while a different tab is lit              |
+//   | route ↔ tab bar    | a claimed route lights no tab, and nothing else says where you are     |
 //   | More tab ↔ sheet   | the bar opens a sheet only the sheet knows how to close               |
 //   | route → canvas     | a page paints its own background and two screens drift apart          |
 //
@@ -44,6 +47,16 @@ const SHELL: RouteObject = {
 };
 
 const at = (path: string) => routedPage([SHELL], path);
+
+// …and ONE REAL SCREEN, for looking at a page in its frame (owner: *"yang mobil"*, after the desktop's): the team's
+// supplier list, the same page as Layouts/Desktop/AppShell's example — here as a phone reads it, a block per supplier,
+// the search and a Filter button. Only the story that NAMES it mounts it; the rule stories stay on markers.
+const WITH_A_PAGE: RouteObject = {
+  ...SHELL,
+  // The list and everything it opens — a supplier's page, Discover, the report — the app's own paths.
+  children: [...SUPPLIER_ROUTES, marker("*", "at-elsewhere")],
+};
+const AtTheSupplierList = routedPage([WITH_A_PAGE], "/inventories/suppliers");
 
 const AtHome = at("/");
 const AtDrafts = at("/order-drafts");
@@ -79,19 +92,69 @@ export const SellingTeam: Story = {
   beforeEach: asTeam(SELLING.id),
 };
 
-// ── The rules worth failing on ──────────────────────────────────────────────────────────────────
-
-// THE TOP BAR NAMES THE SCREEN, and only that — the team's name is under the workspace bubble in the tab bar
-// (`the-workspace-is-the-tab-bars-centre`). No bell either (`the-phone-has-no-bell`) — nothing sends a notification yet.
-export const TheHeaderNamesTheScreen: Story = {
+// AN EXAMPLE PAGE IN THE FRAME — Toko Melati's supplier list on a phone, as its owner sees it: the top bar naming the
+// screen, the page in the phone's gutter, the tab bar under it.
+export const AnExamplePage: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+    // A FULL LIST (owner: *"mobile dan desktop suppliernya full"*) — 24 more of Toko Melati's suppliers for this story
+    // alone, so the page is seen full: a page of twenty and a second one in the pager.
+    addSupplierRows(manySuppliers(SELLING.id, 24));
+  },
+  render: () => <AtTheSupplierList />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const header = within(await canvas.findByRole("banner"));
+    const main = within(canvas.getByRole("main"));
 
-    await waitFor(() => expect(header.getByTestId("mobile-title")).toHaveTextContent("Home"));
-    await expect(header.queryByText(WAREHOUSE.name)).toBeNull();
+    await main.findByTestId("suppliers-page", {}, { timeout: 4000 });
+    // A phone reads the list as blocks — no table headings.
+    const list = await main.findByTestId("suppliers-table", {}, { timeout: 4000 });
+    await expect(within(list).queryAllByRole("columnheader")).toHaveLength(0);
+    // Full: twenty blocks on the first page.
+    await waitFor(() => expect(within(list).getAllByTestId(/^supplier-row-\d+$/)).toHaveLength(20));
+    // No top bar — the page's own title is the first thing on screen (the-phone-shell-has-no-top-bar).
+    await expect(canvas.queryByRole("banner")).toBeNull();
+    await expect(Math.round(canvas.getByRole("main").getBoundingClientRect().top)).toBe(0);
+  },
+};
+
+// …AND IT OPENS ITS DETAIL — a supplier opens its page inside the frame, *My Supplier* still lit, and Back returns to
+// the list (the shell's example page walks the app's own routes, .storybook/supplierRoutes.tsx).
+export const AnExamplePageOpensItsDetail: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  render: () => <AtTheSupplierList />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const main = within(canvas.getByRole("main"));
+
+    await userEvent.click(await main.findByTestId("supplier-row-31", {}, { timeout: 4000 }));
+    await main.findByTestId("supplier-detail-page", {}, { timeout: 4000 });
+    await expect(main.getByTestId("supplier-detail-name")).toHaveTextContent("PT Sumber Makmur");
+    await expect(canvas.queryByRole("banner")).toBeNull();
+
+    await userEvent.click(main.getByTestId("supplier-detail-back"));
+    await main.findByTestId("suppliers-page", {}, { timeout: 4000 });
+  },
+};
+
+// ── The rules worth failing on ──────────────────────────────────────────────────────────────────
+
+// NO TOP BAR (owner: *"mobile tidak ada headernya"* — *"heading appshellnya"*, `the-phone-shell-has-no-top-bar`) — the page
+// starts at the top, its own title naming it, as on the desktop. No banner, no screen name over the page, no bell
+// (`the-phone-has-no-bell`); where you are is the lit tab.
+export const ThePhoneShellHasNoTopBar: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("bottom-nav");
+
+    await expect(canvas.queryByRole("banner")).toBeNull();
+    await expect(canvas.queryByTestId("mobile-title")).toBeNull();
     await expect(canvas.queryByTestId("notifications")).toBeNull();
-
+    await expect(Math.round(canvas.getByRole("main").getBoundingClientRect().top)).toBe(0);
   },
 };
 
@@ -100,11 +163,11 @@ export const TheHeaderNamesTheScreen: Story = {
 export const TheWorkspaceIsTheTabBarsCentre: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const header = within(await canvas.findByRole("banner"));
 
     const nav = await canvas.findByTestId("bottom-nav");
     const bubble = await within(nav).findByTestId("team-switcher", {}, { timeout: 4000 });
-    await expect(header.queryByTestId("team-switcher")).toBeNull();
+    // The bubble is the ONE team switcher on a phone.
+    await expect(canvas.getAllByTestId("team-switcher")).toHaveLength(1);
     await expect(bubble).toHaveAccessibleName(`Switch Team: ${WAREHOUSE.name}`);
     await waitFor(() => expect(within(bubble).getByTestId("team-switcher-name")).toHaveTextContent(WAREHOUSE.name));
 
@@ -187,10 +250,9 @@ export const TheChipOpensTheWorkspaceFromTheBottom: Story = {
   },
 };
 
-// ⚠ THE TITLE AND THE LIT TAB ARE ONE MATCH (nav.ts). Drafts has its own route but no menu item, so
-// it is CLAIMED by Orders (`alsoMatches`) — and the header has to reach the same conclusion the tab
-// bar did, or the shell names a screen the bar says you are not on.
-export const TheTitleAgreesWithTheLitTab: Story = {
+// ⚠ A CLAIMED ROUTE LIGHTS ITS TAB (nav.ts). Drafts has its own route but no menu item, so it is CLAIMED by Orders
+// (`alsoMatches`) — with no top bar, the lit tab is the shell's one statement of where you are.
+export const AClaimedRouteLightsItsTab: Story = {
   beforeEach: asTeam(SELLING.id),
   render: () => <AtDrafts />,
   play: async ({ canvasElement }) => {
@@ -200,7 +262,6 @@ export const TheTitleAgreesWithTheLitTab: Story = {
     await waitFor(() =>
       expect(bar.getByRole("link", { name: "Orders" })).toHaveAttribute("aria-current", "page"),
     );
-    await expect(canvas.getByTestId("mobile-title")).toHaveTextContent("Orders");
   },
 };
 

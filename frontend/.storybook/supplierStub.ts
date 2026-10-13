@@ -46,6 +46,16 @@ export function resetSupplierStub() {
 
 resetSupplierStub();
 
+/**
+ * MORE ROWS FOR ONE STORY — call it from a story's `beforeEach`, after preview.tsx's reset, and the rows live until the
+ * next story resets the tables. For a screen that has to be seen FULL (the AppShell's example page), without growing
+ * the shared fixtures every other story counts on.
+ */
+export function addSupplierRows(more: { suppliers: SupplierFixture[]; channels: ChannelFixture[] }) {
+  suppliers.push(...more.suppliers.map((s) => ({ ...s })));
+  channels.push(...more.channels.map((c) => ({ ...c })));
+}
+
 const nextId = (rows: { id: bigint }[]) => rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
 
 const newestFirst = <R extends { id: bigint }>(rows: R[]) => [...rows].sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));

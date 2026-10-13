@@ -777,9 +777,9 @@ frontend/
       Layout.tsx      the picker: a breakpoint chooses desktop or mobile
       shell.ts        the breakpoint + the page canvas — both shells read them
       nav.ts          the menu, the "where am I" match, the bottom bar — SHARED
-      TeamSwitcher.tsx  shared: the sidebar's card, and the mobile top bar's chip
-      desktop/        DesktopLayout (sidebar + breadcrumb top bar), Sidebar
-      mobile/         MobileLayout (compact top bar), BottomNav, MenuSheet
+      TeamSwitcher.tsx  shared: the sidebar's card, and the phone tab bar's centre bubble
+      desktop/        DesktopLayout (sidebar beside the page, no top bar), Sidebar
+      mobile/         MobileLayout (the page and a bottom tab bar, no top bar), BottomNav, MenuSheet
     pages/<page>/
       index.tsx       THE page component — one directory per SCREEN
       components/     used by THIS page and nothing else
@@ -790,10 +790,13 @@ frontend/
 ```
 
 **A phone gets a DIFFERENT SHELL, not the desktop one squeezed.** `Layout` reads one media query
-(`useIsMobile`, Chakra's `md`) and mounts `DesktopLayout` — a persistent 258px sidebar beside a
-breadcrumb top bar — or `MobileLayout`: a compact top bar (team chip, screen name, notifications), and
-navigation moved to a **bottom tab bar** the thumb reaches, carrying this team's three destinations
-plus **More**, which opens the full menu as a full-screen sheet. There is no hamburger on a phone.
+(`useIsMobile`, Chakra's `md`) and mounts `DesktopLayout` — a persistent 258px sidebar beside the page,
+no top bar — or `MobileLayout`: the page with **no top bar either**, and navigation moved to a **bottom
+tab bar** the thumb reaches, carrying this team's destinations, the workspace bubble in its centre, and
+**More**, which opens the full menu as a sheet from the bottom. There is no hamburger on a phone. Neither
+shell names the screen over the page: the page's own title does, and the lit menu item or tab says where you are
+([the-desktop-shell-has-no-top-bar](docs/technical/frontend/context_decision.md#the-desktop-shell-has-no-top-bar),
+[the-phone-shell-has-no-top-bar](docs/technical/frontend/context_decision.md#the-phone-shell-has-no-top-bar)).
 
 - ⚠ **Exactly ONE shell mounts** — a JS breakpoint, never `hideFrom`/`hideBelow`. Hiding one with CSS
   renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` landmarks, and two of

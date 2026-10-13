@@ -53,6 +53,7 @@ when it applies one of these.
 | [every-page-has-a-mobile-story](#every-page-has-a-mobile-story) | every page's stories include one named **Mobile**, right after Default | the order screens |
 | [a-page-story-has-its-shells-gutter](#a-page-story-has-its-shells-gutter) | a page story is framed by its shell's gutter — 12px on a phone, 20px from `md` — never Storybook's padding on top | every page story |
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
+| [the-phone-shell-has-no-top-bar](#the-phone-shell-has-no-top-bar) | the phone shell has no top bar — the page starts at the top under its own title; the lit tab says where you are | the phone shell |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1125,6 +1126,28 @@ Per halaman [10 ⌄]    ‹ [1] 2 ›                         ‹ [1] 2 ›
 | a desktop | unchanged — the selector on the left of the buttons, the row on the right |
 | amends | *per page: the selector sits beside it* in [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) — not on a phone. The pager itself is still always on screen |
 | not chosen | *Muat lebih banyak*, endless scroll, Prev/Next — offered, kept as it is |
+
+## the-phone-shell-has-no-top-bar
+
+> Owner, in chat (2026-10-13), looking at the phone AppShell's example page — the shell's bar *"Pemasok Saya"* right over
+> the page's own title *"Pemasok"*: *"mobile tidak ada headernya"* — *"heading appshellnya"*.
+
+```
+before                                   now
+┌ Pemasok Saya ───────────────┐          ┌────────────────────────────┐
+│ Pemasok [Toko Melati]        │          │ Pemasok [Toko Melati]       │   ← the page's own title, at the top
+│ Pemasok yang dikelola tim …  │          │ Pemasok yang dikelola tim … │
+│ …                            │          │ …                           │
+│ ⌂  🛒  (TM)  📦  ☰           │          │ ⌂  🛒  (TM)  📦  ☰ (lit)     │   ← where you are
+```
+
+| | |
+| --- | --- |
+| the shell | **no top bar** — the page from the top of the screen, then the tab bar; the non-member strip stays when it applies |
+| where you are | the page's own title, and the lit tab (*Lainnya* for a screen in the More menu) — as the desktop has the page's title and the lit sidebar item ([the-desktop-shell-has-no-top-bar](#the-desktop-shell-has-no-top-bar)) |
+| was | a bar naming the screen and only that ([the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) had moved the team out of it) — it said the page's title twice, one above the other |
+| a detail page | keeps its own one-row sticky header ([the-phone-header-is-one-row](#the-phone-header-is-one-row)) — that is the page's, not the shell's |
+| supersedes | the top bar in [the-phone-has-no-bell](#the-phone-has-no-bell) and [the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) — there is no bar left to carry a bell or a screen name |
 
 ## Recorded elsewhere
 
