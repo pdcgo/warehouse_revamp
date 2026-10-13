@@ -1783,7 +1783,9 @@
       "contact": "Contact",
       "actions": "Actions",
       "supplier": "Supplier",
-      "channels": "Supplier stores"
+      "channels": "Supplier stores",
+      "sold": "Sold",
+      "ready": "Ready"
     },
     "form": {
       "saved": "Supplier saved",
@@ -1855,7 +1857,33 @@
       }
     },
     "editAction": "Edit",
-    "actions": "Supplier actions"
+    "actions": "Supplier actions",
+    "pending": {
+      "sold": {
+        "label": "Sold",
+        "reason": "sample figures — every unit sold and its last order are summed over a supplier's products, and nothing yet says which products came from which supplier"
+      },
+      "ready": {
+        "label": "Ready",
+        "reason": "sample figures — ready stock and its last restock are summed over a supplier's products, and nothing yet says which products came from which supplier"
+      },
+      "soldRange": {
+        "label": "Sold filter",
+        "reason": "the picked range is held on screen only — the list cannot be narrowed by a sum that does not exist yet, and where the range edges come from is not decided"
+      },
+      "readyRange": {
+        "label": "Ready filter",
+        "reason": "the picked range is held on screen only — the list cannot be narrowed by a sum that does not exist yet, and where the range edges come from is not decided"
+      },
+      "warehouse": {
+        "label": "Warehouse filter",
+        "reason": "the picked warehouse is held on screen only — nothing yet records which warehouse a supplier's restocks are received at, so the list cannot be narrowed by it"
+      }
+    },
+    "lastOrder": "ordered {{date}}",
+    "lastRestock": "restocked {{date}}",
+    "rangeAll": "All",
+    "warehouseAll": "All warehouses"
   },
   "supplierChannel": {
     "deleted": "Store \"{{name}}\" deleted",

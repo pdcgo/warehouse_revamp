@@ -18,6 +18,16 @@ import { marketplaceLabel } from "../../components/badges/MarketplaceBadge";
 import { FilterChips } from "../../components/chrome/FilterChips";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
+import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
+import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
+import { SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
+import {
+  type FigureRangePicks,
+  NO_FIGURE_RANGES,
+  rangesOn,
+  SupplierRangeFilters,
+} from "../../features/suppliers/SupplierRangeFilter";
+import { SupplierWarehouseFilter } from "../../features/suppliers/SupplierWarehouseFilter";
 import { DiscoverSupplierCard } from "./components/DiscoverSupplierCard";
 import { type DiscoverView, DiscoverViewSwitch } from "./components/DiscoverViewSwitch";
 
@@ -39,11 +49,16 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // TWO VIEWS, cards first (`discover-is-cards-or-a-table`):
 //
 //   Temukan Pemasok
-//   [Cari …] [Semua tim ⌄] [Semua jenis toko ⌄]                  (▦ Kartu | ☰ Tabel)
+//   [Cari …] [Semua gudang ⌄]⚠ [Semua tim ⌄] [Terjual ⌄]⚠ [Siap ⌄]⚠   (▦ Kartu | ☰ Tabel)
+//   (Semua) (Shopee) (Tokopedia) …                                  ← the store type, as chips
 //   ┌ PT Sumber Makmur ┐ ┌ CV Cahaya Abadi ┐ ┌ UD Makmur Jaya ┐ …    ← cards: 1 · 2 · 3 · 4 a row as the screen widens (4 on 2K)
-//   │ address · team · stores · contact │ …
+//   │ address · team · stores · figures · contact │ …
 //
 // The table is the same rows as columns. A phone always reads cards — they are its blocks — so it has no switch.
+//
+// THE SUPPLIER LIST'S FIGURES AND FILTERS (owner: *"data dan filter yang sama ada di discovers"*,
+// `discover-shows-the-same-figures-and-filters`) — Terjual and Siap with their last dates, and a range filter each;
+// sample figures and dropped picks, marked, as there.
 export function DiscoverSuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -54,12 +69,22 @@ export function DiscoverSuppliersPage() {
   const [channelType, setChannelType] = useState<Marketplace>(Marketplace.UNSPECIFIED);
   // The team that keeps the supplier — 0n is any team.
   const [ownerTeamId, setOwnerTeamId] = useState(0n);
+  // The warehouse the supplier's restocks are received at, and the range pills — both held on screen and thrown away
+  // (`dropped`): nothing narrows the list by either yet. 0n is any warehouse.
+  const [warehouseId, setWarehouseId] = useState(0n);
+  const [ranges, setRanges] = useState<FigureRangePicks>(NO_FIGURE_RANGES);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   // Cards first (owner: *"default card"*); a desktop may switch to the table. A phone always shows cards.
   const [view, setView] = useState<DiscoverView>("cards");
   const shownView: DiscoverView = isMobile ? "cards" : view;
-  const filtering = q.trim() !== "" || channelType !== Marketplace.UNSPECIFIED || ownerTeamId !== 0n;
+  // The dropped picks count, so Clear is there to take them back — though the rows do not move for them.
+  const filtering =
+    q.trim() !== "" ||
+    channelType !== Marketplace.UNSPECIFIED ||
+    ownerTeamId !== 0n ||
+    warehouseId !== 0n ||
+    rangesOn(ranges) > 0;
   // Typed, then settled — a word is one request to the server, not one per key.
   const term = useDebounced(q.trim());
   // What the rows on screen were asked with, which is what "nothing matches" is about.
@@ -121,6 +146,8 @@ export function DiscoverSuppliersPage() {
             <Table.ColumnHeader>{t("suppliers.discover.table.channels")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.discover.table.contact")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.discover.table.description")}</Table.ColumnHeader>
+            {/* The figures last, at the right edge, as on the supplier list. */}
+            <SupplierFigureHeaders />
           </Table.Row>
         </Table.Header>
 
@@ -142,13 +169,17 @@ export function DiscoverSuppliersPage() {
                   </Text>
                 </Stack>
               </Table.Cell>
+              {/* The team and the contact keep their width — with the figures in, the stores' badges give way, not the
+                  team's name nor a number broken over two lines. */}
               <Table.Cell>
-                <Box maxW="15rem">{team(s)}</Box>
+                <Box minW="10rem" maxW="15rem">
+                  {team(s)}
+                </Box>
               </Table.Cell>
               <Table.Cell>
                 <ChannelTypes channels={s.channels} />
               </Table.Cell>
-              <Table.Cell>{s.contact || "—"}</Table.Cell>
+              <Table.Cell whiteSpace="nowrap">{s.contact || "—"}</Table.Cell>
               {/* WHAT IT SELLS, in its own words (owner: *"deskripsi di tabel"*, `discover-table-shows-the-description`) —
                   its own column, since it is not the name's context; two lines at most, muted, a dash when it has none. */}
               <Table.Cell maxW="xs">
@@ -156,6 +187,7 @@ export function DiscoverSuppliersPage() {
                   {s.description || "—"}
                 </Text>
               </Table.Cell>
+              <SupplierFigureCells supplier={s} testIdPrefix="discover" />
             </Table.Row>
           ))}
         </Table.Body>
@@ -172,18 +204,25 @@ export function DiscoverSuppliersPage() {
         </Text>
       </Stack>
 
+      {/* What is not real yet — the figures and their filters, as on the supplier list. */}
+      <NotImplementedSummary list={SUPPLIER_LIST_PENDING} />
+
       {/* The filters, and the store-type chips right under them — one group, a step apart. */}
       <Stack gap="3">
         <FilterBar
           testId="discover-suppliers-filter"
           active={filtering}
           // The store type is not counted: its chips are on screen, never in the phone's sheet. Clear still resets it.
-          count={(q.trim() !== "" ? 1 : 0) + (ownerTeamId !== 0n ? 1 : 0)}
+          count={
+            (q.trim() !== "" ? 1 : 0) + (warehouseId !== 0n ? 1 : 0) + (ownerTeamId !== 0n ? 1 : 0) + rangesOn(ranges)
+          }
           onClear={() =>
             refilter(() => {
               setQ("");
               setChannelType(Marketplace.UNSPECIFIED);
               setOwnerTeamId(0n);
+              setWarehouseId(0n);
+              setRanges(NO_FIGURE_RANGES);
             })
           }
           // Cards or a table — a desktop's choice; a phone always reads cards, so it gets no switch.
@@ -196,6 +235,10 @@ export function DiscoverSuppliersPage() {
             testId="discover-suppliers-search"
           />
 
+          {/* THE WAREHOUSE, LEFT OF THE TEAM (owner: *"di sini ada filter gudang … di kiri filter tim"*,
+              `the-warehouse-filters-before-the-team`) — where the supplier's goods are received; marked, not wired. */}
+          <SupplierWarehouseFilter value={warehouseId} onChange={setWarehouseId} />
+
           {/* TIM, THEN THE STORE TYPE (owner: *"tim sebelum toko untuk filter"*, `discover-filters-team-before-store`).
               "Whose suppliers?" — the team that keeps them. Selling teams only: only a selling team has suppliers
               (only-a-selling-team-has-suppliers). Empty = any team. */}
@@ -207,6 +250,10 @@ export function DiscoverSuppliersPage() {
               onChange={(id) => refilter(() => setOwnerTeamId(id))}
             />
           </FilterField>
+
+          {/* Terjual and Siap, a panel of range pills each — the supplier list's (`the-figure-filters-are-two-panels`). On
+              a phone each stands in the sheet as a label over its pills. */}
+          <SupplierRangeFilters value={ranges} onChange={setRanges} />
         </FilterBar>
 
         {/* "WHO SELLS ON SHOPEE?" — the store type as CHIPS, every type on screen (owner: *"filter jenis tokonya seperti

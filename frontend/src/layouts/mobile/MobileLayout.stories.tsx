@@ -141,6 +141,28 @@ export const AnExamplePageOpensItsDetail: Story = {
   },
 };
 
+// THE PAGE'S END CLEARS THE BUBBLE (owner: *"mobile app, paginasinya ketutupan"*, `the-phone-page-clears-the-bubble`) —
+// scrolled to the bottom, the centred pager sits above the workspace bubble that rises out of the tab bar.
+export const ThePageEndClearsTheBubble: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+    addSupplierRows(manySuppliers(SELLING.id, 24));
+  },
+  render: () => <AtTheSupplierList />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const main = canvas.getByRole("main");
+    const pager = await within(main).findByTestId("suppliers-pager", {}, { timeout: 4000 });
+    const bubble = await within(await canvas.findByTestId("bottom-nav")).findByTestId("team-switcher", {}, { timeout: 4000 });
+
+    main.scrollTop = main.scrollHeight;
+    await waitFor(() =>
+      expect(pager.getBoundingClientRect().bottom).toBeLessThan((bubble.firstElementChild as HTMLElement).getBoundingClientRect().top),
+    );
+  },
+};
+
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
 // NO TOP BAR (owner: *"mobile tidak ada headernya"* — *"heading appshellnya"*, `the-phone-shell-has-no-top-bar`) — the page

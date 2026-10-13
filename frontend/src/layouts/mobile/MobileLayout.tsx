@@ -43,13 +43,18 @@ export function MobileLayout() {
       <NotMemberStrip />
 
       {/* `p="card"` rather than the desktop's `p="page"` — a phone gutter is a gutter, not a margin;
-          `page` spacing here would spend a tenth of the width on nothing. */}
+          `page` spacing here would spend a tenth of the width on nothing.
+          ⚠ THE BOTTOM IS DEEPER (owner: *"mobile app, paginasinya ketutupan"*, `the-phone-page-clears-the-bubble`): the
+          workspace bubble rises 28px out of the tab bar, over the end of this scroll region — and a page's last thing
+          is often centred under it (the pager). `pb="12"` (48px) is that rise plus a gap, so the end always scrolls
+          clear of the bubble. */}
       <Box
         as="main"
         flex="1"
         minH="0"
         overflow="auto"
         p="card"
+        pb="12"
         bg={usesGreyCanvas(location.pathname) ? GREY_CANVAS : undefined}
       >
         <Suspense fallback={<Spinner colorPalette="brand" />}>

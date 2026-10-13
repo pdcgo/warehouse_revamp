@@ -1779,7 +1779,9 @@
       "contact": "Kontak",
       "actions": "Aksi",
       "supplier": "Pemasok",
-      "channels": "Toko pemasok"
+      "channels": "Toko pemasok",
+      "sold": "Terjual",
+      "ready": "Siap"
     },
     "form": {
       "saved": "Pemasok disimpan",
@@ -1851,7 +1853,33 @@
       }
     },
     "editAction": "Ubah",
-    "actions": "Aksi pemasok"
+    "actions": "Aksi pemasok",
+    "pending": {
+      "sold": {
+        "label": "Terjual",
+        "reason": "angka contoh — semua unit yang terjual dan pesanan terakhirnya dijumlah dari produk-produk pemasok, dan belum ada yang menyebut produk mana dari pemasok mana"
+      },
+      "ready": {
+        "label": "Siap",
+        "reason": "angka contoh — stok siap dan restok terakhir dijumlah dari produk-produk pemasok, dan belum ada yang menyebut produk mana dari pemasok mana"
+      },
+      "soldRange": {
+        "label": "Filter Terjual",
+        "reason": "pilihan rentang hanya tampil di layar — daftar belum bisa disaring dengan jumlah yang belum ada, dan dari mana batas rentangnya diambil belum ditentukan"
+      },
+      "readyRange": {
+        "label": "Filter Siap",
+        "reason": "pilihan rentang hanya tampil di layar — daftar belum bisa disaring dengan jumlah yang belum ada, dan dari mana batas rentangnya diambil belum ditentukan"
+      },
+      "warehouse": {
+        "label": "Filter Gudang",
+        "reason": "pilihan gudang hanya tampil di layar — belum ada yang mencatat di gudang mana restok dari pemasok diterima, jadi daftar belum bisa disaring dengannya"
+      }
+    },
+    "lastOrder": "pesanan {{date}}",
+    "lastRestock": "restok {{date}}",
+    "rangeAll": "Semua",
+    "warehouseAll": "Semua gudang"
   },
   "supplierChannel": {
     "deleted": "Toko \"{{name}}\" dihapus",

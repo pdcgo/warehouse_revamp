@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
@@ -80,8 +80,8 @@ export const TableView: Story = {
 
 // ── The rules worth failing on ──────────────────────────────────────────────────────────────────
 
-// Across EVERY team — this one's included — each row naming the team that keeps the supplier. Real rows now, so
-// the page carries no sample mark; a deleted supplier has left the list.
+// Across EVERY team — this one's included — each row naming the team that keeps the supplier. Real rows; a deleted
+// supplier has left the list. (Only the figures and their filters are marked — see below.)
 export const EveryTeamsSuppliers: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
@@ -91,7 +91,6 @@ export const EveryTeamsSuppliers: Story = {
       await expect(canvas.getByTestId("discover-suppliers-table")).toHaveTextContent(team);
     }
     await expect(canvas.queryByTestId(`discover-supplier-row-${LAMA_TUTUP.id}`)).toBeNull();
-    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
   },
 };
 
@@ -283,7 +282,8 @@ export const TheCardEndsWithItsContactAndAnArrow: Story = {
     const contact = within(card).getByTestId(`discover-card-contact-${SUMBER.id}`).getBoundingClientRect();
     const arrow = card.querySelector("svg.lucide-arrow-up-right")!.getBoundingClientRect();
     await expect(contact.top).toBeGreaterThan(within(card).getByTestId(`discover-card-address-${SUMBER.id}`).getBoundingClientRect().bottom);
-    await expect(arrow.left).toBeGreaterThan(contact.right);
+    // The arrow closes the card, bottom right — on the figures' row, under the contact (a-card-reads-its-figures-as-icons).
+    await expect(arrow.top).toBeGreaterThanOrEqual(contact.bottom);
     await expect(Math.abs(arrow.right - card.getBoundingClientRect().right)).toBeLessThan(32);
 
     await expect(canvas.getByTestId(`discover-card-contact-${SINAR.id}`)).toHaveTextContent("No contact yet");
@@ -302,5 +302,116 @@ export const TheTableShowsTheDescription: Story = {
     );
     await expect(canvas.getByTestId(`discover-table-description-${NUSANTARA.id}`)).toHaveTextContent(NUSANTARA.description);
     await expect(canvas.getByTestId(`discover-table-description-${SINAR.id}`)).toHaveTextContent("—");
+  },
+};
+
+// ── The supplier list's figures and filters (`discover-shows-the-same-figures-and-filters`) ─────────────────────
+
+// A CARD CARRIES THE FIGURES AS ICONS, ONE ROW, UNDER THE CONTACT (a-card-reads-its-figures-as-icons) — a cart and a
+// checked package, each with its units and its mark (1 and 2); no dates. A store-less supplier reads a dash for each,
+// unmarked. The strip at the top names them.
+export const ACardCarriesTheFigures: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
+    const row = canvas.getByTestId(`discover-card-figures-${SUMBER.id}`);
+    const sold = within(row).getByTestId(`discover-card-figures-${SUMBER.id}-sold`);
+    const ready = within(row).getByTestId(`discover-card-figures-${SUMBER.id}-ready`);
+    await expect(sold.querySelector("svg.lucide-shopping-cart")).not.toBeNull();
+    await expect(ready.querySelector("svg.lucide-package-check")).not.toBeNull();
+    // A small pale badge each — the word only for a screen reader and on hover; no dates (a-card-figure-is-a-pale-badge).
+    await expect(within(sold).getByTitle("Sold")).toBeVisible();
+    await expect(within(ready).getByTitle("Ready")).toBeVisible();
+    await expect(row).not.toHaveTextContent(/ordered|restocked/);
+    await expect(within(sold).getByTestId("not-implemented-sold")).toHaveTextContent("1");
+    await expect(within(ready).getByTestId("not-implemented-ready")).toHaveTextContent("2");
+    // One row, under the contact.
+    await expect(Math.abs(sold.getBoundingClientRect().top - ready.getBoundingClientRect().top)).toBeLessThan(2);
+    const contact = canvas.getByTestId(`discover-card-contact-${SUMBER.id}`).getBoundingClientRect();
+    await expect(row.getBoundingClientRect().top).toBeGreaterThanOrEqual(contact.bottom);
+
+    const none = canvas.getByTestId(`discover-card-figures-${SINAR.id}`);
+    await expect(within(none).getByTestId(`discover-card-figures-${SINAR.id}-sold`)).toHaveTextContent("—");
+    await expect(within(none).queryByTestId("not-implemented-sold")).toBeNull();
+  },
+};
+
+// …and the table carries them last, at the right edge, as the supplier list does — a dash for a store-less supplier.
+export const TheTableCarriesTheFiguresLast: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await userEvent.click(canvas.getByTestId("discover-suppliers-view-table"));
+    await waitFor(() => expect(canvas.getByTestId("discover-suppliers-table")).toHaveAttribute("data-view", "table"));
+
+    const headers = within(canvas.getByTestId("discover-suppliers-table"))
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent ?? "");
+    await expect(headers.at(-2)).toMatch(/^Sold/);
+    await expect(headers.at(-1)).toMatch(/^Ready/);
+    await expect(canvas.getByTestId(`discover-sold-${SUMBER.id}`)).toHaveTextContent(/^[\d.]+ordered \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`discover-ready-${SUMBER.id}`)).toHaveTextContent(/^[\d.]+restocked \w+ \d+, \d{4}$/);
+    await expect(canvas.getByTestId(`discover-sold-${SINAR.id}`)).toHaveTextContent("—");
+  },
+};
+
+// THE SAME RANGE FILTERS — Terjual and Siap after the team, a panel each, marked 3 and 4. A pick is held, the trigger
+// reads the band, and the cards do not move for it; Clear takes it back.
+export const TheFiguresFilterByRangePills: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(rows(canvas)).toHaveLength(Math.min(LIVE.length, 20)));
+    const before = rows(canvas).length;
+
+    await expect(within(canvas.getByTestId("supplier-range-sold")).getByTestId("not-implemented-soldRange")).toHaveTextContent("3");
+    await expect(within(canvas.getByTestId("supplier-range-ready")).getByTestId("not-implemented-readyRange")).toHaveTextContent("4");
+    const team = canvas.getByTestId("discover-suppliers-team-filter").getBoundingClientRect();
+    await expect(canvas.getByTestId("supplier-range-sold").getBoundingClientRect().left).toBeGreaterThan(team.left);
+
+    await userEvent.click(canvas.getByTestId("supplier-range-ready-trigger"));
+    const panel = await screen.findByTestId("supplier-range-ready-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+    await userEvent.click(within(panel).getByRole("button", { name: "100–250" }));
+    await expect(canvas.getByTestId("supplier-range-ready-trigger")).toHaveTextContent("Ready: 100–250");
+    await expect(rows(canvas)).toHaveLength(before);
+
+    await userEvent.click(canvas.getByTestId("discover-suppliers-filter-clear"));
+    await waitFor(() => expect(canvas.getByTestId("supplier-range-ready-trigger")).toHaveTextContent(/^Ready$/));
+  },
+};
+
+// THE WAREHOUSE FILTERS BEFORE THE TEAM (the-warehouse-filters-before-the-team) — right after the search, left of the
+// team, its mark (5) beside it: not wired yet.
+export const TheWarehouseFiltersBeforeTheTeam: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const warehouse = canvas.getByTestId("supplier-warehouse-filter");
+    await expect(within(warehouse).getByTestId("not-implemented-warehouse")).toHaveTextContent("5");
+    await expect(within(warehouse).getByRole("combobox")).toHaveAttribute("placeholder", "All warehouses");
+    const team = canvas.getByTestId("discover-suppliers-team-filter").getBoundingClientRect();
+    const search = canvas.getByTestId("discover-suppliers-search").getBoundingClientRect();
+    await expect(warehouse.getBoundingClientRect().right).toBeLessThanOrEqual(team.left);
+    await expect(warehouse.getBoundingClientRect().left).toBeGreaterThanOrEqual(search.right);
+  },
+};
+
+// …and on a phone they stand in the Filter sheet, under the team.
+export const APhoneFiltersByRangeInTheSheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("discover-suppliers-filter-open"));
+    const sheet = await screen.findByTestId("discover-suppliers-filter-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(within(sheet).getByTestId("discover-suppliers-team-filter")).toBeVisible();
+    // The warehouse first, then the team, as on a desktop.
+    const warehouse = within(sheet).getByTestId("supplier-warehouse-filter").getBoundingClientRect();
+    await expect(warehouse.bottom).toBeLessThanOrEqual(
+      within(sheet).getByTestId("discover-suppliers-team-filter").getBoundingClientRect().top,
+    );
+    await expect(within(sheet).getByTestId("supplier-range-sold")).toBeVisible();
+    await expect(within(sheet).getByTestId("supplier-range-ready")).toBeVisible();
   },
 };

@@ -54,6 +54,7 @@ when it applies one of these.
 | [a-page-story-has-its-shells-gutter](#a-page-story-has-its-shells-gutter) | a page story is framed by its shell's gutter — 12px on a phone, 20px from `md` — never Storybook's padding on top | every page story |
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
 | [the-phone-shell-has-no-top-bar](#the-phone-shell-has-no-top-bar) | the phone shell has no top bar — the page starts at the top under its own title; the lit tab says where you are | the phone shell |
+| [the-phone-page-clears-the-bubble](#the-phone-page-clears-the-bubble) | a phone page's end scrolls clear of the workspace bubble — the shell's bottom padding is the bubble's rise plus a gap | the phone shell |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1148,6 +1149,24 @@ before                                   now
 | was | a bar naming the screen and only that ([the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) had moved the team out of it) — it said the page's title twice, one above the other |
 | a detail page | keeps its own one-row sticky header ([the-phone-header-is-one-row](#the-phone-header-is-one-row)) — that is the page's, not the shell's |
 | supersedes | the top bar in [the-phone-has-no-bell](#the-phone-has-no-bell) and [the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre) — there is no bar left to carry a bell or a screen name |
+
+## the-phone-page-clears-the-bubble
+
+> Owner, in chat (2026-10-13): *"mobile app, paginasinya ketutupan"*.
+
+```
+before — scrolled to the end                 now
+│  …last supplier…          │                │  …last supplier…          │
+│      ‹ [1] 2 ›            │                │      ‹ [1] 2 ›            │
+│ ⌂   🛒  (TM)   📦   ☰      │  ← touching    │                           │  ← 48px under the page
+                                             │ ⌂   🛒  (TM)   📦   ☰      │
+```
+
+| | |
+| --- | --- |
+| the cause | the workspace bubble rises **28px** out of the tab bar ([the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre)), over the end of the page's scroll region — and a page's last thing is often centred under it: the pager ([a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size)) |
+| the fix | the phone shell's `<main>` keeps `card` on three sides and **`12` (48px) at the bottom** — the rise plus a gap — so a page's end always scrolls clear |
+| where | `MobileLayout` — every phone page at once; no page pads its own bottom for it |
 
 ## Recorded elsewhere
 
