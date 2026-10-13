@@ -1,7 +1,7 @@
 # Transaction.
 
 
-## General Table That Must Have.
+## General Table That Must Have in Transaction.
 
 1. Table `inventory_transactions`
 
@@ -12,6 +12,7 @@
     - `warehouse_id`
     - `team_id`
     - `tx_type`
+    - `idempotency_key`, optional, its now only used for order
     - `create_by_user_id`
     - `is_rollback`
     - `description`
@@ -33,6 +34,7 @@
     - `id` as primary key
     - `warehouse_id`
     - `transaction_id`
+    - `product_id`
     - `quantity`
     - `total`
     - `created_at`

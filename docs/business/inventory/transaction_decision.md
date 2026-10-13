@@ -10,6 +10,9 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once) | an undo finds and locks the existing transaction, reverses it in both ledgers and sets `is_rollback`; a second undo does nothing | your transaction.md, 2026-10-09 — answers context Q13e, against my new reversing transaction |
 | [a-sample-is-handed-over-at-the-warehouse](#a-sample-is-handed-over-at-the-warehouse) | a sample is goods going OUT: a person asks at the warehouse, staff pick the goods and hand them over | chat, 2026-10-12 — answers placement Q1a and the *what is it* half of Q6; my *asked ahead in the app* is withdrawn |
 | [a-move-has-its-own-type](#a-move-has-its-own-type) | `move` joins the `tx_type` list: goods carried between racks, never typed `adjustment` | chat, 2026-10-12 — answers placement Q3a choice 1 and the `move` part of Q5, as recommended |
+| [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) | an order's inventory transactions carry the idempotency key the order was created with — optional, orders only for now; no `ref_id` | your transaction.md edit, 2026-10-12 — answers *where the key lives* in Q1; my `ref_id` withdrawn |
+| [an-item-names-its-product](#an-item-names-its-product) | `inventory_transaction_items` gains `product_id`: one item per product per transaction | your transaction.md edit, 2026-10-12 — answers 2a of Q2, as recommended |
+| [an-item-equals-its-batch-rows](#an-item-equals-its-batch-rows) | an item's total is what its batch rows moved — paid for goods in, chosen oldest first for goods out — and every mutation asserts the item equals its rows | chat, 2026-10-12 — answers 2b of Q2, as recommended |
 | [a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value) | a sample is a stock-out and nothing more: its units and their batch value leave the owning team's stock; no money moves, nobody has to agree, and the team sees every sample of its goods | chat, 2026-10-12 — answers Q6, **against** my *the team bears it only when a named member agreed* |
 
 ---
@@ -209,3 +212,98 @@ changes.
 **What it does NOT settle**: where the recipient is kept — `RackSample.recipient` is required on the request, and
 [transaction.md](./transaction.md)'s `inventory_transactions` has no column for it ([Q9](./transaction_clarify.md#question)) ·
 `batch_logs.change_type` still lacks `sample` ([the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up)).
+
+## an-orders-take-carries-its-idempotency-key
+
+> Owner, in [transaction.md](./transaction.md) §General Table That Must Have in Transaction *(2026-10-12)*:
+> *"`idempotency_key`, optional, its now only used for order"*, added to `inventory_transactions`. It answers *where the
+> key lives* in [Q1](./transaction_clarify.md#question), after the merged order decisions made the key the only name an
+> order's take has ([every-release-goes-by-the-key](../order/context_decision.md#every-release-goes-by-the-key)). **No
+> `ref_id`** — my recommendation is withdrawn ([q1-ref-id-is-overtaken](./transaction_clarify.md#q1-ref-id-is-overtaken)).
+
+**The verdict.** An order's inventory transactions carry the **idempotency key** the order was created with — the one
+the browser mints, the take receives, and `orders.idempotency_key` keeps. A release (Order Cancel, the compensation) and
+the verify scan find the take by it. Every other cause keeps your pattern: the record that causes the change holds its
+transaction.
+
+```mermaid
+flowchart LR
+  F["the order form mints the key"] --> TK["inventory take"]
+  TK --> T1["inventory_transactions - order, Melati, the key"]
+  TK --> T2["inventory_transactions - order, Sinar, the key"]
+  C["Order Cancel or the compensation - the key"] -->|"finds both"| T1
+  C --> T2
+  R["restocks.transaction_id, warehouse_transfers outbound and inbound"] -.->|"no key - the cause holds the id"| X["their transactions"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transactions.idempotency_key` | optional · set on an `order` transaction only, for now |
+| an order of two owners | each of its transactions carries the same key ([Q7](./transaction_clarify.md#question)) |
+| `ref_id` | not added |
+| restock, transfer | unchanged — `restocks.transaction_id`, `warehouse_transfers.outbound_transaction_id` / `inbound_transaction_id` |
+
+**What it does NOT settle** — the rest of [Q1](./transaction_clarify.md#question): how *a key buys one take, ever* is
+enforced, when two owners' rows share one key and so the key cannot be unique on this table · where a release that
+arrives **before** its take is kept ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)).
+
+## an-item-names-its-product
+
+> Owner, in chat *(2026-10-12)*: *"yes, i forgot `product_id` in `inventory_transaction_items`"* — and added it to
+> [transaction.md](./transaction.md) §General Table That Must Have in Transaction. It answers 2a of
+> [Q2](./transaction_clarify.md#question), as recommended.
+
+**The verdict.** An item says **what** moved: one item per product per transaction, naming the product. An order of
+2 *Kaos Hitam* and 1 *Gelas Kaca* is two items, each readable on its own, instead of two numbers of nothing in particular.
+
+```mermaid
+flowchart LR
+  T["inventory_transactions - order"] --> I1["item - Kaos Hitam, quantity 2"]
+  T --> I2["item - Gelas Kaca, quantity 1"]
+  I1 --> L1["its batch and rack log rows"]
+  I2 --> L2["its batch and rack log rows"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transaction_items.product_id` | 🆕 required — the product the item moved |
+| per transaction | one item per product; a move that empties a rack of three products writes three ([a-move-lists-its-units-at-zero-value](./placement_decision.md#a-move-lists-its-units-at-zero-value), which assumed this) |
+
+**What it does NOT settle** — the rest of [Q2](./transaction_clarify.md#question): where an item's total comes from for goods
+going out, and that it must equal its batch rows (2b) · which way a count's or an adjustment's item points (2c) · what else
+reads the items (2d).
+
+## an-item-equals-its-batch-rows
+
+> Owner, in chat *(2026-10-12)*: *"for 2b i follow your recomedation"*. It answers 2b of
+> [Q2](./transaction_clarify.md#question) — *for goods going out, the total is not known until the batches are chosen* — as
+> recommended.
+
+**The verdict.** An item's total is **what its batch rows moved**. For goods coming in it is what was paid, and the batch is
+minted from it. For goods going out it is what the chosen batches give up, oldest first — a *result* of the batch choice,
+not an input to it. So a mutation chooses before it writes, and the item it writes always equals its rows.
+
+```mermaid
+flowchart LR
+  L["lock and choose the batches - oldest first"] --> T["write the transaction"]
+  T --> I["write the item - Kaos Hitam, 3, Rp 32.000"]
+  I --> B["batch_logs - batch 7 -2 -Rp 20.000, batch 9 -1 -Rp 12.000"]
+  I --> P["placement_logs - Rak A -1, Rak B -2"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the order of work | lock and choose ([batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id)) → the transaction → the items, with their totals → the log rows; one database transaction |
+| goods in | the item's total is what was paid; the batch is minted from it, `price_unit = total ÷ quantity` |
+| goods out | the item's total is the value the chosen batches give up |
+| the rule | per item, its **total** equals the value of its product's batch rows, and its **quantity** equals the units they moved — a move, which has no batch rows, counts the units off its source rack and totals 0 ([a-move-lists-its-units-at-zero-value](./placement_decision.md#a-move-lists-its-units-at-zero-value)) |
+| proven by | each mutation's unit test asserts it |
+
+**What it does NOT settle** — the rest of [Q2](./transaction_clarify.md#question): which way an item of a count or an
+adjustment points (2c) · what else reads the items (2d).

@@ -278,6 +278,9 @@ flowchart LR
 ([opname Q4](./opname_clarify.md#question)) · what Rak A's screen shows while its unit waits for the picker
 ([placement Q4](./placement_clarify.md#question)).
 
+🔄 *(2026-10-13)* **Amended by [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)**: fewest first holds among the **unlocked** racks;
+a rack whose product is being counted comes last, and its pick-list line waits for the count.
+
 ## any-warehouse-member-may-move-goods
 
 > Owner, in chat *(2026-10-12)*: *"for 3b, follow your recomendation"*. It answers

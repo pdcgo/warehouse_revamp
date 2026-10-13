@@ -50,7 +50,7 @@ flowchart LR
 
 | mark | kind | why |
 | --- | --- | --- |
-| `countLock` | derived | a counted product locks at 0, but what a count's lock blocks is [opname Q4](../../business/inventory/opname_clarify.md#question), and opname is not built |
+| `countLock` | derived | a counted product locks at 0 — decided ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)); what is missing is opname itself, so only the stub sets it |
 
 ✅ *(2026-10-12)* `sampleAgreedBy` is removed: a sample names no member of the owning team and moves no money
 ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)).

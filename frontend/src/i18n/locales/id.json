@@ -1708,7 +1708,7 @@
       "pending": {
         "countLock": {
           "label": "Kunci opname",
-          "reason": "Produk yang sedang diopname terkunci di 0 di sini, tetapi apa yang diblokir kunci opname belum diputuskan (opname Q4), dan opname belum dibangun — hanya prototipe yang mengisinya."
+          "reason": "Produk yang sedang diopname terkunci di 0 di sini — opname menghentikan perpindahan barang (sudah diputuskan), tetapi opname belum dibangun, jadi hanya prototipe yang mengisinya."
         }
       }
     },

@@ -1712,7 +1712,7 @@
       "pending": {
         "countLock": {
           "label": "Count lock",
-          "reason": "A product being counted is locked at 0 here, but what a count's lock blocks is not decided yet (opname Q4), and the stock count is not built — only the prototype ever sets it."
+          "reason": "A product being counted is locked at 0 here — a count stops units moving (decided), but the stock count is not built, so only the prototype ever sets it."
         }
       }
     },

@@ -16,6 +16,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [batches-lock-before-shelves-by-id](#batches-lock-before-shelves-by-id) | every mutation locks batches first, then shelves, each in id order — and locks a product's shelves before choosing among them by stock |
 | [the-layer-under-a-mutation-is-a-ledger](#the-layer-under-a-mutation-is-a-ledger) | the per-ledger functions are a *Placement Ledger* and a *Batch Ledger*; only a mutation calls them |
 | [a-wrong-rack-pick-waits-for-the-count](#a-wrong-rack-pick-waits-for-the-count) | the picker does not confirm the rack; a pick from another rack is corrected by the next stock opname |
+| [a-broken-unit-is-thrown-away](#a-broken-unit-is-thrown-away) | a broken unit is taken off its rack and thrown away — no rack holds it, nobody gets it back; the warehouse pays the team for it |
 
 ---
 
@@ -171,6 +172,9 @@ flowchart LR
 **What it does NOT settle** — all in [context_clarify Q11](./context_clarify.md#question): a line bigger than the lowest
 shelf, and two shelves holding the same count (11d) · whether the pick list prints the shelf, and a pick from another
 shelf (11b) · a count before the pick (11c). The lock order is [Q15b](./context_clarify.md#question).
+
+🔄 *(2026-10-13)* **Amended by [a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)**: the lowest shelf first, among the **unlocked**
+shelves; a shelf being counted comes last.
 
 ---
 
@@ -378,3 +382,31 @@ flowchart LR
 **What it does NOT settle:** that the fix must not charge the warehouse — Rak A +1 and Rak B −1 are one unit that moved,
 not a loss and a find ([Q11e](./context_clarify.md#question)); and a count made *before* the pick, which the count itself
 gets wrong ([Q11c](./context_clarify.md#question)).
+
+## a-broken-unit-is-thrown-away
+
+> Owner, in chat *(2026-10-13)*: *"broken dont have rack, its just simple take out and throw the trash"*. It answers
+> [Q6](./context_clarify.md#question) — *after the warehouse has reimbursed a broken unit, whose object is it?* — and the
+> broken half of [Critique 4](./context_clarify.md#critique). My recommendation, *the warehouse's*, assumed the object was
+> kept; it is not.
+
+**The verdict.** A broken unit is taken off its rack and **thrown away**. No rack or bin holds it, and it goes back to
+nobody: the warehouse pays the team for it, and the object is gone. The stock ledgers only ever hold sellable units.
+
+```mermaid
+flowchart LR
+  T["a unit is found broken"] --> O["taken off the rack"]
+  O --> X["thrown away - no rack holds it"]
+  O --> P["broken problem row - claimable 0"]
+  P --> M["the warehouse pays the team - broken_good"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a broken unit | thrown away — never placed, never stored, never sold |
+| the placement ledger | its rack goes down by it; no placement holds broken stock |
+| the batch ledger | the unit leaves its batch — [broken-takes-its-batch-before-lost](./opname_decision.md#broken-takes-its-batch-before-lost) |
+| the money | a `broken` problem row, `claimable_stock_count` 0 — the warehouse pays the team |
+| found again | never — only a lost unit is claimed back ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)) |
