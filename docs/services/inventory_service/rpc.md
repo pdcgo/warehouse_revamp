@@ -731,6 +731,64 @@ Proved rather than asserted — see
   uncounted rows are safe — the server never touches a product it was not sent — but the person would
   otherwise believe they had finished.
 
+## Stock count sessions — `OpnameService` (PROTOTYPE)
+
+A stock count of ONE warehouse, as a session: plan it, snapshot and lock the shelf book, count blind, write each difference
+as a draft with its reason, and finalize into the stock-problem register. The design is
+[opname.md](../../business/inventory/opname.md) and its decisions in
+[opname_decision.md](../../business/inventory/opname_decision.md).
+
+> ⚠ **PROTOTYPE — no handler exists.** `OpnameService` ([opname.proto](../../../proto/warehouse/inventory/v1/opname.proto))
+> is mounted answering **Unimplemented** (`inventory_v1.OpnamePrototype`), and the screens
+> (`/inventories/opname/sessions…`) run against the Storybook stub (`.storybook/opnameStub.ts`) until design_accept. The
+> flows below are what the backend step builds. It supersedes `StockOpname` above — that RPC and its page keep working
+> until then.
+
+| RPC | Who | What it does |
+| --- | --- | --- |
+| `OpnameSessionList` / `Detail` | any warehouse member | the sessions, newest first; a counter's read of an unfinished one carries no difference count |
+| `OpnameSessionCreate` | Owner, Admin | snapshot the plan's `product_placements` rows — **rows at 0 included** — and lock them; refused while another session is active |
+| `OpnameSessionCancel` | Owner, Admin | active → cancel; rows released, nothing posted |
+| `OpnameRowList` | Owner, Admin — **never staff** | every row WITH the book figure: the watch page |
+| `OpnameRowSendBack` | Owner, Admin | a counted row back to counting; its count and drafts cleared |
+| `OpnameRackList` | any member | the racks to visit; an `all` session lists every rack, empty ones too |
+| `OpnameRackCount` | any member | one rack as its counter sees it — **no book figure before the row is counted** |
+| `OpnameRowCount` | any member | the blind count, then one recount that replaces it; answers the row revealed, with the system's draft |
+| `OpnameRowMarkCounted` | any member | closes a revealed row: the broken count and every draft's reason |
+| `OpnameRowAddFound` | any member | a product found on a rack: a row at 0, its other racks join; refused when its team never had it here |
+| `OpnameFinalizePreview` | Owner, Admin | what finalize posts, per product, and why it is refused |
+| `OpnameSessionFinalize` | Owner, Admin — never a counter | posts it: one `opname` transaction per owning team |
+
+### A row's life
+
+```mermaid
+stateDiagram-v2
+    [*] --> created: SessionCreate — snapshot and lock
+    created --> revealed: RowCount — the blind count
+    revealed --> revealed: RowCount — the one recount
+    revealed --> counted: RowMarkCounted — every draft has its reason
+    counted --> created: RowSendBack — admin, drafts deleted
+    counted --> [*]: SessionFinalize — released
+    created --> [*]: SessionCancel — released
+```
+
+`revealed` is not a stored status: the row is still `created`, with its count in. A short row gets the system's `lost`
+draft (the shortage less the broken, at least 0); an over row the system's `surplus` draft.
+
+### What finalize posts
+
+```mermaid
+flowchart LR
+  P["each product, over all its racks"] --> B["broken - the drafts', summed - posted as written"]
+  P --> R["the rest - sellable, minus book, plus broken"]
+  R -->|"short n"| L["lost n - per batch, oldest first, after broken"]
+  R -->|"over n"| C["claims the oldest open loss, then mints at the newest price here"]
+  R -->|"0"| M["a move - racks corrected only"]
+```
+
+Finalizing **is** the agreement (`finalizing-is-the-agreement`): the broken and lost rows are what the warehouse owes the
+teams, a claim is what they pay back.
+
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 
 A `DAMAGED` / `LOST` adjust already wrote the units off the shelf and their frozen cost to expense.

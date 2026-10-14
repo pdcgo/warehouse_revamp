@@ -244,6 +244,18 @@ export function canMoveAccountMoney(role: Role | undefined): boolean {
   return isTeamManager(role) && role !== Role.ADMIN_OWNER && role !== Role.ADMIN_ADMINISTRATOR;
 }
 
+// canManageOpname mirrors the stock count's ADMIN policies — OpnameSessionCreate, Cancel, RowList, RowSendBack,
+// FinalizePreview and Finalize: the warehouse's Owner and Admin, Root and the Administrator. Staff COUNT (OpnameRackCount,
+// RowCount, MarkCounted, AddFound) and never see the book figure before counting (a-count-is-blind-then-revealed).
+//
+// ⚠ THIS IS UX ONLY. Hiding a button hides nothing — the RPC is still reachable, and the access
+// interceptor is the only real boundary. Never move a check from the backend into here.
+export function canManageOpname(role: Role | undefined): boolean {
+  return (
+    role === Role.ROOT || role === Role.ADMINISTRATOR || role === Role.WAREHOUSE_OWNER || role === Role.WAREHOUSE_ADMIN
+  );
+}
+
 // canTransferMoney mirrors FinancialAccountTransfer and FinancialAccountCapital: canMoveAccountMoney minus the
 // warehouse Admin — moving money between accounts and capital stay the warehouse Owner's
 // (the-warehouse-admin-equals-the-owner-except-money). The warehouse Admin still reconciles and keeps the accounts.

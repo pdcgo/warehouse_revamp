@@ -4170,5 +4170,215 @@
         }
       }
     }
+  },
+  "opnameSession": {
+    "title": "Stock Count",
+    "subtitle": "Plan a count, count each rack blind, and finalize the differences into the stock-problem register.",
+    "selectTeam": "Select a warehouse team to see its stock counts.",
+    "back": "Back",
+    "empty": "No stock count here yet.",
+    "tabs": {
+      "all": "All"
+    },
+    "status": {
+      "unspecified": "Unknown",
+      "active": "Active",
+      "finish": "Finished",
+      "cancel": "Cancelled"
+    },
+    "plan": {
+      "unspecified": "Unknown",
+      "all": "All racks",
+      "team": "One team",
+      "product": "One product",
+      "placement": "One rack"
+    },
+    "rowState": {
+      "created": "Not counted",
+      "revealed": "Revealed",
+      "counted": "Counted"
+    },
+    "draft": {
+      "unspecified": "Draft",
+      "broken": "Broken",
+      "lost": "Lost",
+      "surplus": "Surplus",
+      "noReason": "Reason not written yet"
+    },
+    "active": {
+      "title": "Count #{{id}} is active",
+      "progress": "{{counted}} of {{rows}} rows counted, on {{racks}} racks",
+      "oneAtATime": "A warehouse runs one count at a time — finalize or cancel this one before planning another.",
+      "count": "Count",
+      "open": "Open"
+    },
+    "table": {
+      "session": "Count",
+      "plan": "Plan",
+      "status": "Status",
+      "progress": "Counted",
+      "progressValue": "{{counted}} / {{rows}} rows",
+      "scope": "{{racks}} racks · {{products}} products",
+      "createdBy": "Planned by",
+      "finalized": "Finalized"
+    },
+    "create": {
+      "open": "New Count",
+      "title": "New Stock Count",
+      "plan": "What to count",
+      "team": "Team",
+      "teamPlaceholder": "Select a selling team",
+      "product": "Product",
+      "productPlaceholder": "e.g. Beras Pandan Wangi",
+      "rack": "Rack",
+      "rackPlaceholder": "Select a rack",
+      "rackHelp": "Its products are counted on every rack that holds them, so a move between racks nets out.",
+      "scope": {
+        "all": "Every rack of this warehouse is counted, empty ones too.",
+        "team": "Every rack holding the team's products is counted.",
+        "product": "Every rack holding the product is counted.",
+        "placement": "The rack is counted, and every other rack holding its products."
+      },
+      "lock": "Those rows are locked — goods do not move on them — until the count is finalized or cancelled.",
+      "submit": "Start Count",
+      "dismiss": "Cancel",
+      "done": "Count #{{id}} started"
+    },
+    "detail": {
+      "title": "Count #{{id}}",
+      "started": "Planned by {{who}}, {{when}}",
+      "finalizedBy": "finalized by {{who}}, {{when}}",
+      "notFound": "This count was not found.",
+      "managersOnly": "Only the warehouse's Owner or Admin sees a count's figures — staff count blind.",
+      "finalize": "Finalize",
+      "finalizeWaits": "Finalize opens once every row is counted — {{left}} to go.",
+      "cancel": "Cancel Count",
+      "cancelTitle": "Cancel Count #{{id}}?",
+      "cancelMessage": "Its rows are released and nothing is posted. The counts already made are dropped.",
+      "cancelled": "Count #{{id}} cancelled",
+      "actions": "Actions",
+      "summary": {
+        "counted": "Rows counted",
+        "countedLine": "marked counted by staff",
+        "differences": "Differences",
+        "differencesLine": "counted rows apart from the book",
+        "racks": "Racks",
+        "products": "Products"
+      },
+      "search": "Search a product by name or SKU",
+      "rackAll": "Every rack",
+      "onlyDifferences": "Only differences",
+      "tabs": {
+        "all": "All",
+        "created": "Not counted",
+        "counted": "Counted"
+      },
+      "empty": "No row matches.",
+      "table": {
+        "rack": "Rack",
+        "product": "Product",
+        "state": "State",
+        "book": "Book",
+        "count": "Count",
+        "difference": "Difference",
+        "drafts": "Drafts and reasons",
+        "actions": "Actions"
+      },
+      "bookCount": "Book {{book}} · counted {{count}}",
+      "countedBy": "Counted by {{who}}",
+      "sendBack": "Send Back to Count",
+      "sendBackTitle": "Send Back to Count?",
+      "sendBackMessage": "{{product}} on {{code}} goes back to counting: its count and its drafts are cleared, and staff count it again.",
+      "sentBack": "Sent back to counting on {{code}}"
+    },
+    "count": {
+      "title": "Count #{{id}}",
+      "closed": "This count is closed — nothing more is counted.",
+      "pickRack": "Pick the rack you are standing at",
+      "pickRackHelp": "Count rack by rack. An empty rack is listed too — add what you find on it.",
+      "rackSearch": "Search a rack code",
+      "rackProgress": "{{counted}} of {{rows}} counted",
+      "rackEmpty": "Nothing expected",
+      "changeRack": "Change Rack",
+      "sellableOnly": "Count sellable units only. A torn one comes off the rack — say so as broken after the reveal.",
+      "nothingExpected": "The book expects nothing on this rack. Add what you find.",
+      "countLabel": "Counted",
+      "recountLabel": "Recount",
+      "submit": "Submit Count",
+      "submitRecount": "Submit Recount",
+      "expected": "Expected",
+      "counted": "Counted",
+      "difference": "Difference",
+      "recount": "Recount Once",
+      "brokenLabel": "Of the missing, how many are broken?",
+      "brokenHelp": "Broken units are taken off the rack and thrown away. The rest of the shortage is lost.",
+      "why": "why?",
+      "brokenExample": "e.g. sack torn, thrown away",
+      "lostExample": "e.g. not found, checked under the rack",
+      "surplusExample": "e.g. tucked behind the Gula Pasir",
+      "markCounted": "Mark Counted",
+      "needsReason": "Write a reason for every draft to mark it counted.",
+      "readOnly": "Counted — the admin can send it back to count again",
+      "foundHere": "found here"
+    },
+    "found": {
+      "open": "Add a Product Found Here",
+      "title": "Product Found on {{code}}",
+      "help": "A product on this rack that the list does not name. It joins the count at 0 here, and its other racks join too.",
+      "product": "Product",
+      "productPlaceholder": "e.g. Minyak Goreng Sawit 2L",
+      "submit": "Add Product",
+      "done": "{{product}} added to {{code}}",
+      "neverHereTitle": "Its team never had this product in this warehouse",
+      "neverHereBody": "It is not stock here yet. Take it off the rack and tell the selling team — they create a restock for it, and the warehouse accepts it."
+    },
+    "finalize": {
+      "title": "Finalize Count #{{id}}",
+      "subtitle": "What finalizing posts, per product. Finalizing agrees the debt: the warehouse pays the teams for what is broken or lost.",
+      "block": {
+        "notActive": "This count is not active.",
+        "rowsNotCounted": "{{left}} rows are not counted yet.",
+        "ownCount": "You counted rows in this count — another Owner or Admin finalizes it."
+      },
+      "summary": {
+        "owed": "The warehouse owes",
+        "owedLine": "broken and lost, at their batch prices",
+        "claimed": "Claimed back",
+        "claimedLine": "old losses found again",
+        "minted": "New batches",
+        "mintedLine": "surplus with nothing to claim",
+        "products": "Products",
+        "productsLine": "with a difference or a rack change"
+      },
+      "nothing": "Every product matches its book — finalizing only releases the racks.",
+      "outcome": {
+        "short": "Short",
+        "over": "Over",
+        "brokenOnly": "Broken",
+        "move": "Moved between racks"
+      },
+      "arithmetic": "Book {{book}} · sellable {{sellable}} · broken {{broken}} · the rest",
+      "racksChanged_one": "{{count}} rack corrected",
+      "racksChanged_other": "{{count}} racks corrected",
+      "lines": {
+        "type": "Posts",
+        "batch": "Batch",
+        "units": "Units",
+        "price": "Price",
+        "amount": "Amount",
+        "newBatch": "New batch",
+        "claims": "claims loss #{{id}}"
+      },
+      "post": {
+        "unspecified": "—",
+        "broken": "Broken",
+        "lost": "Lost",
+        "claim": "Claimed back",
+        "mint": "New batch"
+      },
+      "confirmTitle": "Finalize Count #{{id}}?",
+      "confirmMessage": "This posts every line above and releases the racks. The warehouse owes {{owed}}. It cannot be undone.",
+      "done": "Count #{{id}} finalized"
+    }
   }
 }

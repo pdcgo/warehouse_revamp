@@ -4160,5 +4160,215 @@
         }
       }
     }
+  },
+  "opnameSession": {
+    "title": "Stok Opname",
+    "subtitle": "Rencanakan opname, hitung tiap rak tanpa melihat stok sistem, lalu finalisasi selisihnya ke daftar masalah stok.",
+    "selectTeam": "Pilih tim gudang untuk melihat stok opname-nya.",
+    "back": "Kembali",
+    "empty": "Belum ada stok opname di sini.",
+    "tabs": {
+      "all": "Semua"
+    },
+    "status": {
+      "unspecified": "Tidak diketahui",
+      "active": "Aktif",
+      "finish": "Selesai",
+      "cancel": "Dibatalkan"
+    },
+    "plan": {
+      "unspecified": "Tidak diketahui",
+      "all": "Semua rak",
+      "team": "Satu tim",
+      "product": "Satu produk",
+      "placement": "Satu rak"
+    },
+    "rowState": {
+      "created": "Belum dihitung",
+      "revealed": "Terungkap",
+      "counted": "Sudah dihitung"
+    },
+    "draft": {
+      "unspecified": "Draf",
+      "broken": "Rusak",
+      "lost": "Hilang",
+      "surplus": "Lebih",
+      "noReason": "Alasan belum ditulis"
+    },
+    "active": {
+      "title": "Opname #{{id}} sedang aktif",
+      "progress": "{{counted}} dari {{rows}} baris sudah dihitung, di {{racks}} rak",
+      "oneAtATime": "Satu gudang hanya menjalankan satu opname — finalisasi atau batalkan yang ini sebelum merencanakan yang lain.",
+      "count": "Hitung",
+      "open": "Buka"
+    },
+    "table": {
+      "session": "Opname",
+      "plan": "Rencana",
+      "status": "Status",
+      "progress": "Dihitung",
+      "progressValue": "{{counted}} / {{rows}} baris",
+      "scope": "{{racks}} rak · {{products}} produk",
+      "createdBy": "Direncanakan oleh",
+      "finalized": "Difinalisasi"
+    },
+    "create": {
+      "open": "Opname Baru",
+      "title": "Stok Opname Baru",
+      "plan": "Apa yang dihitung",
+      "team": "Tim",
+      "teamPlaceholder": "Pilih tim penjual",
+      "product": "Produk",
+      "productPlaceholder": "Contoh: Beras Pandan Wangi",
+      "rack": "Rak",
+      "rackPlaceholder": "Pilih rak",
+      "rackHelp": "Produknya dihitung di setiap rak yang menyimpannya, jadi perpindahan antar rak saling menutup.",
+      "scope": {
+        "all": "Setiap rak di gudang ini dihitung, termasuk yang kosong.",
+        "team": "Setiap rak yang menyimpan produk tim itu dihitung.",
+        "product": "Setiap rak yang menyimpan produk itu dihitung.",
+        "placement": "Rak itu dihitung, beserta setiap rak lain yang menyimpan produknya."
+      },
+      "lock": "Baris-baris itu dikunci — barang tidak dipindah — sampai opname difinalisasi atau dibatalkan.",
+      "submit": "Mulai Opname",
+      "dismiss": "Batal",
+      "done": "Opname #{{id}} dimulai"
+    },
+    "detail": {
+      "title": "Opname #{{id}}",
+      "started": "Direncanakan oleh {{who}}, {{when}}",
+      "finalizedBy": "difinalisasi oleh {{who}}, {{when}}",
+      "notFound": "Opname ini tidak ditemukan.",
+      "managersOnly": "Hanya Owner atau Admin gudang yang melihat angka opname — staf menghitung tanpa melihat stok sistem.",
+      "finalize": "Finalisasi",
+      "finalizeWaits": "Finalisasi terbuka setelah semua baris dihitung — tinggal {{left}}.",
+      "cancel": "Batalkan Opname",
+      "cancelTitle": "Batalkan Opname #{{id}}?",
+      "cancelMessage": "Baris-barisnya dilepas dan tidak ada yang diposting. Hitungan yang sudah dibuat dibuang.",
+      "cancelled": "Opname #{{id}} dibatalkan",
+      "actions": "Aksi",
+      "summary": {
+        "counted": "Baris dihitung",
+        "countedLine": "ditandai dihitung oleh staf",
+        "differences": "Selisih",
+        "differencesLine": "baris terhitung yang beda dari stok sistem",
+        "racks": "Rak",
+        "products": "Produk"
+      },
+      "search": "Cari produk berdasarkan nama atau SKU",
+      "rackAll": "Semua rak",
+      "onlyDifferences": "Hanya yang selisih",
+      "tabs": {
+        "all": "Semua",
+        "created": "Belum dihitung",
+        "counted": "Sudah dihitung"
+      },
+      "empty": "Tidak ada baris yang cocok.",
+      "table": {
+        "rack": "Rak",
+        "product": "Produk",
+        "state": "Keadaan",
+        "book": "Sistem",
+        "count": "Hitungan",
+        "difference": "Selisih",
+        "drafts": "Draf dan alasan",
+        "actions": "Aksi"
+      },
+      "bookCount": "Sistem {{book}} · dihitung {{count}}",
+      "countedBy": "Dihitung oleh {{who}}",
+      "sendBack": "Kembalikan untuk Dihitung",
+      "sendBackTitle": "Kembalikan untuk Dihitung?",
+      "sendBackMessage": "{{product}} di {{code}} kembali untuk dihitung: hitungan dan drafnya dihapus, dan staf menghitung ulang.",
+      "sentBack": "Dikembalikan untuk dihitung di {{code}}"
+    },
+    "count": {
+      "title": "Opname #{{id}}",
+      "closed": "Opname ini sudah ditutup — tidak ada lagi yang dihitung.",
+      "pickRack": "Pilih rak tempat Anda berdiri",
+      "pickRackHelp": "Hitung rak demi rak. Rak kosong juga ditampilkan — tambahkan apa yang Anda temukan di sana.",
+      "rackSearch": "Cari kode rak",
+      "rackProgress": "{{counted}} dari {{rows}} dihitung",
+      "rackEmpty": "Tidak ada yang diharapkan",
+      "changeRack": "Ganti Rak",
+      "sellableOnly": "Hitung yang layak jual saja. Yang sobek diturunkan dari rak — catat sebagai rusak setelah angka sistem terungkap.",
+      "nothingExpected": "Sistem tidak mengharapkan apa pun di rak ini. Tambahkan apa yang Anda temukan.",
+      "countLabel": "Dihitung",
+      "recountLabel": "Hitung ulang",
+      "submit": "Kirim Hitungan",
+      "submitRecount": "Kirim Hitung Ulang",
+      "expected": "Sistem",
+      "counted": "Dihitung",
+      "difference": "Selisih",
+      "recount": "Hitung Ulang Sekali",
+      "brokenLabel": "Dari yang kurang, berapa yang rusak?",
+      "brokenHelp": "Barang rusak diturunkan dari rak dan dibuang. Sisa kekurangannya hilang.",
+      "why": "kenapa?",
+      "brokenExample": "Contoh: karung sobek, dibuang",
+      "lostExample": "Contoh: tidak ketemu, sudah cek bawah rak",
+      "surplusExample": "Contoh: terselip di belakang Gula Pasir",
+      "markCounted": "Tandai Dihitung",
+      "needsReason": "Tulis alasan untuk setiap draf agar bisa ditandai dihitung.",
+      "readOnly": "Sudah dihitung — admin bisa mengembalikannya untuk dihitung ulang",
+      "foundHere": "ditemukan di sini"
+    },
+    "found": {
+      "open": "Tambah Produk yang Ditemukan di Sini",
+      "title": "Produk Ditemukan di {{code}}",
+      "help": "Produk di rak ini yang tidak ada di daftar. Masuk ke opname dengan angka sistem 0 di sini, dan rak lain yang menyimpannya ikut masuk.",
+      "product": "Produk",
+      "productPlaceholder": "Contoh: Minyak Goreng Sawit 2L",
+      "submit": "Tambah Produk",
+      "done": "{{product}} ditambahkan ke {{code}}",
+      "neverHereTitle": "Tim pemiliknya belum pernah menyimpan produk ini di gudang ini",
+      "neverHereBody": "Barang ini belum menjadi stok di sini. Turunkan dari rak dan kabari tim penjualnya — mereka membuat restock untuk barang ini, lalu gudang menerimanya."
+    },
+    "finalize": {
+      "title": "Finalisasi Opname #{{id}}",
+      "subtitle": "Yang diposting saat finalisasi, per produk. Finalisasi berarti menyetujui utang: gudang membayar tim untuk yang rusak atau hilang.",
+      "block": {
+        "notActive": "Opname ini tidak aktif.",
+        "rowsNotCounted": "{{left}} baris belum dihitung.",
+        "ownCount": "Anda ikut menghitung di opname ini — Owner atau Admin lain yang memfinalisasinya."
+      },
+      "summary": {
+        "owed": "Utang gudang",
+        "owedLine": "rusak dan hilang, dengan harga batch-nya",
+        "claimed": "Diklaim kembali",
+        "claimedLine": "kehilangan lama yang ditemukan lagi",
+        "minted": "Batch baru",
+        "mintedLine": "kelebihan tanpa kehilangan untuk diklaim",
+        "products": "Produk",
+        "productsLine": "dengan selisih atau perubahan rak"
+      },
+      "nothing": "Semua produk cocok dengan sistem — finalisasi hanya melepas raknya.",
+      "outcome": {
+        "short": "Kurang",
+        "over": "Lebih",
+        "brokenOnly": "Rusak",
+        "move": "Pindah antar rak"
+      },
+      "arithmetic": "Sistem {{book}} · layak jual {{sellable}} · rusak {{broken}} · sisanya",
+      "racksChanged_one": "{{count}} rak dikoreksi",
+      "racksChanged_other": "{{count}} rak dikoreksi",
+      "lines": {
+        "type": "Diposting",
+        "batch": "Batch",
+        "units": "Unit",
+        "price": "Harga",
+        "amount": "Jumlah",
+        "newBatch": "Batch baru",
+        "claims": "mengklaim kehilangan #{{id}}"
+      },
+      "post": {
+        "unspecified": "—",
+        "broken": "Rusak",
+        "lost": "Hilang",
+        "claim": "Diklaim kembali",
+        "mint": "Batch baru"
+      },
+      "confirmTitle": "Finalisasi Opname #{{id}}?",
+      "confirmMessage": "Ini memposting setiap baris di atas dan melepas raknya. Utang gudang {{owed}}. Tidak bisa dibatalkan.",
+      "done": "Opname #{{id}} difinalisasi"
+    }
   }
 }

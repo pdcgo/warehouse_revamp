@@ -13,6 +13,7 @@ import { InventoryService } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { WarehouseTransferService } from "../gen/warehouse/inventory/v1/warehouse_transfer_pb";
+import { OpnameService } from "../gen/warehouse/inventory/v1/opname_pb";
 import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
 import { SupplierChannelService } from "../gen/warehouse/supplier/v1/supplier_channel_pb";
 import { SupplierAnalyticService } from "../gen/warehouse/supplier/v1/supplier_analytic_pb";
@@ -65,6 +66,8 @@ export const restockClient = createClient(RestockRequestService, transport);
 // A selling team moving its own stock between two warehouses (docs/business/inventory/warehouse_transfer.md). A
 // prototype until design_accept: the real server answers Unimplemented, Storybook plays the decided rules.
 export const warehouseTransferClient = createClient(WarehouseTransferService, transport);
+// The stock count — a prototype until design_accept: the server answers Unimplemented, Storybook's stub plays it.
+export const opnameClient = createClient(OpnameService, transport);
 // Global reference data — regions are the same for everyone, so no team travels with these calls.
 export const regionClient = createClient(RegionService, transport);
 export const expenseClient = createClient(ExpenseService, transport);

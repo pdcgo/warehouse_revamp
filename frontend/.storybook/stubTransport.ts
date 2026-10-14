@@ -63,6 +63,8 @@ import { supplierAnalyticService, supplierChannelService, supplierService } from
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
+import { opnameService } from "./opnameStub";
+import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { rackService } from "./rackStub";
 import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
@@ -767,6 +769,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(RestockRequestService, restockRequestService);
   // The warehouse transfer — a prototype, so this stub is its only implementation until the backend step.
   service(WarehouseTransferService, warehouseTransferService);
+  // The stock count — a prototype too: opnameStub.ts plays the decided opname rules (opname_decision.md).
+  service(OpnameService, opnameService);
 
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
