@@ -3482,6 +3482,24 @@
           "label": "Ekspor",
           "reason": "Belum ada yang membuat file — isinya periode dengan sembilan jenisnya atau juga rincian per akun dan penyedia, dan sehalaman atau seluruh rentang, masih terbuka."
         }
+      },
+      "views": {
+        "period": "Periode",
+        "breakdown": "Rincian"
+      },
+      "breakdown": {
+        "where": {
+          "title": "Saldo per Penyedia dan Akun",
+          "lead": "Saldo tiap akun, dikelompokkan per penyedia — di awal rentang, perubahannya, dan di akhir",
+          "name": "Penyedia · akun"
+        },
+        "what": {
+          "title": "Mutasi per Jenis",
+          "lead": "Dari saldo awal ke saldo akhir: uang yang masuk, lalu yang keluar",
+          "in": "Masuk",
+          "out": "Keluar"
+        },
+        "oneAccount": "Satu akun dipilih — rincian per akun dan per penyedia hanya untuk seluruh tim. Hapus filter akun untuk melihatnya."
       }
     },
     "newAccount": "Akun Baru",

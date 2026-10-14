@@ -3492,6 +3492,24 @@
           "label": "Export",
           "reason": "Nothing builds a file yet — whether it holds the periods with their nine types or the account and provider breakdowns too, and this page or the whole window, is still open."
         }
+      },
+      "views": {
+        "period": "Periods",
+        "breakdown": "Breakdown"
+      },
+      "breakdown": {
+        "where": {
+          "title": "Balance by Provider and Account",
+          "lead": "Each account's balance, grouped by provider — at the start of the window, its change, and at the end",
+          "name": "Provider · account"
+        },
+        "what": {
+          "title": "Movements by Type",
+          "lead": "From the opening to the closing balance: money in, then money out",
+          "in": "Money in",
+          "out": "Money out"
+        },
+        "oneAccount": "One account is picked — the breakdown by account and by provider is for the whole team. Clear the account filter to see it."
       }
     },
     "newAccount": "New Account",

@@ -55,6 +55,7 @@ when it applies one of these.
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
 | [the-phone-shell-has-no-top-bar](#the-phone-shell-has-no-top-bar) | the phone shell has no top bar — the page starts at the top under its own title; the lit tab says where you are | the phone shell |
 | [the-phone-page-clears-the-bubble](#the-phone-page-clears-the-bubble) | a phone page's end scrolls clear of the workspace bubble — the shell's bottom padding is the bubble's rise plus a gap | the phone shell |
+| [a-page-picks-its-view-over-its-filters](#a-page-picks-its-view-over-its-filters) | a page with two ways to read its data puts them as line tabs **over** its filter strip — the view decides which filters there are | the supplier statistics, the account report |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1167,6 +1168,30 @@ before — scrolled to the end                 now
 | the cause | the workspace bubble rises **28px** out of the tab bar ([the-workspace-is-the-tab-bars-centre](#the-workspace-is-the-tab-bars-centre)), over the end of the page's scroll region — and a page's last thing is often centred under it: the pager ([a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size)) |
 | the fix | the phone shell's `<main>` keeps `card` on three sides and **`12` (48px) at the bottom** — the rise plus a gap — so a page's end always scrolls clear |
 | where | `MobileLayout` — every phone page at once; no page pads its own bottom for it |
+
+## a-page-picks-its-view-over-its-filters
+
+> Owner, in chat — on the supplier statistics: *"tipe dari waktu ke waktu dan per produk di atas filter"*
+> ([the-view-is-picked-over-the-filters](suppliers_decision.md#the-view-is-picked-over-the-filters)); and again on the
+> account report (2026-10-14): *"di atas filter ada tab, periode dan rincian"*
+> ([the-report-is-two-views-periode-and-rincian](financial_accounts_decision.md#the-report-is-two-views-periode-and-rincian)).
+> Said on a second screen, so it is a rule for every screen.
+
+```
+Title
+Periode · Rincian                    ← the views: line tabs, the chosen one in the main tone
+[filter] [filter] [filter]           ← the strip — what it holds depends on the view
+cards …                              ← what both views share
+the chosen view's table(s)
+```
+
+| | |
+| --- | --- |
+| where | the views are **line tabs over the filter strip**, under the title (and its not-implemented strip) — never a switch beside a table further down |
+| why | the view decides which filters there are (a grain belongs to a series, not to a breakdown), so it is picked before them |
+| the strip | a filter that means nothing in a view is not in that view's strip, and does not count toward *Hapus Filter* there |
+| shared | what both views read — the cards — sits over both, between the strip and the view |
+| mounting | only the open view is mounted (`lazyMount`, `unmountOnExit`) — its tables and its pager, never both |
 
 ## Recorded elsewhere
 

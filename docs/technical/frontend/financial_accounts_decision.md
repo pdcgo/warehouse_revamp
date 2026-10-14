@@ -51,6 +51,14 @@ the prototype these screens grew from was accepted
 | [a-balance-below-zero-says-to-check-the-bank](#a-balance-below-zero-says-to-check-the-bank) | under a balance below zero, a small red line with the ⚠: *Di bawah nol · cocokkan dengan bank* · the figures right-aligned |
 | [the-accounts-list-has-every-filter-the-contract-has](#the-accounts-list-has-every-filter-the-contract-has) | search · type · shop · operational only · archived, in the shared `FilterBar` — a sheet on a phone |
 | [the-accounts-table-sorts-from-its-headings](#the-accounts-table-sorts-from-its-headings) | **Akun** and **Penyedia** sort from their headings, A to Z first, then flip |
+| [the-report-is-two-views-periode-and-rincian](#the-report-is-two-views-periode-and-rincian) | the account report is two views picked over the filters — **Periode** (the table of periods) and **Rincian** (the old ranking back: Per Akun, Per Penyedia, Per Jenis, stacked on one page) |
+| [the-rincian-view-has-three-plain-cards](#the-rincian-view-has-three-plain-cards) | in the Rincian view the cards are the three balances alone — no *Rincian ›*, no Akun or Penyedia card; Periode keeps all five |
+| [the-rincian-view-is-a-grid-with-tight-figures](#the-rincian-view-is-a-grid-with-tight-figures) | Rincian on a desktop: Per Akun at the full width, then Per Penyedia and Per Jenis side by side; the money columns one fixed width at the right; Per Jenis draws each type as a bar from a centre line |
+| [rincian-answers-two-questions](#rincian-answers-two-questions) | Rincian is two cards, each a question: **Di Mana Uangnya** (providers with their accounts under them, one table) and **Apa yang Mengubah Saldo** (a bridge from the opening balance through money in and out to the closing) |
+| [rincian-cards-are-named-by-what-they-group](#rincian-cards-are-named-by-what-they-group) | the two Rincian cards are **Saldo per Penyedia dan Akun** and **Mutasi per Jenis**; *Penyedia* stays the word |
+| [mutasi-per-jenis-breathes](#mutasi-per-jenis-breathes) | Mutasi per Jenis gets a little more air — the types 10px apart, a group 12px from its neighbours |
+| [a-phone-period-lists-a-type-a-line](#a-phone-period-lists-a-type-a-line) | on a phone a period's types are one per line — the badge and its amount together |
+| [a-phone-breakdown-row-shows-its-opening](#a-phone-breakdown-row-shows-its-opening) | on a phone each row of Saldo per Penyedia dan Akun shows its *Saldo awal* under the name |
 
 ## the-accounts-subtitle-sits-under-the-title
 
@@ -925,3 +933,174 @@ Tanggal                       Saldo     ← each heading names its column's top 
 
 **Supersedes** the three columns (*Tanggal · Jenis · Saldo*) of
 [a-phone-statement-row-opens-its-detail](#a-phone-statement-row-opens-its-detail); its dialog and the tap stand.
+
+## the-report-is-two-views-periode-and-rincian
+
+> Owner, in chat (2026-10-14), asking for the table that used to sit under the periods: *"di financial account report aku
+> ingin tabel yang sebelumnya ada di bawah periode"* — told it was the ranking, *"Yang menggerakkannya"* (Akun ·
+> Penyedia · Jenis), and offered *Rincian* for its name: *"kalau begini, di atas filter ada tab, periode dan rincian,
+> rincian isinya tabel lama itu, semua dalam 1 halaman tanpa perlu tab tambahan"*.
+
+```
+Laporan Akun                                                            [⬇ Ekspor ⚠1]
+Periode · Rincian                                      ← the views, over the filters
+[Semua akun ⌄] [30 hari terakhir ⌄] ([Harian|Bulanan|Tahunan] — Periode only)
+[Saldo awal] [Perubahan bersih] [Saldo akhir] [Akun] [Penyedia]   ← the cards, over both views
+
+Rincian
+  Per Akun        Akun · Saldo awal · Perubahan bersih · Saldo akhir   … Total
+  Per Penyedia    Penyedia · Saldo awal · Perubahan bersih · Saldo akhir … Total
+  Per Jenis       Jenis · Perubahan bersih                               … Total
+                                       Saldo awal 11.300.000 → Saldo akhir 16.443.500
+```
+
+| | |
+| --- | --- |
+| the views | two line tabs **over the filters** — *Periode* (first, the table of periods as it was) and *Rincian*; the view decides which filters there are ([a-page-picks-its-view-over-its-filters](context_decision.md#a-page-picks-its-view-over-its-filters)) |
+| Rincian | the ranking removed by [the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table), back — its three groupings **stacked on one page**, each under its heading, **no switch** between them |
+| Per Akun / Per Penyedia | the old columns: *Saldo awal · Perubahan bersih · Saldo akhir*; largest movement first; an archived account marked, not dropped; a provider by its coloured badge; a **Total** row; an account row opens the account |
+| Per Jenis | a type has no balance — the movement alone; the total is the net change, bridged *Saldo awal → Saldo akhir* under it, as the net change card's *Rincian* reads |
+| one account picked | Per Akun and Per Penyedia say so — they are the team's ranking, as their cards go; Per Jenis is that account's |
+| the grain | **Periode's only** — it cuts a series; Rincian reads the window as one figure per row, so the picker is not in its strip and does not count toward *Hapus Filter* there |
+| the cards | over both views, unchanged — their *Rincian ›* dialogs stay |
+| on a phone | each section a list — the name left, the closing balance with the change under it right |
+| the name | **Rincian**, with *Per Akun · Per Penyedia · Per Jenis* — the page's own word (the cards' *Rincian ›* open the same figures) and the *Per …* of *Periode*; *"Yang menggerakkannya"* read as off |
+| supersedes | *one table* and *the ranking table with its tabs is gone* of [the-report-is-five-cards-and-one-table](#the-report-is-five-cards-and-one-table); its five cards and its period table stand |
+
+## the-rincian-view-has-three-plain-cards
+
+> Owner, in chat (2026-10-14), on the Rincian view: *"di rincian statisticnya tidak perlu rincian lagi, akun dan penyedia
+> pun tidak perlu ada"*.
+
+```
+Periode   [Saldo awal] [Perubahan bersih  Rincian ›] [Saldo akhir] [Akun  Rincian ›] [Penyedia  Rincian ›]
+Rincian   [Saldo awal] [Perubahan bersih]            [Saldo akhir]
+```
+
+| | |
+| --- | --- |
+| in Rincian | the **three balance cards alone** — *Saldo awal*, *Perubahan bersih*, *Saldo akhir* — with **no *Rincian ›*** on any of them, and **no Akun or Penyedia card** |
+| why | the view IS the breakdown: Per Jenis is what the net change's *Rincian ›* opens, and Per Akun and Per Penyedia are what the two mover cards rank |
+| in Periode | unchanged — all five cards, each *Rincian ›* opening its dialog |
+| the strip | three cards keep the strip's share — each a column of its cap, the rest of the row empty (`SummaryStrip`) |
+| refines | the cards *over both views, unchanged* of [the-report-is-two-views-periode-and-rincian](#the-report-is-two-views-periode-and-rincian) |
+
+## the-rincian-view-is-a-grid-with-tight-figures
+
+> Owner, in chat (2026-10-14): *"sekarang tampilannya yang bermasalah rincian, kurang bagus dilihat, sarankan sesuatu"* —
+> on the proposal of a two-row grid, tight figure columns and bars in Per Jenis: *"kita coba dulu"*.
+
+```
+Per Akun                                         Saldo awal   Perubahan bersih   Saldo akhir
+BCA Operasional [BCA]                         Rp 10.750.000       +Rp 693.500   Rp 11.443.500
+…
+
+Per Penyedia                                    │ Per Jenis
+Penyedia   Saldo awal   Perubahan   Saldo akhir │ [Penarikan]       │█████████   +Rp 11.000.000
+[BCA]      10.750.000  +1.293.500    12.043.500 │ [Biaya]       ███ │             −Rp 3.600.000
+…                                               │ Total                         +Rp 5.143.500
+```
+
+| | |
+| --- | --- |
+| the grid | on a desktop (`lg` and up) **Per Akun at the full width**, then **Per Penyedia and Per Jenis side by side**; one column below `lg` |
+| the figures | every money column **one fixed width (10rem)**, gathered at the right, the name taking the rest — a row's figures read as one, not spread across 1400px |
+| Per Jenis | the type, a **bar**, the net change. The bar grows from a centre line — money in to the right (`success`), money out to the left (`error`), its length against the largest type — in the tones' lighter `emphasized` step, since the amount beside it is the fact. The bar's column has no heading |
+| why | Per Jenis is two columns: across the page its badges and amounts sat a screen apart; the three tables read as one wall |
+| on a phone | unchanged — the three lists stacked ([the-report-is-two-views-periode-and-rincian](#the-report-is-two-views-periode-and-rincian)) |
+| not aligned | Per Akun and Per Penyedia are different widths (full and half), so their columns do not line up — the fixed widths keep each table's figures together, not the two tables in step |
+| the headings | stay the section size (15px) — the type scale has no step between it and the page title |
+
+## rincian-answers-two-questions
+
+> Owner, in chat (2026-10-14): *"masih di masalah tampilan, masih bikin bingung ini apa konteks apa dsb, ada ide lain?"* —
+> on the proposal of two cards, each a question, the account and provider tables merged: *"kita coba dulu"*.
+
+```
+┌ Di Mana Uangnya ─────────────────────────────┐ ┌ Apa yang Mengubah Saldo ──────────────────┐
+│ Saldo tiap akun, dikelompokkan per penyedia … │ │ Dari saldo awal ke saldo akhir: …          │
+│ Penyedia · akun   Saldo awal  Perubahan  Akhir│ │ Saldo awal                  Rp 11.300.000  │
+│ [BCA]       10.750.000  +1.293.500 12.043.500 │ │ Masuk                      +Rp 12.000.000  │
+│    BCA Operasional 10.750.000 +693.500 …      │ │   [Penarikan] ██████████   +Rp 11.000.000  │
+│    BCA Gaji …                                 │ │ Keluar                      −Rp 6.856.500  │
+│ [ShopeePay] …                                 │ │   [Biaya]     ███           −Rp 3.600.000  │
+│ Total       11.300.000  +5.143.500 16.443.500 │ │ Saldo akhir                 Rp 16.443.500  │
+└───────────────────────────────────────────────┘ └────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| why | three tables titled by how the data was cut (*Per Akun / Per Penyedia / Per Jenis*) never said what they answered — and Per Akun and Per Penyedia were one set of figures twice |
+| the cards | two, each titled with **its question** and a line saying what it holds; side by side from `lg` (the first wider, 3 : 2), stacked below |
+| Di Mana Uangnya | **one table**: each provider's row is its subtotal, on a grey ground; its accounts indented under it; a **Total** that is the whole team. The columns as before — *Saldo awal · Perubahan bersih · Saldo akhir*, fixed widths. An account row opens the account; an archived one marked |
+| Apa yang Mengubah Saldo | **a bridge**: *Saldo awal* → **Masuk** (its subtotal on the heading, its types under it) → **Keluar** (likewise) → *Saldo akhir*, its two ends the cards' own. A bar per type against the largest, in its group's tone, growing one way |
+| one account picked | Di Mana Uangnya says it is the team's ranking (as its cards go); the bridge is that account's |
+| on a phone | the table a list — a provider's line, its accounts indented; in the bridge a type's badge and amount on a line, its bar at the full width under them (squeezed between them it was a few pixels) |
+| supersedes | the three tables and the Penyedia · Jenis grid of [the-rincian-view-is-a-grid-with-tight-figures](#the-rincian-view-is-a-grid-with-tight-figures) and [the-report-is-two-views-periode-and-rincian](#the-report-is-two-views-periode-and-rincian); the fixed figure widths stand; the centre-line bar became a bar growing one way per group |
+
+## rincian-cards-are-named-by-what-they-group
+
+> Owner, in chat (2026-10-14): *"dimana uangnya jadi rincian penyedia dan akunnya, ada ga sih istilah selain penyedia?
+> apa yang mengubah jadi rincian mutasi atau istilah yang lebih pas mungkin"* — on the proposal: *"oke"*.
+
+| was | now |
+| --- | --- |
+| Di Mana Uangnya | **Saldo per Penyedia dan Akun** (EN *Balance by Provider and Account*) |
+| Apa yang Mengubah Saldo | **Mutasi per Jenis** (EN *Movements by Type*) |
+
+| | |
+| --- | --- |
+| the titles | say what each card holds and how it is grouped; neither repeats *Rincian*, the tab's own name |
+| *Penyedia* | **stays** — the one word that covers a bank, an e-wallet and cash alike (*Bank & e-wallet* leaves out Kas and Lainnya; *Sumber dana* reads like the source of a change; *Lembaga* does not fit cash). Changing it would be an app-wide change — the accounts list's column and filter, the badges, the reports — never this heading alone |
+| *Mutasi* | the familiar bank word for money in and out. Not *Rincian Mutasi*: it repeats the tab and reads like a list of single transactions, where this is grouped by type. Not *Arus Kas*: *Kas* is also a provider here |
+| the leads | unchanged — the line under each title still says what it holds |
+| renames | the titles of [rincian-answers-two-questions](#rincian-answers-two-questions); its layout stands |
+
+## mutasi-per-jenis-breathes
+
+> Owner, in chat (2026-10-14): *"untuk mutasi per jenis kasih tambahan gap sedikit"*.
+
+| | was | now |
+| --- | --- | --- |
+| between two types | 6px | **10px** |
+| around a group (Masuk, Keluar) | 8px | **12px** |
+| the bridge's parts (Saldo awal · Masuk · Keluar · Saldo akhir) | 0 | **4px** more, the two ends 10px top and bottom |
+| a phone: a type's line and its bar | 4px | **6px** |
+
+Spacing only — the bridge of [rincian-answers-two-questions](#rincian-answers-two-questions) is otherwise unchanged.
+
+## a-phone-period-lists-a-type-a-line
+
+> Owner, in chat (2026-10-14): *"di mobile, tabel periode, rincian badge dan nilainya 1 per line"*.
+
+```
+before                                   now
+2026-10-12             Rp 16.450.000     2026-10-12             Rp 16.450.000
+[Modal] +1.000.000 [Restok]  +600.000    [Modal]  +Rp 1.000.000    +Rp 600.000
+−400.000                                 [Restok] −Rp 400.000
+```
+
+| | |
+| --- | --- |
+| on a phone | a period's types that moved are **one per line** — the badge and its amount together, in the left column under the date |
+| why | wrapped side by side, an amount could land on the next line away from its badge |
+| unchanged | the two columns, top-aligned — the closing balance with the change under it on the right |
+
+## a-phone-breakdown-row-shows-its-opening
+
+> Owner, in chat (2026-10-14), in the same message: *"rincian juga ada saldo awal"*.
+
+```
+[BCA]                         Rp 12.043.500
+Saldo awal Rp 10.750.000       +Rp 1.293.500
+   BCA Operasional            Rp 11.443.500
+   Saldo awal Rp 10.750.000      +Rp 693.500
+```
+
+| | |
+| --- | --- |
+| on a phone | each row of *Saldo per Penyedia dan Akun* — a provider, an account, the Total — shows **Saldo awal** in a small muted line **under its name**; the closing balance and the change stay on the right |
+| why | the desktop table has a *Saldo awal* column; the phone's two figures had left it out |
+| read as | the Rincian view's rows — the period table has no opening balance on a desktop either, so the line went where the desktop has it. If it was meant for a period's block, it moves there |
+| the badge | a provider's badge keeps its own width in that column (it had stretched to the column's width) |
+

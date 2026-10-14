@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Flex, Stack, Table, Text, Wrap } from "@chakra-ui/react";
+import { Flex, Stack, Table, Text } from "@chakra-ui/react";
 
 import { SortableHeader, type SortState } from "../../../components/chrome/SortableHeader";
 import type { AccountReportPoint } from "../../../features/financialAccount/analytics";
@@ -75,14 +75,17 @@ export function SeriesTable({
           >
             <Stack gap="1" minW="0">
               <Text fontSize="sm">{periodLabel(point.at, grain)}</Text>
-              <Wrap gap="1">
+              {/* ONE TYPE A LINE (owner: *"di mobile, tabel periode, rincian badge dan nilainya 1 per line"*,
+                  `a-phone-period-lists-a-type-a-line`) — wrapped side by side, a badge's amount could land on the next
+                  line away from it. */}
+              <Stack gap="1" data-testid={`account-report-series-types-${point.at}`}>
                 {CHANGE_TYPES.filter((c) => point.metric[FIELD_OF[c]!] !== 0).map((c) => (
-                  <Flex key={c} align="center" gap="1" fontSize="xs">
+                  <Flex key={c} align="center" gap="2" fontSize="xs">
                     <ChangeTypeBadge changeType={c} />
                     <SignedAmount amount={point.metric[FIELD_OF[c]!]} />
                   </Flex>
                 ))}
-              </Wrap>
+              </Stack>
             </Stack>
             <Stack gap="1" align="end" flexShrink="0">
               <BalanceText balance={point.metric.closeBalance} bold testId={`account-report-series-close-${point.at}`} />
