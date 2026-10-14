@@ -108,7 +108,7 @@ state "Delete Draft Order" as draft
 
 create_err-->createdevt: if success, and bring idempotency key
 create_err-->draft: if success
-create_err-->cominvevt: if error, and bring idempotency key
+create_err-->cominvevt: if error, and bring idempotency key and transaction_id if exist
 createdevt-->srv
 cominvevt-->srv
 
@@ -126,13 +126,15 @@ message ProductItem {
 
 message OrderTransactionCreateRequest {
     uint64                  warehouse_id
+    uint64                  team_id
+    string                  idempotency_key
     repeated ProductItem    items
 }
 
 
 message TransactionItem {
     uint64 product_id
-    uint64 team_id
+    uint64 team_id                  // item owner team_id
     uint32 qty
     double unit_cost                // price product, if cross, price before markup
     double unit_cost_with_markup    // price product, if cross, price after markup

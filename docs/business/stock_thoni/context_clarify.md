@@ -8,6 +8,24 @@ Tetangga: [order_creation](../order/order_creation_clarify.md) · [order_return]
 [inventory (Heri)](../inventory/context_clarify.md) · [product](../product/context_clarify.md) ·
 [technical/stock](../../technical/stock/design_clarify.md).
 
+> **2026-10-13 12:51** — ✅ ⏸ dari uji kelimapuluh satu terjawab: baris map yang sama diubah —
+> [map-diubah-jadi-released](./context_decision.md#map-diubah-jadi-released).
+>
+> **Uji kelimapuluh lima, 2026-10-13 12:22** — model.md baris 152: `SKU_STATEMENT` adalah ringkasan yang *"bisa saja miss"*,
+> dihitung ulang tiap tengah malam, plus tombol *force reconcile* yang memberi peringatan di jam kerja. ✅ Dicatat:
+> [statement-direkonsiliasi-tiap-malam](./context_decision.md#statement-direkonsiliasi-tiap-malam) — separuhnya saran lama
+> (*"tiap malam: statement = jumlah slot"*). 🆕 dua kritik di [Critique — SKU_STATEMENT](#critique--sku_statement) · dua
+> pertanyaan: [rekonsiliasi-dihitung-dari-apa](#rekonsiliasi-dihitung-dari-apa),
+> [peringatan-jam-kerja-untuk-apa](#peringatan-jam-kerja-untuk-apa) · kontradiksi
+> [statement-diisi-saat-rekonsiliasi](#statement-diisi-saat-rekonsiliasi). Tetap: [relasi-masih-orders](#relasi-masih-orders).
+>
+> **2026-10-12 17:22** — ⏸ dari uji kelimapuluh satu kini ditanyakan, karena alur pembatalan sudah ditulis:
+> `released-mengubah-baris-yang-sama` (✅ [map-diubah-jadi-released](./context_decision.md#map-diubah-jadi-released)).
+>
+> **Uji kelimapuluh empat, 2026-10-12 16:38** — ERD: `ORDER_TAKES.take_ref` `"unique"`, diisi `idempotency_key`. ✅ Dicatat:
+> [take-ref-dari-idempotency-key](./context_decision.md#take-ref-dari-idempotency-key) — selesai: kritik
+> *timeout-tanpa-rujukan*. Tetap: [relasi-masih-orders](#relasi-masih-orders).
+>
 > **Uji kelimapuluh tiga, 2026-10-12 13:36** — ERD: `ORDERS` menjadi `ORDER_TAKES`; `ORDER_SLOT_MAP.order_id` kini *"ref to
 > ORDER_TAKES"*. Kritik *orders-tanpa-order-asli* menyempit menjadi [timeout-tanpa-rujukan](#critique). 🆕 kontradiksi
 > [relasi-masih-orders](#relasi-masih-orders).
@@ -322,8 +340,36 @@ baris dibaca tanpa menjumlah slot. Dan ia bisa lebih dari baca cepat: **gerbang*
 | | Masalah | → Rekomendasi |
 | --- | --- | --- |
 | **statement-bukan-riwayat** | Ini angka sekarang yang **kedua** — menjawab *berapa* lebih cepat, bukan *kenapa*. Take, batal dan ketemu tetap tidak meninggalkan jejak: [uji kartu stok](#uji-kartu-stok), **2 dari 5**. | Tetap `SLOT_LOGS` — [tiga lapis, tiga pertanyaan](#tiga-lapis-tiga-pertanyaan). |
-| **statement-bisa-beda-dengan-slot** | Statement = jumlah slot. Cukup satu jalan yang mengubah slot tapi **lupa** statement, dan keduanya beda — tanpa log, tidak ada yang bisa bilang mana yang benar. | Satu jalan tulis, satu transaksi DB, statement dikunci **lebih dulu** · `CHECK (>= 0)` · tiap malam: statement = jumlah slot. |
+| **statement-bisa-beda-dengan-slot** | Statement = jumlah slot. Cukup satu jalan yang mengubah slot tapi **lupa** statement, dan keduanya beda — tanpa log, tidak ada yang bisa bilang mana yang benar. | Satu jalan tulis, satu transaksi DB, statement dikunci **lebih dulu** · `CHECK (>= 0)` · ✅ tiap malam: statement = jumlah slot — 10-13, plus *force reconcile* ([statement-direkonsiliasi-tiap-malam](./context_decision.md#statement-direkonsiliasi-tiap-malam)). |
 | **satu-angka-dua-nama** | Slot kini menyebutnya `count`, statement `stock_ready` — dan `stock_broken`/`stock_lost` di statement adalah `count` baris anomali. Dan *baik* dan *siap jual* **memang** dua angka: setelah order 77 mengambil 2 unit, unitnya masih di rak dan masih baik — tapi sudah terjual. | Satu pola nama di semua tabel · dua angka **per slot**, dengan nama Anda sendiri — [stock-ready-berarti-apa](#stock-ready-berarti-apa). |
+| **selisih-ditimpa-tanpa-laporan** | ⛔ 10-13, baris 152: statement *"bisa saja miss"* — seolah selisih itu wajar. Padahal di satu transaksi DB, slot dan statement berubah bersama atau tidak sama sekali; selisih hanya muncul kalau satu jalan **lupa** menulis salah satunya — itu bug. Contohnya sempat ada: pembatalan mengembalikan slot tapi tidak `stock_ready` — ✅ dibetulkan 10-13 12:42 ([batal-mengembalikan-slot-dan-stock-ready](./context_decision.md#batal-mengembalikan-slot-dan-stock-ready)); seandainya tidak ketemu di ulasan, rekonsiliasi akan menutupinya tiap malam. Tiap malam rekonsiliasi membetulkan 48 → 51 tanpa suara, dan bug-nya tidak pernah ketemu. | Rekonsiliasi **mencatat** setiap selisih sebelum membetulkannya — SKU, gudang, kolom, sebelum, sesudah. Malam yang bersih = 0 baris; satu baris = satu jalan tulis yang perlu diperbaiki. |
+| **gerbang-salah-sampai-tengah-malam** | ⛔ 10-13: statement bukan hanya tampilan — take mengunci dan memeriksa stok **di statement** ([take-kunci-statement-lalu-periksa-stok](./context_decision.md#take-kunci-statement-lalu-periksa-stok)). Order 77 batal jam 10:00 → slot kaos gudang 3 berisi 51, statement 48. Sampai tengah malam, CS tim 5 yang memesan 50 kaos ditolak, padahal raknya cukup. Kebalikannya lebih buruk: statement 51, slot 48 → pesanan 50 lolos validasi, lalu *Pilih Slot* kekurangan 2 — ✅ 13:17: kini seluruh take gagal, tidak ada yang terpotong; tinggal separuh pertama. | Selisih dicegah di jalan tulis, bukan ditunggu sampai malam: setiap jalan yang mengubah slot mengubah statement di transaksi DB yang sama. ✅ Separuh kedua diputuskan: *Pilih Slot* yang kekurangan menggagalkan seluruh take ([slot-kurang-seluruh-take-gagal](./context_decision.md#slot-kurang-seluruh-take-gagal)). |
+
+#### rekonsiliasi — usulan
+
+Satu transaksi DB pendek per SKU per gudang, kunci dulu baru jumlahkan — pola yang sama dengan restock dan take:
+
+```mermaid
+flowchart TB
+    start["Tengah malam, atau Force Reconcile — daftar SKU dan gudang"]
+    subgraph "DB Transaction — satu per SKU per gudang"
+        lock["Kunci baris SKU_STATEMENT"]
+        sum["Hitung ulang dari sumbernya — jumlah SKU_SLOT.count di gudang itu"]
+        cmp{"sama dengan statement?"}
+        log["Catat selisih — SKU, gudang, kolom, sebelum, sesudah"]
+        set["Isi statement dengan hasil hitungan"]
+    end
+    next["SKU berikutnya, urut sku_id — take yang antre hanya menunggu satu baris"]
+    start --> lock --> sum --> cmp
+    cmp -->|"sama"| next
+    cmp -->|"beda"| log --> set --> next
+```
+
+| jam | yang terjadi | slot kaos gudang 3 | statement |
+| --- | --- | ---: | ---: |
+| 10:00 | order 77 batal — slot kembali, `stock_ready` tidak | 51 | 48 |
+| 00:00 | rekonsiliasi — **1 baris selisih**: kaos, gudang 3, `stock_ready`, 48 → 51 | 51 | 51 |
+| esok pagi | selisihnya dibaca → jalan pembatalan diperbaiki, malam berikutnya 0 baris | 51 | 51 |
 
 #### uji kartu stok
 
@@ -803,7 +849,7 @@ erDiagram
 | perubahan | kenapa |
 | --- | --- |
 | **`SLOT_LOGS`** — satu log untuk slot dan anomali | [satu-log-untuk-semua](#critique) |
-| ✅ **`ORDER_SLOT_MAP`** — milik Anda (10-12) · ✅ `type` `taken`/`released` (12:46) · ✅ menunjuk `ORDER_TAKES` (13:36) — namai `take_id` · ditambah `created_at` ([timeout-tanpa-rujukan](#critique)) | [take-dicatat-per-slot-di-order-slot-map](./context_decision.md#take-dicatat-per-slot-di-order-slot-map) · [slot-map-ditandai-taken-atau-released](./context_decision.md#slot-map-ditandai-taken-atau-released) |
+| ✅ **`ORDER_SLOT_MAP`** — milik Anda (10-12) · ✅ `type` `taken`/`released` (12:46) · ✅ menunjuk `ORDER_TAKES` (13:36) — namai `take_id` · ditambah `created_at` · ✅ `ORDER_TAKES.take_ref` (16:38) | [take-dicatat-per-slot-di-order-slot-map](./context_decision.md#take-dicatat-per-slot-di-order-slot-map) · [slot-map-ditandai-taken-atau-released](./context_decision.md#slot-map-ditandai-taken-atau-released) |
 | **`ADJUSTMENTS`** kepala + **`ADJUSTMENT_ITEMS`**, garis ke anomali nol atau banyak | [adjustment-satu-sku](#critique--barang-ketemu) |
 | `SKU_SLOT.count` = sisa · `ready_stock` · `updated_at` kembali | [count-slot-beku-atau-sisa](./context_decision.md#count-slot-adalah-sisa) · [stock-ready-berarti-apa](#stock-ready-berarti-apa) |
 | `SKU_LOST_SLOT` dan `SKU_BROKEN_SLOT` · `updated_at` | ✅ `supplier_id` ([supplier-ikut-ke-rusak-dan-hilang](./context_decision.md#supplier-ikut-ke-rusak-dan-hilang)) · ✅ harga tanpa *default* ([harga-rusak-dan-hilang-dihitung-seperti-slot](./context_decision.md#harga-rusak-dan-hilang-dihitung-seperti-slot)) · [angka-sekarang-dan-riwayat](#angka-sekarang-dan-riwayat) |
@@ -854,8 +900,10 @@ sequenceDiagram
 | release hanya dari `taken` | event batal bisa datang dua kali — yang kedua tidak mengembalikan stok lagi |
 | `total` yang otoritatif | satu baris dari dua slot berbeda harga ([one-line-many-batches](../order/order_creation_clarify.md#critique)) |
 
-⚠ Kontrak di order_creation.md belum membawa `order_id` dan tim pemesan — terbuka di
-[which-team-is-team-id](../order/order_creation_clarify.md#which-team-is-team-id).
+✅ 10-13 16:04: kontrak di order_creation.md kini membawa tim pemesan (`team_id`, baris 129 —
+[tim-pemesan-dikirim-di-permintaan-take](./context_decision.md#tim-pemesan-dikirim-di-permintaan-take)) dan, sebagai ganti
+`order_id`, `idempotency_key` ([take-ref-dari-idempotency-key](./context_decision.md#take-ref-dari-idempotency-key)). ✅ 16:58:
+`team_id` per baris adalah tim pemilik — [the-line-team-is-the-owner](../order/context_decision.md#the-line-team-is-the-owner).
 
 ---
 
@@ -868,7 +916,6 @@ sequenceDiagram
 | **pindah-rak-tanpa-jejak** | ⏸ ditunda bersama mekanisme adjustment. `move` tidak masuk daftar type. Slot membawa `rack_id`, jadi memindah tumpukan = mengubah `rack_id` — tanpa jejak. Memindah **sebagian** (30 dari 90 ke Rak B) butuh slot baru dengan asal yang sama — [slot-lahir-saat-barang-tiba](./context_decision.md#slot-lahir-saat-barang-tiba) sudah menulis *slot dipecah jadi dua baris* — dan tidak ada type yang mencatatnya. Kalau dipindah tanpa dicatat: instruksi petik tetap menunjuk Rak A, pemetik tidak menemukan barangnya, dan opname Rak A mencatat **kurang 30** — uang gudang — sampai Rak B dihitung. | Kalau pindah rak memang terjadi: `move` kembali — tanpa uang, tanpa konfirmasi. Kalau tidak pernah: satu kalimat di dokumen — *slot tidak pernah pindah rak*. |
 | **status-akhir-dua-kali** | ✅ 17:27: aturannya tertulis — *"tidak boleh status log nya double"* ([approved-sekali-dan-final](./context_decision.md#approved-sekali-dan-final)). ✅ 10-03 12:54: alur kini **mengunci** baris transaksi dan memeriksa `ongoing` sebelum menerima atau membatalkan ([kunci-transaksi-lalu-periksa-ongoing](./context_decision.md#kunci-transaksi-lalu-periksa-ongoing)) — dua petugas yang menekan *terima* bersamaan tidak lagi melahirkan slot dua kali. Yang tersisa hanya cadangan: kunci itu dijaga **kode** di dua tempat, dan kelak return serta adjustment juga menulis log status — satu jalur baru yang lupa mengunci membuka lubang yang sama. ✅ 10-03 14:09: setelah sempat dihapus 13:54, kunci dan periksa `ongoing` kembali — kini pada baris statement ([kunci-statement-lalu-periksa-ongoing](./context_decision.md#kunci-statement-lalu-periksa-ongoing)). Penjaga di bawah ini kembali menjadi **cadangan**. | **Penjaga cadangan di database**, ditulis di bawah ERD: satu status akhir per `tx_id` — indeks unik parsial `UNIQUE (tx_id) WHERE status IN (approved, cancelled)` di `TRANSACTION_STATUS_LOGS`. Jalur yang lupa mengunci ditolak database, bukan diam-diam menulis dua kali. |
 | **ref-order-id-belum-unik** | Sama polanya, untuk retur: CS mengklaim retur order 78, gudang juga ([both-cs-and-the-warehouse-can-return-an-order](../order/context_decision.md#both-cs-and-the-warehouse-can-return-an-order)) — dua transaksi `return` untuk satu order, dan barangnya **masuk stok dua kali**. | `ref_order_id` **unik** untuk `type = return`. |
-| **timeout-tanpa-rujukan** | 13:36: `ORDERS` kini `ORDER_TAKES`, dan pembatalan biasa menemukannya lewat `transaction_id` ([take-dirujuk-lewat-transaction-id](./context_decision.md#take-dirujuk-lewat-transaction-id)). Tersisa: `ORDER_TAKES` hanya `id` dan `created_at` — `InventoryTxCancel` sesudah timeout tidak membawa apa pun yang dikenal inventory; 13:39: id order pun belum ada saat take. Rinciannya: [order_creation_provide_clarify](./order_creation_provide_clarify.md#critique). | `ORDER_TAKES.take_ref`, `UNIQUE` — rujukan yang dibuat Order Service sebelum memanggil · `ORDER_SLOT_MAP.order_id` → `take_id`, karena kini menunjuk take, bukan order. |
 | **nama-kolom** | ✅ `shipping_fee` kini `float` (14:38). Tersisa: `order_id` di sistem yang punya tabel `orders` akan dibaca *order kita* — catatan di bawah ERD menjelaskannya, tapi kolom dibaca di kode dan query, bukan di catatan. ⚠ 10-12: kini **dua** `order_id` di satu ERD — `TRANSACTIONS.order_id` (string, nomor pesanan di supplier) dan `ORDER_SLOT_MAP.order_id` (int, order kita). Programmer yang menggabungkan keduanya dengan `order_id = order_id` mendapat hasil yang salah tanpa error. | `supplier_order_ref`. |
 | **folder-di-luar-inventory** | *"Service ini bernama `Inventory Service`"* — service yang **sama** dengan [inventory/context.md](../inventory/context.md) Heri. Dua proposal untuk satu service, di dua folder. | Pindah ke `business/inventory/`, dinamai sebagai proposal Toni. |
 
@@ -948,6 +995,34 @@ itu bohong.
 > ➡ Dipindah ke clarify kasus pertama, karena kasus itulah yang menjawabnya: *harga-diisi-di-item* →
 > [harga-disimpan-di-item](./context_decision.md#supplier-dan-total-disimpan-di-item) — kini diputuskan.
 
+### rekonsiliasi-dihitung-dari-apa
+Baris 152 menyebut *kalkulasi ulang*, tapi tidak dari apa. Tiap kolom butuh sumbernya sendiri:
+
+| kolom statement | saran sumbernya, SKU itu di gudang itu |
+| --- | --- |
+| `stock_ready` | Σ `SKU_SLOT.count` |
+| `stock_ongoing` | Σ `TRANSACTION_ITEMS.count` dari restock yang status terakhirnya `ongoing` |
+| `stock_lost` · `stock_broken` | Σ `count` baris `SKU_LOST_SLOT` · `SKU_BROKEN_SLOT` |
+
+Slot sendiri tidak diperiksa siapa pun: kalau `count` slot yang salah, rekonsiliasi menyalin angka yang salah ke
+statement — itu yang dijawab log ([angka-sekarang-dan-riwayat](#angka-sekarang-dan-riwayat)). Satu lagi: *"`restock`,
+`order`, ataupun `order`"* — `order` tertulis dua kali; yang ketiga pembatalan, atau retur?
+**→ Saran: tabel di atas** — slot sumber untuk statement; log, kalau nanti ada, sumber untuk slot.
+
+### peringatan-jam-kerja-untuk-apa
+*"ketika force reconcile di tekan saat jam kerja berikan user warning"* — peringatan terhadap apa? Jawabannya tergantung
+bentuk rekonsiliasinya:
+
+| rekonsiliasi berjalan sebagai | yang terasa di jam kerja | peringatan |
+| --- | --- | --- |
+| satu transaksi besar — semua SKU, semua gudang | setiap take di semua gudang menunggu sampai selesai — CS melihat order macet | terlalu lemah — sebaiknya ditolak |
+| satu transaksi pendek per SKU per gudang — saran | take kaos gudang 3 menunggu satu baris, beberapa milidetik | tidak perlu |
+
+Dan *jam kerja* milik siapa — gudang 3 dan gudang 5 bisa beda jam; [teams/warehouse](../teams/warehouse/context.md) baris 10
+baru menyebut hari buka dan tutup, bukan jam. Siapa yang boleh menekan tombolnya juga belum tertulis.
+**→ Saran:** per SKU per gudang, dan tombolnya di layar stok **satu SKU di satu gudang** — ditekan saat angka di depan mata
+terlihat salah, tanpa peringatan. Peringatan hanya untuk rekonsiliasi **satu gudang penuh**, dengan jam kerja gudang itu.
+
 ### angka-sekarang-dan-riwayat
 ⚠ Separuhnya terjawab di 13:52: angka sekarang ada di slot **dan** di `SKU_STATEMENT`. Separuh lainnya — **riwayat** —
 belum: tetap tambah satu baris `SLOT_LOGS` per perubahan dengan saldo sesudahnya, di transaksi DB yang sama, dan log
@@ -1015,6 +1090,31 @@ Proposal ini pindah ke `business/inventory/`? **→ Saran: ya** ([folder-di-luar
 ---
 
 # Contradiction
+
+## statement-diisi-saat-rekonsiliasi
+
+**Contohnya.** [statement-ditambah-bukan-diisi](./context_decision.md#statement-ditambah-bukan-diisi): *"Angka di statement
+selalu ditambah atau dikurangi dari isinya sekarang — tidak pernah diisi"* — sedangkan model.md baris 152: rekonsiliasi
+*menghitung ulang* dan menulis hasilnya, yaitu **mengisi**. Yang salah: tidak satu pun — keputusan lama ditulis untuk
+restock dan take, sebelum rekonsiliasi ada. Tapi alasannya — angka yang diisi menimpa perubahan yang terjadi bersamaan —
+berlaku penuh untuk rekonsiliasi:
+
+| waktu | yang terjadi | slot kaos gudang 3 | statement |
+| --- | --- | ---: | ---: |
+| 00:00:00.000 | rekonsiliasi menjumlah slot: 51 | 51 | 51 |
+| 00:00:00.010 | take 3 kaos — pesanan malam — commit | 48 | 48 |
+| 00:00:00.020 | rekonsiliasi menulis 51 | 48 | **51** — rekonsiliasi yang **membuat** selisih |
+
+**→ Rekomendasi:** keputusan lama mendapat satu pengecualian — *"kecuali rekonsiliasi, yang mengisi dari hitungan ulang di
+bawah kunci baris statement"*. Kunci dulu, baru jumlahkan: take 3 kaos antre di kunci, dan rekonsiliasi menghitung 51
+sebelum take itu berjalan, atau 48 sesudahnya — tidak pernah campuran ([rekonsiliasi — usulan](#rekonsiliasi--usulan)).
+
+```mermaid
+flowchart LR
+  D["statement-ditambah-bukan-diisi — selalu tambah atau kurang"] --> R["rekonsiliasi baris 152 — mengisi"]
+  R -->|"tanpa kunci"| X["menimpa take yang commit di tengahnya"]
+  R -->|"kunci baris statement dulu"| OK["take antre, hitungannya tepat"]
+```
 
 ## relasi-masih-orders
 

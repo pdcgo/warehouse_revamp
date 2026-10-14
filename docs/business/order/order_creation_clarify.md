@@ -26,6 +26,35 @@ points are deleted, so this file is always the current open set. Decisions land 
 > recommended and deleted — [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key).
 > Still open: [a-key-returns-only-its-own-teams-order](#a-key-returns-only-its-own-teams-order).
 
+> ✅ **Answered and deleted (2026-10-12 16:38):** `does-the-order-keep-the-take-id` — the Order Cancel carries K
+> ([every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key)), so the order needs no
+> `transaction_id` from inventory; inventory stores K as `ORDER_TAKES.take_ref`
+> ([take-ref-dari-idempotency-key](../stock_thoni/context_decision.md#take-ref-dari-idempotency-key)). Inventory's own flow
+> still says Order Cancel sends `transaction_id` — reported there as a contradiction.
+
+> 🔄 **Re-examined 2026-10-12 17:12** — lines 109 and 111: *Order Created* now carries `transaction_id` beside K, and
+> the compensation carries it *"if exist"*. 🆕 `who-reads-the-transaction-id` (✅ [the-take-id-rides-only-the-compensation](./context_decision.md#the-take-id-rides-only-the-compensation)) and the
+> critique `the-compensation-names-the-take-twice`. ✅ Closed — mine, left stale since 16:38:
+> `the-key-reached-the-diagram-and-nothing-else`. The contract has carried `idempotency_key` since then (line 129), and
+> both sentences it named are now marked amended in the decision log
+> ([the-take-is-never-retried](./context_decision.md#the-take-is-never-retried) ·
+> [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key) §What it amends).
+
+> ✅ **2026-10-12 17:22–17:26 — answered and deleted:** `who-reads-the-transaction-id`. Inventory's compensation webhook
+> reads it beside K ([provide](../stock_thoni/order_creation_provide.md) lines 80–82), and line 109 dropped it from
+> *Order Created* — [the-take-id-rides-only-the-compensation](./context_decision.md#the-take-id-rides-only-the-compensation).
+> How the two are used together is the inventory doc's to say, so `the-compensation-names-the-take-twice` is re-routed
+> there as [keduanya-dipakai-bagaimana](../stock_thoni/order_creation_provide_clarify.md#critique).
+
+> 🔄 **Re-examined 2026-10-13 16:04** — line 129: `team_id` on the take request, the ordering team
+> ([the-take-request-carries-the-ordering-team](./context_decision.md#the-take-request-carries-the-ordering-team)) — the
+> request half of `team-id-is-ambiguous`, as recommended, and the answer to inventory's
+> `sendiri-atau-silang-diketahui-dari-mana`. Left: `TransactionItem.team_id` (line 137) — now the **same name** for a
+> **different team** in one contract, which makes `which-team-is-team-id` sharper, not smaller.
+
+> ✅ **2026-10-13 16:58 — answered and deleted:** `which-team-is-team-id` and `team-id-is-ambiguous`. Line 137 now reads
+> *"item owner team_id"* — the owner, as recommended; the name stays, the comment says which team ([the-line-team-is-the-owner](./context_decision.md#the-line-team-is-the-owner)).
+
 Siblings: [order context](./context_clarify.md) · [event_context](./event_context.md) ·
 [warehouse](../warehouse/context_clarify.md) · [inventory](../inventory/context_clarify.md).
 
@@ -60,6 +89,7 @@ sequenceDiagram
 | spent | by any answer — [a-key-is-spent-by-any-answer](./context_decision.md#a-key-is-spent-by-any-answer) |
 | the release | one path, by K, for the compensation and the Order Cancel — [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key) |
 | the resend shortcut | ⚠ open — matched on K alone today: [a-key-returns-only-its-own-teams-order](#a-key-returns-only-its-own-teams-order) |
+| `transaction_id` | on the compensation only, when the take answered — [the-take-id-rides-only-the-compensation](./context_decision.md#the-take-id-rides-only-the-compensation) |
 
 ### What a take reduces — moved to inventory
 
@@ -74,7 +104,6 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **one-line-many-batches** | FIFO can draw one line from two batches at different costs, so a single `unit_cost` × `qty` only approximates `total` | `total` is authoritative; `unit_cost` is informational |
-| **team-id-is-ambiguous** | `TransactionItem.team_id` could be the product's **owner** or the **ordering** team, and inventory needs both — own-or-cross and the reserve check are decided against the orderer | name them: `owner_team_id` per line, `team_id` (the orderer) on the request |
 | **the-checks-are-not-drawn** | nothing checks the duplicate ref, a present `platform_total` or the debt threshold before stock is taken | a pre-transaction block — see the sequence |
 | **the-draft-delete-is-outside-the-transaction** | *"Delete Draft Order"* hangs off `if success`, after the commit | delete inside the transaction — same service, same database |
 | **the-fee-call-is-inside-the-transaction** | `WarehouseFeeCalculate` holds the order's transaction open across a network call | acceptable, since its basis only exists after the take — but it is a pure calculation, so reading the rate before the transaction and computing locally removes the call |
@@ -84,26 +113,11 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 
 ## Question
 
-### which-team-is-team-id
-Is `TransactionItem.team_id` the product's owner or the ordering team? **→ Both are needed**, named apart.
-
 ### a-key-returns-only-its-own-teams-order
 The resend shortcut — *"an order already has K? return it"* — looks up K alone. The key comes from the browser, so a
 bug or a hostile caller sending another team's K would be handed **another team's order**. The access check passes,
 because it checks the request's `team_id`, not the order found.
 **→ Match K and the request's team.** A K found under another team is refused as a used key, never returned.
-
-### does-the-order-keep-the-take-id
-🆕 2026-10-12, from inventory's side. Inventory's take now answers with `transaction_id` = the id of its take header
-(`ORDER_TAKES`), and its owner decided a cancellation finds the take by that id
-([take-dirujuk-lewat-transaction-id](../stock_thoni/context_decision.md#take-dirujuk-lewat-transaction-id)). So does
-`order_service` **store** `transaction_id` on the order, and send it in **Order Cancel**? **→ Recommend: yes** — one column
-on the order, carried by the event. ⚠ It cannot cover a timed-out take: the order never received the id, so
-`InventoryTxCancel` has nothing to name — and the order id does not exist yet either, because the order row is inserted
-**after** the take. So the take request should carry a reference order_service makes **before** calling (`take_ref`, a
-UUID), which inventory stores on its take header and `InventoryTxCancel` carries
-([timeout-tanpa-rujukan](../stock_thoni/order_creation_provide_clarify.md#critique) ·
-[a-timed-out-take-cannot-be-named](#critique)).
 
 ---
 
@@ -121,28 +135,6 @@ beside it the way `order_external_ref_id` carries *"for order uniqueness"*.
 flowchart LR
   D["the-idempotency-key-is-unique"] --> T["context.md table: idempotency_id — stale"]
   D --> G["order_creation.md diagram: idempotency key — agrees"]
-```
-
-## the-key-reached-the-diagram-and-nothing-else
-
-One cause, three places it did not reach — the key replaced the order id as the take's name, and what was written before still names the take some other way (RULE 11).
-
-| site | says | now |
-| --- | --- | --- |
-| §How We Call Inventory, `OrderTransactionCreateRequest` | `warehouse_id` and `items` — no key | the diagram's line 47: *"call for take stock & placement, and bring idempotency key"* |
-| [the-take-is-never-retried](./context_decision.md#the-take-is-never-retried) | *"inventory does not need to be idempotent against a retry"* | [inventory-takes-a-key-once](./context_decision.md#inventory-takes-a-key-once) — it recognises every key it has seen |
-| [inventory-returns-stock-on-order-cancelled](./context_decision.md#inventory-returns-stock-on-order-cancelled) | the release is *"keyed on the order"* | [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key) — keyed on K |
-
-**Which is wrong:** the contract and the two sentences — the diagram is the newer statement. Both decisions'
-verdicts still hold: `order_service` never retries by itself, and a cancel releases stock by event.
-**→ Recommend** `string idempotency_key` and the ordering team (`which-team-is-team-id`) on the request. The
-decision log is append-only, so each sentence is marked amended by the later decision that replaces it, not edited.
-
-```mermaid
-flowchart LR
-  K["the key — added to the diagram"] --> P["OrderTransactionCreateRequest — no key field"]
-  K --> N["the-take-is-never-retried — inventory need not be idempotent"]
-  K --> C["inventory-returns-stock-on-order-cancelled — keyed on the order"]
 ```
 
 ## the-diagram-still-names-the-old-totals
@@ -170,6 +162,5 @@ flowchart LR
   D["order_creation.md — revised"] --> A["its own diagram: subtotal and total — stale"]
   D --> B["event_context.md: a second name for the compensation"]
   D --> C["settlement/context.md: order calls settlement — stale"]
-  D --> E["the take contract and never-retried: no key"]
   D --> F["context.md table: idempotency_id — stale"]
 ```

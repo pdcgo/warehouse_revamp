@@ -43,6 +43,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [inventory-takes-a-key-once](#inventory-takes-a-key-once) | a second take on a used key is refused, never replayed · an early cancel is kept |
 | [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the form mints a new key after any answer — the same key only for a resend with no answer |
 | [every-release-goes-by-the-key](#every-release-goes-by-the-key) | Order Cancel carries the key · inventory has ONE release, by key, for the cancel and the compensation · a second release does nothing |
+| [the-take-id-rides-only-the-compensation](#the-take-id-rides-only-the-compensation) | `transaction_id` rides the compensation alone, when the take answered — *Order Created* carries K only |
+| [the-take-request-carries-the-ordering-team](#the-take-request-carries-the-ordering-team) | `OrderTransactionCreateRequest.team_id` is the ordering team — inventory compares it with each line's owner, own or cross |
+| [the-line-team-is-the-owner](#the-line-team-is-the-owner) | `TransactionItem.team_id` is the product's owner — the comment on line 137 says so; the name stays |
 | [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
 | [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
 | [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
@@ -1219,6 +1222,11 @@ make a retry safe, but so the compensation can name what to return.
 is a second attempt. If the first attempt's take was orphaned, the goods are taken twice until the
 compensation lands — which is why the compensation must be reliable rather than best-effort.
 
+> 🔄 **Amended 2026-10-12** by [inventory-takes-a-key-once](#inventory-takes-a-key-once): *"inventory does not need to be
+> idempotent against a retry"* still holds for the system's own retry — there is none. But inventory now recognises every
+> key it has seen, so a person's resend on the same key is refused as well. The verdict — one call, never retried
+> automatically — stands.
+
 ---
 
 ## inventory-computes-the-markup
@@ -1998,3 +2006,92 @@ flowchart LR
 release is *"keyed on the order"* — it is keyed on K. Its verdict, that a cancel releases stock **by event**, stands.
 [event_context.md](./event_context.md) §Order Cancel lists subscribers and no fields, so nothing in it is stale —
 the key is a field the event gains.
+
+---
+
+## the-take-id-rides-only-the-compensation
+
+> Owner (2026-10-12 17:22–17:26), on `who-reads-the-transaction-id`: *"penggunaannya ada di order_creation_provide"* —
+> inventory's compensation webhook reads it ([order_creation_provide.md](../stock_thoni/order_creation_provide.md) lines
+> 80–82) — and line 109 of [order_creation.md](./order_creation.md) no longer puts it on *Order Created*. As recommended.
+
+**The verdict.** The take's `transaction_id` travels on **one** event: the compensation, and only when the take
+answered. *Order Created* carries K alone, and the order stores no `transaction_id`.
+
+```mermaid
+flowchart LR
+  T["take K-77"] -->|"answered — take 5, then the fee call fails"| C1["compensation — K-77 and 5"]
+  T -->|"timed out, or refused"| C2["compensation — K-77 only"]
+  T -->|"answered, order committed"| OC["Order Created — K-77 only"]
+  C1 --> I["inventory — the take under K-77"]
+  C2 --> I
+```
+
+| event | K | `transaction_id` |
+| --- | --- | --- |
+| *Order Created* | ✅ | — nobody downstream needs a take id |
+| compensation | ✅ | when the take answered |
+| Order Cancel | ✅ — [every-release-goes-by-the-key](#every-release-goes-by-the-key) | — `orders` does not store it |
+
+⚠ **Not decided here:** how inventory uses the id beside K — the inventory doc's, asked as
+[keduanya-dipakai-bagaimana](../stock_thoni/order_creation_provide_clarify.md#critique). Inventory's line 66 still has the
+Order Cancel sending it (`pembatalan-lewat-id-atau-kunci` (✅ [transaction-id-opsional-di-event-batal](../stock_thoni/context_decision.md#transaction-id-opsional-di-event-batal))).
+
+---
+
+## the-take-request-carries-the-ordering-team
+
+> Owner (2026-10-13 16:04), line 129 of [order_creation.md](./order_creation.md): `uint64 team_id` on
+> `OrderTransactionCreateRequest`. The request half of `team-id-is-ambiguous` (✅ [the-line-team-is-the-owner](#the-line-team-is-the-owner)), as
+> recommended. Read as the **ordering** team, since the request is made for that team's order — if it means another team,
+> say so and this is reversed. Inventory asked the same thing from its side, as `sendiri-atau-silang-diketahui-dari-mana`
+> ([tim-pemesan-dikirim-di-permintaan-take](../stock_thoni/context_decision.md#tim-pemesan-dikirim-di-permintaan-take)).
+
+**The verdict.** The take request names the team that is ordering. Inventory compares it, line by line, with the
+product's owner: the same team is an **own** line; another team is **cross**, and only a cross line meets the cross lock,
+the reserve and the markup. One order can hold both.
+
+```mermaid
+flowchart LR
+  O["order 77 — team 5"] --> R["OrderTransactionCreateRequest — team_id 5, K-77, warehouse 3"]
+  R --> I["inventory — each line's owner, from Product Service"]
+  I -->|"cap owned by team 5"| OWN["own — no lock, no reserve, no markup"]
+  I -->|"shirt owned by team 2"| X["cross — lock, reserve, markup 20%"]
+```
+
+| field | which team |
+| --- | --- |
+| `OrderTransactionCreateRequest.team_id` (line 129) | the ordering team — decided here |
+| `TransactionItem.team_id` (line 137) | ⚠ not decided — `which-team-is-team-id` (✅ 16:58 [the-line-team-is-the-owner](#the-line-team-is-the-owner)) |
+
+⚠ **Not decided here:** the line's `team_id`, which now shares its name with a different team in the same contract.
+
+---
+
+## the-line-team-is-the-owner
+
+> Owner (2026-10-13 16:58), line 137 of [order_creation.md](./order_creation.md): `uint64 team_id // item owner team_id`.
+> Answers `which-team-is-team-id` — the owner, as recommended — and closes `team-id-is-ambiguous`. The field keeps the
+> name `team_id` with a comment saying which team, instead of my `owner_team_id`: accepted — the comment sits where the
+> programmer reads the field.
+
+**The verdict.** `TransactionItem.team_id` is the product's **owner**. With the request's `team_id` the orderer
+([the-take-request-carries-the-ordering-team](#the-take-request-carries-the-ordering-team)), one answer shows both: an own
+line has the two equal, a cross line has them different — and a cross line's product fee is owed to its `team_id`
+([the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total)).
+
+```mermaid
+flowchart LR
+  R["request — team_id 5, the orderer"] --> I["inventory"]
+  I --> L1["line — cap, team_id 5, the owner — own"]
+  I --> L2["line — shirt x3, team_id 2, the owner — cross, total 41,520"]
+  L2 --> F["product fee 41,520 — team 5 owes team 2"]
+```
+
+| field | which team |
+| --- | --- |
+| `OrderTransactionCreateRequest.team_id` (line 129) | the orderer |
+| `TransactionItem.team_id` (line 137) | the owner — *"item owner team_id"* |
+
+⚠ **Carry it forward:** when this sketch becomes a real `.proto`, the comment goes with the field — the generated code is
+where a programmer meets it.

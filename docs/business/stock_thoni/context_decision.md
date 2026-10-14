@@ -139,7 +139,21 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [silang-ditolak-kalau-dikunci-atau-melewati-cadangan](#silang-ditolak-kalau-dikunci-atau-melewati-cadangan) | take ditolak kalau product dikunci atau stok melewati cadangan — hanya untuk tim lain (13:15) |
 | [product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci) | data product dibaca sebelum transaksi DB take dibuka — kunci statement tidak menunggu service lain |
 | [take-punya-baris-kepala-di-inventory](#take-punya-baris-kepala-di-inventory) | setiap take membuat satu baris kepala di inventory; baris map menunjuk id-nya — `ORDER_TAKES` (13:36) |
-| [take-dirujuk-lewat-transaction-id](#take-dirujuk-lewat-transaction-id) | response mengembalikan `ORDER_TAKES.id` sebagai `transaction_id`; pembatalan order mengirimnya kembali |
+| [take-dirujuk-lewat-transaction-id](#take-dirujuk-lewat-transaction-id) | response mengembalikan `ORDER_TAKES.id` sebagai `transaction_id`; pembatalan order mengirimnya kembali · ⚠ 16:38 bertentangan dengan keputusan sisi order · 🔄 10-13 separuh dibalik — [transaction-id-opsional-di-event-batal](#transaction-id-opsional-di-event-batal) |
+| [take-ref-dari-idempotency-key](#take-ref-dari-idempotency-key) | `ORDER_TAKES.take_ref` `UNIQUE` diisi `idempotency_key` dari permintaan — satu take per kunci |
+| [statement-direkonsiliasi-tiap-malam](#statement-direkonsiliasi-tiap-malam) | `SKU_STATEMENT` ringkasan, bukan sumber — dihitung ulang tiap tengah malam dan lewat *force reconcile*, yang memberi peringatan di jam kerja |
+| [batal-mengembalikan-slot-dan-stock-ready](#batal-mengembalikan-slot-dan-stock-ready) | pembatalan mengembalikan `count` slot asal **dan** `stock_ready`, dalam satu transaksi DB |
+| [transaction-id-opsional-di-event-batal](#transaction-id-opsional-di-event-batal) | setiap event batal membawa K; `transaction_id` optional · ⚠ separuh membalik `take-dirujuk-lewat-transaction-id` |
+| [batal-mengunci-statement-lebih-dulu](#batal-mengunci-statement-lebih-dulu) | pembatalan mengunci baris statement saat transaksinya dibuka, sebelum slot — urutan yang sama dengan take |
+| [map-diubah-jadi-released](#map-diubah-jadi-released) | saat batal, baris map yang `taken` diubah menjadi `released` — tidak ada baris baru |
+| [batal-hanya-mengembalikan-yang-masih-taken](#batal-hanya-mengembalikan-yang-masih-taken) | pelepasan mengubah hanya baris map yang masih `taken`, dan mengembalikan hanya baris itu — event yang datang dua kali tidak mengembalikan dua kali |
+| [take-tidak-ketemu-dibalas-sukses](#take-tidak-ketemu-dibalas-sukses) | event batal untuk take yang tidak ditemukan dibalas sukses, bukan error — tidak masuk dead letter |
+| [cadangan-dibandingkan-per-gudang-sesudah-kunci](#cadangan-dibandingkan-per-gudang-sesudah-kunci) | cadangan dibandingkan sesudah statement dikunci, terhadap `stock_ready` gudang permintaan — hanya untuk tim lain |
+| [validasi-take-per-item-semua-atau-tidak](#validasi-take-per-item-semua-atau-tidak) | take mengunci statement setiap item di gudang permintaan, urut `sku_id`; `stock_ready` ≥ `qty` per item; satu gagal, semua ditolak |
+| [slot-kurang-seluruh-take-gagal](#slot-kurang-seluruh-take-gagal) | semua slot gudang permintaan kurang dari `qty` → seluruh take gagal, transaksi DB dibatalkan, tidak ada yang terpotong |
+| [dua-event-batal-satu-webhook](#dua-event-batal-satu-webhook) | *Order Cancel* (user batal) dan *InventoryTxCancel* (create gagal) masuk webhook inventory yang sama — satu jalan pelepasan |
+| [tim-pemesan-dikirim-di-permintaan-take](#tim-pemesan-dikirim-di-permintaan-take) | permintaan take membawa `team_id` tim pemesan; inventory membandingkannya dengan pemilik, per item — sendiri atau silang |
+| [batal-tanpa-take-menyimpan-k](#batal-tanpa-take-menyimpan-k) | event batal yang tidak menemukan take menyimpan `ORDER_TAKES` dengan `take_ref` K, tanpa slot — take yang datang belakangan ditolak `UNIQUE` |
 
 ---
 
@@ -902,6 +916,8 @@ angka ini juga — dibuat, diterima, batal — dan satu jalan yang lupa membuat 
 ⚠ **Yang TIDAK ikut diputuskan**, terbuka di clarify kasus: kapan angka ini ditulis — kasus pertama belum menulisnya
 ([ongoing-ikut-status](#ongoing-berubah-bersama-status) — kini diputuskan) · apakah ia salinan atau sumbernya
 sendiri · per gudang.
+
+> ✅ **2026-10-13** — *salinan*: [statement-direkonsiliasi-tiap-malam](#statement-direkonsiliasi-tiap-malam).
 
 ---
 
@@ -3431,6 +3447,8 @@ sequenceDiagram
 ([product-service-di-dalam-kunci](./order_creation_provide_clarify.md#critique)) · angka yang diperiksa
 ([validasi-belum-menyebut-angka](./order_creation_provide_clarify.md#critique)).
 
+> ✅ **2026-10-13 13:03** — angka yang diperiksa kini tertulis: [validasi-take-per-item-semua-atau-tidak](#validasi-take-per-item-semua-atau-tidak).
+
 > ✅ **2026-10-12 13:15** — Product Service kini di luar kunci
 > ([product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci)), dan statement *"kurangi stock ready"*
 > (baris 62).
@@ -3489,7 +3507,11 @@ flowchart LR
 ⚠ **Yang TIDAK ikut diputuskan:** slot **di gudang permintaan** belum tertulis
 ([validasi-belum-menyebut-angka](./order_creation_provide_clarify.md#critique)).
 
+> ✅ **2026-10-13 13:03** — gudang permintaan kini tertulis di validasi: [validasi-take-per-item-semua-atau-tidak](#validasi-take-per-item-semua-atau-tidak).
+
 > ✅ **2026-10-12 13:15** — baris 70: *"Tentunya cocokan juga gudang nya."* Slot dipilih dari gudang permintaan.
+
+> ✅ **2026-10-13 13:17** — baris 72: slot yang kurang kini tertulis: [slot-kurang-seluruh-take-gagal](#slot-kurang-seluruh-take-gagal).
 
 ---
 
@@ -3523,6 +3545,11 @@ sequenceDiagram
 ⏸ **Ditanyakan saat alur pembatalan ditulis:** baris yang sama diubah menjadi `released`, atau baris baru bertipe
 `released` ditambahkan — nama `type` cocok dengan yang kedua, `status` dengan yang pertama · `created_at` belum ada.
 
+> 🔔 **2026-10-12 17:22** — alur pembatalan kini ditulis ([order_creation_provide.md](./order_creation_provide.md) baris
+> 80–82); ditanyakan: `released-mengubah-baris-yang-sama` (✅ [map-diubah-jadi-released](./context_decision.md#map-diubah-jadi-released)).
+>
+> ✅ **2026-10-13 12:51** — baris yang sama diubah: [map-diubah-jadi-released](#map-diubah-jadi-released).
+
 ---
 
 ## silang-ditolak-kalau-dikunci-atau-melewati-cadangan
@@ -3551,13 +3578,18 @@ flowchart LR
 
 ⚠ **Yang TIDAK ikut diputuskan:** aturan ini hanya untuk **tim lain** — tanpa tim pemesan di permintaan, tim 2 ikut
 ditolak saat menjual kaosnya sendiri ([permintaan-tanpa-order-dan-tim](./order_creation_provide_clarify.md#critique)) ·
-cadangan per gudang atau total ([reserved-stock-per-gudang-atau-total](./order_creation_provide_clarify.md#reserved-stock-per-gudang-atau-total)) ·
+cadangan per gudang atau total (`reserved-stock-per-gudang-atau-total` (✅ [cadangan-dibandingkan-per-gudang-sesudah-kunci](#cadangan-dibandingkan-per-gudang-sesudah-kunci))) ·
 Product Service dipanggil di dalam kunci ([product-service-di-dalam-kunci](./order_creation_provide_clarify.md#critique)).
 
 > ✅ **2026-10-12 13:15** — baris 30: *"hanya kalau tim pemesan bukan pemilik"* — aturan ini kini hanya untuk tim lain, dan
 > Product Service kini dibaca sebelum kunci ([product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci)). ⚠ Tim
 > pemesan belum ada di permintaan ([tim-pemesan-tidak-dikirim](./order_creation_provide_clarify.md#critique)) · cadangan
 > kini dibandingkan di luar kunci ([cadangan-diperiksa-di-luar-kunci](./order_creation_provide_clarify.md#critique)).
+>
+> ✅ **2026-10-13 13:03** — cadangan kembali ke dalam kunci, per gudang: [cadangan-dibandingkan-per-gudang-sesudah-kunci](#cadangan-dibandingkan-per-gudang-sesudah-kunci). Tim pemesan masih belum ada di
+> permintaan.
+>
+> ✅ **2026-10-13 16:04** — tim pemesan kini di permintaan: [tim-pemesan-dikirim-di-permintaan-take](#tim-pemesan-dikirim-di-permintaan-take).
 
 ---
 
@@ -3619,6 +3651,9 @@ flowchart LR
 > ([take-dirujuk-lewat-transaction-id](#take-dirujuk-lewat-transaction-id)). ⚠ Masih tanpa rujukan untuk kasus timeout
 > ([timeout-tanpa-rujukan](./order_creation_provide_clarify.md#critique)) · garis relasi di ERD masih menyebut `ORDERS`
 > ([relasi-masih-orders](./context_clarify.md#relasi-masih-orders)).
+>
+> ✅ **2026-10-12 16:38** — `ORDER_TAKES.take_ref` `"unique"`, diisi `idempotency_key`:
+> [take-ref-dari-idempotency-key](#take-ref-dari-idempotency-key).
 
 ---
 
@@ -3649,3 +3684,487 @@ sequenceDiagram
 
 ⚠ **Yang TIDAK ikut diputuskan:** kasus **timeout** — take sudah tercatat, tapi balasannya tidak pernah sampai, jadi
 Order Service tidak pernah tahu `transaction_id`-nya ([timeout-tanpa-rujukan](./order_creation_provide_clarify.md#critique)).
+
+> ⚠ **2026-10-12 16:38 — bertentangan.** Sisi order memutuskan *semua* pengembalian lewat kunci, termasuk Order Cancel —
+> [every-release-goes-by-the-key](../order/context_decision.md#every-release-goes-by-the-key). Baris 66 di alur take masih
+> lewat `transaction_id` (`pembatalan-lewat-id-atau-kunci` (✅ [transaction-id-opsional-di-event-batal](./context_decision.md#transaction-id-opsional-di-event-batal))).
+> Kalau baris 66 berubah, entri ini diganti nama dan dicatat terbalik (RULE 12). Kasus timeout kini tertutup oleh
+> [take-ref-dari-idempotency-key](#take-ref-dari-idempotency-key).
+>
+> 🔄 **2026-10-12 16:43** — baris 66: Order Cancel kini membawa `transaction_id` **dan** `idempotency_key`. Kunci ikut, sesuai
+> sisi order; belum tertulis mana yang dipakai mencari take, dan `orders` tidak menyimpan `transaction_id`
+> (`pembatalan-lewat-id-atau-kunci` (✅ [transaction-id-opsional-di-event-batal](./context_decision.md#transaction-id-opsional-di-event-batal))). Belum dibalik.
+>
+> 🔄 **2026-10-12 17:12** — sisi order kini mengirim `transaction_id` di *Order Created* dan, kalau take sempat menjawab,
+> di `InventoryTxCancel` ([order_creation.md](../order/order_creation.md) baris 109, 111). Order Cancel masih tanpa
+> sumbernya. Belum dibalik.
+>
+> 🔄 **2026-10-12 17:22** — [order_creation_provide.md](./order_creation_provide.md) baris 80–82: webhook kompensasi menerima K dan
+> `transaction_id` **jika ada**, dan memakai keduanya mencari take. 17:26: *Order Created* tidak lagi membawanya
+> ([the-take-id-rides-only-the-compensation](../order/context_decision.md#the-take-id-rides-only-the-compensation)). Id ini
+> dibaca inventory sebagai pendamping K, tidak lagi satu-satunya rujukan. Belum tertulis: dipakai bersama atau salah satu
+> ([keduanya-dipakai-bagaimana](./order_creation_provide_clarify.md#critique)). Belum dibalik.
+>
+> 🔄 **2026-10-13 12:42 — separuh dibalik.** `transaction_id` kini *optional* di setiap event batal (baris 118), dan
+> Order Service tidak menyimpannya: [transaction-id-opsional-di-event-batal](#transaction-id-opsional-di-event-batal). Yang
+> tetap: response mengisi `transaction_id` = `ORDER_TAKES.id`.
+>
+> ✅ **2026-10-13 17:07** — baris 69: *"Isi `transaction_id` (wajib isi bukan optional)"* — di **response** id itu selalu
+> diisi. Optional hanya di event batal, karena saat timeout response tidak pernah diterima.
+
+---
+
+## take-ref-dari-idempotency-key
+
+> [order_creation.md](../order/order_creation.md) (2026-10-12 16:38) baris 129 — `OrderTransactionCreateRequest` mendapat
+> `string idempotency_key`; [model.md](./model.md) — `ORDER_TAKES` mendapat `string take_ref "unique"`;
+> [order_creation_provide.md](./order_creation_provide.md) baris 78 — *"`take_ref` berasal dari
+> `OrderTransactionCreateRequest.idempotency_key`"*. Menjawab *timeout-tanpa-rujukan*. Sesuai rekomendasi — dan sejalan
+> dengan [the-frontend-mints-the-idempotency-key](../order/context_decision.md#the-frontend-mints-the-idempotency-key) dan
+> [inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once) di sisi order.
+
+**Putusannya.** Setiap take membawa kunci yang dibuat **sebelum** apa pun ada — oleh frontend, saat form dibuka. Inventory
+menyimpannya di `ORDER_TAKES.take_ref`, `UNIQUE`: satu take per kunci, dan take kedua dengan kunci yang sama ditolak
+database. Saat balasan take hilang, pembatalan tetap bisa menyebut take itu lewat kuncinya.
+
+```mermaid
+flowchart LR
+  f["frontend — kunci K-77"] --> r["OrderTransactionCreateRequest.idempotency_key"]
+  r --> t["ORDER_TAKES.take_ref K-77 — UNIQUE"]
+  f --> c["InventoryTxCancel — K-77, walau balasan take hilang"]
+  c --> t
+```
+
+| | |
+| --- | --- |
+| take kedua dengan K-77 | ditolak `UNIQUE` — tidak ada kaos terpotong |
+| pembatalan K-77 tiba sebelum take K-77 selesai | `ORDER_TAKES` K-77 disimpan tanpa slot; take yang datang belakangan ditolak — [inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once) |
+
+⚠ **Yang TIDAK ikut diputuskan:** di inventory kuncinya bernama `take_ref`, di permintaan `idempotency_key`
+([dua-nama-untuk-satu-kunci](./order_creation_provide_clarify.md#critique)) · Order Cancel lewat kunci atau lewat
+`transaction_id` (`pembatalan-lewat-id-atau-kunci` (✅ [transaction-id-opsional-di-event-batal](./context_decision.md#transaction-id-opsional-di-event-batal))).
+
+---
+
+## statement-direkonsiliasi-tiap-malam
+
+> [model.md](./model.md) (2026-10-13 12:22) baris 152 — *"Table ini bersifat statement … dia bisa saja miss dalam perhitungan
+> … saya berencana mentrigger kalkulasi ulang setiap tengah malam … 'force reconcile' … ketika force reconcile di tekan saat
+> jam kerja berikan user warning"*. Menjawab yang terbuka di [ongoing-diringkas-di-statement](#ongoing-diringkas-di-statement):
+> *salinan atau sumbernya sendiri* — **salinan**. Separuh sesuai saran lama: *"tiap malam: statement = jumlah slot"*
+> ([statement-bisa-beda-dengan-slot](./context_clarify.md#critique--sku_statement)).
+
+**Putusannya.** `SKU_STATEMENT` adalah **ringkasan** — dibangun dari sumbernya, bukan sumber itu sendiri. Ia dihitung ulang
+setiap tengah malam, dan bisa dipicu kapan saja lewat *force reconcile*; di jam kerja, penekan tombol diberi peringatan dulu.
+Kalau ringkasan dan sumbernya beda, sumbernya yang menang.
+
+```mermaid
+flowchart LR
+  W["restock, take, pembatalan — tambah atau kurang"] --> T["SKU_STATEMENT"]
+  S["sumbernya"] -->|"tengah malam — hitung ulang"| T
+  F["Force Reconcile — peringatan di jam kerja"] -->|"hitung ulang"| T
+```
+
+| | |
+| --- | --- |
+| sehari-hari | tetap ditambah atau dikurangi oleh setiap jalan tulis ([statement-ditambah-bukan-diisi](#statement-ditambah-bukan-diisi)) |
+| tengah malam | dihitung ulang dari sumbernya |
+| *force reconcile* | kapan saja; di jam kerja, peringatan dulu |
+| beda | sumbernya menang — statement ditimpa |
+
+⚠ **Yang TIDAK ikut diputuskan:** dihitung dari apa ([rekonsiliasi-dihitung-dari-apa](./context_clarify.md#rekonsiliasi-dihitung-dari-apa))
+· peringatan untuk apa, dan jam kerja siapa ([peringatan-jam-kerja-untuk-apa](./context_clarify.md#peringatan-jam-kerja-untuk-apa))
+· selisih dicatat atau ditimpa diam-diam ([selisih-ditimpa-tanpa-laporan](./context_clarify.md#critique--sku_statement)) ·
+kunci saat mengisi ([statement-diisi-saat-rekonsiliasi](./context_clarify.md#statement-diisi-saat-rekonsiliasi)).
+
+---
+
+## batal-mengembalikan-slot-dan-stock-ready
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 12:42) baris 96–99, 126, 130 — *"Kembalikan ke slot
+> asal"* dan *"Perbarui Statement SKU — Kunci SKU_STATEMENT terkait kemudian kembalikan count-nya, stock ready += stock yang
+> batal"*, keduanya di kotak *DB Transaction*. Menjawab *stock-ready-tidak-dikembalikan*. Sesuai rekomendasi — urutan
+> kuncinya belum ([pelepasan-tanpa-urutan-kunci](./order_creation_provide_clarify.md#critique)).
+
+**Putusannya.** Pembatalan mengembalikan stok ke **dua** tempat yang dikurangi take — `count` slot asalnya, dibaca dari
+`ORDER_SLOT_MAP.slot_id`, dan `stock_ready` statement — dalam satu transaksi DB. Satu gagal, keduanya batal.
+
+```mermaid
+flowchart LR
+  M["ORDER_SLOT_MAP take 5 — slot 1 ambil 1, slot 2 ambil 2"] --> S["SKU_SLOT — slot 1 0 jadi 1, slot 2 48 jadi 50"]
+  M --> T["SKU_STATEMENT gudang 3 — stock_ready 48 jadi 51"]
+```
+
+| | take | pembatalan |
+| --- | --- | --- |
+| `SKU_SLOT.count` | dikurangi | dikembalikan ke slot asalnya |
+| `stock_ready` | dikurangi | ditambah sebanyak yang batal |
+| transaksi DB | satu | satu |
+
+⚠ **Yang TIDAK ikut diputuskan:** menandai map `released` ([map-tidak-ditandai-released](./order_creation_provide_clarify.md#critique))
+· urutan kunci ([pelepasan-tanpa-urutan-kunci](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-13 12:51** — keduanya kini tertulis: [map-diubah-jadi-released](#map-diubah-jadi-released) ·
+> [batal-mengunci-statement-lebih-dulu](#batal-mengunci-statement-lebih-dulu). Tersisa: kiriman kedua mengembalikan lagi
+> ([pelepasan-tidak-memeriksa-taken](./order_creation_provide_clarify.md#critique)).
+>
+> ✅ **2026-10-13 12:58** — tertutup: [batal-hanya-mengembalikan-yang-masih-taken](#batal-hanya-mengembalikan-yang-masih-taken).
+
+---
+
+## transaction-id-opsional-di-event-batal
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 12:42) baris 118 — *"Event cancel akan membawa
+> `transaction_id` (optional) dan `idempotency_key`"*; baris 122 — *"Cari `transaction_id` (optional) atau
+> `idempotency_key` terkait"*. Menutup kontradiksi *pembatalan-lewat-id-atau-kunci*: sisi order tidak menyimpan
+> `transaction_id`, dan kini ia tidak diwajibkan. ⚠ **Membalik separuh**
+> [take-dirujuk-lewat-transaction-id](#take-dirujuk-lewat-transaction-id).
+
+**Putusannya.** Setiap event batal membawa K; `transaction_id` boleh ada, boleh tidak. Order Service tidak perlu
+menyimpannya.
+
+```mermaid
+flowchart LR
+  E["event batal"] -->|"selalu"| K["idempotency_key K-77"]
+  E -.->|"kalau ada"| T["transaction_id 5"]
+  K --> F["take 5 — take_ref K-77"]
+  T --> F
+```
+
+| | |
+| --- | --- |
+| event batal membawa | K selalu · `transaction_id` kalau Order Service memilikinya |
+| sisi order | tidak perlu kolom baru — [the-take-id-rides-only-the-compensation](../order/context_decision.md#the-take-id-rides-only-the-compensation) |
+| take dicari lewat | salah satunya — baris 122 |
+
+⚠ **Yang TIDAK ikut diputuskan:** *atau* — id dipakai kalau ada, K kalau tidak — masih dikritik
+([keduanya-dipakai-bagaimana](./order_creation_provide_clarify.md#critique)). Baris 66 masih menulis *"akan mengirim
+`transaction_id`"* tanpa *optional* (*batal-user-lewat-event-mana* — ✅ [dua-event-batal-satu-webhook](#dua-event-batal-satu-webhook); baris 68 tinggal di [diagram-tertinggal-dari-teks](./order_creation_provide_clarify.md#diagram-tertinggal-dari-teks)).
+
+---
+
+## batal-mengunci-statement-lebih-dulu
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 12:51) baris 96 — kotaknya kini *"DB Transaction 'Lock
+> SKU_STATEMENT'"*: statement dikunci saat transaksi pembatalan dibuka, sebelum slot dikembalikan. Menjawab
+> *pelepasan-tanpa-urutan-kunci*. Sesuai rekomendasi.
+
+**Putusannya.** Pembatalan mengunci baris `SKU_STATEMENT` SKU-nya **lebih dulu**, baru mengembalikan slot dan statement —
+urutan yang sama dengan take, jadi keduanya antre di pintu yang sama dan tidak saling menunggu.
+
+```mermaid
+sequenceDiagram
+  participant B as pembatalan order 77
+  participant S as SKU_STATEMENT kaos gudang 3
+  participant T as take K-90
+  B->>S: kunci
+  T->>S: kunci — antre
+  B->>B: slot 2 48 jadi 50, map released, stock_ready 48 jadi 51, commit
+  S-->>T: giliran take — membaca 51
+```
+
+| | take | pembatalan |
+| --- | --- | --- |
+| kunci pertama | `SKU_STATEMENT`, urut `sku_id` ([statement-ditulis-urut-sku-id](#statement-ditulis-urut-sku-id)) | sama |
+| sesudahnya | slot, map, statement | slot, map, statement |
+
+---
+
+## map-diubah-jadi-released
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 12:51) baris 126 — *"Kembalikan stock ke SLOT asalnya …
+> kemudian tandai sebagai `released`"*. Menjawab *released-mengubah-baris-yang-sama* — saya baca *tandai* sebagai mengubah
+> baris yang sama, sesuai rekomendasi; `released_at` tidak ikut. Kalau maksudnya baris baru, entri ini dibalik (RULE 12).
+
+**Putusannya.** Saat batal, baris `ORDER_SLOT_MAP` yang `taken` **diubah** menjadi `released` — tidak ada baris baru. Satu
+baris map = satu pengambilan dari satu slot, dengan statusnya sekarang.
+
+```mermaid
+stateDiagram-v2
+  [*] --> taken: take
+  taken --> released: batal
+```
+
+| baris map take 5 | sesudah take | sesudah batal |
+| --- | --- | --- |
+| slot 1, 1 kaos | `taken` | `released` |
+| slot 2, 2 kaos | `taken` | `released` |
+
+⚠ **Yang TIDAK ikut diputuskan:** kapan dilepas tidak tersimpan · kiriman kedua masih bisa mengembalikan lagi
+([pelepasan-tidak-memeriksa-taken](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-13 12:58** — kiriman kedua kini tidak mengembalikan apa pun:
+> [batal-hanya-mengembalikan-yang-masih-taken](#batal-hanya-mengembalikan-yang-masih-taken).
+
+---
+
+## batal-hanya-mengembalikan-yang-masih-taken
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 12:58) baris 126 — *"ubah `taken` → `released` hanya
+> yang masih `taken`, kembalikan hanya baris yang berubah"*. Menjawab *pelepasan-tidak-memeriksa-taken*. Sesuai
+> rekomendasi.
+
+**Putusannya.** Pelepasan mengubah **hanya** baris map yang masih `taken`, dan mengembalikan stok **hanya** dari baris yang
+berubah. Event batal yang datang dua kali — Pub/Sub mengirim paling sedikit sekali — tidak menemukan apa pun untuk diubah,
+jadi tidak mengembalikan apa pun.
+
+```mermaid
+sequenceDiagram
+  participant E as event batal K-77
+  participant M as ORDER_SLOT_MAP take 5
+  participant S as slot dan statement
+  E->>M: kiriman pertama — ubah yang masih taken
+  M-->>E: 2 baris berubah
+  E->>S: slot 2 48 jadi 50, stock_ready 48 jadi 51
+  E->>M: kiriman kedua — ubah yang masih taken
+  M-->>E: 0 baris berubah
+  Note over E,S: tidak ada yang dikembalikan, balas sukses
+```
+
+| kiriman | baris map yang berubah | slot 2 | `stock_ready` |
+| --- | ---: | ---: | ---: |
+| pertama | 2 | 48 → 50 | 48 → 51 |
+| kedua, kapan pun | 0 | 50 | 51 |
+
+Karena perubahannya berjalan sesudah kunci statement ([batal-mengunci-statement-lebih-dulu](#batal-mengunci-statement-lebih-dulu)),
+dua kiriman di detik yang sama pun antre, dan yang kedua mendapat 0 baris.
+
+---
+
+## take-tidak-ketemu-dibalas-sukses
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 12:58) baris 101–106 — *"Trx Not Found → Balas Sukses"*,
+> menggantikan *"Lempar Error"*. Separuh rekomendasi
+> (*take-tidak-ketemu-tidak-disimpan* (✅ [batal-tanpa-take-menyimpan-k](#batal-tanpa-take-menyimpan-k))): balas sukses ✅,
+> tapi K belum disimpan.
+
+**Putusannya.** Event batal yang tidak menemukan take-nya dibalas **sukses**, bukan error — jadi tidak diulang Pub/Sub dan
+tidak masuk dead letter.
+
+```mermaid
+flowchart LR
+  E["event batal K-77"] --> Q{"take K-77 ada?"}
+  Q -->|"ada"| R["lepas yang masih taken, balas sukses"]
+  Q -->|"tidak ada"| S["balas sukses"]
+```
+
+| | sebelum 12:58 | sesudah |
+| --- | --- | --- |
+| take ditolak karena stok kurang — 200 order saat flash sale | 200 pesan diulang, lalu ke dead letter | 200 balasan sukses, dead letter bersih |
+
+⚠ **Yang TIDAK ikut diputuskan:** K tidak disimpan, jadi take yang **datang belakangan** tidak ditolak
+(*take-tidak-ketemu-tidak-disimpan* (✅ [batal-tanpa-take-menyimpan-k](#batal-tanpa-take-menyimpan-k))).
+
+> ✅ **2026-10-13 17:07** — K kini disimpan (baris 105, 110): [batal-tanpa-take-menyimpan-k](#batal-tanpa-take-menyimpan-k).
+
+---
+
+## cadangan-dibandingkan-per-gudang-sesudah-kunci
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 13:03) baris 44 — *"kalau tim pemesan bukan pemilik:
+> `stock_ready − qty ≥ reserved_stock`"*, di langkah kunci; baris 52 — *"Di sini hanya `cross_locked` yang diperiksa …
+> `reserved_stock` dibawa ke langkah kunci"*. Menjawab *cadangan-diperiksa-di-luar-kunci* dan
+> *reserved-stock-per-gudang-atau-total* — per gudang, karena `stock_ready` yang dibandingkan adalah baris gudang
+> permintaan. Sesuai rekomendasi. Kalau maksud Anda total semua gudang, katakan, dan entri ini dibalik.
+
+**Putusannya.** `cross_locked` diperiksa sebelum kunci — ia pengaturan produk, tidak berubah tiap take. Cadangan
+dibandingkan **sesudah** baris statement dikunci, terhadap `stock_ready` **gudang permintaan** — karena angka itu berubah
+tiap take. `reserved_stock` sendiri tetap diambil dari Product Service sebelum kunci.
+
+```mermaid
+sequenceDiagram
+  participant A as take tim 5 — 2 kaos
+  participant S as SKU_STATEMENT kaos tim 2 gudang 3
+  participant B as take tim 7 — 2 kaos
+  A->>S: kunci — stock_ready 8
+  B->>S: kunci — antre
+  A->>A: 8 − 2 = 6, tidak kurang dari cadangan 5 — lolos
+  A->>S: stock_ready 6, commit
+  S-->>B: giliran — stock_ready 6
+  B->>B: 6 − 2 = 4, kurang dari 5 — ditolak
+```
+
+| | diperiksa di | dibandingkan dengan |
+| --- | --- | --- |
+| `cross_locked` | *Kontak Product Service*, sebelum kunci | — |
+| `reserved_stock` | *Kunci baris SKU_STATEMENT dan Validasi*, sesudah kunci | `stock_ready` gudang permintaan |
+| berlaku untuk | tim pemesan bukan pemilik | |
+
+⚠ **Yang TIDAK ikut diputuskan:** diagram baris 30 masih menolak *reserved* di langkah Product Service
+([diagram-tertinggal-dari-teks](./order_creation_provide_clarify.md#diagram-tertinggal-dari-teks), dulu *diagram-dan-teks-beda-soal-cadangan*) · tim
+pemesan belum ada di permintaan ([tim-pemesan-tidak-dikirim](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-13 16:04** — tim pemesan kini di permintaan: [tim-pemesan-dikirim-di-permintaan-take](#tim-pemesan-dikirim-di-permintaan-take).
+
+> ✅ **2026-10-13 17:07** — diagram baris 31 kini hanya *"dikunci"*, sama dengan teks.
+
+---
+
+## validasi-take-per-item-semua-atau-tidak
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 13:03) baris 42–44 — *"Kunci `SKU_STATEMENT` setiap
+> item di gudang permintaan, urut `sku_id`. Lalu per item: (1) `stock_ready ≥ qty` … Satu item gagal, semua ditolak."*
+> Menjawab *validasi-belum-menyebut-angka*, dan menutup kontradiksi *count-atau-qty* — nama field kini `qty`, sama dengan
+> kontrak. Sesuai rekomendasi.
+
+**Putusannya.** Take mengunci baris statement **setiap item**, **di gudang permintaan**, urut `sku_id`. Lalu setiap item
+diperiksa: `stock_ready` ≥ `qty`, dan — untuk tim lain — cadangan ([cadangan-dibandingkan-per-gudang-sesudah-kunci](#cadangan-dibandingkan-per-gudang-sesudah-kunci)). Satu item gagal, **seluruh**
+take ditolak; tidak ada order yang terambil setengah.
+
+```mermaid
+flowchart LR
+  R["order — 3 kaos, 2 topi, gudang 3"] --> L["kunci statement kaos dan topi gudang 3, urut sku_id"]
+  L --> K{"kaos 3 ≤ stock_ready? topi 2 ≤ stock_ready?"}
+  K -->|"keduanya ya"| OK["lanjut Pilih Slot"]
+  K -->|"satu tidak"| X["tolak semuanya — tidak ada yang tertulis"]
+```
+
+| item | `stock_ready` gudang 3 | `qty` | hasil |
+| --- | ---: | ---: | --- |
+| kaos | 48 | 3 | cukup |
+| topi | 1 | 2 | kurang → **seluruh** take ditolak, kaos pun tidak diambil |
+
+---
+
+## slot-kurang-seluruh-take-gagal
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 13:17) baris 72 — *"kalau semua slot kurang, seluruh
+> take gagal."* Menjawab *slot-kurang-sesudah-validasi*. Sesuai rekomendasi.
+
+**Putusannya.** Kalau semua slot gudang permintaan, dijumlah, masih kurang dari `qty` — padahal statement tadi bilang
+cukup — **seluruh** take gagal: transaksi DB dibatalkan, tidak ada slot terpotong, tidak ada baris map, tidak ada
+`ORDER_TAKES`. Sama dengan validasi ([validasi-take-per-item-semua-atau-tidak](#validasi-take-per-item-semua-atau-tidak)):
+tidak ada order yang terambil setengah.
+
+```mermaid
+flowchart LR
+  V["validasi — statement kaos gudang 3 51, qty 50 — lolos"] --> P{"jumlah slot kaos gudang 3 ≥ 50?"}
+  P -->|"ya"| OK["ambil tertua dulu, lanjut Hitung data Markup"]
+  P -->|"48 — tidak"| X["seluruh take gagal — transaksi DB dibatalkan, tidak ada yang tertulis"]
+```
+
+| kaos gudang 3 | statement | slot 1 | slot 2 | jumlah slot | pesanan | hasil |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| sebelum | 51 | 10 | 38 | 48 | 50 | gagal |
+| sesudah | 51 | 10 | 38 | 48 | | tidak ada yang berubah |
+
+⚠ **Yang TIDAK ikut diputuskan:** diagram belum punya panah dari *Pilih Slot* ke *Lempar error Validasi*
+([diagram-tertinggal-dari-teks](./order_creation_provide_clarify.md#diagram-tertinggal-dari-teks)) · selisih statement 51
+lawan slot 48 dilaporkan atau ditunggu sampai tengah malam
+([gerbang-salah-sampai-tengah-malam](./context_clarify.md#critique--sku_statement)).
+
+> ✅ **2026-10-13 17:07** — diagram baris 29: `choose --semua slot kurang--> errorIn`.
+
+---
+
+## dua-event-batal-satu-webhook
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 13:17) baris 116 — *"Event ini terjadi saat Order
+> Cancel (user batal) atau Compensate (create gagal). Event akan memanggil webhook service inventory."* Menutup kontradiksi
+> *batal-user-lewat-event-mana*. Sesuai rekomendasi — saya membacanya sebagai **dua event** Order Service yang sama-sama
+> masuk webhook ini, seperti [event_context.md](../order/event_context.md). Kalau maksud Anda Order Service juga mengirim
+> *InventoryTxCancel* saat user batal, katakan, dan entri ini dibalik — sisi order lalu harus berubah.
+
+**Putusannya.** Batal oleh user dan create yang gagal melepas stok lewat **satu** webhook inventory, satu jalan pelepasan
+([every-release-goes-by-the-key](../order/context_decision.md#every-release-goes-by-the-key)). Sisi order tidak berubah:
+*Order Cancel* untuk user batal, *InventoryTxCancel* untuk create yang gagal.
+
+```mermaid
+flowchart LR
+  U["CS membatalkan order 77"] --> OC["Order Cancel — K-77"]
+  F["create order 77 gagal"] --> TX["InventoryTxCancel — K-77, transaction_id kalau ada"]
+  OC --> W["Inventory Service Webhook — satu jalan pelepasan"]
+  TX --> W
+  OC --> SB["settlement, balance"]
+```
+
+| terjadi | event | membawa | inventory |
+| --- | --- | --- | --- |
+| CS membatalkan order 77 | Order Cancel | K-77 | lepas yang masih `taken` |
+| create order 77 gagal sesudah take | InventoryTxCancel | K-77, `transaction_id` kalau ada | lepas yang masih `taken` |
+| keduanya untuk K-77 | dua-duanya | | yang kedua tidak mengembalikan apa pun ([batal-hanya-mengembalikan-yang-masih-taken](#batal-hanya-mengembalikan-yang-masih-taken)) |
+
+⚠ **Yang TIDAK ikut diputuskan:** diagram baris 92, kalimat baris 84 dan baris 68 masih menyebut satu event
+([diagram-tertinggal-dari-teks](./order_creation_provide_clarify.md#diagram-tertinggal-dari-teks)).
+
+> ✅ **2026-10-13 17:16** — kotak baris 94 dan kalimat baris 86 kini *"Order Cancel atau Inventory Tx Cancel Compensate
+> Event"*. Tinggal baris 70 ([diagram-tertinggal-dari-teks](./order_creation_provide_clarify.md#diagram-tertinggal-dari-teks)).
+
+---
+
+## tim-pemesan-dikirim-di-permintaan-take
+
+> [order_creation.md](../order/order_creation.md) (2026-10-13 16:04) baris 129 — `uint64 team_id` di
+> `OrderTransactionCreateRequest`. Menjawab *sendiri-atau-silang-diketahui-dari-mana* dengan cara A, dan menutup kritik
+> *tim-pemesan-tidak-dikirim*. Sesuai rekomendasi — saya membacanya sebagai **tim pemesan**, karena permintaan itu dibuat
+> untuk order tim itu. Kalau maksud Anda tim lain, katakan, dan entri ini dibalik. Dicatat juga di sisi order:
+> [the-take-request-carries-the-ordering-team](../order/context_decision.md#the-take-request-carries-the-ordering-team).
+
+**Putusannya.** Permintaan take membawa tim pemesan. Inventory membandingkannya, **per item**, dengan tim pemilik dari
+Product Service: sama → pesanan **sendiri**, tanpa `cross_locked`, cadangan dan markup; beda → **silang**, ketiganya
+berlaku. Satu order bisa berisi keduanya.
+
+```mermaid
+flowchart LR
+  R["permintaan — team_id 5, gudang 3"] --> P["Product Service — pemilik tiap item"]
+  P --> Q{"team_id permintaan sama dengan pemilik?"}
+  Q -->|"ya — sendiri"| S["hanya stock_ready ≥ qty"]
+  Q -->|"tidak — silang"| X["cross_locked, cadangan, markup"]
+```
+
+Kaos milik tim 2 di gudang 3 — `stock_ready` 6, cadangan 5, markup 20%, `cross_locked` mati:
+
+| pesanan | `team_id` | | diperiksa | hasil |
+| --- | ---: | --- | --- | --- |
+| tim 2, 2 kaos | 2 | sendiri | 6 ≥ 2 | ✅ lolos, tanpa markup |
+| tim 5, 2 kaos | 5 | silang | 6 − 2 = 4, kurang dari cadangan 5 | ❌ ditolak |
+| tim 5, 1 kaos | 5 | silang | 6 − 1 = 5, tidak kurang dari 5 | ✅ lolos, dengan markup 20% |
+
+⚠ **Yang TIDAK ikut diputuskan:** `TransactionItem.team_id` (baris 137) memakai nama yang sama — untuk tim pemilik? —
+ditanyakan di sisi order: `which-team-is-team-id`.
+
+> ✅ **2026-10-13 16:58** — baris 137: *"item owner team_id"* — tim pemilik: [the-line-team-is-the-owner](../order/context_decision.md#the-line-team-is-the-owner).
+
+---
+
+## batal-tanpa-take-menyimpan-k
+
+> [order_creation_provide.md](./order_creation_provide.md) (2026-10-13 17:07) baris 105 dan 110 — *"Trx Not Found →
+> Simpan ORDER_TAKES dengan take_ref = K-77, tanpa slot → Balas Sukses"*. Menutup kontradiksi
+> *take-tidak-ketemu-tidak-disimpan*; kini sejalan dengan
+> [inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once) di sisi order. Sesuai rekomendasi.
+
+**Putusannya.** Event batal yang tidak menemukan take-nya **menyimpan K** — satu baris `ORDER_TAKES` dengan `take_ref` = K,
+tanpa baris map, tanpa slot — lalu membalas sukses. Take dengan K yang sama yang datang belakangan ditolak oleh `UNIQUE` di
+`take_ref`, sehingga seluruh transaksinya batal dan tidak ada yang terpotong.
+
+**Kenapa.** Flash sale — order 77, 3 kaos, K-77; Order Service menunggu paling lama, misalnya, 5 detik:
+
+| detik | yang terjadi | `stock_ready` tanpa K disimpan | dengan K disimpan |
+| ---: | --- | ---: | ---: |
+| 0 | take K-77 antre di kunci statement | 51 | 51 |
+| 5 | Order Service timeout, order 77 tidak dibuat, *Compensate* K-77 dikirim | 51 | 51 |
+| 5,1 | webhook: K-77 tidak ketemu | 51 — balas sukses saja | 51 — simpan K-77, balas sukses |
+| 8 | take K-77 dapat giliran | **48, selamanya** — tidak ada yang melepasnya | **51** — `UNIQUE` menolak, take batal |
+
+```mermaid
+sequenceDiagram
+  participant O as Order Service
+  participant W as webhook inventory
+  participant T as take K-77
+  O->>T: take K-77, 3 kaos
+  Note over T: antre di kunci statement
+  O->>W: detik 5 — timeout, Compensate K-77
+  W->>W: K-77 tidak ketemu — simpan ORDER_TAKES take_ref K-77, tanpa slot
+  W-->>O: Balas Sukses
+  T->>T: detik 8 — buat ORDER_TAKES K-77, UNIQUE menolak
+  Note over T: seluruh take batal — stock_ready tetap 51
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** take yang ditolak `UNIQUE` belum tertulis di sisi take, saat simpan K sendiri bentrok
+belum tertulis, kotak memakai contoh *K-77* sebagai nama, dan belum ada Referensi Proses untuknya
+([simpan-k-belum-dirinci](./order_creation_provide_clarify.md#critique)).
+
+> ✅ **2026-10-13 17:16** — baris 32 dan 82: take dengan `take_ref` yang sudah ada **gagal seluruhnya**, lempar error;
+> kotak baris 106 kini `take_ref = idempotency_key`. Tinggal: simpan K yang bentrok
+> ([simpan-k-belum-dirinci](./order_creation_provide_clarify.md#critique)).
