@@ -453,13 +453,10 @@ acts in every team. A check of recorder against confirmer closes both, and it co
    [product](../product/context.md#unit-pricing-system), computed at receiving), the loss money (balance),
    the pick job for an order ([Critique 13](#critique)).
    **→ I recommend** a *"not responsible for"* list beside §Responsbility, each item naming who is.
-10. **Where is Toni's proposal, and who picks between the two?** The doc is marked as Heri's design;
-    [member.md](../project/member.md) gives Stock & Inventory to Toni, and the tiebreak is still open in
-    [member_clarify Q4](../project/member_clarify.md#question).
-    **→ I recommend** writing Toni's proposal into this repo too, so the two can be compared on the page.
-    ⚠ Also: [technical/stock/design.md](../../technical/stock/design.md) still sits at `stock/` coordinates —
-    move it to `technical/inventory/` when you are ready, so the three trees line up again.
-
+10. ✅ *(2026-10-14)* **Answered by your §General item 2** — Toni's design is on branch `thoni`, kept apart
+    ([the-two-inventory-designs-live-on-separate-branches](./context_decision.md#the-two-inventory-designs-live-on-separate-branches)); who picks is [member_clarify Q4](../project/member_clarify.md#question).
+    ⚠ Still true: [technical/stock/design.md](../../technical/stock/design.md) sits at `stock/` coordinates — move it to
+    `technical/inventory/` when you are ready, so the three trees line up again.
 11. 🔄 *(2026-10-08)* **`PostOrder` lowers a shelf when the order is created — which shelf, and what does a count do
     before the pick?** [order.md](./order.md) posts the placement ledger inside the create, and
     [placement.md](./placement.md) lists `PostOrder` — as

@@ -17,6 +17,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-layer-under-a-mutation-is-a-ledger](#the-layer-under-a-mutation-is-a-ledger) | the per-ledger functions are a *Placement Ledger* and a *Batch Ledger*; only a mutation calls them |
 | [a-wrong-rack-pick-waits-for-the-count](#a-wrong-rack-pick-waits-for-the-count) | the picker does not confirm the rack; a pick from another rack is corrected by the next stock opname |
 | [a-broken-unit-is-thrown-away](#a-broken-unit-is-thrown-away) | a broken unit is taken off its rack and thrown away — no rack holds it, nobody gets it back; the warehouse pays the team for it |
+| [the-two-inventory-designs-live-on-separate-branches](#the-two-inventory-designs-live-on-separate-branches) | this folder is Heri's inventory design; Toni's lives on branch `thoni`, where this folder is ignored — the two are kept apart, not compared on one page |
 
 ---
 
@@ -410,3 +411,29 @@ flowchart LR
 | the batch ledger | the unit leaves its batch — [broken-takes-its-batch-before-lost](./opname_decision.md#broken-takes-its-batch-before-lost) |
 | the money | a `broken` problem row, `claimable_stock_count` 0 — the warehouse pays the team |
 | found again | never — only a lost unit is claimed back ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)) |
+
+## the-two-inventory-designs-live-on-separate-branches
+
+> Owner, in [context.md](./context.md) §General item 2 *(2026-10-14)*: *"when we on git branch `thoni`. avoid this context,
+> `thoni` have own consideration. dont make this context as reference, decision and other. make this context folder like
+> dont exists and ignored"*. It answers the *where* of [Q10](./context_clarify.md#question) — *where is Toni's proposal?* —
+> and overtakes my recommendation to write both into one repo to compare.
+
+**The verdict.** Two inventory designs exist and stay apart. This folder is **Heri's**, worked on every branch but one;
+**Toni's** is on branch `thoni`, where this folder is treated as if it did not exist — not a reference, not a decision, not
+an input. Neither design is measured against the other here.
+
+```mermaid
+flowchart LR
+  H["docs/business/inventory - Heri's design"] --> B["every branch but thoni"]
+  T["Toni's design"] --> TB["branch thoni"]
+  H -.->|"ignored on thoni"| TB
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| on `thoni` | `docs/business/inventory/` is not read, cited or built on, and is left out of the rollup |
+| elsewhere | this folder is the inventory design |
+| who picks between them | not here — [member_clarify Q4](../project/member_clarify.md#question) |

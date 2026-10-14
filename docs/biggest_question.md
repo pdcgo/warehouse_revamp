@@ -14,13 +14,14 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**172 open questions across 37 files.** The seven below are shown; **165 are not** — they are not
+**171 open questions across 37 files.** The seven below are shown; **164 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- ▼ *(2026-10-14)* **171**: inventory context Q10 closed by your §General item 2 — the two designs live on separate branches ([the-two-inventory-designs-live-on-separate-branches](business/inventory/context_decision.md#the-two-inventory-designs-live-on-separate-branches)).
 - ▼ *(2026-10-14)* **172**: opname Q21 closed in chat — a short rack gets a lost draft from the system ([a-short-rack-gets-a-lost-draft-from-the-system](business/inventory/opname_decision.md#a-short-rack-gets-a-lost-draft-from-the-system)). **Opname has no open question.**
 - 🔄 *(2026-10-14)* **173**: your redrawn counting box resolves an opname contradiction; Q21 still open.
 - ▲ *(2026-10-14)* **173**: opname re-checked — Q21, a short rack can be marked counted with no draft.
@@ -78,10 +79,10 @@ flowchart LR
 | **6** | **How is drift repaired when the LOG is right and only the FOLD was lost?** `system_adjustment` moves the log and the report together, so it repairs damage where both were wrong — and every known drift cause leaves only the report wrong | out-of-window report drift, which the replay cannot reach by decision and the adjustment cannot express — found only when a person notices | [settlement](business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) | **A targeted DAY RE-FOLD from the log** — re-read one scope's rows for one day and rewrite that day; it reaches any date and leaves the ledger true. ⚠ It is a second reader of the log, so decide it on its own rather than inheriting [the-replay-seeks-the-broker](business/settlement/context_decision.md#the-replay-seeks-the-broker) |
 | **7** | **Where does a returned parcel land — and does an OWN product go through the cross-product map?** [order_return.md](business/order/order_return.md) adds `product_return_maps` beside a config that already ships: `team_infos.return_warehouse_id`, written by no screen and read by no server. No order-create gate on it exists in code (re-checked 2026-10-12), so nothing live is blocked | the return context, which cannot be built from a flow that clones own products · a duplicate table in a second service | [order_return](business/order/order_return_clarify.md#question) | **No new table** — keep `team_infos.return_warehouse_id`, add a per-**shop** override, resolve it on the order form and **freeze it on the order**. **Gate the request, not the config row** |
 
-## Where the other 165 are
+## Where the other 164 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **172**, the whole set, not to 165. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **171**, the whole set, not to 164. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
@@ -93,7 +94,7 @@ the column sums to **172**, the whole set, not to 165. *Feeds* names the row of 
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | #7 |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | #5 |
-| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 7 | #1 (Q14) |
+| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 6 | #1 (Q14) |
 | [business/inventory/transaction_clarify.md](business/inventory/transaction_clarify.md#question) | 8 | #1 |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 8 |  |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 | #2 (its contradiction) |
@@ -126,5 +127,5 @@ the column sums to **172**, the whole set, not to 165. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **172** across **37** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **171** across **37** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.
