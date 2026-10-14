@@ -14,7 +14,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-warehouse-signs-and-accepts-the-team-does-the-rest](#the-warehouse-signs-and-accepts-the-team-does-the-rest) | the warehouse sets `arrived` when it signs for the box, and `accepted`; the selling team creates, edits, cancels and sets `lost` | chat, 2026-10-09 — answers Q5a and who moves each status, as recommended |
 | [a-restock-is-cancelled-only-while-ongoing](#a-restock-is-cancelled-only-while-ongoing) | a cancel is allowed from `ongoing` only; a second cancel is an error | chat, 2026-10-09 — answers Q5d, as recommended |
 | [accept-locks-the-restock](#accept-locks-the-restock) | accept finds and locks the restock, and accepts only from `ongoing` or `arrived` | chat, 2026-10-09 — answers Q13, as recommended |
-| [the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept) | what the selling team owes for the courier's ask is written inside the accept's transaction, not sent on the event | chat, 2026-10-09 — answers Q10b, as recommended |
+| [the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept) | what the selling team owes for the courier's ask is written inside the accept's transaction, not sent on the event | chat, 2026-10-09 — answers Q10b, as recommended — 🔄 **reversed** by [balance-posts-the-couriers-debt-from-the-event](#balance-posts-the-couriers-debt-from-the-event) |
 | [restock-accepted-carries-every-line](#restock-accepted-carries-every-line) | *Restock Accepted* carries the restock, both teams, the accept time and every line with its counts and price | chat, 2026-10-09 — answers Q10c, as recommended |
 | [a-restock-names-its-paying-account](#a-restock-names-its-paying-account) | `restocks.paid_from_account_id`; *Created* and *Cancel* carry the account and the amount; a cancel says whether the money came back | chat, 2026-10-09 — answers Q10d, as recommended |
 | [lost-is-set-only-before-the-box-arrives](#lost-is-set-only-before-the-box-arrives) | `lost` only from `ongoing`; a unit missing from an arrived box is a problem row | chat, 2026-10-09 — answers Q5b, as recommended |
@@ -31,7 +31,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-edit-sends-the-difference](#an-edit-sends-the-difference) | an edit that changes the amount sends *Restock Updated* with the account and the difference | chat, 2026-10-09 — answers Q14, as recommended |
 | [an-edit-may-move-the-payment-to-another-account](#an-edit-may-move-the-payment-to-another-account) | while `ongoing`, an edit may change the paying account; *Restock Updated* moves the whole amount back and out | chat, 2026-10-09 — answers Q15, as recommended |
 | [the-receipt-is-the-tracking-number](#the-receipt-is-the-tracking-number) | `restocks.receipt` is the courier's tracking number; `receipt_file` a photo of the label | chat, 2026-10-09 — answers Q16 |
-| [the-problem-price-is-filled-by-the-system](#the-problem-price-is-filled-by-the-system) | a problem row's price is filled from the line by the system; the warehouse cannot edit it | chat, 2026-10-09 — answers Q6b, as recommended |
+| [the-problem-price-is-filled-by-the-system](#the-problem-price-is-filled-by-the-system) | a problem row's price is filled from the line by the system; the warehouse cannot edit it | chat, 2026-10-09 — answers Q6b, as recommended — 🔄 the price it fills is now the landed unit price, by [all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered) |
 | [a-loss-is-named-by-where-it-happened](#a-loss-is-named-by-where-it-happened) | `lost` and `broken` keep their names; the table says where it happened and who bears it | chat, 2026-10-09 — answers Q6c, against my `missing` — 🔄 **reversed** by [a-short-unit-at-the-door-is-missing](#a-short-unit-at-the-door-is-missing) |
 | [a-short-unit-at-the-door-is-missing](#a-short-unit-at-the-door-is-missing) | a unit short in the box is `missing`; `lost` keeps the parcel and the rack | chat, 2026-10-09 — answers Q6c, as first recommended; reverses the decision above |
 | [extra-units-are-added-by-the-selling-teams-edit](#extra-units-are-added-by-the-selling-teams-edit) | more in the box than ordered: the selling team edits the line's count and writes a `note`; the warehouse accepts that | chat, 2026-10-09 — answers Q6d, instead of my accept-at-the-door |
@@ -49,6 +49,11 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [three-notes-one-writer-each](#three-notes-one-writer-each) | `restocks.note` and `restock_items.note` by the selling team; `restock_problem_items.note` by the warehouse | chat, 2026-10-09 — answers Q20c, as recommended |
 | [the-restock-contract-changes-in-place](#the-restock-contract-changes-in-place) | the v1 restock proto is rewritten in place; backend handlers that no longer fit return Unimplemented until the backend step | chat, 2026-10-09 — against my v2 |
 | [a-line-added-after-arrival-names-its-supplier](#a-line-added-after-arrival-names-its-supplier) | while `arrived`, a NEW line may name its supplier and store; a stored line's stay closed | chat, 2026-10-09 — answers Q21, as recommended |
+| [balance-posts-the-couriers-debt-from-the-event](#balance-posts-the-couriers-debt-from-the-event) | the accept saves the courier's charge on the restock; *Restock Accepted* carries it; balance posts the debt | your §Restock Accepted Flow, confirmed in chat 2026-10-14 — **reverses** [the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept) |
+| [unit-price-is-line-price-plus-costs-per-unit](#unit-price-is-line-price-plus-costs-per-unit) | a batch's unit price = its line's unit price + (shipping + the courier's charge) ÷ every unit of the restock — by quantity, never by value | your §Calculating Price Unit When Restock Accepted, 2026-10-14 — answers stock Q3, narrows Q22 |
+| [all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered) | *all qty* counts every unit ordered; a broken or missing unit at the door carries the same landed unit price as a good one | chat, 2026-10-14 — answers Q22, B |
+| [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) | the accept writes the decided ledgers, built after every stock reader and writer has moved off today's tables — as the transfer | chat, 2026-10-14 — **against** my build-on-today's-tables recommendation |
+| [a-box-nobody-raised-comes-in-by-the-teams-restock](#a-box-nobody-raised-comes-in-by-the-teams-restock) | a box with no restock is not signed for; staff tell the team named on it, the team creates the restock, the warehouse accepts it | chat, 2026-10-14 — answers Q23, b, as opname's rule |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -363,6 +368,10 @@ flowchart LR
 
 **What it does NOT settle:** which service's table holds the debt. If it is balance's, a write from inside the accept is a
 cross-service write that the accept's one database transaction cannot span — to be asked where balance can answer it.
+
+🔄 *(2026-10-14)* **Reversed** — the debt is balance's, posted from the event:
+[balance-posts-the-couriers-debt-from-the-event](#balance-posts-the-couriers-debt-from-the-event). Kept as the record of
+what the in-transaction write bought, and what giving it up costs.
 
 ## restock-accepted-carries-every-line
 
@@ -744,6 +753,10 @@ flowchart LR
 | filled by the system | `price_unit` and `total` — the line's share, `line total × count ÷ line count` |
 | editable by the warehouse | no |
 
+🔄 *(2026-10-14)* **The price it fills changed**: the line's landed unit price, freight and the courier's charge included, not
+the goods share ([all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered)). Still filled by the system, still
+read-only.
+
 ## a-loss-is-named-by-where-it-happened
 
 > Owner, in chat *(2026-10-09)*: *"do you misleading about missing / broken ? lost / broken when accepting restock its
@@ -981,7 +994,7 @@ flowchart LR
 | what it is | the courier's incidental charge at handover |
 | entered | by the warehouse, at accept |
 | paid by | the warehouse, on site |
-| borne by | the selling team — it compensates the warehouse ([the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept)) |
+| borne by | the selling team — it compensates the warehouse (🔄 [balance-posts-the-couriers-debt-from-the-event](#balance-posts-the-couriers-debt-from-the-event)) |
 | in the price | yes — [the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price) |
 | one money, five names | `warehouse_additional_cost` here · `cod_fee` in balance ([cod-fee-is-the-couriers-incidental-ask](../balance/context_decision.md#cod-fee-is-the-couriers-incidental-ask)) · `AdditionalWarehouseFee` in product · `incidental_fee` in balance's ledger · `warehouse_ops_fee` in the technical stock design |
 
@@ -1010,7 +1023,7 @@ flowchart LR
 | | |
 | --- | --- |
 | `total` | `subtotal` + `shipment_cost` |
-| `warehouse_additional_cost` | outside `total` — its own debt, written at accept ([the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept)) |
+| `warehouse_additional_cost` | outside `total` — its own debt, 🔄 posted by balance from *Restock Accepted* ([balance-posts-the-couriers-debt-from-the-event](#balance-posts-the-couriers-debt-from-the-event)) |
 | the landed price | still includes it ([the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price)) — outside `total`, inside the unit price |
 
 ## the-courier-is-paid-once-per-restock
@@ -1209,3 +1222,178 @@ flowchart LR
 | the edit's trail row | names the added line and, if given, its supplier ([edits-are-in-the-same-trail](#edits-are-in-the-same-trail)) |
 | the event | *Restock Accepted* carries each line's supplier and store as usual, so the added line reaches the supplier report |
 
+## balance-posts-the-couriers-debt-from-the-event
+
+> Owner, in [restock.md](./restock.md) §Restock Accepted Flow *(2026-10-09, 17:28)* — **Balance Service** drawn hearing
+> *Restock Accepted* — and confirmed in chat *(2026-10-14)*: *"for 1 yes"*, to *should the courier's debt go through balance
+> via the event, as in your diagram?* It **reverses** [the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept),
+> recorded about an hour before the drawing, and answers what that decision left open, *which service's table holds the
+> debt*: **balance's**.
+
+**The verdict.** The accept saves the courier's charge and its note **on the restock**, inside its own transaction. After
+commit, *Restock Accepted* carries the charge, and balance posts what the selling team owes the warehouse. Inventory never
+writes balance's tables, and balance never joins inventory's transaction. Each service keeps its own data (HARD RULE 3).
+
+```mermaid
+flowchart LR
+  A["accept - one transaction"] --> R["restocks - the charge and its note"]
+  A --> B["the batches - their price includes the charge"]
+  A -->|"after commit"| E["Restock Accepted - carries the charge"]
+  E --> BAL["balance - the selling team owes the warehouse"]
+  E --> SUP["supplier - the figures"]
+```
+
+**The trade-off, said plainly.** Today's accept posts the debt **in the same commit**: it hands its transaction to
+`liability_service` through a port (`PostRestockOutlay` in `restock_request_accept.go`), which works only because both
+services share one Postgres. The reversed rule bought that atomicity, and this decision gives it up for independence. A
+lost event ([no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted))
+now leaves a debt **unposted, but not unrecorded**: the charge is on the accepted restock, so it can be found and posted
+again.
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `restocks.warehouse_additional_cost` and its note | saved by the accept, in its transaction — the record of the charge |
+| *Restock Accepted* | 🆕 carries the charge and its note, 0 = none |
+| balance (`liability_service` in the build) | on the event, posts the debt — selling team owes the warehouse, an `incidental_fee` ([the-ledger-speaks-the-business-words](../balance/context_decision.md#the-ledger-speaks-the-business-words)) with the note ([an-incidental-line-must-say-what-it-was-for](../balance/context_decision.md#an-incidental-line-must-say-what-it-was-for)); nothing for 0 |
+| a redelivered event | posts nothing new — one posting per restock, keyed by the event's id |
+| the accept | no longer calls into balance |
+
+**What it does NOT settle** — the warehouse transfer's on-site charge, which was decided *"the same as a restock"*
+([the-on-site-charge-is-paid-by-b-at-accept](./warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept)).
+Whether it follows is asked in [warehouse_transfer_clarify Q10](./warehouse_transfer_clarify.md#question).
+
+## unit-price-is-line-price-plus-costs-per-unit
+
+> Owner, in [restock.md](./restock.md) §Calculating Price Unit When Restock Accepted *(2026-10-14)*: *Item A: 10 × 10.000
+> (100.000)* · *Shipment Cost 2000* · *Warehouse Additional Cost 10.000* → *"(Shipment Cost + Warehouse Additional Cost) /
+> all qty count"* = *Additional Unit Price (1.200)* → *Unit Price 11.200* → *"use it in batch unit_price"*.
+
+**The verdict.** A batch's unit price is its **line's own unit price** plus **one unit's share of the restock's costs**:
+the freight and the courier's charge, divided by the count of every unit in the restock. Costs are spread **by quantity,
+never by value**, and **across the whole restock, not per line**. A cheap unit and a dear one carry the same share.
+
+```mermaid
+flowchart LR
+  L["line - 10 x 10.000"] --> P["line price_unit 10.000"]
+  S["shipping 2.000"] --> C["costs 12.000"]
+  K["courier's charge 10.000"] --> C
+  C -->|"divided by all qty - 10"| U["1.200 per unit"]
+  P --> B["batch unit_price 11.200"]
+  U --> B
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the formula | `unit_price = line.price_unit + (shipment_cost + warehouse_additional_cost) ÷ all qty` |
+| the goods half | the line's `price_unit`, which is `total ÷ count` ([a-line-is-typed-as-its-total](#a-line-is-typed-as-its-total)): the ORDERED count, after any edit |
+| the cost half | the whole restock's costs, one equal share per unit, so a two-line restock of 10 + 5 units gives each of the 15 the same share |
+| the courier's charge | inside it, as decided ([the-couriers-ask-is-in-the-unit-price](../product/context_decision.md#the-couriers-ask-is-in-the-unit-price)) |
+| it answers | [technical stock Q3](../../technical/stock/design_clarify.md#question): `ProductQtyCount` is the whole restock, by quantity |
+
+**What it does NOT settle** — whether *all qty* counts the units broken or missing at the door. The example has none, so it
+cannot show it. That, and what a problem row is then worth, is [restock_clarify Q22](./restock_clarify.md#question), now
+narrowed to two answers.
+
+## all-qty-is-every-unit-ordered
+
+> Owner, in chat *(2026-10-14)*: *"b"*, to [restock_clarify Q22](./restock_clarify.md#question): *by "all qty count", did you
+> mean every unit ordered (B), or every unit that arrived good (C)?* **Against my last recommendation**, which leaned C.
+
+**The verdict.** The cost share in
+[unit-price-is-line-price-plus-costs-per-unit](#unit-price-is-line-price-plus-costs-per-unit) is divided by **every unit
+ordered**, so every unit carries the same landed unit price, good or not. A unit broken or missing at the door is then a
+problem row at that **landed** price, freight included, and the selling team's loss at the door is one figure. Every rupiah
+paid lands on a batch or on a problem row, even when nothing arrives good.
+
+```mermaid
+flowchart LR
+  P["Rp 112.000 paid - 10 ordered"] --> U["landed unit price 11.200"]
+  U --> B["batch - 7 good at 11.200 = 78.400"]
+  U --> D["problem rows - 1 broken + 2 missing at 11.200 = 33.600 - the selling team's"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| *all qty* | the sum of every line's `count` at accept, after any edit, including a line added while `arrived` |
+| a batch's unit price | `line.price_unit + (shipment_cost + warehouse_additional_cost) ÷ all qty` |
+| a problem row's price | the same landed unit price as its line's batch ([the-problem-price-is-filled-by-the-system](#the-problem-price-is-filled-by-the-system), formula changed) |
+| nothing arrives good | no batch. The problem rows carry the whole amount paid |
+| a supplier refund of the goods | lands on the problem rows. The freight that carried them stays the selling team's |
+| a good unit later broken or lost on a rack | the warehouse's, paid at that batch's unit price through liability ([the-warehouse-payable-is-broken-and-lost](../balance/context_decision.md#the-warehouse-payable-is-broken-and-lost)) — a separate event from the door |
+
+| worked: Item A × 10 at 10.000, shipping 2.000, courier's charge 10.000; 7 good, 1 broken, 2 missing | |
+| --- | --- |
+| batch | 7 × 11.200 = 78.400 |
+| problem rows | 3 × 11.200 = 33.600 |
+| sum | **112.000**, the amount paid |
+
+**It answers** [product Q2](../product/context_clarify.md#question): `AllProductQtyRestock` is the ordered quantity.
+**It changes the build:** `features/restock/counting.ts` and the accept handler take the goods half from the line's
+`price_unit` and divide the costs by every ordered unit. Both divide by good units today.
+
+## the-decided-ledgers-come-before-the-restock-accept
+
+> Owner, in chat *(2026-10-14)*: *"a"*, to *how to unblock the accept: (a) switch everything over first, then build
+> restock on the new ledgers, or (b) build the accept on today's stock tables and move it in the switch-over?* **Against
+> my recommendation** of b. It matches the transfer's
+> [the-decided-ledgers-come-before-the-transfer](./warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer).
+
+**The verdict.** Restock's accept is not rebuilt on today's stock tables (`stock_levels`, `stock_movements`,
+`stock_batches`, `stock_shelf_batches`). It writes the DECIDED model: one `restock` row in `inventory_transactions`, one
+batch per line with good units in the batch ledger, and the good units on their racks in the placement ledger
+([accept-is-one-transaction-then-an-event](#accept-is-one-transaction-then-an-event)). That model is built, and every stock
+reader and writer moved onto it, **before** the accept is. Stock never lives in two places.
+
+```mermaid
+flowchart LR
+  Q["the ledgers' open questions answered"] --> L["the ledgers built"]
+  L --> M["every stock reader and writer moved off today's tables"]
+  M --> A["the restock accept"]
+  M --> T["the transfer's two legs"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the accept | `PostRestock`: a `restock` transaction, one batch per line with good units at the landed price ([all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered)), the placement rows, the problem rows |
+| order of work | the ledgers' open questions → the ledgers → the switch-over → the accept |
+| meanwhile | today's accept handler stays as it is, and the running app's restock pages stay broken against the real API ([the-restock-contract-changes-in-place](#the-restock-contract-changes-in-place)) |
+| the ledger questions that touch the accept | [context 14a, 14h](./context_clarify.md#question) · [ledger template Q3, Q4](../../technical/ledger/mutation_and_ledger_clarify.md#question) · [technical stock Q5, Q6](../../technical/stock/design_clarify.md#question) |
+
+**What it does NOT settle** — whether the parts of restock that write no stock (its own tables, Create, Update, Cancel,
+Arrive, MarkLost, the trail, the events) are built before the switch-over or with the accept.
+
+## a-box-nobody-raised-comes-in-by-the-teams-restock
+
+> Owner, in chat *(2026-10-14)*: *"do it all"*, to *Q23: b?*, after I moved Q23's recommendation to the rule the owner had
+> already given opname ([a-unit-never-stocked-here-comes-in-by-restock](./opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock)).
+> It answers [restock_clarify Q23](./restock_clarify.md#question), carried over from context Q3.
+
+**The verdict.** Goods come in one way: the selling team's restock. A box that arrives with no restock in the system is
+not signed for and not counted. Staff tell the team named on the label, outside the system; the team creates the restock;
+the warehouse signs for the box and accepts it as usual. The same rule as a unit found on a rack that its team never had
+here, so *who creates a restock* stays the selling team, everywhere.
+
+```mermaid
+flowchart LR
+  B["a box at the door - no restock found"] --> T["staff tell the team on the label"]
+  T --> R["the team creates the restock"]
+  R --> S["warehouse signs - arrived"]
+  S --> A["warehouse accepts - batch, racks"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the box, until the team acts | not signed for, not stock, no record. It waits physically |
+| the restock | created by the selling team, as always ([the-warehouse-signs-and-accepts-the-team-does-the-rest](#the-warehouse-signs-and-accepts-the-team-does-the-rest)), naming its paying account |
+| then | signed for and accepted as any restock — its problems at the door are the team's |
+| withdrawn | my *the warehouse signs it as an `arrived` restock*, which bent who creates a restock and when the account is named |

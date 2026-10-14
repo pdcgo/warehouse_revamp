@@ -3,6 +3,21 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> **Re-examined after you deleted §How Warehouse Team Member Accept Stock / Return That Arrived (2026-10-14).** ✅ Recorded:
+> [each-flow-draws-its-own-receiving](./context_decision.md#each-flow-draws-its-own-receiving). ➡ The flow's two open points
+> moved to the doc that now answers them: [Q1](#question) → [restock_clarify Q22](./restock_clarify.md#question) (the
+> divisor), [Q3](#question) → [restock_clarify Q23](./restock_clarify.md#question) (a box nobody raised), with
+> [Critique 9, 11](#critique). 🔄 §Stock loss 1 was not reworded, so [the-receiving-boundary-gap](#the-receiving-boundary-gap)
+> is **open again**, and ⏸ parked with return. **Open here now: Q7, Q8, Q9, Q14, Q16.**
+>
+> **Re-examined after §General item 2 and return.md (2026-10-14).** ✅ Return has its own doc and is *unplanned*:
+> [return-is-unplanned](./context_decision.md#return-is-unplanned). ⏸ Parked with it: the unsellable return in
+> [the failure list](#the-failure-list--three-rows-closed-this-round), the cross-sold return under
+> [receiving-is-one-flow-for-restock-and-return](#receiving-is-one-flow-for-restock-and-return), and the return half of the
+> receiving flow. 🆕 [Q16](#question): [order_return.md](../order/order_return.md) already draws inventory's half of a return.
+> 🔄 [Q1](#question): the divisor is now a pair with the problem-row price, and the prototype double-counts a receiving
+> loss. The `thoni` rule is §General item **3** now.
+>
 > **Re-examined after opname.md's stock-problem register (2026-10-13).** ➡ [14b](#question), a found unit's batch, is
 > answered in substance there ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first));
 > ✅ the rest closed the same day ([a-surplus-claims-the-oldest-loss-first](./opname_decision.md#a-surplus-claims-the-oldest-loss-first)). ✅ [Critique 5](#critique) (broken is not lost) and ✅ [Critique 3](#critique) (a counted
@@ -323,6 +338,10 @@ check against the system · accept · optional fee · calculate unit price · re
 calculate valid quantity · **set placements**. *(§How Warehouse Team Member Accept Stock / Return That
 Arrived)*
 
+🔄 *(2026-10-14)* **That section is deleted.** A restock's receiving is drawn in [restock.md](./restock.md), and a return's
+will be in [return.md](./return.md) ([each-flow-draws-its-own-receiving](./context_decision.md#each-flow-draws-its-own-receiving)).
+The closure below went with it: [the-receiving-boundary-gap](#the-receiving-boundary-gap).
+
 ✅ **This closes what "at receiving" means.** The word in [selling-team-bears-the-receiving-loss](#selling-team-bears-the-receiving-loss)
 now has a defined scope — the flow is titled for both phases and its first node reads *"Receiving
 Restock/Return"* — so a return arriving damaged is a loss **at receiving**, and the selling team bears it.
@@ -376,7 +395,7 @@ in transit between warehouses is the selling team's ([the-selling-team-bears-bro
 | a unit smashed on the shelf | the **warehouse** | ✅ §Stock loss 2, at the owner's **Unit Price** ([warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price)) — ⚠ but WHICH batch's is open |
 | a count is 3 short and nobody knows why | the **warehouse** | ✅ §Stock loss 2 — but at what tolerance, and with what dispute path? [Critique 1](#critique) — and ⚠ **at what price**: §Stock loss 2 names none, and §Warehouse 5 prices *broken and lost*, not an untraceable shortfall |
 | the missing 3 turn up two weeks later | reverses — but who **owns** them now? | open, [Critique 4](#critique) |
-| a customer returns a unit unsellable | ? | **open — nobody bears it**, see [Contradiction](#contradiction). ⚠ And a *sellable* return now has a price but no shelf — [product_context Q1](../product/context_clarify.md#question) |
+| a customer returns a unit unsellable | ? | ⏸ *(2026-10-14)* **parked** — [return-is-unplanned](./context_decision.md#return-is-unplanned). Was: **open — nobody bears it**, see [Contradiction](#contradiction). ⚠ And a *sellable* return now has a price but no shelf — [product_context Q1](../product/context_clarify.md#question) |
 | goods expire on the shelf | ? | open — expiry is not mentioned anywhere in the requirement set |
 | a unit is lost in transit between two warehouses | the **selling team** | ✅ *(2026-10-10)* [the-selling-team-bears-broken-missing-and-lost](./warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost) (was Critique 6) |
 
@@ -410,9 +429,9 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 | **6** | ➡ *(2026-10-10)* **Moved to [warehouse_transfer_clarify Q7](./warehouse_transfer_clarify.md#question)**, where I now recommend the selling team instead. As first raised: **In-transit stock between warehouses has no owner of the risk.** Goods leave warehouse 1 and have not arrived at warehouse 2 — they are in nobody's custody, so [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) does not reach them. A transfer is currently the one way to lose goods with no liability. | Name **in transit** as a place, and put the risk on the **sending** warehouse until receipt is confirmed. |
 | **7** | 🔄 *(2026-10-08)* **Direction decided: a count locks its rack** ([a-count-locks-its-rack](./order_decision.md#a-count-locks-its-rack)) — the design waits for [opname.md](./opname.md). As first raised: **Two Staff at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
 | **8** | 🔄 *(2026-10-08)* **A batch knows when it expires, and not which shelf it is on.** [batch.md](./batch.md) gives `batches` an optional `expired_at`, so something you sell perishes. But a batch has no placement and a shelf row has no batch — the system can say *"12 units expire in March"* and cannot tell the picker where they are. | **FIFO stays a costing rule, and expiry is a report** — what expires soon, per product per warehouse. If an expiring product must be **picked** soonest-first, a shelf row needs a `batch_id` — [Q7](#question). |
-| **9** | **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
-| **10** | ✅ *(2026-10-08)* **Answered** — a restock line records both: what arrived and how many of those are broken, and the short units are the difference ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)). ⚠ This flow still draws them as exclusive, so it is now older than the restock it describes | redraw it from the restock, or point at it |
-| **11** | **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and put the goods on a **holding placement** until someone resolves it. 🔄 *(2026-10-09)* This used to say *unplaced*; there is no unplaced pile any more ([q3-still-said-unplaced](#q3-still-said-unplaced)). Then the count reconciles and the manual report is a task rather than a dead end. |
+| **9** | ➡ *(2026-10-14)* **Moved with Q1 to [restock_clarify Q22](./restock_clarify.md#question)** — the flow is deleted. As first raised: **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
+| **10** | ✅ *(2026-10-14)* the flow is deleted, so nothing draws them as exclusive any more. ✅ *(2026-10-08)* **Answered** — a restock line records both: what arrived and how many of those are broken, and the short units are the difference ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)). ⚠ This flow still draws them as exclusive, so it is now older than the restock it describes | redraw it from the restock, or point at it |
+| **11** | ➡ *(2026-10-14)* **Moved with Q3 to [restock_clarify Q23](./restock_clarify.md#question)** — the flow is deleted. As first raised: **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and put the goods on a **holding placement** until someone resolves it. 🔄 *(2026-10-09)* This used to say *unplaced*; there is no unplaced pile any more ([q3-still-said-unplaced](#q3-still-said-unplaced)). Then the count reconciles and the manual report is a task rather than a dead end. |
 | **12** | ➡ *(2026-10-09)* **Moved to [placement_clarify 3d](./placement_clarify.md#question).** As first raised: **Placement now has two moments and only one is drawn.** The receiving flow ends at `Set Placements`, so a **first** placement always happens and nothing routinely sits unshelved — good, and it matches [warehouse-manages-placements](../business_level_clarify.md#warehouse-manages-placements). What the flow does not cover is the **later** move: reshelving, consolidating, moving between racks. My recording recommendation in row 4 covers both, but only the second is a *move* — the first is part of accepting, and it already has a natural record because the receipt exists. | Say the two are different acts: **placement at receiving is part of the receipt** · **a later move is its own recorded event with its own actor**. Otherwise "record every move" reads as demanding a second record for something the receipt already captured. |
 | **13** | 🔄 *(2026-10-08)* **Two of the four are now listed** — *5. managing placements*, and *6. a solid api for other services, like order* covers stock leaving for an order ([order.md](./order.md) draws it). **Still not listed:** transfer between warehouses — it has [warehouse_transfer.md](./warehouse_transfer.md) and a `tx_type`, and no line — and recording broken and lost, which §Stock loss 2 makes a liability. | Add **7. transfer between warehouses** and **8. recording broken, lost and found back**. |
 
@@ -420,19 +439,12 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 
 ## Question
 
-1. **Is the flow's step order deliberate — `Calculate Unit Price` BEFORE the shortfall is known?** As
-   drawn, freight and the warehouse fee are divided by the **expected** quantity, so units that never
-   arrived carry cost and the ones that did are under-priced. ([Critique 9](#critique))
-   **→ I recommend moving it after `Calculate valid Qty`. One arrow — but a diagram is not prose, so this
-   is a question and not a finding against you.**
+1. ➡ *(2026-10-14)* **Moved to [restock_clarify Q22](./restock_clarify.md#question)** — the receiving flow it asked about is
+   deleted, and the divisor and the problem-row price are both computed in restock's accept.
 2. ✅ *(2026-10-08)* **Answered: both**, per line —
    [any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived).
-3. **Goods arrive that the system does not know about — what happens to them physically, and who bears
-   them?** *"Report Manually (Outside System)"* ends the flow with stock in the building and no record.
-   ([Critique 11](#critique)) 🔄 *(2026-10-09)* **→ I recommend recording a receipt with no matching restock, held
-   for the team named on the parcel, with the goods on a holding placement**, which is a rack like any other
-   ([there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile)). The escape hatch then ends inside the
-   system, and the next count finds units it can explain.
+3. ➡ *(2026-10-14)* **Moved to [restock_clarify Q23](./restock_clarify.md#question)** — a box nobody raised arrives
+   looking like a restock, and the deleted flow was its only drawing.
 4. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q7](./opname_clarify.md#question)** — tolerance and recount; opname.md now answers it.
 5. ✅ *(2026-10-08)* **Answered by opname.md** — the warehouse admin opens a session over all racks, a team, a product or a
    rack ([an-opname-is-a-locked-session](./opname_decision.md#an-opname-is-a-locked-session)). What was left — may a selling
@@ -453,7 +465,7 @@ acts in every team. A check of recorder against confirmer closes both, and it co
    [product](../product/context.md#unit-pricing-system), computed at receiving), the loss money (balance),
    the pick job for an order ([Critique 13](#critique)).
    **→ I recommend** a *"not responsible for"* list beside §Responsbility, each item naming who is.
-10. ✅ *(2026-10-14)* **Answered by your §General item 2** — Toni's design is on branch `thoni`, kept apart
+10. ✅ *(2026-10-14)* **Answered by your §General item 2, now item 3** — Toni's design is on branch `thoni`, kept apart
     ([the-two-inventory-designs-live-on-separate-branches](./context_decision.md#the-two-inventory-designs-live-on-separate-branches)); who picks is [member_clarify Q4](../project/member_clarify.md#question).
     ⚠ Still true: [technical/stock/design.md](../../technical/stock/design.md) sits at `stock/` coordinates — move it to
     `technical/inventory/` when you are ready, so the three trees line up again.
@@ -505,6 +517,20 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     is a ledger** — [one-mutation-per-operation](./context_decision.md#one-mutation-per-operation),
     [batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id),
     [the-layer-under-a-mutation-is-a-ledger](./context_decision.md#the-layer-under-a-mutation-is-a-ledger).
+
+16. 🆕 *(2026-10-14)* **Is [order_return.md](../order/order_return.md)'s warehouse half parked too?** return.md says
+    *unplanned* ([return-is-unplanned](./context_decision.md#return-is-unplanned)), but order_return.md *(2026-09-21)*
+    already draws inventory's part: *"Call Inventory Service to Create Return Transaction"*, *"Warehouse Person Accepting
+    Return"*, *"Warehouse Force Order To Return"*.
+
+    | reading | order_return.md | inventory |
+    | --- | --- | --- |
+    | **a** — only inventory's half is unplanned | stands; its calls into inventory are what return.md must later answer | designs nothing until return.md is written |
+    | **b** — return as a whole is unplanned | parked, its order-create gate with it | designs nothing |
+
+    **→ Recommend a.** The order side was written on purpose, and none of it is built
+    ([biggest_question #7](../../biggest_question.md)). Its calls into inventory then become return.md's brief, instead of
+    a second design to reconcile later.
 
 ---
 
@@ -575,7 +601,25 @@ flowchart LR
   Q -->|"fixed"| H["a holding placement, a rack like any other"]
 ```
 
-## ✅ the receiving-boundary gap is CLOSED — recorded, not deleted silently
+## the-receiving-boundary-gap
+
+🔄 *(2026-10-14)* **Open again, and ⏸ parked.** You deleted the flow whose title closed it, and §Stock loss 1 still reads
+*"at receiving"* with no scope. A **restock** is unaffected, since restock.md is that flow now. A **transfer** is
+unaffected too, because its own decision names the payer
+([the-selling-team-bears-broken-missing-and-lost](./warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost)).
+Only a **return** that arrives smashed is borne by nobody again, and return is unplanned
+([return-is-unplanned](./context_decision.md#return-is-unplanned)).
+**→ Recommend:** the one-line scope in §Stock loss 1, *"at receiving — a restock, a return, or a transfer arriving at a
+warehouse"*. Otherwise return.md must say it on the day it is written. The heading was *"✅ the receiving-boundary gap is
+CLOSED"* until today. As first recorded:
+
+```mermaid
+flowchart LR
+  R["a return arrives smashed"] --> A{"warehouse?"}
+  A -->|"no - business_level Warehouse 6"| B{"selling team?"}
+  B -->|"Stock loss 1 says at receiving - scope deleted with the flow"| N["nobody - parked with return"]
+  N -.->|"one line in Stock loss 1 closes it"| C["the selling team"]
+```
 
 For several passes this section held a contradiction: `business_level.md` §Warehouse 6 named **two**
 phases the warehouse is not liable for — *"receiving restock or return goods from the returning orders"* —
@@ -591,7 +635,7 @@ scope lived in another document** — the same shape as the two leg-naming contr
 `order_context_clarity`. What closed it was not a new rule but a **definition of the term**, and that is
 the cheapest fix available for this class. ⚠ The one residue is named under
 [receiving-is-one-flow-for-restock-and-return](#receiving-is-one-flow-for-restock-and-return): *which*
-selling team bears a cross-sold return.
+selling team bears a cross-sold return. ⏸ *(2026-10-14)* Parked: [return-is-unplanned](./context_decision.md#return-is-unplanned).
 
 ```mermaid
 flowchart LR
@@ -608,4 +652,5 @@ flowchart LR
 - 🔄 *(2026-10-08)* **Places, batches and the transaction now exist** — §Placements, §Batches and the two ledger docs.
   Still unsaid: **the unit**, **what "available" means** ([Q11](#question)), and the four empty docs —
   [opname.md](./opname.md), [order.md](./order.md), [return.md](./return.md), and transfer, which
-  has a `tx_type` and no doc.
+  has a `tx_type` and no doc. 🔄 *(2026-10-14)* opname.md and transfer are written since; return.md now says
+  *unplanned* ([return-is-unplanned](./context_decision.md#return-is-unplanned)).

@@ -4,6 +4,9 @@ The pricing rules I read out of [product_context.md](./context.md), and
 what they do not yet decide. **That doc is yours — this one is mine.** Answered points are **deleted**,
 so this file is always the current open set.
 
+> **Re-examined after your answer on restock Q22 (2026-10-14).** ✅ [Q2](#question): `AllProductQtyRestock` is the **ordered**
+> quantity ([all-qty-is-every-unit-ordered](../inventory/restock_decision.md#all-qty-is-every-unit-ordered)), against my *arrived*.
+>
 > **Re-examined after your answer in chat (2026-10-07).** ✅ **Closed:** [Q6](#question). The courier's ask stays in
 > the unit price ([the-couriers-ask-is-in-the-unit-price](./context_decision.md#the-couriers-ask-is-in-the-unit-price)),
 > against my recommendation. The [contradiction](#additionalwarehousefee-is-capitalised-into-unitprice-and-balance_contextmd-has-now-defined-it-as-a-tip)
@@ -249,12 +252,8 @@ flowchart LR
    **→ I recommend the BORROWER's stock, because that is the only shelf on which your chosen price is what
    its owner paid.** If you mean it to go home to the owner, the price clause needs the owner's cost instead
    — the two answers travel together and cannot be picked separately.
-2. **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
-   **→ I recommend arrived.**
-   ⚠ **`inventory/context.md`'s new receiving flow answers this by arrow order, and it answers ORDERED**:
-   *Calculate Unit Price* runs **before** *Is Any Lost* and *Calculate valid Qty*. That contradicts the
-   recommendation above, so the question is now *"is that sequence deliberate?"* —
-   [inventory_context Q1](../inventory/context_clarify.md#question).
+2. ✅ *(2026-10-14)* **Answered: ordered** — [all-qty-is-every-unit-ordered](../inventory/restock_decision.md#all-qty-is-every-unit-ordered), and a
+   broken or missing unit carries the same landed price. As first asked: **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
 3. **What is the reserve — a per-product count set by the owner, and does it bind the owner's own orders?**
    ([Critique 5](#critique)) **→ I recommend a per-product count, binding only other teams.**
 4. **Does turning on the shared lock affect orders already placed?** ([Critique 6](#critique))

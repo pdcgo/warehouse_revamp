@@ -3,6 +3,11 @@
 [warehouse_transfer.md](./warehouse_transfer.md) is yours, and this file is mine. When a point is answered I delete it
 here, and your answer goes in [warehouse_transfer_decision.md](./warehouse_transfer_decision.md).
 
+> 🆕 **Thirteenth pass (2026-10-14)** — a ripple from restock. The restock rule that
+> [the-on-site-charge-is-paid-by-b-at-accept](./warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept)
+> copied is reversed ([the-on-site-debt-copied-a-reversed-rule](#the-on-site-debt-copied-a-reversed-rule)). **Open now:
+> [Q10](#question)**, whether the transfer follows.
+>
 > ✅ **Twelfth pass (2026-10-10)** — `problem` deleted by you, `warehouse_transfer_teams` removed at your request: **every
 > contradiction is closed, and no question is open.**
 >
@@ -141,10 +146,40 @@ None open. Every critique raised on this doc has been answered — the answers a
    [a-transfer-never-goes-to-its-own-warehouse](./warehouse_transfer_decision.md#a-transfer-never-goes-to-its-own-warehouse) ·
    [a-transfer-is-locked-before-any-status-change](./warehouse_transfer_decision.md#a-transfer-is-locked-before-any-status-change) ·
    [a-transfers-lines-are-never-edited](./warehouse_transfer_decision.md#a-transfers-lines-are-never-edited).
+10. 🆕 *(2026-10-14)* **Does the on-site charge's debt follow the restock's, out of the accept and onto an event?**
+    [the-on-site-charge-is-paid-by-b-at-accept](./warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept)
+    writes what the selling team owes B *"inside the accept … the same as a restock"*. The restock no longer does that:
+    its accept saves the charge, and balance posts the debt from *Restock Accepted*
+    ([balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
+    **→ Recommend: yes, the same way.** B's accept saves the charge and its note on the transfer, an accepted event carries
+    them, and balance posts the debt, once per transfer. That event is built in the same events pass as the shipping
+    expense's ([the-transfer-expense-event-waits-for-the-events-pass](./warehouse_transfer_decision.md#the-transfer-expense-event-waits-for-the-events-pass)).
+    One courier's ask should reach balance one way, whichever door it was paid at.
 
 ---
 
 # Contradiction
+
+## the-on-site-debt-copied-a-reversed-rule
+
+*(2026-10-14)* Open until [Q10](#question) is answered.
+
+| | says |
+| --- | --- |
+| [the-on-site-charge-is-paid-by-b-at-accept](./warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept) | the debt to B is *"written inside the accept … the same as a restock"* |
+| [balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event) | a restock's debt is posted by balance from the event, and is no longer inside the accept |
+
+**The transfer's decision is now the odd one out**, and only because it was written as a copy. *"The same as a restock"*
+stopped being true when the restock changed.
+**→ Recommend:** [Q10](#question), yes. A rule borrowed from a sibling links to it **and** says what it copied, so a reversal
+there is found by its grep, as it was here.
+
+```mermaid
+flowchart LR
+  R["restock - the debt in the accept"] -->|"reversed 2026-10-14"| RE["restock - balance posts from the event"]
+  R -->|"copied, 2026-10-10"| T["transfer - the debt in B's accept"]
+  T -.->|"Q10"| TE["transfer - balance posts from the event"]
+```
 
 ## the-flow-and-the-status-list-disagree
 

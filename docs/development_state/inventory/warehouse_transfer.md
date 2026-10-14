@@ -71,7 +71,7 @@ stateDiagram-v2
 | --- | --- |
 | selling list, form, selling detail | `costEvent` — `missing`: the cost is stored, the paying account does not hear of it |
 | warehouse list, warehouse detail | `labelPhoto` — `dropped`: the upload type is not designed |
-| accept | `courierDebt` — `derived`: where the team's debt to B is held is undecided (shared with restock) |
+| accept | `courierDebt` — `derived`: the debt is balance's (decided for restock 2026-10-14); whether it leaves the accept for an event is [warehouse_transfer Q10](../../business/inventory/warehouse_transfer_clarify.md#question) |
 
 ## The backend step: what it has to do
 
@@ -85,8 +85,8 @@ stateDiagram-v2
 3. **The legs**: `transfer_out` at create through the batch and placement ledgers (fewest shelves first, oldest batches
    first); `transfer_in` at accept minting one batch per source batch, read from the outbound transaction's `batch_logs`.
 4. **Events**: the shipping expense to `financial_account_service` (create, update difference, cancel refund) — not in the
-   contract yet; add it to `events/v1` and `san pubsub ensure`. The courier's on-site charge as a debt inside the accept —
-   where it is held is the open point shared with the restock.
+   contract yet; add it to `events/v1` and `san pubsub ensure`. The courier's on-site charge: the debt is balance's,
+   and whether it moves out of the accept onto an event is [Q10](../../business/inventory/warehouse_transfer_clarify.md#question) (2026-10-14).
 5. **The in-transit figure** on the team's stock screen (`the-transfer-is-where-goods-in-transit-are`) is not built
    anywhere yet.
 6. Retire `InventoryService.StockTransfer`, the instant one-product move this supersedes; nothing calls it.

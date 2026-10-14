@@ -3,6 +3,9 @@
 Critique, questions and warnings about [stock_design.md](./design.md). That doc is yours; this one
 is mine. Answered points are **deleted**, so this is always the current open set.
 
+> ✅ *(2026-10-14)* **Q3 answered** by the owner's restock.md — the cost share is the whole restock's, by quantity
+> ([unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit)).
+>
 > **Full re-examination.** This file had grown to 4× the doc it tracks by appending on every save —
 > the thing `disscuss/` is supposed to avoid. Rewritten tight. Nothing dropped that is still open.
 >
@@ -131,7 +134,10 @@ and it is the doc every other service copies. **→ Rename it there.**
    *where do in-transit goods live?* My in-transit place is withdrawn.
 2. ➡ *(2026-10-12)* **Moved** to [transaction Q4](../../business/inventory/transaction_clarify.md#question), which asks the
    same thing: a rollback that would take a batch below zero. Recommended there: refuse it.
-3. **`ProductQtyCount` — this line, or the whole restock?** And by quantity or by value?
+3. ✅ *(2026-10-14)* **Answered: the whole restock, by quantity** — your restock.md §Calculating Price Unit When Restock
+   Accepted, recorded as [unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit).
+   It counts every unit ordered, broken and missing included: [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered).
+   As first asked: *`ProductQtyCount` — this line, or the whole restock? And by quantity or by value?*
 5. 🆕 *(2026-10-10, raised by the transfer's backend analysis)* **How do today's `stock_*` tables give way to the decided
    ledgers?** The build keeps stock in `stock_levels`, `stock_movements`, `stock_batches`, `stock_shelf_batches` and
    `stock_owner_movements`; **38 files** read or write them — restock's accept, receive, adjust, move, pick, return,

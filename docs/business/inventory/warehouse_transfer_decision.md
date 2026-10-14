@@ -30,7 +30,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-transfer-has-the-restocks-two-costs](#a-transfer-has-the-restocks-two-costs) | `shipment_cost` is the selling team's expense; `warehouse_additional_cost` is paid on site by the warehouse and owed back by the team, like a restock | your §Table Should Have edit and chat, 2026-10-10 — answers the core of Q8, in part against my *b* |
 | [a-transfer-names-its-paying-account](#a-transfer-names-its-paying-account) | `finance_account_id` — the selling team's account that pays `shipment_cost` | your §Table Should Have edit, 2026-10-10 — answers the account half of Q8d, as recommended |
 | [the-shipping-expense-reaches-the-account-by-event](#the-shipping-expense-reaches-the-account-by-event) | the team types `shipment_cost` until accepted; each save sends the account and the difference to `financial_account_service`; the account is required only when the cost is above 0 | chat, 2026-10-10 — answers Q8d, as recommended |
-| [the-on-site-charge-is-paid-by-b-at-accept](#the-on-site-charge-is-paid-by-b-at-accept) | B pays the courier's on-site charge and enters it at accept; the team's debt to B is written inside the accept | chat, 2026-10-10 — answers Q8e, as recommended |
+| [the-on-site-charge-is-paid-by-b-at-accept](#the-on-site-charge-is-paid-by-b-at-accept) | B pays the courier's on-site charge and enters it at accept; the team's debt to B is written inside the accept | chat, 2026-10-10 — answers Q8e, as recommended — ⚠ the restock rule it copied is reversed; whether it follows is [Q10](./warehouse_transfer_clarify.md#question) |
 | [a-transfer-never-changes-a-units-price](#a-transfer-never-changes-a-units-price) | neither cost enters B's unit price — a transfer moves, it does not buy | chat, 2026-10-10 — answers Q8f, as recommended, unlike a restock |
 | [the-sender-enters-the-courier-at-ship](#the-sender-enters-the-courier-at-ship) | Warehouse A enters the courier, the tracking number and the label photo when it ships; the team enters only the cost and its account | chat, 2026-10-10 — raised by the screens, as recommended |
 | [the-transfer-prototype-is-accepted](#the-transfer-prototype-is-accepted) | design_accept: the six screens and the contract are the design; a contract change from here is a new pass | chat, 2026-10-10 |
@@ -787,6 +787,12 @@ flowchart LR
 **What it does NOT settle** — which service's table holds the debt. It is the same open point as the restock's
 ([the-couriers-debt-is-written-in-the-accept](./restock_decision.md#the-couriers-debt-is-written-in-the-accept)), and it is
 answered once for both.
+
+⚠ *(2026-10-14)* **The restock rule this copied is reversed.** The debt is balance's, posted from *Restock Accepted*
+([balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
+That answers *which table* for both, as this section expected. Whether the transfer's debt also leaves the accept for an
+event is asked in [warehouse_transfer_clarify Q10](./warehouse_transfer_clarify.md#question). Until you answer, this
+decision stands as written.
 
 ## a-transfer-never-changes-a-units-price
 

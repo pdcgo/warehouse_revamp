@@ -1,5 +1,29 @@
 # Development state — inventory / restock
 
+🔄 **2026-10-14:** one decision reversed. The courier's debt is no longer written inside the accept: balance posts it from
+*Restock Accepted* ([balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
+Step 5 below changed with it. Still no design_accept is recorded for the restock screens, and the backend also waits on
+the ledgers' open questions ([biggest_question #1](../../biggest_question.md)). restock.md lags six decided fields
+([restock-md-lags-the-decided-tables](../../business/inventory/restock_clarify.md#restock-md-lags-the-decided-tables)).
+✅ **No question is open.** Q22 and Q23, which moved in when the owner deleted context.md's receiving flow, are both
+decided ([all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered),
+[a-box-nobody-raised-comes-in-by-the-teams-restock](../../business/inventory/restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock)).
+⚠ **The prototype contradicts the decided price** — [unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit)
+and [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered):
+
+| | the prototype and the accept handler today | decided |
+| --- | --- | --- |
+| the goods half | line total ÷ good units (`unitGoods` in `features/restock/counting.ts`) | the line's `price_unit`, total ÷ ordered count |
+| the cost half | (shipping + courier's charge) ÷ every good unit | ÷ every unit ordered, across the restock |
+| a broken or missing row's price | the goods share, `line total × n ÷ line count` | the landed unit price, the same as the batch's |
+
+Today the door's problems are counted twice (Rp 142.000 recorded for Rp 112.000 paid in the decision's example). Fix
+`counting.ts`, its stories' expected HPP, the accept handler and the problem price together.
+⚠ **The accept must wait for the ledger switch-over** ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)),
+like the transfer, opname and placement. ⚠ **The accept prototype ignores opname's rack lock**: put-away onto a rack
+being counted must be refused ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)).
+RackSelect in the accept offers every rack today.
+
 **As of 2026-10-09, the restock is DECIDED and PROTOTYPED. It is not built.** All 45 decisions are in
 [restock_decision.md](../../business/inventory/restock_decision.md), and no question is open. The last one,
 [a-line-added-after-arrival-names-its-supplier](../../business/inventory/restock_decision.md#a-line-added-after-arrival-names-its-supplier),
@@ -66,9 +90,13 @@ Every mark goes away in the backend step, and the stories assert on them, so the
 4. ⚠ **No duplicate-product guard.**
    [a-product-appears-once-per-restock](../../business/inventory/restock_decision.md#a-product-appears-once-per-restock)
    is enforced by the form only. Create and update accept the same product twice.
-5. **Events.** Publish `RestockCreated`/`Cancelled`/`Updated`, add their topics to `pubsub ensure`, and write the
-   courier's debt inside the accept transaction
-   ([the-couriers-debt-is-written-in-the-accept](../../business/inventory/restock_decision.md#the-couriers-debt-is-written-in-the-accept)).
+5. **Events.** Publish `RestockCreated`/`Cancelled`/`Updated`, and add their topics to `pubsub ensure`. 🔄 **The
+   courier's debt moves out of the accept**
+   ([balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)):
+   add the charge and its note to `RestockAccepted` (`events/v1`), give `liability_service` a `restock-accepted`
+   subscriber that posts the `incidental_fee` once per restock, and delete the `PostRestockOutlay` call
+   (`restock_request_accept.go`, and its port and test) together with its code comment. The accept's own transaction
+   keeps the charge and its note on the restock.
 6. **Stale e2e.** Update `e2e/restock.spec.ts` and `e2e/orders.spec.ts` for the reworked screens. Ids that no longer
    exist: `accept-cod-fee`, `accept-cost-note-0`, `restock-detail-edit`, `restock-detail-short`,
    `restock-detail-cost-incidental`, `restock-detail-labels`, `restock-timeline-created-by`,

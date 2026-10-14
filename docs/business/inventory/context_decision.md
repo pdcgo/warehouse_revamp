@@ -18,6 +18,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-wrong-rack-pick-waits-for-the-count](#a-wrong-rack-pick-waits-for-the-count) | the picker does not confirm the rack; a pick from another rack is corrected by the next stock opname |
 | [a-broken-unit-is-thrown-away](#a-broken-unit-is-thrown-away) | a broken unit is taken off its rack and thrown away — no rack holds it, nobody gets it back; the warehouse pays the team for it |
 | [the-two-inventory-designs-live-on-separate-branches](#the-two-inventory-designs-live-on-separate-branches) | this folder is Heri's inventory design; Toni's lives on branch `thoni`, where this folder is ignored — the two are kept apart, not compared on one page |
+| [return-is-unplanned](#return-is-unplanned) | inventory designs nothing for a return yet; what depends on one is parked, not answered |
+| [each-flow-draws-its-own-receiving](#each-flow-draws-its-own-receiving) | context.md no longer draws receiving; restock.md draws a restock's, return.md will draw a return's |
 
 ---
 
@@ -414,7 +416,7 @@ flowchart LR
 
 ## the-two-inventory-designs-live-on-separate-branches
 
-> Owner, in [context.md](./context.md) §General item 2 *(2026-10-14)*: *"when we on git branch `thoni`. avoid this context,
+> Owner, in [context.md](./context.md) §General item 2, item 3 since the return line was added *(2026-10-14)*: *"when we on git branch `thoni`. avoid this context,
 > `thoni` have own consideration. dont make this context as reference, decision and other. make this context folder like
 > dont exists and ignored"*. It answers the *where* of [Q10](./context_clarify.md#question) — *where is Toni's proposal?* —
 > and overtakes my recommendation to write both into one repo to compare.
@@ -437,3 +439,57 @@ flowchart LR
 | on `thoni` | `docs/business/inventory/` is not read, cited or built on, and is left out of the rollup |
 | elsewhere | this folder is the inventory design |
 | who picks between them | not here — [member_clarify Q4](../project/member_clarify.md#question) |
+
+## return-is-unplanned
+
+> Owner, in [context.md](./context.md) §General item 2 *(2026-10-14)*: *"for return reference, [see this](./return.md)"*, and
+> [return.md](./return.md) *(2026-10-14)*: *"# Return Contexts. **unplanned**"*.
+
+**The verdict.** A return has its own reference doc, as a restock does, and nothing is designed in it yet. Until it is,
+inventory designs nothing for a return. A point that depends on one is **parked**: kept, but neither answered nor asked.
+
+```mermaid
+flowchart LR
+  G["context.md - General"] --> R["restock.md - designed"]
+  G --> T["return.md - unplanned"]
+  T -.->|"parked until written"| P["return-shaped points in context_clarify"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| §Responsbility 3, *managing return* | stays inventory's; designed in return.md when it is planned |
+| parked in [context_clarify](./context_clarify.md) | the unsellable customer return in the failure list · *which* selling team bears a cross-sold return · the return half of the receiving flow · the `return` tx_type |
+| what it does NOT settle | whether [order_return.md](../order/order_return.md)'s calls into inventory are parked too ([context_clarify Q16](./context_clarify.md#question)) |
+
+## each-flow-draws-its-own-receiving
+
+> Owner, in [context.md](./context.md) *(2026-10-14)*: §How Warehouse Team Member Accept Stock / Return That Arrived
+> **deleted**, after §General gained one reference per flow ([return-is-unplanned](#return-is-unplanned)).
+
+**The verdict.** Receiving is drawn once, in the doc of the flow that receives. A restock's door is
+[restock.md](./restock.md); a return's will be [return.md](./return.md). context.md keeps the rules that hold for every
+flow (§Stock loss) and draws no procedure of its own, so a person's steps and a transaction's steps cannot disagree.
+
+```mermaid
+flowchart LR
+  C["context.md - rules for every flow"] --> R["restock.md - a restock's door and accept"]
+  C --> T["return.md - a return's, unplanned"]
+  C -.->|"no receiving drawing"| X["deleted 2026-10-14"]
+```
+
+**The spec** — where each step of the deleted flow lives now:
+
+| deleted step | now |
+| --- | --- |
+| receive, check on system, found | restock.md §Restock Flow |
+| fee | the courier's charge and its note, at accept ([the-courier-is-paid-once-per-restock](./restock_decision.md#the-courier-is-paid-once-per-restock)) |
+| lost, broken, valid quantity | `missing` worked out, broken typed, good = received − broken ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)) |
+| set placements | the placement ledger, inside the accept ([accept-is-one-transaction-then-an-event](./restock_decision.md#accept-is-one-transaction-then-an-event)) |
+| calculate unit price | open: the divisor, [restock_clarify Q22](./restock_clarify.md#question) |
+| not found, report manually | open: [restock_clarify Q23](./restock_clarify.md#question) |
+| the return half | parked ([return-is-unplanned](#return-is-unplanned)) |
+
+**What it does NOT settle** — the scope of *"at receiving"* in §Stock loss 1, which the deleted title supplied:
+[the-receiving-boundary-gap](./context_clarify.md#the-receiving-boundary-gap).

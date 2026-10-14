@@ -145,6 +145,15 @@ sequenceDiagram
 | one courier's charge, its note required; outside the restock's total, inside the unit price; the debt posts in the same transaction | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [the-couriers-debt-is-written-in-the-accept](../../business/inventory/restock_decision.md#the-couriers-debt-is-written-in-the-accept) |
 | an empty problem note is stored as words while 00013's `CHECK (reason <> '')` stands | [a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional) |
 
+⚠ *(2026-10-14)* **The courier's debt row describes the code as built, not the design.** The rule it cites is reversed:
+balance posts the debt from *Restock Accepted*
+([balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
+The backend step removes `PostRestockOutlay` from the accept, adds the charge and its note to the event, and redraws both
+diagrams here.
+⚠ *(2026-10-14)* **The unit-cost row above is the build, not the design either.** The decided price takes the line's
+`price_unit` and divides the costs by every unit ORDERED, and a broken or missing row carries that same landed price
+([all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered)).
+
 `applyDelta` + `appendMovement` are the same stock primitives `StockReceive` uses, so an accept is indistinguishable in
 the ledger from a manual receive except for its `reason` (`"restock request"`) and `ref` (the tracking number).
 

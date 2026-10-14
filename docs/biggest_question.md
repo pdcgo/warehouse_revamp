@@ -14,14 +14,22 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**171 open questions across 37 files.** The seven below are shown; **164 are not** — they are not
+**169 open questions across 37 files.** The seven below are shown; **162 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
-- ▼ *(2026-10-14)* **171**: inventory context Q10 closed by your §General item 2 — the two designs live on separate branches ([the-two-inventory-designs-live-on-separate-branches](business/inventory/context_decision.md#the-two-inventory-designs-live-on-separate-branches)).
+- ▼ *(2026-10-14)* **169**: restock Q23 closed, b — a box nobody raised comes in by the team's restock, as opname's rule ([a-box-nobody-raised-comes-in-by-the-teams-restock](business/inventory/restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock)). **Restock has no open question.**
+- 🔄 *(2026-10-14)* **170**: restock's accept waits for the ledger switch-over, as you chose ([the-decided-ledgers-come-before-the-restock-accept](business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)) — #1 now blocks four designs: restock, opname, transfer, placement. Restock Q23 now recommends your opname rule.
+- ▼ *(2026-10-14)* **170**: restock Q22 closed in chat, B — *all qty* is every unit ordered, and a broken or missing unit carries the landed price ([all-qty-is-every-unit-ordered](business/inventory/restock_decision.md#all-qty-is-every-unit-ordered)). Product Q2 closes with it.
+- 🔄 *(2026-10-14)* **172**: restock Q22 corrected — my argument mixed a door problem with a rack loss ([q22-mixed-the-door-and-the-rack](business/inventory/restock_clarify.md#q22-mixed-the-door-and-the-rack)); I now lean C and ask what *all qty* meant.
+- ▼ *(2026-10-14)* **172**: technical stock Q3 closed by your restock.md §Calculating Price Unit — the cost share is the whole restock's, by quantity ([unit-price-is-line-price-plus-costs-per-unit](business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit)). Restock Q22 narrows to B or C.
+- 🔄 *(2026-10-14)* **173**: you deleted inventory context.md's receiving flow ([each-flow-draws-its-own-receiving](business/inventory/context_decision.md#each-flow-draws-its-own-receiving)). Context Q1 and Q3 moved to restock as Q22 (the divisor, where the prototype counts a receiving loss twice) and Q23 (a box nobody raised). Net zero.
+- ▲ *(2026-10-14)* **173**: your §General item 2 and return.md — return is *unplanned* ([return-is-unplanned](business/inventory/context_decision.md#return-is-unplanned)); inventory context Q16 asks whether [order_return.md](business/order/order_return.md)'s warehouse half is parked too. Context Q1 gains the double count: the prototype divides by good units while problem rows carry the ordered share.
+- ▲ *(2026-10-14)* **172**: warehouse transfer Q10 — does the on-site charge's debt follow restock's out of the accept? Restock's rule was reversed in chat ([balance-posts-the-couriers-debt-from-the-event](business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)); restock still has no open question. #1 corrected: restock is prototyped, but no design_accept is recorded for it.
+- ▼ *(2026-10-14)* **171**: inventory context Q10 closed by your §General item 2 (now item 3) — the two designs live on separate branches ([the-two-inventory-designs-live-on-separate-branches](business/inventory/context_decision.md#the-two-inventory-designs-live-on-separate-branches)).
 - ▼ *(2026-10-14)* **172**: opname Q21 closed in chat — a short rack gets a lost draft from the system ([a-short-rack-gets-a-lost-draft-from-the-system](business/inventory/opname_decision.md#a-short-rack-gets-a-lost-draft-from-the-system)). **Opname has no open question.**
 - 🔄 *(2026-10-14)* **173**: your redrawn counting box resolves an opname contradiction; Q21 still open.
 - ▲ *(2026-10-14)* **173**: opname re-checked — Q21, a short rack can be marked counted with no draft.
@@ -62,7 +70,7 @@ code. What changed:
 
 ```mermaid
 flowchart LR
-  L["#1 the ledgers"] --> R["restock - accepted, waiting"]
+  L["#1 the ledgers"] --> R["restock - prototyped, waiting"]
   L --> T["warehouse transfer - accepted, waiting"]
   L --> P["placement - accepted, waiting"]
   L --> O["order create's take"]
@@ -71,7 +79,7 @@ flowchart LR
 
 | # | The question | Blocks | Asked in | My recommendation |
 | --- | --- | --- | --- | --- |
-| **1** | **What do the inventory ledgers still not say?** Merged from four docs. The owner chose to build the decided ledgers first ([the-decided-ledgers-come-before-the-transfer](business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)), and they cannot be built until these close: how a release finds an order's take — 🔄 **by the idempotency key**, since inventory never learns the order id ([every-release-goes-by-the-key](business/order/context_decision.md#every-release-goes-by-the-key)); ✅ the key is on the transaction ([an-orders-take-carries-its-idempotency-key](business/inventory/transaction_decision.md#an-orders-take-carries-its-idempotency-key)), and how *one take per key* is enforced stays open · an item's total and direction (✅ it names its product) · reversing a rollback from the log rows · a batch going below zero · types for a revaluation and a count · whose `team_id` on a cross-team order · where *picked* and a sample's recipient are kept · the two ledgers' rules · the template's idempotency, append-only logs and who opens the transaction · `ProductQtyCount` · the cut-over from today's `stock_*` tables · `int64` money · one `change_type` list | ⛔ **three accepted designs** — restock, the warehouse transfer and placement are prototyped and accepted, and none can be built · the take inside order create | [transaction Q1–Q5, Q7–Q9](business/inventory/transaction_clarify.md#question) and its two contradictions · [inventory context Q14](business/inventory/context_clarify.md#question) · [mutation_and_ledger Q1, Q3, Q4](technical/ledger/mutation_and_ledger_clarify.md#question) · [technical stock Q3, Q5, Q6](technical/stock/design_clarify.md#question) | your key column **plus `inventory_take_keys`**, so the database enforces one take per key · items carry `product_id` · reverse the **log rows** · refuse a batch below zero · add `revaluation` and `opname` · the **stock owner's** team · `picked_at` and `recipient` columns · equal units in both ledgers, the batch's value is the truth, a late cost split by units · ✅ a found unit claims the loss it came from ([a-surplus-claims-a-lost-unit-first](business/inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first)) · **one cut-over** · `double` money · one type list |
+| **1** | **What do the inventory ledgers still not say?** Merged from four docs. The owner chose to build the decided ledgers first ([the-decided-ledgers-come-before-the-transfer](business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)), and they cannot be built until these close: how a release finds an order's take — 🔄 **by the idempotency key**, since inventory never learns the order id ([every-release-goes-by-the-key](business/order/context_decision.md#every-release-goes-by-the-key)); ✅ the key is on the transaction ([an-orders-take-carries-its-idempotency-key](business/inventory/transaction_decision.md#an-orders-take-carries-its-idempotency-key)), and how *one take per key* is enforced stays open · an item's total and direction (✅ it names its product) · reversing a rollback from the log rows · a batch going below zero · types for a revaluation and a count · whose `team_id` on a cross-team order · where *picked* and a sample's recipient are kept · the two ledgers' rules · the template's idempotency, append-only logs and who opens the transaction · `ProductQtyCount` · the cut-over from today's `stock_*` tables · `int64` money · one `change_type` list | ⛔ **three prototyped designs** — the warehouse transfer and placement are accepted, restock awaits its design_accept, and none can be built · the take inside order create | [transaction Q1–Q5, Q7–Q9](business/inventory/transaction_clarify.md#question) and its two contradictions · [inventory context Q14](business/inventory/context_clarify.md#question) · [mutation_and_ledger Q1, Q3, Q4](technical/ledger/mutation_and_ledger_clarify.md#question) · [technical stock Q5, Q6](technical/stock/design_clarify.md#question) | your key column **plus `inventory_take_keys`**, so the database enforces one take per key · items carry `product_id` · reverse the **log rows** · refuse a batch below zero · add `revaluation` and `opname` · the **stock owner's** team · `picked_at` and `recipient` columns · equal units in both ledgers, the batch's value is the truth, a late cost split by units · ✅ a found unit claims the loss it came from ([a-surplus-claims-a-lost-unit-first](business/inventory/opname_decision.md#a-surplus-claims-a-lost-unit-first)) · **one cut-over** · `double` money · one type list |
 | **2** | **Which markup does the LEDGER charge from?** ⛔ **Live, re-checked 2026-10-12.** The product detail quotes `products.cross_markup_bps`; [`order_fees.go`](../backend/services/liability_service/liability_v1/order_fees.go) charges `liability_terms.product_markup_bp`. Nothing keeps the two equal, so the quote and the invoice disagree in whichever direction was edited last | every cross-sold order's fee — what a team is quoted against what it is billed | [technical balance](technical/balance/team_balance_design_clarify.md#question) · [Contradiction](business/balance/context_clarify.md#two-markups-exist-and-the-screen-and-the-ledger-read-different-ones) | **`order_fees.go` reads the PRODUCT's rate when it freezes the fee, and `liability_terms.product_markup_bp` is dropped in the same migration.** ⚠ The read moves, the column goes and the frontend's pass-through bridge is deleted together, or the fee breaks |
 | **3** | **May a closed shop still be paid?** ⛔ **Live, re-checked 2026-10-12.** [`ShopAccessCheck`](../backend/services/selling_service/selling_v1/shop_access_check.go) answers a deleted shop `NotFound`, so a shop's last statements — paid after it stops selling — can never be imported | a closed shop's last payouts, refused at the import and again at settlement · its last withdrawals | [shop](business/shop/context_clarify.md#question) — *what does delete do to a shop with history* | **Close rather than delete** — only new selling is refused; the check returns the shop with its status and each caller decides: the importer, settlement and the accounts take it, an order refuses it |
 | **4** | 🆕 **Does a key return only its own team's order?** The resend shortcut — *"an order already has K? return it"* — looks K up alone. K comes from the browser, so a bug or a hostile caller sending another team's K is handed **another team's order**, and the access check passes because it checks the request's team, not the order found | ⛔ building the idempotency key ([the-order-stores-its-idempotency-key](business/order/context_decision.md#the-order-stores-its-idempotency-key)) — as designed, the shortcut leaks across teams | [order_creation](business/order/order_creation_clarify.md#a-key-returns-only-its-own-teams-order) | **Match K and the request's team.** A K found under another team is refused as a used key, never returned |
@@ -82,19 +90,19 @@ flowchart LR
 ## Where the other 164 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **171**, the whole set, not to 164. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **169**, the whole set, not to 162. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
 | [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 18 |  |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 13 |  |
-| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 11 |  |
+| [business/product/context_clarify.md](business/product/context_clarify.md#question) | 10 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 |  |
 | [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | #7 |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | #5 |
-| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 6 | #1 (Q14) |
+| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 5 | #1 (Q14) |
 | [business/inventory/transaction_clarify.md](business/inventory/transaction_clarify.md#question) | 8 | #1 |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 8 |  |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 | #2 (its contradiction) |
@@ -108,17 +116,17 @@ the column sums to **171**, the whole set, not to 164. *Feeds* names the row of 
 | [business/shop/context_clarify.md](business/shop/context_clarify.md#question) | 4 | #3 |
 | [technical/development/workflow_clarify.md](technical/development/workflow_clarify.md#question) | 4 |  |
 | [technical/ledger/mutation_and_ledger_clarify.md](technical/ledger/mutation_and_ledger_clarify.md#question) | 3 | #1 |
-| [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 3 | #1 |
+| [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 2 | #1 |
 | [business/inventory/order_clarify.md](business/inventory/order_clarify.md#question) | 2 |  |
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 2 | #4 |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 |  |
 | [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 |  |
+| [business/inventory/warehouse_transfer_clarify.md](business/inventory/warehouse_transfer_clarify.md#question) | 1 |  |
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 1 |  |
 | [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 1 |  |
 | [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 0 |  |
 | [business/inventory/placement_clarify.md](business/inventory/placement_clarify.md#question) | 0 |  |
 | [business/inventory/restock_clarify.md](business/inventory/restock_clarify.md#question) | 0 |  |
-| [business/inventory/warehouse_transfer_clarify.md](business/inventory/warehouse_transfer_clarify.md#question) | 0 |  |
 | [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 0 |  |
 | [business/settlement/settlement_importer_clarify.md](business/settlement/settlement_importer_clarify.md#question) | 0 |  |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 |  |
@@ -127,5 +135,5 @@ the column sums to **171**, the whole set, not to 164. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **171** across **37** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **169** across **37** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.
