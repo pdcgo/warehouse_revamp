@@ -1848,6 +1848,10 @@
         "sales": {
           "label": "Penjualan",
           "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
+        },
+        "export": {
+          "label": "Ekspor",
+          "reason": "belum ada yang membuat file — tombolnya menyimpan tempat aksinya; isinya nanti tabel tab ini, sesuai filter yang aktif"
         }
       },
       "teamAll": "Semua tim",
@@ -1900,6 +1904,7 @@
     "lastRestock": "restok {{date}}",
     "rangeAll": "Semua",
     "warehouseAll": "Semua gudang",
+    "tabExport": "Ekspor",
     "relatedWarehouses": {
       "label": "Gudang terkait",
       "all": "Semua",
@@ -1984,6 +1989,10 @@
       "sales": {
         "label": "Penjualan",
         "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
+      },
+      "export": {
+        "label": "Ekspor",
+        "reason": "belum ada yang membuat file — tombolnya menyimpan tempat aksinya; isinya nanti tabel tab ini, sesuai filter yang aktif"
       }
     },
     "tab": {
@@ -2079,6 +2088,7 @@
     "rateTooFew": "Kurang dari {{n}} unit pada periode ini — tidak diperingkat bersama yang lain",
     "rateMinNote": "Pemasok dengan kurang dari {{n}} unit pada periode ini diurutkan setelah yang lain, tingkatnya diredupkan — beberapa unit saja belum bisa menunjukkan cara pemasok mengemas.",
     "export": "Ekspor",
+    "actions": "Aksi laporan",
     "pending": {
       "export": {
         "label": "Ekspor",

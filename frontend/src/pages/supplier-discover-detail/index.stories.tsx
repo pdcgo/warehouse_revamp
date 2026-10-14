@@ -243,3 +243,14 @@ export const TheWarehousesScopeThePage: Story = {
     );
   },
 };
+
+// EACH TAB EXPORTS ITS OWN TABLE, as on the manage detail (each-supplier-tab-exports-its-own-table) — read-only, so the
+// Export is the strip's only action; marked 7 in THIS page's list.
+export const EachTabExportsItsOwnTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const button = await canvas.findByTestId("channels-export");
+    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
+  },
+};

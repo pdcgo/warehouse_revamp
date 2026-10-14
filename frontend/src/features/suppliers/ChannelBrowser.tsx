@@ -16,6 +16,7 @@ import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
 import { sampleStoreFigures } from "./sampleSupplierFigures";
+import { SupplierTabExport } from "./SupplierTabExport";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -63,6 +64,8 @@ export interface ChannelBrowserProps {
   descriptionMark?: ReactNode;
   /** The page's marks for Terjual and Siap — sample figures, numbered in the page's own pending list. */
   figureMarks: FigureMarks;
+  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
+  exportMark: ReactNode;
 }
 
 // ChannelBrowser is a supplier's CHANNELS tab — on the manage detail and on the discover detail alike
@@ -90,6 +93,7 @@ export function ChannelBrowser({
   rowActions,
   descriptionMark,
   figureMarks,
+  exportMark,
 }: ChannelBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -220,7 +224,17 @@ export function ChannelBrowser({
             setChannelType(Marketplace.UNSPECIFIED);
           })
         }
-        actions={actions}
+        // The tab's Export, then the page's own action — the primary one stays rightmost. A phone's Export is in the sheet.
+        actions={
+          isMobile ? (
+            actions
+          ) : (
+            <>
+              <SupplierTabExport mark={exportMark} testId="channels-export" />
+              {actions}
+            </>
+          )
+        }
       >
         <FilterSearch
           value={q}
@@ -237,6 +251,8 @@ export function ChannelBrowser({
             onChange={(m) => refilter(() => setChannelType(m))}
           />
         </FilterField>
+        {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
+        {isMobile && <SupplierTabExport mark={exportMark} testId="channels-export" />}
       </FilterBar>
 
       {error && (

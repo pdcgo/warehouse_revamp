@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, HStack, Icon } from "@chakra-ui/react";
 import { Pencil, Trash2 } from "lucide-react";
@@ -20,6 +21,7 @@ export function ChannelsPanel({
   supplierId,
   canManage,
   figureMarks,
+  exportMark,
 }: {
   teamId: bigint;
   supplierId: bigint;
@@ -27,6 +29,8 @@ export function ChannelsPanel({
   canManage: boolean;
   /** The page's marks for each store's Terjual and Siap. */
   figureMarks: FigureMarks;
+  /** The page's mark for the tab's Export. */
+  exportMark: ReactNode;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<SupplierChannelRecord | null>(null);
@@ -79,6 +83,7 @@ export function ChannelsPanel({
         actions={canManage ? <SupplierChannelFormDialog supplierId={supplierId} /> : undefined}
         rowActions={canManage ? rowActions : undefined}
         figureMarks={figureMarks}
+        exportMark={exportMark}
       />
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per channel. */}

@@ -65,6 +65,8 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [a-warehouse-chip-is-its-name-and-the-summary-follows-it](#a-warehouse-chip-is-its-name-and-the-summary-follows-it) | a warehouse chip is its name only; under the chips, before the tabs, the chosen warehouse's (or all) sold, ready, restocks, last restock and last order |
 | [the-summary-is-sold-and-ready-with-their-counts](#the-summary-is-sold-and-ready-with-their-counts) | the warehouse summary is two cards — Terjual with its orders and the last, Siap with its restocks and the last |
 | [sales-sit-beside-restocked](#sales-sit-beside-restocked) | *Penjualan* sits right after *Direstok* — card, column and phone line — on the Statistik tab and the Supplier Report, in Direstok's format |
+| [each-supplier-tab-exports-its-own-table](#each-supplier-tab-exports-its-own-table) | each tab of the supplier's page has its own *Ekspor* at the right of its filter strip; on a phone, in the Filter sheet — not built yet |
+| [the-report-export-folds-on-a-phone](#the-report-export-folds-on-a-phone) | on a phone the Supplier Report's header is one row — the title and ⋯, with *Ekspor* inside |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -1220,3 +1222,46 @@ a phone      Direstok 40 · Rp 2.000.000
 | not built | **`sample`** on every page, marked in its own list — the supplier pages ⚠6, the report ⚠2. The supplier figures count what came IN from a supplier; nothing yet counts what went out to a buyer |
 | the sample | four in five of the row's units restocked, at 30% over their cost (`sampleSales.ts`) — **one fixed ratio**, so a card's total is its rows' sum, as Direstok's is. A ratio varying by row made the report's card read 242 units over rows adding up to 372 |
 | not taken | the first wording — the transactions over the units — was replaced by *"sama saja formatnya"* before it was built |
+
+## each-supplier-tab-exports-its-own-table
+
+> Owner, in chat (2026-10-14): *"di detail ada export untuk table di bawah, di taruh mana?"* — on the proposal of one
+> Export per tab, at the right end of its filter strip: *"oke"*.
+
+```
+Toko       [Cari …] [Semua jenis toko ⌄]                    [⬇ Ekspor ⚠7]  [+ Tambah Toko]
+Produk     [Cari …] [Semua tim ⌄] [Semua toko ⌄]                          [⬇ Ekspor ⚠7]
+Statistik  [Semua tim ⌄] [30 hari ⌄] [Harian|Bulanan|Tahunan]             [⬇ Ekspor ⚠7]
+
+a phone    [Cari nama…] [⚙ Filter] [+ Tambah Toko]
+           Filter sheet:  Semua jenis toko ⌄
+                          [        ⬇ Ekspor ⚠7        ]
+```
+
+| | |
+| --- | --- |
+| where | **each tab's own filter strip**, its right end — not the page header, which sits over three tabs and could not say which table it takes |
+| what it takes | the tab's table **as narrowed** — the search, the filters, the period and grain, and the Gudang terkait chip; on Statistik, the view on screen (Per Periode or Per Produk) |
+| the button | the Supplier Report's: a grey outline, the download icon, *Ekspor*, the mark inside. On the Toko tab it sits **left of Tambah Toko**, so the primary action stays rightmost |
+| on a phone | **inside the Filter sheet**, full width and labelled. The proposal was the icon alone in the row — built, it squeezed the search beside Filter and Tambah Toko to *"Cari nar…"*, so it moved |
+| both pages | the manage detail and the Discover detail (read-only: the Export is the Toko strip's only action) |
+| not built | **`dropped`**, ⚠7 in each page's list — nothing builds a file; the button holds the action's place |
+| shared | `SupplierTabExport` in `features/suppliers/` with its story; each tab places it — the strip's actions on a desktop, a child of the FilterBar (so, the sheet) on a phone |
+
+## the-report-export-folds-on-a-phone
+
+> Owner, in chat (2026-10-14): *"export di report mobile kurang bagus"*.
+
+```
+before (a phone)                          now
+Laporan Pemasok                           Laporan Pemasok                     ⋯
+Pemasok mana yang paling banyak …         Pemasok mana yang paling banyak …
+[⬇ Ekspor ⚠1]   ← alone, under the text                     ⋯ opens:  [⬇ Ekspor ⚠1]
+```
+
+| | |
+| --- | --- |
+| on a phone | the header is **one row** — the title and **⋯**; *Ekspor* is the menu's item, its download icon and its ⚠1 with it. The subtitle under the row |
+| why | wrapped under the subtitle, the button stood alone — an action belonging to nothing |
+| the rule | [the-phone-header-is-one-row](context_decision.md#the-phone-header-is-one-row) — actions fold into ⋯, even a single one; the report had not applied it |
+| a desktop | unchanged — the grey *Ekspor* on the title's row ([the-report-export-is-marked](#the-report-export-is-marked)) |

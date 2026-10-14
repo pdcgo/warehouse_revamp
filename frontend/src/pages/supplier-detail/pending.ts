@@ -7,7 +7,7 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // four kinds.
 
 /** One unwired part of the page. The id is also its i18n key (`supplierChannel.pending.<id>`). */
-export type SupplierDetailPendingId = "products" | "sold" | "ready" | "warehouses" | "warehouseFilter" | "sales";
+export type SupplierDetailPendingId = "products" | "sold" | "ready" | "warehouses" | "warehouseFilter" | "sales" | "export";
 
 const PARTS: PendingPart<SupplierDetailPendingId>[] = [
   // supplier-detail-has-channels-and-products-tabs: the Products tab is SAMPLE rows — a product is linked to a
@@ -24,6 +24,9 @@ const PARTS: PendingPart<SupplierDetailPendingId>[] = [
   { id: "warehouseFilter", kind: "dropped" },
   // PENJUALAN beside Direstok on the Statistik tab (sales-sit-beside-restocked) — invented from the same row's restock.
   { id: "sales", kind: "sample" },
+  // EACH TAB'S EXPORT (each-supplier-tab-exports-its-own-table) — nothing builds a file yet; the button holds the
+  // action's place, as the Supplier Report's does.
+  { id: "export", kind: "dropped" },
 ];
 
 export const SUPPLIER_DETAIL_PENDING: PendingList<SupplierDetailPendingId> = {

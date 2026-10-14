@@ -29,7 +29,7 @@ const meta = {
   title: "Features/Suppliers/ProductBrowser",
   component: ProductBrowser,
   // Any page's marks will do here — the page numbers them; the story only needs them drawn.
-  args: { channels: TWO, figureMarks: LIST_FIGURE_MARKS },
+  args: { channels: TWO, figureMarks: LIST_FIGURE_MARKS, exportMark: null },
 } satisfies Meta<typeof ProductBrowser>;
 
 export default meta;

@@ -31,7 +31,7 @@ const SALES_ONLY: PendingList<"sales"> = { ns: "supplierReport", parts: [{ id: "
 const meta = {
   title: "Features/Suppliers/SupplierStatistics",
   component: SupplierStatistics,
-  args: { supplierId: 31n, salesMark: <NotImplemented list={SALES_ONLY} id="sales" /> },
+  args: { supplierId: 31n, salesMark: <NotImplemented list={SALES_ONLY} id="sales" />, exportMark: null },
   parameters: { signedIn: true, docs: { description: { component: description } } },
   beforeEach: asTeam(MELATI.id),
 } satisfies Meta<typeof SupplierStatistics>;

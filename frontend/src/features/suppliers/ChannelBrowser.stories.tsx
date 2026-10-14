@@ -26,7 +26,7 @@ const meta = {
   title: "Features/Suppliers/ChannelBrowser",
   component: ChannelBrowser,
   // Any page's marks will do here — the page numbers them; the story only needs them drawn.
-  args: { teamId: TEAM, supplierId: SUMBER.id, figureMarks: LIST_FIGURE_MARKS },
+  args: { teamId: TEAM, supplierId: SUMBER.id, figureMarks: LIST_FIGURE_MARKS, exportMark: null },
 } satisfies Meta<typeof ChannelBrowser>;
 
 export default meta;

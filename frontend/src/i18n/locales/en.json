@@ -1852,6 +1852,10 @@
         "sales": {
           "label": "Sales",
           "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
+        },
+        "export": {
+          "label": "Export",
+          "reason": "nothing builds a file yet — the button holds the action's place; it will take this tab's table, as filtered"
         }
       },
       "teamAll": "Any team",
@@ -1904,6 +1908,7 @@
     "lastRestock": "restocked {{date}}",
     "rangeAll": "All",
     "warehouseAll": "All warehouses",
+    "tabExport": "Export",
     "relatedWarehouses": {
       "label": "Related warehouses",
       "all": "All",
@@ -1988,6 +1993,10 @@
       "sales": {
         "label": "Sales",
         "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
+      },
+      "export": {
+        "label": "Export",
+        "reason": "nothing builds a file yet — the button holds the action's place; it will take this tab's table, as filtered"
       }
     },
     "tab": {
@@ -2083,6 +2092,7 @@
     "rateTooFew": "Fewer than {{n}} units in this period — not rated against the others",
     "rateMinNote": "A supplier with fewer than {{n}} units in this period is ranked after the others, its rate muted — a handful of units cannot say how a supplier packs.",
     "export": "Export",
+    "actions": "Report actions",
     "pending": {
       "export": {
         "label": "Export",

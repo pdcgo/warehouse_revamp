@@ -598,3 +598,48 @@ export const NoStoresMeansNoWarehouses: Story = {
     await expect(await canvas.findByTestId("supplier-warehouses-none")).toBeVisible();
   },
 };
+
+// ── Each tab's Export (`each-supplier-tab-exports-its-own-table`) ─────────────────────────────────────────────────
+
+// EACH TAB EXPORTS ITS OWN TABLE — a grey Export at the right end of the tab's filter strip, left of the tab's primary
+// action (Tambah Toko), carrying THIS page's mark (7): nothing builds a file yet.
+export const EachTabExportsItsOwnTable: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    const channels = canvas.getByTestId("channels-export");
+    await expect(channels).toHaveTextContent(/^Export/);
+    await expect(within(channels).getByTestId("not-implemented-export")).toHaveTextContent("7");
+    await expect(channels.getBoundingClientRect().right).toBeLessThanOrEqual(
+      canvas.getByTestId("add-channel").getBoundingClientRect().left,
+    );
+    await expect(channels.getBoundingClientRect().left).toBeGreaterThan(
+      canvas.getByTestId("channels-search").getBoundingClientRect().right,
+    );
+
+    await openProducts(canvas);
+    await expect(await canvas.findByTestId("products-export")).toHaveTextContent(/^Export/);
+
+    await userEvent.click(canvas.getByTestId("supplier-tab-statistics"));
+    await expect(await canvas.findByTestId("statistics-export", {}, { timeout: 3000 })).toHaveTextContent(/^Export/);
+  },
+};
+
+// …and on a phone it is in the Filter sheet, full width and labelled — beside the search, Filter and Tambah Toko it
+// squeezed the search to a few letters.
+export const APhoneExportIsInTheSheet: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId(`channel-row-${SHOPEE_STORE.id}`);
+
+    await expect(canvas.queryByTestId("channels-export")).toBeNull();
+    await userEvent.click(canvas.getByTestId("channels-filter-open"));
+    const sheet = await screen.findByTestId("channels-filter-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    const button = within(sheet).getByTestId("channels-export");
+    await expect(button).toHaveTextContent(/^Export/);
+    await expect(within(button).getByTestId("not-implemented-export")).toHaveTextContent("7");
+  },
+};

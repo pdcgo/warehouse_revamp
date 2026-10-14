@@ -1,8 +1,25 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Badge, Box, Button, Flex, HStack, Heading, Icon, SegmentGroup, Spacer, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { ArrowDownWideNarrow, Download } from "lucide-react";
+import {
+  Badge,
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Heading,
+  Icon,
+  IconButton,
+  Menu,
+  Portal,
+  SegmentGroup,
+  Spacer,
+  Spinner,
+  Stack,
+  Table,
+  Text,
+} from "@chakra-ui/react";
+import { ArrowDownWideNarrow, Download, MoreHorizontal } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -246,22 +263,56 @@ export function SupplierReportPage() {
   return (
     <Stack gap="section" data-testid="supplier-report-page">
       {/* The title and its subtitle as one block, the page's action on the title's row — as on the account report. */}
-      <Flex gap="3" align="start" justify="space-between" wrap="wrap">
-        <Stack gap="1" flex="1 1 16rem">
-          <Heading size="md">{t("supplierReport.title")}</Heading>
+      {isMobile ? (
+        // A PHONE'S HEADER IS ONE ROW (owner: *"export di report mobile kurang bagus"*, `the-report-export-folds-on-a-phone`,
+        // the-phone-header-is-one-row): the title and ⋯, the export folded into it — wrapped under the subtitle it stood
+        // alone, a button belonging to nothing. The subtitle under the row.
+        <Stack gap="1">
+          <Flex align="center" gap="2">
+            <Heading size="md" flex="1" minW="0" truncate>
+              {t("supplierReport.title")}
+            </Heading>
+            <Menu.Root positioning={{ placement: "bottom-end" }}>
+              <Menu.Trigger asChild>
+                <IconButton size="sm" variant="ghost" aria-label={t("supplierReport.actions")} data-testid="supplier-report-menu">
+                  <Icon as={MoreHorizontal} boxSize="4" />
+                </IconButton>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner>
+                  <Menu.Content>
+                    <Menu.Item value="export" data-testid="supplier-report-export">
+                      <Icon as={Download} boxSize="4" />
+                      {t("supplierReport.export")}
+                      <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />
+                    </Menu.Item>
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
+          </Flex>
           <Text fontSize="sm" color="fg.muted">
             {t("supplierReport.subtitle")}
           </Text>
         </Stack>
-        {/* EXPORT, NOT BUILT (owner: *"ada export di sini, kasih unimplemented jadinya"*, `the-report-export-is-marked`)
-            — a grey outline with its icon (an-action-button-carries-its-icon); it takes nothing out of the screen yet,
-            and the ⚠ number points at why. */}
-        <Button variant="outline" colorPalette="gray" data-testid="supplier-report-export">
-          <Icon as={Download} boxSize="4" />
-          {t("supplierReport.export")}
-          <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />
-        </Button>
-      </Flex>
+      ) : (
+        <Flex gap="3" align="start" justify="space-between" wrap="wrap">
+          <Stack gap="1" flex="1 1 16rem">
+            <Heading size="md">{t("supplierReport.title")}</Heading>
+            <Text fontSize="sm" color="fg.muted">
+              {t("supplierReport.subtitle")}
+            </Text>
+          </Stack>
+          {/* EXPORT, NOT BUILT (owner: *"ada export di sini, kasih unimplemented jadinya"*, `the-report-export-is-marked`)
+              — a grey outline with its icon (an-action-button-carries-its-icon); it takes nothing out of the screen yet,
+              and the ⚠ number points at why. */}
+          <Button variant="outline" colorPalette="gray" data-testid="supplier-report-export">
+            <Icon as={Download} boxSize="4" />
+            {t("supplierReport.export")}
+            <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />
+          </Button>
+        </Flex>
+      )}
 
       <NotImplementedSummary list={SUPPLIER_REPORT_PENDING} />
 

@@ -26,6 +26,9 @@ const FIGURE_MARKS: FigureMarks = {
   ready: <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="ready" />,
 };
 
+// Each tab's Export carries THIS page's mark (`each-supplier-tab-exports-its-own-table`).
+const EXPORT_MARK = <NotImplemented list={SUPPLIER_DETAIL_PENDING} id="export" />;
+
 function parseSupplierId(raw: string | undefined): bigint {
   if (!raw) return 0n;
   try {
@@ -186,15 +189,16 @@ export function SupplierDetailPage() {
         </Tabs.List>
 
         <Tabs.Content value="channels">
-          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} figureMarks={FIGURE_MARKS} />
+          <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
         <Tabs.Content value="products">
-          <ProductBrowser channels={channels} figureMarks={FIGURE_MARKS} />
+          <ProductBrowser channels={channels} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
         <Tabs.Content value="statistics">
-          <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sales" />} />
+          <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sales" />}
+            exportMark={EXPORT_MARK} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

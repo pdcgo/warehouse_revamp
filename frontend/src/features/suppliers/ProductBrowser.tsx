@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, HStack, Stack, Table, Text } from "@chakra-ui/react";
 import type { SupplierChannelRecord } from "./adapt";
@@ -16,6 +17,7 @@ import { RestockTeamFilter } from "./FigureParts";
 import { SupplierStoreSelect } from "./SupplierStoreSelect";
 import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
 import { sampleProductFigures } from "./sampleSupplierFigures";
+import { SupplierTabExport } from "./SupplierTabExport";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -63,10 +65,13 @@ function Bought({ product }: { product: SampleProduct }) {
 export function ProductBrowser({
   channels,
   figureMarks,
+  exportMark,
 }: {
   channels: SupplierChannelRecord[];
   /** The page's marks for Terjual and Siap — numbered in the page's own pending list. */
   figureMarks: FigureMarks;
+  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
+  exportMark: ReactNode;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -191,6 +196,7 @@ export function ProductBrowser({
     <Stack gap="card" data-testid="products-section">
       <FilterBar
         testId="products-filter"
+        actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="products-export" />}
         active={filtering}
         count={(term !== "" ? 1 : 0) + (storeId !== 0n ? 1 : 0) + (teamId !== 0n ? 1 : 0)}
         onClear={() =>
@@ -223,6 +229,8 @@ export function ProductBrowser({
             testId="products-store"
           />
         </FilterField>
+        {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
+        {isMobile && <SupplierTabExport mark={exportMark} testId="products-export" />}
       </FilterBar>
 
       {list()}

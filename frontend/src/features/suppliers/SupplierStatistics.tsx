@@ -21,6 +21,7 @@ import {
   useSupplierFiguresByProduct,
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
+import { SupplierTabExport } from "./SupplierTabExport";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
@@ -39,6 +40,8 @@ export interface SupplierStatisticsProps {
   supplierId: bigint;
   /** The page's ⚠ for Penjualan (sales-sit-beside-restocked) — numbered in the page's own pending list. */
   salesMark: ReactNode;
+  /** The page's mark for the tab's Export (each-supplier-tab-exports-its-own-table). */
+  exportMark: ReactNode;
 }
 
 type StatisticsView = "time" | "product";
@@ -61,7 +64,8 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId, salesMark }: SupplierStatisticsProps) {
+export function SupplierStatistics({ supplierId, salesMark, exportMark }: SupplierStatisticsProps) {
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const { t } = useTranslation();
 
@@ -153,6 +157,8 @@ export function SupplierStatistics({ supplierId, salesMark }: SupplierStatistics
 
         <FilterBar
           testId="statistics-filter"
+          // Exports the view on screen — Per Periode or Per Produk — as narrowed.
+          actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="statistics-export" />}
           active={restockTeamId !== 0n}
           count={restockTeamId !== 0n ? 1 : 0}
           onClear={() => pickTeam(0n)}
@@ -170,6 +176,8 @@ export function SupplierStatistics({ supplierId, salesMark }: SupplierStatistics
               <PeriodGrainPicker value={grain} onChange={pickGrain} testId="statistics-grain" />
             </FilterField>
           )}
+          {/* On a phone the Export is in the Filter sheet, full width — its row has no room (each-supplier-tab-exports-its-own-table). */}
+          {isMobile && <SupplierTabExport mark={exportMark} testId="statistics-export" />}
         </FilterBar>
 
         {!valid && (
