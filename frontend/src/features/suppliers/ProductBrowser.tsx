@@ -14,6 +14,8 @@ import { ProductListItem } from "../../components/products/ProductListItem";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { RestockTeamFilter } from "./FigureParts";
 import { SupplierStoreSelect } from "./SupplierStoreSelect";
+import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
+import { sampleProductFigures } from "./sampleSupplierFigures";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -47,14 +49,25 @@ function Bought({ product }: { product: SampleProduct }) {
 // the store it was bought at, and when: the last restock and the first (a-link-remembers-its-last-restock), newest
 // first. Searched, narrowed to one store or one team (owner: *"di produk tambah toko pemasok"*, *"tim juga"*), and paged.
 //
-//   Produk                        Tim               Toko pemasok              Terakhir dibeli
-//   [▦] Kain Katun Jepang 1 rol   [TM] Toko Melati  Sumber Makmur Official    8 Okt 2026
-//       KTN-JP-01                      Penjual      [Shopee]                  pertama 9 Sep 2026
+//   Produk                        Tim               Toko pemasok              Terakhir dibeli      Terjual ⚠2          Siap ⚠3
+//   [▦] Kain Katun Jepang 1 rol   [TM] Toko Melati  Sumber Makmur Official    8 Okt 2026              412               37
+//       KTN-JP-01                      Penjual      [Shopee]                  pertama 9 Sep 2026  pesanan 6 Okt 2026
 //
-// ⚠ SAMPLE ROWS. The link a restock writes is not built yet, so the rows are invented from the supplier's channels;
-// each page that mounts this carries the `sample` mark. The search and the pager run over those rows here; the real
-// read will do both on the server.
-export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[] }) {
+// ITS TERJUAL AND SIAP (owner: *"di channel dan produk ada ready dan sold tadi"*, `the-detail-tabs-show-sold-and-ready`)
+// — the supplier list's figures, for this product: the last two columns, the last order under Terjual. No restock date
+// under Siap — *Terakhir dibeli*, just left of it, is that date.
+//
+// ⚠ SAMPLE ROWS. The link a restock writes is not built yet, so the rows are invented from the supplier's channels —
+// and their figures with them; each page that mounts this carries the `sample` marks. The search and the pager run over
+// those rows here; the real read will do both on the server.
+export function ProductBrowser({
+  channels,
+  figureMarks,
+}: {
+  channels: SupplierChannelRecord[];
+  /** The page's marks for Terjual and Siap — numbered in the page's own pending list. */
+  figureMarks: FigureMarks;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -122,6 +135,11 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
                   </Text>
                 )}
               </Stack>
+              <SupplierFigureLines
+                figures={sampleProductFigures(p.channel.id, p.id)}
+                marks={figureMarks}
+                testId={`product-row-${p.key}-figures`}
+              />
             </Stack>
           ))}
         </Stack>
@@ -136,6 +154,7 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
             {showTeam && <Table.ColumnHeader>{t("supplierChannel.products.team")}</Table.ColumnHeader>}
             <Table.ColumnHeader>{t("supplierChannel.products.channel")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("supplierChannel.products.lastBought")}</Table.ColumnHeader>
+            <SupplierFigureHeaders marks={figureMarks} />
           </Table.Row>
         </Table.Header>
 
@@ -160,6 +179,7 @@ export function ProductBrowser({ channels }: { channels: SupplierChannelRecord[]
               <Table.Cell>
                 <Bought product={p} />
               </Table.Cell>
+              <SupplierFigureCells figures={sampleProductFigures(p.channel.id, p.id)} id={p.key} testIdPrefix="product" />
             </Table.Row>
           ))}
         </Table.Body>

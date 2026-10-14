@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { SupplierChannelRecord } from "./adapt";
 import { ProductBrowser } from "./ProductBrowser";
+import { LIST_FIGURE_MARKS } from "./SupplierFigures";
 import { sampleProductsFor } from "./sampleProducts";
 import { formatUnixDate } from "../../lib/datetime";
 import { pickTeam } from "../../../.storybook/pageStory";
@@ -27,7 +28,8 @@ const SEVEN = Array.from({ length: 7 }, (_, i) => channel(10 + i, Marketplace.LA
 const meta = {
   title: "Features/Suppliers/ProductBrowser",
   component: ProductBrowser,
-  args: { channels: TWO },
+  // Any page's marks will do here — the page numbers them; the story only needs them drawn.
+  args: { channels: TWO, figureMarks: LIST_FIGURE_MARKS },
 } satisfies Meta<typeof ProductBrowser>;
 
 export default meta;

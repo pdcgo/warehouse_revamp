@@ -1832,6 +1832,26 @@
         "products": {
           "label": "Products",
           "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet"
+        },
+        "sold": {
+          "label": "Sold",
+          "reason": "sample figures — units sold and the last order per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
+        },
+        "ready": {
+          "label": "Ready",
+          "reason": "sample figures — ready stock and the last restock per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
+        },
+        "warehouses": {
+          "label": "Related warehouses",
+          "reason": "sample data — nothing yet records which warehouse a restock from this supplier was received at, so the warehouses and their summary are invented"
+        },
+        "warehouseFilter": {
+          "label": "Warehouse filter",
+          "reason": "picking a warehouse only switches the summary under it — no tab can be narrowed by a warehouse yet"
+        },
+        "sales": {
+          "label": "Sales",
+          "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
         }
       },
       "teamAll": "Any team",
@@ -1883,7 +1903,21 @@
     "lastOrder": "ordered {{date}}",
     "lastRestock": "restocked {{date}}",
     "rangeAll": "All",
-    "warehouseAll": "All warehouses"
+    "warehouseAll": "All warehouses",
+    "relatedWarehouses": {
+      "label": "Related warehouses",
+      "all": "All",
+      "none": "Not restocked into any warehouse yet.",
+      "more": "+{{count}} More",
+      "summary": {
+        "sold": "Sold",
+        "ready": "Ready",
+        "units": "{{n}} units",
+        "orders": "from {{n}} orders",
+        "restocks": "{{n}} restocks",
+        "last": "last {{date}}"
+      }
+    }
   },
   "supplierChannel": {
     "deleted": "Store \"{{name}}\" deleted",
@@ -1934,6 +1968,26 @@
       "products": {
         "label": "Products",
         "reason": "sample rows — a product is linked to a supplier store when a restock bought there is accepted, and that is not built yet, so these are invented"
+      },
+      "sold": {
+        "label": "Sold",
+        "reason": "sample figures — units sold and the last order per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
+      },
+      "ready": {
+        "label": "Ready",
+        "reason": "sample figures — ready stock and the last restock per store and per product are summed over what was bought at that store, and nothing yet records which products were bought at which store"
+      },
+      "warehouses": {
+        "label": "Related warehouses",
+        "reason": "sample data — nothing yet records which warehouse a restock from this supplier was received at, so the warehouses and their summary are invented"
+      },
+      "warehouseFilter": {
+        "label": "Warehouse filter",
+        "reason": "picking a warehouse only switches the summary under it — no tab can be narrowed by a warehouse yet"
+      },
+      "sales": {
+        "label": "Sales",
+        "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
       }
     },
     "tab": {
@@ -1961,6 +2015,8 @@
   "supplierFigures": {
     "restocked": "Restocked",
     "restockedHint": "good units accepted into stock",
+    "sales": "Sales",
+    "salesHint": "units sold to buyers",
     "lost": "Lost in shipping",
     "lostHint": "units short in an accepted parcel",
     "broken": "Broken in shipping",
@@ -1976,6 +2032,7 @@
     "rateBroken": "{{rate}}% broken",
     "line": {
       "restocked": "Restocked {{n}} · {{value}}",
+      "sales": "Sales {{n}} · {{value}}",
       "lost": "Lost {{n}}",
       "broken": "Broken {{n}}"
     },
@@ -1984,6 +2041,7 @@
       "product": "Product",
       "team": "Team",
       "restocked": "Restocked",
+      "sales": "Sales",
       "lost": "Lost in shipping",
       "lostRate": "Lost rate",
       "broken": "Broken in shipping",
@@ -2029,6 +2087,10 @@
       "export": {
         "label": "Export",
         "reason": "Nothing builds a file yet — whether it carries the ranking with its figures, and this page or the whole ranking, is still open."
+      },
+      "sales": {
+        "label": "Sales",
+        "reason": "sample figures — a supplier's figures count only the goods that came in from it, and nothing yet counts its goods sold to buyers"
       }
     }
   },

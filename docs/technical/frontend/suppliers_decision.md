@@ -59,6 +59,12 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [a-card-figure-is-a-pale-badge](#a-card-figure-is-a-pale-badge) | each card figure is a pale badge the store badges' size — *Terjual* indigo, *Siap* green |
 | [a-card-figure-is-toned-down](#a-card-figure-is-toned-down) | the card badges' tint is halved and the units are in the text colour; the icon keeps the tone |
 | [the-warehouse-filters-before-the-team](#the-warehouse-filters-before-the-team) | a *Gudang* filter on Discover left of the team, and on the supplier list as its first picker — not built yet |
+| [the-detail-tabs-show-sold-and-ready](#the-detail-tabs-show-sold-and-ready) | the supplier's page shows *Terjual* and *Siap* per store (Toko tab) and per product (Produk tab) — sample figures |
+| [a-supplier-page-is-scoped-by-its-warehouses](#a-supplier-page-is-scoped-by-its-warehouses) | *Gudang terkait* — the warehouses its restocks went to, as chips over the tabs that also scope every tab |
+| [the-warehouse-number-is-explained](#the-warehouse-number-is-explained) | a muted hint on the *Gudang terkait* line says the chip's number is its restocks from this supplier |
+| [a-warehouse-chip-is-its-name-and-the-summary-follows-it](#a-warehouse-chip-is-its-name-and-the-summary-follows-it) | a warehouse chip is its name only; under the chips, before the tabs, the chosen warehouse's (or all) sold, ready, restocks, last restock and last order |
+| [the-summary-is-sold-and-ready-with-their-counts](#the-summary-is-sold-and-ready-with-their-counts) | the warehouse summary is two cards — Terjual with its orders and the last, Siap with its restocks and the last |
+| [sales-sit-beside-restocked](#sales-sit-beside-restocked) | *Penjualan* sits right after *Direstok* — card, column and phone line — on the Statistik tab and the Supplier Report, in Direstok's format |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -1058,3 +1064,159 @@ on a phone      the Filter sheet: Semua gudang · (Semua tim) · … — the war
 | the numbering | appended as the fifth part, so ⚠1–⚠4 keep their meaning; the shared list was renamed `features/suppliers/listPending.ts` (it was `figuresPending.ts`), since it now holds more than the figures |
 | a warehouse team | no warehouse filter on the supplier list — it has no list ([only-a-selling-team-has-suppliers](../../business/supplier/context_decision.md#only-a-selling-team-has-suppliers)) |
 | shared | `SupplierWarehouseFilter` in `features/suppliers/`, with its story under *Features/Suppliers* |
+
+## the-detail-tabs-show-sold-and-ready
+
+> Owner, in chat (2026-10-13), on the supplier's page: *"sekarang untuk detailnya, di channel dan produk ada ready dan sold
+> tadi"*.
+
+```
+⚠ 3 bagian layar ini belum diimplementasi
+Toko · Produk ⚠1 · Statistik
+
+Toko         Toko pemasok          Tautan      Deskripsi   Terjual ⚠2          Siap ⚠3             Aksi
+             Sumber Makmur Store   tokopedia…  —              1.074                 43             [✎ Ubah] [🗑 Hapus]
+             [Tokopedia]                                  pesanan 4 Okt 2026  restok 13 Sep 2026
+
+Produk       Produk         Tim          Toko pemasok   Terakhir dibeli      Terjual ⚠2          Siap ⚠3
+             [▦] Kain Katun Toko Melati  sumbermakmur…  8 Okt 2026              601                 46
+                 KTN-JP-01               [Other]        pertama 8 Sep 2026  pesanan 6 Okt 2026
+```
+
+| | |
+| --- | --- |
+| the figures | the supplier list's *Terjual* (all time, the last order under it) and *Siap* — per **store** on the Toko tab, per **product** on the Produk tab |
+| where | the last two columns — before *Aksi* on the Toko tab, the table's end on the Produk tab; on a phone, a line each in the store's and the product's block |
+| a product's Siap | **no restock date** under it — *Terakhir dibeli*, just left of it, is that date |
+| both pages | the manage detail and the Discover detail alike — both mount the same tabs |
+| the marks | `sample`, numbered in **each page's own** pending list: *Produk* ⚠1, *Terjual* ⚠2, *Siap* ⚠3. The figure pieces now take the page's marks rather than the supplier list's, since a badge's number is its position in its page's list |
+| not built | invented per store and per product (`sampleStoreFigures`, `sampleProductFigures`) — nothing records which products were bought at which store. They are not summed from each other, so a store's figure is not its products' total |
+
+## a-supplier-page-is-scoped-by-its-warehouses
+
+> Owner, in chat (2026-10-13): *"di detail ini harusnya ada daftar gudang terkait yang sudah digunakan untuk restok, jadi
+> ada listnya, dan aku ingin itu juga bisa jadi filter, tapi aku bingung desainnya"* — on the proposal of one row of chips
+> over the tabs, scoping every tab: *"oke gitu saja"*.
+
+```
+PT Sumber Makmur                                            [✎ Ubah] [🗑 Hapus]
+📞 0812-1111-2222   📍 Jl. Soekarno-Hatta 112, Bandung
+⚠ 5 bagian layar ini belum diimplementasi
+Gudang terkait ⚠4 ⚠5
+(Semua) (Gudang Cabang · 11) (Gudang Bandung · 6)
+          ↑ restocks from this supplier received there — a hover says so, with the last one's date
+Toko · Produk ⚠1 · Statistik
+```
+
+| | |
+| --- | --- |
+| the list | **Gudang terkait** — every warehouse this supplier's restocks were received at, the most restocked first, each chip *name · restocks*; a hover: *12 restok dari pemasok ini, terakhir 3 Okt 2026* |
+| the filter | the same chips: *Semua* first and chosen, one at a time. The chosen warehouse is the **page's scope** — every tab (Toko, Produk, Statistik) narrows to it |
+| where | under the supplier's header and the not-implemented strip, **over the tabs** — a tab cannot narrow the tabs beside it, so it is not a tab of its own |
+| why chips | a supplier's warehouses are few, so all of them at once beats a picker — Discover's store type, the same way ([a-store-type-filter-is-chips](#a-store-type-filter-is-chips)) |
+| many | more than eight fold behind **+N Lagi**, which unfolds the rest; on a phone the row scrolls sideways instead |
+| never restocked | *Belum pernah direstok ke gudang mana pun.* — in words, as a store-less supplier's stores are |
+| both pages | the manage detail and the Discover detail |
+| not built | the warehouses and their counts **`sample`** (⚠4), the pick **`dropped`** (⚠5) — nothing records where a supplier's goods are received, and no tab narrows by a warehouse yet |
+| the meaning | the list pages' *Gudang* filter's ([the-warehouse-filters-before-the-team](#the-warehouse-filters-before-the-team)): where the restocks were received |
+| shared | `SupplierWarehouseChips` in `features/suppliers/` with its story; `FilterChips` gained a hover title per chip and a `trailing` slot (the *+N Lagi*) |
+
+## the-warehouse-number-is-explained
+
+> Owner, in chat (2026-10-13), told the number on a warehouse chip is its restocks from this supplier: *"kasih keterangan
+> kalau begitu"*.
+
+```
+desktop   Gudang terkait ⚠4 ⚠5  angka = jumlah restok dari pemasok ini
+          (Semua) (Gudang Cabang · 11) (Gudang Bandung · 6)
+
+a phone   Gudang terkait ⚠4 ⚠5
+          angka = jumlah restok dari pemasok ini      ← wraps under the label, flush left
+          (Semua) (Gudang Cabang · 11) …
+```
+
+| | |
+| --- | --- |
+| the hint | *angka = jumlah restok dari pemasok ini* — 12px muted, on the label's line, so it is read before the chips |
+| a narrow screen | it wraps under the label, flush left |
+| the hover | stays, and still adds the last restock's date |
+| never restocked | no hint — no numbers to explain |
+| why | the hover alone hid the meaning from a phone and from anyone not hovering |
+
+## a-warehouse-chip-is-its-name-and-the-summary-follows-it
+
+> Owner, in chat (2026-10-13): *"gini aja, chip gudang cuma gudang"* — *"lalu di bawahnya kasih detail gudang ini atau
+> semua, dijual berapa stock ready berapa, jumlah restok, terakhir restock dan pesan sebelum tab"*.
+
+```
+Gudang terkait ⚠4 ⚠5
+(Semua) (Gudang Cabang) (Gudang Bandung)
+┌ Terjual ┐ ┌ Siap ┐ ┌ Jumlah restok ┐ ┌ Restok terakhir ┐ ┌ Pesanan terakhir ┐
+│ 1.507   │ │ 11   │ │ 11            │ │ 5 Okt 2026      │ │ 7 Okt 2026       │
+│ unit    │ │ unit │ │ kali          │ │                 │ │                  │
+Toko · Produk ⚠1 · Statistik
+```
+
+| | |
+| --- | --- |
+| a chip | the warehouse's **name only** — no number, no hover, no hint |
+| the summary | under the chips, **before the tabs**: what this supplier's goods did in the chosen warehouse — *Terjual* (units, all time), *Siap* (units), *Jumlah restok* (times), *Restok terakhir*, *Pesanan terakhir* |
+| Semua | every warehouse together — the units and the restocks summed, the latest of each date |
+| the cards | the app's `SummaryStrip` — the Statistik tab's cards ([the-figures-headline-is-the-card-strip](#the-figures-headline-is-the-card-strip)); on a phone two to a row |
+| never restocked | the words, and no summary |
+| the marks | ⚠4 now covers the warehouses **and** their summary (sample); ⚠5 the pick, which so far only switches the summary — no tab narrows by a warehouse yet |
+| shared | `SupplierWarehouseChips` became `RelatedWarehouses` (chips and summary, one component, its story under *Features/Suppliers*) |
+| supersedes | the chip's *name · restocks* and its hover in [a-supplier-page-is-scoped-by-its-warehouses](#a-supplier-page-is-scoped-by-its-warehouses), and [the-warehouse-number-is-explained](#the-warehouse-number-is-explained) entirely — there is no number on a chip to explain. The chips as the page's scope, over the tabs, stand |
+
+## the-summary-is-sold-and-ready-with-their-counts
+
+> Owner, in chat (2026-10-13), on the five cards under the warehouse chips: *"terjual bawahnya dari ... transaksi .
+> terakhir order ... ready bawahnya restok last restock"*.
+
+```
+desktop   ┌ Terjual                                 ┐ ┌ Siap                            ┐
+          │ 1.507 unit                              │ │ 11 unit                         │
+          │ dari 77 transaksi · terakhir 7 Okt 2026 │ │ 11 restok · terakhir 5 Okt 2026 │
+
+a phone   ┌ Terjual           ┐ ┌ Siap               ┐
+          │ 1.963 unit        │ │ 69 unit            │
+          │ dari 113 transaksi│ │ 17 restok          │
+          │ terakhir 7 Okt 2026│ │ terakhir 5 Okt 2026│
+```
+
+| | |
+| --- | --- |
+| the cards | **two** — *Terjual* and *Siap*; the units in the figure (*1.507 unit*) |
+| under Terjual | **dari N transaksi · terakhir \<date\>** — the orders the units went out on, and the last of them |
+| under Siap | **N restok · terakhir \<date\>** — the restocks from this supplier received there, and the last of them |
+| on a phone | the count and the date a line each — two cards share a row, and one line would be cut before the date |
+| Semua | the units, orders and restocks summed; the latest of each date |
+| supersedes | the five cards of [a-warehouse-chip-is-its-name-and-the-summary-follows-it](#a-warehouse-chip-is-its-name-and-the-summary-follows-it) — *Jumlah restok*, *Restok terakhir* and *Pesanan terakhir* folded into these two lines. The chips and the strip's place stand |
+
+## sales-sit-beside-restocked
+
+> Owner, in chat (2026-10-14): *"di sebelah restocked ada penjualan, jumlah transaksi bawahnya unit, hal yang sama ada di
+> report"* — then *"atau sama saja formatnya unit bawahnya harga"*.
+
+```
+the cards    ┌ Total ───────┐ ┌ Direstok ────┐ ┌ Penjualan ⚠ ─┐ ┌ Hilang di… ──┐ ┌ Rusak di… ───┐
+             │ Rp 4.645.000 │ │ Rp 4.400.000 │ │ Rp 4.576.000 │ │ Rp 50.000    │ │ Rp 195.000   │
+             │ 137 unit     │ │ 130 unit     │ │ 104 unit     │ │ 1 unit · 0,7%│ │ 6 unit · 4,4%│
+
+the table    Periode · Direstok · Penjualan ⚠ · Hilang di pengiriman · Tingkat hilang · Rusak di pengiriman · Tingkat rusak
+                         130          104
+                   Rp 4.400.000   Rp 4.576.000
+
+a phone      Direstok 40 · Rp 2.000.000
+             Penjualan 32 · Rp 2.080.000 ⚠
+             Hilang 1 · 2,3%    Rusak 2 · 4,7%
+```
+
+| | |
+| --- | --- |
+| where | **right after Direstok**, everywhere Direstok is — a card in the strip, a column in the table, a line in a phone's block — on the **Statistik tab** (both supplier pages, Per Periode and Per Produk) and on the **Supplier Report** |
+| the format | **Direstok's**, as the owner settled it: in a cell the units over the rupiah, on a card the rupiah over the units; a quiet row is one muted 0 |
+| the card's note | *unit yang terjual ke pembeli* |
+| not built | **`sample`** on every page, marked in its own list — the supplier pages ⚠6, the report ⚠2. The supplier figures count what came IN from a supplier; nothing yet counts what went out to a buyer |
+| the sample | four in five of the row's units restocked, at 30% over their cost (`sampleSales.ts`) — **one fixed ratio**, so a card's total is its rows' sum, as Direstok's is. A ratio varying by row made the report's card read 242 units over rows adding up to 372 |
+| not taken | the first wording — the transactions over the units — was replaced by *"sama saja formatnya"* before it was built |

@@ -31,7 +31,13 @@ import {
   rangesOn,
   SupplierRangeFilters,
 } from "../../features/suppliers/SupplierRangeFilter";
-import { SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "../../features/suppliers/SupplierFigures";
+import {
+  LIST_FIGURE_MARKS,
+  SupplierFigureCells,
+  SupplierFigureHeaders,
+  SupplierFigureLines,
+} from "../../features/suppliers/SupplierFigures";
+import { sampleFiguresFor } from "../../features/suppliers/sampleSupplierFigures";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
 import { SupplierWarehouseFilter } from "../../features/suppliers/SupplierWarehouseFilter";
@@ -216,7 +222,7 @@ export function SuppliersPage() {
               )}
               {/* Its sales and its ready stock, a line each with the last time it moved — sample figures, each line
                   carrying its ⚠ number. A store-less supplier has no product, so no lines. */}
-              <SupplierFigureLines supplier={supplier} testId={`supplier-row-${supplier.id}-figures`} />
+              <SupplierFigureLines figures={sampleFiguresFor(supplier)} marks={LIST_FIGURE_MARKS} testId={`supplier-row-${supplier.id}-figures`} />
               {/* The labelled buttons at the block's FOOT — beside the name they squeezed it into a narrow column. */}
               {canManage && (
                 <Box pt="1" onClick={(e) => e.stopPropagation()}>
@@ -249,7 +255,7 @@ export function SuppliersPage() {
             <Table.ColumnHeader>{t("suppliers.table.channels")}</Table.ColumnHeader>
             {/* SALES AND READY STOCK, SAMPLE FIGURES (owner: *"tampilkan saja dulu, tulis unimplemented karena memang belum
                 ada"*, `the-supplier-list-shows-sales-and-ready-stock`) — each heading carries its ⚠ number. */}
-            <SupplierFigureHeaders />
+            <SupplierFigureHeaders marks={LIST_FIGURE_MARKS} />
             {canManage && <Table.ColumnHeader textAlign="end">{t("suppliers.table.actions")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
@@ -278,7 +284,7 @@ export function SuppliersPage() {
               <Table.Cell>
                 <ChannelTypes channels={supplier.channels} />
               </Table.Cell>
-              <SupplierFigureCells supplier={supplier} testIdPrefix="supplier" />
+              <SupplierFigureCells figures={sampleFiguresFor(supplier)} id={supplier.id} testIdPrefix="supplier" />
 
               {canManage && (
                 // Stop the row's navigate from firing when a row action is used.

@@ -14,6 +14,8 @@ import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
+import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
+import { sampleStoreFigures } from "./sampleSupplierFigures";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -59,6 +61,8 @@ export interface ChannelBrowserProps {
   rowActions?: (channel: SupplierChannelRecord) => ReactNode;
   /** The page's own pending mark for the Description column, if it has one. */
   descriptionMark?: ReactNode;
+  /** The page's marks for Terjual and Siap — sample figures, numbered in the page's own pending list. */
+  figureMarks: FigureMarks;
 }
 
 // ChannelBrowser is a supplier's CHANNELS tab — on the manage detail and on the discover detail alike
@@ -69,12 +73,23 @@ export interface ChannelBrowserProps {
 // It reads for itself: the search, the type and the page go to SupplierChannelList, which searches, filters and
 // pages ON THE SERVER (useSupplierChannelPage). The search is debounced, so a word is one request, not one per
 // key — the previous rows stay up behind the RefreshOverlay while the answer loads (HARD RULE 10).
+//
+// EACH STORE'S TERJUAL AND SIAP (owner: *"di channel dan produk ada ready dan sold tadi"*,
+// `the-detail-tabs-show-sold-and-ready`) — the supplier list's figures, for what was bought at this store: the last two
+// columns before the actions, the last order and the last restock under them; on a phone, a line each.
+//
+//   Toko pemasok              Link        Deskripsi    Terjual ⚠2          Siap ⚠3           Aksi
+//   Sumber Makmur Official    shopee.…    …               1.204                86             [✎ Ubah] …
+//   [Shopee]                                         pesanan 5 Okt 2026  restok 20 Sep 2026
+//
+// ⚠ SAMPLE FIGURES (sampleStoreFigures) — nothing yet says which products were bought at which store.
 export function ChannelBrowser({
   teamId,
   supplierId,
   actions,
   rowActions,
   descriptionMark,
+  figureMarks,
 }: ChannelBrowserProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -137,6 +152,11 @@ export function ChannelBrowser({
                   </Text>
                 )}
               </Stack>
+              <SupplierFigureLines
+                figures={sampleStoreFigures(ch.id)}
+                marks={figureMarks}
+                testId={`channel-row-${ch.id}-figures`}
+              />
               {rowActions?.(ch)}
             </Stack>
           ))}
@@ -156,6 +176,7 @@ export function ChannelBrowser({
                 {descriptionMark}
               </HStack>
             </Table.ColumnHeader>
+            <SupplierFigureHeaders marks={figureMarks} />
             {rowActions && <Table.ColumnHeader textAlign="end">{t("supplierChannel.table.actions")}</Table.ColumnHeader>}
           </Table.Row>
         </Table.Header>
@@ -176,6 +197,8 @@ export function ChannelBrowser({
                   {ch.description || "—"}
                 </Text>
               </Table.Cell>
+
+              <SupplierFigureCells figures={sampleStoreFigures(ch.id)} id={ch.id} testIdPrefix="channel" />
 
               {rowActions && <Table.Cell textAlign="end">{rowActions(ch)}</Table.Cell>}
             </Table.Row>

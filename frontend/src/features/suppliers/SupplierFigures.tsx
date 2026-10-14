@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, HStack, Icon, Stack, Table, Text, VisuallyHidden } from "@chakra-ui/react";
 import { PackageCheck, ShoppingCart } from "lucide-react";
@@ -5,13 +6,14 @@ import { PackageCheck, ShoppingCart } from "lucide-react";
 import { formatUnixDate } from "../../lib/datetime";
 import { NotImplemented } from "../pending/NotImplemented";
 import { SUPPLIER_LIST_PENDING } from "./listPending";
-import { type FiguredSupplier, sampleFiguresFor, units } from "./sampleSupplierFigures";
+import { type SampleSupplierFigures, units } from "./sampleSupplierFigures";
 
 export const description =
-  "A supplier's two figures — every unit sold with the last order under it, and every unit ready with the last restock under it — as a table's two columns, as two lines in a phone block, or as one row of small pale badges on a card — an icon and the units, no dates; Terjual indigo, Siap green. Sample figures, each carrying its ⚠ mark; a supplier with no store has nothing to count, so a dash in a table and on a card, and no lines in a block.";
+  "Two figures — every unit sold with the last order under it, and every unit ready with the last restock under it — for a supplier, one of its stores or one of its products: as a table's two columns, as two lines in a phone block, or as one row of small pale badges on a card — an icon and the units, no dates; Terjual indigo, Siap green. Sample figures, each carrying the ⚠ mark its page hands in; nothing to count (a supplier with no store) is a dash in a table and on a card, and no lines in a block.";
 
-// A SUPPLIER'S FIGURES (`the-supplier-list-shows-sales-and-ready-stock`, `sales-are-all-time-with-their-last-dates`),
-// drawn the same on the supplier list and on Discover (`discover-shows-the-same-figures-and-filters`):
+// THE FIGURES (`the-supplier-list-shows-sales-and-ready-stock`, `sales-are-all-time-with-their-last-dates`), drawn the
+// same on the supplier list, on Discover (`discover-shows-the-same-figures-and-filters`) and on the supplier's page, for
+// a store and a product (`the-detail-tabs-show-sold-and-ready`):
 //
 //   table                                        a phone block                         a Discover card
 //   Terjual ⚠1           Siap ⚠2                 Terjual 4.135 · pesanan 3 Okt 2026 ⚠1   [🛒 4.135] ⚠1  [✓ 155] ⚠2
@@ -19,10 +21,25 @@ export const description =
 //   pesanan 3 Okt 2026  restok 30 Sep 2026
 //
 // The units right-aligned, and under them, muted, the last time it moved — one fact read twice, so one cell
-// (one-context-per-column-and-never-three-lines).
+// (one-context-per-column-and-never-three-lines). A row that already says when it was restocked (a product's
+// *Terakhir dibeli*) has no restock date under Siap.
+//
+// THE MARKS ARE THE PAGE'S — a badge's number is its position in the PAGE's pending list, so each page hands its own in.
+
+/** Each figure's ⚠ mark, as the page numbers it. */
+export interface FigureMarks {
+  sold: ReactNode;
+  ready: ReactNode;
+}
+
+/** The marks on the supplier list and on Discover, which share one pending list. */
+export const LIST_FIGURE_MARKS: FigureMarks = {
+  sold: <NotImplemented list={SUPPLIER_LIST_PENDING} id="sold" />,
+  ready: <NotImplemented list={SUPPLIER_LIST_PENDING} id="ready" />,
+};
 
 /** The two column headings, each carrying its ⚠ number. */
-export function SupplierFigureHeaders() {
+export function SupplierFigureHeaders({ marks }: { marks: FigureMarks }) {
   const { t } = useTranslation();
 
   return (
@@ -31,7 +48,7 @@ export function SupplierFigureHeaders() {
         <Table.ColumnHeader key={kind} textAlign="end">
           <HStack gap="1" justify="end">
             {t(`suppliers.table.${kind}`)}
-            <NotImplemented list={SUPPLIER_LIST_PENDING} id={kind} />
+            {marks[kind]}
           </HStack>
         </Table.ColumnHeader>
       ))}
@@ -61,21 +78,32 @@ function FigureCell({ value, last, testId }: { value: number | undefined; last: 
 }
 
 /** The two cells of a row — `${testIdPrefix}-sold-${id}` and `${testIdPrefix}-ready-${id}`. */
-export function SupplierFigureCells({ supplier, testIdPrefix }: { supplier: FiguredSupplier; testIdPrefix: string }) {
+export function SupplierFigureCells({
+  figures,
+  id,
+  testIdPrefix,
+}: {
+  figures: SampleSupplierFigures | null;
+  id: bigint | string;
+  testIdPrefix: string;
+}) {
   const { t } = useTranslation();
-  const figures = sampleFiguresFor(supplier);
 
   return (
     <>
       <FigureCell
         value={figures?.sold}
         last={figures ? t("suppliers.lastOrder", { date: formatUnixDate(figures.lastOrderAt) }) : undefined}
-        testId={`${testIdPrefix}-sold-${supplier.id}`}
+        testId={`${testIdPrefix}-sold-${id}`}
       />
       <FigureCell
         value={figures?.ready}
-        last={figures ? t("suppliers.lastRestock", { date: formatUnixDate(figures.lastRestockAt) }) : undefined}
-        testId={`${testIdPrefix}-ready-${supplier.id}`}
+        last={
+          figures?.lastRestockAt !== undefined
+            ? t("suppliers.lastRestock", { date: formatUnixDate(figures.lastRestockAt) })
+            : undefined
+        }
+        testId={`${testIdPrefix}-ready-${id}`}
       />
     </>
   );
@@ -91,9 +119,16 @@ export function SupplierFigureCells({ supplier, testIdPrefix }: { supplier: Figu
 // tone on the icon (`a-card-figure-is-toned-down`). Siap in `success`, the tone the app already
 // gives ready stock (ProductListItem's badge); Terjual in `primary`, a tone with no status meaning. A store-less supplier
 // reads a grey dash for each, unmarked, so every card has the row.
-export function SupplierFigureIcons({ supplier, testId }: { supplier: FiguredSupplier; testId: string }) {
+export function SupplierFigureIcons({
+  figures,
+  marks,
+  testId,
+}: {
+  figures: SampleSupplierFigures | null;
+  marks: FigureMarks;
+  testId: string;
+}) {
   const { t } = useTranslation();
-  const figures = sampleFiguresFor(supplier);
 
   const figure = (kind: "sold" | "ready", icon: typeof ShoppingCart, tone: string, value: number | undefined) => (
     <HStack gap="1" data-testid={`${testId}-${kind}`}>
@@ -114,7 +149,7 @@ export function SupplierFigureIcons({ supplier, testId }: { supplier: FiguredSup
           {value === undefined ? "—" : units(value)}
         </Text>
       </Badge>
-      {value !== undefined && <NotImplemented list={SUPPLIER_LIST_PENDING} id={kind} />}
+      {value !== undefined && marks[kind]}
     </HStack>
   );
 
@@ -126,10 +161,17 @@ export function SupplierFigureIcons({ supplier, testId }: { supplier: FiguredSup
   );
 }
 
-/** A line each, with its mark — nothing for a supplier with no store. */
-export function SupplierFigureLines({ supplier, testId }: { supplier: FiguredSupplier; testId: string }) {
+/** A line each, with its mark — nothing when there is nothing to count. */
+export function SupplierFigureLines({
+  figures,
+  marks,
+  testId,
+}: {
+  figures: SampleSupplierFigures | null;
+  marks: FigureMarks;
+  testId: string;
+}) {
   const { t } = useTranslation();
-  const figures = sampleFiguresFor(supplier);
 
   if (!figures) return null;
 
@@ -140,14 +182,15 @@ export function SupplierFigureLines({ supplier, testId }: { supplier: FiguredSup
           {t("suppliers.table.sold")} {units(figures.sold)} ·{" "}
           {t("suppliers.lastOrder", { date: formatUnixDate(figures.lastOrderAt) })}
         </Text>
-        <NotImplemented list={SUPPLIER_LIST_PENDING} id="sold" />
+        {marks.sold}
       </HStack>
       <HStack gap="1.5" wrap="wrap">
         <Text>
-          {t("suppliers.table.ready")} {units(figures.ready)} ·{" "}
-          {t("suppliers.lastRestock", { date: formatUnixDate(figures.lastRestockAt) })}
+          {t("suppliers.table.ready")} {units(figures.ready)}
+          {figures.lastRestockAt !== undefined &&
+            ` · ${t("suppliers.lastRestock", { date: formatUnixDate(figures.lastRestockAt) })}`}
         </Text>
-        <NotImplemented list={SUPPLIER_LIST_PENDING} id="ready" />
+        {marks.ready}
       </HStack>
     </Stack>
   );

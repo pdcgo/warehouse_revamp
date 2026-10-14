@@ -1,11 +1,14 @@
+import type { ReactNode } from "react";
 import { Button, HStack } from "@chakra-ui/react";
 
 export const description =
-  "A filter as a row of rounded chips — All first, then each option; one is chosen at a time, drawn in the main tone. For a small, fixed set a person narrows by often (a store type), where seeing every option at once beats opening a picker. Wraps on a desktop; one row that scrolls sideways on a phone. Emits the chosen value, and the `all` value for All.";
+  "A filter as a row of rounded chips — All first, then each option; one is chosen at a time, drawn in the main tone. For a small, fixed set a person narrows by often (a store type), where seeing every option at once beats opening a picker. Wraps on a desktop; one row that scrolls sideways on a phone. Emits the chosen value, and the `all` value for All. A chip may carry a hover title; the row may end with a control of its own (a \"+3 more\").";
 
 export interface FilterChipOption<V extends string | number> {
   value: V;
   label: string;
+  /** What a hover says about it — when the label alone does not explain its numbers. */
+  title?: string;
 }
 
 export interface FilterChipsProps<V extends string | number> {
@@ -19,6 +22,8 @@ export interface FilterChipsProps<V extends string | number> {
   ariaLabel: string;
   /** One row that scrolls sideways, instead of wrapping — for a phone. */
   scroll?: boolean;
+  /** A control at the row's end, after the last chip — a "+3 more" that unfolds the rest. */
+  trailing?: ReactNode;
   testId?: string;
 }
 
@@ -38,6 +43,7 @@ export function FilterChips<V extends string | number>({
   options,
   ariaLabel,
   scroll = false,
+  trailing,
   testId = "filter-chips",
 }: FilterChipsProps<V>) {
   const chips: FilterChipOption<V>[] = [{ value: all, label: allLabel }, ...options];
@@ -69,6 +75,7 @@ export function FilterChips<V extends string | number>({
             borderColor={chosen ? "brand.solid" : "border"}
             fontWeight="normal"
             aria-pressed={chosen}
+            title={chip.title}
             data-testid={`${testId}-${String(chip.value)}`}
             onClick={() => onChange(chip.value)}
           >
@@ -76,6 +83,7 @@ export function FilterChips<V extends string | number>({
           </Button>
         );
       })}
+      {trailing}
     </HStack>
   );
 }

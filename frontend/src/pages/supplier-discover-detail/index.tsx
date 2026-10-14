@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
@@ -15,6 +16,15 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { DISCOVER_SUPPLIER_DETAIL_PENDING } from "./pending";
+import type { FigureMarks } from "../../features/suppliers/SupplierFigures";
+import { RelatedWarehouses } from "../../features/suppliers/RelatedWarehouses";
+import { sampleWarehousesFor } from "../../features/suppliers/sampleWarehouses";
+
+// Each store's and product's Terjual and Siap carry THIS page's marks (`the-detail-tabs-show-sold-and-ready`).
+const FIGURE_MARKS: FigureMarks = {
+  sold: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="sold" />,
+  ready: <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="ready" />,
+};
 
 function parseSupplierId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -51,6 +61,8 @@ export function DiscoverSupplierDetailPage() {
   const { t } = useTranslation();
 
   const id = parseSupplierId(supplierId);
+  // The warehouse the page is scoped to — 0n is every one (a-supplier-page-is-scoped-by-its-warehouses).
+  const [warehouseId, setWarehouseId] = useState(0n);
   const query = useDiscoverSupplier({ teamId: current?.teamId, supplierId: id });
   const supplier = query.data ?? null;
   // The WHOLE store list — the Products tab's sample rows are made from every store. The Channels tab reads its
@@ -125,6 +137,23 @@ export function DiscoverSupplierDetailPage() {
 
       <NotImplementedSummary list={DISCOVER_SUPPLIER_DETAIL_PENDING} />
 
+      {/* GUDANG TERKAIT — the warehouses its restocks were received at, and the page's scope: a chip picked narrows every
+          tab (`a-supplier-page-is-scoped-by-its-warehouses`). Over the tabs, since a tab cannot narrow the tabs beside it.
+          Each chip is a warehouse's name; under them, what this supplier's goods did in the chosen one or in all
+          (`a-warehouse-chip-is-its-name-and-the-summary-follows-it`). Sample warehouses, and a pick that only switches
+          that summary — both marked. */}
+      <RelatedWarehouses
+        warehouses={sampleWarehousesFor(supplier.id, channelsQuery.data?.length ?? 0)}
+        value={warehouseId}
+        onChange={setWarehouseId}
+        marks={
+          <>
+            <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="warehouses" />
+            <NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="warehouseFilter" />
+          </>
+        }
+      />
+
       <Tabs.Root defaultValue="channels" lazyMount unmountOnExit data-testid="supplier-tabs">
         <Tabs.List>
           <Tabs.Trigger value="channels" data-testid="supplier-tab-channels">
@@ -143,15 +172,15 @@ export function DiscoverSupplierDetailPage() {
 
         {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
         <Tabs.Content value="channels">
-          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} />
+          <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} figureMarks={FIGURE_MARKS} />
         </Tabs.Content>
 
         <Tabs.Content value="products">
-          <ProductBrowser channels={channelsQuery.data ?? []} />
+          <ProductBrowser channels={channelsQuery.data ?? []} figureMarks={FIGURE_MARKS} />
         </Tabs.Content>
 
         <Tabs.Content value="statistics">
-          <SupplierStatistics supplierId={supplier.id} />
+          <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="sales" />} />
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

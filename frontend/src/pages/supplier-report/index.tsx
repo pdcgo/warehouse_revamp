@@ -27,6 +27,9 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_REPORT_PENDING } from "./pending";
 
+// Penjualan beside Direstok carries THIS page's mark (`sales-sit-beside-restocked`).
+const SALES_MARK = <NotImplemented list={SUPPLIER_REPORT_PENDING} id="sales" />;
+
 const PAGE_SIZE = 20;
 
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up); Chakra's `_hover` honours `data-hover`.
@@ -163,6 +166,7 @@ export function SupplierReportPage() {
         <Stack gap="2" data-testid="supplier-report-table">
           {rows.map((row) => (
             <FigureBlock
+              salesMark={SALES_MARK}
               key={row.supplier.id.toString()}
               title={t("supplierReport.rankedName", { rank: row.rank, name: nameOf(row) })}
               sub={
@@ -188,7 +192,7 @@ export function SupplierReportPage() {
               <Table.ColumnHeader w="3rem">{t("supplierReport.col.rank")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("supplierReport.col.supplier")}</Table.ColumnHeader>
               <Table.ColumnHeader>{t("supplierReport.col.keptBy")}</Table.ColumnHeader>
-              <FigureHeaders />
+              <FigureHeaders salesMark={SALES_MARK} />
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -297,7 +301,7 @@ export function SupplierReportPage() {
       )}
 
       <RefreshOverlay busy={busy}>
-        <FiguresSummary figures={ranking.data?.total} testId="supplier-report-summary" />
+        <FiguresSummary figures={ranking.data?.total} salesMark={SALES_MARK} testId="supplier-report-summary" />
       </RefreshOverlay>
 
       <Stack gap="field">

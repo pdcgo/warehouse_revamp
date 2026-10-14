@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { channelFixture, supplierFixture } from "../../../.storybook/supplierFixtures";
 import { ChannelBrowser } from "./ChannelBrowser";
+import { LIST_FIGURE_MARKS } from "./SupplierFigures";
 
 // A supplier's Channels tab, shared by the manage detail (with its actions) and the discover detail (read-only)
 // — supplier-detail-has-channels-and-products-tabs. It reads its own page from SupplierChannelList, which searches,
@@ -24,7 +25,8 @@ const TEAM = 12n;
 const meta = {
   title: "Features/Suppliers/ChannelBrowser",
   component: ChannelBrowser,
-  args: { teamId: TEAM, supplierId: SUMBER.id },
+  // Any page's marks will do here — the page numbers them; the story only needs them drawn.
+  args: { teamId: TEAM, supplierId: SUMBER.id, figureMarks: LIST_FIGURE_MARKS },
 } satisfies Meta<typeof ChannelBrowser>;
 
 export default meta;

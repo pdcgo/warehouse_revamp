@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { rpcError } from "../../../api/clients";
 import type { SupplierChannelRecord } from "../../../features/suppliers/adapt";
 import { ChannelBrowser } from "../../../features/suppliers/ChannelBrowser";
+import type { FigureMarks } from "../../../features/suppliers/SupplierFigures";
 import { useDeleteSupplierChannel } from "../../../features/suppliers/queries";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { toaster } from "../../../components/feedback/Toaster";
@@ -18,11 +19,14 @@ export function ChannelsPanel({
   teamId,
   supplierId,
   canManage,
+  figureMarks,
 }: {
   teamId: bigint;
   supplierId: bigint;
   /** The current team keeps this supplier — only then may it add, edit or delete a store. */
   canManage: boolean;
+  /** The page's marks for each store's Terjual and Siap. */
+  figureMarks: FigureMarks;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<SupplierChannelRecord | null>(null);
@@ -74,6 +78,7 @@ export function ChannelsPanel({
         supplierId={supplierId}
         actions={canManage ? <SupplierChannelFormDialog supplierId={supplierId} /> : undefined}
         rowActions={canManage ? rowActions : undefined}
+        figureMarks={figureMarks}
       />
 
       {/* One edit dialog, driven by the row's Edit action. Keyed so it re-initialises per channel. */}

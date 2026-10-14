@@ -251,3 +251,19 @@ export const ExportIsMarkedNotBuilt: Story = {
     await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
   },
 };
+
+// SALES SIT BESIDE RESTOCKED, as on the Statistik tab (sales-sit-beside-restocked) — a Penjualan card after Direstok and
+// a Penjualan column after Direstok; sample figures, marked 2 in THIS page's list (Ekspor is 1).
+export const SalesSitBesideRestocked: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const card = canvas.getByTestId("supplier-report-summary-sales");
+    await expect(within(card).getByTestId("not-implemented-sales")).toHaveTextContent("2");
+
+    const headers = within(canvas.getByTestId("supplier-report-table")).getAllByRole("columnheader");
+    const restocked = headers.findIndex((h) => h.textContent === "Restocked");
+    await expect(headers[restocked + 1]).toHaveTextContent(/^Sales/);
+    await expect(within(headers[restocked + 1]!).getByTestId("not-implemented-sales")).toHaveTextContent("2");
+  },
+};

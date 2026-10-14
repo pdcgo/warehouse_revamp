@@ -1828,6 +1828,26 @@
         "products": {
           "label": "Produk",
           "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun"
+        },
+        "sold": {
+          "label": "Terjual",
+          "reason": "angka contoh — unit terjual dan pesanan terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+        },
+        "ready": {
+          "label": "Siap",
+          "reason": "angka contoh — stok siap dan restok terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+        },
+        "warehouses": {
+          "label": "Gudang terkait",
+          "reason": "data contoh — belum ada yang mencatat di gudang mana restok dari pemasok ini diterima, jadi gudang dan ringkasannya masih karangan"
+        },
+        "warehouseFilter": {
+          "label": "Filter gudang",
+          "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
+        },
+        "sales": {
+          "label": "Penjualan",
+          "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
         }
       },
       "teamAll": "Semua tim",
@@ -1879,7 +1899,21 @@
     "lastOrder": "pesanan {{date}}",
     "lastRestock": "restok {{date}}",
     "rangeAll": "Semua",
-    "warehouseAll": "Semua gudang"
+    "warehouseAll": "Semua gudang",
+    "relatedWarehouses": {
+      "label": "Gudang terkait",
+      "all": "Semua",
+      "none": "Belum pernah direstok ke gudang mana pun.",
+      "more": "+{{count}} Lagi",
+      "summary": {
+        "sold": "Terjual",
+        "ready": "Siap",
+        "units": "{{n}} unit",
+        "orders": "dari {{n}} transaksi",
+        "restocks": "{{n}} restok",
+        "last": "terakhir {{date}}"
+      }
+    }
   },
   "supplierChannel": {
     "deleted": "Toko \"{{name}}\" dihapus",
@@ -1930,6 +1964,26 @@
       "products": {
         "label": "Produk",
         "reason": "data contoh — produk ditautkan ke toko pemasok saat restok yang dibeli di sana diterima, dan itu belum dibangun, jadi baris ini karangan"
+      },
+      "sold": {
+        "label": "Terjual",
+        "reason": "angka contoh — unit terjual dan pesanan terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+      },
+      "ready": {
+        "label": "Siap",
+        "reason": "angka contoh — stok siap dan restok terakhir per toko dan per produk dijumlah dari barang yang dibeli di toko itu, dan belum ada yang mencatat produk mana dibeli di toko mana"
+      },
+      "warehouses": {
+        "label": "Gudang terkait",
+        "reason": "data contoh — belum ada yang mencatat di gudang mana restok dari pemasok ini diterima, jadi gudang dan ringkasannya masih karangan"
+      },
+      "warehouseFilter": {
+        "label": "Filter gudang",
+        "reason": "pilihan gudang baru mengganti ringkasan di bawahnya — belum ada tab yang bisa disaring per gudang"
+      },
+      "sales": {
+        "label": "Penjualan",
+        "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
       }
     },
     "tab": {
@@ -1957,6 +2011,8 @@
   "supplierFigures": {
     "restocked": "Direstok",
     "restockedHint": "unit baik yang diterima ke stok",
+    "sales": "Penjualan",
+    "salesHint": "unit yang terjual ke pembeli",
     "lost": "Hilang di pengiriman",
     "lostHint": "unit yang kurang dalam paket yang diterima",
     "broken": "Rusak di pengiriman",
@@ -1972,6 +2028,7 @@
     "rateBroken": "{{rate}}% rusak",
     "line": {
       "restocked": "Direstok {{n}} · {{value}}",
+      "sales": "Penjualan {{n}} · {{value}}",
       "lost": "Hilang {{n}}",
       "broken": "Rusak {{n}}"
     },
@@ -1980,6 +2037,7 @@
       "product": "Produk",
       "team": "Tim",
       "restocked": "Direstok",
+      "sales": "Penjualan",
       "lost": "Hilang di pengiriman",
       "lostRate": "Tingkat hilang",
       "broken": "Rusak di pengiriman",
@@ -2025,6 +2083,10 @@
       "export": {
         "label": "Ekspor",
         "reason": "Belum ada yang membuat file — isinya peringkat dengan angkanya, dan sehalaman atau seluruh peringkat, masih terbuka."
+      },
+      "sales": {
+        "label": "Penjualan",
+        "reason": "angka contoh — angka pemasok hanya menghitung barang yang masuk dari pemasok, dan belum ada yang menghitung barangnya yang terjual ke pembeli"
       }
     }
   },

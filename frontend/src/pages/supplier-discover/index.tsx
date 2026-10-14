@@ -20,7 +20,8 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
-import { SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
+import { LIST_FIGURE_MARKS, SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
+import { sampleFiguresFor } from "../../features/suppliers/sampleSupplierFigures";
 import {
   type FigureRangePicks,
   NO_FIGURE_RANGES,
@@ -147,7 +148,7 @@ export function DiscoverSuppliersPage() {
             <Table.ColumnHeader>{t("suppliers.discover.table.contact")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("suppliers.discover.table.description")}</Table.ColumnHeader>
             {/* The figures last, at the right edge, as on the supplier list. */}
-            <SupplierFigureHeaders />
+            <SupplierFigureHeaders marks={LIST_FIGURE_MARKS} />
           </Table.Row>
         </Table.Header>
 
@@ -187,7 +188,7 @@ export function DiscoverSuppliersPage() {
                   {s.description || "—"}
                 </Text>
               </Table.Cell>
-              <SupplierFigureCells supplier={s} testIdPrefix="discover" />
+              <SupplierFigureCells figures={sampleFiguresFor(s)} id={s.id} testIdPrefix="discover" />
             </Table.Row>
           ))}
         </Table.Body>

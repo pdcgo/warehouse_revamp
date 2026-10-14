@@ -4,7 +4,8 @@ import { ArrowUpRight } from "lucide-react";
 import { TeamType } from "../../../gen/warehouse/team/v1/team_pb";
 import type { DiscoverSupplier } from "../../../features/suppliers/discover";
 import { ChannelTypes } from "../../../features/suppliers/ChannelTypes";
-import { SupplierFigureIcons } from "../../../features/suppliers/SupplierFigures";
+import { LIST_FIGURE_MARKS, SupplierFigureIcons } from "../../../features/suppliers/SupplierFigures";
+import { sampleFiguresFor } from "../../../features/suppliers/sampleSupplierFigures";
 import { TeamItem } from "../../../components/entity/TeamItem";
 
 // ONE SUPPLIER AS A CARD — Discover's default view (`discover-is-cards-or-a-table`), drawn after the owner's reference
@@ -63,7 +64,11 @@ export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverS
             {supplier.contact || t("suppliers.discover.noContact")}
           </Text>
           <Flex justify="space-between" align="center" gap="2">
-            <SupplierFigureIcons supplier={supplier} testId={`discover-card-figures-${supplier.id}`} />
+            <SupplierFigureIcons
+              figures={sampleFiguresFor(supplier)}
+              marks={LIST_FIGURE_MARKS}
+              testId={`discover-card-figures-${supplier.id}`}
+            />
             {/* ↗ — the card opens the supplier; the arrow says so, bottom right. */}
             <Icon as={ArrowUpRight} boxSize="4" color="fg.muted" flexShrink={0} aria-hidden="true" />
           </Flex>

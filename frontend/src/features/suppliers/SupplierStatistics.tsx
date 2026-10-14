@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 
@@ -36,6 +37,8 @@ export const description =
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
+  /** The page's ⚠ for Penjualan (sales-sit-beside-restocked) — numbered in the page's own pending list. */
+  salesMark: ReactNode;
 }
 
 type StatisticsView = "time" | "product";
@@ -58,7 +61,7 @@ type StatisticsView = "time" | "product";
 //
 // ⚠ FOLDED, NOT LIVE: the figures are supplier_service's fold of *Restock Accepted* (the-report-is-processed-like-settlement),
 // so an accept a moment ago can take a moment to appear.
-export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
+export function SupplierStatistics({ supplierId, salesMark }: SupplierStatisticsProps) {
   const { current } = useTeam();
   const { t } = useTranslation();
 
@@ -176,7 +179,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
         )}
 
         <RefreshOverlay busy={series.isFetching && !series.isPending}>
-          <FiguresSummary figures={series.data?.total} testId="statistics-summary" />
+          <FiguresSummary figures={series.data?.total} salesMark={salesMark} testId="statistics-summary" />
         </RefreshOverlay>
 
         <Stack gap="field">
@@ -186,7 +189,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={series.isFetching && !series.isPending}>
-                  <SeriesTable points={series.data?.points ?? []} grain={grain} />
+                  <SeriesTable points={series.data?.points ?? []} grain={grain} salesMark={salesMark} />
                 </RefreshOverlay>
 
                 {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
@@ -208,7 +211,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
             ) : (
               <Stack gap="field">
                 <RefreshOverlay busy={products.isFetching && !products.isPending}>
-                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} />}
+                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} salesMark={salesMark} />}
                 </RefreshOverlay>
 
                 <GrowingPager
@@ -230,7 +233,15 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
 
 // One row per period, NEWEST first — every period in the window, the quiet ones included: a missing row reads as a
 // period that did not load. Each reads at its grain (a-period-reads-as-its-grain): `2026-10-07`, `Oktober 2026`, `2026`.
-function SeriesTable({ points, grain }: { points: SupplierFigurePoint[]; grain: PeriodGrain }) {
+function SeriesTable({
+  points,
+  grain,
+  salesMark,
+}: {
+  points: SupplierFigurePoint[];
+  grain: PeriodGrain;
+  salesMark: ReactNode;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -258,6 +269,7 @@ function SeriesTable({ points, grain }: { points: SupplierFigurePoint[]; grain: 
             </Text>
           ) : (
             <FigureBlock
+              salesMark={salesMark}
               key={point.at}
               title={formatPeriod(point.at, grain)}
               figures={point.figures}
@@ -275,7 +287,7 @@ function SeriesTable({ points, grain }: { points: SupplierFigurePoint[]; grain: 
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.period")}</Table.ColumnHeader>
-            <FigureHeaders />
+            <FigureHeaders salesMark={salesMark} />
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -296,7 +308,15 @@ function SeriesTable({ points, grain }: { points: SupplierFigurePoint[]; grain: 
 // Product Grouped — the restocking team's product, so two teams buying one item are two rows, each naming its team
 // (every-accepted-line-links-its-own-product). The Team column goes when one team is picked: it would say the same
 // name on every row.
-function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam: boolean }) {
+function ProductTable({
+  rows,
+  showTeam,
+  salesMark,
+}: {
+  rows: SupplierProductRow[];
+  showTeam: boolean;
+  salesMark: ReactNode;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
@@ -327,6 +347,7 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
       <Stack gap="2" data-testid="statistics-products">
         {rows.map((row) => (
           <FigureBlock
+            salesMark={salesMark}
             key={row.key}
             title={productLabel(row)}
             // The team as a badge beside the SKU — the Produk tab's phone block.
@@ -346,7 +367,7 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
           <Table.Row>
             <Table.ColumnHeader>{t("supplierFigures.col.product")}</Table.ColumnHeader>
             {showTeam && <Table.ColumnHeader>{t("supplierFigures.col.team")}</Table.ColumnHeader>}
-            <FigureHeaders />
+            <FigureHeaders salesMark={salesMark} />
           </Table.Row>
         </Table.Header>
         <Table.Body>
