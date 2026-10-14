@@ -21,6 +21,14 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-counted-row-is-read-only-until-sent-back](#a-counted-row-is-read-only-until-sent-back) | a `counted` row is read-only to its counter; the admin sends one back to `created`, its drafts deleted, and staff count it again | chat, 2026-10-13 — Q12, as recommended |
 | [a-surplus-carries-no-reason](#a-surplus-carries-no-reason) | a surplus has no draft and no note — it claims or mints by rule; drafts stay `broken` · `lost` | chat, 2026-10-13 — Q14, as recommended |
 | [the-problem-flow-opens-at-finalize-and-adjustment](#the-problem-flow-opens-at-finalize-and-adjustment) | the stock-problem flow opens at *Finalize Opname* and *Adjustment*, and draws every rule decided — *Lost Found*, the claim row, a surplus with no price not posted | your opname.md edit, 2026-10-13 — Q13, as recommended |
+| [a-session-records-its-plan](#a-session-records-its-plan) | `opname_sessions.plan` says how the session was planned — all racks, a team, a product or a rack | your opname.md edit, 2026-10-14 — Q17, in part |
+| [a-snapshot-is-made-from-product-placements](#a-snapshot-is-made-from-product-placements) | the snapshot step reads `product_placements` and writes one `opname_session_snapshots` row per product on a rack it returns | your opname.md edit, 2026-10-14 — §Stock Opname Flow |
+| [the-plan-target-is-only-a-filter](#the-plan-target-is-only-a-filter) | the team, product or rack a plan picks only filters `product_placements` when the snapshot is made — it is not stored; no `plan_id` | chat, 2026-10-14 — Q17, **against my recommendation** |
+| [a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock) | a unit of a product its team never had in this warehouse is taken off the rack, not written to the session, and comes in by the team's restock | chat, 2026-10-14 — Q18; simpler than my recommendation |
+| [a-snapshot-includes-rows-at-zero](#a-snapshot-includes-rows-at-zero) | the snapshot takes every `product_placements` row the plan selects, rows at 0 included | chat, 2026-10-14 — Q19a, as recommended |
+| [an-all-count-visits-every-rack](#an-all-count-visits-every-rack) | an `all` count lists every rack of the warehouse, empty ones too; other plans list the racks of their rows | chat, 2026-10-14 — Q19b, as recommended |
+| [a-surplus-draft-is-counted-by-the-system](#a-surplus-draft-is-counted-by-the-system) | `opname_surplus_drafts` keeps why a rack is over; its `surplus_stock_count` is the rack's counted − system, set by the system and never typed | your opname.md edit and chat, 2026-10-14 — Q20a, as recommended |
+| [a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft) | every draft — over, broken, lost — needs a typed reason before its row is marked counted; the snapshot row has no `note` | chat, 2026-10-14 — Q20b, as recommended |
 | [a-draft-names-its-session-and-rack](#a-draft-names-its-session-and-rack) | `opname_problems_draft` carries `opname_session_id` and `placement_id`: a draft is what staff saw on one rack, in one session | your opname.md edit, 2026-10-13 — answers Q16a, and draws the draft per rack |
 | [the-difference-is-a-draft-until-finalize](#the-difference-is-a-draft-until-finalize) | a count's broken and lost are `opname_problems_draft` rows, with a note, until finalize turns them into stock problems | your opname.md edit, 2026-10-13 — stores the split of a-count-is-of-sellable-units; answers Q14's shortage half |
 | [a-count-is-of-sellable-units](#a-count-is-of-sellable-units) | staff count sellable units only; at *Staff writing the difference* the shortage splits into broken (`broken_stock_count`, never more than the shortage) and lost | chat, 2026-10-13 — your counting rule, against my *count every unit, of which broken* |
@@ -452,6 +460,8 @@ flowchart LR
 | none here | the surplus line does not post — who then names the owner, and how, is not settled here |
 | the new batch | minted under the count's transaction; no money moves |
 
+🔄 *(2026-10-14)* **Settled**: *none here* is no longer a count's problem — such a unit never enters the session ([a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock)).
+
 ## a-count-is-blind-then-revealed
 
 > Owner, in chat *(2026-10-13)*: *"for 1 c, a . yes blind count and "Staff writing the difference""* — confirmed, asked to
@@ -512,6 +522,8 @@ flowchart LR
 | *Add a product found here* | any product of the warehouse's teams; it joins the session with a `system_stock_count` of 0 on this rack |
 | then | its other racks join the session, and are counted before it finalizes |
 
+🔄 *(2026-10-14)* **Except** a product its team never had in this warehouse: it is taken out, not added ([a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock)).
+
 ## a-count-has-no-tolerance
 
 > Owner, in chat *(2026-10-13)*: *"for q7, q10e follow your recomendation"*. It answers what was left of
@@ -561,6 +573,8 @@ flowchart LR
 | `opname_session_snapshots.recounted_stock_count` | 🆕 optional — the second count, set only when staff recount; named beside your `real_stock_count` (the `recounted` of the clarify) |
 | `real_stock_count` | the blind count, never overwritten |
 | the difference that posts | from `recounted_stock_count` when there is one, else from `real_stock_count` |
+
+🔄 *(2026-10-14)* **Its `note` is dropped** — the reason lives on the draft ([a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft)). The recount, and the blind count never overwritten, stand.
 
 ## the-lock-is-the-open-snapshot-row
 
@@ -842,6 +856,12 @@ flowchart LR
 | `session_placements` | removed |
 | a session's racks | the `placement_id`s of its snapshot rows |
 | an empty rack counted empty | leaves no row; a rack plan's own scope names the rack it planned |
+
+🔄 *(2026-10-14)* *"A rack plan's own scope"* is now `plan` ([a-session-records-its-plan](#a-session-records-its-plan)); **which** rack it planned waits on [Q17](./opname_clarify.md#question).
+
+🔄 *(2026-10-14)* **Settled** by [the-plan-target-is-only-a-filter](#the-plan-target-is-only-a-filter): a rack plan does not keep its rack, so an empty rack counted empty leaves no trace.
+
+🔄 *(2026-10-14)* **An `all` session's racks** are every rack of the warehouse, not only its rows' — [an-all-count-visits-every-rack](#an-all-count-visits-every-rack). Other plans: still its rows'.
 
 ## a-snapshot-row-names-its-transaction
 
@@ -1255,6 +1275,8 @@ flowchart LR
 | a claim or a mint | carries no note |
 | a counter's remark | the snapshot row's `note` ([a-snapshot-row-keeps-its-note-and-recount](#a-snapshot-row-keeps-its-note-and-recount)) |
 
+🔄 *(2026-10-14)* **Reversed by your edit**: a surplus has a draft and a reason — `opname_surplus_drafts` ([a-surplus-draft-is-counted-by-the-system](#a-surplus-draft-is-counted-by-the-system)). Still true: a claim or a mint carries no note.
+
 ## the-problem-flow-opens-at-finalize-and-adjustment
 
 > Owner, in [opname.md](./opname.md) §How We Manage Stock Problem In Warehouses *(2026-10-13)*: the section rewritten — *"oh,
@@ -1298,3 +1320,231 @@ flowchart LR
 | the claim row | [a-claim-names-its-transaction](#a-claim-names-its-transaction), [a-claim-records-its-units](#a-claim-records-its-units) |
 | last price · never had it here | [last-price-is-the-teams-newest-batch-here](#last-price-is-the-teams-newest-batch-here) |
 | an adjustment's found, confirmed by a second person | [an-adjustment-writes-the-same-problem-row](#an-adjustment-writes-the-same-problem-row) |
+
+🔄 *(2026-10-14)* *Not Posted - Owner Unknown* is now a guard that should not fire — such a unit never reaches finalize or an adjustment ([a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock)).
+
+## a-session-records-its-plan
+
+> Owner, in chat and in [opname.md](./opname.md) *(2026-10-14)*: *"for q17 i added it"* — `plan` on `opname_sessions`. It
+> answers the first half of [opname Q17](./opname_clarify.md#question) — *a session does not say what it planned* — as
+> recommended; `plan_id` was not added.
+
+**The verdict.** A session keeps the plan the admin chose in §Stock Opname Flow, so the session list can say *"a team
+count"* or *"a rack count"*, not only *"session 15"*.
+
+```mermaid
+flowchart LR
+  C["Create Session"] --> P{"plan"}
+  P -->|"all"| A["Plan Opname All Rack"]
+  P -->|"team"| T["Plan Specific Team"]
+  P -->|"product"| PR["Plan Specific Product"]
+  P -->|"placement"| PL["Plan Specific Placement"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `opname_sessions.plan` | 🆕 `all` · `team` · `product` · `placement` — the four plans of §Stock Opname Flow |
+| set | when the admin creates the session; never changed |
+
+**What it does NOT settle** — the rest of [Q17](./opname_clarify.md#question): **which** team, product or rack was planned.
+
+🔄 *(2026-10-14)* **Settled**: which team, product or rack is not stored — [the-plan-target-is-only-a-filter](#the-plan-target-is-only-a-filter).
+
+## a-snapshot-is-made-from-product-placements
+
+> Owner, in [opname.md](./opname.md) §Stock Opname Flow *(2026-10-14)*: *"How we create snapshot. first, we query
+> `product_placements` and create `opname_session_snapshots`"*.
+
+**The verdict.** The snapshot is a copy of the shelf book: each `product_placements` row the plan selects becomes one
+snapshot row, carrying the stock the book shows at that moment. Creating the rows is what locks them.
+
+```mermaid
+flowchart LR
+  P["the plan"] --> Q["query product_placements"]
+  Q --> R["one opname_session_snapshots row per product on a rack"]
+  R --> L["open rows - the lock"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the source | `product_placements` — one snapshot row per row it returns |
+| `system_stock_count` | that row's stock at the snapshot — the book ([expected-is-the-book-figure](#expected-is-the-book-figure)) |
+| `team_id` | the product's owning team |
+| `status` | `created` ([a-snapshot-row-is-created-then-counted](#a-snapshot-row-is-created-then-counted)) |
+| the lock | the open rows themselves ([the-lock-is-the-open-snapshot-row](#the-lock-is-the-open-snapshot-row)) |
+
+**What it does NOT settle** — [opname Q19](./opname_clarify.md#question): which rows each plan selects, whether a row at 0 is
+one of them, and how an empty rack is visited.
+
+🔄 *(2026-10-14)* **Settled**: rows at 0 are taken ([a-snapshot-includes-rows-at-zero](#a-snapshot-includes-rows-at-zero)); an `all` count visits every rack ([an-all-count-visits-every-rack](#an-all-count-visits-every-rack)).
+
+## the-plan-target-is-only-a-filter
+
+> Owner, in chat *(2026-10-14)*: *"for q17, no, its just like filter on frontend for creating snapshot"*. It answers
+> [opname Q17](./opname_clarify.md#question) — *which team, product or rack?* — **against my recommendation** of a `plan_id`.
+
+**The verdict.** The team, product or rack the admin picks is a **filter** on the create screen: it chooses which
+`product_placements` rows become snapshot rows, and is then forgotten. The session keeps only the kind of plan; the rows
+are the record of what was counted.
+
+```mermaid
+flowchart LR
+  U["create screen - plan team, filter Toko Melati"] --> Q["query product_placements - filtered"]
+  Q --> R["snapshot rows - the record"]
+  U --> S["opname_sessions.plan = team"]
+  U -.->|"not stored"| X["Toko Melati"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the plan's target | a filter on the create screen — team, product or rack; never stored |
+| `opname_sessions` | `plan` only — no `plan_id` |
+| what a session counted | its snapshot rows: a `team` or `product` session shows its target from them |
+| a rack plan | keeps no rack — its rows include the widened racks ([a-rack-plan-counts-its-products-everywhere](#a-rack-plan-counts-its-products-everywhere)) |
+| an empty rack, planned | the filter selects no row, so there is nothing to count |
+| withdrawn | my `plan_id` |
+
+## a-unit-never-stocked-here-comes-in-by-restock
+
+> Owner, in chat *(2026-10-14)*: *"if that happen, the stock take out phsically from placement. no need writing to opname
+> session. but warehouse staff contact to the related selling team, and let the selling team create restock for that"*. It
+> answers [opname Q18](./opname_clarify.md#question) — *a surplus with no price* — more simply than my recommendation, which
+> wrote the unit into the session and left it *Not Posted* at finalize.
+
+**The verdict.** A unit of a product its team **never had in this warehouse** is not stock here yet. Staff take it off the
+rack and do not count it; the session never hears of it. They tell the selling team, and the team brings it in the way all
+goods come in — a restock, which gives it its cost.
+
+```mermaid
+flowchart LR
+  F["staff find Kaos Hitam - Toko Melati never had it here"] --> O["taken off the rack - not counted"]
+  O --> C["staff contact Toko Melati"]
+  C --> R["Toko Melati - Create Restock, its cost"]
+  R --> A["warehouse - Accept - batch, rack, sellable"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the case | a found unit of a product its team has **no** batch of in this warehouse — nothing to claim, no last price |
+| the session | not written: no snapshot row, no surplus draft, nothing at finalize |
+| the shelf | staff take it off the rack, physically |
+| then | warehouse staff contact the selling team, outside the system |
+| getting in | the team creates a restock; the warehouse accepts it at once — the restock gives the price |
+| how the counter knows | *Add a Product Found Here* says so when that team never had the product here, instead of adding it |
+| outside a count | the same — an adjustment does not record it either |
+| withdrawn | my *Not Posted at finalize*, and its *neither ledger* rule |
+
+## a-snapshot-includes-rows-at-zero
+
+> Owner, in chat *(2026-10-14)*: *"yes make it as recomended"* — to [opname Q19](./opname_clarify.md#question), 19a option i.
+
+**The verdict.** The snapshot filter has no `stock > 0` condition: a shelf row at 0 is counted like any other. The count
+that fixes a wrong-rack pick ([a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count))
+must look where the book says 0 — that is where the unit is.
+
+```mermaid
+flowchart LR
+  O["order lowers Rak A to 0 - picker takes from Rak B"] --> S["snapshot - Rak A 0, Rak B 3"]
+  S --> C["counted - Rak A 1, Rak B 2"]
+  C --> N["net 0 - racks corrected, no money"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the filter | the plan's rows of `product_placements` — `stock_count` 0 included |
+| a 0 row | a snapshot row with `system_stock_count` 0, counted blind like any other |
+| if the lists grow long | fall back to 0 rows only for a product with stock elsewhere in the session — not decided now |
+
+## an-all-count-visits-every-rack
+
+> Owner, in chat *(2026-10-14)*, the same answer — [opname Q19](./opname_clarify.md#question), 19b.
+
+**The verdict.** A whole-warehouse count walks **every** rack, including racks the book says are empty, so a carton put on
+the wrong rack is found where it really is. The counter adds what is there, and the move nets against the rack it is
+missing from.
+
+```mermaid
+flowchart LR
+  P["plan all"] --> R["every rack of the warehouse"]
+  R --> E["Rak D - nothing expected"]
+  E --> F["counter adds Gelas found here - plus 10"]
+  F --> N["nets with Rak C minus 10 - a move"]
+```
+
+**The spec.**
+
+| plan | racks the count lists |
+| --- | --- |
+| `all` | every rack of the warehouse; an empty one shows *nothing expected* |
+| `team` · `product` · `placement` | the racks of its snapshot rows ([the-plan-target-is-only-a-filter](#the-plan-target-is-only-a-filter)) |
+| found on an empty rack | added per [a-counter-may-add-a-product-found-here](#a-counter-may-add-a-product-found-here); a product its team never had here is taken out ([a-unit-never-stocked-here-comes-in-by-restock](#a-unit-never-stocked-here-comes-in-by-restock)) |
+
+## a-surplus-draft-is-counted-by-the-system
+
+> Owner, in [opname.md](./opname.md) *(2026-10-14)*: table `opname_surplus_drafts` — `id`, `warehouse_id`, `team_id`,
+> `product_id`, `placement_id`, `opname_session_id`, `note`, `surplus_stock_count`, `created_at`. Then in chat: *"for 20a,
+> follow your recomendation"* — [opname Q20](./opname_clarify.md#question). It reverses
+> [a-surplus-carries-no-reason](#a-surplus-carries-no-reason).
+
+**The verdict.** A rack that is **over** gets a draft, as a short one does, so the counter's reason is kept. Its number is
+not the counter's to type: it is the rack's counted − system, written by the system when the row is marked counted over,
+moved by a recount, and removed when the over is gone. Staff type only the reason.
+
+```mermaid
+flowchart LR
+  C["Rak B - system 3, counted 4"] --> S["surplus draft - plus 1 by the system"]
+  S --> W["staff type why - found behind Kaos Putih"]
+  R["recount - 3"] -.->|"over gone"| X["draft removed"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `opname_surplus_drafts` | `id` · `warehouse_id` · `team_id` · `product_id` · `placement_id` · `opname_session_id` · `note` · `surplus_stock_count` · `created_at` |
+| written | by the system, when a row is marked counted over — one per over row |
+| `surplus_stock_count` | counted − system for that row, the recount if there is one; never typed |
+| a recount | moves it; at 0 the draft is removed |
+| *Send Back to Count* | deletes it with the row's problem drafts ([a-counted-row-is-read-only-until-sent-back](#a-counted-row-is-read-only-until-sent-back)) |
+| at finalize | not posted — finalize posts the product's net ([broken-posts-as-written-the-rest-nets](#broken-posts-as-written-the-rest-nets)) |
+
+**What it does NOT settle** — 20b of [Q20](./opname_clarify.md#question): the reason is required or not, and whether the
+snapshot row's `note` is dropped now that both drafts carry one.
+
+🔄 *(2026-10-14)* **Settled**: the reason is required, and the snapshot row has no `note` — [a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft).
+
+## a-difference-needs-its-reason-on-the-draft
+
+> Owner, in chat *(2026-10-14)*: *"in frontend, warehouse staff need inputed why its surplus right ? like 'found behind
+> product c'"*, then *"okay, for that i accept recomendation"* — 20b of [opname Q20](./opname_clarify.md#question).
+
+**The verdict.** Every difference carries its reason, typed by staff on the counting screen, on the **draft** — not on the
+snapshot row. A row cannot be marked counted while one of its drafts has no reason. The second person approves a
+difference by reading it.
+
+```mermaid
+flowchart LR
+  R["snapshot row - the numbers only"] -->|"over"| S["surplus draft - Why, required"]
+  R -->|"short"| P["problem draft - broken or lost - Why, required"]
+  S --> F["the second person reads it at finalize"]
+  P --> F
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `opname_surplus_drafts.note` · `opname_problems_drafts.note` | required — *Mark Counted* is refused while a draft of the row has none |
+| the field | *"Why?"*, with an example placeholder: *"e.g. found behind Kaos Putih on Rak B"* |
+| `opname_session_snapshots.note` | dropped — never in your table; withdrawn from the Awaiting list |
+| a row with no difference | no draft, nothing to explain |

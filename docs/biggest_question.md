@@ -14,13 +14,21 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**174 open questions across 37 files.** The seven below are shown; **167 are not** — they are not
+**172 open questions across 37 files.** The seven below are shown; **165 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- ▼ *(2026-10-14)* **172**: opname Q20 closed in chat — a reason is required on every draft ([a-difference-needs-its-reason-on-the-draft](business/inventory/opname_decision.md#a-difference-needs-its-reason-on-the-draft)). **Opname has no open question.**
+- 🔄 *(2026-10-14)* **173**: opname Q20 narrowed — 20a answered (the system fills the surplus count); 20b left.
+- ▼ *(2026-10-14)* **173**: opname Q19 closed in chat, as recommended — rows at 0 snapshotted, an `all` count visits every rack ([a-snapshot-includes-rows-at-zero](business/inventory/opname_decision.md#a-snapshot-includes-rows-at-zero)).
+- ▼ *(2026-10-14)* **174**: opname Q18 closed in chat — a unit never stocked here comes in by restock ([a-unit-never-stocked-here-comes-in-by-restock](business/inventory/opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock)).
+- ▲ *(2026-10-14)* **175**: your `opname_surplus_drafts` — opname Q20, its number and where notes live.
+- ▼ *(2026-10-14)* **174**: opname Q17 closed in chat — the plan's target is only a filter ([the-plan-target-is-only-a-filter](business/inventory/opname_decision.md#the-plan-target-is-only-a-filter)).
+- ▲ *(2026-10-14)* **175**: your §Stock Opname Flow edit — opname Q19, which `product_placements` rows a snapshot takes.
+- 🔄 *(2026-10-14)* **174**: opname Q17 narrowed by your edit — `plan` recorded, `plan_id` open.
 - ▲ *(2026-10-13)* **174**: opname re-checked — Q17 a session does not store its plan, Q18 a surplus with no price has no way in.
 - ▼ *(2026-10-13)* **172**: opname Q13 closed by your rewrite of the stock-problem flow — **opname has no open question** ([the-problem-flow-opens-at-finalize-and-adjustment](business/inventory/opname_decision.md#the-problem-flow-opens-at-finalize-and-adjustment)).
 - ▼ *(2026-10-13)* **173**: opname Q12 and Q14 closed in chat, as recommended — a counted row is read-only until sent back ([a-counted-row-is-read-only-until-sent-back](business/inventory/opname_decision.md#a-counted-row-is-read-only-until-sent-back)), a surplus carries no reason ([a-surplus-carries-no-reason](business/inventory/opname_decision.md#a-surplus-carries-no-reason)).
@@ -67,10 +75,10 @@ flowchart LR
 | **6** | **How is drift repaired when the LOG is right and only the FOLD was lost?** `system_adjustment` moves the log and the report together, so it repairs damage where both were wrong — and every known drift cause leaves only the report wrong | out-of-window report drift, which the replay cannot reach by decision and the adjustment cannot express — found only when a person notices | [settlement](business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) | **A targeted DAY RE-FOLD from the log** — re-read one scope's rows for one day and rewrite that day; it reaches any date and leaves the ledger true. ⚠ It is a second reader of the log, so decide it on its own rather than inheriting [the-replay-seeks-the-broker](business/settlement/context_decision.md#the-replay-seeks-the-broker) |
 | **7** | **Where does a returned parcel land — and does an OWN product go through the cross-product map?** [order_return.md](business/order/order_return.md) adds `product_return_maps` beside a config that already ships: `team_infos.return_warehouse_id`, written by no screen and read by no server. No order-create gate on it exists in code (re-checked 2026-10-12), so nothing live is blocked | the return context, which cannot be built from a flow that clones own products · a duplicate table in a second service | [order_return](business/order/order_return_clarify.md#question) | **No new table** — keep `team_infos.return_warehouse_id`, add a per-**shop** override, resolve it on the order form and **freeze it on the order**. **Gate the request, not the config row** |
 
-## Where the other 167 are
+## Where the other 165 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **174**, the whole set, not to 167. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **172**, the whole set, not to 165. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
@@ -78,7 +86,7 @@ the column sums to **174**, the whole set, not to 167. *Feeds* names the row of 
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 13 |  |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 11 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 |  |
-| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 2 |  |
+| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 9 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | #7 |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | #5 |
@@ -115,5 +123,5 @@ the column sums to **174**, the whole set, not to 167. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **174** across **37** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **172** across **37** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

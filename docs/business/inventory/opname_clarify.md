@@ -3,6 +3,29 @@
 [opname.md](./opname.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [opname_decision.md](./opname_decision.md).
 
+> ✅ **Answered 2026-10-14:** Q20b — a reason is required on every draft; the snapshot row's `note` is dropped ([a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft)).
+> **Opname has no open question.** Left: the contradiction [the-blind-count-lost-its-column](#the-blind-count-lost-its-column)
+> and the [Awaiting](#awaiting-your-text) list.
+>
+> ✅ **Answered 2026-10-14:** Q20a — the surplus draft's number is the system's ([a-surplus-draft-is-counted-by-the-system](./opname_decision.md#a-surplus-draft-is-counted-by-the-system)). Left: 20b.
+>
+> ✅ **Answered 2026-10-14:** Q19, as recommended — rows at 0 are snapshotted, an `all` count visits every rack. Open: Q20.
+>
+> ✅ **Answered 2026-10-14:** Q18 — a unit its team never had here is taken out, not counted, and restocked by the team ([a-unit-never-stocked-here-comes-in-by-restock](./opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock)).
+>
+> 🆕 **Your `opname_surplus_drafts` (2026-10-14):** [Q20](#question) — reasonable as the mirror of the problem drafts; it
+> reverses Q14, and its number and the snapshot row's `note` need settling. Not recorded as a decision until you answer.
+>
+> ✅ **Answered 2026-10-14:** Q17 — the plan's target is only a filter, not stored ([the-plan-target-is-only-a-filter](./opname_decision.md#the-plan-target-is-only-a-filter)), against my `plan_id`.
+> [Q19](#question)'s rack-plan row follows: a rack plan visits the racks of its rows; an empty rack gives none.
+>
+> ✅ **Resolved 2026-10-14:** [the-plan-list-drops-placement](#the-plan-list-drops-placement) — `placement` added.
+>
+> 🔄 **Re-examined after §Stock Opname Flow and the `plan` values (2026-10-14).** Recorded: [a-snapshot-is-made-from-product-placements](./opname_decision.md#a-snapshot-is-made-from-product-placements).
+> 🆕 [Q19](#question) which rows a snapshot takes · 🆕 contradiction [the-plan-list-drops-placement](#the-plan-list-drops-placement).
+>
+> 🔄 **Narrowed by your edit (2026-10-14):** Q17 — `plan` recorded ([a-session-records-its-plan](./opname_decision.md#a-session-records-its-plan)); left: `plan_id`.
+>
 > 🔄 **Re-checked 2026-10-13** after *"opname dont have any question and critique left ?"*: the [Proposed Design](#proposed-design)
 > refreshed (it still showed a `submitted` state and the old register), and two gaps opened — [Q17](#question) a session does
 > not store its plan, [Q18](#question) a surplus with no price has no way in.
@@ -137,13 +160,13 @@ flowchart TB
 erDiagram
   opname_sessions ||--|{ opname_session_snapshots : covers
   opname_sessions ||--o{ opname_problems_drafts : collects
+  opname_sessions ||--o{ opname_surplus_drafts : collects
   warehouse_stock_problems ||--o{ problem_claimed_transactions : "claimed by"
   opname_sessions {
     uint id PK
     uint warehouse_id
     string status "active, finish or cancel"
-    string plan "NEW Q17 - all, team, product or placement"
-    uint plan_id "NEW Q17 - the team, product or rack planned"
+    string plan "decided - all, team, product or placement - its target only filters"
     uint created_by_id
     uint finalized_by_id "awaiting - never a counter"
     bool finalized_as_override "awaiting - root finalized"
@@ -162,7 +185,6 @@ erDiagram
     int system_stock_count
     int real_stock_count "awaiting - the blind count"
     int recounted_stock_count
-    string note "awaiting"
     uint counted_by_id
     datetime released_at "null while counting - the lock"
     datetime created_at
@@ -177,6 +199,17 @@ erDiagram
     string note
     string problem_type "broken or lost"
     int problem_stock_count "broken is posted, lost is a note"
+    datetime created_at
+  }
+  opname_surplus_drafts {
+    uint id PK
+    uint warehouse_id
+    uint team_id
+    uint product_id
+    uint placement_id
+    uint opname_session_id
+    string note
+    int surplus_stock_count "decided - set by the system, never typed"
     datetime created_at
   }
   warehouse_stock_problems {
@@ -276,20 +309,10 @@ The register is your §How We Manage Stock Problem In Warehouses
 14. ✅ *(2026-10-13)* **Answered in chat, as recommended** — [a-surplus-carries-no-reason](./opname_decision.md#a-surplus-carries-no-reason).
 15. ✅ *(2026-10-13)* **Answered by your edit** — [a-problem-row-names-its-rack](./opname_decision.md#a-problem-row-names-its-rack).
 16. ✅ *(2026-10-13)* **Answered in chat** — [broken-posts-as-written-the-rest-nets](./opname_decision.md#broken-posts-as-written-the-rest-nets).
-17. 🆕 *(2026-10-13, found re-checking)* **A session does not say what it planned.** *Plan Specific Team / Product /
-    Placement* is chosen at the start and stored nowhere — `opname_sessions` has no plan. The rows say what was counted, but
-    a rack planned empty leaves no row at all, and the session list can only say *"session 15"*.
-    [session-placements-is-dropped](./opname_decision.md#session-placements-is-dropped) assumed *"a rack plan's own scope names the rack"*,
-    which no column holds.
-    **→ Recommend** two columns on `opname_sessions`: `plan` (`all` · `team` · `product` · `placement`) and `plan_id` (the
-    team, product or rack; empty for `all`). Or say the rows are enough, and that decision's row is corrected.
-18. 🆕 *(2026-10-13, found re-checking)* **A surplus with no price has no way in.**
-    [last-price-is-the-teams-newest-batch-here](./opname_decision.md#last-price-is-the-teams-newest-batch-here) leaves it *Not Posted* when the
-    team never had the product in this warehouse — a returned parcel brought to the nearest warehouse, say — and nobody yet
-    names the owner or the price. The unit sits on a rack the book says is empty, and every next count finds it again.
-    **→ Recommend:** it comes in by the door goods already use. The admin contacts the team, outside the system as
-    [a-team-asks-for-a-count-outside-the-system](./opname_decision.md#a-team-asks-for-a-count-outside-the-system), and the team receives it as
-    a restock, which gives it a price. Until then it is set aside, off the rack.
+17. ✅ *(2026-10-14)* **Answered in chat: a filter, not stored** — [the-plan-target-is-only-a-filter](./opname_decision.md#the-plan-target-is-only-a-filter).
+18. ✅ *(2026-10-14)* **Answered in chat: taken out, not counted, restocked by the team** — [a-unit-never-stocked-here-comes-in-by-restock](./opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock).
+19. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-snapshot-includes-rows-at-zero](./opname_decision.md#a-snapshot-includes-rows-at-zero), [an-all-count-visits-every-rack](./opname_decision.md#an-all-count-visits-every-rack).
+20. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-surplus-draft-is-counted-by-the-system](./opname_decision.md#a-surplus-draft-is-counted-by-the-system), [a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft).
 ---
 
 # Contradiction
@@ -318,7 +341,7 @@ With only one count column, the blind count and the recount share it, and the re
 was shown — replaces what was counted before anyone knew it. That is the number [a-count-is-blind-then-revealed](./opname_decision.md#a-count-is-blind-then-revealed)
 exists to keep.
 
-**→ Recommend:** put `real_stock_count` back beside `recounted_stock_count`, and add `note`. If you meant the rename — one
+**→ Recommend:** put `real_stock_count` back beside `recounted_stock_count`. *(`note` is no longer asked — 2026-10-14, the reason lives on the draft.)* If you meant the rename — one
 count column only — say so, and the decision is renamed rather than left saying the opposite.
 
 ```mermaid
@@ -328,6 +351,11 @@ flowchart LR
   B -.->|"one column only - overwritten"| X["the blind 8 is lost"]
 ```
 
+## the-plan-list-drops-placement
+
+✅ *(2026-10-14)* **Resolved** — you added `placement` to Field `plan` have. Four plans in the field, four in the flow
+([a-session-records-its-plan](./opname_decision.md#a-session-records-its-plan)).
+
 # Awaiting your text
 
 Decided, and not yet in [opname.md](./opname.md) — yours to write:
@@ -335,6 +363,6 @@ Decided, and not yet in [opname.md](./opname.md) — yours to write:
 | where | what | decided by |
 | --- | --- | --- |
 | `opname_sessions` | `finalized_by_id` · `finalized_at` · `finalized_as_override` | [nobody-finalizes-their-own-count](./opname_decision.md#nobody-finalizes-their-own-count), [root-finalizes-only-as-an-override](./opname_decision.md#root-finalizes-only-as-an-override) |
-| `opname_session_snapshots` | `note` — and `real_stock_count` back ([the-blind-count-lost-its-column](#the-blind-count-lost-its-column)) | [a-snapshot-row-keeps-its-note-and-recount](./opname_decision.md#a-snapshot-row-keeps-its-note-and-recount) |
+| `opname_session_snapshots` | `real_stock_count` back ([the-blind-count-lost-its-column](#the-blind-count-lost-its-column)) — `note` withdrawn ([a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft)) | [a-snapshot-row-keeps-its-note-and-recount](./opname_decision.md#a-snapshot-row-keeps-its-note-and-recount) |
 | `problem_claimed_transactions` | `claimed_stock_count` | [a-claim-records-its-units](./opname_decision.md#a-claim-records-its-units) |
 | §How Staff Work On Session | *Send Back to Count* — the admin moves a counted row back to counting, its drafts deleted | [a-counted-row-is-read-only-until-sent-back](./opname_decision.md#a-counted-row-is-read-only-until-sent-back) |
