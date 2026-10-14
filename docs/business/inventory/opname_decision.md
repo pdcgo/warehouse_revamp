@@ -29,6 +29,10 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-all-count-visits-every-rack](#an-all-count-visits-every-rack) | an `all` count lists every rack of the warehouse, empty ones too; other plans list the racks of their rows | chat, 2026-10-14 — Q19b, as recommended |
 | [a-surplus-draft-is-counted-by-the-system](#a-surplus-draft-is-counted-by-the-system) | `opname_surplus_drafts` keeps why a rack is over; its `surplus_stock_count` is the rack's counted − system, set by the system and never typed | your opname.md edit and chat, 2026-10-14 — Q20a, as recommended |
 | [a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft) | every draft — over, broken, lost — needs a typed reason before its row is marked counted; the snapshot row has no `note` | chat, 2026-10-14 — Q20b, as recommended |
+| [a-row-is-marked-counted-after-its-drafts](#a-row-is-marked-counted-after-its-drafts) | a row is counted blind, revealed, recounted once, given its drafts with their reasons — and only then marked counted | your opname.md edit, 2026-10-14 — §How Staff Work On Session redrawn |
+| [a-short-rack-gets-a-lost-draft-from-the-system](#a-short-rack-gets-a-lost-draft-from-the-system) | a rack revealed short gets a `lost` draft for the whole shortage from the system; staff move units to `broken`, and each draft needs its reason | chat, 2026-10-14 — Q21, as recommended |
+| [a-row-keeps-only-its-latest-count](#a-row-keeps-only-its-latest-count) | a snapshot row has one count column, `recounted_stock_count`: the blind count, replaced by the recount when there is one | chat, 2026-10-14 — **against my recommendation** of a separate blind-count column |
+| [finalizing-is-the-agreement](#finalizing-is-the-agreement) | finalizing a session agrees its debt, whoever finalizes — no `finalized_as_override` | chat, 2026-10-14 — **against my recommendation** |
 | [a-draft-names-its-session-and-rack](#a-draft-names-its-session-and-rack) | `opname_problems_draft` carries `opname_session_id` and `placement_id`: a draft is what staff saw on one rack, in one session | your opname.md edit, 2026-10-13 — answers Q16a, and draws the draft per rack |
 | [the-difference-is-a-draft-until-finalize](#the-difference-is-a-draft-until-finalize) | a count's broken and lost are `opname_problems_draft` rows, with a note, until finalize turns them into stock problems | your opname.md edit, 2026-10-13 — stores the split of a-count-is-of-sellable-units; answers Q14's shortage half |
 | [a-count-is-of-sellable-units](#a-count-is-of-sellable-units) | staff count sellable units only; at *Staff writing the difference* the shortage splits into broken (`broken_stock_count`, never more than the shortage) and lost | chat, 2026-10-13 — your counting rule, against my *count every unit, of which broken* |
@@ -133,6 +137,8 @@ flowchart LR
 **What it does NOT settle** — [opname_clarify Q10](./opname_clarify.md#question): the row names no session · whether
 `system_stock_count` includes units sold but still on the rack · who counted it · whether `session_placements` is still
 needed.
+
+🔄 *(2026-10-14)* **Renamed**: what staff found is `recounted_stock_count`, not `real_stock_count` — [a-row-keeps-only-its-latest-count](#a-row-keeps-only-its-latest-count).
 
 ## a-count-locks-the-product-on-the-rack
 
@@ -409,6 +415,8 @@ sequenceDiagram
 
 🔄 *(2026-10-13)* **Drawn**: *Increment Claimed and Write `problem_claimed_transactions`* — [the-problem-flow-opens-at-finalize-and-adjustment](#the-problem-flow-opens-at-finalize-and-adjustment).
 
+🔄 *(2026-10-14)* **Written** in your [opname.md](./opname.md): `claimed_stock_count` on `problem_claimed_transactions`.
+
 ## an-adjustment-writes-the-same-problem-row
 
 > Owner, in chat *(2026-10-13)*, the same answer — [opname Q11e](./opname_clarify.md#question), as recommended.
@@ -497,6 +505,8 @@ flowchart LR
 [Q8](./opname_clarify.md#question) · what "expected" counts — the sold units still waiting on the rack are
 [Q10b](./opname_clarify.md#question) · a tolerance, the rest of [Q7](./opname_clarify.md#question).
 
+🔄 *(2026-10-14)* **Stored** in `recounted_stock_count`, and a recount replaces it — the blind number is not kept ([a-row-keeps-only-its-latest-count](#a-row-keeps-only-its-latest-count)). The count is still made blind.
+
 ## a-counter-may-add-a-product-found-here
 
 > Owner, in chat *(2026-10-13)*: *"for 2 1b, follow your recomendation"*. It answers 1b of
@@ -575,6 +585,8 @@ flowchart LR
 | the difference that posts | from `recounted_stock_count` when there is one, else from `real_stock_count` |
 
 🔄 *(2026-10-14)* **Its `note` is dropped** — the reason lives on the draft ([a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft)). The recount, and the blind count never overwritten, stand.
+
+🔄 *(2026-10-14)* **Reversed in both halves**: its `note` is dropped ([a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft)), and the blind count **is** overwritten by the recount ([a-row-keeps-only-its-latest-count](#a-row-keeps-only-its-latest-count)). Read it as history.
 
 ## the-lock-is-the-open-snapshot-row
 
@@ -762,6 +774,8 @@ flowchart LR
 | the check | the finalizer is not the `counted_by_id` of any of the session's snapshot rows — ⚠ that column is [Q10c](./opname_clarify.md#question), which this decision needs |
 | recorded | `opname_sessions.finalized_by_id`, `finalized_at` |
 
+🔄 *(2026-10-14)* **Written** in your [opname.md](./opname.md): `finalized_by_id` · `finalized_at` on `opname_sessions`.
+
 ## root-finalizes-only-as-an-override
 
 > Owner, in chat *(2026-10-13)*, the same answer — 8d of [opname Q8](./opname_clarify.md#question), as recommended.
@@ -784,6 +798,8 @@ flowchart LR
 | who | Root, and the Administrator of the root team |
 | recorded | `opname_sessions.finalized_as_override` — 🆕 true when the finalizer is not the warehouse team's Owner or Admin |
 | still refused | their own count, per [nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count) |
+
+🔄 *(2026-10-14)* **Its record is reversed**: there is no `finalized_as_override` — a finalize by Root reads like any other ([finalizing-is-the-agreement](#finalizing-is-the-agreement)). Root and the root Administrator may still finalize, never their own count.
 
 ## a-team-asks-for-a-count-outside-the-system
 
@@ -1041,6 +1057,8 @@ stateDiagram-v2
 **What it does NOT settle** — the rest of [Q12](./opname_clarify.md#question): whether a counted row can still be changed by
 its counter, and how the admin sends one row back.
 
+🔄 *(2026-10-14)* **The order is redrawn**: drafts are written **before** the row is marked counted, which closes them — [a-row-is-marked-counted-after-its-drafts](#a-row-is-marked-counted-after-its-drafts).
+
 ## the-difference-is-a-draft-until-finalize
 
 > Owner, in [opname.md](./opname.md) §Table That Must have in Stock Opname *(2026-10-13)*: table `opname_problems_draft` —
@@ -1078,6 +1096,8 @@ before its drafts are written.
 🔄 *(2026-10-13)* **Renamed in your opname.md**: the table is `opname_problems_drafts`.
 
 🔄 *(2026-10-13)* **At finalize** a `broken` draft is posted as written, and a `lost` draft is a note: lost is the netted rest — [broken-posts-as-written-the-rest-nets](#broken-posts-as-written-the-rest-nets).
+
+🔄 *(2026-10-14)* **Who writes it**: a short rack's `lost` draft is the system's, its `broken` drafts are staff's — [a-short-rack-gets-a-lost-draft-from-the-system](#a-short-rack-gets-a-lost-draft-from-the-system).
 
 ## a-draft-names-its-session-and-rack
 
@@ -1249,6 +1269,8 @@ stateDiagram-v2
 | sent back | `status` → `created`; its counts and `counted_by_id` cleared; its `opname_problems_drafts` rows deleted |
 | the lock | unchanged — the row stays open ([the-lock-is-the-open-snapshot-row](#the-lock-is-the-open-snapshot-row)) |
 | finalize | only when every row is `counted` |
+
+🔄 *(2026-10-14)* **Drawn** in your §How Staff Work On Session: *admin Send Back to Count, drafts deleted* — [a-row-is-marked-counted-after-its-drafts](#a-row-is-marked-counted-after-its-drafts).
 
 ## a-surplus-carries-no-reason
 
@@ -1548,3 +1570,120 @@ flowchart LR
 | the field | *"Why?"*, with an example placeholder: *"e.g. found behind Kaos Putih on Rak B"* |
 | `opname_session_snapshots.note` | dropped — never in your table; withdrawn from the Awaiting list |
 | a row with no difference | no draft, nothing to explain |
+
+🔄 *(2026-10-14)* **Every** difference now has a draft — over by [a-surplus-draft-is-counted-by-the-system](#a-surplus-draft-is-counted-by-the-system), short by [a-short-rack-gets-a-lost-draft-from-the-system](#a-short-rack-gets-a-lost-draft-from-the-system) — so every difference reaches the second person with a reason.
+
+## a-row-is-marked-counted-after-its-drafts
+
+> Owner, in [opname.md](./opname.md) §How Staff Work On Session *(2026-10-14)*: the counting box redrawn, as proposed in
+> [drafts-are-drawn-after-the-row-is-closed](./opname_clarify.md#drafts-are-drawn-after-the-row-is-closed) — which it resolves.
+
+**The verdict.** Each row is worked to the end before it is closed: counted blind, revealed, recounted once if the counter
+doubts it, its drafts written with their reasons — and only then marked counted, after which it is read-only until the
+admin sends it back. A session finalizes when every row is counted, by a second person; an abandoned one is cancelled.
+
+```mermaid
+flowchart LR
+  C["count blind"] --> R["revealed"]
+  R -->|"recount once"| C
+  R -->|"a difference stands"| W["drafts with reasons"]
+  R -->|"no difference"| M["marked counted - read-only"]
+  W --> M
+  M -->|"admin Send Back to Count"| C
+```
+
+**The spec** — each step, and the decision it draws.
+
+| step | decided by |
+| --- | --- |
+| count blind, then revealed, one recount | [a-count-is-blind-then-revealed](#a-count-is-blind-then-revealed) |
+| drafts with their reason, before closing | [a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft) |
+| marked counted, then read-only · Send Back to Count | [a-counted-row-is-read-only-until-sent-back](#a-counted-row-is-read-only-until-sent-back) |
+| cancel an abandoned count | [an-abandoned-count-waits-for-the-admin](#an-abandoned-count-waits-for-the-admin) |
+| finalize by a second person, every row counted | [nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count) |
+
+⚠ *Staff submit the blind count* has to store it apart from the recount — the open contradiction
+[the-blind-count-lost-its-column](./opname_clarify.md#the-blind-count-lost-its-column).
+
+🔄 *(2026-10-14)* **Settled**: the blind count and the recount share `recounted_stock_count` — [a-row-keeps-only-its-latest-count](#a-row-keeps-only-its-latest-count).
+
+## a-short-rack-gets-a-lost-draft-from-the-system
+
+> Owner, in chat *(2026-10-14)*: *"yes i follow your recomendation"* — [opname Q21](./opname_clarify.md#question), *must a short
+> rack have a draft?*, option a.
+
+**The verdict.** A short rack is drafted the way an over rack is: the system writes the number, and staff explain it. When
+a row is revealed short, the system writes a `lost` draft for the whole shortage. Staff say how many of those are
+**broken** — taken out and thrown away — and the lost count follows. Each draft needs its reason, so the second person,
+who was not at the rack, always reads why. Without it, a torn shirt in the trash would be booked as lost, and claimable
+forever.
+
+```mermaid
+flowchart LR
+  R["Rak A - expected 5, counted 3"] --> L["system - lost 2"]
+  L --> B["staff - broken 1, torn at the seam"]
+  B --> L2["lost becomes 1 - not found, checked under the shelf"]
+  L2 --> M["Mark Counted"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| revealed short | the system writes one `opname_problems_drafts` row, `lost`, `problem_stock_count` = the shortage |
+| staff | add `broken` drafts — the count and the reason; the `lost` draft's reason too |
+| the lost count | shortage − broken, at least 0, kept by the system; at 0 the `lost` draft is removed |
+| a recount | moves the shortage, and the lost count with it; a recount to no shortage removes the `lost` draft, the `broken` ones stay — those units are in the trash |
+| Mark Counted | refused while any draft has no reason ([a-difference-needs-its-reason-on-the-draft](#a-difference-needs-its-reason-on-the-draft)) |
+| at finalize | broken posted as written; lost is the netted rest, not this number ([broken-posts-as-written-the-rest-nets](#broken-posts-as-written-the-rest-nets)) |
+
+## a-row-keeps-only-its-latest-count
+
+> Owner, in chat *(2026-10-14)*: *"b"* — to *"we already have `system_stock_count`, `recounted_stock_count` right ?"*:
+> two columns, the latest count kept. It resolves the contradiction
+> [the-blind-count-lost-its-column](./opname_clarify.md#the-blind-count-lost-its-column) **against my recommendation** (a), a third column for the blind count.
+
+**The verdict.** A snapshot row keeps the book figure and **one** count. The count is still made blind; if the counter
+recounts after the reveal, the recount replaces it. The second person sees the count that stands, the difference, and its
+drafts' reasons — not what was typed before the reveal.
+
+```mermaid
+flowchart LR
+  B["blind count 8"] --> R["recounted_stock_count 8"]
+  V["reveal - expected 10"] --> RC["recount 10"]
+  RC -->|"replaces"| R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `system_stock_count` | the book at the snapshot |
+| `recounted_stock_count` | the count that stands — the blind count, or the recount that replaced it |
+| `real_stock_count` | not added |
+| the difference | `recounted_stock_count − system_stock_count` |
+| what is given up | the second person cannot see that a recount moved toward the expected figure; the draft's reason and *Send Back to Count* are what is left |
+| withdrawn | my *the blind count, never overwritten* |
+
+## finalizing-is-the-agreement
+
+> Owner, in chat *(2026-10-14)*: *"debt is automatically agreed when finalize it"* — to *keep `finalized_as_override`?*,
+> **against my recommendation** to keep it.
+
+**The verdict.** Finalize **is** the agreement. Whoever finalizes — the warehouse's Owner or Admin, or Root — the session's
+debt is agreed at that moment, and nothing marks one finalize as weaker than another. Who did it is `finalized_by_id`.
+
+```mermaid
+flowchart LR
+  F["Finalize Opname - finalized_by_id, finalized_at"] --> A["the debt is agreed"]
+  A --> P["problem rows - lost_good, broken_good"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `opname_sessions` | `finalized_by_id` · `finalized_at` — no `finalized_as_override` |
+| who may finalize | unchanged — the warehouse's Owner or Admin, or Root and the root Administrator; never a counter ([nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count)) |
+| what is given up | telling, later, a root finalize from the warehouse's own once the finalizer's roles have changed |
+| withdrawn | my `finalized_as_override` |

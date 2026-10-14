@@ -21,6 +21,9 @@ closed, only smaller. The per-file counts are at the bottom.
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- ▼ *(2026-10-14)* **172**: opname Q21 closed in chat — a short rack gets a lost draft from the system ([a-short-rack-gets-a-lost-draft-from-the-system](business/inventory/opname_decision.md#a-short-rack-gets-a-lost-draft-from-the-system)). **Opname has no open question.**
+- 🔄 *(2026-10-14)* **173**: your redrawn counting box resolves an opname contradiction; Q21 still open.
+- ▲ *(2026-10-14)* **173**: opname re-checked — Q21, a short rack can be marked counted with no draft.
 - ▼ *(2026-10-14)* **172**: opname Q20 closed in chat — a reason is required on every draft ([a-difference-needs-its-reason-on-the-draft](business/inventory/opname_decision.md#a-difference-needs-its-reason-on-the-draft)). **Opname has no open question.**
 - 🔄 *(2026-10-14)* **173**: opname Q20 narrowed — 20a answered (the system fills the surplus count); 20b left.
 - ▼ *(2026-10-14)* **173**: opname Q19 closed in chat, as recommended — rows at 0 snapshotted, an `all` count visits every rack ([a-snapshot-includes-rows-at-zero](business/inventory/opname_decision.md#a-snapshot-includes-rows-at-zero)).

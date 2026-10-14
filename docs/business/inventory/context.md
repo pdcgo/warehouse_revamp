@@ -3,6 +3,7 @@
 
 ## General.
 1. for restock reference, [see this](./restock.md)
+2. when we on git branch `thoni`. avoid this context, `thoni` have own consideration. dont make this context as reference, decision and other. make this context folder like dont exists and ignored
 
 ## Responsbility.
 1. managing stock.

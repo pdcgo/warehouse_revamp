@@ -11,14 +11,23 @@
     - `id` as primary key
     - `warehouse_id`
     - `status`
+    - `plan`
 
     - `created_by_id`
+    - `finalized_by_id`
+    - `finalized_at`
     - `created_at`
 
     Field `status` have:
     - `active`
     - `finish`
     - `cancel`
+
+    Field `plan` have:
+    - `all`
+    - `team`
+    - `product`
+    - `placement`
 
 2. Table `opname_session_snapshots`
 
@@ -63,7 +72,22 @@
     - `broken`
     - `lost`
 
-4. Table `warehouse_stock_problems`
+4. Table `opname_surplus_drafts`
+
+    Field that must have:
+    - `id` as primary key
+    - `warehouse_id`
+    - `team_id`
+    - `product_id`
+    - `placement_id`
+    - `opname_session_id`
+    
+    - `note`
+    - `surplus_stock_count`
+    - `created_at`
+
+
+5. Table `warehouse_stock_problems`
 
     Field that must have:
     - `id` as primary key
@@ -92,12 +116,13 @@
     - `broken`
     - `lost`
 
-5. Table `problem_claimed_transactions`
+6. Table `problem_claimed_transactions`
     Field that must have:
     - `id` as primary key
     - `warehouse_id`
     - `problem_id`
     - `transaction_id`
+    - `claimed_stock_count`
     - `created_at`
 
 
@@ -137,6 +162,10 @@ submit-->finalize
 finalize-->end: release lock
 
 ```
+1. How we create snapshot.
+    first, we query `product_placements` and create `opname_session_snapshots`
+
+
 
 ## How Staff Work On Session.
 ```mermaid
@@ -147,7 +176,6 @@ state "Opname Cancel" as opcancel
 state op_choice <<choice>>
 state "Finalize Opname" as finalize
 
-
 [*]-->opc
 opc-->op_choice
 op_choice-->countops: admin watch page and refresh opname session detail periodically
@@ -157,18 +185,23 @@ opcancel-->[*]
 countops: Counting Operation
 state countops {
     state "Session Page Watch" as watch
-    state "Snapshot Counted" as counted
     state "Counting Snapshot" as counting
-    state "Create Draft Change" as draft
+    state "Count Revealed" as revealed
+    state "Write Drafts With Reason" as draft
+    state "Snapshot Counted" as counted
 
-    
     watch-->counting: Staff Start Counting
-    counting-->counted: Staff mark counted snapshot
-    counted-->draft: create draft change
-    draft-->watch: admin see updated
+    counting-->revealed: staff submit the blind count
+    revealed-->counting: staff recount once
+    revealed-->draft: a difference stands
+    revealed-->counted: no difference
+    draft-->counted: staff mark counted, every draft has a reason
+    counted-->watch: admin see updated
+    counted-->counting: admin Send Back to Count, drafts deleted
 }
 
-countops-->finalize
+countops-->opcancel: admin cancels an abandoned count
+countops-->finalize: every row counted, a second person finalizes
 
 finalize-->[*]
 

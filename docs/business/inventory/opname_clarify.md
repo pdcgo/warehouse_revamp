@@ -3,6 +3,23 @@
 [opname.md](./opname.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [opname_decision.md](./opname_decision.md).
 
+> ✅ **Dropped 2026-10-14:** `finalized_as_override` — finalizing is the agreement ([finalizing-is-the-agreement](./opname_decision.md#finalizing-is-the-agreement)). **Opname: no open
+> question, no open contradiction, nothing awaiting your text.**
+>
+> ✅ **Written 2026-10-14:** `finalized_by_id` · `finalized_at` and `claimed_stock_count`. Left in Awaiting: `finalized_as_override`.
+>
+> ✅ **Resolved 2026-10-14:** [the-blind-count-lost-its-column](#the-blind-count-lost-its-column) — option b, one count column ([a-row-keeps-only-its-latest-count](./opname_decision.md#a-row-keeps-only-its-latest-count)). **No open question, no open
+> contradiction.** Left: the [Awaiting](#awaiting-your-text) list.
+>
+> ✅ **Answered 2026-10-14:** Q21 — a short rack gets a lost draft from the system ([a-short-rack-gets-a-lost-draft-from-the-system](./opname_decision.md#a-short-rack-gets-a-lost-draft-from-the-system)). **Opname has no
+> open question.** Left: [the-blind-count-lost-its-column](#the-blind-count-lost-its-column) and the [Awaiting](#awaiting-your-text) list.
+>
+> ✅ **Resolved 2026-10-14:** [drafts-are-drawn-after-the-row-is-closed](#drafts-are-drawn-after-the-row-is-closed) — your redrawn counting box ([a-row-is-marked-counted-after-its-drafts](./opname_decision.md#a-row-is-marked-counted-after-its-drafts)). Open: [Q21](#question).
+>
+> 🔄 **Re-checked 2026-10-14** after *"any critique or question in opname ?"*: 🆕 contradiction
+> [drafts-are-drawn-after-the-row-is-closed](#drafts-are-drawn-after-the-row-is-closed) — your counting box writes drafts after the row is closed; a redraw to paste is in it. 🆕 [Q21](#question)
+> a short rack can be marked counted with no draft.
+>
 > ✅ **Answered 2026-10-14:** Q20b — a reason is required on every draft; the snapshot row's `note` is dropped ([a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft)).
 > **Opname has no open question.** Left: the contradiction [the-blind-count-lost-its-column](#the-blind-count-lost-its-column)
 > and the [Awaiting](#awaiting-your-text) list.
@@ -168,9 +185,8 @@ erDiagram
     string status "active, finish or cancel"
     string plan "decided - all, team, product or placement - its target only filters"
     uint created_by_id
-    uint finalized_by_id "awaiting - never a counter"
-    bool finalized_as_override "awaiting - root finalized"
-    datetime finalized_at "awaiting"
+    uint finalized_by_id "never a counter"
+    datetime finalized_at "finalize is the agreement"
     datetime created_at
   }
   opname_session_snapshots {
@@ -183,8 +199,7 @@ erDiagram
     uint transaction_id "set at finalize"
     string status "created or counted"
     int system_stock_count
-    int real_stock_count "awaiting - the blind count"
-    int recounted_stock_count
+    int recounted_stock_count "the count that stands - blind, or the recount"
     uint counted_by_id
     datetime released_at "null while counting - the lock"
     datetime created_at
@@ -313,6 +328,7 @@ The register is your §How We Manage Stock Problem In Warehouses
 18. ✅ *(2026-10-14)* **Answered in chat: taken out, not counted, restocked by the team** — [a-unit-never-stocked-here-comes-in-by-restock](./opname_decision.md#a-unit-never-stocked-here-comes-in-by-restock).
 19. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-snapshot-includes-rows-at-zero](./opname_decision.md#a-snapshot-includes-rows-at-zero), [an-all-count-visits-every-rack](./opname_decision.md#an-all-count-visits-every-rack).
 20. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-surplus-draft-is-counted-by-the-system](./opname_decision.md#a-surplus-draft-is-counted-by-the-system), [a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft).
+21. ✅ *(2026-10-14)* **Answered in chat, as recommended** — [a-short-rack-gets-a-lost-draft-from-the-system](./opname_decision.md#a-short-rack-gets-a-lost-draft-from-the-system).
 ---
 
 # Contradiction
@@ -329,40 +345,23 @@ unit gone from a rack.
 
 ## the-blind-count-lost-its-column
 
-*(2026-10-13, your snapshot-table edit)* The table now reads `system_stock_count` · `recounted_stock_count`, and
-`real_stock_count` is gone:
-
-| where | says |
-| --- | --- |
-| [a-snapshot-row-keeps-its-note-and-recount](./opname_decision.md#a-snapshot-row-keeps-its-note-and-recount), decided today | `real_stock_count` is the **blind count, never overwritten**; `recounted_stock_count` is the second count, set only when staff recount; plus a `note` |
-| [opname.md](./opname.md) `opname_session_snapshots`, now | `system_stock_count` · `recounted_stock_count` — no `real_stock_count`, no `note` |
-
-With only one count column, the blind count and the recount share it, and the recount — made **after** the expected figure
-was shown — replaces what was counted before anyone knew it. That is the number [a-count-is-blind-then-revealed](./opname_decision.md#a-count-is-blind-then-revealed)
-exists to keep.
-
-**→ Recommend:** put `real_stock_count` back beside `recounted_stock_count`. *(`note` is no longer asked — 2026-10-14, the reason lives on the draft.)* If you meant the rename — one
-count column only — say so, and the decision is renamed rather than left saying the opposite.
-
-```mermaid
-flowchart LR
-  B["blind count 8 - real_stock_count"] --> V["reveal - expected 10"]
-  V --> R["recount 9 - recounted_stock_count"]
-  B -.->|"one column only - overwritten"| X["the blind 8 is lost"]
-```
+✅ *(2026-10-14)* **Resolved in chat, option b** — one count column; the recount replaces the blind count ([a-row-keeps-only-its-latest-count](./opname_decision.md#a-row-keeps-only-its-latest-count)).
 
 ## the-plan-list-drops-placement
 
 ✅ *(2026-10-14)* **Resolved** — you added `placement` to Field `plan` have. Four plans in the field, four in the flow
 ([a-session-records-its-plan](./opname_decision.md#a-session-records-its-plan)).
 
+## drafts-are-drawn-after-the-row-is-closed
+
+✅ *(2026-10-14)* **Resolved** — you pasted the redraw ([a-row-is-marked-counted-after-its-drafts](./opname_decision.md#a-row-is-marked-counted-after-its-drafts)): drafts come before *Mark Counted*, and
+*Send Back to Count*, the cancel and the second person are drawn.
+
 # Awaiting your text
+
+✅ *(2026-10-14)* **Nothing awaiting** — every decision is in [opname.md](./opname.md); the last, `finalized_as_override`, was dropped ([finalizing-is-the-agreement](./opname_decision.md#finalizing-is-the-agreement)).
 
 Decided, and not yet in [opname.md](./opname.md) — yours to write:
 
 | where | what | decided by |
 | --- | --- | --- |
-| `opname_sessions` | `finalized_by_id` · `finalized_at` · `finalized_as_override` | [nobody-finalizes-their-own-count](./opname_decision.md#nobody-finalizes-their-own-count), [root-finalizes-only-as-an-override](./opname_decision.md#root-finalizes-only-as-an-override) |
-| `opname_session_snapshots` | `real_stock_count` back ([the-blind-count-lost-its-column](#the-blind-count-lost-its-column)) — `note` withdrawn ([a-difference-needs-its-reason-on-the-draft](./opname_decision.md#a-difference-needs-its-reason-on-the-draft)) | [a-snapshot-row-keeps-its-note-and-recount](./opname_decision.md#a-snapshot-row-keeps-its-note-and-recount) |
-| `problem_claimed_transactions` | `claimed_stock_count` | [a-claim-records-its-units](./opname_decision.md#a-claim-records-its-units) |
-| §How Staff Work On Session | *Send Back to Count* — the admin moves a counted row back to counting, its drafts deleted | [a-counted-row-is-read-only-until-sent-back](./opname_decision.md#a-counted-row-is-read-only-until-sent-back) |
