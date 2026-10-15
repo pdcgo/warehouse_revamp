@@ -53,6 +53,7 @@ when it applies one of these.
 | [every-page-has-a-mobile-story](#every-page-has-a-mobile-story) | every page's stories include one named **Mobile**, right after Default | the order screens |
 | [a-page-story-has-its-shells-gutter](#a-page-story-has-its-shells-gutter) | a page story is framed by its shell's gutter — 12px on a phone, 20px from `md` — never Storybook's padding on top | every page story |
 | [a-phone-pager-is-centred-without-a-page-size](#a-phone-pager-is-centred-without-a-page-size) | on a phone the pager's buttons are centred and it draws no per-page selector | `GrowingPager`, every list |
+| [a-counted-line-is-three-columns](#a-counted-line-is-three-columns) | a screen that counts line by line gives each line Accept Delivery's frame — what it is · what you type · what it means — in a fixed shape, under a sticky header | Accept Delivery, then the stock count's Count page |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1125,6 +1126,33 @@ Per halaman [10 ⌄]    ‹ [1] 2 ›                         ‹ [1] 2 ›
 | a desktop | unchanged — the selector on the left of the buttons, the row on the right |
 | amends | *per page: the selector sits beside it* in [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) — not on a phone. The pager itself is still always on screen |
 | not chosen | *Muat lebih banyak*, endless scroll, Prev/Next — offered, kept as it is |
+
+## a-counted-line-is-three-columns
+
+> Owner, in chat (2026-10-14), previewing the stock count prototype: *"why count page so weird ? any recomendation ? like
+> restock layout when accepting ?"* — then, to the sketch: *"yes like that"*.
+
+```
+sticky:  ←  Count #15 · A-01-1  [All racks]            1 of 3 counted  [Change Rack] [Add Found]
+┌──────────────────────┬────────────────────────────┬────────────────────────────┐
+│ [img] product name   │ ☑ Your Count    ↺ Recount  │ ⚖ The Difference        −2 │
+│ SKU · team           │ Counted *  [− _ +] [Submit]│ Of the missing, broken [ ] │
+│ ● state              │ Counted                 2  │ Lost 2 *  [why… e.g. …   ] │
+│                      │ Expected      ⊘ hidden     │           [✓ Mark Counted] │
+│                      │ Difference              —  │                            │
+└──────────────────────┴────────────────────────────┴────────────────────────────┘
+        below lg the three columns stack inside the card; on a phone the header's actions fold into ⋯
+```
+
+| | |
+| --- | --- |
+| the line | **three columns** — *what it is* (picture, name, SKU, team, state), *what you type* (the count, then the figures it gives), *what it means* (the difference and its reasons, on a grey ground). `minmax(0,3fr) 4fr 4fr` |
+| the frame | **fixed** — a figure not known yet reads **—** (or *hidden*, for a book figure before a blind count), never a different card per state. A rack or a box is scanned down one column |
+| the picture | always — someone at a shelf or a box recognises the picture before the SKU (`ProductListItem`) |
+| the header | sticky: back, the title, where you are, the progress, the actions; one row with `⋯` on a phone ([the-phone-header-is-one-row](#the-phone-header-is-one-row)) |
+| stacks | below `lg` on the Count page (its columns are light); Accept Delivery keeps `xl` — a placement picker needs the room |
+| not a card in a card | the two typed columns are bordered boxes inside the line's card, as Accept Delivery's are — the one pattern the owner pointed at |
+| was | the Count page stacked every field on the left, each card a different shape by state — *"so weird"* |
 
 ## Recorded elsewhere
 

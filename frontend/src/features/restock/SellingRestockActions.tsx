@@ -22,8 +22,6 @@ import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_re
 import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { useCancelRestockRequest, useMarkLostRestockRequest } from "./queries";
 import { committedValue } from "./summary";
-import type { PendingList } from "../../features/pending/registry";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatRupiah } from "../../lib/money";
@@ -68,13 +66,11 @@ export interface SellingRestockActionsProps {
    * (a desktop header, where there is room to name them).
    */
   variant: "menu" | "buttons";
-  /** The screen's pending list — it must carry `moneyReturned` and `markLost`. */
-  pending: PendingList<string>;
 }
 
 // The actions, and the two dialogs behind them. Nothing renders when the status allows nothing — a disabled button
 // would offer an act the server can only refuse.
-export function SellingRestockActions({ request, teamId, variant, pending }: SellingRestockActionsProps) {
+export function SellingRestockActions({ request, teamId, variant }: SellingRestockActionsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<"" | "cancel" | "markLost">("");
@@ -97,10 +93,6 @@ export function SellingRestockActions({ request, teamId, variant, pending }: Sel
     }
   }
 
-  // A mark on an action whose RPC the real server does not answer yet. Rendered inside the label so it travels
-  // with the action into either variant.
-  const mark = (action: SellingAction) =>
-    action === "markLost" ? <NotImplemented list={pending} id="markLost" /> : null;
 
   return (
     <>
@@ -116,7 +108,6 @@ export function SellingRestockActions({ request, teamId, variant, pending }: Sel
             >
               <Icon as={LOOK[action].icon} boxSize="4" />
               {t(LOOK[action].labelKey)}
-              {mark(action)}
             </Button>
           ))}
         </HStack>
@@ -145,7 +136,6 @@ export function SellingRestockActions({ request, teamId, variant, pending }: Sel
                   >
                     <Icon as={LOOK[action].icon} boxSize="4" />
                     {t(LOOK[action].labelKey)}
-                    {mark(action)}
                   </Menu.Item>
                 ))}
               </Menu.Content>
@@ -156,10 +146,10 @@ export function SellingRestockActions({ request, teamId, variant, pending }: Sel
 
       {/* Mounted only while open, so each opening starts from an unanswered question. */}
       {dialog === "cancel" && (
-        <CancelRestockDialog request={request} teamId={teamId} pending={pending} onClose={() => setDialog("")} />
+        <CancelRestockDialog request={request} teamId={teamId} onClose={() => setDialog("")} />
       )}
       {dialog === "markLost" && (
-        <MarkLostDialog request={request} teamId={teamId} pending={pending} onClose={() => setDialog("")} />
+        <MarkLostDialog request={request} teamId={teamId} onClose={() => setDialog("")} />
       )}
     </>
   );
@@ -170,12 +160,10 @@ export function SellingRestockActions({ request, teamId, variant, pending }: Sel
 function CancelRestockDialog({
   request,
   teamId,
-  pending,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
-  pending: PendingList<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -207,7 +195,6 @@ function CancelRestockDialog({
           <HStack gap="1.5">
             {t("restock.cancel.moneyQuestion")}
             <Field.RequiredIndicator />
-            <NotImplemented list={pending} id="moneyReturned" />
           </HStack>
         </Field.Label>
         <RadioGroup.Root
@@ -242,12 +229,10 @@ function CancelRestockDialog({
 function MarkLostDialog({
   request,
   teamId,
-  pending,
   onClose,
 }: {
   request: RestockRequest;
   teamId: bigint;
-  pending: PendingList<string>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -277,7 +262,6 @@ function MarkLostDialog({
         <Field.Label>
           <HStack gap="1.5">
             {t("restock.lost.reason")}
-            <NotImplemented list={pending} id="markLost" />
           </HStack>
         </Field.Label>
         <Textarea

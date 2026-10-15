@@ -380,7 +380,3 @@ export const AcceptingCountsTheBoxIn: Story = {
     await expect(rice.problems!.find((p) => p.type === RestockProblemType.MISSING)?.count).toBe(1n);
   },
 };
-
-export const WithoutTheMarks: Story = {
-  globals: { pendingMarks: "off" },
-};

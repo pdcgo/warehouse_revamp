@@ -167,17 +167,7 @@
     "recordFromAccountHelp": "Rekening tempat transfer keluar. Saat mereka menerima, jumlahnya dikeluarkan dari rekening ini.",
     "confirmToAccount": "Diterima di",
     "confirmToAccountPlaceholder": "Pilih rekening tempat uang masuk",
-    "confirmToAccountHelp": "Rekening tempat Anda melihat uang ini masuk. Menerima bersifat final, jadi cocokkan dulu dengan bank Anda.",
-    "pending": {
-      "fromAccount": {
-        "label": "Dibayar dari",
-        "reason": "Pembayaran belum membawa rekening, jadi pilihan Anda belum disimpan. Setelah itu tersedia, menerima pembayaran mengeluarkan jumlahnya dari rekening ini."
-      },
-      "toAccount": {
-        "label": "Diterima di",
-        "reason": "Penerimaan belum membawa rekening, jadi pilihan Anda belum disimpan. Setelah itu tersedia, jumlahnya ditambahkan ke rekening ini."
-      }
-    }
+    "confirmToAccountHelp": "Rekening tempat Anda melihat uang ini masuk. Menerima bersifat final, jadi cocokkan dulu dengan bank Anda."
   },
   "common": {
     "perPage": "Per halaman",
@@ -1049,25 +1039,7 @@
     "teamRef": "Tim #{{id}}",
     "warehouseRef": "Gudang #{{id}}",
     "selling": {
-      "searchPlaceholder": "Cari restok, resi, faktur, atau SKU",
-      "pending": {
-        "lineSupplier": {
-          "label": "Pemasok",
-          "reason": "Pemasok dan toko sebuah baris belum disimpan, dan nama toko belum disajikan — server asli menampilkan setiap baris belum terhubung."
-        },
-        "courier": {
-          "label": "Kurir",
-          "reason": "Kurir (kanal pengiriman) belum disimpan — server asli tidak mengembalikannya."
-        },
-        "moneyReturned": {
-          "label": "Apakah uangnya kembali?",
-          "reason": "Pembatalan menanyakannya, tetapi jawabannya belum diteruskan ke akun yang membayar."
-        },
-        "markLost": {
-          "label": "Tandai Hilang",
-          "reason": "Menandai restok hilang belum dibuat di server — jawabannya \"belum diimplementasikan\"."
-        }
-      }
+      "searchPlaceholder": "Cari restok, resi, faktur, atau SKU"
     },
     "searchPlaceholder": "Cari restok, resi, pesanan atau SKU",
     "warehouseAll": "Semua gudang",
@@ -1102,17 +1074,7 @@
       "actorCreated": "Dibuat oleh",
       "actorAccepted": "Dihitung oleh",
       "actorAll": "Siapa saja",
-      "restocksHint": "dalam perjalanan atau di pintu",
-      "pending": {
-        "courier": {
-          "label": "Kurir",
-          "reason": "Kurir (kanal pengiriman) belum disimpan — server asli tidak mengembalikannya."
-        },
-        "signForBox": {
-          "label": "Tandai Tiba",
-          "reason": "Menandai paket tiba belum dibuat di server — jawabannya \"belum diimplementasikan\". Menerima tetap bisa langsung dari dalam perjalanan."
-        }
-      }
+      "restocksHint": "dalam perjalanan atau di pintu"
     },
     "detail": {
       "title": "Permintaan Restok",
@@ -1160,45 +1122,7 @@
       "problemWorth": "senilai {{amount}}",
       "goodOfOrdered": "Unit baik masuk stok",
       "missingBadge_one": "kurang {{count}}",
-      "missingBadge_other": "kurang {{count}}",
-      "pending": {
-        "payingAccount": {
-          "label": "Dibayar dari",
-          "reason": "Dipilih di formulir tetapi belum disimpan — server asli belum mengembalikan akun sampai tahap backend."
-        },
-        "courier": {
-          "label": "Kurir",
-          "reason": "Kurir (kanal pengiriman) belum disimpan — server asli tidak mengembalikannya."
-        },
-        "receiptPhoto": {
-          "label": "Foto label",
-          "reason": "Belum disimpan — server asli tidak mengembalikan foto."
-        },
-        "lineSupplier": {
-          "label": "Pemasok dan toko baris",
-          "reason": "Pemasok dan toko sebuah baris belum disimpan, dan nama toko belum disajikan — server asli menampilkan setiap baris belum terhubung."
-        },
-        "lineNote": {
-          "label": "Catatan baris",
-          "reason": "Catatan tim penjual pada sebuah baris belum disimpan."
-        },
-        "problemNotes": {
-          "label": "Catatan rusak dan kurang",
-          "reason": "Catatan gudang pada baris rusak atau kurang belum disimpan. Jumlah dan nilainya nyata."
-        },
-        "moneyReturned": {
-          "label": "Apakah uangnya kembali?",
-          "reason": "Pembatalan menanyakannya, tetapi jawabannya belum diteruskan ke akun yang membayar."
-        },
-        "markLost": {
-          "label": "Tandai Hilang",
-          "reason": "Menandai restok hilang belum dibuat di server — jawabannya \"belum diimplementasikan\"."
-        },
-        "signForBox": {
-          "label": "Tandai Tiba",
-          "reason": "Menandai paket tiba belum dibuat di server — jawabannya \"belum diimplementasikan\". Menerima tetap bisa langsung dari dalam perjalanan."
-        }
-      }
+      "missingBadge_other": "kurang {{count}}"
     },
     "timeline": {
       "created": "Restok dibuat",
@@ -1326,28 +1250,6 @@
         "lines": "minimal satu produk",
         "count": "jumlah minimal 1 di setiap baris",
         "newLineNote": "catatan pada setiap produk yang ditambahkan setelah paket tiba"
-      },
-      "pending": {
-        "lineSupplier": {
-          "label": "Supplier dan toko per baris",
-          "reason": "diterima server tetapi belum disimpan sampai tahap backend, dan nama toko belum disajikan"
-        },
-        "lineNote": {
-          "label": "Catatan baris",
-          "reason": "diterima server tetapi belum disimpan sampai tahap backend"
-        },
-        "financeAccount": {
-          "label": "Dibayar dari",
-          "reason": "wajib, tetapi belum disimpan sampai tahap backend — pembayaran belum dicatat ke rekening"
-        },
-        "shipment": {
-          "label": "Kurir",
-          "reason": "diterima server tetapi belum disimpan sampai tahap backend"
-        },
-        "receiptFile": {
-          "label": "Foto label",
-          "reason": "foto terunggah, tetapi restok belum menyimpannya sampai tahap backend"
-        }
       }
     },
     "cancel": {
@@ -1483,24 +1385,6 @@
         "note": "Untuk apa",
         "notePlaceholder": "mis. biaya penanganan COD",
         "noteRequired": "Tulis untuk apa biaya kurir ini."
-      },
-      "pending": {
-        "courier": {
-          "label": "Kurir",
-          "reason": "kurir restok belum disimpan, jadi restok sungguhan tidak menampilkannya"
-        },
-        "lineSupplier": {
-          "label": "Tempat setiap baris dibeli",
-          "reason": "pemasok dan toko sebuah baris belum disimpan, dan nama toko belum dapat dibaca — baris sungguhan tertulis \"belum terhubung\""
-        },
-        "lineNote": {
-          "label": "Catatan baris dari tim penjual",
-          "reason": "catatan baris (\"stok lebih\") belum disimpan"
-        },
-        "problemNotes": {
-          "label": "Catatan barang rusak dan kurang",
-          "reason": "ikut dikirim saat diterima, tetapi belum disimpan"
-        }
       }
     },
     "createdByAll": "Siapa saja yang membuat",
@@ -3465,8 +3349,7 @@
       "namePlaceholder": "mis. BCA Operasional",
       "numberPlaceholder": "mis. 1234567890",
       "holderPlaceholder": "mis. PT Melati Sejahtera",
-      "descriptionPlaceholder": "mis. Menampung penarikan toko dan membayar restock",
-      "otherTypeWarning": "Server belum menerima jenis Lainnya — menyimpan akun ini akan ditolak."
+      "descriptionPlaceholder": "mis. Menampung penarikan toko dan membayar restock"
     },
     "transfer": {
       "title": "Transfer Dari {{name}}",
@@ -3601,16 +3484,6 @@
       "title": "Arsip Akun",
       "subtitle": "Akun yang ditutup saat saldonya nol. Pulihkan untuk memakainya lagi.",
       "back": "Akun Aktif"
-    },
-    "pending": {
-      "archivedOnly": {
-        "label": "Daftar arsip",
-        "reason": "Kontrak hanya bisa menambahkan akun arsip ke akun aktif, belum bisa menampilkan arsip saja — jadi tampilan ini mengambil 200 akun pertama lalu menyaring arsipnya sendiri. Lewat dari 200 akun ada yang terlewat, dan jumlah serta halamannya dihitung di layar."
-      },
-      "otherType": {
-        "label": "Jenis Lainnya",
-        "reason": "Akun Baru menawarkan jenis Lainnya — penyedianya Lainnya, nomornya tidak wajib — tapi kontrak dan server masih menolak jenis dan penyedia Lainnya, jadi menyimpannya ditolak sampai backend mengizinkan. Demo Storybook sudah bisa."
-      }
     },
     "operationalDialog": {
       "markTitle": "Tandai {{name}} sebagai Operasional",
@@ -4156,7 +4029,7 @@
       "pending": {
         "courierDebt": {
           "label": "Biaya kurir",
-          "reason": "Jumlahnya nyata, tetapi di mana utang tim penjual ke gudang ini dicatat belum diputuskan — sama dengan restock."
+          "reason": "Biaya ini tersimpan di transfer, tetapi balance belum menerimanya — utang tim penjual ke gudang ini dicatat dari event transfer diterima, yang hadir bersama tahap backend."
         }
       }
     }
@@ -4309,7 +4182,21 @@
       "markCounted": "Tandai Dihitung",
       "needsReason": "Tulis alasan untuk setiap draf agar bisa ditandai dihitung.",
       "readOnly": "Sudah dihitung — admin bisa mengembalikannya untuk dihitung ulang",
-      "foundHere": "ditemukan di sini"
+      "foundHere": "ditemukan di sini",
+      "yourCount": "Hitungan Anda",
+      "theDifference": "Selisih",
+      "countFirst": "Hitung dulu",
+      "hidden": "tersembunyi",
+      "revealHint": "Angka sistem dan selisihnya muncul di sini setelah hitungan Anda masuk.",
+      "recounting": "Kirim hitung ulang — selisihnya mengikutinya.",
+      "matches": "Sesuai sistem — tidak ada yang perlu dijelaskan.",
+      "actions": "Aksi rak",
+      "rackState": {
+        "empty": "Kosong",
+        "done": "Selesai",
+        "inProgress": "Sedang dihitung",
+        "notStarted": "Belum mulai"
+      }
     },
     "found": {
       "open": "Tambah Produk yang Ditemukan di Sini",

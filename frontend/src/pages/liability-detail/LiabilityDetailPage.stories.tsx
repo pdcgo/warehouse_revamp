@@ -257,21 +257,10 @@ export const ARejectedClaimShowsWhy: Story = {
 // payer's account, into the creditor's. Each side names its own — the payer when recording, the
 // creditor when accepting — because each is the only one who knows which bank the money touched.
 //
-// ⛔ BOTH ARE BUILT AHEAD OF THE CONTRACT. Neither request carries an account id yet, so the pick is
-// thrown away — the summary strip says so at the top, and each field carries its numbered mark.
-// Team 11 has two accounts, Kas Gudang and BCA Gudang, so neither picker fills itself in.
+// Both are SENT, and both are required — the stub refuses a request without its account, as the
+// contract does, so a story that reaches "sent" proves the pick travelled. Team 11 has two accounts, Kas Gudang and BCA Gudang, so neither picker fills itself in.
 const KAS_GUDANG = account("Kas Gudang");
 const BCA_GUDANG = account("BCA Gudang");
-
-export const TheAccountPickersAreMarkedAsNotSavedYet: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
-
-    // The strip at the top names both parts, so somebody who has not opened a dialog still knows.
-    await expect(canvas.getByTestId("not-implemented-summary")).toHaveTextContent(/Paid from/);
-    await expect(canvas.getByTestId("not-implemented-summary")).toHaveTextContent(/Received into/);
-  },
-};
 
 // The payer's half. Amount and proof are not enough any more: the send waits for the account the
 // transfer left, and once it is sent the claim is pending — the balance does not move.
@@ -290,10 +279,9 @@ export const APaymentNamesTheAccountItWasPaidFrom: Story = {
     );
     await waitFor(() => expect(screen.getByTestId("record-proof-list")).toHaveTextContent("transfer.png"));
 
-    // ⚠ Amount and proof, and still not ready — and the field says its pick is not saved yet.
+    // ⚠ Amount and proof, and still not ready — the account the transfer left is required too.
     const submit = screen.getByTestId("record-submit");
     await waitFor(() => expect(submit).toBeDisabled());
-    await expect(screen.getByTestId("not-implemented-fromAccount")).toBeInTheDocument();
 
     const trigger = screen.getByTestId("record-from-account");
     await waitFor(() => expect(trigger).not.toBeDisabled());
@@ -305,7 +293,8 @@ export const APaymentNamesTheAccountItWasPaidFrom: Story = {
     await waitFor(() => expect(submit).toBeEnabled());
     await userEvent.click(submit);
 
-    // Sent, and pending: it appears under My payments, and nothing has posted.
+    // Sent — with its account, or the stub would have refused it and the dialog would still be open —
+    // and pending: it appears under My payments, and nothing has posted.
     //
     // ⚠ THIS LINE IS THE REGRESSION TEST for the form's `noValidate`. Before it, the cleared (but
     // required) proof input made the browser swallow the submit, the dialog stayed open, and no
@@ -331,7 +320,6 @@ export const AcceptingNamesTheAccountItLandedIn: Story = {
 
     const submit = await screen.findByTestId("liability-detail-confirm-submit");
     await waitFor(() => expect(submit).toBeDisabled());
-    await expect(screen.getByTestId("not-implemented-toAccount")).toBeInTheDocument();
 
     const trigger = screen.getByTestId("liability-detail-confirm-account");
     await waitFor(() => expect(trigger).not.toBeDisabled());

@@ -1265,6 +1265,7 @@ again.
 **What it does NOT settle** — the warehouse transfer's on-site charge, which was decided *"the same as a restock"*
 ([the-on-site-charge-is-paid-by-b-at-accept](./warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept)).
 Whether it follows is asked in [warehouse_transfer_clarify Q10](./warehouse_transfer_clarify.md#question).
+🔄 *(2026-10-15)* **It follows** — [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event).
 
 ## unit-price-is-line-price-plus-costs-per-unit
 

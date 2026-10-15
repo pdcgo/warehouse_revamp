@@ -1,8 +1,11 @@
 # Development state — inventory / warehouse_transfer
 
-**As of 2026-10-10, the warehouse transfer is DECIDED, PROTOTYPED and its DESIGN ACCEPTED. It is not built.** All 31
-decisions are in [warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md); the clarify has
-no open question and no open contradiction. The screens run in Storybook against a stub that plays the decided rules; in
+**As of 2026-10-10, the warehouse transfer is DECIDED, PROTOTYPED and its DESIGN ACCEPTED. It is not built.** All 32
+decisions are in [warehouse_transfer_decision.md](../../business/inventory/warehouse_transfer_decision.md) — the 32nd, on
+2026-10-15, moves the courier's debt out of the accept and onto an event
+([balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)),
+a comment-only contract change. The clarify has no open question; one contradiction waits on the owner's table (the
+charge's note column), and the source type the debt posts under is [balance Q13](../../business/balance/context_clarify.md#question). The screens run in Storybook against a stub that plays the decided rules; in
 the app they are routed and in the menu, and every call answers **Unimplemented**.
 
 **Next step is NOT the transfer's handlers.** The owner chose to build the decided ledgers first
@@ -71,7 +74,7 @@ stateDiagram-v2
 | --- | --- |
 | selling list, form, selling detail | `costEvent` — `missing`: the cost is stored, the paying account does not hear of it |
 | warehouse list, warehouse detail | `labelPhoto` — `dropped`: the upload type is not designed |
-| accept | `courierDebt` — `derived`: the debt is balance's (decided for restock 2026-10-14); whether it leaves the accept for an event is [warehouse_transfer Q10](../../business/inventory/warehouse_transfer_clarify.md#question) |
+| accept | `courierDebt` — `missing`: the charge is saved on the transfer, balance does not hear of it until the events pass ([balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)) |
 
 ## The backend step: what it has to do
 
@@ -85,8 +88,11 @@ stateDiagram-v2
 3. **The legs**: `transfer_out` at create through the batch and placement ledgers (fewest shelves first, oldest batches
    first); `transfer_in` at accept minting one batch per source batch, read from the outbound transaction's `batch_logs`.
 4. **Events**: the shipping expense to `financial_account_service` (create, update difference, cancel refund) — not in the
-   contract yet; add it to `events/v1` and `san pubsub ensure`. The courier's on-site charge: the debt is balance's,
-   and whether it moves out of the accept onto an event is [Q10](../../business/inventory/warehouse_transfer_clarify.md#question) (2026-10-14).
+   contract yet; add it to `events/v1` and `san pubsub ensure`. 🆕 *Warehouse Transfer Accepted*, published after every
+   accept (0 included), `event_id` `warehouse-transfer-accepted:<transfer_id>`, carrying the charge and its note; balance
+   (`liability_service`) posts the team's debt to B from it, nothing for 0. The accept never calls balance. ⚠ Do NOT post
+   it as `INCIDENTAL_FEE` with the transfer id: that key collides with a restock's of the same id and is dropped — the
+   source type waits on [balance Q13](../../business/balance/context_clarify.md#question).
 5. **The in-transit figure** on the team's stock screen (`the-transfer-is-where-goods-in-transit-are`) is not built
    anywhere yet.
 6. Retire `InventoryService.StockTransfer`, the instant one-product move this supersedes; nothing calls it.

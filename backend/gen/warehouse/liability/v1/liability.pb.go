@@ -1877,7 +1877,16 @@ type LiabilityPayment struct {
 	//
 	// ⚠ IT IS SHOWN TO THE PAYER. A refusal a debtor cannot read is a debt they cannot fix — they would
 	// see a claim marked wrong with no way to learn whether to re-send the slip or the money.
-	Reason        string `protobuf:"bytes,12,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,12,opt,name=reason,proto3" json:"reason,omitempty"`
+	// WHERE THE MONEY LEFT AND WHERE IT LANDED — financial_account_service ids, opaque here
+	// (a-team-payment-posts-on-accept). The payer names `from` when recording; the creditor names `to`
+	// when accepting, because only they looked at their bank and saw it arrive. On acceptance both ride
+	// `LiabilityPaymentAccepted`, and the accounts post one `team_payment` row on each.
+	//
+	// 0 = not named: `to` until the payment is accepted, and `from` on a payment recorded before
+	// *Paid from* existed — that one's acceptance posts only the `to` leg.
+	FromAccountId uint64 `protobuf:"varint,13,opt,name=from_account_id,json=fromAccountId,proto3" json:"from_account_id,omitempty"`
+	ToAccountId   uint64 `protobuf:"varint,14,opt,name=to_account_id,json=toAccountId,proto3" json:"to_account_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1996,6 +2005,20 @@ func (x *LiabilityPayment) GetReason() string {
 	return ""
 }
 
+func (x *LiabilityPayment) GetFromAccountId() uint64 {
+	if x != nil {
+		return x.FromAccountId
+	}
+	return 0
+}
+
+func (x *LiabilityPayment) GetToAccountId() uint64 {
+	if x != nil {
+		return x.ToAccountId
+	}
+	return 0
+}
+
 type LiabilityPaymentRecordRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The PAYER — and the scope. You may only ever record your own payment: recording somebody else's
@@ -2016,7 +2039,12 @@ type LiabilityPaymentRecordRequest struct {
 	// changes hands in the building, this constraint has to be relaxed for that kind — relaxing a
 	// validation later is a compatible change, which is why no `kind` enum was added now for a feature
 	// that has not been approved.
-	DocumentIds   []string `protobuf:"bytes,5,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
+	DocumentIds []string `protobuf:"bytes,5,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
+	// *Paid from* — the PAYER's account the transfer left (a-team-payment-posts-on-accept). Required:
+	// an accepted payment is final (an-accepted-payment-is-final), so an account the money is not
+	// traced out of stays short until a reconcile finds it. Must be one of `team_id`'s ACTIVE accounts,
+	// never an `unknown` one — asked of financial_account_service under the caller's token.
+	FromAccountId uint64 `protobuf:"varint,6,opt,name=from_account_id,json=fromAccountId,proto3" json:"from_account_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2086,6 +2114,13 @@ func (x *LiabilityPaymentRecordRequest) GetDocumentIds() []string {
 	return nil
 }
 
+func (x *LiabilityPaymentRecordRequest) GetFromAccountId() uint64 {
+	if x != nil {
+		return x.FromAccountId
+	}
+	return 0
+}
+
 type LiabilityPaymentRecordResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Payment       *LiabilityPayment      `protobuf:"bytes,1,opt,name=payment,proto3" json:"payment,omitempty"`
@@ -2134,8 +2169,13 @@ type LiabilityPaymentConfirmRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The CREDITOR — and the scope. The whole two-phase design rests on this being the team that was
 	// paid: a payer who could confirm their own payment could write off any debt they liked.
-	TeamId        uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	PaymentId     uint64 `protobuf:"varint,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
+	TeamId    uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	PaymentId uint64 `protobuf:"varint,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
+	// *Received into* — the CREDITOR's account the money landed in (a-team-payment-posts-on-accept).
+	// Required, never defaulted: nothing reverses an accept, so a wrong account stays wrong until a
+	// reconcile finds the gap. Must be one of `team_id`'s ACTIVE accounts, never an `unknown` one —
+	// money does not go INTO an account whose bank nobody has named.
+	ToAccountId   uint64 `protobuf:"varint,3,opt,name=to_account_id,json=toAccountId,proto3" json:"to_account_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2180,6 +2220,13 @@ func (x *LiabilityPaymentConfirmRequest) GetTeamId() uint64 {
 func (x *LiabilityPaymentConfirmRequest) GetPaymentId() uint64 {
 	if x != nil {
 		return x.PaymentId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentConfirmRequest) GetToAccountId() uint64 {
+	if x != nil {
+		return x.ToAccountId
 	}
 	return 0
 }
@@ -3792,7 +3839,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x9c\x01\n" +
 	"\x16LiabilityDailyResponse\x12<\n" +
 	"\x04days\x18\x01 \x03(\v2(.warehouse.liability.v1.LiabilityDayItemR\x04days\x12D\n" +
-	"\x06totals\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyTotalsR\x06totals\"\xb7\x03\n" +
+	"\x06totals\x18\x02 \x01(\v2,.warehouse.liability.v1.LiabilityDailyTotalsR\x06totals\"\x83\x04\n" +
 	"\x10LiabilityPayment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\"\n" +
 	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
@@ -3807,21 +3854,25 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x11confirmed_at_unix\x18\n" +
 	" \x01(\x03R\x0fconfirmedAtUnix\x12!\n" +
 	"\fdocument_ids\x18\v \x03(\tR\vdocumentIds\x12\x16\n" +
-	"\x06reason\x18\f \x01(\tR\x06reason\"\xfc\x01\n" +
+	"\x06reason\x18\f \x01(\tR\x06reason\x12&\n" +
+	"\x0ffrom_account_id\x18\r \x01(\x04R\rfromAccountId\x12\"\n" +
+	"\rto_account_id\x18\x0e \x01(\x04R\vtoAccountId\"\xad\x02\n" +
 	"\x1dLiabilityPaymentRecordRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x121\n" +
 	"\x10creditor_team_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x0ecreditorTeamId\x12\x1f\n" +
 	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x12\x1c\n" +
 	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note\x125\n" +
 	"\fdocument_ids\x18\x05 \x03(\tB\x12\xbaH\x0f\x92\x01\f\b\x01\x10\n" +
-	"\"\x06r\x04\x10\x01\x18@R\vdocumentIds:\f\x92\xb5\x18\b\n" +
+	"\"\x06r\x04\x10\x01\x18@R\vdocumentIds\x12/\n" +
+	"\x0ffrom_account_id\x18\x06 \x01(\x04B\a\xbaH\x042\x02 \x00R\rfromAccountId:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"d\n" +
 	"\x1eLiabilityPaymentRecordResponse\x12B\n" +
-	"\apayment\x18\x01 \x01(\v2(.warehouse.liability.v1.LiabilityPaymentR\apayment\"|\n" +
+	"\apayment\x18\x01 \x01(\v2(.warehouse.liability.v1.LiabilityPaymentR\apayment\"\xa9\x01\n" +
 	"\x1eLiabilityPaymentConfirmRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
 	"\n" +
-	"payment_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tpaymentId:\f\x92\xb5\x18\b\n" +
+	"payment_id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\tpaymentId\x12+\n" +
+	"\rto_account_id\x18\x03 \x01(\x04B\a\xbaH\x042\x02 \x00R\vtoAccountId:\f\x92\xb5\x18\b\n" +
 	"\x06\x01\x02\x03\x04\x06\t\"e\n" +
 	"\x1fLiabilityPaymentConfirmResponse\x12B\n" +
 	"\apayment\x18\x01 \x01(\v2(.warehouse.liability.v1.LiabilityPaymentR\apayment\"\x9f\x01\n" +

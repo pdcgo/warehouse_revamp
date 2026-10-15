@@ -48,7 +48,7 @@ func (s *Service) FinancialAccountIdentify(
 		case *financial_accountv1.FinancialAccountIdentifyRequest_FillIn:
 			fill := target.FillIn
 
-			id, err := checkIdentity(fill.GetType(), fill.GetProvider(), fill.GetAccountNumber())
+			id, err := checkIdentity(fill.GetType(), fill.GetProvider(), fill.GetAccountNumber(), false)
 			if err != nil {
 				return err
 			}

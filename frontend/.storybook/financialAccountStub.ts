@@ -285,7 +285,12 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
     const f = req.filter;
     const rows = accounts
       .filter((a) => a.teamId === req.teamId)
-      .filter((a) => f?.includeArchived || a.status === FinancialAccountStatus.ACTIVE)
+      // archived_only wins over include_archived, as on the server (the-archive-is-its-own-view).
+      .filter((a) =>
+        f?.archivedOnly
+          ? a.status === FinancialAccountStatus.ARCHIVED
+          : f?.includeArchived || a.status === FinancialAccountStatus.ACTIVE,
+      )
       .filter((a) => !f?.operationalOnly || a.operational)
       .filter((a) => !f?.types?.length || f.types.includes(a.type))
       .filter((a) => !f?.shopId || a.shopIds.includes(f.shopId))
@@ -330,7 +335,9 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
     }
 
     if (req.metricRequest.includes(FinancialAccountMetricDataType.TYPE_TOTAL)) {
-      const active = accounts.filter((a) => a.teamId === req.teamId && a.status === FinancialAccountStatus.ACTIVE);
+      // The active by default; `archived` counts the archived instead — the archive view's tabs.
+      const status = req.filter?.archived ? FinancialAccountStatus.ARCHIVED : FinancialAccountStatus.ACTIVE;
+      const active = accounts.filter((a) => a.teamId === req.teamId && a.status === status);
       const types = [
         FinancialAccountType.BANK_ACCOUNT,
         FinancialAccountType.WALLET,

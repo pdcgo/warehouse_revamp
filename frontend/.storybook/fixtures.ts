@@ -759,11 +759,13 @@ export const liabilityEntries = [
 // ⚠ EVERY PAYMENT CARRIES PROOF, because the contract requires at least one document
 // (a-payment-must-carry-proof). A fixture with an empty `documentIds` would be a payment the server
 // would have refused, and it would let a story pass against a screen that cannot happen.
+// And each names the account it LEFT (a-team-payment-posts-on-accept) — 1307 BCA Gudang is team 11's,
+// 1301 BCA Operasional team 12's — and, once accepted, the one it LANDED in; 0 until then.
 export const liabilityPayments = [
-  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "" },
-  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "" },
+  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
+  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
   // A REFUSED CLAIM — status 4, nothing posted, and the reason the payer has to read.
-  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account" },
+  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
 ];
 
 // ── The settlement reports ──────────────────────────────────────────────────────────────────────

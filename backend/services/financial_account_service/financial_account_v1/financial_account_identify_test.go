@@ -140,3 +140,20 @@ func TestFinancialAccountIdentify_OnlyAnUnknownAccount(t *testing.T) {
 		t.Fatalf("code = %v, want FailedPrecondition", code)
 	}
 }
+
+// Tentukan Rekening names a REAL account — filling an unknown one in as type Lainnya again is refused, though New
+// Account may now open one (the-type-decides-the-provider).
+func TestFinancialAccountIdentify_FillInIsNeverLainnyaAgain(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+	unknown := unknownWithWithdrawals(t, db, svc)
+
+	_, err := identify(svc, unknown, &financial_accountv1.FinancialAccountIdentity{
+		Type:     financial_accountv1.FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_UNKNOWN,
+		Provider: financial_accountv1.FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN,
+		Name:     "Still unknown",
+	})
+	if code := connectCode(t, err); code != connect.CodeInvalidArgument {
+		t.Fatalf("code = %v, want InvalidArgument", code)
+	}
+}

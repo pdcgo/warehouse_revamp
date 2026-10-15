@@ -35,9 +35,6 @@ import { fmtDate } from "./format";
 import { PaymentProof } from "./components/PaymentProof";
 import { RejectPaymentDialog } from "./components/RejectPaymentDialog";
 import { AcceptPaymentDialog } from "./components/AcceptPaymentDialog";
-import { LIABILITY_DETAIL_PENDING } from "./pending";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
 import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
@@ -330,9 +327,6 @@ export function LiabilityDetailPage() {
         </Button>
       </Flex>
 
-      {/* The two account pickers are built ahead of their contract — see ./pending.ts. */}
-      <NotImplementedSummary list={LIABILITY_DETAIL_PENDING} />
-
       {/* The position, in words, and the two gross sides of it. */}
       <SimpleGrid columns={{ base: 1, md: 3 }} gap="card">
         <Stat.Root>
@@ -542,7 +536,7 @@ function MakePaymentDialog({
   // document (a-payment-must-carry-proof) — this mirrors the server rather than inventing a second
   // idea of ready, so the button is disabled instead of the send being refused after the fact.
   // ⚠ AND THE ACCOUNT. The acceptance has to post OUT of somewhere; a payment with no account is one
-  // the financial accounts can never hear. Required by the design, though not yet by the server.
+  // the financial accounts can never hear. The server requires it too, and refuses one not yours.
   const ready = amount !== "" && Number(amount) > 0 && proofs.length > 0 && fromAccountId > 0n;
 
   function change(next: boolean) {
@@ -575,13 +569,13 @@ function MakePaymentDialog({
     setError("");
 
     record.mutate(
-      // ⛔ `fromAccountId` is not sent — the request has no field for it yet (pending: fromAccount).
       {
         teamId: payerTeamId,
         creditorTeamId,
         amount: BigInt(amount),
         note,
         documentIds: proofs.map((p) => p.id),
+        fromAccountId,
       },
       {
         onSuccess: () => change(false),
@@ -625,12 +619,7 @@ function MakePaymentDialog({
                       are what a RESTOCK may be paid from (operational-accounts-pay-for-operations),
                       and settling a debt with another team is not an operation. */}
                   <Field.Root required>
-                    <Field.Label>
-                      <Flex align="center" gap="2" wrap="wrap">
-                        {t("liabilityDetail.recordFromAccount")}
-                        <NotImplemented list={LIABILITY_DETAIL_PENDING} id="fromAccount" />
-                      </Flex>
-                    </Field.Label>
+                    <Field.Label>{t("liabilityDetail.recordFromAccount")}</Field.Label>
                     <FinancialAccountSelect
                       teamId={payerTeamId}
                       value={fromAccountId}

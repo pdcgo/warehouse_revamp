@@ -34,11 +34,13 @@ import {
 
 // ── Reads ───────────────────────────────────────────────────────────────────────────────────────
 
-/** The accounts page — archived on request, searched, paged. */
+/** The accounts page — archived on request, or the archived alone for its archive view; searched, paged. */
 export function useFinancialAccounts(args: {
   teamId: bigint | undefined;
   q: string;
   includeArchived: boolean;
+  /** The archived ALONE, counted and paged by the server — the archive view (the-archive-is-its-own-view). */
+  archivedOnly?: boolean;
   /** Empty = every type. */
   types?: FinancialAccountType[];
   /** The account this shop withdraws into — at most one. 0n = every shop. */
@@ -49,7 +51,18 @@ export function useFinancialAccounts(args: {
   page: number;
   pageSize: number;
 }) {
-  const { teamId, q, includeArchived, types = [], shopId = 0n, operationalOnly = false, sort = null, page, pageSize } = args;
+  const {
+    teamId,
+    q,
+    includeArchived,
+    archivedOnly = false,
+    types = [],
+    shopId = 0n,
+    operationalOnly = false,
+    sort = null,
+    page,
+    pageSize,
+  } = args;
 
   return useQuery({
     ...listQuery,
@@ -57,6 +70,7 @@ export function useFinancialAccounts(args: {
       list: true,
       q,
       includeArchived,
+      archivedOnly,
       types: types.join(","),
       shopId: shopId.toString(),
       operationalOnly,
@@ -68,7 +82,7 @@ export function useFinancialAccounts(args: {
     queryFn: async () => {
       const res = await financialAccountClient.financialAccountList({
         teamId: teamId!,
-        filter: { q, includeArchived, types, shopId, operationalOnly },
+        filter: { q, includeArchived, archivedOnly, types, shopId, operationalOnly },
         sort: sort
           ? {
               sortType: sort.dir === "desc" ? CommonSortType.DESC : CommonSortType.ASC,
@@ -192,14 +206,20 @@ export function useAccountBalances(teamId: bigint | undefined, accountIds: bigin
   });
 }
 
-/** The team's money by type — the strip above the list. */
-export function useTypeTotals(teamId: bigint | undefined) {
+/**
+ * The team's money by type — the strip above the list, and the type tabs' counts. `archived` counts the archived
+ * accounts instead, for the archive view's tabs (the-archive-is-its-own-view); they all hold zero.
+ */
+export function useTypeTotals(teamId: bigint | undefined, opts: { archived?: boolean } = {}) {
+  const archived = opts.archived ?? false;
+
   return useQuery({
-    queryKey: key.financialAccounts(teamId, { typeTotals: true }),
+    queryKey: key.financialAccounts(teamId, { typeTotals: true, archived }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await financialAccountClient.financialAccountOverview({
         teamId: teamId!,
+        filter: { archived },
         metricRequest: [FinancialAccountMetricDataType.TYPE_TOTAL],
       });
 

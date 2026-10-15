@@ -1216,6 +1216,8 @@ erDiagram
         text        reason           "why it was REJECTED or REVERSED — the status says which"
         bigint      recorded_by      "who claimed it — opaque user id"
         bigint      confirmed_by     "who agreed — opaque user id"
+        bigint      from_account_id  "the payers account the transfer left, financial_account id, 0 before 00009"
+        bigint      to_account_id    "the creditors account it landed in, named on accept, 0 until then"
         timestamptz created_at
         timestamptz confirmed_at     "NULL until confirmed; SURVIVES a reversal. STAYS NULL on a reject"
         timestamptz updated_at
@@ -1345,6 +1347,13 @@ erDiagram
     Confirm in the same second is ordinary here — without the lock both reads see `recorded`, both post,
     and the debt is paid off twice. Proven against a real Postgres in `payment_confirm_race_test.go`
     (8 concurrent confirms → exactly one succeeds, balance lands on 0).
+  - **`from_account_id` / `to_account_id` say where the money LEFT and where it LANDED**
+    ([a-team-payment-posts-on-accept](business/financial_account/context_decision.md#a-team-payment-posts-on-accept),
+    migration `00009`) — opaque financial_account_service ids, no FK. The payer names `from` when recording,
+    the creditor names `to` when accepting; each is checked as one of that team's active, named accounts
+    before it is written. On accept both ride `LiabilityPaymentAccepted`, and the accounts post one
+    `team_payment` row on each. `0` = not named: `to` until accepted, and `from` on every payment recorded
+    before `00009` — that one's acceptance posts only the `to` leg.
 
 ---
 

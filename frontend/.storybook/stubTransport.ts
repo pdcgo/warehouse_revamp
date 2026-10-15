@@ -1344,7 +1344,14 @@ export const transport = createRouterTransport(({ service }) => {
 
     // RECORD — the payer's claim. ⚠ IT POSTS NOTHING: a recorded payment is pending until the creditor
     // accepts it, so the stub adds the row and leaves every balance where it was.
+    //
+    // ⚠ *Paid from* is REQUIRED, as the contract's `gt = 0` makes it — so a screen that forgot to send the
+    // account it picked fails here, the way it would against the server.
     liabilityPaymentRecord: (req) => {
+      if (!req.fromAccountId) {
+        throw new ConnectError("from_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
       const row = {
         id: nextPaymentId++,
         payerTeamId: req.teamId,
@@ -1358,6 +1365,8 @@ export const transport = createRouterTransport(({ service }) => {
         confirmedAtUnix: 0n,
         documentIds: [...req.documentIds],
         reason: "",
+        fromAccountId: req.fromAccountId,
+        toAccountId: 0n,
       };
       paymentsTable.unshift(row);
 
@@ -1367,7 +1376,14 @@ export const transport = createRouterTransport(({ service }) => {
     // ACCEPT — the `yes` arm, and the only act that lets a balance go down. The positions are signed
     // from team 11's side, so a payment FROM the counterparty shrinks what they owe us, and a payment
     // TO them shrinks what we owe them.
+    //
+    // ⚠ *Received into* is REQUIRED, as the contract makes it — accepting is final, so the stub refuses a
+    // screen that did not send the account the money landed in.
     liabilityPaymentConfirm: (req) => {
+      if (!req.toAccountId) {
+        throw new ConnectError("to_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
       const row = paymentsTable.find((p) => p.id === req.paymentId);
 
       if (!row) {
@@ -1381,6 +1397,7 @@ export const transport = createRouterTransport(({ service }) => {
       row.status = 2;
       row.confirmedBy = 1n;
       row.confirmedAtUnix = BigInt(Math.floor(Date.now() / 1000));
+      row.toAccountId = req.toAccountId;
 
       const theyPaid = positionsTable.find((p) => p.counterpartyId === row.payerTeamId);
       const wePaid = positionsTable.find((p) => p.counterpartyId === row.creditorTeamId);

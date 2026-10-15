@@ -50,7 +50,7 @@ func anOrder(orderID uint64) liability_v1.PlacedOrder {
 // somebody else's goods, so that team is owed cost + markup.
 func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000, 0)
 	setTerms(t, db, productOwner, 0, 0, 2000) // 20% markup
@@ -77,7 +77,7 @@ func TestChargeOrder_PostsTheHandlingFeeAndTheProductFee(t *testing.T) {
 // can never succeed is a poison loop.
 func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000, 0)
 
@@ -105,7 +105,7 @@ func TestChargeOrder_ARedeliveryChargesNothingExtra(t *testing.T) {
 // warehouse free, which is the one outcome §2.2 explicitly rejects.
 func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	err := svc.ChargeOrder(context.Background(), anOrder(412))
 	if err != nil {
@@ -137,7 +137,7 @@ func TestChargeOrder_TheTwoFeesDefaultDifferently(t *testing.T) {
 // A per-debtor row OVERRIDES the creditor's default — that is the whole point of having both.
 func TestChargeOrder_APerTeamRateOverridesTheDefault(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000, 0)
 	setTerms(t, db, warehouse, selling, 5000, 0)
@@ -157,7 +157,7 @@ func TestChargeOrder_APerTeamRateOverridesTheDefault(t *testing.T) {
 // the second line would silently vanish.
 func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, productOwner, 0, 0, 0)
 
@@ -193,7 +193,7 @@ func TestChargeOrder_TwoLinesOfOneOwnerAreOneFee(t *testing.T) {
 // SELLING YOUR OWN GOODS OWES NOBODY, and neither does fulfilling your own order.
 func TestChargeOrder_SellingYourOwnProductOwesNobody(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, selling, 0, 12000, 5000)
 
@@ -224,7 +224,7 @@ func TestChargeOrder_SellingYourOwnProductOwesNobody(t *testing.T) {
 // would consume this pair's idempotency key for this order and block the real fee forever.
 func TestChargeOrder_AnUnknownCostChargesNothingRatherThanFailing(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, productOwner, 0, 0, 2000)
 
@@ -256,7 +256,7 @@ func TestChargeOrder_AnUnknownCostChargesNothingRatherThanFailing(t *testing.T) 
 // team picked by accident.
 func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	order := anOrder(412)
 	order.Lines = []liability_v1.OrderLine{{OwningTeamID: 0, Quantity: 2, UnitCost: 30000}}
@@ -281,7 +281,7 @@ func TestChargeOrder_AnUnresolvedOwnerIsSkipped(t *testing.T) {
 // A CANCEL REVERSES BOTH FEES, and the balance nets to zero while both stories stay visible.
 func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000, 0)
 	setTerms(t, db, productOwner, 0, 0, 2000)
@@ -325,7 +325,7 @@ func TestReverseOrder_UndoesEveryFeeTheOrderCharged(t *testing.T) {
 // A DOUBLE CANCEL MUST NOT REVERSE TWICE — the same at-least-once problem, one step further on.
 func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000, 0)
 
@@ -350,7 +350,7 @@ func TestReverseOrder_ARedeliveredCancelReversesOnce(t *testing.T) {
 // an order falling through does not give the warehouse its money back.
 func TestReverseOrder_LeavesTheCODObligationAlone(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	setTerms(t, db, warehouse, 0, 12000, 0)
 

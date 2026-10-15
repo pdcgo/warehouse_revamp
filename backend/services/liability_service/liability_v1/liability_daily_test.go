@@ -83,7 +83,7 @@ func postOn(
 // disagree with it.
 func TestLiabilityDaily_GroupsByDayAscendingWithTheSourceSplit(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	utc := time.UTC
 
@@ -157,7 +157,7 @@ func TestLiabilityDaily_GroupsByDayAscendingWithTheSourceSplit(t *testing.T) {
 // happened.
 func TestLiabilityDaily_AReversedFeeNetsTheDayToZero(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	on := time.Date(2026, 7, 3, 9, 0, 0, 0, time.UTC)
 
@@ -192,7 +192,7 @@ func TestLiabilityDaily_AReversedFeeNetsTheDayToZero(t *testing.T) {
 // else's statement.
 func TestLiabilityDaily_TheTwoSidesAreExactNegatives(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	postOn(t, db, svc, handling(20_000, 1), time.Date(2026, 7, 3, 9, 0, 0, 0, time.UTC))
 
@@ -214,7 +214,7 @@ func TestLiabilityDaily_TheTwoSidesAreExactNegatives(t *testing.T) {
 // copy of a subtle bound is exactly the kind of thing that gets the subtlety wrong.
 func TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	// Late on the final day — the leg a `<= to` bound would lose.
 	postOn(t, db, svc, handling(50_000, 1), time.Date(2026, 7, 31, 23, 30, 0, 0, time.UTC))
@@ -238,7 +238,7 @@ func TestLiabilityDaily_TheLastDayOfThePeriodCountsInFull(t *testing.T) {
 // and still look complete.
 func TestLiabilityDaily_RefusesAnUnboundedOrOversizedPeriod(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	cases := []struct {
 		name string
@@ -274,7 +274,7 @@ func TestLiabilityDaily_RefusesAnUnboundedOrOversizedPeriod(t *testing.T) {
 // One team can never read another's earnings. The team_id clause IS the scope check.
 func TestLiabilityDaily_NeverLeaksAnotherTeamsDays(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	postOn(t, db, svc, handling(20_000, 1), time.Date(2026, 7, 3, 9, 0, 0, 0, time.UTC))
 
@@ -300,7 +300,7 @@ func TestLiabilityDaily_NeverLeaksAnotherTeamsDays(t *testing.T) {
 // An empty period still returns a TOTALS message, not nil — the screen renders zeroes, never blanks.
 func TestLiabilityDaily_AnEmptyPeriodIsZeroNotNil(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	// 2028 is a leap year: 1 Jan to 31 Dec inclusive is 366 days, the largest period allowed.
 	got := daily(t, svc, warehouse, "2028-01-01", "2028-12-31")

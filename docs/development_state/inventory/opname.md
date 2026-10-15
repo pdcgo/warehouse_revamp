@@ -44,13 +44,18 @@ flowchart LR
 | contract | `OpnameService`, 13 RPCs — [rpc.md §Stock count sessions](../../services/inventory_service/rpc.md#stock-count-sessions--opnameservice-prototype). `buf lint` clean |
 | backend | `inventory_v1.OpnamePrototype` embeds the Unimplemented handler, mounted in `register.go` — the backend step deletes it |
 | stub | `.storybook/opnameStub.ts` + `opnameFixtures.ts` — plays the decisions; reset in `preview.tsx` |
-| screens | `pages/opname-sessions` (list + New Count dialog) · `pages/opname-session-detail` (the admin's watch page) · `pages/opname-count` (counting, phone first) · `pages/opname-finalize` (the review) |
+| screens | `pages/opname-sessions` (list + New Count dialog) · `pages/opname-session-detail` (the admin's watch page) · `pages/opname-count` (counting, phone first — rack tiles, then a three-column card per product) · `pages/opname-finalize` (the review) |
 | shared | `features/opname/` — `queries.ts`, `adapt.ts`, `OpnameBadges.tsx` (status, plan, row state, difference, drafts); `lib/roles.ts` `canManageOpname` |
 | routes | `/inventories/opname/sessions`, `…/:sessionId`, `…/:sessionId/count`, `…/:sessionId/finalize` |
 | copy | the `opnameSession` namespace in `en.json` and `id.json` |
 | stories | `Pages/Opname/{Sessions,SessionDetail,Count,Finalize}` and `Features/Opname/OpnameBadges` — 26, each a test; every page has a Mobile story. The whole suite passes (1403) |
 
 ## Proposed at the prototype — accept or reject at design_accept
+
+**Changed at the first preview (2026-10-14):** the owner found the Count page *"so weird"* and asked for Accept Delivery's
+layout — now [a-counted-line-is-three-columns](../../technical/frontend/context_decision.md#a-counted-line-is-three-columns):
+a sticky header (Count #15 · A-01-1, progress, Change Rack, Add Found; `⋯` on a phone), one card per product in three
+columns (what it is · Your Count · The Difference) with a fixed frame, and the racks as tiles with a state badge.
 
 | | |
 | --- | --- |

@@ -85,18 +85,12 @@ stateDiagram-v2
 | docs | `docs/services/inventory_service/rpc.md` restock section (lifecycle, the accept transaction, the rules, the event) · liability, selling and supplier `rpc.md`: Fulfill renamed to Accept |
 | tests | Go: every package green from the root, 0 skips · stories: **1171** green · mermaid: 1006 parse |
 
-## Pending marks: what each screen admits it cannot do yet
+## Pending marks: none
 
-| page | marks |
-| --- | --- |
-| restock-request-form | lineSupplier, lineNote, financeAccount, shipment, receiptFile: all `dropped` |
-| restock-accept | courier, lineSupplier, lineNote: `sample` · problemNotes: `dropped` |
-| restock-selling | lineSupplier, courier, moneyReturned, markLost: `dropped` |
-| restock-selling-detail | payingAccount, courier, receiptPhoto, lineSupplier, lineNote, problemNotes, moneyReturned, markLost: `dropped` |
-| restock-warehouse | courier, signForBox: `dropped` |
-| restock-warehouse-detail | signForBox, courier, receiptPhoto, lineSupplier, lineNote, problemNotes: `dropped` |
-
-Every mark goes away in the backend step, and the stories assert on them, so they fail the day they should change.
+✅ *(2026-10-15)* **Removed from all six restock pages**, with their `pending.ts` files, the action components' `pending`
+prop and the `restock.*.pending` translations: every one of the 28 marks named something stages 1–3 now store or do.
+Checked against the real dev API (screens shot, `[data-testid^=not-implemented]` counted at 0).
+`NothingIsMarkedNotImplemented` on the request form fails the day a mark comes back.
 
 ## Backend analysis — the parts that write no stock (2026-10-15)
 

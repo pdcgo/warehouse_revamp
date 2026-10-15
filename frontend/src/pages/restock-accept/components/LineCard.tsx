@@ -8,12 +8,10 @@ import type { RestockRequestItem } from "../../../gen/warehouse/inventory/v1/res
 import type { SupplierChannel } from "../../../gen/warehouse/supplier/v1/supplier_channel_pb";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { LineSupplier } from "../../../features/restock/LineSupplier";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
 import { formatRupiah } from "../../../lib/money";
 import type { LineDraft, LineState } from "../draft";
-import { RESTOCK_ACCEPT_PENDING } from "../pending";
 import { PlacementPanel } from "./PlacementPanel";
 
 // ONE LINE OF THE BOX, in three columns (owner): WHAT IT IS · WHAT ARRIVED · WHERE IT GOES — the three questions asked at
@@ -84,7 +82,6 @@ export function LineCard({
                 channels={channels}
                 testId={`accept-supplier-${pid}`}
               />
-              <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="lineSupplier" />
             </Flex>
 
             {/* "ORDERED 12" WITH THE SELLING TEAM'S WORD BESIDE IT. A line that says more than was first ordered was
@@ -103,7 +100,6 @@ export function LineCard({
                     </Text>{" "}
                     {item.note}
                   </Text>
-                  <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="lineNote" />
                 </Flex>
               )}
             </Stack>
@@ -316,7 +312,6 @@ function ProblemNote({
         data-testid={testId}
         onChange={(e) => onChange(e.target.value)}
       />
-      <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="problemNotes" />
     </Flex>
   );
 }

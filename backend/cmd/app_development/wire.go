@@ -64,6 +64,10 @@ func InitializeApp() (*App, error) {
 		NewSupplierClient,
 		NewInventorySupplierChecker,
 		liability_v1.NewService,
+		// Whether a payment's *Paid from* / *Received into* is the team's own live account — asked of
+		// financial_account_service under the caller's token. See liability_deps.go.
+		NewFinancialAccountClient,
+		NewLiabilityAccountChecker,
 		settlement_v1.NewService,
 		// Who an imported shop row counts for — the shop's primary CS, asked over Connect under the
 		// caller's token. See shop_primary.go.

@@ -167,17 +167,7 @@
     "recordFromAccountHelp": "The account the transfer left. When they accept, the amount comes out of it.",
     "confirmToAccount": "Received into",
     "confirmToAccountPlaceholder": "Select the account it arrived in",
-    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first.",
-    "pending": {
-      "fromAccount": {
-        "label": "Paid from",
-        "reason": "A payment does not carry an account yet, so the one you pick is not saved. Once it does, accepting the payment takes the amount out of this account."
-      },
-      "toAccount": {
-        "label": "Received into",
-        "reason": "Accepting does not carry an account yet, so the one you pick is not saved. Once it does, the amount is added to this account."
-      }
-    }
+    "confirmToAccountHelp": "The account you saw the money arrive in. Accepting is final, so check it against your bank first."
   },
   "common": {
     "perPage": "Per page",
@@ -1052,25 +1042,7 @@
     "teamRef": "Team #{{id}}",
     "warehouseRef": "Warehouse #{{id}}",
     "selling": {
-      "searchPlaceholder": "Search restock, tracking, invoice or SKU",
-      "pending": {
-        "lineSupplier": {
-          "label": "Supplier",
-          "reason": "A line's supplier and store are not stored yet, and store names are not served yet — the real server shows every row as not connected."
-        },
-        "courier": {
-          "label": "Courier",
-          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
-        },
-        "moneyReturned": {
-          "label": "Did the money come back?",
-          "reason": "Cancel asks it, but the answer is not sent on to the paying account yet."
-        },
-        "markLost": {
-          "label": "Mark Lost",
-          "reason": "Marking a restock lost is not built on the server yet — it answers \"not implemented\"."
-        }
-      }
+      "searchPlaceholder": "Search restock, tracking, invoice or SKU"
     },
     "searchPlaceholder": "Search restock, tracking, order or SKU",
     "warehouseAll": "All warehouses",
@@ -1106,17 +1078,7 @@
       "actorCreated": "Raised by",
       "actorAccepted": "Counted by",
       "actorAll": "Anyone",
-      "restocksHint": "on their way or at the door",
-      "pending": {
-        "courier": {
-          "label": "Courier",
-          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
-        },
-        "signForBox": {
-          "label": "Sign for Box",
-          "reason": "Signing for the box is not built on the server yet — it answers \"not implemented\". Accepting still works straight from ongoing."
-        }
-      }
+      "restocksHint": "on their way or at the door"
     },
     "detail": {
       "title": "Restock Request",
@@ -1164,45 +1126,7 @@
       "problemWorth": "worth {{amount}}",
       "goodOfOrdered": "Good units into stock",
       "missingBadge_one": "{{count}} missing",
-      "missingBadge_other": "{{count}} missing",
-      "pending": {
-        "payingAccount": {
-          "label": "Paid from",
-          "reason": "Picked on the form but not stored yet — the real server returns no account until the backend step."
-        },
-        "courier": {
-          "label": "Courier",
-          "reason": "The courier (a shipment channel) is not stored yet — the real server returns none."
-        },
-        "receiptPhoto": {
-          "label": "Photo of the label",
-          "reason": "Not stored yet — the real server returns no photo."
-        },
-        "lineSupplier": {
-          "label": "Line supplier and store",
-          "reason": "A line's supplier and store are not stored yet, and store names are not served yet — the real server shows every line as not connected."
-        },
-        "lineNote": {
-          "label": "Line note",
-          "reason": "The selling team's note on a line is not stored yet."
-        },
-        "problemNotes": {
-          "label": "Broken and missing notes",
-          "reason": "The warehouse's note on a broken or missing row is not stored yet. The counts and what they were worth are real."
-        },
-        "moneyReturned": {
-          "label": "Did the money come back?",
-          "reason": "Cancel asks it, but the answer is not sent on to the paying account yet."
-        },
-        "markLost": {
-          "label": "Mark Lost",
-          "reason": "Marking a restock lost is not built on the server yet — it answers \"not implemented\"."
-        },
-        "signForBox": {
-          "label": "Sign for Box",
-          "reason": "Signing for the box is not built on the server yet — it answers \"not implemented\". Accepting still works straight from ongoing."
-        }
-      }
+      "missingBadge_other": "{{count}} missing"
     },
     "timeline": {
       "created": "Restock raised",
@@ -1330,28 +1254,6 @@
         "lines": "at least one product",
         "count": "a count of at least 1 on every line",
         "newLineNote": "a note on every product added after the box arrived"
-      },
-      "pending": {
-        "lineSupplier": {
-          "label": "A line's supplier and store",
-          "reason": "accepted by the server but not stored until the backend step, and the store names are not served yet"
-        },
-        "lineNote": {
-          "label": "A line's note",
-          "reason": "accepted by the server but not stored until the backend step"
-        },
-        "financeAccount": {
-          "label": "Paid from",
-          "reason": "required, but not stored until the backend step — the payment is not posted to the account yet"
-        },
-        "shipment": {
-          "label": "Courier",
-          "reason": "accepted by the server but not stored until the backend step"
-        },
-        "receiptFile": {
-          "label": "Photo of the label",
-          "reason": "the photo uploads, but the restock does not keep it until the backend step"
-        }
       }
     },
     "cancel": {
@@ -1487,24 +1389,6 @@
         "note": "What it was for",
         "notePlaceholder": "e.g. COD handling fee",
         "noteRequired": "Say what the courier's charge was for."
-      },
-      "pending": {
-        "courier": {
-          "label": "Courier",
-          "reason": "the restock's courier is not stored yet, so a real restock shows none"
-        },
-        "lineSupplier": {
-          "label": "Where each line was bought",
-          "reason": "a line's supplier and store are not stored yet, and store names cannot be read — a real line shows \"not connected\""
-        },
-        "lineNote": {
-          "label": "The selling team's line note",
-          "reason": "a line's note (\"extra stock\") is not stored yet"
-        },
-        "problemNotes": {
-          "label": "Notes on broken and missing units",
-          "reason": "they are sent with the accept but not kept yet"
-        }
       }
     },
     "createdByAll": "Anyone who raised it",
@@ -3475,8 +3359,7 @@
       "namePlaceholder": "e.g. BCA Operasional",
       "numberPlaceholder": "e.g. 1234567890",
       "holderPlaceholder": "e.g. PT Melati Sejahtera",
-      "descriptionPlaceholder": "e.g. Takes the shops' withdrawals and pays restocks",
-      "otherTypeWarning": "The server does not accept type Other yet — saving this account will be refused."
+      "descriptionPlaceholder": "e.g. Takes the shops' withdrawals and pays restocks"
     },
     "transfer": {
       "title": "Transfer From {{name}}",
@@ -3611,16 +3494,6 @@
       "title": "Archived Accounts",
       "subtitle": "Accounts closed at zero. Restore one to use it again.",
       "back": "Active Accounts"
-    },
-    "pending": {
-      "archivedOnly": {
-        "label": "The archive list",
-        "reason": "The contract can only add archived accounts to the active ones, not list the archived alone — so this view asks for the first 200 accounts and keeps the archived itself. Past 200 accounts some are missed, and the counts and pages here are worked out on screen."
-      },
-      "otherType": {
-        "label": "Type Other",
-        "reason": "New Account offers type Other — its provider Other, its number optional — but the contract and the server still refuse type and provider Other, so saving one is refused until the backend allows it. The Storybook demo accepts it."
-      }
     },
     "operationalDialog": {
       "markTitle": "Mark {{name}} as Operational",
@@ -4166,7 +4039,7 @@
       "pending": {
         "courierDebt": {
           "label": "Courier's charge",
-          "reason": "The amount is real, but where the selling team's debt to this warehouse is held is not decided yet — the same open point as the restock's."
+          "reason": "The charge is saved on the transfer, but balance does not hear of it yet — the selling team's debt to this warehouse is posted from the accepted event, which lands with the backend step."
         }
       }
     }
@@ -4319,7 +4192,21 @@
       "markCounted": "Mark Counted",
       "needsReason": "Write a reason for every draft to mark it counted.",
       "readOnly": "Counted — the admin can send it back to count again",
-      "foundHere": "found here"
+      "foundHere": "found here",
+      "yourCount": "Your Count",
+      "theDifference": "The Difference",
+      "countFirst": "Count first",
+      "hidden": "hidden",
+      "revealHint": "The book figure and the difference show here once your count is in.",
+      "recounting": "Submit the recount — the difference follows it.",
+      "matches": "Matches the book — nothing to explain.",
+      "actions": "Rack actions",
+      "rackState": {
+        "empty": "Empty",
+        "done": "Done",
+        "inProgress": "In progress",
+        "notStarted": "Not started"
+      }
     },
     "found": {
       "open": "Add a Product Found Here",

@@ -52,6 +52,13 @@ type LiabilityPayment struct {
 	RecordedBy  uint64
 	ConfirmedBy uint64
 
+	// WHERE THE MONEY LEFT AND WHERE IT LANDED (a-team-payment-posts-on-accept) — opaque
+	// financial_account_service ids, no FK. The payer names From when recording; the creditor names To
+	// when accepting. 0 = not named: To until accepted, From on a payment recorded before the column
+	// existed (migration 00009) — that one's acceptance posts only the To leg.
+	FromAccountID uint64
+	ToAccountID   uint64
+
 	CreatedAt time.Time
 	// nil until the creditor confirms. Survives a reversal — when it was agreed is a fact, and the
 	// reversal is a later one.

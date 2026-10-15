@@ -72,6 +72,12 @@ func TestFinancialAccountList_ActiveOnlyByDefault_TeamScoped_ByName(t *testing.T
 	if len(got) != 3 || got[2].GetName() != "Archived" {
 		t.Fatalf("with archived = %v", names(got))
 	}
+
+	// the-archive-is-its-own-view: the archived ALONE, counted here — and it wins over include_archived.
+	got, total = list(t, svc, teamA, &financial_accountv1.FinancialAccountListFilter{ArchivedOnly: true, IncludeArchived: true})
+	if total != 1 || len(got) != 1 || got[0].GetName() != "Archived" {
+		t.Fatalf("archived only = %v (total %d)", names(got), total)
+	}
 }
 
 func TestFinancialAccountList_FiltersOperationalShopAndSearch(t *testing.T) {

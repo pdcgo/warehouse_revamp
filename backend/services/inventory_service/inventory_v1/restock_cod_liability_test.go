@@ -292,7 +292,7 @@ func (p *realPoster) PostStockDamage(
 
 func TestRestockAccept_TheLedgerActuallyRecordsTheDebt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil)})
 
 	reqID, err := acceptWithCOD(t, db, svc, 25000)
 	if err != nil {

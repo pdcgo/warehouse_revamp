@@ -48,6 +48,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [seeing-is-team-wide-moving-is-admin-and-up](#seeing-is-team-wide-moving-is-admin-and-up) | for now, every member of a team sees its accounts, balances and rows · admin and up open, archive and move the money | owner | ⚠ my reading of *admin up* — the team's admin and owner, plus root and admin |
 | [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) | a bank outside the provider list is registered by hand with provider **Lainnya** (`unknown`), its type still bank / wallet / cash — an ordinary account | owner | ⚠ the contract and the server still refuse it — marked unimplemented on screen |
 | [the-type-decides-the-provider](#the-type-decides-the-provider) | the type is picked first and decides the provider: bank → BCA · BNI · Jago, digital wallet → ShopeePay, cash → Kas by itself, **Lainnya** → provider Lainnya by itself, its number optional | owner | ⚠ type and provider Lainnya are refused by the server — demo only, marked unimplemented |
+| [lainnya-is-opened-by-the-server](#lainnya-is-opened-by-the-server) | the server now opens type Lainnya — type and provider `unknown` as a pair, number optional — and lists the archived alone for the archive view | owner | ✅ built 2026-10-14 · ⚠ the pair rule is my spec |
 
 ## the-accounts-are-one-ledger
 
@@ -1339,3 +1340,32 @@ flowchart LR
   Lainnya, not a bank account with provider Lainnya. Its number-collision caveat moves with it: every Lainnya account
   shares provider *Lainnya*, so the same number at two banks outside the list would collide — a number is optional
   there, which lessens it.
+
+## lainnya-is-opened-by-the-server
+
+> In chat *(owner, 2026-10-14)* — asked of the accounts list's two marked parts, *"can we implemented now ?"*. Lifts
+> *"kita tidak akan mengubah api apapun"* from [the-type-decides-the-provider](#the-type-decides-the-provider) for
+> type Lainnya, and the same for the archive view (the screens' side:
+> [the-archive-and-lainnya-are-served](../../technical/frontend/financial_accounts_decision.md#the-archive-and-lainnya-are-served)).
+
+```mermaid
+flowchart LR
+  N["New Account — type Lainnya"] --> P{"type and provider both unknown?"}
+  P -->|"yes"| O["opened — its opening row posted, number optional"]
+  P -->|"half of the pair"| R["refused — InvalidArgument"]
+  O --> U["allowed what any unknown account is"]
+  I["Tentukan Rekening — fill in as Lainnya"] --> X["refused — it makes an account real"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| the pair | type `unknown` with provider `unknown`, or neither — the type sets the provider (⚠ my spec: half a pair is refused, where real types and providers still pair freely, [type-and-provider-are-picked-apart](#type-and-provider-are-picked-apart)) |
+| the number | optional · when given, unique per provider across all teams ([a-real-account-is-recorded-once](#a-real-account-is-recorded-once)) — so every Lainnya number shares one provider, the collision [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) noted |
+| what it may do | what any `unknown` account may: money out of it, never into it; no reconcile; no operational mark; no shop link; Tentukan Rekening to make it real — all rules the listener's accounts already had |
+| what it may not be | named on a team payment's *Paid from* / *Received into* — the payment check refuses `unknown` ([a-team-payment-posts-on-accept](#a-team-payment-posts-on-accept)) |
+| the archive | the list's `archived_only` and the overview's `archived` — the archived alone, counted by the server |
+
+**What it replaces** — the *⚠ not built* rows of [another-bank-is-provider-lainnya](#another-bank-is-provider-lainnya) and
+[the-type-decides-the-provider](#the-type-decides-the-provider), and the *still open* cell of both in the table above.

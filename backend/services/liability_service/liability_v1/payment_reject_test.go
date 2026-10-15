@@ -38,7 +38,7 @@ func rejectPayment(
 // money that never moved.
 func TestPaymentReject_MovesNoMoney(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -79,7 +79,7 @@ func TestPaymentReject_MovesNoMoney(t *testing.T) {
 // see a claim marked wrong with no way to know whether to re-send the slip or the money.
 func TestPaymentReject_KeepsTheReason(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -107,7 +107,7 @@ func TestPaymentReject_KeepsTheReason(t *testing.T) {
 // caller must not be able to probe ids to learn who owes whom.
 func TestPaymentReject_ThePayerCannotRejectTheirOwnClaim(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -128,7 +128,7 @@ func TestPaymentReject_ThePayerCannotRejectTheirOwnClaim(t *testing.T) {
 // an-accepted-payment-is-final: nothing moves a payment out of CONFIRMED.
 func TestPaymentReject_RefusesAConfirmedPayment(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -152,7 +152,7 @@ func TestPaymentReject_RefusesAConfirmedPayment(t *testing.T) {
 // must fail rather than quietly overwrite the first refusal.
 func TestPaymentReject_IsTerminal(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)

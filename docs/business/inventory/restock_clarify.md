@@ -40,8 +40,8 @@
 > kept the debt off the event. ✅ You chose the diagram: [balance-posts-the-couriers-debt-from-the-event](./restock_decision.md#balance-posts-the-couriers-debt-from-the-event),
 > a reversal ([the-couriers-debt-drawn-two-ways](#the-couriers-debt-drawn-two-ways)). **No question is open.** Left in your
 > text: [restock-md-lags-the-decided-tables](#restock-md-lags-the-decided-tables) (six decided fields) and
-> [two-drawings-of-receiving](#two-drawings-of-receiving). The ripple, the transfer's on-site charge, is asked where it is
-> answered: [warehouse_transfer_clarify Q10](./warehouse_transfer_clarify.md#question).
+> [two-drawings-of-receiving](#two-drawings-of-receiving). The ripple, the transfer's on-site charge, was asked where it is
+> answered, and it followed *(2026-10-15)*: [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event).
 >
 > **The frontend gap analysis (2026-10-09)** raised [Q20](#question) — all five parts now answered, c as three notes with one
 > writer each. **No question is open in restock.** ⚠ restock.md still lacks `restocks.note`, `restock_problem_items.note`, and the
@@ -526,7 +526,7 @@ open"*. **What stops it recurring:** a pass that writes a decision re-reads the 
 ```mermaid
 flowchart LR
   OLD["debt inside the accept's transaction"] -->|"reversed"| NEW["balance posts it from Restock Accepted"]
-  NEW --> T["the transfer's on-site charge - warehouse_transfer Q10"]
+  NEW --> T["the transfer's on-site charge - followed, 2026-10-15"]
   NEW --> S["the backend step - the event gains the charge, the port goes"]
 ```
 

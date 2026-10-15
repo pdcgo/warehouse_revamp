@@ -201,7 +201,7 @@ func TestStockOpname_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // balance is read rather than the call inspected.
 func TestStockOpname_ShortfallMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil)})
 
 	const warehouse uint64 = 5
 

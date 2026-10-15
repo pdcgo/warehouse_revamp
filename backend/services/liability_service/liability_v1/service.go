@@ -15,6 +15,7 @@
 package liability_v1
 
 import (
+	"context"
 	"errors"
 	"math"
 
@@ -22,10 +23,30 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1/liabilityv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 )
 
+// AccountChecker answers whether a team may name an account on a payment — *Paid from* when recording,
+// *Received into* when accepting (a-team-payment-posts-on-accept). Asked of financial_account_service under
+// the caller's token, because the account ids come from the request: without the check a payer could name the
+// CREDITOR's account as the one the money left, and accepting would take it out of their books.
+type AccountChecker interface {
+	// PaymentAccount is true for one of teamID's ACTIVE accounts, never an `unknown` one — what the account
+	// picker offers. false with a nil error is a refusal; an error is a question that could not be asked.
+	PaymentAccount(ctx context.Context, teamID, accountID uint64) (bool, error)
+}
+
+// noAccounts refuses every account — with nothing to ask, a payment naming one is not trusted.
+type noAccounts struct{}
+
+func (noAccounts) PaymentAccount(context.Context, uint64, uint64) (bool, error) {
+	return false, nil
+}
+
 type Service struct {
-	db *gorm.DB
+	db       *gorm.DB
+	events   event_source.EventSender
+	accounts AccountChecker
 }
 
 // compile-time proof Service serves the READ surface and the TERMS surface (#189).
@@ -40,8 +61,52 @@ var (
 	_ liabilityv1connect.LiabilityPaymentServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+func NewService(db *gorm.DB, events event_source.EventSender, accounts AccountChecker) *Service {
+	// A nil sender would panic on the first accept. EmptySender still VALIDATES the event, so a malformed
+	// one is caught with no broker in sight — the right default for tests and a local run.
+	if events == nil {
+		events = event_source.EmptySender
+	}
+
+	// A nil checker refuses every account rather than trusting one. A direct call that names NO account (a
+	// test, the contract's `gt = 0` skipped) never asks — on the wire the contract refuses it first.
+	if accounts == nil {
+		accounts = noAccounts{}
+	}
+
+	return &Service{db: db, events: events, accounts: accounts}
+}
+
+var errAccountNotUsable = errors.New("pick one of your team's active accounts — an archived account, " +
+	"an unknown one or another team's cannot be named on a payment")
+
+// checkAccount asks whether teamID may name accountID, BEFORE any transaction: a call to another service
+// inside one would hold a pooled connection — and the payment's row lock — for a network round-trip. An
+// account archived between this answer and the commit still posts: the accounts take a broker row on an
+// archived account rather than lose money that moved.
+//
+// 0 is not asked: on the wire the contract refuses it, so only a direct call reaches here with one.
+func (s *Service) checkAccount(ctx context.Context, teamID, accountID uint64) error {
+	if accountID == 0 {
+		return nil
+	}
+
+	ok, err := s.accounts.PaymentAccount(ctx, teamID, accountID)
+	if err != nil {
+		// The account service's own refusal (its scope, its policy) reaches the caller with its own code.
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return connectErr
+		}
+
+		return connect.NewError(connect.CodeUnavailable, err)
+	}
+
+	if !ok {
+		return connect.NewError(connect.CodeInvalidArgument, errAccountNotUsable)
+	}
+
+	return nil
 }
 
 // dbError keeps the mapping in one place, as every other service here does.

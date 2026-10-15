@@ -134,6 +134,7 @@ type Event struct {
 	//	*Event_RestockCreated
 	//	*Event_RestockCancelled
 	//	*Event_RestockUpdated
+	//	*Event_LiabilityPaymentAccepted
 	Message       isEvent_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -283,13 +284,22 @@ func (x *Event) GetRestockUpdated() *RestockUpdated {
 	return nil
 }
 
+func (x *Event) GetLiabilityPaymentAccepted() *LiabilityPaymentAccepted {
+	if x != nil {
+		if x, ok := x.Message.(*Event_LiabilityPaymentAccepted); ok {
+			return x.LiabilityPaymentAccepted
+		}
+	}
+	return nil
+}
+
 type isEvent_Message interface {
 	isEvent_Message()
 }
 
 type Event_MemberRemoved struct {
 	// Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-	// inventory 400–499.
+	// inventory 400–499, liability 500–599.
 	MemberRemoved *MemberRemoved `protobuf:"bytes,100,opt,name=member_removed,json=memberRemoved,proto3,oneof"`
 }
 
@@ -321,6 +331,10 @@ type Event_RestockUpdated struct {
 	RestockUpdated *RestockUpdated `protobuf:"bytes,403,opt,name=restock_updated,json=restockUpdated,proto3,oneof"`
 }
 
+type Event_LiabilityPaymentAccepted struct {
+	LiabilityPaymentAccepted *LiabilityPaymentAccepted `protobuf:"bytes,500,opt,name=liability_payment_accepted,json=liabilityPaymentAccepted,proto3,oneof"`
+}
+
 func (*Event_MemberRemoved) isEvent_Message() {}
 
 func (*Event_OrderPlaced) isEvent_Message() {}
@@ -336,6 +350,8 @@ func (*Event_RestockCreated) isEvent_Message() {}
 func (*Event_RestockCancelled) isEvent_Message() {}
 
 func (*Event_RestockUpdated) isEvent_Message() {}
+
+func (*Event_LiabilityPaymentAccepted) isEvent_Message() {}
 
 // MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
 //
@@ -1430,6 +1446,110 @@ func (x *RestockUpdated) GetUpdatedAtUnix() int64 {
 	return 0
 }
 
+// LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
+// money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
+// commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
+// `to_account_id`, sharing a group.
+//
+// Recording and rejecting publish nothing: a claim moves no account. And there is no reverse to follow
+// (an-accepted-payment-is-final). `event_id` is `liability-payment-accepted:<payment_id>` — a payment is accepted
+// once. The envelope's `occurred_at` is when it was accepted, which is the day both rows count on.
+type LiabilityPaymentAccepted struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PaymentId      uint64                 `protobuf:"varint,1,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
+	PayerTeamId    uint64                 `protobuf:"varint,2,opt,name=payer_team_id,json=payerTeamId,proto3" json:"payer_team_id,omitempty"`
+	CreditorTeamId uint64                 `protobuf:"varint,3,opt,name=creditor_team_id,json=creditorTeamId,proto3" json:"creditor_team_id,omitempty"`
+	// Whole rupiah, always positive — direction is the two accounts, never a sign.
+	Amount int64 `protobuf:"varint,4,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
+	FromAccountId uint64 `protobuf:"varint,5,opt,name=from_account_id,json=fromAccountId,proto3" json:"from_account_id,omitempty"`
+	// The creditor's account, named on accept. Never 0.
+	ToAccountId uint64 `protobuf:"varint,6,opt,name=to_account_id,json=toAccountId,proto3" json:"to_account_id,omitempty"`
+	// Who accepted — the creditor's person, read from the payment row. The person who decided the money landed.
+	ActorId       uint64 `protobuf:"varint,7,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LiabilityPaymentAccepted) Reset() {
+	*x = LiabilityPaymentAccepted{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LiabilityPaymentAccepted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LiabilityPaymentAccepted) ProtoMessage() {}
+
+func (x *LiabilityPaymentAccepted) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LiabilityPaymentAccepted.ProtoReflect.Descriptor instead.
+func (*LiabilityPaymentAccepted) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *LiabilityPaymentAccepted) GetPaymentId() uint64 {
+	if x != nil {
+		return x.PaymentId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentAccepted) GetPayerTeamId() uint64 {
+	if x != nil {
+		return x.PayerTeamId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentAccepted) GetCreditorTeamId() uint64 {
+	if x != nil {
+		return x.CreditorTeamId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentAccepted) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentAccepted) GetFromAccountId() uint64 {
+	if x != nil {
+		return x.FromAccountId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentAccepted) GetToAccountId() uint64 {
+	if x != nil {
+		return x.ToAccountId
+	}
+	return 0
+}
+
+func (x *LiabilityPaymentAccepted) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
 var file_warehouse_events_v1_event_proto_extTypes = []protoimpl.ExtensionInfo{
 	{
 		ExtendedType:  (*descriptorpb.MessageOptions)(nil),
@@ -1457,7 +1577,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\n" +
 	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
 	"\vEventConfig\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"\x9b\b\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"\x8b\t\n" +
 	"\x05Event\x12\"\n" +
 	"\bevent_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x12C\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -1472,7 +1592,8 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x10restock_accepted\x18\x90\x03 \x01(\v2$.warehouse.events.v1.RestockAcceptedH\x00R\x0frestockAccepted\x12O\n" +
 	"\x0frestock_created\x18\x91\x03 \x01(\v2#.warehouse.events.v1.RestockCreatedH\x00R\x0erestockCreated\x12U\n" +
 	"\x11restock_cancelled\x18\x92\x03 \x01(\v2%.warehouse.events.v1.RestockCancelledH\x00R\x10restockCancelled\x12O\n" +
-	"\x0frestock_updated\x18\x93\x03 \x01(\v2#.warehouse.events.v1.RestockUpdatedH\x00R\x0erestockUpdated\x1a;\n" +
+	"\x0frestock_updated\x18\x93\x03 \x01(\v2#.warehouse.events.v1.RestockUpdatedH\x00R\x0erestockUpdated\x12n\n" +
+	"\x1aliability_payment_accepted\x18\xf4\x03 \x01(\v2-.warehouse.events.v1.LiabilityPaymentAcceptedH\x00R\x18liabilityPaymentAccepted\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
@@ -1584,7 +1705,17 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"new_amount\x18\x06 \x01(\x03R\tnewAmount\x12\x19\n" +
 	"\bactor_id\x18\a \x01(\x04R\aactorId\x12&\n" +
 	"\x0fupdated_at_unix\x18\b \x01(\x03R\rupdatedAtUnix:\x15\x8a\xb5\x18\x11\n" +
-	"\x0frestock-updated:f\n" +
+	"\x0frestock-updated\"\xa8\x02\n" +
+	"\x18LiabilityPaymentAccepted\x12\x1d\n" +
+	"\n" +
+	"payment_id\x18\x01 \x01(\x04R\tpaymentId\x12\"\n" +
+	"\rpayer_team_id\x18\x02 \x01(\x04R\vpayerTeamId\x12(\n" +
+	"\x10creditor_team_id\x18\x03 \x01(\x04R\x0ecreditorTeamId\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\x03R\x06amount\x12&\n" +
+	"\x0ffrom_account_id\x18\x05 \x01(\x04R\rfromAccountId\x12\"\n" +
+	"\rto_account_id\x18\x06 \x01(\x04R\vtoAccountId\x12\x19\n" +
+	"\bactor_id\x18\a \x01(\x04R\aactorId: \x8a\xb5\x18\x1c\n" +
+	"\x1aliability-payment-accepted:f\n" +
 	"\fevent_config\x12\x1f.google.protobuf.MessageOptions\x18ц\x03 \x01(\v2 .warehouse.events.v1.EventConfigR\veventConfigBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1;eventsv1b\x06proto3"
 
 var (
@@ -1599,7 +1730,7 @@ func file_warehouse_events_v1_event_proto_rawDescGZIP() []byte {
 	return file_warehouse_events_v1_event_proto_rawDescData
 }
 
-var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*EventConfig)(nil),                 // 0: warehouse.events.v1.EventConfig
 	(*Event)(nil),                       // 1: warehouse.events.v1.Event
@@ -1613,17 +1744,18 @@ var file_warehouse_events_v1_event_proto_goTypes = []any{
 	(*RestockCreated)(nil),              // 9: warehouse.events.v1.RestockCreated
 	(*RestockCancelled)(nil),            // 10: warehouse.events.v1.RestockCancelled
 	(*RestockUpdated)(nil),              // 11: warehouse.events.v1.RestockUpdated
-	nil,                                 // 12: warehouse.events.v1.Event.MetadataEntry
-	(*timestamppb.Timestamp)(nil),       // 13: google.protobuf.Timestamp
-	(*v1.Identity)(nil),                 // 14: warehouse.role_base.v1.Identity
-	(v11.SettlementType)(0),             // 15: warehouse.settlement.v1.SettlementType
-	(v11.SourceType)(0),                 // 16: warehouse.settlement.v1.SourceType
-	(*descriptorpb.MessageOptions)(nil), // 17: google.protobuf.MessageOptions
+	(*LiabilityPaymentAccepted)(nil),    // 12: warehouse.events.v1.LiabilityPaymentAccepted
+	nil,                                 // 13: warehouse.events.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil),       // 14: google.protobuf.Timestamp
+	(*v1.Identity)(nil),                 // 15: warehouse.role_base.v1.Identity
+	(v11.SettlementType)(0),             // 16: warehouse.settlement.v1.SettlementType
+	(v11.SourceType)(0),                 // 17: warehouse.settlement.v1.SourceType
+	(*descriptorpb.MessageOptions)(nil), // 18: google.protobuf.MessageOptions
 }
 var file_warehouse_events_v1_event_proto_depIdxs = []int32{
-	13, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	12, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
-	14, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
+	14, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	13, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
+	15, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
 	2,  // 3: warehouse.events.v1.Event.member_removed:type_name -> warehouse.events.v1.MemberRemoved
 	4,  // 4: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
 	6,  // 5: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
@@ -1632,17 +1764,18 @@ var file_warehouse_events_v1_event_proto_depIdxs = []int32{
 	9,  // 8: warehouse.events.v1.Event.restock_created:type_name -> warehouse.events.v1.RestockCreated
 	10, // 9: warehouse.events.v1.Event.restock_cancelled:type_name -> warehouse.events.v1.RestockCancelled
 	11, // 10: warehouse.events.v1.Event.restock_updated:type_name -> warehouse.events.v1.RestockUpdated
-	15, // 11: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
-	16, // 12: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
-	5,  // 13: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
-	8,  // 14: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
-	17, // 15: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
-	0,  // 16: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	16, // [16:17] is the sub-list for extension type_name
-	15, // [15:16] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	12, // 11: warehouse.events.v1.Event.liability_payment_accepted:type_name -> warehouse.events.v1.LiabilityPaymentAccepted
+	16, // 12: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
+	17, // 13: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
+	5,  // 14: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
+	8,  // 15: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
+	18, // 16: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
+	0,  // 17: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	17, // [17:18] is the sub-list for extension type_name
+	16, // [16:17] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_events_v1_event_proto_init() }
@@ -1659,6 +1792,7 @@ func file_warehouse_events_v1_event_proto_init() {
 		(*Event_RestockCreated)(nil),
 		(*Event_RestockCancelled)(nil),
 		(*Event_RestockUpdated)(nil),
+		(*Event_LiabilityPaymentAccepted)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1666,7 +1800,7 @@ func file_warehouse_events_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_events_v1_event_proto_rawDesc), len(file_warehouse_events_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

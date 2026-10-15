@@ -25,7 +25,6 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useProductsByIds } from "../../features/products/queries";
 import { useProductPlaces } from "../../features/inventory/queries";
 import { useLineSuppliers } from "../../features/restock/LineSupplier";
@@ -39,7 +38,6 @@ import { CourierCharge } from "./components/CourierCharge";
 import { LineCard } from "./components/LineCard";
 import type { LineDraft } from "./draft";
 import { emptyLine, lineState, receivedLine } from "./draft";
-import { RESTOCK_ACCEPT_PENDING } from "./pending";
 
 function parseRequestId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -323,7 +321,6 @@ export function RestockAcceptPage() {
         </Text>
       )}
 
-      <NotImplementedSummary list={RESTOCK_ACCEPT_PENDING} />
 
       <AcceptSummary request={request} courierCharge={courierCharge} />
 

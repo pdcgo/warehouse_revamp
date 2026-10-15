@@ -18,7 +18,6 @@ import { Trash2, X } from "lucide-react";
 import type { SupplierChannel } from "../../../gen/warehouse/supplier/v1/supplier_channel_pb";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
 import { LineSupplier } from "../../../features/restock/LineSupplier";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
@@ -26,7 +25,6 @@ import { SupplierChannelPicker } from "../../../components/pickers/SupplierChann
 import { useIsMobile } from "../../../layouts/shell";
 import { formatRupiah } from "../../../lib/money";
 import { type FormMode, type LineDraft, needsNote, perPiece, toQty } from "../draft";
-import { RESTOCK_FORM_PENDING } from "../pending";
 
 export interface LineCardProps {
   line: LineDraft;
@@ -153,7 +151,6 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
               <Text fontSize="xs" fontWeight="bold" color="fg.label">
                 {t("restock.form.boughtFrom")}
               </Text>
-              <NotImplemented list={RESTOCK_FORM_PENDING} id="lineSupplier" />
             </HStack>
 
             <Flex gap="2" align="center" wrap="wrap">
@@ -207,7 +204,6 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
               <HStack gap="1">
                 {t("restock.form.lineNote")}
                 <Field.RequiredIndicator />
-                <NotImplemented list={RESTOCK_FORM_PENDING} id="lineNote" />
               </HStack>
             </Field.Label>
             <Input

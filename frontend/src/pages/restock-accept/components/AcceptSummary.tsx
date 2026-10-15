@@ -5,13 +5,11 @@ import type { RestockRequest } from "../../../gen/warehouse/inventory/v1/restock
 import { ShippingBadge } from "../../../components/badges/ShippingBadge";
 import { TeamItem } from "../../../components/entity/TeamItem";
 import { UserItem } from "../../../components/entity/UserItem";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { useRestockActors } from "../../../features/restock/queries";
 import { committedValue, goodsTotal } from "../../../features/restock/summary";
 import { useShipmentChannelsByIds } from "../../../features/shipment/queries";
 import { useTeamDetail } from "../../../features/teams/queries";
 import { formatRupiah } from "../../../lib/money";
-import { RESTOCK_ACCEPT_PENDING } from "../pending";
 
 function formatDate(unix: bigint): string {
   if (unix <= 0n) return "";
@@ -109,7 +107,6 @@ export function AcceptSummary({ request, courierCharge }: { request: RestockRequ
                   <Text fontSize="xs" color="fg.muted">
                     {t("restock.accept.summary.courier")}
                   </Text>
-                  <NotImplemented list={RESTOCK_ACCEPT_PENDING} id="courier" />
                 </Flex>
                 <Box data-testid="accept-courier-name">
                   <ShippingBadge code={courier?.code ?? ""} />

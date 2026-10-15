@@ -14,9 +14,7 @@ import {
   problemValue,
 } from "../../../features/restock/summary";
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { formatRupiah } from "../../../lib/money";
-import { RESTOCK_WAREHOUSE_DETAIL_PENDING as PENDING } from "../pending";
 
 // THE LINES, AS THE WAREHOUSE COUNTED THEM — what was ordered, where it was bought, what the box held, and WHERE the good
 // units went.
@@ -56,13 +54,11 @@ export function LinesCard({ request, teamId }: { request: RestockRequest; teamId
                   <Table.ColumnHeader>
                     <HStack gap="1.5">
                       {t("restock.detail.product")}
-                      <NotImplemented list={PENDING} id="lineNote" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader>
                     <HStack gap="1.5">
                       {t("restock.detail.supplier")}
-                      <NotImplemented list={PENDING} id="lineSupplier" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.ordered")}</Table.ColumnHeader>
@@ -71,13 +67,11 @@ export function LinesCard({ request, teamId }: { request: RestockRequest; teamId
                   <Table.ColumnHeader textAlign="end" data-testid="restock-detail-col-broken">
                     <HStack gap="1.5" justify="end">
                       {t("restock.problem.broken")}
-                      <NotImplemented list={PENDING} id="problemNotes" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end" data-testid="restock-detail-col-missing">
                     <HStack gap="1.5" justify="end">
                       {t("restock.problem.missing")}
-                      <NotImplemented list={PENDING} id="problemNotes" />
                     </HStack>
                   </Table.ColumnHeader>
                   {counted && <Table.ColumnHeader>{t("restock.detail.placement")}</Table.ColumnHeader>}

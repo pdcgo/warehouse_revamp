@@ -239,6 +239,7 @@ sequenceDiagram
     participant B as Warehouse B member
     participant H as WarehouseTransferAccept
     participant DB as Postgres - one tx
+    participant BAL as balance - by event, not built yet
 
     B->>H: lines [item, arrived, broken, notes, placements], courier charge + note
     H->>DB: SELECT transfer WHERE id AND to_warehouse_id FOR UPDATE
@@ -255,11 +256,11 @@ sequenceDiagram
             H->>DB: one batch at B per source batch, same price and expiry, good units filling the oldest first
             H->>DB: one placement log per rack the good units went to
         end
-        opt courier charge above 0
-            H->>DB: the selling team's debt to B
-        end
+        H->>DB: the courier charge and its note on the transfer
         H->>DB: status accepted, trail row, COMMIT
         H-->>B: the transfer, accepted
+        H--)BAL: Warehouse Transfer Accepted, after commit — the charge, 0 included
+        Note over BAL: the selling team owes B the charge, once per transfer — nothing for 0
     end
 ```
 
@@ -270,7 +271,7 @@ sequenceDiagram
 | B mints one batch per source batch; the trip never changes a unit's price | [the-receiver-mints-one-batch-per-source-batch](../../business/inventory/warehouse_transfer_decision.md#the-receiver-mints-one-batch-per-source-batch), [a-transfer-never-changes-a-units-price](../../business/inventory/warehouse_transfer_decision.md#a-transfer-never-changes-a-units-price) |
 | every price is the system's, from the batch rows | [the-system-fills-a-transfers-prices](../../business/inventory/warehouse_transfer_decision.md#the-system-fills-a-transfers-prices) |
 | broken, missing and lost are the selling team's loss | [the-selling-team-bears-broken-missing-and-lost](../../business/inventory/warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost) |
-| the shipping expense reaches the account by event; the on-site charge is a debt written in the accept | [the-shipping-expense-reaches-the-account-by-event](../../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event), [the-on-site-charge-is-paid-by-b-at-accept](../../business/inventory/warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept) |
+| the shipping expense reaches the account by event; B pays the on-site charge and saves it at accept, and balance posts the debt from the accepted event | [the-shipping-expense-reaches-the-account-by-event](../../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event), [the-on-site-charge-is-paid-by-b-at-accept](../../business/inventory/warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept), [balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event) |
 | one line per product, one problem row per product per kind | [a-product-appears-once-per-transfer](../../business/inventory/warehouse_transfer_decision.md#a-product-appears-once-per-transfer) |
 
 ---

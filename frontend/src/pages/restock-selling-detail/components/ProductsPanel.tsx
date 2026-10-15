@@ -15,10 +15,8 @@ import {
 } from "../../../features/restock/summary";
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
 import { useProductsByIds } from "../../../features/products/queries";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { ProductListItem } from "../../../components/products/ProductListItem";
 import { formatRupiah } from "../../../lib/money";
-import { RESTOCK_SELLING_DETAIL_PENDING as PENDING } from "../pending";
 
 export interface ProductsPanelProps {
   request: RestockRequest;
@@ -76,13 +74,11 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                   <Table.ColumnHeader>
                     <HStack gap="1.5">
                       {t("restock.detail.product")}
-                      <NotImplemented list={PENDING} id="lineNote" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader>
                     <HStack gap="1.5">
                       {t("restock.detail.supplier")}
-                      <NotImplemented list={PENDING} id="lineSupplier" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.ordered")}</Table.ColumnHeader>
@@ -91,13 +87,11 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                   <Table.ColumnHeader textAlign="end" data-testid="restock-detail-col-broken">
                     <HStack gap="1.5" justify="end">
                       {t("restock.problem.broken")}
-                      <NotImplemented list={PENDING} id="problemNotes" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end" data-testid="restock-detail-col-missing">
                     <HStack gap="1.5" justify="end">
                       {t("restock.problem.missing")}
-                      <NotImplemented list={PENDING} id="problemNotes" />
                     </HStack>
                   </Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("restock.detail.unitPrice")}</Table.ColumnHeader>

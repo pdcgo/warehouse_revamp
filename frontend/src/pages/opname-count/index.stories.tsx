@@ -6,7 +6,8 @@ import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameCountPage } from "./index";
 
-// ⚠ PROTOTYPE for implementation_analysis — counting at the shelf, on a phone (opname.md §How Staff Work On Session).
+// ⚠ PROTOTYPE for implementation_analysis — counting at the shelf, on a phone (opname.md §How Staff Work On Session),
+// laid out like Accept Delivery: rack tiles, then one three-column card per product.
 //
 // Count #15 at Gudang Pusat, as STAFF. Rak A-01-1 holds Beras (counted by Budi), Minyak (not counted — book 6) and
 // Tepung (revealed short 2 — book 4, counted 2); A-01-2 holds Beras, Gula and a row at 0; B-02-1 holds nothing, and an
@@ -41,6 +42,9 @@ export const Default: Story = {
     await expect(canvas.getByTestId("opname-count-rack-progress-42")).toHaveTextContent("2 of 3 counted");
     // An `all` count lists the empty rack too (an-all-count-visits-every-rack).
     await expect(canvas.getByTestId("opname-count-rack-progress-43")).toHaveTextContent("Nothing expected");
+    // Each tile says its state at a glance.
+    await expect(canvas.getByTestId("opname-count-rack-state-41")).toHaveTextContent("In progress");
+    await expect(canvas.getByTestId("opname-count-rack-state-43")).toHaveTextContent("Empty");
   },
 };
 
@@ -52,6 +56,9 @@ export const Mobile: Story = {
     await canvas.findByTestId("opname-count-row-1504", {}, { timeout: 4000 });
 
     await expect(canvas.getByTestId("opname-count-rack-code")).toHaveTextContent("A-01-1");
+    // The phone header is one row: Change Rack and Add Found fold into ⋯ (the-phone-header-is-one-row).
+    await expect(canvas.getByTestId("opname-count-actions")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("opname-count-change-rack")).toBeNull();
   },
 };
 
@@ -63,8 +70,10 @@ export const BlindThenRevealed: Story = {
     const canvas = within(canvasElement);
     const card = await canvas.findByTestId("opname-count-row-1504", {}, { timeout: 4000 });
 
-    // Blind: the book's 6 is nowhere on the card.
+    // Blind: the book's 6 is nowhere on the card — the frame says "hidden", and the difference waits for the count.
     await expect(within(card).queryByTestId("opname-count-expected-1504")).toBeNull();
+    await expect(within(card).getByTestId("opname-count-hidden-1504")).toBeInTheDocument();
+    await expect(within(card).getByTestId("opname-count-count-first-1504")).toBeInTheDocument();
     await expect(card).not.toHaveTextContent("6");
 
     await userEvent.type(within(card).getByTestId("opname-count-input-1504"), "5", { delay: 40 });

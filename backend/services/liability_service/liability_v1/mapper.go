@@ -189,5 +189,7 @@ func paymentToProto(p *liability_service_models.LiabilityPayment) *liabilityv1.L
 		ConfirmedAtUnix: confirmedAt,
 		DocumentIds:     documentIDs(p.Documents),
 		Reason:          p.Reason,
+		FromAccountId:   p.FromAccountID,
+		ToAccountId:     p.ToAccountID,
 	}
 }

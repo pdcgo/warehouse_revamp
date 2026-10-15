@@ -1392,8 +1392,8 @@ export const WarehouseTransferService: GenService<{
   },
   /**
    * Warehouse B counts the box in: shipped or arrived → accepted. Its transfer_in mints one batch per source batch
-   * (the-receiver-mints-one-batch-per-source-batch), and the courier's on-site charge becomes the team's debt to B
-   * inside the same transaction (the-on-site-charge-is-paid-by-b-at-accept).
+   * (the-receiver-mints-one-batch-per-source-batch). The courier's on-site charge is saved on the transfer, and balance
+   * posts the team's debt to B from Warehouse Transfer Accepted (balance-posts-the-transfers-on-site-debt-from-the-event).
    *
    * @generated from rpc warehouse.inventory.v1.WarehouseTransferService.WarehouseTransferAccept
    */

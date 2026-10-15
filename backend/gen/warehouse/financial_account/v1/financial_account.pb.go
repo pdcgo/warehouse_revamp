@@ -34,9 +34,11 @@ const (
 	FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_WALLET       FinancialAccountType = 1
 	FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT FinancialAccountType = 2
 	FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_CASH         FinancialAccountType = 3
-	// The owner's `unknown` — an account the withdrawal listener made for a shop that named none
-	// (a-shop-with-no-account-gets-an-unknown-one). NOT the same as UNSPECIFIED, which is "not sent".
-	// Never picked by hand (my spec): it leaves `unknown` only through FinancialAccountIdentify.
+	// The owner's `unknown`, *Lainnya* on screen — an account the withdrawal listener made for a shop that
+	// named none (a-shop-with-no-account-gets-an-unknown-one), or one a person opened on New Account for an
+	// account outside the three types (the-type-decides-the-provider). NOT the same as UNSPECIFIED, which is
+	// "not sent". Either way it is allowed what any unknown account is — no transfer into it, no reconcile,
+	// no operational mark — and leaves `unknown` only through FinancialAccountIdentify.
 	FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_UNKNOWN FinancialAccountType = 4
 )
 
@@ -1029,7 +1031,10 @@ type FinancialAccountListFilter struct {
 	// Empty = every type.
 	Types []FinancialAccountType `protobuf:"varint,4,rep,packed,name=types,proto3,enum=warehouse.financial_account.v1.FinancialAccountType" json:"types,omitempty"`
 	// The account this shop withdraws into — at most one (a-shop-has-one-account). 0 = no filter.
-	ShopId        uint64 `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	ShopId uint64 `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// ARCHIVED ONLY — the accounts page's archive view (the-archive-is-its-own-view): counted and paged here,
+	// not on screen. Wins over `include_archived`, which adds the archived to the active.
+	ArchivedOnly  bool `protobuf:"varint,6,opt,name=archived_only,json=archivedOnly,proto3" json:"archived_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1097,6 +1102,13 @@ func (x *FinancialAccountListFilter) GetShopId() uint64 {
 		return x.ShopId
 	}
 	return 0
+}
+
+func (x *FinancialAccountListFilter) GetArchivedOnly() bool {
+	if x != nil {
+		return x.ArchivedOnly
+	}
+	return false
 }
 
 type FinancialAccountListFilterSort struct {
@@ -1717,7 +1729,11 @@ func (x *FinancialAccountOverviewRequest) GetMetricRequest() []FinancialAccountM
 type FinancialAccountOverviewFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// For BALANCE — the accounts whose balance is wanted. Required by BALANCE, ignored by TYPE_TOTAL.
-	AccountIds    []uint64 `protobuf:"varint,1,rep,packed,name=account_ids,json=accountIds,proto3" json:"account_ids,omitempty"`
+	AccountIds []uint64 `protobuf:"varint,1,rep,packed,name=account_ids,json=accountIds,proto3" json:"account_ids,omitempty"`
+	// For TYPE_TOTAL — count the ARCHIVED accounts instead of the active: the archive view's type tabs
+	// (the-archive-is-its-own-view). Their balance and below-zero count are 0 by rule — an account is
+	// archived only at zero. Ignored by BALANCE.
+	Archived      bool `protobuf:"varint,2,opt,name=archived,proto3" json:"archived,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1757,6 +1773,13 @@ func (x *FinancialAccountOverviewFilter) GetAccountIds() []uint64 {
 		return x.AccountIds
 	}
 	return nil
+}
+
+func (x *FinancialAccountOverviewFilter) GetArchived() bool {
+	if x != nil {
+		return x.Archived
+	}
+	return false
 }
 
 type FinancialAccountBalanceItem struct {
@@ -2645,13 +2668,15 @@ func (x *FinancialAccountLogListResponse) GetPageInfo() *v1.PageInfo {
 type FinancialAccountCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	// Not UNKNOWN — only the withdrawal listener makes one (my spec).
+	// UNKNOWN is type *Lainnya* (the-type-decides-the-provider): the type sets its provider, so the two come
+	// as a PAIR — UNKNOWN with UNKNOWN, refused otherwise — and its number is optional.
 	Type       FinancialAccountType     `protobuf:"varint,2,opt,name=type,proto3,enum=warehouse.financial_account.v1.FinancialAccountType" json:"type,omitempty"`
 	Provider   FinancialAccountProvider `protobuf:"varint,3,opt,name=provider,proto3,enum=warehouse.financial_account.v1.FinancialAccountProvider" json:"provider,omitempty"`
 	Name       string                   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	HolderName string                   `protobuf:"bytes,5,opt,name=holder_name,json=holderName,proto3" json:"holder_name,omitempty"`
-	// Empty only for a cash box. Refused with ALREADY_EXISTS when this provider and number are recorded
-	// in ANY team, archived included (a-real-account-is-recorded-once).
+	// Required for a bank and a wallet, optional for *Lainnya*, dropped for a cash box. Refused with
+	// ALREADY_EXISTS when this provider and number are recorded in ANY team, archived included
+	// (a-real-account-is-recorded-once) — so every *Lainnya* number shares one provider.
 	AccountNumber string `protobuf:"bytes,6,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
 	Description   string `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
 	// Posted as the `opening_balance` row, in the same transaction — even at 0, so every account's log
@@ -4865,13 +4890,14 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2<.warehouse.financial_account.v1.FinancialAccountListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xf8\x01\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x9d\x02\n" +
 	"\x1aFinancialAccountListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12)\n" +
 	"\x10include_archived\x18\x02 \x01(\bR\x0fincludeArchived\x12)\n" +
 	"\x10operational_only\x18\x03 \x01(\bR\x0foperationalOnly\x12T\n" +
 	"\x05types\x18\x04 \x03(\x0e24.warehouse.financial_account.v1.FinancialAccountTypeB\b\xbaH\x05\x92\x01\x02\x10\x04R\x05types\x12\x17\n" +
-	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\"\xfa\x01\n" +
+	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\x12#\n" +
+	"\rarchived_only\x18\x06 \x01(\bR\farchivedOnly\"\xfa\x01\n" +
 	"\x1eFinancialAccountListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12S\n" +
@@ -4915,10 +4941,11 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x06filter\x18\x02 \x01(\v2>.warehouse.financial_account.v1.FinancialAccountOverviewFilterR\x06filter\x12o\n" +
 	"\x0emetric_request\x18\x03 \x03(\x0e2>.warehouse.financial_account.v1.FinancialAccountMetricDataTypeB\b\xbaH\x05\x92\x01\x02\b\x01R\rmetricRequest:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"N\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"j\n" +
 	"\x1eFinancialAccountOverviewFilter\x12,\n" +
 	"\vaccount_ids\x18\x01 \x03(\x04B\v\xbaH\b\x92\x01\x05\x10\xc8\x01\x18\x01R\n" +
-	"accountIds\"\x97\x01\n" +
+	"accountIds\x12\x1a\n" +
+	"\barchived\x18\x02 \x01(\bR\barchived\"\x97\x01\n" +
 	"\x1bFinancialAccountBalanceItem\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\x04R\taccountId\x12\x18\n" +
@@ -4991,11 +5018,12 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x1fFinancialAccountLogListResponse\x12Y\n" +
 	"\x05items\x18\x01 \x03(\v2C.warehouse.financial_account.v1.FinancialAccountLogListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xbb\x04\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xbf\x04\n" +
 	"\x1dFinancialAccountCreateRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12X\n" +
-	"\x04type\x18\x02 \x01(\x0e24.warehouse.financial_account.v1.FinancialAccountTypeB\x0e\xbaH\v\x82\x01\b\x10\x01\x18\x01\x18\x02\x18\x03R\x04type\x12h\n" +
-	"\bprovider\x18\x03 \x01(\x0e28.warehouse.financial_account.v1.FinancialAccountProviderB\x12\xbaH\x0f\x82\x01\f\x10\x01\x18\x01\x18\x02\x18\x03\x18\x04\x18\x05R\bprovider\x12\x1d\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12Z\n" +
+	"\x04type\x18\x02 \x01(\x0e24.warehouse.financial_account.v1.FinancialAccountTypeB\x10\xbaH\r\x82\x01\n" +
+	"\x10\x01\x18\x01\x18\x02\x18\x03\x18\x04R\x04type\x12j\n" +
+	"\bprovider\x18\x03 \x01(\x0e28.warehouse.financial_account.v1.FinancialAccountProviderB\x14\xbaH\x11\x82\x01\x0e\x10\x01\x18\x01\x18\x02\x18\x03\x18\x04\x18\x05\x18\x06R\bprovider\x12\x1d\n" +
 	"\x04name\x18\x04 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18xR\x04name\x12(\n" +
 	"\vholder_name\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18xR\n" +
 	"holderName\x12.\n" +

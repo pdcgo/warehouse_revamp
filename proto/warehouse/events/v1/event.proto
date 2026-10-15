@@ -92,7 +92,7 @@ message Event {
     option (buf.validate.oneof).required = true;
 
     // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-    // inventory 400–499.
+    // inventory 400–499, liability 500–599.
     MemberRemoved member_removed = 100;
 
     OrderPlaced order_placed = 200;
@@ -104,6 +104,8 @@ message Event {
     RestockCreated restock_created = 401;
     RestockCancelled restock_cancelled = 402;
     RestockUpdated restock_updated = 403;
+
+    LiabilityPaymentAccepted liability_payment_accepted = 500;
   }
 }
 
@@ -397,4 +399,28 @@ message RestockUpdated {
   int64 new_amount = 6;
   uint64 actor_id = 7;
   int64 updated_at_unix = 8;
+}
+
+// LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
+// money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
+// commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
+// `to_account_id`, sharing a group.
+//
+// Recording and rejecting publish nothing: a claim moves no account. And there is no reverse to follow
+// (an-accepted-payment-is-final). `event_id` is `liability-payment-accepted:<payment_id>` — a payment is accepted
+// once. The envelope's `occurred_at` is when it was accepted, which is the day both rows count on.
+message LiabilityPaymentAccepted {
+  option (event_config).topic = "liability-payment-accepted";
+
+  uint64 payment_id = 1;
+  uint64 payer_team_id = 2;
+  uint64 creditor_team_id = 3;
+  // Whole rupiah, always positive — direction is the two accounts, never a sign.
+  int64 amount = 4;
+  // The payer's account. 0 on a payment recorded before *Paid from* existed: only the `to` leg posts.
+  uint64 from_account_id = 5;
+  // The creditor's account, named on accept. Never 0.
+  uint64 to_account_id = 6;
+  // Who accepted — the creditor's person, read from the payment row. The person who decided the money landed.
+  uint64 actor_id = 7;
 }

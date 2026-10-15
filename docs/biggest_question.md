@@ -43,6 +43,7 @@ code. What changed:
 - 🔄 *(2026-10-15)* **166**: the order keeps ONE `transaction_id` ([an-order-is-one-inventory-transaction](business/order/context_decision.md#an-order-is-one-inventory-transaction)). #1 moves with it: the key can be UNIQUE on inventory's own column, so `inventory_take_keys` is no longer recommended, and an order's transaction is the ordering team's. Counts unchanged.
 - 🔄 *(2026-10-15)* **166**: the owner fixed three contradictions in order_creation.md and named the compensation `InventoryTxCancel` ([the-compensation-event-is-inventory-tx-cancel](business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel)). The form's loop was proposed and drawn the same day ([the-form-locks-until-it-is-answered](business/order/context_decision.md#the-form-locks-until-it-is-answered)); what it left open — [key-already-used-gets-its-own-message](business/order/order_creation_clarify.md#key-already-used-gets-its-own-message) — is +1, and a same-second resend never reaches the unique index, so #4's fix has one site, not two.
 - ▼ *(2026-10-15)* **165**: four ledger rules and the money type closed in chat — [the-caller-opens-the-transaction](technical/ledger/mutation_and_ledger_decision.md#the-caller-opens-the-transaction), [ledger-logs-are-append-only](technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only), [both-ledgers-count-the-same-units](business/inventory/context_decision.md#both-ledgers-count-the-same-units), [a-batch-keeps-its-supplier](business/inventory/context_decision.md#a-batch-keeps-its-supplier), [money-is-double-in-the-api-too](technical/stock/design_decision.md#money-is-double-in-the-api-too). **The restock accept is no longer blocked.**
+- 🔄 *(2026-10-15)* **168**: warehouse transfer Q10 closed, option B — balance posts the transfer's courier debt from the accepted event ([balance-posts-the-transfers-on-site-debt-from-the-event](business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)). **Transfer has no open question.** It raised balance Q13: under `INCIDENTAL_FEE`, a transfer whose id matches a restock's is dropped as a duplicate. Net zero.
 - ▼ *(2026-10-15)* **168**: technical stock Q5 closed — nothing is in production, so the ledgers replace today's tables outright, no switch-over ([no-switch-over-the-ledgers-replace-todays-tables](technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)). #1 loses its cut-over.
 - 🔄 *(2026-10-15)* **169**: restock passed design_accept ([the-restock-prototype-is-accepted](business/inventory/restock_decision.md#the-restock-prototype-is-accepted)); #1 now holds three accepted designs and opname's.
 - ▼ *(2026-10-14)* **169**: restock Q23 closed, b — a box nobody raised comes in by the team's restock, as opname's rule ([a-box-nobody-raised-comes-in-by-the-teams-restock](business/inventory/restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock)). **Restock has no open question.**
@@ -128,7 +129,7 @@ the column sums to **154**, the whole set, not to 148. *Feeds* names the row of 
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 5 | #1 (Q14) |
 | [business/inventory/transaction_clarify.md](business/inventory/transaction_clarify.md#question) | 6 | #1 |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 8 |  |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 | #2 (its contradiction) |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 8 | #2 (its contradiction) |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 |  |
 | [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 7 |  |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 |  |
@@ -144,7 +145,7 @@ the column sums to **154**, the whole set, not to 148. *Feeds* names the row of 
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 0 |  |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 |  |
 | [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 |  |
-| [business/inventory/warehouse_transfer_clarify.md](business/inventory/warehouse_transfer_clarify.md#question) | 1 |  |
+| [business/inventory/warehouse_transfer_clarify.md](business/inventory/warehouse_transfer_clarify.md#question) | 0 |  |
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 1 |  |
 | [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 1 |  |
 | [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 0 |  |

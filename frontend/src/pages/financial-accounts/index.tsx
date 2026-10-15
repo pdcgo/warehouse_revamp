@@ -26,13 +26,9 @@ import { FinancialAccountStatus, type FinancialAccountType } from "../../gen/war
 import { AccountActions } from "../../features/financialAccount/AccountActions";
 import { AccountLinks } from "../../features/financialAccount/AccountLinks";
 import { AccountFormDialog } from "../../features/financialAccount/AccountFormDialog";
-import { FINANCIAL_ACCOUNT_PENDING } from "../../features/financialAccount/pending";
-import type { TypeTotal } from "../../features/financialAccount/adapt";
 import { BalanceText, ProviderBadge } from "../../features/financialAccount/badges";
 import { useAccountBalances, useFinancialAccounts, useTypeTotals } from "../../features/financialAccount/queries";
 import { TYPE_KEY, accountName, isUnknown } from "../../features/financialAccount/vocab";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
@@ -45,8 +41,6 @@ import { AccountTypeTabs } from "./components/AccountTypeTabs";
 import { TypeTotals } from "./components/TypeTotals";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-/** How many accounts the archive view asks for, to keep the archived among them — see `pending.ts`. */
-const ARCHIVE_WINDOW = 200;
 
 // FinancialAccountsPage — what the team holds, and where (docs/business/financial_account).
 //
@@ -66,7 +60,8 @@ const ARCHIVE_WINDOW = 200;
 //    nobody should trust (Reconcile);
 //  - THE ARCHIVE IS ITS OWN VIEW (owner, `the-archive-is-its-own-view`): the Archive button beside New Account
 //    turns this same screen into the archived list — no totals, the search, the shop and the type tabs — and
-//    back. The contract cannot list archived accounts alone, so the view says so (`pending.ts`);
+//    back. The server lists, counts and pages the archived alone (`archived_only`), and counts them per type
+//    for the tabs (the Overview's `archived`);
 //  - EVERY FILTER THE CONTRACT HAS, in the shared FilterBar (owner, `the-accounts-list-has-every-filter-the-contract-has`),
 //    and the sort from the NAME and PROVIDER headings, A to Z first (`the-accounts-table-sorts-from-its-headings`).
 export function FinancialAccountsPage() {
@@ -88,37 +83,26 @@ export function FinancialAccountsPage() {
   const [creating, setCreating] = useState(false);
 
   const teamId = current?.teamId;
-  // ⚠ THE ARCHIVE VIEW ASKS FOR THE ACTIVE TOO, and keeps the archived on screen: the contract can only ADD the
-  // archived (`include_archived`), never leave the active out. So it takes one window of ARCHIVE_WINDOW, and the
-  // type, the count and the page are worked out here — marked as such (`FINANCIAL_ACCOUNT_PENDING`).
+  // The archive view is the same question asked of the archived ALONE — the server lists, counts and pages them
+  // (the-archive-is-its-own-view). The operational filter has no say there: an archived account is never operational.
   const list = useFinancialAccounts({
     teamId,
     q,
-    includeArchived: archivedView,
-    types: archivedView || type === undefined ? [] : [type],
+    includeArchived: false,
+    archivedOnly: archivedView,
+    types: type === undefined ? [] : [type],
     shopId,
     operationalOnly: archivedView ? false : operationalOnly,
     sort,
-    page: archivedView ? 1 : page,
-    pageSize: archivedView ? ARCHIVE_WINDOW : pageSize,
+    page,
+    pageSize,
   });
-  const archivedAll = archivedView
-    ? (list.data?.accounts ?? []).filter((a) => a.status === FinancialAccountStatus.ARCHIVED)
-    : [];
-  const archivedOfType = type === undefined ? archivedAll : archivedAll.filter((a) => a.type === type);
-  const accounts = archivedView
-    ? archivedOfType.slice((page - 1) * pageSize, page * pageSize)
-    : (list.data?.accounts ?? []);
-  const totalItems = archivedView ? archivedOfType.length : (list.data?.totalItems ?? 0);
-  // The tabs' counts, of the archived — the server's totals count the active only.
-  const archivedTotals: TypeTotal[] = [...new Set(archivedAll.map((a) => a.type))].map((t) => ({
-    type: t,
-    balance: 0,
-    accountCount: archivedAll.filter((a) => a.type === t).length,
-    belowZeroCount: 0,
-  }));
+  const accounts = list.data?.accounts ?? [];
+  const totalItems = list.data?.totalItems ?? 0;
   const balances = useAccountBalances(teamId, accounts.map((a) => a.id));
   const totals = useTypeTotals(teamId);
+  // The archive's tabs count the archived, from the server — the totals above count the active.
+  const archivedTotals = useTypeTotals(archivedView ? teamId : undefined, { archived: true });
   const shops = useShopOptions({ teamId: teamId ?? 0n });
   // A phone has no headings to tap — the sort moves into the filter sheet. A JS breakpoint, never CSS.
   const isMobile = useIsMobile();
@@ -137,7 +121,7 @@ export function FinancialAccountsPage() {
   const nameOf = (id: bigint) => shopOf(id)?.name;
   const shopName = (id: bigint) => nameOf(id) ?? `#${id}`;
 
-  const error = [list, balances, totals].find((query) => query.isError)?.error;
+  const error = [list, balances, totals, archivedTotals].find((query) => query.isError)?.error;
 
   // Every filter changes the question, so each goes back to page 1.
   const refilter = (apply: () => void) => {
@@ -169,7 +153,6 @@ export function FinancialAccountsPage() {
               {t(archivedView ? "financialAccounts.archivedView.title" : "financialAccounts.title")}
             </Heading>
             <Badge colorPalette="brand">{current.teamName}</Badge>
-            {archivedView && <NotImplemented list={FINANCIAL_ACCOUNT_PENDING} id="archivedOnly" />}
           </HStack>
           <Text fontSize="sm" color="fg.muted" data-testid="financial-accounts-subtitle">
             {t(archivedView ? "financialAccounts.archivedView.subtitle" : "financialAccounts.subtitle")}
@@ -204,9 +187,6 @@ export function FinancialAccountsPage() {
           )}
         </HStack>
       </Flex>
-
-      {/* What the account screens cannot do yet — the archive list, and provider Lainnya in New Account. */}
-      <NotImplementedSummary list={FINANCIAL_ACCOUNT_PENDING} />
 
       {/* No totals in the archive — every archived account holds zero. */}
       {!archivedView && <TypeTotals totals={totals.data} highlight={type} />}
@@ -267,7 +247,7 @@ export function FinancialAccountsPage() {
       <AccountTypeTabs
         value={type}
         onChange={(next) => refilter(() => setType(next))}
-        totals={archivedView ? (list.data ? archivedTotals : undefined) : totals.data}
+        totals={archivedView ? archivedTotals.data : totals.data}
       />
 
       {error && (

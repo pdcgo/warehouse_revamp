@@ -8,12 +8,10 @@ import { DetailField } from "../../../features/restock/DetailField";
 import { committedValue, courierCharge, goodsTotal } from "../../../features/restock/summary";
 import { useFinancialAccount } from "../../../features/financialAccount/queries";
 import { useShipmentChannelsByIds } from "../../../features/shipment/queries";
-import { NotImplemented } from "../../../features/pending/NotImplemented";
 import { paymentTypeLabel } from "../../../components/pickers/PaymentTypeSelect";
 import { ShipmentChannelBadge } from "../../../components/badges/ShipmentChannelBadge";
 import { formatUnixDateTime } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";
-import { RESTOCK_SELLING_DETAIL_PENDING as PENDING } from "../pending";
 
 export interface InfoPanelProps {
   request: RestockRequest;
@@ -76,7 +74,6 @@ export function InfoPanel({ request, teamId, warehouseName }: InfoPanelProps) {
                       channelId={request.shipmentId}
                       channel={channels.data?.get(request.shipmentId.toString())}
                     />
-                    <NotImplemented list={PENDING} id="courier" />
                   </HStack>
                 }
               />
@@ -114,7 +111,6 @@ export function InfoPanel({ request, teamId, warehouseName }: InfoPanelProps) {
                 value={
                   <HStack gap="1.5">
                     <Text as="span">{paidFrom || "—"}</Text>
-                    <NotImplemented list={PENDING} id="payingAccount" />
                   </HStack>
                 }
               />
@@ -213,7 +209,6 @@ function ReceiptPhoto({ url }: { url: string }) {
           {t("restock.detail.noReceiptPhoto")}
         </Text>
       )}
-      <NotImplemented list={PENDING} id="receiptPhoto" />
     </HStack>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, HStack, Input, Text, Textarea } from "@chakra-ui/react";
+import { Field, Input, Text, Textarea } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
@@ -13,9 +13,7 @@ import {
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { toDateInputValue } from "../../lib/datetime";
 import { FormDialog } from "./FormDialog";
-import { NotImplemented } from "../pending/NotImplemented";
 import { ProviderPicker, TypeSegment } from "./fields";
-import { FINANCIAL_ACCOUNT_PENDING } from "./pending";
 import { useCreateAccount, useUpdateAccount } from "./queries";
 import { PROVIDERS_BY_TYPE, PROVIDER_KEY, TYPE_KEY, fixedProvider, providerFor } from "./vocab";
 
@@ -144,14 +142,6 @@ export function AccountFormDialog({
             <Field.Label>{t("financialAccounts.form.type")}</Field.Label>
             <TypeSegment value={type} onChange={pickType} />
           </Field.Root>
-          {type === FinancialAccountType.UNKNOWN && (
-            <HStack gap="1" align="flex-start" data-testid="account-other-type-warning">
-              <NotImplemented list={FINANCIAL_ACCOUNT_PENDING} id="otherType" />
-              <Text fontSize="sm" color="fg.warning">
-                {t("financialAccounts.form.otherTypeWarning")}
-              </Text>
-            </HStack>
-          )}
 
           {/* NO PROVIDER FIELD WHERE THE TYPE SETS IT (owner, `kas-and-lainnya-ask-no-provider`) — a cash box is Kas,
               type Lainnya is Lainnya, and a field with nothing to choose is only noise. A wallet keeps its picker. */}

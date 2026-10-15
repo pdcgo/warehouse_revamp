@@ -281,7 +281,7 @@ func TestStockAdjust_NoDebtWhenTheWarehouseOwnsTheGoods(t *testing.T) {
 // thing a fake can agree with while production has it backwards.
 func TestStockAdjust_DamageMovesTheRealLedger(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db)})
+	svc := newServiceWithLiability(t, db, &realPoster{liability: liability_v1.NewService(db, nil, nil)})
 
 	const warehouse uint64 = 5
 

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 
-import { STORY_PENDING, storyRestock } from "./storyRestock";
+import { storyRestock } from "./storyRestock";
 import { WarehouseRestockActions } from "./WarehouseRestockActions";
 
 // WHAT THE WAREHOUSE MAY DO, by status: ongoing → Sign for Box, Accept; arrived → Accept; lost → Sign for Box (a late
@@ -10,7 +10,7 @@ const meta = {
   title: "Features/Restock/WarehouseRestockActions",
   component: WarehouseRestockActions,
   parameters: { signedIn: true },
-  args: { teamId: 11n, variant: "buttons", pending: STORY_PENDING, request: storyRestock(501n) },
+  args: { teamId: 11n, variant: "buttons", request: storyRestock(501n) },
 } satisfies Meta<typeof WarehouseRestockActions>;
 
 export default meta;
