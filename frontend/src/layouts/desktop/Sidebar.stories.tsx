@@ -3,6 +3,8 @@ import type { RouteObject } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { asRole } from "../../../.storybook/sessionScenario";
+import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { teams } from "../../../.storybook/fixtures";
 import { Sidebar } from "./Sidebar";
 
@@ -293,8 +295,9 @@ export const TheMenuIsInSections: Story = {
     const operations = within(canvas.getByTestId("nav-section-nav.sectionOperations"));
     await expect(operations.getByText("Operations")).toBeVisible();
     await expect(operations.getByRole("link", { name: "Shops" })).toBeInTheDocument();
+    // The money section is groups now (the-accounts-hold-what-moves-them) — the accounts, then settlement.
     const finance = within(canvas.getByTestId("nav-section-nav.sectionFinance"));
-    await expect(finance.getByRole("link", { name: "Accounts" })).toBeInTheDocument();
+    await expect(finance.getByTestId("nav-group-toggle-nav.financialAccounts")).toBeInTheDocument();
     const team = within(canvas.getByTestId("nav-section-nav.sectionTeam"));
     await expect(team.getByRole("link", { name: "Users" })).toBeInTheDocument();
 
@@ -320,8 +323,16 @@ export const LiabilityCountsWhatAwaitsConfirmation: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const count = await canvas.findByTestId("nav-count-/liability", {}, { timeout: 4000 });
-    await expect(count).toHaveTextContent("1");
+    // Kewajiban sits in the accounts group (the-accounts-hold-what-moves-them): shut, the GROUP carries the count…
+    const groupCount = await canvas.findByTestId("nav-group-count-nav.financialAccounts", {}, { timeout: 4000 });
+    await expect(groupCount).toHaveTextContent("1");
+    await expect(groupCount).toBeVisible();
+
+    // …open, Kewajiban says it itself and the group's goes.
+    await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.financialAccounts"));
+    await waitFor(() => expect(canvas.getByTestId("nav-count-/liability")).toBeVisible());
+    await expect(canvas.getByTestId("nav-count-/liability")).toHaveTextContent("1");
+    await expect(canvas.queryByTestId("nav-group-count-nav.financialAccounts")).toBeNull();
     // Nothing else counts — a 0 is never drawn.
     await expect(canvasElement.querySelectorAll("[data-testid^='nav-count-']")).toHaveLength(1);
   },
@@ -462,9 +473,10 @@ export const ACollapsedCountRidesTheIcon: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const count = await canvas.findByTestId("nav-count-/liability", {}, { timeout: 4000 });
+    // Kewajiban is a child of the accounts group, so the count rides the GROUP's icon (the-accounts-hold-what-moves-them).
+    const count = await canvas.findByTestId("nav-group-count-nav.financialAccounts", {}, { timeout: 4000 });
     await expect(count).toHaveTextContent("1");
-    await expect(canvas.getByRole("link", { name: "Liability" })).toContainElement(count);
+    await expect(canvas.getByTestId("nav-group-toggle-nav.financialAccounts")).toContainElement(count);
   },
 };
 
@@ -515,3 +527,84 @@ export const ACollapsedWorkspaceOpensBesideTheRail: Story = {
     );
   },
 };
+
+// SETTLEMENT IS ONE SUB-MENU (settlement-is-one-sub-menu) — the payouts, their report and their imports were three
+// siblings each saying "Settlement"; under one heading the children say only which screen: List · Report · Import. The
+// routes are the same.
+export const SettlementIsOneSubMenu: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const finance = within(await canvas.findByTestId("nav-section-nav.sectionFinance"));
+
+    await expect(finance.queryByRole("link", { name: "Settlement Report" })).toBeNull();
+    await expect(finance.queryByRole("link", { name: "Settlement Imports" })).toBeNull();
+    await userEvent.click(finance.getByTestId("nav-group-toggle-nav.settlement"));
+    await waitFor(() => expect(finance.getByRole("link", { name: "List" })).toBeVisible());
+    await expect(finance.getByRole("link", { name: "List" })).toHaveAttribute("href", "/settlement");
+    await expect(finance.getByRole("link", { name: "Report" })).toHaveAttribute("href", "/settlement/report");
+    await expect(finance.getByRole("link", { name: "Import" })).toHaveAttribute("href", "/settlement/imports");
+  },
+};
+
+// …and a CS, who only imports, gets that one link flat under its full name — a group of one is a heading over a link.
+export const ACsGetsTheImportFlat: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_CS)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const finance = within(await canvas.findByTestId("nav-section-nav.sectionFinance"));
+
+    await expect(finance.getByRole("link", { name: "Settlement Imports" })).toHaveAttribute("href", "/settlement/imports");
+    await expect(finance.queryByTestId("nav-group-toggle-nav.settlement")).toBeNull();
+  },
+};
+
+// THE ACCOUNTS HOLD WHAT MOVES THEM (the-accounts-hold-what-moves-them) — one group: the accounts, their report, and the
+// two flows that move them, Biaya and Kewajiban; settlement stays its own group after it.
+export const TheAccountsHoldWhatMovesThem: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_OWNER)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const finance = within(await canvas.findByTestId("nav-section-nav.sectionFinance"));
+
+    const groups = Array.from(
+      canvas.getByTestId("nav-section-nav.sectionFinance").querySelectorAll("[data-testid^='nav-group-toggle-']"),
+    ).map((g) => g.getAttribute("data-testid"));
+    await expect(groups).toEqual(["nav-group-toggle-nav.financialAccounts", "nav-group-toggle-nav.settlement"]);
+
+    await userEvent.click(finance.getByTestId("nav-group-toggle-nav.financialAccounts"));
+    await waitFor(() => expect(finance.getByRole("link", { name: "Accounts" })).toBeVisible());
+    await expect(finance.getByRole("link", { name: "Accounts" })).toHaveAttribute("href", "/financial-accounts");
+    await expect(finance.getByRole("link", { name: "Account Report" })).toHaveAttribute("href", "/financial-accounts/report");
+    await expect(finance.getByRole("link", { name: "Expenses" })).toHaveAttribute("href", "/expenses");
+    await expect(finance.getByRole("link", { name: "Liability" })).toHaveAttribute("href", "/liability");
+  },
+};
+
+// …and someone who is not a manager sees the accounts and their report alone — Biaya and Kewajiban keep their gate.
+export const AMemberSeesTheAccountsAlone: Story = {
+  beforeEach: () => {
+    asTeam(SELLING.id)();
+    asRole(Role.SELLING_CS)();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const finance = within(await canvas.findByTestId("nav-section-nav.sectionFinance"));
+
+    await userEvent.click(finance.getByTestId("nav-group-toggle-nav.financialAccounts"));
+    await waitFor(() => expect(finance.getByRole("link", { name: "Accounts" })).toBeVisible());
+    await expect(finance.getByRole("link", { name: "Account Report" })).toBeVisible();
+    await expect(finance.queryByRole("link", { name: "Expenses" })).toBeNull();
+    await expect(finance.queryByRole("link", { name: "Liability" })).toBeNull();
+  },
+};
+

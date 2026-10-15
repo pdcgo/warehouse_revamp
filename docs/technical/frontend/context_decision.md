@@ -56,6 +56,10 @@ when it applies one of these.
 | [the-phone-shell-has-no-top-bar](#the-phone-shell-has-no-top-bar) | the phone shell has no top bar — the page starts at the top under its own title; the lit tab says where you are | the phone shell |
 | [the-phone-page-clears-the-bubble](#the-phone-page-clears-the-bubble) | a phone page's end scrolls clear of the workspace bubble — the shell's bottom padding is the bubble's rise plus a gap | the phone shell |
 | [a-page-picks-its-view-over-its-filters](#a-page-picks-its-view-over-its-filters) | a page with two ways to read its data puts them as line tabs **over** its filter strip — the view decides which filters there are | the supplier statistics, the account report |
+| [settlement-is-one-sub-menu](#settlement-is-one-sub-menu) | the selling team's Penyelesaian, Laporan Penyelesaian and Impor Penyelesaian are one sub-menu — **Penyelesaian ▸ Daftar · Laporan · Impor**; a CS who only imports gets that one link flat | the sidebar |
+| [the-accounts-hold-what-moves-them](#the-accounts-hold-what-moves-them) | **Akun Keuangan ▸ Daftar Akun · Laporan Akun · Biaya · Kewajiban** — the accounts and the two flows that move them, one group; a shut group carries its children's count | the sidebar |
+| [the-sidebar-stays-short](#the-sidebar-stays-short) | the sidebar must not grow long — related screens become one sub-menu, a child names only its screen, a section holds a few entries | the sidebar, every new screen |
+| [the-more-sheet-is-a-menu-and-a-profile](#the-more-sheet-is-a-menu-and-a-profile) | the phone's menu sheet is two views switched at its foot — the **menu** with a search, and the **profile** with Edit Profil, Tema, Bahasa and Keluar; Profil is no longer a menu line | the phone shell |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1192,6 +1196,107 @@ the chosen view's table(s)
 | the strip | a filter that means nothing in a view is not in that view's strip, and does not count toward *Hapus Filter* there |
 | shared | what both views read — the cards — sits over both, between the strip and the view |
 | mounting | only the open view is mounted (`lazyMount`, `unmountOnExit`) — its tables and its pager, never both |
+
+## settlement-is-one-sub-menu
+
+> Owner, in chat (2026-10-14): *"sekarang ke sidebar, aku ingin menu keuangan lebih simpel, ada ide?"* — on the proposal
+> of one Penyelesaian sub-menu: *"penyelesaian oke gitu"*.
+
+```
+before (a selling team's manager)       now
+Keuangan                                Keuangan
+  Biaya                                   Biaya
+  Kewajiban                               Kewajiban
+  Penyelesaian                            Penyelesaian ▸  Daftar
+  Laporan Penyelesaian                                    Laporan
+  Impor Penyelesaian                                      Impor
+  Akun Keuangan                           Akun Keuangan
+```
+
+| | |
+| --- | --- |
+| the group | **Penyelesaian ▸ Daftar · Laporan · Impor** — the payouts, their report and their imports are one subject, what the marketplace paid; as three siblings they said *Penyelesaian* three times. Under the heading a child names only its screen |
+| the shape | the Products and Suppliers sub-menus' — nothing new to learn |
+| a group of one | a CS, who may only import, gets **Impor Penyelesaian** flat, its full name — a heading over a single link is a click for nothing |
+| the routes | unchanged — only the menu moved, as Suppliers' did; the bottom bar never offered these |
+| a warehouse | unchanged — its money section (Laporan, Kewajiban, Akun Keuangan) was already short |
+| not taken | *Akun Keuangan ▸ Akun · Laporan Akun* — it would make the account report findable from the menu, at a click more to the accounts; left until the report is opened often |
+
+## the-accounts-hold-what-moves-them
+
+> Owner, in chat (2026-10-15), asking whether Biaya, Kewajiban and Akun Keuangan are related — told an expense is paid
+> from an account and a team payment moves money between two: *"ketiganya jadi 1 menu dan submenu apa bisa?"* — on the
+> proposal: *"pakai usulanmu, kedepannya kita ingin menu di samping tidak kepanjangan"*.
+
+```
+a selling team's manager                      a warehouse's manager
+Keuangan                                      Keuangan
+  Akun Keuangan ▸  Daftar Akun                  Akun Keuangan ▸  Daftar Akun
+                   Laporan Akun                                  Laporan Akun
+                   Biaya                                         Kewajiban
+                   Kewajiban (1)                Laporan
+  Penyelesaian ▸   Daftar · Laporan · Impor
+```
+
+| | |
+| --- | --- |
+| the group | **Akun Keuangan ▸ Daftar Akun · Laporan Akun · Biaya · Kewajiban** — an account is where the money sits; an expense is paid from one and a team payment moves money between two, so the flows sit under it ([an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid), [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) |
+| Laporan Akun | in the menu for the first time — it was reached only from inside the accounts page |
+| the gates | unchanged — every member sees the accounts and their report; Biaya a selling team's manager's; Kewajiban both team types' managers'. A member's group is Daftar Akun and Laporan Akun |
+| the order | the accounts group leads the section — where the money is, before the flows; then Penyelesaian (a selling team) or the daily Laporan (a warehouse) |
+| settlement | **stays its own group** ([settlement-is-one-sub-menu](#settlement-is-one-sub-menu)) — its withdrawals reach an account, but its job, matching what a marketplace paid per order, is another; together it would be seven children of two jobs |
+| the count | Kewajiban's count ([the-sidebar-is-in-sections](#the-sidebar-is-in-sections)) **rides the group while it is shut** — beside the group's name, or on its icon when the sidebar is collapsed; open, Kewajiban carries it itself |
+| the routes | unchanged |
+| supersedes | the flat money items of [the-sidebar-is-in-sections](#the-sidebar-is-in-sections) (*Biaya · Kewajiban · … · Akun Keuangan*), and the *not taken* row of [settlement-is-one-sub-menu](#settlement-is-one-sub-menu) |
+| the names | *Kewajiban* kept for now; *Utang Piutang* (both directions, both team types) was offered and not yet chosen |
+
+## the-sidebar-stays-short
+
+> Owner, in chat (2026-10-15): *"kedepannya kita ingin menu di samping tidak kepanjangan"*.
+
+| | |
+| --- | --- |
+| the rule | the sidebar must not grow long. A screen added to it joins a group before it adds a top-level line |
+| a group | screens of **one subject** become one sub-menu (Produk, Pemasok, Penyelesaian, Akun Keuangan) — never two unrelated jobs under one heading just to save a line |
+| a child | names only **its screen** under the group's name — *Daftar · Laporan · Impor*, not *Laporan Penyelesaian* |
+| a group of one | for a role that can open one child only, the link stands flat under its full name — a heading over a single link is a click for nothing |
+| what waits | a count on a child rides its group while the group is shut |
+| a new screen | before adding a menu line, say which group it joins; a new top-level line needs a reason |
+
+## the-more-sheet-is-a-menu-and-a-profile
+
+> Owner, in chat (2026-10-15): *"tema, bahasa, dan keluar taruh di profile, jadi profile tidak masuk ke menu, menu ada
+> search di bawah, untuk mempermudah mencari menu, di sebelah search ada pengubah tampilan, tampilannya menu, kalau di
+> klik akan jadi detail profile dan preferensi seperti tema dan bahasa, searchnya jadi button buka lagi menu, jika di
+> klik kembali ke menu dan ada searchnya"* — on the drawing of it: *"benar, kurang lebih seperti itu, di profile juga ada
+> button edit profil, itu yang akan jadi pengganti menu profil tadi"*.
+
+```
+the menu (it opens here)                the profile
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│ Menu                       ✕ │        │ Profil                     ✕ │
+│ Beranda                      │        │ (A) ani                      │
+│ OPERASIONAL …                │        │     Pemilik · Toko Melati    │
+│ KEUANGAN …                   │        │ [✎ Edit Profil]              │
+│ TIM …                        │        │ Tema    [☀ | ☾]              │
+│                              │        │ Bahasa  [ID | EN]            │
+│                              │        │ [⎋ Keluar]                   │
+├──────────────────────────────┤        ├──────────────────────────────┤
+│ [⌕ Cari menu        ]  (👤)  │  ⇄     │ [☰ Buka Menu        ]  (👤)  │  ← the switch lit
+└──────────────────────────────┘        └──────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| two views | the sheet is the **menu** or the **profile**, switched by one button at its foot, beside the search. It opens on the menu every time, its search empty |
+| the header | the view's name (*Menu* / *Profil*) and ✕ — the person is the profile view's subject now, no longer the header |
+| the search | at the foot, where the thumb is. It narrows the menu to the screens whose name **or whose group's name** matches — a child is only *Daftar* or *Laporan*, so a result carries its group (*Laporan · Penyelesaian*) and the group's name finds all of it. Nothing matching says so |
+| the profile | the person, their role and team here; **Edit Profil** (the door to the profile page); **Tema** and **Bahasa** as the two switches; **Keluar** |
+| Profil | **no longer a line of the menu** — Edit Profil replaces it. The route stays; "where am I" still knows it |
+| on the profile | the search becomes **Buka Menu**, back to the menu with its search; the switch stays where it was, lit (pressed), and goes back too |
+| the workspace | not in the sheet — the bottom bar's bubble is where a phone switches team |
+| supersedes | [the-more-sheet-starts-with-the-account](#the-more-sheet-starts-with-the-account) (the account as the header) and the footer of switches under the menu; the switches themselves ([the-more-sheet-switches-theme-and-language](#the-more-sheet-switches-theme-and-language)) stand, in the profile view |
+| a desktop | unchanged — the user card's menu |
 
 ## Recorded elsewhere
 

@@ -29,7 +29,12 @@
     "settlement": "Settlement",
     "settlementReport": "Settlement Report",
     "settlementImports": "Settlement Imports",
+    "settlementList": "List",
+    "settlementReportShort": "Report",
+    "settlementImportsShort": "Import",
     "financialAccounts": "Accounts",
+    "accountsList": "Accounts",
+    "accountsReport": "Account Report",
     "suppliers": "Suppliers",
     "mySupplier": "My Supplier",
     "discoverSupplier": "Discover Supplier",
@@ -44,7 +49,14 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "language": "Language",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "profile": "Profile",
+    "editProfile": "Edit Profile",
+    "openMenu": "Open Menu",
+    "searchPlaceholder": "Search the menu",
+    "noMatch": "No menu matches.",
+    "showProfile": "Show profile",
+    "showMenu": "Show menu"
   },
   "shell": {
     "menu": "Menu",
