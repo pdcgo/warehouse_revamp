@@ -34,8 +34,7 @@ func (s *Service) RestockRequestCancel(
 		}
 
 		// Ongoing only (a-restock-is-cancelled-only-while-ongoing): a box that arrived is in the building, a lost one
-		// was paid for, and a cancelled one must not refund twice. ⚠ money_returned has no column until the backend
-		// step, which also publishes RestockCancelled.
+		// was paid for, and a cancelled one must not refund twice.
 		if rr.Status != restockStatusOngoing {
 			return errRestockNotOngoing
 		}
@@ -65,8 +64,14 @@ func (s *Service) RestockRequestCancel(
 			return updateErr
 		}
 
-		// Same transaction, same instant as the column above — see recordRestockEvent.
-		return recordRestockEvent(tx, rr.ID, restockEventCancelled, actor, now)
+		// Same transaction, same instant as the column above — see recordRestockLog. Whether the money came back is
+		// the trail's to say (a-restock-names-its-paying-account): it is a fact about this cancel, not a column.
+		description := restockLogCancelled + " — money not returned"
+		if req.Msg.GetMoneyReturned() {
+			description = restockLogCancelled + " — money returned"
+		}
+
+		return recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusCancelled, actor, description, now)
 	})
 	if err != nil {
 		return nil, restockErr(err)

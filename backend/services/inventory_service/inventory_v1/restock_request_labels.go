@@ -79,9 +79,7 @@ func (s *Service) RestockRequestLabels(
 			    rk.code       AS rack_code,
 			    ((i.total_price / NULLIF(i.received_quantity, 0))
 			     + COALESCE(
-			           (r.shipping_cost + COALESCE((SELECT SUM(c.amount)::BIGINT
-			                                        FROM restock_cost_lines c
-			                                        WHERE c.restock_request_id = r.id), 0))
+			           (r.shipping_cost + r.warehouse_additional_cost)
 			           / NULLIF((SELECT SUM(x.received_quantity)::BIGINT
 			                     FROM restock_request_items x
 			                     WHERE x.restock_request_id = r.id), 0),

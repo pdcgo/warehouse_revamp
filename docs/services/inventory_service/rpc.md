@@ -58,21 +58,22 @@ counts it in, and *the accept is what receives the stock*. The design is
 [restock_decision.md](../../business/inventory/restock_decision.md); the contract was **rewritten in place** to it
 ([the-restock-contract-changes-in-place](../../business/inventory/restock_decision.md#the-restock-contract-changes-in-place)).
 
-> ⚠ **Until the restock backend step.** The contract is ahead of the tables: `finance_account_id`, `shipment_id`,
-> `receipt_file`, a line's `supplier_id` / `supplier_channel_id` / `note`, a problem row's `note` and cancel's
-> `money_returned` are **accepted but not stored**; `RestockRequestArrive` and `RestockRequestMarkLost` answer
-> **Unimplemented**. The stored status text still says `pending` for ONGOING and `fulfilled` for ACCEPTED, and a
-> missing problem row is stored as `lost` — the mapper translates; renaming the data is that step's migration.
+> 🔄 **00024 (2026-10-15): the tables caught up with the contract.** Every field is stored, the status words are the
+> contract's, a missing problem row is `missing`, the trail is `restock_logs` and the courier's charge is one column
+> pair on the restock ([restocks-non-stock-parts-come-before-the-switch-over](../../business/inventory/restock_decision.md#restocks-non-stock-parts-come-before-the-switch-over)).
+> ⚠ Still to come: `RestockRequestArrive` and `RestockRequestMarkLost` answer **Unimplemented**, and the accept writes
+> today's stock tables until it is rebuilt on the ledgers
+> ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)).
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
-| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction; each product once; the lines' common supplier is stored at the restock level until lines store their own |
+| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each line's supplier asked of supplier_service before the transaction |
 | `RestockRequestList` / `Detail` | either side | — | rows where `requesting_team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
-| `RestockRequestUpdate` | selling team | ongoing | a full replace of the restock. The arrived window — lines only, new lines allowed (each may name its supplier and store), none removed — opens with `Arrive` |
+| `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace. **Ongoing:** every field, the paying account required. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged |
 | `RestockRequestArrive` | warehouse | ongoing / lost → arrived | *Unimplemented until the backend step* |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
 | `RestockRequestMarkLost` | selling team | ongoing → lost | *Unimplemented until the backend step* |
-| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once |
+| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row |
 | `RestockRequestLabels` | warehouse | accepted | one label per placement the good units went to |
 | `RestockInboundStat` | warehouse | — | what is still coming: ongoing **and** arrived |
 
@@ -120,17 +121,17 @@ sequenceDiagram
     else the count is complete
         loop every line
             H->>DB: received_quantity = good units
-            H->>DB: problem rows — broken as typed, missing = count − received
+            H->>DB: problem rows — broken as typed, missing = count − received, each at the landed unit price
             opt good units
                 H->>DB: mint the line's batch at the landed price
                 H->>DB: one movement and shelf row per placement
             end
         end
-        H->>DB: status accepted, accepted_by, accepted_at
+        H->>DB: status accepted, accepted_by, accepted_at, the courier's charge and its note on the restock
         opt courier charge above 0
-            H->>DB: one cost line, a trail row, the debt to the warehouse
+            H->>DB: the debt to the warehouse
         end
-        H->>DB: trail row accepted, COMMIT
+        H->>DB: trail row, from ongoing or arrived to accepted, COMMIT
         H-->>W: the restock, accepted
     end
 ```
@@ -140,7 +141,7 @@ sequenceDiagram
 | received above the line's count is refused — the selling team adds the extra by an edit first | [accept-refuses-more-than-the-line-says](../../business/inventory/restock_decision.md#accept-refuses-more-than-the-line-says) |
 | the short units are a MISSING row, worked out, never typed | [a-short-unit-at-the-door-is-missing](../../business/inventory/restock_decision.md#a-short-unit-at-the-door-is-missing) |
 | the good units go onto placements of this warehouse, exactly received − broken; there is no unplaced choice | [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile) |
-| a problem row's worth is the line's share, filled on read | [the-problem-price-is-filled-by-the-system](../../business/inventory/restock_decision.md#the-problem-price-is-filled-by-the-system) |
+| a problem row's worth is the landed unit price over every unit ordered, filled at accept and stored | [the-problem-price-is-filled-by-the-system](../../business/inventory/restock_decision.md#the-problem-price-is-filled-by-the-system), [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered) |
 | one batch per line with good units; unit cost = line total ÷ good units + (shipping + courier charge) ÷ all good units | [one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line) |
 | one courier's charge, its note required; outside the restock's total, inside the unit price; the debt posts in the same transaction | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [the-couriers-debt-is-written-in-the-accept](../../business/inventory/restock_decision.md#the-couriers-debt-is-written-in-the-accept) |
 | an empty problem note is stored as words while 00013's `CHECK (reason <> '')` stands | [a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional) |

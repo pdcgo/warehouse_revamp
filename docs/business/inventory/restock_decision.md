@@ -52,7 +52,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [balance-posts-the-couriers-debt-from-the-event](#balance-posts-the-couriers-debt-from-the-event) | the accept saves the courier's charge on the restock; *Restock Accepted* carries it; balance posts the debt | your §Restock Accepted Flow, confirmed in chat 2026-10-14 — **reverses** [the-couriers-debt-is-written-in-the-accept](#the-couriers-debt-is-written-in-the-accept) |
 | [unit-price-is-line-price-plus-costs-per-unit](#unit-price-is-line-price-plus-costs-per-unit) | a batch's unit price = its line's unit price + (shipping + the courier's charge) ÷ every unit of the restock — by quantity, never by value | your §Calculating Price Unit When Restock Accepted, 2026-10-14 — answers stock Q3, narrows Q22 |
 | [all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered) | *all qty* counts every unit ordered; a broken or missing unit at the door carries the same landed unit price as a good one | chat, 2026-10-14 — answers Q22, B |
-| [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) | the accept writes the decided ledgers, built after every stock reader and writer has moved off today's tables — as the transfer | chat, 2026-10-14 — **against** my build-on-today's-tables recommendation |
+| [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) | the accept writes the decided ledgers, built after every stock reader and writer has moved off today's tables — as the transfer | chat, 2026-10-14 — **against** my build-on-today's-tables recommendation — 🔄 no switch-over is staged: [no-switch-over-the-ledgers-replace-todays-tables](../../technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables) |
 | [a-box-nobody-raised-comes-in-by-the-teams-restock](#a-box-nobody-raised-comes-in-by-the-teams-restock) | a box with no restock is not signed for; staff tell the team named on it, the team creates the restock, the warehouse accepts it | chat, 2026-10-14 — answers Q23, b, as opname's rule |
 | [the-restock-prototype-is-accepted](#the-restock-prototype-is-accepted) | design_accept: the seven restock screens and the restock contract are the design to build; a contract change from here is a new pass | chat, 2026-10-15 |
 | [restocks-non-stock-parts-come-before-the-switch-over](#restocks-non-stock-parts-come-before-the-switch-over) | everything in restock that writes no stock is built now, on today's backend; only the accept waits for the ledgers | chat, 2026-10-15 — as recommended |
@@ -1372,6 +1372,11 @@ flowchart LR
 **What it does NOT settle** — whether the parts of restock that write no stock (its own tables, Create, Update, Cancel,
 Arrive, MarkLost, the trail, the events) are built before the switch-over or with the accept.
 
+🔄 *(2026-10-15)* **No switch-over is staged.** Nothing is in production, so the ledgers replace today's stock tables
+outright and no data is carried ([no-switch-over-the-ledgers-replace-todays-tables](../../technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)).
+The order of work is now: the ledgers' open rules → the ledgers → the accept. Each other reader and writer moves onto the
+ledgers when its own feature is built on them.
+
 ## a-box-nobody-raised-comes-in-by-the-teams-restock
 
 > Owner, in chat *(2026-10-14)*: *"do it all"*, to *Q23: b?*, after I moved Q23's recommendation to the rule the owner had
@@ -1454,3 +1459,6 @@ flowchart LR
 | built now | restock's own migrations (every decided field, `restock_logs`), Create, Update, Cancel, Arrive, MarkLost, Detail, List, the duplicate-product guard, *Restock Created / Updated / Cancelled* to the financial account, `SupplierChannelByIds` |
 | the accept meanwhile | today's handler keeps writing today's stock tables, adapted only enough to read and write restock's new columns |
 | after the switch-over | the accept on the ledgers, at the decided price, and balance's subscriber for the courier's debt |
+
+🔄 *(2026-10-15)* *"After the switch-over"* now reads *once the ledgers exist*: no switch-over is staged
+([no-switch-over-the-ledgers-replace-todays-tables](../../technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)).

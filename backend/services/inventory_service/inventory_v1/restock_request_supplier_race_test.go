@@ -28,8 +28,7 @@ import (
 
 // The tables this audit writes, CHILDREN FIRST.
 var raceRestockTables = []string{
-	"restock_request_events",
-	"restock_cost_lines",
+	"restock_logs",
 	"restock_request_items",
 	"restock_requests",
 	"warehouse_products",
@@ -78,7 +77,9 @@ func raceRestockStatusAndSupplier(t *testing.T, db *gorm.DB, id uint64) (string,
 		SupplierID *uint64
 	}
 
-	err := db.Raw(`SELECT status, supplier_id FROM restock_requests WHERE id = ?`, id).Scan(&row).Error
+	err := db.Raw(`SELECT r.status, (SELECT i.supplier_id FROM restock_request_items i
+		WHERE i.restock_request_id = r.id ORDER BY i.id LIMIT 1) AS supplier_id
+		FROM restock_requests r WHERE r.id = ?`, id).Scan(&row).Error
 	if err != nil {
 		t.Fatalf("read restock %d: %v", id, err)
 	}
@@ -207,6 +208,7 @@ func TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip(t *
 	res := h.Race(t, 2, func(i int) error {
 		if i == 0 {
 			_, err := updater.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+				FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 				TeamId: raceRestockTeam, RequestId: reqID, WarehouseId: raceRestockWarehouse,
 				Items: raceRestockItemsFrom(newSupplier),
 			}))
@@ -359,9 +361,11 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 	}
 
 	err = h.DB().Raw(`
-		SELECT r.created_at AS restock_created, s.deleted_at AS supplier_deleted, r.supplier_id AS restock_supplier
-		FROM restock_requests r JOIN suppliers s ON s.id = r.supplier_id
-		WHERE r.supplier_id = ?`, supplierID).Scan(&row).Error
+		SELECT r.created_at AS restock_created, s.deleted_at AS supplier_deleted, i.supplier_id AS restock_supplier
+		FROM restock_requests r
+		JOIN restock_request_items i ON i.restock_request_id = r.id
+		JOIN suppliers s ON s.id = i.supplier_id
+		WHERE i.supplier_id = ?`, supplierID).Scan(&row).Error
 	if err != nil {
 		t.Fatalf("read end state: %v", err)
 	}

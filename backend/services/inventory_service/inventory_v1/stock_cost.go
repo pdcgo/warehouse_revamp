@@ -112,16 +112,10 @@ func (s *Service) unitCosts(
 			LEFT JOIN LATERAL (
 			    -- ⚠ EVERY SUM() IS CAST BACK TO BIGINT. SUM() returns NUMERIC, and any arithmetic
 			      -- touching a numeric is a numeric — a decimal that will not scan into an int64 and
-			      -- would not have floored anyway. Both sums here need it: the divisor, and the
-			      -- warehouse's outlay in the dividend.
+			      -- would not have floored anyway. The divisor is the sum here that needs it.
 			    --
-			    -- That outlay (00021) is a SEPARATE, scalar subquery: a request has many cost lines and
-			      -- many items, so joining both at once would multiply each by the other's row count.
-			    SELECT (r.shipping_cost + COALESCE((
-			               SELECT SUM(c.amount)::BIGINT
-			               FROM restock_cost_lines c
-			               WHERE c.restock_request_id = r.id
-			           ), 0))
+			    -- That outlay is the restock's one courier's charge (00024, the-courier-is-paid-once-per-restock).
+			    SELECT (r.shipping_cost + r.warehouse_additional_cost)
 			           / NULLIF(SUM(x.received_quantity)::BIGINT, 0) AS additional
 			    FROM restock_request_items x
 			    WHERE x.restock_request_id = r.id

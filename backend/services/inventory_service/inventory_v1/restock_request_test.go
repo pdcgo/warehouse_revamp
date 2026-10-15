@@ -558,11 +558,9 @@ func TestRestockRequest_OptionalContextOmitted(t *testing.T) {
 	}
 }
 
-// The supplier rides each LINE in the contract (a-line-connects-to-any-teams-supplier-from-a-popup), but until lines
-// store their own it is kept once per restock: the supplier every line names. Lines that DISAGREE keep none rather
-// than crediting the whole restock to the first one — a supplier's figures read it — and every line reads back the
-// same answer.
-func TestRestockRequest_LinesThatDisagreeOnTheSupplierKeepNone(t *testing.T) {
+// EACH LINE KEEPS ITS OWN SUPPLIER (a-line-names-the-channel-it-was-bought-from, 00024): two lines may name two
+// suppliers, or one may name none, and each reads back exactly what it was given — nothing is merged up to the restock.
+func TestRestockRequest_EachLineKeepsItsOwnSupplier(t *testing.T) {
 	db := san_testdb.DB(t)
 	ctx := ctxUser(1)
 
@@ -599,17 +597,18 @@ func TestRestockRequest_LinesThatDisagreeOnTheSupplierKeepNone(t *testing.T) {
 	}
 
 	for name, c := range map[string]struct {
-		first, second, want uint64
+		first, second uint64
 	}{
-		"both lines from one supplier": {melati, melati, melati},
-		"two suppliers":                {melati, sinar, 0},
-		"one line names none":          {melati, 0, 0},
+		"both lines from one supplier": {melati, melati},
+		"two suppliers":                {melati, sinar},
+		"one line names none":          {melati, 0},
 	} {
 		got := create(c.first, c.second)
+		want := []uint64{c.first, c.second}
 
 		for i, item := range got.GetItems() {
-			if item.GetSupplierId() != c.want {
-				t.Fatalf("%s: line %d reads supplier %d, want %d", name, i, item.GetSupplierId(), c.want)
+			if item.GetSupplierId() != want[i] {
+				t.Fatalf("%s: line %d reads supplier %d, want %d", name, i, item.GetSupplierId(), want[i])
 			}
 		}
 	}
@@ -675,6 +674,7 @@ func TestRestockRequest_AcceptReceivesWhatArrivedNotWhatWasAsked(t *testing.T) {
 	// extra-units-are-added-by-the-selling-teams-edit: the selling team turns 5 into 6, and the warehouse accepts
 	// what the line now says. An edit is a full replace, so the lines come back with new ids.
 	edited, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId: sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Short", Count: 10, Total: 5000},
@@ -1029,6 +1029,7 @@ func TestRestockRequest_RequesterCannotDeclareItsOwnDeliveryReceived(t *testing.
 
 	// And again on edit.
 	updated, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId: sellingTeam, RequestId: req.GetId(), WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{
@@ -1182,6 +1183,7 @@ func TestRestockRequest_Update(t *testing.T) {
 
 	// Another team cannot edit it — indistinguishable from one that does not exist.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId: 9, RequestId: reqID, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{{ProductId: 1, Sku: "X", Name: "X", Count: 1}},
 	}))
@@ -1285,6 +1287,7 @@ func TestRestockRequest_UpdateClearsOptionalContext(t *testing.T) {
 
 	// Everything optional left out: the person cleared the lot.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100},
@@ -1341,6 +1344,7 @@ func TestRestockRequest_UpdateOnlyWhileOngoing(t *testing.T) {
 
 	tryEdit := func(reqID uint64) error {
 		_, err := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 			TeamId: sellingTeam, RequestId: reqID, WarehouseId: warehouse,
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 999, Total: 500},
@@ -1419,6 +1423,7 @@ func TestRestockRequest_UpdateSupplierMustBeLive(t *testing.T) {
 	// The supplier rides each line (a-line-connects-to-any-teams-supplier-from-a-popup).
 	edit := func(supplierID uint64) error {
 		_, updErr := svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+			FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 			TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
 			Items: []*inventoryv1.RestockRequestItem{
 				{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplierID},
@@ -1484,6 +1489,7 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 
 	// The edit re-sends the prefilled (now deleted) supplier and changes only the note.
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId: sellingTeam, RequestId: reqID, WarehouseId: 5,
 		Note: "just fixing a typo",
 		Items: []*inventoryv1.RestockRequestItem{
@@ -1506,6 +1512,7 @@ func TestRestockRequest_UpdateKeepsDeletedSupplierItAlreadyHad(t *testing.T) {
 	}
 
 	_, err = svc.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+		FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 		TeamId: sellingTeam, RequestId: fresh.Msg.GetRequest().GetId(), WarehouseId: 5,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100, SupplierId: supplier},
@@ -1909,16 +1916,14 @@ func TestRestockRequestList_FiltersByProduct(t *testing.T) {
 	const sellingTeam, warehouse uint64 = 2, 5
 	const wanted, other uint64 = 100, 200
 
-	// A request naming the product TWICE, alongside one that does not name it at all.
-	//
-	// ⚠ a-product-appears-once-per-restock forbids this for a NEW restock, but nothing refuses it yet (the unique
-	// (restock, product) key lands with the backend step), and rows written before the decision can hold it — so the
-	// filter must still return such a restock once.
+	// A request naming the product beside another line, alongside one that does not name it at all. A product appears
+	// once per restock (a-product-appears-once-per-restock, 00024's unique index), so EXISTS is what keeps a
+	// several-line restock from being counted per line.
 	twice, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: sellingTeam, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
 			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Count: 3, Total: 3000},
-			{ProductId: wanted, Sku: "SKU1", Name: "Widget", Count: 2, Total: 2000},
+			{ProductId: 300, Sku: "SKU3", Name: "Gizmo", Count: 2, Total: 2000},
 		},
 	}))
 	if err != nil {

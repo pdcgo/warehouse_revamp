@@ -13,8 +13,8 @@ import (
 	supplier_v1 "github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_v1"
 )
 
-// seedRestock writes one restock as inventory_service stores it — its status, its supplier, one line and that line's
-// damaged units — accepted at `acceptedAt` when it is "fulfilled".
+// seedRestock writes one restock as inventory_service stores it — its status, one line naming its supplier and that line's
+// damaged units — accepted at `acceptedAt` when it is "accepted".
 func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, acceptedAt time.Time) uint64 {
 	t.Helper()
 
@@ -22,17 +22,17 @@ func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, a
 		RequestingTeamID: 12,
 		WarehouseID:      5,
 		Status:           status,
-		SupplierID:       supplierID,
 		Items: []inventory_service_models.RestockRequestItem{{
 			ProductID: 100, SKU: "SKU1", Name: "Kaos", Quantity: 10, TotalPrice: 30000, ReceivedQuantity: 7,
+			SupplierID: supplierID,
 			Damaged: []inventory_service_models.RestockDamagedUnit{
 				{Quantity: 2, Reason: "crushed", DamageType: "broken"},
-				{Quantity: 1, Reason: "short", DamageType: "lost"},
+				{Quantity: 1, Reason: "short", DamageType: "missing"},
 			},
 		}},
 	}
 
-	if status == "fulfilled" {
+	if status == "accepted" {
 		rr.AcceptedAt = &acceptedAt
 	}
 
@@ -63,9 +63,9 @@ func TestBackfillSupplierFigures_FoldsTheAcceptedOnce(t *testing.T) {
 	// 23:30 on the 2nd in UTC is the 3rd in Jakarta — the day the figures must land on.
 	acceptedAt := time.Date(2026, 9, 2, 23, 30, 0, 0, time.UTC)
 
-	seedRestock(t, db, "fulfilled", &supplier, acceptedAt)
-	seedRestock(t, db, "fulfilled", nil, acceptedAt)
-	seedRestock(t, db, "pending", &supplier, acceptedAt)
+	seedRestock(t, db, "accepted", &supplier, acceptedAt)
+	seedRestock(t, db, "accepted", nil, acceptedAt)
+	seedRestock(t, db, "ongoing", &supplier, acceptedAt)
 
 	result, err := san.BackfillSupplierFigures(context.Background())
 	if err != nil {

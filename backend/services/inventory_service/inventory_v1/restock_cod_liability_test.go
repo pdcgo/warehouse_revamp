@@ -99,15 +99,8 @@ func TestRestockAccept_TheCODFeeStillReachesCosting(t *testing.T) {
 		t.Fatalf("accept: %v", err)
 	}
 
-	var stored []inventory_service_models.RestockCostLine
-
-	err = db.Where("restock_request_id = ?", reqID).Find(&stored).Error
-	if err != nil {
-		t.Fatalf("read cost lines: %v", err)
-	}
-
-	if len(stored) != 1 || stored[0].Amount != 25000 {
-		t.Fatalf("cost lines = %+v, want one line of 25000 — HPP sums this table", stored)
+	if stored := storedRestock(t, db, reqID).WarehouseAdditionalCost; stored != 25000 {
+		t.Fatalf("the charge is %d, want 25000 — HPP reads this column", stored)
 	}
 }
 

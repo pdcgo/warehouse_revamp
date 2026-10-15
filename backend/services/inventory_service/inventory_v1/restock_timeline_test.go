@@ -1,6 +1,7 @@
 package inventory_v1_test
 
 import (
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -43,9 +44,10 @@ type trailStep struct {
 var (
 	stepCreated   = trailStep{inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED, ongoing, "created"}
 	stepEdited    = trailStep{ongoing, ongoing, "edited"}
-	stepCharge    = trailStep{ongoing, ongoing, "courier's charge recorded"}
-	stepAccepted  = trailStep{ongoing, accepted, "accepted"}
-	stepCancelled = trailStep{ongoing, cancelled, "cancelled"}
+	stepAccepted  = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing"}
+	// The courier's charge is said on the acceptance itself, the step that paid it (#184, every-status-change-is-logged).
+	stepAcceptedWithCharge = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing; courier's charge Rp 25.000"}
+	stepCancelled = trailStep{ongoing, cancelled, "cancelled — money not returned"}
 )
 
 // trail is the timeline as a reader sees it, in order.
@@ -146,45 +148,32 @@ func TestRestockDetail_TheSellingTeamSeesTheAcceptanceOnItsTimeline(t *testing.T
 	}
 }
 
-// A COD DELIVERY WRITES TWO STEPS, AND THE FEE COMES FIRST (owner).
+// A COD DELIVERY NAMES ITS CHARGE ON THE ACCEPTANCE (owner, #184; every-status-change-is-logged).
 //
-// The order is the claim: the courier is paid at the door, and THEN the box is opened and counted. Two
-// steps rather than one because they are two facts about two pockets — one says goods landed, the
-// other says the warehouse is out of pocket for goods it does not own and the selling team now owes it
-// (#184). Folded into the acceptance, the payment is invisible on the timeline of the team that has to
-// settle it.
-func TestRestockDetail_ACODFeeRecordsItsOwnStepBeforeTheAcceptance(t *testing.T) {
+// The team that settles the charge has to see it on its own timeline: folded silently into the acceptance, the
+// payment would be invisible to the side that owes it. The trail is one row per status change, so the charge is not
+// a step of its own any more — it is in the words of the step that paid it, by the person who accepted, at that moment.
+func TestRestockDetail_ACODFeeIsNamedOnTheAcceptance(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
 	req := acceptAndReadAsSellingTeam(t, db, svc, 25000)
 
 	got := trail(req)
-
-	want := []trailStep{stepCreated, stepCharge, stepAccepted}
+	want := []trailStep{stepCreated, stepAcceptedWithCharge}
 
 	if len(got) != len(want) {
-		t.Fatalf("timeline = %v, want %v — a COD acceptance is TWO things happening", got, want)
+		t.Fatalf("timeline = %v, want %v", got, want)
 	}
 
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("timeline = %v, want %v — the fee is paid at the door BEFORE the box is counted "+
-				"in, and the order is what makes the sequence readable", got, want)
+			t.Fatalf("timeline = %v, want %v — the charge is named on the acceptance", got, want)
 		}
 	}
 
-	fee := req.GetLogs()[1]
-
-	// The person who paid it is the person who accepted it — one act, one actor. They share a moment
-	// too, which is why the ORDER above cannot come from the timestamps and comes from the insert order.
-	if fee.GetActorUserId() != tlReceiver {
-		t.Fatalf("the fee step names user %d, want the warehouse's %d", fee.GetActorUserId(), tlReceiver)
-	}
-
-	if fee.GetAtUnix() != req.GetLogs()[2].GetAtUnix() {
-		t.Fatalf("the fee (%d) and the acceptance (%d) are one act and must carry one moment",
-			fee.GetAtUnix(), req.GetLogs()[2].GetAtUnix())
+	if acceptance := req.GetLogs()[1]; acceptance.GetActorUserId() != tlReceiver {
+		t.Fatalf("the acceptance names user %d, want the warehouse's %d", acceptance.GetActorUserId(), tlReceiver)
 	}
 }
 
@@ -197,8 +186,8 @@ func TestRestockDetail_NoCODFeeWritesNoFeeStep(t *testing.T) {
 	req := acceptAndReadAsSellingTeam(t, db, svc, 0)
 
 	for _, step := range trail(req) {
-		if step == stepCharge {
-			t.Fatalf("a non-COD delivery wrote a fee step — timeline %v", trail(req))
+		if strings.Contains(step.description, "courier's charge") {
+			t.Fatalf("a non-COD delivery names a charge — timeline %v", trail(req))
 		}
 	}
 }

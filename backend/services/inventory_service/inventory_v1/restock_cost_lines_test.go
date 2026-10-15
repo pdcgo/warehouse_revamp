@@ -83,27 +83,19 @@ func TestRestockAccept_RecordsTheOneCourierCharge(t *testing.T) {
 		t.Fatalf("accept: %v", err)
 	}
 
-	var stored []inventory_service_models.RestockCostLine
+	stored := storedRestock(t, db, reqID)
 
-	err = db.Where("restock_request_id = ?", reqID).Order("id ASC").Find(&stored).Error
-	if err != nil {
-		t.Fatalf("read cost lines: %v", err)
+	// The NOTE is what the team being charged reads. One charge, on the restock (00024).
+	if stored.WarehouseAdditionalCost != 30000 ||
+		stored.WarehouseAdditionalCostNote != "courier at the door + porter at the gate" {
+		t.Fatalf("stored charge = %d %q, want 30000 with its note",
+			stored.WarehouseAdditionalCost, stored.WarehouseAdditionalCostNote)
 	}
 
-	if len(stored) != 1 {
-		t.Fatalf("%d cost rows stored, want 1 — a restock carries one courier's charge", len(stored))
-	}
-
-	// The NOTE is what the team being charged reads.
-	if stored[0].Kind != "incidental" || stored[0].Amount != 30000 ||
-		stored[0].Note != "courier at the door + porter at the gate" {
-		t.Fatalf("stored charge = %+v, want incidental 30000 with its note", stored[0])
-	}
-
-	// WHO TYPED IT. A cost charged to another team with nobody's name on it is the first thing a
-	// dispute asks for.
-	if stored[0].ActorID != 9 {
-		t.Fatalf("the charge names actor %d, want the accepting user 9", stored[0].ActorID)
+	// WHO TYPED IT. A cost charged to another team with nobody's name on it is the first thing a dispute asks for:
+	// the charge is entered at accept, so it is the accepting user's.
+	if stored.AcceptedByUserID != 9 {
+		t.Fatalf("the charge was accepted by %d, want the accepting user 9", stored.AcceptedByUserID)
 	}
 
 	// And it reads back as the restock's one charge, beside — not inside — the total.
@@ -259,7 +251,7 @@ func TestRestockAccept_ARefusedCostLineReceivesNothing(t *testing.T) {
 	}
 
 	// ACCEPTED is still stored as `fulfilled`.
-	if stored.Status == "fulfilled" {
+	if stored.Status == "accepted" {
 		t.Fatal("the request was accepted despite the charge being refused")
 	}
 
@@ -295,19 +287,8 @@ func TestRestockAccept_NoCostsMeanNoObligationAndNoRows(t *testing.T) {
 		t.Fatalf("%d obligations posted for a delivery that cost the warehouse nothing", len(poster.posted))
 	}
 
-	var count int64
-
-	err = db.
-		Model(&inventory_service_models.RestockCostLine{}).
-		Where("restock_request_id = ?", reqID).
-		Count(&count).
-		Error
-	if err != nil {
-		t.Fatalf("count cost lines: %v", err)
-	}
-
-	if count != 0 {
-		t.Fatalf("%d cost rows written for a delivery that cost nothing", count)
+	if charge := storedRestock(t, db, reqID).WarehouseAdditionalCost; charge != 0 {
+		t.Fatalf("a charge of %d stored for a delivery that cost nothing", charge)
 	}
 }
 
@@ -324,18 +305,22 @@ func TestRestockAccept_AFailedPostingRollsBackTheCostLines(t *testing.T) {
 		t.Fatal("the acceptance succeeded while its obligation failed")
 	}
 
-	var count int64
+	stored := storedRestock(t, db, reqID)
+	if stored.WarehouseAdditionalCost != 0 || stored.Status == "accepted" {
+		t.Fatalf("a rolled-back acceptance left status %q and a charge of %d", stored.Status, stored.WarehouseAdditionalCost)
+	}
+}
 
-	readErr := db.
-		Model(&inventory_service_models.RestockCostLine{}).
-		Where("restock_request_id = ?", reqID).
-		Count(&count).
-		Error
-	if readErr != nil {
-		t.Fatalf("count cost lines: %v", readErr)
+// storedRestock is the restock row as the database holds it — not what an RPC chose to echo.
+func storedRestock(t *testing.T, db *gorm.DB, reqID uint64) inventory_service_models.RestockRequest {
+	t.Helper()
+
+	var rr inventory_service_models.RestockRequest
+
+	err := db.Where("id = ?", reqID).First(&rr).Error
+	if err != nil {
+		t.Fatalf("read restock %d: %v", reqID, err)
 	}
 
-	if count != 0 {
-		t.Fatalf("%d cost rows survived a rolled-back acceptance", count)
-	}
+	return rr
 }

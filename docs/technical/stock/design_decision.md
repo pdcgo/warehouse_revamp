@@ -6,6 +6,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | decision | says | from |
 | --- | --- | --- |
 | [stock-money-is-float64-compared-at-4-digits](#stock-money-is-float64-compared-at-4-digits) | every money column in the stock ledgers is `float64`, and two amounts are compared at 4-digit precision | chat, 2026-10-10 — answers stock Q4, **against** my `int64` rupiah |
+| [no-switch-over-the-ledgers-replace-todays-tables](#no-switch-over-the-ledgers-replace-todays-tables) | nothing is in production, so the ledgers replace today's stock tables outright — no data is carried, dev data is reseeded, and no all-at-once switch-over is staged | chat, 2026-10-15 — answers Q5 |
 
 ---
 
@@ -46,3 +47,31 @@ all that is left): [context Q14c](../../business/inventory/context_clarify.md#qu
 lines: [Q3](./design_clarify.md#question) and [context Q1](../../business/inventory/context_clarify.md#question) ·
 whether float is the ledger **template's** default too, for the payment ledger:
 [mutation_and_ledger Q2](../ledger/mutation_and_ledger_clarify.md#question).
+
+## no-switch-over-the-ledgers-replace-todays-tables
+
+> Owner, in chat *(2026-10-15)*: *"we not on production yet, switch over is overkill"*, to my plan of a one-pass switch-over
+> (carry each warehouse's stock into opening ledger rows, move every reader and writer at once, then drop the old tables).
+> It answers [Q5](./design_clarify.md#question), which offered a cut-over or side by side, with neither.
+
+**The verdict.** Nothing runs in production, so there is no stock to carry. The decided ledgers (`inventory_transactions`,
+`batches` + `batch_logs`, `product_placements` + `product_placement_logs`) **replace** today's `stock_*` tables outright:
+new migrations create them, the old tables are dropped, and the development database is reseeded by `san dev setup`. No
+opening transactions, no cut-over plan, no side-by-side reads. A table rename in inventory (restock's tables taking the
+owner's names) is just a migration, for the same reason.
+
+```mermaid
+flowchart LR
+  O["today's stock_* tables - dev data only"] -->|"dropped"| X["gone"]
+  N["the ledgers - created fresh"] --> R["restock, opname, orders, racks write and read them"]
+  S["san dev setup"] -->|"reseeds"| N
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| data | not carried. A developer's database is reseeded, not migrated |
+| the old tables | dropped by the migration that replaces them |
+| readers and writers | each moved onto the ledgers when its feature is built on them |
+| what it does NOT change | the ledgers' own rules, still open in [transaction_clarify](../../business/inventory/transaction_clarify.md#question), [context Q14](../../business/inventory/context_clarify.md#question) and [the template](../ledger/mutation_and_ledger_clarify.md#question) |

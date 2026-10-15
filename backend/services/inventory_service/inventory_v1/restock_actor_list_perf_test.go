@@ -30,7 +30,7 @@ func TestPerf_RestockActorList(t *testing.T) {
 		row := inventory_service_models.RestockRequest{
 			RequestingTeamID: team,
 			WarehouseID:      uint64(900 + i%3),
-			Status:           "pending",
+			Status:           "ongoing",
 			CreatedByUserID:  1000*team + uint64(i%40),
 			CreatedAt:        now.Add(-time.Duration(i) * time.Minute),
 			UpdatedAt:        now,
@@ -38,7 +38,7 @@ func TestPerf_RestockActorList(t *testing.T) {
 
 		if i%2 == 0 {
 			at := row.CreatedAt.Add(time.Hour)
-			row.Status = "fulfilled"
+			row.Status = "accepted"
 			row.AcceptedByUserID = uint64(5000 + i%20)
 			row.AcceptedAt = &at
 		}

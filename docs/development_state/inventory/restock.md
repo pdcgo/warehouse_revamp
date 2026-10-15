@@ -1,7 +1,8 @@
 # Development state — inventory / restock
 
 ✅ **2026-10-15: design_accept passed** ([the-restock-prototype-is-accepted](../../business/inventory/restock_decision.md#the-restock-prototype-is-accepted)).
-**Next step: backend analysis.** The accept waits for the ledgers and the switch-over. The parts that write no stock are built
+**Next step: build.** The accept waits for the ledgers (no switch-over is staged — nothing is in production:
+[no-switch-over-the-ledgers-replace-todays-tables](../../technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)). The parts that write no stock are built
 now ([restocks-non-stock-parts-come-before-the-switch-over](../../business/inventory/restock_decision.md#restocks-non-stock-parts-come-before-the-switch-over)). The e2e ids (step 6 below) are fixed now, so the specs can be updated with the backend step.
 
 🔄 **2026-10-14:** one decision reversed. The courier's debt is no longer written inside the accept: balance posts it from
@@ -24,7 +25,7 @@ and [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md
 `features/restock/counting.ts` (`unitGoods`, `unitHpp`), the accept page's problem values and the stub's problem prices
 follow the right column, pinned by the `ProblemUnitsCarryTheLandedPrice` story. The handler keeps the left column until
 the backend step rebuilds the accept on the ledgers; until then it counts the door's problems twice.
-⚠ **The accept must wait for the ledger switch-over** ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)),
+⚠ **The accept must wait for the ledgers** ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)),
 like the transfer, opname and placement. ⚠ **The accept prototype ignores opname's rack lock**: put-away onto a rack
 being counted must be refused ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)).
 RackSelect in the accept offers every rack today. **Planned:** `RackListRequest.product_id`, and on each row
@@ -82,6 +83,40 @@ stateDiagram-v2
 | restock-warehouse-detail | signForBox, courier, receiptPhoto, lineSupplier, lineNote, problemNotes: `dropped` |
 
 Every mark goes away in the backend step, and the stories assert on them, so they fail the day they should change.
+
+## Backend analysis — the parts that write no stock (2026-10-15)
+
+Scope: [restocks-non-stock-parts-come-before-the-switch-over](../../business/inventory/restock_decision.md#restocks-non-stock-parts-come-before-the-switch-over).
+🔄 Nothing is in production, so there is no data to protect. Restock's tables take the owner's names (`restocks`,
+`restock_items`, `restock_problem_items`, and the columns in restock.md) **in the commit that moves the accept onto the
+ledgers**: 13 of the 36 files that read them are stock readers that commit rewrites anyway (75 raw SQL references, 116
+field references). 00024 adds the decided columns under today's names.
+
+**Migration 00024**, on today's tables. Dev data checked 2026-10-15: 14 restocks, no duplicate products, no problem rows,
+one courier-charge line with no note.
+
+| change | data | |
+| --- | --- | --- |
+| status `pending` → `ongoing`, `fulfilled` → `accepted`; new `arrived`, `lost` | rewritten in place | |
+| problem `lost` → `missing`; drop the note's `CHECK (reason <> '')` | rewritten in place | |
+| `restock_requests` + `receipt_file`, `shipment_id`, `finance_account_id`, `transaction_id`, `warehouse_additional_cost` + `_note`, `arrived_by_user_id`/`arrived_at`, `lost_by_user_id`/`lost_at` | new, defaulted | `order_ref` keeps holding the invoice reference until the rename |
+| `restock_request_items` + `supplier_id`, `supplier_channel_id`, `note`; `UNIQUE (restock_request_id, product_id)` | each line takes its restock's `supplier_id` | the migration stops, naming the restocks, if a product appears twice |
+| `restock_cost_lines` → the two charge columns | summed, notes joined | ⚠ **then dropped** |
+| `restock_request_events` → 🆕 `restock_logs` (from, to, actor, description, at) | every event copied as a log row | ⚠ **then dropped** |
+| `restock_requests.supplier_id` | copied onto each line | ⚠ **then dropped** — the supplier figures read the lines' |
+
+**Then, in four commits:**
+
+```mermaid
+flowchart LR
+  S1["1 - migration 00024, models, mapper without stopgaps, every handler adapted, tests green"] --> S2["2 - Arrive, MarkLost, the duplicate guard, the arrived-window edits, the trail"]
+  S2 --> S3["3 - Created, Updated, Cancelled events and their topics, SupplierChannelByIds"]
+  S3 --> S4["4 - pending marks removed, e2e updated, audits, docs"]
+```
+
+⚠ **Shared files.** `tools/san/pubsub.go`, `proto/warehouse/events/v1/event.proto`, `backend/cmd/app_development/wire.go`
+and `docs/database-schema.md` carry another session's uncommitted edits. Steps 1 and 3 touch them, so those commits
+stage hunk by hunk.
 
 ## The backend step: what it has to do
 

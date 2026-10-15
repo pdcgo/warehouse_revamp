@@ -2,6 +2,9 @@ package inventory_v1
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -167,6 +170,15 @@ func (s *Service) RestockRequestAccept(
 			freightPerUnit = freight / goodTotal
 		}
 
+		// A broken or missing unit's price, FILLED BY THE SYSTEM and stored (the-problem-price-is-filled-by-the-system):
+		// the landed unit price over every unit ORDERED (all-qty-is-every-unit-ordered). ⚠ The batch below still divides
+		// by the good units until the accept is rebuilt on the ledgers (the-decided-ledgers-come-before-the-restock-accept),
+		// so until then the door's problems are priced the decided way and the batch the old way.
+		var allQty int64
+		for i := range rr.Items {
+			allQty += rr.Items[i].Quantity
+		}
+
 		for i := range rr.Items {
 			item := rr.Items[i]
 			line := counted[item.ID]
@@ -188,16 +200,19 @@ func (s *Service) RestockRequestAccept(
 				return countErr
 			}
 
-			// THE PROBLEM ROWS, written before stock moves: broken as typed, missing worked out. Their worth is filled
-			// from the line on read (the-problem-price-is-filled-by-the-system), never typed here.
+			// THE PROBLEM ROWS, written before stock moves: broken as typed, missing worked out, each with the warehouse's
+			// optional note (a-broken-reason-is-optional) and the landed price.
 			problems := make([]inventory_service_models.RestockDamagedUnit, 0, 2)
+			landed := landedUnitPrice(item.TotalPrice, item.Quantity, freight, allQty)
 
 			if line.broken > 0 {
 				problems = append(problems, inventory_service_models.RestockDamagedUnit{
 					RestockRequestItemID: item.ID,
 					Quantity:             line.broken,
-					Reason:               noteOr(line.brokenNote, restockProblemBrokenDefaultNote),
+					Reason:               line.brokenNote,
 					DamageType:           restockProblemBroken,
+					PriceUnit:            landed,
+					Total:                landed * line.broken,
 				})
 			}
 
@@ -205,8 +220,10 @@ func (s *Service) RestockRequestAccept(
 				problems = append(problems, inventory_service_models.RestockDamagedUnit{
 					RestockRequestItemID: item.ID,
 					Quantity:             missing,
-					Reason:               noteOr(line.missingNote, restockProblemMissingDefaultNote),
+					Reason:               line.missingNote,
 					DamageType:           restockProblemMissing,
+					PriceUnit:            landed,
+					Total:                landed * missing,
 				})
 			}
 
@@ -226,9 +243,9 @@ func (s *Service) RestockRequestAccept(
 
 			unitCost := item.TotalPrice/good + freightPerUnit
 
-			// ⚠ THE BATCH KEEPS ITS OLD BUCKETS until the backend step reshapes `stock_batches`. Its reads
-			// (batch_detail.go's lostExpr) take `lost` from the line's MISSING rows (stored as 'lost') and count it
-			// INSIDE arrived and damaged — arrived = broken + lost + used + ready. Leaving the missing out here made a
+			// ⚠ THE BATCH KEEPS ITS OLD BUCKETS until the accept moves onto the ledgers. Its reads (batch_detail.go's
+			// lostExpr) take `lost` from the line's MISSING rows and count it INSIDE arrived and damaged — arrived =
+			// broken + lost + used + ready. Leaving the missing out here made a
 			// short line with nothing broken read as broken −1, so the missing are counted in, exactly as every batch
 			// accepted before the rewrite was.
 			missing := item.Quantity - line.received
@@ -304,6 +321,8 @@ func (s *Service) RestockRequestAccept(
 			}
 		}
 
+		// Accepted from ongoing or from arrived (accept-locks-the-restock); the trail says which.
+		from := rr.Status
 		rr.Status = restockStatusAccepted
 
 		acceptedAt := time.Now()
@@ -311,49 +330,36 @@ func (s *Service) RestockRequestAccept(
 		rr.AcceptedByUserID = actor
 		rr.AcceptedAt = &acceptedAt
 
-		// The courier's charge, stored as the restock's one cost line beside the goods it was paid for.
-		if courierCharge > 0 {
-			cost := inventory_service_models.RestockCostLine{
-				RestockRequestID: rr.ID,
-				Kind:             restockCostIncidental,
-				Amount:           courierCharge,
-				Note:             courierNote,
-				ActorID:          actor,
-				CreatedAt:        acceptedAt,
-			}
+		// The courier's charge: ONE per restock, on the restock, with its note (the-courier-is-paid-once-per-restock).
+		rr.WarehouseAdditionalCost = courierCharge
+		rr.WarehouseAdditionalCostNote = courierNote
 
-			costErr := tx.Create(&cost).Error
-			if costErr != nil {
-				return costErr
-			}
-
-			rr.CostLines = []inventory_service_models.RestockCostLine{cost}
+		updates := map[string]any{
+			"status":                         restockStatusAccepted,
+			"accepted_by_user_id":            actor,
+			"accepted_at":                    acceptedAt,
+			"warehouse_additional_cost":      courierCharge,
+			"warehouse_additional_cost_note": courierNote,
+			"updated_at":                     acceptedAt,
 		}
 
-		statusErr := tx.
-			Model(&rr).
-			Updates(map[string]any{
-				"status":              restockStatusAccepted,
-				"accepted_by_user_id": actor,
-				"accepted_at":         acceptedAt,
-				"updated_at":          acceptedAt,
-			}).
-			Error
+		// Counted straight from ongoing, the box arrived the moment it was counted: the same person signed for it
+		// (the-restock-prototype-is-accepted — the accept screen stamps it so).
+		if rr.ArrivedAt == nil {
+			rr.ArrivedAt = &acceptedAt
+			rr.ArrivedByUserID = actor
+			updates["arrived_at"] = acceptedAt
+			updates["arrived_by_user_id"] = actor
+		}
+
+		statusErr := tx.Model(&rr).Updates(updates).Error
 		if statusErr != nil {
 			return statusErr
 		}
 
-		// The trail: the charge first, then the acceptance — the money changes hands before the box is opened.
-		if courierCharge > 0 {
-			costEventErr := recordRestockEvent(tx, rr.ID, restockEventCostRecorded, actor, acceptedAt)
-			if costEventErr != nil {
-				return costEventErr
-			}
-		}
-
-		acceptEventErr := recordRestockEvent(tx, rr.ID, restockEventAccepted, actor, acceptedAt)
-		if acceptEventErr != nil {
-			return acceptEventErr
+		logErr := recordRestockLog(tx, rr.ID, from, restockStatusAccepted, actor, acceptDescription(rr, courierCharge), acceptedAt)
+		if logErr != nil {
+			return logErr
 		}
 
 		// WHAT THE SELLING TEAM NOW OWES THE WAREHOUSE for the charge, in this same transaction — a debt must never
@@ -377,11 +383,44 @@ func (s *Service) RestockRequestAccept(
 	}), nil
 }
 
-// noteOr is the warehouse's note, or the words stored in its place while the column still refuses an empty one.
-func noteOr(note, fallback string) string {
-	if note == "" {
-		return fallback
+// acceptDescription is the accept's trail row in words: what broke, what was missing and what the courier asked at the
+// door — "accepted — 1 broken, 2 missing; courier's charge Rp 5.000". The charge sits on the step that paid it, so the
+// team that owes it sees it on its own timeline (#184) without a step of its own (every-status-change-is-logged).
+func acceptDescription(rr inventory_service_models.RestockRequest, courierCharge int64) string {
+	var broken, missing int64
+
+	for i := range rr.Items {
+		for _, d := range rr.Items[i].Damaged {
+			switch d.DamageType {
+			case restockProblemBroken:
+				broken += d.Quantity
+			case restockProblemMissing:
+				missing += d.Quantity
+			}
+		}
 	}
 
-	return note
+	parts := []string{fmt.Sprintf("%d broken, %d missing", broken, missing)}
+	if courierCharge > 0 {
+		parts = append(parts, "courier's charge "+rupiahText(courierCharge))
+	}
+
+	return restockLogAccepted + " — " + strings.Join(parts, "; ")
+}
+
+// rupiahText is whole rupiah as a person reads it: "Rp 5.000".
+func rupiahText(v int64) string {
+	digits := strconv.FormatInt(v, 10)
+
+	var b strings.Builder
+
+	for i, c := range digits {
+		if i > 0 && (len(digits)-i)%3 == 0 {
+			b.WriteByte('.')
+		}
+
+		b.WriteRune(c)
+	}
+
+	return "Rp " + b.String()
 }

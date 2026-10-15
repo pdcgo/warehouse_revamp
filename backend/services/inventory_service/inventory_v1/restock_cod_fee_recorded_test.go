@@ -8,7 +8,6 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
@@ -85,23 +84,10 @@ func acceptWithFee(
 		t.Fatalf("detail: %v", err)
 	}
 
-	// The ROWS themselves, in the database, not just what the RPC chose to echo. HPP sums these lines
-	// directly (stock_cost.go), so a cost that reached the wire but not the table would still cost
-	// wrong.
-	var stored []inventory_service_models.RestockCostLine
-
-	err = db.Where("restock_request_id = ?", reqID).Order("id ASC").Find(&stored).Error
-	if err != nil {
-		t.Fatalf("read cost lines: %v", err)
-	}
-
-	var storedTotal int64
-	for i := range stored {
-		storedTotal += stored[i].Amount
-	}
-
-	if storedTotal != codFee {
-		t.Fatalf("cost lines total %d in the database, want %d", storedTotal, codFee)
+	// The ROW itself, in the database, not just what the RPC chose to echo. HPP reads this column directly
+	// (stock_cost.go), so a charge that reached the wire but not the table would still cost wrong.
+	if stored := storedRestock(t, db, reqID).WarehouseAdditionalCost; stored != codFee {
+		t.Fatalf("the charge is %d in the database, want %d", stored, codFee)
 	}
 
 	return detail.Msg.GetRequest()
