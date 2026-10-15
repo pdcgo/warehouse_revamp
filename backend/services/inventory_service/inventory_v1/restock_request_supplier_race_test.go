@@ -378,3 +378,12 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 		t.Fatalf("expected the restock to commit naming the supplier — the window was not hit")
 	}
 }
+
+// Stores: the race audits name suppliers, never stores, so neither fake knows one.
+func (f *raceRestockParkedSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
+}
+
+func (f *raceRestockRealSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
+}

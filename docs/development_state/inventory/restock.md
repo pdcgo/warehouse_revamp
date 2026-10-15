@@ -1,8 +1,10 @@
 # Development state — inventory / restock
 
-🔨 **2026-10-15: building.** Stage 1 committed (`0f5ea6f`: migration 00024, every handler on the decided tables). Stage 2 done:
-Arrive and MarkLost. Next: stage 3 (the Created / Updated / Cancelled events, `SupplierChannelByIds`), then stage 4
-(pending marks, e2e, audits).
+🔨 **2026-10-15: building.** Stage 1 (`0f5ea6f`: migration 00024, every handler on the decided tables) and stage 2
+(`1b9548b`: Arrive, MarkLost) committed. Stage 3 done: `SupplierChannelByIds`, a line's store checked against its
+supplier, and *Restock Created / Updated / Cancelled* published after commit. ⚠ Nothing LISTENS to those three yet:
+financial_account_service's subscription is its own to add. Next: the accept on the ledgers, then stage 4 (pending
+marks, e2e, audits).
 ✅ **The accept is unblocked (2026-10-15):** the five ledger rules it needed are decided —
 [the-caller-opens-the-transaction](../../technical/ledger/mutation_and_ledger_decision.md#the-caller-opens-the-transaction),
 [ledger-logs-are-append-only](../../technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only),
@@ -73,7 +75,8 @@ stateDiagram-v2
 | --- | --- |
 | contract | `proto/warehouse/inventory/v1/restock_request.proto`, rewritten in place: statuses ONGOING=1 · ACCEPTED=2 · CANCELLED=3 · ARRIVED=4 · LOST=5 · problems BROKEN/MISSING with a system price · a line carries count, total, `price_unit`, `received_count`, `supplier_id`, `supplier_channel_id`, `note` · `RestockLog` replaces the events · new RPCs `RestockRequestArrive`, `RestockRequestAccept` (was Fulfill), `RestockRequestMarkLost` · Cancel carries `money_returned` · `events/v1`: `RestockAccepted` gains `accepted_at_unix` and per line `missing_count` (was lost), `supplier_id`, `supplier_channel_id`, plus new events `RestockCreated`/`Cancelled`/`Updated` (401–403) · `supplier/v1`: `SupplierChannel.deleted`, `SupplierChannelByIds` |
 | backend: stored (00024, `0f5ea6f`) | every contract field has a column; statuses `ongoing`/`arrived`/`accepted`/`lost`/`cancelled`; problems `broken`/`missing` with a stored landed price; `restock_logs` is the trail; the courier's one charge + note on the restock; each line's supplier, store and note; a product once per restock (unique index). The mapper has no stopgaps left |
-| backend: Arrive, MarkLost (stage 2) | implemented with a test per rule — `restock_request_arrive_test.go` (6), `restock_request_mark_lost_test.go` (5). Still Unimplemented: `supplier_v1/supplier_channel_by_ids.go` |
+| backend: Arrive, MarkLost (stage 2) | implemented with a test per rule — `restock_request_arrive_test.go` (6), `restock_request_mark_lost_test.go` (5) |
+| backend: stage 3 | `supplier_v1/supplier_channel_by_ids.go` (+ test) · the `SupplierChecker` port asks `Stores` (`restock_line_stores.go`, `restock_request_store_test.go`) — the composition root's `SupplierClients` carries both supplier_service clients, so `wire.go` is unchanged · `restock_money_events.go` (+ test) publishes the three money events; Create, Update (only when money moved) and Cancel call it |
 | backend: ported | accept (git-mv'd from fulfill), create, update, cancel, labels, the accepted event, stock cost, owner stock, product stock summary, inbound stat (`status IN restockInboundStatuses`, which is ongoing + arrived), and supplier's `analytic_fold.go` (`GetMissingCount`) |
 | frontend: features | `features/restock/`: `summary.ts`, `lines.ts`, `counting.ts`, `statusTabs.ts`, `dateFields.ts`, `problemType.ts`, `queries.ts` (+ Accept/Arrive/MarkLost hooks), `LineSupplier`, `RestockItemsCell`, `SellingRestockActions`, `WarehouseRestockActions`, `RestockTimeline` (each with a story), `storyRestock.ts` (stories only) · `features/suppliers/queries.ts`: `useSupplierChannelsByIds` |
 | frontend: components | `badges/RestockStatusBadge` (5 statuses) · new `badges/DeletedBadge` · new `pickers/SupplierChannelPicker` (the Connect Supplier Channel popup, all suppliers) · `pickers/RackSelect` `allowUnplaced` (default true; the accept passes false, per [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile)) · `feedback/ConfirmDialog`: optional body, `confirmDisabled`, `dismissLabel` · `pickers/DamageTypeSelect` **removed** |

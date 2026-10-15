@@ -37,6 +37,15 @@ func (s *Service) RestockRequestCreate(
 		return nil, restockErr(err)
 	}
 
+	stores := s.askLineStores(ctx, teamID, req.Msg.GetItems())
+
+	for _, item := range req.Msg.GetItems() {
+		err = stores.check(item)
+		if err != nil {
+			return nil, restockErr(err)
+		}
+	}
+
 	rr := inventory_service_models.RestockRequest{
 		RequestingTeamID: teamID,
 		WarehouseID:      req.Msg.GetWarehouseId(),
@@ -77,6 +86,9 @@ func (s *Service) RestockRequestCreate(
 	if err != nil {
 		return nil, restockErr(err)
 	}
+
+	// AFTER the commit: the paying account hears the money left it (a-created-restock-tells-the-financial-account).
+	s.publishRestockMoney(ctx, restockCreatedEvent(&rr))
 
 	return connect.NewResponse(&inventoryv1.RestockRequestCreateResponse{
 		Request: restockRequestToProto(&rr),

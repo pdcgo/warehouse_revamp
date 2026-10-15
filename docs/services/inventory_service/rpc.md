@@ -66,13 +66,13 @@ counts it in, and *the accept is what receives the stock*. The design is
 
 | RPC | Who | From → to | What it does |
 | --- | --- | --- | --- |
-| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each line's supplier asked of supplier_service before the transaction |
+| `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each line's supplier and store asked of supplier_service before the transaction (a store names its supplier and belongs to it). Announces *Restock Created* after commit |
 | `RestockRequestList` / `Detail` | either side | — | rows where `requesting_team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
-| `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace. **Ongoing:** every field, the paying account required. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged |
+| `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace. **Ongoing:** every field, the paying account required. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged. An edit that moves money announces *Restock Updated* |
 | `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
 | `RestockRequestMarkLost` | selling team | ongoing → lost | gives the parcel up: who and when, a trail row carrying the optional why; moves no money. Ongoing only — a box in the building is not lost. A lost restock is neither accepted nor cancelled; only signing for a late box brings it back |
-| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row |
+| `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row and announced in *Restock Cancelled* |
 | `RestockRequestLabels` | warehouse | accepted | one label per placement the good units went to |
 | `RestockInboundStat` | warehouse | — | what is still coming: ongoing **and** arrived |
 
@@ -894,8 +894,42 @@ supplier, the accept's Jakarta day and instant, and per line the ordered count, 
 the missing and the line's supplier
 ([restock-accepted-carries-every-line](../../business/inventory/restock_decision.md#restock-accepted-carries-every-line)).
 supplier_service folds it into a supplier's figures ([its doc](../supplier_service/rpc.md#the-figures--a-fold-of-restock-accepted)).
-The restock's other money events — Restock Created, Cancelled and Updated, for the financial account — are in the
-contract and published from the backend step.
+The restock's money events — *Restock Created*, *Updated* and *Cancelled* — are below.
+
+## The restock's money events — for the account that paid
+
+The selling team's account paid for the goods and the shipping when it raised the restock; three events tell whoever
+posts that payment what happened to it
+([a-created-restock-tells-the-financial-account](../../business/inventory/restock_decision.md#a-created-restock-tells-the-financial-account),
+[an-edit-sends-the-difference](../../business/inventory/restock_decision.md#an-edit-sends-the-difference),
+[an-edit-may-move-the-payment-to-another-account](../../business/inventory/restock_decision.md#an-edit-may-move-the-payment-to-another-account)).
+Inventory announces and does not know who listens. ⚠ **No listener is built yet** — financial_account_service's
+subscription is its own to add; until then the topics fill and nothing posts.
+
+```mermaid
+sequenceDiagram
+  participant T as selling team
+  participant INV as inventory_service
+  participant PS as Pub/Sub
+  T->>INV: RestockRequestCreate — account 7, goods 250.000, shipping 20.000
+  INV->>INV: one transaction, COMMIT
+  INV->>PS: RestockCreated — account 7, amount 270.000, restock-created N
+  T->>INV: RestockRequestUpdate — 12 instead of 10
+  INV->>INV: one transaction, COMMIT
+  INV->>PS: RestockUpdated — account 7 to 7, 270.000 to 290.000, restock-updated N and the edit's trail row
+  T->>INV: RestockRequestCancel — money returned
+  INV->>INV: one transaction, COMMIT
+  INV->>PS: RestockCancelled — account 7, 290.000, money returned, restock-cancelled N
+  Note over INV,PS: a failed publish is logged with its event_id, never fails the request
+```
+
+| | |
+| --- | --- |
+| the amount | goods plus shipping — never the courier's charge, which the warehouse paid ([the-couriers-charge-stays-out-of-total](../../business/inventory/restock_decision.md#the-couriers-charge-stays-out-of-total)) |
+| an edit | announced only when the amount or the paying account changed; a note or a tracking number moves no money |
+| event ids | derived — `restock-created:N`, `restock-cancelled:N`, and `restock-updated:N:<trail row>` per edit — so a republish dedups |
+| after, never inside | an event for a write that rolled back would move money that never moved |
+| topics | read from the proto by `san pubsub ensure` — nothing to add |
 
 ```mermaid
 sequenceDiagram

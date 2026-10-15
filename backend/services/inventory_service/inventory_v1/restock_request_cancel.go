@@ -71,11 +71,21 @@ func (s *Service) RestockRequestCancel(
 			description = restockLogCancelled + " — money returned"
 		}
 
-		return recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusCancelled, actor, description, now)
+		logErr := recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusCancelled, actor, description, now)
+		if logErr != nil {
+			return logErr
+		}
+
+		// The lines, for the amount the cancel announces.
+		return tx.Where("restock_request_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
 	})
 	if err != nil {
 		return nil, restockErr(err)
 	}
+
+	// AFTER the commit: the paying account hears it was called off, and whether the money came back
+	// (a-restock-names-its-paying-account).
+	s.publishRestockMoney(ctx, restockCancelledEvent(&rr, req.Msg.GetMoneyReturned()))
 
 	return connect.NewResponse(&inventoryv1.RestockRequestCancelResponse{
 		Request: restockRequestToProto(&rr),

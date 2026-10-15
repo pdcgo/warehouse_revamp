@@ -79,6 +79,12 @@ var (
 	errRestockPlacementDuplicate = errors.New("a line may name each placement only once")
 	// The courier's charge says what it was for (an-incidental-line-must-say-what-it-was-for).
 	errRestockCostNoteMissing = errors.New("the courier's charge needs a note")
+	// The store a line names must exist and be live when it is newly named (a-line-may-name-a-supplier-without-a-channel).
+	errRestockStoreMissing = errors.New("store not found")
+	// A store is always a supplier's store: a line naming one names its supplier too.
+	errRestockStoreWithoutSupplier = errors.New("a line naming a store must name its supplier")
+	// A store, when given, belongs to the supplier given (a-line-may-name-a-supplier-without-a-channel).
+	errRestockStoreNotTheSuppliers = errors.New("the store does not belong to the line's supplier")
 	// One restock lists each product once (a-product-appears-once-per-restock).
 	errRestockProductTwice = errors.New("a restock lists each product once")
 	// The warehouse signs for a box on its way, or one given up that turned up after all
@@ -344,6 +350,9 @@ func restockErr(err error) error {
 		// NotFound, not PermissionDenied: another team's supplier must be indistinguishable from one that does not
 		// exist, or the error itself confirms the id.
 		return connect.NewError(connect.CodeNotFound, errRestockSupplierMissing)
+	case errors.Is(err, errRestockStoreMissing):
+		// NotFound for the same reason: another team's store must be indistinguishable from one that does not exist.
+		return connect.NewError(connect.CodeNotFound, errRestockStoreMissing)
 	case errors.Is(err, errRestockNotOngoing),
 		errors.Is(err, errRestockNotAcceptable),
 		errors.Is(err, errRestockNotAccepted),
@@ -362,7 +371,9 @@ func restockErr(err error) error {
 		errors.Is(err, errRestockPlacementDuplicate),
 		errors.Is(err, errRestockCostNoteMissing),
 		errors.Is(err, errRestockProductTwice),
-		errors.Is(err, errRestockAccountRequired):
+		errors.Is(err, errRestockAccountRequired),
+		errors.Is(err, errRestockStoreWithoutSupplier),
+		errors.Is(err, errRestockStoreNotTheSuppliers):
 		// InvalidArgument: the restock is in a good state — it is the COUNT that is malformed.
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, errRackMissing):
@@ -396,12 +407,30 @@ func recordRestockLog(
 	description string,
 	at time.Time,
 ) error {
-	return tx.Create(&inventory_service_models.RestockLog{
+	_, err := recordRestockLogRow(tx, requestID, from, to, actor, description, at)
+
+	return err
+}
+
+// recordRestockLogRow is recordRestockLog returning the row it wrote — its id names an edit's event, one per edit.
+func recordRestockLogRow(
+	tx *gorm.DB,
+	requestID uint64,
+	from, to string,
+	actor uint64,
+	description string,
+	at time.Time,
+) (inventory_service_models.RestockLog, error) {
+	row := inventory_service_models.RestockLog{
 		RestockRequestID: requestID,
 		FromStatus:       from,
 		ToStatus:         to,
 		ActorUserID:      actor,
 		Description:      description,
 		At:               at,
-	}).Error
+	}
+
+	err := tx.Create(&row).Error
+
+	return row, err
 }

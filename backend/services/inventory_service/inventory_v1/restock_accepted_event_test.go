@@ -75,6 +75,9 @@ func TestRestockRequestAccept_PublishesRestockAccepted(t *testing.T) {
 	first, second := req.GetItems()[0], req.GetItems()[1]
 	staging := stagingPlacement(t, db, acceptWarehouse)
 
+	// The create announced itself (RestockCreated); only what the ACCEPT publishes is asked about here.
+	sender.sent = nil
+
 	before := time.Now().Unix()
 
 	_, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
@@ -155,6 +158,7 @@ func TestRestockRequestAccept_ARefusedAcceptPublishesNothing(t *testing.T) {
 	svc := newAcceptService(db, sender)
 
 	req := createTwoLines(t, svc)
+	sender.sent = nil // the create's own RestockCreated is not the accept's
 
 	// Only one of the two lines counted — refused as incomplete (#133).
 	_, err := svc.RestockRequestAccept(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{

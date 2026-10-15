@@ -44,8 +44,15 @@ func (s *Service) RestockRequestUpdate(
 	// (audits/services/inventory_service/concurrency/RestockRequestUpdate.md). Whether an answer MATTERS — only a line
 	// whose supplier changed is checked — can only be known under the lock, so it is judged there.
 	answers := s.askLineSuppliers(ctx, teamID, msg.GetItems())
+	stores := s.askLineStores(ctx, teamID, msg.GetItems())
 
-	var rr inventory_service_models.RestockRequest
+	var (
+		rr         inventory_service_models.RestockRequest
+		oldAccount uint64
+		oldAmount  int64
+		editedAt   time.Time
+		editLogID  uint64
+	)
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
@@ -97,7 +104,30 @@ func (s *Service) RestockRequestUpdate(
 			}
 		}
 
-		editedAt := time.Now()
+		// The same for a store: one the line already held is kept even if it was deleted since; a store newly named
+		// must belong to the line's supplier and be live.
+		for _, item := range msg.GetItems() {
+			old, ok := byProduct[item.GetProductId()]
+			if ok && idOrZero(old.SupplierChannelID) == item.GetSupplierChannelId() &&
+				idOrZero(old.SupplierID) == item.GetSupplierId() {
+				continue
+			}
+
+			storeErr := stores.check(item)
+			if storeErr != nil {
+				return storeErr
+			}
+		}
+
+		// The money BEFORE the edit, for the difference it may make (an-edit-sends-the-difference). Read here, before
+		// editArrived changes the stored lines in place.
+		oldAccount = rr.FinanceAccountID
+		oldAmount = rr.ShippingCost
+		for i := range stored {
+			oldAmount += stored[i].TotalPrice
+		}
+
+		editedAt = time.Now()
 
 		var editErr error
 
@@ -114,10 +144,12 @@ func (s *Service) RestockRequestUpdate(
 			return editErr
 		}
 
-		logErr := recordRestockLog(tx, rr.ID, rr.Status, rr.Status, actorFrom(ctx), restockLogEdited, editedAt)
+		row, logErr := recordRestockLogRow(tx, rr.ID, rr.Status, rr.Status, actorFrom(ctx), restockLogEdited, editedAt)
 		if logErr != nil {
 			return logErr
 		}
+
+		editLogID = row.ID
 
 		// Asking a warehouse to stock a product is what makes it VISIBLE there (#142) — a product added by this edit
 		// included. ON CONFLICT DO NOTHING, so the products already linked cost nothing.
@@ -125,6 +157,13 @@ func (s *Service) RestockRequestUpdate(
 	})
 	if err != nil {
 		return nil, restockErr(err)
+	}
+
+	// AFTER the commit, and only when the edit moved money: the amount changed, or the paying account did
+	// (an-edit-sends-the-difference, an-edit-may-move-the-payment-to-another-account). A note or a tracking number
+	// changes nothing the account holds.
+	if rr.FinanceAccountID != oldAccount || restockAmount(&rr) != oldAmount {
+		s.publishRestockMoney(ctx, restockUpdatedEvent(&rr, editLogID, oldAccount, oldAmount, actorFrom(ctx), editedAt))
 	}
 
 	return connect.NewResponse(&inventoryv1.RestockRequestUpdateResponse{

@@ -28,11 +28,47 @@ func (f fakeSuppliers) SupplierIsLive(_ context.Context, _ uint64, supplierID ui
 	return f[supplierID], nil
 }
 
+// Stores: fakeSuppliers knows no store, so a line naming one is refused as not found.
+func (f fakeSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
+}
+
 // newServiceWithSuppliers is newService with suppliers to name — a restock naming one asks supplier_service.
 func newServiceWithSuppliers(t *testing.T, db *gorm.DB, suppliers fakeSuppliers) *inventory_v1.Service {
 	t.Helper()
 
 	return inventory_v1.NewService(db, nil, nil, suppliers, nil)
+}
+
+// fakeSupplierService is fakeSuppliers plus the stores it knows: store id → its supplier and whether it is live. A store
+// id absent from the map exists nowhere.
+type fakeSupplierService struct {
+	fakeSuppliers
+	stores map[uint64]inventory_v1.SupplierStore
+}
+
+func (f fakeSupplierService) Stores(_ context.Context, _ uint64, ids []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	out := make(map[uint64]inventory_v1.SupplierStore, len(ids))
+
+	for _, id := range ids {
+		if store, ok := f.stores[id]; ok {
+			out[id] = store
+		}
+	}
+
+	return out, nil
+}
+
+// newServiceWithStores is newService with suppliers AND their stores to name.
+func newServiceWithStores(
+	t *testing.T,
+	db *gorm.DB,
+	suppliers fakeSuppliers,
+	stores map[uint64]inventory_v1.SupplierStore,
+) *inventory_v1.Service {
+	t.Helper()
+
+	return inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: suppliers, stores: stores}, nil)
 }
 
 // recordingExpense captures the stock-loss values an adjust posts, so a test can assert on WHAT was
