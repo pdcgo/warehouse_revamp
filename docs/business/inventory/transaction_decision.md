@@ -16,6 +16,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value) | a sample is a stock-out and nothing more: its units and their batch value leave the owning team's stock; no money moves, nobody has to agree, and the team sees every sample of its goods | chat, 2026-10-12 — answers Q6, **against** my *the team bears it only when a named member agreed* |
 | [an-item-carries-its-owning-team](#an-item-carries-its-owning-team) | `inventory_transaction_items` gains `product_team_id` and `is_owned` — which team the item's goods belong to, and whether that is the transaction's own team | your transaction.md edit, 2026-10-15 — answers the item half of Q7, after [an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction) |
 | [an-order-transaction-is-the-ordering-teams](#an-order-transaction-is-the-ordering-teams) | an order's transaction carries the ORDERING team; each item names its owner, so `is_owned` false means borrowed | chat, 2026-10-15 — answers the header half of Q7, as recommended |
+| [superseded-a-key-buys-one-take-by-its-unique-index](#superseded-a-key-buys-one-take-by-its-unique-index) | ⛔ reversed the same hour — [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table) | chat, 2026-10-15 |
+| [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table) | an order's key is claimed once, in `idempotency_order_check` (key UNIQUE, `transaction_id`); `inventory_transactions` no longer carries it | your transaction.md edit + chat, 2026-10-15 — answers Q1, option b |
 
 ---
 
@@ -252,6 +254,9 @@ flowchart LR
 enforced, when two owners' rows share one key and so the key cannot be unique on this table · where a release that
 arrives **before** its take is kept ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)).
 
+🔄 *(2026-10-15)* **Amended by [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table)**: the key is no longer a column of `inventory_transactions` — it lives in `idempotency_order_check`, which points at the transaction. A release and the verify scan find the take through it.
+
+
 ## an-item-names-its-product
 
 > Owner, in chat *(2026-10-12)*: *"yes, i forgot `product_id` in `inventory_transaction_items`"* — and added it to
@@ -373,3 +378,103 @@ flowchart LR
 **What it amends.** [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) — its row
 *"an order of two owners: each of its transactions carries the same key"* and its two-transaction diagram. One
 transaction now, as the order decided; the key on it is unchanged.
+
+## superseded-a-key-buys-one-take-by-its-unique-index
+
+> ⛔ **SUPERSEDED (2026-10-15, the same hour)** by [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table):
+> the owner put the unique key in a table of its own, `idempotency_order_check`, and removed `idempotency_key` from
+> `inventory_transactions` — option b, not the a recorded below. Kept as the record, per the header.
+
+> Owner, in chat (2026-10-15): *"for 1 yes"* — answering [Q1](./transaction_clarify.md#question), asked as *"UNIQUE on the
+> key, and an empty rolled-back row when a cancel arrives first?"*, as recommended (option a, no `inventory_take_keys`).
+> The same message scoped the **order's** key per team
+> ([superseded-the-order-key-is-unique-within-its-team](../order/context_decision.md#superseded-the-order-key-is-unique-within-its-team));
+> inventory's stays on the key alone.
+
+**The verdict.** The database holds *a key buys one take, ever*
+([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)):
+`inventory_transactions.idempotency_key` is **UNIQUE where set**. A cancel that finds no take under its key writes an
+**empty, already rolled-back** `order` row under it, so a take that lands later fails on the same index. Exactly one row
+per key can ever exist — the take's or the cancel's.
+
+```mermaid
+sequenceDiagram
+  participant O as order_service
+  participant I as inventory
+  participant T as inventory_transactions
+  O->>I: take under K
+  Note over O: the call times out
+  O->>I: InventoryTxCancel K
+  alt the cancel lands first
+    I->>T: insert an empty rolled-back row under K
+    I->>T: the late take inserts under K - the unique index refuses it
+  else the take lands first
+    I->>T: the take's row under K
+    I->>T: the cancel finds it and rolls it back
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the index | `UNIQUE (idempotency_key) WHERE idempotency_key IS NOT NULL` — on the key **alone**, not per team: a release goes by K alone, so K must name one take |
+| a take on a used K | refused at the lookup ([a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first)) or, in the same second, at the insert — the same *key used* |
+| a cancel on an unseen K | inserts `tx_type = order`, `is_rollback = true`, no items, under K and the ordering team |
+| a cancel on a taken K | reverses it and sets `is_rollback` ([an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once)) |
+| a cancel on a released K | does nothing |
+
+⚠ **Two gaps it leaves:** the empty row needs the ordering team, and `InventoryTxCancel` is specified to carry only the key
+([the-compensation-event-is-inventory-tx-cancel](../order/context_decision.md#the-compensation-event-is-inventory-tx-cancel))
+— it has to carry `team_id` too · [transaction.md](./transaction.md) does not say UNIQUE yet — both reported in
+transaction_clarify (`the-key-column-does-not-say-unique`, since resolved).
+
+## the-key-is-claimed-in-its-own-table
+
+> Owner, in [transaction.md](./transaction.md) §General Table That Must Have *(2026-10-15)*: a new table 2,
+> `idempotency_order_check` — `id`, `idempotency_key` *"its unique"*, `transaction_id` — and in chat: *"sorry, i remove
+> from order. and i have better"* · *"i removed `idempotency_key` from table `inventory_transactions`"* · *"because
+> idempotency_key is just mainly used for prevent creating double order and easy rollback between order service and
+> inventory service"*. It answers [Q1](./transaction_clarify.md#question) with **option b**, a table of its own — over the
+> a I had recorded minutes earlier ([superseded-a-key-buys-one-take-by-its-unique-index](#superseded-a-key-buys-one-take-by-its-unique-index)).
+
+**The verdict.** An order's key is claimed **once, in one place**: `idempotency_order_check`, unique on the key, pointing
+at the transaction it bought. The take claims it with its transaction; a cancel that arrives before the take claims it with
+none. Whichever claims first wins and the other meets the unique index. The key is not on `inventory_transactions` any
+more — it is a tool between the two services, for one job, so it lives in its own table.
+
+```mermaid
+sequenceDiagram
+  participant O as order_service
+  participant I as inventory
+  participant C as idempotency_order_check
+  O->>I: take under K
+  Note over O: the call times out
+  O->>I: InventoryTxCancel K
+  alt the take claims K first
+    I->>C: K - transaction 552
+    I->>C: the cancel finds K - rolls transaction 552 back
+  else the cancel claims K first
+    I->>C: K - no transaction
+    I->>C: the late take claims K - the unique index refuses it, key used
+  end
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `idempotency_order_check` | `id` · `idempotency_key` UNIQUE · `transaction_id` |
+| the take | writes its transaction, then claims K with its id — a violation rolls the whole take back: *key used* |
+| the lookup first | [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first) reads this table |
+| a cancel — K claimed with a transaction | rolls that transaction back, `is_rollback` ([an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once)) |
+| a cancel — K claimed with none | does nothing |
+| a cancel — K not claimed | claims it with no transaction: `transaction_id` empty means *cancelled before anything was taken* — confirmed in chat, 2026-10-15 |
+| a release, the verify scan | find the take through this table: K → `transaction_id` |
+| `inventory_transactions.idempotency_key` | removed |
+| the cancel's team | not needed — the claim row carries no team, so `InventoryTxCancel` stays the key alone |
+| what it is for | stopping a double order and making the rollback between order and inventory easy — nothing else reads it |
+
+**What it amends.** [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) — the key
+moves off `inventory_transactions` into this table; a release and the verify scan still find the take by it, through
+`transaction_id`. Its *"optional, set on an `order` transaction only"* row is gone with the column.

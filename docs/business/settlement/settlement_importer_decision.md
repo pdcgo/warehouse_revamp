@@ -30,6 +30,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-prototype-and-its-contract-are-accepted](#the-prototype-and-its-contract-are-accepted) | ✅ design_accept passed — the two pages, the dialog, the menu and the five-RPC contract are what the backend builds against |
 | [the-source-is-named-importer](#the-source-is-named-importer) | an imported row's `source_type` is `importer` — renamed from `exporter` before the first import writes one |
 | [the-screens-as-built-are-accepted](#the-screens-as-built-are-accepted) | ✅ the frontend as built is accepted — the import screens on the real API, the shop's primary CS, and the report's Withdrawn and Position to date |
+| [two-live-orders-on-a-ref-post-to-the-shop](#two-live-orders-on-a-ref-post-to-the-shop) | a ref on two or more live orders posts to the shop, naming them — as an unmatched ref does |
 
 ## the-import-is-one-streamed-call
 
@@ -944,3 +945,34 @@ flowchart LR
 | the import screens | `/settlement/imports`, **Import File**, `/settlement/imports/:fileId` — the accepted prototype on the real API (f163139, c9c1861) · e2e `settlement_imports.spec.ts` |
 | the shop's primary CS | the **Primary CS** badge on its grant, **★ Make primary** on every other granted user for an owner or admin, a *No primary CS* warning on the shop's page and a badge on `/shops` ([the-primary-cs-is-a-flag-on-a-grant](../shop/context_decision.md#the-primary-cs-is-a-flag-on-a-grant), c9c1861) · e2e `shops.spec.ts` |
 | the report | **Withdrawn** as its own column and total, and the headline **Position to date** ([the-report-headline-is-position-to-date](../../technical/frontend/settlement_report_decision.md#the-report-headline-is-position-to-date), 9f20652) · Storybook **Pages / Settlement / Report** |
+
+## two-live-orders-on-a-ref-post-to-the-shop
+
+> Owner, in chat (2026-10-15): *"for Settlement Q15, yes"* — answering [Q15](./settlement_importer_clarify.md#question),
+> *a ref on two live orders — which one does a statement line post to?*, as recommended (option b). Raised by the order
+> context's [a-duplicate-ref-is-warned-not-refused](../order/context_decision.md#a-duplicate-ref-is-warned-not-refused).
+
+**The verdict.** A line whose ref finds **two or more live orders** in the shop is posted to the **shop**, exactly as a ref
+that finds none ([an-unmatched-ref-posts-to-the-shop](#an-unmatched-ref-posts-to-the-shop)), and the import's result names
+every order it found. No order is credited with money that may be another's. A live order still beats a cancelled one —
+the common double, cancel and re-create, keeps posting to its one live order.
+
+```mermaid
+flowchart LR
+  L["a statement line - SHP-123"] --> Q{"live orders with SHP-123 in this shop"}
+  Q -->|"one"| O["that order - a cancelled one with the same ref is ignored"]
+  Q -->|"none"| S["the shop - no_order"]
+  Q -->|"two or more"| M["the shop - names 9001 and 9002"]
+```
+
+### The spec
+
+| | |
+| --- | --- |
+| live orders found | one → that order · none → the shop, reason `no_order` · **two or more → the shop**, with its own reason |
+| the importer's record | outcome `posted`, a reason that says *several live orders*, and the order ids it found — so a person can place the money |
+| cancelled orders | still lose to a live one, as built |
+| the build | ⚠ `orderInShop` ([import_run.go:534](../../../backend/services/settlement_importer_service/settlement_importer_v1/import_run.go#L534)) still picks the **newest** of two live orders — to change when this is built |
+
+**What it accepts.** Like an unmatched line, the two orders' Settlement tabs show the sale with nothing received until a
+person settles it by hand; the reason the doubles exist is kept out of this repository, so the system cannot place it.

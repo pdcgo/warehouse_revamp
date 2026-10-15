@@ -3,6 +3,12 @@
 [transaction.md](./transaction.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded
 in [transaction_decision.md](./transaction_decision.md).
 
+> ✅ **Answered by your edit (2026-10-15, last):** Q1 — option **b**: the key is claimed in its own table,
+> `idempotency_order_check`, and `idempotency_key` leaves `inventory_transactions`
+> ([the-key-is-claimed-in-its-own-table](./transaction_decision.md#the-key-is-claimed-in-its-own-table)). It supersedes
+> the a I had recorded an hour earlier, and `the-key-column-does-not-say-unique` goes with it: there is no column left to
+> say it, and the early cancel needs no team.
+>
 > 🔄 **Re-examined 2026-10-15 — the order keeps ONE `transaction_id`**
 > ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)): an order's
 > take is one transaction, even when it holds two owners' goods. 🔄 **Q1:** the key can be UNIQUE on your column now, so my
@@ -126,46 +132,7 @@ flowchart LR
 
 ## Question
 
-1. 🔄 *(2026-10-15, simplified by the order's one transaction)* **How is *a key buys one take, ever* enforced — and where
-   does a release that arrives first go?** ✅ Where the key lives is answered: your `inventory_transactions.idempotency_key`,
-   orders only ([an-orders-take-carries-its-idempotency-key](./transaction_decision.md#an-orders-take-carries-its-idempotency-key)),
-   and no `ref_id` ([q1-ref-id-is-overtaken](#q1-ref-id-is-overtaken)). ➡ Was [context Q13a](./context_clarify.md#question).
-   🔄 **The order keeps ONE `transaction_id`**
-   ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)), so an
-   order's take is one row and the key **can be UNIQUE** here — the reason I gave against the column alone, two owners'
-   rows sharing one key, is gone.
-
-   | the order docs decided | how the column does it now |
-   | --- | --- |
-   | a second take on a seen key is refused ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)) | `UNIQUE (idempotency_key)` where set — the second insert fails |
-   | a release on an unseen key is kept, so a late take is refused | the release writes an empty, rolled-back `order` row under K — the late take's insert fails on the same index |
-
-   **The race it has to survive.** The take call times out on the order's side, so the order gives up and sends the
-   compensation, which reaches inventory before the take commits. With the index, exactly one insert under K wins: if the
-   take wins, the release finds it and rolls it back; if the release wins, the take is refused. Nothing is taken for an
-   order that does not exist.
-
-   | | how | + | − |
-   | --- | --- | --- | --- |
-   | **a** | your column, **UNIQUE where set**; a release that comes first writes an empty, rolled-back `order` row under K, carrying the ordering team | no new table — the database holds *once* | an empty row in the history: `is_rollback`, no items |
-   | **b** | your column, plus `inventory_take_keys`: the key as primary key, the ordering team, `released_at` | the same guarantee | a second table saying what the column now can |
-
-   **→ Recommend a.** 🔄 **This reverses my b** — b existed only because two owners' rows shared one key. The empty row's
-   team is the ordering team, which is what every order transaction carries ([Q7](#question)), so it is no longer the one
-   row where `team_id` means something else.
-
-   ```mermaid
-   sequenceDiagram
-     participant O as order service
-     participant I as inventory
-     participant T as inventory_transactions
-     O->>I: take, key K, the ordering team
-     I->>T: insert ONE order transaction under K
-     Note over I,T: K already there, taken or released - refused as a used key
-     O->>I: release K - Order Cancel or InventoryTxCancel
-     I->>T: the take under K - reverse it, set is_rollback
-     Note over I,T: K not seen - insert an empty, rolled-back row under K
-   ```
+1. ✅ *(2026-10-15)* **Answered: a table of its own** — [the-key-is-claimed-in-its-own-table](./transaction_decision.md#the-key-is-claimed-in-its-own-table): `idempotency_order_check`, the key unique, pointing at its transaction.
 2. 🔄 *(2026-10-12, narrowed by your edit)* **What is an item's total, which way does it point, and what reads it?**
    ([Critique 2](#critique)) ✅ *What it is* is answered: one per product, with `product_id`
    ([an-item-names-its-product](./transaction_decision.md#an-item-names-its-product)).

@@ -3,6 +3,31 @@
 [order.md](./order.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [order_decision.md](./order_decision.md).
 
+> ✅ **Answered in chat (2026-10-15, last):** Q10 — no special inventory write; the staff count the product while they
+> talk it over ([a-missing-unit-is-found-by-opname](./order_decision.md#a-missing-unit-is-found-by-opname)). Open here: Q5.
+
+> ✅ **Answered in chat (2026-10-15, later):** Q2 — goods on no rack send the order back to `pending` with a note on
+> its timeline, and the selling team decides ([missing-goods-send-the-order-back-to-pending](./order_decision.md#missing-goods-send-the-order-back-to-pending)).
+> 🆕 [Q10](#question): a cancel then releases a unit that was never there. Open here: Q5, Q10.
+
+> ✅ **Answered in chat (2026-10-15, last):** Q8 — the placement page asks by `orders.transaction_id`
+> ([the-placement-page-reads-racks-by-transaction-id](./order_decision.md#the-placement-page-reads-racks-by-transaction-id)).
+> Open here: Q2, Q5.
+
+> ⚠ **Corrected (2026-10-15), on your word:** I read *"print receipt"* as a pick list carrying the racks. The receipt
+> (`receipt`, `receipt_file`) is the **shipping label** customer service uploads, printed and attached to the parcel; the
+> racks are on the warehouse's **order placement page** (`pick-order`), which reads them from inventory. Fixed in the flow
+> table, the basket story, the critique and Q2 — and [Q8](#question) is re-asked: the page asks inventory by
+> `order:<id>`, which no take is filed under any more.
+
+> ✅ **Answered in chat (2026-10-15, later):** Q7 — one error, three reasons, every refused line named
+> ([a-refusal-names-its-reason-and-every-line](./order_decision.md#a-refusal-names-its-reason-and-every-line)); the third reason
+> is not drawn yet ([the-flow-has-no-stock-refusal](#the-flow-has-no-stock-refusal)). Open here: Q2, Q5, Q8.
+
+> ✅ **Answered in chat (2026-10-15, after the commit):** Q6 — the reserve stays before the take, on a plain read of the
+> total stock ([the-reserve-is-read-before-the-take](./order_decision.md#the-reserve-is-read-before-the-take)), against my
+> under-the-lock; the race example moved into that decision. Open here: Q2, Q5, Q7, Q8.
+
 > ✅ **Answered in chat (2026-10-15, last):** own or borrowed — the request carries the ordering `team_id`, each line
 > `owner_team_id` ([the-take-names-the-orderer-and-each-owner](../order/context_decision.md#the-take-names-the-orderer-and-each-owner)),
 > so the private and reserve checks have something to compare. The critique row `the-check-cannot-tell-own-from-borrowed` is deleted.
@@ -71,11 +96,11 @@ sequenceDiagram
   O->>I: K, ordering team B, warehouse, lines
   I->>D: a transaction under K already? refused - key used, never returned
   I->>P: configuration by ids - owner, private, reserve, markup
-  Note over I: a borrowed line on a private product - Product Not Allowed, stop
+  Note over I: a borrowed line - private, or the total stock short of the reserve - Product Not Allowed, stop
   I->>D: open the transaction
   I->>D: insert the order transaction under K - UNIQUE stops a same-second twin
   I->>D: lock the products' batches by id, then their racks by id
-  I->>D: enough units, and a borrowed line stays at or above the reserve
+  I->>D: enough units on the racks
   I->>D: choose batches oldest first, racks fewest first
   I->>D: write the items, batch_logs, placement_logs
   I->>D: commit
@@ -88,25 +113,11 @@ sequenceDiagram
 | the key looked up first, a hit refused | [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first) |
 | the order transaction under K, inserted first inside the transaction | ⚠ **proposed** — the lookup is a read, and two same-second takes both find nothing; the UNIQUE insert stops the second ([transaction Q1](./transaction_clarify.md#question), option a) |
 | batches, then racks, each by id | [batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id) |
-| the reserve compared under the lock | ⚠ **proposed** — [Q6](#question) |
+| the reserve, before the transaction, plain read | [the-reserve-is-read-before-the-take](./order_decision.md#the-reserve-is-read-before-the-take) |
 | batches oldest first · racks fewest first, unlocked first | [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first) · [an-order-line-may-be-taken-from-several-racks](./placement_decision.md#an-order-line-may-be-taken-from-several-racks) |
 | an item equals its batch rows · both ledgers move the same units | [an-item-equals-its-batch-rows](./transaction_decision.md#an-item-equals-its-batch-rows) · [both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units) |
 | one transaction per order | [an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction) |
 | the markup on the answer | [inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup) — it rides the same product read |
-
-### the reserve race, worked
-
-[Q6](#question), on the floor. Melati's *Kaos Hitam*, reserve 10, the warehouse holds 12. Teams B and C each borrow 2 in the
-same second — the normal case for a product two teams sell.
-
-| | B's take | C's take | stock |
-| --- | --- | --- | --- |
-| **as drawn** — compared before the transaction | 12 − 2 = 10, allowed | 12 − 2 = 10, allowed | 12 |
-| | locks, takes 2, commits | waits on the lock, then takes 2 | **8 — under the reserve** |
-| **compared under the lock** | locks · 12 − 2 = 10, allowed · commits | waits · 10 − 2 = 8, **Product Not Allowed** | 10 |
-
-The reserve number is configuration and can be read early. The stock it is compared against cannot: only the lock stops it
-moving.
 
 ### the flow, with what inventory hears
 
@@ -114,19 +125,19 @@ Your steps, plus what is decided and the one branch still missing.
 
 ```mermaid
 flowchart LR
-  N["New Order - PostOrder lowers the rack"] --> C["Order Processed - the receipt prints the racks"]
+  N["New Order - PostOrder lowers the rack"] --> C["Order Processed - the label is printed, the placement page shows the racks"]
   C --> P["Staff Picking Goods"]
   P --> S["Staff Scan Goods for verify"]
   S -->|"decided - tells inventory, order 9001 picked"| K["Order Packing Completed"]
   K --> SH["Order Shipped - scanned at the courier"]
-  P -.->|"NEW - not on the rack"| NF["another rack, or the order is held - Q2"]
+  P -.->|"decided - on no rack"| NF["back to pending with a note - selling decides"]
   C -.->|"decided - no cancel from here on"| CX["refused"]
 ```
 
 | step | what inventory needs from it |
 | --- | --- |
 | New Order | `PostOrder` — the take, at the lowest racks first ([an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first)) |
-| Order Processed | the receipt prints each line's racks with their counts — *"Rak A × 1, Rak B × 2"* ([Q8](#question): read from inventory at print) — and 🆕 inventory hears **printed**: from here the unit may be in a basket ([Q4](#question)) |
+| Order Processed | the receipt — the shipping label customer service uploaded (`receipt_file`) — is printed, to go on the parcel later. The racks are on the warehouse's **order placement page** (`pick-order`), read from inventory — *"Rak A × 1, Rak B × 2"* ([Q8](#question)) — and 🆕 inventory hears **printed**: from here the unit may be in a basket ([Q4](#question)) |
 | Staff Scan Goods for verify | ✅ **picked** — from here on, the unit is no longer on the rack ([decided](./order_decision.md#the-verify-scan-tells-inventory-picked)) |
 | the rest | nothing — packing and shipping move no stock |
 
@@ -138,7 +149,7 @@ flowchart LR
 | time | what happens | the rack | the system | waiting to be picked |
 | --- | --- | --- | --- | --- |
 | 09:00 | order 9001 comes in | 2 | 2 → 1 | order 9001 |
-| 13:00 | staff confirm it, the receipt prints *"Rak A × 1"* | 2 | 1 | order 9001 |
+| 13:00 | staff confirm it and print its label; the placement page shows *"Rak A × 1"* | 2 | 1 | order 9001 |
 | 13:05 | the picker lifts the unit into a basket | **1** | 1 | order 9001 — **not scanned yet** |
 | 13:07 | a count of Rak A: 1 counted − 1 waiting = 0, the system says 1 | 1 | **−1: a warehouse debt** | |
 | 13:10 | the verify scan at the packing table | 1 | 0 | — |
@@ -176,11 +187,7 @@ not yet scanned"*.
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **the-reserve-is-checked-before-the-lock** | The reserve compares **stock**, and your flow reads it before the transaction — two borrowers in the same second both pass ([worked](#the-reserve-race-worked)) | keep the configuration read where you drew it; move only the **comparison** inside, after the batch lock — [Q6](#question) |
 | **private-or-shared-lock** | §What We Should Check says *private*; [product.md](../product/context.md) §Cross/Shared Products Rule says *shared lock* | ➡ asked in [product Q10](../product/context_clarify.md#question). Your check reads as *one switch*, which is what I recommend there |
-| **one-error-for-every-refusal** | 🔄 The flow now names two refusals — *already created* and *Product Not Allowed*. Too few units has none drawn, and the order form must name the line it refuses ([a-blocked-line-refuses-the-whole-order](../order/context_clarify.md#a-blocked-line-refuses-the-whole-order)) | three named refusals — [Q7](#question) |
-| **the-pick-list-has-no-source** | The receipt prints *"Rak A × 1, Rak B × 2"*, but the take's answer carries no racks and the order stores none | read them from inventory when the receipt prints — [Q8](#question) |
-| **picking-has-no-not-there-branch** | The receipt says Rak A; Rak A is empty. The flow goes straight on to the scan | a branch, and who is told — [Q2](#question) |
 | **the-marketplace-cancels-on-its-own** | No cancel after the warehouse confirms ([no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms)) — except where the **marketplace** cancels on its own | [Q5](#question) |
 
 ---
@@ -188,10 +195,7 @@ not yet scanned"*.
 ## Question
 
 1. ✅ *(2026-10-08)* **Answered: yes** — [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked).
-2. **The goods are not on the printed rack — what does the picker do?**
-   **→ Recommend:** take it from another rack that holds it — the count fixes the two racks, as already decided. If **no**
-   rack has it, the order is held, the selling team is told, and the empty rack is flagged for a count: a unit the book
-   holds and the building does not is a shortfall in custody.
+2. ✅ *(2026-10-15)* **Answered: on another rack, take it; on none, the order goes back to `pending` with a note, and the selling team decides** — [missing-goods-send-the-order-back-to-pending](./order_decision.md#missing-goods-send-the-order-back-to-pending). What a cancel then releases is [Q10](#question).
 3. ✅ *(2026-10-08)* **Answered: it cannot be cancelled** — [no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms).
 4. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q5](./opname_clarify.md#question)** — opname.md now has the lock
    ([a-count-locks-its-rack](./order_decision.md#a-count-locks-its-rack)); what is left is the units already in a basket when
@@ -202,52 +206,33 @@ not yet scanned"*.
    **→ Recommend:** the order goes to `problem` (already in [order/context.md](../order/context.md)'s journey), and a staff
    member **unpacks it back onto a rack**, which reverses the take. It is rare, and it is the one case a put-back has to
    exist for. Put back on a different rack, the count fixes it.
-6. 🆕 *(2026-10-15)* **Is the reserve compared after the take has locked the batches?**
-   ([the-reserve-is-checked-before-the-lock](#critique), [worked](#the-reserve-race-worked))
-   **→ Recommend yes.** The configuration read stays before the transaction, as you drew it — only the comparison moves.
-   It costs nothing extra: the take already holds the lock and already counts the units. *Private* stays where it is,
-   because it reads no stock. ⚠ The reserve's boundary and which warehouse's stock it guards are product's to say
-   ([product Q3](../product/context_clarify.md#question)).
-
-   ```mermaid
-   flowchart LR
-     R["configuration - reserve 10"] -->|"before the transaction, as drawn"| T["open the transaction"]
-     T --> L["lock Kaos Hitam's batches"]
-     L --> C{"stock minus wanted at or above 10?"}
-     C -->|"yes"| W["take"]
-     C -->|"no"| N["Product Not Allowed"]
-   ```
-7. 🆕 *(2026-10-15)* **Does the take refuse with one error, or one per reason?**
-   ([one-error-for-every-refusal](#critique))
-
-   | refusal | when | the order form says |
-   | --- | --- | --- |
-   | **key used** | K is already on a transaction — a cancel that beat its take, or a bug; never the form ([every-submit-mints-a-new-key](../order/context_decision.md#every-submit-mints-a-new-key)) | nothing a person can fix — *"something went wrong, submit again"* |
-   | **not enough stock** | the racks hold fewer than the line wants | *Kaos Hitam — 3 wanted, 2 in this warehouse* |
-   | **not allowed** | a borrowed line on a private product, or under its reserve | *Kemeja Putih — its owner is not sharing it* |
-
-   **→ Recommend three**, each naming its line. ✅ *(2026-10-15)* **The key goes first** is decided —
-   [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first). Inside the transaction the order
-   transaction under K is still inserted before any lock — the lookup cannot see a same-second twin, the UNIQUE insert
-   can. That amends the order of work in
-   [an-item-equals-its-batch-rows](./transaction_decision.md#an-item-equals-its-batch-rows) — the header first, the items
-   after the choice — and needs the key UNIQUE ([transaction Q1](./transaction_clarify.md#question), option a).
-8. 🆕 *(2026-10-15)* **Does the receipt read its racks from inventory, or does the take return them?**
-   ([the-pick-list-has-no-source](#critique))
-
-   | | how | + | − |
-   | --- | --- | --- | --- |
-   | **a** | the receipt reads the racks from inventory by `orders.transaction_id` when it prints | one copy, kept by the service that owns racks · a print can say *"Rak A — being counted"* ([a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)) | a read per print — one call for a whole batch of receipts |
-   | **b** | the take returns them, and the order stores them per line | the print needs no call | a second copy, in a service that does not own racks |
-
-   **→ Recommend a.** A move leaves sold units where they are
-   ([a-move-leaves-sold-units-on-their-rack](./placement_decision.md#a-move-leaves-sold-units-on-their-rack)), so the
-   racks a print reads are the ones the take chose.
+6. ✅ *(2026-10-15)* **Answered: no — before the take, on a plain read of the total stock** — [the-reserve-is-read-before-the-take](./order_decision.md#the-reserve-is-read-before-the-take), against my under-the-lock. Which total, and the boundary, are [product Q3](../product/context_clarify.md#question).
+7. ✅ *(2026-10-15)* **Answered: one error, three reasons, every refused line named** — [a-refusal-names-its-reason-and-every-line](./order_decision.md#a-refusal-names-its-reason-and-every-line). ⚠ *not enough stock* is not drawn yet — [the-flow-has-no-stock-refusal](#the-flow-has-no-stock-refusal).
+8. ✅ *(2026-10-15)* **Answered: by `orders.transaction_id`** — [the-placement-page-reads-racks-by-transaction-id](./order_decision.md#the-placement-page-reads-racks-by-transaction-id). ⚠ `StockPickLocations` still asks by `order:<id>`.
 9. ✅ *(2026-10-15)* **Answered: refused** — [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first).
+10. ✅ *(2026-10-15)* **Answered: the staff count it** — no special inventory write; the count records the loss ([a-missing-unit-is-found-by-opname](./order_decision.md#a-missing-unit-is-found-by-opname)). A count before the cancel sees nothing — the next one does, an accepted cost.
 
 ---
 
 # Contradiction
+
+## the-flow-has-no-stock-refusal
+
+*(2026-10-15)* Your §Flow against [a-refusal-names-its-reason-and-every-line](./order_decision.md#a-refusal-names-its-reason-and-every-line):
+
+| [order.md](./order.md) §Flow | decided |
+| --- | --- |
+| two exits — *Refuse Because its Already Created*, *Product Not Allowed* | three — the third is **not enough stock**, when this warehouse's racks hold fewer than a line wants |
+| the transaction box always reaches its end | it can fail after the lock, write nothing, and return the lines it could not fill |
+
+**Which is wrong:** the flow — it predates the decision. **→ Recommend** one more exit from the transaction box:
+*"Not Enough Stock — rollback, return the short lines"*.
+
+```mermaid
+flowchart LR
+  T["Database Transaction - lock, choose racks"] -->|"enough"| OK["taken"]
+  T -.->|"missing in the flow"| N["Not Enough Stock - rollback, the short lines returned"]
+```
 
 ## the-take-draws-the-ledgers-side-by-side
 

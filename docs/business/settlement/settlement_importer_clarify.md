@@ -4,7 +4,8 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
-🆕 **Re-opened 2026-10-15 — [Q15](#question)**: the order context now allows two live orders on one ref
+✅ **Re-opened and closed 2026-10-15 — [Q15](#question)**: two live orders on one ref post to the shop, naming both
+([two-live-orders-on-a-ref-post-to-the-shop](./settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)); ⚠ `orderInShop` still pays the newest. Raised because the order context now allows two live orders on one ref
 ([a-duplicate-ref-is-warned-not-refused](../order/context_decision.md#a-duplicate-ref-is-warned-not-refused)), and the
 built importer quietly pays the newest.
 
@@ -302,33 +303,7 @@ erDiagram
 14. ✅ **Answered 2026-09-29 — a shop with no primary CS cannot import**:
     [a-shop-with-no-primary-cs-cannot-import](./settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import). Kept as a line so the numbers hold.
 
-15. 🆕 *(2026-10-15)* **A ref on two live orders — which one does a statement line post to?** The order context now
-    lets one shop have two live orders on one marketplace ref
-    ([a-duplicate-ref-is-warned-not-refused](../order/context_decision.md#a-duplicate-ref-is-warned-not-refused)). The
-    importer chooses by a rule written only in code — `orderInShop`
-    ([import_run.go:534](../../../backend/services/settlement_importer_service/settlement_importer_v1/import_run.go#L534)):
-    a live order before a cancelled one, then the **newest**. Every line of that marketplace order — the payout, its
-    fees, a later refund — posts to the newer order, and the older one never shows as paid.
-
-    ```mermaid
-    flowchart LR
-      L["statement line - SHP-123, payout Rp 96.000"] --> Q{"live orders with SHP-123 in this shop"}
-      Q -->|"one"| O["that order"]
-      Q -->|"two - as built"| N["the newest, 9002 - and 9001 is never paid"]
-      Q -->|"two - option b"| S["the shop, flagged with both order ids"]
-    ```
-
-    | | how | + | − |
-    | --- | --- | --- | --- |
-    | **a** | keep the newest, as built | nothing to build | the older order stays unpaid, and nobody is told |
-    | **b** | post it to the **shop**, as for a ref that finds no order ([an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)), and name both orders on the import's result | no order is credited with money that may be another's; a decided path, reused | the two orders' accounts stay open until a person settles it |
-    | **c** | split the line across the orders | each order is paid its share | needs a rule for the share — which depends on **why** doubles exist |
-
-    🔄 *(2026-10-15, later)* **Narrowed by the owner's answer**: most doubles are **one live and one cancelled** — and
-    for those the built rule is already right, because a live order beats a cancelled one. Only **two live** orders are
-    left, and their reason is kept out of this repository, so **c** cannot be designed here.
-    **→ Recommend b for two live orders** — post to the shop and name both, so a person who knows the reason places the
-    money. ⚠ You hold the reason: if *the newest* is right for it, say so and **a** stays as built, with nothing to change.
+15. ✅ *(2026-10-15)* **Answered: the shop, naming both** — [two-live-orders-on-a-ref-post-to-the-shop](./settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop). ⚠ The build still pays the newest. Kept as a line so the numbers hold.
 
 # Contradiction
 

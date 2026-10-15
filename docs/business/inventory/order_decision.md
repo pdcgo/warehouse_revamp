@@ -10,6 +10,11 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-count-locks-its-rack](#a-count-locks-its-rack) | the basket gap is solved inside stock opname: a rack being counted is locked; [opname.md](./opname.md) will say how | chat, 2026-10-08 — answers Q4's direction, instead of my wait-for-the-scan rules |
 | [the-take-checks-the-product-first](#the-take-checks-the-product-first) | `OrderTransactionCreate` reads the lines' product configuration by ids and refuses a private or reserved product before it opens the database transaction | your order.md edit, 2026-10-15 — answers *read product facts before the transaction?*, asked in chat, as recommended |
 | [a-used-key-is-refused-first](#a-used-key-is-refused-first) | the take's first step looks its key up; a key already on a transaction is refused, never returned | your order.md edit, 2026-10-15 — answers Q9, as recommended, and the *key first* half of Q7 |
+| [the-reserve-is-read-before-the-take](#the-reserve-is-read-before-the-take) | the reserve is checked before the transaction on a plain read of the product's total stock across every warehouse — the same-second overlap is accepted | chat, 2026-10-15 — answers Q6, against my under-the-lock |
+| [a-refusal-names-its-reason-and-every-line](#a-refusal-names-its-reason-and-every-line) | one error, one of three reasons — key used · not allowed · not enough stock — naming every refused line | chat, 2026-10-15 — answers Q7, as recommended |
+| [the-placement-page-reads-racks-by-transaction-id](#the-placement-page-reads-racks-by-transaction-id) | the order placement page reads its racks from inventory by `orders.transaction_id` — the receipt is the shipping label | chat, 2026-10-15 — answers Q8, as recommended |
+| [missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending) | goods on no rack: the warehouse sends the order back to `pending` with a note on its timeline; the selling team decides | chat, 2026-10-15 — answers Q2, instead of my loss-and-`problem` |
+| [a-missing-unit-is-found-by-opname](#a-missing-unit-is-found-by-opname) | missing goods need no special inventory write — the staff count the product, and the count records the loss | chat, 2026-10-15 — answers Q10, against my loss-at-the-report |
 
 ---
 
@@ -81,6 +86,10 @@ flowchart LR
 **What it does NOT settle:** a marketplace that cancels the order **itself** after the warehouse confirmed — the buyer's
 request accepted on the platform, or a ship-by deadline missed — where refusing in our system does not stop the courier
 refusing the parcel ([Q5](./order_clarify.md#question)).
+
+🔄 *(2026-10-15)* **Amended by [missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending)**:
+the selling team still cannot cancel a confirmed order — but when the goods are missing, the warehouse sends it back to
+`pending`, and from there it can.
 
 ## a-count-locks-its-rack
 
@@ -181,3 +190,176 @@ flowchart LR
 **What it does NOT settle:** the lookup is a read, so two calls under one K in the same second both find nothing — the
 UNIQUE insert inside the transaction is the guard ([transaction Q1](./transaction_clarify.md#question), option a) · the
 refusal's shape beside the other two ([Q7](./order_clarify.md#question)).
+
+## the-reserve-is-read-before-the-take
+
+> Owner, in chat (2026-10-15): *"for 1, no, make it simple. we just get the total stock of product, and check is it
+> possible to order or not."* — then *"stock that checked its not only in that warehouse, but all stock"*. The question was [order_clarify Q6](./order_clarify.md#question) — *is the reserve compared
+> after the take has locked the batches?* — answered **against my recommendation**. It keeps
+> [the-take-checks-the-product-first](#the-take-checks-the-product-first) exactly as drawn.
+
+**The verdict.** The reserve check stays where [order.md](./order.md) §Flow draws it — in *Product Checking*, before the
+database transaction. It reads the product's total stock with a plain read, no lock, and refuses a borrowed line the stock
+cannot cover beyond the reserve. Simplicity over the same-second case.
+
+```mermaid
+flowchart LR
+  R["OrderTransactionCreate"] --> C["Product Checking - private, then the reserve against the total stock, plain read"]
+  C -->|"not possible"| N["Product Not Allowed"]
+  C -->|"possible"| T["open the transaction - lock, choose, write"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| when | before the transaction, as drawn — no lock is held |
+| what it reads | the product's total stock across **every** warehouse — not only the one the order ships from (owner, the same day: *"stock that checked its not only in that warehouse, but all stock"*) |
+| a line that is not possible | *Product Not Allowed* — the take writes nothing |
+
+**What it costs — accepted.** Two borrowers in the same second both read the stock before either takes. Melati's Kaos
+Hitam, reserve 10, 12 in stock, teams B and C borrow 2 each:
+
+| | B | C | stock |
+| --- | --- | --- | --- |
+| the check, no lock | 12 ≥ 10, possible | 12 ≥ 10, possible | 12 |
+| the take | takes 2 | takes 2 | **8** — 2 under the reserve |
+
+The reserve is a **low-stock line, not a floor** ([the-reserve-stops-other-teams-at-low-stock](../product/context_decision.md#the-reserve-stops-other-teams-at-low-stock)): one borrowed order may take stock below it, and two in one moment both pass. Stock itself never goes
+below zero — that is the ledgers' own check
+([both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units)).
+
+**And a second cost — accepted.** Measured on the total, a borrower can empty the owner's **small** warehouse while the
+total stays above the reserve. Melati's Kaos Hitam: Jakarta 3, Surabaya 20, reserve 10 — a borrowed order of 3 from
+Jakarta passes (23 ≥ 10), and Melati's own Jakarta orders then ship from Surabaya or wait.
+
+**Settled the same day** by [the-reserve-stops-other-teams-at-low-stock](../product/context_decision.md#the-reserve-stops-other-teams-at-low-stock): `stock ≥ reserve`, the quantity wanted not counted, and other teams only.
+
+## a-refusal-names-its-reason-and-every-line
+
+> Owner, in chat (2026-10-15): *"yes"* — answering [order_clarify Q7](./order_clarify.md#question), asked as *"these three
+> names, one error with a reason, every refused line named at once?"*, as recommended.
+
+**The verdict.** `OrderTransactionCreate` refuses with **one** error carrying a **reason** — one of three — and, for a line
+refusal, **every** refused line at once, each with what it wanted and what was there. The order form can then say why and
+the person fixes the whole order in one go.
+
+```mermaid
+flowchart LR
+  R["OrderTransactionCreate"] --> K{"key already on a transaction?"}
+  K -->|"yes"| E1["key used"]
+  K -->|"no"| P{"Product Checking - private, reserve"}
+  P -->|"fails"| E2["not allowed - every such line"]
+  P -->|"passes"| T["the transaction - lock, choose racks"]
+  T -->|"racks hold too few"| E3["not enough stock - every such line"]
+  T -->|"enough"| OK["taken"]
+```
+
+**The spec.**
+
+| reason | when | per line | the form says |
+| --- | --- | --- | --- |
+| **key used** | the key is already on a transaction — a cancel that arrived first, or a bug ([a-used-key-is-refused-first](#a-used-key-is-refused-first)) | — | *"something went wrong, please submit again"* |
+| **not allowed** | a borrowed line on a private product, or the owner's total stock below its reserve ([the-reserve-stops-other-teams-at-low-stock](../product/context_decision.md#the-reserve-stops-other-teams-at-low-stock)) | `product_id` | *"Kemeja Putih — its owner is not sharing it right now"* |
+| **not enough stock** | this warehouse's racks hold fewer than the line wants ([an-order-line-may-be-taken-from-several-racks](./placement_decision.md#an-order-line-may-be-taken-from-several-racks)) | `product_id`, `wanted`, `available` | *"Kaos Hitam — 3 wanted, 2 in this warehouse"* |
+
+| | |
+| --- | --- |
+| the shape | one error, the reason as a field, a list of refused lines — never three error types |
+| every line | all lines refused for the same reason are named together; the take writes nothing |
+| the order | relays the reason and the lines to the form unchanged |
+| reserve vs stock | different questions: the reserve reads **every** warehouse, stock is **this** warehouse's racks — Jakarta 2 + Surabaya 20 passes the reserve and still fails an order of 3 from Jakarta |
+
+⚠ **Not drawn yet:** *not enough stock* has no exit in [order.md](./order.md) §Flow — reported in
+[order_clarify](./order_clarify.md#the-flow-has-no-stock-refusal).
+
+## the-placement-page-reads-racks-by-transaction-id
+
+> Owner, in chat (2026-10-15): *"for 2 yes"* — answering [order_clarify Q8](./order_clarify.md#question) as re-asked
+> after the owner's correction that the receipt is the shipping label, not a pick list: *does the placement page ask
+> inventory by the order's `transaction_id`?* As recommended.
+
+**The verdict.** The warehouse's **order placement page** (`pick-order`) reads where each line was taken from — *"Rak A ×
+1, Rak B × 2"* — from inventory, by the order's `transaction_id`. The take runs before the order exists and is filed
+under its key, so the order's id was never a name inventory knew; the transaction id is the reference the order keeps
+for exactly this ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)).
+
+```mermaid
+flowchart LR
+  O["order 9001 - transaction_id 552"] --> P["order placement page"]
+  P -->|"transaction 552"| I["inventory - the take's rack rows"]
+  I --> L["Kaos Hitam - Rak A x 1, Rak B x 2"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who reads | the order placement page, for the warehouse crew picking the goods |
+| asks by | `warehouse_id` + `orders.transaction_id` — the take's placement log rows |
+| still true later | a move leaves sold units where they are ([a-move-leaves-sold-units-on-their-rack](./placement_decision.md#a-move-leaves-sold-units-on-their-rack)) |
+| the receipt | the shipping label customer service uploaded — printed for the parcel, carries no racks |
+| the build | ⚠ `StockPickLocations` takes `ref = "order:<id>"` — to change when the take is built |
+
+## missing-goods-send-the-order-back-to-pending
+
+> Owner, in chat (2026-10-15): *"im add 4. Table `order_timeline_logs`. in order/context.md. when that happen, warehouse can
+> change to `pending` again with note that goods missing on the rack. and let selling decide it to cancel."* It answers
+> [order_clarify Q2](./order_clarify.md#question) — *the goods are not on the rack the placement page shows* — for the case
+> where **no** rack has them, **instead of** my *a loss recorded at once and the order to `problem`*.
+
+**The verdict.** When the picker cannot find a line's goods, the warehouse sends the order **back to `pending`** and writes
+why on the order's timeline — *"Kaos Hitam missing on Rak A"*, from the warehouse. The selling team decides what happens
+next, a cancel included. A unit found on **another** rack is simply taken: that case was already decided
+([a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count)).
+
+```mermaid
+flowchart LR
+  P["placement page - Rak A x 1"] --> E{"Rak A empty"}
+  E -->|"another rack has it"| A["take it from there - the count fixes the racks"]
+  E -->|"no rack has it"| B["warehouse - the order back to pending"]
+  B --> L["order_timeline_logs - from warehouse, goods missing on Rak A"]
+  L --> S["selling team decides - cancel, or wait"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | the warehouse, from the order it is picking |
+| the order | `processed` → **`pending`** |
+| the note | a row in [order_timeline_logs](../order/context.md) — `from = warehouse`, the status, what is missing |
+| then | the selling team decides; from `pending` it may cancel |
+
+**Why pending, not a cancel** — owner, in chat the same day: *"why not directly cancel? first, its make selling customerservice aware about it. and warehouse staff and customer service discuss about it. at the end of the day customer servicemore aware if there is still any order that pending that order cancel. because cancel order mean any other reason andmostly leave without aware."* A cancel can mean anything and is passed over; a `pending` order stays on customerservice's list until someone acts, and it makes the warehouse and customer service talk. So the warehouse never cancels —it hands the order back ([only-the-selling-team-cancels](../order/context_decision.md#only-the-selling-team-cancels)).
+
+**What it amends.** [no-cancel-after-the-warehouse-confirms](#no-cancel-after-the-warehouse-confirms) — a confirmed order
+still cannot be cancelled straight away, but the warehouse can now hand it back to `pending`, and from there it can.
+
+**What it does NOT settle** — in [order_clarify](./order_clarify.md): what that cancel's release does with the unit that
+was never there ([Q10](./order_clarify.md#question)) · the move `processed → pending`, which the status diagram does not
+have yet ([the-status-moves-miss-the-way-back](../order/context_clarify.md#the-status-moves-miss-the-way-back)).
+
+## a-missing-unit-is-found-by-opname
+
+> Owner, in chat (2026-10-15): *"dont overthinking, between customer service and warehouse staff discussing, certainly
+> staff doing opname first"*. It answers [order_clarify Q10](./order_clarify.md#question) — *a cancel releases a unit that
+> was never there* — **against** my *the missing report reaches inventory as a loss*.
+
+**The verdict.** Missing goods need no special write to inventory. While customer service and the warehouse talk it over,
+the staff **count** the product, and the count's own loss path records whatever is short
+([a-loss-in-custody-is-a-stock-problem](./opname_decision.md#a-loss-in-custody-is-a-stock-problem)). The cancel then
+releases the take as any cancel does.
+
+```mermaid
+flowchart LR
+  M["goods missing - order back to pending"] --> D["customer service and the warehouse talk"]
+  D --> O["staff count the product - opname"]
+  O --> L["a shortage - a loss in custody, the warehouse's"]
+  D --> C["customer service cancels, and usually creates it again"]
+```
+
+**What it costs — accepted.** A count sees a shortage only against the book, and the order's take has already lowered the
+book to the empty shelf. Counted **before** the cancel, Rak A reads book 0, shelf 0 — nothing; the cancel then puts 1 back
+on the book, and the shortage shows on the **next** count. Until then a re-created order can land on the same empty rack.
+Counted after the cancel, it shows at once.

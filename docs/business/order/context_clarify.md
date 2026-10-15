@@ -4,6 +4,14 @@ What [context.md](./context.md) leaves open. **That doc is yours — this one is
 are deleted, so this file is always the current open set; what was settled is in
 [context_decision.md](./context_decision.md).
 
+> 🔄 **Re-examined 2026-10-15 — your `order_timeline_logs` and the way back to `pending`.** Missing goods send a confirmed
+> order back to `pending` with a note, and the selling team decides
+> ([missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)).
+> ⛔ The status diagram has no `processed --> pending` and still has `processed --> cancel`:
+> [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back). 🆕
+> ✅ [the-timeline-is-order-events](#the-timeline-is-order-events) — answered: `order_timeline_logs` replaces `order_events`. 🔄
+> ✅ [who-may-cancel-a-pending-order](#who-may-cancel-a-pending-order) answered — only the selling team cancels ([only-the-selling-team-cancels](./context_decision.md#only-the-selling-team-cancels)).
+
 > ✅ **Answered 2026-10-15, all three as recommended, and deleted:** `a-blocked-line-refuses-the-whole-order`
 > ([over-the-limit-refuses-the-create](./context_decision.md#over-the-limit-refuses-the-create)) · `the-warehouse-is-a-creditor-too`
 > ([the-warehouse-is-a-creditor-on-every-order](./context_decision.md#the-warehouse-is-a-creditor-on-every-order)) · the critique
@@ -216,9 +224,10 @@ settlement records exactly that — a residual balance is already normal
 so the status diagram is the only place a status is defined.
 
 ### who-may-cancel-a-pending-order
-*(was Q3's remainder)* `pending --> cancel` exists. Is that also how the **warehouse declines** an order it
-cannot fulfil, or only the seller's act? **→ Both may**, with a required reason, so a warehouse refusal is
-visible rather than a silent stall in `pending`.
+✅ *(2026-10-15)* **Answered: only the selling team cancels** — the warehouse hands the order back to `pending` with a note, so customer service chases it ([only-the-selling-team-cancels](./context_decision.md#only-the-selling-team-cancels)). Against my *both may*.
+
+### the-timeline-is-order-events
+✅ *(2026-10-15)* **Answered: drop `order_events`, create `order_timeline_logs`** — [order-timeline-logs-replaces-order-events](./context_decision.md#order-timeline-logs-replaces-order-events). Simpler than my keep-`kind`.
 
 ### an-order-cannot-be-created-without-a-channel
 *(re-routed from [shipment](../shipment/context_clarify.md))* The third-party app converts the platform's
@@ -236,7 +245,7 @@ an order with no courier cannot be handed over.
 | §Order Status — Status Move (revised) | §Complete Journey Of The Orders (not revised) |
 | --- | --- |
 | `problem --> completed`, `problem --> lost`, `problem --> return` | `set status problem --> e` — a problem simply ends |
-| `processed --> cancel` | cancel only at `Is Cancel ?`, before `Warehouse Accept Order` |
+| `processed --> cancel` | cancel only at `Is Cancel ?`, before `Warehouse Accept Order` — 🔄 *the journey was right on this row*: [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back) |
 | `lost`, `return`, `return_completed` exist | none of the three appears |
 
 **Which is wrong:** the journey — the status diagram is the newer statement and was revised deliberately.
@@ -250,6 +259,29 @@ flowchart LR
   SD --> J2["journey: cancel only before accept — stale"]
   SD --> J3["journey: no lost, no return — stale"]
   SD --> B["build: placed, confirmed, picking, packed — stale, a migration when built"]
+```
+
+## the-status-moves-miss-the-way-back
+
+*(2026-10-15)* §Order Status — Status Move against
+[missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)
+and [no-cancel-after-the-warehouse-confirms](../inventory/order_decision.md#no-cancel-after-the-warehouse-confirms):
+
+| §Status Move | decided |
+| --- | --- |
+| no `processed --> pending` | the warehouse sends a confirmed order back to `pending` when its goods are missing |
+| `processed --> cancel` | a confirmed order is not cancelled directly — it goes back to `pending` first, and the selling team cancels from there |
+
+**Which is wrong:** the diagram — both decisions are newer than its `processed` row. **→ Recommend** adding
+`processed --> pending` and removing `processed --> cancel`. 🔄 This reverses my verdict on that one row of
+[the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses): there, the journey was right.
+
+```mermaid
+stateDiagram-v2
+  pending --> processed
+  processed --> pending: goods missing - a note on the timeline
+  pending --> cancel: the selling team
+  processed --> shipped
 ```
 
 ## the-uniqueness-section-still-denies

@@ -55,6 +55,10 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-warehouse-is-a-creditor-on-every-order](#the-warehouse-is-a-creditor-on-every-order) | the debt check asks about the fulfilling warehouse always, plus each team a shared product is borrowed from |
 | [a-failed-owner-lookup-refuses-the-create](#a-failed-owner-lookup-refuses-the-create) | the products' owning teams are looked up before the check — if that fails, the create is refused |
 | [the-take-names-the-orderer-and-each-owner](#the-take-names-the-orderer-and-each-owner) | the request carries the ordering `team_id`; each line carries `owner_team_id` — own or borrowed is the two compared |
+| [superseded-the-order-key-is-unique-within-its-team](#superseded-the-order-key-is-unique-within-its-team) | ⛔ withdrawn the same hour — the key's uniqueness lives in inventory's `idempotency_order_check` |
+| [only-the-selling-team-cancels](#only-the-selling-team-cancels) | only the selling team cancels; the warehouse declines by handing the order back to `pending` with a note |
+| [order-timeline-logs-replaces-order-events](#order-timeline-logs-replaces-order-events) | one history table, `order_timeline_logs` (status, note, from, actor); the built `order_events` is dropped |
+| [the-order-refuses-a-used-key](#the-order-refuses-a-used-key) | a key already on an order is refused as a used key — never answered with that order, by the lookup or the unique index |
 | [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
 | [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
 | [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
@@ -1887,7 +1891,7 @@ flowchart TD
 🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: no resend carries the key
 any more, so *what it prevents* no longer happens — a resend of a committed order **is** refused by the shop + ref check,
 by design. The column stays: the Order Cancel reads K from it. Whether the resend shortcut stays is
-[a-key-returns-only-its-own-teams-order](./order_creation_clarify.md#a-key-returns-only-its-own-teams-order).
+[a-key-returns-only-its-own-teams-order](./context_decision.md#the-order-refuses-a-used-key).
 🔄 *(2026-10-15, later)* **And by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: that
 resend is **warned**, not refused — the person may create it.
 
@@ -2186,7 +2190,7 @@ flowchart LR
 | [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key) | minted at *Order Need Created*, before the form is filled | minted at each submit |
 | [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the same key only for a resend with no answer | no exception |
 | [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | *no answer, Try Again with the same key* | *Try Again* with a new key |
-| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | *"a resend gets that order back"* | no resend carries the key — the column stays, for the cancel; the shortcut has no honest caller ([a-key-returns-only-its-own-teams-order](./order_creation_clarify.md#a-key-returns-only-its-own-teams-order)) |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | *"a resend gets that order back"* | no resend carries the key — the column stays, for the cancel; the shortcut has no honest caller ([a-key-returns-only-its-own-teams-order](./context_decision.md#the-order-refuses-a-used-key)) |
 
 **What it does NOT settle.** A *Try Again* while submit 1 is **still running** passes the shop + ref check, which is in
 code — so nothing but a unique index stops a second order
@@ -2474,3 +2478,141 @@ flowchart LR
 | on failure | refuse the create. ⚠ **The build does the opposite** (fails open, `orderCreditors`) — to change when this is built |
 
 ---
+
+## the-order-refuses-a-used-key
+
+> Owner (2026-10-15), in chat: *"yes"* — to *"close the key shortcut"*, whose one proposal was **drop it**: a key already
+> on an order is refused as a used key, the answer inventory gives. Answers `a-key-returns-only-its-own-teams-order`
+> ([order_creation_clarify](./order_creation_clarify.md)) — **against** my first recommendation there (*match K and the
+> team*), which [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) made unnecessary.
+
+**The verdict.** `OrderCreate` never answers with an existing order. A key that is already on an order is **refused as a
+used key** — whether the lookup finds it before the take, or the unique index catches it at the insert. Since every
+submit mints its own key, no honest caller ever sends a used one; the only callers left are a bug and a hostile one, and
+neither is handed another team's order.
+
+```mermaid
+flowchart LR
+  R["OrderCreate with K"] --> Q{"an order already has K?"}
+  Q -->|"no"| T["the debt check, then the take"]
+  Q -->|"yes"| X["refused - a used key"]
+  T --> I{"unique index on the insert"}
+  I -->|"violation"| X
+  I -->|"ok"| O["the order"]
+```
+
+| | |
+| --- | --- |
+| a used key | refused, as an error — never answered with the order that holds it |
+| the unique index | stays on `orders.idempotency_key`, as the backstop; a violation is the same refusal |
+| the team match | not needed — nothing is ever returned by key |
+| inventory | gives the same answer for a used key ([a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)) |
+
+**What it amends.**
+
+| decision | said | now |
+| --- | --- | --- |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | *"an order already has K? return that order"* | refused |
+| [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) | *"the loser … is answered with the order that won, never as an error"* | an error — resolves the contradiction `a-same-key-resend-never-reaches-the-unique-index` |
+
+---
+
+## superseded-the-order-key-is-unique-within-its-team
+
+> ⛔ **SUPERSEDED (2026-10-15, the same hour)** — the owner removed the edit from [context.md](./context.md) (*"sorry, i
+> remove from order. and i have better"*) and put the key's uniqueness in inventory's `idempotency_order_check`
+> ([the-key-is-claimed-in-its-own-table](../inventory/transaction_decision.md#the-key-is-claimed-in-its-own-table)).
+> `orders.idempotency_key` falls back to [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) — my reading.
+> Kept as the record.
+
+> Owner, in [context.md](./context.md) §Table That Must Have *(2026-10-15)*: *"`idempotency_key`, its unique together with
+> `team_id`"* — written while answering inventory's [transaction Q1](../inventory/transaction_clarify.md#question) in chat
+> (*"for 1 yes i edited …"*). It narrows the scope of
+> [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) from the whole table to one team.
+
+**The verdict.** On `orders`, an idempotency key is unique **within its team**: `UNIQUE (team_id, idempotency_key)`. The
+lookup *"an order already has K?"* and the index both ask it of the request's own team, and a hit is refused as a used key
+([the-order-refuses-a-used-key](#the-order-refuses-a-used-key)).
+
+```mermaid
+flowchart LR
+  R["OrderCreate - team B, K"] --> Q{"team B already has an order with K?"}
+  Q -->|"yes"| X["refused - a used key"]
+  Q -->|"no"| T["the take - inventory's own index refuses K if ANY team used it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `orders` | `UNIQUE (team_id, idempotency_key)` — replaces the whole-table `UNIQUE (idempotency_key)` |
+| a K another team used | not caught here — inventory's index is on the key alone and refuses it ([superseded-a-key-buys-one-take-by-its-unique-index](../inventory/transaction_decision.md#superseded-a-key-buys-one-take-by-its-unique-index)) |
+| why inventory stays global | a release goes by K alone ([every-release-goes-by-the-key](#every-release-goes-by-the-key)) — two takes under one K in two teams would leave a cancel not knowing which to release |
+
+**What it amends.** [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) — `UNIQUE` on the column alone → per
+team. [the-order-refuses-a-used-key](#the-order-refuses-a-used-key) — its *"the unique index stays on
+`orders.idempotency_key`"* reads `(team_id, idempotency_key)`.
+
+---
+
+## only-the-selling-team-cancels
+
+> Owner, in chat (2026-10-15): *"why not directly cancel? first, its make selling customer service aware about it. and
+> warehouse staff and customer service discuss about it. at the end of the day customer service more aware if there is
+> still any order that pending that order cancel. because cancel order mean any other reason and mostly leave without
+> aware."* It answers [who-may-cancel-a-pending-order](./context_clarify.md#who-may-cancel-a-pending-order) — *is cancel
+> also how the warehouse declines an order it cannot fulfil?* — **against** my *both may, with a reason*.
+
+**The verdict.** Only the **selling team** cancels an order. When the warehouse cannot fulfil one, it does not cancel: it
+hands the order back to `pending` with a note on the order's timeline
+([missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)).
+A cancel can mean anything and is passed over; a `pending` order stays on customer service's list until somebody acts,
+and it makes the warehouse and customer service talk.
+
+```mermaid
+flowchart LR
+  W["warehouse cannot fulfil"] --> P["back to pending - a note on the timeline, from warehouse"]
+  P --> CS["customer service sees it on its list - talks to the warehouse"]
+  CS -->|"decides"| C["cancel - the selling team's act"]
+  CS -->|"or"| K["keeps it - waits for stock"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who cancels | the selling team — never the warehouse |
+| the warehouse declines by | `processed` → `pending`, with a note in `order_timeline_logs`, `from = warehouse` |
+| why | a `pending` order is chased; a cancel is not |
+| the usual ending | customer service cancels it and creates a new order — owner: *"although at the ending, thats order canceled by customer service and create one"*. That is the common one-live-one-cancelled double of [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) |
+
+**What it does NOT settle:** the move `processed → pending` in the status diagram
+([the-status-moves-miss-the-way-back](./context_clarify.md#the-status-moves-miss-the-way-back)).
+
+## order-timeline-logs-replaces-order-events
+
+> Owner, in chat (2026-10-15): *"simple, drop order_events and create new order_timeline_logs"* — answering
+> [the-timeline-is-order-events](./context_clarify.md#the-timeline-is-order-events). Simpler than my *one table, keep the
+> event-style `kind`*.
+
+**The verdict.** An order's history is **one** table, `order_timeline_logs`, as written in [context.md](./context.md)
+§Table That Must Have — `order_id`, `status`, `note`, `from` (`warehouse` / `selling`), `actor_id`, `created_at`. The built
+`order_events` is dropped, not migrated into it.
+
+```mermaid
+flowchart LR
+  E["order_events - built, dropped"] -.->|"replaced"| T["order_timeline_logs"]
+  S["a status change"] --> T
+  N["a note - goods missing on Rak A, from warehouse"] --> T
+  T --> UI["the order's Timeline tab"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a row | a status change, or a note — with who wrote it and from which side |
+| `from` | `warehouse` or `selling` |
+| `order_events` | dropped — nothing is carried over |
+| picking, packed | not statuses: on the timeline only when someone writes them as a note |
+| the build | ⚠ `order_events` still backs the Timeline tab (selling_service `00011`) — replaced when this is built |
