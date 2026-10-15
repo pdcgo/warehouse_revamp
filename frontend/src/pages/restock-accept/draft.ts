@@ -97,14 +97,16 @@ export interface LineState {
   ready: boolean;
 }
 
-// The line's share of its total for n units: line total × n ÷ line count, rounded down like the server.
-export function shareOf(item: RestockRequestItem, n: bigint): bigint {
-  if (item.count <= 0n || n <= 0n) return 0n;
+// What n broken or missing units are worth: the line's LANDED unit price × n, the same price a good unit carries
+// (all-qty-is-every-unit-ordered), filled by the system (the-problem-price-is-filled-by-the-system).
+export function worthOf(landed: bigint, n: bigint): bigint {
+  if (n <= 0n) return 0n;
 
-  return (item.total * n) / item.count;
+  return landed * n;
 }
 
-export function lineState(item: RestockRequestItem, draft: LineDraft): LineState {
+// `landed` is the line's landed unit price (unitHpp), worked out by the page from the whole restock's costs.
+export function lineState(item: RestockRequestItem, draft: LineDraft, landed: bigint): LineState {
   const counted = isCounted(draft.received);
   const received = toCount(draft.received);
   const broken = toBroken(draft.broken);
@@ -159,8 +161,8 @@ export function lineState(item: RestockRequestItem, draft: LineDraft): LineState
     brokenOver,
     good,
     missing,
-    brokenValue: shareOf(item, brokenOver ? 0n : broken),
-    missingValue: shareOf(item, missing),
+    brokenValue: worthOf(landed, brokenOver ? 0n : broken),
+    missingValue: worthOf(landed, missing),
     rows,
     placed,
     toPlace,

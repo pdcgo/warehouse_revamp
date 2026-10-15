@@ -189,8 +189,8 @@ export const MissingIsWorkedOutFromReceived: Story = {
 
     await waitFor(() => expect(line.getByTestId(`accept-missing-${id}`)).toHaveTextContent("3"));
     await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("9");
-    // 400.000 × 3 ÷ 12
-    await expect(line.getByTestId(`accept-missing-value-${id}`)).toHaveTextContent("100.000");
+    // 3 × the landed price 34.215 (400.000 ÷ 12 + 15.000 ÷ 17), the same as a good unit (all-qty-is-every-unit-ordered).
+    await expect(line.getByTestId(`accept-missing-value-${id}`)).toHaveTextContent("102.645");
     // The warehouse's optional word on the missing units appears beside them (three-notes-one-writer-each).
     await expect(line.getByTestId(`accept-missing-note-${id}`)).toBeInTheDocument();
 
@@ -248,8 +248,8 @@ export const GoodUnitsMustBeFullyPlaced: Story = {
 
     // Counted, nothing placed yet.
     await expect(line.getByTestId(`accept-good-${id}`)).toHaveTextContent("10");
-    // 400.000 × 2 ÷ 12, filled by the system.
-    await expect(line.getByTestId(`accept-broken-value-${id}`)).toHaveTextContent("66.666");
+    // 2 × the landed price 34.215, filled by the system.
+    await expect(line.getByTestId(`accept-broken-value-${id}`)).toHaveTextContent("68.430");
     await expect(line.getByTestId(`accept-unbalanced-${id}`)).toBeInTheDocument();
     await expectAccept(canvasElement, false);
 
@@ -315,6 +315,28 @@ export const TheChargeStaysOutOfTheTotal: Story = {
     await expect(canvas.getByTestId("accept-grand-total")).toHaveTextContent("740.000");
     // (15.000 + 5.000) ÷ 17 — the charge is in the unit price.
     await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.509");
+  },
+};
+
+/**
+ * all-qty-is-every-unit-ordered — the costs are spread over every unit ORDERED, so the landed price does not move when
+ * units arrive broken or short, and a broken or missing unit is worth exactly what a good one costs. Coffee 12 with 1
+ * broken, rice 4 of 5: the coffee's HPP stays 34.215 (dividing by the 15 good units would make it 37.363).
+ */
+export const ProblemUnitsCarryTheLandedPrice: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await count(canvasElement, COFFEE.productId, "12", "1");
+    await count(canvasElement, RICE.productId, "4");
+
+    // 400.000 ÷ 12 + 15.000 ÷ 17 — every unit ordered, not the good ones.
+    await expect(canvas.getByTestId(`accept-hpp-${COFFEE.productId}`)).toHaveTextContent("34.215");
+    const coffee = await lineOf(canvasElement, COFFEE.productId);
+    await expect(coffee.getByTestId(`accept-broken-value-${COFFEE.productId}`)).toHaveTextContent("34.215");
+
+    // 325.000 ÷ 5 + 15.000 ÷ 17 — the missing unit carries the rice's landed price.
+    const rice = await lineOf(canvasElement, RICE.productId);
+    await expect(rice.getByTestId(`accept-missing-value-${RICE.productId}`)).toHaveTextContent("65.882");
   },
 };
 

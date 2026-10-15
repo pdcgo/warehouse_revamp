@@ -54,6 +54,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered) | *all qty* counts every unit ordered; a broken or missing unit at the door carries the same landed unit price as a good one | chat, 2026-10-14 — answers Q22, B |
 | [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) | the accept writes the decided ledgers, built after every stock reader and writer has moved off today's tables — as the transfer | chat, 2026-10-14 — **against** my build-on-today's-tables recommendation |
 | [a-box-nobody-raised-comes-in-by-the-teams-restock](#a-box-nobody-raised-comes-in-by-the-teams-restock) | a box with no restock is not signed for; staff tell the team named on it, the team creates the restock, the warehouse accepts it | chat, 2026-10-14 — answers Q23, b, as opname's rule |
+| [the-restock-prototype-is-accepted](#the-restock-prototype-is-accepted) | design_accept: the seven restock screens and the restock contract are the design to build; a contract change from here is a new pass | chat, 2026-10-15 |
+| [restocks-non-stock-parts-come-before-the-switch-over](#restocks-non-stock-parts-come-before-the-switch-over) | everything in restock that writes no stock is built now, on today's backend; only the accept waits for the ledgers | chat, 2026-10-15 — as recommended |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -1397,3 +1399,58 @@ flowchart LR
 | the restock | created by the selling team, as always ([the-warehouse-signs-and-accepts-the-team-does-the-rest](#the-warehouse-signs-and-accepts-the-team-does-the-rest)), naming its paying account |
 | then | signed for and accepted as any restock — its problems at the door are the team's |
 | withdrawn | my *the warehouse signs it as an `arrived` restock*, which bent who creates a restock and when the account is named |
+
+## the-restock-prototype-is-accepted
+
+> Owner, in chat *(2026-10-15)*: *"for 1 i accept it"*, to the first row of *what holds the full build*: *design_accept on
+> the 7 restock screens in Storybook*. It is the lifecycle's design_accept
+> ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)).
+
+**The verdict.** The prototype is the design: the seven restock pages and `RestockRequestService` as they stand on branch
+`backup/inventory` on 2026-10-15, including the decided price
+([all-qty-is-every-unit-ordered](#all-qty-is-every-unit-ordered)) that the screens took that day. The contract is accepted
+WITH the screens ([contract-accepted-with-the-screens](../../development_lifecycle_decision.md#contract-accepted-with-the-screens)),
+so a change to it from here on is a new pass, not an amendment.
+
+```mermaid
+flowchart LR
+  P["prototype - seven screens and the contract"] -->|"design_accept, 2026-10-15"| B["backend analysis"]
+  B --> N["the parts that write no stock"]
+  B --> L["the ledgers and the switch-over"]
+  L --> A["the accept"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| accepted | `frontend/src/pages/restock-*` (accept, labels, request-form, selling, selling-detail, warehouse, warehouse-detail), `features/restock/`, and `proto/warehouse/inventory/v1/restock_request.proto` |
+| already known, accepted as planned | the rack lock: the accept's rack picker refuses a rack whose product is being counted ([a-lock-stops-units-moving-not-sales](./opname_decision.md#a-lock-stops-units-moving-not-sales)) — one contract field, planned in the state report |
+| the pending marks | each one is removed by the backend step that stores its field |
+| a contract change after this | a new pass through the screens, not a quiet edit |
+| next | backend analysis; the accept is ordered by [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) |
+
+## restocks-non-stock-parts-come-before-the-switch-over
+
+> Owner, in chat *(2026-10-15)*: *"for 1,2 yes"*, the second to *build the non-stock parts now, or wait and build restock all
+> at once?* As recommended. It settles what
+> [the-decided-ledgers-come-before-the-restock-accept](#the-decided-ledgers-come-before-the-restock-accept) left open.
+
+**The verdict.** Everything in restock that writes no stock is built now. Only the accept waits for the ledgers and the
+switch-over. The selling team can raise, edit, cancel and give up on restocks, and the warehouse can sign for boxes, in
+the running app before the accept exists on the ledgers.
+
+```mermaid
+flowchart LR
+  N["now - tables, Create, Update, Cancel, Arrive, MarkLost, the trail, the events"] --> R["restock usable up to arrived"]
+  S["after the switch-over - the accept on the ledgers"] --> F["restock complete"]
+  R --> F
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| built now | restock's own migrations (every decided field, `restock_logs`), Create, Update, Cancel, Arrive, MarkLost, Detail, List, the duplicate-product guard, *Restock Created / Updated / Cancelled* to the financial account, `SupplierChannelByIds` |
+| the accept meanwhile | today's handler keeps writing today's stock tables, adapted only enough to read and write restock's new columns |
+| after the switch-over | the accept on the ledgers, at the decided price, and balance's subscriber for the courier's debt |

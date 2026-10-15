@@ -1,28 +1,36 @@
 # Development state — inventory / restock
 
+✅ **2026-10-15: design_accept passed** ([the-restock-prototype-is-accepted](../../business/inventory/restock_decision.md#the-restock-prototype-is-accepted)).
+**Next step: backend analysis.** The accept waits for the ledgers and the switch-over. The parts that write no stock are built
+now ([restocks-non-stock-parts-come-before-the-switch-over](../../business/inventory/restock_decision.md#restocks-non-stock-parts-come-before-the-switch-over)). The e2e ids (step 6 below) are fixed now, so the specs can be updated with the backend step.
+
 🔄 **2026-10-14:** one decision reversed. The courier's debt is no longer written inside the accept: balance posts it from
 *Restock Accepted* ([balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)).
-Step 5 below changed with it. Still no design_accept is recorded for the restock screens, and the backend also waits on
+Step 5 below changed with it. The backend also waits on
 the ledgers' open questions ([biggest_question #1](../../biggest_question.md)). restock.md lags six decided fields
 ([restock-md-lags-the-decided-tables](../../business/inventory/restock_clarify.md#restock-md-lags-the-decided-tables)).
 ✅ **No question is open.** Q22 and Q23, which moved in when the owner deleted context.md's receiving flow, are both
 decided ([all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered),
 [a-box-nobody-raised-comes-in-by-the-teams-restock](../../business/inventory/restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock)).
-⚠ **The prototype contradicts the decided price** — [unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit)
+✅ *(2026-10-15)* **The prototype now prices as decided** — [unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit)
 and [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered):
 
-| | the prototype and the accept handler today | decided |
+| | the accept handler, still | decided |
 | --- | --- | --- |
-| the goods half | line total ÷ good units (`unitGoods` in `features/restock/counting.ts`) | the line's `price_unit`, total ÷ ordered count |
+| the goods half | line total ÷ good units | the line's `price_unit`, total ÷ ordered count |
 | the cost half | (shipping + courier's charge) ÷ every good unit | ÷ every unit ordered, across the restock |
 | a broken or missing row's price | the goods share, `line total × n ÷ line count` | the landed unit price, the same as the batch's |
 
-Today the door's problems are counted twice (Rp 142.000 recorded for Rp 112.000 paid in the decision's example). Fix
-`counting.ts`, its stories' expected HPP, the accept handler and the problem price together.
+`features/restock/counting.ts` (`unitGoods`, `unitHpp`), the accept page's problem values and the stub's problem prices
+follow the right column, pinned by the `ProblemUnitsCarryTheLandedPrice` story. The handler keeps the left column until
+the backend step rebuilds the accept on the ledgers; until then it counts the door's problems twice.
 ⚠ **The accept must wait for the ledger switch-over** ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)),
 like the transfer, opname and placement. ⚠ **The accept prototype ignores opname's rack lock**: put-away onto a rack
 being counted must be refused ([a-lock-stops-units-moving-not-sales](../../business/inventory/opname_decision.md#a-lock-stops-units-moving-not-sales)).
-RackSelect in the accept offers every rack today.
+RackSelect in the accept offers every rack today. **Planned:** `RackListRequest.product_id`, and on each row
+a `counting` flag for that product (the same meaning as `RackStock`'s `counting`, false until opname is built); RackSelect
+takes a `productId` and shows those racks disabled, *being counted*. Deferred on 2026-10-15 only because another session
+had uncommitted protos and `gen/` in this checkout, and `buf generate` rewrites all of `gen/`.
 
 **As of 2026-10-09, the restock is DECIDED and PROTOTYPED. It is not built.** All 45 decisions are in
 [restock_decision.md](../../business/inventory/restock_decision.md), and no question is open. The last one,

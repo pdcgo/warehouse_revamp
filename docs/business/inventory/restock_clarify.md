@@ -3,6 +3,9 @@
 [restock.md](./restock.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [restock_decision.md](./restock_decision.md).
 
+> ✅ **design_accept passed (2026-10-15)** — [the-restock-prototype-is-accepted](./restock_decision.md#the-restock-prototype-is-accepted). No
+> question is open. Next: backend analysis.
+>
 > **Re-examined after *"do it all"* (2026-10-14).** ✅ [Q23](#question): b — [a-box-nobody-raised-comes-in-by-the-teams-restock](./restock_decision.md#a-box-nobody-raised-comes-in-by-the-teams-restock).
 > **No question is open in restock.** Left in your text: [restock-md-lags-the-decided-tables](#restock-md-lags-the-decided-tables).
 >

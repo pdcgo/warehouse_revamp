@@ -31,6 +31,7 @@ import {
   RestockRequestService,
   RestockRequestStatus as S,
 } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
+import { unitHpp } from "../src/features/restock/counting";
 import { racks } from "./fixtures";
 import { type LineFixture, type RestockFixture, restockFixtures } from "./restockFixtures";
 import { SELF_ID } from "./userStub";
@@ -101,17 +102,21 @@ const goodOf = (l: LineFixture) => {
   return l.receivedCount - broken;
 };
 
-// The restock as the wire carries it — prices worked out, totals summed, the trail only when asked.
+// The restock as the wire carries it — prices worked out, totals summed, the trail only when asked. A broken or
+// missing row carries the LANDED unit price: the line's own price plus its share of the restock's costs over every
+// unit ordered (all-qty-is-every-unit-ordered), the same figure the accept screen previews.
 function toWire(r: RestockFixture, withLogs: boolean) {
-  const items = r.items.map((l) => ({
-    ...l,
-    priceUnit: l.count > 0n ? l.total / l.count : 0n,
-    problems: l.problems.map((p) => ({
-      ...p,
+  const allQty = r.items.reduce((s, l) => s + l.count, 0n);
+  const costs = r.shipmentCost + r.warehouseAdditionalCost;
+  const items = r.items.map((l) => {
+    const landed = unitHpp(l.total, l.count, costs, allQty);
+
+    return {
+      ...l,
       priceUnit: l.count > 0n ? l.total / l.count : 0n,
-      total: l.count > 0n ? (l.total * p.count) / l.count : 0n,
-    })),
-  }));
+      problems: l.problems.map((p) => ({ ...p, priceUnit: landed, total: landed * p.count })),
+    };
+  });
   const subtotal = r.items.reduce((s, l) => s + l.total, 0n);
 
   return {
