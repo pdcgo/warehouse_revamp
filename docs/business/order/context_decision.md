@@ -43,6 +43,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [inventory-takes-a-key-once](#inventory-takes-a-key-once) | a second take on a used key is refused, never replayed · an early cancel is kept |
 | [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the form mints a new key after any answer — the same key only for a resend with no answer |
 | [every-release-goes-by-the-key](#every-release-goes-by-the-key) | Order Cancel carries the key · inventory has ONE release, by key, for the cancel and the compensation · a second release does nothing |
+| [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel) | the failed create's event is `InventoryTxCancel`, carrying the key — one name in both docs |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | after Create the form waits locked · the order opens it · an error mints a new key · no answer offers *Try Again* on the same key |
 | [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
 | [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
 | [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
@@ -1998,3 +2000,78 @@ flowchart LR
 release is *"keyed on the order"* — it is keyed on K. Its verdict, that a cancel releases stock **by event**, stands.
 [event_context.md](./event_context.md) §Order Cancel lists subscribers and no fields, so nothing in it is stale —
 the key is a field the event gains.
+
+---
+
+## the-compensation-event-is-inventory-tx-cancel
+
+> Owner (2026-10-15), in chat: *"event name we use 'InventoryTxCancel"* — and in [order_creation.md](./order_creation.md)
+> the diagram's *"Inventory Tx Cancel Compensate Event"* became *"InventoryTxCancel Compensate Event"*. Answers
+> `the-compensation-event-has-two-names` ([order_creation_clarify](./order_creation_clarify.md)).
+
+**The verdict.** The event `order_service` publishes when a create fails after asking inventory for stock is
+**`InventoryTxCancel`** — the name [event_context.md](./event_context.md) already used. The two docs now say one name.
+
+```mermaid
+flowchart LR
+  F["the create fails or times out, after the take was asked for"] -->|"InventoryTxCancel, with K"| I["inventory_service"]
+  I --> R["release the take under K"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| name | `InventoryTxCancel` — the message, and the label in both docs |
+| published by | `order_service`, on any failure after the take was called, a timeout included |
+| carries | `idempotency_key` ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)) |
+| heard by | `inventory_service` — the one release by key ([every-release-goes-by-the-key](#every-release-goes-by-the-key)) |
+
+⚠ **Not the name I recommended.** I proposed naming it as a fact — the take was returned because the order was never
+created. The owner kept the existing name; nothing structural rides on it, since what the event means is in its spec.
+
+---
+
+## the-form-locks-until-it-is-answered
+
+> Owner (2026-10-15): drew the proposed loop into [order_creation.md](./order_creation.md)'s frontend box, as
+> recommended — *"okay im edited order_creation.md"*. Answers `the-form-locks-until-it-is-answered`
+> ([order_creation_clarify](./order_creation_clarify.md)).
+
+**The verdict.** After *Create Order* the form waits, **locked**, for one of three answers. The order opens it; an error
+mints a new key and gives the form back as typed; **no answer** keeps the key and offers *Try Again*, which resends
+exactly what was sent. It draws [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer), which until now was in no
+diagram.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  state "Create Order" as cre
+  state "Waiting for the Answer, Form Locked" as wait
+  state answer <<choice>>
+  state "Open the Created Order" as done
+  state "Create Idempotency Key" as idem
+  cre-->wait
+  wait-->answer
+  answer-->done: the order
+  answer-->idem: an error, new key, the form keeps what was typed
+  answer-->cre: no answer, Try Again with the same key
+```
+
+**The spec.**
+
+| the answer | the key | the form |
+| --- | --- | --- |
+| the order | spent | opens the order |
+| an error | a new key | stays filled and editable |
+| none — the connection dropped, or the browser gave up waiting | the same key | locked to what was sent · *Try Again* resends exactly that |
+
+| | |
+| --- | --- |
+| why locked | an edited form resent under the same key, after the first attempt committed, is handed the FIRST order back — the edit lost without a word |
+| no answer | nothing came back. Anything the server sent is an answer, even an error about its own timeout to inventory — that one has already published `InventoryTxCancel` |
+| the resend | a person presses *Try Again* — never an automatic resend, the browser's side of [the-take-is-never-retried](#the-take-is-never-retried) |
+| leaving the page with no answer | the key is lost, and nothing more is needed — retyping the order is refused by the shop + ref check |
+
+⚠ **Left open:** whether *"key already used"* gets its own message — it is not in the diagram
+([order_creation_clarify](./order_creation_clarify.md#key-already-used-gets-its-own-message)).

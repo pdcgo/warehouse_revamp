@@ -10,11 +10,20 @@ state fe{
     state "Create Idempotency Key" as idem
     state "Filling Order Form" as fill
     state "Create Order" as cre
+    state "Waiting for the Answer, Form Locked" as wait
+    state answer <<choice>>
+    state "Open the Created Order" as done
 
     [*]-->needc
     needc-->idem
     idem-->fill
     fill-->cre
+    cre-->wait
+    wait-->answer
+    answer-->done: the order
+    answer-->idem: an error, new key, the form keeps what was typed
+    answer-->cre: no answer, Try Again with the same key
+    done-->[*]
 }
 
 fe-->rpc
@@ -103,7 +112,7 @@ state srv {
 
 tx-->create_err
 state "Order Created Event" as createdevt
-state "Inventory Tx Cancel Compensate Event" as cominvevt
+state "InventoryTxCancel Compensate Event" as cominvevt
 state "Delete Draft Order" as draft
 
 create_err-->createdevt: if success, and bring idempotency key
@@ -123,6 +132,7 @@ message ProductItem {
 }
 
 message OrderTransactionCreateRequest {
+    string                  idempotency_key
     uint64                  warehouse_id
     repeated ProductItem    items
 }
