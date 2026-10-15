@@ -11,6 +11,7 @@ import { ChannelTypes } from "../../features/suppliers/ChannelTypes";
 import { type DiscoverSupplier, useDiscoverSuppliers } from "../../features/suppliers/discover";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
+import { enumCodec, idCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -26,10 +27,10 @@ import { SUPPLIER_LIST_PENDING } from "../../features/suppliers/listPending";
 import { LIST_FIGURE_MARKS, SupplierFigureCells, SupplierFigureHeaders } from "../../features/suppliers/SupplierFigures";
 import { sampleFiguresFor } from "../../features/suppliers/sampleSupplierFigures";
 import {
-  type FigureRangePicks,
   NO_FIGURE_RANGES,
   rangesOn,
   SupplierRangeFilters,
+  useUrlFigureRanges,
 } from "../../features/suppliers/SupplierRangeFilter";
 import { SupplierWarehouseFilter } from "../../features/suppliers/SupplierWarehouseFilter";
 import { DiscoverSupplierCard } from "./components/DiscoverSupplierCard";
@@ -69,14 +70,16 @@ export function DiscoverSuppliersPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [q, setQ] = useState("");
-  const [channelType, setChannelType] = useState<Marketplace>(Marketplace.UNSPECIFIED);
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a supplier, opens the same
+  // narrowed search. The cards/table switch is a view, not a filter, so it stays on screen only.
+  const [q, setQ] = useUrlState("q", "", textCodec);
+  const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   // The team that keeps the supplier — 0n is any team.
-  const [ownerTeamId, setOwnerTeamId] = useState(0n);
+  const [ownerTeamId, setOwnerTeamId] = useUrlState("team", 0n, idCodec);
   // The warehouse the supplier's restocks are received at, and the range pills — both held on screen and thrown away
   // (`dropped`): nothing narrows the list by either yet. 0n is any warehouse.
-  const [warehouseId, setWarehouseId] = useState(0n);
-  const [ranges, setRanges] = useState<FigureRangePicks>(NO_FIGURE_RANGES);
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const [ranges, setRanges] = useUrlFigureRanges();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   // Cards first (owner: *"default card"*); a desktop may switch to the table. A phone always shows cards.

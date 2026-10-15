@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { RouteObject } from "react-router-dom";
-import { RouterProvider, createMemoryRouter } from "react-router-dom";
+import { RouterProvider, createMemoryRouter, useLocation } from "react-router-dom";
 import { Text } from "@chakra-ui/react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -68,6 +68,15 @@ export function routedPage(routes: RouteObject[], initialEntry: string) {
  * A story asserts it ARRIVED. Mounting the real destination page instead would make this a test of
  * THAT page's queries — and a failure there would be reported against this screen.
  */
+/**
+ * The router's query string, on screen — what a story reads to see a filter written to the URL
+ * (a-lists-filters-live-in-the-url). Place it beside the page in the route's element.
+ */
+export function LocationProbe() {
+  const { search } = useLocation();
+  return <Text data-testid="location-search">{search}</Text>;
+}
+
 export function marker(path: string, testId: string): RouteObject {
   return { path, element: <Text data-testid={testId}>{testId}</Text> };
 }

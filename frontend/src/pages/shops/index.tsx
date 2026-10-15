@@ -26,6 +26,7 @@ import { Pagination } from "../../components/chrome/Pagination";
 import { toaster } from "../../components/feedback/Toaster";
 import { useShops, useDeleteShop } from "../../features/shops/queries";
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
+import { textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -36,7 +37,8 @@ export function ShopsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [q, setQ] = useState("");
+  // THE SEARCH LIVES IN THE URL (a-lists-filters-live-in-the-url) — Back from a shop opens the same narrowed list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<Shop | null>(null);

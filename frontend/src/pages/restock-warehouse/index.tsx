@@ -49,6 +49,7 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
+import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
 import { RESTOCK_WAREHOUSE_PENDING } from "./pending";
 
@@ -70,6 +71,11 @@ const NAME_LOOKUP_SIZE = 200;
 // different people — a buyer in a selling team raised it, this warehouse's own crew counted it — so
 // the role also decides how the picker is SCOPED, not just which field the RPC gets.
 type ActorRole = "created" | "accepted";
+
+// The status tab, the date type and the person's role as the URL carries them — only what this list offers is read back.
+const STATUS_CODEC = oneOfCodec(RESTOCK_STATUS_TABS.map((item) => item.value));
+const DATE_FIELD_CODEC = enumCodec(RESTOCK_DATE_FIELDS.map((f) => f.value));
+const ACTOR_ROLE_CODEC = oneOfCodec<ActorRole>(["created", "accepted"]);
 
 // RestockWarehousePage — the RESTOCK LIST AS THE RECEIVING WAREHOUSE SEES IT (#133).
 //
@@ -99,10 +105,12 @@ export function RestockWarehousePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [tab, setTab] = useState("all");
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
+  // restock, opens the same narrowed queue. The page number stays on screen only.
+  const [tab, setTab] = useUrlState("status", "all", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [requesterFilter, setRequesterFilter] = useState(0n);
+  const [requesterFilter, setRequesterFilter] = useUrlState("from", 0n, idCodec);
 
   // ONE PERSON FILTER WITH A TYPE (owner), not two pickers: "which person" and "in which role" are
   // asked together, the way the date range asks "which window" and "which date" in one control.
@@ -110,8 +118,8 @@ export function RestockWarehousePage() {
   // The cost, stated because it is invisible from the control: the pair can no longer be asked for.
   // The RPC still has both fields and would AND them, but the UI can only ever set one — "raised by
   // Ani AND counted by Budi" is not a question this screen offers.
-  const [actorRole, setActorRole] = useState<ActorRole>("created");
-  const [actorId, setActorId] = useState(0n);
+  const [actorRole, setActorRole] = useUrlState<ActorRole>("role", "created", ACTOR_ROLE_CODEC);
+  const [actorId, setActorId] = useUrlState("person", 0n, idCodec);
 
   // The people the role's question can be answered by — everyone who did that on a restock to this warehouse.
   const actorPeople = useRestockPeople({
@@ -119,8 +127,8 @@ export function RestockWarehousePage() {
     role: actorRole === "created" ? RestockActorRole.CREATED : RestockActorRole.ACCEPTED,
   });
 
-  const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
-  const [dateField, setDateField] = useState<RestockDateField>(RestockDateField.CREATED);
+  const [range, setRange] = useUrlState<DateRange>("range", DEFAULT_RANGE, dateRangeCodec);
+  const [dateField, setDateField] = useUrlState<RestockDateField>("date", RestockDateField.CREATED, DATE_FIELD_CODEC);
 
   const teamId = current?.teamId;
 

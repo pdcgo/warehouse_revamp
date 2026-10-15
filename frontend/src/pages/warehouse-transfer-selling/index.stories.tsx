@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { WarehouseTransferSellingPage } from "./index";
@@ -109,5 +109,30 @@ export const OpensTheCreateForm: Story = {
 
     await userEvent.click(canvas.getByTestId("open-create-transfer"));
     await canvas.findByTestId("at-transfer-new");
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the search are its; a
+// change is written back.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/transfer", element: <><WarehouseTransferSellingPage /><LocationProbe /></> }],
+  "/inventories/transfer?status=shipped&q=JNE",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("transfer-row-603", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("transfer-search")).toHaveValue("JNE");
+    await expect(canvas.getByTestId("transfer-tab-shipped")).toHaveAttribute("aria-selected", "true");
+    // 608 is shipped too, by another courier — the search is what leaves it out.
+    await expect(canvas.queryByTestId("transfer-row-608")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("transfer-tab-arrived"));
+    await waitFor(() => expect(location).toHaveTextContent("status=arrived"));
+    await expect(location).toHaveTextContent("q=JNE");
   },
 };

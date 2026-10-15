@@ -24,9 +24,13 @@ import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBad
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiah } from "../../lib/money";
+import { idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { TRANSFER_SELLING_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The status tab as the URL carries it — only a tab this list offers is read back.
+const STATUS_CODEC = oneOfCodec(TRANSFER_STATUS_TABS.map((item) => item.value));
 
 // WarehouseTransferSellingPage — THE TEAM'S OWN TRANSFERS: stock it is moving between the warehouses that hold it
 // (the-team-opens-the-sender-ships-the-receiver-accepts). It answers "where is my stock going, and has it got there":
@@ -45,11 +49,13 @@ export function WarehouseTransferSellingPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [tab, setTab] = useState("all");
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
+  // transfer, opens the same narrowed list. The page number stays on screen only.
+  const [tab, setTab] = useUrlState("status", "all", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState("");
-  const [warehouseFilter, setWarehouseFilter] = useState(0n);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [warehouseFilter, setWarehouseFilter] = useUrlState("warehouse", 0n, idCodec);
 
   const teamId = current?.teamId;
   const activeTab = transferTab(tab);

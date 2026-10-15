@@ -29,6 +29,7 @@ import {
   useShipmentChannels,
 } from "../../features/shipment/queries";
 import { ShipmentChannelFormDialog } from "./components/ShipmentChannelFormDialog";
+import { boolCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -44,8 +45,9 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 export function ShipmentChannelsPage() {
   const { t } = useTranslation();
 
-  const [q, setQ] = useState("");
-  const [includeDeleted, setIncludeDeleted] = useState(false);
+  // THE SEARCH AND "SHOW DELETED" LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh keeps the same list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
+  const [includeDeleted, setIncludeDeleted] = useUrlState("deleted", false, boolCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<ShipmentChannel | null>(null);

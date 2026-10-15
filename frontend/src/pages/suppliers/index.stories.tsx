@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { supplierFixture } from "../../../.storybook/supplierFixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -108,6 +109,33 @@ export const SearchesByName: Story = {
 
     await waitFor(() => expect(canvas.queryByTestId(`supplier-row-${SUMBER.id}`)).toBeNull());
     await expect(canvas.getByTestId(`supplier-row-${CAHAYA.id}`)).toBeVisible();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the list is narrowed by it; a change
+// is written back; Clear Filters writes them all away in one go (five filters, one navigation — none undoing another).
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/suppliers", element: <><SuppliersPage /><LocationProbe /></> }],
+  `/inventories/suppliers?q=cahaya&type=${Marketplace.SHOPEE}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("supplier-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("cahaya");
+    await expect(canvas.getByTestId("marketplace-select")).toHaveTextContent("Shopee");
+
+    await userEvent.click(await canvas.findByTestId("suppliers-filter-clear"));
+    await waitFor(() => expect(location).toBeEmptyDOMElement());
+    await expect(search).toHaveValue("");
+
+    await userEvent.type(search, "sumber", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("?q=sumber"));
   },
 };
 

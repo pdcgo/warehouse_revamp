@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { settlementImports, shops, teams } from "../../../.storybook/fixtures";
 import { settlementImportScenario } from "../../../.storybook/settlementImportScenario";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -242,6 +242,33 @@ export const AFileWithAnotherShopsOrdersIsRefused: Story = {
 
     const row = await canvas.findByTestId("import-row-950", {}, { timeout: 3000 });
     await expect(within(row).getByTestId("upload-status-failed")).toBeInTheDocument();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the shop and the status are its own;
+// a new status is written back, the shop kept.
+const AtFilteredUrl = routedPage(
+  [{ path: "/settlement/imports", element: <><SettlementImportsPage /><LocationProbe /></> }],
+  `/settlement/imports?shop=${SHOPEE.id}&status=done`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const status = await canvas.findByTestId("imports-status-filter", {}, { timeout: 3000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(status).toHaveValue("done");
+    // Re-queried each try: the search select remounts once its shops land (so a prefilled pick is not left blank).
+    await waitFor(
+      () => expect(within(canvas.getByTestId("imports-shop-filter")).getByTestId("shop-select")).toHaveValue(SHOPEE.name),
+      { timeout: 3000 },
+    );
+
+    await userEvent.selectOptions(status, "failed");
+    await waitFor(() => expect(location).toHaveTextContent("status=failed"));
+    await expect(location).toHaveTextContent(`shop=${SHOPEE.id}`);
   },
 };
 

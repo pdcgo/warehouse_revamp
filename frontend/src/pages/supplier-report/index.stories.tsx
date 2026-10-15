@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { teams } from "../../../.storybook/fixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
@@ -10,7 +10,7 @@ import { SupplierReportPage } from "./index";
 
 // THE SUPPLIER REPORT (the-figures-are-a-statistics-tab-and-a-supplier-report, the-figures-screens-are-accepted) —
 // suppliers ranked by what was restocked from them, or by how much of it arrived broken, over a period. The stub serves
-// supplier_service's figures from supplierFigureFixtures.ts. The last 30 days hold:
+// supplier_service's figures from supplierFigureFixtures.ts. The last month holds:
 //
 //   supplier                     units  restocked     broken  rate
 //   31 PT Sumber Makmur   Melati   137   Rp 4.400.000    6     4,4%
@@ -158,6 +158,33 @@ export const PickingATeamNarrowsTheRanking: Story = {
 
     await waitFor(() => expect(order(canvas)).toEqual(["34", "31"]));
     await expect(canvas.getByTestId("supplier-report-summary-restocked-value")).toHaveTextContent(rp(3_900_000n));
+  },
+};
+
+// THE FILTERS AND THE ORDER LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the search and the
+// order are read from it; a range picked is written back, beside them.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/suppliers/report", element: <><SupplierReportPage /><LocationProbe /></> }],
+  "/inventories/suppliers/report?q=makmur&rank=brokenRate",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("supplier-report-search")).toHaveValue("makmur");
+    const group = canvas.getByTestId("supplier-report-rank-by");
+    await expect(within(group).getByRole("radio", { name: "Broken Rate" })).toBeChecked();
+    await waitFor(() => expect(order(canvas)).toEqual(["34", "31"]));
+
+    await userEvent.click(canvas.getByTestId("supplier-report-range"));
+    const week = await screen.findByTestId("supplier-report-range-quick-7");
+    await waitFor(() => expect(week).toBeVisible());
+    await userEvent.click(week);
+    await waitFor(() => expect(location).toHaveTextContent("range=7d"));
+    await expect(location).toHaveTextContent("rank=brokenRate");
   },
 };
 

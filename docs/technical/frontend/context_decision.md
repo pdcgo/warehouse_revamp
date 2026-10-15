@@ -62,6 +62,8 @@ when it applies one of these.
 | [the-more-sheet-is-a-menu-and-a-profile](#the-more-sheet-is-a-menu-and-a-profile) | the phone's menu sheet is two views switched at its foot — the **menu** with a search, and the **profile** with Edit Profil, Tema, Bahasa and Keluar; Profil is no longer a menu line | the phone shell |
 | [an-empty-list-shows-a-hint](#an-empty-list-shows-a-hint) | an empty table or list shows `EmptyHint` — an icon, the title, a line on why or what next, and the action that fills it or clears the filter — not a bare grey line | every list |
 | [every-filter-clears-from-its-own-x](#every-filter-clears-from-its-own-x) | a filter with a value carries an × that clears it — a select's at its end, a panel trigger's attached to it, the search's inside it beside its search icon — besides the strip's Hapus Filter | the supplier screens first; the search on every list |
+| [the-quick-ranges-are-days-then-months-then-years](#the-quick-ranges-are-days-then-months-then-years) | a date range's quick picks are Today, 7 and 14 days, then 1, 3 and 6 months and 1 year — counted on the calendar; a dated screen opens on the last month | every `DateRangePicker` |
+| [a-lists-filters-live-in-the-url](#a-lists-filters-live-in-the-url) | a list's filters, its sort and a tab that narrows it are kept in the URL — a refresh, Back, or a pasted link opens the same narrowed list | every list with filters |
 | [a-phone-header-action-is-an-icon](#a-phone-header-action-is-an-icon) | on a phone a header's actions are their icons; past two they all fold into ⋯ — it REPLACES "every action into ⋯, even one" of [the-phone-header-is-one-row](#the-phone-header-is-one-row) | every phone header |
 | [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) | a team filter that offers ONE type (warehouses, selling teams) shows its pick as the name alone — no type badge | the supplier screens, the seller's orders |
 | [a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes) | an × and Hapus Filter fade in as they appear, the phone's Filter count pops when it changes, a chip's pick turns in 120ms — the results never fade | every `FilterBar` |
@@ -1463,6 +1465,57 @@ first load            arrives                 a tab picked              a refres
 | a vertical tab row | the line slides down the list's end rule (an order's page, the settlement preview) |
 | ⚠ a closing panel never animates | a fading tab panel is a Zag presence node, and presence keeps a closing node on screen until its animation ends — for the panel open on arrival it had seen no animation start, so the first time that tab was left the old panel stayed under the new one (owner, on the account report: *"tabel tidak hilang di awal-awal, baru hilang saat kedua kali"*). The tabs recipe sets `animation-name: none !important` on a closed panel, so it goes at once. `SwitchingViewLeavesOnlyTheNewOne` holds it; it was reproduced, and the fix proved, with motion on |
 | not yet | every other screen takes `enter`, the skeleton and the sliding underline the day it is next reworked |
+
+## the-quick-ranges-are-days-then-months-then-years
+
+> Owner, in chat (2026-10-15): *"untuk presets range tanggal di atas 14 hari ada 1,2,3,6 bulan, 1,2,3 tahun"* — then, seeing
+> it, *"2 bulan, 2 3 tahun hilang"* and *"default 1 bulan"*.
+
+```
+before                 now
+Hari ini               Hari ini
+7 hari terakhir        7 hari terakhir
+14 hari terakhir       14 hari terakhir
+30 hari terakhir   →   1 bulan terakhir · 3 bulan terakhir · 6 bulan terakhir
+90 hari terakhir   →   1 tahun terakhir
+```
+
+| | |
+| --- | --- |
+| the list | Today, 7 days, 14 days, then **1, 3, 6 months**, then **1 year**. 30 and 90 days are gone — a month and three months stand for them. 2 months, 2 and 3 years were proposed and taken out again |
+| the default | every dated screen opens on the **last month** (`LAST_MONTH`) — the account report, the settlement report, the Supplier Report, a supplier's Statistik, the daily statement. It was 30 days. The restock list keeps its 7 days |
+| ⚠ stories | a month back is 28 to 31 days, so a story fixture never sits 28–30 days back — at 30 it would be inside the window in November and outside it in October. Inside every window: 27 days or less; outside every window: 32 or more |
+| counted on the calendar | a month back is the same date a month back: on 15 Oct, *1 bulan terakhir* is 16 Sep – 15 Oct (inclusive of today, as *7 hari* is seven days). The 31st clamps to a shorter month's end — 31 Mar − 1 month starts on 1 Mar |
+| a year | twelve months — so it is a calendar year back, leap day or not |
+| still live | stored as the count (`{ months: 3 }`), never as dates, like the day presets: opened tomorrow it is still the last three months |
+| the label | *N bulan terakhir* / *N tahun terakhir*; a twelve-month window reads as years |
+
+## a-lists-filters-live-in-the-url
+
+> Owner, in chat (2026-10-15): *"untuk halaman tabel dan list pakai filter, filternya disimpan ke querystring biar tidak hilang
+> saat refresh"*.
+
+```
+/inventories/suppliers?q=sumber&type=1&range=3m
+                       └ search ┘ └ Shopee ┘ └ last 3 months ┘
+refresh → the same list · Back from a supplier → the same list · a pasted link → the same list
+```
+
+| | |
+| --- | --- |
+| in the URL | every filter, the sort, and a tab or segment that **narrows** the same list (a stage tab, a type tab, Per Toko ⇄ Per Pengguna) |
+| not in the URL | the page number, the page size, a dialog, a selection, and a tab that switches to a **different view** (Periode · Rincian, a supplier page's Toko · Produk · Statistik) |
+| a default | is left out — an untouched list has a bare URL, and a link without a key means the default |
+| a date range | stays relative: `range=7d`, `range=3m`; an absolute one is `2026-10-01..2026-10-15`, all dates `all` |
+| writing | `replace`, so Back leaves the list instead of stepping back through every letter typed; the writes of one click are one navigation (Clear Filters resets five at once) |
+| reading | once, when the page opens; after that the state is the screen's own, mirrored to the URL — a search box driven by the URL would lag a keystroke behind |
+| a hand-edited URL | a key it cannot read (an unknown marketplace, a bad date) falls back to the default |
+| siblings on one page | prefix their keys — the supplier page's Toko tab `store.q`, Produk `product.q`, Statistik `stat.range` — so one tab never reads another's search |
+| the hook | `useUrlState(key, default, codec)` in `lib/urlState.ts`, a drop-in for `useState`, with codecs for text, ids, enums, switches, sorts, lists and date ranges |
+| tested | each list's `FiltersLiveInTheUrl` story opens it at a filtered URL and watches a change written back |
+| ⚠ its own writes are not followed | a write returns as a REPLACE navigation, and the router can commit it a keystroke late; following it set the search box back and dropped letters (seen only when the story run was under load). The hook follows a URL changed from outside — Back, a link — and never its own echo |
+| applied to | the suppliers, Discover, a supplier page's Toko · Produk · Statistik, the Supplier Report; the accounts list (its type tab and sort, beside `view=archived`), an account's statement, the account report; the seller's and the warehouse's orders (the stage tab was already `status`), the settlement list and report, the settlement imports, the daily statement; Kewajiban's list and a pair's date range; batches and a batch, stock, products, Discover products, racks, shops, shipment channels, the pick queue (its step tab), returns; restock and transfers (both sides), users, teams (the type tab), expenses |
+| nothing to keep | the drafts and the balance sheet hold no filter of their own |
 
 ## Recorded elsewhere
 

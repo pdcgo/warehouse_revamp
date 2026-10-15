@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -34,8 +34,8 @@ import {
   isAllDates,
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { formatRupiah } from "../../lib/money";
 import { OrderStatRow } from "./components/OrderStatRow";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
@@ -45,6 +45,9 @@ import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// The status tab as the URL spells it — only a real one is read back.
+const TAB_CODEC = oneOfCodec(ORDER_STATUS_TABS.map((item) => item.value));
 
 // OrdersPage lists the CURRENT selling TEAM's orders (#68), newest first, paginated. The team is the
 // scope — a team only ever sees its own orders (and, since #151, the ones shipping from it). Rows open
@@ -61,19 +64,18 @@ export function WarehouseOrdersPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  // `?status=` is how the DRAFTS tab comes back to a specific status — read once, as the initial
-  // value, and never again. Keeping it in the URL from then on would mean every tab click pushed a
-  // history entry, so Back would walk the tabs instead of leaving the screen.
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState(() => orderTab(params.get("status") ?? "all").value);
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // order, opens the same narrowed list. `?status=` is also how the DRAFTS tab comes back to a specific status. It is
+  // written with `replace`, so a tab click never pushes a history entry and Back still leaves the screen.
+  const [tab, setTab] = useUrlState("status", "all", TAB_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   // The three filters above the tabs. All of them are SERVER-SIDE: the list is paginated, so a
   // client-side filter would narrow the loaded page only and leave the pager counting the whole set.
-  const [search, setSearch] = useState("");
-  const [shopId, setShopId] = useState(0n);
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
 
   const teamId = current?.teamId;
 

@@ -17,6 +17,7 @@ import {
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { PRESSABLE } from "../../lib/motion";
+import { enumCodec, idCodec, nullableCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
@@ -25,14 +26,14 @@ import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { SortableHeader, type SortState } from "../../components/chrome/SortableHeader";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { SupplierFormDialog } from "../../features/suppliers/SupplierFormDialog";
 import { SupplierSortSelect } from "./components/SupplierSortSelect";
 import {
-  type FigureRangePicks,
   NO_FIGURE_RANGES,
   rangesOn,
   SupplierRangeFilters,
+  useUrlFigureRanges,
 } from "../../features/suppliers/SupplierRangeFilter";
 import {
   LIST_FIGURE_MARKS,
@@ -73,6 +74,9 @@ const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 // type (ChannelTypes, shared); its contact; and its figures (SupplierFigures, shared with Discover). On a phone a supplier
 // is a block, and the sort is the Filter sheet's.
 
+// The one column the list sorts by (SupplierSortKey).
+const SORT_CODEC = nullableCodec(sortCodec(["name"] as const));
+
 export function SuppliersPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
@@ -80,14 +84,16 @@ export function SuppliersPage() {
   const isMobile = useIsMobile();
   const canManage = current?.teamType === TeamType.SELLING;
 
-  const [q, setQ] = useState("");
-  const [channelType, setChannelType] = useState<Marketplace>(Marketplace.UNSPECIFIED);
+  // THE FILTERS AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a supplier,
+  // opens the same narrowed list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
+  const [channelType, setChannelType] = useUrlState("type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   // The warehouse the supplier's restocks are received at, and the range pills — both held on screen and thrown away
   // (`dropped`): nothing narrows the list by either yet. 0n is any warehouse.
-  const [warehouseId, setWarehouseId] = useState(0n);
-  const [ranges, setRanges] = useState<FigureRangePicks>(NO_FIGURE_RANGES);
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const [ranges, setRanges] = useUrlFigureRanges();
   // `null` = the list's own order, newest first — no heading stands for it.
-  const [sort, setSort] = useState<SortState<SupplierSortKey> | null>(null);
+  const [sort, setSort] = useUrlState<SortState<SupplierSortKey> | null>("sort", null, SORT_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<ManagedSupplier | null>(null);

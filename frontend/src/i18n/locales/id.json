@@ -225,7 +225,9 @@
     "apply": "Terapkan Rentang",
     "clear": "Semua tanggal",
     "fromOnly": "Dari {{date}}",
-    "toOnly": "Sampai {{date}}"
+    "toOnly": "Sampai {{date}}",
+    "lastNMonths_other": "{{count}} bulan terakhir",
+    "lastNYears_other": "{{count}} tahun terakhir"
   },
   "productLines": {
     "title": "Produk",

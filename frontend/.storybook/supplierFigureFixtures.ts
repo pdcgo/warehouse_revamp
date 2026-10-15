@@ -2,7 +2,8 @@
 // (the-report-is-processed-like-settlement). Small enough to add up by hand: the stories assert on the arithmetic
 // written beside each row, never on the stub's own sums.
 //
-// Dated RELATIVE TO TODAY so the screens' default window — the last 30 days — always holds the same rows. Ids follow
+// Dated RELATIVE TO TODAY so the screens' default window — the last month, 28 to 31 days — always holds the same rows:
+// nothing sits 28–30 days back. Ids follow
 // supplierFixtures.ts (suppliers 3x) and fixtures.ts (products 7x, teams 1x).
 //
 //   PT Sumber Makmur (31, Toko Melati's)   — bought by Toko Melati (Beras 74) and Toko Kenanga (Gula 73)
@@ -51,7 +52,7 @@ export const figureFixtures: FigureFixture[] = [
   row(2, 31n, 74n, 12n, [40, 2_000_000], [1, 50_000], [2, 100_000]),
   row(5, 31n, 73n, 13n, [60, 900_000], [0, 0], [3, 45_000]),
   row(12, 31n, 74n, 12n, [30, 1_500_000], [0, 0], [1, 50_000]),
-  // …and one OUTSIDE the last 30 days, which no default window may count.
+  // …and one OUTSIDE the last month, which no default window may count.
   row(40, 31n, 74n, 12n, [10, 500_000], [0, 0], [0, 0]),
 
   // UD Makmur Jaya — 212 units, 10 broken: 4,7%.

@@ -7,6 +7,7 @@ import { rpcError } from "../../api/clients";
 import type { SupplierChannelRecord } from "./adapt";
 import { useSupplierChannelPage } from "./queries";
 import { useDebounced } from "../../lib/useDebounced";
+import { enumCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -14,7 +15,7 @@ import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
 import { sampleStoreFigures } from "./sampleSupplierFigures";
@@ -100,8 +101,10 @@ export function ChannelBrowser({
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
-  const [q, setQ] = useState("");
-  const [channelType, setChannelType] = useState<Marketplace>(Marketplace.UNSPECIFIED);
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `store.`-prefixed, since the Produk and Statistik
+  // tabs share the detail page's route and keep their own.
+  const [q, setQ] = useUrlState("store.q", "", textCodec);
+  const [channelType, setChannelType] = useUrlState("store.type", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const filtering = q.trim() !== "" || channelType !== Marketplace.UNSPECIFIED;

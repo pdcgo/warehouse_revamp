@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { supplierFixture, supplierFixtures } from "../../../.storybook/supplierFixtures";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { DiscoverSuppliersPage } from "./index";
 
@@ -157,6 +158,31 @@ export const FilterByChannelType: Story = {
     await expect(canvas.getByTestId(`discover-supplier-row-${BANYAK.id}`)).toBeVisible();
     await expect(canvas.getByTestId(`discover-supplier-row-${NUSANTARA.id}`)).toBeVisible();
     await expect(canvas.queryByTestId(`discover-supplier-row-${SUMBER.id}`)).toBeNull();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the search and the store type are
+// read from it; a change is written back, beside the keys already there.
+const AtFilteredUrl = routedPage(
+  [{ path: "/inventories/suppliers/discover", element: <><DiscoverSuppliersPage /><LocationProbe /></> }],
+  `/inventories/suppliers/discover?q=linenhouse&type=${Marketplace.TIKTOK}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("discover-suppliers-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+    const chips = within(canvas.getByTestId("discover-suppliers-type-filter"));
+
+    await expect(search).toHaveValue("linenhouse");
+    await expect(chips.getByRole("button", { name: "TikTok" })).toHaveAttribute("aria-pressed", "true");
+    await canvas.findByTestId(`discover-supplier-row-${LINEN.id}`, {}, { timeout: 4000 });
+
+    await userEvent.click(chips.getByRole("button", { name: "Shopee" }));
+    await waitFor(() => expect(location).toHaveTextContent(`type=${Marketplace.SHOPEE}`));
+    await expect(location).toHaveTextContent("q=linenhouse");
   },
 };
 

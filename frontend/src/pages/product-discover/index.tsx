@@ -8,6 +8,7 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useDiscoverProducts } from "../../features/products/queries";
 import { Pagination } from "../../components/chrome/Pagination";
 import { ProductCard } from "../../components/products/ProductCard";
+import { textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -24,7 +25,8 @@ export function DiscoverProductsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
-  const [q, setQ] = useState("");
+  // THE SEARCH LIVES IN THE URL (a-lists-filters-live-in-the-url) — Back from a product opens the same browse.
+  const [q, setQ] = useUrlState("q", "", textCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 

@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Flex, Heading, Spacer, Stack, Tabs } from "@chakra-ui/react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { isGlobalAdmin } from "../../lib/roles";
+import { oneOfCodec, useUrlState } from "../../lib/urlState";
 import { CreateTeamDialog } from "./components/CreateTeamDialog";
 import { TeamTable } from "./components/TeamTable";
 
@@ -26,12 +26,17 @@ const TABS = [
   { value: "admin", labelKey: "teams.tabAdmin", type: TeamType.ADMIN, editAsPage: false },
 ];
 
+// The tab as the URL carries it — only a tab this page offers is read back.
+const TYPE_CODEC = oneOfCodec(TABS.map((item) => item.value));
+
 export function TeamsPage() {
   const { t } = useTranslation();
   const { current } = useTeam();
   const admin = isGlobalAdmin(current?.role);
 
-  const [tab, setTab] = useState("all");
+  // THE TYPE TAB LIVES IN THE URL (a-lists-filters-live-in-the-url) — every tab is the one team list narrowed to a type,
+  // so a refresh, or Back from a team, opens on the same one.
+  const [tab, setTab] = useUrlState("type", "all", TYPE_CODEC);
 
   const activeType = TABS.find((item) => item.value === tab)?.type;
 

@@ -20,7 +20,7 @@ import { ArrowDownWideNarrow, ChartColumn, Download, SearchX } from "lucide-reac
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
-import { DateRangePicker } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -38,6 +38,7 @@ import { useTeam } from "../../features/team/TeamContext";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_REPORT_PENDING } from "./pending";
@@ -47,6 +48,8 @@ import { CompactActions } from "../../components/chrome/CompactActions";
 const SALES_MARK = <NotImplemented list={SUPPLIER_REPORT_PENDING} id="sales" />;
 
 const PAGE_SIZE = 20;
+
+const RANK_BY_CODEC = oneOfCodec<SupplierRankBy>(["value", "brokenRate"]);
 
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up); Chakra's `_hover` honours `data-hover`.
 const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
@@ -81,11 +84,13 @@ export function SupplierReportPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
-  const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
-  const [q, setQ] = useState("");
+  // THE FILTERS AND THE ORDER LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a supplier,
+  // opens the same ranking.
+  const [range, setRange] = useUrlState<DateRange>("range", LAST_MONTH, dateRangeCodec);
+  const [q, setQ] = useUrlState("q", "", textCodec);
   // Whose restocks — 0n is every team's.
-  const [restockTeamId, setRestockTeamId] = useState(0n);
-  const [rankBy, setRankBy] = useState<SupplierRankBy>("value");
+  const [restockTeamId, setRestockTeamId] = useUrlState("team", 0n, idCodec);
+  const [rankBy, setRankBy] = useUrlState<SupplierRankBy>("rank", "value", RANK_BY_CODEC);
   const [page, setPage] = useState(1);
 
   // Every control here is a new question — back to the ranking's first page.

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey, expenseDays, revenueDays, liabilityDays, teams } from "../../../.storybook/fixtures";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { formatRupiah } from "../../lib/money";
@@ -174,6 +174,29 @@ export const Monthly: Story = {
 export const Yearly: Story = {
   play: async ({ canvasElement }) => {
     await pickGrain(await loaded(canvasElement), "year");
+  },
+};
+
+// THE GRAIN, THE WINDOW AND THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at `?active=1` the
+// quiet periods are hidden; a new grain is written back, the toggle kept.
+const AtFilteredUrl = routedPage(
+  [{ path: "/statement", element: <><DailyStatementPage /><LocationProbe /></> }],
+  "/statement?active=1",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  beforeEach: asTeam(WAREHOUSE.id),
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(within(canvas.getByTestId("statement-hide-quiet")).getByRole("checkbox")).toBeChecked();
+
+    await userEvent.click(canvas.getByTestId("statement-grain-month"));
+    await waitFor(() => expect(location).toHaveTextContent("grain=month"));
+    await expect(location).toHaveTextContent("active=1");
   },
 };
 

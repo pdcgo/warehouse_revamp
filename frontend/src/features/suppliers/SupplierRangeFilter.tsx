@@ -8,6 +8,7 @@ import { FilterChips } from "../../components/chrome/FilterChips";
 import { NotImplemented } from "../pending/NotImplemented";
 import { SUPPLIER_LIST_PENDING } from "./listPending";
 import { FIGURE_RANGES, type FigureRangeKind, rangeLabel } from "./figureRanges";
+import { oneOfCodec, useUrlState } from "../../lib/urlState";
 
 export const description =
   "A supplier figure's range filter — Terjual or Siap — as a trigger of its own opening a narrow panel of range pills, Semua first. The trigger reads the picked band in the main tone, with an × attached to it that clears the band without opening the panel, its ⚠ mark beside it; a pick closes the panel. On a phone, inside the Filter sheet, it is a label over its pills instead. Nothing narrows a list by it yet (`dropped`).";
@@ -19,6 +20,23 @@ export const NO_FIGURE_RANGES: FigureRangePicks = { sold: "", ready: "" };
 
 /** How many of the two have a band picked — what a FilterBar counts, and what makes Clear appear. */
 export const rangesOn = (picks: FigureRangePicks) => Object.values(picks).filter((key) => key !== "").length;
+
+const SOLD_CODEC = oneOfCodec(["", ...FIGURE_RANGES.sold.map((range) => range.key)]);
+const READY_CODEC = oneOfCodec(["", ...FIGURE_RANGES.ready.map((range) => range.key)]);
+
+/**
+ * Terjual and Siap, kept in the URL as `sold` and `ready` (a-lists-filters-live-in-the-url) — the supplier list's and
+ * Discover's. A band the URL names that no longer exists is read as Semua.
+ */
+export function useUrlFigureRanges(): [FigureRangePicks, (next: FigureRangePicks) => void] {
+  const [sold, setSold] = useUrlState("sold", "", SOLD_CODEC);
+  const [ready, setReady] = useUrlState("ready", "", READY_CODEC);
+  const set = (next: FigureRangePicks) => {
+    setSold(next.sold);
+    setReady(next.ready);
+  };
+  return [{ sold, ready }, set];
+}
 
 /** Terjual, then Siap — the pair as a filter strip carries them. */
 export function SupplierRangeFilters({

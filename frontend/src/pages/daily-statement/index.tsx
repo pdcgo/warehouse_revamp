@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Checkbox, Flex, Heading, Icon, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { TriangleAlert } from "lucide-react";
@@ -6,14 +5,15 @@ import { TriangleAlert } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { ExpenseKindSelect } from "../../components/pickers/ExpenseKindSelect";
-import { DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
+import { COST_FILTER_KINDS, ExpenseKindSelect } from "../../components/pickers/ExpenseKindSelect";
+import { DateRangePicker, resolveRange, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toDateInputValue } from "../../lib/datetime";
 import { MAX_PERIOD_DAYS, bucketSpine, spanDays } from "../../lib/period";
 import type { PeriodGrain } from "../../lib/period";
+import { boolCodec, dateRangeCodec, enumCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { useTeam } from "../../features/team/TeamContext";
 import { useDailyStatement } from "./queries";
 import { StatementSummary } from "./components/StatementSummary";
@@ -55,12 +55,15 @@ function defaultRangeFor(grain: PeriodGrain): DateRange {
     };
   }
 
-  // A month would have matched the other three money screens, and it is deliberately NOT one: those
+  // The calendar month would have matched the other three money screens, and it is deliberately NOT one: those
   // screens answer "how did July do", which is a question about a closed period, while this one answers
   // "how are we doing", which is a question about the recent past. On the 2nd of the month a month-scoped
-  // statement is two rows. A rolling 30 days is always a readable statement.
-  return { kind: "relative", days: 30 };
+  // statement is two rows. The ROLLING last month — every dated screen's default (owner: *"default 1 bulan"*) — is
+  // always a readable statement.
+  return LAST_MONTH;
 }
+
+const GRAIN_CODEC = oneOfCodec<PeriodGrain>(["day", "month", "year"]);
 
 // A DateRange → the `yyyy-mm-dd` pair both Daily RPCs filter on.
 //
@@ -108,12 +111,15 @@ export function DailyStatementPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
-  const [grain, setGrain] = useState<PeriodGrain>("day");
-  const [range, setRange] = useState<DateRange>(() => defaultRangeFor("day"));
-  const [kind, setKind] = useState<ExpenseKind>(ExpenseKind.UNSPECIFIED);
+  // THE GRAIN, THE WINDOW AND THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same
+  // statement.
+  const [grain, setGrain] = useUrlState<PeriodGrain>("grain", "day", GRAIN_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("range", defaultRangeFor("day"), dateRangeCodec);
+  const [kind, setKind] = useUrlState<ExpenseKind>("kind", ExpenseKind.UNSPECIFIED, enumCodec(COST_FILTER_KINDS));
   // Quiet periods are SHOWN by default — see the note in `mergeBuckets`. The toggle exists for a long
-  // range over a young team, where the signal is a handful of rows in three hundred.
-  const [hideQuiet, setHideQuiet] = useState(false);
+  // range over a young team, where the signal is a handful of rows in three hundred. `?active=1` — only the periods
+  // that moved.
+  const [hideQuiet, setHideQuiet] = useUrlState("active", false, boolCodec);
 
   // Changing the grain re-picks the window with it. See `defaultRangeFor` — a grain kept over the
   // previous grain's window is how Monthly ends up showing one row.

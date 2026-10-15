@@ -5,15 +5,16 @@ import { Button, Flex, Icon, Stack } from "@chakra-ui/react";
 import { TrendingDown } from "lucide-react";
 
 import { ALL_DATES } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useTeam } from "../../features/team/TeamContext";
 import {
   DEFAULT_SETTLEMENT_SORT,
   useOrderSettlements,
   type SettlementSort,
+  type SettlementSortKey,
 } from "../../features/settlement/queries";
 import { windowOf } from "../../features/settlement/window";
 import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, idCodec, sortCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { OrderSettlementPage } from "./index";
 
 // THE ROUTE-LEVEL CONTAINER for the settlement list.
@@ -27,16 +28,21 @@ import { OrderSettlementPage } from "./index";
 export const SETTLEMENT_PAGE_SIZE_OPTIONS = [10, 20, 50];
 const DEFAULT_PAGE_SIZE = 20;
 
+// The columns the list sorts by (SettlementSortKey).
+const SORT_CODEC = sortCodec<SettlementSortKey>(["orderId", "sold", "received", "loss"]);
+
 export function SettlementListRoute() {
   const { current } = useTeam();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [search, setSearch] = useState("");
-  const [shopId, setShopId] = useState(0n);
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
-  const [sort, setSort] = useState<SettlementSort>(DEFAULT_SETTLEMENT_SORT);
+  // THE FILTERS AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an order,
+  // opens the same narrowed list.
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  const [sort, setSort] = useUrlState<SettlementSort>("sort", DEFAULT_SETTLEMENT_SORT, SORT_CODEC);
 
   const teamId = current?.teamId;
   const q = useDebounced(search.trim());

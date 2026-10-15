@@ -30,12 +30,11 @@ import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { Pagination } from "../../components/chrome/Pagination";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { ShippingSelect } from "../../components/pickers/ShippingSelect";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { CopyText } from "../../components/chrome/CopyText";
 import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
@@ -65,6 +64,7 @@ import { NotImplementedSummary } from "../../features/pending/NotImplementedSumm
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTime, formatUnixRelative } from "../../lib/datetime";
 import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { WAREHOUSE_ORDERS_PENDING } from "./pending";
 import type { WarehouseStep } from "./steps";
 import { commonMoves, isBack, rpcFor, stepLabelKey, stepOfStatus } from "./steps";
@@ -119,6 +119,11 @@ const SHIPMENT_STATES: ShipmentState[] = ["any", "notMoving", "inTransit"];
 /** The tabs a handed-over parcel can be listed under — the only ones the shipment filter means anything on. */
 const SHIPMENT_TABS = new Set(["handover", "all"]);
 
+// Only a tab that can be opened is read back from the URL — a step with no status is disabled on screen.
+const TAB_CODEC = oneOfCodec(WAREHOUSE_TABS.filter((item) => item.status !== undefined).map((item) => item.id));
+const MARKETPLACE_CODEC = enumCodec(MARKETPLACES);
+const SHIPMENT_CODEC = oneOfCodec(SHIPMENT_STATES);
+
 /** Every status an order can be in today — what "Semua" counts. */
 const EVERY_STATUS = [
   OrderStatus.PLACED,
@@ -145,18 +150,20 @@ export function PickQueueNextPage() {
   const { t } = useTranslation();
   const mobile = useIsMobile();
 
-  const [tab, setTab] = useState("toConfirm");
+  // THE STEP TAB AND THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // order, opens the same narrowed list. The selection, the page and the dialogs do not.
+  const [tab, setTab] = useUrlState("step", "toConfirm", TAB_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState("");
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   // ⚠ THE FOUR BELOW REACH NOTHING YET — `OrderListFilter` takes a status, a search, a shop and a date
   // window, and no seller team, marketplace, courier or shipment state. They are on screen so the strip
   // can be judged, each with its ⚠ (`teamFilter`, `marketplaceFilter`, `courierFilter`, `shipmentStatus`).
-  const [sellerId, setSellerId] = useState(0n);
-  const [marketplace, setMarketplace] = useState<Marketplace>(Marketplace.UNSPECIFIED);
-  const [courier, setCourier] = useState("");
-  const [shipment, setShipment] = useState<ShipmentState>("any");
+  const [sellerId, setSellerId] = useUrlState("team", 0n, idCodec);
+  const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
+  const [courier, setCourier] = useUrlState("courier", "", textCodec);
+  const [shipment, setShipment] = useUrlState<ShipmentState>("shipment", "any", SHIPMENT_CODEC);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());

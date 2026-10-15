@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, pickTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { dayAgo } from "../../../.storybook/supplierFigureFixtures";
 import { formatRupiah } from "../../lib/money";
@@ -12,7 +12,7 @@ import type { PendingList } from "../pending/registry";
 // A SUPPLIER'S STATISTICS TAB (the-figures-are-a-statistics-tab-and-a-supplier-report, the-figures-screens-are-accepted)
 // — on both supplier details. The stub serves supplier_service's figures from supplierFigureFixtures.ts.
 //
-// PT Sumber Makmur (31) in the last 30 days — three accepts, and a fourth 40 days back that no default window counts:
+// PT Sumber Makmur (31) in the last month — three accepts, and a fourth 40 days back that no default window counts:
 //
 //   2 days ago   Toko Melati    Beras  40 good  Rp 2.000.000 · 1 short Rp 50.000 · 2 broken Rp 100.000
 //   5 days ago   Toko Kenanga   Gula   60 good  Rp   900.000 ·                    · 3 broken Rp  45.000
@@ -389,6 +389,42 @@ export const AYearReadsAsTheYear: Story = {
     const year = `${dayAgo(2).slice(0, 4)}-01-01`;
     const row = await canvas.findByTestId(`statistics-series-row-${year}`);
     await waitFor(() => expect(within(row).getAllByRole("cell")[0]).toHaveTextContent(new RegExp(`^${year.slice(0, 4)}$`)));
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url), `stat.`-prefixed so the detail page's other tabs keep
+// theirs — opened at a URL, the grain is read from it; a grain picked is written back. The view is not a filter: it
+// stays out of the URL.
+const AtFilteredUrl = routedPage(
+  [
+    {
+      path: "/inventories/suppliers/:supplierId",
+      element: (
+        <>
+          <SupplierStatistics supplierId={31n} salesMark={<NotImplemented list={SALES_ONLY} id="sales" />} exportMark={null} />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  "/inventories/suppliers/31?stat.grain=month",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(within(canvas.getByTestId("statistics-grain")).getByRole("radio", { name: "Monthly" })).toBeChecked();
+    await canvas.findByTestId(`statistics-series-row-${dayAgo(2).slice(0, 7)}-01`);
+
+    await userEvent.click(canvas.getByTestId("statistics-grain-year"));
+    await waitFor(() => expect(location).toHaveTextContent("stat.grain=year"));
+
+    await openByProduct(canvas);
+    await expect(location).toHaveTextContent(/^\?stat\.grain=year$/);
   },
 };
 

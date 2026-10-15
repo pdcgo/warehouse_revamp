@@ -21,7 +21,7 @@ import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { SortableHeader, type SortState } from "../../components/chrome/SortableHeader";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { FinancialAccountStatus, type FinancialAccountType } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
+import { FinancialAccountStatus, FinancialAccountType } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { AccountActions } from "../../features/financialAccount/AccountActions";
 import { AccountLinks } from "../../features/financialAccount/AccountLinks";
 import { AccountFormDialog } from "../../features/financialAccount/AccountFormDialog";
@@ -37,6 +37,16 @@ import { useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixRelative } from "../../lib/datetime";
 import { canMoveAccountMoney, canTransferMoney } from "../../lib/roles";
+import {
+  boolCodec,
+  enumCodec,
+  idCodec,
+  nullableCodec,
+  optionalCodec,
+  sortCodec,
+  textCodec,
+  useUrlState,
+} from "../../lib/urlState";
 import { AccountBlock } from "./components/AccountBlock";
 import { AccountOptionsFilter } from "./components/AccountOptionsFilter";
 import { type AccountSortKey, AccountSortSelect } from "./components/AccountSortSelect";
@@ -49,6 +59,18 @@ import { CompactActions } from "../../components/chrome/CompactActions";
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 /** How many accounts the archive view asks for, to keep the archived among them — see `pending.ts`. */
 const ARCHIVE_WINDOW = 200;
+
+// The type tabs' types (AccountTypeTabs); none = every type.
+const TYPE_CODEC = optionalCodec(
+  enumCodec([
+    FinancialAccountType.BANK_ACCOUNT,
+    FinancialAccountType.WALLET,
+    FinancialAccountType.CASH,
+    FinancialAccountType.UNKNOWN,
+  ]),
+);
+// The two headings the list sorts by (AccountSortKey).
+const SORT_CODEC = nullableCodec(sortCodec<AccountSortKey>(["name", "provider"]));
 
 // FinancialAccountsPage — what the team holds, and where (docs/business/financial_account).
 //
@@ -80,11 +102,13 @@ export function FinancialAccountsPage() {
   const [params, setParams] = useSearchParams();
   const archivedView = params.get("view") === "archived";
 
-  const [q, setQ] = useState("");
-  const [type, setType] = useState<FinancialAccountType | undefined>(undefined);
-  const [shopId, setShopId] = useState(0n);
-  const [operationalOnly, setOperationalOnly] = useState(false);
-  const [sort, setSort] = useState<SortState<AccountSortKey> | null>(null);
+  // THE FILTERS, THE TYPE TAB AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from an
+  // account, opens the same narrowed list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
+  const [type, setType] = useUrlState<FinancialAccountType | undefined>("type", undefined, TYPE_CODEC);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [operationalOnly, setOperationalOnly] = useUrlState("operational", false, boolCodec);
+  const [sort, setSort] = useUrlState<SortState<AccountSortKey> | null>("sort", null, SORT_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [creating, setCreating] = useState(false);
@@ -150,10 +174,19 @@ export function FinancialAccountsPage() {
   const filtering = [q.trim() !== "", shopId > 0n, !archivedView && operationalOnly].filter(Boolean).length;
   const sortBy = (next: SortState<AccountSortKey> | null) => refilter(() => setSort(next));
   // Into the archive and back: the same screen, a new question — page 1, every type.
+  //
+  // ⚠ ONE NAVIGATION, AND ONLY ITS OWN KEYS. A push (so Back returns to the active list) that sets `view` and drops
+  // `type`, keeping the other filters' keys — the type then follows the URL back to every type. A `setType` beside it
+  // would be a second, `replace` navigation built from the URL before this one, and would undo it.
   const showArchived = (next: boolean) => {
-    setParams(next ? { view: "archived" } : {});
+    setParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next) params.set("view", "archived");
+      else params.delete("view");
+      params.delete("type");
+      return params;
+    });
     setPage(1);
-    setType(undefined);
   };
 
   return (

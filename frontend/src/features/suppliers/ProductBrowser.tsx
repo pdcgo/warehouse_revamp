@@ -8,6 +8,7 @@ import { ChannelName, LIGHTS_UP } from "./ChannelBrowser";
 import { sampleProductsFor, type SampleProduct } from "./sampleProducts";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { formatUnixDate } from "../../lib/datetime";
+import { idCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
@@ -78,10 +79,12 @@ export function ProductBrowser({
   const { t } = useTranslation();
   const isMobile = useIsMobile();
 
-  const [q, setQ] = useState("");
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `product.`-prefixed, since the Toko and Statistik
+  // tabs share the detail page's route and keep their own.
+  const [q, setQ] = useUrlState("product.q", "", textCodec);
   // One of the supplier's stores, and one selling team — 0n is every one.
-  const [storeId, setStoreId] = useState(0n);
-  const [teamId, setTeamId] = useState(0n);
+  const [storeId, setStoreId] = useUrlState("product.store", 0n, idCodec);
+  const [teamId, setTeamId] = useUrlState("product.team", 0n, idCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 

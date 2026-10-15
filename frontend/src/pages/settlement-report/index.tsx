@@ -4,7 +4,7 @@ import { Badge, Box, Button, Flex, Group, Heading, Spacer, Stack, Text } from "@
 
 import { rpcError } from "../../api/clients";
 import { Pagination } from "../../components/chrome/Pagination";
-import { DateRangePicker } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -19,12 +19,16 @@ import { useShopOptions } from "../../features/shops/queries";
 import { useTeam } from "../../features/team/TeamContext";
 import { useActors } from "../../features/users/queries";
 import type { PeriodGrain } from "../../lib/period";
+import { dateRangeCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { GroupTable } from "./components/GroupTable";
 import { ReportSummary } from "./components/ReportSummary";
 import { SeriesTable } from "./components/SeriesTable";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 const PAGE_SIZE = 20;
+
+const GRAIN_CODEC = oneOfCodec<PeriodGrain>(["day", "month", "year"]);
+const GROUP_CODEC = oneOfCodec<SettlementGroupBy>(["shop", "user"]);
 
 // SettlementReportPage — what the marketplace actually paid, against what buyers paid, over time
 // (docs/business/settlement/analytic_context.md).
@@ -46,10 +50,12 @@ export function SettlementReportPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
 
-  const [grain, setGrain] = useState<PeriodGrain>("day");
-  const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
-  const [groupBy, setGroupBy] = useState<SettlementGroupBy>("shop");
-  const [shownGroupBy, setShownGroupBy] = useState<SettlementGroupBy>("shop");
+  // THE WINDOW, THE GRAIN AND THE RANKING LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same
+  // report. The pages do not.
+  const [grain, setGrain] = useUrlState<PeriodGrain>("grain", "day", GRAIN_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("range", LAST_MONTH, dateRangeCodec);
+  const [groupBy, setGroupBy] = useUrlState<SettlementGroupBy>("group", "shop", GROUP_CODEC);
+  const [shownGroupBy, setShownGroupBy] = useState<SettlementGroupBy>(groupBy);
   const [seriesPage, setSeriesPage] = useState(1);
   const [groupPage, setGroupPage] = useState(1);
 

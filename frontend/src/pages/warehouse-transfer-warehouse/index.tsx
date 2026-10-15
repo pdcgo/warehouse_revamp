@@ -25,6 +25,7 @@ import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBad
 import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTime } from "../../lib/datetime";
+import { idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { TRANSFER_WAREHOUSE_PENDING } from "./pending";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -35,6 +36,10 @@ const DIRECTION: Record<Direction, WarehouseTransferDirection> = {
   outgoing: WarehouseTransferDirection.OUTGOING,
   incoming: WarehouseTransferDirection.INCOMING,
 };
+
+// The direction and the status tab as the URL carries them — only what this list offers is read back.
+const DIRECTION_CODEC = oneOfCodec<Direction>(["outgoing", "incoming"]);
+const STATUS_CODEC = oneOfCodec(TRANSFER_STATUS_TABS.map((item) => item.value));
 
 // WarehouseTransferWarehousePage — A WAREHOUSE'S TRANSFER QUEUE. A warehouse is A for the transfers leaving it and B
 // for those coming to it, and those are two different jobs — picking and shipping, or signing and counting — so the
@@ -51,13 +56,16 @@ export function WarehouseTransferWarehousePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [direction, setDirection] = useState<Direction>("outgoing");
-  const [tab, setTab] = useState("all");
+  // THE DIRECTION, THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back
+  // from a transfer, opens the same queue: the direction narrows the one transfer list as the tabs do. The page number
+  // stays on screen only.
+  const [direction, setDirection] = useUrlState<Direction>("direction", "outgoing", DIRECTION_CODEC);
+  const [tab, setTab] = useUrlState("status", "all", STATUS_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState(0n);
-  const [otherFilter, setOtherFilter] = useState(0n);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [ownerFilter, setOwnerFilter] = useUrlState("owner", 0n, idCodec);
+  const [otherFilter, setOtherFilter] = useUrlState("warehouse", 0n, idCodec);
 
   const teamId = current?.teamId;
   const activeTab = transferTab(tab);

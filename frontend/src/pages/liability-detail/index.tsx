@@ -48,8 +48,8 @@ import {
   ALL_DATES,
   DateRangePicker,
   resolveRange,
-  type DateRange,
 } from "../../components/datetime/DateRangePicker";
+import { dateRangeCodec, useUrlState } from "../../lib/urlState";
 import { useTeam } from "../../features/team/TeamContext";
 import { directionCopy, directionPalette } from "../../features/liability/direction";
 import { useRecordPayment, useLiabilityLogs, useLiabilityPayments } from "../../features/liability/queries";
@@ -126,7 +126,9 @@ export function LiabilityDetailPage() {
   // ⚠ It belongs HERE, with the other hooks, above the `if (!current)` guard below. Declared after
   // that early return it runs on only one of the two paths, and React throws on the hook order.
   const [limitPage, setLimitPage] = useState(1);
-  const [dateRange, setDateRange] = useState<DateRange>(ALL_DATES);
+  // THE DATE RANGE LIVES IN THE URL (a-lists-filters-live-in-the-url) — it narrows every tab, so a refresh keeps it.
+  // The tabs are views of the pair, not filters, and stay where they are.
+  const [dateRange, setDateRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
 
   const [recordOpen, setRecordOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<LiabilityPayment | null>(null);

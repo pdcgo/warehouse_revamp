@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { account, expectedBalance } from "../../../.storybook/financialAccountFixtures";
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { FinancialAccountType } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
@@ -307,6 +307,35 @@ export const EveryFilterTheContractHas: Story = {
 
     await userEvent.click(canvas.getByTestId("account-filters-clear"));
     await waitFor(() => expect(canvas.getByTestId(`account-row-${BCA_GAJI.id}`)).toBeVisible());
+  },
+};
+
+// THE FILTERS, THE TYPE TAB AND THE SORT LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the search
+// and the type tab are read from it; a sort is written back beside them; and the archive's own `view` key is set
+// without wiping them — it drops only the type, as the archive starts at every type.
+const AtFilteredUrl = routedPage(
+  [{ path: "/financial-accounts", element: <><FinancialAccountsPage /><LocationProbe /></> }],
+  `/financial-accounts?q=bca&type=${FinancialAccountType.BANK_ACCOUNT}`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    await expect(canvas.getByTestId("account-search")).toHaveValue("bca");
+    await expect(canvas.getByTestId(`account-type-tab-${FinancialAccountType.BANK_ACCOUNT}`)).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.queryByTestId(`account-row-${SHOPEEPAY.id}`)).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("account-sort-name"));
+    await waitFor(() => expect(location).toHaveTextContent(/sort=name(%3A|:)asc/));
+
+    await userEvent.click(canvas.getByTestId("open-archived-accounts"));
+    await waitFor(() => expect(location).toHaveTextContent("view=archived"));
+    await expect(location).toHaveTextContent("q=bca");
+    await expect(location).toHaveTextContent(/sort=name(%3A|:)asc/);
+    await expect(location).not.toHaveTextContent("type=");
   },
 };
 

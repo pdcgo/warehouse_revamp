@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { products, teams } from "../../../.storybook/fixtures";
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { DiscoverProductsPage } from "./index";
@@ -105,6 +105,32 @@ export const SearchesSkuAndName: Story = {
     await userEvent.type(search, TEH.sku, { delay: 40 });
     await waitFor(() => expect(canvas.queryByTestId(`discover-card-${GULA.sku}`)).toBeNull());
     await expect(canvas.getByTestId(`discover-card-${TEH.sku}`)).toBeVisible();
+  },
+};
+
+// THE SEARCH LIVES IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the browse is narrowed by it; a new
+// search is written back.
+const AtFilteredUrl = routedPage(
+  [{ path: "/products/discover", element: <><DiscoverProductsPage /><LocationProbe /></> }],
+  "/products/discover?q=gula",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId(`discover-card-${GULA.sku}`, {}, { timeout: 4000 });
+    const search = canvas.getByTestId("discover-search");
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("gula");
+    await expect(canvas.queryByTestId(`discover-card-${KOPI.sku}`)).toBeNull();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "kopi", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("?q=kopi"));
+    await canvas.findByTestId(`discover-card-${KOPI.sku}`, {}, { timeout: 4000 });
   },
 };
 

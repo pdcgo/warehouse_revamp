@@ -124,11 +124,11 @@ export const Interactive: Story = {
     const canvas = within(canvasElement);
 
     await userEvent.click(canvas.getByTestId("range"));
-    const quick = await screen.findByTestId("range-quick-30");
+    const quick = await screen.findByTestId("range-quick-3m");
     await waitFor(() => expect(quick).toBeVisible());
     await userEvent.click(quick);
 
-    await waitFor(() => expect(canvas.getByTestId("range")).toHaveTextContent(/30/));
+    await waitFor(() => expect(canvas.getByTestId("range")).toHaveTextContent("Last 3 months"));
   },
 };
 
@@ -146,6 +146,18 @@ export const ResolveRangeRules: Story = {
     // A 7-day window starts 6 days back — inclusive of today, not 7 days before it.
     const week = resolveRange({ kind: "relative", days: 7 }, now);
     await expect(week.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 7, 9, 0, 0, 0, 0).getTime() / 1000)));
+
+    // MONTHS ARE THE CALENDAR'S (the-quick-ranges-are-days-then-months-then-years): a month back on 15 Aug starts on
+    // 16 Jul — the day after the same date — and a year (twelve months) on 16 Aug 2025.
+    const month = resolveRange({ kind: "relative", months: 1 }, now);
+    await expect(month.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 6, 16, 0, 0, 0, 0).getTime() / 1000)));
+    await expect(month.toUnix).toBe(today.toUnix);
+    const year = resolveRange({ kind: "relative", months: 12 }, now);
+    await expect(year.fromUnix).toBe(BigInt(Math.floor(new Date(2025, 7, 16, 0, 0, 0, 0).getTime() / 1000)));
+    // A month back from the 31st lands on the shorter month's last day: 31 Mar − 1 month is 28 Feb, so the window
+    // starts on 1 Mar — never on 3 Mar, where an unclamped Feb 31 would overflow to.
+    const endOfMarch = resolveRange({ kind: "relative", months: 1 }, new Date(2026, 2, 31, 9, 0));
+    await expect(endOfMarch.fromUnix).toBe(BigInt(Math.floor(new Date(2026, 2, 1, 0, 0, 0, 0).getTime() / 1000)));
 
     // An empty side is an OPEN end — 0n, not the epoch.
     const openEnded = resolveRange({ kind: "absolute", from: "2026-08-01", to: "" });

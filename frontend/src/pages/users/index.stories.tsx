@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { UsersPage } from "./index";
@@ -263,5 +263,28 @@ export const TheUsernameIsEditable: Story = {
     await userEvent.click(await screen.findByTestId("edit-ani"));
     await screen.findByTestId("edit-name");
     await expect(screen.queryByTestId("edit-username")).toBeNull();
+  },
+};
+
+// THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the search is its; a change is
+// written back.
+const AtFilteredUrl = routedPage([{ path: "/users", element: <><UsersPage /><LocationProbe /></> }], "/users?q=budi");
+
+export const FiltersLiveInTheUrl: Story = {
+  beforeEach: asRole(Role.WAREHOUSE_OWNER),
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByTestId("user-row-budi", {}, { timeout: 4000 });
+    const search = canvas.getByTestId("user-search");
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("budi");
+    await expect(canvas.queryByTestId("user-row-dewi")).toBeNull();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, "eko", { delay: 40 });
+    await waitFor(() => expect(location).toHaveTextContent("?q=eko"));
+    await waitFor(() => expect(canvas.getByTestId("user-row-eko")).toBeInTheDocument());
   },
 };

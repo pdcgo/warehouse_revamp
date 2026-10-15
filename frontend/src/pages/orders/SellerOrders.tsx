@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Box,
@@ -64,7 +64,7 @@ import {
   FilterSearch,
 } from "../../components/chrome/FilterBar";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
-import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { useTypists } from "../../features/orders/typists";
@@ -75,8 +75,16 @@ import {
   isAllDates,
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
+import {
+  dateRangeCodec,
+  enumCodec,
+  idCodec,
+  oneOfCodec,
+  optionalCodec,
+  textCodec,
+  useUrlState,
+} from "../../lib/urlState";
 import { OrderSummary } from "../../features/orders/OrderSummary";
 import { withSampleCosts } from "./summaryMock";
 import {
@@ -92,6 +100,11 @@ import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// How the stage tab, `processed`'s step and the creator are spelled in the URL — only a real one is read back.
+const STAGE_CODEC = oneOfCodec<string>([ALL_STAGE, ...ORDER_STAGES.map((item) => item.id)]);
+const STEP_CODEC = optionalCodec(oneOfCodec(PROCESSED_STEPS.map((item) => item.id)));
+const CREATOR_CODEC = optionalCodec(idCodec);
 
 // THE ORDERS LIST, WITH WHAT THE OWNER ASKED IT TO GROW — a PREVIEW (owner).
 //
@@ -120,31 +133,29 @@ export function SellerOrdersPage() {
   const { current } = useTeam();
   const navigate = useNavigate();
 
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState(
-    () => orderStage(params.get("status") ?? "")?.id ?? ALL_STAGE,
-  );
+  // THE FILTERS, THE STAGE TAB AND ITS STEP LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back
+  // from an order, opens the same narrowed list. `?status=` is also how the Drafts tab comes back to a stage, and it is
+  // written with `replace`, so Back leaves the screen rather than walking the tabs.
+  const [tab, setTab] = useUrlState<string>("status", ALL_STAGE, STAGE_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
   // The filters above the tabs. The four that REACH THE SERVER are search, shop, the date window and the creator
   // — the list is paginated, so a client-side filter would narrow the loaded page only and leave the
   // pager counting the whole set. The other two reach nothing at all yet.
-  const [search, setSearch] = useState("");
-  const [shopId, setShopId] = useState(0n);
-  const [warehouseId, setWarehouseId] = useState(0n);
-  const [creatorId, setCreatorId] = useState<bigint | undefined>(undefined);
-  const [marketplace, setMarketplace] = useState<Marketplace>(
-    Marketplace.UNSPECIFIED,
-  );
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
+  const [creatorId, setCreatorId] = useUrlState<bigint | undefined>("creator", undefined, CREATOR_CODEC);
+  const [marketplace, setMarketplace] = useUrlState("market", Marketplace.UNSPECIFIED, enumCodec(MARKETPLACES));
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
 
   const [importing, setImporting] = useState(false);
 
   // WHICH OF `processed`'S FOUR STEPS, when that is the chosen status. Tab-scoped on purpose: it is a
   // narrowing OF a tab, not a filter of the screen, so it is not in `filters` and the Clear button
   // above does not reach it.
-  const [step, setStep] = useState<ProcessedStep["id"] | undefined>(undefined);
+  const [step, setStep] = useUrlState<ProcessedStep["id"] | undefined>("step", undefined, STEP_CODEC);
 
   const teamId = current?.teamId;
 

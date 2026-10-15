@@ -8,12 +8,13 @@ import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
-import { DateRangePicker } from "../../components/datetime/DateRangePicker";
+import { DateRangePicker, LAST_MONTH } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
-import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
+import { PERIOD_GRAINS, PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 import type { PeriodGrain } from "../../lib/period";
+import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { windowOf } from "../settlement/window";
 import { formatPeriod } from "../../lib/datetime";
 import { useTeam } from "../team/TeamContext";
@@ -29,6 +30,8 @@ import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
 const PAGE_SIZE = 10;
+
+const GRAIN_CODEC = oneOfCodec(PERIOD_GRAINS);
 
 // A ROW LIGHTS UP under the pointer, every cell of it (owner, on the Statistik tab: *"kasih hoverable"* — the supplier
 // list's `a-supplier-row-lights-up`), so a row of five figures can be read across. On the cells, not the row, so the
@@ -72,11 +75,14 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
   const { current } = useTeam();
   const { t } = useTranslation();
 
+  // Per Periode or Per Produk is a VIEW, not a filter — it stays on screen only.
   const [view, setView] = useState<StatisticsView>("time");
-  const [grain, setGrain] = useState<PeriodGrain>("day");
-  const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — `stat.`-prefixed, since the Toko and Produk tabs
+  // share the detail page's route and keep their own.
+  const [grain, setGrain] = useUrlState<PeriodGrain>("stat.grain", "day", GRAIN_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("stat.range", LAST_MONTH, dateRangeCodec);
   // Whose restocks — 0n is every team's.
-  const [restockTeamId, setRestockTeamId] = useState(0n);
+  const [restockTeamId, setRestockTeamId] = useUrlState("stat.team", 0n, idCodec);
   const [seriesPage, setSeriesPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
 

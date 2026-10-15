@@ -27,6 +27,7 @@ import { Pagination } from "../../components/chrome/Pagination";
 import { ReceiveStockDialog } from "../../features/inventory/ReceiveStockDialog";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
+import { idCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // StockList is not filterable by product, so we pull a generous page of levels and join client-side.
@@ -46,11 +47,18 @@ export function InventoryPage({ title }: { title?: string } = {}) {
   const { t } = useTranslation();
 
   // Default to the current team when it IS a warehouse; otherwise the user picks one.
-  const [warehouseId, setWarehouseId] = useState<bigint | undefined>(
-    current?.teamType === TeamType.WAREHOUSE ? current.teamId : undefined,
+  //
+  // THE WAREHOUSE AND THE SEARCH LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same
+  // warehouse's stock. The pick is kept as an id with 0n for none, so a cleared picker survives a refresh too; this
+  // page's "no warehouse" is still `undefined` (it shows the pick-a-warehouse prompt instead of reading warehouse 0).
+  const [warehousePick, setWarehousePick] = useUrlState(
+    "warehouse",
+    current?.teamType === TeamType.WAREHOUSE ? current.teamId : 0n,
+    idCodec,
   );
+  const warehouseId = warehousePick === 0n ? undefined : warehousePick;
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useUrlState("q", "", textCodec);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -75,9 +83,8 @@ export function InventoryPage({ title }: { title?: string } = {}) {
         <TeamSelect
           value={warehouseId}
           onChange={(id) => {
-            // A cleared picker emits 0n; this page's "no warehouse" is `undefined` (it shows the
-            // pick-a-warehouse prompt instead of reading warehouse 0).
-            setWarehouseId(id === 0n ? undefined : id);
+            // A cleared picker emits 0n — kept as the pick, read as "no warehouse" above.
+            setWarehousePick(id);
             setPage(1);
           }}
           placeholder={t("inventory.pickWarehousePlaceholder")}

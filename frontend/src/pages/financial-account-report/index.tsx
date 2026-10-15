@@ -8,8 +8,8 @@ import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import type { SortState } from "../../components/chrome/SortableHeader";
-import { DateRangePicker, type DateRange, resolveRange } from "../../components/datetime/DateRangePicker";
-import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
+import { DateRangePicker, type DateRange, resolveRange, LAST_MONTH } from "../../components/datetime/DateRangePicker";
+import { PERIOD_GRAINS, PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import {
   type AccountReportGroupRow,
@@ -26,6 +26,7 @@ import { useTeam } from "../../features/team/TeamContext";
 import { FinancialAccountStatus } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { toDateInputValue } from "../../lib/datetime";
 import type { PeriodGrain } from "../../lib/period";
+import { dateRangeCodec, idCodec, oneOfCodec, sortCodec, useUrlState } from "../../lib/urlState";
 import { AccountFilter } from "./components/AccountFilter";
 import { Breakdown } from "./components/Breakdown";
 import { SeriesTable } from "./components/SeriesTable";
@@ -38,7 +39,10 @@ import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const DEFAULT_RANGE: DateRange = { kind: "relative", days: 30 };
+const DEFAULT_RANGE: DateRange = LAST_MONTH;
+const DEFAULT_SERIES_SORT: SortState<"period"> = { by: "period", dir: "desc" };
+const SERIES_SORT_CODEC = sortCodec(["period"] as const);
+const GRAIN_CODEC = oneOfCodec(PERIOD_GRAINS);
 
 function windowOf(range: DateRange): { from: string; to: string } {
   const { fromUnix, toUnix } = resolveRange(range);
@@ -49,7 +53,7 @@ function windowOf(range: DateRange): { from: string; to: string } {
   };
 }
 
-const isDefaultRange = (range: DateRange) => range.kind === "relative" && range.days === DEFAULT_RANGE.days;
+const isDefaultRange = (range: DateRange) => range.kind === "relative" && range.months === 1;
 
 /** The page's two views — the periods, and the breakdown by account, provider and type. */
 type ReportView = "period" | "breakdown";
@@ -72,11 +76,13 @@ export function FinancialAccountReportPage() {
   const isMobile = useIsMobile();
   const { current } = useTeam();
 
+  // Periode or Rincian is a VIEW, not a filter — it stays on screen only.
   const [view, setView] = useState<ReportView>("period");
-  const [grain, setGrain] = useState<PeriodGrain>("day");
-  const [range, setRange] = useState<DateRange>(DEFAULT_RANGE);
-  const [accountId, setAccountId] = useState(0n);
-  const [seriesSort, setSeriesSort] = useState<SortState<"period">>({ by: "period", dir: "desc" });
+  // THE FILTERS AND THE PERIODS' ORDER LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh opens the same report.
+  const [grain, setGrain] = useUrlState<PeriodGrain>("grain", "day", GRAIN_CODEC);
+  const [range, setRange] = useUrlState<DateRange>("range", DEFAULT_RANGE, dateRangeCodec);
+  const [accountId, setAccountId] = useUrlState("account", 0n, idCodec);
+  const [seriesSort, setSeriesSort] = useUrlState<SortState<"period">>("sort", DEFAULT_SERIES_SORT, SERIES_SORT_CODEC);
   const [seriesPage, setSeriesPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [detailOpen, setDetailOpen] = useState(false);

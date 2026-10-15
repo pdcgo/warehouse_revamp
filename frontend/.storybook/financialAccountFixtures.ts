@@ -134,6 +134,11 @@ export const financialAccounts: AccountFixture[] = [
 // ── The rows ────────────────────────────────────────────────────────────────────────────────────
 //
 // In ENTRY order — `balance_after` runs in id order per account (the-log-says-balance-after).
+//
+// ⚠ NOTHING IS DATED 28–30 DAYS BACK. The report opens on the LAST MONTH (LAST_MONTH), and a calendar month back is 28
+// to 31 days depending on the month: a row at 30 days would fall inside the window in November and outside it in
+// October, and the stories' sums would change with the calendar. Inside every window: 27 days back or less. Outside
+// every window: 32 or more.
 export const financialAccountLogs: LogFixture[] = [
   // BNI Lama → 0, then archived
   { id: 1401n, accountId: 1305n, changeType: T.OPENING_BALANCE, change: 500_000, description: "Opening balance", actorId: ANI, ago: 60 },
@@ -143,16 +148,16 @@ export const financialAccountLogs: LogFixture[] = [
   { id: 1403n, accountId: 1301n, changeType: T.OPENING_BALANCE, change: 10_000_000, description: "Opening balance", actorId: ANI, ago: 40 },
   { id: 1404n, accountId: 1302n, changeType: T.OPENING_BALANCE, change: 0, description: "Opening balance", actorId: ANI, ago: 40 },
   { id: 1405n, accountId: 1303n, changeType: T.OPENING_BALANCE, change: 200_000, description: "Opening balance", actorId: ANI, ago: 38 },
-  { id: 1406n, accountId: 1306n, changeType: T.OPENING_BALANCE, change: 1_000_000, description: "Opening balance", actorId: ANI, ago: 30 },
-  { id: 1407n, accountId: 1307n, changeType: T.OPENING_BALANCE, change: 23_500_000, description: "Opening balance", actorId: ANI, ago: 30 },
+  { id: 1406n, accountId: 1306n, changeType: T.OPENING_BALANCE, change: 1_000_000, description: "Opening balance", actorId: ANI, ago: 32 },
+  { id: 1407n, accountId: 1307n, changeType: T.OPENING_BALANCE, change: 23_500_000, description: "Opening balance", actorId: ANI, ago: 32 },
   { id: 1408n, accountId: 1308n, changeType: T.OPENING_BALANCE, change: 750_000, description: "Opening balance", actorId: ANI, ago: 20 },
 
   // BCA Operasional's month
   { id: 1409n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 3_500_000, description: "Withdrawal from shop #21", actorId: LISTENER, ago: 35 },
-  { id: 1410n, accountId: 1301n, changeType: T.RESTOCK, change: -2_750_000, description: "Restock R-1021 — PT Sumber Makmur", actorId: LISTENER, ago: 30 },
-  { id: 1411n, accountId: 1306n, changeType: T.RESTOCK, change: -150_000, description: "Courier's ask — restock R-1021", actorId: LISTENER, ago: 30 },
-  { id: 1412n, accountId: 1301n, changeType: T.TRANSFER, change: -3_000_000, description: "To BCA Gaji — September payroll", actorId: ANI, ago: 28, groupId: 1n, counterAccountId: 1302n },
-  { id: 1413n, accountId: 1302n, changeType: T.TRANSFER, change: 3_000_000, description: "From BCA Operasional — September payroll", actorId: ANI, ago: 28, groupId: 1n, counterAccountId: 1301n },
+  { id: 1410n, accountId: 1301n, changeType: T.RESTOCK, change: -2_750_000, description: "Restock R-1021 — PT Sumber Makmur", actorId: LISTENER, ago: 32 },
+  { id: 1411n, accountId: 1306n, changeType: T.RESTOCK, change: -150_000, description: "Courier's ask — restock R-1021", actorId: LISTENER, ago: 32 },
+  { id: 1412n, accountId: 1301n, changeType: T.TRANSFER, change: -3_000_000, description: "To BCA Gaji — September payroll", actorId: ANI, ago: 27, groupId: 1n, counterAccountId: 1302n },
+  { id: 1413n, accountId: 1302n, changeType: T.TRANSFER, change: 3_000_000, description: "From BCA Operasional — September payroll", actorId: ANI, ago: 27, groupId: 1n, counterAccountId: 1301n },
   { id: 1414n, accountId: 1302n, changeType: T.EXPENSE, change: -2_400_000, description: "Expense — September payroll (Payroll)", actorId: LISTENER, ago: 25 },
   { id: 1415n, accountId: 1301n, changeType: T.WITHDRAWAL, change: 4_800_000, description: "Withdrawal from shop #22", actorId: LISTENER, ago: 21 },
   { id: 1416n, accountId: 1303n, changeType: T.RESTOCK, change: -450_000, description: "Restock R-1030 — CV Cahaya Abadi", actorId: LISTENER, ago: 20 },

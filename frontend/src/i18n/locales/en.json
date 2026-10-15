@@ -225,7 +225,11 @@
     "apply": "Apply Range",
     "clear": "All dates",
     "fromOnly": "From {{date}}",
-    "toOnly": "Until {{date}}"
+    "toOnly": "Until {{date}}",
+    "lastNMonths_one": "Last {{count}} month",
+    "lastNMonths_other": "Last {{count}} months",
+    "lastNYears_one": "Last {{count}} year",
+    "lastNYears_other": "Last {{count}} years"
   },
   "productLines": {
     "title": "Products",

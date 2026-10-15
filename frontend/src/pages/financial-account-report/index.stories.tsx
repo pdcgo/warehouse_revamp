@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { account } from "../../../.storybook/financialAccountFixtures";
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import {
   FinancialAccountChangeType as T,
   FinancialAccountProvider as P,
@@ -13,7 +13,8 @@ import { FinancialAccountReportPage } from "./index";
 // The account report — five cards and one table of periods (owner, `the-report-is-five-cards-and-one-table`), the
 // owner's six metrics (context.md lines 126–131) delivered the settlement way (analytics-are-delivered-the-settlement-way).
 //
-// Toko Melati over the last 30 days (today and the 29 before), from .storybook/financialAccountFixtures.ts:
+// Toko Melati over the last month — the report's default (LAST_MONTH) — from .storybook/financialAccountFixtures.ts,
+// which keeps every row either 27 days back or less, or 32 or more, so a 28- to 31-day month holds the same rows:
 //   opened at 11.300.000 · withdrawals +11.000.000 · expenses −3.600.000 · team payment −1.500.000 ·
 //   capital +1.000.000 · ads −900.000 · restocks −850.000 · the bank fee −6.500 · transfers net 0
 //   → +5.143.500 → closed at 16.443.500 — exactly what the accounts page's total says.
@@ -440,6 +441,35 @@ export const ClearPutsTheFiltersBack: Story = {
 
     await userEvent.click(canvas.getByTestId("account-report-filters-clear"));
     await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(16_443_500)));
+  },
+};
+
+// THE FILTERS AND THE PERIODS' ORDER LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the account and
+// the grain are read from it; the order flipped is written back beside them. The view is not a filter: it stays out.
+const AtFilteredUrl = routedPage(
+  [{ path: "/financial-accounts/report", element: <><FinancialAccountReportPage /><LocationProbe /></> }],
+  `/financial-accounts/report?account=${BCA_OPS.id}&grain=month`,
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(11_443_500)), {
+      timeout: 4000,
+    });
+    const location = canvas.getByTestId("location-search");
+
+    await waitFor(() => expect(canvas.getByTestId("account-report-account")).toHaveValue(BCA_OPS.name));
+    await expect(within(canvas.getByTestId("account-report-grain")).getByRole("radio", { name: "Monthly" })).toBeChecked();
+
+    await userEvent.click(canvas.getByTestId("account-report-sort-period"));
+    await waitFor(() => expect(location).toHaveTextContent(/sort=period(%3A|:)asc/));
+    await expect(location).toHaveTextContent(`account=${BCA_OPS.id}`);
+
+    await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
+    await waitFor(() => expect(canvas.getByTestId("account-report-view-breakdown")).toHaveAttribute("aria-selected", "true"));
+    await expect(location).not.toHaveTextContent("view");
   },
 };
 

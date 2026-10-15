@@ -32,8 +32,8 @@ import {
   isAllDates,
   resolveRange,
 } from "../../components/datetime/DateRangePicker";
-import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { formatRupiah } from "../../lib/money";
+import { dateRangeCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE = 20;
 
@@ -118,6 +118,9 @@ const DATE_FIELDS: { value: DateField; labelKey: string; pick: (r: ReturnRow) =>
   { value: "accepted", labelKey: "returns.dateField.accepted", pick: (r) => r.acceptedUnix },
 ];
 
+const TAB_CODEC = oneOfCodec(STATUS_TABS.map((s) => s.value));
+const DATE_FIELD_CODEC = oneOfCodec(DATE_FIELDS.map((f) => f.value));
+
 function formatDateUnix(unix: number, lang: string): string {
   return new Date(unix * 1000).toLocaleDateString(lang, {
     day: "numeric",
@@ -137,15 +140,17 @@ export function ReturnsPage() {
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
 
-  const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
+  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
+  // return, opens the same narrowed list.
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [tab, setTab] = useUrlState("status", "all", TAB_CODEC);
   // The shared TeamSelect / ShopSelect emit ids (a shop is scoped to its team). On this preview page
   // the rows are keyed by name, not id, so these filters are visual until the ReturnList RPC lands
   // (#229) — the search box still matches team/shop by text meanwhile.
-  const [teamId, setTeamId] = useState(0n);
-  const [shopId, setShopId] = useState(0n);
-  const [range, setRange] = useState<DateRange>(ALL_DATES);
-  const [dateField, setDateField] = useState<DateField>("created");
+  const [teamId, setTeamId] = useUrlState("team", 0n, idCodec);
+  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  const [dateField, setDateField] = useUrlState<DateField>("date", "created", DATE_FIELD_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
 

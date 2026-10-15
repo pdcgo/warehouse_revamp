@@ -34,8 +34,12 @@ import { formatRupiah } from "../../lib/money";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { FilterSearch } from "../../components/chrome/FilterBar";
+import { boolCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 
 const PAGE_SIZE = 20;
+
+// The team-type filter's values, as its select writes them.
+const KIND_CODEC = oneOfCodec(["all", TeamType.WAREHOUSE.toString(), TeamType.SELLING.toString()]);
 
 // How the age of the oldest unsettled entry reads — the actionable signal (#221). The colour escalates
 // with age; a manager chases the reddening rows first.
@@ -67,10 +71,11 @@ export function LiabilityListPage() {
 
   const teamId = current?.teamId;
 
-  const [unsettledOnly, setUnsettledOnly] = useState(true);
-  const [awaitingOnly, setAwaitingOnly] = useState(false);
-  const [search, setSearch] = useState("");
-  const [kind, setKind] = useState<string>("all");
+  // THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a pair, opens the same list.
+  const [unsettledOnly, setUnsettledOnly] = useUrlState("unsettled", true, boolCodec);
+  const [awaitingOnly, setAwaitingOnly] = useUrlState("awaiting", false, boolCodec);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [kind, setKind] = useUrlState<string>("kind", "all", KIND_CODEC);
   const [page, setPage] = useState(1);
   const [defaultTermsOpen, setDefaultTermsOpen] = useState(false);
 

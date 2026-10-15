@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey, teams } from "../../../.storybook/fixtures";
 import { formatRupiah } from "../../lib/money";
 import { SettlementReportPage } from "./index";
@@ -144,6 +144,32 @@ export const MonthlyRollsUpThePeriod: Story = {
     const row = await canvas.findByTestId(`report-series-row-${month}`, {}, { timeout: 3000 });
 
     await waitFor(() => expect(within(row).getAllByRole("cell")[1]).toHaveTextContent(rp(300_000n)));
+  },
+};
+
+// THE WINDOW, THE GRAIN AND THE RANKING LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at `?grain=month`
+// the series is monthly; Per Pengguna is written back, the grain kept.
+const AtFilteredUrl = routedPage(
+  [{ path: "/settlement/report", element: <><SettlementReportPage /><LocationProbe /></> }],
+  "/settlement/report?grain=month",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  parameters: { dataRouter: true },
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const location = canvas.getByTestId("location-search");
+
+    // Monthly: the sale in its month's row, and thirty days are at most two rows (a header over them).
+    const month = `${dayKey(5).slice(0, 7)}-01`;
+    const row = await canvas.findByTestId(`report-series-row-${month}`, {}, { timeout: 3000 });
+    await waitFor(() => expect(within(row).getAllByRole("cell")[1]).toHaveTextContent(rp(300_000n)));
+    await expect(within(canvas.getByTestId("report-series-table")).getAllByRole("row").length).toBeLessThanOrEqual(3);
+
+    await userEvent.click(canvas.getByTestId("report-group-user"));
+    await waitFor(() => expect(location).toHaveTextContent("group=user"));
+    await expect(location).toHaveTextContent("grain=month");
   },
 };
 

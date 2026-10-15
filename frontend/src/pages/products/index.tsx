@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Flex, HStack, Icon, Input, Separator, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
@@ -10,6 +9,11 @@ import { TeamSelect } from "../../components/teams/TeamSelect";
 import { useProductStats } from "../../features/products/queries";
 import { ProductStats } from "./components/ProductStats";
 import { ProductsTable } from "./components/ProductsTable";
+import { idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
+
+// The two tabs of a selling team's catalogue — the status the list is narrowed to.
+const TABS = ["active", "archived"] as const;
+const TAB_CODEC = oneOfCodec(TABS);
 
 // ProductsPage lists the CURRENT TEAM's catalogue. Every RPC carries `current.teamId` in its body —
 // the team is the scope, and a selling/warehouse team only ever sees its own products. Create and
@@ -32,7 +36,11 @@ export function ProductsPage() {
   // The search is ABOVE the tabs and shared by both, because "find KPH-L-001" is one question about
   // the catalogue, not two about two lists. Typing it, finding nothing, and switching tab with the
   // term still in the box is how you discover the product you were looking for was archived.
-  const [q, setQ] = useState("");
+  //
+  // THE SEARCH, THE WAREHOUSE LENS AND THE TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh,
+  // or Back from a product, opens the same narrowed list.
+  const [q, setQ] = useUrlState("q", "", textCodec);
+  const [tab, setTab] = useUrlState<(typeof TABS)[number]>("status", "active", TAB_CODEC);
 
   // The WAREHOUSE lens. 0n = all of them.
   //
@@ -40,7 +48,7 @@ export function ProductsPage() {
   // is yours wherever the goods sit. It changes what every stock figure MEANS: ready, reserved,
   // ongoing, the cost range and the oldest batch become that one warehouse's, and the column headers
   // say so. Stock is held per warehouse, so a total is only ever an answer to "everywhere".
-  const [warehouseId, setWarehouseId] = useState<bigint>(0n);
+  const [warehouseId, setWarehouseId] = useUrlState("warehouse", 0n, idCodec);
   // Just for the labels — a cache hit on the list TeamSelect has already loaded.
   const warehouses = useTeams({ teamType: TeamType.WAREHOUSE, page: 1, pageSize: 100, enabled: !isWarehouse, reference: true });
   const warehouseName =
@@ -138,7 +146,12 @@ export function ProductsPage() {
       ) : (
         // lazyMount + unmountOnExit: only the visible tab's table is mounted, so exactly one product
         // list is fetched and the shared `products-table` testid is never duplicated.
-        <Tabs.Root defaultValue="active" lazyMount unmountOnExit>
+        <Tabs.Root
+          value={tab}
+          onValueChange={(e) => setTab(e.value === "archived" ? "archived" : "active")}
+          lazyMount
+          unmountOnExit
+        >
           <Tabs.List>
             <Tabs.Trigger value="active" data-testid="products-tab-active">
               <Icon as={Package} boxSize="4" />

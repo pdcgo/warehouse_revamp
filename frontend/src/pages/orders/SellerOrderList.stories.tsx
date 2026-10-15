@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
@@ -300,7 +300,7 @@ export const TheDateWindowHidesTheOldOrder: Story = {
 
     const controls = await filterControls(canvasElement);
     await userEvent.click(controls.getByTestId("orders-date"));
-    const last30 = await screen.findByTestId("orders-date-quick-30");
+    const last30 = await screen.findByTestId("orders-date-quick-1m");
     await waitFor(() => expect(last30).toBeVisible());
     await userEvent.click(last30);
 
@@ -376,6 +376,29 @@ export const CopyingAReferenceDoesNotOpenTheOrder: Story = {
     await userEvent.click(within(row).getByTestId("order-receipt"));
 
     await expect(screen.queryByTestId("at-order-detail")).toBeNull();
+  },
+};
+
+// THE FILTERS AND THE STAGE TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — opened at a URL, the tab and the
+// search are its own; a tab click is written back with the search kept. `?status=` is also how the Drafts tab returns.
+const AtFilteredUrl = routedPage(
+  [{ path: "/orders", element: <><OrdersPage /><LocationProbe /></> }],
+  "/orders?status=shipped&q=Ani",
+);
+
+export const FiltersLiveInTheUrl: Story = {
+  render: () => <AtFilteredUrl />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = await canvas.findByTestId("orders-search", {}, { timeout: 4000 });
+    const location = canvas.getByTestId("location-search");
+
+    await expect(search).toHaveValue("Ani");
+    await expect(canvas.getByTestId("orders-tab-shipped")).toHaveAttribute("aria-selected", "true");
+
+    await userEvent.click(canvas.getByTestId("orders-tab-pending"));
+    await waitFor(() => expect(location).toHaveTextContent("status=pending"));
+    await expect(location).toHaveTextContent("q=Ani");
   },
 };
 
