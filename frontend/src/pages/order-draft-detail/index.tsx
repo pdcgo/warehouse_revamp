@@ -15,7 +15,6 @@ import {
   IconButton,
   SimpleGrid,
   Spacer,
-  Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
@@ -77,6 +76,9 @@ import {
   sameStoredRows,
 } from "./rows";
 import { DraftRowsCard } from "./components/DraftRowsCard";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 // A DRAFT, IN THE ORDER FORM'S CLOTHES (`the-draft-page-wears-the-order-form`) — `/order-drafts/:id`.
 //
@@ -131,6 +133,7 @@ function parseId(raw: string | undefined): bigint {
 
 export function OrderDraftDetailPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
   const params = useParams();
@@ -397,8 +400,9 @@ export function OrderDraftDetailPage() {
     );
   }
 
+  // The page's shape while the draft loads, not a spinner on an empty page (motion-is-small-quick-and-shared).
   if (draftId > 0n && query.isPending) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading testId="draft-detail-loading" />;
   }
 
   if (!draft) {
@@ -415,7 +419,8 @@ export function OrderDraftDetailPage() {
   const cardTeamId = teamId ?? 0n;
 
   return (
-    <Stack gap="section" data-testid="draft-detail-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="draft-detail-page">
       {/* THE HEADER — the draft's reference, the app that pushed it, and the way out. */}
       <Flex align="center" gap="card" wrap="wrap">
         <IconButton
@@ -430,16 +435,24 @@ export function OrderDraftDetailPage() {
         <Heading size="md">{t("orderDrafts.draftTitle", { ref: draft.externalId })}</Heading>
         <Badge colorPalette="gray">{draft.source}</Badge>
         <Spacer />
-        <Button
-          size="xs"
-          variant="outline"
-          colorPalette="error"
-          data-testid="draft-delete"
-          onClick={() => setConfirmDelete(true)}
-        >
-          <Icon as={Trash2} boxSize="4" />
-          {t("orderDrafts.deleteOneTitle")}
-        </Button>
+        {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("common.actions")}
+            actions={[{ id: "delete", label: t("orderDrafts.deleteOneTitle"), icon: Trash2, danger: true, testId: "draft-delete", onClick: () => setConfirmDelete(true) }]}
+          />
+        ) : (
+          <Button
+            size="xs"
+            variant="outline"
+            colorPalette="error"
+            data-testid="draft-delete"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Icon as={Trash2} boxSize="4" />
+            {t("orderDrafts.deleteOneTitle")}
+          </Button>
+        )}
       </Flex>
 
       {error && (

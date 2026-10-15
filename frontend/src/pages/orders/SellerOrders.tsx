@@ -9,13 +9,12 @@ import {
   Heading,
   Icon,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Tabs,
   Text,
 } from "@chakra-ui/react";
-import { Download, Plus, Upload } from "lucide-react";
+import { Download, Plus, SearchX, ShoppingCart, Upload } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -87,6 +86,10 @@ import {
   mockWarehouseFee,
 } from "../../features/orders/rowMock";
 import { ImportOrdersDialog } from "./components/ImportOrdersDialog";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -113,6 +116,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // Marketplace is seven values that change when the company enters a new country — it stays a list.
 export function SellerOrdersPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -373,7 +377,8 @@ export function SellerOrdersPage() {
   }
 
   return (
-    <Stack gap="section">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter">
       {/* WHAT THIS SCREEN CANNOT DO, FIRST AND FOLDED AWAY — the same strip the order form carries,
           from the same component. It is above everything, the header included, because it is a
           statement about the whole page rather than about the table under it. */}
@@ -391,6 +396,19 @@ export function SellerOrdersPage() {
             nothing out of the screen, Import changes orders that already exist, New Order writes one.
             Only the last is the brand button — three coloured buttons side by side would say all
             three are the thing to do. */}
+        {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
+            buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            menuTestId="orders-actions"
+            actions={[
+              { id: "export", label: t("orders.export.action"), icon: Download, mark: <NotImplemented list={ORDERS_LIST_PENDING} id="export" />, testId: "orders-export" },
+              { id: "import", label: t("orders.import.action"), icon: Upload, mark: <NotImplemented list={ORDERS_LIST_PENDING} id="import" />, testId: "orders-import", onClick: () => setImporting(true) },
+              { id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") },
+            ]}
+          />
+        ) : (
         <Flex gap="2" align="center" wrap="wrap">
           <Button
             size="xs"
@@ -425,6 +443,7 @@ export function SellerOrdersPage() {
             {t("orders.newOrder")}
           </Button>
         </Flex>
+        )}
       </Flex>
 
       {/* The filter bar sits ABOVE the tabs, and the order is the meaning: these narrow which orders
@@ -464,6 +483,8 @@ export function SellerOrdersPage() {
                 teamType={TeamType.WAREHOUSE}
                 value={warehouseId > 0n ? warehouseId : undefined}
                 placeholder={t("orders.warehouseAll")}
+                // Every option is a warehouse — the pick reads as its name alone (a-one-type-picker-shows-the-name-alone).
+                showType={false}
                 onChange={(id) => refilter(() => setWarehouseId(id))}
               />
             </Box>
@@ -495,6 +516,8 @@ export function SellerOrdersPage() {
           <Flex align="center" gap="1">
             <Box flex="1" minW="0">
               <MarketplaceSelect
+                // Its × clears it (every-filter-clears-from-its-own-x).
+                clearable
                 value={marketplace}
                 placeholder={t("orders.marketplaceAll")}
                 onChange={(m) => refilter(() => setMarketplace(m))}
@@ -596,9 +619,12 @@ export function SellerOrdersPage() {
               </Text>
             )}
 
+            {/* The first load shows the table's shape and its rows fade in, once — a tab or a filter changing keeps
+                them mounted, so nothing fades again (a-filter-answers-as-it-changes). */}
             {loading ? (
-              <Spinner colorPalette="brand" />
+              <ListSkeleton testId="orders-loading" />
             ) : (
+              <Box animationStyle="swap">
               <RefreshOverlay busy={query.isFetching && !query.isPending}>
                 {/* ⚠ A DOZEN COLUMNS DO NOT FIT A PHONE, and the layout rule is that the PAGE never scrolls
                     sideways — only a table, inside its own container. Grinding the columns down
@@ -783,18 +809,27 @@ export function SellerOrdersPage() {
                   </Table.Root>
                 </Box>
               </RefreshOverlay>
+              </Box>
             )}
 
             {!loading && orders.length === 0 && !error && (
-              <Text color="fg.muted" data-testid="orders-empty">
-                {filtered
-                  ? t("orders.noOrdersMatching")
-                  : stage === undefined
-                    ? t("orders.noOrders")
-                    : t("orders.noOrdersInStatus", {
-                        status: t(`orders.stage.${stage.id}`),
-                      })}
-              </Text>
+              // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint) — the filters to clear, or how orders arrive.
+              <EmptyHint
+                icon={filtered ? SearchX : ShoppingCart}
+                title={
+                  filtered
+                    ? t("orders.noOrdersMatching")
+                    : stage === undefined
+                      ? t("orders.noOrders")
+                      : t("orders.noOrdersInStatus", {
+                          status: t(`orders.stage.${stage.id}`),
+                        })
+                }
+                description={
+                  filtered ? t("emptyHint.noMatch") : stage === undefined ? t("orders.noOrdersHint") : undefined
+                }
+                testId="orders-empty"
+              />
             )}
 
             {!loading && (

@@ -37,7 +37,11 @@ export default defineConfig({
     browser: {
       enabled: true,
       headless: true,
-      provider: playwright(),
+      // ⚠ REDUCED MOTION. The theme collapses every animation and transition to nothing for a device that asks
+      // (`motion-is-small-quick-and-shared`), and the test browser asks. A story reads computed styles — a row's
+      // background under `data-hover`, an element's visibility — and mid-transition those are neither the old value
+      // nor the new one, so a test would pass or fail on timing. Motion is reviewed by eye in Storybook, not asserted.
+      provider: playwright({ contextOptions: { reducedMotion: "reduce" } }),
       instances: [{ browser: "chromium" }],
       // ⚠ PINNED, and BELOW 49152. Vitest's default (63315) sits inside a TCP range Windows reserves for
       // Hyper-V/WinNAT (`netsh interface ipv4 show excludedportrange protocol=tcp`), so the run dies on

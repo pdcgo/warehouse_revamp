@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -99,8 +100,9 @@ export function DiscoverSupplierDetailPage() {
     );
   }
 
+  // The page's shape while the supplier loads, not a spinner on an empty page (`motion-is-small-quick-and-shared`).
   if (query.isPending && id !== 0n) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading testId="discover-detail-loading" />;
   }
 
   if (error || !supplier) {
@@ -115,7 +117,8 @@ export function DiscoverSupplierDetailPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="discover-detail-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="discover-detail-page">
       {back}
 
       <Stack gap="2">
@@ -157,6 +160,8 @@ export function DiscoverSupplierDetailPage() {
         }
       />
 
+      {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
+          (`motion-is-small-quick-and-shared`). A fade, not a rise: on first paint the page itself is already rising. */}
       <Tabs.Root defaultValue="channels" lazyMount unmountOnExit data-testid="supplier-tabs">
         <Tabs.List>
           <Tabs.Trigger value="channels" data-testid="supplier-tab-channels">
@@ -171,18 +176,19 @@ export function DiscoverSupplierDetailPage() {
           <Tabs.Trigger value="statistics" data-testid="supplier-tab-statistics">
             {t("supplierChannel.tab.statistics")}
           </Tabs.Trigger>
+          <Tabs.Indicator />
         </Tabs.List>
 
         {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
-        <Tabs.Content value="channels">
+        <Tabs.Content value="channels" animationStyle="swap">
           <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
-        <Tabs.Content value="products">
+        <Tabs.Content value="products" animationStyle="swap">
           <ProductBrowser channels={channelsQuery.data ?? []} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
-        <Tabs.Content value="statistics">
+        <Tabs.Content value="statistics" animationStyle="swap">
           <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={DISCOVER_SUPPLIER_DETAIL_PENDING} id="sales" />}
             exportMark={EXPORT_MARK} />
         </Tabs.Content>

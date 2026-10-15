@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink, useParams } from "react-router-dom";
-import { Alert, Badge, Flex, HStack, Heading, Link, Spinner, Stack, Text } from "@chakra-ui/react";
+import { Alert, Badge, Box, Flex, Heading, HStack, Link, Stack, Text } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
@@ -26,6 +26,7 @@ import { AccountLogTable } from "./components/AccountLogTable";
 import { AccountSummary } from "./components/AccountSummary";
 import { ChangeTypeFilter } from "./components/ChangeTypeFilter";
 import { ShopLinks } from "./components/ShopLinks";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -86,7 +87,8 @@ export function FinancialAccountDetailPage() {
     return <Text color="fg.muted">{t("financialAccounts.selectTeam")}</Text>;
   }
 
-  if (accountQuery.isPending) return <Spinner colorPalette="brand" />;
+  // The page's shape while the account loads, not a spinner on an empty page (motion-is-small-quick-and-shared).
+  if (accountQuery.isPending) return <ListSkeleton heading testId="financial-account-loading" />;
 
   const account = accountQuery.data;
   if (!account) {
@@ -115,7 +117,8 @@ export function FinancialAccountDetailPage() {
   const filtering = [changeTypes.length > 0, !isAllDates(range)].filter(Boolean).length;
 
   return (
-    <Stack gap="section" data-testid="financial-account-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="financial-account-page">
       <BackLink />
 
       {/* ON A PHONE THE HEADER IS THE NAME AND ITS MENU (`the-phone-header-is-one-row`) — every action folds into it, so
@@ -230,11 +233,13 @@ export function FinancialAccountDetailPage() {
         )}
 
         {logs.isPending ? (
-          <Spinner colorPalette="brand" />
+          <ListSkeleton rows={4} testId="account-log-loading" />
         ) : (
-          <RefreshOverlay busy={logs.isFetching && !logs.isPending}>
-            <AccountLogTable logs={logs.data?.logs ?? []} actorName={actorName} describe={(text) => withShopNames(text, nameOf)} />
-          </RefreshOverlay>
+          <Box animationStyle="swap">
+            <RefreshOverlay busy={logs.isFetching && !logs.isPending}>
+              <AccountLogTable logs={logs.data?.logs ?? []} actorName={actorName} describe={(text) => withShopNames(text, nameOf)} />
+            </RefreshOverlay>
+          </Box>
         )}
 
         {/* THE PAGES GROW AS THEY ARE OPENED, as on the accounts list (`the-accounts-pager-grows-with-the-pages-opened`). */}

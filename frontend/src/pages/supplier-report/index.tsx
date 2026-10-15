@@ -9,17 +9,13 @@ import {
   HStack,
   Heading,
   Icon,
-  IconButton,
-  Menu,
-  Portal,
   SegmentGroup,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { ArrowDownWideNarrow, Download, MoreHorizontal } from "lucide-react";
+import { ArrowDownWideNarrow, ChartColumn, Download, SearchX } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -28,6 +24,8 @@ import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { windowOf } from "../../features/settlement/window";
 import {
   type SupplierRankBy,
@@ -43,6 +41,7 @@ import { useDebounced } from "../../lib/useDebounced";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { SUPPLIER_REPORT_PENDING } from "./pending";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 // Penjualan beside Direstok carries THIS page's mark (`sales-sit-beside-restocked`).
 const SALES_MARK = <NotImplemented list={SUPPLIER_REPORT_PENDING} id="sales" />;
@@ -129,6 +128,13 @@ export function SupplierReportPage() {
     pageSize: PAGE_SIZE,
   });
 
+  // The order the rows ON SCREEN are in. A new order keeps the old rows up while its page loads (HARD RULE 10), so the
+  // fade is keyed on this rather than on the pick — it plays when the re-ordered rows land, not on the click.
+  const [shownRankBy, setShownRankBy] = useState(rankBy);
+  if (!ranking.isPending && !ranking.isPlaceholderData && shownRankBy !== rankBy) {
+    setShownRankBy(rankBy);
+  }
+
   if (!current) {
     return (
       <Stack gap="section">
@@ -161,20 +167,27 @@ export function SupplierReportPage() {
   const busy = ranking.isFetching && !ranking.isPending;
 
   function list() {
-    // A first load has nothing to keep on screen — its own spinner, never the empty sentence.
+    // A first load has nothing to keep on screen — the list's shape, never the empty sentence
+    // (`motion-is-small-quick-and-shared`).
     if (ranking.isPending && valid) {
-      return <Spinner colorPalette="brand" />;
+      return <ListSkeleton testId="supplier-report-loading" />;
     }
 
     if (rows.length === 0) {
       return (
-        <Text fontSize="sm" color="fg.muted" data-testid="supplier-report-empty">
-          {term !== ""
-            ? t("supplierReport.none")
-            : restockTeamId !== 0n
-              ? t("supplierReport.emptyTeam")
-              : t("supplierReport.empty")}
-        </Text>
+        // AN EMPTY RANKING SAYS WHAT NEXT (an-empty-list-shows-a-hint) — another word, or another range.
+        <EmptyHint
+          icon={term !== "" ? SearchX : ChartColumn}
+          title={
+            term !== ""
+              ? t("supplierReport.none")
+              : restockTeamId !== 0n
+                ? t("supplierReport.emptyTeam")
+                : t("supplierReport.empty")
+          }
+          description={term !== "" ? t("emptyHint.noMatch") : t("emptyHint.otherPeriod")}
+          testId="supplier-report-empty"
+        />
       );
     }
 
@@ -261,35 +274,33 @@ export function SupplierReportPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="supplier-report-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="supplier-report-page">
       {/* The title and its subtitle as one block, the page's action on the title's row — as on the account report. */}
       {isMobile ? (
         // A PHONE'S HEADER IS ONE ROW (owner: *"export di report mobile kurang bagus"*, `the-report-export-folds-on-a-phone`,
-        // the-phone-header-is-one-row): the title and ⋯, the export folded into it — wrapped under the subtitle it stood
-        // alone, a button belonging to nothing. The subtitle under the row.
+        // the-phone-header-is-one-row): the title and the export's icon — wrapped under the subtitle it stood alone, a
+        // button belonging to nothing; it was a ⋯ of one line until a-phone-header-action-is-an-icon. The subtitle under
+        // the row.
         <Stack gap="1">
           <Flex align="center" gap="2">
             <Heading size="md" flex="1" minW="0" truncate>
               {t("supplierReport.title")}
             </Heading>
-            <Menu.Root positioning={{ placement: "bottom-end" }}>
-              <Menu.Trigger asChild>
-                <IconButton size="sm" variant="ghost" aria-label={t("supplierReport.actions")} data-testid="supplier-report-menu">
-                  <Icon as={MoreHorizontal} boxSize="4" />
-                </IconButton>
-              </Menu.Trigger>
-              <Portal>
-                <Menu.Positioner>
-                  <Menu.Content>
-                    <Menu.Item value="export" data-testid="supplier-report-export">
-                      <Icon as={Download} boxSize="4" />
-                      {t("supplierReport.export")}
-                      <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />
-                    </Menu.Item>
-                  </Menu.Content>
-                </Menu.Positioner>
-              </Portal>
-            </Menu.Root>
+            {/* One action, so its icon — not a ⋯ holding one line (a-phone-header-action-is-an-icon). */}
+            <CompactActions
+              menuLabel={t("supplierReport.actions")}
+              menuTestId="supplier-report-menu"
+              actions={[
+                {
+                  id: "export",
+                  label: t("supplierReport.export"),
+                  icon: Download,
+                  mark: <NotImplemented list={SUPPLIER_REPORT_PENDING} id="export" />,
+                  testId: "supplier-report-export",
+                },
+              ]}
+            />
           </Flex>
           <Text fontSize="sm" color="fg.muted">
             {t("supplierReport.subtitle")}
@@ -390,7 +401,13 @@ export function SupplierReportPage() {
           </HStack>
         </Flex>
 
-        <RefreshOverlay busy={busy}>{list()}</RefreshOverlay>
+        {/* The rows fade in when they first land, and again when they land in a new order — never on a refresh
+            (`motion-is-small-quick-and-shared`). */}
+        <RefreshOverlay busy={busy}>
+          <Box key={ranking.isPending && valid ? "loading" : shownRankBy} animationStyle="swap">
+            {list()}
+          </Box>
+        </RefreshOverlay>
 
         {/* The rule the order follows, said where it applies (rate-ranking-needs-50-units). */}
         {rankBy === "brokenRate" && minUnits > 0 && rows.length > 0 && (

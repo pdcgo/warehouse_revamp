@@ -17,7 +17,6 @@ import {
   Portal,
   SimpleGrid,
   Spacer,
-  Spinner,
   Stack,
   Stat,
   Table,
@@ -56,6 +55,9 @@ import { directionCopy, directionPalette } from "../../features/liability/direct
 import { useRecordPayment, useLiabilityLogs, useLiabilityPayments } from "../../features/liability/queries";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { Pagination } from "../../components/chrome/Pagination";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const ENTRY_PAGE_SIZE = 50;
 const PAYMENT_PAGE_SIZE = 50;
@@ -108,6 +110,7 @@ function statusPalette(status: LiabilityPaymentStatus): string {
 // /liability/:counterpartyId screen.
 export function LiabilityDetailPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
   const params = useParams();
@@ -300,7 +303,8 @@ export function LiabilityDetailPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="liability-detail-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="liability-detail-page">
       <Flex align="flex-start" gap="card" wrap="wrap">
         <IconButton
           size="xs"
@@ -320,14 +324,22 @@ export function LiabilityDetailPage() {
           )}
         </Stack>
         <Spacer />
-        <Button
-          colorPalette="brand"
-          data-testid="liability-detail-make-payment"
-          onClick={() => setRecordOpen(true)}
-        >
-          <Icon as={Plus} boxSize="4" />
-          {t("liabilityDetail.makePayment")}
-        </Button>
+        {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("common.actions")}
+            actions={[{ id: "pay", label: t("liabilityDetail.makePayment"), icon: Plus, primary: true, testId: "liability-detail-make-payment", onClick: () => setRecordOpen(true) }]}
+          />
+        ) : (
+          <Button
+            colorPalette="brand"
+            data-testid="liability-detail-make-payment"
+            onClick={() => setRecordOpen(true)}
+          >
+            <Icon as={Plus} boxSize="4" />
+            {t("liabilityDetail.makePayment")}
+          </Button>
+        )}
       </Flex>
 
       {/* The two account pickers are built ahead of their contract — see ./pending.ts. */}
@@ -370,8 +382,10 @@ export function LiabilityDetailPage() {
         </Text>
       )}
 
+      {/* The ledger's shape while it loads; then one underline slides to the picked tab, and the tab fades in where
+          the last one was (motion-is-small-quick-and-shared). */}
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <ListSkeleton testId="liability-detail-loading" />
       ) : (
         <Tabs.Root defaultValue="receivable" variant="line">
           <Tabs.List>
@@ -404,9 +418,10 @@ export function LiabilityDetailPage() {
             <Tabs.Trigger value="terms" data-testid="liability-detail-tab-terms">
               {t("liabilityDetail.tabTerms")}
             </Tabs.Trigger>
+            <Tabs.Indicator />
           </Tabs.List>
 
-          <Tabs.Content value="receivable">
+          <Tabs.Content value="receivable" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-receivable">
               <LiabilityLedgerTable rows={receivableRows} emptyText={t("liabilityDetail.emptyReceivable")} />
               <Pagination
@@ -418,7 +433,7 @@ export function LiabilityDetailPage() {
             </Stack>
           </Tabs.Content>
 
-          <Tabs.Content value="payable">
+          <Tabs.Content value="payable" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-payable">
               <LiabilityLedgerTable rows={payableRows} emptyText={t("liabilityDetail.emptyPayable")} />
               <Pagination
@@ -430,7 +445,7 @@ export function LiabilityDetailPage() {
             </Stack>
           </Tabs.Content>
 
-          <Tabs.Content value="mine">
+          <Tabs.Content value="mine" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-mine">
               {renderPaymentTable(minePayments, "liabilityDetail.emptyMine", false)}
               <Pagination
@@ -442,7 +457,7 @@ export function LiabilityDetailPage() {
             </Stack>
           </Tabs.Content>
 
-          <Tabs.Content value="team">
+          <Tabs.Content value="team" animationStyle="swap">
             <Stack gap="card" data-testid="liability-detail-team">
               {renderPaymentTable(teamPayments, "liabilityDetail.emptyTeam", true)}
               <Pagination
@@ -454,7 +469,7 @@ export function LiabilityDetailPage() {
             </Stack>
           </Tabs.Content>
 
-          <Tabs.Content value="terms">
+          <Tabs.Content value="terms" animationStyle="swap">
             <TermsPanel
               teamId={current.teamId}
               counterpartyId={counterpartyId}
@@ -466,7 +481,7 @@ export function LiabilityDetailPage() {
             />
           </Tabs.Content>
 
-          <Tabs.Content value="limits">
+          <Tabs.Content value="limits" animationStyle="swap">
             {/* The panel is a DOMAIN component (features/liability), not this page's: the Credit
                 Terms screen renders the same log across every counterparty, and the moment a second
                 page imported it, it stopped being one page's component. */}

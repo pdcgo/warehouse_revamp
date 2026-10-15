@@ -74,6 +74,8 @@ export function FilterChips<V extends string | number>({
             borderWidth="1px"
             borderColor={chosen ? "brand.solid" : "border"}
             fontWeight="normal"
+            // The pick turns in the hover beat, not Chakra's slower default (`a-filter-answers-as-it-changes`).
+            transitionDuration="hover"
             aria-pressed={chosen}
             title={chip.title}
             data-testid={`${testId}-${String(chip.value)}`}

@@ -821,7 +821,8 @@ export function OrderCreatePage() {
   return (
     // No `maxW`: the page fills the content area, the way the list pages do. A two-column grid wants
     // the room — the wider the window, the more of it the lines get.
-    <Stack gap="section" data-testid="order-create-page">
+    // It arrives — a fade and a short rise (motion-is-small-quick-and-shared).
+    <Stack gap="section" animationStyle="enter" data-testid="order-create-page">
       <Flex align="center" gap="card">
         <IconButton
           size="xs"

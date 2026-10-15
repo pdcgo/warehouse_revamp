@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
-import { ExternalLink } from "lucide-react";
+import { Box, Button, HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
+import { ExternalLink, SearchX, Store } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { SupplierChannelRecord } from "./adapt";
 import { useSupplierChannelPage } from "./queries";
@@ -12,6 +12,8 @@ import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { type FigureMarks, SupplierFigureCells, SupplierFigureHeaders, SupplierFigureLines } from "./SupplierFigures";
@@ -110,6 +112,11 @@ export function ChannelBrowser({
     change();
     setPage(1);
   }
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setChannelType(Marketplace.UNSPECIFIED);
+    });
 
   const query = useSupplierChannelPage({ teamId, supplierId, q: term, channelType, page, pageSize });
   const channels = query.data?.channels ?? [];
@@ -120,15 +127,28 @@ export function ChannelBrowser({
 
   function list() {
     if (channels.length === 0 && !error) {
-      // Nothing at all, or nothing that matches — two different things to tell somebody.
+      // Nothing at all, or nothing that matches — two different things to tell somebody, each with what to do
+      // (an-empty-list-shows-a-hint): clear the filters, or add a store with the page's own action.
       return narrowed ? (
-        <Text color="fg.muted" data-testid="channels-none-match">
-          {t("supplierChannel.filter.none")}
-        </Text>
+        <EmptyHint
+          icon={SearchX}
+          size="sm"
+          title={t("supplierChannel.filter.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="channels-none-match"
+        />
       ) : (
-        <Text color="fg.muted" data-testid="channels-empty">
-          {t("supplierChannel.section.empty")}
-        </Text>
+        <EmptyHint
+          icon={Store}
+          size="sm"
+          title={t("supplierChannel.section.empty")}
+          description={t("supplierChannel.section.emptyHint")}
+          action={actions}
+          testId="channels-empty"
+        />
       );
     }
 
@@ -218,12 +238,7 @@ export function ChannelBrowser({
         testId="channels-filter"
         active={filtering}
         count={(q.trim() !== "" ? 1 : 0) + (channelType !== Marketplace.UNSPECIFIED ? 1 : 0)}
-        onClear={() =>
-          refilter(() => {
-            setQ("");
-            setChannelType(Marketplace.UNSPECIFIED);
-          })
-        }
+        onClear={clearFilters}
         // The tab's Export, then the page's own action — the primary one stays rightmost. A phone's Export is in the sheet.
         actions={
           isMobile ? (
@@ -243,9 +258,11 @@ export function ChannelBrowser({
           testId="channels-search"
         />
 
-        {/* Seven types, static — a plain list, not a search (CLAUDE.md: bounded forever). Empty = every type. */}
+        {/* Seven types, static — a plain list, not a search (CLAUDE.md: bounded forever). Empty = every type; its ×
+            clears it (every-filter-clears-from-its-own-x). */}
         <FilterField w="15rem" testId="channels-type-filter">
           <MarketplaceSelect
+            clearable
             value={channelType}
             placeholder={t("supplierChannel.filter.typeAll")}
             onChange={(m) => refilter(() => setChannelType(m))}
@@ -261,8 +278,14 @@ export function ChannelBrowser({
         </Text>
       )}
 
-      {query.isPending ? null : (
-        <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+      {/* The first load shows the list's shape, and the rows fade in over it — once; a refresh keeps them mounted
+          (`motion-is-small-quick-and-shared`). */}
+      {query.isPending ? (
+        <ListSkeleton rows={3} testId="channels-loading" />
+      ) : (
+        <Box animationStyle="swap">
+          <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        </Box>
       )}
 
       {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}

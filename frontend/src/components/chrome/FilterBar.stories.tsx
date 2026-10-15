@@ -208,3 +208,27 @@ export const SearchTakesTheSlackUpToSm: Story = {
     await expect(search.width).toBeLessThanOrEqual(24 * rem() + 1);
   },
 };
+
+// THE SEARCH SAYS IT SEARCHES, AND CLEARS (every-filter-clears-from-its-own-x) — a search icon at its start, and once
+// something is typed an × at its end that empties it and leaves the cursor in the box for the next word.
+export const SearchHasAnIconAndClears: Story = {
+  render: () => <ListFilters />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const search = canvas.getByTestId("bar-search");
+
+    await expect(search.parentElement?.querySelector("svg.lucide-search")).not.toBeNull();
+    await expect(canvas.queryByTestId("bar-search-clear")).not.toBeInTheDocument();
+
+    await userEvent.type(search, "INV-22", { delay: 40 });
+    const clear = await canvas.findByTestId("bar-search-clear");
+    await expect(clear).toHaveAccessibleName("Clear search");
+
+    await userEvent.click(clear);
+    await expect(search).toHaveValue("");
+    await expect(search).toHaveFocus();
+    await expect(canvas.queryByTestId("bar-search-clear")).not.toBeInTheDocument();
+    // The search was the only filter, so the strip is at rest again.
+    await expect(canvas.queryByTestId("filter-bar-clear")).not.toBeInTheDocument();
+  },
+};

@@ -63,6 +63,9 @@ export function AccountTypeTabs({
             </Badge>
           </Tabs.Trigger>
         ))}
+        {/* One underline, sliding to the picked type (motion-is-small-quick-and-shared). The list under it is not
+            faded: a type is a filter, and a filter's results never fade (a-filter-answers-as-it-changes). */}
+        <Tabs.Indicator />
       </Tabs.List>
     </Tabs.Root>
   );

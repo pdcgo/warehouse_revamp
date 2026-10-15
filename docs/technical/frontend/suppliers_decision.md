@@ -67,6 +67,7 @@ in [supplier/context_decision.md](../../business/supplier/context_decision.md), 
 | [sales-sit-beside-restocked](#sales-sit-beside-restocked) | *Penjualan* sits right after *Direstok* — card, column and phone line — on the Statistik tab and the Supplier Report, in Direstok's format |
 | [each-supplier-tab-exports-its-own-table](#each-supplier-tab-exports-its-own-table) | each tab of the supplier's page has its own *Ekspor* at the right of its filter strip; on a phone, in the Filter sheet — not built yet |
 | [the-report-export-folds-on-a-phone](#the-report-export-folds-on-a-phone) | on a phone the Supplier Report's header is one row — the title and ⋯, with *Ekspor* inside |
+| [the-warehouse-filter-shows-its-name-alone](#the-warehouse-filter-shows-its-name-alone) | a picked warehouse in the supplier screens' warehouse filter reads as its name, without the [Gudang] badge |
 
 ## the-suppliers-list-follows-the-screen-rules
 
@@ -1265,3 +1266,20 @@ Pemasok mana yang paling banyak …         Pemasok mana yang paling banyak …
 | why | wrapped under the subtitle, the button stood alone — an action belonging to nothing |
 | the rule | [the-phone-header-is-one-row](context_decision.md#the-phone-header-is-one-row) — actions fold into ⋯, even a single one; the report had not applied it |
 | a desktop | unchanged — the grey *Ekspor* on the title's row ([the-report-export-is-marked](#the-report-export-is-marked)) |
+
+## the-warehouse-filter-shows-its-name-alone
+
+> Owner, in chat (2026-10-15): *"select gudang tidak perlu badge di select activenya"*.
+
+```
+before                                   now
+[Gudang Pusat [Gudang]   × ⌄]            [Gudang Pusat            × ⌄]
+```
+
+| | |
+| --- | --- |
+| what | the warehouse filter's picked face is the warehouse's **name alone** — no type badge |
+| why | every option in it is a warehouse; the badge only repeats what the field is for |
+| how | `TeamSelect`'s `showType={false}` — the badge stays on by default, so a picker over every type keeps `name [Type]` |
+| where | `SupplierWarehouseFilter` — the supplier list and Discover. The options keep their `TeamItem` rows |
+| still open | Discover's team filter offers selling teams only and still shows [Penjual] on its pick — the same argument; asked, not changed |

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Flex, Stack, Table, Text } from "@chakra-ui/react";
+import { ChartColumn } from "lucide-react";
 
 import { SortableHeader, type SortState } from "../../../components/chrome/SortableHeader";
 import type { AccountReportPoint } from "../../../features/financialAccount/analytics";
@@ -9,6 +10,7 @@ import { useIsMobile } from "../../../layouts/shell";
 import type { PeriodGrain } from "../../../lib/period";
 import { FIELD_OF, TypeCells, TypeHeaders } from "./MetricColumns";
 import { SignedAmount } from "./ReportSummary";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
 function periodLabel(at: string, grain: PeriodGrain): string {
   if (grain === "month") return at.slice(0, 7);
@@ -50,9 +52,12 @@ export function SeriesTable({
 
   if (points.length === 0) {
     return (
-      <Text fontSize="sm" color="fg.muted" data-testid="account-report-series-empty">
-        {t("financialAccounts.report.empty")}
-      </Text>
+      <EmptyHint
+        icon={ChartColumn}
+        title={t("financialAccounts.report.empty")}
+        description={t("emptyHint.otherPeriod")}
+        testId="account-report-series-empty"
+      />
     );
   }
 

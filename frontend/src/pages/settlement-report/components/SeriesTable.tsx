@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Box, Table, Text } from "@chakra-ui/react";
+import { ChartColumn } from "lucide-react";
 
 import type { SettlementPoint } from "../../../features/settlement/analytics";
 import type { SettlementMeasure } from "../../../features/settlement/measure";
 import { formatRupiah } from "../../../lib/money";
 import type { PeriodGrain } from "../../../lib/period";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
 // The bucket's label at its grain: the day, the month, or the year its first day opens.
 function periodLabel(at: string, grain: PeriodGrain): string {
@@ -21,9 +23,12 @@ export function SeriesTable({ grain, points }: { grain: PeriodGrain; points: Set
 
   if (points.length === 0) {
     return (
-      <Text fontSize="sm" color="fg.muted" data-testid="report-series-empty">
-        {t("settlementReport.empty")}
-      </Text>
+      <EmptyHint
+        icon={ChartColumn}
+        title={t("settlementReport.empty")}
+        description={t("emptyHint.otherPeriod")}
+        testId="report-series-empty"
+      />
     );
   }
 

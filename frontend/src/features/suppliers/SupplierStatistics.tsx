@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 
+import { ChartColumn, Package } from "lucide-react";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
@@ -127,10 +130,15 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
   // Nothing at all in the window — said once, instead of a headline of zeroes over a table of zeroes.
   const quiet = series.data !== undefined && unitsReceived(series.data.total) === 0;
 
+  // AN EMPTY WINDOW SAYS WHAT NEXT (an-empty-list-shows-a-hint) — another range, or another team.
   const empty = (
-    <Text color="fg.muted" data-testid="statistics-empty">
-      {restockTeamId !== 0n ? t("supplierStats.emptyTeam") : t("supplierStats.empty")}
-    </Text>
+    <EmptyHint
+      icon={ChartColumn}
+      size="sm"
+      title={restockTeamId !== 0n ? t("supplierStats.emptyTeam") : t("supplierStats.empty")}
+      description={t("emptyHint.otherPeriod")}
+      testId="statistics-empty"
+    />
   );
 
   return (
@@ -153,6 +161,9 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
           <Tabs.Trigger value="product" data-testid="statistics-view-product">
             {t("supplierStats.byProduct")}
           </Tabs.Trigger>
+          {/* The underline slides to the picked view, and the view fades in where the other was
+              (`motion-is-small-quick-and-shared`). */}
+          <Tabs.Indicator />
         </Tabs.List>
 
         <FilterBar
@@ -191,8 +202,11 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
         </RefreshOverlay>
 
         <Stack gap="field">
-          <Tabs.Content value="time" p="0">
-            {quiet ? (
+          <Tabs.Content value="time" p="0" animationStyle="swap">
+            {/* The first load shows the table's shape; the rows fade in over it (motion-is-small-quick-and-shared). */}
+            {series.isPending && valid ? (
+              <ListSkeleton testId="statistics-series-loading" />
+            ) : quiet ? (
               empty
             ) : (
               <Stack gap="field">
@@ -213,8 +227,10 @@ export function SupplierStatistics({ supplierId, salesMark, exportMark }: Suppli
             )}
           </Tabs.Content>
 
-          <Tabs.Content value="product" p="0">
-            {quiet ? (
+          <Tabs.Content value="product" p="0" animationStyle="swap">
+            {products.isPending && valid ? (
+              <ListSkeleton testId="statistics-products-loading" />
+            ) : quiet ? (
               empty
             ) : (
               <Stack gap="field">
@@ -344,9 +360,13 @@ function ProductTable({
 
   if (rows.length === 0) {
     return (
-      <Text fontSize="sm" color="fg.muted" data-testid="statistics-products-empty">
-        {t("supplierStats.noProducts")}
-      </Text>
+      <EmptyHint
+        icon={Package}
+        size="sm"
+        title={t("supplierStats.noProducts")}
+        description={t("emptyHint.otherPeriod")}
+        testId="statistics-products-empty"
+      />
     );
   }
 

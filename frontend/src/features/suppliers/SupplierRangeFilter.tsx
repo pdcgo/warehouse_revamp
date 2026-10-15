@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, HStack, Icon, Popover, Portal, Stack, Text } from "@chakra-ui/react";
-import { ChevronDown } from "lucide-react";
+import { Button, Group, HStack, Icon, IconButton, Popover, Portal, Stack, Text } from "@chakra-ui/react";
+import { ChevronDown, X } from "lucide-react";
 
 import { useIsMobile } from "../../layouts/shell";
 import { FilterChips } from "../../components/chrome/FilterChips";
@@ -10,7 +10,7 @@ import { SUPPLIER_LIST_PENDING } from "./listPending";
 import { FIGURE_RANGES, type FigureRangeKind, rangeLabel } from "./figureRanges";
 
 export const description =
-  "A supplier figure's range filter — Terjual or Siap — as a trigger of its own opening a narrow panel of range pills, Semua first. The trigger reads the picked band in the main tone, its ⚠ mark beside it; a pick closes the panel. On a phone, inside the Filter sheet, it is a label over its pills instead. Nothing narrows a list by it yet (`dropped`).";
+  "A supplier figure's range filter — Terjual or Siap — as a trigger of its own opening a narrow panel of range pills, Semua first. The trigger reads the picked band in the main tone, with an × attached to it that clears the band without opening the panel, its ⚠ mark beside it; a pick closes the panel. On a phone, inside the Filter sheet, it is a label over its pills instead. Nothing narrows a list by it yet (`dropped`).";
 
 /** The band picked per figure — "" for all. */
 export type FigureRangePicks = Record<FigureRangeKind, string>;
@@ -55,6 +55,13 @@ export function SupplierRangeFilters({
 // The trigger names its figure and, once a band is picked, the band — pale rose, as a chosen pill is
 // (a-chosen-option-is-in-the-main-tone). A pick closes the panel: one choice, as a select's. Nothing narrows the list by
 // it yet, so the trigger carries its `dropped` mark, beside it where it is seen without opening anything.
+//
+// AN × CLEARS IT (owner: *"panel ada closablenya untuk filter, misal marketplace terjual dan siap"*,
+// `every-filter-clears-from-its-own-x`) — once a band is picked, an × attached to the trigger's end sets it back to
+// Semua without opening the panel, as a select's × does. Attached, not inside: a button nested in the trigger is a
+// button inside a button.
+//
+//   [Terjual: 500–1.000 ⌄][×] ⚠3
 //
 // ON A PHONE the FilterBar has already put every control in its bottom sheet, so the figure stands there as a label over
 // its pills — a popover inside a sheet is a panel inside a panel. A JS breakpoint, never CSS.
@@ -108,19 +115,36 @@ export function SupplierRangeFilter({
   return (
     <HStack gap="1" flexShrink="0" data-testid={`supplier-range-${kind}`}>
       <Popover.Root open={open} onOpenChange={(e) => setOpen(e.open)} positioning={{ placement: "bottom-start" }}>
-        <Popover.Trigger asChild>
-          <Button
-            variant={picked ? "subtle" : "outline"}
-            colorPalette={picked ? "brand" : "gray"}
-            borderWidth="1px"
-            borderColor={picked ? "brand.solid" : "border"}
-            fontWeight="normal"
-            data-testid={`supplier-range-${kind}-trigger`}
-          >
-            {picked ? `${label}: ${rangeLabel(picked)}` : label}
-            <Icon as={ChevronDown} boxSize="4" />
-          </Button>
-        </Popover.Trigger>
+        <Group attached>
+          <Popover.Trigger asChild>
+            <Button
+              variant={picked ? "subtle" : "outline"}
+              colorPalette={picked ? "brand" : "gray"}
+              borderWidth="1px"
+              borderColor={picked ? "brand.solid" : "border"}
+              fontWeight="normal"
+              data-testid={`supplier-range-${kind}-trigger`}
+            >
+              {picked ? `${label}: ${rangeLabel(picked)}` : label}
+              <Icon as={ChevronDown} boxSize="4" />
+            </Button>
+          </Popover.Trigger>
+          {picked && (
+            <IconButton
+              variant="subtle"
+              colorPalette="brand"
+              borderWidth="1px"
+              borderColor="brand.solid"
+              aria-label={t("suppliers.rangeClear", { figure: label })}
+              // It fades in when a band is picked (`a-filter-answers-as-it-changes`).
+              animationStyle="appear"
+              onClick={() => onChange("")}
+              data-testid={`supplier-range-${kind}-clear`}
+            >
+              <Icon as={X} boxSize="3.5" />
+            </IconButton>
+          )}
+        </Group>
         <Portal>
           <Popover.Positioner>
             {/* Narrow — the pills wrap to a second line rather than the panel spreading across the page. */}

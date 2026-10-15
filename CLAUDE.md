@@ -851,8 +851,8 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
-| `feedback/` | 3 | what the app says back — `ConfirmDialog`, `RefreshOverlay`, `Toaster` |
-| `chrome/` | 3 | app furniture — `Logo`, `Pagination`, `ColorModeToggle` |
+| `feedback/` | 5 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `RefreshOverlay`, `Toaster` |
+| `chrome/` | 9 | app furniture — `FilterBar`, `FilterChips`, `GrowingPager`, `SortableHeader`, `CompactActions` (a phone header's actions), `CopyText`, `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 
 The **Storybook sidebar mirrors these folders one-for-one**, so "where does this live?" and "where do
@@ -971,8 +971,10 @@ More UI rules:
   [one-context-per-column-and-never-three-lines](docs/technical/frontend/context_decision.md#one-context-per-column-and-never-three-lines).
 - **A phone gets its own arrangement, not the desktop's squeezed** (owner) — three rules, each a JS
   breakpoint (never CSS hiding):
-  - a **sticky header is ONE row** — back, the title, the status, `⋯`. Actions fold into `⋯` (even a
-    single one), and anything else (a deadline, a mark) moves to the first line under it;
+  - a **header is ONE row** — back, the title, the status, the actions. Actions are their **icons**, and
+    past two they all fold into `⋯` ([`CompactActions`](frontend/src/components/chrome/CompactActions.tsx),
+    [a-phone-header-action-is-an-icon](docs/technical/frontend/context_decision.md#a-phone-header-action-is-an-icon));
+    anything else (a deadline, a mark) moves to the first line under it;
   - a **wide table becomes one block per row** — names at full width, the arithmetic as a line
     (`Rp 48.000 × 2 · Toko Melati … Rp 96.000`), never five clamped columns in a scroll box;
   - a **filter strip is the search plus a Filter button** opening a bottom sheet of full-width controls

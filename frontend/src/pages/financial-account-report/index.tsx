@@ -33,6 +33,9 @@ import { ChangeDetailDialog } from "./components/ChangeDetailDialog";
 import { type Mover, MoversDialog } from "./components/MoversDialog";
 import { ReportSummary } from "./components/ReportSummary";
 import { REPORT_PENDING } from "./pending";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const DEFAULT_RANGE: DateRange = { kind: "relative", days: 30 };
@@ -66,6 +69,7 @@ type ReportView = "period" | "breakdown";
 // yesterday lands in yesterday's row.
 export function FinancialAccountReportPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
 
   const [view, setView] = useState<ReportView>("period");
@@ -159,15 +163,16 @@ export function FinancialAccountReportPage() {
   const restart = () => setSeriesPage(1);
 
   return (
-    <Stack gap="section" data-testid="account-report-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="account-report-page">
       <Link asChild fontSize="sm" color="fg.muted">
         <RouterLink to="/financial-accounts">← {t("financialAccounts.title")}</RouterLink>
       </Link>
 
       {/* THE SUBTITLE SITS UNDER THE TITLE — one block (`the-accounts-subtitle-sits-under-the-title`); the page's action
           on the title's row, as on the orders list. */}
-      <Flex gap="3" align="start" justify="space-between" wrap="wrap">
-        <Stack gap="1">
+      <Flex gap="3" align="start" justify="space-between" wrap={isMobile ? "nowrap" : "wrap"}>
+        <Stack gap="1" flex="1" minW="0">
           <HStack gap="2" wrap="wrap">
             <Heading size="md">{t("financialAccounts.report.title")}</Heading>
             <Badge colorPalette="brand">{current.teamName}</Badge>
@@ -178,11 +183,27 @@ export function FinancialAccountReportPage() {
         </Stack>
         {/* EXPORT, NOT BUILT (owner: *"sama action export, kasih warning unimplemented"*) — a grey outline, as the orders
             list's: it takes nothing out of the screen yet, and the ⚠ number points at why. */}
-        <Button variant="outline" colorPalette="gray" data-testid="account-report-export">
-          <Icon as={Download} boxSize="4" />
-          {t("financialAccounts.report.export")}
-          <NotImplemented list={REPORT_PENDING} id="export" />
-        </Button>
+        {isMobile ? (
+          // A phone's header action is its icon (a-phone-header-action-is-an-icon).
+          <CompactActions
+            menuLabel={t("common.actions")}
+            actions={[
+              {
+                id: "export",
+                label: t("financialAccounts.report.export"),
+                icon: Download,
+                mark: <NotImplemented list={REPORT_PENDING} id="export" />,
+                testId: "account-report-export",
+              },
+            ]}
+          />
+        ) : (
+          <Button variant="outline" colorPalette="gray" data-testid="account-report-export">
+            <Icon as={Download} boxSize="4" />
+            {t("financialAccounts.report.export")}
+            <NotImplemented list={REPORT_PENDING} id="export" />
+          </Button>
+        )}
       </Flex>
 
       <NotImplementedSummary list={REPORT_PENDING} />
@@ -206,6 +227,8 @@ export function FinancialAccountReportPage() {
             <Tabs.Trigger value="breakdown" data-testid="account-report-view-breakdown">
               {t("financialAccounts.report.views.breakdown")}
             </Tabs.Trigger>
+            {/* The underline slides to the picked view, which fades in where the other was (motion-is-small-quick-and-shared). */}
+            <Tabs.Indicator />
           </Tabs.List>
 
           {/* THE SHARED FILTER STRIP — Clear while anything is narrowed, a bottom sheet on a phone (a-phone-filters-from-a-sheet). */}
@@ -307,20 +330,25 @@ export function FinancialAccountReportPage() {
           />
 
           {/* ONE TABLE OF PERIODS — the quiet ones included, newest first, every type a column, Saldo akhir held on the right. */}
-          <Tabs.Content value="period" p="0">
+          <Tabs.Content value="period" p="0" animationStyle="swap">
             <Stack gap="field">
-              <RefreshOverlay busy={series.isFetching && !series.isPending}>
-                <SeriesTable
-                  grain={grain}
-                  points={series.data?.points ?? []}
-                  sort={seriesSort}
-                  onSortChange={(next) => {
-                    setSeriesSort(next);
-                    restart();
-                  }}
-                  stickyEdges
-                />
-              </RefreshOverlay>
+              {/* The table's shape on the first load, never the empty hint before anything was asked (motion-is-small-quick-and-shared). */}
+              {series.isPending && valid ? (
+                <ListSkeleton testId="account-report-series-loading" />
+              ) : (
+                <RefreshOverlay busy={series.isFetching && !series.isPending}>
+                  <SeriesTable
+                    grain={grain}
+                    points={series.data?.points ?? []}
+                    sort={seriesSort}
+                    onSortChange={(next) => {
+                      setSeriesSort(next);
+                      restart();
+                    }}
+                    stickyEdges
+                  />
+                </RefreshOverlay>
+              )}
               {/* THE PAGES GROW AS THEY ARE OPENED, as on the accounts list (`the-accounts-pager-grows-with-the-pages-opened`).
             The contract has a total, so "is there a next" is exact; while the next page loads it is not known yet. */}
               <GrowingPager
@@ -340,15 +368,19 @@ export function FinancialAccountReportPage() {
           </Tabs.Content>
 
           {/* RINCIAN — the old ranking, its three groupings stacked on one page, no switch between them. */}
-          <Tabs.Content value="breakdown" p="0">
-            <RefreshOverlay busy={[summary, byAccount, byProvider].some((q) => q.isFetching && !q.isPending)}>
-              <Breakdown
-                byAccount={movers?.account}
-                byProvider={movers?.provider}
-                metric={summary.data}
-                accountPicked={accountId > 0n}
-              />
-            </RefreshOverlay>
+          <Tabs.Content value="breakdown" p="0" animationStyle="swap">
+            {summary.isPending && valid ? (
+              <ListSkeleton testId="account-report-breakdown-loading" />
+            ) : (
+              <RefreshOverlay busy={[summary, byAccount, byProvider].some((q) => q.isFetching && !q.isPending)}>
+                <Breakdown
+                  byAccount={movers?.account}
+                  byProvider={movers?.provider}
+                  metric={summary.data}
+                  accountPicked={accountId > 0n}
+                />
+              </RefreshOverlay>
+            )}
           </Tabs.Content>
         </Stack>
       </Tabs.Root>

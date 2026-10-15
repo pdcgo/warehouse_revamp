@@ -22,6 +22,7 @@ import type { PeriodGrain } from "../../lib/period";
 import { GroupTable } from "./components/GroupTable";
 import { ReportSummary } from "./components/ReportSummary";
 import { SeriesTable } from "./components/SeriesTable";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 const PAGE_SIZE = 20;
 
@@ -48,6 +49,7 @@ export function SettlementReportPage() {
   const [grain, setGrain] = useState<PeriodGrain>("day");
   const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
   const [groupBy, setGroupBy] = useState<SettlementGroupBy>("shop");
+  const [shownGroupBy, setShownGroupBy] = useState<SettlementGroupBy>("shop");
   const [seriesPage, setSeriesPage] = useState(1);
   const [groupPage, setGroupPage] = useState(1);
 
@@ -121,8 +123,14 @@ export function SettlementReportPage() {
 
   const error = [summary, series, groups].find((query) => query.isError)?.error;
 
+  // The grouping the rows ON SCREEN are in — what the table's fade is keyed on.
+  if (!groups.isPending && !groups.isPlaceholderData && shownGroupBy !== groupBy) {
+    setShownGroupBy(groupBy);
+  }
+
   return (
-    <Stack gap="section" data-testid="settlement-report-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="settlement-report-page">
       <Flex align="center" gap="card" wrap="wrap">
         <Heading size="md">{t("settlementReport.title")}</Heading>
         <Badge colorPalette="brand">{current.teamName}</Badge>
@@ -154,9 +162,14 @@ export function SettlementReportPage() {
       <Stack gap="field">
         <Heading size="sm">{t("settlementReport.overTime")}</Heading>
 
-        <RefreshOverlay busy={series.isFetching && !series.isPending}>
-          <SeriesTable grain={grain} points={series.data?.points ?? []} />
-        </RefreshOverlay>
+        {/* The table's shape on the first load, never the empty hint before anything was asked (motion-is-small-quick-and-shared). */}
+        {series.isPending && valid ? (
+          <ListSkeleton testId="report-series-loading" />
+        ) : (
+          <RefreshOverlay busy={series.isFetching && !series.isPending}>
+            <SeriesTable grain={grain} points={series.data?.points ?? []} />
+          </RefreshOverlay>
+        )}
 
         <Box>
           <Pagination
@@ -190,9 +203,17 @@ export function SettlementReportPage() {
           </Group>
         </Flex>
 
-        <RefreshOverlay busy={groups.isFetching && !groups.isPending}>
-          <GroupTable groupBy={groupBy} rows={groups.data?.rows ?? []} nameOf={nameOf} />
-        </RefreshOverlay>
+        {/* Per Toko ⇄ Per Pengguna swaps the table in place: it fades in when the regrouped rows LAND — keyed on the
+            grouping on screen, not the click, since the old rows stay up while the new ones load (HARD RULE 10). */}
+        {groups.isPending && valid ? (
+          <ListSkeleton testId="report-groups-loading" />
+        ) : (
+          <RefreshOverlay busy={groups.isFetching && !groups.isPending}>
+            <Box key={shownGroupBy} animationStyle="swap">
+              <GroupTable groupBy={groupBy} rows={groups.data?.rows ?? []} nameOf={nameOf} />
+            </Box>
+          </RefreshOverlay>
+        )}
 
         <Box>
           <Pagination

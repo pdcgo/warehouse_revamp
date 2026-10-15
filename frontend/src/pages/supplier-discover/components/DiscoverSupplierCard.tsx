@@ -7,6 +7,7 @@ import { ChannelTypes } from "../../../features/suppliers/ChannelTypes";
 import { LIST_FIGURE_MARKS, SupplierFigureIcons } from "../../../features/suppliers/SupplierFigures";
 import { sampleFiguresFor } from "../../../features/suppliers/sampleSupplierFigures";
 import { TeamItem } from "../../../components/entity/TeamItem";
+import { LIFTS } from "../../../lib/motion";
 
 // ONE SUPPLIER AS A CARD — Discover's default view (`discover-is-cards-or-a-table`), drawn after the owner's reference
 // card (*"card 4, sama kasih panah itu di bawah kanan"*, `a-discover-card-reads-who-whose-where`):
@@ -22,7 +23,8 @@ import { TeamItem } from "../../../components/entity/TeamItem";
 //                                                    and the arrow that says the card opens
 //
 // The whole card opens the supplier's Discover detail, so it lights up under a pointer and while pressed
-// (a-table-row-lights-up).
+// (a-table-row-lights-up) — and rises a little, so in a grid the one about to open stands out
+// (`motion-is-small-quick-and-shared`).
 export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverSupplier; onOpen: () => void }) {
   const { t } = useTranslation();
 
@@ -30,9 +32,7 @@ export function DiscoverSupplierCard({ supplier, onOpen }: { supplier: DiscoverS
     <Card.Root
       variant="outline"
       size="sm"
-      cursor="pointer"
-      _hover={{ bg: "bg.muted" }}
-      _active={{ bg: "bg.muted" }}
+      {...LIFTS}
       onClick={onOpen}
       data-testid={`discover-supplier-row-${supplier.id}`}
     >

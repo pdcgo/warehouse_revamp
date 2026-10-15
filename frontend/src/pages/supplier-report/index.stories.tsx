@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
@@ -268,22 +268,20 @@ export const SalesSitBesideRestocked: Story = {
   },
 };
 
-// A PHONE'S HEADER IS ONE ROW (the-report-export-folds-on-a-phone, the-phone-header-is-one-row) — the title and ⋯, the
-// export folded into it with its mark; the subtitle under the row. Wrapped under the subtitle, the button stood alone.
+// A PHONE'S HEADER IS ONE ROW (the-report-export-folds-on-a-phone, the-phone-header-is-one-row) — the title and the
+// export's ICON with its mark, on the title's row; one action, so no ⋯ (a-phone-header-action-is-an-icon). Wrapped under
+// the subtitle, the button stood alone.
 export const APhoneFoldsTheExport: Story = {
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.queryByTestId("supplier-report-export")).toBeNull();
-    const trigger = canvas.getByTestId("supplier-report-menu");
+    await expect(canvas.queryByTestId("supplier-report-menu")).toBeNull();
+    const exportIcon = canvas.getByRole("button", { name: "Export" });
+    await expect(exportIcon).toHaveAttribute("data-testid", "supplier-report-export");
+    await expect(exportIcon).not.toHaveTextContent("Export");
     const title = canvas.getByRole("heading", { name: "Supplier Report" });
-    await expect(Math.abs(trigger.getBoundingClientRect().top - title.getBoundingClientRect().top)).toBeLessThan(12);
-
-    await userEvent.click(trigger);
-    const item = await screen.findByTestId("supplier-report-export");
-    await waitFor(() => expect(item).toBeVisible());
-    await expect(item).toHaveTextContent(/^Export/);
-    await expect(within(item).getByTestId("not-implemented-export")).toHaveTextContent("1");
+    await expect(Math.abs(exportIcon.getBoundingClientRect().top - title.getBoundingClientRect().top)).toBeLessThan(12);
+    await expect(within(exportIcon.parentElement!).getByTestId("not-implemented-export")).toHaveTextContent("1");
   },
 };

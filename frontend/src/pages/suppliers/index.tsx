@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Badge, Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Badge, Box, Button, Flex, HStack, Heading, Icon, Stack, Table, Text } from "@chakra-ui/react";
+import { Factory, Pencil, SearchX, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -16,7 +16,10 @@ import {
 } from "../../features/suppliers/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
+import { PRESSABLE } from "../../lib/motion";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { SortableHeader, type SortState } from "../../components/chrome/SortableHeader";
@@ -180,12 +183,36 @@ export function SuppliersPage() {
 
   const open = (supplier: ManagedSupplier) => navigate(`/inventories/suppliers/${supplier.id}`);
 
+  // Every filter back to its start — the strip's Clear and a no-match hint's, one function.
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setChannelType(Marketplace.UNSPECIFIED);
+      setWarehouseId(0n);
+      setRanges(NO_FIGURE_RANGES);
+    });
+
   function list() {
     if (suppliers.length === 0 && !error) {
-      return (
-        <Text color="fg.muted" data-testid={narrowed ? "suppliers-none-match" : "suppliers-empty"}>
-          {narrowed ? t("suppliers.none") : t("suppliers.empty")}
-        </Text>
+      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint) — nothing matches: clear the filters; nothing yet: add one.
+      return narrowed ? (
+        <EmptyHint
+          icon={SearchX}
+          title={t("suppliers.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="suppliers-none-match"
+        />
+      ) : (
+        <EmptyHint
+          icon={Factory}
+          title={t("suppliers.empty")}
+          description={canManage ? t("suppliers.emptyHint") : undefined}
+          action={canManage ? <SupplierFormDialog /> : undefined}
+          testId="suppliers-empty"
+        />
       );
     }
 
@@ -204,10 +231,9 @@ export function SuppliersPage() {
               borderRadius="md"
               p="3"
               gap="1.5"
-              cursor="pointer"
-              // The block lights up too — under a pointer, and while a thumb presses it.
-              _hover={{ bg: "bg.muted" }}
-              _active={{ bg: "bg.muted" }}
+              // The block lights up too — under a pointer, and while a thumb presses it, giving a little
+              // (`motion-is-small-quick-and-shared`).
+              {...PRESSABLE}
               onClick={() => open(supplier)}
             >
               <Text fontWeight="bold">{supplier.name}</Text>
@@ -300,9 +326,11 @@ export function SuppliersPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="suppliers-page">
-      <Flex align="start" gap="card" wrap="wrap">
-        {/* The title block takes a basis, so New Supplier wraps under it rather than squeezing it. */}
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="suppliers-page">
+      <Flex align="start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
+        {/* The title block takes a basis, so New Supplier wraps under it rather than squeezing it — on a desktop. On a
+            phone New Supplier is its ＋ alone, on the title's row (a-phone-header-action-is-an-icon). */}
         <Stack gap="1" flex="1 1 16rem" minW="0">
           <HStack gap="card" wrap="wrap">
             <Heading size="md">{t("suppliers.title")}</Heading>
@@ -312,7 +340,7 @@ export function SuppliersPage() {
             {t("suppliers.lead")}
           </Text>
         </Stack>
-        {canManage && <SupplierFormDialog />}
+        {canManage && <SupplierFormDialog compact={isMobile} />}
       </Flex>
 
       {/* What is not real yet — only where the list is: a warehouse team has no suppliers to show figures for. */}
@@ -330,14 +358,7 @@ export function SuppliersPage() {
         testId="suppliers-filter"
         active={filtering > 0}
         count={filtering}
-        onClear={() =>
-          refilter(() => {
-            setQ("");
-            setChannelType(Marketplace.UNSPECIFIED);
-            setWarehouseId(0n);
-            setRanges(NO_FIGURE_RANGES);
-          })
-        }
+        onClear={clearFilters}
       >
         <FilterSearch
           value={q}
@@ -351,9 +372,11 @@ export function SuppliersPage() {
             selling team's only; marked, not wired. */}
         {canManage && <SupplierWarehouseFilter value={warehouseId} onChange={setWarehouseId} />}
 
-        {/* "Which of ours sell on Shopee?" — seven types, static, a plain list. Empty = any type. */}
+        {/* "Which of ours sell on Shopee?" — seven types, static, a plain list. Empty = any type; its × clears it
+            (every-filter-clears-from-its-own-x). */}
         <FilterField w="15rem" testId="suppliers-type-filter">
           <MarketplaceSelect
+            clearable
             value={channelType}
             placeholder={t("suppliers.typeAll")}
             onChange={(m) => refilter(() => setChannelType(m))}
@@ -377,10 +400,14 @@ export function SuppliersPage() {
         </Text>
       )}
 
+      {/* THE FIRST LOAD SHOWS THE LIST'S SHAPE, and the rows fade in over it (`motion-is-small-quick-and-shared`). Once —
+          a refresh keeps the rows mounted, so nothing fades again. */}
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <ListSkeleton testId="suppliers-loading" />
       ) : (
-        <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        <Box animationStyle="swap">
+          <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
+        </Box>
       )}
 
       {/* THE PAGES GROW AS THEY ARE OPENED, as on the accounts list and the report. */}

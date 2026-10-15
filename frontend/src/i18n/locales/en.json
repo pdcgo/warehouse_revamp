@@ -100,7 +100,8 @@
     "selectTeamView": "Select a team to view its position.",
     "theyOweYou": "They owe you {{amount}}",
     "youOweThem": "You owe them {{amount}}",
-    "square": "Square"
+    "square": "Square",
+    "emptyHint": "What this team owes other teams, and is owed, shows here once it is recorded."
   },
   "liabilityDetail": {
     "title": "Liability",
@@ -208,7 +209,10 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "goToPage": "Go to page {{page}}",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "loading": "Loading",
+    "clearSearch": "Clear search",
+    "actions": "Actions"
   },
   "dateRange": {
     "all": "All dates",
@@ -861,7 +865,9 @@
       }
     },
     "orderIdColumn": "Order ID",
-    "orderTitleLabel": "Order"
+    "orderTitleLabel": "Order",
+    "noOrdersHint": "Orders appear here once they are created or imported.",
+    "noWarehouseOrdersHint": "Orders the selling teams ship from this warehouse appear here."
   },
   "orderDetail": {
     "nav": {
@@ -1047,7 +1053,8 @@
       },
       "ready": "Ready",
       "onThisPage": "on this page"
-    }
+    },
+    "noDraftsHint": "An order saved before it is finished becomes a draft here."
   },
   "restock": {
     "title": "Restock Requests",
@@ -1877,7 +1884,8 @@
         "table": "Table"
       },
       "noContact": "No contact yet",
-      "typeChipAll": "All"
+      "typeChipAll": "All",
+      "emptyHint": "Suppliers appear here once a selling team adds them."
     },
     "lead": "The suppliers this team keeps — the vendors it buys its stock from.",
     "search": "Search a supplier, address or store",
@@ -1934,7 +1942,9 @@
         "restocks": "{{n}} restocks",
         "last": "last {{date}}"
       }
-    }
+    },
+    "emptyHint": "Add the suppliers this team buys its stock from.",
+    "rangeClear": "Clear {{figure}}"
   },
   "supplierChannel": {
     "deleted": "Store \"{{name}}\" deleted",
@@ -1943,7 +1953,8 @@
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
     "delete": "Delete",
     "section": {
-      "empty": "No supplier stores yet."
+      "empty": "No supplier stores yet.",
+      "emptyHint": "Add the stores this supplier sells through — a marketplace, a website or a shop."
     },
     "table": {
       "channel": "Supplier store",
@@ -2025,7 +2036,8 @@
       "empty": "No products yet.",
       "search": "Search product, SKU or store",
       "storeAll": "Every store",
-      "none": "No products match."
+      "none": "No products match.",
+      "emptyHint": "Products appear here once a restock bought at this supplier's stores is accepted."
     },
     "filter": {
       "search": "Search name, link or description",
@@ -3727,7 +3739,8 @@
       "automatic": "automatic — from where it happened",
       "allTypes": "All types",
       "searchType": "Search a type",
-      "noType": "No type matches."
+      "noType": "No type matches.",
+      "emptyHint": "Movements appear here as money comes into or goes out of this account."
     },
     "allShops": "All shops",
     "operationalOnly": "Operational only",
@@ -3768,7 +3781,8 @@
       "markMessage": "{{name}} can then be picked to pay restocks and expenses.",
       "unmarkTitle": "Unmark {{name}} as Operational",
       "unmarkMessage": "{{name}} will no longer be offered to pay restocks and expenses."
-    }
+    },
+    "emptyHint": "Add this team's bank, e-wallet and cash accounts."
   },
   "pending": {
     "title_one": "{{count}} part of this screen is not implemented yet",
@@ -4311,5 +4325,9 @@
         }
       }
     }
+  },
+  "emptyHint": {
+    "noMatch": "Try another word, or clear the filters.",
+    "otherPeriod": "Try another date range."
   }
 }

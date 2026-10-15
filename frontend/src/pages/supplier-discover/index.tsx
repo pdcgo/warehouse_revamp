@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Box, Heading, SimpleGrid, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Button, Heading, SimpleGrid, Stack, Table, Text } from "@chakra-ui/react";
+import { Factory, SearchX } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -13,6 +14,8 @@ import { useDebounced } from "../../lib/useDebounced";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { MARKETPLACES } from "../../components/pickers/MarketplaceSelect";
 import { marketplaceLabel } from "../../components/badges/MarketplaceBadge";
 import { FilterChips } from "../../components/chrome/FilterChips";
@@ -118,12 +121,36 @@ export function DiscoverSuppliersPage() {
     );
   }
 
+  // Every filter back to its start — the strip's Clear and a no-match hint's, one function.
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setChannelType(Marketplace.UNSPECIFIED);
+      setOwnerTeamId(0n);
+      setWarehouseId(0n);
+      setRanges(NO_FIGURE_RANGES);
+    });
+
   function list() {
     if (suppliers.length === 0 && !error) {
-      return (
-        <Text color="fg.muted" data-testid={narrowed ? "discover-suppliers-none-match" : "discover-suppliers-empty"}>
-          {narrowed ? t("suppliers.discover.none") : t("suppliers.discover.empty")}
-        </Text>
+      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint).
+      return narrowed ? (
+        <EmptyHint
+          icon={SearchX}
+          title={t("suppliers.discover.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="discover-suppliers-none-match"
+        />
+      ) : (
+        <EmptyHint
+          icon={Factory}
+          title={t("suppliers.discover.empty")}
+          description={t("suppliers.discover.emptyHint")}
+          testId="discover-suppliers-empty"
+        />
       );
     }
 
@@ -197,7 +224,8 @@ export function DiscoverSuppliersPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="discover-suppliers-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="discover-suppliers-page">
       <Stack gap="1">
         <Heading size="md">{t("suppliers.discover.title")}</Heading>
         <Text color="fg.muted" fontSize="sm">
@@ -217,15 +245,7 @@ export function DiscoverSuppliersPage() {
           count={
             (q.trim() !== "" ? 1 : 0) + (warehouseId !== 0n ? 1 : 0) + (ownerTeamId !== 0n ? 1 : 0) + rangesOn(ranges)
           }
-          onClear={() =>
-            refilter(() => {
-              setQ("");
-              setChannelType(Marketplace.UNSPECIFIED);
-              setOwnerTeamId(0n);
-              setWarehouseId(0n);
-              setRanges(NO_FIGURE_RANGES);
-            })
-          }
+          onClear={clearFilters}
           // Cards or a table — a desktop's choice; a phone always reads cards, so it gets no switch.
           actions={isMobile ? undefined : <DiscoverViewSwitch value={view} onChange={setView} />}
         >
@@ -248,6 +268,8 @@ export function DiscoverSuppliersPage() {
               value={ownerTeamId}
               teamType={TeamType.SELLING}
               placeholder={t("suppliers.discover.teamAll")}
+              // Every option is a selling team — the pick reads as its name alone (a-one-type-picker-shows-the-name-alone).
+              showType={false}
               onChange={(id) => refilter(() => setOwnerTeamId(id))}
             />
           </FilterField>
@@ -278,7 +300,17 @@ export function DiscoverSuppliersPage() {
         </Text>
       )}
 
-      {query.isPending ? null : <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>}
+      {/* THE FIRST LOAD SHOWS THE LIST'S SHAPE; the rows fade in over it, and cards ⇄ table fade in place — keyed on the
+          view, so the switch replays it and a refresh does not (`motion-is-small-quick-and-shared`). */}
+      {query.isPending ? (
+        <ListSkeleton testId="discover-suppliers-loading" />
+      ) : (
+        <RefreshOverlay busy={query.isFetching && !query.isPending}>
+          <Box key={shownView} animationStyle="swap">
+            {list()}
+          </Box>
+        </RefreshOverlay>
+      )}
 
       {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
       <GrowingPager

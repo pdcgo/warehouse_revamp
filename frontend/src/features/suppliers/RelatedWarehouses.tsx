@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, HStack, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, HStack, Stack, Text } from "@chakra-ui/react";
 
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDate } from "../../lib/datetime";
@@ -109,27 +109,31 @@ export function RelatedWarehouses({
         )}
       </Stack>
 
+      {/* A chip picked swaps the cards' figures in place, and they fade in — keyed on the pick, so a refresh does not
+          (`motion-is-small-quick-and-shared`). */}
       {summary && (
-        <SummaryStrip testId="supplier-warehouse-summary">
-          <SummaryCard
-            label={t("suppliers.relatedWarehouses.summary.sold")}
-            value={t("suppliers.relatedWarehouses.summary.units", { n: units(summary.sold) })}
-            {...countAndLast(
-              t("suppliers.relatedWarehouses.summary.orders", { n: units(summary.orders) }),
-              t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastOrderAt) }),
-            )}
-            testId="supplier-warehouse-summary-sold"
-          />
-          <SummaryCard
-            label={t("suppliers.relatedWarehouses.summary.ready")}
-            value={t("suppliers.relatedWarehouses.summary.units", { n: units(summary.ready) })}
-            {...countAndLast(
-              t("suppliers.relatedWarehouses.summary.restocks", { n: units(summary.restocks) }),
-              t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastRestockAt) }),
-            )}
-            testId="supplier-warehouse-summary-ready"
-          />
-        </SummaryStrip>
+        <Box key={value.toString()} animationStyle="swap">
+          <SummaryStrip testId="supplier-warehouse-summary">
+            <SummaryCard
+              label={t("suppliers.relatedWarehouses.summary.sold")}
+              value={t("suppliers.relatedWarehouses.summary.units", { n: units(summary.sold) })}
+              {...countAndLast(
+                t("suppliers.relatedWarehouses.summary.orders", { n: units(summary.orders) }),
+                t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastOrderAt) }),
+              )}
+              testId="supplier-warehouse-summary-sold"
+            />
+            <SummaryCard
+              label={t("suppliers.relatedWarehouses.summary.ready")}
+              value={t("suppliers.relatedWarehouses.summary.units", { n: units(summary.ready) })}
+              {...countAndLast(
+                t("suppliers.relatedWarehouses.summary.restocks", { n: units(summary.restocks) }),
+                t("suppliers.relatedWarehouses.summary.last", { date: formatUnixDate(summary.lastRestockAt) }),
+              )}
+              testId="supplier-warehouse-summary-ready"
+            />
+          </SummaryStrip>
+        </Box>
       )}
     </Stack>
   );

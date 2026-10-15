@@ -100,7 +100,8 @@
     "selectTeamView": "Pilih tim untuk melihat posisinya.",
     "theyOweYou": "Mereka berhutang {{amount}} kepada Anda",
     "youOweThem": "Anda berhutang {{amount}} kepada mereka",
-    "square": "Lunas"
+    "square": "Lunas",
+    "emptyHint": "Utang dan piutang dengan tim lain muncul di sini setelah tercatat."
   },
   "liabilityDetail": {
     "title": "Kewajiban",
@@ -208,7 +209,10 @@
     "previousPage": "Halaman sebelumnya",
     "nextPage": "Halaman berikutnya",
     "goToPage": "Ke halaman {{page}}",
-    "deleted": "Dihapus"
+    "deleted": "Dihapus",
+    "loading": "Memuat",
+    "clearSearch": "Hapus pencarian",
+    "actions": "Aksi"
   },
   "dateRange": {
     "all": "Semua tanggal",
@@ -858,7 +862,9 @@
       }
     },
     "orderIdColumn": "ID Order",
-    "orderTitleLabel": "Pesanan"
+    "orderTitleLabel": "Pesanan",
+    "noOrdersHint": "Pesanan muncul di sini setelah dibuat atau diimpor.",
+    "noWarehouseOrdersHint": "Pesanan dari tim penjual yang dikirim dari gudang ini muncul di sini."
   },
   "orderDetail": {
     "nav": {
@@ -1044,7 +1050,8 @@
       },
       "ready": "Siap",
       "onThisPage": "di halaman ini"
-    }
+    },
+    "noDraftsHint": "Pesanan yang disimpan sebelum selesai dibuat menjadi draf di sini."
   },
   "restock": {
     "title": "Permintaan Restok",
@@ -1873,7 +1880,8 @@
         "table": "Tabel"
       },
       "noContact": "Belum ada kontak",
-      "typeChipAll": "Semua"
+      "typeChipAll": "Semua",
+      "emptyHint": "Pemasok muncul di sini setelah tim penjual menambahkannya."
     },
     "lead": "Pemasok yang dikelola tim ini — vendor tempat tim membeli stoknya.",
     "search": "Cari pemasok, alamat, atau toko",
@@ -1930,7 +1938,9 @@
         "restocks": "{{n}} restok",
         "last": "terakhir {{date}}"
       }
-    }
+    },
+    "emptyHint": "Tambahkan pemasok tempat tim ini membeli stok.",
+    "rangeClear": "Hapus {{figure}}"
   },
   "supplierChannel": {
     "deleted": "Toko \"{{name}}\" dihapus",
@@ -1939,7 +1949,8 @@
     "deleteConfirm": "Hapus \"{{name}}\"? Tindakan ini tidak dapat dibatalkan.",
     "delete": "Hapus",
     "section": {
-      "empty": "Belum ada toko pemasok."
+      "empty": "Belum ada toko pemasok.",
+      "emptyHint": "Tambahkan toko tempat pemasok ini berjualan — marketplace, situs, atau toko fisik."
     },
     "table": {
       "channel": "Toko pemasok",
@@ -2021,7 +2032,8 @@
       "empty": "Belum ada produk.",
       "search": "Cari produk, SKU, atau toko",
       "storeAll": "Semua toko",
-      "none": "Tidak ada produk yang cocok."
+      "none": "Tidak ada produk yang cocok.",
+      "emptyHint": "Produk muncul di sini setelah restok yang dibeli di toko pemasok ini diterima."
     },
     "filter": {
       "search": "Cari nama, tautan, atau deskripsi",
@@ -3717,7 +3729,8 @@
       "automatic": "otomatis — dari tempat kejadiannya",
       "allTypes": "Semua jenis",
       "searchType": "Cari jenis",
-      "noType": "Tidak ada jenis yang cocok."
+      "noType": "Tidak ada jenis yang cocok.",
+      "emptyHint": "Mutasi muncul di sini saat uang masuk atau keluar dari akun ini."
     },
     "allShops": "Semua toko",
     "operationalOnly": "Hanya operasional",
@@ -3758,7 +3771,8 @@
       "markMessage": "{{name}} akan bisa dipilih untuk membayar restock dan biaya.",
       "unmarkTitle": "Hapus Tanda Operasional {{name}}",
       "unmarkMessage": "{{name}} tidak lagi bisa dipilih untuk membayar restock dan biaya."
-    }
+    },
+    "emptyHint": "Tambahkan rekening bank, e-wallet, dan kas tim ini."
   },
   "pending": {
     "title_one": "{{count}} bagian layar ini belum diimplementasi",
@@ -4301,5 +4315,9 @@
         }
       }
     }
+  },
+  "emptyHint": {
+    "noMatch": "Coba kata lain, atau hapus filternya.",
+    "otherPeriod": "Coba rentang tanggal lain."
   }
 }

@@ -13,12 +13,11 @@ import {
   Menu,
   Portal,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Eye, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Eye, FilePen, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { Pagination } from "../../components/chrome/Pagination";
@@ -46,6 +45,10 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDER_DRAFTS_PENDING } from "./pending";
 import { DraftSummary } from "./components/DraftSummary";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -65,6 +68,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // load-bearing, not a convenience.
 export function OrderDraftsPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -210,7 +214,8 @@ export function OrderDraftsPage() {
   }
 
   return (
-    <Stack gap="section">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter">
       {!warehouse && <NotImplementedSummary list={ORDER_DRAFTS_PENDING} />}
 
       {/* The ORDERS heading, not this screen's own (owner). Drafts is a tab of that screen, and a tab
@@ -222,6 +227,24 @@ export function OrderDraftsPage() {
         </Badge>
         <Spacer />
 
+        {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
+            buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            actions={[
+              selected.size > 0 && {
+                id: "delete",
+                label: t("orderDrafts.deleteSelected", { count: selected.size }),
+                icon: Trash2,
+                danger: true,
+                testId: "delete-selected-drafts",
+                onClick: () => setConfirmOpen(true),
+              },
+              !warehouse && { id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") },
+            ]}
+          />
+        ) : (
         <Flex gap="2" align="center" wrap="wrap">
           {selected.size > 0 && (
             <Button
@@ -249,6 +272,7 @@ export function OrderDraftsPage() {
             </Button>
           )}
         </Flex>
+        )}
       </Flex>
 
       {/* THE SAME STRIP AS THE ORDER LIST, with Drafts active. */}
@@ -279,9 +303,11 @@ export function OrderDraftsPage() {
         </Text>
       )}
 
+      {/* The first load shows the table's shape and its rows fade in, once (motion-is-small-quick-and-shared). */}
       {loading ? (
-        <Spinner colorPalette="brand" />
+        <ListSkeleton testId="order-drafts-loading" />
       ) : (
+        <Box animationStyle="swap">
         <RefreshOverlay busy={query.isFetching && !query.isPending}>
           {/* A table scrolls inside its own box on a phone; the page never scrolls sideways. */}
           <Box overflowX="auto" w="full" maxW="full" minW="0">
@@ -434,12 +460,16 @@ export function OrderDraftsPage() {
             </Table.Root>
           </Box>
         </RefreshOverlay>
+        </Box>
       )}
 
       {!loading && drafts.length === 0 && !error && (
-        <Text color="fg.muted" data-testid="order-drafts-empty">
-          {t("orderDrafts.noDrafts")}
-        </Text>
+        <EmptyHint
+          icon={FilePen}
+          title={t("orderDrafts.noDrafts")}
+          description={t("orderDrafts.noDraftsHint")}
+          testId="order-drafts-empty"
+        />
       )}
 
       {!loading && (

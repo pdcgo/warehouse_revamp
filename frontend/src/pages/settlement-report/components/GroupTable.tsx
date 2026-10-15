@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Box, Table, Text } from "@chakra-ui/react";
+import { ChartColumn } from "lucide-react";
 
 import type { SettlementGroupBy, SettlementGroupRow } from "../../../features/settlement/analytics";
 import { MeasureCells, MeasureHeaders } from "./SeriesTable";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
 // Shops or people, RANKED by the hidden cost they carry at the window's end — the largest first.
 //
@@ -22,9 +24,12 @@ export function GroupTable({
 
   if (rows.length === 0) {
     return (
-      <Text fontSize="sm" color="fg.muted" data-testid="report-groups-empty">
-        {t("settlementReport.empty")}
-      </Text>
+      <EmptyHint
+        icon={ChartColumn}
+        title={t("settlementReport.empty")}
+        description={t("emptyHint.otherPeriod")}
+        testId="report-groups-empty"
+      />
     );
   }
 

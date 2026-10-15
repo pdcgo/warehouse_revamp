@@ -8,6 +8,7 @@ import {
   Dialog,
   Field,
   Icon,
+  IconButton,
   Input,
   Portal,
   Stack,
@@ -34,10 +35,15 @@ import { useSaveSupplier } from "./queries";
 export function SupplierFormDialog({
   supplier,
   open: openProp,
+  compact = false,
   onOpenChange,
 }: {
   supplier?: SupplierRecord;
   open?: boolean;
+  /**
+   * A phone's header: the create trigger is the ＋ icon alone, named by its label (a-phone-header-action-is-an-icon).
+   */
+  compact?: boolean;
   /**
    * The dialog's open state changed — including the close that follows a successful save.
    *
@@ -125,10 +131,23 @@ export function SupplierFormDialog({
       {!isControlled && (
         <Dialog.Trigger asChild>
           {/* "Tambah Pemasok", with its ＋ (owner, `a-supplier-action-is-labelled`) — the accounts list's add button. */}
-          <Button size="xs" colorPalette="brand" data-testid="open-create-supplier">
-            <Icon as={Plus} boxSize="4" />
-            {t("suppliers.form.newSupplier")}
-          </Button>
+          {compact ? (
+            <IconButton
+              size="sm"
+              colorPalette="brand"
+              aria-label={t("suppliers.form.newSupplier")}
+              title={t("suppliers.form.newSupplier")}
+              flexShrink={0}
+              data-testid="open-create-supplier"
+            >
+              <Icon as={Plus} boxSize="4" />
+            </IconButton>
+          ) : (
+            <Button size="xs" colorPalette="brand" data-testid="open-create-supplier">
+              <Icon as={Plus} boxSize="4" />
+              {t("suppliers.form.newSupplier")}
+            </Button>
+          )}
         </Dialog.Trigger>
       )}
 

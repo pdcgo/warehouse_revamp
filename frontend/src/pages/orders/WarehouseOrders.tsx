@@ -7,14 +7,13 @@ import {
   Button,
   Flex,
   Heading,
-  Input,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Tabs,
   Text,
 } from "@chakra-ui/react";
+import { Plus, SearchX, ShoppingCart } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
@@ -39,6 +38,11 @@ import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { useDebounced } from "../../lib/useDebounced";
 import { formatRupiah } from "../../lib/money";
 import { OrderStatRow } from "./components/OrderStatRow";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { FilterSearch } from "../../components/chrome/FilterBar";
+import { useIsMobile } from "../../layouts/shell";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -53,6 +57,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 //   counts by the tab you are standing in would blank the number you use to pick the next tab.
 export function WarehouseOrdersPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { current } = useTeam();
   const navigate = useNavigate();
 
@@ -166,21 +171,30 @@ export function WarehouseOrdersPage() {
   }
 
   return (
-    <Stack gap="section">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter">
       <Flex align="center" gap="card">
         <Heading size="md">{t("orders.title")}</Heading>
         <Badge colorPalette="brand">
           {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
         </Badge>
         <Spacer />
-        <Button
-          size="xs"
-          colorPalette="brand"
-          data-testid="open-create-order"
-          onClick={() => navigate("/orders/new")}
-        >
-          {t("orders.newOrder")}
-        </Button>
+        {/* A phone's header action is its icon (a-phone-header-action-is-an-icon). */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            actions={[{ id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") }]}
+          />
+        ) : (
+          <Button
+            size="xs"
+            colorPalette="brand"
+            data-testid="open-create-order"
+            onClick={() => navigate("/orders/new")}
+          >
+            {t("orders.newOrder")}
+          </Button>
+        )}
       </Flex>
 
       <OrderStatRow stat={stat} />
@@ -190,12 +204,12 @@ export function WarehouseOrdersPage() {
           out of what is left. A filter placed inside the tab panel would read as belonging to that
           tab alone. */}
       <Flex gap="card" wrap="wrap" align="center">
-        <Input
-          maxW="sm"
-          placeholder={t("orders.searchPlaceholder")}
+        {/* The shared search — its icon, and an × once typed in (every-filter-clears-from-its-own-x). */}
+        <FilterSearch
           value={search}
-          data-testid="orders-search"
-          onChange={(e) => refilter(() => setSearch(e.target.value))}
+          onChange={(value) => refilter(() => setSearch(value))}
+          placeholder={t("orders.searchPlaceholder")}
+          testId="orders-search"
         />
 
         {canFilterByShop && (
@@ -267,9 +281,11 @@ export function WarehouseOrdersPage() {
               </Text>
             )}
 
+            {/* The first load shows the table's shape and its rows fade in, once (a-filter-answers-as-it-changes). */}
             {loading ? (
-              <Spinner colorPalette="brand" />
+              <ListSkeleton testId="orders-loading" />
             ) : (
+              <Box animationStyle="swap">
               <RefreshOverlay busy={query.isFetching && !query.isPending}>
                 <Table.Root size="sm" data-testid="orders-table">
                   <Table.Header>
@@ -332,22 +348,33 @@ export function WarehouseOrdersPage() {
                   </Table.Body>
                 </Table.Root>
               </RefreshOverlay>
+              </Box>
             )}
 
+            {/* Which emptiness this is, and the three cases are genuinely different. "No orders yet" is a statement
+                about the TEAM; the other two are statements about what you asked for. Saying the first while a filter
+                is narrowing the list would tell somebody their orders are gone when they are one Clear away. Filters
+                are named first because they outrank the tab: they narrow the whole screen, the tab counts included.
+                Each says what next (an-empty-list-shows-a-hint). */}
             {!loading && orders.length === 0 && !error && (
-              <Text color="fg.muted" data-testid="orders-empty">
-                {/* Which emptiness this is, and the three cases are genuinely different. "No orders
-                    yet" is a statement about the TEAM; the other two are statements about what you
-                    asked for. Saying the first while a filter is narrowing the list would tell
-                    somebody their orders are gone when they are one Clear away. Filters are named
-                    first because they outrank the tab: they narrow the whole screen, the tab counts
-                    included. */}
-                {filtered
-                  ? t("orders.noOrdersMatching")
-                  : activeTab.value === "all"
-                    ? t("orders.noOrders")
-                    : t("orders.noOrdersInStatus", { status: t(activeTab.labelKey) })}
-              </Text>
+              <EmptyHint
+                icon={filtered ? SearchX : ShoppingCart}
+                title={
+                  filtered
+                    ? t("orders.noOrdersMatching")
+                    : activeTab.value === "all"
+                      ? t("orders.noOrders")
+                      : t("orders.noOrdersInStatus", { status: t(activeTab.labelKey) })
+                }
+                description={
+                  filtered
+                    ? t("emptyHint.noMatch")
+                    : activeTab.value === "all"
+                      ? t("orders.noWarehouseOrdersHint")
+                      : undefined
+                }
+                testId="orders-empty"
+              />
             )}
 
             {!loading && (

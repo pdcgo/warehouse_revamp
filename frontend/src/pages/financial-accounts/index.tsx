@@ -6,15 +6,14 @@ import {
   Box,
   Button,
   Flex,
-  HStack,
   Heading,
+  HStack,
   Icon,
-  Spinner,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Archive, ArrowLeft, ChartColumn, Plus, TriangleAlert } from "lucide-react";
+import { Archive, ArrowLeft, ChartColumn, Landmark, Plus, SearchX, TriangleAlert } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
@@ -43,6 +42,9 @@ import { AccountOptionsFilter } from "./components/AccountOptionsFilter";
 import { type AccountSortKey, AccountSortSelect } from "./components/AccountSortSelect";
 import { AccountTypeTabs } from "./components/AccountTypeTabs";
 import { TypeTotals } from "./components/TypeTotals";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { CompactActions } from "../../components/chrome/CompactActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 /** How many accounts the archive view asks for, to keep the archived among them — see `pending.ts`. */
@@ -155,14 +157,15 @@ export function FinancialAccountsPage() {
   };
 
   return (
-    <Stack gap="section" data-testid="financial-accounts-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="financial-accounts-page">
       {/* THE SUBTITLE SITS UNDER THE TITLE (owner, `the-accounts-subtitle-sits-under-the-title`) — one block,
           the actions beside it, instead of a section's gap between a title and the line that explains it.
 
           ⚠ A BASIS, NOT `flex="1"`. With a zero basis the title block never asked for room, so on a phone it shrank to
           40px — the subtitle one word a line, 399px tall — while the actions stayed on its row, Laporan over the title.
           At 16rem it wraps the actions onto a row of their own under it, and on a desktop still takes the free space. */}
-      <Flex align="flex-start" gap="card" wrap="wrap">
+      <Flex align="flex-start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
         <Stack gap="1" flex="1 1 16rem" minW="0">
           <HStack gap="2" wrap="wrap">
             <Heading size="md" data-testid="financial-accounts-heading">
@@ -175,6 +178,23 @@ export function FinancialAccountsPage() {
             {t(archivedView ? "financialAccounts.archivedView.subtitle" : "financialAccounts.subtitle")}
           </Text>
         </Stack>
+        {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
+            buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
+        {isMobile ? (
+          <CompactActions
+            menuLabel={t("common.actions")}
+            menuTestId="financial-accounts-actions"
+            actions={
+              archivedView
+                ? [{ id: "back", label: t("financialAccounts.archivedView.back"), icon: ArrowLeft, testId: "back-to-active-accounts", onClick: () => showArchived(false) }]
+                : [
+                    { id: "report", label: t("financialAccounts.openReport"), icon: ChartColumn, testId: "open-account-report", onClick: () => navigate("/financial-accounts/report") },
+                    { id: "archive", label: t("financialAccounts.archivedView.open"), icon: Archive, testId: "open-archived-accounts", onClick: () => showArchived(true) },
+                    canMove && { id: "create", label: t("financialAccounts.newAccount"), icon: Plus, primary: true, testId: "open-create-account", onClick: () => setCreating(true) },
+                  ]
+            }
+          />
+        ) : (
         <HStack gap="2" wrap="wrap">
           {archivedView ? (
             <Button size="xs" variant="outline" data-testid="back-to-active-accounts" onClick={() => showArchived(false)}>
@@ -203,6 +223,7 @@ export function FinancialAccountsPage() {
             </>
           )}
         </HStack>
+        )}
       </Flex>
 
       {/* What the account screens cannot do yet — the archive list, and provider Lainnya in New Account. */}
@@ -276,9 +297,11 @@ export function FinancialAccountsPage() {
         </Text>
       )}
 
+      {/* The first load shows the list's shape; the rows fade in over it, once (motion-is-small-quick-and-shared). */}
       {list.isPending ? (
-        <Spinner colorPalette="brand" />
+        <ListSkeleton testId="financial-accounts-loading" />
       ) : (
+        <Box animationStyle="swap">
         <RefreshOverlay busy={list.isFetching && !list.isPending}>
           {/* A PHONE READS EACH ACCOUNT AS A BLOCK (`a-phone-reads-each-line-as-a-block`) — the table was 929px in a
               318px screen, the balance and the actions off to the right, its headings over nothing. The sort is the
@@ -434,12 +457,17 @@ export function FinancialAccountsPage() {
             </Table.ScrollArea>
           )}
         </RefreshOverlay>
+        </Box>
       )}
 
       {!list.isPending && accounts.length === 0 && !error && (
-        <Box data-testid="financial-accounts-empty">
-          <Text color="fg.muted">{q ? t("financialAccounts.emptySearch") : t("financialAccounts.empty")}</Text>
-        </Box>
+        // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint).
+        <EmptyHint
+          icon={q ? SearchX : Landmark}
+          title={q ? t("financialAccounts.emptySearch") : t("financialAccounts.empty")}
+          description={q ? t("emptyHint.noMatch") : t("financialAccounts.emptyHint")}
+          testId="financial-accounts-empty"
+        />
       )}
 
       {/* THE PAGES GROW AS THEY ARE OPENED (owner, `the-accounts-pager-grows-with-the-pages-opened`) — every page

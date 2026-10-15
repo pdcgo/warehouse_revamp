@@ -82,13 +82,15 @@ export const Mobile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    // The subtitle reads as a sentence, and the actions sit under the title rather than over it.
+    // The subtitle reads as a sentence, and the three actions are one ⋯ on the title's row — not labelled buttons on a
+    // row of their own (a-phone-header-action-is-an-icon).
     const heading = canvas.getByTestId("financial-accounts-heading").getBoundingClientRect();
     const subtitle = canvas.getByTestId("financial-accounts-subtitle").getBoundingClientRect();
-    const report = canvas.getByTestId("open-account-report").getBoundingClientRect();
+    const actions = canvas.getByTestId("financial-accounts-actions").getBoundingClientRect();
     await expect(subtitle.width).toBeGreaterThan(250);
-    await expect(report.top).toBeGreaterThanOrEqual(subtitle.bottom - 1);
-    await expect(report.top).toBeGreaterThan(heading.bottom);
+    await expect(canvas.queryByRole("button", { name: "Report" })).toBeNull();
+    await expect(actions.top).toBeLessThan(heading.bottom);
+    await expect(actions.right).toBeLessThanOrEqual(window.innerWidth);
 
     await expect(canvas.getByTestId("account-search")).toBeVisible();
     await expect(canvas.getByTestId("account-filters-open")).toBeVisible();

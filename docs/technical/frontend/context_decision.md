@@ -60,6 +60,12 @@ when it applies one of these.
 | [the-accounts-hold-what-moves-them](#the-accounts-hold-what-moves-them) | **Akun Keuangan ▸ Daftar Akun · Laporan Akun · Biaya · Kewajiban** — the accounts and the two flows that move them, one group; a shut group carries its children's count | the sidebar |
 | [the-sidebar-stays-short](#the-sidebar-stays-short) | the sidebar must not grow long — related screens become one sub-menu, a child names only its screen, a section holds a few entries | the sidebar, every new screen |
 | [the-more-sheet-is-a-menu-and-a-profile](#the-more-sheet-is-a-menu-and-a-profile) | the phone's menu sheet is two views switched at its foot — the **menu** with a search, and the **profile** with Edit Profil, Tema, Bahasa and Keluar; Profil is no longer a menu line | the phone shell |
+| [an-empty-list-shows-a-hint](#an-empty-list-shows-a-hint) | an empty table or list shows `EmptyHint` — an icon, the title, a line on why or what next, and the action that fills it or clears the filter — not a bare grey line | every list |
+| [every-filter-clears-from-its-own-x](#every-filter-clears-from-its-own-x) | a filter with a value carries an × that clears it — a select's at its end, a panel trigger's attached to it, the search's inside it beside its search icon — besides the strip's Hapus Filter | the supplier screens first; the search on every list |
+| [a-phone-header-action-is-an-icon](#a-phone-header-action-is-an-icon) | on a phone a header's actions are their icons; past two they all fold into ⋯ — it REPLACES "every action into ⋯, even one" of [the-phone-header-is-one-row](#the-phone-header-is-one-row) | every phone header |
+| [a-one-type-picker-shows-the-name-alone](#a-one-type-picker-shows-the-name-alone) | a team filter that offers ONE type (warehouses, selling teams) shows its pick as the name alone — no type badge | the supplier screens, the seller's orders |
+| [a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes) | an × and Hapus Filter fade in as they appear, the phone's Filter count pops when it changes, a chip's pick turns in 120ms — the results never fade | every `FilterBar` |
+| [motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared) | motion is pure CSS from the theme: a page rises and fades in, a swap fades in place, a first load is a skeleton, one tab underline slides, a hover answers in 120ms — and a refresh moves nothing | the supplier screens first |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -1297,6 +1303,166 @@ the menu (it opens here)                the profile
 | the workspace | not in the sheet — the bottom bar's bubble is where a phone switches team |
 | supersedes | [the-more-sheet-starts-with-the-account](#the-more-sheet-starts-with-the-account) (the account as the header) and the footer of switches under the menu; the switches themselves ([the-more-sheet-switches-theme-and-language](#the-more-sheet-switches-theme-and-language)) stand, in the profile view |
 | a desktop | unchanged — the user card's menu |
+
+## an-empty-list-shows-a-hint
+
+> Owner, in chat (2026-10-15): *"aku ingin table atau list yang kosong ada empty hint atau semacam itu, karena yang
+> sekarang terlalu polos, terapkan ke yang sudah kuubah saja, kalau bisa semua tanpa effort ya boleh semua, kalau tidak
+> ke yang sudah saja"*.
+
+```
+nothing yet                                    nothing matches
+┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐            ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+         ( 🏪 )                                         ( 🔍✕ )
+   Belum ada toko pemasok.                         Tidak ada pemasok yang cocok.
+   Tambahkan toko tempat pemasok ini …              Coba kata lain, atau hapus filternya.
+        [+ Tambah Toko]                                  [Hapus Filter]
+└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘            └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+```
+
+| | |
+| --- | --- |
+| the component | `EmptyHint` (`components/feedback/`, Chakra's EmptyState) in a dashed box where the rows would be: an icon, a title, a line, an optional action. `sm` inside a card or a tab |
+| nothing yet | the subject's icon; the line says why it is empty or how it fills; the action that fills it where the page has one (*Tambah Pemasok*, *Tambah Toko*) |
+| nothing matches | a search-off icon; *Coba kata lain, atau hapus filternya.*; **Hapus Filter** where the list owns its filters — the strip's Clear and the hint's are one function |
+| an empty window | a figure's table over a period says *Coba rentang tanggal lain.* |
+| the title | keeps the sentence the screen said before, and the test id stays on it — a test reading the old line still reads it |
+| applied to | the screens the owner has reworked: the supplier list, Discover, the supplier page's Toko · Produk · Statistik, the Supplier Report; the accounts list, an account's statement, the account report's Periode and Rincian; Kewajiban's list and ledger; the seller's and the warehouse's orders; the drafts; the settlement report |
+| not yet | about forty other lists still say a bare grey line — **each takes the hint the day its screen is next reworked**; doing them all now was not effortless (each needs its own icon and line, in two languages) |
+
+## every-filter-clears-from-its-own-x
+
+> Owner, in chat (2026-10-15): *"panel ada closablenya untuk filter, misal marketplace terjual dan siap"* — then
+> *"search juga ada icon searchnya, ada clearablenya"*.
+
+```
+[⌕ sumber  ×] [Gudang Pusat  × ⌄] [Shopee  × ⌄] [Terjual: 500–1.000 ⌄][×] [Siap ⌄]   Hapus filter
+                          └ one filter back to "all" ┘                            └ every filter ┘
+```
+
+| | |
+| --- | --- |
+| what | a filter holding a value carries an **×** that sets it back to "all" — one filter, without opening it |
+| a select | the × at its end, before the chevron — Zag hides it while nothing is picked. A search select already had one; `MarketplaceSelect` takes `clearable`, which emits `UNSPECIFIED` (never nothing, #131) |
+| a panel trigger | an × **attached** to the trigger's end (`SupplierRangeFilter`) — a sibling, never a button inside the trigger |
+| the search | a search icon at its start, always; an × at its end once something is typed, which empties it and keeps the focus in the box. `FilterSearch` is shared, so **every list's search** has it now |
+| Hapus Filter | stays — it clears every filter at once ([clear-filters-is-red-and-bold](#clear-filters-is-red-and-bold)) |
+| a phone | the Filter sheet's pills already have *Semua*; the selects keep their × |
+| applied to | the supplier list, Discover, the supplier page's Toko and Produk tabs; the seller's orders' marketplace filter. The search on Kewajiban's list and the warehouse's orders was a bare input — it is the shared `FilterSearch` now. A form's required select leaves `clearable` off |
+| not yet | the other screens' filters (the order lists, the pick queue) take it when next reworked |
+
+## a-phone-header-action-is-an-icon
+
+> Owner, in chat (2026-10-15): *"di mobile, action di atas itu sangat memakan tempat, yang kusarankan adalah munculkan icon
+> saja sesuai actionnya dan jika lebih dari dua di situ pakai elipsis"*.
+
+```
+before (a phone)                          now
+Akun Keuangan                             Akun Keuangan  [Tim]               [⋯]   three → all behind ⋯
+Akun bank, e-wallet, dan kas …            Akun bank, e-wallet, dan kas …
+[▥ Laporan] [▤ Arsip] [＋ Akun Baru]  ← a row of their own
+
+Laporan Akun                              Laporan Akun                  [⬇]⚠1      one or two → their icons
+[⬇ Ekspor ⚠1]                         ← a row of its own
+```
+
+| | |
+| --- | --- |
+| one or two actions | each its **icon**, on the title's row — named by its label (spoken, and shown on a long press). The committing one in the brand fill, a destructive one red; a ⚠ mark beside its icon |
+| three or more | **all** of them behind one `⋯`, each line its icon and its name — never two icons and a menu of one |
+| the component | `CompactActions` (`components/chrome/`), with its story. Each action keeps the desktop button's test id |
+| a desktop | unchanged — the labelled buttons |
+| applied to | the accounts list (three → ⋯; the archive's back → icon), the account report (Ekspor), the supplier list (Tambah Pemasok — the dialog's own trigger, `compact`), a supplier's page (Ubah · Hapus), the Supplier Report (Ekspor — was a ⋯ of one line), the seller's orders (three → ⋯), the warehouse's orders and the drafts (Pesanan Baru, Hapus terpilih), a draft (Hapus), a pair's page (Bayar), an order's page (its actions — icons up to two, then ⋯) |
+| unchanged | an account's page — its menu holds more than two, so it stays ⋯ |
+| left as it is | the settlement list's *Laporan Penyelesaian*, on a row of its own over the title — the rule is about a header's actions, and that one was never in the header (owner: *"kalau dari awal tidak di judul, tidak masalah tidak diubah"*) |
+
+**What it replaced** (HARD RULE 11 — recorded, not only fixed): [the-phone-header-is-one-row](#the-phone-header-is-one-row)
+said *every action → the ⋯ menu, even when it holds only one*. A single action behind ⋯ is a tap for nothing, and the
+icon fits the same row. Stale sites, each brought in line: that row's own table (kept — the entry is append-only, this
+section supersedes it), the CLAUDE.md phone-header bullet, `OrderActionBar`'s `LIMIT_COMPACT = 0`, and the
+Supplier Report's ⋯ of one line ([the-report-export-folds-on-a-phone](suppliers_decision.md#the-report-export-folds-on-a-phone),
+which still reads *"actions fold into ⋯, even a single one"*).
+
+```mermaid
+flowchart LR
+  R["the-phone-header-is-one-row — every action into ⋯, even one"] -->|replaced by| N["a-phone-header-action-is-an-icon — 1–2 icons, 3+ into ⋯"]
+  N --> C1["CLAUDE.md phone-header bullet"]
+  N --> C2["OrderActionBar compact"]
+  N --> C3["the Supplier Report's ⋯ of one"]
+  N --> C4["a supplier's page — Ubah · Hapus"]
+```
+
+## a-one-type-picker-shows-the-name-alone
+
+> Owner, in chat (2026-10-15): *"select gudang tidak perlu badge di select activenya"*
+> ([the-warehouse-filter-shows-its-name-alone](suppliers_decision.md#the-warehouse-filter-shows-its-name-alone)); then, asked
+> whether Discover's team filter should follow, *"oke"* — and *"terapkan ke halaman yang sudah pernah kuedit"*.
+
+```
+offers every type                 offers one type
+[Toko Melati [Penjual]  × ⌄]      [Gudang Pusat  × ⌄]      the badge only repeats what the field is for
+```
+
+| | |
+| --- | --- |
+| the rule | a `TeamSelect` **filter** given a `teamType` shows its pick as the name alone — `showType={false}` |
+| unchanged | a picker over every type keeps `name [Type]`; the options keep their `TeamItem` rows |
+| applied to | the supplier list's and Discover's warehouse filter, Discover's team filter, the seller's orders' warehouse filter |
+| not decided | a **form's** one-type picker — Buat Pesanan's warehouse — still shows the badge; asked, not changed |
+
+## a-filter-answers-as-it-changes
+
+> Owner, in chat (2026-10-15): *"ada saran untuk animasi di filter?"* — the three proposed, then *"oke lakukan"*.
+
+```
+first filter set               the phone's sheet, a pick           a chip picked
+[⌕ sumber ×]  Hapus filter     [⚲ Filter (2)] → [⚲ Filter (3)]     (Semua) (Shopee)
+          ↑ fades in, 120ms                  ↑ pops: 0.6 → 1.15 → 1      ↑ its colour turns in 120ms
+```
+
+| | |
+| --- | --- |
+| an × appears | a select's, a combobox's, the search's, a range trigger's — **fade in**, `animationStyle="appear"` (120ms). The select and combobox × are set once in the theme |
+| Hapus Filter appears | fades in, in the row and in the phone's sheet |
+| the phone's Filter count | **pops** when the number changes — `animationStyle="pop"`, keyed on the count — so a pick inside the sheet is felt on the button under it |
+| a chip's pick | its colour turns in the hover beat (120ms), not Chakra's 200ms |
+| ✗ the results | do **not** fade when a filter changes: the search refilters each time typing settles, so the list would blink all day — `RefreshOverlay` already says it is refreshing ([motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared)) |
+| ✗ panels and sheets | unchanged — Chakra's own scale-fade and slide |
+| where | `FilterBar`, `FilterSearch`, `FilterChips`, `SupplierRangeFilter`, the theme's select and combobox — so every list that uses them |
+
+## motion-is-small-quick-and-shared
+
+> Owner, in chat (2026-10-15): *"dan animasi juga atau transisi, sekarang terlihat flat, ada ide?"* — then *"misal di
+> supplier dulu ini, apa saja yang bisa dilakukan?"*, *"aku pakai saranmu saja tadi"*, and on *"pure CSS"*: *"oke baik"*.
+
+```
+first load            arrives                 a tab picked              a refresh
+▆▆▆▆▆▆▆   ▆▆  ▆▆      ░ page  ↑ 8px, 180ms    Toko  Produk  Statistik    nothing moves —
+▆▆▆▆▆     ▆▆  ▆▆  →   ▒ fades in              ───── ═════→              the rows stay mounted
+▆▆▆▆▆▆▆▆  ▆▆  ▆▆      █                       content fades in place     under RefreshOverlay
+```
+
+| | |
+| --- | --- |
+| how | pure CSS through Chakra — keyframes, `animationStyle`, transitions. No animation library |
+| the two beats | `durations.hover` **120ms** (a hover, a press) · `durations.enter` **180ms** (something arriving) — in `theme.ts` and nowhere else. Two smaller styles came later for the filters, `appear` and `pop` ([a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes)) |
+| `enter` | a PAGE arriving: a fade and an 8px rise — `animationStyle="enter"` on the page's root |
+| `swap` | one thing REPLACED in the same place: a fade alone, so the spot does not hop — a tab's content, Discover's cards ⇄ table, the warehouse summary under a picked chip, the report's rows in a new order. Keyed on what the person changed; the report's on the order the rows ON SCREEN are in, so it plays when they land, not on the click |
+| a tab's content | `swap`, not `enter` — on first paint the page is already rising, and a rise inside a rise reads as 16px |
+| first load | `ListSkeleton` (`components/feedback/`) — bars in the shape of the rows, `heading` for a detail page whose record has not arrived — then the rows fade in. Never a spinner on an empty page |
+| tabs | ONE underline that slides: a `<Tabs.Indicator />` last in a `line` tab list. The picked tab then draws no underline of its own. A row without one is drawn as before |
+| a table row | its light (a-table-row-lights-up) turns in the hover beat — set once on the table's cell in `theme.ts`, so **every** table has it |
+| a block that opens | `PRESSABLE` (`lib/motion.ts`): lights up, and gives a little under a thumb. A card in a grid: `LIFTS` — rises 2px with a shadow, settles under the press |
+| an empty hint | fades in where the rows were (an-empty-list-shows-a-hint) |
+| dialogs, popovers, sheets | Chakra's own scale-fade and slide — unchanged |
+| ⚠ never on a refresh | every read refetches (HARD RULE 10); an animation plays when an element MOUNTS, and a refetch keeps it mounted |
+| reduced motion | a device that asks gets no animation and instant transitions; the story tests run that way, since a computed style mid-transition is neither value. Motion is reviewed by eye in Storybook |
+| applied to | the supplier list, Discover, the supplier page and Discover's supplier page with their Toko · Produk · Statistik tabs, the Supplier Report. The row light and the tab transition are theme-wide |
+| then (owner: *"terapkan ke halaman yang sudah pernah kuedit"*) | the accounts list (its type tabs and phone blocks), an account's page, the account report (Periode · Rincian); Kewajiban's list and a pair's page (its six tabs, the terms panel); the seller's and the warehouse's orders (the stage tabs), Buat Pesanan, an order's page (its vertical tabs, the settlement tab); the drafts and a draft; the settlement list (its preview's tabs) and the settlement report (Per Toko ⇄ Per Pengguna fades when the regrouped rows land) |
+| a tab that FILTERS | the order lists' stage tabs and the accounts' type tabs slide their underline, but the rows under them do **not** fade — a tab there narrows the list, and a filter's results never fade ([a-filter-answers-as-it-changes](#a-filter-answers-as-it-changes)). A tab that switches VIEW (Periode · Rincian, an order's Info · Timeline) fades its panel |
+| a vertical tab row | the line slides down the list's end rule (an order's page, the settlement preview) |
+| ⚠ a closing panel never animates | a fading tab panel is a Zag presence node, and presence keeps a closing node on screen until its animation ends — for the panel open on arrival it had seen no animation start, so the first time that tab was left the old panel stayed under the new one (owner, on the account report: *"tabel tidak hilang di awal-awal, baru hilang saat kedua kali"*). The tabs recipe sets `animation-name: none !important` on a closed panel, so it goes at once. `SwitchingViewLeavesOnlyTheNewOne` holds it; it was reproduced, and the fix proved, with motion on |
+| not yet | every other screen takes `enter`, the skeleton and the sliding underline the day it is next reworked |
 
 ## Recorded elsewhere
 

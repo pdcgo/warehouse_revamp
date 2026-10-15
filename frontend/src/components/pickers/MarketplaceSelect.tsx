@@ -19,6 +19,12 @@ export interface MarketplaceSelectProps {
   onChange?: (m: Marketplace) => void;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * An × on a picked value that clears it — emitting `Marketplace.UNSPECIFIED`, the "none" sentinel. For a FILTER, where
+   * "any marketplace" is a value worth one click (owner: *"panel ada closablenya untuk filter"*); a form's required
+   * field leaves it off.
+   */
+  clearable?: boolean;
 }
 
 // MarketplaceSelect is the shared marketplace picker (#66), built on Chakra's composable Select. It
@@ -28,13 +34,14 @@ export interface MarketplaceSelectProps {
 // marketplace is never bare text, and the picker shows it exactly as every table and detail does. The
 // badge carries the name, so the colour is never the only cue.
 export const description =
-  "Marketplace picker (Chakra Select), colour-coded: each option and the picked value is a MarketplaceBadge. Emits a Marketplace enum (a shop's storefront).";
+  "Marketplace picker (Chakra Select), colour-coded: each option and the picked value is a MarketplaceBadge. Emits a Marketplace enum (a shop's storefront). `clearable` puts an × on a picked value for a filter; clearing emits UNSPECIFIED.";
 
 export function MarketplaceSelect({
   value,
   onChange,
   placeholder = "Select a marketplace",
   disabled,
+  clearable = false,
 }: MarketplaceSelectProps) {
   const collection = useMemo(
     () =>
@@ -50,10 +57,10 @@ export function MarketplaceSelect({
       disabled={disabled}
       value={value !== undefined && value !== Marketplace.UNSPECIFIED ? [String(value)] : []}
       onValueChange={(e) => {
+        // ⚠ CLEARING EMITS THE SENTINEL — it does not do nothing (#131): a parent still holding the old marketplace
+        // would filter on one the field no longer shows.
         const picked = e.value[0];
-        if (picked !== undefined) {
-          onChange?.(Number(picked) as Marketplace);
-        }
+        onChange?.(picked !== undefined ? (Number(picked) as Marketplace) : Marketplace.UNSPECIFIED);
       }}
     >
       <Select.HiddenSelect />
@@ -76,6 +83,8 @@ export function MarketplaceSelect({
           </Select.Context>
         </Select.Trigger>
         <Select.IndicatorGroup>
+          {/* Zag hides it while nothing is picked. */}
+          {clearable && <Select.ClearTrigger data-testid="marketplace-select-clear" />}
           <Select.Indicator />
         </Select.IndicatorGroup>
       </Select.Control>

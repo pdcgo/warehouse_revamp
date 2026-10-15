@@ -8,6 +8,7 @@ import { useOrderActions } from "../../../features/orders/useOrderActions";
 import type { RowAction } from "../../../features/orders/rowActions";
 import type { OrderStageId } from "../../../features/orders/stages";
 import { ORDER_DETAIL_PENDING } from "../pending";
+import { CompactActions } from "../../../components/chrome/CompactActions";
 
 // THE ORDER'S ACTIONS AS BUTTONS — and `⋯` only when there are too many (owner: *"action lebih baik
 // langsung muncul, tapi baru kasih opsi ... kalau kebanyakan"*).
@@ -31,15 +32,15 @@ import { ORDER_DETAIL_PENDING } from "../pending";
 // collapse is real but rare, which is the point.
 
 /**
- * How many buttons fit before the rest fold.
+ * How many buttons fit before the rest fold — on a desktop.
  *
- * ⚠ THE PHONE GETS NONE (owner: *"heading yang sticky top terlalu ramai"*). One labelled button beside
- * the title was enough to wrap the sticky block onto a second row, with its ⚠ beside it. On a phone every
- * action lives behind `⋯` — one fixed icon slot, even when it holds a single action, because there the
- * cost of a menu is one tap and the cost of a button is the header's height.
+ * ⚠ A PHONE DRAWS ICONS, NOT LABELLED BUTTONS (owner: *"heading yang sticky top terlalu ramai"*, then *"munculkan
+ * icon saja sesuai actionnya dan jika lebih dari dua di situ pakai elipsis"*). One labelled button beside the title
+ * was enough to wrap the sticky block onto a second row. So on a phone one or two actions are their icons, and three
+ * or more are all behind `⋯` — `CompactActions` (a-phone-header-action-is-an-icon). It used to put every action
+ * behind `⋯`, even a single one.
  */
 const LIMIT = 3;
-const LIMIT_COMPACT = 0;
 
 /** Which actions stay as buttons and which fold into `⋯`. Pure, so the rule reads in one place. */
 export function splitActions(
@@ -81,7 +82,7 @@ export function OrderActionBar({
   status: OrderStatus;
   stage: OrderStageId | undefined;
   warehouseId: bigint;
-  /** A phone: no buttons, every action in `⋯`. */
+  /** A phone: icons, and past two every action in `⋯`. */
   compact?: boolean;
 }) {
   const { t } = useTranslation();
@@ -100,7 +101,33 @@ export function OrderActionBar({
     return dialog;
   }
 
-  const { inline, overflow } = splitActions(actions, compact ? LIMIT_COMPACT : LIMIT);
+  if (compact) {
+    // Forward actions first, destructive ones last — the same ranking the buttons use.
+    const { inline: ranked } = splitActions(actions, actions.length);
+
+    return (
+      <>
+        <Flex justify="flex-end" data-testid="order-action-bar">
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            menuTestId="order-action-more"
+            actions={ranked.map((action) => ({
+              id: action.id,
+              label: t(`orders.rowAction.${action.id}`),
+              icon: action.icon,
+              danger: action.destructive,
+              mark: action.pending ? <NotImplemented list={ORDER_DETAIL_PENDING} id={action.pending} /> : undefined,
+              testId: `order-action-${action.id}`,
+              onClick: () => press(action),
+            }))}
+          />
+        </Flex>
+        {dialog}
+      </>
+    );
+  }
+
+  const { inline, overflow } = splitActions(actions, LIMIT);
 
   return (
     <>

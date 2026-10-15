@@ -9,16 +9,17 @@ import {
   Flex,
   Icon,
   Input,
+  InputGroup,
   Portal,
   Spacer,
   Stack,
   useBreakpointValue,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 
 export const description =
-  "The strip above a data list: search, then the narrowing pickers, then Clear — with page actions pushed to the right. One layout for every list screen, so the same control is in the same place on all of them. Controls WRAP rather than squeeze: only the search box flexes, each FilterField keeps its width. Clear is rendered ONLY while something is actually narrowing the list. On a phone the search stays in the row and every other control moves into a bottom sheet behind a Filter button, full width.";
+  "The strip above a data list: search, then the narrowing pickers, then Clear — with page actions pushed to the right. One layout for every list screen, so the same control is in the same place on all of them. Controls WRAP rather than squeeze: only the search box flexes, each FilterField keeps its width. The search carries a search icon and, once typed in, an × that empties it. Clear is rendered ONLY while something is actually narrowing the list, and fades in when it arrives. On a phone the search stays in the row and every other control moves into a bottom sheet behind a Filter button, full width, whose count pops when it changes.";
 
 export interface FilterBarProps {
   // The controls, in reading order: search first, then what narrows the list, then the date range.
@@ -101,8 +102,17 @@ export function FilterBar({
           >
             <Icon as={SlidersHorizontal} boxSize="4" />
             {t("common.filters")}
+            {/* The count POPS when it changes — keyed on it, so a pick in the sheet is felt on the button under it
+                (`a-filter-answers-as-it-changes`). */}
             {active && (
-              <Badge colorPalette="brand" variant="solid" size="xs" data-testid={`${testId}-count`}>
+              <Badge
+                key={count ?? "dot"}
+                colorPalette="brand"
+                variant="solid"
+                size="xs"
+                animationStyle="pop"
+                data-testid={`${testId}-count`}
+              >
                 {count ?? "•"}
               </Badge>
             )}
@@ -135,6 +145,7 @@ export function FilterBar({
                       variant="ghost"
                       colorPalette="error"
                       fontWeight="bold"
+                      animationStyle="appear"
                       data-testid={`${testId}-clear`}
                       onClick={onClear}
                     >
@@ -168,11 +179,13 @@ export function FilterBar({
     >
       {children}
 
+      {/* It fades in when the first filter is set, rather than jumping into the row (`a-filter-answers-as-it-changes`). */}
       {onClear && active && (
         <Button
           variant="ghost"
           colorPalette="error"
           fontWeight="bold"
+          animationStyle="appear"
           data-testid={`${testId}-clear`}
           onClick={onClear}
         >
@@ -198,18 +211,48 @@ export interface FilterSearchProps {
 // The free-text box, and the only control in the bar that flexes: it grows into whatever space is
 // left up to `sm`, and shrinks to 14rem before the row wraps. Debouncing belongs to the caller — the
 // bar lays controls out, it does not decide when a query runs.
+//
+// IT SAYS IT SEARCHES, AND IT CLEARS (owner: *"search juga ada icon searchnya, ada clearablenya"*,
+// `every-filter-clears-from-its-own-x`):
+//
+//   [⌕ Cari pemasok…      ]      empty
+//   [⌕ sumber           × ]      typed in — the × empties it, as a select's × resets the select
+//
+// The × fades in when the first letter is typed (`a-filter-answers-as-it-changes`), and gives the box its focus back,
+// so the next word is typed without reaching for it again.
 export function FilterSearch({ value, onChange, placeholder, testId }: FilterSearchProps) {
   const { t } = useTranslation();
+  const [input, setInput] = useState<HTMLInputElement | null>(null);
 
   return (
-    <Input
+    <InputGroup
       flex="1 1 14rem"
       maxW="sm"
-      placeholder={placeholder ?? t("common.searchPlaceholder")}
-      value={value}
-      data-testid={testId}
-      onChange={(e) => onChange(e.target.value)}
-    />
+      startElement={<Icon as={Search} boxSize="4" color="fg.subtle" />}
+      endElement={
+        value !== "" ? (
+          <CloseButton
+            size="2xs"
+            variant="ghost"
+            aria-label={t("common.clearSearch")}
+            animationStyle="appear"
+            data-testid={testId ? `${testId}-clear` : undefined}
+            onClick={() => {
+              onChange("");
+              input?.focus();
+            }}
+          />
+        ) : undefined
+      }
+    >
+      <Input
+        ref={setInput}
+        placeholder={placeholder ?? t("common.searchPlaceholder")}
+        value={value}
+        data-testid={testId}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </InputGroup>
   );
 }
 

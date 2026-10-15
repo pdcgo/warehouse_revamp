@@ -5,6 +5,7 @@ import { Box, Flex, HStack, Span, Stack, Table, Text } from "@chakra-ui/react";
 import { formatRupiah } from "../../lib/money";
 import { SummaryCard, SummaryStrip } from "../orders/SummaryCard";
 import { useIsMobile } from "../../layouts/shell";
+import { PRESSABLE } from "../../lib/motion";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { type SupplierFigures, brokenRate, lostRate, unitsReceived } from "./figures";
@@ -293,9 +294,8 @@ export function FigureBlock({
       p="3"
       data-testid={testId}
       onClick={onClick}
-      cursor={onClick ? "pointer" : undefined}
-      _hover={onClick ? { bg: "bg.muted" } : undefined}
-      _active={onClick ? { bg: "bg.muted" } : undefined}
+      // Lights up and gives under a thumb when it opens something (`motion-is-small-quick-and-shared`).
+      {...(onClick ? PRESSABLE : {})}
     >
       {header ?? (
         <Box minW="0">

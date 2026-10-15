@@ -75,6 +75,7 @@ export function SettlementListRoute() {
         orders={query.data?.settlements ?? []}
         onOpenOrder={(orderId) => navigate(`/orders/${orderId}`)}
         busy={query.isFetching && !query.isPending}
+        loading={query.isPending}
         // A new order is a new first page: page 3 of one ranking is not page 3 of another.
         sort={{ ...sort, onChange: (next) => refilter(() => setSort(next)) }}
         totals={

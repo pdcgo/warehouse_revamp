@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Flex, HStack, Heading, Icon, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Button, Flex, HStack, Heading, Icon, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
@@ -122,8 +123,9 @@ export function SupplierDetailPage() {
     );
   }
 
+  // The page's shape while the supplier loads, not a spinner on an empty page (`motion-is-small-quick-and-shared`).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading testId="supplier-detail-loading" />;
   }
 
   if (error || !supplier) {
@@ -138,7 +140,8 @@ export function SupplierDetailPage() {
   }
 
   return (
-    <Stack gap="section" data-testid="supplier-detail-page">
+    // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
+    <Stack gap="section" animationStyle="enter" data-testid="supplier-detail-page">
       {back}
 
       {/* THE NAME AND ITS ACTIONS — one row; on a phone it stays one row, the actions in ⋯ (`the-phone-header-is-one-row`).
@@ -172,6 +175,8 @@ export function SupplierDetailPage() {
         }
       />
 
+      {/* The underline SLIDES to the picked tab, and the tab's content fades in where the last one was
+          (`motion-is-small-quick-and-shared`). A fade, not a rise: on first paint the page itself is already rising. */}
       <Tabs.Root defaultValue="channels" lazyMount unmountOnExit data-testid="supplier-tabs">
         <Tabs.List>
           <Tabs.Trigger value="channels" data-testid="supplier-tab-channels">
@@ -186,17 +191,18 @@ export function SupplierDetailPage() {
           <Tabs.Trigger value="statistics" data-testid="supplier-tab-statistics">
             {t("supplierChannel.tab.statistics")}
           </Tabs.Trigger>
+          <Tabs.Indicator />
         </Tabs.List>
 
-        <Tabs.Content value="channels">
+        <Tabs.Content value="channels" animationStyle="swap">
           <ChannelsPanel teamId={teamId} supplierId={supplier.id} canManage={canManage} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
-        <Tabs.Content value="products">
+        <Tabs.Content value="products" animationStyle="swap">
           <ProductBrowser channels={channels} figureMarks={FIGURE_MARKS} exportMark={EXPORT_MARK} />
         </Tabs.Content>
 
-        <Tabs.Content value="statistics">
+        <Tabs.Content value="statistics" animationStyle="swap">
           <SupplierStatistics supplierId={supplier.id} salesMark={<NotImplemented list={SUPPLIER_DETAIL_PENDING} id="sales" />}
             exportMark={EXPORT_MARK} />
         </Tabs.Content>

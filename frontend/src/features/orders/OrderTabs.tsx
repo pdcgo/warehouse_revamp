@@ -52,7 +52,10 @@ export function OrderTabs({ value, onSelect, count, draftCount }: OrderTabsProps
             </Badge>
           )}
         </Tabs.Trigger>
-      </Tabs.List>
+        {/* One underline, sliding to the picked tab (motion-is-small-quick-and-shared). The rows under it do not fade:
+              a tab is a filter (a-filter-answers-as-it-changes). */}
+          <Tabs.Indicator />
+        </Tabs.List>
     </Tabs.Root>
   );
 }

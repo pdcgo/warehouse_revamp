@@ -18,6 +18,10 @@ export const description =
 //
 // The orders list's warehouse filter, the same way: TeamSelect over WAREHOUSE teams — a search select, since the
 // warehouses grow with the company — and the mark inside the slot, so the strip keeps its widths.
+//
+// THE PICK IS ITS NAME ALONE (owner: *"select gudang tidak perlu badge di select activenya"*,
+// `the-warehouse-filter-shows-its-name-alone`): every option is a warehouse, so a [Gudang] badge on the picked one says
+// nothing the field does not. Its × clears it, as every filter's does.
 export function SupplierWarehouseFilter({ value, onChange }: { value: bigint; onChange: (id: bigint) => void }) {
   const { t } = useTranslation();
 
@@ -29,6 +33,7 @@ export function SupplierWarehouseFilter({ value, onChange }: { value: bigint; on
             teamType={TeamType.WAREHOUSE}
             value={value > 0n ? value : undefined}
             placeholder={t("suppliers.warehouseAll")}
+            showType={false}
             onChange={onChange}
           />
         </Box>

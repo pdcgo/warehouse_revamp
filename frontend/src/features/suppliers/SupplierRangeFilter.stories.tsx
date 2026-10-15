@@ -40,6 +40,29 @@ export const TwoPanels: Story = {
   },
 };
 
+/** A picked band carries an × attached to its trigger — it clears back to Semua without opening the panel
+ * (every-filter-clears-from-its-own-x). Nothing picked, no ×. */
+export const AnXClearsIt: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByTestId("supplier-range-sold-trigger");
+    await expect(canvas.queryByTestId("supplier-range-sold-clear")).toBeNull();
+
+    await userEvent.click(trigger);
+    const panel = await screen.findByTestId("supplier-range-sold-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+    await userEvent.click(within(panel).getByRole("button", { name: "≥ 5.000" }));
+    await waitFor(() => expect(panel).not.toBeVisible());
+
+    const clear = canvas.getByTestId("supplier-range-sold-clear");
+    await expect(clear).toHaveAccessibleName("Clear Sold");
+    await userEvent.click(clear);
+    await expect(trigger).toHaveTextContent(/^Sold$/);
+    await expect(canvas.queryByTestId("supplier-range-sold-clear")).toBeNull();
+    await expect(screen.queryByTestId("supplier-range-sold-panel")).not.toBeVisible();
+  },
+};
+
 /** On a phone each is a label over its pills — the Filter sheet holds them, so no panel inside a panel. */
 export const OnAPhone: Story = {
   globals: { viewport: { value: "mobile2" } },

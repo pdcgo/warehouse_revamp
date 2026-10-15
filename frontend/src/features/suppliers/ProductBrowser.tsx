@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Button, HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Package, SearchX } from "lucide-react";
 import type { SupplierChannelRecord } from "./adapt";
 import { ChannelName, LIGHTS_UP } from "./ChannelBrowser";
 import { sampleProductsFor, type SampleProduct } from "./sampleProducts";
@@ -10,6 +11,7 @@ import { formatUnixDate } from "../../lib/datetime";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { ProductListItem } from "../../components/products/ProductListItem";
 import { TeamItem } from "../../components/entity/TeamItem";
@@ -88,6 +90,12 @@ export function ProductBrowser({
     change();
     setPage(1);
   }
+  const clearFilters = () =>
+    refilter(() => {
+      setQ("");
+      setStoreId(0n);
+      setTeamId(0n);
+    });
 
   const all = sampleProductsFor(channels);
   const term = q.trim().toLowerCase();
@@ -105,14 +113,26 @@ export function ProductBrowser({
 
   function list() {
     if (products.length === 0) {
+      // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint).
       return filtering ? (
-        <Text color="fg.muted" data-testid="products-none-match">
-          {t("supplierChannel.products.none")}
-        </Text>
+        <EmptyHint
+          icon={SearchX}
+          size="sm"
+          title={t("supplierChannel.products.none")}
+          description={t("emptyHint.noMatch")}
+          action={<Button variant="outline" colorPalette="gray" onClick={clearFilters}>
+              {t("common.clearFilters")}
+            </Button>}
+          testId="products-none-match"
+        />
       ) : (
-        <Text color="fg.muted" data-testid="products-empty">
-          {t("supplierChannel.products.empty")}
-        </Text>
+        <EmptyHint
+          icon={Package}
+          size="sm"
+          title={t("supplierChannel.products.empty")}
+          description={t("supplierChannel.products.emptyHint")}
+          testId="products-empty"
+        />
       );
     }
 
@@ -199,13 +219,7 @@ export function ProductBrowser({
         actions={isMobile ? undefined : <SupplierTabExport mark={exportMark} testId="products-export" />}
         active={filtering}
         count={(term !== "" ? 1 : 0) + (storeId !== 0n ? 1 : 0) + (teamId !== 0n ? 1 : 0)}
-        onClear={() =>
-          refilter(() => {
-            setQ("");
-            setStoreId(0n);
-            setTeamId(0n);
-          })
-        }
+        onClear={clearFilters}
       >
         <FilterSearch
           value={q}

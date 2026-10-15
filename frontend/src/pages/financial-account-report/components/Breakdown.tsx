@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Card, Flex, HStack, SimpleGrid, Stack, Table, Text } from "@chakra-ui/react";
+import { ChartColumn } from "lucide-react";
 
 import type { Metric } from "../../../features/financialAccount/analytics";
 import { BalanceText, ChangeTypeBadge, ProviderBadge } from "../../../features/financialAccount/badges";
@@ -11,6 +12,7 @@ import { formatRupiahNumber } from "../../../lib/money";
 import { typesThatMoved } from "./ChangeDetailDialog";
 import type { Mover } from "./MoversDialog";
 import { SignedAmount } from "./ReportSummary";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
 
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up).
 const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
@@ -107,9 +109,12 @@ function Panel({
 function Empty() {
   const { t } = useTranslation();
   return (
-    <Text fontSize="sm" color="fg.muted">
-      {t("financialAccounts.report.empty")}
-    </Text>
+    <EmptyHint
+      icon={ChartColumn}
+      size="sm"
+      title={t("financialAccounts.report.empty")}
+      description={t("emptyHint.otherPeriod")}
+    />
   );
 }
 

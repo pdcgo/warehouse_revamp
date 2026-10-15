@@ -74,21 +74,22 @@ async function openProducts(canvas: ReturnType<typeof within>) {
 
 export const Default: Story = {};
 
-// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and ⋯, Ubah and Hapus inside it; the line
-// of who the supplier is under it.
+// A PHONE KEEPS THE HEADER ONE ROW (the-phone-header-is-one-row) — the name and Ubah and Hapus as their ICONS, two so no
+// ⋯ (a-phone-header-action-is-an-icon); the line of who the supplier is under it.
 export const Mobile: Story = {
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
-    const menu = canvas.getByTestId("supplier-detail-menu");
+    await expect(canvas.queryByTestId("supplier-detail-menu")).toBeNull();
+    const edit = canvas.getByRole("button", { name: "Edit" });
+    await expect(edit).toHaveAttribute("data-testid", "supplier-detail-edit");
+    await expect(edit).not.toHaveTextContent("Edit");
     const name = canvas.getByTestId("supplier-detail-name").getBoundingClientRect();
-    await expect(menu.getBoundingClientRect().top).toBeLessThan(name.bottom);
+    await expect(edit.getBoundingClientRect().top).toBeLessThan(name.bottom);
 
-    await userEvent.click(menu);
-    await waitFor(() => expect(screen.getByTestId("supplier-detail-edit")).toBeVisible());
-    await expect(screen.getByTestId("supplier-detail-delete")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("supplier-detail-delete"));
+    await waitFor(() => expect(screen.getByRole("alertdialog")).toBeVisible());
   },
 };
 
@@ -142,6 +143,28 @@ export const ChannelsAndProductsTabs: Story = {
       "Statistics",
     ]);
     await expect(canvas.getByTestId("supplier-tab-channels")).toHaveAttribute("aria-selected", "true");
+  },
+};
+
+// ONE UNDERLINE, AND IT TRAVELS (motion-is-small-quick-and-shared) — the tab row carries the sliding indicator, and the
+// picked tab draws no underline of its own under it; two would read as a double line wherever they overlap. Its slide
+// is reviewed by eye: the test browser asks for reduced motion.
+export const OneUnderlineThatSlides: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const tablist = canvas.getByRole("tablist");
+    const indicator = tablist.querySelector("[data-part=indicator]");
+    await expect(indicator).not.toBeNull();
+    await expect(getComputedStyle(indicator!, "::after").height).toBe("2px");
+
+    const picked = canvas.getByTestId("supplier-tab-channels");
+    await expect(getComputedStyle(picked, "::before").height).toBe("0px");
+
+    // It follows the pick — over the tab, not merely somewhere in the row.
+    await openProducts(canvas);
+    const products = canvas.getByTestId("supplier-tab-products").getBoundingClientRect();
+    await waitFor(() => expect(Math.round(indicator!.getBoundingClientRect().left)).toBe(Math.round(products.left)));
   },
 };
 

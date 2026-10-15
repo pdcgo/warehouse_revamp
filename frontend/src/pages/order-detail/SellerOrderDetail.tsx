@@ -11,7 +11,6 @@ import {
   Separator,
   SimpleGrid,
   Spacer,
-  Spinner,
   Stack,
   Table,
   Text,
@@ -60,6 +59,7 @@ import { Rail } from "./components/Rail";
 import { StageStepper } from "./components/StageStepper";
 import { SummaryTiles } from "./components/SummaryTiles";
 import { CopyText } from "../../components/chrome/CopyText";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 
 // THE SELLER'S ORDER DETAIL — the owner's page of sections, approved as a preview and now routed at
 // `/orders/:orderId` for every team that is not a warehouse (the picker is `index.tsx`).
@@ -175,8 +175,9 @@ export function SellerOrderDetailPage() {
     return () => observer.disconnect();
   }, [order !== null, mobile]);
 
+  // The page's shape while the order loads, not a spinner on an empty page (motion-is-small-quick-and-shared).
   if (loading) {
-    return <Spinner colorPalette="brand" />;
+    return <ListSkeleton heading testId="order-detail-loading" />;
   }
 
   // ⚠ AN ORDER THIS TEAM MAY NOT READ IS "NOT FOUND", and a malformed id never reaches the server —
@@ -547,8 +548,10 @@ export function SellerOrderDetailPage() {
   const lifecycleMark = <NotImplemented list={ORDER_DETAIL_PENDING} id="lifecycle" />;
 
   return (
+    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
     <Stack
       gap="section"
+      animationStyle="enter"
       data-testid="order-detail-page"
       style={{ ["--order-header-h" as string]: `${headerHeight}px` }}
     >

@@ -9,6 +9,7 @@ import { type FinancialAccount, FinancialAccountStatus } from "../../../gen/ware
 import type { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { formatUnixRelative } from "../../../lib/datetime";
 import { AccountLinks } from "../../../features/financialAccount/AccountLinks";
+import { PRESSABLE } from "../../../lib/motion";
 
 // ONE ACCOUNT ON A PHONE (`a-phone-reads-each-line-as-a-block`) — the table's six columns were 929px in a 318px screen,
 // the balance and every action off to the right. A block reads top to bottom instead, each line one thing:
@@ -48,7 +49,8 @@ export function AccountBlock({
   const unknown = isUnknown(account);
 
   return (
-    <Stack gap="1.5" py="3" borderBottomWidth="1px" borderColor="border" cursor="pointer" onClick={onOpen} data-testid={`account-row-${id}`}>
+    // It opens the account, so it lights up and gives under a thumb (a-table-row-lights-up, motion-is-small-quick-and-shared).
+    <Stack gap="1.5" py="3" borderBottomWidth="1px" borderColor="border" {...PRESSABLE} onClick={onOpen} data-testid={`account-row-${id}`}>
       <Flex justify="space-between" align="start" gap="3">
         <HStack gap="2" minW="0" wrap="wrap">
           <Text fontWeight="medium" color={archived ? "fg.muted" : undefined}>

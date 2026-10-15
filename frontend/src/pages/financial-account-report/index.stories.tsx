@@ -236,6 +236,28 @@ export const WhatMovedItByAccountAndProvider: Story = {
   },
 };
 
+// SWITCHING VIEW LEAVES ONLY THE NEW ONE (owner: *"ketika pindah ke tab rincian, tabel tidak hilang di awal-awal, baru
+// hilang saat kedua kali"*) — the Periode table goes the FIRST time Rincian is picked, not only from the second. The
+// bug lived in the panel's fade (motion-is-small-quick-and-shared), which this run's reduced motion switches off, so
+// the story holds the rule rather than reproducing the bug; it was reproduced with motion on.
+export const SwitchingViewLeavesOnlyTheNewOne: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(canvas.getByTestId("account-report-series")).toBeVisible();
+
+    for (let round = 0; round < 2; round++) {
+      await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
+      await waitFor(() => expect(canvas.queryByTestId("account-report-series")).toBeNull());
+      // Waited for: with motion on, the arriving panel starts its fade at opacity 0.
+      await waitFor(() => expect(canvas.getByTestId("account-report-breakdown")).toBeVisible());
+
+      await userEvent.click(canvas.getByTestId("account-report-view-period"));
+      await waitFor(() => expect(canvas.queryByTestId("account-report-breakdown")).toBeNull());
+      await waitFor(() => expect(canvas.getByTestId("account-report-series")).toBeVisible());
+    }
+  },
+};
+
 // account-grouped-joins-the-metrics: by account, the largest movement first — named by its shop, the server's
 // "Unknown — shop #25" read as Melati TikTok — an archived account still listed and marked, because its past happened,
 // and the Total row the team's own figures.
