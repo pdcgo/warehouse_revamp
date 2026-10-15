@@ -8,6 +8,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-verify-scan-tells-inventory-picked](#the-verify-scan-tells-inventory-picked) | *Staff Scan Goods for verify* tells inventory the order is picked; a count subtracts the sold units not yet scanned | chat, 2026-10-08 — answers Q1, as recommended |
 | [no-cancel-after-the-warehouse-confirms](#no-cancel-after-the-warehouse-confirms) | once the warehouse confirms an order (*Order Processed*), it can no longer be cancelled | chat, 2026-10-08 — answers Q3, against my put-back task |
 | [a-count-locks-its-rack](#a-count-locks-its-rack) | the basket gap is solved inside stock opname: a rack being counted is locked; [opname.md](./opname.md) will say how | chat, 2026-10-08 — answers Q4's direction, instead of my wait-for-the-scan rules |
+| [the-take-checks-the-product-first](#the-take-checks-the-product-first) | `OrderTransactionCreate` reads the lines' product configuration by ids and refuses a private or reserved product before it opens the database transaction | your order.md edit, 2026-10-15 — answers *read product facts before the transaction?*, asked in chat, as recommended |
+| [a-used-key-is-refused-first](#a-used-key-is-refused-first) | the take's first step looks its key up; a key already on a transaction is refused, never returned | your order.md edit, 2026-10-15 — answers Q9, as recommended, and the *key first* half of Q7 |
 
 ---
 
@@ -109,3 +111,73 @@ flowchart LR
 the lock blocks (new orders choosing the rack, receipts already printed for it, moves, put-away) · the units **already**
 in a basket when the lock starts · and whether a product is counted on all its racks at once, which a wrong-rack pick
 needs ([context Q11e](./context_clarify.md#question)).
+
+## the-take-checks-the-product-first
+
+> Owner, in [order.md](./order.md) §Inventory Service Flow When Order Created Called Our `OrderTransactionCreate`
+> *(2026-10-15)*: §What We Should Check — *"1. Product is Private. 2. Product Reserved Stock."* — and a flow that asks
+> product_service *"config by ids"*, and returns *"Product Not Allowed"* before *"Open Transaction"*. It answers what I
+> asked in chat — *are product facts read before the transaction?* — as recommended, and puts the sharing rules in
+> **inventory's** take.
+
+**The verdict.** The take checks the products before it touches stock. It reads every line's configuration from
+product_service in one call, by ids, refuses the take if any line's product is not allowed, and only then opens the
+database transaction. No network call runs while the take holds batch and rack locks.
+
+```mermaid
+flowchart LR
+  R["OrderTransactionCreate - Kaos Hitam x 2, Kemeja Putih x 1"] --> P["product_service - configuration by ids"]
+  P --> C{"every line allowed?"}
+  C -->|"no - private, or the reserve"| E["Product Not Allowed - nothing opened, nothing taken"]
+  C -->|"yes"| T["open the database transaction - transaction, batch ledger, placement ledger"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the read | one call to product_service, every line's product by id, **before** the transaction opens |
+| what is checked | private · reserved stock — your §What We Should Check |
+| a line not allowed | the take returns *Product Not Allowed* and writes nothing |
+| where the rules live | inventory's take, beside the stock they protect — the order's finalize question is narrowed to match ([finalize-enforces-every-rule-on-both-doors](../order/context_clarify.md#finalize-enforces-every-rule-on-both-doors)) |
+
+**What it does NOT settle** — all in [order_clarify](./order_clarify.md):
+
+| | |
+| --- | --- |
+| the reserve | it compares stock, and stock read before the lock lets two borrowers past it in the same second — [Q6](./order_clarify.md#question) |
+| own or borrowed | both rules bind only **another** team's order, and the request names no ordering team — [which-team-is-team-id](../order/order_creation_clarify.md#which-team-is-team-id) |
+| *private* | whether it is the shared lock — [product Q10](../product/context_clarify.md#question) |
+| the refusal | one error, or one per reason — [Q7](./order_clarify.md#question) |
+
+## a-used-key-is-refused-first
+
+> Owner, in [order.md](./order.md) §Flow *(2026-10-15, third edit)*: *"Try Get Transaction with Idempotency Key"* →
+> *"inventory_transaction exist"* → *"Refuse Because its Already Created"*, replacing the *"return inventory_transaction"*
+> of the edit before. It answers [order_clarify Q9](./order_clarify.md#question) — *returned, or refused?* — as
+> recommended, resolves [the-take-replays-a-used-key](./order_clarify.md#contradiction), and draws the *key first* I asked
+> for in Q7. Same day as [every-submit-mints-a-new-key](../order/context_decision.md#every-submit-mints-a-new-key).
+
+**The verdict.** The take's first step is to look up its key. A key already on a transaction — taken, or released — is
+refused, and nothing is returned. It is
+[inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once), now drawn, and placed before the
+product read and the transaction.
+
+```mermaid
+flowchart LR
+  K["OrderTransactionCreate - K"] --> L{"a transaction under K?"}
+  L -->|"no"| P["product checks, then the transaction"]
+  L -->|"yes - taken or released"| X["Refuse Because its Already Created"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | first — before product_service is called, before the transaction opens |
+| a hit | refused; no transaction is returned, nothing is taken |
+| who meets it | a take whose `InventoryTxCancel` arrived first ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once) keeps that cancel), or a bug — never the form, which mints a new key per submit ([every-submit-mints-a-new-key](../order/context_decision.md#every-submit-mints-a-new-key)) |
+
+**What it does NOT settle:** the lookup is a read, so two calls under one K in the same second both find nothing — the
+UNIQUE insert inside the transaction is the guard ([transaction Q1](./transaction_clarify.md#question), option a) · the
+refusal's shape beside the other two ([Q7](./order_clarify.md#question)).

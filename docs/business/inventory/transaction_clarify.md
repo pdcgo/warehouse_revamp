@@ -3,6 +3,17 @@
 [transaction.md](./transaction.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded
 in [transaction_decision.md](./transaction_decision.md).
 
+> 🔄 **Re-examined 2026-10-15 — the order keeps ONE `transaction_id`**
+> ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)): an order's
+> take is one transaction, even when it holds two owners' goods. 🔄 **Q1:** the key can be UNIQUE on your column now, so my
+> recommendation moves from b (`inventory_take_keys`) to **a**. 🔄 **Q7:** recommend the **ordering** team, reversing *the
+> owner*. ⛔ One contradiction: `one-order-one-transaction-met-one-per-owner`.
+> ✅ **Then your edit:** items carry `product_team_id` and `is_owned`
+> ([an-item-carries-its-owning-team](./transaction_decision.md#an-item-carries-its-owning-team)) — Q7's item half. Its
+> header half is left to confirm. ✅ **And confirmed in chat:** the ordering team, B
+> ([an-order-transaction-is-the-ordering-teams](./transaction_decision.md#an-order-transaction-is-the-ordering-teams)) —
+> Q7 closes, and `one-order-one-transaction-met-one-per-owner` is resolved by that decision's amendment and deleted.
+>
 > 🔄 **Narrowed by your edit (2026-10-12):** Q2. `product_id` is on `inventory_transaction_items`
 > ([an-item-names-its-product](./transaction_decision.md#an-item-names-its-product)). Left: where an item's total comes
 > from (2b), which way a count's item points (2c), and what else reads it (2d). ✅ Then 2b, in chat, as recommended
@@ -56,22 +67,15 @@ Siblings: [context_clarify](./context_clarify.md) · [order_clarify](./order_cla
 
 ```mermaid
 erDiagram
-  inventory_take_keys ||--o{ inventory_transactions : "names an order's take"
   inventory_transactions ||--|{ inventory_transaction_items : lists
   inventory_transactions ||--|{ batch_logs : moves
   inventory_transactions ||--|{ product_placement_logs : moves
-  inventory_take_keys {
-    string idempotency_key PK "NEW - Q1b, the order's idempotency key"
-    uint team_id "NEW - Q1b, the ordering team"
-    datetime released_at "NEW - Q1b, null while taken"
-    datetime created_at
-  }
   inventory_transactions {
     uint id PK
     uint warehouse_id
-    uint team_id
+    uint team_id "an order - the ORDERING team, Q7"
     string tx_type
-    string idempotency_key "decided - optional, an order's take only"
+    string idempotency_key "decided - optional, an order's take only - UNIQUE where set, Q1a"
     string recipient "NEW - Q9, who received a sample, null otherwise"
     uint create_by_user_id
     bool is_rollback
@@ -122,43 +126,45 @@ flowchart LR
 
 ## Question
 
-1. 🔄 *(2026-10-12, narrowed by your edit)* **How is *a key buys one take, ever* enforced — and where does a release that
-   arrives first go?** ✅ Where the key lives is answered: your `inventory_transactions.idempotency_key`, orders only
-   ([an-orders-take-carries-its-idempotency-key](./transaction_decision.md#an-orders-take-carries-its-idempotency-key)), and
-   no `ref_id` ([q1-ref-id-is-overtaken](#q1-ref-id-is-overtaken)). ➡ Was [context Q13a](./context_clarify.md#question).
+1. 🔄 *(2026-10-15, simplified by the order's one transaction)* **How is *a key buys one take, ever* enforced — and where
+   does a release that arrives first go?** ✅ Where the key lives is answered: your `inventory_transactions.idempotency_key`,
+   orders only ([an-orders-take-carries-its-idempotency-key](./transaction_decision.md#an-orders-take-carries-its-idempotency-key)),
+   and no `ref_id` ([q1-ref-id-is-overtaken](#q1-ref-id-is-overtaken)). ➡ Was [context Q13a](./context_clarify.md#question).
+   🔄 **The order keeps ONE `transaction_id`**
+   ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)), so an
+   order's take is one row and the key **can be UNIQUE** here — the reason I gave against the column alone, two owners'
+   rows sharing one key, is gone.
 
-   What the column cannot do on its own:
-
-   | the order docs decided | why the column alone falls short |
+   | the order docs decided | how the column does it now |
    | --- | --- |
-   | a second take on a seen key is refused ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)) | an order of two owners writes **two** rows with the same key ([Q7](#question)), so the key cannot be `UNIQUE` on this table |
-   | a release on an unseen key is kept, so a late take is refused | a release that arrives first has **no row** to write on, and cannot know whose goods the late take will hold |
+   | a second take on a seen key is refused ([inventory-takes-a-key-once](../order/context_decision.md#inventory-takes-a-key-once)) | `UNIQUE (idempotency_key)` where set — the second insert fails |
+   | a release on an unseen key is kept, so a late take is refused | the release writes an empty, rolled-back `order` row under K — the late take's insert fails on the same index |
 
    **The race it has to survive.** The take call times out on the order's side, so the order gives up and sends the
-   compensation. The compensation reaches inventory before the take commits. Both look for rows under the key, both find
-   none, both go ahead — and 3 units are taken for an order that does not exist, with nothing left to give them back.
+   compensation, which reaches inventory before the take commits. With the index, exactly one insert under K wins: if the
+   take wins, the release finds it and rolls it back; if the release wins, the take is refused. Nothing is taken for an
+   order that does not exist.
 
    | | how | + | − |
    | --- | --- | --- | --- |
-   | **a** | your column only; the take and the release both take a **lock on the key** first; a release that comes first writes an empty, rolled-back `order` row under the key | no new table | the empty row's `team_id` is the ordering team, not an owner — the one row where `team_id` means something else; *once* holds only if every path takes the lock |
-   | **b** | your column, **plus** 🆕 **`inventory_take_keys`**: the key as primary key, the ordering team, `released_at`; the take inserts the key first | the database refuses a second take, the race queues on the key, and a release that comes first is a key row with `released_at` set | one small table |
+   | **a** | your column, **UNIQUE where set**; a release that comes first writes an empty, rolled-back `order` row under K, carrying the ordering team | no new table — the database holds *once* | an empty row in the history: `is_rollback`, no items |
+   | **b** | your column, plus `inventory_take_keys`: the key as primary key, the ordering team, `released_at` | the same guarantee | a second table saying what the column now can |
 
-   **→ Recommend b.** Its primary key **is** *a key buys one take, ever*, enforced even when two calls race. **a** puts the
-   same rule in a lock every caller has to remember.
+   **→ Recommend a.** 🔄 **This reverses my b** — b existed only because two owners' rows shared one key. The empty row's
+   team is the ordering team, which is what every order transaction carries ([Q7](#question)), so it is no longer the one
+   row where `team_id` means something else.
 
    ```mermaid
    sequenceDiagram
      participant O as order service
      participant I as inventory
-     participant K as inventory_take_keys
      participant T as inventory_transactions
-     O->>I: take, key K
-     I->>K: insert K
-     Note over I,K: K already there - refused as a used key
-     I->>T: one transaction per owner, each carrying K
-     O->>I: release K - Order Cancel or the compensation
-     I->>K: set released_at, or insert K already released if unseen
-     I->>T: reverse every transaction under K, set is_rollback
+     O->>I: take, key K, the ordering team
+     I->>T: insert ONE order transaction under K
+     Note over I,T: K already there, taken or released - refused as a used key
+     O->>I: release K - Order Cancel or InventoryTxCancel
+     I->>T: the take under K - reverse it, set is_rollback
+     Note over I,T: K not seen - insert an empty, rolled-back row under K
    ```
 2. 🔄 *(2026-10-12, narrowed by your edit)* **What is an item's total, which way does it point, and what reads it?**
    ([Critique 2](#critique)) ✅ *What it is* is answered: one per product, with `product_id`
@@ -190,9 +196,7 @@ flowchart LR
    **→ Recommend:** add **`revaluation`** and **`opname`**, not `adjustment` for both: a revaluation moves no units, and a
    count can create a debt that a reader must be able to tell from a broken or lost unit.
 6. ✅ *(2026-10-12)* **Answered** — [a-sample-is-a-stock-out-at-batch-value](./transaction_decision.md#a-sample-is-a-stock-out-at-batch-value).
-7. **Whose `team_id` when team B sells team A's goods?** ➡ Was [context Q13f](./context_clarify.md#question).
-   **→ Recommend: the stock's owner, A** — both ledgers are keyed by the owning team; the seller is on the order. An order
-   holding two owners' goods writes two transactions.
+7. ✅ *(2026-10-15)* **Answered: the ordering team, B** — [an-order-transaction-is-the-ordering-teams](./transaction_decision.md#an-order-transaction-is-the-ordering-teams), with the item half in [an-item-carries-its-owning-team](./transaction_decision.md#an-item-carries-its-owning-team).
 
 8. 🆕 *(2026-10-12, from [placement Q4](./placement_clarify.md#question))* **Where is *picked* stored?**
    [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked) says a unit waits
@@ -313,3 +317,4 @@ flowchart LR
   RPC -->|"error"| C["compensation - release K"]
   X["Order Cancel - K"] --> R["release K"]
 ```
+

@@ -14,6 +14,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-item-names-its-product](#an-item-names-its-product) | `inventory_transaction_items` gains `product_id`: one item per product per transaction | your transaction.md edit, 2026-10-12 — answers 2a of Q2, as recommended |
 | [an-item-equals-its-batch-rows](#an-item-equals-its-batch-rows) | an item's total is what its batch rows moved — paid for goods in, chosen oldest first for goods out — and every mutation asserts the item equals its rows | chat, 2026-10-12 — answers 2b of Q2, as recommended |
 | [a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value) | a sample is a stock-out and nothing more: its units and their batch value leave the owning team's stock; no money moves, nobody has to agree, and the team sees every sample of its goods | chat, 2026-10-12 — answers Q6, **against** my *the team bears it only when a named member agreed* |
+| [an-item-carries-its-owning-team](#an-item-carries-its-owning-team) | `inventory_transaction_items` gains `product_team_id` and `is_owned` — which team the item's goods belong to, and whether that is the transaction's own team | your transaction.md edit, 2026-10-15 — answers the item half of Q7, after [an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction) |
+| [an-order-transaction-is-the-ordering-teams](#an-order-transaction-is-the-ordering-teams) | an order's transaction carries the ORDERING team; each item names its owner, so `is_owned` false means borrowed | chat, 2026-10-15 — answers the header half of Q7, as recommended |
 
 ---
 
@@ -242,6 +244,7 @@ flowchart LR
 | --- | --- |
 | `inventory_transactions.idempotency_key` | optional · set on an `order` transaction only, for now |
 | an order of two owners | each of its transactions carries the same key ([Q7](./transaction_clarify.md#question)) |
+| 🔄 *(2026-10-15)* | **amended by [an-order-transaction-is-the-ordering-teams](#an-order-transaction-is-the-ordering-teams)** — an order of two owners is **one** transaction, carrying the key and the ordering team |
 | `ref_id` | not added |
 | restock, transfer | unchanged — `restocks.transaction_id`, `warehouse_transfers.outbound_transaction_id` / `inbound_transaction_id` |
 
@@ -307,3 +310,66 @@ flowchart LR
 
 **What it does NOT settle** — the rest of [Q2](./transaction_clarify.md#question): which way an item of a count or an
 adjustment points (2c) · what else reads the items (2d).
+
+---
+
+## an-item-carries-its-owning-team
+
+> Owner, in [transaction.md](./transaction.md) §General Table That Must Have *(2026-10-15)*: `inventory_transaction_items`
+> gains **`product_team_id`** and **`is_owned`** — *"Its extra data for giving info that that product is shared/cross"*. Made
+> the same day the order chose ONE `transaction_id`, the primary key of `inventory_transactions`
+> ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)).
+
+**The verdict.** An item says whose goods it moved. One order is one transaction even when it holds two owners' goods, so
+the owner lives on the **item**, not on the transaction: `product_team_id` is the team that owns the product, and `is_owned`
+says whether that is the transaction's own team — false for a borrowed (cross) line.
+
+```mermaid
+flowchart LR
+  T["inventory_transactions 552 - order 9001, Toko Melati"] --> I1["item - Kaos Hitam - product_team_id B - is_owned true"]
+  T --> I2["item - Kemeja Putih - product_team_id A - is_owned false"]
+  O["orders.transaction_id = 552"] -.->|"the primary key"| T
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `product_team_id` | the team that owns the item's product — on every item, every `tx_type` |
+| `is_owned` | `product_team_id` equals the transaction's team — false on an order's borrowed line. ⚠ Outside an order not stated: every other type moves the owner's own goods today, so it would read true |
+| what it is for | telling a shared/cross line apart where the item is read, without a lookup |
+
+**What it does NOT settle** — the header half of [Q7](./transaction_clarify.md#question): `is_owned` compares the item to the
+**transaction's** team, so that team must be the one that ordered. It reads as answered; it is asked to be confirmed, not assumed.
+
+## an-order-transaction-is-the-ordering-teams
+
+> Owner, in chat (2026-10-15): *"yes, i rename it to owner_team_id"* — answering the order's
+> [which-team-is-team-id](../order/order_creation_clarify.md#which-team-is-team-id), which was asked with *"it also
+> settles transaction Q7: the order's single transaction carries the ordering team, B"*. It answers the header half of
+> [Q7](./transaction_clarify.md#question) — the *"Confirm B"* left by
+> [an-item-carries-its-owning-team](#an-item-carries-its-owning-team) — as recommended. Recorded beside the order side's
+> [the-take-names-the-orderer-and-each-owner](../order/context_decision.md#the-take-names-the-orderer-and-each-owner).
+
+**The verdict.** An order's inventory transaction carries the **ordering** team in `team_id` — B, who sold — even when
+some of its items are A's goods. Each item names its own owner (`product_team_id`), so `is_owned` reads as *this item's
+owner is the team that ordered*, and false means **borrowed**.
+
+```mermaid
+flowchart LR
+  T["inventory_transactions - order 9001 - team_id B, the orderer"] --> I1["item - Kaos Hitam - product_team_id B - is_owned true"]
+  T --> I2["item - Kemeja Putih - product_team_id A - is_owned false, borrowed"]
+  I2 --> B["batch rows - A's batches"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transactions.team_id` on an `order` | the ordering team — the request's `team_id` ([the-take-names-the-orderer-and-each-owner](../order/context_decision.md#the-take-names-the-orderer-and-each-owner)) |
+| an order of two owners | **one** transaction ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)), carrying the key and B |
+| what A reads for *"what was taken from my stock"* | its items (`product_team_id` A) and its batch rows — not transaction headers |
+
+**What it amends.** [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) — its row
+*"an order of two owners: each of its transactions carries the same key"* and its two-transaction diagram. One
+transaction now, as the order decided; the key on it is unchanged.

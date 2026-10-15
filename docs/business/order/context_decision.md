@@ -9,7 +9,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-draft-carries-its-shop](#a-draft-carries-its-shop) | a draft has its shop, and therefore its owning team, from the moment it exists |
 | [ensuring-an-order-is-whole-is-order-services-job](#ensuring-an-order-is-whole-is-order-services-job) | finding and repairing a half-succeeded order is `order_service`'s job |
 | [the-order-follows-settlement-for-its-money](#the-order-follows-settlement-for-its-money) | marketplace money is described by the settlement doc — the order only opens and cancels the sale |
-| [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) | no two live orders share `(shop_id, order_external_ref_id)` · the ref is never empty · checked in code |
+| [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref) | ⛔ uniqueness reversed — [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) · the ref is still never empty |
 | [drafts-keep-their-own-table](#drafts-keep-their-own-table) | `order_drafts` stays apart from `orders`, carrying the same ref and shop |
 | [superseded-the-order-has-eight-statuses](#superseded-the-order-has-eight-statuses) | ⛔ reversed — a ninth status `return_completed` was added |
 | [the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses) | the order carries the milestone, the record that owns the work carries its steps |
@@ -41,10 +41,20 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | the order keeps the key it was created with — a resend gets that order back |
 | [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) | `orders.idempotency_key`, UNIQUE — a key, not an `_id` |
 | [inventory-takes-a-key-once](#inventory-takes-a-key-once) | a second take on a used key is refused, never replayed · an early cancel is kept |
-| [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the form mints a new key after any answer — the same key only for a resend with no answer |
+| [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the form mints a new key after any answer — 🔄 its *same key on no answer* exception is gone: [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) |
 | [every-release-goes-by-the-key](#every-release-goes-by-the-key) | Order Cancel carries the key · inventory has ONE release, by key, for the cancel and the compensation · a second release does nothing |
 | [the-compensation-event-is-inventory-tx-cancel](#the-compensation-event-is-inventory-tx-cancel) | the failed create's event is `InventoryTxCancel`, carrying the key — one name in both docs |
-| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | after Create the form waits locked · the order opens it · an error mints a new key · no answer offers *Try Again* on the same key |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | after Create the form waits locked · the order opens it · an error mints a new key · no answer offers *Try Again* — 🔄 under a new key ([every-submit-mints-a-new-key](#every-submit-mints-a-new-key)) |
+| [an-order-is-one-inventory-transaction](#an-order-is-one-inventory-transaction) | the take is ONE inventory transaction, even across owners · `orders.transaction_id` keeps it as a reference · releases still go by the key |
+| [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) | a key belongs to one submit — *Try Again* included — so two attempts never share a take; the shop + ref check alone recognises a resend |
+| [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) | two live orders may share a shop and ref — the form warns before Create, the server refuses nothing |
+| [a-try-again-always-warns](#a-try-again-always-warns) | *Try Again* re-checks the shop and ref and always warns — naming the order, or saying the last Create may still be finishing |
+| [the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too) | the warning reads live orders AND drafts on the same shop and ref, never the draft being finalized |
+| [the-debt-check-runs-before-the-take](#the-debt-check-runs-before-the-take) | before the transaction, the order asks balance for the limits of the teams it borrows from — consulted, never managed |
+| [over-the-limit-refuses-the-create](#over-the-limit-refuses-the-create) | a creditor at or over its limit refuses the whole create, naming the creditor, the debt and the limit |
+| [the-warehouse-is-a-creditor-on-every-order](#the-warehouse-is-a-creditor-on-every-order) | the debt check asks about the fulfilling warehouse always, plus each team a shared product is borrowed from |
+| [a-failed-owner-lookup-refuses-the-create](#a-failed-owner-lookup-refuses-the-create) | the products' owning teams are looked up before the check — if that fails, the create is refused |
+| [the-take-names-the-orderer-and-each-owner](#the-take-names-the-orderer-and-each-owner) | the request carries the ordering `team_id`; each line carries `owner_team_id` — own or borrowed is the two compared |
 | [inventory-computes-the-markup](#inventory-computes-the-markup) | the take returns owner, cost and markup — the order applies nothing |
 | [the-product-fee-is-the-line-total](#the-product-fee-is-the-line-total) | the owning team is paid Σ `total` of its lines — the goods plus the markup |
 | [a-lost-publish-is-not-tracked-on-the-order](#a-lost-publish-is-not-tracked-on-the-order) | no sent-at stamps, no incomplete-orders list, no retry button |
@@ -225,7 +235,11 @@ and a return after `completed` no longer needs `completed` to be final for the m
 
 ---
 
-## an-order-is-unique-by-shop-and-marketplace-ref
+## superseded-an-order-is-unique-by-shop-and-marketplace-ref
+
+> ⛔ **SUPERSEDED IN PART (2026-10-15)** by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused):
+> two live orders **may** share a shop and ref — the form warns, the server refuses nothing. The ref is still
+> **required** on every order; that half stands. Kept as the record, per the header.
 
 > Owner, in the doc (2026-09-15): §Table That Must Have — *"`order_external_ref_id`, its for order uniqueness,
 > its cannot empty"* · §How We Manage Order Uniqueness — *"Order uniqueness manage by code"*, *"Unique Scope by
@@ -791,8 +805,9 @@ if the create succeeds and the draft is not removed, the draft stays in the queu
 
 | | |
 | --- | --- |
-| the safety net that already exists | [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref) — the second attempt carries the same ref and is refused |
+| the safety net that already exists | [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref) — the second attempt carries the same ref and is refused |
 | what the net does not fix | a **stale draft** sitting in the queue, which a person will open and work on again |
+| 🔄 *(2026-10-15)* | **amended by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)** — the second attempt is now **warned**, not refused. The net is the person reading the warning |
 | ⚠ **→ Recommend** | the create-order request carries `order_draft_id`, and the backend removes the draft in the same transaction. The seeding stays in the browser; only the cleanup moves back |
 
 ⚠ **And it reopens who writes `order_draft_items`.** [the-two-draft-line-tables-are-not-linked](#the-two-draft-line-tables-are-not-linked)
@@ -860,7 +875,7 @@ flowchart LR
 
 | sequence | if the second call fails |
 | --- | --- |
-| **create, then delete** | the order exists, the draft stays in the queue. Someone opens it again — and the duplicate order is refused by [an-order-is-unique-by-shop-and-marketplace-ref](#an-order-is-unique-by-shop-and-marketplace-ref). **Wasted work, nothing lost** |
+| **create, then delete** | the order exists, the draft stays in the queue. Someone opens it again — and the duplicate order is refused by [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref). **Wasted work, nothing lost** |
 | ⛔ **delete, then create** | the draft is gone and **no order exists**. The scrape is lost, and nobody is told |
 
 **→ Recommend, in order of preference:**
@@ -1840,6 +1855,9 @@ never retries the call by itself.
 ([inventory-takes-a-key-once](#inventory-takes-a-key-once)) · a new K after any answer
 ([a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer)).
 
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: K is minted at each
+submit, not when the form opens, so a second submit never carries the first one's K.
+
 ---
 
 ## the-order-stores-its-idempotency-key
@@ -1865,6 +1883,13 @@ flowchart TD
 | column | `orders.idempotency_key` — the key minted by the frontend ([the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key)). The doc wrote `idempotency_id`, renamed by [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) |
 | what it prevents | a resend of an order that DID commit, whose reply was lost, being refused by the uniqueness check as a duplicate of itself |
 | unique | yes — [the-idempotency-key-is-unique](#the-idempotency-key-is-unique) |
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: no resend carries the key
+any more, so *what it prevents* no longer happens — a resend of a committed order **is** refused by the shop + ref check,
+by design. The column stays: the Order Cancel reads K from it. Whether the resend shortcut stays is
+[a-key-returns-only-its-own-teams-order](./order_creation_clarify.md#a-key-returns-only-its-own-teams-order).
+🔄 *(2026-10-15, later)* **And by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: that
+resend is **warned**, not refused — the person may create it.
 
 ---
 
@@ -1959,6 +1984,9 @@ error is **locked**: every later submit is refused as a used key, even after the
 
 ⚠ **The owner's frontend box does not draw this loop yet** — it ends at *Create Order*. Reported in
 [order_creation_clarify](./order_creation_clarify.md#critique).
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: the *no answer*
+exception is gone — every submit, a resend included, gets a new key.
 
 ---
 
@@ -2075,3 +2103,374 @@ stateDiagram-v2
 
 ⚠ **Left open:** whether *"key already used"* gets its own message — it is not in the diagram
 ([order_creation_clarify](./order_creation_clarify.md#key-already-used-gets-its-own-message)).
+
+🔄 *(2026-10-15)* **Amended by [every-submit-mints-a-new-key](#every-submit-mints-a-new-key)**: *Try Again* sends under
+a **new** key. The form still locks while it waits; what a *Try Again* meets when the first submit did commit is the
+shop + ref refusal, not a used key.
+🔄 *(2026-10-15, later)* **And by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: it
+meets a **warning**, not a refusal — and *leaving the page with no answer* is no longer covered by a refusal either.
+
+---
+
+## an-order-is-one-inventory-transaction
+
+> Owner (2026-10-15): *"transaction id still need for reference later"*, then added **`transaction_id`** to `orders` in
+> [context.md](./context.md) §Table That Must Have — choosing, of the two shapes offered, **one id on the order** over one
+> id per line. **Against my recommendation** (per line), and chosen knowing that it settles inventory's side too.
+
+**The verdict.** An order's stock take is **one** inventory transaction, and the order keeps its id as a reference. The
+take's response keeps its single `transaction_id`. The key still names the take for every release — the id is for
+reading it later.
+
+```mermaid
+flowchart LR
+  OC["OrderCreate - Melati, team B"] -->|"take with K"| T["ONE inventory transaction - B's own Kaos Hitam, and A's Kemeja Putih"]
+  T -->|"transaction_id"| O["orders.transaction_id"]
+  R["Order Cancel or InventoryTxCancel"] -->|"by K, unchanged"| T
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `orders.transaction_id` | the inventory transaction that took the order's stock — written at create, never changed |
+| the response | `OrderTransactionCreateResponse.transaction_id` — one |
+| an order mixing owners | still one transaction. Each line's owner comes back on its line — [which-team-is-team-id](./order_creation_clarify.md#which-team-is-team-id) |
+| the release | still by K — [every-release-goes-by-the-key](#every-release-goes-by-the-key) is unchanged |
+
+**What it settles on inventory's side** — recorded there as open points, not decided here:
+
+| | |
+| --- | --- |
+| the key can be UNIQUE | one order is one row, so `inventory_transactions.idempotency_key` can carry *a key buys one take, ever* itself ([transaction Q1](../inventory/transaction_clarify.md#question)) |
+| the transaction's `team_id` | it cannot be the stock owner when an order holds two owners' goods ([transaction Q7](../inventory/transaction_clarify.md#question)) |
+| a stale spec row | [an-orders-take-carries-its-idempotency-key](../inventory/transaction_decision.md#an-orders-take-carries-its-idempotency-key) says *"each of its transactions"* — reported, and since amended by [an-order-transaction-is-the-ordering-teams](../inventory/transaction_decision.md#an-order-transaction-is-the-ordering-teams) |
+
+---
+
+## every-submit-mints-a-new-key
+
+> Owner, in chat (2026-10-15): *"for 'twin' every frontend must generate new idempotency_key when submitting form"* —
+> answering the **twin** case of `the-take-replays-a-used-key` (resolved by [a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)):
+> a *Try Again* with no answer resent the same key while the first submit was still running, so two attempts shared one
+> take and the loser's compensation released the winner's stock. **It reverses** the *same key on no answer* exception of
+> [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) — which I had recommended.
+
+**The verdict.** A key belongs to exactly **one submit**. The form mints a fresh one every time it sends — the first
+*Create*, a resubmit after an error, and *Try Again* after no answer alike. Two attempts never share a key, so they
+never share a take, and a compensation can only ever release its own attempt's stock. The key is now purely **the take's
+name**; recognising a resend is the shop + ref check's job alone.
+
+```mermaid
+flowchart LR
+  F["the form"] -->|"Create - K1"| S1["submit 1 - take under K1"]
+  F -->|"no answer, Try Again - K2"| S2["submit 2 - take under K2"]
+  S2 -->|"submit 1 already committed"| D["refused - this shop and ref already have an order"]
+  S2 -->|"submit 1 failed"| C["created under K2"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| minted | at every submit — never when the form opens, never reused |
+| no answer | *Try Again* sends under a new key |
+| what the key names | the take — for `InventoryTxCancel`, the Order Cancel and the verify scan ([every-release-goes-by-the-key](#every-release-goes-by-the-key)) |
+| what recognises a resend | the shop + ref check ([superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref)) — a *Try Again* after the order committed is refused as a duplicate of it |
+| a used key at inventory | only a cancel that beat its take, or a bug — refused ([a-used-key-is-refused-first](../inventory/order_decision.md#a-used-key-is-refused-first)) |
+
+**What it amends.**
+
+| decision | said | now |
+| --- | --- | --- |
+| [the-frontend-mints-the-idempotency-key](#the-frontend-mints-the-idempotency-key) | minted at *Order Need Created*, before the form is filled | minted at each submit |
+| [a-key-is-spent-by-any-answer](#a-key-is-spent-by-any-answer) | the same key only for a resend with no answer | no exception |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | *no answer, Try Again with the same key* | *Try Again* with a new key |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | *"a resend gets that order back"* | no resend carries the key — the column stays, for the cancel; the shortcut has no honest caller ([a-key-returns-only-its-own-teams-order](./order_creation_clarify.md#a-key-returns-only-its-own-teams-order)) |
+
+**What it does NOT settle.** A *Try Again* while submit 1 is **still running** passes the shop + ref check, which is in
+code — so nothing but a unique index stops a second order
+([one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders)).
+And what the form shows when *Try Again* meets its own order
+([key-already-used-gets-its-own-message](./order_creation_clarify.md#key-already-used-gets-its-own-message)).
+
+🔄 *(2026-10-15)* **Amended by [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)**: nothing
+*refuses* a resend now — the form **warns** that the shop and ref already have an order, and the person may go on. A
+*Try Again* while submit 1 is still running finds nothing to warn about.
+
+---
+
+## a-duplicate-ref-is-warned-not-refused
+
+> Owner, in chat (2026-10-15), asked whether `(shop_id, order_external_ref_id)` gets a partial unique index:
+> *"no need unique, its reference order id from external platform, and maybe customer service can cancel and create new
+> one for same reference"* · *"we guard it in frontend as warning, for some reason it must can create double"* · *"we just
+> give warning in frontend before order creation that we already create that order, but order still can be created"*.
+> **Against my recommendation** (the partial index), and it **reverses the uniqueness half** of
+> [superseded-an-order-is-unique-by-shop-and-marketplace-ref](#superseded-an-order-is-unique-by-shop-and-marketplace-ref).
+
+**The verdict.** A marketplace ref may be on **two live orders** of one shop. Before *Create*, the form looks for a live
+order with the same shop and ref and, if it finds one, **warns** — naming it — and the person may create anyway. The
+server refuses nothing for a repeated ref: no unique index, no handler check.
+
+```mermaid
+flowchart LR
+  F["the form - shop Melati, ref SHP-123"] --> Q{"a live order with this shop and ref?"}
+  Q -->|"no"| C["Create"]
+  Q -->|"yes - order 9001"| W["warning - SHP-123 is already order 9001"]
+  W -->|"open it"| O["order 9001"]
+  W -->|"create anyway"| C
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the ref | still **required** on every order — that half of the superseded decision stands |
+| the check | the frontend's, before *Create* — a warning naming the order, never a refusal |
+| the server | creates the order whatever its ref — no unique index, no handler check |
+| a cancelled order | not warned about, as before — cancel and re-create stays the normal path |
+| why doubles must be possible | the owner's business case — not yet written down |
+
+**What it amends.**
+
+| decision | said | now |
+| --- | --- | --- |
+| [the-frontend-finalizes-a-draft-not-the-backend](#the-frontend-finalizes-a-draft-not-the-backend) | the safety net: *"the second attempt carries the same ref and is refused"* | warned, not refused |
+| [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) | a *Try Again* after the order committed is refused by the shop + ref check | warned, not refused |
+| [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered) | *"retyping the order is refused by the shop + ref check"* | warned |
+| [the-order-stores-its-idempotency-key](#the-order-stores-its-idempotency-key) | its amendment: a resend of a committed order is refused by the shop + ref check | warned |
+
+**What it does NOT settle:**
+
+| | |
+| --- | --- |
+| a *Try Again* while submit 1 is still running | the warning finds nothing yet, so the double is silent — [key-already-used-gets-its-own-message](./order_creation_clarify.md#key-already-used-gets-its-own-message) |
+| drafts | whether the warning looks at drafts with the same ref too — [one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders) |
+| settlement | a statement line names a ref, not an order. With two live orders, the shipped importer posts it to the **newest** — [settlement_importer Q15](../settlement/settlement_importer_clarify.md#question) |
+
+🔄 *(2026-10-15, later)* **Why doubles exist**, answered in chat: *"for most case, one live and one canceled. and other
+reason that we cannot talk here"*. So the common case is cancel-and-re-create — one **live** order on the ref, which the
+warning does not even fire for. Two **live** orders are the rare case, and **its reason is deliberately not recorded** in
+this repository. What the settlement importer does with that rare case is
+[settlement_importer Q15](../settlement/settlement_importer_clarify.md#question).
+
+---
+
+## a-try-again-always-warns
+
+> Owner, in chat (2026-10-15): *"for 'Does Try Again always warn?' yes"* — answering
+> [key-already-used-gets-its-own-message](./order_creation_clarify.md#key-already-used-gets-its-own-message) in its last
+> form, as recommended. The successor of [the-form-locks-until-it-is-answered](#the-form-locks-until-it-is-answered), after
+> [every-submit-mints-a-new-key](#every-submit-mints-a-new-key) and
+> [a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused).
+
+**The verdict.** *Try Again* never sends straight away. It first re-runs the duplicate check for this shop and ref, and
+**always** warns: naming the order when it finds one, and saying the last *Create* may still be finishing when it finds
+none. The duplicate warning can only see an order that has committed, and *Try Again* exists for exactly the moment when
+the first submit may not have committed yet.
+
+```mermaid
+flowchart LR
+  T["no answer - Try Again"] --> R["re-check this shop and ref"]
+  R -->|"found - order 9001"| W1["already created as order 9001 - open it, or create anyway"]
+  R -->|"nothing yet"| W2["your last Create got no answer and may still be finishing - check the order list, or send again"]
+  W1 -->|"create anyway"| S["send under a new key"]
+  W2 -->|"send again"| S
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| when | every *Try Again* — the one way to resend after no answer |
+| the read | the duplicate warning's own lookup ([the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too)) |
+| found | the duplicate warning, naming the order, with a way to open it |
+| nothing found | *"your last Create got no answer and may still be finishing"* — check the order list, or send again |
+| sending | under a new key ([every-submit-mints-a-new-key](#every-submit-mints-a-new-key)); the server refuses nothing ([a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)) |
+
+---
+
+## the-duplicate-warning-reads-drafts-too
+
+> Owner, in chat (2026-10-15): *"for 'Does the warning also read drafts with the same ref, but stay quiet about the draft
+> being finalized?' yes"* — answering
+> [one-uniqueness-check-covers-drafts-and-orders](./context_clarify.md#one-uniqueness-check-covers-drafts-and-orders) in
+> its last form, as recommended.
+
+**The verdict.** The duplicate warning of
+[a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused) looks in **both** tables — live orders
+and drafts — for the same shop and ref, and never names the draft the person is finalizing. A draft already scraped for
+this ref is the likeliest double; a warning about the very draft they opened would teach people to click past every
+warning.
+
+```mermaid
+flowchart TD
+  IN["about to Create an order, or finalize a draft"] --> Q{"a draft, or a live order, already with this shop and ref?"}
+  Q -->|"no"| W["create"]
+  Q -->|"yes - the very draft being finalized"| W
+  Q -->|"yes - anything else"| D["warn, naming the order or draft"]
+  D -->|"open it"| O["that order or draft"]
+  D -->|"create anyway"| W
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| shown on | the order form before *Create*, a draft's *finalize*, and every *Try Again* ([a-try-again-always-warns](#a-try-again-always-warns)) |
+| looks at | `orders` where `status <> 'cancel'`, and `order_drafts` — both on `(shop_id, order_external_ref_id)` |
+| stays quiet about | the draft being finalized |
+| finalize | writes the order and deletes the draft in **one transaction**, so a finished finalize leaves no draft behind to warn about |
+| the server | refuses nothing ([a-duplicate-ref-is-warned-not-refused](#a-duplicate-ref-is-warned-not-refused)) |
+
+## the-debt-check-runs-before-the-take
+
+> Owner (2026-10-15), in [order_creation.md](./order_creation.md): a new **§Reference** — *"before create order, order
+> service check dept threeshold"*, linking [balance/context.md](../balance/context.md) — and a new box between the RPC and
+> the transaction: *"checking debt threshold limit if order contain shared product"*, which gives Balance Service *"team
+> ids data that product shared"* and gets back *"threshold limit data"*. Answers
+> `the-order-consults-the-debt-it-does-not-manage` (the §Reference line **is** the line asked for) and the debt half of
+> `finalize-enforces-every-rule-on-both-doors` ([context_clarify](./context_clarify.md)).
+
+**The verdict.** The order does not manage the debt, but it **consults** it: before the database transaction opens —
+so before any stock is taken — `order_service` asks balance for the limits of the teams it would borrow from, and checks
+them. Nothing is taken, and nothing has to be compensated, for an order the check stops.
+
+```mermaid
+flowchart LR
+  R["OrderCreate"] --> C["debt check - the teams this order borrows from"]
+  C -->|"their limits"| B["balance"]
+  C --> T["open the transaction - the take, the order rows"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where | after the RPC is called, **before** the transaction and the take |
+| asks | balance — the threshold data for the borrowing team against each lending team |
+| when | the order contains a shared (cross) product — as drawn |
+| what it compares | the debt already **committed** on the pair against its limit ([balance §Balance Policy 2](../balance/context.md)) — this order's own charge is not added; the order that crosses the limit posts truthfully and the **next** one is stopped ([the-block-stops-orders-only](../balance/context_decision.md#the-block-stops-orders-only)) |
+
+**What it does NOT settle** — asked in [context_clarify](./context_clarify.md):
+
+| | |
+| --- | --- |
+| the refusal | the box has no *over the limit* branch — [a-blocked-line-refuses-the-whole-order](./context_clarify.md#a-blocked-line-refuses-the-whole-order) |
+| the warehouse | checked only when a shared product is present, while the build and balance check the fulfilling warehouse on every order — [the-warehouse-is-a-creditor-too](./context_clarify.md#the-warehouse-is-a-creditor-too) |
+| where the owners come from | the take returns them, but it runs after the check — [the-owners-are-needed-before-the-take](./context_clarify.md#critique) |
+
+---
+
+## the-take-names-the-orderer-and-each-owner
+
+> Owner, in chat (2026-10-15): *"yes, i rename it to owner_team_id"* — answering
+> [which-team-is-team-id](./order_creation_clarify.md#which-team-is-team-id), asked as *"does the request carry `team_id`
+> (the orderer), and does `TransactionItem.team_id` become `owner_team_id`? → yes, both"*, with *"it also settles
+> transaction Q7: the order's single transaction carries the ordering team"*. As recommended. In
+> [order_creation.md](./order_creation.md) the line's field is renamed; the request's field is not drawn yet.
+
+**The verdict.** The take names the two teams apart. The **request** carries the ordering team; each **line** of the
+answer carries the team that owns its stock. Inventory decides own or borrowed per line by comparing the two — which is
+what the markup, the private check and the reserve all bind on.
+
+```mermaid
+flowchart LR
+  R["OrderTransactionCreateRequest - team_id B, the orderer"] --> I["inventory - per line, owner equals orderer?"]
+  I -->|"Kaos Hitam - owner B"| O["own - no markup, no private or reserve check"]
+  I -->|"Kemeja Putih - owner A"| X["borrowed - A's markup, private and reserve checked"]
+  O --> L["TransactionItem.owner_team_id B"]
+  X --> M["TransactionItem.owner_team_id A"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `OrderTransactionCreateRequest.team_id` | the ordering team — the request's `use_scope` field, so the access interceptor scopes the call to it |
+| `TransactionItem.owner_team_id` | the team whose stock the line was taken from — renamed from `team_id`; `order_items.owner_team_id` freezes it |
+| inventory's own names | `inventory_transaction_items.product_team_id` and `is_owned` ([an-item-carries-its-owning-team](../inventory/transaction_decision.md#an-item-carries-its-owning-team)) — the contract's `owner_team_id` is `product_team_id` |
+| the inventory transaction | carries the ordering team ([an-order-transaction-is-the-ordering-teams](../inventory/transaction_decision.md#an-order-transaction-is-the-ordering-teams)) |
+
+⚠ **Not drawn yet:** `team_id` on `OrderTransactionCreateRequest` in [order_creation.md](./order_creation.md) — reported in
+[order_creation_clarify](./order_creation_clarify.md#the-request-still-names-no-orderer).
+
+---
+
+## over-the-limit-refuses-the-create
+
+> Owner (2026-10-15), in chat: *"yes"* — to all three of *draw the refusal, check the warehouse too, and refuse if the
+> product owners cannot be looked up*, each as recommended. The diagram to draw is in
+> [context_clarify](./context_clarify.md#proposed--the-debt-check-as-decided).
+> Answers `a-blocked-line-refuses-the-whole-order`.
+
+**The verdict.** When any creditor of the order is at or over its limit, the create is **refused** — before the
+transaction, so nothing is taken. One create is one order, so the refusal is all-or-nothing; it names **which** creditor,
+what is owed and the limit, because the person who hits it is customer service, who cannot look the numbers up.
+
+```mermaid
+flowchart LR
+  C{"every creditor under its limit?"} -->|"yes"| T["open the transaction"]
+  C -->|"no"| R["refused - Toko Sinar, you owe 52.000.000 of a 50.000.000 limit"]
+```
+
+| | |
+| --- | --- |
+| refused when | a creditor's committed debt is at or over its limit ([the-debt-check-runs-before-the-take](#the-debt-check-runs-before-the-take)) |
+| the answer | an error naming the creditor, the debt and the limit — the form shows it and the person decides (remove the line, or wait) |
+| partial order | never — the whole create is refused |
+
+---
+
+## the-warehouse-is-a-creditor-on-every-order
+
+> Owner (2026-10-15), in chat: *"yes"* — to all three of *draw the refusal, check the warehouse too, and refuse if the
+> product owners cannot be looked up*, each as recommended. The diagram to draw is in
+> [context_clarify](./context_clarify.md#proposed--the-debt-check-as-decided).
+> Answers `the-warehouse-is-a-creditor-too`, and resolves the contradiction `the-debt-check-skips-the-warehouse`.
+
+**The verdict.** The debt check asks about the **fulfilling warehouse on every order**, plus **each team a shared product
+is borrowed from**. The warehouse fee puts the seller in debt to the warehouse on every order, and the threshold is per
+pair — so a limit on the warehouse pair is enforced, not a number nothing reads.
+
+```mermaid
+flowchart LR
+  O1["an order - own goods only"] --> W["the warehouse pair"]
+  O2["an order - with a borrowed line"] --> W
+  O2 --> A["the lending team pair"]
+```
+
+| | |
+| --- | --- |
+| creditors | `warehouse_id` of the order, always · the owning team of each shared product |
+| the build | already checks exactly these (`credit_checker.go`) |
+| ⚠ still saying *shared product only* | the box in [order_creation.md](./order_creation.md) and [balance/context.md](../balance/context.md) §Balance Policy 2 — the owner's to amend |
+
+---
+
+## a-failed-owner-lookup-refuses-the-create
+
+> Owner (2026-10-15), in chat: *"yes"* — to all three of *draw the refusal, check the warehouse too, and refuse if the
+> product owners cannot be looked up*, each as recommended. The diagram to draw is in
+> [context_clarify](./context_clarify.md#proposed--the-debt-check-as-decided).
+> Answers the critique `the-owners-are-needed-before-the-take`.
+
+**The verdict.** Before the debt check, the order looks up **each product's owning team** — the take, which also returns it,
+runs only after the check. If that lookup fails, the create is **refused**, never let through with only the warehouse
+checked — the same way the take fails when it cannot read a product's rate
+([inventory-computes-the-markup](#inventory-computes-the-markup)).
+
+```mermaid
+flowchart LR
+  R["OrderCreate"] --> L["product ids - their owning teams"]
+  L -->|"looked up"| C["the debt check"]
+  L -->|"lookup failed"| X["refused - try again"]
+```
+
+| | |
+| --- | --- |
+| asks | `product_service` — product id → owning team |
+| on failure | refuse the create. ⚠ **The build does the opposite** (fails open, `orderCreditors`) — to change when this is built |
+
+---

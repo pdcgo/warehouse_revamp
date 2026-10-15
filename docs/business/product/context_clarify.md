@@ -256,6 +256,10 @@ flowchart LR
    broken or missing unit carries the same landed price. As first asked: **Is `AllProductQtyRestock` the ordered or the arrived quantity?** ([Critique 1](#critique))
 3. **What is the reserve — a per-product count set by the owner, and does it bind the owner's own orders?**
    ([Critique 5](#critique)) **→ I recommend a per-product count, binding only other teams.**
+   🔄 *(2026-10-15)* Inventory's take now checks it
+   ([the-take-checks-the-product-first](../inventory/order_decision.md#the-take-checks-the-product-first)), and a take
+   draws from **one** warehouse — so also: **this warehouse's stock, or the owner's across all warehouses?** **→ This
+   warehouse's** — it is the stock the owner's own orders ship from, and the only stock the take sees.
 4. **Does turning on the shared lock affect orders already placed?** ([Critique 6](#critique))
    **→ I recommend no — new orders only.**
 5. **What moment consumes a FIFO layer, and is the fee frozen there too?**

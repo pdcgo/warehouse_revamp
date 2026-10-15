@@ -80,7 +80,7 @@ Deduction). The details are in [rpc.md](../../services/settlement_importer_servi
 
 | | owner |
 | --- | --- |
-| **the order uniqueness rule** — [an-order-is-unique-by-shop-and-marketplace-ref](../../business/order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref): a ref required on every order, no two live orders sharing it | the order context — its drafts-vs-orders and same-second questions are open there |
+| **the order ref** — 🔄 *(2026-10-15)* required on every order, but **two live orders may share it** ([a-duplicate-ref-is-warned-not-refused](../../business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)) | `orderInShop` pays the newest of two live orders — [importer Q15](../../business/settlement/settlement_importer_clarify.md#question) |
 | **the write gate on the order RPCs** and the rollout grants — [a-write-needs-a-grant-or-a-manager](../../business/shop/context_decision.md#a-write-needs-a-grant-or-a-manager) | the shop context — only the imports are gated |
 | **the move to `shop_service`** — [the-shop-gets-its-own-service](../../business/shop/context_decision.md#the-shop-gets-its-own-service) | the shop context — only `NewShopClient` and the adapters in `cmd/app_development` change |
 | **a closed shop's statements** — a deleted shop answers `NotFound`, so it cannot import | [shop Q3](../../business/shop/context_clarify.md#question) |

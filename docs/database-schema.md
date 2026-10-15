@@ -408,9 +408,8 @@ erDiagram
     `Shop.primary_user_id` and by `ShopAccessCheck` — a shop with none cannot import a statement.
 - **`orders_team_external_ref_idx`** (`00014`) — `(team_id, order_external_ref_id) WHERE
   order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
-  statement's refs to orders in one query. **Not unique** —
-  [an-order-is-unique-by-shop-and-marketplace-ref](business/order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref)
-  excludes cancelled orders, which a plain unique index cannot say, and is checked in code (not built yet).
+  statement's refs to orders in one query. **Not unique, by decision** — two live orders may share a ref, and the
+  form warns instead ([a-duplicate-ref-is-warned-not-refused](business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)).
 - **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
   read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
   claim that something happened at a moment, and a mutable history is not a history.

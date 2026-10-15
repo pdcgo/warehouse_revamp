@@ -4,6 +4,10 @@ What I read out of [settlement_importer.md](./settlement_importer.md), and what 
 its screens can be drawn. **That doc is yours — this one is mine.** An answered point is deleted; what you
 settled is in [settlement_importer_decision.md](./settlement_importer_decision.md).
 
+🆕 **Re-opened 2026-10-15 — [Q15](#question)**: the order context now allows two live orders on one ref
+([a-duplicate-ref-is-warned-not-refused](../order/context_decision.md#a-duplicate-ref-is-warned-not-refused)), and the
+built importer quietly pays the newest.
+
 ✅ **Accepted 2026-09-29 — design_accept passed** ([the-prototype-and-its-contract-are-accepted](./settlement_importer_decision.md#the-prototype-and-its-contract-are-accepted)).
 ✅ **Built 2026-09-29** — the interceptor's server streams (19c9a95), the shop's `ShopAccessCheck` and primary CS and the order
 lookup by ref (f6dab3b), settlement's five types and its ask of the shop (9f20652), the Shopee status on the reader
@@ -48,7 +52,7 @@ Measured against all 26 sample workbooks, not read off the spec.
 | # | Problem | → Recommend |
 | --- | --- | --- |
 | **2** | ⛔ **Whatever a row is posted AS is frozen at its first import.** `unique_id` is global; a repeat returns the stored row unchanged (`created: false`), and a key held by another order is refused (`errUniqueIDTaken`) — ✅ and one held by another shop too, since 2026-09-29 ([a-key-held-by-another-account-is-refused](./context_decision.md#a-key-held-by-another-account-is-refused)). 🔄 **Your flow draws it**: *"success or already exists"* — a corrected type, grain or shop takes the second branch, and nothing changes (diagram below). | ✅ **Accepted by decision** — no revert ([an-upload-is-never-reverted](./settlement_importer_decision.md#an-upload-is-never-reverted)). So the protection moves BEFORE the post: the shop check and the file check, both decided ([shop](./settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored), [file](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). A dry run is declined for now ([decided](./settlement_importer_decision.md#the-import-has-no-dry-run-for-now)). |
-| **4** | ✅ **Built 2026-09-29, as recommended** — `OrderByExternalRefs` in selling (f6dab3b), one call per file, on a new `(team_id, ref)` index; the uniqueness rule itself is still the order context's to build. Was: 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
+| **4** | ✅ **Built 2026-09-29, as recommended** — `OrderByExternalRefs` in selling (f6dab3b), one call per file, on a new `(team_id, ref)` index; the uniqueness rule itself is still the order context's to build. Was: 🔄 **Your new section names the lookup — the flow still does not draw it.** *"query in order by `order_external_ref_id`"* reads as one query per record, and `orders` is `selling_service`'s table, which the importer cannot read (HARD RULE 3). As drawn, every record still posts with no order — shop-addressed, and by #2 for good. The lookup it needs joins on a rule that is decided and not built: [superseded-an-order-is-unique-by-shop-and-marketplace-ref](../order/context_decision.md#superseded-an-order-is-unique-by-shop-and-marketplace-ref) — the ref is never empty and unique among live orders — while the shipped `order.proto` still says *"NOT unique, and nothing joins on it"*, and `selling_service` has no RPC that takes a ref. | Draw `selling_service` in the flow, between *extract* and the loop: **one bulk call**, `(team_id, refs[])` → `order_id`, `shop_id`, `created_by_user_id` — one answer addresses the row AND names its person. Build the uniqueness rule, and an index, first — the column has neither ([00012](../../../backend/services/selling_service/db_migrations/00012_order_external_ref.sql)). A file is up to ~1,500 refs — one call, never one per record. |
 | **6** | ✅ **Built 2026-09-29, as recommended** — `Earnings` and `GMV Pay Deduction` are skipped as *repeats the order rows* (f163139). Was: **TikTok's withdrawal sheet repeats money the order sheet already has — twice over.** `Earnings` is refused by design ([earnings-is-not-new-money](../../technical/packages/excel_readers/context_decision.md#earnings-is-not-new-money)). I measured the other one: **`GMV Pay Deduction` equals the `GMV Payment for TikTok Ads` rows to the rupiah** in all 3 files that carry it (−9,246,299 · −9,246,299 · −9,189,215), so booking it double-counts the ads fee. Both come back as `ErrNoSettlementTypeMapping` — the same error as a type never seen. | Book `Order details` + `Withdrawal` rows. **Skip** `Earnings` and `GMV Pay Deduction`, and show them as *skipped*, never *held*. The skip list is the importer's: the reader stays a function, the policy lives in its caller. ✅ A failed withdrawal and its refund join it ([decided](./settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)). |
 | **7** | ✅ **Built 2026-09-29, as recommended** — every line gets its step and its outcome; only a file-level failure ends the stream (f163139). Was: 🔄 **A record that cannot post must not end the stream.** The flow gives a record two outcomes; the samples give it five — *posted*, *already there*, *refused* by settlement, *held* (a type nobody mapped · a fractional amount — a ref with no order now posts to the shop, [decided](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)) and *skipped* (#6). The reader refuses an unseen type — correctly. | **Every record gets its step on the stream, and the stream goes on.** Only a FILE-level failure ends it on an error: not this platform's file, or a ref in another shop ([decided](./settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)). Held records post when the same file is uploaded again, once the mapping ships ([decided](./settlement_importer_decision.md#the-row-key-is-the-only-dedupe)). |
 | **8** | ✅ **Built 2026-09-29, as recommended** — a fraction is held, never rounded, and a TikTok file not in IDR is refused (f163139). Was: **Money crosses a type boundary.** The reader returns `float64` ([rupiah-is-floating-point](../order/context_decision.md#rupiah-is-floating-point)); `SettlementPost.change` is `int64` whole rupiah. **0 fractional amounts in 26 samples**, all IDR. | **Hold** a fractional amount, never round it — it has never happened, so it means the file is not what we think. Refuse a TikTok file whose stated currency is not `IDR`. |
@@ -297,6 +301,34 @@ erDiagram
 
 14. ✅ **Answered 2026-09-29 — a shop with no primary CS cannot import**:
     [a-shop-with-no-primary-cs-cannot-import](./settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import). Kept as a line so the numbers hold.
+
+15. 🆕 *(2026-10-15)* **A ref on two live orders — which one does a statement line post to?** The order context now
+    lets one shop have two live orders on one marketplace ref
+    ([a-duplicate-ref-is-warned-not-refused](../order/context_decision.md#a-duplicate-ref-is-warned-not-refused)). The
+    importer chooses by a rule written only in code — `orderInShop`
+    ([import_run.go:534](../../../backend/services/settlement_importer_service/settlement_importer_v1/import_run.go#L534)):
+    a live order before a cancelled one, then the **newest**. Every line of that marketplace order — the payout, its
+    fees, a later refund — posts to the newer order, and the older one never shows as paid.
+
+    ```mermaid
+    flowchart LR
+      L["statement line - SHP-123, payout Rp 96.000"] --> Q{"live orders with SHP-123 in this shop"}
+      Q -->|"one"| O["that order"]
+      Q -->|"two - as built"| N["the newest, 9002 - and 9001 is never paid"]
+      Q -->|"two - option b"| S["the shop, flagged with both order ids"]
+    ```
+
+    | | how | + | − |
+    | --- | --- | --- | --- |
+    | **a** | keep the newest, as built | nothing to build | the older order stays unpaid, and nobody is told |
+    | **b** | post it to the **shop**, as for a ref that finds no order ([an-unmatched-ref-posts-to-the-shop](./settlement_importer_decision.md#an-unmatched-ref-posts-to-the-shop)), and name both orders on the import's result | no order is credited with money that may be another's; a decided path, reused | the two orders' accounts stay open until a person settles it |
+    | **c** | split the line across the orders | each order is paid its share | needs a rule for the share — which depends on **why** doubles exist |
+
+    🔄 *(2026-10-15, later)* **Narrowed by the owner's answer**: most doubles are **one live and one cancelled** — and
+    for those the built rule is already right, because a live order beats a cancelled one. Only **two live** orders are
+    left, and their reason is kept out of this repository, so **c** cannot be designed here.
+    **→ Recommend b for two live orders** — post to the shop and name both, so a person who knows the reason places the
+    money. ⚠ You hold the reason: if *the newest* is right for it, say so and **a** stays as built, with nothing to change.
 
 # Contradiction
 
