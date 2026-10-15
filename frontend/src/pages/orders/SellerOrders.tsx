@@ -36,7 +36,7 @@ import {
   stageOfStatus,
 } from "../../features/orders/stages";
 import type { ProcessedStep } from "../../features/orders/stages";
-import { DRAFTS_TAB, StageTabs } from "../../features/orders/StageTabs";
+import { StageTabs } from "../../features/orders/StageTabs";
 import { StageBadge } from "../../features/orders/StageBadge";
 import {
   CreatedCell,
@@ -53,7 +53,6 @@ import { OrderRowActions } from "./components/OrderRowActions";
 import { useShopOptions } from "../../features/shops/queries";
 import { useTeams } from "../../features/teams/queries";
 import { ProcessedStepFilter } from "./components/ProcessedStepFilter";
-import { useOrderDrafts } from "../../features/orderDrafts/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDERS_LIST_PENDING } from "./pending";
@@ -223,8 +222,6 @@ export function SellerOrdersPage() {
   });
   const statQuery = useOrderStat({ teamId, filters });
 
-  const draftsQuery = useOrderDrafts({ teamId, page: 1, pageSize: 1 });
-  const draftCount = draftsQuery.data?.totalItems;
 
   // Any filter change restarts at page 1: the page number belongs to the old result set, and page 4
   // of a narrower one is usually empty — which reads as "nothing matched" when plenty did.
@@ -562,19 +559,11 @@ export function SellerOrdersPage() {
         </FilterField>
       </FilterBar>
 
-      {/* DRAFTS IS THE LAST TAB (owner), and selecting it LEAVES — the drafts screen is its own route
-          with its own selection and bulk delete, so the tab is a way in rather than a panel here. */}
       <StageTabs
         value={tab}
         count={tabCount}
-        draftCount={draftCount}
         mark={<NotImplemented list={ORDERS_LIST_PENDING} id="statusSet" />}
         onSelect={(value) => {
-          if (value === DRAFTS_TAB) {
-            void navigate("/order-drafts");
-            return;
-          }
-
           setTab(value);
           // ⚠ The step belongs to `processed`. Carrying it to another tab would leave a filter set on
           // a status it cannot apply to, invisibly.

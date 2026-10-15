@@ -208,16 +208,14 @@ export const SearchReachesTheOtherTeamsOrderToo: Story = {
   },
 };
 
-// The DRAFTS tab is still here, and its badge reads 0 — a draft belongs to the team that typed it,
-// and a warehouse types none. The tab is not hidden for a warehouse, so the number is what says the
-// pile is empty rather than the tab's absence.
-export const TheDraftsBadgeIsZeroForAWarehouse: Story = {
+// NO DRAFTS TAB — a warehouse never has a draft, and the drafts are a list of their own now
+// (the-drafts-are-a-list-of-their-own).
+export const NoDraftsTab: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() =>
-      expect(canvas.getByTestId("orders-tab-count-drafts")).toHaveTextContent("0"),
-    );
+    await waitFor(() => expect(canvas.getByTestId("orders-tab-all")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("orders-tab-drafts")).toBeNull();
   },
 };
 

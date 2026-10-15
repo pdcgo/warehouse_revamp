@@ -42,7 +42,9 @@
     "warehouseTransfer": "Transfer Stok",
     "sectionOperations": "Operasional",
     "sectionFinance": "Keuangan",
-    "sectionTeam": "Tim"
+    "sectionTeam": "Tim",
+    "ordersList": "Daftar",
+    "orderDraftsShort": "Draf"
   },
   "menu": {
     "theme": "Tema",
@@ -989,7 +991,7 @@
   },
   "orderDrafts": {
     "title": "Draf Pesanan",
-    "intro": "Pesanan yang belum selesai — disimpan dari form pesanan, atau dikirim aplikasi lain. Lengkapi lalu promosikan, atau hapus yang tidak dipakai; tidak ada yang hilang sendiri di sini, dan stok belum dipotong.",
+    "intro": "Pesanan yang belum selesai — dikirim aplikasi lain, atau disimpan dari form pesanan. Buka untuk melengkapinya di form pesanan, atau hapus yang tidak dipakai; tidak ada yang hilang sendiri di sini, dan stok belum dipotong.",
     "selectTeamView": "Pilih tim untuk melihat draf pesanannya.",
     "reference": "Referensi",
     "lines": "Baris",
@@ -3993,6 +3995,21 @@
       "title": "Dikirim dari",
       "governs": "Semua angka stok dan HPP di bawah ini milik gudang tersebut.",
       "chooseFirst": "Pilih gudangnya dulu — tidak ada angka di bawah yang bisa diukur tanpa itu."
+    },
+    "draftHints": {
+      "title": "Produk yang Harus Dikirim",
+      "quantity": "{{n}} × ",
+      "from": "Dari {{source}} — pilih produknya di bawah",
+      "fromManual": "Dari draf yang disimpan di form ini — pilih produknya di bawah"
+    },
+    "draft": {
+      "badge": "Draf {{ref}}",
+      "delete": "Hapus Draf",
+      "deleteTitle": "Hapus Draf",
+      "deleteConfirm": "Hapus draf {{ref}}? Data dari aplikasi ikut hilang, dan tidak bisa dibatalkan.",
+      "deleted": "Draf dihapus",
+      "deleteFailed": "Draf tidak terhapus",
+      "deleteAfterCreateFailed": "Pesanan sudah dibuat, tetapi drafnya masih ada di daftar — hapus dari sana"
     }
   },
   "quantityInput": {

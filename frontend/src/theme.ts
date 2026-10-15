@@ -681,6 +681,22 @@ const customConfig = defineConfig({
             [TAILWIND.gray[800], TAILWIND.gray[300]],
           ),
         },
+        // ── WHAT A DRAFT SAYS MUST BE SENT, IN A COLOUR OF ITS OWN (owner: *"kasih card dan warna yang beda sendiri …
+        // tapi warna yang agak pudar saja"*, then *"jangan ungu"*, `the-draft-opens-in-the-order-form`) ──────────────────
+        //
+        // A faded SAND — a slip of paper from the marketplace, read while our products are picked. A warm neutral that no
+        // role in this app speaks: browner and duller than the warning amber, so it never reads as a ⚠, and nowhere near
+        // rose (acting), indigo (primary), emerald, sky or red. CATEGORICAL, so its own colour is right here.
+        //
+        //   light  bg #fbf7ef · border #eadfc8 · title #8a6d3b (4.9:1 on the bg)
+        //   dark   bg #1f1b14 · border #3d3426 · title #e3c48c
+        //
+        // The list itself stays in the body ink — it is read, word for word, against the marketplace.
+        draftHint: {
+          bg: { value: { _light: "#fbf7ef", _dark: "#1f1b14" } },
+          border: { value: { _light: "#eadfc8", _dark: "#3d3426" } },
+          fg: { value: { _light: "#8a6d3b", _dark: "#e3c48c" } },
+        },
         // `teamType.<type>.badge` / `.avatar` / `.fg` — see TEAM TYPE COLOURS, above.
         teamType: {
           warehouse: teamTypeColour(["#fef3c7", "#fde68a", "#b45309"], ["#78350f", "#92400e", "#fcd34d"]),

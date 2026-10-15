@@ -127,18 +127,3 @@ export function useDeleteOrderDrafts() {
   });
 }
 
-// Promoting a draft creates an ORDER and destroys the draft, so it stales BOTH domains. Invalidating
-// only drafts would leave the orders list without the order that was just created — the screen would
-// not be wrong about anything it fetched, it simply fetched before the promotion.
-export function usePromoteOrderDraft() {
-  const client = useQueryClient();
-
-  return useMutation({
-    mutationFn: (vars: Parameters<typeof orderDraftClient.orderDraftPromote>[0]) =>
-      orderDraftClient.orderDraftPromote(vars),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["orderDrafts"] });
-      await client.invalidateQueries({ queryKey: ["orders"] });
-    },
-  });
-}

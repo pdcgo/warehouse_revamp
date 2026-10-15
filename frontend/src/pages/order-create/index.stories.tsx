@@ -6,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { products, receiptLabel, receiptLabelFile, shops } from "../../../.storybook/fixtures";
+import { asTeam } from "../../../.storybook/pageStory";
 import { OrderCreatePage } from "./index";
 
 // The FIRST page storied, rather than another shared component — and the reason is that this screen
@@ -26,7 +27,8 @@ const routes = [
   // orders list would make this a test of that page's queries instead.
   { path: "/orders", element: <Text data-testid="at-orders">Orders</Text> },
   { path: "/orders/:orderId", element: <Text data-testid="at-order-detail">Order detail</Text> },
-  { path: "/order-drafts/:draftId", element: <Text data-testid="at-draft-detail">Draft detail</Text> },
+  // Where a saved draft, and a deleted one, go: the drafts list (the-draft-opens-in-the-order-form).
+  { path: "/order-drafts", element: <Text data-testid="at-drafts">Drafts</Text> },
 ];
 
 // ⚠ MEMOISED. Storybook calls `render` on every re-render, so building the router inline would hand
@@ -34,6 +36,13 @@ const routes = [
 // exists to assert on.
 function RoutedOrderCreate() {
   const router = useMemo(() => createMemoryRouter(routes, { initialEntries: ["/order-create"] }), []);
+
+  return <RouterProvider router={router} />;
+}
+
+// The form opened FROM A DRAFT — `?draft=201`: three scraped lines, two of them mapped to products 71 and 72, one not.
+function RoutedFromDraft() {
+  const router = useMemo(() => createMemoryRouter(routes, { initialEntries: ["/order-create?draft=201"] }), []);
 
   return <RouterProvider router={router} />;
 }
@@ -459,5 +468,79 @@ export const TheWarehouseLeadsTheFormUnderTheWarning: Story = {
     // …and it left the Order Information card behind: the picker is in the band, nowhere else.
     await expect(canvas.getAllByTestId("order-warehouse")).toHaveLength(1);
     await expect(band).toContainElement(canvas.getByTestId("order-warehouse"));
+  },
+};
+
+// ── A draft opens in this form (`the-draft-opens-in-the-order-form`) ───────────────────────────────────────────
+
+// SEEDED FROM THE DRAFT — the buyer, the shop, the warehouse; its mapped lines arrive as the products they name; its
+// scraped lines are a list of TEXT above the products (the unmapped mug included, which is on no line); the header says
+// which draft, with Delete Draft beside it; and there is no Save as Draft — a draft is finished here, not drafted again.
+export const ADraftOpensInTheForm: Story = {
+  render: () => <RoutedFromDraft />,
+  // The drafts are Toko Melati's.
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Bu Lestari"), {
+      timeout: 4000,
+    });
+    await expect(canvas.getByTestId("order-create-draft-ref")).toHaveTextContent("Draft MEL-9001");
+    await expect(canvas.getByTestId("order-create-delete-draft")).toBeVisible();
+    await expect(canvas.queryByTestId("order-create-save-draft")).toBeNull();
+
+    const hints = canvas.getByTestId("draft-product-hints");
+    await expect(within(hints).getAllByRole("listitem")).toHaveLength(3);
+    await expect(canvas.getByTestId("draft-product-hint-0")).toHaveTextContent("2 × Kopi Arabika Gayo 250gr Biji Sangrai");
+    await expect(canvas.getByTestId("draft-product-hint-2")).toHaveTextContent("Mug Keramik Motif Batik (bonus)");
+    // A hint, not a row: no table, no picker, no input inside it.
+    await expect(within(hints).queryAllByRole("textbox")).toHaveLength(0);
+    // In a card of its own colour — a faded sand (draftHint.bg), never a role's tint — titled, and naming where it came
+    // from: a draft saved on this form says so in words, not as the raw "manual".
+    await expect(getComputedStyle(hints).backgroundColor).toBe("rgb(251, 247, 239)");
+    await expect(hints).toHaveTextContent("Products to Send");
+    await expect(canvas.getByTestId("draft-product-hints-source")).toHaveTextContent("From a draft saved on this form");
+    await expect(canvas.getByTestId("draft-product-hints-source")).not.toHaveTextContent("manual");
+
+    // The two mapped lines are on the order; the mug is not.
+    await waitFor(() => expect(canvas.getByTestId("order-line-0")).toBeInTheDocument());
+    await expect(canvas.getByTestId("order-line-1")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("order-line-2")).toBeNull();
+  },
+};
+
+// LEAVING AN UNTOUCHED DRAFT ASKS NOTHING — the form opened filled, but nothing was changed, and the draft is still on
+// the list. Only work done here is worth a "discard?".
+export const LeavingAnUntouchedDraftAsksNothing: Story = {
+  render: () => <RoutedFromDraft />,
+  // The drafts are Toko Melati's.
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("order-create-customer-name")).toHaveValue("Bu Lestari"), {
+      timeout: 4000,
+    });
+    await userEvent.click(canvas.getByTestId("order-create-back"));
+    await waitFor(() => expect(canvas.getByTestId("at-orders")).toBeInTheDocument());
+  },
+};
+
+// DELETE DRAFT CONFIRMS, then goes back to the drafts list.
+export const DeletingTheDraftGoesBackToTheList: Story = {
+  render: () => <RoutedFromDraft />,
+  // The drafts are Toko Melati's.
+  beforeEach: asTeam(12n),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("order-create-delete-draft", {}, { timeout: 4000 }));
+    const dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog).toHaveTextContent("MEL-9001");
+
+    await userEvent.click(within(dialog).getByTestId("confirm-action"));
+    await waitFor(() => expect(canvas.getByTestId("at-drafts")).toBeInTheDocument());
   },
 };

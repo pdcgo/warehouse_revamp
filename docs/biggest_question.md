@@ -17,7 +17,19 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 **182 open questions across 37 files.** The seven below are shown; **175 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
-▼ **−1 this round — placement accepted, and a duplicate pruned** (2026-10-12, in chat): the placement prototype passed design_accept with no change asked for ([the-placement-prototype-is-accepted](business/inventory/placement_decision.md#the-placement-prototype-is-accepted)); its writes wait on the ledgers, like the transfer. Housekeeping in [technical stock](technical/stock/design_clarify.md#question): Q2 was [transaction Q4](business/inventory/transaction_clarify.md#question) asked twice, so it moved there (−1); two of its contradictions were closed by the business docs (the undo reuses its transaction, and `restock` and `move` are in `tx_type`). #4 below dropped the same stale `reverses_id` recommendation. None of the seven moves.
+🔄 **±0 this round — the drafts are a list of their own** (2026-10-15, in chat): no Drafts tab on the order lists, *Pesanan ▸
+Daftar · Draf* in the menu ([the-drafts-are-a-list-of-their-own](technical/frontend/order_draft_decision.md#the-drafts-are-a-list-of-their-own)). [Order design Q13](technical/order/design_clarify.md#question)
+(where a draft's app goes on the row) is re-worded — the app's name is now in the order form's hint card, the detail
+page being gone — and stays open. None of the seven moves.
+
+🔄 **±0 the round before — a draft opens in the order form** (2026-10-15, in chat): the owner folded the draft page into the
+order create form ([the-draft-opens-in-the-order-form](technical/frontend/order_draft_decision.md#the-draft-opens-in-the-order-form)),
+which closes HALF of the draft contradiction in [business/order](business/order/context_clarify.md#the-build-lets-a-person-draft-and-promotes-on-the-server)
+— a draft is finished in the seeded form and deleted when its order is created. What stays open: a person can still
+Save as Draft, and `OrderCreate` takes no `order_draft_id` (the delete is a second call). The contradiction narrows; the
+count does not move. None of the seven moves.
+
+▼ **−1 the round before — placement accepted, and a duplicate pruned** (2026-10-12, in chat): the placement prototype passed design_accept with no change asked for ([the-placement-prototype-is-accepted](business/inventory/placement_decision.md#the-placement-prototype-is-accepted)); its writes wait on the ledgers, like the transfer. Housekeeping in [technical stock](technical/stock/design_clarify.md#question): Q2 was [transaction Q4](business/inventory/transaction_clarify.md#question) asked twice, so it moved there (−1); two of its contradictions were closed by the business docs (the undo reuses its transaction, and `restock` and `move` are in `tx_type`). #4 below dropped the same stale `reverses_id` recommendation. None of the seven moves.
 
 🔄 **±0 the round before — placement goes to Storybook** (2026-10-12, in chat): the Move dialog drops its waiting note like the rack screen ([the-move-dialog-shows-stock-count-only-for-now](business/inventory/placement_decision.md#the-move-dialog-shows-stock-count-only-for-now)), and a sample is recorded from Rack detail ([a-sample-is-recorded-on-rack-detail](business/inventory/placement_decision.md#a-sample-is-recorded-on-rack-detail)), both as recommended. Placement has nothing open and no open contradiction. None of the seven moves.
 

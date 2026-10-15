@@ -157,8 +157,9 @@ export const TheShellHasNoTopBar: Story = {
     const canvas = within(canvasElement);
     const sidebar = within(await canvas.findByRole("complementary"));
 
+    // Drafts is an item of its own, under Orders (the-drafts-are-a-list-of-their-own).
     await waitFor(() =>
-      expect(sidebar.getByRole("link", { name: "Orders" })).toHaveAttribute("aria-current", "page"),
+      expect(sidebar.getByRole("link", { name: "Drafts" })).toHaveAttribute("aria-current", "page"),
     );
     await expect(canvas.queryByRole("banner")).toBeNull();
     await expect(canvas.getAllByRole("navigation")).toHaveLength(1);

@@ -2,9 +2,8 @@ import type { PendingList, PendingPart } from "../../pending/registry";
 
 // WHAT THE ORDER FORM CANNOT DO YET — in ONE list.
 //
-// ⚠ TWO SCREENS DRAW THIS FORM — a new order, and a draft being finished
-// (`the-draft-page-wears-the-order-form`) — and both mark their cards against this list. The draft
-// page EXTENDS it (its own entries appended), so every badge keeps its number on both screens.
+// ONE SCREEN DRAWS THIS FORM — a new order, and a draft being finished, which is the same page opened with
+// `?draft=` (`the-draft-opens-in-the-order-form`); its own draft page, which extended this list, is gone.
 //
 // This screen is deliberately ahead of the system: bundles have no contract, the
 // Product LinkMap is not built, a debtor cannot read another team's credit terms, nothing prices a

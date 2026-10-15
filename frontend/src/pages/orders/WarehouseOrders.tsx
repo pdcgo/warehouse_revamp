@@ -21,8 +21,7 @@ import { useOrders, useOrderStat } from "../../features/orders/queries";
 import type { OrderFilters } from "../../features/orders/queries";
 import { summariseOrderStat } from "../../features/orders/stat";
 import { ORDER_STATUS_TABS, orderTab } from "../../features/orders/statusTabs";
-import { DRAFTS_TAB, OrderTabs } from "../../features/orders/OrderTabs";
-import { useOrderDrafts } from "../../features/orderDrafts/queries";
+import { OrderTabs } from "../../features/orders/OrderTabs";
 import { CustomerLineItem } from "../../components/customers/CustomerLineItem";
 import { OrderLineItem } from "../../components/orders/OrderLineItem";
 import { Pagination } from "../../components/chrome/Pagination";
@@ -115,14 +114,6 @@ export function WarehouseOrdersPage() {
   const query = useOrders({ teamId, page, pageSize, status: activeTab.status, filters });
   const statQuery = useOrderStat({ teamId, filters });
 
-  // How many drafts are waiting, for the badge on the Drafts tab. ONE ROW is fetched, not the list —
-  // the number comes from the pager's total, and this screen never shows a draft.
-  //
-  // Deliberately NOT narrowed by the filter bar above: those filters are OrderList's, and a draft has
-  // no status to filter by and no shop half the time. The badge answers "is there anything waiting",
-  // which is a question about the whole pile.
-  const draftsQuery = useOrderDrafts({ teamId, page: 1, pageSize: 1 });
-  const draftCount = draftsQuery.data?.totalItems;
 
   // Any filter change restarts at page 1, for the same reason a tab change does: the page number
   // belongs to the old result set, and page 4 of a narrower one is usually empty — which reads as
@@ -253,19 +244,10 @@ export function WarehouseOrdersPage() {
         <Spacer />
       </Flex>
 
-      {/* DRAFTS IS THE LAST TAB (owner), and selecting it LEAVES — the drafts screen is its own route
-          with its own selection and bulk delete, so the tab is a way in rather than a panel here.
-          Everything else on this strip is a status filter that stays on this page. */}
       <OrderTabs
         value={tab}
         count={tabCount}
-        draftCount={draftCount}
         onSelect={(value) => {
-          if (value === DRAFTS_TAB) {
-            void navigate("/order-drafts");
-            return;
-          }
-
           setTab(value);
           // Page 1, always. Staying on page 4 while the set underneath changes lands on a page that may
           // not exist in the new filter, and an empty table there reads as "no orders in this status".

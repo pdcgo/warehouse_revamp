@@ -190,7 +190,7 @@ export function BundleCard({
 // ⚠ THE FILTERING IS LOCAL because the list is local. A real catalogue reads `BundleList(q, page)`
 // (HARD RULE 9: it grows), and this control then searches server-side exactly as ProductSelect does —
 // the markup below does not change, only where `collection` comes from.
-// Exported for the draft page, where picking a bundle MAPS a scraped row rather than adding a bundle.
+// Its own component, so a bundle can be picked somewhere other than this card.
 export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (id: string) => void }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
@@ -274,7 +274,7 @@ export function BundleSearch({ disabled, onAdd }: { disabled: boolean; onAdd: (i
 
 // ── One slot ────────────────────────────────────────────────────────────────────────────────────
 
-// Exported for the draft page's bundle-mapped rows — one slot, the same box as here.
+// Its own component — one slot, the box a bundle's line is filled in.
 export function SlotBox({
   teamId,
   warehouseId,

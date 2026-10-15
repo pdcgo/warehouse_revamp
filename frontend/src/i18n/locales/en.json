@@ -42,7 +42,9 @@
     "warehouseTransfer": "Transfers",
     "sectionOperations": "Operations",
     "sectionFinance": "Finance",
-    "sectionTeam": "Team"
+    "sectionTeam": "Team",
+    "ordersList": "List",
+    "orderDraftsShort": "Drafts"
   },
   "menu": {
     "theme": "Theme",
@@ -993,8 +995,8 @@
     }
   },
   "orderDrafts": {
-    "title": "Drafts",
-    "intro": "Orders that are not finished yet — saved from the order form, or pushed in by another app. Finish one and promote it, or delete what you will not use; nothing here expires on its own, and no stock is held.",
+    "title": "Order Drafts",
+    "intro": "Orders that are not finished yet — pushed in by another app, or saved from the order form. Open one to finish it in the order form, or delete what you will not use; nothing here expires on its own, and no stock is held.",
     "selectTeamView": "Select a team to view its order drafts.",
     "reference": "Reference",
     "lines": "Lines",
@@ -4005,6 +4007,21 @@
       "title": "Shipping from",
       "governs": "Every stock figure and HPP below is this building's.",
       "chooseFirst": "Choose the warehouse first — nothing below can be measured without it."
+    },
+    "draftHints": {
+      "title": "Products to Send",
+      "quantity": "{{n}} × ",
+      "from": "From {{source}} — pick our products below",
+      "fromManual": "From a draft saved on this form — pick our products below"
+    },
+    "draft": {
+      "badge": "Draft {{ref}}",
+      "delete": "Delete Draft",
+      "deleteTitle": "Delete Draft",
+      "deleteConfirm": "Delete draft {{ref}}? What the app sent is gone, and it is not undone.",
+      "deleted": "Draft deleted",
+      "deleteFailed": "The draft was not deleted",
+      "deleteAfterCreateFailed": "The order was placed, but its draft is still on the list — delete it there"
     }
   },
   "quantityInput": {

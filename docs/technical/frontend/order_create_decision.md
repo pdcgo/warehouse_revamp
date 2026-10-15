@@ -9,6 +9,7 @@ each old heading there now points here.
 | decision | what it settles |
 | --- | --- |
 | [the-ongkir-is-the-warehouses-to-set](#the-ongkir-is-the-warehouses-to-set) | shipping is priced by the building that ships it, so it is absent from the create screen |
+| [the-draft-opens-in-the-order-form](order_draft_decision.md#the-draft-opens-in-the-order-form) | `/orders/new?draft=ID` is a draft's page — this form seeded from it, its lines a text list above the products, Create deleting it |
 
 ## the-ongkir-is-the-warehouses-to-set
 

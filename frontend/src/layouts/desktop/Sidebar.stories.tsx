@@ -122,7 +122,13 @@ export const ASellingTeamGetsTheSellingMenu: Story = {
     const canvas = within(canvasElement);
 
     await waitFor(() => expect(canvas.getByRole("link", { name: "Shops" })).toBeInTheDocument());
-    await expect(canvas.getByRole("link", { name: "Orders" })).toHaveAttribute("href", "/orders");
+
+    // Orders is a GROUP with its drafts — Pesanan ▸ Daftar · Draf (the-drafts-are-a-list-of-their-own).
+    await expect(canvas.queryByRole("link", { name: "Orders" })).toBeNull();
+    await userEvent.click(canvas.getByTestId("nav-group-toggle-nav.orders"));
+    await waitFor(() => expect(canvas.getByRole("link", { name: "Drafts" })).toBeVisible());
+    await expect(canvas.getByRole("link", { name: "Drafts" })).toHaveAttribute("href", "/order-drafts");
+    await expect(canvas.getAllByRole("link", { name: "List" }).some((link) => link.getAttribute("href") === "/orders")).toBe(true);
 
     // Products is a GROUP here, so there is no link by that name — its children carry the routes.
     await expect(canvas.queryByRole("link", { name: "Products" })).toBeNull();
@@ -169,17 +175,17 @@ export const OnlyTheLongestMatchingRouteIsActive: Story = {
   },
 };
 
-// A screen reached from INSIDE a page is still that menu item's screen (`alsoMatches`). Drafts has
-// its own route but no menu item of its own, so without the claim it would light nothing — which
-// reads as having fallen out of the app.
-export const AClaimedRouteStillLightsItsMenuItem: Story = {
+// THE DRAFTS LIGHT THEIR OWN ITEM — a list of their own under Orders (the-drafts-are-a-list-of-their-own), so standing on
+// them lights Drafts, and the Orders group opens itself to show it.
+export const TheDraftsLightTheirOwnItem: Story = {
   beforeEach: asTeam(SELLING.id),
   render: () => <AtDrafts />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const orders = await canvas.findByRole("link", { name: "Orders" });
-    await waitFor(() => expect(orders).toHaveAttribute("aria-current", "page"));
+    const drafts = await canvas.findByRole("link", { name: "Drafts" });
+    await waitFor(() => expect(drafts).toHaveAttribute("aria-current", "page"));
+    await expect(drafts).toBeVisible();
   },
 };
 

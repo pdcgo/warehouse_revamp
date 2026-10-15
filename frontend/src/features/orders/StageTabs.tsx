@@ -4,9 +4,6 @@ import { useTranslation } from "react-i18next";
 
 import { ALL_STAGE, ORDER_STAGES, stageIsOnTheWire } from "./stages";
 
-/** The value the DRAFTS tab carries — not a stage: a draft is a different record in a different table. */
-export const DRAFTS_TAB = "drafts";
-
 // THE STATUS FILTER, OVER THE OWNER'S EIGHT (owner).
 //
 // `docs/business/order/context.md` §Order Status decided the set; this strip is that set, in that
@@ -18,9 +15,8 @@ export const DRAFTS_TAB = "drafts";
 // are the same cause — the enum has not migrated — so both carry ONE mark, `statusSet`, rather than
 // five. See `pending.ts`.
 //
-// ⚠ TWO SCREENS DRAW IT — the seller's order list and the drafts screen, which is that list's Drafts
-// tab (`the-draft-list-is-the-drafts-tab`). The warehouse's list still draws the old six-status
-// `OrderTabs`; it has not been redesigned.
+// The seller's order list draws it. Drafts is not on it any more — the drafts are a list of their own, reached from the
+// menu (`the-drafts-are-a-list-of-their-own`). The warehouse's list still draws the old six-status `OrderTabs`.
 //
 // ⚠ THE ⚠ IS THE CALLER'S (`mark`). The strip's gap is the same on both screens, but each screen's
 // pending list is its own, and a feature reaching into a page for one is backwards.
@@ -28,16 +24,13 @@ export function StageTabs({
   value,
   onSelect,
   count,
-  draftCount,
   mark,
 }: {
-  /** The active tab: a stage id, `ALL_STAGE`, or `DRAFTS_TAB`. */
+  /** The active tab: a stage id, or `ALL_STAGE`. */
   value: string;
   onSelect: (value: string) => void;
   /** The badge for one tab. */
   count: (value: string) => number;
-  /** Undefined hides the badge — a screen that has not counted them shows no number, not a 0. */
-  draftCount?: number;
   /** The strip's single ⚠ — `statusSet`, from the calling screen's own pending list. */
   mark?: ReactNode;
 }) {
@@ -111,25 +104,6 @@ export function StageTabs({
             </Tabs.Trigger>
           ))}
 
-          {/* DRAFTS IS THE LAST TAB (owner), and selecting it LEAVES — the drafts screen is its own
-            route with its own selection and bulk delete. */}
-          <Tabs.Trigger
-            value={DRAFTS_TAB}
-            flexShrink="0"
-            whiteSpace="nowrap"
-            data-testid={`orders-tab-${DRAFTS_TAB}`}
-          >
-            {t("orders.tab.drafts")}
-            {draftCount !== undefined && (
-              <Badge
-                size="xs"
-                variant="subtle"
-                data-testid={`orders-tab-count-${DRAFTS_TAB}`}
-              >
-                {draftCount}
-              </Badge>
-            )}
-          </Tabs.Trigger>
           {/* One underline, sliding to the picked tab (motion-is-small-quick-and-shared). The rows under it do not fade:
               a tab is a filter (a-filter-answers-as-it-changes). */}
           <Tabs.Indicator />

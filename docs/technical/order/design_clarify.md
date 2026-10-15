@@ -535,8 +535,9 @@ flowchart LR
 
 13. **Where does a draft's pushing app go on the row?** The draft list used to show `source` under the reference;
     [the-draft-list-is-the-drafts-tab](../frontend/order_draft_decision.md#the-draft-list-is-the-drafts-tab) gave that line to
-    *what is left*, so the app's name is now on the detail only. Two apps can scrape the same marketplace, and
-    the reference alone does not say whose it is.
+    *what is left*, so the app's name is now only in the order form's hint card, once the draft is opened
+    ([the-draft-opens-in-the-order-form](../frontend/order_draft_decision.md#the-draft-opens-in-the-order-form)). Two apps can
+    scrape the same marketplace, and the reference alone does not say whose it is.
     **→ Recommend** it takes the author's line in the *Dibuat* cell — `via <app>` instead of `oleh <name>`. Per
     [drafts-exist-only-for-the-third-party-app](../../business/order/context_decision.md#drafts-exist-only-for-the-third-party-app)
     the app IS the author, and the user id on the draft is only whoever owns the token it pushed with.

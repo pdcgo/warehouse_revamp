@@ -1,6 +1,34 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowLeftRight, Boxes, Building2, CalendarRange, ChartColumn, CircleUser, ClipboardCheck, ClipboardList, Compass, Factory, FileUp, FolderTree, Grid3x3, House, Layers, Package, Handshake, Landmark, Receipt, Scale, Settings, ShoppingCart, Store, TrendingDown, Truck, Undo2, Users } from "lucide-react";
+  ArrowLeftRight,
+  Boxes,
+  Building2,
+  CalendarRange,
+  ChartColumn,
+  CircleUser,
+  ClipboardCheck,
+  ClipboardList,
+  Compass,
+  Factory,
+  FilePen,
+  FileUp,
+  FolderTree,
+  Grid3x3,
+  Handshake,
+  House,
+  Landmark,
+  Layers,
+  Package,
+  Receipt,
+  Scale,
+  Settings,
+  ShoppingCart,
+  Store,
+  TrendingDown,
+  Truck,
+  Undo2,
+  Users,
+} from "lucide-react";
 import { Role } from "../gen/warehouse/role_base/v1/role_pb";
 import { TeamType } from "../gen/warehouse/team/v1/team_pb";
 import { canImportSettlement, canManageUsers, isTeamManager } from "../lib/roles";
@@ -91,19 +119,27 @@ const CATEGORIES: MenuItem = { to: "/categories", label: "nav.categories", icon:
 const SHIPPING: MenuItem = { to: "/shipping", label: "nav.shipping", icon: Truck };
 const PRODUCTS: MenuItem = { to: "/products", label: "nav.products", icon: Package };
 const SHOPS: MenuItem = { to: "/shops", label: "nav.shops", icon: Store };
-// Orders, and DRAFTS IS INSIDE IT — a tab on that screen rather than a menu item of its own (owner).
+// The selling team's Orders. The phone's bottom bar carries it as one tab.
+const ORDERS: MenuItem = { to: "/orders", label: "nav.orders", icon: ShoppingCart };
+const ORDER_DRAFTS: MenuItem = { to: "/order-drafts", label: "nav.orderDrafts", icon: FilePen };
+// The phone's Orders tab CLAIMS the drafts (`alsoMatches`): the bar has no Drafts tab — the list is reached from More —
+// and with no top bar the lit tab is the shell's one statement of where you are, so standing on Drafts lights the tab of
+// the group it belongs to. The sidebar does not need it: Drafts is an item of its own there.
+const ORDERS_TAB: MenuItem = { ...ORDERS, alsoMatches: [ORDER_DRAFTS.to] };
+
+// ORDERS AND ITS DRAFTS, ONE SUB-MENU (owner: *"draft perlu dipisahkan dari list pesanan, dia jadi list sendiri"*,
+// `the-drafts-are-a-list-of-their-own`). The drafts were a TAB of the order list; now they are a list of their own, and
+// a list of its own needs a way in. Beside Orders as a second top-level item would repeat "Pesanan" and lengthen the
+// sidebar (`the-sidebar-stays-short`), so the two are one group whose children name only their screen:
 //
-// It used to sit beside this one, on the argument that a draft was never an order. That is still
-// true of the schema and the route, and neither changed; what was wrong was the MENU. Nobody goes
-// looking for "drafts" — they go looking for the order they were half-way through, and that search
-// starts at Orders. A second top-level item made the sidebar answer a question about our tables.
-const ORDERS: MenuItem = {
-  to: "/orders",
+//   Pesanan ▸  Daftar · Draf
+const ORDERS_GROUP: MenuGroup = {
   label: "nav.orders",
   icon: ShoppingCart,
-  // The drafts screen keeps its own route, so Orders has to claim it — otherwise standing on Drafts
-  // highlights nothing and the phone's top bar goes blank.
-  alsoMatches: ["/order-drafts"],
+  children: [
+    { ...ORDERS, label: "nav.ordersList" },
+    { ...ORDER_DRAFTS, label: "nav.orderDraftsShort" },
+  ],
 };
 
 // The WAREHOUSE's Orders — the orders shipping FROM this building (#151), which is the work its crew
@@ -344,9 +380,9 @@ export function menuSectionsFor(teamType: TeamType | undefined, role: Role | und
     // Suppliers right under it — who the restocks in Inventories come from. A selling team's alone: a warehouse
     // does not own the suppliers a selling team orders from (#212).
     operations.push(SUPPLIERS_GROUP);
-    // Shops and orders are SELLING-team concepts (#66/#68).
+    // Shops and orders are SELLING-team concepts (#66/#68). Orders is a group with its drafts.
     operations.push(SHOPS);
-    operations.push(ORDERS);
+    operations.push(ORDERS_GROUP);
 
     // ⚠ NO Revenue, Profit or Statement item for a selling team any more. All three were made
     // ENTIRELY of `revenue_service`'s expected margin, and that service has been removed with its
@@ -429,7 +465,7 @@ function bottomBarCandidates(teamType: TeamType | undefined): MenuItem[] {
       ];
     // A selling team's: the orders they are taking, and the catalogue they take them from.
     case TeamType.SELLING:
-      return [HOME, ORDERS, PRODUCTS];
+      return [HOME, ORDERS_TAB, PRODUCTS];
     // Root/admin oversee — the teams, and the stock those teams hold.
     case TeamType.ROOT:
     case TeamType.ADMIN:

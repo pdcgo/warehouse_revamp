@@ -272,8 +272,8 @@ export const TheChipOpensTheWorkspaceFromTheBottom: Story = {
   },
 };
 
-// ⚠ A CLAIMED ROUTE LIGHTS ITS TAB (nav.ts). Drafts has its own route but no menu item, so it is CLAIMED by Orders
-// (`alsoMatches`) — with no top bar, the lit tab is the shell's one statement of where you are.
+// ⚠ A CLAIMED ROUTE LIGHTS ITS TAB (nav.ts). Drafts sits under Pesanan in the menu but has no tab of its own, so the
+// bar's Orders tab CLAIMS it (`alsoMatches`) — with no top bar, the lit tab is the shell's one statement of where you are.
 export const AClaimedRouteLightsItsTab: Story = {
   beforeEach: asTeam(SELLING.id),
   render: () => <AtDrafts />,

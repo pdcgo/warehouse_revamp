@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Alert,
+  Badge,
+  Box,
   Button,
   Card,
   Field,
@@ -17,15 +19,20 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowLeft, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
 import { rpcError, teamClient } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useCreateOrder } from "../../features/orders/queries";
 import {
+  useDeleteOrderDrafts,
   useOrderDraft,
   usePushOrderDraft,
   useUpdateOrderDraft,
 } from "../../features/orderDrafts/queries";
+import type { OrderDraft } from "../../gen/warehouse/selling/v1/order_draft_pb";
+import { DraftProductHints } from "./components/DraftProductHints";
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { useIsMobile } from "../../layouts/shell";
 import { useStockAvailability, useStockCosts } from "../../features/inventory/queries";
 import {
   MarketplaceInfoForm,
@@ -33,8 +40,6 @@ import {
 } from "../../components/orders/MarketplaceInfoForm";
 import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
 import { OrderItemCard } from "../../components/orders/OrderItemCard";
-import { ProductListExternal } from "../../components/products/ProductListExternal";
-import type { ExternalProduct } from "../../components/products/ProductListExternal";
 import type { PickedProduct } from "../../components/products/ProductSelect";
 import { emptyAddress } from "../../components/customers/AddressPicker";
 import type { AddressValue } from "../../components/customers/AddressPicker";
@@ -94,6 +99,52 @@ function addressTouched(a: AddressValue): boolean {
 // must be as identifiable as the rest rather than borrowing an app's name or leaving it blank.
 const DRAFT_SOURCE = "manual";
 
+// A draft's address as the form holds one — the same frozen shape an order carries, field for field.
+function addressOf(draft: OrderDraft): AddressValue {
+  const a = draft.address;
+  if (!a) return emptyAddress;
+
+  return {
+    provinsiCode: a.provinsiCode,
+    provinsiName: a.provinsiName,
+    kabupatenCode: a.kabupatenCode,
+    kabupatenName: a.kabupatenName,
+    kecamatanCode: a.kecamatanCode,
+    kecamatanName: a.kecamatanName,
+    desaCode: a.desaCode,
+    desaName: a.desaName,
+    kodePos: a.kodePos,
+    addressLine: a.addressLine,
+  };
+}
+
+// Everything the leave-guard counts as WORK, as one comparable string. On a draft the form opens already filled, so
+// "dirty" means changed since it was seeded, not merely non-empty — leaving a draft untouched loses nothing (the draft
+// is still on the list), and must not ask whether to discard it.
+interface WorkFields {
+  customerName: string;
+  customerPhone: string;
+  shopId: bigint;
+  orderRef: string;
+  shippingCode: string;
+  note: string;
+  receipt: boolean;
+  address: AddressValue;
+  marketplaceTotal: string;
+  lines: LineDraft[];
+  bundles: number;
+  receiptCode: string;
+  orderDate: string;
+  deadline: string;
+  buyerUsername: string;
+}
+
+function workSignature(w: WorkFields): string {
+  return JSON.stringify({ ...w, lines: w.lines.map((l) => [l.productId, l.quantity]) }, (_, v) =>
+    typeof v === "bigint" ? v.toString() : v,
+  );
+}
+
 // `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
 // number means NO DRAFT — the query is disabled at 0n and the card renders nothing, which is the right
 // answer for a mistyped link and for an absent parameter alike. `BigInt("x")` throws, so this cannot
@@ -123,33 +174,29 @@ export function OrderCreatePage() {
 
   const teamId = current?.teamId;
 
-  // ── WHAT THE EXTENSION SENT ──────────────────────────────────────────────────────────────────────
+  // ── A DRAFT IS FINISHED HERE (owner: *"order draft detail page itu dilebur dengan order create"*,
+  // `the-draft-opens-in-the-order-form`) ─────────────────────────────────────────────────────────────
   //
-  // `/orders/new?draft=201` opens this form ALONGSIDE the draft a browser extension pushed in, so the
-  // person types the order while reading the marketplace's own words. Without the id the parameter is
-  // absent, the query never runs, and the form is exactly what it was — a hand-written order has no
-  // extension behind it and must not show a card claiming one.
+  // `/orders/new?draft=201` is the draft's page: this form, SEEDED from what the app pushed (the shop, its order id,
+  // the warehouse, the buyer, the address, the courier, the price it read), with the scraped lines as a text list above
+  // the products — read while our products are picked. Create places the order and deletes the draft; the draft can
+  // also be deleted from the header. Without the id the parameter is absent, the query never runs, and the form is
+  // exactly what it was.
   //
-  // ⚠ IT IS READ-ONLY HERE, and nothing on it is copied into the form. The scraped text names no
-  // product of ours (`OrderDraftItem.product_id` is 0 until a person maps it), so there is nothing to
-  // prefill with — auto-picking a catalogue product by matching titles is exactly what the draft
-  // design refused, because a wrong guess is indistinguishable from a person's choice once it is in
-  // the form. Reading the lines and picking the products is the human act, and this card is the half
-  // being read from.
+  // ⚠ THE SCRAPED LINES ARE NOT COPIED IN. A marketplace title names no product of ours (`product_id` is 0 until a
+  // person maps it), and auto-picking by matching titles is what the draft design refused: a wrong guess is
+  // indistinguishable from a person's choice once it is in the form. A line that IS mapped (a draft saved from this
+  // form) comes in as the product it names.
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const externalDraftId = parseDraftId(searchParams.get("draft"));
   const externalDraft = useOrderDraft({ teamId, draftId: externalDraftId });
-
-  const externalItems: ExternalProduct[] = useMemo(
-    () =>
-      (externalDraft.data?.items ?? []).map((item) => ({
-        id: item.id,
-        name: item.externalName,
-        price: item.unitPrice,
-        quantity: item.quantity,
-      })),
-    [externalDraft.data],
-  );
+  const draft = externalDraft.data ?? null;
+  const draftMode = externalDraftId > 0n;
+  const deleteDrafts = useDeleteOrderDrafts();
+  const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(false);
+  // What the form held right after it was seeded — the leave-guard's "nothing changed" on a draft.
+  const [seedSignature, setSeedSignature] = useState<string | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -268,6 +315,62 @@ export function OrderCreatePage() {
       cancelled = true;
     };
   }, [teamId]);
+
+  // SEED FROM THE DRAFT, once per draft — after this the form is the person's. The draft's warehouse wins over the
+  // team's default: the app read where this order ships from. A draft the app pushed carries the marketplace's own
+  // order id; one saved from this form carries a reference of ours, which is no marketplace's and is not copied.
+  const seededDraft = useRef("");
+
+  useEffect(() => {
+    if (!draft || seededDraft.current === draft.id.toString()) return;
+    seededDraft.current = draft.id.toString();
+
+    const orderRef = draft.source !== DRAFT_SOURCE ? draft.externalId : "";
+    // What the buyer was charged, as scraped — the sell price starts there and can be typed over
+    // (`the-draft-sell-price-starts-from-the-rows`).
+    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * BigInt(item.quantity), 0n);
+    const marketplaceTotal = scraped > 0n ? scraped.toString() : "0";
+    const seededAddress = addressOf(draft);
+    const seededLines: LineDraft[] = [];
+    for (const item of draft.items) {
+      if (item.productId <= 0n || seededLines.some((l) => l.productId === item.productId)) continue;
+      seededLines.push({
+        productId: item.productId,
+        sku: item.externalSku,
+        name: item.externalName,
+        imageUrl: "",
+        thumbnailUrl: "",
+        quantity: String(item.quantity > 0 ? item.quantity : 1),
+      });
+    }
+
+    setCustomerName(draft.customerName);
+    setCustomerPhone(draft.customerPhone);
+    setAddress(seededAddress);
+    setShippingCode(draft.shippingCode);
+    setMarketplace((prev) => ({ ...prev, shopId: draft.shopId, orderExternalRefId: orderRef, marketplaceTotal }));
+    if (draft.warehouseId > 0n) setWarehouseId(draft.warehouseId);
+    setLines(seededLines);
+    setSeedSignature(
+      workSignature({
+        customerName: draft.customerName,
+        customerPhone: draft.customerPhone,
+        shopId: draft.shopId,
+        orderRef,
+        shippingCode: draft.shippingCode,
+        note: "",
+        receipt: false,
+        address: seededAddress,
+        marketplaceTotal,
+        lines: seededLines,
+        bundles: 0,
+        receiptCode: "",
+        orderDate: "",
+        deadline: "",
+        buyerUsername: "",
+      }),
+    );
+  }, [draft]);
 
   // ⚠ EVERY PRODUCT ON THE ORDER, picked by hand or arrived inside a bundle. One list, because
   // everything downstream — the stock read, the HPP read, the ownership read, the totals, the
@@ -596,8 +699,26 @@ export function OrderCreatePage() {
   // Anything typed at all. Used only to decide whether leaving needs a confirmation — the warehouse is
   // excluded on purpose, because it arrives PRE-FILLED and a page nobody has touched must not claim to
   // have unsaved work.
-  const dirty =
-    customerName.trim() !== "" ||
+  const workNow = workSignature({
+    customerName,
+    customerPhone,
+    shopId,
+    orderRef: marketplace.orderExternalRefId,
+    shippingCode,
+    note,
+    receipt: hasReceipt(receipt),
+    address,
+    marketplaceTotal: marketplace.marketplaceTotal,
+    lines,
+    bundles: bundles.length,
+    receiptCode,
+    orderDate,
+    deadline,
+    buyerUsername,
+  });
+  const dirty = draftMode
+    ? seedSignature !== null && workNow !== seedSignature
+    : customerName.trim() !== "" ||
     customerPhone.trim() !== "" ||
     shopId > 0n ||
     marketplace.orderExternalRefId.trim() !== "" ||
@@ -708,6 +829,17 @@ export function OrderCreatePage() {
       // leaves behind has no other way to learn about the order just created.
       toaster.create({ type: "success", title: t("orders.orderCreated") });
 
+      // THE DRAFT IS DONE — deleted once its order exists (docs/business/order/context.md, Order Draft Behavior 5).
+      // A second call, since OrderCreate takes no draft id yet: if it fails the order still stands, and the draft is
+      // left on the list to delete by hand — said, not hidden.
+      if (draftMode) {
+        try {
+          await deleteDrafts.mutateAsync({ teamId, draftIds: [externalDraftId] });
+        } catch (err) {
+          toaster.create({ type: "warning", title: t("orderForm.draft.deleteAfterCreateFailed"), description: rpcError(err) });
+        }
+      }
+
       // Set BEFORE navigating, or the guard above asks whether to discard the order that was just
       // successfully placed — which is exactly what happened the first time this shipped.
       savedRef.current = true;
@@ -799,11 +931,26 @@ export function OrderCreatePage() {
       toaster.create({ type: "success", title: t("orders.draftSaved") });
 
       savedRef.current = true;
-      void navigate(`/order-drafts/${draft.id}`);
+      // To the drafts list — the draft opens back in this form from there (the-draft-opens-in-the-order-form).
+      void navigate("/order-drafts");
     } catch (err) {
       setError(rpcError(err));
     } finally {
       setSavingDraft(false);
+    }
+  }
+
+  // DELETE THE DRAFT — the app's work dropped, from its own page. Confirmed first: it is not undone.
+  async function removeDraft() {
+    if (teamId === undefined || !draftMode) return;
+
+    try {
+      await deleteDrafts.mutateAsync({ teamId, draftIds: [externalDraftId] });
+      toaster.create({ type: "success", title: t("orderForm.draft.deleted") });
+      savedRef.current = true;
+      void navigate("/order-drafts");
+    } catch (err) {
+      toaster.create({ type: "error", title: t("orderForm.draft.deleteFailed"), description: rpcError(err) });
     }
   }
 
@@ -833,7 +980,44 @@ export function OrderCreatePage() {
         >
           <Icon as={ArrowLeft} boxSize="4" />
         </IconButton>
-        <Heading size="md">{t("orders.newOrderTitle")}</Heading>
+        <Heading size="md" truncate={isMobile} minW="0">
+          {t("orders.newOrderTitle")}
+        </Heading>
+        {/* FROM A DRAFT — which one, and the way to drop it (the-draft-opens-in-the-order-form). */}
+        {draft && (
+          <>
+            <Badge colorPalette="gray" flexShrink={0} data-testid="order-create-draft-ref">
+              {t("orderForm.draft.badge", { ref: draft.externalId })}
+            </Badge>
+            <Box flex="1" />
+            {isMobile ? (
+              <CompactActions
+                menuLabel={t("common.actions")}
+                actions={[
+                  {
+                    id: "delete",
+                    label: t("orderForm.draft.delete"),
+                    icon: Trash2,
+                    danger: true,
+                    testId: "order-create-delete-draft",
+                    onClick: () => setConfirmDeleteDraft(true),
+                  },
+                ]}
+              />
+            ) : (
+              <Button
+                size="xs"
+                variant="outline"
+                colorPalette="error"
+                data-testid="order-create-delete-draft"
+                onClick={() => setConfirmDeleteDraft(true)}
+              >
+                <Icon as={Trash2} boxSize="4" />
+                {t("orderForm.draft.delete")}
+              </Button>
+            )}
+          </>
+        )}
       </Flex>
 
       {error && (
@@ -1016,18 +1200,10 @@ export function OrderCreatePage() {
               </Card.Body>
             </Card.Root>
 
-            {/* ── WHAT THE EXTENSION SENT ── ABOVE the picker, and only when there is a draft ──
-                This is the text being worked FROM and the picker below is the work, so the screen
-                reads top to bottom: the marketplace's own words first, our catalogue second. It
-                renders NOTHING without `?draft=`, so a hand-written order is the form it always
-                was. */}
-            {externalItems.length > 0 && (
-              <ProductListExternal
-                items={externalItems}
-                source={externalDraft.data?.source}
-                showTotal
-              />
-            )}
+            {/* ── WHAT THE DRAFT SAYS MUST BE SENT ── ABOVE the products, as a list of text (owner,
+                the-draft-opens-in-the-order-form). The marketplace's own words first, our catalogue second —
+                it is read while the products below are picked. Nothing without `?draft=`. */}
+            {draft && draft.items.length > 0 && <DraftProductHints items={draft.items} source={draft.source} />}
 
             {/* WHAT IS BEING SOLD — the items card. */}
             <OrderItemCard
@@ -1154,7 +1330,8 @@ export function OrderCreatePage() {
               savingDraft={savingDraft}
               canSave={canSave}
               canDraft={dirty}
-              onSaveDraft={() => void saveDraft()}
+              // A draft is finished here or left on the list as it is — no second draft of it.
+              onSaveDraft={draftMode ? undefined : () => void saveDraft()}
             />
           </Stack>
         </GridItem>
@@ -1168,6 +1345,15 @@ export function OrderCreatePage() {
         placing={saving}
         onClose={() => setGate([])}
         onPlaceAnyway={() => void place()}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteDraft}
+        onOpenChange={setConfirmDeleteDraft}
+        title={t("orderForm.draft.deleteTitle")}
+        message={t("orderForm.draft.deleteConfirm", { ref: draft?.externalId ?? "" })}
+        confirmLabel={t("orderForm.draft.delete")}
+        onConfirm={removeDraft}
       />
 
       <ConfirmDialog

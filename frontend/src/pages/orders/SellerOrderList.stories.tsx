@@ -402,20 +402,14 @@ export const FiltersLiveInTheUrl: Story = {
   },
 };
 
-// DRAFTS IS THE LAST TAB, and selecting it LEAVES — the drafts screen is its own route with its own
-// selection and bulk delete, so the tab is a way in rather than a panel here. Its badge counts the
-// whole pile, deliberately unfiltered by the bar above: "is there anything waiting" is a question
-// about all of them.
-export const TheDraftsTabCountsAndLeaves: Story = {
+// NO DRAFTS TAB — the drafts are a list of their own, reached from the menu (the-drafts-are-a-list-of-their-own). The
+// strip is the stages, and only the stages.
+export const NoDraftsTab: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await waitFor(() =>
-      expect(canvas.getByTestId("orders-tab-count-drafts")).toHaveTextContent("2"),
-    );
-
-    await userEvent.click(canvas.getByTestId("orders-tab-drafts"));
-    await waitFor(() => expect(screen.getByTestId("at-order-drafts")).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId("orders-tab-all")).toBeInTheDocument());
+    await expect(canvas.queryByTestId("orders-tab-drafts")).toBeNull();
   },
 };
 

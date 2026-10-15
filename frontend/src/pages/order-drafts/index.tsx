@@ -12,12 +12,11 @@ import {
   IconButton,
   Menu,
   Portal,
-  Spacer,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Eye, FilePen, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Eye, FilePen, MoreHorizontal, Trash2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { Pagination } from "../../components/chrome/Pagination";
@@ -32,16 +31,9 @@ import {
   useOldestOrderDraft,
   useOrderDrafts,
 } from "../../features/orderDrafts/queries";
-import { NO_ORDER_FILTERS, useOrderStat } from "../../features/orders/queries";
-import { summariseOrderStat } from "../../features/orders/stat";
-import { ORDER_STATUS_TABS, orderTab } from "../../features/orders/statusTabs";
-import { OrderTabs } from "../../features/orders/OrderTabs";
-import { DRAFTS_TAB, StageTabs } from "../../features/orders/StageTabs";
-import { ALL_STAGE, ORDER_STAGES, orderStage } from "../../features/orders/stages";
 import { CreatedCell, DateCell, OrderRefCell, OwnerCell } from "../../features/orders/OrderRowCells";
 import { useShopOptions } from "../../features/shops/queries";
 import { useActors } from "../../features/users/queries";
-import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDER_DRAFTS_PENDING } from "./pending";
 import { DraftSummary } from "./components/DraftSummary";
@@ -55,17 +47,15 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // OrderDraftsPage lists the CALLER'S OWN drafts (#195) — incomplete orders pushed in by a
 // third-party app or saved from the order form, waiting for somebody here to finish them.
 //
-// IT IS THE DRAFTS TAB OF THE ORDER LIST (owner: *"draft sesuaikan dengan all, tapi jelas tidak
-// selengkap di sana"* — `the-draft-list-is-the-drafts-tab`). Same heading, same tab strip, same row
-// grammar as the seller's `/orders`: the reference with a second line under it, the shop, when it was
-// written and by whom, a kebab. Only the columns a draft can honestly fill — a draft has no status, no
-// resi, no marketplace date, no cost and no marketplace total, so those columns are simply absent
-// rather than a row of dashes. Nothing on the row is invented, so nothing on it carries a ⚠.
+// A LIST OF ITS OWN (owner: *"draft perlu dipisahkan dari list pesanan, dia jadi list sendiri"*,
+// `the-drafts-are-a-list-of-their-own`) — its own title, reached from the menu (Pesanan ▸ Daftar · Draf), no longer a
+// tab of the order list. The ROW keeps the order list's grammar (`the-draft-list-is-the-drafts-tab` decided it): the
+// reference with a second line under it, the shop, when it was written and by whom, a kebab. Only the columns a draft
+// can honestly fill — no status, resi, marketplace date, cost or marketplace total — so nothing on the row is invented.
 //
-// It keeps its OWN ROUTE — deep links, the draft detail's Back and the order form's redirect all point
-// here — and the one thing the order table does not have: selection and bulk delete. Nothing expires,
-// and an app pushing continuously fills this list far faster than a person finishes one, so pruning is
-// load-bearing, not a convenience.
+// A row opens the draft IN THE ORDER FORM (`the-draft-opens-in-the-order-form`). The one thing the order table does
+// not have: selection and bulk delete. Nothing expires, and an app pushing continuously fills this list far faster than
+// a person finishes one, so pruning is load-bearing, not a convenience.
 export function OrderDraftsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -84,11 +74,6 @@ export function OrderDraftsPage() {
   const oldest = useOldestOrderDraft(teamId);
   const remove = useDeleteOrderDrafts();
 
-  // The counts on the strip's other tabs. The same query the order list runs with no filters, so the
-  // two strips cannot show different numbers for the same team.
-  const statQuery = useOrderStat({ teamId, filters: NO_ORDER_FILTERS });
-  const stat = summariseOrderStat(statQuery.data);
-
   const drafts = query.data?.drafts ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
@@ -100,45 +85,8 @@ export function OrderDraftsPage() {
   const shopOf = (id: bigint) => shopOptions.data?.find((shop) => shop.id === id);
   const actors = useActors(drafts.map((d) => d.authorUserId));
 
-  // ⚠ A WAREHOUSE KEEPS THE OLD STRIP. Its own order list still draws the six proto statuses
-  // (`the-two-ends-are-two-screens`); swapping the strip on the way in here would be the same jolt this
-  // page was rebuilt to remove, only from the other side.
+  // A warehouse never has a draft — no summary or marks for it, only the (empty) list.
   const warehouse = current?.teamType === TeamType.WAREHOUSE;
-
-  // A stage sums every proto status it covers — the seller list's rule, copied because it is the same
-  // strip and must count the same way.
-  function stageCount(value: string): number {
-    if (value === ALL_STAGE) {
-      return ORDER_STAGES.reduce(
-        (sum, item) => sum + item.statuses.reduce((n, s) => n + stat.count(s), 0),
-        0,
-      );
-    }
-
-    const item = orderStage(value);
-
-    return item ? item.statuses.reduce((n, s) => n + stat.count(s), 0) : 0;
-  }
-
-  function statusCount(value: string): number {
-    const item = orderTab(value);
-
-    if (item.value === "all") {
-      return ORDER_STATUS_TABS.reduce(
-        (sum, other) => (other.value === "all" ? sum : sum + stat.count(other.status)),
-        0,
-      );
-    }
-
-    return stat.count(item.status);
-  }
-
-  // Any other tab LEAVES, and lands on the tab that was clicked — `?status=` carries it.
-  function leaveTo(value: string) {
-    if (value !== DRAFTS_TAB) {
-      void navigate(`/orders?status=${value}`);
-    }
-  }
 
   // The selection is held as ids rather than as a per-row flag so it survives a refetch — a delete
   // that reorders the page must not silently transfer a tick from one draft to another.
@@ -218,14 +166,22 @@ export function OrderDraftsPage() {
     <Stack gap="section" animationStyle="enter">
       {!warehouse && <NotImplementedSummary list={ORDER_DRAFTS_PENDING} />}
 
-      {/* The ORDERS heading, not this screen's own (owner). Drafts is a tab of that screen, and a tab
-          that changed the page title would read as having navigated somewhere else. */}
-      <Flex align="center" gap="card" wrap="wrap">
-        <Heading size="md">{t("orders.title")}</Heading>
-        <Badge colorPalette="brand">
-          {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
-        </Badge>
-        <Spacer />
+      {/* ITS OWN TITLE, the subtitle under it (the-drafts-are-a-list-of-their-own) — no longer the order list's heading over
+          a Drafts tab. */}
+      <Flex align="flex-start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
+        <Stack gap="1" flex="1 1 16rem" minW="0">
+          <Flex align="center" gap="2" wrap="wrap">
+            <Heading size="md" data-testid="order-drafts-heading">
+              {t("orderDrafts.title")}
+            </Heading>
+            <Badge colorPalette="brand">
+              {current.teamName || t("orders.teamFallback", { id: current.teamId.toString() })}
+            </Badge>
+          </Flex>
+          <Text color="fg.muted" fontSize="sm" data-testid="order-drafts-subtitle">
+            {t("orderDrafts.intro")}
+          </Text>
+        </Stack>
 
         {/* ON A PHONE THE ACTIONS ARE ICONS, AND PAST TWO THEY FOLD INTO ⋯ (a-phone-header-action-is-an-icon) — labelled
             buttons wrapped onto rows of their own. The desktop keeps its labelled buttons. */}
@@ -241,58 +197,25 @@ export function OrderDraftsPage() {
                 testId: "delete-selected-drafts",
                 onClick: () => setConfirmOpen(true),
               },
-              !warehouse && { id: "create", label: t("orders.newOrder"), icon: Plus, primary: true, testId: "open-create-order", onClick: () => navigate("/orders/new") },
             ]}
           />
         ) : (
-        <Flex gap="2" align="center" wrap="wrap">
-          {selected.size > 0 && (
+          selected.size > 0 && (
             <Button
               size="xs"
               colorPalette="error"
+              flexShrink={0}
               data-testid="delete-selected-drafts"
               onClick={() => setConfirmOpen(true)}
             >
               <Icon as={Trash2} boxSize="4" />
               {t("orderDrafts.deleteSelected", { count: selected.size })}
             </Button>
-          )}
-
-          {/* The order list's one committing action, in the same place. Export and Import are not
-              here — neither means anything for a draft. */}
-          {!warehouse && (
-            <Button
-              size="xs"
-              colorPalette="brand"
-              data-testid="open-create-order"
-              onClick={() => navigate("/orders/new")}
-            >
-              <Icon as={Plus} boxSize="4" />
-              {t("orders.newOrder")}
-            </Button>
-          )}
-        </Flex>
+          )
         )}
       </Flex>
 
-      {/* THE SAME STRIP AS THE ORDER LIST, with Drafts active. */}
-      {warehouse ? (
-        <OrderTabs value={DRAFTS_TAB} count={statusCount} draftCount={totalItems} onSelect={leaveTo} />
-      ) : (
-        <StageTabs
-          value={DRAFTS_TAB}
-          count={stageCount}
-          draftCount={totalItems}
-          mark={<NotImplemented list={ORDER_DRAFTS_PENDING} id="statusSet" />}
-          onSelect={leaveTo}
-        />
-      )}
-
-      <Text color="fg.muted" fontSize="sm">
-        {t("orderDrafts.intro")}
-      </Text>
-
-      {/* Under the strip, where the order list keeps its summary — and, like it, controlling nothing. */}
+      {/* Under the title, as the order list keeps its summary — and, like it, controlling nothing. */}
       {!warehouse && !loading && (
         <DraftSummary total={totalItems} oldest={oldest.data} page={drafts} />
       )}
@@ -347,7 +270,7 @@ export function OrderDraftsPage() {
                       cursor="pointer"
                       _hover={{ bg: "bg.muted" }}
                       data-testid={`draft-row-${d.id}`}
-                      onClick={() => navigate(`/order-drafts/${d.id}`)}
+                      onClick={() => navigate(`/orders/new?draft=${d.id}`)}
                     >
                       {/* ⚠ STOPS THE ROW'S NAVIGATE — ticking a box must not open the draft. */}
                       <Table.Cell onClick={(e) => e.stopPropagation()}>
@@ -434,7 +357,7 @@ export function OrderDraftsPage() {
                                 <Menu.Item
                                   value="open"
                                   data-testid={`draft-open-${d.id}`}
-                                  onClick={() => navigate(`/order-drafts/${d.id}`)}
+                                  onClick={() => navigate(`/orders/new?draft=${d.id}`)}
                                 >
                                   <Icon as={Eye} boxSize="4" />
                                   {t("orders.viewDetail")}

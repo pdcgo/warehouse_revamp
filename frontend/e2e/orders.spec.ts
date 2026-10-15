@@ -511,9 +511,17 @@ test("Draft: an unfinished order is saved as a draft instead of placed", async (
 
   await page.getByTestId("order-create-save-draft").click();
 
-  // It lands on the draft it just made — no discard prompt on the way, because saving IS the exit.
-  await expect(page).toHaveURL(/\/order-drafts\/\d+$/);
-  await expect(page.getByTestId("draft-customer-name")).toHaveValue("Draft Buyer");
+  // It lands on the drafts list — no discard prompt on the way, because saving IS the exit.
+  await expect(page).toHaveURL(/\/order-drafts$/);
+  // Found by its shop — this run's own, and a draft row names its shop but not its buyer.
+  const row = page.locator('[data-testid^="draft-row-"]').filter({ hasText: SHOP_NAME }).first();
+  await expect(row).toBeVisible();
+
+  // …and the draft opens back IN THE ORDER FORM, seeded from what was saved (the-draft-opens-in-the-order-form).
+  await row.click();
+  await expect(page).toHaveURL(/\/orders\/new\?draft=\d+$/);
+  await expect(page.getByTestId("order-create-customer-name")).toHaveValue("Draft Buyer");
+  await expect(page.getByTestId("order-create-save-draft")).toHaveCount(0);
 });
 
 // The picker's FAST PATH, and it is the postcode (owner): five digits off the buyer's message, pick

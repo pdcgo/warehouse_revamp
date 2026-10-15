@@ -247,32 +247,30 @@ pass, since it is the same assumption.
 
 [drafts-exist-only-for-the-third-party-app](./context_decision.md#drafts-exist-only-for-the-third-party-app) — *a person
 never drafts* — and [the-frontend-finalizes-a-draft-not-the-backend](./context_decision.md#the-frontend-finalizes-a-draft-not-the-backend)
-— *the draft seeds the create form, there is no promote RPC* — while the build has **Save as Draft** on the order
-form (source `manual`) and an `OrderDraftPromote` RPC that the draft detail's Promote button calls. Found while
-aligning the draft list to the order list (2026-09-30); the list is unaffected, since every column on it holds
-either way.
+— *the draft seeds the create form, there is no promote RPC*. Found while aligning the draft list to the order list
+(2026-09-30). **Half of it is closed** (2026-10-15): a draft now opens IN the order form, seeded, and creating the
+order deletes it — the draft page and its Promote are gone
+([the-draft-opens-in-the-order-form](../../technical/frontend/order_draft_decision.md#the-draft-opens-in-the-order-form)).
 
-| | decided | built |
+| | decided | built now |
 | --- | --- | --- |
-| who creates a draft | the third-party app only | the app, **and** a person from the order form |
-| how a draft becomes an order | the create form, seeded from the draft, sends `order_draft_id` | `OrderDraftPromote` on the server |
+| how a draft becomes an order | the create form, seeded from the draft, sends `order_draft_id` | ✅ the create form, seeded — then `OrderCreate` **and a second call**, `OrderDraftDelete`: `OrderCreate` takes no `order_draft_id`, so the two are not one transaction |
+| who creates a draft | the third-party app only | the app, **and** a person, from the order form's **Save as Draft** (source `manual`) |
 
-**Which is wrong:** the build — the decisions are the owner's current statement.
-**→ Recommend** removing Save as Draft and replacing Promote with *Open in the order form* (the form seeded from
-the draft, `OrderCreate` deleting it), in one pass with a migration of any `manual` drafts. ⚠ Until then the
-draft screens carry the build's behaviour, and the list's intro text still says drafts are *"saved from the
-order form"*.
-
-⚠ **Tried and reverted (2026-09-30):** the draft was opened IN the order create form for one round; the owner
-asked for the separate draft page back at `/order-drafts/:id`. The contradiction therefore stands as written.
+**Which is wrong:** the build, in what is left.
+**→ Recommend:**
+- **remove Save as Draft** from the order form, with a migration of any `manual` drafts — the only open half of the
+  contradiction. The drafts list's intro still says drafts are *"saved from the order form"*;
+- **add `order_draft_id` to `OrderCreateRequest`**, so the draft is deleted in the order's own transaction — a contract
+  change, and the API is frozen for now, so it waits. `OrderDraftPromote` then has no caller and can go with it.
 
 ```mermaid
 flowchart LR
   subgraph "decided"
     A1["third-party app"] --> D1["draft"] --> F1["create form, seeded"] --> O1["OrderCreate + order_draft_id"]
   end
-  subgraph "built"
-    A2["app, or Save as Draft"] --> D2["draft"] --> P2["OrderDraftPromote"]
+  subgraph "built now"
+    A2["app, or Save as Draft"] --> D2["draft"] --> F2["create form, seeded"] --> O2["OrderCreate, then OrderDraftDelete"]
   end
 ```
 
