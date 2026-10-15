@@ -12,7 +12,6 @@
     - `warehouse_id`
     - `team_id`
     - `tx_type`
-    - `idempotency_key`, optional, its now only used for order
     - `create_by_user_id`
     - `is_rollback`
     - `description`
@@ -28,17 +27,28 @@
     - `transfer_out`
     - `adjustment`
 
-2. Table `inventory_transaction_items`
+2. Table `idempotency_order_check`
+    Field that must have:
+    - `id` as primary key
+    - `idempotency_key`, its unique
+    - `transaction_id`
+
+
+3. Table `inventory_transaction_items`
 
     Field that must have:
     - `id` as primary key
     - `warehouse_id`
     - `transaction_id`
     - `product_id`
+    - `product_team_id`
+    - `is_owned`
     - `quantity`
     - `total`
     - `created_at`
 
+### Field `product_team_id` and `is_owned`
+1. Its extra data for giving info that that product is shared/cross
 
 
 ## Transaction Flow Related.

@@ -3,29 +3,73 @@
 ## General.
 1. for order creation in Order Context. [see this](../order/order_creation.md)
 
-## Order Created Flow.
+
+## Inventory Service Flow When Order Created Called Our `OrderTransactionCreate`
+### Reference.
+1. for order side reference. [see this](../order/order_creation.md)
+
+### What We Should Check When `OrderTransactionCreate` Called.
+1. Product is Private.
+2. Product Reserved Stock.
+
+### Flow.
 ```mermaid
+
 stateDiagram-v2
 
+direction LR
 
-ordsrv: Order Service
-state ordsrv {
-    state "Creating Order" as ocreate
-    [*]-->ocreate
-    ocreate-->[*]
-    
+state "`OrderTransactionCreate` Called" as rpc
+state "Product Service" as prod
+state "Product Not Allowed" as perr
+state pcheck_if <<choice>>
+state icheck_if <<choice>>
+state "Refuse Because its Already Created" as existtx
+
+[*]-->rpc
+rpc-->idemcheck
+
+
+state idemcheck {
+    state "Try Get Transaction with Idempotency Key" as invcheck
+    [*]-->invcheck
+    invcheck-->[*]
 }
-ocreate-->invsrv: Calling Inventory Service
 
-invsrv: Inventory Service
-state invsrv {
-    state "Open Database Transaction" as otx
-    state "Close Database Transaction" as ctx
+idemcheck-->icheck_if
+icheck_if-->prodcheck: inventory_transaction not exist
+icheck_if-->existtx: inventory_transaction exist
+existtx-->[*]
+
+
+prod-->prodcheck: give product configuration, reserved stock / product private
+prodcheck: Product Checking
+state prodcheck {
+
+    state "Check Product Not Private" as checkp
+    state "Check Reserved Stock" as checkre
+    [*]-->checkp
+
+    checkp-->checkre
+    checkre-->[*]
+}
+
+prodcheck-->pcheck_if
+pcheck_if-->tx: yes, Open Transaction
+pcheck_if-->perr: no, Return Error
+perr-->[*]
+
+
+
+
+tx: Database Transaction
+state tx {
+    
     state "Inventory Transaction" as itx
     state "Batch Ledger" as bleg
     state "Placement Ledger" as pleg
 
-    [*]-->otx
+
 
     otx-->itx: create transaction
     itx-->bleg: post in batch ledger
@@ -34,11 +78,15 @@ state invsrv {
     bleg-->ctx
     pleg-->ctx
     
-    ctx-->[*]
 
 }
 
+tx-->[*]
+
 ```
+
+
+
 
 
 ## How Warehouse Process The Order.

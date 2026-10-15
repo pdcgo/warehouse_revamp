@@ -1,4 +1,6 @@
 # Inside Order Creation.
+## Reference.
+1. before create order, order service check dept threeshold. for reference [read this](../balance/context.md)
 
 ```mermaid
 stateDiagram-v2
@@ -26,12 +28,18 @@ state fe{
     done-->[*]
 }
 
-fe-->rpc
+fe-->rpc: bring idempotency key
 
 state "Create RPC called" as rpc
 state create_err <<choice>>
+state "Balance Service" as bal
+state "Check Before Create Order" as ordcheck
 
-rpc-->tx: bring idempotency key
+rpc-->ordcheck: checking debt threshold limit if order contain shared product
+ordcheck-->bal: give team ids data that product shared
+bal-->ordcheck: giving threshold limit data
+
+ordcheck-->tx
 
 tx: Open Database Transaction
 
@@ -140,7 +148,7 @@ message OrderTransactionCreateRequest {
 
 message TransactionItem {
     uint64 product_id
-    uint64 team_id
+    uint64 owner_team_id         
     uint32 qty
     double unit_cost                // price product, if cross, price before markup
     double unit_cost_with_markup    // price product, if cross, price after markup

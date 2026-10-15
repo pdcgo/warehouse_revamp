@@ -252,3 +252,34 @@ First for restock:
     Field `problem_type` is contain:
     - `broken`
     - `missing`
+
+
+
+
+
+## Calculating Price Unit When Restock Accepted.
+```mermaid
+stateDiagram-v2
+state "Restock Accepted" as rc
+state "Item A: 10 * 10.000 (100.000)" as item
+state "Shipment Cost 2000" as fee
+state "Warehouse Additional Cost 10.000" as addc
+
+state cjoin <<join>>
+
+state "Additional Unit Price (1.200)" as addprice
+state "Unit Price 11.200" as unitprice
+state "Batch" as batch
+
+rc-->item: have item
+rc-->fee
+rc-->addc
+fee-->cjoin
+addc-->cjoin
+cjoin-->addprice: (Shipment Cost + Warehouse Additional Cost) / all qty count
+item-->unitprice
+addprice-->unitprice
+
+unitprice-->batch: use it in batch unit_price
+```
+

@@ -26,6 +26,7 @@ when order created. its bring 4 things.
     field that must have:
     - `id`, primary key
     - `idempotency_key`
+    - `transaction_id`
     - `order_external_ref_id`, its for order uniqueness, its cannot empty
     - `shop_id`
     - `team_id`
@@ -68,9 +69,23 @@ when order created. its bring 4 things.
     - `desa_name`
     - `postal_code`
     - `address_line`
-    
 
-4. `order_drafts`,
+4. Table `order_timeline_logs`.
+
+    field that must have:
+    - `id`, primary key
+    - `order_id`
+    - `status`
+    - `note`
+    - `from`
+    - `actor_id`
+    - `created_at`
+    
+    field `from` is from where log created. It contain:
+    - `warehouse`. if it from warehouse side log. 
+    - `selling`. if it from selling side log. 
+
+5. `order_drafts`,
 
     field that must have:
     - `id`, primary key
@@ -84,7 +99,7 @@ when order created. its bring 4 things.
     - `receipt`
     - `receipt_file`
 
-5. `order_draft_platform_items`
+6. `order_draft_platform_items`
 
     field that must have:
     - `id`, primary key
@@ -94,7 +109,7 @@ when order created. its bring 4 things.
     - `qty`
     - `total`
 
-6. `order_draft_addresses`
+7. `order_draft_addresses`
 
     field that must have:
     - `id`, primary key
@@ -112,6 +127,8 @@ when order created. its bring 4 things.
 ### Order Items Table.
 1. money in columns are frozen at finalize and never recomputed.
 
+### Whats `order_timeline_logs` Table Used For.
+1. for track timeline order status change or if there note from warehouse while processing orders like picking goods but there no goods in rack.
 
 ### Order Status.
 1. Status That Existed.
