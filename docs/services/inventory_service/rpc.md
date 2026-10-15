@@ -61,8 +61,7 @@ counts it in, and *the accept is what receives the stock*. The design is
 > 🔄 **00024 (2026-10-15): the tables caught up with the contract.** Every field is stored, the status words are the
 > contract's, a missing problem row is `missing`, the trail is `restock_logs` and the courier's charge is one column
 > pair on the restock ([restocks-non-stock-parts-come-before-the-switch-over](../../business/inventory/restock_decision.md#restocks-non-stock-parts-come-before-the-switch-over)).
-> ⚠ Still to come: `RestockRequestArrive` and `RestockRequestMarkLost` answer **Unimplemented**, and the accept writes
-> today's stock tables until it is rebuilt on the ledgers
+> ⚠ Still to come: the accept writes today's stock tables until it is rebuilt on the ledgers
 > ([the-decided-ledgers-come-before-the-restock-accept](../../business/inventory/restock_decision.md#the-decided-ledgers-come-before-the-restock-accept)).
 
 | RPC | Who | From → to | What it does |
@@ -70,9 +69,9 @@ counts it in, and *the accept is what receives the stock*. The design is
 | `RestockRequestCreate` | selling team | → ongoing | the restock and its lines in one transaction, and the first trail row; each product once (refused as InvalidArgument, and by a unique index); each line's supplier asked of supplier_service before the transaction |
 | `RestockRequestList` / `Detail` | either side | — | rows where `requesting_team_id = team` **OR** `warehouse_id = team`; a third team reads **NotFound**. Every filter server-side; a lens narrows the two-sided scope, never replaces it |
 | `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace. **Ongoing:** every field, the paying account required. **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged |
-| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | *Unimplemented until the backend step* |
+| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
-| `RestockRequestMarkLost` | selling team | ongoing → lost | *Unimplemented until the backend step* |
+| `RestockRequestMarkLost` | selling team | ongoing → lost | gives the parcel up: who and when, a trail row carrying the optional why; moves no money. Ongoing only — a box in the building is not lost. A lost restock is neither accepted nor cancelled; only signing for a late box brings it back |
 | `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row |
 | `RestockRequestLabels` | warehouse | accepted | one label per placement the good units went to |
 | `RestockInboundStat` | warehouse | — | what is still coming: ongoing **and** arrived |

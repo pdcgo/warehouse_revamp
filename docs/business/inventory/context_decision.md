@@ -20,6 +20,8 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-two-inventory-designs-live-on-separate-branches](#the-two-inventory-designs-live-on-separate-branches) | this folder is Heri's inventory design; Toni's lives on branch `thoni`, where this folder is ignored — the two are kept apart, not compared on one page |
 | [return-is-unplanned](#return-is-unplanned) | inventory designs nothing for a return yet; what depends on one is parked, not answered |
 | [each-flow-draws-its-own-receiving](#each-flow-draws-its-own-receiving) | context.md no longer draws receiving; restock.md draws a restock's, return.md will draw a return's |
+| [both-ledgers-count-the-same-units](#both-ledgers-count-the-same-units) | per transaction and product, the batch change equals the placement change; no batch goes below zero | chat, 2026-10-15 — answers Q14a, as recommended |
+| [a-batch-keeps-its-supplier](#a-batch-keeps-its-supplier) | `batches.supplier_id` beside `supplier_channel_id`, both optional, copied from the restock line at accept | chat, 2026-10-15 — answers Q14h, as recommended |
 
 ---
 
@@ -493,3 +495,49 @@ flowchart LR
 
 **What it does NOT settle** — the scope of *"at receiving"* in §Stock loss 1, which the deleted title supplied:
 [the-receiving-boundary-gap](./context_clarify.md#the-receiving-boundary-gap).
+
+## both-ledgers-count-the-same-units
+
+> Owner, in chat *(2026-10-15)*: *"for 1, 2, 3, 4 follow your recomendation"* — the third being
+> [Q14a](./context_clarify.md#question), *nothing says the two ledgers count the same units.* As recommended.
+
+**The verdict.** One rule, no exceptions: within one transaction, for each product, the units the batch ledger moves
+equal the units the placement ledger moves. A move nets 0 on both; a revaluation moves no units on either. A unit on a
+rack is always a unit some batch prices, and a unit a batch counts is always on some rack.
+
+```mermaid
+flowchart LR
+  A["accept - Kaos, 7 good"] --> B["batch ledger - batch 9 +7"]
+  A --> P["placement ledger - Rak A +4, Rak B +3"]
+  B -.->|"equal, per transaction and product"| P
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the rule | Σ batch_logs change = Σ placement_logs change, per `(transaction, product)` |
+| where it is checked | every mutation's unit test asserts it |
+| below zero | `CHECK (stock_count >= 0)` on `batches`, as [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) put on placements |
+
+## a-batch-keeps-its-supplier
+
+> Owner, in chat *(2026-10-15)*: *"for 1, 2, 3, 4 follow your recomendation"* — the fourth being
+> [Q14h](./context_clarify.md#question), *a batch from a stall purchase loses its supplier.* As recommended.
+
+**The verdict.** A batch remembers who sold it even when there was no online store: `batches.supplier_id` sits beside
+`supplier_channel_id`, both optional, copied from the restock line at accept
+([a-line-may-name-a-supplier-without-a-channel](./restock_decision.md#a-line-may-name-a-supplier-without-a-channel)).
+
+```mermaid
+flowchart LR
+  L["line - Celana from Pak Budi, a market stall"] --> B["batch - supplier_id Pak Budi, supplier_channel_id empty"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `batches.supplier_id` | 🆕 optional, an opaque supplier_service id, no FK |
+| `batches.supplier_channel_id` | optional, as [batch.md](./batch.md) has it |
+| written | at the restock accept, from the line; a transfer in copies both from its source batch ([the-receiver-mints-one-batch-per-source-batch](./warehouse_transfer_decision.md#the-receiver-mints-one-batch-per-source-batch)) |

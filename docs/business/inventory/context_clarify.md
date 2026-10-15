@@ -3,6 +3,9 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> **Re-examined after your answers in chat (2026-10-15).** ✅ [14a](#question) [both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units)
+> and ✅ [14h](#question) [a-batch-keeps-its-supplier](./context_decision.md#a-batch-keeps-its-supplier), as recommended. Q14 stays open for c and d.
+>
 > **Re-examined after you deleted §How Warehouse Team Member Accept Stock / Return That Arrived (2026-10-14).** ✅ Recorded:
 > [each-flow-draws-its-own-receiving](./context_decision.md#each-flow-draws-its-own-receiving). ➡ The flow's two open points
 > moved to the doc that now answers them: [Q1](#question) → [restock_clarify Q22](./restock_clarify.md#question) (the
@@ -504,14 +507,14 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 
     | | Part | → Recommend |
     | --- | --- | --- |
-    | **14a** | **Nothing says the two ledgers count the same units.** One mutation that writes a shelf and forgets the batch leaves a unit the system can sell and nobody can find | **one rule, no exceptions:** per transaction and product, the batch change equals the shelf change. A move nets 0 on shelves and a revaluation moves no units, so both obey it as written. Each mutation's unit test asserts it. 🔄 *(2026-10-10)* And the same `CHECK (stock_count >= 0)` on `batches` that [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) put on shelves |
+    | **14a** | ✅ *(2026-10-15)* **Answered, as recommended** — [both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units) | — |
     | **14b** | ➡ *(2026-10-13)* **Answered in substance by your opname design**: a loss is a `lost` row remembering its batch and price, and a surplus claims it ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)). ✅ *(2026-10-13)* The rest is answered too: the oldest open loss, back into its batch at its price ([a-surplus-claims-the-oldest-loss-first](./opname_decision.md#a-surplus-claims-the-oldest-loss-first)) | — |
     | **14c** | **A batch must reach zero money when it reaches zero units.** `price_unit × n` leaves Rp 0,01 on an emptied 3-for-Rp-10.000 batch | **`stock_valuation` is the truth.** A take of *n* removes `valuation × n / count`; the take that empties a batch removes all that is left, which is exactly 0 even in floating point |
     | **14d** | **Revaluing a part-sold batch loses money.** A late Rp 20.000 freight bill after 6 of 10 sold: Rp 8.000 lands in the batch, Rp 12.000 nowhere | **name the triggers.** A typo or a markdown revalues only what is left, as drawn. A **late cost** splits by units: the on-hand share into the batch, the sold share out as a one-off cost to the team |
     | **14e** | ✅ **Answered: `price_unit_after` added, `batch_price_logs` kept** — [batch-logs-carry-price-unit-after](./context_decision.md#batch-logs-carry-price-unit-after) | — |
     | **14f** | ✅ **Answered, as recommended** — [one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement), [a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it) | — |
     | **14g** | ✅ **Answered, as recommended** — [the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason) | — |
-    | **14h** | 🆕 *(2026-10-09)* **A batch from a stall purchase loses its supplier.** A restock line may now name a supplier with no store ([a-line-may-name-a-supplier-without-a-channel](./restock_decision.md#a-line-may-name-a-supplier-without-a-channel)), but [batch.md](./batch.md)'s `batches` keeps `supplier_channel_id` only — so the batch minted from that line forgets who sold it | **`batches.supplier_id`** beside `supplier_channel_id`, both optional, copied from the line at accept |
+    | **14h** | ✅ *(2026-10-15)* **Answered, as recommended** — [a-batch-keeps-its-supplier](./context_decision.md#a-batch-keeps-its-supplier) | — |
 
 15. ✅ *(2026-10-08)* **Answered: one mutation per operation · batches lock before shelves, by id · the layer underneath
     is a ledger** — [one-mutation-per-operation](./context_decision.md#one-mutation-per-operation),

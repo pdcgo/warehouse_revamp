@@ -81,6 +81,9 @@ var (
 	errRestockCostNoteMissing = errors.New("the courier's charge needs a note")
 	// One restock lists each product once (a-product-appears-once-per-restock).
 	errRestockProductTwice = errors.New("a restock lists each product once")
+	// The warehouse signs for a box on its way, or one given up that turned up after all
+	// (a-late-lost-box-is-signed-for-as-arrived).
+	errRestockNotArrivable = errors.New("only a restock on its way, or given up as lost, can be signed for")
 	// The selling team edits while the box is on its way or at the door, never after (the-lines-stay-editable-until-accepted).
 	errRestockNotEditable = errors.New("a restock is edited only while ongoing or arrived")
 	// Every restock names the account that paid (a-restock-names-its-paying-account).
@@ -346,6 +349,7 @@ func restockErr(err error) error {
 		errors.Is(err, errRestockNotAccepted),
 		errors.Is(err, errRestockNoItems),
 		errors.Is(err, errRestockNotEditable),
+		errors.Is(err, errRestockNotArrivable),
 		errors.Is(err, errRestockArrivedLinesOnly),
 		errors.Is(err, errRestockLineRemoved),
 		errors.Is(err, errRestockArrivedSupplierLocked):

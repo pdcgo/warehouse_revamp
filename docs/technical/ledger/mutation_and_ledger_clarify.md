@@ -3,6 +3,10 @@
 Critique, questions and warnings about [mutation_and_ledger.md](./mutation_and_ledger.md). That doc is
 yours; this one is mine. Answered points are **deleted**, so this is always the current open set.
 
+> ✅ **Answered 2026-10-15 in chat, as recommended:** Q3 [ledger-logs-are-append-only](./mutation_and_ledger_decision.md#ledger-logs-are-append-only)
+> and Q4 [the-caller-opens-the-transaction](./mutation_and_ledger_decision.md#the-caller-opens-the-transaction). Open: Q1. ⚠ Your §Flow Mutation and
+> Ledger still draws the mutation opening the transaction.
+>
 > **Full re-examination.** Rewritten tight — the previous version had grown past the doc it tracks.
 > Nothing still-open was dropped.
 >
@@ -93,17 +97,9 @@ decision and re-deriving it.
 
 1. **Does `## Idempotency Layer.` survive at all**, now that item 1 defers to `event_library`? I recommend
    deleting it.
-3. **Is `ledger_logs` append-only?** Stock has answered it; the template has not, and `## Ledger Log.`'s
-   source-of-truth rule rests on the answer.
-4. 🆕 *(2026-10-08)* **Who opens the database transaction — the mutation, or its caller?** `## Flow Mutation and
-   Ledger.` has the mutation open it. Inventory's [§How We Breakdown Complexity](../../business/inventory/context.md)
-   has the API open it and pass the tx in, and calls the per-ledger writer a *mutation*
-   ([inventory: mutation-means-two-layers](../../business/inventory/context_clarify.md#mutation-means-two-layers)).
-   **→ I recommend the caller.** The RPC then writes its own rows (a restock's status, its problem items) in the same
-   transaction as the ledger, and the mutation never needs to know another table. ✅ The word itself is settled and
-   agrees with you: inventory decided a mutation is one operation
-   ([one-mutation-per-operation](../../business/inventory/context_decision.md#one-mutation-per-operation)), as
-   `## What is mutation ?` says.
+3. ✅ *(2026-10-15)* **Answered: append-only** — [ledger-logs-are-append-only](./mutation_and_ledger_decision.md#ledger-logs-are-append-only).
+4. ✅ *(2026-10-15)* **Answered: the caller** — [the-caller-opens-the-transaction](./mutation_and_ledger_decision.md#the-caller-opens-the-transaction).
+   ⚠ Your §Flow Mutation and Ledger still draws the mutation opening it.
 
 ---
 

@@ -7,6 +7,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | --- | --- | --- |
 | [stock-money-is-float64-compared-at-4-digits](#stock-money-is-float64-compared-at-4-digits) | every money column in the stock ledgers is `float64`, and two amounts are compared at 4-digit precision | chat, 2026-10-10 — answers stock Q4, **against** my `int64` rupiah |
 | [no-switch-over-the-ledgers-replace-todays-tables](#no-switch-over-the-ledgers-replace-todays-tables) | nothing is in production, so the ledgers replace today's stock tables outright — no data is carried, dev data is reseeded, and no all-at-once switch-over is staged | chat, 2026-10-15 — answers Q5 |
+| [money-is-double-in-the-api-too](#money-is-double-in-the-api-too) | inventory's money is `double` on the wire and in its own tables as well as in the ledgers, each feature switching when it moves onto the ledgers | chat, 2026-10-15 — answers Q6 |
 
 ---
 
@@ -75,3 +76,30 @@ flowchart LR
 | the old tables | dropped by the migration that replaces them |
 | readers and writers | each moved onto the ledgers when its feature is built on them |
 | what it does NOT change | the ledgers' own rules, still open in [transaction_clarify](../../business/inventory/transaction_clarify.md#question), [context Q14](../../business/inventory/context_clarify.md#question) and [the template](../ledger/mutation_and_ledger_clarify.md#question) |
+
+## money-is-double-in-the-api-too
+
+> Owner, in chat *(2026-10-15)*: *"for 5 change api to float64/double too"*, to [Q6](./design_clarify.md#question) — *the
+> ledgers keep money as `float64`; switch restock's API money to decimal when it moves onto the ledgers?*
+
+**The verdict.** Inventory's money is `double` end to end: in the ledgers
+([stock-money-is-float64-compared-at-4-digits](#stock-money-is-float64-compared-at-4-digits)), in each feature's own
+tables, and on the wire. A landed price of 11.714,2857… reaches the screen as it is stored, and the screen rounds it for
+display. Nothing converts at the ledger's edge, so nothing truncates there.
+
+```mermaid
+flowchart LR
+  L["ledger - 11714.2857"] --> T["restock tables - double precision"]
+  T --> W["proto - double"]
+  W --> S["screen - Rp 11.714"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| proto money fields | `int64` → `double`, feature by feature — restock first |
+| the feature's own money columns | `BIGINT` → `DOUBLE PRECISION` in the same migration |
+| when | in the commit that moves each feature onto the ledgers; restock's is next |
+| arithmetic | no rounding down at each step any more; two amounts are compared at 4 digits, through the one shared helper |
+| the screen | rounds for display only |

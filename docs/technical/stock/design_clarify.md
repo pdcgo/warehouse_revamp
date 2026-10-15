@@ -3,6 +3,9 @@
 Critique, questions and warnings about [stock_design.md](./design.md). That doc is yours; this one
 is mine. Answered points are **deleted**, so this is always the current open set.
 
+> ✅ *(2026-10-15)* **Q6 answered** — *"change api to float64/double too"*: [money-is-double-in-the-api-too](./design_decision.md#money-is-double-in-the-api-too).
+> **No question is open here.**
+>
 > ✅ *(2026-10-15)* **Q5 answered** — *"we not on production yet, switch over is overkill"*: the ledgers replace today's
 > tables outright ([no-switch-over-the-ledgers-replace-todays-tables](./design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)).
 > Q6 (money as `double`) stays: the new tables still need a type.
@@ -146,14 +149,8 @@ and it is the doc every other service copies. **→ Rename it there.**
    switch-over is staged: [no-switch-over-the-ledgers-replace-todays-tables](./design_decision.md#no-switch-over-the-ledgers-replace-todays-tables).
    As first asked: *how do today's `stock_*` tables give way to the decided ledgers — one cut-over, or side by side?*
 
-6. 🆕 *(2026-10-10, found by the `int64` sweep)* **Do inventory's money fields move to `double` in the same cut-over?**
-   The ledgers are `float64` ([stock-money-is-float64-compared-at-4-digits](./design_decision.md#stock-money-is-float64-compared-at-4-digits)),
-   but every money field in inventory's protos is `int64`: 41 of them, across `inventory`, `restock_request`, `rack` and
-   `warehouse_transfer` (the prototype included). So restock accept would hand an `int64` unit cost to a `float64` batch.
-
-   **→ Recommend yes, in the same change that moves each feature onto the ledgers** (🔄 2026-10-15: no cut-over is
-   staged, [Q5](#question)). A feature that moves to `float64` tables changes its proto fields in the same commit. Otherwise every RPC converts at the ledger's edge, and a fractional unit cost
-   (Rp 333,33…) is truncated on its way back out to the screen. Every new field is `double` from now on.
+6. ✅ *(2026-10-15)* **Answered: yes, the API too** — [money-is-double-in-the-api-too](./design_decision.md#money-is-double-in-the-api-too): `double` on the
+   wire and in each feature's own tables, switched when the feature moves onto the ledgers.
 
 ---
 
