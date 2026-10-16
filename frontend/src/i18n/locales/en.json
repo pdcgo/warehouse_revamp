@@ -1645,7 +1645,7 @@
       "removeTitle": "Remove Access",
       "removeConfirm": "Remove {{label}}'s access to this shop?",
       "remove": "Remove",
-      "primaryBadge": "Primary CS",
+      "primaryBadge": "Primary",
       "makePrimaryLabel": "Make {{label}} the primary CS",
       "primaryChanged": "Primary CS changed",
       "makePrimaryFailed": "Could not change the primary CS",
@@ -1653,7 +1653,11 @@
       "title": "Users with Access",
       "description": "The team members who work on this shop. An imported statement's rows with no order are counted for the primary CS.",
       "emptyHint": "Add the team members who handle this shop's orders and statements.",
-      "removeLabel": "Remove {{label}}'s access"
+      "removeLabel": "Remove {{label}}'s access",
+      "makePrimaryTitle": "Make Primary",
+      "makePrimary": "Make Primary",
+      "makePrimaryConfirm": "Make {{name}} the primary CS? An imported statement's rows with no order will be counted for them instead of {{current}}.",
+      "makePrimaryConfirmNone": "Make {{name}} the primary CS? An imported statement's rows with no order will be counted for them, and the shop can import again."
     },
     "detail": {
       "invalidId": "Invalid shop id.",
@@ -1665,8 +1669,7 @@
       "code": "Code",
       "description": "Description",
       "delete": "Delete",
-      "deleted": "Shop \"{{name}}\" deleted",
-      "noDescription": "No description"
+      "deleted": "Shop \"{{name}}\" deleted"
     },
     "noPrimary": "No primary CS",
     "lead": "The marketplace storefronts this team sells through — each with its code, its marketplace and the people who work on it.",
@@ -1706,6 +1709,14 @@
         "label": "No primary CS filter",
         "reason": "The shop list cannot be narrowed to the shops with no primary CS yet — the tick is kept, but every shop is still listed."
       }
+    },
+    "withdrawal": {
+      "title": "Withdrawal Account",
+      "description": "Where this shop's marketplace withdrawals land.",
+      "none": "No withdrawal account",
+      "noneHint": "Link this shop to an account in Financial Accounts — its withdrawals are recorded there.",
+      "openAccount": "Open Account",
+      "openAccounts": "Open Financial Accounts"
     }
   },
   "racks": {

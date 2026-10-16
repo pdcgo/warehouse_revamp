@@ -187,20 +187,22 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
 // decides which answer belongs on screen, so a late reply for an abandoned prefix cannot land.
 export function useUserSearch(args: { teamId: bigint | undefined; q: string }) {
   const { teamId, q } = args;
+  const inTeam = teamId !== undefined && teamId > 0n;
 
   return useQuery({
     queryKey: key.users(teamId, { search: q }),
     ...referenceQuery,
-    // Both backends want >= 2 characters (SearchUser rejects fewer; UserList is held to the same bar
-    // for a consistent feel), so below that we do not ask at all.
-    enabled: q.length >= 2,
+    // SearchUser rejects fewer than 2 characters, so the everyone-search does not ask below that. A TEAM's
+    // members are a bounded set and answer with nothing typed (owner, on a shop's access panel: *"select user
+    // langsung muncul usernya tanpa ketik dulu"*) — the first page of them, narrowed as letters arrive.
+    enabled: inTeam || q.length >= 2,
     queryFn: async () => {
-      if (teamId !== undefined && teamId > 0n) {
+      if (inTeam) {
         const res = await userClient.userList({
           teamId,
           filter: { q },
           dataRequest: userListRowData(),
-          page: { page: 1, limit: 10 },
+          page: { page: 1, limit: 20 },
         });
 
         return usersFromList(res.items, res.ids);

@@ -1639,7 +1639,7 @@
       "removeTitle": "Hapus Akses",
       "removeConfirm": "Hapus akses {{label}} ke toko ini?",
       "remove": "Hapus",
-      "primaryBadge": "CS utama",
+      "primaryBadge": "Utama",
       "makePrimaryLabel": "Jadikan {{label}} CS utama",
       "primaryChanged": "CS utama diganti",
       "makePrimaryFailed": "Gagal mengganti CS utama",
@@ -1647,7 +1647,11 @@
       "title": "Pengguna dengan Akses",
       "description": "Anggota tim yang mengurus toko ini. Baris laporan impor yang tidak punya pesanan dicatat atas nama CS utama.",
       "emptyHint": "Tambahkan anggota tim yang mengurus pesanan dan laporan toko ini.",
-      "removeLabel": "Hapus akses {{label}}"
+      "removeLabel": "Hapus akses {{label}}",
+      "makePrimaryTitle": "Jadikan Utama",
+      "makePrimary": "Jadikan Utama",
+      "makePrimaryConfirm": "Jadikan {{name}} CS utama? Baris laporan impor yang tidak punya pesanan akan dicatat atas namanya, menggantikan {{current}}.",
+      "makePrimaryConfirmNone": "Jadikan {{name}} CS utama? Baris laporan impor yang tidak punya pesanan akan dicatat atas namanya, dan toko ini bisa mengimpor lagi."
     },
     "detail": {
       "invalidId": "ID toko tidak valid.",
@@ -1659,8 +1663,7 @@
       "code": "Kode",
       "description": "Deskripsi",
       "delete": "Hapus",
-      "deleted": "Toko \"{{name}}\" dihapus",
-      "noDescription": "Tanpa deskripsi"
+      "deleted": "Toko \"{{name}}\" dihapus"
     },
     "noPrimary": "Belum ada CS utama",
     "lead": "Etalase marketplace tempat tim ini berjualan — masing-masing dengan kodenya, marketplace-nya, dan orang yang mengurusnya.",
@@ -1700,6 +1703,14 @@
         "label": "Filter belum ada CS utama",
         "reason": "Daftar toko belum bisa disaring ke toko yang belum punya CS utama — centangnya disimpan, tapi semua toko tetap tampil."
       }
+    },
+    "withdrawal": {
+      "title": "Akun Penarikan",
+      "description": "Rekening tempat dana marketplace toko ini ditarik.",
+      "none": "Belum ada akun penarikan",
+      "noneHint": "Hubungkan toko ini ke rekening di Akun Keuangan — penarikan dananya dicatat ke sana.",
+      "openAccount": "Buka Akun",
+      "openAccounts": "Buka Akun Keuangan"
     }
   },
   "racks": {

@@ -911,7 +911,9 @@ list, because searching seven options you can already see in full is a keystroke
   screen is one somebody scrolls.
 - **Where the search RUNS depends on the size, not on the control.** A bounded-ish list loads whole and
   filters in the field (`ShopSelect`, `TeamSelect`); an unbounded one searches the server, debounced,
-  with a minimum term (`UserSelect`, `ProductSelect`). Both are the same control to the person using it.
+  with a minimum term (`UserSelect` over everyone, `ProductSelect`). Both are the same control to the person using it.
+  A `UserSelect` scoped to a TEAM is the exception: its members are bounded, so a click shows the first page with
+  nothing typed and typing narrows it on the server (owner, on a shop's access panel).
 - ⚠ **A combobox whose collection fills in LATE renders BLANK when it was prefilled.** Zag derives the
   input's text at machine init and thereafter only when `value` changes — so a value already set while
   the list is still in flight resolves against an empty collection and never recovers. Both search

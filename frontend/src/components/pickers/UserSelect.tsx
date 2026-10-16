@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, useListCollection } from "@chakra-ui/react";
 import { useUserSearch } from "../../features/users/queries";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 import { useDebounced } from "../../lib/useDebounced";
 import { UserItem } from "../entity/UserItem";
 
@@ -37,9 +38,10 @@ export interface UserSelectProps {
 }
 
 // UserSelect is the shared user picker (#56): a Chakra Combobox whose options render with the
-// shared UserItem. Search is SERVER-side (min 2 characters) so it scales; it emits the selected
-// user id. Pass `teamId` to scope the search to one team's members, or omit it to search everyone.
-export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser at the root team, for Root and the Administrator) by default, or to one team's members when given a teamId (UserList). Not for a list's who filter — that is PersonFilterSelect. Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
+// shared UserItem. Search is SERVER-side so it scales; it emits the selected user id. Pass `teamId`
+// to scope the search to one team's members — offered on a click, nothing typed — or omit it to
+// search everyone, from 2 characters.
+export const description = "Searchable user picker (Chakra Combobox, server-side) — options render with UserItem, emits a user id. Scopes to all users (SearchUser at the root team, for Root and the Administrator, from 2 characters) by default, or to one team's members when given a teamId (UserList) — then a click shows the first 20 members with nothing typed, narrowed as you type. Not for a list's who filter — that is PersonFilterSelect. Pass `flush` to drop its own border so it can sit inside a bordered group, e.g. fused to a role segment.";
 
 export function UserSelect({
   value,
@@ -66,14 +68,20 @@ export function UserSelect({
   const q = useDebounced(input.trim());
   const results = useUserSearch({ teamId, q });
 
+  // A team's members are offered with nothing typed (useUserSearch); everyone needs 2 characters first.
+  const inTeam = teamId !== undefined && teamId > 0n;
+  const asks = inTeam || q.length >= 2;
+
   useEffect(() => {
-    set(q.length >= 2 ? (results.data ?? []) : []);
-  }, [q, results.data, set]);
+    set(asks ? (results.data ?? []) : []);
+  }, [asks, results.data, set]);
 
   return (
     <Combobox.Root
       collection={collection}
       disabled={disabled}
+      // A click opens the list — a team's members are already there.
+      openOnClick
       value={value !== undefined ? [value.toString()] : []}
       onValueChange={(e) => {
         // ⚠ CLEARING EMITS `undefined` — it does not do nothing (ShippingSelect's #131 lesson).
@@ -82,7 +90,9 @@ export function UserSelect({
         const picked = e.value[0];
         onChange?.(picked !== undefined ? BigInt(picked) : undefined);
       }}
-      onInputValueChange={(e) => setInput(e.inputValue)}
+      // Searches only what is typed — reopened after a pick, it offers every member again, not the picked one alone
+      // (a-search-select-reopens-whole).
+      {...searchOnlyWhatIsTyped(setInput)}
       data-testid="user-select"
     >
       <Combobox.Control>
@@ -101,7 +111,7 @@ export function UserSelect({
         <Combobox.Positioner>
           <Combobox.Content>
             <Combobox.Empty>
-              {input.trim().length < 2 ? "Type at least 2 characters" : "No users found"}
+              {!inTeam && input.trim().length < 2 ? "Type at least 2 characters" : "No users found"}
             </Combobox.Empty>
             {collection.items.map((user) => (
               <Combobox.Item
