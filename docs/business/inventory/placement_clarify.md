@@ -3,6 +3,14 @@
 [placement.md](./placement.md) is yours, and this file is mine. When a point is answered I delete it here, and your
 answer goes in [placement_decision.md](./placement_decision.md).
 
+> ✅ **Answered in chat (2026-10-16, later):** Q5, option **b** — a placement deletes at 0 stock, and staff and admin
+> talk it over first ([a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock)), against
+> my *ask the order service*. **Placement has no open question.**
+
+> 🆕 **Opened 2026-10-16:** [Q5](#question) — *picked* is kept on the order's timeline now
+> ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)), so the rack delete
+> needs another way to learn that a sold unit still waits. Open here: Q5.
+
 > ✅ **Accepted 2026-10-12:** the prototype passed design_accept ([the-placement-prototype-is-accepted](./placement_decision.md#the-placement-prototype-is-accepted)).
 > Nothing opened. *Awaiting your text* below still stands.
 >
@@ -69,12 +77,12 @@ Siblings: [context_clarify](./context_clarify.md) · [opname_clarify](./opname_c
 | decision | says |
 | --- | --- |
 | [one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement) | one row per product per rack · a code is unique among the warehouse's undeleted racks |
-| [a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it) | a rack can be deleted only at 0 stock, and only when no sold unit on it is still waiting for the picker |
+| [a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock) | a placement deletes at 0 stock; no check for a sold unit still waiting — staff and admin talk first. Supersedes [superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it) |
 | [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first) | `PostOrder` takes from the rack holding the fewest first |
 | [a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count) | no rack scan; the next count corrects a pick from the wrong rack |
 | [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile) | every unit is on a placement; a staging area is just another placement |
 | [batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id) | batches are locked first, then shelves, each in id order |
-| [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked) | a sold unit counts as waiting on the rack until the verify scan |
+| [superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked) | ⛔ reversed — *picked* is the order's status, on its timeline; inventory is not told ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)) |
 | [a-count-locks-the-product-on-the-rack](./opname_decision.md#a-count-locks-the-product-on-the-rack) | a count locks one product on one rack, not the whole rack |
 | [a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero) | `stock_count` is never below 0, checked by the database; an order that would take it below fails, and order creation returns the error |
 | [rack-codes-are-saved-lowercase](./placement_decision.md#rack-codes-are-saved-lowercase) | a rack code is trimmed and lowercased when saved |
@@ -196,8 +204,9 @@ erDiagram
 
 ## Question
 
-Nothing is open, and the contradictions below are resolved. What is left is your
-text ([Awaiting your text](#awaiting-your-text)).
+5. ✅ *(2026-10-16)* **Answered: b, at 0 stock** — [a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock). It almost never happens, and staff and admin talk before a placement is deleted. Against my *ask the order service*.
+
+Nothing else is open. What is left is your text ([Awaiting your text](#awaiting-your-text)).
 
 ## Awaiting your text
 
@@ -227,25 +236,7 @@ flowchart LR
 
 ## a-split-move-writes-more-than-two-rows
 
-*(2026-10-12)* Two of my decision records, a few minutes apart:
-
-| where | says |
-| --- | --- |
-| [a-move-writes-two-rack-rows-and-no-batch-row](./placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row), spec | `product_placement_logs`: **2** per product |
-| [a-move-is-one-rack-to-one-or-more-racks](./placement_decision.md#a-move-is-one-rack-to-one-or-more-racks) | a product may be split, Rak A → Rak B and Rak C: **3** rows |
-
-The newer one is right. The older was written for one destination, before 3c-ii was answered. **Nothing for you to
-edit**: the decisions are append-only, and the newer one says it amends the count. The older one's choice, a row per rack
-rather than one row with *from* and *to*, stands.
-
-**→ Recommend:** read *two rack rows* as *a row per rack*. Next time, a count in a spec waits until every part of the
-question is answered.
-
-```mermaid
-flowchart LR
-  O["two rows per product - one destination"] -->|"3c-ii - several destinations"| N["one row per rack touched"]
-  N --> K["the choice stands - a row per rack, not from and to"]
-```
+✅ *(2026-10-16)* **Settled — two records of mine, the newer one right.** A split move writes **a row per rack** ([a-move-is-one-rack-to-one-or-more-racks](./placement_decision.md#a-move-is-one-rack-to-one-or-more-racks)); *two rack rows* in the older spec meant one destination. Nothing for you to edit.
 
 ## found earlier
 
@@ -254,4 +245,4 @@ found:
 
 - [the-lock-is-drawn-on-the-product-and-stored-on-the-rack](./opname_clarify.md#the-lock-is-drawn-on-the-product-and-stored-on-the-rack): the lock is on the product in opname.md and on the whole rack in `placements.locked`
 - [mutation-means-two-layers](./context_clarify.md#mutation-means-two-layers): the heading should read *Placement Ledger*
-- [the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up): `change_type` has no `move` and no `opname`
+- ✅ [the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up): `move` and `opname` added 2026-10-16

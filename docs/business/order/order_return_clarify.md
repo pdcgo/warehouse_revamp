@@ -4,6 +4,10 @@ What [order_return.md](./order_return.md) leaves open. **That doc is yours — t
 are deleted, so this file is always the current open set. Decisions land in
 [context_decision.md](./context_decision.md).
 
+> 🔄 **From inventory (2026-10-16):** this doc is **not** parked — only inventory's half of a return is
+> ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)). Your three
+> calls into inventory are the brief [return.md](../inventory/return.md) will answer. Nothing here changes.
+
 > **Opened 2026-09-17** with the doc's first two sections: a selling team configures one return warehouse, and
 > cannot create orders without one.
 

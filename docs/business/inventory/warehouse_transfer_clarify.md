@@ -3,6 +3,10 @@
 [warehouse_transfer.md](./warehouse_transfer.md) is yours, and this file is mine. When a point is answered I delete it
 here, and your answer goes in [warehouse_transfer_decision.md](./warehouse_transfer_decision.md).
 
+> 🆕 **From inventory context (2026-10-16):** a transfer's create upserts its products into `warehouse_products` for the
+> receiving warehouse ([a-transfer-links-its-products-to-the-receiver](./context_decision.md#a-transfer-links-its-products-to-the-receiver)).
+> Not drawn yet in your create flow — one box before the transaction, as restock.md has it. Nothing opened here.
+
 > ✅ **Fourteenth pass (2026-10-15)** — Q10 answered, option B:
 > [balance-posts-the-transfers-on-site-debt-from-the-event](./warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event).
 > Its contradiction closes. **No question is open here.** Two things it raised: your table has no column for the charge's

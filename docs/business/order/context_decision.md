@@ -74,6 +74,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order) | either may set `return` — but the warehouse person always ACCEPTS, and that is when stock moves |
 | [a-return-is-never-partial](#a-return-is-never-partial) | a return is the whole order or nothing — no line comes back on its own |
 | [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
+| [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses) | `picked` (Set Picked, every good scanned) and `shipping` (the handover scan) are order statuses; packing stays a step | chat and your §Order Status, 2026-10-16 — as recommended |
 
 ---
 
@@ -425,6 +426,10 @@ granular to browse by and built a control to fold them. This makes that permanen
 ⚠ **What it does NOT settle:** where the warehouse's own QUEUE lives. Filtering by the four on the
 order list lets a seller find *which* orders are still being packed; it does not give the crew a
 screen to work from, and no doc describes that screen or that record yet.
+
+🔄 *(2026-10-16)* **Amended by [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)**: two of the four
+steps are order statuses now — picking ends in `picked`, and the handover sets `shipping`. Packing stays a step with no
+status, and `shipped` keeps its meaning here: the parcel moving.
 
 ---
 
@@ -2616,3 +2621,43 @@ flowchart LR
 | `order_events` | dropped — nothing is carried over |
 | picking, packed | not statuses: on the timeline only when someone writes them as a note |
 | the build | ⚠ `order_events` still backs the Timeline tab (selling_service `00011`) — replaced when this is built |
+
+🔄 *(2026-10-16)* **Amended by [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)**: `picked` is a
+status now, so its row is a status change, not a note. Packing is still a note when someone writes it.
+
+## picked-and-shipping-are-order-statuses
+
+> Owner, in chat (2026-10-16): *"for \"Are picked and shipping order statuses?\" yes, i add it to status"* — answering
+> [picked-and-shipping-are-order-statuses](./context_clarify.md#picked-and-shipping-are-order-statuses), as recommended.
+> Your §Order Status list carries both.
+
+**The verdict.** Two of the warehouse's steps are order statuses: `picked`, when every good is scanned and the staff press
+*Set Picked*, and `shipping`, when the parcel is scanned at the courier. `shipped` keeps its meaning, the parcel moving.
+Packing stays a step with no status. It amends
+[the-warehouse-steps-are-not-order-statuses](#the-warehouse-steps-are-not-order-statuses).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  pending --> processed: the warehouse confirms, the label printed
+  processed --> picked: Set Picked, every good scanned
+  picked --> shipping: the handover scan, packing in between
+  shipping --> shipped: the parcel moves
+```
+
+**The spec.**
+
+| status | set by | means |
+| --- | --- | --- |
+| `processed` | the warehouse confirms and prints the label | the warehouse took the job |
+| `picked` | *Set Picked* on the pick page ([the-item-scans-live-on-the-page](../inventory/order_decision.md#the-item-scans-live-on-the-page)) | the goods are off the racks |
+| `shipping` | the handover scan ([a-label-scan-reads-the-ref-or-the-receipt](../inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)) | the courier has the parcel; the warehouse is done |
+| `shipped` | the parcel starts moving | as before — *problem, lost, return, completed* run from here |
+
+| | |
+| --- | --- |
+| each move | one `order_timeline_logs` row, `from = warehouse` ([order-timeline-logs-replaces-order-events](#order-timeline-logs-replaces-order-events)) |
+| packing | no status; a note on the timeline only if someone writes one |
+| ⚠ not drawn yet | §Status Move and §Complete Journey still go `processed --> shipped` — [the-status-moves-miss-picked-and-shipping](./context_clarify.md#the-status-moves-miss-picked-and-shipping) |
+| ⚠ the warehouse tabs | [the-warehouse-tabs-are-the-processed-steps](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps) still lists them as steps of `processed` |
+| ⚠ the build | `OrderStatus` is placed · confirmed · picking · packed · shipped — a migration when this is built |

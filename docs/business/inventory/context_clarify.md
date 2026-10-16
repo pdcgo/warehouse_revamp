@@ -3,6 +3,24 @@
 [inventory/context.md](./context.md) is yours — this one is mine. Answered points are **deleted**, so
 this file is always the current open set.
 
+> ✅ **Answered in chat (2026-10-16):** Q8 — inventory owns the restock end to end; Q9 — five lines it does not own ([inventory-stops-at-five-lines](./context_decision.md#inventory-stops-at-five-lines))
+> ([inventory-owns-the-restock-end-to-end](./context_decision.md#inventory-owns-the-restock-end-to-end)). Q17 — a transfer links its products to B ([a-transfer-links-its-products-to-the-receiver](./context_decision.md#a-transfer-links-its-products-to-the-receiver)). Q7 — expiry is a report ([expiry-is-a-report](./context_decision.md#expiry-is-a-report)). Q16 — only inventory's half of a return is parked ([order-returns-calls-are-return-mds-brief](./context_decision.md#order-returns-calls-are-return-mds-brief)). **No question is open here.**
+
+> ✅ **Answered in chat (2026-10-16, later):** 14d — a late cost is the selling team's expense, or a transfer to the warehouse,
+> and inventory does nothing ([a-late-cost-is-an-expense-not-a-revaluation](./context_decision.md#a-late-cost-is-an-expense-not-a-revaluation)),
+> against my split by units. **Q14 closes — the two ledgers' rules are decided.**
+
+> ✅ **Answered in chat (2026-10-16):** 14c — the take that empties a batch takes all its remaining value
+> ([an-emptying-take-takes-all-the-value](./context_decision.md#an-emptying-take-takes-all-the-value)); 4 digits stays the precision.
+> Q14 stays open for 14d only.
+
+> 🔄 **Re-examined after your new §Table that must we have for linking products, and restock's create (2026-10-16).**
+> `warehouse_products` links a product to a warehouse, and a restock's create upserts it before its transaction. ✅
+> Consistent with your [technical stock design](../../technical/stock/design.md) — *"its okay upsert to `warehouse_products`
+> without transaction. its not critical ops"* — and with the build, which already has the table (inventory `00011`,
+> `UNIQUE (warehouse_id, product_id)`, no team column). 🆕 [Q17](#question): a transfer brings products into a warehouse
+> too. ⛔ [the-link-names-its-team-two-ways](#the-link-names-its-team-two-ways).
+
 > **Re-examined after your answers in chat (2026-10-15).** ✅ [14a](#question) [both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units)
 > and ✅ [14h](#question) [a-batch-keeps-its-supplier](./context_decision.md#a-batch-keeps-its-supplier), as recommended. Q14 stays open for c and d.
 >
@@ -70,7 +88,7 @@ this file is always the current open set.
 > `batch_price_logs` **kept**, against my drop ([batch-logs-carry-price-unit-after](./context_decision.md#batch-logs-carry-price-unit-after)) ·
 > 14f — one shelf row per product per placement, codes reusable, and a delete only when nothing waits on the rack
 > ([one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement),
-> [a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it)) ·
+> [superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it)) ·
 > 14g — the owning team revalues, with a reason ([the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason)).
 > Q14 stays open for a–d. ⚠ [batch.md](./batch.md)'s *Restock Flow Example* still has a mint writing
 > `batch_price_logs` only; it now writes a `batch_logs` row too. ⚠ `batch_ledger.md` is now [batch.md](./batch.md):
@@ -216,7 +234,7 @@ bring back the scan 11b declined — and the count screen shows *"1 here is sold
 1 waiting, 1 — it matches.
 
 ✅ *(2026-10-08)* **Decided**: *"Staff Scan Goods for verify"* tells inventory the order is picked —
-[the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked).
+[superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked).
 
 **11d — the order wants more than the smallest rack holds.** 3 wanted; Rak A holds 1, Rak B 2, Rak C 5.
 
@@ -268,7 +286,7 @@ residue may be `0.000000000001` instead of `0,01` — still not zero, and that d
 fails on it. Taking *everything left* subtracts a number from itself, which is exactly 0. `price_unit` stays the price
 shown on screen, changed only by a revaluation.
 
-**14d — what a revaluation is for.** 10 units at Rp 10.000 (Rp 100.000); 6 sold, so Rp 60.000 has gone into order
+✅ *(2026-10-16)* **Decided otherwise** — a late cost is an expense, not a revaluation ([a-late-cost-is-an-expense-not-a-revaluation](./context_decision.md#a-late-cost-is-an-expense-not-a-revaluation)); kept as the argument it answered. **14d — what a revaluation is for.** 10 units at Rp 10.000 (Rp 100.000); 6 sold, so Rp 60.000 has gone into order
 costs; then the freight invoice arrives late, Rp 20.000 — Rp 2.000 a unit. As drawn, the batch's price goes to Rp
 12.000, and `delta × stock_count` adds Rp 8.000 to the 4 left. Paid: Rp 120.000. Costed: Rp 60.000 + Rp 48.000 =
 Rp 108.000. **Rp 12.000 is in no cost anywhere.** It depends on why the price changed:
@@ -291,7 +309,7 @@ what an order said happened). Where the one-off cost is read — balance, or the
 
 **14e, 14f, 14g** — ✅ decided *(2026-10-08)*: [batch-logs-carry-price-unit-after](./context_decision.md#batch-logs-carry-price-unit-after) ·
 [one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement) ·
-[a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it) ·
+[superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it) ·
 [the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason).
 
 ### The mutation layers
@@ -431,7 +449,6 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 | **5** | ✅ *(2026-10-13)* **Answered, as recommended**: `broken` and `lost` are separate problem types, and only a lost unit can be claimed back ([a-loss-in-custody-is-a-stock-problem](./opname_decision.md#a-loss-in-custody-is-a-stock-problem)). As first raised: **"Broken" and "lost" are used as one phrase everywhere and they are different events.** A broken unit is here and unsellable — someone is holding it. A lost unit is not here, and only a lost unit can be *found back*. | Separate them in the vocabulary. **Broken** = present, unsellable, something must be decided about the object ([Critique 4](#critique)). **Lost** = absent, and it may come back. Only the second needs a reversal path. |
 | **6** | ➡ *(2026-10-10)* **Moved to [warehouse_transfer_clarify Q7](./warehouse_transfer_clarify.md#question)**, where I now recommend the selling team instead. As first raised: **In-transit stock between warehouses has no owner of the risk.** Goods leave warehouse 1 and have not arrived at warehouse 2 — they are in nobody's custody, so [in-custody-shortfall-is-the-warehouses](#in-custody-shortfall-is-the-warehouses) does not reach them. A transfer is currently the one way to lose goods with no liability. | Name **in transit** as a place, and put the risk on the **sending** warehouse until receipt is confirmed. |
 | **7** | 🔄 *(2026-10-08)* **Direction decided: a count locks its rack** ([a-count-locks-its-rack](./order_decision.md#a-count-locks-its-rack)) — the design waits for [opname.md](./opname.md). As first raised: **Two Staff at one shelf is the normal case here, and no requirement mentions it.** One counts A-01-3 while the other picks from it. The count is right, the pick is right, the recorded result is wrong — and that wrong result is now a **debt on the warehouse**. The role doc names the people without saying two of them may be at one shelf at once. | A business rule, not a technical one: **a count is a statement about a moment**, and either the shelf is closed to picking while it is counted, or the count is reconciled against what moved during it. I would close the shelf — it is the version a person can actually follow. |
-| **8** | 🔄 *(2026-10-08)* **A batch knows when it expires, and not which shelf it is on.** [batch.md](./batch.md) gives `batches` an optional `expired_at`, so something you sell perishes. But a batch has no placement and a shelf row has no batch — the system can say *"12 units expire in March"* and cannot tell the picker where they are. | **FIFO stays a costing rule, and expiry is a report** — what expires soon, per product per warehouse. If an expiring product must be **picked** soonest-first, a shelf row needs a `batch_id` — [Q7](#question). |
 | **9** | ➡ *(2026-10-14)* **Moved with Q1 to [restock_clarify Q22](./restock_clarify.md#question)** — the flow is deleted. As first raised: **⚠ The flow computes the unit price BEFORE it knows what arrived.** The arrows run *Accept → (fee) → **Calculate Unit Price** → Is Any Lost → Is Any Broken → **Calculate valid Qty***. So the divisor in [unit-price-is-landed-cost](../product/context_clarify.md#unit-price-is-landed-cost) — `AllProductQtyRestock` — can only be the **expected** quantity, because the shortfall has not been captured yet. Freight and the warehouse fee are then spread over units that **never turned up**: the surviving units are **under-costed**, the margin on them is overstated for the life of the batch, and [warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price) under-pays the owner if one of them later breaks. | **Move `Calculate Unit Price` after `Calculate valid Qty`.** It is one arrow, and it makes the cost of a batch the money actually spent divided by the goods actually landed. ⚠ **I am not treating the diagram as having decided this** — a drawn order is not prose, and drawing the fee step early is exactly the kind of thing that happens for layout reasons. It is [Question 2](#question). |
 | **10** | ✅ *(2026-10-14)* the flow is deleted, so nothing draws them as exclusive any more. ✅ *(2026-10-08)* **Answered** — a restock line records both: what arrived and how many of those are broken, and the short units are the difference ([any-warehouse-member-counts-what-arrived](./restock_decision.md#any-warehouse-member-counts-what-arrived)). ⚠ This flow still draws them as exclusive, so it is now older than the restock it describes | redraw it from the restock, or point at it |
 | **11** | ➡ *(2026-10-14)* **Moved with Q3 to [restock_clarify Q23](./restock_clarify.md#question)** — the flow is deleted. As first raised: **"Report Manually (Outside System)" ends the process with goods in the building and nothing recorded.** Stock arrives, the system has no matching restock, and the flow terminates outside it. Nothing says what happens to the goods physically: whether they are refused at the door, set aside, or shelved anyway. If they are shelved, the next opname finds units nobody can explain; if they are set aside, they are goods in limbo with no owner and no liability. **A real receipt can currently leave no trace.** | Keep the escape hatch — an unexpected delivery is real — but **end it inside the system**: record a *receipt with no matching restock*, name who it is being held for, and put the goods on a **holding placement** until someone resolves it. 🔄 *(2026-10-09)* This used to say *unplaced*; there is no unplaced pile any more ([q3-still-said-unplaced](#q3-still-said-unplaced)). Then the count reconciles and the manual report is a task rather than a dead end. |
@@ -453,21 +470,9 @@ acts in every team. A check of recorder against confirmer closes both, and it co
    rack ([an-opname-is-a-locked-session](./opname_decision.md#an-opname-is-a-locked-session)). What was left — may a selling
    team ask for one — is [opname_clarify Q9](./opname_clarify.md#question).
 6. ✅ *(2026-10-13)* **Answered in chat** — thrown away ([a-broken-unit-is-thrown-away](./context_decision.md#a-broken-unit-is-thrown-away)).
-7. 🔄 *(2026-10-08)* **Something expires — does the picker take the soonest-expiring unit?** `batches.expired_at`
-   answers the old question. A batch has no shelf, so today the system can report expiry and cannot direct a pick.
-   ([Critique 8](#critique)) **→ I recommend no: expiry is a report, and FIFO stays costing.** If yes, a shelf row
-   carries its `batch_id`, and every put-away and pick has to name the batch.
-8. **§Responsbility 2 *managing restock* — from the moment the selling team CREATES it, or only from the
-   door?** §Selling 4 has the selling team *decide and mint* the restock; §Warehouse accepts it.
-   **→ I now recommend inventory owns the restock record end to end** — I previously said purchasing should
-   be its own context, and your update changed my mind: the receiving flow's first step is *Check on
-   System*, so the expected-goods record and its acceptance belong in one place. What stays **out** is the
-   buying decision itself — **suppliers** (§Selling 5) and the price paid. Where do suppliers live?
-9. **What does inventory NOT own?** §Responsbility now says what it does and still draws no outer line.
-   Candidates at the edge: suppliers (Q8), the unit-price rule (defined in
-   [product](../product/context.md#unit-pricing-system), computed at receiving), the loss money (balance),
-   the pick job for an order ([Critique 13](#critique)).
-   **→ I recommend** a *"not responsible for"* list beside §Responsbility, each item naming who is.
+7. ✅ *(2026-10-16)* **Answered: a — expiry is a report** — [expiry-is-a-report](./context_decision.md#expiry-is-a-report). The take keeps oldest-first; a rack does not track batches.
+8. ✅ *(2026-10-16)* **Answered: end to end** — [inventory-owns-the-restock-end-to-end](./context_decision.md#inventory-owns-the-restock-end-to-end). The supplier stays in supplier_service, the money in financial_account and balance.
+9. ✅ *(2026-10-16)* **Answered: five lines, each with its owner** — [inventory-stops-at-five-lines](./context_decision.md#inventory-stops-at-five-lines). ⚠ Yours to add under §Responsbility.
 10. ✅ *(2026-10-14)* **Answered by your §General item 2, now item 3** — Toni's design is on branch `thoni`, kept apart
     ([the-two-inventory-designs-live-on-separate-branches](./context_decision.md#the-two-inventory-designs-live-on-separate-branches)); who picks is [member_clarify Q4](../project/member_clarify.md#question).
     ⚠ Still true: [technical/stock/design.md](../../technical/stock/design.md) sits at `stock/` coordinates — move it to
@@ -483,7 +488,7 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     | --- | --- | --- |
     | **11a** | ✅ **Answered: the shelf holding the fewest goes first** — [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first) | — |
     | **11b** | ✅ **Answered: no rack scan — the next stock opname corrects it** — [a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count). Against my scan | — |
-    | **11c** | ✅ *(2026-10-08)* **Answered in order.md: the verify scan tells inventory *picked*** — [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked). Was re-routed to [order_clarify Q1](./order_clarify.md#question) — your §How Warehouse Process The Order has a *"Staff Scan Goods for verify"* step, the moment a unit leaves the rack, so whether it tells inventory is that doc's to answer | — |
+    | **11c** | ✅ *(2026-10-08)* **Answered in order.md: the verify scan tells inventory *picked*** — [superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked). Was re-routed to [order_clarify Q1](./order_clarify.md#question) — your §How Warehouse Process The Order has a *"Staff Scan Goods for verify"* step, the moment a unit leaves the rack, so whether it tells inventory is that doc's to answer | — |
     | **11d** | ➡ *(2026-10-09)* **Moved to [placement_clarify Q2](./placement_clarify.md#question)**: an order line bigger than the smallest rack | — |
     | **11e** | ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q6](./opname_clarify.md#question)** — when a count's difference costs money; opname.md now answers it | — |
 
@@ -501,18 +506,18 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     [an-undo-rolls-the-transaction-back-once](./transaction_decision.md#an-undo-rolls-the-transaction-back-once)); 13a, 13c,
     13d and 13f are its Q1, Q5, Q6, Q7; 13g is withdrawn.
 
-14. 🔄 *(2026-10-08, elaborated)* **The two ledgers' rules** — what [batch.md](./batch.md) and
-    [placement.md](./placement.md) do not yet say. Seven parts; e, f and g are answered, a–d are open. Every part is worked through,
+14. ✅ *(2026-10-16)* **Answered, every part** — **The two ledgers' rules** — what [batch.md](./batch.md) and
+    [placement.md](./placement.md) do not yet say. Eight parts, all answered. Every part is worked through,
     with an example, in [the ledger rules, worked](#the-ledger-rules-worked).
 
     | | Part | → Recommend |
     | --- | --- | --- |
     | **14a** | ✅ *(2026-10-15)* **Answered, as recommended** — [both-ledgers-count-the-same-units](./context_decision.md#both-ledgers-count-the-same-units) | — |
     | **14b** | ➡ *(2026-10-13)* **Answered in substance by your opname design**: a loss is a `lost` row remembering its batch and price, and a surplus claims it ([a-surplus-claims-a-lost-unit-first](./opname_decision.md#a-surplus-claims-a-lost-unit-first)). ✅ *(2026-10-13)* The rest is answered too: the oldest open loss, back into its batch at its price ([a-surplus-claims-the-oldest-loss-first](./opname_decision.md#a-surplus-claims-the-oldest-loss-first)) | — |
-    | **14c** | **A batch must reach zero money when it reaches zero units.** `price_unit × n` leaves Rp 0,01 on an emptied 3-for-Rp-10.000 batch | **`stock_valuation` is the truth.** A take of *n* removes `valuation × n / count`; the take that empties a batch removes all that is left, which is exactly 0 even in floating point |
-    | **14d** | **Revaluing a part-sold batch loses money.** A late Rp 20.000 freight bill after 6 of 10 sold: Rp 8.000 lands in the batch, Rp 12.000 nowhere | **name the triggers.** A typo or a markdown revalues only what is left, as drawn. A **late cost** splits by units: the on-hand share into the batch, the sold share out as a one-off cost to the team |
+    | **14c** | ✅ *(2026-10-16)* **Answered, as recommended** — [an-emptying-take-takes-all-the-value](./context_decision.md#an-emptying-take-takes-all-the-value); 4 digits stays the precision | — |
+    | **14d** | ✅ *(2026-10-16)* **Answered: an expense, not a revaluation** — [a-late-cost-is-an-expense-not-a-revaluation](./context_decision.md#a-late-cost-is-an-expense-not-a-revaluation), against my split by units | — |
     | **14e** | ✅ **Answered: `price_unit_after` added, `batch_price_logs` kept** — [batch-logs-carry-price-unit-after](./context_decision.md#batch-logs-carry-price-unit-after) | — |
-    | **14f** | ✅ **Answered, as recommended** — [one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement), [a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#a-placement-deletes-only-when-nothing-waits-on-it) | — |
+    | **14f** | ✅ **Answered, as recommended** — [one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement), [superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it) | — |
     | **14g** | ✅ **Answered, as recommended** — [the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason) | — |
     | **14h** | ✅ *(2026-10-15)* **Answered, as recommended** — [a-batch-keeps-its-supplier](./context_decision.md#a-batch-keeps-its-supplier) | — |
 
@@ -521,23 +526,34 @@ acts in every team. A check of recorder against confirmer closes both, and it co
     [batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id),
     [the-layer-under-a-mutation-is-a-ledger](./context_decision.md#the-layer-under-a-mutation-is-a-ledger).
 
-16. 🆕 *(2026-10-14)* **Is [order_return.md](../order/order_return.md)'s warehouse half parked too?** return.md says
-    *unplanned* ([return-is-unplanned](./context_decision.md#return-is-unplanned)), but order_return.md *(2026-09-21)*
-    already draws inventory's part: *"Call Inventory Service to Create Return Transaction"*, *"Warehouse Person Accepting
-    Return"*, *"Warehouse Force Order To Return"*.
+16. ✅ *(2026-10-16)* **Answered: a — only inventory's half is parked** — [order-returns-calls-are-return-mds-brief](./context_decision.md#order-returns-calls-are-return-mds-brief). order_return.md stands; its three calls into inventory are return.md's brief.
 
-    | reading | order_return.md | inventory |
-    | --- | --- | --- |
-    | **a** — only inventory's half is unplanned | stands; its calls into inventory are what return.md must later answer | designs nothing until return.md is written |
-    | **b** — return as a whole is unplanned | parked, its order-create gate with it | designs nothing |
-
-    **→ Recommend a.** The order side was written on purpose, and none of it is built
-    ([biggest_question #7](../../biggest_question.md)). Its calls into inventory then become return.md's brief, instead of
-    a second design to reconcile later.
+17. ✅ *(2026-10-16)* **Answered: yes, the transfer's create links to B** — [a-transfer-links-its-products-to-the-receiver](./context_decision.md#a-transfer-links-its-products-to-the-receiver). ⚠ Yours to draw in warehouse_transfer.md.
 
 ---
 
 # Contradiction
+
+## the-link-names-its-team-two-ways
+
+*(2026-10-16)* Your two docs, one table:
+
+| | [context.md](./context.md) §Table that must we have for linking products | [technical stock design.md](../../technical/stock/design.md) §Stock Entity Relationship |
+| --- | --- | --- |
+| the team | `team_id` | `owner_team_id` — *"this owner team of the product, (its selling team)"* |
+| the unique key | not stated | `UNIQUE (warehouse_id, product_id)` |
+
+**Which is wrong:** context.md's name, not its meaning. Both mean the product's owner. **→ Recommend `owner_team_id`.**
+On an order's transaction, `team_id` now means the **ordering** team
+([an-order-transaction-is-the-ordering-teams](./transaction_decision.md#an-order-transaction-is-the-ordering-teams)), so a
+bare `team_id` beside a product reads as the wrong team. And state the unique key in context.md too, since the upsert
+depends on it.
+
+```mermaid
+flowchart LR
+  C["context.md - team_id"] -.->|"same column"| T["stock design.md - owner_team_id"]
+  O["order transaction - team_id is the ordering team"] -.->|"why the bare name misleads"| C
+```
 
 ## mutation-means-two-layers
 
@@ -546,8 +562,8 @@ acts in every team. A check of recorder against confirmer closes both, and it co
 ([the-layer-under-a-mutation-is-a-ledger](./context_decision.md#the-layer-under-a-mutation-is-a-ledger)), which is the
 template's meaning. **What keeps this open is your text**, which still uses the old word in two places:
 [placement.md](./placement.md)'s heading *Placement Ledger Mutation* → *Placement Ledger*, and §How We Breakdown
-Complexity's diagram node `PlacementLedgerMutation` → `PlacementLedger`. Who opens the transaction is still open in the
-template's clarify ([mutation_and_ledger Q4](../../technical/ledger/mutation_and_ledger_clarify.md#question)).
+Complexity's diagram node `PlacementLedgerMutation` → `PlacementLedger`. Who opens the transaction is decided — the caller
+([the-caller-opens-the-transaction](../../technical/ledger/mutation_and_ledger_decision.md#the-caller-opens-the-transaction)). 🔄 *(2026-10-16)* Both still read the old word.
 
 As first found — your ledger template and §How We Breakdown Complexity use the word for different layers:
 
@@ -583,26 +599,7 @@ now lives in [transaction.md](./transaction.md).
 
 ## q3-still-said-unplaced
 
-*(2026-10-09)* A restock decision reached a question in this file, and my recommendation did not follow it.
-
-| where | says |
-| --- | --- |
-| [Q3](#question) and [Critique 11](#critique), mine, before today | *"leave the goods **unplaced** until someone resolves it"* |
-| [there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile), decided 2026-10-09 | every unit is on a placement, and a staging area is just another placement |
-
-The decision is right; my text was stale. It was written while an unplaced pile was still an option. **Fixed in both
-places:** the goods go on a holding placement. Nothing for you to edit.
-
-**→ Recommend:** when a placement rule changes, search the inventory clarifies for *unplaced* and *unshelved*. This is the
-second time a restock decision rippled into this file (the first was
-[the-two-type-lists-do-not-line-up](#the-two-type-lists-do-not-line-up)).
-
-```mermaid
-flowchart LR
-  D["there-is-no-unplaced-pile"] -->|"restock accept"| A["good units go to a rack"]
-  D -.->|"missed"| Q["context Q3 - surprise goods left unplaced"]
-  Q -->|"fixed"| H["a holding placement, a rack like any other"]
-```
+✅ *(2026-10-16)* **Settled — my stale text, fixed 2026-10-09.** Every unit is on a placement ([there-is-no-unplaced-pile](./restock_decision.md#there-is-no-unplaced-pile)); my Q3 and Critique 11 had still said *unplaced*.
 
 ## the-receiving-boundary-gap
 

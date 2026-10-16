@@ -36,7 +36,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-draft-names-its-session-and-rack](#a-draft-names-its-session-and-rack) | `opname_problems_draft` carries `opname_session_id` and `placement_id`: a draft is what staff saw on one rack, in one session | your opname.md edit, 2026-10-13 — answers Q16a, and draws the draft per rack |
 | [the-difference-is-a-draft-until-finalize](#the-difference-is-a-draft-until-finalize) | a count's broken and lost are `opname_problems_draft` rows, with a note, until finalize turns them into stock problems | your opname.md edit, 2026-10-13 — stores the split of a-count-is-of-sellable-units; answers Q14's shortage half |
 | [a-count-is-of-sellable-units](#a-count-is-of-sellable-units) | staff count sellable units only; at *Staff writing the difference* the shortage splits into broken (`broken_stock_count`, never more than the shortage) and lost | chat, 2026-10-13 — your counting rule, against my *count every unit, of which broken* |
-| [a-snapshot-row-names-its-transaction](#a-snapshot-row-names-its-transaction) | each snapshot row records the transaction it was posted in, one per owning team | your opname.md edit, 2026-10-13 — answers Q10a-i, as recommended |
+| [superseded-a-snapshot-row-names-its-transaction](#superseded-a-snapshot-row-names-its-transaction) | ⛔ reversed — the session lists its transactions in `opname_session_final_transactions` ([a-session-lists-its-final-transactions](#a-session-lists-its-final-transactions)) | your proposal in chat, 2026-10-16 |
+| [a-session-lists-its-final-transactions](#a-session-lists-its-final-transactions) | `opname_session_final_transactions` links a session to every transaction its finalize wrote; snapshot rows lose `transaction_id` | your proposal in chat and opname.md, 2026-10-16 |
 | [a-snapshot-row-names-its-counter](#a-snapshot-row-names-its-counter) | each snapshot row carries `counted_by_id` | your opname.md edit, 2026-10-13 — answers Q10c, as recommended |
 | [expected-is-the-book-figure](#expected-is-the-book-figure) | expected is `system_stock_count`, the book; no `waiting_count` — a sold unit still on the rack is rare and handled at the reveal | chat, 2026-10-13 — answers Q10b, **against** my `waiting_count` |
 | [a-snapshot-row-names-its-session](#a-snapshot-row-names-its-session) | every snapshot row carries `opname_session_id`; a session acts only on its own rows | your opname.md edit, 2026-10-13 — answers Q10a, as recommended |
@@ -442,6 +443,10 @@ flowchart LR
 | an adjustment's found | a claim, per [a-surplus-claims-the-oldest-loss-first](#a-surplus-claims-the-oldest-loss-first) |
 | a found, by either door | erases a warehouse debt, so it is confirmed by a second person — who confirms is [Q8](./opname_clarify.md#question) |
 | the adjustment's screen and rules | yours to write in [adjustment.md](./adjustment.md) |
+
+🔄 *(2026-10-16)* **Amended by [problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)**: both
+doors now write `problem` and `found` transactions, so the door is no longer the type — it is whether
+[a-session-lists-its-final-transactions](#a-session-lists-its-final-transactions) lists the transaction.
 
 ## last-price-is-the-teams-newest-batch-here
 
@@ -879,7 +884,12 @@ flowchart LR
 
 🔄 *(2026-10-14)* **An `all` session's racks** are every rack of the warehouse, not only its rows' — [an-all-count-visits-every-rack](#an-all-count-visits-every-rack). Other plans: still its rows'.
 
-## a-snapshot-row-names-its-transaction
+## superseded-a-snapshot-row-names-its-transaction
+
+> ⛔ **SUPERSEDED (2026-10-16)** by [a-session-lists-its-final-transactions](#a-session-lists-its-final-transactions): the
+> session lists its transactions in a table of its own, and the snapshot rows lose `transaction_id`. A finalize now writes up
+> to three transactions per team ([problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)),
+> so one row no longer maps to one transaction. Kept below as it was decided.
 
 > Owner, in chat and in [opname.md](./opname.md) *(2026-10-13)*: *"for 10a-i, yes i write it"* — `transaction_id` on
 > `opname_session_snapshots`. It answers 10a-i of [opname Q10](./opname_clarify.md#question), as recommended.
@@ -1334,7 +1344,7 @@ flowchart LR
 | step | decided by |
 | --- | --- |
 | two doors | [an-adjustment-writes-the-same-problem-row](#an-adjustment-writes-the-same-problem-row) |
-| one opname transaction per team | [a-snapshot-row-names-its-transaction](#a-snapshot-row-names-its-transaction) |
+| one opname transaction per team | [superseded-a-snapshot-row-names-its-transaction](#superseded-a-snapshot-row-names-its-transaction) |
 | Net Each Product — broken drafts, the rest short / over / 0 | [broken-posts-as-written-the-rest-nets](#broken-posts-as-written-the-rest-nets) |
 | *Lost Found*, not *Missing Found* | [the-flow-says-missing-and-stores-lost](./opname_clarify.md#the-flow-says-missing-and-stores-lost) |
 | per batch, oldest first, broken before lost | [a-shortage-writes-a-row-per-batch](#a-shortage-writes-a-row-per-batch), [broken-takes-its-batch-before-lost](#broken-takes-its-batch-before-lost) |
@@ -1687,3 +1697,42 @@ flowchart LR
 | who may finalize | unchanged — the warehouse's Owner or Admin, or Root and the root Administrator; never a counter ([nobody-finalizes-their-own-count](#nobody-finalizes-their-own-count)) |
 | what is given up | telling, later, a root finalize from the warehouse's own once the finalizer's roles have changed |
 | withdrawn | my `finalized_as_override` |
+
+## a-session-lists-its-final-transactions
+
+> Owner, in chat (2026-10-16): *"what about remove transaction_id in opname_session_snapshots"*, with a diagram —
+> *Opname Session → `opname_session_final_transactions` → many `inventory_transactions`* — now in [opname.md](./opname.md)
+> §Opname Session Structure. It reverses
+> [superseded-a-snapshot-row-names-its-transaction](#superseded-a-snapshot-row-names-its-transaction).
+
+**The verdict.** A session keeps the list of the transactions its finalize wrote, in a table of its own. The snapshot rows
+stop carrying `transaction_id`: it sat empty for the whole count, and a team's finalize now writes up to three
+transactions — `problem`, `found`, `move` ([problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)) —
+so one row no longer maps to one.
+
+```mermaid
+flowchart LR
+  S["session 12"] --> J["opname_session_final_transactions"]
+  J --> T1["901 problem - Melati"]
+  J --> T2["902 found - Melati"]
+  J --> T3["903 move - Melati"]
+  J --> T4["904 problem - Sinar"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `opname_session_final_transactions` | 🆕 `id` · `opname_session_id` · `transaction_id` **UNIQUE** · `created_at` — the fields as I recommended; yours to write in opname.md |
+| written | at finalize, in the same database transaction ([the-lock-is-the-open-snapshot-row](#the-lock-is-the-open-snapshot-row)) |
+| a cancelled session | writes none |
+| `opname_session_snapshots.transaction_id` | removed |
+| which door a `problem` or `found` came through | listed here → a count; not listed → a report at the shelf ([an-adjustment-writes-the-same-problem-row](#an-adjustment-writes-the-same-problem-row)) |
+
+🔄 *(2026-10-16)* **Written** in your [opname.md](./opname.md) as Table 7 — `id` · `opname_session_id` · `transaction_id`. The
+unique key on `transaction_id` and `created_at` are not written; the snapshot's `transaction_id` is removed.
+
+🔄 *(2026-10-16, later)* **Confirmed in chat** (*"for all three, yes"*): a finalize writes up to three transactions per team,
+the session diagram's boxes are `problem`, `found` and `move` transactions, and Table 7 carries `created_at` and a unique
+`transaction_id`. The unique key is written; the rest waits in
+[opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction).

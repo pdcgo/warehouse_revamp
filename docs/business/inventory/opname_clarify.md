@@ -3,6 +3,13 @@
 [opname.md](./opname.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [opname_decision.md](./opname_decision.md).
 
+> 🔄 **Re-examined after your transaction, placement, batch and opname edits (2026-10-16).** ✅ Recorded:
+> [problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname) and
+> [a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions), which supersedes
+> [superseded-a-snapshot-row-names-its-transaction](./opname_decision.md#superseded-a-snapshot-row-names-its-transaction).
+> ⛔ Two lines still draw the old shape, and Table 7 needs `created_at`: [opname-md-still-draws-one-opname-transaction](#opname-md-still-draws-one-opname-transaction).
+> No question is open here.
+
 > ✅ **Dropped 2026-10-14:** `finalized_as_override` — finalizing is the agreement ([finalizing-is-the-agreement](./opname_decision.md#finalizing-is-the-agreement)). **Opname: no open
 > question, no open contradiction, nothing awaiting your text.**
 >
@@ -306,7 +313,7 @@ The register is your §How We Manage Stock Problem In Warehouses
 9. ✅ *(2026-10-13)* **Answered: yes, outside the system** — the team contacts the warehouse, and the admin opens a
    team-scoped session ([a-team-asks-for-a-count-outside-the-system](./opname_decision.md#a-team-asks-for-a-count-outside-the-system)).
 10. ✅ *(2026-10-13)* **Answered, every part** — [a-snapshot-row-names-its-session](./opname_decision.md#a-snapshot-row-names-its-session) ·
-    [a-snapshot-row-names-its-transaction](./opname_decision.md#a-snapshot-row-names-its-transaction) ·
+    [superseded-a-snapshot-row-names-its-transaction](./opname_decision.md#superseded-a-snapshot-row-names-its-transaction) ·
     [a-snapshot-row-names-its-counter](./opname_decision.md#a-snapshot-row-names-its-counter) ·
     [session-placements-is-dropped](./opname_decision.md#session-placements-is-dropped) ·
     [a-snapshot-row-keeps-its-note-and-recount](./opname_decision.md#a-snapshot-row-keeps-its-note-and-recount) ·
@@ -332,6 +339,32 @@ The register is your §How We Manage Stock Problem In Warehouses
 ---
 
 # Contradiction
+
+## opname-md-still-draws-one-opname-transaction
+
+*(2026-10-16)* One cause — `opname` left `tx_type` for `problem`, `found` and `move`
+([problem-and-found-replace-opname](./transaction_decision.md#problem-and-found-replace-opname)), and the session lists its
+transactions ([a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions)).
+🔄 *(2026-10-16, later)* **Your edits settled three of five**: the snapshot's `transaction_id` is gone, Table 7 is written, and
+batch.md keeps `broken` and `lost` on purpose (the ledgers carry the reason). Two are left, and Table 7 needs `created_at`:
+
+| site | says | decided |
+| --- | --- | --- |
+| [opname.md](./opname.md) §How We Manage Stock Problem | *"finalize → net: one opname transaction per team"* | up to three per team: `problem`, `found`, `move` |
+| opname.md §Opname Session Structure | *"Lost tx"* · *"Broken tx"* · *"Surplus"* — reads as one transaction per kind | `problem tx` (its rows broken or lost) · `found tx` · `move tx` |
+| opname.md Table 7 | `id` · `opname_session_id` · `transaction_id`, unique ✅ | `created_at`, as every table has |
+
+**Which is wrong:** these three lines — ✅ all three confirmed in chat (2026-10-16), waiting for your edit. **→ Recommend:** the finalize arrow reads *"up to three transactions per team"*;
+the diagram's boxes read `problem tx`, `found tx`, `move tx`; Table 7 gains
+`created_at`.
+
+```mermaid
+flowchart LR
+  F["finalize"] --> J["opname_session_final_transactions"]
+  J --> P["problem tx - rows broken or lost"]
+  J --> N["found tx - rows found"]
+  J --> M["move tx - rack corrected"]
+```
 
 ## the-lock-is-drawn-on-the-product-and-stored-on-the-rack
 

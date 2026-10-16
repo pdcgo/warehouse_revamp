@@ -4,6 +4,19 @@ What [context.md](./context.md) leaves open. **That doc is yours — this one is
 are deleted, so this file is always the current open set; what was settled is in
 [context_decision.md](./context_decision.md).
 
+> ✅ **Answered in chat (2026-10-16, later):** [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses) —
+> yes, as recommended ([picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses)),
+> amending [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) and
+> [order-timeline-logs-replaces-order-events](./context_decision.md#order-timeline-logs-replaces-order-events). ⛔ Your §Status Move
+> and §Complete Journey still go `processed --> shipped`: [the-status-moves-miss-picked-and-shipping](#the-status-moves-miss-picked-and-shipping) stays.
+
+> 🔄 **Re-examined 2026-10-16 — `picked` and `shipping` joined your status list**, and inventory's
+> [order.md](../inventory/order.md) now sets them. 🆕 [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses):
+> they reverse [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses)
+> for two steps. ⛔ [the-status-moves-miss-picked-and-shipping](#the-status-moves-miss-picked-and-shipping): the Status Move,
+> the journey and the warehouse tabs still draw the old path. Its redraw also closes
+> [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back).
+
 > 🔄 **Re-examined 2026-10-15 — your `order_timeline_logs` and the way back to `pending`.** Missing goods send a confirmed
 > order back to `pending` with a note, and the selling team decides
 > ([missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)).
@@ -203,6 +216,9 @@ sequenceDiagram
 
 ## Question
 
+### picked-and-shipping-are-order-statuses
+✅ *(2026-10-16)* **Answered: yes, and in your status list** — [picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses), as recommended. It amends [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses). Kept as a heading so the links into it hold.
+
 ### one-uniqueness-check-covers-drafts-and-orders
 ✅ *(2026-10-15)* **Answered: yes, the warning reads drafts too, never the draft being finalized** — [the-duplicate-warning-reads-drafts-too](./context_decision.md#the-duplicate-warning-reads-drafts-too). Kept as a heading so the links into it hold.
 
@@ -282,6 +298,38 @@ stateDiagram-v2
   processed --> pending: goods missing - a note on the timeline
   pending --> cancel: the selling team
   processed --> shipped
+```
+
+## the-status-moves-miss-picked-and-shipping
+
+*(2026-10-16)* Your §Order Status list against the places that still draw the old path. One cause, four sites:
+
+| site | says |
+| --- | --- |
+| §Order Status, the list | `processed`, `picked`, `shipping`, `shipped` |
+| §Status Move | `processed --> shipped`, with no `picked` and no `shipping` |
+| §Complete Journey | one *"Process Order (Packing/Picking)"* step, and `shipped` set after the handover |
+| [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) | picking and the handover are steps inside `processed`, not statuses — ✅ amended 2026-10-16 |
+| [the-warehouse-tabs-are-the-processed-steps](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps) | *Sedang diambil, Sudah diambil, Dikemas, Sudah diserahkan* as steps of `processed` |
+
+**Which is wrong:** everything except the list — now decided ([picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses)). **→ Recommend**
+this Status Move. It also carries the way back ([the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back)),
+so one redraw closes both. The journey follows [the-journey-stops-setting-statuses](#the-journey-stops-setting-statuses),
+and the warehouse tabs are redrawn with the two statuses.
+
+```mermaid
+stateDiagram-v2
+  pending --> processed
+  pending --> cancel: the selling team
+  processed --> pending: goods on no rack - a note
+  processed --> picked: every good scanned
+  picked --> pending: platform cancelled - unpacked
+  picked --> shipping: the handover scan
+  shipping --> shipped: the parcel moves
+  shipped --> completed
+  shipped --> problem
+  shipped --> lost
+  shipped --> return
 ```
 
 ## the-uniqueness-section-still-denies

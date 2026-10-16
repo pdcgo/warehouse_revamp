@@ -3,7 +3,40 @@
 [order.md](./order.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [order_decision.md](./order_decision.md).
 
-> ✅ **Answered in chat (2026-10-15, last):** Q10 — no special inventory write; the staff count the product while they
+> ✅ **Answered in chat (2026-10-16, after Q12):** *picked* lives on the order's timeline
+> ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)), so Q1's
+> [superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked) is
+> superseded and §the flow says inventory hears nothing at *Set Picked*. No question is open here.
+
+> ✅ **Answered in chat (2026-10-16, last):** Q12 — several orders on one label are all shown, and the staff ask the selling
+> team or the warehouse admin ([two-orders-on-one-label-are-shown-not-chosen](./order_decision.md#two-orders-on-one-label-are-shown-not-chosen)),
+> against my *the picker chooses*. **No question is open here.** What is left is yours to draw — the five Contradictions below.
+
+> ✅ **Answered in chat (2026-10-16, later):** Q11 — one page, opened first by the label
+> ([the-pick-page-opens-first-by-the-label](./order_decision.md#the-pick-page-opens-first-by-the-label)). And your note: a
+> scan of the label finds the order by `order_external_ref_id` or `receipt`
+> ([a-label-scan-reads-the-ref-or-the-receipt](./order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)). 🆕 [Q12](#question):
+> neither code is unique, so which order a scan opens. Open here: Q12.
+
+> 🔄 **Re-examined after your new §How Warehouse Process The Order (2026-10-16).** Picking is drawn now: the picker takes
+> every good, opens the *Order Picked Verification Page* by scanning the `receipt_file`, scans each good's label, and
+> *Set Picked* moves the order to the new `picked` status. Packing sets no status, and the courier handover sets `shipping`.
+> ✅ Consistent with what is decided: the item scan matches `product_code` and counts each line up to its quantity
+> ([scanning-is-the-crews-hands](../../technical/frontend/warehouse_order_list_decision.md#scanning-is-the-crews-hands)).
+> ✅ *"update in fe view"* is the page's own count, nothing saved until *Set Picked* — confirmed in chat
+> ([the-item-scans-live-on-the-page](./order_decision.md#the-item-scans-live-on-the-page)).
+> 🆕 [Q11](#question): where the picker reads the racks before the walk. ⛔ [the-pick-draws-no-way-back](#the-pick-draws-no-way-back)
+> · [the-handover-arrow-still-says-shipped](#the-handover-arrow-still-says-shipped). 🔄 [two-journeys-for-one-order](#two-journeys-for-one-order)
+> is narrower: both journeys now end the warehouse's work at the courier. ➡ `picked` and `shipping` as order statuses go
+> against [the-warehouse-steps-are-not-order-statuses](../order/context_decision.md#the-warehouse-steps-are-not-order-statuses),
+> so that is asked in [order context](../order/context_clarify.md#picked-and-shipping-are-order-statuses). Where inventory
+> keeps *picked* is [transaction Q8](./transaction_clarify.md#question).
+
+> ✅ **Answered in chat (2026-10-15, closing):** Q5 — a platform cancel goes back through `pending`
+> ([a-platform-cancel-goes-back-through-pending](./order_decision.md#a-platform-cancel-goes-back-through-pending)). **No question
+> is open here.** What is left is yours to draw — the three Contradictions below.
+
+> ✅ **Answered in chat (2026-10-15, earlier):** Q10 — no special inventory write; the staff count the product while they
 > talk it over ([a-missing-unit-is-found-by-opname](./order_decision.md#a-missing-unit-is-found-by-opname)). Open here: Q5.
 
 > ✅ **Answered in chat (2026-10-15, later):** Q2 — goods on no rack send the order back to `pending` with a note on
@@ -66,7 +99,7 @@
 > a basket. So inventory also hears *Order Processed*, and a count waits for the printed-but-unscanned.
 >
 > **Re-examined after your answers in chat (2026-10-08).** ✅ [Q1](#question): the verify scan tells inventory *picked*
-> ([the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked)) · ✅ [Q3](#question):
+> ([superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked)) · ✅ [Q3](#question):
 > no cancel after the warehouse confirms ([no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms)),
 > instead of my put-back task. 🆕 [Q4](#question): the minutes a unit spends in a basket · [Q5](#question): a marketplace
 > that cancels the order itself after the warehouse confirmed.
@@ -85,7 +118,7 @@ Siblings: [context_clarify](./context_clarify.md) · [restock_clarify](./restock
 
 ### OrderTransactionCreate, with the decisions placed
 
-Your flow, with every step the decisions have already fixed. Three steps are mine and marked *proposed*.
+Your flow, with every step the decisions have already fixed.
 
 ```mermaid
 sequenceDiagram
@@ -98,11 +131,11 @@ sequenceDiagram
   I->>P: configuration by ids - owner, private, reserve, markup
   Note over I: a borrowed line - private, or the total stock short of the reserve - Product Not Allowed, stop
   I->>D: open the transaction
-  I->>D: insert the order transaction under K - UNIQUE stops a same-second twin
   I->>D: lock the products' batches by id, then their racks by id
   I->>D: enough units on the racks
   I->>D: choose batches oldest first, racks fewest first
-  I->>D: write the items, batch_logs, placement_logs
+  I->>D: write the transaction, items, batch_logs, placement_logs
+  I->>D: claim K in idempotency_order_check - UNIQUE stops a same-second twin
   I->>D: commit
   I-->>O: transaction_id, per line owner, cost, markup, total
 ```
@@ -111,7 +144,7 @@ sequenceDiagram
 | --- | --- |
 | the product read, before the transaction · private refused there | [the-take-checks-the-product-first](./order_decision.md#the-take-checks-the-product-first) |
 | the key looked up first, a hit refused | [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first) |
-| the order transaction under K, inserted first inside the transaction | ⚠ **proposed** — the lookup is a read, and two same-second takes both find nothing; the UNIQUE insert stops the second ([transaction Q1](./transaction_clarify.md#question), option a) |
+| K claimed in `idempotency_order_check`, inside the transaction | [the-key-is-claimed-in-its-own-table](./transaction_decision.md#the-key-is-claimed-in-its-own-table) — the lookup is a read, and two same-second takes both find nothing; the UNIQUE claim stops the second |
 | batches, then racks, each by id | [batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id) |
 | the reserve, before the transaction, plain read | [the-reserve-is-read-before-the-take](./order_decision.md#the-reserve-is-read-before-the-take) |
 | batches oldest first · racks fewest first, unlocked first | [an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first) · [an-order-line-may-be-taken-from-several-racks](./placement_decision.md#an-order-line-may-be-taken-from-several-racks) |
@@ -121,25 +154,27 @@ sequenceDiagram
 
 ### the flow, with what inventory hears
 
-Your steps, plus what is decided and the one branch still missing.
+🔄 *(2026-10-16)* Your redrawn steps, plus what is decided. Dashed is decided but not drawn in your diagram.
 
 ```mermaid
 flowchart LR
-  N["New Order - PostOrder lowers the rack"] --> C["Order Processed - the label is printed, the placement page shows the racks"]
-  C --> P["Staff Picking Goods"]
-  P --> S["Staff Scan Goods for verify"]
-  S -->|"decided - tells inventory, order 9001 picked"| K["Order Packing Completed"]
-  K --> SH["Order Shipped - scanned at the courier"]
-  P -.->|"decided - on no rack"| NF["back to pending with a note - selling decides"]
-  C -.->|"decided - no cancel from here on"| CX["refused"]
+  N["New Order - the take lowers the racks"] --> C["processed - the label printed"]
+  C --> O["scan the label - the page opens with the racks"]
+  O --> W["the walk - every good off its racks"]
+  W --> V["same page - scan each good"]
+  V -->|"Set Picked - the order timeline, inventory not told"| P["picked"]
+  P --> K["packing - the label on the parcel, no status"]
+  K --> SH["shipping - scanned at the courier"]
+  W -.->|"on no rack"| NF["back to pending with a note"]
+  P -.->|"platform cancelled - unpacked"| NF
 ```
 
 | step | what inventory needs from it |
 | --- | --- |
-| New Order | `PostOrder` — the take, at the lowest racks first ([an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first)) |
-| Order Processed | the receipt — the shipping label customer service uploaded (`receipt_file`) — is printed, to go on the parcel later. The racks are on the warehouse's **order placement page** (`pick-order`), read from inventory — *"Rak A × 1, Rak B × 2"* ([Q8](#question)) — and 🆕 inventory hears **printed**: from here the unit may be in a basket ([Q4](#question)) |
-| Staff Scan Goods for verify | ✅ **picked** — from here on, the unit is no longer on the rack ([decided](./order_decision.md#the-verify-scan-tells-inventory-picked)) |
-| the rest | nothing — packing and shipping move no stock |
+| New Order | the take, at the fewest-units racks first ([an-order-takes-from-the-lowest-shelf-first](./context_decision.md#an-order-takes-from-the-lowest-shelf-first)) |
+| processed | nothing new. The `receipt_file` is the shipping label; the racks come from the placement page by `orders.transaction_id` ([the-placement-page-reads-racks-by-transaction-id](./order_decision.md#the-placement-page-reads-racks-by-transaction-id)), opened first by the label ([the-pick-page-opens-first-by-the-label](./order_decision.md#the-pick-page-opens-first-by-the-label)) |
+| Set Picked | nothing. *Picked* is the order's status, logged on its timeline ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)). The rack delete that still needs it is [placement Q5](./placement_clarify.md#question) |
+| the rest | nothing. Packing and the handover move no stock |
 
 
 ### the basket gap, worked
@@ -188,33 +223,70 @@ not yet scanned"*.
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **private-or-shared-lock** | §What We Should Check says *private*; [product.md](../product/context.md) §Cross/Shared Products Rule says *shared lock* | ➡ asked in [product Q10](../product/context_clarify.md#question). Your check reads as *one switch*, which is what I recommend there |
-| **the-marketplace-cancels-on-its-own** | No cancel after the warehouse confirms ([no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms)) — except where the **marketplace** cancels on its own | [Q5](#question) |
 
 ---
 
 ## Question
 
-1. ✅ *(2026-10-08)* **Answered: yes** — [the-verify-scan-tells-inventory-picked](./order_decision.md#the-verify-scan-tells-inventory-picked).
+1. ✅ *(2026-10-08)* **Answered: yes** — ⛔ superseded 2026-10-16 by [picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline) — [superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked).
 2. ✅ *(2026-10-15)* **Answered: on another rack, take it; on none, the order goes back to `pending` with a note, and the selling team decides** — [missing-goods-send-the-order-back-to-pending](./order_decision.md#missing-goods-send-the-order-back-to-pending). What a cancel then releases is [Q10](#question).
 3. ✅ *(2026-10-08)* **Answered: it cannot be cancelled** — [no-cancel-after-the-warehouse-confirms](./order_decision.md#no-cancel-after-the-warehouse-confirms).
 4. ➡ *(2026-10-08)* **Re-routed to [opname_clarify Q5](./opname_clarify.md#question)** — opname.md now has the lock
    ([a-count-locks-its-rack](./order_decision.md#a-count-locks-its-rack)); what is left is the units already in a basket when
    it starts. The worked story stays in [the basket gap, worked](#the-basket-gap-worked).
-5. 🆕 **The marketplace cancels the order itself after the warehouse confirmed** — the buyer's request accepted on the
-   platform, or a ship-by deadline missed. Our system refuses the cancel, but the courier will not take a parcel the
-   platform has cancelled, so the goods are packed and going nowhere.
-   **→ Recommend:** the order goes to `problem` (already in [order/context.md](../order/context.md)'s journey), and a staff
-   member **unpacks it back onto a rack**, which reverses the take. It is rare, and it is the one case a put-back has to
-   exist for. Put back on a different rack, the count fixes it.
+5. ✅ *(2026-10-15)* **Answered: back through `pending`, as recommended** — [a-platform-cancel-goes-back-through-pending](./order_decision.md#a-platform-cancel-goes-back-through-pending).
 6. ✅ *(2026-10-15)* **Answered: no — before the take, on a plain read of the total stock** — [the-reserve-is-read-before-the-take](./order_decision.md#the-reserve-is-read-before-the-take), against my under-the-lock. Which total, and the boundary, are [product Q3](../product/context_clarify.md#question).
 7. ✅ *(2026-10-15)* **Answered: one error, three reasons, every refused line named** — [a-refusal-names-its-reason-and-every-line](./order_decision.md#a-refusal-names-its-reason-and-every-line). ⚠ *not enough stock* is not drawn yet — [the-flow-has-no-stock-refusal](#the-flow-has-no-stock-refusal).
 8. ✅ *(2026-10-15)* **Answered: by `orders.transaction_id`** — [the-placement-page-reads-racks-by-transaction-id](./order_decision.md#the-placement-page-reads-racks-by-transaction-id). ⚠ `StockPickLocations` still asks by `order:<id>`.
 9. ✅ *(2026-10-15)* **Answered: refused** — [a-used-key-is-refused-first](./order_decision.md#a-used-key-is-refused-first).
 10. ✅ *(2026-10-15)* **Answered: the staff count it** — no special inventory write; the count records the loss ([a-missing-unit-is-found-by-opname](./order_decision.md#a-missing-unit-is-found-by-opname)). A count before the cancel sees nothing — the next one does, an accepted cost.
+11. ✅ *(2026-10-16)* **Answered: one page, opened first by the label** — [the-pick-page-opens-first-by-the-label](./order_decision.md#the-pick-page-opens-first-by-the-label), as recommended. Either of the label's codes opens it ([a-label-scan-reads-the-ref-or-the-receipt](./order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)).
+12. ✅ *(2026-10-16)* **Answered: show them all, and people decide** — [two-orders-on-one-label-are-shown-not-chosen](./order_decision.md#two-orders-on-one-label-are-shown-not-chosen). The staff ask the selling team or the warehouse admin which order is processed and which cancelled, against my *the picker chooses*. Only this warehouse is searched and `cancel` is skipped, as recommended.
 
 ---
 
 # Contradiction
+
+## the-pick-draws-no-way-back
+
+*(2026-10-16)* Your new *Order Picked Process* against two decisions:
+
+| [order.md](./order.md) §How Warehouse Process The Order | decided |
+| --- | --- |
+| *All Goods Taken → Verification Page → All Picked → Set Picked*, no other exit | goods on no rack: back to `pending` with a note ([missing-goods-send-the-order-back-to-pending](./order_decision.md#missing-goods-send-the-order-back-to-pending)) |
+| *picked → packed → shipping*, no other exit | a platform cancel after confirm: the warehouse unpacks and hands back to `pending` ([a-platform-cancel-goes-back-through-pending](./order_decision.md#a-platform-cancel-goes-back-through-pending)) |
+
+**Which is wrong:** the diagram. It draws only the case where everything goes well. **→ Recommend** two exits to
+`pending`: one from *All Goods Taken* (*"goods on no rack, a note on the timeline"*), and one from *picked* or *packed*
+(*"platform cancelled, unpacked"*).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  state "All Goods Taken" as taken
+  state "pending - a note on the timeline" as pending
+  taken --> picked: every good scanned
+  taken --> pending: goods on no rack
+  picked --> pending: platform cancelled - unpacked
+```
+
+## the-handover-arrow-still-says-shipped
+
+*(2026-10-16)* One scan, two statuses, in the same diagram:
+
+| the arrow into *Order Shipping* | inside *Order Shipping* |
+| --- | --- |
+| *"staff scan to change shipped"* | *"scan parcel and change order status to shipping"* |
+
+**Which is wrong:** the arrow. Its label is carried over from the first sketch. **→ Recommend** *"wait for the
+courier"* on the arrow, so the status is set once, inside. What `shipped` means next to `shipping` is asked in
+[order context](../order/context_clarify.md#picked-and-shipping-are-order-statuses).
+
+```mermaid
+flowchart LR
+  K["packed"] -->|"the arrow - change shipped"| S["Order Shipping"]
+  S -->|"inside - change to shipping"| X["one scan, two statuses"]
+```
 
 ## the-flow-has-no-stock-refusal
 
@@ -271,6 +343,11 @@ flowchart LR
 | shipped | set after the warehouse is done | *"staff scan to change shipped"*, at the handover |
 
 So while a parcel waits for the courier, one doc says the warehouse is done and the other says it is not.
+
+🔄 *(2026-10-16)* Your redraw narrowed it. **They agree now** that the warehouse's work ends at the courier handover.
+**They still differ:** context.md's journey has one *"Process Order (Packing/Picking)"* step and sets `shipped` at the
+handover, while yours has `picked` and sets `shipping` there. The recommendation is unchanged. The status half is
+[the-status-moves-miss-picked-and-shipping](../order/context_clarify.md#the-status-moves-miss-picked-and-shipping).
 
 **→ Recommend** one journey, kept where the statuses belong — [order/context.md](../order/context.md), since they are the
 order's statuses — and this doc links it and adds only what inventory hears (the table above). Two copies of a status list

@@ -1,5 +1,11 @@
 # Development state — inventory / opname
 
+🔄 **2026-10-16:** a finalize no longer writes one `opname` transaction per team. It writes up to three — `problem`,
+`found`, `move` ([problem-and-found-replace-opname](../../business/inventory/transaction_decision.md#problem-and-found-replace-opname)) —
+listed in `opname_session_final_transactions`, and snapshot rows lose `transaction_id`
+([a-session-lists-its-final-transactions](../../business/inventory/opname_decision.md#a-session-lists-its-final-transactions)). The
+prototype's finalize summary and any `opname` type in it are stale until redrawn.
+
 **As of 2026-10-14, opname is DESIGNED and PROTOTYPED — waiting for design_accept.** Every question in
 [opname_clarify.md](../../business/inventory/opname_clarify.md) (Q1–Q21) is answered; the decisions are in
 [opname_decision.md](../../business/inventory/opname_decision.md) (54), plus

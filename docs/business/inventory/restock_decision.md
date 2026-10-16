@@ -251,6 +251,10 @@ lock.
 ([a-restock-is-cancelled-only-while-ongoing](#a-restock-is-cancelled-only-while-ongoing)), and accept takes the same lock
 ([accept-locks-the-restock](#accept-locks-the-restock)).
 
+🔄 *(2026-10-16)* **Amended by [a-rollback-only-undoes-a-take](./transaction_decision.md#a-rollback-only-undoes-a-take)**: an accepted
+restock is never rolled back either — *"stock is undone by a rollback"* no longer holds for a stock-in. A wrong accepted
+restock is corrected with an `adjustment` for the units still on the shelf.
+
 ## the-warehouse-signs-and-accepts-the-team-does-the-rest
 
 > Owner, in chat *(2026-10-09)*: *"q5 warehouse can accept, sellting team at rest"* — then, asked about `arrived`:

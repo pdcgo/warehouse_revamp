@@ -3,6 +3,11 @@
 [restock.md](./restock.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [restock_decision.md](./restock_decision.md).
 
+> 🔄 **Re-examined after your §Restock Created Flow edit (2026-10-16).** The create now upserts `warehouse_products`
+> before its transaction. ✅ Nothing opened: it matches your stock design's *"not critical ops"*, and a restock that fails
+> or is cancelled leaving its link is harmless, because the link says the warehouse was asked to handle the product, not
+> that it holds any. The table's own points are in [context Q17](./context_clarify.md#question).
+
 > ✅ **design_accept passed (2026-10-15)** — [the-restock-prototype-is-accepted](./restock_decision.md#the-restock-prototype-is-accepted). No
 > question is open. Next: backend analysis.
 >
@@ -452,35 +457,7 @@ computed.
 
 ## q22-mixed-the-door-and-the-rack
 
-*(2026-10-14)* **Found by you, fixed the same day.** You asked *"do you misleading about broken & lost at shipping and in
-warehouse?"* Yes, twice:
-
-| I wrote | decided |
-| --- | --- |
-| *"7 good, **3 lost**"*, *"units **lost at the door**"* | at the door the words are `broken` and `missing` ([a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing)). `lost` is a parcel that never came, or a unit gone from a rack |
-| under C, *"a unit smashed on a rack, so the warehouse pays back **514 of the selling team's door loss**"* | a rack breakage is the warehouse's, paid at the batch's unit price ([warehouse-reimburses-unit-price](../business_level_clarify.md#warehouse-reimburses-unit-price)). Whether 514 of that price is a door figure depends on B or C, the very question, so the argument assumed its own answer |
-
-**The rule, as you restated it:** *"when happen in shipping and received, its recorded in `restock_problem_items`, but if
-it stay in warehouse and when opname lost / broken, warehouse responsible pay to selling team by liability"*. It is
-already decided, in two halves: the door's guard *"a receiving problem row never posts to the warehouse's payable"*
-([a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing)), and the rack's
-[the-warehouse-payable-is-broken-and-lost](../balance/context_decision.md#the-warehouse-payable-is-broken-and-lost).
-
-**One cause: a door figure argued with a rack event.** It is the mistake
-[a-loss-is-named-by-where-it-happened](./restock_decision.md#a-loss-is-named-by-where-it-happened) recorded on 10-09, made
-again. Sites fixed: [Q22](#question), [Q22, worked](#q22-worked), the pass note above,
-[unit-price-is-line-price-plus-costs-per-unit](./restock_decision.md#unit-price-is-line-price-plus-costs-per-unit)'s last
-line, and [technical stock Q3](../../technical/stock/design_clarify.md#question)'s pointer. My recommendation moved from B
-to *leaning C*, because the argument that carried B is gone.
-**→ Recommend (to myself):** a worked example names each problem unit by its door word, broken or missing, and never puts
-a door figure and a rack event in one row.
-
-```mermaid
-flowchart LR
-  D["at the door - broken, missing"] --> S["the selling team"]
-  R["on the rack - broken, lost"] --> W["the warehouse"]
-  D -.->|"my Q22 row joined these two"| R
-```
+✅ *(2026-10-16)* **Settled — found by you, fixed 2026-10-14.** At the door the words are `broken` and `missing` ([a-short-unit-at-the-door-is-missing](./restock_decision.md#a-short-unit-at-the-door-is-missing)); `lost` is a parcel that never came. My text had mixed them.
 
 ## restock-md-lags-the-decided-tables
 

@@ -5,7 +5,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 
 | decision | says | from |
 | --- | --- | --- |
-| [the-verify-scan-tells-inventory-picked](#the-verify-scan-tells-inventory-picked) | *Staff Scan Goods for verify* tells inventory the order is picked; a count subtracts the sold units not yet scanned | chat, 2026-10-08 — answers Q1, as recommended |
+| [superseded-the-verify-scan-tells-inventory-picked](#superseded-the-verify-scan-tells-inventory-picked) | ⛔ reversed — *picked* is the order's status, logged on its timeline, and inventory is not told ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)) | chat, 2026-10-08 — answers Q1, as recommended |
 | [no-cancel-after-the-warehouse-confirms](#no-cancel-after-the-warehouse-confirms) | once the warehouse confirms an order (*Order Processed*), it can no longer be cancelled | chat, 2026-10-08 — answers Q3, against my put-back task |
 | [a-count-locks-its-rack](#a-count-locks-its-rack) | the basket gap is solved inside stock opname: a rack being counted is locked; [opname.md](./opname.md) will say how | chat, 2026-10-08 — answers Q4's direction, instead of my wait-for-the-scan rules |
 | [the-take-checks-the-product-first](#the-take-checks-the-product-first) | `OrderTransactionCreate` reads the lines' product configuration by ids and refuses a private or reserved product before it opens the database transaction | your order.md edit, 2026-10-15 — answers *read product facts before the transaction?*, asked in chat, as recommended |
@@ -15,10 +15,21 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-placement-page-reads-racks-by-transaction-id](#the-placement-page-reads-racks-by-transaction-id) | the order placement page reads its racks from inventory by `orders.transaction_id` — the receipt is the shipping label | chat, 2026-10-15 — answers Q8, as recommended |
 | [missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending) | goods on no rack: the warehouse sends the order back to `pending` with a note on its timeline; the selling team decides | chat, 2026-10-15 — answers Q2, instead of my loss-and-`problem` |
 | [a-missing-unit-is-found-by-opname](#a-missing-unit-is-found-by-opname) | missing goods need no special inventory write — the staff count the product, and the count records the loss | chat, 2026-10-15 — answers Q10, against my loss-at-the-report |
+| [a-platform-cancel-goes-back-through-pending](#a-platform-cancel-goes-back-through-pending) | a platform cancel after confirm: customer service notes it, the warehouse unpacks and hands back to `pending`, customer service cancels | chat, 2026-10-15 — answers Q5, as recommended |
+| [the-item-scans-live-on-the-page](#the-item-scans-live-on-the-page) | the verification page counts the item scans itself; nothing is saved until *Set Picked* moves the order to `picked` | chat, 2026-10-16 — confirms my reading of *"update in fe view"* |
+| [the-pick-page-opens-first-by-the-label](#the-pick-page-opens-first-by-the-label) | scanning the `receipt_file` opens ONE page before the walk: each line's racks for the walk, then the item scans back at the table | chat, 2026-10-16 — answers Q11, as recommended |
+| [a-label-scan-reads-the-ref-or-the-receipt](#a-label-scan-reads-the-ref-or-the-receipt) | the label carries several barcodes; a scan of it finds the order by `order_external_ref_id` OR by `receipt`, whichever was scanned | chat, 2026-10-16 — the owner's note |
+| [two-orders-on-one-label-are-shown-not-chosen](#two-orders-on-one-label-are-shown-not-chosen) | a label code matching several orders still in play lists them all; the staff ask the selling team or the warehouse admin which one is processed and which cancelled | chat, 2026-10-16 — answers Q12, against my *the picker chooses* |
 
 ---
 
-## the-verify-scan-tells-inventory-picked
+## superseded-the-verify-scan-tells-inventory-picked
+
+> ⛔ **SUPERSEDED (2026-10-16)** by [picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline):
+> *picked* is the order's `picked` status, logged on `order_timeline_logs`; inventory is not told and keeps nothing. Its
+> first reason had already gone — a count no longer subtracts waiting units
+> ([expected-is-the-book-figure](./opname_decision.md#expected-is-the-book-figure)). The rack delete still needs to know, and
+> how it finds out is [placement Q5](./placement_clarify.md#question). Kept below as it was decided.
 
 > Owner, in chat *(2026-10-08)*: *"for q1, yes"*. The question was [order_clarify Q1](./order_clarify.md#question) —
 > *does the verify scan tell inventory the order is picked?* — re-routed from
@@ -53,6 +64,11 @@ sequenceDiagram
 **What it does NOT settle:** the few minutes a unit spends in a basket between the lift and the scan
 ([Q4](./order_clarify.md#question)); how the scan reaches inventory — an RPC or an event — and in what record inventory
 keeps it ([context Q13](./context_clarify.md#question) proposes a `pick` transaction carrying the order's `ref_id`).
+
+🔄 *(2026-10-16)* **Redrawn in your [order.md](./order.md) §How Warehouse Process The Order:** *Staff Scan Goods for verify* is
+now a scan of each good on the *Order Picked Verification Page*, followed by *Set Picked*, which moves the order to the new
+`picked` status. The verdict holds, and *picked* is that status. Where inventory keeps it is
+[transaction Q8](./transaction_clarify.md#question).
 
 ## no-cancel-after-the-warehouse-confirms
 
@@ -90,6 +106,8 @@ refusing the parcel ([Q5](./order_clarify.md#question)).
 🔄 *(2026-10-15)* **Amended by [missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending)**:
 the selling team still cannot cancel a confirmed order — but when the goods are missing, the warehouse sends it back to
 `pending`, and from there it can.
+
+🔄 *(2026-10-15)* **Its open point is settled** — a platform cancel goes back through `pending`: [a-platform-cancel-goes-back-through-pending](#a-platform-cancel-goes-back-through-pending).
 
 ## a-count-locks-its-rack
 
@@ -363,3 +381,165 @@ flowchart LR
 book to the empty shelf. Counted **before** the cancel, Rak A reads book 0, shelf 0 — nothing; the cancel then puts 1 back
 on the book, and the shortage shows on the **next** count. Until then a re-created order can land on the same empty rack.
 Counted after the cancel, it shows at once.
+
+## a-platform-cancel-goes-back-through-pending
+
+> Owner, in chat (2026-10-15): *"yes, i follow your recomendation"* — answering [order_clarify Q5](./order_clarify.md#question),
+> *the marketplace cancels the order itself after the warehouse confirmed*, as recommended.
+
+**The verdict.** A platform cancel after the warehouse confirmed takes the same road as missing goods — nothing new is
+built. Customer service notes it on the order's timeline; the warehouse unpacks the goods, puts them back on a rack and
+hands the order back to `pending`; customer service cancels. The cancel releases the take as usual — these units are
+real, so putting them back on the book is right.
+
+```mermaid
+sequenceDiagram
+  participant CS as customer service
+  participant TL as order timeline
+  participant W as warehouse staff
+  participant I as inventory
+  CS->>TL: note from selling - cancelled on the platform
+  W->>W: unpack, put the goods back on a rack
+  W->>TL: back to pending - note from warehouse
+  CS->>CS: cancel - only the selling team cancels
+  CS->>I: Order Cancel - the take released, the units back on the book
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who notices | customer service, from the platform — a note on the timeline, `from = selling` |
+| the goods | unpacked and put back on a rack by the staff; another rack than the take's is fixed by the next count ([a-wrong-rack-pick-waits-for-the-count](./context_decision.md#a-wrong-rack-pick-waits-for-the-count)) |
+| the order | `processed` → `pending` by the warehouse ([missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending)), then cancelled by customer service ([only-the-selling-team-cancels](../order/context_decision.md#only-the-selling-team-cancels)) |
+| the stock | the cancel's release puts the units back on the book — they are on the rack |
+| after handover | the order is `shipped`: a return, not this case |
+
+## the-item-scans-live-on-the-page
+
+> Owner, in chat (2026-10-16): *"for your assumtion \"update in fe view\", yes"* — confirming my reading of
+> [order.md](./order.md) §How Warehouse Process The Order, *"Staff scan label in each goods taken. and update in fe view"*:
+> the page keeps its own count, and nothing is saved on the order.
+
+**The verdict.** Each item scan is counted **on the verification page only**. The order and inventory hear nothing until
+*Set Picked*, which moves the order to `picked` in one write. A half-picked order does not exist anywhere but on the
+screen in the picker's hand.
+
+```mermaid
+sequenceDiagram
+  participant S as staff
+  participant P as verification page
+  participant O as order
+  participant I as inventory
+  S->>P: scan the receipt_file - order 9001 opens
+  S->>P: scan Kaos Hitam - 1 of 3
+  S->>P: scan Kaos Hitam - 2 of 3, 3 of 3
+  Note over P: every line exact - Set Picked turns on
+  S->>P: Set Picked
+  P->>O: processed to picked - a timeline row
+  O->>I: order 9001 picked
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a scan | counts its line up to the ordered quantity; an unknown good or one too many is refused with the wrong sound ([scanning-is-the-crews-hands](../../technical/frontend/warehouse_order_list_decision.md#scanning-is-the-crews-hands)) |
+| what is saved per scan | nothing |
+| *Set Picked* | on only when every line is exact; one write: the status, one `order_timeline_logs` row, and inventory told *picked* |
+| a reload or a closed page | the count is lost; the picker scans again. Accepted: the goods are in the basket, so a re-scan is seconds |
+| two people on one order | each page counts its own; nothing is shared, and the second *Set Picked* changes nothing (an order already `picked` stays so) |
+| what it does NOT settle | where inventory keeps *picked* — [transaction Q8](./transaction_clarify.md#question) |
+
+🔄 *(2026-10-16)* **Amended by [picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)**:
+*Set Picked* writes the status and its timeline row only. Inventory is not told.
+
+## the-pick-page-opens-first-by-the-label
+
+> Owner, in chat (2026-10-16): *"for inventory order Q11, yes"* — answering [order_clarify Q11](./order_clarify.md#question),
+> *where does the picker read the racks before the walk?*, as recommended.
+
+**The verdict.** One page, opened **before** the walk. The picker scans the `receipt_file`; the order's page opens with
+each line's racks, read from inventory by `orders.transaction_id`
+([the-placement-page-reads-racks-by-transaction-id](#the-placement-page-reads-racks-by-transaction-id)). The picker walks
+with it, and back at the table the same page takes the item scans
+([the-item-scans-live-on-the-page](#the-item-scans-live-on-the-page)). There is no second lookup.
+
+```mermaid
+flowchart LR
+  S["scan the receipt_file"] --> P["order 9001 - Kaos Hitam x3, Rak A x1, Rak B x2"]
+  P --> W["the walk"]
+  W --> V["same page - scan each good"]
+  V --> D["Set Picked"]
+  W -.->|"on no rack"| B["back to pending with a note"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| opened by | a scan of the `receipt_file` — either of its codes ([a-label-scan-reads-the-ref-or-the-receipt](#a-label-scan-reads-the-ref-or-the-receipt)) |
+| shows first | each line: the product, the quantity, and its racks with the units to take from each |
+| then | the item scans, counted on the page, and *Set Picked* |
+| one page | the placement list and the verification scan are not two screens |
+| a missing good | the way back to `pending` ([missing-goods-send-the-order-back-to-pending](#missing-goods-send-the-order-back-to-pending)) starts from this page |
+
+## a-label-scan-reads-the-ref-or-the-receipt
+
+> Owner, in chat (2026-10-16): *"in receipt_file, there are several barcode that can be scanned. sometimes it give
+> `order_external_ref_id` or `receipt` ensure we can scan both"*.
+
+**The verdict.** The shipping label carries several barcodes, and which one the scanner reads depends on the label and
+where the gun lands. So a scan of the label finds the order by **either** code: `order_external_ref_id` (the marketplace's
+order id) or `receipt` (the tracking number). Neither is required to be the one scanned.
+
+```mermaid
+flowchart LR
+  L["receipt_file - several barcodes"] --> S["one scan - a code"]
+  S --> R{"matches"}
+  R -->|"order_external_ref_id"| O["order 9001"]
+  R -->|"receipt"| O
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a scanned code is compared with | `orders.order_external_ref_id` and `orders.receipt`, both |
+| where it applies | every scan of the label: opening the pick page, and the handover scan |
+| why both | a label may carry only the order number in a barcode, and a page with several barcodes is read wherever the gun lands |
+| ⚠ not unique | the ref may sit on two orders ([a-duplicate-ref-is-warned-not-refused](../order/context_decision.md#a-duplicate-ref-is-warned-not-refused)), usually one live and one cancelled — which one a scan opens is [two-orders-on-one-label-are-shown-not-chosen](#two-orders-on-one-label-are-shown-not-chosen) |
+
+## two-orders-on-one-label-are-shown-not-chosen
+
+> Owner, in chat (2026-10-16): *"for q12, show both, and let staff contact the selling or discuss manually warehouse
+> admin which order that must be processed or canceled"* — answering [order_clarify Q12](./order_clarify.md#question),
+> *a scanned code matches two orders — which one opens?*, against my *the page lists them and the picker chooses*.
+
+**The verdict.** When a label code matches several orders that are still in play, the page **shows all of them and
+picks none**. The staff do not choose. They ask the selling team, or talk it over with the warehouse admin, which order is
+processed and which is cancelled. The rest of my recommendation stands: only this warehouse's orders are searched, and a
+`cancel` order is skipped, so one live order and one cancelled order open the live one straight away.
+
+```mermaid
+flowchart LR
+  S["a scanned code"] --> F["this warehouse's orders, ref or receipt, not cancel"]
+  F -->|"one"| O["open it"]
+  F -->|"several"| L["show them all - nothing chosen"]
+  L --> A["staff ask the selling team or the warehouse admin"]
+  A --> D["one processed, the other cancelled by the selling team"]
+  F -->|"none"| N["wrong sound - no order for this label"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| searched | this warehouse's orders, by `order_external_ref_id` or `receipt` ([a-label-scan-reads-the-ref-or-the-receipt](#a-label-scan-reads-the-ref-or-the-receipt)), `cancel` skipped |
+| one match | opens the order's pick page ([the-pick-page-opens-first-by-the-label](#the-pick-page-opens-first-by-the-label)) |
+| several | listed with what tells them apart (shop, status, created at, lines) and a warning: *"several orders on this label — ask the selling team or the warehouse admin"*. Nothing opens by itself |
+| who decides | the selling team, or the warehouse admin talking to them — never the system and never the picker alone |
+| the cancel | the selling team's, as always ([only-the-selling-team-cancels](../order/context_decision.md#only-the-selling-team-cancels)) |
+| none | the wrong sound and *"no order for this label"* |
+| where it applies | every scan of the label: the pick page and the handover |
+| example | `SPX123` finds 9001 `processed` and 8800 `cancel`: 9001 opens. `2410ABC` finds 9001 and 9002, both `processed`: both are shown, and the staff ask |

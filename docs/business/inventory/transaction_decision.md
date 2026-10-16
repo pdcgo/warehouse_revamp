@@ -18,6 +18,13 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [an-order-transaction-is-the-ordering-teams](#an-order-transaction-is-the-ordering-teams) | an order's transaction carries the ORDERING team; each item names its owner, so `is_owned` false means borrowed | chat, 2026-10-15 — answers the header half of Q7, as recommended |
 | [superseded-a-key-buys-one-take-by-its-unique-index](#superseded-a-key-buys-one-take-by-its-unique-index) | ⛔ reversed the same hour — [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table) | chat, 2026-10-15 |
 | [the-key-is-claimed-in-its-own-table](#the-key-is-claimed-in-its-own-table) | an order's key is claimed once, in `idempotency_order_check` (key UNIQUE, `transaction_id`); `inventory_transactions` no longer carries it | your transaction.md edit + chat, 2026-10-15 — answers Q1, option b |
+| [a-rollback-reverses-its-log-rows](#a-rollback-reverses-its-log-rows) | a rollback flips each log row the transaction wrote — same batch, rack and value; the items are only checked | chat, 2026-10-16 — answers Q3, as recommended |
+| [picked-lives-on-the-order-timeline](#picked-lives-on-the-order-timeline) | *picked* is the order's `picked` status, logged on `order_timeline_logs`; inventory stores nothing and is not told | chat, 2026-10-16 — answers Q8, against my `picked_at` |
+| [a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take) | a rollback undoes a take only — `order`, `transfer_out`; a wrong stock-in is corrected by an `adjustment`, so no rollback can take a batch below zero | chat, 2026-10-16 — answers Q4, as recommended (reframed) |
+| [revaluation-and-opname-are-transaction-types](#revaluation-and-opname-are-transaction-types) | `tx_type` gains `revaluation` (a price change, no unit moved) and `opname` (a count's finalize), never filed as `adjustment` | your transaction.md edit and chat, 2026-10-16 — answers Q5, as recommended |
+| [a-sample-keeps-its-recipient](#a-sample-keeps-its-recipient) | `inventory_transactions.recipient`, nullable, set by a sample only; the staff's note stays in `description` | chat, 2026-10-16 — answers Q9, as recommended |
+| [problem-and-found-replace-opname](#problem-and-found-replace-opname) | `tx_type` drops `opname` and gains `problem` (broken and lost, out) and `found` (a surplus, in); every type goes one way, so items stay positive and one per product; the ledgers' `change_type` lists follow | your transaction.md, placement.md and batch.md edits, 2026-10-16 — your proposal; answers Q2c, over my item `change_type` |
+| [items-are-what-history-and-reports-read](#items-are-what-history-and-reports-read) | items exist to be read: a team's history, the order's line cost, the sample list, shared-product info, and reports — never the rollback | chat, 2026-10-16 — answers Q2d, as recommended, plus reports |
 
 ---
 
@@ -109,6 +116,11 @@ flowchart LR
 transaction for order 9001 (Q1) · reversing from the log rows rather than the items (Q3) · a rollback that would take a
 batch or a rack below zero (Q4).
 
+🔄 *(2026-10-16)* **Its Q3 is settled** — the rollback reverses the log rows, not the items: [a-rollback-reverses-its-log-rows](#a-rollback-reverses-its-log-rows).
+
+🔄 *(2026-10-16)* **Amended by [a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)**: *"any later undo"* is narrowed —
+only a take (`order`, `transfer_out`) is rolled back; a stock-in is corrected by an `adjustment`. Its Q4 is settled.
+
 ## a-sample-is-handed-over-at-the-warehouse
 
 > Owner, in chat *(2026-10-12)*, answering [placement Q1a](./placement_clarify.md#question): *"sometimes random person
@@ -173,6 +185,8 @@ flowchart LR
 **What it does NOT settle**: `revaluation` and `opname`, the rest of [transaction Q5](./transaction_clarify.md#question) ·
 ⚠ the lists in [transaction.md](./transaction.md) and [placement.md](./placement.md) are yours to add `move` to.
 
+🔄 *(2026-10-16)* **Written** in your [transaction.md](./transaction.md) `tx_type` list and [placement.md](./placement.md)'s `change_type`.
+
 ## a-sample-is-a-stock-out-at-batch-value
 
 > Owner, in chat *(2026-10-12)*, on [transaction Q6](./transaction_clarify.md#question): *"why selling team should pay ?
@@ -215,7 +229,7 @@ changes.
 
 **What it does NOT settle**: where the recipient is kept — `RackSample.recipient` is required on the request, and
 [transaction.md](./transaction.md)'s `inventory_transactions` has no column for it ([Q9](./transaction_clarify.md#question)) ·
-`batch_logs.change_type` still lacks `sample` ([the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up)).
+`batch_logs.change_type` lacked `sample` — ✅ added 2026-10-16 ([the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up)).
 
 ## an-orders-take-carries-its-idempotency-key
 
@@ -478,3 +492,254 @@ sequenceDiagram
 **What it amends.** [an-orders-take-carries-its-idempotency-key](#an-orders-take-carries-its-idempotency-key) — the key
 moves off `inventory_transactions` into this table; a release and the verify scan still find the take by it, through
 `transaction_id`. Its *"optional, set on an `order` transaction only"* row is gone with the column.
+
+## a-rollback-reverses-its-log-rows
+
+> Owner, in chat (2026-10-16): *"for transaction Q3 i follow your recomendation"* — answering [Q3](./transaction_clarify.md#question),
+> *does a rollback reverse the items, or the log rows?*, as recommended.
+
+**The verdict.** A rollback flips the sign of **each log row** the transaction wrote — every `batch_logs` row and every
+`product_placement_logs` row — so the units go back to exactly the batches and racks they left, at their own prices. The
+items are not re-posted; they are only checked against the rows, and `is_rollback` marks the transaction
+([an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once)).
+
+```mermaid
+flowchart LR
+  T["order 9001's take"] --> L["its log rows - batch 7 -2, batch 9 -1, Rak A -1, Rak B -2"]
+  L -->|"rollback - each row flipped"| B["batch 7 +2, batch 9 +1, Rak A +1, Rak B +2"]
+  B --> S["is_rollback set - a second rollback does nothing"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| what is reversed | each of the transaction's log rows, sign flipped — same batch, same rack, same value |
+| the items | not re-posted; the reversed rows must still equal them ([an-item-equals-its-batch-rows](#an-item-equals-its-batch-rows)) |
+| where it is written | new log rows under the same transaction, `actor_id` = who rolled it back ([ledger-logs-are-append-only](../../technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only)) |
+| why not the items | an item says *"Kaos Hitam +3, Rp 32.000"* — re-posting it would choose batches and racks again, and could choose differently |
+
+⚠ [transaction.md](./transaction.md) §Transaction Flow Related draws *"Get Items"* → post to both ledgers — reported in
+`the-rollback-draws-get-items` in transaction_clarify (✅ resolved 2026-10-16, see below).
+
+🔄 *(2026-10-16)* **Drawn in your [transaction.md](./transaction.md) §Transaction Flow Related:** the rollback forks into *Placement Log*
+and *Batch Log*, each read by `inventory_transactions.id` and inverted, then `is_rollback` is set.
+
+## picked-lives-on-the-order-timeline
+
+> Owner, in chat (2026-10-16): *"for transaction Q8 it logged on `order_timeline_logs`"* — answering
+> [transaction_clarify Q8](./transaction_clarify.md#question), *where is picked stored?*, against my `picked_at` on
+> `inventory_transactions`.
+
+**The verdict.** *Picked* is an order fact. *Set Picked* moves the order to `picked`
+([picked-and-shipping-are-order-statuses](../order/context_decision.md#picked-and-shipping-are-order-statuses)), and the
+move is a row on `order_timeline_logs`, which carries the time. Inventory keeps no column and no transaction for it, and
+nothing tells inventory. It reverses
+[superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked).
+
+```mermaid
+sequenceDiagram
+  participant S as staff
+  participant O as order
+  participant T as order_timeline_logs
+  participant I as inventory
+  S->>O: Set Picked - order 9001
+  O->>T: status picked, from warehouse, 13:40
+  Note over I: nothing written, nothing told
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| where *picked* is | `orders.status = picked`, and its time on the `order_timeline_logs` row |
+| inventory | no `picked_at`, no pick transaction, no event |
+| a transfer out | unchanged: it waits on its own transfer's status until Warehouse A processes it |
+| ⚠ who still needs it | the rack delete — [superseded-a-placement-deletes-only-when-nothing-waits-on-it](./context_decision.md#superseded-a-placement-deletes-only-when-nothing-waits-on-it) refuses while a sold unit waits on the rack, and inventory no longer knows which are waiting. How it finds out is [placement Q5](./placement_clarify.md#question) |
+
+🔄 *(2026-10-16)* **Amended by [a-placement-deletes-at-zero-stock](./placement_decision.md#a-placement-deletes-at-zero-stock)**: the
+rack delete no longer asks, so nothing in inventory needs *picked* now.
+
+## a-rollback-only-undoes-a-take
+
+> Owner, in chat (2026-10-16): *"yes"* — answering [transaction_clarify Q4](./transaction_clarify.md#question) as reframed:
+> *does a rollback only ever undo a take (order, transfer out), with any stock-in corrected by an `adjustment`?*
+
+**The verdict.** A rollback undoes a **take**, the units that left, and nothing else. Undoing a take only puts units back,
+so a rollback can never take a batch or a rack below zero. A stock-in that was wrong (a restock, a transfer in) is never
+rolled back. It is corrected with an `adjustment` for the units still there, because by then some may be sold and the
+sale's cost already taken from that batch.
+
+```mermaid
+flowchart LR
+  T["order or transfer_out"] -->|"cancel"| R["rollback - units back"]
+  S["restock, transfer_in, return, adjustment"] -->|"wrong"| A["adjustment - for the units still there"]
+  S -.->|"never"| R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| rolled back | `order` on *Order Canceled*, `transfer_out` on a cancel while created — both put units back |
+| never rolled back | every other type: `restock`, `transfer_in`, `return`, `adjustment`, `sample`, `move` |
+| the guard | the rollback refuses a transaction of any other type, so a later caller cannot open the way below zero |
+| a wrong restock | an `adjustment` for what is still on the shelf. Batch 7: 10 in, 6 sold, wrong — an adjustment takes out the 4 left |
+| below zero | cannot come from a rollback; the rack's database check ([a-shelf-never-goes-below-zero](./placement_decision.md#a-shelf-never-goes-below-zero)) stays as the backstop |
+
+It amends [an-undo-rolls-the-transaction-back-once](#an-undo-rolls-the-transaction-back-once) (*"and any later undo"*) and
+[an-accepted-restock-cannot-be-cancelled](./restock_decision.md#an-accepted-restock-cannot-be-cancelled) (*"stock is undone
+by a rollback"*).
+
+## revaluation-and-opname-are-transaction-types
+
+> Owner, in chat (2026-10-16): *"yes, i added it"* — answering [transaction_clarify Q5](./transaction_clarify.md#question),
+> as recommended. [transaction.md](./transaction.md)'s `tx_type` list now ends in `revaluation` and `opname`.
+
+**The verdict.** A revaluation and a count each get a transaction type of their own. Neither is filed as `adjustment`,
+which keeps its one meaning: units found broken, lost or found at the shelf, outside a count.
+
+```mermaid
+flowchart LR
+  R["Melati corrects batch 7 - Rp 10.000 to 12.000"] --> TR["tx_type revaluation - no unit moved"]
+  C["the count of Rak A finds 2 missing"] --> TO["tx_type opname - from the session"]
+  A["Ani drops a carton at 10:00"] --> TA["tx_type adjustment - at the shelf"]
+```
+
+**The spec.**
+
+| | `revaluation` | `opname` |
+| --- | --- | --- |
+| written by | `PostRevaluation`, the owning team's Owner or Admin ([the-owning-team-revalues-with-a-reason](./context_decision.md#the-owning-team-revalues-with-a-reason)) | a count's finalize, one transaction per owning team in the session ([opname.md](./opname.md)) |
+| rows | `batch_logs` with `change_count` 0, and `batch_price_logs` — no rack row | batch and rack rows for every difference, and the stock-problem rows |
+| told apart from | a loss or breakage — nothing moved | a shelf `adjustment` — what [an-adjustment-writes-the-same-problem-row](./opname_decision.md#an-adjustment-writes-the-same-problem-row) reads |
+| rolled back | never ([a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)) | never |
+
+✅ `move` was added to the list the same day ([a-move-has-its-own-type](#a-move-has-its-own-type)). Both ledgers'
+`change_type` lists carry `opname` too, and batch.md has `sample` — the lists agree, [the-two-type-lists-do-not-line-up](./transaction_clarify.md#the-two-type-lists-do-not-line-up).
+
+🔄 *(2026-10-16)* **Amended by [problem-and-found-replace-opname](#problem-and-found-replace-opname)**: its `opname` half is
+reversed — a count writes `problem`, `found` and `move` transactions. `revaluation` stands.
+
+## a-sample-keeps-its-recipient
+
+> Owner, in chat (2026-10-16): *"for q9 i follow your recomendation"* — answering
+> [transaction_clarify Q9](./transaction_clarify.md#question), *where is a sample's recipient kept?*, with option **a**.
+
+**The verdict.** Who received a sample is its own fact, kept in its own column: `recipient` on `inventory_transactions`,
+set by a sample and empty on every other type. The staff's note stays in `description`. The owning team checks its samples
+by who got them ([a-sample-is-a-stock-out-at-batch-value](#a-sample-is-a-stock-out-at-batch-value)), so that has to be
+readable on its own.
+
+```mermaid
+flowchart LR
+  D["Record Sample - recipient Budi, note for a review video"] --> T["inventory_transactions - sample"]
+  T --> R["recipient - Budi"]
+  T --> N["description - for a review video"]
+  R --> H["Melati's history - 2 Kaos Hitam to Budi"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `inventory_transactions.recipient` | 🆕 string, nullable |
+| set by | a sample only, from `RackSample.recipient`, which the request requires |
+| every other type | empty |
+| `description` | the staff's note, as for every transaction |
+| ⚠ not written yet | the column is yours to add to [transaction.md](./transaction.md) |
+
+## problem-and-found-replace-opname
+
+> Owner, in chat (2026-10-16): *"in tx_type we remove opname, and add problem, found ?"*, then *"followed ledger too"*, and
+> the edits: [transaction.md](./transaction.md)'s `tx_type` and [placement.md](./placement.md)'s `change_type` now read
+> `… adjustment · revaluation · problem · found · move`, and [batch.md](./batch.md)'s gains `problem` and `found`. It
+> answers 2c of [transaction_clarify Q2](./transaction_clarify.md#question) — *which way does an item point?* — with a
+> better design than my *`change_type` on every item*.
+
+**The verdict.** A transaction's type names **one direction**. A count no longer writes an `opname` transaction. It writes
+what it found: a **`problem`** for units broken or lost (out), a **`found`** for a surplus (in), and a **`move`** for units
+only on the wrong rack. An item therefore never needs to say which way it went. It stays positive and one per product,
+and the reason (broken or lost) stays where it already lives, on the stock-problem row, per batch.
+
+```mermaid
+flowchart LR
+  F["finalize - session 12, team Melati"] --> P["901 problem - Kaos Hitam 2, Rp 20.000"]
+  F --> N["902 found - Kaos Polos 1, Rp 10.000"]
+  F --> M["903 move - Kaos Merah 1, Rp 0"]
+  P --> R["warehouse_stock_problems - batch 7 broken 1, batch 7 lost 1"]
+  N --> C["claims problem 88 - back into batch 3"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `problem` | units out because broken or lost — from a count's finalize or a report at the shelf; writes the stock-problem rows |
+| `found` | units in because a surplus was found — claims the oldest open loss, else a new batch at the team's last price |
+| `move` | a count's rack-only correction is a move, as any move ([a-move-has-its-own-type](#a-move-has-its-own-type)) |
+| items | positive, one per product per transaction ([an-item-names-its-product](#an-item-names-its-product) unchanged) |
+| broken vs lost | `warehouse_stock_problems.problem_type`, per batch — not on the item |
+| the ledgers | each log row carries its transaction's type; the three lists are one list |
+| per count, per team | up to three transactions — `problem`, `found`, `move` — listed by the session ([a-session-lists-its-final-transactions](./opname_decision.md#a-session-lists-its-final-transactions)) |
+| `adjustment` | left with corrections only, such as a wrong stock-in ([a-rollback-only-undoes-a-take](#a-rollback-only-undoes-a-take)) — yours to design in [adjustment.md](./adjustment.md) |
+
+It amends [revaluation-and-opname-are-transaction-types](#revaluation-and-opname-are-transaction-types) (its `opname` half).
+⚠ Not yet in your docs: batch.md still lists `broken` and `lost`, and opname.md still draws one `opname` transaction per
+team — [opname-md-still-draws-one-opname-transaction](./opname_clarify.md#opname-md-still-draws-one-opname-transaction).
+
+🔄 *(2026-10-16)* **Amended by your batch.md and placement.md edits, the same day:** the ledgers carry the **reason**, not
+`problem`. A `problem` transaction's batch and rack rows say `broken` or `lost`; a `found` transaction's say `found`. So
+`problem` appears only as a `tx_type`, and the rest of each list is the transaction's type. Broken versus lost is then on
+the log row **and** on the stock-problem row — your choice over my *drop them from batch.md*.
+
+## items-are-what-history-and-reports-read
+
+> Owner, in chat (2026-10-16): *"yes, intend to report"* — answering 2d of [transaction_clarify Q2](./transaction_clarify.md#question),
+> *what reads the items?*: the four readers I listed, and reports.
+
+**The verdict.** An item is the ledger's summary **for reading**: one line per product per transaction, saying what the log
+rows underneath say. Nothing writes from it and nothing reverses from it — the rollback reads the log rows
+([a-rollback-reverses-its-log-rows](#a-rollback-reverses-its-log-rows)). It earns its place because history and reports
+read one line instead of summing batch and rack rows.
+
+```mermaid
+flowchart LR
+  L["batch rows and rack rows - the facts"] -->|"equal, checked by each mutation's test"| I["item - Kaos Hitam 3, Rp 32.000, Sinar's"]
+  I --> H["a team's history"]
+  I --> O["the order's line cost - the markup"]
+  I --> S["the sample list"]
+  I --> X["shared-product info"]
+  I --> R["reports"]
+```
+
+**The spec.**
+
+| reader | reads |
+| --- | --- |
+| a team's history | *"order · Kaos Hitam 3 · Rp 32.000"* |
+| the order's take answer | the line's cost, total ÷ quantity ([inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup)) |
+| the sample list | what went out, beside the transaction's `recipient` ([a-sample-keeps-its-recipient](#a-sample-keeps-its-recipient)) |
+| shared-product info | `product_team_id`, `is_owned` — whose goods were sold |
+| reports | items grouped by their transaction's team and type, by `warehouse_id` and `created_at` — one join to `inventory_transactions` |
+| not | the rollback |
+
+**What it does NOT settle:** which reports — none is designed yet. When one is, it reads items first, and a column is added
+to the item only if a report cannot be answered through the one join.
+
+🔄 *(2026-10-16, later)* **The report meant first** (owner: *"especially placement and batch, we later can see flow last
+stock balance more clearly"*): the **stock flow** of a rack and of a batch — every movement with the balance after it. It
+reads the **log rows**, which already carry the balance: `product_placement_logs.stock_after`,
+`batch_logs.stock_count_after` and `stock_valuation_after`. Each line is labelled by its transaction (type, who, when) and
+its row's `change_type`; the item gives the per-product summary beside it.
+
+| Kaos Hitam on Rak A | transaction | row | change | `stock_after` |
+| --- | --- | --- | --- | --- |
+| 09:00 | #552 order | `order` | −1 | 5 |
+| 13:00 | #570 restock | `restock` | +10 | 15 |
+| 15:00 | #901 problem | `broken` | −1 | 14 |
+| 15:00 | #901 problem | `lost` | −1 | 13 |
+
+⚠ Read in `id` order, not `created_at`: two rows in the same second share a timestamp, and the balance after is only a
+sequence in the order the rows were written — under the lock
+([batches-lock-before-shelves-by-id](./context_decision.md#batches-lock-before-shelves-by-id)).

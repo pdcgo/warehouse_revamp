@@ -9,6 +9,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [every-ledger-keeps-money-as-float64](#every-ledger-keeps-money-as-float64) | float64 is the template's default, not a stock exception — the payment and balance ledger inherits it | chat, 2026-10-10 — answers Q2 and Critique 1, **against** my integer minor-units |
 | [the-caller-opens-the-transaction](#the-caller-opens-the-transaction) | the RPC opens the database transaction and hands it to the mutation; a mutation never opens or commits one | chat, 2026-10-15 — answers Q4, as recommended |
 | [ledger-logs-are-append-only](#ledger-logs-are-append-only) | a ledger log row is never updated or deleted; a correction is a new row | chat, 2026-10-15 — answers Q3, as recommended |
+| [the-template-is-an-index](#the-template-is-an-index) | the doc shrinks to an index: the words, the three shared rules, where each service's ledger lives, one line on events; its flow, ER template, Statistic Design and Idempotency Layer go | chat, 2026-10-16 — answers Q1 (widened), option a |
 
 ---
 
@@ -98,3 +99,37 @@ flowchart LR
 | UPDATE or DELETE on a `*_logs` table | never, from any code path |
 | `updated_at` on a log table | none — a column that can only ever equal `created_at` invites the edit it records |
 | a correction | a new row with its own transaction and reason |
+
+## the-template-is-an-index
+
+> Owner, in chat (2026-10-16): *"seems stale. many things covered by san_event"*, *"any service have design like mutation
+> and ledger, but they are defined better"*, *"is it save i remove mutation and ledger ?"*, then *"yes a"* — option **a**
+> of [Q1](./mutation_and_ledger_clarify.md#question) as widened: shrink, don't delete.
+
+**The verdict.** This doc stops being a design and becomes the **index** every ledger points at. Each service designs its
+own ledger, better than a template can; the event plumbing is built. What only this doc can hold are the words every
+ledger shares and the three rules that apply to all of them — which is why it is shrunk, not deleted: 18 links in 10
+files point at those rules.
+
+```mermaid
+flowchart LR
+  I["mutation_and_ledger.md - the index"] --> W["words - state, ledger log, scope, transaction"]
+  I --> R["3 shared rules"]
+  I --> S["where each ledger lives - inventory, balance, cost"]
+  I --> E["events - san_event, event_source"]
+```
+
+**The spec — the doc after the cut, about 25 lines:**
+
+| section | holds |
+| --- | --- |
+| Words | **state** (the current balance per scope) · **ledger log** (one row per change, with the balance after) · **scope** (the smallest grain a balance is kept at) · **transaction** (what caused the change) |
+| Every ledger | [the-caller-opens-the-transaction](#the-caller-opens-the-transaction) · [ledger-logs-are-append-only](#ledger-logs-are-append-only) · [every-ledger-keeps-money-as-float64](#every-ledger-keeps-money-as-float64), compared at 4 digits |
+| Where each one lives | inventory — [batch.md](../../business/inventory/batch.md), [placement.md](../../business/inventory/placement.md), [transaction.md](../../business/inventory/transaction.md), [stock design](../stock/design.md) · balance — [team_balance_design.md](../balance/team_balance_design.md) · cost — [design.md](../cost/design.md) |
+| Events | sent, received and processed once through `san_event` / `event_source`; each service dedups in its own table ([event_architecture](../event_architecture/context.md)) |
+| removed | §Flow Mutation and Ledger · §Entity Relationship Template · §State/§Scope as sections · # Statistic Design and its General Flow · §Idempotency Layer, §Schema, §Idempotency Flow |
+
+**What the cut resolves:** all four contradictions in the clarify — each sits in a removed section. **What it does not:**
+Critiques 2–4 (lock order, the redundant lock, get-or-create) still apply to how every ledger is implemented, and stay open
+as candidates for *Every ledger*; Critique 6 (pre-loading in a stat pipeline) moves to the analytic side.
+⚠ **The cut is yours to make** in [mutation_and_ledger.md](./mutation_and_ledger.md).
