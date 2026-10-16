@@ -1611,6 +1611,7 @@
       "name": "Name",
       "code": "Code",
       "marketplace": "Marketplace",
+      "primary": "Primary CS",
       "actions": "Actions"
     },
     "form": {
@@ -1626,7 +1627,10 @@
       "description": "Description",
       "cancel": "Cancel",
       "save": "Save",
-      "create": "Create"
+      "create": "Create",
+      "namePlaceholder": "Example: Melati Official",
+      "shopCodePlaceholder": "Example: MEL-SHP",
+      "descriptionPlaceholder": "Example: the main Shopee store, coffee and tea"
     },
     "users": {
       "userAdded": "User added to the shop",
@@ -1635,7 +1639,7 @@
       "removeFailed": "Remove failed",
       "heading": "Users with access",
       "addLabel": "Add a user",
-      "searchPlaceholder": "Search all users",
+      "searchPlaceholder": "Type a member's username",
       "add": "Add",
       "empty": "No users have access yet.",
       "removeTitle": "Remove Access",
@@ -1645,7 +1649,11 @@
       "makePrimaryLabel": "Make {{label}} the primary CS",
       "primaryChanged": "Primary CS changed",
       "makePrimaryFailed": "Could not change the primary CS",
-      "noPrimary": "No primary CS — this shop cannot import its statements until one of its users is made primary."
+      "noPrimary": "No primary CS — this shop cannot import its statements until one of its users is made primary.",
+      "title": "Users with Access",
+      "description": "The team members who work on this shop. An imported statement's rows with no order are counted for the primary CS.",
+      "emptyHint": "Add the team members who handle this shop's orders and statements.",
+      "removeLabel": "Remove {{label}}'s access"
     },
     "detail": {
       "invalidId": "Invalid shop id.",
@@ -1655,9 +1663,50 @@
       "title": "Shop Details",
       "edit": "Edit",
       "code": "Code",
-      "description": "Description"
+      "description": "Description",
+      "delete": "Delete",
+      "deleted": "Shop \"{{name}}\" deleted",
+      "noDescription": "No description"
     },
-    "noPrimary": "No primary CS"
+    "noPrimary": "No primary CS",
+    "lead": "The marketplace storefronts this team sells through — each with its code, its marketplace and the people who work on it.",
+    "none": "No shop matches",
+    "emptyHint": "Add the storefronts this team sells through.",
+    "editAction": "Edit",
+    "primary": {
+      "change": "Change Primary CS",
+      "choose": "Choose Primary CS",
+      "changeTitle": "Change Primary CS",
+      "chooseTitle": "Choose Primary CS",
+      "why": "An imported statement's rows with no order — fees, ads, withdrawals — are counted for the primary CS. Only someone with access to this shop can be it.",
+      "pick": "Users with access",
+      "current": "Current",
+      "nobody": "Nobody has access yet",
+      "nobodyHint": "Give someone access on the shop's page — the first one becomes its primary CS.",
+      "openShop": "Open Shop",
+      "save": "Save",
+      "saved": "{{user}} is now the primary CS of {{shop}}",
+      "failed": "Could not change the primary CS"
+    },
+    "filter": {
+      "marketplaceAll": "All marketplaces",
+      "primaryAll": "Any primary CS",
+      "optionsClear": "Clear the panel's filters"
+    },
+    "pending": {
+      "marketplaceFilter": {
+        "label": "Marketplace filter",
+        "reason": "The shop list cannot be narrowed by marketplace yet — the pick is kept, but every shop is still listed."
+      },
+      "primaryFilter": {
+        "label": "Primary CS filter",
+        "reason": "The shop list cannot be narrowed by its primary CS yet — the pick is kept, but every shop is still listed."
+      },
+      "noPrimaryFilter": {
+        "label": "No primary CS filter",
+        "reason": "The shop list cannot be narrowed to the shops with no primary CS yet — the tick is kept, but every shop is still listed."
+      }
+    }
   },
   "racks": {
     "title": "Racks",

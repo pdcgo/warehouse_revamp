@@ -60,6 +60,7 @@ import {
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
+import { shopService } from "./shopStub";
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
@@ -759,9 +760,8 @@ export const transport = createRouterTransport(({ service }) => {
     ...userStub,
   });
 
-  service(ShopService, {
-    shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
-  });
+  // selling_service's shops — shopStub.ts, writeable: a team's own shops, soft deletes, the primary CS on a grant.
+  service(ShopService, shopService);
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
   service(RestockRequestService, restockRequestService);

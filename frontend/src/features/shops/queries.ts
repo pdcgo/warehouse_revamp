@@ -2,26 +2,44 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { shopClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
+import { ShopRowSort } from "../../gen/warehouse/selling/v1/selling_pb";
+import type { SortState } from "../../components/chrome/SortableHeader";
+import { peopleFor } from "../users/queries";
 import { shopListRowData, shopsFromList } from "./adapt";
+
+/** The two columns the contract can order a team's shops by. */
+export type ShopSortKey = "name" | "code";
+
+const SORT_COLUMN: Record<ShopSortKey, ShopRowSort> = { name: ShopRowSort.NAME, code: ShopRowSort.SHOP_CODE };
 
 // The shop screens' reads (#176).
 
 export function useShops(args: {
   teamId: bigint | undefined;
   q: string;
+  /** `null` = the list's own order, newest first; otherwise by name or code, A to Z or back (the server sorts). */
+  sort?: SortState<ShopSortKey> | null;
   page: number;
   pageSize: number;
 }) {
   const { teamId, q, page, pageSize } = args;
+  const sort = args.sort ?? null;
 
   return useQuery({
-    queryKey: key.shops(teamId, { q, page, pageSize }),
+    queryKey: key.shops(teamId, { q, sort: sort ? `${sort.by}:${sort.dir}` : "", page, pageSize }),
     ...listQuery,
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await shopClient.shopList({
         teamId: teamId!,
         filter: { q },
+        sort: sort
+          ? {
+              sortType: sort.dir === "asc" ? CommonSortType.ASC : CommonSortType.DESC,
+              s: { case: "shop", value: SORT_COLUMN[sort.by] },
+            }
+          : undefined,
         dataRequest: shopListRowData(),
         page: { page, limit: pageSize },
       });
@@ -88,6 +106,54 @@ export function useShop(args: { teamId: bigint | undefined; shopId: bigint }) {
   });
 }
 
+// THE PRIMARY CS FILTER'S PEOPLE — the people who are a primary CS on one of this team's shops, named, A to Z
+// (a-who-filter-lists-the-people-on-its-rows: the list's own service answers, never the team's member list). There is
+// no ShopList answer for "the primaries on my rows", so it reads every shop — the one page of 100 the shop picker
+// reads — and gathers theirs. Under `shops`, so moving a primary re-reads it.
+export function useShopPrimaries(args: { teamId: bigint | undefined }) {
+  const { teamId } = args;
+
+  return useQuery({
+    queryKey: key.shops(teamId, { primaries: true }),
+    ...referenceQuery,
+    enabled: teamId !== undefined,
+    queryFn: async () => {
+      const res = await shopClient.shopList({
+        teamId: teamId!,
+        dataRequest: shopListRowData(),
+        page: { page: 1, limit: 100 },
+      });
+      const ids = [...new Set(shopsFromList(res.items, res.ids).map((shop) => shop.primaryUserId))].filter(
+        (id) => id > 0n,
+      );
+      const people = await peopleFor(ids);
+
+      return people.sort((a, b) => (a.name || a.username).localeCompare(b.name || b.username));
+    },
+  });
+}
+
+// WHO MAY BE A SHOP'S PRIMARY CS — its granted users, named (the-primary-cs-is-a-flag-on-a-grant: a primary is never
+// someone without a grant). A shop is worked by a handful, so one page of 100 covers them, as on the shop's page.
+// Under `shops`, so a write that invalidates the shops re-reads this too.
+export function useShopUsers(args: { teamId: bigint | undefined; shopId: bigint }) {
+  const { teamId, shopId } = args;
+
+  return useQuery({
+    queryKey: key.shops(teamId, { users: shopId.toString() }),
+    enabled: teamId !== undefined && shopId > 0n,
+    queryFn: async () => {
+      const res = await shopClient.shopUserList({
+        teamId: teamId!,
+        filter: { shopId },
+        page: { page: 1, limit: 100 },
+      });
+
+      return peopleFor(res.ids);
+    },
+  });
+}
+
 // Broad: an edit changes the row in the list AND the detail page, and a delete changes every page
 // after it. One invalidation covers both screens.
 export function useInvalidateShops() {
@@ -143,6 +209,17 @@ export function useDeleteShop() {
 
   return useMutation({
     mutationFn: (vars: { teamId: bigint; shopId: bigint }) => shopClient.shopDelete(vars),
+    onSuccess: () => invalidate(),
+  });
+}
+
+// Make primary — the shop's primary CS moves to another of its granted users. The shop row carries
+// `primary_user_id`, so the list and the shop's page both change.
+export function useSetShopPrimary() {
+  const invalidate = useInvalidateShops();
+
+  return useMutation({
+    mutationFn: (vars: { teamId: bigint; shopId: bigint; userId: bigint }) => shopClient.shopUserSetPrimary(vars),
     onSuccess: () => invalidate(),
   });
 }

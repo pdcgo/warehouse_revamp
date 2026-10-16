@@ -25,9 +25,10 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
+// The list, or — before the first shop — its hint (an-empty-list-shows-a-hint).
 async function gotoShops(page: Page) {
   await page.goto("/shops");
-  await expect(page.getByTestId("shops-table")).toBeVisible();
+  await expect(page.getByTestId("shops-table").or(page.getByTestId("shops-empty"))).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });

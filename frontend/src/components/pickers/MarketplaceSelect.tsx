@@ -25,6 +25,11 @@ export interface MarketplaceSelectProps {
    * field leaves it off.
    */
   clearable?: boolean;
+  /**
+   * The trigger's test id (its × is `<testId>-clear`). A screen with TWO of these — a filter over a list whose form also
+   * picks one (the shops list) — names its filter's, so each keeps one address.
+   */
+  testId?: string;
 }
 
 // MarketplaceSelect is the shared marketplace picker (#66), built on Chakra's composable Select. It
@@ -42,6 +47,7 @@ export function MarketplaceSelect({
   placeholder = "Select a marketplace",
   disabled,
   clearable = false,
+  testId = "marketplace-select",
 }: MarketplaceSelectProps) {
   const collection = useMemo(
     () =>
@@ -66,7 +72,7 @@ export function MarketplaceSelect({
       <Select.HiddenSelect />
 
       <Select.Control>
-        <Select.Trigger data-testid="marketplace-select">
+        <Select.Trigger data-testid={testId}>
           {/* Read from the Select's own state rather than the `value` prop, so the badge follows the
               pick even when a caller leaves the picker uncontrolled. No pick → ValueText falls back to
               the placeholder. */}
@@ -84,7 +90,7 @@ export function MarketplaceSelect({
         </Select.Trigger>
         <Select.IndicatorGroup>
           {/* Zag hides it while nothing is picked. */}
-          {clearable && <Select.ClearTrigger data-testid="marketplace-select-clear" />}
+          {clearable && <Select.ClearTrigger data-testid={`${testId}-clear`} />}
           <Select.Indicator />
         </Select.IndicatorGroup>
       </Select.Control>

@@ -1605,6 +1605,7 @@
       "name": "Nama",
       "code": "Kode",
       "marketplace": "Marketplace",
+      "primary": "CS utama",
       "actions": "Aksi"
     },
     "form": {
@@ -1620,7 +1621,10 @@
       "description": "Deskripsi",
       "cancel": "Batal",
       "save": "Simpan",
-      "create": "Buat"
+      "create": "Buat",
+      "namePlaceholder": "Contoh: Melati Official",
+      "shopCodePlaceholder": "Contoh: MEL-SHP",
+      "descriptionPlaceholder": "Contoh: toko utama di Shopee, kopi dan teh"
     },
     "users": {
       "userAdded": "Pengguna ditambahkan ke toko",
@@ -1629,7 +1633,7 @@
       "removeFailed": "Gagal menghapus",
       "heading": "Pengguna dengan akses",
       "addLabel": "Tambah pengguna",
-      "searchPlaceholder": "Cari semua pengguna",
+      "searchPlaceholder": "Ketik username anggota",
       "add": "Tambah",
       "empty": "Belum ada pengguna yang memiliki akses.",
       "removeTitle": "Hapus Akses",
@@ -1639,7 +1643,11 @@
       "makePrimaryLabel": "Jadikan {{label}} CS utama",
       "primaryChanged": "CS utama diganti",
       "makePrimaryFailed": "Gagal mengganti CS utama",
-      "noPrimary": "Belum ada CS utama — toko ini tidak bisa mengimpor laporannya sampai salah satu penggunanya dijadikan utama."
+      "noPrimary": "Belum ada CS utama — toko ini tidak bisa mengimpor laporannya sampai salah satu penggunanya dijadikan utama.",
+      "title": "Pengguna dengan Akses",
+      "description": "Anggota tim yang mengurus toko ini. Baris laporan impor yang tidak punya pesanan dicatat atas nama CS utama.",
+      "emptyHint": "Tambahkan anggota tim yang mengurus pesanan dan laporan toko ini.",
+      "removeLabel": "Hapus akses {{label}}"
     },
     "detail": {
       "invalidId": "ID toko tidak valid.",
@@ -1649,9 +1657,50 @@
       "title": "Detail Toko",
       "edit": "Ubah",
       "code": "Kode",
-      "description": "Deskripsi"
+      "description": "Deskripsi",
+      "delete": "Hapus",
+      "deleted": "Toko \"{{name}}\" dihapus",
+      "noDescription": "Tanpa deskripsi"
     },
-    "noPrimary": "Belum ada CS utama"
+    "noPrimary": "Belum ada CS utama",
+    "lead": "Etalase marketplace tempat tim ini berjualan — masing-masing dengan kodenya, marketplace-nya, dan orang yang mengurusnya.",
+    "none": "Tidak ada toko yang cocok",
+    "emptyHint": "Tambahkan etalase marketplace tempat tim ini berjualan.",
+    "editAction": "Ubah",
+    "primary": {
+      "change": "Ganti CS Utama",
+      "choose": "Pilih CS Utama",
+      "changeTitle": "Ganti CS Utama",
+      "chooseTitle": "Pilih CS Utama",
+      "why": "Baris laporan impor yang tidak punya pesanan — biaya, iklan, penarikan — dicatat atas nama CS utama. Hanya pengguna yang punya akses ke toko ini yang bisa dipilih.",
+      "pick": "Pengguna dengan akses",
+      "current": "Saat ini",
+      "nobody": "Belum ada yang punya akses",
+      "nobodyHint": "Beri akses di halaman toko — orang pertama otomatis jadi CS utama.",
+      "openShop": "Buka Toko",
+      "save": "Simpan",
+      "saved": "{{user}} sekarang CS utama {{shop}}",
+      "failed": "CS utama gagal diganti"
+    },
+    "filter": {
+      "marketplaceAll": "Semua marketplace",
+      "primaryAll": "Semua CS utama",
+      "optionsClear": "Hapus filter di panel"
+    },
+    "pending": {
+      "marketplaceFilter": {
+        "label": "Filter marketplace",
+        "reason": "Daftar toko belum bisa disaring per marketplace — pilihannya disimpan, tapi semua toko tetap tampil."
+      },
+      "primaryFilter": {
+        "label": "Filter CS utama",
+        "reason": "Daftar toko belum bisa disaring per CS utama — pilihannya disimpan, tapi semua toko tetap tampil."
+      },
+      "noPrimaryFilter": {
+        "label": "Filter belum ada CS utama",
+        "reason": "Daftar toko belum bisa disaring ke toko yang belum punya CS utama — centangnya disimpan, tapi semua toko tetap tampil."
+      }
+    }
   },
   "racks": {
     "title": "Rak",

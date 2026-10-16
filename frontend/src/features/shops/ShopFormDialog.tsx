@@ -6,11 +6,15 @@ import {
   CloseButton,
   Dialog,
   Field,
+  Icon,
+  IconButton,
   Input,
   Portal,
   Stack,
   Text,
+  Textarea,
 } from "@chakra-ui/react";
+import { Plus } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
@@ -29,9 +33,12 @@ export function ShopFormDialog({
   shop,
   open: openProp,
   onOpenChange,
+  compact = false,
 }: {
   shop?: Shop;
   open?: boolean;
+  /** A phone's header: the create trigger is the ＋ alone, named by its label (a-phone-header-action-is-an-icon). */
+  compact?: boolean;
   /**
    * The dialog's open state changed — including its closing itself after a successful save.
    *
@@ -119,9 +126,24 @@ export function ShopFormDialog({
     <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)}>
       {!isControlled && (
         <Dialog.Trigger asChild>
-          <Button size="xs" colorPalette="brand" data-testid="open-create-shop">
-            {t("shops.form.newShop")}
-          </Button>
+          {/* With its ＋ (an-action-button-carries-its-icon); on a phone the ＋ alone (a-phone-header-action-is-an-icon). */}
+          {compact ? (
+            <IconButton
+              size="sm"
+              colorPalette="brand"
+              aria-label={t("shops.form.newShop")}
+              title={t("shops.form.newShop")}
+              flexShrink={0}
+              data-testid="open-create-shop"
+            >
+              <Icon as={Plus} boxSize="4" />
+            </IconButton>
+          ) : (
+            <Button size="xs" colorPalette="brand" flexShrink={0} data-testid="open-create-shop">
+              <Icon as={Plus} boxSize="4" />
+              {t("shops.form.newShop")}
+            </Button>
+          )}
         </Dialog.Trigger>
       )}
 
@@ -144,12 +166,22 @@ export function ShopFormDialog({
 
                   <Field.Root required>
                     <Field.Label>{t("shops.form.name")}</Field.Label>
-                    <Input value={name} data-testid="shop-name" onChange={(e) => setName(e.target.value)} />
+                    <Input
+                      value={name}
+                      placeholder={t("shops.form.namePlaceholder")}
+                      data-testid="shop-name"
+                      onChange={(e) => setName(e.target.value)}
+                    />
                   </Field.Root>
 
                   <Field.Root required>
                     <Field.Label>{t("shops.form.shopCode")}</Field.Label>
-                    <Input value={shopCode} data-testid="shop-code" onChange={(e) => setShopCode(e.target.value)} />
+                    <Input
+                      value={shopCode}
+                      placeholder={t("shops.form.shopCodePlaceholder")}
+                      data-testid="shop-code"
+                      onChange={(e) => setShopCode(e.target.value)}
+                    />
                     <Field.HelperText>{t("shops.form.shopCodeHelp")}</Field.HelperText>
                   </Field.Root>
 
@@ -158,10 +190,14 @@ export function ShopFormDialog({
                     <MarketplaceSelect value={marketplace} onChange={setMarketplace} />
                   </Field.Root>
 
+                  {/* A sentence of text is a Textarea (chakra-first-whenever-it-has-the-component). */}
                   <Field.Root>
                     <Field.Label>{t("shops.form.description")}</Field.Label>
-                    <Input
+                    <Textarea
                       value={description}
+                      rows={3}
+                      resize="vertical"
+                      placeholder={t("shops.form.descriptionPlaceholder")}
                       data-testid="shop-description"
                       onChange={(e) => setDescription(e.target.value)}
                     />
@@ -175,6 +211,7 @@ export function ShopFormDialog({
                 </Dialog.ActionTrigger>
 
                 <Button type="submit" colorPalette="brand" loading={busy} disabled={!canSave} data-testid="submit-shop">
+                  {!editing && <Icon as={Plus} boxSize="4" />}
                   {editing ? t("shops.form.save") : t("shops.form.create")}
                 </Button>
               </Dialog.Footer>

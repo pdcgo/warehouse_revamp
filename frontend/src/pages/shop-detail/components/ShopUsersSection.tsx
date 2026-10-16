@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Field, HStack, Heading, Icon, IconButton, Spinner, Stack, Table, Text } from "@chakra-ui/react";
-import { Star, UserMinus } from "lucide-react";
+import { Alert, Badge, Box, Button, Card, Field, Flex, HStack, Icon, IconButton, Stack, Table } from "@chakra-ui/react";
+import { Star, UserMinus, UserPlus, Users } from "lucide-react";
 import { rpcError, shopClient, userClient } from "../../../api/clients";
 import { publicUsersByIds, userByIdsRowData } from "../../../features/users/adapt";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
@@ -9,6 +9,12 @@ import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { UserItem } from "../../../components/entity/UserItem";
 import { UserSelect } from "../../../components/pickers/UserSelect";
 import { toaster } from "../../../components/feedback/Toaster";
+import { EmptyHint } from "../../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
+import { useIsMobile } from "../../../layouts/shell";
+
+// A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up).
+const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect SCOPED TO THE TEAM — a shop is
@@ -19,6 +25,10 @@ import { toaster } from "../../../components/feedback/Toaster";
 // Make primary on every other. The first user granted becomes it and removing its grant leaves none,
 // both on the server — so every change here asks the page to re-read the shop. A shop with none cannot
 // import its statements, and says so.
+//
+// ITS OWN CARD (`the-shop-screens-follow-the-screen-rules`) — titled, described, the page does not wrap it in another
+// (never a card inside a card); the warning in the warning role, an empty list as a hint, the first load as its shape,
+// a row that lights up. On a phone the picker and Add stack, full width.
 export function ShopUsersSection({
   teamId,
   shopId,
@@ -31,6 +41,7 @@ export function ShopUsersSection({
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [userIds, setUserIds] = useState<bigint[]>([]);
   const [users, setUsers] = useState<Record<string, PublicUser>>({});
   const [loading, setLoading] = useState(true);
@@ -117,97 +128,114 @@ export function ShopUsersSection({
   }
 
   return (
-    <Stack gap="card" data-testid="shop-users-section">
-      <Heading size="sm">{t("shops.users.heading")}</Heading>
+    <Card.Root data-testid="shop-users-section">
+      <Card.Header>
+        <Card.Title>{t("shops.users.title")}</Card.Title>
+        <Card.Description>{t("shops.users.description")}</Card.Description>
+      </Card.Header>
+      <Card.Body>
+        <Stack gap="card">
+          {/* NO PRIMARY CS — a status, so its role colour; it is what stops the shop importing its statements. */}
+          {primaryUserId === 0n && (
+            <Alert.Root status="warning" size="sm" data-testid="shop-no-primary">
+              <Alert.Indicator />
+              <Alert.Title>{t("shops.users.noPrimary")}</Alert.Title>
+            </Alert.Root>
+          )}
 
-      {primaryUserId === 0n && (
-        <Text color="orange.fg" fontSize="sm" data-testid="shop-no-primary">
-          {t("shops.users.noPrimary")}
-        </Text>
-      )}
+          <Flex gap="card" align={isMobile ? "stretch" : "end"} direction={isMobile ? "column" : "row"}>
+            <Field.Root flex="1">
+              <Field.Label>{t("shops.users.addLabel")}</Field.Label>
+              <UserSelect
+                teamId={teamId}
+                value={adding}
+                onChange={setAdding}
+                placeholder={t("shops.users.searchPlaceholder")}
+              />
+            </Field.Root>
+            <Button
+              colorPalette="brand"
+              loading={busy}
+              disabled={adding === undefined}
+              onClick={() => void add()}
+              flexShrink={0}
+              data-testid="shop-add-user"
+            >
+              <Icon as={UserPlus} boxSize="4" />
+              {t("shops.users.add")}
+            </Button>
+          </Flex>
 
-      <HStack gap="card" align="end">
-        <Field.Root>
-          <Field.Label>{t("shops.users.addLabel")}</Field.Label>
-          <UserSelect
-            teamId={teamId}
-            value={adding}
-            onChange={setAdding}
-            placeholder={t("shops.users.searchPlaceholder")}
-          />
-        </Field.Root>
-        <Button
-          colorPalette="brand"
-          loading={busy}
-          disabled={adding === undefined}
-          onClick={() => void add()}
-          data-testid="shop-add-user"
-        >
-          {t("shops.users.add")}
-        </Button>
-      </HStack>
+          {error && (
+            <Box color="error.fg" fontSize="sm" data-testid="shop-users-error">
+              {error}
+            </Box>
+          )}
 
-      {error && (
-        <Text color="error.fg" data-testid="shop-users-error">
-          {error}
-        </Text>
-      )}
+          {loading ? (
+            <ListSkeleton rows={2} testId="shop-users-loading" />
+          ) : userIds.length === 0 ? (
+            // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint).
+            <EmptyHint
+              icon={Users}
+              size="sm"
+              title={t("shops.users.empty")}
+              description={t("shops.users.emptyHint")}
+              testId="shop-users-empty"
+            />
+          ) : (
+            <Table.Root size="sm" data-testid="shop-users-table">
+              <Table.Body>
+                {userIds.map((id) => {
+                  const u = users[id.toString()];
+                  const label = u?.username || id.toString();
+                  const primary = id === primaryUserId;
 
-      {loading ? (
-        <Spinner size="sm" colorPalette="brand" />
-      ) : userIds.length === 0 ? (
-        <Text color="fg.muted" data-testid="shop-users-empty">
-          {t("shops.users.empty")}
-        </Text>
-      ) : (
-        <Table.Root size="sm" data-testid="shop-users-table">
-          <Table.Body>
-            {userIds.map((id) => {
-              const u = users[id.toString()];
-              const label = u?.username || id.toString();
-              const primary = id === primaryUserId;
-
-              return (
-                <Table.Row key={id.toString()} data-testid={`shop-user-row-${label}`}>
-                  <Table.Cell>
-                    <HStack gap="2">
-                      <UserItem user={u ?? { username: label, name: "", avatarUrl: "" }} />
-                      {primary && (
-                        <Badge colorPalette="brand" size="sm" data-testid={`shop-user-primary-${label}`}>
-                          {t("shops.users.primaryBadge")}
-                        </Badge>
-                      )}
-                    </HStack>
-                  </Table.Cell>
-                  <Table.Cell textAlign="end">
-                    {!primary && (
-                      <IconButton
-                        size="xs"
-                        variant="ghost"
-                        aria-label={t("shops.users.makePrimaryLabel", { label })}
-                        data-testid={`make-primary-${label}`}
-                        onClick={() => void makePrimary(id)}
-                      >
-                        <Icon as={Star} boxSize="4" />
-                      </IconButton>
-                    )}
-                    <IconButton
-                      size="xs"
-                      variant="ghost"
-                      colorPalette="error"
-                      aria-label={`Remove ${label}`}
-                      data-testid={`remove-shop-user-${label}`}
-                      onClick={() => setRemoving({ id, label })}
-                    >
-                      <Icon as={UserMinus} boxSize="4" />
-                    </IconButton>
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table.Root>
-      )}
+                  return (
+                    <Table.Row key={id.toString()} css={LIGHTS_UP} data-testid={`shop-user-row-${label}`}>
+                      <Table.Cell>
+                        <HStack gap="2">
+                          <UserItem user={u ?? { username: label, name: "", avatarUrl: "" }} />
+                          {primary && (
+                            <Badge colorPalette="brand" data-testid={`shop-user-primary-${label}`}>
+                              {t("shops.users.primaryBadge")}
+                            </Badge>
+                          )}
+                        </HStack>
+                      </Table.Cell>
+                      <Table.Cell textAlign="end" whiteSpace="nowrap">
+                        {!primary && (
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            aria-label={t("shops.users.makePrimaryLabel", { label })}
+                            title={t("shops.users.makePrimaryLabel", { label })}
+                            data-testid={`make-primary-${label}`}
+                            onClick={() => void makePrimary(id)}
+                          >
+                            <Icon as={Star} boxSize="4" />
+                          </IconButton>
+                        )}
+                        <IconButton
+                          size="xs"
+                          variant="ghost"
+                          colorPalette="error"
+                          aria-label={t("shops.users.removeLabel", { label })}
+                          title={t("shops.users.removeLabel", { label })}
+                          data-testid={`remove-shop-user-${label}`}
+                          onClick={() => setRemoving({ id, label })}
+                        >
+                          <Icon as={UserMinus} boxSize="4" />
+                        </IconButton>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </Table.Body>
+            </Table.Root>
+          )}
+        </Stack>
+      </Card.Body>
 
       {removing && (
         <ConfirmDialog
@@ -221,6 +249,6 @@ export function ShopUsersSection({
           onConfirm={() => remove(removing.id)}
         />
       )}
-    </Stack>
+    </Card.Root>
   );
 }
