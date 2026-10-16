@@ -26,6 +26,10 @@
     - `transfer_in`
     - `transfer_out`
     - `adjustment`
+    - `revaluation`
+    - `problem`
+    - `found`
+    - `move`
 
 2. Table `idempotency_order_check`
     Field that must have:
@@ -101,24 +105,27 @@ state invsrv {
     rollback: Rollback Inventory Transaction
     state rollback {
         state "Existed Transaction" as txexist
-        state "Get Items" as ritems
         state "Post to Placement Ledger" as rpmut
         state "Post to Batch Ledger" as rbmut
         state "update field `is_rollback`" as rollfield
         state if_rollback <<choice>>
+        state mut_fork <<fork>>
         state "Do Nothing" as nothing
+        state "Placement Log" as plog
+        state "Batch Log" as blog
 
         [*]-->txexist: find and lock existing Inventory Transaction
 
         txexist-->if_rollback
-        if_rollback-->ritems: [ if not rollback ] getting item
+        if_rollback-->mut_fork: [ if not rollback ] getting item
         if_rollback-->nothing: [ if rollbacked ]
 
         nothing-->[*]
 
-        ritems-->rpmut
-        ritems-->rbmut
-
+        mut_fork-->plog: getting placement log by inventory_transactions.id
+        plog-->rpmut: rollback invert
+        mut_fork-->blog: getting batch log by inventory_transactions.id
+        blog-->rbmut: rollback invert
         rpmut-->rollfield
         rbmut-->rollfield
 

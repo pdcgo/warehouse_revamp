@@ -108,21 +108,72 @@ sell-->ware
 
 ware: Warehouse Team
 state ware {
-
-    state "Order Processed" as confirm
-    state "Staff Picking Goods" as pick
-    state "Staff Scan Goods for verify" as scan
-    state "Order Packing Completed" as pack
-    state "Order Shipped" as shipped
+    direction LR
 
     [*]-->confirm: Staff confirming order, change order status and print receipt
-    confirm-->pick
-    pick-->scan
-    scan-->pack: staff start packing
-    pack-->shipped: wait courrier pickup, before give to courrier, staff scan to change shipped
+
+    confirm: Order Processed
+    state confirm{
+        state "Open Web" as copen
+        state "print `receipt_file` on order" as cprint
+        state "Order set Processed" as cprocess
+
+        [*]-->copen
+        copen-->cprint
+        cprint-->cprocess
+        cprocess-->[*]
+    }
+
+    confirm-->picked: Staff Start Picking The goods and verify to picked
+
+    picked: Order Picked Process
+    state picked {
+        state "All Goods Taken From Placement" as taken
+        state "Order Picked Verification Page" as feopen 
+        state "Update What Picked In Order" as pscan
+        state "All Picked" as allp
+        state "Set Picked" as ppick
+
+        [*]-->taken: start walk and taking goods from placement and bring `receipt_file`
+        taken-->feopen: opening order detail page. ussualy for fast, staff scan `receipt_file`
+        feopen-->pscan: Staff scan label in each goods taken. and update in fe view
+        pscan-->allp: ensure all picked
+        allp-->ppick: change order status
+        ppick-->[*]
+    }
+
+    picked-->packed
+
+    packed: Packing Process
+    state packed{
+
+        state "Parcel Packed" as ppacked
+        [*]-->ppacked: start packed goods and attach / gluing `receipt_file` that printed to parcel
+        ppacked-->[*]
+    }
+    
+    packed-->shipping: wait courrier pickup, before give to courrier, staff scan to change shipped
+
+    shipping: Order Shipping
+    state shipping {
+        state "Courrier Arrived" as arrived
+        state "Order Shipping" as sship
+        state "Parcel Taken By Courrier" as staken
+
+        [*]-->arrived: Waiting courrier arrived.
+        arrived-->sship: scan parcel and change order status to shipping
+        sship-->staken: Give Courrier
+
+        staken-->[*]
+
+    }
+
+    shipping-->[*]
+
 }
 
 ```
+
 
 
 

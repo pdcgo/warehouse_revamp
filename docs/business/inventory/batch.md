@@ -70,6 +70,10 @@
 - `adjustment`
 - `broken`
 - `lost`
+- `transfer_in`
+- `transfer_out`
+- `found`
+- `sample`
 
 
 ## Restock Flow Example.

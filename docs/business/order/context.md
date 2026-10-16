@@ -135,6 +135,8 @@ when order created. its bring 4 things.
     - `cancel`
     - `pending`
     - `processed`
+    - `picked`
+    - `shipping`
     - `shipped`
     - `completed`
     - `problem`

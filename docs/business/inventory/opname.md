@@ -38,7 +38,6 @@
     - `product_id`
     - `placement_id`
     - `opname_session_id`
-    - `transaction_id`
 
     - `status`
 
@@ -125,7 +124,45 @@
     - `claimed_stock_count`
     - `created_at`
 
+7. Table `opname_session_final_transactions`
 
+    Field that must have:
+    - `id` as primary key
+    - `opname_session_id`
+    - `transaction_id`, unique
+
+
+## Opname Session Structure.
+```mermaid
+stateDiagram-v2
+state "Opname Session" as sess
+state "opname_session_final_transactions" as stx
+state "inventory_transactions" as tx
+state "Lost tx" as lost
+state "Broken tx" as broken
+state "Surplus" as surplus
+state "Problem Draft" as prob
+state "Surplus Draft" as surdraft
+state "Snapshot" as snap
+state join_fin <<join>>
+
+sess-->stx
+sess-->prob
+sess-->surdraft
+sess-->snap
+
+prob-->join_fin
+surdraft-->join_fin
+snap-->join_fin
+
+join_fin-->tx: finalize
+
+stx-->tx: many
+tx-->lost
+tx-->broken
+tx-->surplus
+
+```
 
 ## Stock Opname Flow.
 ```mermaid

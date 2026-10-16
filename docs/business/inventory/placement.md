@@ -56,6 +56,10 @@
     - `transfer_in`
     - `transfer_out`
     - `adjustment`
+    - `move`
+    - `broken`
+    - `lost`
+    - `found`
 
 
 

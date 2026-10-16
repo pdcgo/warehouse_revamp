@@ -38,7 +38,7 @@ state "Cancel RPC called" as cancel
 
 
 
-rpc-->tx
+
 cancel-->ctx
 
 
@@ -68,6 +68,12 @@ cevt-->srv
 
 
 %% end bagian cancel
+
+state "Upsert to `warehouse_products`" as pupsert
+
+rpc-->pupsert
+pupsert-->tx
+
 
 tx: Open Database Transaction
 note right of tx

@@ -54,3 +54,14 @@ Placement have own ledger. [see this](./placement_ledger.md)
 ## Batches.
 We have batch in inventory service. Because our product have different price unit across team and across time. for the reference [see this](./batch_ledger.md)
 
+
+## Table that must we have for linking products.
+1. Table `warehouse_products`
+    
+    field that must be have:
+    - `id`
+    - `team_id`
+    - `warehouse_id`
+    - `product_id`
+    - `created_at`
+    
