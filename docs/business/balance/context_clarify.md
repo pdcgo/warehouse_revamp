@@ -525,6 +525,10 @@ flowchart LR
 | ~~**19**~~ | ⛔ **CLOSED — accept is FINAL** ([an-accepted-payment-is-final](./context_decision.md#an-accepted-payment-is-final)), against this recommendation. `LiabilityPaymentReverse` is removed, and `REVERSED` is reserved in the proto. | No action — built. |
 | ~~**20**~~ | ✅ **ANSWERED — the note is required, always** ([an-incidental-line-must-say-what-it-was-for](./context_decision.md#an-incidental-line-must-say-what-it-was-for)). ⚠ Worth keeping one round: the rule can now be expressed in the **proto** rather than in the handler, because it stopped being a rule about a PAIR of fields. Original: **Collapsing the two cost kinds removes the thing the note rule keys on.** [the-ledger-speaks-the-business-words](./context_decision.md#the-ledger-speaks-the-business-words) makes `COD_SHIPPING` and `OTHER` one `INCIDENTAL` kind — correctly, they describe the same money. But the note rule was a **pair rule**: optional for `COD_SHIPPING`, because the kind already said what the money was, and required for `OTHER`, because an untyped amount with no words beside it is a number the charged team cannot argue with. With one kind, every line is the `OTHER` case. ⚠ **This is why that half of the migration is NOT built** — the rest of the decision shipped, and this one step waits on a rule only you can set, because it adds a required field to what a warehouse person types at acceptance. | **Required, always** ([Q12](#question)). The kind has stopped carrying the meaning, so the note has to. ⚠ The alternative — optional always — is the one that quietly loses something: it makes every incidental charge a bare number, and §Why `cod_fee` Exists describes precisely the *accidental*, unenumerable ask that most needs a sentence beside it. |
 
+| | Problem *(arising from [balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event), 2026-10-15)* | → Recommend |
+| --- | --- | --- |
+| **21** | **A warehouse transfer's courier charge has no source type, and the obvious one silently drops it.** Your cause 2 says *"to receive restock"*; a transfer received at Warehouse B now has the same courier's ask, paid by B and owed by the selling team, posted from *Warehouse Transfer Accepted*. `INCIDENTAL_FEE`'s `source_id` is **the restock** ([liability.proto:114](../../../proto/warehouse/liability/v1/liability.proto#L114)), and the ledger refuses a second row with the same *(team, counterparty, source type, source id, reversal)* ([00001…ledger.sql:69](../../../backend/services/liability_service/db_migrations/00001_create_liability_ledger.sql#L69)). Restocks and transfers are numbered separately, so **transfer 41 beside restock 41 — same team, same warehouse — reads as a duplicate, is acknowledged, and is gone.** That is the normal case, not an edge: a team restocks into and transfers into the same warehouse. | **A transfer's charge gets its own source type** (e.g. `TRANSFER_INCIDENTAL_FEE`, `source_id` = the transfer), so each source type names one business object — the rule the enum's own comment already states. Cause 2 then reads *"to receive a restock or a transfer"*. [Q13](#question). |
+
 ## Question
 
 > ⛔ **The old Q1 — *"when must a balance be settled"* — is GONE**, answered by §General 4 and recorded
@@ -587,6 +591,20 @@ flowchart LR
 > ⛔ **Q11 is DELETED — an accepted payment is FINAL**, against this file’s recommendation:
 > [an-accepted-payment-is-final](./context_decision.md#an-accepted-payment-is-final). The reverse RPC is removed, and
 > financial_account’s Q14 closes with it — there is no reversal for the accounts to hear.
+
+13. **🆕 *(2026-10-15)* Does a warehouse transfer's courier charge get its OWN source type?** ([Critique 21](#critique))
+    The transfer now posts its on-site charge through balance, from an event
+    ([balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)).
+    Under `INCIDENTAL_FEE`, a transfer whose id equals a restock's — same team, same warehouse — is dropped as a duplicate.
+    **→ I recommend yes: its own type, `source_id` = the transfer**, and cause 2 widened in words to *"to receive a restock
+    or a transfer"*. Same money and same note rule; a different business object, so a different type.
+
+    ```mermaid
+    flowchart LR
+      R["restock 41 - Rp 5.000"] -->|"INCIDENTAL_FEE, 41"| L["the ledger"]
+      T["transfer 41 - Rp 3.000"] -->|"INCIDENTAL_FEE, 41 - same key, dropped"| L
+      T -.->|"its own type, 41"| L
+    ```
 
 ---
 

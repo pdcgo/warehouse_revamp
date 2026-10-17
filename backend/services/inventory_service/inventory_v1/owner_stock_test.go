@@ -24,9 +24,9 @@ func acceptOwnedBy(
 	ctx := ctxUser(1)
 
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: owner, WarehouseId: warehouse, ShippingCode: "jne",
+		TeamId: owner, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Quantity: qty, TotalPrice: total},
+			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: total},
 		},
 	}))
 	if err != nil {
@@ -35,13 +35,13 @@ func acceptOwnedBy(
 
 	item := created.Msg.GetRequest().GetItems()[0]
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: warehouse, RequestId: created.Msg.GetRequest().GetId(),
 		Lines: []*inventoryv1.RestockRequestReceivedLine{{
-			ItemId:           item.GetId(),
-			ReceivedQuantity: qty,
+			ItemId:        item.GetId(),
+			ReceivedCount: qty,
 			Placements: []*inventoryv1.RestockPlacement{
-				{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackID}, Quantity: qty},
+				{PlacementId: rackID, Quantity: qty},
 			},
 		}},
 	}))
@@ -113,9 +113,9 @@ func TestOwnerStockByIds_ReadyOngoingSpread(t *testing.T) {
 
 	// Inbound: raised, not yet accepted.
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: owner, WarehouseId: warehouse, ShippingCode: "jne",
+		TeamId: owner, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Quantity: 30, TotalPrice: 900_000},
+			{ProductId: product, Sku: "SKU", Name: "P", Count: 30, Total: 900_000},
 		},
 	}))
 	if err != nil {
@@ -215,9 +215,9 @@ func TestOwnerStockStat_TotalsAndLens(t *testing.T) {
 	acceptOwnedBy(t, svc, theirs, jakarta, newRack(t, svc, jakarta, "A-02-1"), 300, 500, 50_000_000)
 
 	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: owner, WarehouseId: jakarta, ShippingCode: "jne",
+		TeamId: owner, WarehouseId: jakarta,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: 100, Sku: "SKU", Name: "P", Quantity: 25, TotalPrice: 1_000_000},
+			{ProductId: 100, Sku: "SKU", Name: "P", Count: 25, Total: 1_000_000},
 		},
 	}))
 	if err != nil {

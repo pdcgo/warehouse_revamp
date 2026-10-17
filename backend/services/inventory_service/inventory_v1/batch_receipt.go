@@ -48,7 +48,7 @@ func (s *Service) BatchReceipt(
 		Joins("JOIN restock_request_items i ON i.id = b.restock_request_item_id").
 		Joins("JOIN restock_requests r ON r.id = b.delivery_id").
 		Select(`
-			b.id, b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
+			b.id, b.product_id, i.sku, i.name, COALESCE(i.supplier_id, 0) AS supplier_id,
 			r.receipt AS receipt_no, b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
 			b.created_at, b.created_by, b.accepted_by`).
 		Where("b.delivery_id = ? AND b.warehouse_id = ?", deliveryID, warehouseID).

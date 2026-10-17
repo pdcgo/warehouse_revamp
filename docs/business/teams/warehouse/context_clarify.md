@@ -3,6 +3,10 @@
 What [context.md](./context.md) leaves open. **That doc is yours — this one is mine.** Answered points are
 deleted, so this file is always the current open set; what you settle goes in `context_decision.md`.
 
+> ✅ **Answered 2026-10-10 and deleted:** [is-the-money-an-integer-rupiah](#question). **No:** money is `double`, as your
+> payload has it, by [rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point). My `int64` and basis points are withdrawn throughout this file. They argued
+> from the build's `int64`, were written the day before that decision, and were never re-checked after it: [my-clarifies-kept-int64-after-double-was-decided](#my-clarifies-kept-int64-after-double-was-decided).
+
 > 🆕 **First pass, 2026-09-16.** Three of the four things the doc asks for **already exist somewhere else in the
 > build** — the location and the open/close grid are a shipped table in `team_service`, and the order fee is a
 > shipped **flat** rate in `liability_service`. So the first question is not *how do we build this*, it is
@@ -19,9 +23,7 @@ deleted, so this file is always the current open set; what you settle goes in `c
 > `liability_terms.handling_fee`, which stores a rate and computes from it **today**, is
 > [dropped](#is-the-old-flat-rate-column-dropped).
 >
-> ⛔ **The payload still opens three sharper ones:** every money field in it is a **`double`**, where this system has
-> **no float anywhere** — `int64` whole rupiah in every proto, stated as a rule in
-> [expense.proto](../../../proto/warehouse/expense/v1/expense.proto) · the request names **no selling team**, which
+> ⛔ **The payload still opens two sharper ones:** the request names **no selling team**, which
 > both kills the per-pair rate liability already charges **and** leaves the message with no `use_scope` field, so
 > the access interceptor cannot scope it · and it prices **one** warehouse per call, so the order form comparing
 > three is three round trips.
@@ -84,31 +86,32 @@ screen has to call two services, and the owner of one property cannot say who ow
 | 2 | one-off backfill copies `team_service.warehouse_infos` across, then drops it |
 | 3 | `WarehouseInfoDetail` / `WarehouseInfoUpdate` move to `warehouse.warehouse.v1` — the two frontend call sites change with them |
 
-### the-fee-is-basis-points-with-a-floor-and-a-cap
+### the-fee-is-a-percent-with-a-floor-and-a-cap
 
-`fee_percent` as a float over money is how rounding bugs get written. Money is `int64` rupiah everywhere in
-this system, and `liability_terms.product_markup_bp` **already** uses basis points for exactly this reason.
+🔄 *(2026-10-10)* **Rewritten.** It argued for basis points because money was `int64`, and money is float
+([rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point)). Your `fee_percent` stays, the same shape as the markup's float percent. What I still add is
+the floor and the cap's meaning.
 
 ```
-fee = clamp( basis * fee_bp / 10000 , min_fee , max_fee )
+fee = clamp( basis * fee_percent / 100 , min_fee , max_fee )
 ```
 
 | field | type | meaning |
 | --- | --- | --- |
-| `fee_bp` | `int64` | 250 = 2.5%. No float, ever |
-| `min_fee` | `int64` | 🆕 **not in your list — I think it is missing.** Picking and packing a Rp 10.000 order is the same work as a Rp 1.000.000 one. At 2.5% the small one pays Rp 250 |
-| `max_fee` | `int64 NULL` | ⚠ **NULL = uncapped, and `0` must be REFUSED.** `liability_terms.credit_limit` already carries this trap — nil is unlimited, 0 is nothing — and it is the one field in that table with a warning comment on it |
+| `fee_percent` | `double` | 2.5 = 2.5%, as your payload has it |
+| `min_fee` | `double` | 🆕 **not in your list — I think it is missing.** Picking and packing a Rp 10.000 order is the same work as a Rp 1.000.000 one. At 2.5% the small one pays Rp 250 |
+| `max_fee` | `optional double` | ⚠ **absent = uncapped, and `0` must be REFUSED.** `liability_terms.credit_limit` already carries this trap — nil is unlimited, 0 is nothing — and it is the one field in that table with a warning comment on it |
 | no row at all | — | **charge nothing.** The same default liability already ships: a warehouse that configured nothing is not silently billing anybody |
 
 ### the-payload-as-i-would-write-it
 
-Your payload, and the same contract with the four changes I am arguing for. The shape is yours — the types are
-where I disagree.
+Your payload, and the same contract with the three changes I am arguing for. The shape and the types are yours —
+the changes are fields.
 
 ```proto
 // what you wrote                          // what I would write
 message WarehouseFeeCalculateRequest {
-  double order_total = 1;                  //  int64 order_total     — whole rupiah, never a float
+  double order_total = 1;                  //  double order_total    — as you wrote
   uint64 warehouse_id = 2;                 //  uint64 warehouse_id
                                            //  uint64 team_id        — the SELLING team: the pair's rate, AND the scope
                                            //  repeated items        — price several warehouses in one call
@@ -116,27 +119,26 @@ message WarehouseFeeCalculateRequest {
 
 message WarehouseFeeCalculateResponse {
   uint64 warehouse_id = 1;                 //  uint64 warehouse_id
-  double order_total = 2;                  //  int64 order_total     — echoed back as given
-  double max_fee = 3;                      //  optional int64 max_fee — ABSENT = uncapped
-  double fee_percent = 4;                  //  int64 fee_bp          — 250 = 2.5%
-                                           //  int64 min_fee         — the floor the doc has no field for
+  double order_total = 2;                  //  double order_total    — echoed back as given
+  double max_fee = 3;                      //  optional double max_fee — ABSENT = uncapped
+  double fee_percent = 4;                  //  double fee_percent   — as you wrote
+                                           //  double min_fee       — the floor the doc has no field for
                                            //  bool configured       — false = no rate set, charge nothing
                                            //  Source source         — PAIR row or DEFAULT row answered
-  double calculated_warehouse_fee = 5;     //  int64 calculated_warehouse_fee — already rounded
+  double calculated_warehouse_fee = 5;     //  double calculated_warehouse_fee — frozen by the order
 }
 ```
 
 | change | why |
 | --- | --- |
-| **`int64`, not `double`** | there is **not one `double` in this repo's protos**, and `expense.proto` states the rule: *"Money is whole rupiah as int64, like every other money field in this system."* A fee crossing the wire as a float is converted to `int64` at both ends — that conversion is where `12.499999` becomes `12` — and the ledger it lands in is `int64` regardless. See [Contradiction](#money-is-a-double-here-and-an-integer-everywhere-else) |
 | **`team_id` in the request** | without it the rate cannot differ per seller, which **loses a capability liability already has**. ⚠ And it is not only a rate question: a request message carries its team scope as a **field** (`use_scope`), never a header — with no team on this message the interceptor has nothing to scope, so the policy collapses to *root/admin only* or to *any authenticated caller* |
 | **`repeated` items** | the order form's real question is *"what would this order cost me at each of these warehouses"*. One call, one page of rows — the same reason the guideline makes cross-service reads `ByIDs` rather than a call per id. The response already echoes `warehouse_id`, which only earns its place in a batch |
 | **`configured` + `min_fee` + `source`** | `calculated_warehouse_fee = 0` today cannot be told apart from *no rate set*, and both are normal. `min_fee` has no field at all, so a floor cannot be expressed even if you want one |
 
-**→ Recommend one more line in the doc: what it ROUNDS to.** `order_total × fee_bp / 10000` is fractional, and
-with `double` the rounding is invisible until the ledger truncates it. State *round half up to whole rupiah, in
-the RPC*, so the number the order freezes, the number the seller was shown and the number liability posts are
-one number.
+🔄 *(2026-10-10)* **My *what it ROUNDS to* line is withdrawn.** It was there so an `int64` ledger would not truncate a
+`double` fee, and the ledger is float too ([every-ledger-keeps-money-as-float64](../../../technical/ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
+The fee is computed once and frozen ([the-order-freezes-the-fee-and-the-ledger-posts-it](#the-order-freezes-the-fee-and-the-ledger-posts-it)),
+so the frozen and the posted number are already one number.
 
 ### the-order-freezes-the-fee-and-the-ledger-posts-it
 
@@ -191,14 +193,14 @@ is shipped.
 | --- | --- |
 | ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
 | **B — the rate stays**, `warehouse_service` only calculates | ⛔ ruled out: `WarehouseFeeCalculate` would be a proxy for another service's column, and `warehouse_service` would own nothing it can answer for |
-| **C — both hold a copy** | ⛔ **still reachable by accident** — it is what happens if `fee_bp` lands in `warehouse_service` while `handling_fee` stays in balance. It is **#5 in the rollup happening a second time**: one number quoted, another charged, nothing comparing them. This is why [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped) is still open |
+| **C — both hold a copy** | ⛔ **still reachable by accident** — it is what happens if the rate lands in `warehouse_service` while `handling_fee` stays in balance. It is **#5 in the rollup happening a second time**: one number quoted, another charged, nothing comparing them. This is why [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped) is still open |
 
 **Five steps, each deployable on its own, none of them changing a charge:**
 
 ```mermaid
 flowchart TD
   S1["1 — warehouse_service: terms table, the log, the history RPC, WarehouseFeeCalculate. Nothing charges yet"]
-  S2["2 — backfill: each liability_terms row becomes fee_bp 0, min_fee = max_fee = the flat fee. The same charge, exactly"]
+  S2["2 — backfill: each liability_terms row becomes fee_percent 0, min_fee = max_fee = the flat fee. The same charge, exactly"]
   S3["3 — orders gains warehouse_fee and the rate snapshot. Finalize calls Calculate and freezes. The event carries the amount"]
   S4["4 — liability posts the amount from the event. chargeHandlingFee stops reading terms"]
   S5["5 — drop liability_terms.handling_fee and its field on the Credit Terms screen"]
@@ -230,12 +232,11 @@ An open/close grid nothing consults is decoration — that is its state today.
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **money-is-a-double** | 🆕 every money field in the payload is `double`. **There is not one `double` or `float` in any proto in this repo** — money is `int64` whole rupiah, and `expense.proto` writes it down as a rule. A float basis × a float percent is rounded twice before it reaches an `int64` ledger, invisibly, and two callers can disagree about the last rupiah | **`int64` rupiah and `fee_bp` basis points** — [the payload](#the-payload-as-i-would-write-it). Rupiah has no sub-unit anybody charges in, so the fraction has nowhere legitimate to live |
 | **the-request-names-no-seller** | 🆕 `{order_total, warehouse_id}` cannot express *whose* order. It **silently drops the per-pair rate** liability already charges, and it leaves the message with no `use_scope` field — so the roling system has no team to scope the call to and the policy has to be all-or-nothing | add `team_id`, and let it be both the pair key and the scope |
 | **one-warehouse-per-call** | 🆕 the seller's real question is which of several warehouses is cheapest for this order. One call each, and the response echoes `warehouse_id` as though it were already a batch | `repeated` in, `repeated` out |
 | **zero-is-two-different-answers** | 🆕 `calculated_warehouse_fee = 0` means both *this warehouse charges nothing* and *no rate has been configured*, and both are normal states | a `configured` bool. ⚠ The same trap as `max_fee = 0` (cap of zero) vs absent (uncapped) — `liability_terms.credit_limit` has it already |
 | **percent-of-what** | 🔄 **narrowed by the payload — you named `order_total`, and the build has four candidates for that word.** `orders.total` is `subtotal + shipping_cost`, beside `subtotal`, `cogs` and `marketplace_total` | **goods `subtotal`, frozen at finalize.** The warehouse handled goods, not courier money, and `marketplace_total` is `0` on a phone order. One word in the doc settles it |
-| **flat-vs-percent-is-a-live-rate-change** | `liability_terms.handling_fee` is charging money **today**, flat per order. A percent with a cap is not an extension of it — it is a different contract for every existing pair | a migration that reads each pair's flat fee and writes `fee_bp = 0, min_fee = max_fee = <the flat fee>`, reproducing today's charge exactly, and the warehouse edits from there. Never a silent reinterpretation of the old column |
+| **flat-vs-percent-is-a-live-rate-change** | `liability_terms.handling_fee` is charging money **today**, flat per order. A percent with a cap is not an extension of it — it is a different contract for every existing pair | a migration that reads each pair's flat fee and writes `fee_percent = 0, min_fee = max_fee = <the flat fee>`, reproducing today's charge exactly, and the warehouse edits from there. Never a silent reinterpretation of the old column |
 | **two-services-would-own-one-rate** | if the rate moves to `warehouse_service` and `liability_terms.handling_fee` stays, both are *the fee* and nothing says which wins. See [Contradiction](#the-fee-rate-would-exist-in-two-services) | **liability keeps the posting and the credit limit, and loses the rate.** Drop `handling_fee` from `liability_terms` in the same change that adds `warehouse_fee_terms` |
 | **the-pair-override-disappears** | your field list is one config per warehouse. `liability_terms` is per **pair**, with `counterparty_id = 0` as the default row — so a warehouse can already price one seller differently, and that capability would vanish | keep the pair grain: `(warehouse_id, selling_team_id)`, `selling_team_id = 0` = the default row. The same shape liability already uses, so the screen and the concept carry over |
 | **nobody-reads-the-calendar** | `receiving_hours` has a table, a proto, an editor and a test, and **no caller** — an order can be placed into a warehouse that is shut | [closed-means-refused](#closed-means-refused) |
@@ -248,12 +249,6 @@ An open/close grid nothing consults is decoration — that is its state today.
 ---
 
 ## Question
-
-### is-the-money-an-integer-rupiah
-*(new — the payload prices everything in `double`)* Every money field in this system is `int64` whole rupiah and
-no proto has a float. **→ Recommend `int64` for `order_total`, `max_fee`, `min_fee` and
-`calculated_warehouse_fee`, and `fee_bp` (250 = 2.5%) for the rate** — plus one line saying the RPC **rounds
-half up to whole rupiah**, so the quoted, frozen and posted numbers are the same number.
 
 ### does-order-total-include-shipping
 *(narrowed — you named `order_total`, and the build has four numbers that answer to it)* `orders.total` is
@@ -287,7 +282,7 @@ already ships.
 `liability_terms.handling_fee` **stores a rate and computes from it today**. The decision leaves balance
 recording only — so does that column go, in the same change?
 **→ Recommend yes, dropped at step 5** of [the move](#the-rate-moves-in-five-steps-and-no-day-charges-differently).
-⚠ Doing nothing is not neutral: a `fee_bp` in `warehouse_service` while `handling_fee` stays **is** the
+⚠ Doing nothing is not neutral: a rate in `warehouse_service` while `handling_fee` stays **is** the
 two-copies option, chosen by accident. ⚠ And decide it **before**
 [technical/balance Q8](../../technical/balance/team_balance_design_clarify.md#question) renames that column.
 
@@ -359,25 +354,56 @@ flowchart LR
 
 ## money-is-a-double-here-and-an-integer-everywhere-else
 
-*"`double order_total` … `double max_fee` … `double calculated_warehouse_fee`"* (§Rpc That Must Exist) — while
-[expense.proto](../../../proto/warehouse/expense/v1/expense.proto) states *"Money is whole rupiah as int64, like
-every other money field in this system"*, and a grep for `double`/`float` across **every** proto in
-[proto/warehouse/](../../../proto/warehouse/) returns **nothing**. `orders.total`, `liability_terms.handling_fee`,
-`liability_entries.change`, every stock valuation — all `int64`.
+*"`double order_total` … `double max_fee` … `double calculated_warehouse_fee`"* (§Rpc That Must Exist). Meanwhile the
+build stores money as `int64`: over 100 `int64` fields with money names (`total`, `price`, `cost`, `fee`…) across the
+protos, against 10 `double` fields, all in `financial_account`. [expense.proto](../../../proto/warehouse/expense/v1/expense.proto)
+even states `int64` as the rule in a comment.
 
-**Which is wrong:** the payload — it is the newer text, but it is the only float in a system that decided
-against them everywhere else. **→ Recommend** [int64 and basis points](#the-payload-as-i-would-write-it).
-⚠ **The pattern worth recording:** a money type is chosen once per *field*, and the places that get it wrong are
-the ones written as a payload sketch rather than beside an existing column — there is no column next to
-`WarehouseFeeCalculate` to copy the type from.
+🔄 *(2026-10-10)* **Which is wrong: the BUILD, not your payload.** I first said the opposite. Your `double` follows
+[rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point) (2026-09-17), which already records
+that *"it reverses the build everywhere"*. The build has not moved yet.
+
+**→ Recommend** `warehouse_service` is built `double` from the start, as your payload is. Liability's `int64` moves in
+the same change that makes it post the amount from the event (step 4 of
+[the move](#the-rate-moves-in-five-steps-and-no-day-charges-differently)), so the fee crosses no type boundary once it
+is live.
 
 ```mermaid
 flowchart LR
-  P["payload — double"] --> R["round to int64 at the caller"]
-  R --> F["orders.warehouse_fee — int64"]
-  F --> L["liability_entries.change — int64"]
-  P --> Q["quoted to the seller — double"]
-  Q -.->|"can differ by 1 rupiah"| F
+  P["your payload - double, as decided"] --> W["warehouse_service - double from the start"]
+  W --> L["liability posts the amount"]
+  B["liability today - int64"] -.->|"moves at step 4"| L
+```
+
+## my-clarifies-kept-int64-after-double-was-decided
+
+*(2026-10-10)* **One cause, six sites.** [rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point)
+was decided in the **order** tree and binds every tree. My clarifies argued from the build, which is `int64`, instead of
+from the decision. Most were written before it and never re-checked after it.
+
+| site | what I wrote | now |
+| --- | --- | --- |
+| this file, first pass 2026-09-16 | `int64` and basis points for the fee, and called your `double` wrong | rewritten: your types stand ([money-is-a-double-here-and-an-integer-everywhere-else](#money-is-a-double-here-and-an-integer-everywhere-else)) |
+| [cost Critique 3](../../../technical/cost/design_clarify.md), 2026-08-27 | `int64` for cost | deleted, answered by [every-ledger-keeps-money-as-float64](../../../technical/ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64) |
+| [team balance](../../../technical/balance/team_balance_design_clarify.md) | an `int64` ERD, a fee rounded half-up to `int64`, the markup moved to basis points | rewritten to `float64`, and the markup verdict reversed |
+| stock design Q4 and its contradiction | `int64` valuation | answered against me: [stock-money-is-float64-compared-at-4-digits](../../../technical/stock/design_decision.md#stock-money-is-float64-compared-at-4-digits) |
+| ledger template Q2 and Critique 1 | integer minor-units for payments | answered against me: [every-ledger-keeps-money-as-float64](../../../technical/ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64) |
+| [excel_readers](../../../technical/packages/excel_readers/context_clarify.md#i-recommended-int64-rupiah-against-a-decision-that-had-already-settled-double), 2026-09-24 | `int64` in the reader | already recorded there |
+
+**→ Recommend** two things, so it does not happen a seventh time:
+1. **The code comments that state `int64` as the rule are what I kept copying**: `expense.proto` (*"Money is whole
+   rupiah as int64, like every other money field in this system"*) and `liability.proto`. Correct each one in the change
+   that moves its context to `double`.
+2. **A system-wide rule decided in one tree needs a line where every tree is read.** One line in `CLAUDE.md`, *money is
+   `double` / `float64`, per rupiah-is-floating-point*, is the first thing every agent reads. That is your call, and I
+   have not added it.
+
+```mermaid
+flowchart LR
+  D["rupiah-is-floating-point - order tree, 2026-09-17"] -->|"binds"| ALL["every tree"]
+  B["the build - int64, and its comments say so"] -->|"what I copied"| C["six clarify sites"]
+  D -.->|"never re-checked"| C
+  C -->|"2026-10-10"| X["all six corrected"]
 ```
 
 ## the-warehouse-profile-is-already-owned-elsewhere

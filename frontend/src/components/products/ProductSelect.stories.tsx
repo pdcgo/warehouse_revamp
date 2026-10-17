@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Text } from "@chakra-ui/react";
+import { Dialog, Portal, Text } from "@chakra-ui/react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { products } from "../../../.storybook/fixtures";
@@ -143,5 +143,38 @@ export const Interactive: Story = {
     await waitFor(() =>
       expect(input).toHaveValue(`${products[0]!.sku} — ${products[0]!.name}`),
     );
+  },
+};
+
+// INSIDE A MODAL DIALOG the list must not portal: a portalled listbox lands outside the dialog, where the modal makes it
+// inert. `portalled={false}` renders it inline, so it opens and takes a click (the stock count's found-product dialog).
+export const InsideADialog: Story = {
+  args: { portalled: false, scope: "all" },
+  render: (args) => (
+    <Dialog.Root open>
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content data-testid="product-select-dialog">
+            <Dialog.Body p="6">
+              <ProductSelect {...args} />
+            </Dialog.Body>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
+  ),
+  play: async ({ args }) => {
+    const dialog = await screen.findByTestId("product-select-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    const input = within(dialog).getByRole("combobox");
+    await userEvent.click(input);
+    await userEvent.type(input, "kopi", { delay: 20 });
+    // The option is INSIDE the dialog, not portalled out of it.
+    const option = await within(dialog).findByTestId(`product-select-option-${products[0]!.sku}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(args.onChange).toHaveBeenCalled());
   },
 };

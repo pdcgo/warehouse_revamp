@@ -233,6 +233,11 @@ flowchart TB
 - Labels: one prints through the receipt's signed URL; several at once need a merge (⚠ `printMerge`). Export ⚠ `exportFile`.
 - Built in the preview `Pages/Warehouse/PickQueueNextPage`.
 
+🔄 *(2026-10-16)* **Amended by [a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)**:
+a scan of the label finds the order by `order_external_ref_id` **or** `receipt`. The handover's `resiLookup` looks by the
+resi alone and must take the ref too. Find-parcel already compares with both. When a code matches several orders, all are shown and people decide:
+[two-orders-on-one-label-are-shown-not-chosen](../../business/inventory/order_decision.md#two-orders-on-one-label-are-shown-not-chosen).
+
 ## the-bulk-actions-are-always-on-screen
 
 > Owner, in chat (2026-10-01): *"aksi yang perlu centang apa tidak bisa muncul dari awal saja?"*

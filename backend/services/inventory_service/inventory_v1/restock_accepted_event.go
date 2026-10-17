@@ -47,22 +47,19 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 		acceptedAt = *rr.AcceptedAt
 	}
 
-	var supplierID uint64
-	if rr.SupplierID != nil {
-		supplierID = *rr.SupplierID
-	}
+	supplierID := commonLineSupplier(rr.Items)
 
 	lines := make([]*eventsv1.RestockAcceptedLine, 0, len(rr.Items))
 
 	for _, item := range rr.Items {
-		var broken, lost int64
+		var broken, missing int64
 
 		for _, d := range item.Damaged {
 			switch d.DamageType {
-			case restockDamageBroken:
+			case restockProblemBroken:
 				broken += d.Quantity
-			case restockDamageLost:
-				lost += d.Quantity
+			case restockProblemMissing:
+				missing += d.Quantity
 			}
 		}
 
@@ -73,7 +70,9 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 			TotalPrice:    item.TotalPrice,
 			AcceptedCount: item.ReceivedQuantity,
 			BrokenCount:   broken,
-			LostCount:     lost,
+			MissingCount:  missing,
+			SupplierId:        idOrZero(item.SupplierID),
+			SupplierChannelId: idOrZero(item.SupplierChannelID),
 		})
 	}
 
@@ -94,6 +93,8 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 				SupplierId:  supplierID,
 				AcceptedOn:  acceptedAt.In(jakarta).Format("2006-01-02"),
 				Lines:       lines,
+				// restock-accepted-carries-every-line: the instant, beside the day derived from it.
+				AcceptedAtUnix: acceptedAt.Unix(),
 			},
 		},
 	}
@@ -107,8 +108,31 @@ func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 		Model(&inventory_service_models.RestockRequest{}).
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Items.Damaged").
-		Where("status = ? AND supplier_id IS NOT NULL", restockStatusFulfilled).
+		Where("status = ?", restockStatusAccepted).
+		Where("EXISTS (SELECT 1 FROM restock_request_items i " +
+			"WHERE i.restock_request_id = restock_requests.id AND i.supplier_id IS NOT NULL)").
 		Order("id")
+}
+
+// commonLineSupplier is the one supplier every line names, or 0 when they disagree or one names none.
+//
+// ⚠ supplier_service's figures still fold a whole restock under the event's restock-level supplier_id. Lines name their
+// own supplier now (a-line-names-the-channel-it-was-bought-from) and the event carries each, but until the fold reads a
+// line's own, a restock whose lines name one supplier keeps feeding it, and one that mixes suppliers credits none of
+// them rather than all of it to the first.
+func commonLineSupplier(items []inventory_service_models.RestockRequestItem) uint64 {
+	var supplier uint64
+
+	for i := range items {
+		id := idOrZero(items[i].SupplierID)
+		if id == 0 || (supplier != 0 && supplier != id) {
+			return 0
+		}
+
+		supplier = id
+	}
+
+	return supplier
 }
 
 // publishIdentity is who caused the publish: the caller when a request put one on the ctx, and an explicit system

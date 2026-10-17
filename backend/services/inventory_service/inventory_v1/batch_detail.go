@@ -39,13 +39,13 @@ type batchRow struct {
 // bucket is broken (#227). restock_damaged_units carries the per-reason type and damaged_qty is their
 // total, so the split needs no schema change: broken = damaged − lost, and the identity
 // arrived = broken + lost + used + ready still holds.
-const lostExpr = `COALESCE((SELECT SUM(du.quantity) FROM restock_damaged_units du WHERE du.restock_request_item_id = b.restock_request_item_id AND du.damage_type = 'lost'), 0)`
+const lostExpr = `COALESCE((SELECT SUM(du.quantity) FROM restock_damaged_units du WHERE du.restock_request_item_id = b.restock_request_item_id AND du.damage_type = 'missing'), 0)`
 
 // batchSelect is the projection over `stock_batches AS b` joined to its line and delivery. The caller
 // adds the WHERE (warehouse + product for the list, warehouse + id for the detail) and the paging.
 const batchSelect = `
 	b.id, b.delivery_id, b.warehouse_id, r.receipt AS receipt_no,
-	b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
+	b.product_id, i.sku, i.name, COALESCE(i.supplier_id, 0) AS supplier_id,
 	b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
 	` + lostExpr + ` AS lost,
 	COALESCE((SELECT SUM(sb.qty) FROM stock_shelf_batches sb WHERE sb.batch_id = b.id), 0) AS ready,

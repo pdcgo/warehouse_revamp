@@ -1,4 +1,6 @@
 # Inside Order Creation.
+## Reference.
+1. before create order, order service check dept threeshold. for reference [read this](../balance/context.md)
 
 ```mermaid
 stateDiagram-v2
@@ -10,19 +12,34 @@ state fe{
     state "Create Idempotency Key" as idem
     state "Filling Order Form" as fill
     state "Create Order" as cre
+    state "Waiting for the Answer, Form Locked" as wait
+    state answer <<choice>>
+    state "Open the Created Order" as done
 
     [*]-->needc
     needc-->idem
     idem-->fill
     fill-->cre
+    cre-->wait
+    wait-->answer
+    answer-->done: the order
+    answer-->idem: an error, new key, the form keeps what was typed
+    answer-->cre: no answer, Try Again with the same key
+    done-->[*]
 }
 
-fe-->rpc
+fe-->rpc: bring idempotency key
 
 state "Create RPC called" as rpc
 state create_err <<choice>>
+state "Balance Service" as bal
+state "Check Before Create Order" as ordcheck
 
-rpc-->tx: bring idempotency key
+rpc-->ordcheck: checking debt threshold limit if order contain shared product
+ordcheck-->bal: give team ids data that product shared
+bal-->ordcheck: giving threshold limit data
+
+ordcheck-->tx
 
 tx: Open Database Transaction
 
@@ -103,7 +120,7 @@ state srv {
 
 tx-->create_err
 state "Order Created Event" as createdevt
-state "Inventory Tx Cancel Compensate Event" as cominvevt
+state "InventoryTxCancel Compensate Event" as cominvevt
 state "Delete Draft Order" as draft
 
 create_err-->createdevt: if success, and bring idempotency key
@@ -125,6 +142,7 @@ message ProductItem {
 }
 
 message OrderTransactionCreateRequest {
+    string                  idempotency_key
     uint64                  warehouse_id
     uint64                  team_id
     string                  idempotency_key
@@ -134,7 +152,7 @@ message OrderTransactionCreateRequest {
 
 message TransactionItem {
     uint64 product_id
-    uint64 team_id                  // item owner team_id
+    uint64 owner_team_id         
     uint32 qty
     double unit_cost                // price product, if cross, price before markup
     double unit_cost_with_markup    // price product, if cross, price after markup

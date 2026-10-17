@@ -8,6 +8,21 @@ edits. Questions: [context_clarify.md](../../business/financial_account/context_
 [context_decision.md](../../business/financial_account/context_decision.md) — **forty owner decisions**. **Nothing is open** —
 the business analysis is done, the analytics included. No technical doc.
 
+**2026-10-14 — the team payment is wired** ([a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)):
+the second listener, `TeamPaymentHandler` on `liability-payment-accepted`, posts one `team_payment` row out of the
+payer's account and one into the creditor's, one group, on the accept day. Liability's *Paid from* / *Received into*
+are real fields now, each checked against `FinancialAccountByIds` before liability writes it — see
+[balance's state](../balance/context.md). ⚠ My spec, not a decision: a payment recorded before *Paid from* existed
+(`from_account_id = 0`) posts only the creditor's leg; an account in the wrong team is an error for the dead-letter
+queue, never filed elsewhere; an archived account still takes the row.
+
+**2026-10-14 — the accounts list's two marks are built** ([the-archive-and-lainnya-are-served](../../technical/frontend/financial_accounts_decision.md#the-archive-and-lainnya-are-served),
+[lainnya-is-opened-by-the-server](../../business/financial_account/context_decision.md#lainnya-is-opened-by-the-server)): `archived_only` on
+`FinancialAccountList`, `archived` on the Overview's filter, and `FinancialAccountCreate` opening type Lainnya
+(`checkIdentity(…, allowOther)` — true for Create, false for Identify). No migration: the `(team_id, status)` index
+serves both reads. `features/financialAccount/pending.ts` is deleted; the report's Export mark is the domain's
+only one left. Proven in `e2e/financial_accounts.spec.ts` — 12 steps, two of them new.
+
 ## Decided
 
 | decision | what it means for the build |
@@ -61,8 +76,9 @@ the business analysis is done, the analytics included. No technical doc.
 | **the service** | [backend/services/financial_account_service/](../../../backend/services/financial_account_service/) — one handler file per RPC and a unit test beside each · the ledger's one write path [ledger.go](../../../backend/services/financial_account_service/financial_account_v1/ledger.go): lock the account, the log row, the balance, the day's report row and every later day's shift, one transaction · mounted in the dev server, wired by Wire |
 | the schema | [00001_create_financial_accounts.sql](../../../backend/services/financial_account_service/db_migrations/00001_create_financial_accounts.sql) — `financial_accounts`, `financial_account_logs`, `shop_accounts`, `operational_accounts`, `financial_account_daily_reports`, the listener's `financial_account_event_logs` · [database-schema.md](../../database-schema.md#financial_account_service) · flows: [rpc.md](../../services/financial_account_service/rpc.md) |
 | the withdrawal listener | push route `/event/financial-account-withdrawal/push` on `settlement-log-posted` — settlement's `withdrawal` rows into the shop's account, sign turned; an `unknown` account made for a shop with none · subscription declared in `san pubsub ensure` ([san.md](../../tools/san.md)) |
+| the team-payment listener *(2026-10-14)* | push route `/event/financial-account-team-payment/push` on `liability-payment-accepted` — [team_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/team_payment_listener.go): claim, lock both teams' accounts in id order (`lockOwnedAccounts`), two `team_payment` legs · 5 unit tests, 3 race/interleave tests ([lock order](../../../audits/services/financial_account_service/concurrency/lock-order.md)) |
 | ShopSet's one outside question | [financial_account_deps.go](../../../backend/cmd/app_development/financial_account_deps.go) — `ShopAccessCheck` under the caller's token, before the transaction: another team's shop is refused |
-| the screens | `/financial-accounts`, `/financial-accounts/:id`, `/financial-accounts/report` — routed, **Accounts** in the menu for every member of a selling or warehouse team · the prototype's pages on the real client |
+| the screens | `/financial-accounts`, `/financial-accounts/:id`, `/financial-accounts/report` — routed, **Accounts** in the menu for every member of a selling or warehouse team · the prototype's pages on the real client · the report is five cards and one table of periods ([the-report-is-five-cards-and-one-table](../../technical/frontend/financial_accounts_decision.md#the-report-is-five-cards-and-one-table)) — its **Ekspor** is a marked placeholder, no contract builds a file |
 | tests | 50 unit tests · 48 stories · [e2e/financial_accounts.spec.ts](../../../frontend/e2e/financial_accounts.spec.ts) — 10 steps against the real server, the withdrawal pushed to the listener's route |
 | audits | [audits/services/financial_account_service/](../../../audits/services/financial_account_service/) — 9 performance reports, the lock-order matrix |
 | the dev database | migrated 2026-10-01: financial_account_service 00001 |
@@ -104,7 +120,6 @@ flowchart LR
 | --- | --- |
 | *Paid from* on a restock → `restock` rows | inventory's restock event, naming the account ([a-restock-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#a-restock-must-name-the-account-that-paid)) · the restock form swaps `PaymentTypeSelect` for `FinancialAccountSelect` (operational only, pre-picked) |
 | *Paid from* on an expense → `expense` / `ads_expense` rows | expense's event ([an-expense-must-name-the-account-that-paid](../../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid)) |
-| *Received into* on a team payment → two `team_payment` rows | the balance service's acceptance event, with both account ids ([a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) |
 
 Until each is wired, a reconcile catches what it moved as an `adjustment` — honest: it was not recorded.
 

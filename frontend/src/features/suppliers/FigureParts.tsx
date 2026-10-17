@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Flex, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Flex, Span, Stack, Table, Text } from "@chakra-ui/react";
 
 import { formatRupiah } from "../../lib/money";
+import { SummaryCard, SummaryStrip } from "../orders/SummaryCard";
+import { useIsMobile } from "../../layouts/shell";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { type SupplierFigures, brokenRate, lostRate } from "./figures";
+import { type SupplierFigures, brokenRate, lostRate, unitsReceived } from "./figures";
 
 // THE PIECES EVERY SUPPLIER FIGURE IS DRAWN WITH — shared by the Statistics tab (SupplierStatistics) and the Supplier
 // Report page, so a supplier's numbers read the same in both places (the-figures-are-a-statistics-tab-and-a-supplier-report).
@@ -18,79 +20,93 @@ const units = (n: number) => n.toLocaleString("id-ID");
 // A rate to one decimal, written the way the app writes every number — 4,6 rather than 4.6.
 const pct = (rate: number) => rate.toLocaleString("id-ID", { maximumFractionDigits: 1 });
 
-/** The window's headline: what was restocked, lost and broken, and the broken rate. */
+/**
+ * The window's headline: what was restocked, lost and broken — the order list's strip of cards
+ * (a-list-summary-is-the-order-lists-card-strip, a-summary-card-is-grey-with-a-thin-border): a label, ONE figure, the
+ * units on the quiet line, how the figure is made under it. It was a box of its own, the one stat box in the app that
+ * was not the shared card (owner, on the Statistik tab: *"kotaknya yang diubah"*).
+ *
+ * THE RATES SIT IN THEIR OWN CARDS (owner: *"untuk tingkat kerusakan dan hilang kasih saja di card hilang dan rusak
+ * dengan persentasenya sesuai warna nomornya"*): lost and broken each carry their share of every unit received beside
+ * their units, bold, in the figure's tone — no Tingkat rusak card of its own, and the lost rate is on a desktop too now.
+ *
+ * THE TOTAL LEADS (owner: *"iya, kasih total"*): every unit received — restocked, lost and broken — and its value, the
+ * strip's one lead card, so a percentage has its whole on screen: "1 unit · 0,7% dari total".
+ *
+ *   ┌ Total ───────┐ ┌ Direstok ────┐ ┌ Hilang di… ──────────┐ ┌ Rusak di… ───────────┐
+ *   │ Rp 4.645.000 │ │ Rp 4.400.000 │ │ Rp 50.000            │ │ Rp 195.000           │
+ *   │ 137 unit     │ │ 130 unit     │ │ 1 unit · 0,7% dari…  │ │ 6 unit · 4,4% dari…  │
+ */
 export function FiguresSummary({ figures, testId = "figures-summary" }: { figures: SupplierFigures | undefined; testId?: string }) {
   const { t } = useTranslation();
-  const rate = figures ? brokenRate(figures) : null;
+
+  // The units, on the card's quiet line — tagged, so a story can read them apart from the value.
+  const unitLine = (count: number, id: string) =>
+    figures ? <Span data-testid={`${testId}-${id}-units`}>{t("supplierFigures.units", { count, n: units(count) })}</Span> : undefined;
+
+  // A lost or broken figure in its status tone once there is any — written as a ROLE, never a hue (CLAUDE.md).
+  const toneOf = (count: number, tone: string) => (count > 0 ? tone : undefined);
+  const toned = (value: bigint, count: number, tone: string) =>
+    figures ? <Span color={toneOf(count, tone)}>{formatRupiah(value)}</Span> : "—";
+
+  // …and its share of every unit received BESIDE THE UNITS, bold, in the same tone (owner: *"persentase kasih di sebelah
+  // unit, bold"*), after a dot, saying what it is a share OF (*"disebelah unit ada . persetase ada keterangan dari
+  // total"*) — "6 unit · 4,4% dari total". Nothing received is no rate, not 0%.
+  const unitsAndRate = (count: number, rate: number | null, tone: string, id: string) =>
+    figures ? (
+      <>
+        {unitLine(count, id)}
+        {rate !== null && (
+          <>
+            {" · "}
+            <Span color={toneOf(count, tone)} fontWeight="bold" data-testid={`${testId}-${id}-rate`}>
+              {t("supplierFigures.rate", { rate: pct(rate) })}
+            </Span>{" "}
+            {t("supplierFigures.ofTotal")}
+          </>
+        )}
+      </>
+    ) : undefined;
+
+  const received = figures ? unitsReceived(figures) : 0;
+
+  // HOW A FIGURE IS MADE is a desktop line: on a phone two cards share a row and the note was always cut to "unit
+  // yang…" (owner: *"iya"*, `a-phone-card-shows-no-note`) — the label, the figure and its units say enough there.
+  const isMobile = useIsMobile();
+  const note = (key: string) => (isMobile ? undefined : t(key));
 
   return (
-    <Flex gap="card" wrap="wrap" borderWidth="1px" borderRadius="md" p="card" data-testid={testId}>
-      <Tile
+    <SummaryStrip testId={testId}>
+      <SummaryCard
+        label={t("supplierFigures.total")}
+        value={figures ? formatRupiah(figures.restockValue + figures.lostValue + figures.brokenValue) : "—"}
+        line={unitLine(received, "total")}
+        note={note("supplierFigures.totalHint")}
+        emphasis
+        testId={`${testId}-total`}
+      />
+      <SummaryCard
         label={t("supplierFigures.restocked")}
-        hint={t("supplierFigures.restockedHint")}
         value={figures ? formatRupiah(figures.restockValue) : "—"}
-        sub={figures ? t("supplierFigures.units", { count: figures.restockCount, n: units(figures.restockCount) }) : ""}
+        line={unitLine(figures?.restockCount ?? 0, "restocked")}
+        note={note("supplierFigures.restockedHint")}
         testId={`${testId}-restocked`}
       />
-      <Tile
+      <SummaryCard
         label={t("supplierFigures.lost")}
-        hint={t("supplierFigures.lostHint")}
-        value={figures ? formatRupiah(figures.lostValue) : "—"}
-        sub={figures ? t("supplierFigures.units", { count: figures.lostCount, n: units(figures.lostCount) }) : ""}
-        tone={figures && figures.lostCount > 0 ? "warning.fg" : undefined}
+        value={toned(figures?.lostValue ?? 0n, figures?.lostCount ?? 0, "warning.fg")}
+        line={unitsAndRate(figures?.lostCount ?? 0, figures ? lostRate(figures) : null, "warning.fg", "lost")}
+        note={note("supplierFigures.lostHint")}
         testId={`${testId}-lost`}
       />
-      <Tile
+      <SummaryCard
         label={t("supplierFigures.broken")}
-        hint={t("supplierFigures.brokenHint")}
-        value={figures ? formatRupiah(figures.brokenValue) : "—"}
-        sub={figures ? t("supplierFigures.units", { count: figures.brokenCount, n: units(figures.brokenCount) }) : ""}
-        tone={figures && figures.brokenCount > 0 ? "error.fg" : undefined}
+        value={toned(figures?.brokenValue ?? 0n, figures?.brokenCount ?? 0, "error.fg")}
+        line={unitsAndRate(figures?.brokenCount ?? 0, figures ? brokenRate(figures) : null, "error.fg", "broken")}
+        note={note("supplierFigures.brokenHint")}
         testId={`${testId}-broken`}
       />
-      <Tile
-        label={t("supplierFigures.brokenRate")}
-        hint={t("supplierFigures.brokenRateHint")}
-        value={rate === null ? "—" : t("supplierFigures.rate", { rate: pct(rate) })}
-        sub=""
-        testId={`${testId}-rate`}
-      />
-    </Flex>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  sub,
-  hint,
-  tone,
-  testId,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  hint: string;
-  tone?: string;
-  testId: string;
-}) {
-  return (
-    <Box minW="10rem" flex="1" data-testid={testId}>
-      <Text fontSize="xs" color="fg.muted">
-        {label}
-      </Text>
-      <Text fontSize="lg" fontWeight="bold" color={tone} data-testid={`${testId}-value`}>
-        {value}
-      </Text>
-      {sub && (
-        <Text fontSize="sm" data-testid={`${testId}-units`}>
-          {sub}
-        </Text>
-      )}
-      <Text fontSize="xs" color="fg.muted">
-        {hint}
-      </Text>
-    </Box>
+    </SummaryStrip>
   );
 }
 
@@ -102,6 +118,7 @@ export function FigureHeaders() {
     <>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.restocked")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.lost")}</Table.ColumnHeader>
+      <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.lostRate")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.broken")}</Table.ColumnHeader>
       <Table.ColumnHeader textAlign="end">{t("supplierFigures.col.brokenRate")}</Table.ColumnHeader>
     </>
@@ -109,7 +126,11 @@ export function FigureHeaders() {
 }
 
 /**
- * `rateMuted` greys the rate of a supplier with too few units to be rated against the others
+ * Restocked, lost and broken — each units over value — and lost and broken each followed by ITS OWN RATE COLUMN (owner:
+ * *"persentase jadi column beda aja kalau gitu"*): the share of the row's units received, in the figure's tone once there
+ * is any, as the cards read it (the-loss-rates-sit-in-their-cards). The lost rate was a phone's alone until now.
+ *
+ * `rateMuted` greys the broken rate of a supplier with too few units to be rated against the others
  * (rate-ranking-needs-50-units) — shown, never hidden, with the reason on hover.
  */
 export function FigureCells({
@@ -121,24 +142,20 @@ export function FigureCells({
   rateMuted?: boolean;
   rateMutedReason?: string;
 }) {
-  const { t } = useTranslation();
-  const rate = brokenRate(figures);
-
   return (
     <>
       <CountCell count={figures.restockCount} value={figures.restockValue} />
       <CountCell count={figures.lostCount} value={figures.lostValue} tone="warning.fg" />
+      <RateCell rate={lostRate(figures)} count={figures.lostCount} tone="warning.fg" testId="figure-lost-rate" />
       <CountCell count={figures.brokenCount} value={figures.brokenValue} tone="error.fg" />
-      <Table.Cell textAlign="end">
-        <Text
-          fontSize="sm"
-          color={rate === null || rateMuted ? "fg.muted" : undefined}
-          title={rateMuted ? rateMutedReason : undefined}
-          data-muted={rateMuted ? "true" : undefined}
-        >
-          {rate === null ? "—" : t("supplierFigures.rate", { rate: pct(rate) })}
-        </Text>
-      </Table.Cell>
+      <RateCell
+        rate={brokenRate(figures)}
+        count={figures.brokenCount}
+        tone="error.fg"
+        muted={rateMuted}
+        mutedReason={rateMutedReason}
+        testId="figure-broken-rate"
+      />
     </>
   );
 }
@@ -168,13 +185,54 @@ function CountCell({ count, value, tone }: { count: number; value: bigint; tone?
   );
 }
 
+// A share of the row's units received. In the figure's tone once there is any; a muted 0% when none of them went that
+// way; a dash when nothing arrived at all — no rate, which is not a rate of 0.
+function RateCell({
+  rate,
+  count,
+  tone,
+  muted,
+  mutedReason,
+  testId,
+}: {
+  rate: number | null;
+  count: number;
+  tone: string;
+  muted?: boolean;
+  mutedReason?: string;
+  testId: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Table.Cell textAlign="end">
+      <Text
+        fontSize="sm"
+        color={rate === null || count === 0 || muted ? "fg.muted" : tone}
+        title={muted ? mutedReason : undefined}
+        data-muted={muted ? "true" : undefined}
+        data-testid={testId}
+      >
+        {rate === null ? "—" : t("supplierFigures.rate", { rate: pct(rate) })}
+      </Text>
+    </Table.Cell>
+  );
+}
+
 /**
- * One row as a BLOCK, for a phone (a-phone-reads-each-line-as-a-block): the title at full width with the broken rate
- * beside it, then the figures as lines.
+ * One row as a BLOCK, for a phone (a-phone-reads-each-line-as-a-block): the title at full width, then the figures as
+ * lines — restocked, then lost and broken each with its rate beside it, in the figure's tone, as the desktop's columns
+ * read them (owner, on the phone: *"diperbaiki"*, `a-phone-figures-block-reads-the-columns`). The broken rate is no
+ * longer repeated beside the title.
+ *
+ *   2026-10-08
+ *   Direstok 40 · Rp 2.000.000
+ *   Hilang 1 · 2,3%    Rusak 2 · 4,7%
  */
 export function FigureBlock({
   title,
   sub,
+  header,
   figures,
   onClick,
   rateMuted,
@@ -182,6 +240,8 @@ export function FigureBlock({
 }: {
   title: ReactNode;
   sub?: ReactNode;
+  /** Drawn in place of the title and its sub-line — a product block's picture, name and SKU (ProductListItem). */
+  header?: ReactNode;
   figures: SupplierFigures;
   onClick?: () => void;
   /** See FigureCells. */
@@ -189,8 +249,6 @@ export function FigureBlock({
   testId: string;
 }) {
   const { t } = useTranslation();
-  const rate = brokenRate(figures);
-  const lost = lostRate(figures);
 
   return (
     <Stack
@@ -201,9 +259,10 @@ export function FigureBlock({
       data-testid={testId}
       onClick={onClick}
       cursor={onClick ? "pointer" : undefined}
-      _hover={onClick ? { bg: "bg.subtle" } : undefined}
+      _hover={onClick ? { bg: "bg.muted" } : undefined}
+      _active={onClick ? { bg: "bg.muted" } : undefined}
     >
-      <Flex justify="space-between" gap="2" align="baseline">
+      {header ?? (
         <Box minW="0">
           <Text fontWeight="bold" truncate>
             {title}
@@ -214,21 +273,63 @@ export function FigureBlock({
             </Text>
           )}
         </Box>
-        <Text fontSize="sm" color={rate === null || rateMuted ? "fg.muted" : undefined} flexShrink="0">
-          {rate === null ? "—" : t("supplierFigures.rateBroken", { rate: pct(rate) })}
-        </Text>
-      </Flex>
+      )}
       <Text fontSize="sm">
         {t("supplierFigures.line.restocked", { n: units(figures.restockCount), value: formatRupiah(figures.restockValue) })}
       </Text>
-      <Text fontSize="sm" color="fg.muted">
-        {t("supplierFigures.line.lostBroken", {
-          lost: units(figures.lostCount),
-          lostRate: lost === null ? "—" : t("supplierFigures.rate", { rate: pct(lost) }),
-          broken: units(figures.brokenCount),
-        })}
-      </Text>
+      <Flex fontSize="sm" columnGap="4" rowGap="0.5" wrap="wrap">
+        <BlockLoss
+          label={t("supplierFigures.line.lost", { n: units(figures.lostCount) })}
+          count={figures.lostCount}
+          rate={lostRate(figures)}
+          tone="warning.fg"
+          testId={`${testId}-lost`}
+        />
+        <BlockLoss
+          label={t("supplierFigures.line.broken", { n: units(figures.brokenCount) })}
+          count={figures.brokenCount}
+          rate={brokenRate(figures)}
+          tone="error.fg"
+          muted={rateMuted}
+          testId={`${testId}-broken`}
+        />
+      </Flex>
     </Stack>
+  );
+}
+
+// "Hilang 1 · 2,3%" — the count in the figure's tone once there is any, its rate beside it in the same tone (muted when
+// none went that way, or when a supplier has too few units to be rated); no rate when nothing arrived.
+function BlockLoss({
+  label,
+  count,
+  rate,
+  tone,
+  muted,
+  testId,
+}: {
+  label: string;
+  count: number;
+  rate: number | null;
+  tone: string;
+  muted?: boolean;
+  testId: string;
+}) {
+  const { t } = useTranslation();
+  const color = count > 0 ? tone : "fg.muted";
+
+  return (
+    <Text as="span" data-testid={testId}>
+      <Span color={color}>{label}</Span>
+      {rate !== null && (
+        <>
+          {" · "}
+          <Span color={muted || count === 0 ? "fg.muted" : tone} data-testid={`${testId}-rate`}>
+            {t("supplierFigures.rate", { rate: pct(rate) })}
+          </Span>
+        </>
+      )}
+    </Text>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Box, Button, Card, HStack, Heading, Icon, SimpleGrid, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, Heading, Icon, Spinner, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -10,6 +10,7 @@ import { useSupplierChannels } from "../../features/suppliers/queries";
 import { ChannelBrowser } from "../../features/suppliers/ChannelBrowser";
 import { ProductBrowser } from "../../features/suppliers/ProductBrowser";
 import { SupplierStatistics } from "../../features/suppliers/SupplierStatistics";
+import { SupplierMeta } from "../../features/suppliers/SupplierMeta";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { TeamItem } from "../../components/entity/TeamItem";
@@ -24,20 +25,6 @@ function parseSupplierId(raw: string | undefined): bigint {
   }
 }
 
-// A labelled read-only field; a dash keeps the layout from collapsing on an empty value.
-function Field({ label, value, testId }: { label: string; value: string; testId?: string }) {
-  return (
-    <Stack gap="0.5" minW="0">
-      <Text fontSize="xs" fontWeight="bold" color="fg.muted" textTransform="uppercase">
-        {label}
-      </Text>
-      <Text fontSize="sm" lineClamp={3} whiteSpace="pre-line" data-testid={testId}>
-        {value || "—"}
-      </Text>
-    </Stack>
-  );
-}
-
 // DiscoverSupplierDetailPage is ANOTHER team's supplier, read in full (another-team-sees-everything-of-a-supplier)
 // — reached from Discover Suppliers, independent of the manage detail, which answers the owning team only and
 // carries its edit actions. Here nothing is editable: the supplier, the team that keeps it, and the same three
@@ -47,6 +34,16 @@ function Field({ label, value, testId }: { label: string; value: string; testId?
 //
 // The supplier, its stores and its figures are real — supplier_service reads any team's live supplier. ⚠ The Products
 // tab is still SAMPLE rows (./pending.ts).
+//
+// IT READS AS THE SUPPLIER'S OWN PAGE (owner: *"discover detailnya sesuaikan dengan detail biasa"* — *"masih ada teamnya
+// ya untuk di discover"*, `the-discover-detail-reads-as-the-supplier-page`): the name, then — Discover's own line — the
+// team that keeps it, then the same identity line as the supplier's page (SupplierMeta), no actions:
+//
+//   ← Kembali ke Temukan Pemasok
+//   PT Tekstil Nusantara
+//   [TA] Toko Anggrek  Selling    ☎ 021-555-0101 ⧉   📍 Kawasan Industri …   ← whose on the left, who beside it
+//                                 Kain tekstil grosir untuk konveksi.         ← muted
+//   Toko | Produk | Statistik
 export function DiscoverSupplierDetailPage() {
   const { supplierId } = useParams();
   const navigate = useNavigate();
@@ -111,22 +108,22 @@ export function DiscoverSupplierDetailPage() {
           {supplier.name}
         </Heading>
         {/* Whose supplier this is — the thing worth knowing on a cross-team page, and who to ask about it. */}
-        <Box maxW="20rem" data-testid="discover-detail-team">
-          <TeamItem team={{ teamId: supplier.teamId, teamName: supplier.teamName, teamType: TeamType.SELLING }} />
-        </Box>
+        {/* WHOSE ON THE LEFT, WHO IT IS BESIDE IT (owner: *"untuk discover … team di kiri, tengah ke kanan detail kontak
+            dll"*, then *"space terlalu jauh ternyata"*, `discover-detail-puts-the-team-left-and-the-contact-right`) — the
+            team, then the identity line right after it at a moderate gap, top-aligned; halves left too wide a hole
+            beside a short team name. Stacked on a phone. The identity line is the supplier page's
+            (the-supplier-is-described-under-its-name), not a card of uppercase labels. */}
+        <Flex direction={{ base: "column", md: "row" }} gap={{ base: "card", md: "8" }} align="start">
+          <Box flexShrink={0} maxW="20rem" data-testid="discover-detail-team">
+            <TeamItem team={{ teamId: supplier.teamId, teamName: supplier.teamName, teamType: TeamType.SELLING }} />
+          </Box>
+          <Box flex="1" minW="0">
+            <SupplierMeta supplier={supplier} testIdPrefix="discover-detail" />
+          </Box>
+        </Flex>
       </Stack>
 
       <NotImplementedSummary list={DISCOVER_SUPPLIER_DETAIL_PENDING} />
-
-      <Card.Root>
-        <Card.Body>
-          <SimpleGrid columns={{ base: 1, sm: 3 }} gap="card">
-            <Field label={t("supplierChannel.detail.contact")} value={supplier.contact} testId="discover-detail-contact" />
-            <Field label={t("supplierChannel.detail.address")} value={supplier.address} testId="discover-detail-address" />
-            <Field label={t("supplierChannel.detail.description")} value={supplier.description} />
-          </SimpleGrid>
-        </Card.Body>
-      </Card.Root>
 
       <Tabs.Root defaultValue="channels" lazyMount unmountOnExit data-testid="supplier-tabs">
         <Tabs.List>
@@ -144,7 +141,7 @@ export function DiscoverSupplierDetailPage() {
           </Tabs.Trigger>
         </Tabs.List>
 
-        {/* Read-only: no Add Channel, no row actions — this is another team's supplier. */}
+        {/* Read-only: no Add Store, no row actions — this is another team's supplier. */}
         <Tabs.Content value="channels">
           <ChannelBrowser teamId={current.teamId} supplierId={supplier.id} />
         </Tabs.Content>

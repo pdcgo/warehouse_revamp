@@ -1,0 +1,671 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// OpnameService — a stock count of ONE warehouse: plan it, snapshot and lock the shelf book, count blind, write each
+// difference as a draft with its reason, and finalize into the stock-problem register.
+//
+// The design is docs/business/inventory/opname.md and its decisions in opname_decision.md. Every warehouse runs at most
+// one active session (one-active-count-per-warehouse); a session's rows are one product on one rack
+// (a-snapshot-row-per-product-on-a-rack), and an open row is the lock (the-lock-is-the-open-snapshot-row).
+//
+// ⚠ PROTOTYPE until design_accept: the service is mounted answering Unimplemented, and the screens run against the
+// Storybook stub. It supersedes InventoryService.StockOpname, the one-rack count with no session — that RPC and its
+// page stay until the backend step replaces them.
+service OpnameService {
+  // ── The session — the warehouse admin's ──────────────────────────────────────────────────────────────────────────
+  // The warehouse's sessions, newest first. Staff read it too, to find the active one to count.
+  rpc OpnameSessionList(OpnameSessionListRequest) returns (OpnameSessionListResponse);
+  // Plan a count: snapshot the plan's shelf rows and lock them. Refused while another session is active.
+  rpc OpnameSessionCreate(OpnameSessionCreateRequest) returns (OpnameSessionCreateResponse);
+  // One session's header and progress.
+  rpc OpnameSessionDetail(OpnameSessionDetailRequest) returns (OpnameSessionDetailResponse);
+  // Call an active session off: its rows are released, nothing is posted (an-abandoned-count-waits-for-the-admin).
+  rpc OpnameSessionCancel(OpnameSessionCancelRequest) returns (OpnameSessionCancelResponse);
+  // Every row of a session WITH the book figure — the admin's watch page. Never served to staff: it would undo the
+  // blind count.
+  rpc OpnameRowList(OpnameRowListRequest) returns (OpnameRowListResponse);
+  // Send one counted row back to counting: its counts and its drafts are cleared (a-counted-row-is-read-only-until-sent-back).
+  rpc OpnameRowSendBack(OpnameRowSendBackRequest) returns (OpnameRowSendBackResponse);
+  // What finalize would post, per product, and whether this person may finalize.
+  rpc OpnameFinalizePreview(OpnameFinalizePreviewRequest) returns (OpnameFinalizePreviewResponse);
+  // Post the session: broken as written, the rest netted per product (broken-posts-as-written-the-rest-nets). Finalizing
+  // IS the agreement (finalizing-is-the-agreement).
+  rpc OpnameSessionFinalize(OpnameSessionFinalizeRequest) returns (OpnameSessionFinalizeResponse);
+
+  // ── Counting — any warehouse member at the shelf ─────────────────────────────────────────────────────────────────
+  // The racks to visit, with how many of their rows are counted. An `all` session lists every rack of the warehouse,
+  // empty ones too (an-all-count-visits-every-rack).
+  rpc OpnameRackList(OpnameRackListRequest) returns (OpnameRackListResponse);
+  // One rack as its counter sees it: the products expected there, BLIND until each is counted
+  // (a-count-is-blind-then-revealed).
+  rpc OpnameRackCount(OpnameRackCountRequest) returns (OpnameRackCountResponse);
+  // Submit a row's count. The first is the blind count; the second is the one recount, which replaces it
+  // (a-row-keeps-only-its-latest-count). Answers the row revealed, its system-written draft included.
+  rpc OpnameRowCount(OpnameRowCountRequest) returns (OpnameRowCountResponse);
+  // Close a revealed row with its drafts' reasons — the broken count and every reason the row needs
+  // (a-row-is-marked-counted-after-its-drafts, a-difference-needs-its-reason-on-the-draft).
+  rpc OpnameRowMarkCounted(OpnameRowMarkCountedRequest) returns (OpnameRowMarkCountedResponse);
+  // A product found on a rack the book does not have it on: a row at 0 here, and its other racks join the session
+  // (a-counter-may-add-a-product-found-here). Refused when its team never had it in this warehouse
+  // (a-unit-never-stocked-here-comes-in-by-restock).
+  rpc OpnameRowAddFound(OpnameRowAddFoundRequest) returns (OpnameRowAddFoundResponse);
+}
+
+// opname_sessions.status. APPEND ONLY.
+enum OpnameSessionStatus {
+  OPNAME_SESSION_STATUS_UNSPECIFIED = 0;
+  // Counting. At most one per warehouse.
+  OPNAME_SESSION_STATUS_ACTIVE = 1;
+  // Finalized: the differences are posted and the rows released.
+  OPNAME_SESSION_STATUS_FINISH = 2;
+  // Called off: the rows released, nothing posted.
+  OPNAME_SESSION_STATUS_CANCEL = 3;
+}
+
+// opname_sessions.plan — the KIND of plan. Its target (which team, product or rack) is only a filter at create, never
+// stored (the-plan-target-is-only-a-filter). APPEND ONLY.
+enum OpnamePlan {
+  OPNAME_PLAN_UNSPECIFIED = 0;
+  OPNAME_PLAN_ALL = 1;
+  OPNAME_PLAN_TEAM = 2;
+  OPNAME_PLAN_PRODUCT = 3;
+  // A rack — widened to its products' other racks (a-rack-plan-counts-its-products-everywhere).
+  OPNAME_PLAN_PLACEMENT = 4;
+}
+
+// opname_session_snapshots.status. APPEND ONLY.
+enum OpnameRowStatus {
+  OPNAME_ROW_STATUS_UNSPECIFIED = 0;
+  // Snapshotted and locked; being counted. A revealed row is still `created` until it is marked counted.
+  OPNAME_ROW_STATUS_CREATED = 1;
+  // Marked counted: read-only to its counter until the admin sends it back.
+  OPNAME_ROW_STATUS_COUNTED = 2;
+}
+
+// A draft's kind. Broken and lost are opname_problems_drafts rows; surplus is an opname_surplus_drafts row. APPEND ONLY.
+enum OpnameDraftType {
+  OPNAME_DRAFT_TYPE_UNSPECIFIED = 0;
+  // Taken off the rack and thrown away (a-broken-unit-is-thrown-away). Its count is the counter's.
+  OPNAME_DRAFT_TYPE_BROKEN = 1;
+  // The shortage less the broken, at least 0 — the system's number (a-short-rack-gets-a-lost-draft-from-the-system).
+  OPNAME_DRAFT_TYPE_LOST = 2;
+  // The count less the book — the system's number (a-surplus-draft-is-counted-by-the-system).
+  OPNAME_DRAFT_TYPE_SURPLUS = 3;
+}
+
+message OpnameSession {
+  uint64 id = 1;
+  uint64 warehouse_id = 2;
+  OpnameSessionStatus status = 3;
+  OpnamePlan plan = 4;
+  // user_service ids; resolved to names at read time.
+  uint64 created_by_id = 5;
+  int64 created_at_unix = 6;
+  // 0 until finished. Finalizing is the agreement — there is no override flag (finalizing-is-the-agreement).
+  uint64 finalized_by_id = 7;
+  int64 finalized_at_unix = 8;
+  // Progress, over the session's rows.
+  int64 row_count = 9;
+  int64 counted_row_count = 10;
+  // Rows whose count stands apart from the book. 0 for a counter's read of an unfinished session — it is a figure
+  // that leaks the book.
+  int64 difference_row_count = 11;
+  int64 rack_count = 12;
+  int64 product_count = 13;
+}
+
+// One draft on a row: what staff say about its difference.
+message OpnameDraft {
+  OpnameDraftType type = 1;
+  int64 stock_count = 2;
+  // The reason, typed by staff on the counting screen. Required on every draft before the row is marked counted.
+  string note = 3;
+}
+
+// One product on one rack in one session — an opname_session_snapshots row, with its drafts.
+message OpnameRow {
+  uint64 id = 1;
+  uint64 session_id = 2;
+  // The owning (selling) team.
+  uint64 team_id = 3;
+  uint64 product_id = 4;
+  // sku/name snapshot at the snapshot step.
+  string product_sku = 5;
+  string product_name = 6;
+  uint64 placement_id = 7;
+  string placement_code = 8;
+  OpnameRowStatus status = 9;
+  // The blind count is in: the book figure and the difference may be shown.
+  bool revealed = 10;
+  // The book at the snapshot (expected-is-the-book-figure). ⚠ 0 on a counter's read until `revealed`.
+  int64 system_stock_count = 11;
+  // The count that stands — the blind count, or the one recount that replaced it (a-row-keeps-only-its-latest-count).
+  int64 recounted_stock_count = 12;
+  // The one recount is used: no further count is taken.
+  bool recounted = 13;
+  // user_service id of whoever counted it; 0 until counted.
+  uint64 counted_by_id = 14;
+  // Added by a counter as a product found here, at a book figure of 0.
+  bool found_here = 15;
+  repeated OpnameDraft drafts = 16;
+}
+
+// ── OpnameSessionList ────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameSessionListRequest {
+  // Every warehouse member: staff look for the active session to count.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OpnameSessionListFilter filter = 2;
+  repeated OpnameSessionListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message OpnameSessionListFilter {
+  // ONE status; UNSPECIFIED = all of them.
+  OpnameSessionStatus status = 1 [(buf.validate.field).enum.defined_only = true];
+}
+
+enum OpnameSessionListDataType {
+  OPNAME_SESSION_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  OPNAME_SESSION_LIST_DATA_TYPE_GENERAL = 1;
+  OPNAME_SESSION_LIST_DATA_TYPE_SESSION = 2;
+}
+
+message OpnameSessionMapItem {
+  map<uint64, OpnameSession> map_data = 1;
+}
+
+message OpnameSessionListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OpnameSessionMapItem session = 2;
+  }
+}
+
+message OpnameSessionListResponse {
+  repeated OpnameSessionListResponseItem items = 1;
+  // Newest first.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── OpnameSessionCreate ──────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameSessionCreateRequest {
+  // The warehouse admin plans the count (opname.md §Stock Opname Flow: "admin create session").
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OpnamePlan plan = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // The plan's target — exactly the one its plan names, 0 otherwise; the handler checks. A filter on the snapshot query,
+  // never stored (the-plan-target-is-only-a-filter).
+  uint64 filter_team_id = 3;
+  uint64 filter_product_id = 4;
+  uint64 filter_placement_id = 5;
+}
+
+message OpnameSessionCreateResponse {
+  // FailedPrecondition when another session of the warehouse is active, or when the filter selects no shelf row —
+  // a rack planned empty has nothing to count.
+  OpnameSession session = 1;
+}
+
+// ── OpnameSessionDetail ──────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameSessionDetailRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OpnameSessionDetailResponse {
+  OpnameSession session = 1;
+}
+
+// ── OpnameSessionCancel ──────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameSessionCancelRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OpnameSessionCancelResponse {
+  // FailedPrecondition unless active.
+  OpnameSession session = 1;
+}
+
+// ── OpnameRowList ────────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRowListRequest {
+  // NOT staff: every row carries the book figure, which a counter must not see before counting
+  // (a-count-is-blind-then-revealed).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OpnameRowListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OpnameRowListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message OpnameRowListFilter {
+  uint64 session_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // One rack; 0 = every rack.
+  uint64 placement_id = 2;
+  // One status; UNSPECIFIED = both.
+  OpnameRowStatus status = 3 [(buf.validate.field).enum.defined_only = true];
+  // Only rows whose count stands apart from the book.
+  bool only_differences = 4;
+  // Free text over the product's SKU or name.
+  string q = 5 [(buf.validate.field).string.max_len = 100];
+}
+
+enum OpnameRowListDataType {
+  OPNAME_ROW_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  OPNAME_ROW_LIST_DATA_TYPE_GENERAL = 1;
+  OPNAME_ROW_LIST_DATA_TYPE_ROW = 2;
+}
+
+message OpnameRowMapItem {
+  map<uint64, OpnameRow> map_data = 1;
+}
+
+message OpnameRowListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OpnameRowMapItem row = 2;
+  }
+}
+
+message OpnameRowListResponse {
+  repeated OpnameRowListResponseItem items = 1;
+  // By rack code, then product name.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── OpnameRowSendBack ────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRowSendBackRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 row_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OpnameRowSendBackResponse {
+  // FailedPrecondition unless the row is counted and its session active.
+  OpnameRow row = 1;
+}
+
+// ── OpnameFinalizePreview / OpnameSessionFinalize ────────────────────────────────────────────────────────────────
+
+message OpnameFinalizePreviewRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// What one product's settlement posts. APPEND ONLY.
+enum OpnamePostType {
+  OPNAME_POST_TYPE_UNSPECIFIED = 0;
+  // A broken problem row, claimable 0 — the warehouse pays (broken_good).
+  OPNAME_POST_TYPE_BROKEN = 1;
+  // A lost problem row, claimable — the warehouse pays (lost_good).
+  OPNAME_POST_TYPE_LOST = 2;
+  // A surplus claiming an open lost row back into its batch — the warehouse's money returns (found).
+  OPNAME_POST_TYPE_CLAIM = 3;
+  // A surplus with nothing to claim, minted as a batch at the team's last price here — no money moves.
+  OPNAME_POST_TYPE_MINT = 4;
+}
+
+// One posting line, per batch (a-shortage-writes-a-row-per-batch, broken-takes-its-batch-before-lost).
+message OpnamePostLine {
+  OpnamePostType type = 1;
+  // The batch taken from, claimed back into, or 0 for a mint.
+  uint64 batch_id = 2;
+  int64 stock_count = 3;
+  // Rupiah: the batch's price; a mint's is the team's newest batch price here (last-price-is-the-teams-newest-batch-here).
+  int64 price_unit = 4;
+  int64 amount = 5;
+  // A claim: the lost problem it claims.
+  uint64 problem_id = 6;
+}
+
+// One product of the session, settled over all its racks.
+message OpnameFinalizeProduct {
+  uint64 team_id = 1;
+  uint64 product_id = 2;
+  string product_sku = 3;
+  string product_name = 4;
+  // The book, summed over its rows.
+  int64 book_count = 5;
+  // The counts that stand, summed.
+  int64 sellable_count = 6;
+  // The drafts' broken, summed — posted as written.
+  int64 broken_count = 7;
+  // sellable − (book − broken): below 0 lost, above 0 surplus, 0 a move between racks.
+  int64 rest_count = 8;
+  // How many of its racks change.
+  int64 rack_change_count = 9;
+  repeated OpnamePostLine lines = 10;
+}
+
+// Why finalize is refused for this person now. APPEND ONLY.
+enum OpnameFinalizeBlock {
+  // Nothing: it may finalize.
+  OPNAME_FINALIZE_BLOCK_UNSPECIFIED = 0;
+  OPNAME_FINALIZE_BLOCK_NOT_ACTIVE = 1;
+  OPNAME_FINALIZE_BLOCK_ROWS_NOT_COUNTED = 2;
+  // The caller counted one of its rows (nobody-finalizes-their-own-count).
+  OPNAME_FINALIZE_BLOCK_OWN_COUNT = 3;
+}
+
+message OpnameFinalizePreviewResponse {
+  // Every product with a difference or a rack change, by team then name. A product whose racks all match is left out.
+  repeated OpnameFinalizeProduct products = 1;
+  // Rupiah: broken + lost — the warehouse owes the teams.
+  int64 owed_amount = 2;
+  // Rupiah: claims — the teams pay the warehouse back.
+  int64 claimed_amount = 3;
+  // Rupiah: what the minted batches are worth.
+  int64 minted_amount = 4;
+  OpnameFinalizeBlock block = 5;
+}
+
+message OpnameSessionFinalizeRequest {
+  // The warehouse team's Owner or Admin — or Root — and never a counter of the session (nobody-finalizes-their-own-count).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// One owning team's share of a finalize: one opname transaction per team (a-snapshot-row-names-its-transaction).
+message OpnameTransaction {
+  uint64 transaction_id = 1;
+  uint64 team_id = 2;
+}
+
+message OpnameSessionFinalizeResponse {
+  // FailedPrecondition for any OpnameFinalizeBlock.
+  OpnameSession session = 1;
+  repeated OpnameTransaction transactions = 2;
+}
+
+// ── OpnameRackList ───────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRackListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  OpnameRackListFilter filter = 2 [(buf.validate.field).required = true];
+  repeated OpnameRackListDataType data_request = 3;
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message OpnameRackListFilter {
+  uint64 session_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // Free text over the rack's code.
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+}
+
+enum OpnameRackListDataType {
+  OPNAME_RACK_LIST_DATA_TYPE_UNSPECIFIED = 0;
+  OPNAME_RACK_LIST_DATA_TYPE_GENERAL = 1;
+  OPNAME_RACK_LIST_DATA_TYPE_RACK = 2;
+}
+
+// One rack to visit.
+message OpnameRack {
+  uint64 placement_id = 1;
+  string code = 2;
+  // 0 for a rack an `all` session lists empty.
+  int64 row_count = 3;
+  int64 counted_row_count = 4;
+}
+
+message OpnameRackMapItem {
+  map<uint64, OpnameRack> map_data = 1;
+}
+
+message OpnameRackListResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    OpnameRackMapItem rack = 2;
+  }
+}
+
+message OpnameRackListResponse {
+  repeated OpnameRackListResponseItem items = 1;
+  // By rack code.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// ── OpnameRackCount ──────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRackCountRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 placement_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OpnameRackCountResponse {
+  OpnameRack rack = 1;
+  // EVERY row on the rack, unpaged: it is bounded by what one shelf holds, not by the data. By product name. A row not
+  // yet revealed carries system_stock_count 0 — the counter never sees the book before counting.
+  repeated OpnameRow rows = 2;
+}
+
+// ── OpnameRowCount ───────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRowCountRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 row_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Sellable units only — a torn one is taken off the rack and not counted (a-count-is-of-sellable-units).
+  int64 count = 3 [(buf.validate.field).int64.gte = 0];
+}
+
+message OpnameRowCountResponse {
+  // Revealed: the book figure, the difference, and the system's draft — lost for the shortage, or surplus for the over.
+  // FailedPrecondition once the recount is used, on a counted row, or on a session that is not active.
+  OpnameRow row = 1;
+}
+
+// ── OpnameRowMarkCounted ─────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRowMarkCountedRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 row_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Units taken off this rack and thrown away. No cap: a torn unit in hand is always posted
+  // (broken-posts-as-written-the-rest-nets). The lost draft becomes the shortage less this, at least 0.
+  int64 broken_count = 3 [(buf.validate.field).int64.gte = 0];
+  // Each reason is required when its draft exists — broken above 0, lost above 0, surplus above 0; the handler checks.
+  string broken_note = 4 [(buf.validate.field).string.max_len = 500];
+  string lost_note = 5 [(buf.validate.field).string.max_len = 500];
+  string surplus_note = 6 [(buf.validate.field).string.max_len = 500];
+}
+
+message OpnameRowMarkCountedResponse {
+  // FailedPrecondition unless revealed and still created; InvalidArgument when a draft lacks its reason.
+  OpnameRow row = 1;
+}
+
+// ── OpnameRowAddFound ────────────────────────────────────────────────────────────────────────────────────────────
+
+message OpnameRowAddFoundRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 session_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 placement_id = 3 [(buf.validate.field).uint64.gt = 0];
+  uint64 product_id = 4 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OpnameRowAddFoundResponse {
+  // The new row on this rack, at a book figure of 0 — and one on each of the product's other racks not yet in the
+  // session. AlreadyExists when the product already has a row here. FailedPrecondition when its team never had a batch
+  // of it in this warehouse: it is taken out and restocked by the team, not counted.
+  repeated OpnameRow rows = 1;
+}

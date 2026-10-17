@@ -40,7 +40,7 @@ func (s *Service) RestockInboundStat(
 		       COALESCE(SUM(ri.total_price), 0) AS amount
 		FROM restock_request_items ri
 		JOIN restock_requests r ON r.id = ri.restock_request_id
-		WHERE r.warehouse_id = ? AND r.status = ? AND (? = 0 OR r.requesting_team_id = ?)`
+		WHERE r.warehouse_id = ? AND r.status IN ? AND (? = 0 OR r.requesting_team_id = ?)`
 
 	var lines struct {
 		ProductCount int64
@@ -49,7 +49,7 @@ func (s *Service) RestockInboundStat(
 	}
 
 	err := db.
-		Raw(linesSQL, teamID, restockStatusPending, requesterID, requesterID).
+		Raw(linesSQL, teamID, restockInboundStatuses, requesterID, requesterID).
 		Scan(&lines).
 		Error
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *Service) RestockInboundStat(
 	const requestsSQL = `
 		SELECT COUNT(*) AS restock_count, MIN(r.created_at) AS oldest
 		FROM restock_requests r
-		WHERE r.warehouse_id = ? AND r.status = ? AND (? = 0 OR r.requesting_team_id = ?)`
+		WHERE r.warehouse_id = ? AND r.status IN ? AND (? = 0 OR r.requesting_team_id = ?)`
 
 	var requests struct {
 		RestockCount int64
@@ -74,7 +74,7 @@ func (s *Service) RestockInboundStat(
 	}
 
 	err = db.
-		Raw(requestsSQL, teamID, restockStatusPending, requesterID, requesterID).
+		Raw(requestsSQL, teamID, restockInboundStatuses, requesterID, requesterID).
 		Scan(&requests).
 		Error
 	if err != nil {

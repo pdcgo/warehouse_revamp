@@ -23,6 +23,8 @@ export function kindLabel(t: ReturnType<typeof useTranslation>["t"], kind: Movem
       return t("warehouseProduct.kind.move");
     case MovementKind.RETURN:
       return t("warehouseProduct.kind.return");
+    case MovementKind.SAMPLE:
+      return t("warehouseProduct.kind.sample");
     default:
       return t("warehouseProduct.kind.unknown");
   }

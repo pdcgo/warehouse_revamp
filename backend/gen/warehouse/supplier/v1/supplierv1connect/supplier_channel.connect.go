@@ -45,6 +45,9 @@ const (
 	// SupplierChannelServiceSupplierChannelDeleteProcedure is the fully-qualified name of the
 	// SupplierChannelService's SupplierChannelDelete RPC.
 	SupplierChannelServiceSupplierChannelDeleteProcedure = "/warehouse.supplier.v1.SupplierChannelService/SupplierChannelDelete"
+	// SupplierChannelServiceSupplierChannelByIdsProcedure is the fully-qualified name of the
+	// SupplierChannelService's SupplierChannelByIds RPC.
+	SupplierChannelServiceSupplierChannelByIdsProcedure = "/warehouse.supplier.v1.SupplierChannelService/SupplierChannelByIds"
 )
 
 // SupplierChannelServiceClient is a client for the warehouse.supplier.v1.SupplierChannelService
@@ -54,6 +57,9 @@ type SupplierChannelServiceClient interface {
 	SupplierChannelCreate(context.Context, *connect.Request[v1.SupplierChannelCreateRequest]) (*connect.Response[v1.SupplierChannelCreateResponse], error)
 	SupplierChannelUpdate(context.Context, *connect.Request[v1.SupplierChannelUpdateRequest]) (*connect.Response[v1.SupplierChannelUpdateResponse], error)
 	SupplierChannelDelete(context.Context, *connect.Request[v1.SupplierChannelDeleteRequest]) (*connect.Response[v1.SupplierChannelDeleteResponse], error)
+	// Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
+	// (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
+	SupplierChannelByIds(context.Context, *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error)
 }
 
 // NewSupplierChannelServiceClient constructs a client for the
@@ -92,6 +98,12 @@ func NewSupplierChannelServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		supplierChannelByIds: connect.NewClient[v1.SupplierChannelByIdsRequest, v1.SupplierChannelByIdsResponse](
+			httpClient,
+			baseURL+SupplierChannelServiceSupplierChannelByIdsProcedure,
+			connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelByIds")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -101,6 +113,7 @@ type supplierChannelServiceClient struct {
 	supplierChannelCreate *connect.Client[v1.SupplierChannelCreateRequest, v1.SupplierChannelCreateResponse]
 	supplierChannelUpdate *connect.Client[v1.SupplierChannelUpdateRequest, v1.SupplierChannelUpdateResponse]
 	supplierChannelDelete *connect.Client[v1.SupplierChannelDeleteRequest, v1.SupplierChannelDeleteResponse]
+	supplierChannelByIds  *connect.Client[v1.SupplierChannelByIdsRequest, v1.SupplierChannelByIdsResponse]
 }
 
 // SupplierChannelList calls warehouse.supplier.v1.SupplierChannelService.SupplierChannelList.
@@ -123,6 +136,11 @@ func (c *supplierChannelServiceClient) SupplierChannelDelete(ctx context.Context
 	return c.supplierChannelDelete.CallUnary(ctx, req)
 }
 
+// SupplierChannelByIds calls warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds.
+func (c *supplierChannelServiceClient) SupplierChannelByIds(ctx context.Context, req *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error) {
+	return c.supplierChannelByIds.CallUnary(ctx, req)
+}
+
 // SupplierChannelServiceHandler is an implementation of the
 // warehouse.supplier.v1.SupplierChannelService service.
 type SupplierChannelServiceHandler interface {
@@ -130,6 +148,9 @@ type SupplierChannelServiceHandler interface {
 	SupplierChannelCreate(context.Context, *connect.Request[v1.SupplierChannelCreateRequest]) (*connect.Response[v1.SupplierChannelCreateResponse], error)
 	SupplierChannelUpdate(context.Context, *connect.Request[v1.SupplierChannelUpdateRequest]) (*connect.Response[v1.SupplierChannelUpdateResponse], error)
 	SupplierChannelDelete(context.Context, *connect.Request[v1.SupplierChannelDeleteRequest]) (*connect.Response[v1.SupplierChannelDeleteResponse], error)
+	// Stores by id, DELETED ONES INCLUDED — what a restock line reads to show its store, with a deleted badge when it is
+	// (a-deleted-supplier-still-shows-with-a-badge). The one read that returns a deleted store.
+	SupplierChannelByIds(context.Context, *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error)
 }
 
 // NewSupplierChannelServiceHandler builds an HTTP handler from the service implementation. It
@@ -163,6 +184,12 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	supplierChannelServiceSupplierChannelByIdsHandler := connect.NewUnaryHandler(
+		SupplierChannelServiceSupplierChannelByIdsProcedure,
+		svc.SupplierChannelByIds,
+		connect.WithSchema(supplierChannelServiceMethods.ByName("SupplierChannelByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.supplier.v1.SupplierChannelService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SupplierChannelServiceSupplierChannelListProcedure:
@@ -173,6 +200,8 @@ func NewSupplierChannelServiceHandler(svc SupplierChannelServiceHandler, opts ..
 			supplierChannelServiceSupplierChannelUpdateHandler.ServeHTTP(w, r)
 		case SupplierChannelServiceSupplierChannelDeleteProcedure:
 			supplierChannelServiceSupplierChannelDeleteHandler.ServeHTTP(w, r)
+		case SupplierChannelServiceSupplierChannelByIdsProcedure:
+			supplierChannelServiceSupplierChannelByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -196,4 +225,8 @@ func (UnimplementedSupplierChannelServiceHandler) SupplierChannelUpdate(context.
 
 func (UnimplementedSupplierChannelServiceHandler) SupplierChannelDelete(context.Context, *connect.Request[v1.SupplierChannelDeleteRequest]) (*connect.Response[v1.SupplierChannelDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierChannelService.SupplierChannelDelete is not implemented"))
+}
+
+func (UnimplementedSupplierChannelServiceHandler) SupplierChannelByIds(context.Context, *connect.Request[v1.SupplierChannelByIdsRequest]) (*connect.Response[v1.SupplierChannelByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.supplier.v1.SupplierChannelService.SupplierChannelByIds is not implemented"))
 }

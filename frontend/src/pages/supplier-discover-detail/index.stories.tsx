@@ -34,7 +34,7 @@ const AtUnknown = routedAt(999n);
 const meta = {
   title: "Pages/Suppliers/DiscoverSupplierDetail",
   component: AtNusantara,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {
     asTeam(12n)();
     asRole(Role.SELLING_CS)();
@@ -53,6 +53,17 @@ async function loaded(canvasElement: HTMLElement) {
 // ── The states worth looking at ─────────────────────────────────────────────────────────────────
 
 export const Default: Story = {};
+
+// A PHONE: the name, the team, the identity line, then the tabs — the supplier page on a phone, read-only.
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile2" } },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    // Stacked on a phone: the identity line under the team.
+    const team = (await canvas.findByTestId("discover-detail-team")).getBoundingClientRect();
+    await expect(canvas.getByTestId("discover-detail-meta").getBoundingClientRect().top).toBeGreaterThanOrEqual(team.bottom);
+  },
+};
 
 export const ProductsTab: Story = {
   play: async ({ canvasElement }) => {
@@ -84,6 +95,7 @@ export const StatisticsCountEveryTeam: Story = {
     const picker = within(await canvas.findByTestId("statistics-team")).getByRole("combobox");
     await expect(picker).toHaveValue("");
     await expect(picker).toHaveAttribute("placeholder", "Every team");
+    await userEvent.click(canvas.getByTestId("statistics-view-product"));
     const named = await canvas.findAllByTestId("statistics-product-team");
     await expect(named.map((cell) => cell.textContent)).toContain("Toko Melati");
   },
@@ -165,5 +177,39 @@ export const BackGoesToDiscover: Story = {
 
     await userEvent.click(canvas.getByTestId("discover-detail-back"));
     await canvas.findByTestId("at-discover");
+  },
+};
+
+// ── It reads as the supplier's own page (`the-discover-detail-reads-as-the-supplier-page`) ──────────────────────
+
+// THE NAME, THEN WHOSE ON THE LEFT AND WHO IT IS BESIDE IT — the supplier page's identity line right of the team, not a
+// card of uppercase labels (discover-detail-puts-the-team-left-and-the-contact-right); the contact copies with one click.
+export const TheTeamThenWhoItIs: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const team = (await canvas.findByTestId("discover-detail-team")).getBoundingClientRect();
+    const meta = canvas.getByTestId("discover-detail-meta");
+    const at = meta.getBoundingClientRect();
+    // Beside the team, close to it — not from the middle of the page — and top-aligned.
+    await expect(at.left).toBeGreaterThan(team.right);
+    await expect(at.left - team.right).toBeLessThan(48);
+    await expect(Math.abs(at.top - team.top)).toBeLessThan(4);
+    await expect(canvas.getByTestId("discover-detail-contact")).toHaveTextContent(NUSANTARA.contact);
+    await expect(canvas.getByTestId("discover-detail-description")).toHaveTextContent(NUSANTARA.description);
+    await expect(within(meta).getByRole("button", { name: /copy/i })).toBeInTheDocument();
+    await expect(within(meta).queryByText("CONTACT")).toBeNull();
+    // Read-only: no Edit or Delete.
+    await expect(canvas.queryByTestId("supplier-detail-edit")).toBeNull();
+  },
+};
+
+// …and a supplier with nothing but a name shows its name and its team — no empty line.
+export const AnEmptySupplierShowsItsNameAndTeam: Story = {
+  render: () => <AtSinar />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await canvas.findByTestId("discover-detail-team");
+    await expect(canvas.queryByTestId("discover-detail-meta")).toBeNull();
   },
 };

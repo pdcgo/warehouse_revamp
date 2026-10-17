@@ -9,6 +9,37 @@ schema change. ⚠ **New build work arrived from financial_account** and is NOT 
 `from_account_id` (payer, at record) and `to_account_id` (creditor, at accept), and accept must publish
 them — [a-team-payment-posts-on-accept](../../business/financial_account/context_decision.md#a-team-payment-posts-on-accept).
 
+**2026-10-08:** the account pickers are **built in the frontend, ahead of the contract** — *Paid from*
+in Make Payment, *Received into* in a new `AcceptPaymentDialog` (it replaced the plain `ConfirmDialog`
+on Confirm). Both are required, any active account of the acting team (not operational-only — settling
+a debt is not an operation), and both are **`dropped`** pending marks (`pages/liability-detail/pending.ts`):
+neither request has an account field, so the pick is thrown away. ⛔ **Still to do:** `from_account_id`
+on `LiabilityPaymentRecordRequest`, `to_account_id` on `LiabilityPaymentConfirmRequest`, the columns,
+and the accept event carrying both — then delete the two marks. The stub now serves Record, Confirm
+(which moves the position) and ShareDocument, so the whole §Payment Flow is clickable in Storybook.
+⛔ **A real bug was found and fixed on the way:** Make Payment could never be SENT from the screen —
+the proof's file input is `required` and cleared after each upload, so the browser swallowed every
+submit. The form is now `noValidate` (`ready` is its validation). The e2e never saw it because it
+records payments through the RPC; `APaymentNamesTheAccountItWasPaidFrom` is the regression story.
+
+**2026-10-14:** ✅ **the two account fields are WIRED** — the 2026-10-01 and 2026-10-08 *still to do* above is done.
+`from_account_id` (required) on `LiabilityPaymentRecordRequest`, `to_account_id` (required) on
+`LiabilityPaymentConfirmRequest`, both on `LiabilityPayment` and in migration `00009` (`NOT NULL DEFAULT 0`, the
+pre-existing rows left at 0). Each is asked of financial_account_service **before** the write, under the caller's
+token — `AccountChecker` → `FinancialAccountByIds` in `cmd/app_development/liability_deps.go`: the team's own,
+active, never `unknown` (what the picker offers). Confirm publishes `LiabilityPaymentAccepted` after its commit
+(`events.go`, the settlement pattern: a failed publish is logged, not retried). `pending.ts` and its i18n keys are
+deleted; the Storybook stub refuses a missing account as the contract does. Flow:
+[rpc.md](../../services/liability_service/rpc.md#where-the-money-left-and-where-it-landed--the-accounts).
+`NewService(db, events, accounts)` — nil events is `EmptySender`, nil accounts refuses every named account.
+⚠ **`e2e/liability.spec.ts` is RED on this branch, not from this change**: its seed step creates the COD debt
+through `RestockRequestFulfill` with `quantity` and cost lines, and the restock rework (`723ab03`) replaced that
+with `Arrive`/`Accept`, `count`, and a required `finance_account_id`. The payment test is updated for the account
+fields but cannot run until the seed creates a debt the new way — that is the restock design's call. The full
+path was proven instead by a one-off spec against the real server (both refusals, both ids stored, the listener
+posting both legs once), then deleted. The dev database is migrated (liability_service `00009`, 2026-10-14); a
+running `san dev run` needs a restart to serve the new code and to `pubsub ensure` the new subscription.
+
 **Lifecycle position:** `Run Testing` complete — unit, integration and e2e all green for the first
 time. ⛔ **`design_accept` still un-previewed**: the owner has not looked at the running screens.
 

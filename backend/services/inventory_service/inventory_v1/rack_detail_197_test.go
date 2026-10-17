@@ -37,9 +37,9 @@ func aRackWithGoods(t *testing.T, svc *inventory_v1.Service, db *gorm.DB) (uint6
 	// straight into stock — which is exactly the "cost unknown" case the tiles have to be honest
 	// about.
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: 2, WarehouseId: rackWarehouse, ShippingCode: "jne",
+		TeamId: 2, WarehouseId: rackWarehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: priced, Sku: "SKU1", Name: "Widget", Quantity: 10, TotalPrice: 500000},
+			{ProductId: priced, Sku: "SKU1", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -51,19 +51,19 @@ func aRackWithGoods(t *testing.T, svc *inventory_v1.Service, db *gorm.DB) (uint6
 	lines := make([]*inventoryv1.RestockRequestReceivedLine, 0, len(request.GetItems()))
 	for _, item := range request.GetItems() {
 		lines = append(lines, &inventoryv1.RestockRequestReceivedLine{
-			ItemId:           item.GetId(),
-			ReceivedQuantity: item.GetQuantity(),
+			ItemId:        item.GetId(),
+			ReceivedCount: item.GetCount(),
 			Placements: []*inventoryv1.RestockPlacement{
-				{Place: &inventoryv1.RestockPlacement_RackId{RackId: rackID}, Quantity: item.GetQuantity()},
+				{PlacementId: rackID, Quantity: item.GetCount()},
 			},
 		})
 	}
 
-	_, err = svc.RestockRequestFulfill(ctx, connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: rackWarehouse, RequestId: request.GetId(), Lines: lines,
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	// The second product with NO restock behind it. StockReceive lands goods in the unplaced pile —

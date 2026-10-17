@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
-	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
@@ -29,11 +28,47 @@ func (f fakeSuppliers) SupplierIsLive(_ context.Context, _ uint64, supplierID ui
 	return f[supplierID], nil
 }
 
+// Stores: fakeSuppliers knows no store, so a line naming one is refused as not found.
+func (f fakeSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
+}
+
 // newServiceWithSuppliers is newService with suppliers to name — a restock naming one asks supplier_service.
 func newServiceWithSuppliers(t *testing.T, db *gorm.DB, suppliers fakeSuppliers) *inventory_v1.Service {
 	t.Helper()
 
 	return inventory_v1.NewService(db, nil, nil, suppliers, nil)
+}
+
+// fakeSupplierService is fakeSuppliers plus the stores it knows: store id → its supplier and whether it is live. A store
+// id absent from the map exists nowhere.
+type fakeSupplierService struct {
+	fakeSuppliers
+	stores map[uint64]inventory_v1.SupplierStore
+}
+
+func (f fakeSupplierService) Stores(_ context.Context, _ uint64, ids []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	out := make(map[uint64]inventory_v1.SupplierStore, len(ids))
+
+	for _, id := range ids {
+		if store, ok := f.stores[id]; ok {
+			out[id] = store
+		}
+	}
+
+	return out, nil
+}
+
+// newServiceWithStores is newService with suppliers AND their stores to name.
+func newServiceWithStores(
+	t *testing.T,
+	db *gorm.DB,
+	suppliers fakeSuppliers,
+	stores map[uint64]inventory_v1.SupplierStore,
+) *inventory_v1.Service {
+	t.Helper()
+
+	return inventory_v1.NewService(db, nil, nil, fakeSupplierService{fakeSuppliers: suppliers, stores: stores}, nil)
 }
 
 // recordingExpense captures the stock-loss values an adjust posts, so a test can assert on WHAT was
@@ -68,23 +103,10 @@ type recordingPoster struct {
 	fail    error
 }
 
-// codLines is the cost-line form of what these tests used to write as `CodShippingFee: n` (00021):
-// one INCIDENTAL line, which is what every one of them means by "this delivery cost the warehouse n
-// at the door". A zero is no lines at all — not a line of zero, which the handler refuses.
-//
-// ⚠ THE NOTE IS NO LONGER OPTIONAL (an-incidental-line-must-say-what-it-was-for). It used to be, for
-// the kind that no longer exists, so every fixture here has to say what the money was.
-func codLines(amount int64) []*inventoryv1.RestockCostLine {
-	if amount == 0 {
-		return nil
-	}
-
-	return []*inventoryv1.RestockCostLine{{
-		Kind:   inventoryv1.RestockCostKind_RESTOCK_COST_KIND_INCIDENTAL,
-		Amount: amount,
-		Note:   "courier at the door",
-	}}
-}
+// courierNote is what every fixture here says the courier's charge at the door was for. A restock carries ONE such
+// charge, as `warehouse_additional_cost` (the-courier-is-paid-once-per-restock), and its note is REQUIRED above 0
+// (an-incidental-line-must-say-what-it-was-for) — so every accept that charges anything says what the money was.
+const courierNote = "courier at the door"
 
 type codPosting struct {
 	sellingTeamID    uint64

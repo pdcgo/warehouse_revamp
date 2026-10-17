@@ -33,7 +33,7 @@ func createRestock(t *testing.T, svc *inventory_v1.Service, warehouseID uint64, 
 	items := make([]*inventoryv1.RestockRequestItem, 0, len(productIDs))
 	for _, id := range productIDs {
 		items = append(items, &inventoryv1.RestockRequestItem{
-			ProductId: id, Sku: "SKU", Name: "Widget", Quantity: 1, TotalPrice: 1000,
+			ProductId: id, Sku: "SKU", Name: "Widget", Count: 1, Total: 1000,
 		})
 	}
 
@@ -98,23 +98,25 @@ func TestWarehouseProductList_RestockingTheSameProductAgainIsFine(t *testing.T) 
 	}
 }
 
-// #142 — ONE request naming the same product on two lines.
-//
-// Honest note on what this pins: removing the handler's de-duplication does NOT fail this test, because
-// ON CONFLICT DO NOTHING already tolerates duplicate rows inside one INSERT (it is DO UPDATE that
-// raises "cannot affect row a second time" — checked, not assumed). This is a BEHAVIOURAL pin: a
-// request may repeat a product, and the arrangement must not double however that is achieved.
-func TestWarehouseProductList_ARequestListingAProductTwiceIsFine(t *testing.T) {
+// ONE restock naming the same product on two lines is REFUSED (a-product-appears-once-per-restock), and so links
+// nothing: a restock that was never created makes no product visible to the warehouse.
+func TestWarehouseProductList_ARestockListingAProductTwiceIsRefused(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	createRestock(t, svc, warehouseA, 100, 100, 200)
+	_, err := svc.RestockRequestCreate(ctxUser(1), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
+		TeamId: 2, WarehouseId: warehouseA,
+		Items: []*inventoryv1.RestockRequestItem{
+			{ProductId: 100, Sku: "SKU100", Name: "P100", Count: 1, Total: 100},
+			{ProductId: 100, Sku: "SKU100", Name: "P100", Count: 2, Total: 200},
+		},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("a restock listing product 100 twice: got %v, want InvalidArgument", err)
+	}
 
-	got := warehouseProducts(t, svc, warehouseA)
-
-	if len(got) != 2 {
-		t.Fatalf("a request listing product 100 twice produced %d arrangements, want 2: %v",
-			len(got), got)
+	if got := warehouseProducts(t, svc, warehouseA); len(got) != 0 {
+		t.Fatalf("a refused restock linked %d products to the warehouse: %v", len(got), got)
 	}
 }
 

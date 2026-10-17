@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Heading, Stack, Table, Text } from "@chakra-ui/react";
+import { Box, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
-import { Pagination } from "../../components/chrome/Pagination";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
 import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
@@ -19,26 +19,38 @@ import {
   useSupplierFiguresByProduct,
 } from "./analytics";
 import { FigureBlock, FigureCells, FigureHeaders, FiguresSummary, RestockTeamFilter } from "./FigureParts";
+import { ProductListItem } from "../../components/products/ProductListItem";
 import { unitsReceived } from "./figures";
 
 const PAGE_SIZE = 10;
 
+// A ROW LIGHTS UP under the pointer, every cell of it (owner, on the Statistik tab: *"kasih hoverable"* — the supplier
+// list's `a-supplier-row-lights-up`), so a row of five figures can be read across. On the cells, not the row, so the
+// whole width turns; Chakra's `_hover` honours `data-hover`, which is how a story drives it.
+const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
+
 export const description =
-  "A supplier's Statistics tab — on the manage detail and the discover detail alike. A period and a grain, whose restocks (every team's, or one picked selling team's), the window's six figures as a headline, the same figures over time (newest first, quiet periods included), and by product. Folded from the restock's accept, so a figure can lag an accept by the broker's delivery.";
+  "A supplier's Statistics tab — on the manage detail and the discover detail alike. Two views of the same window: Over Time (the figures per day, month or year, newest first, quiet periods included) and By Product. Both read whose restocks (every team's, or one picked selling team's) over a period, under the window's six figures as a headline; only Over Time has a grain. Folded from the restock's accept, so a figure can lag an accept by the broker's delivery.";
 
 export interface SupplierStatisticsProps {
   /** Any team's supplier — its figures count every team's restocks from it. */
   supplierId: bigint;
 }
 
+type StatisticsView = "time" | "product";
+
 // SupplierStatistics is a supplier's STATISTICS tab (the-figures-are-a-statistics-tab-and-a-supplier-report): what was
 // restocked from it, and how much of that was lost or broken on the way, over a period.
 //
-// Three questions, top to bottom — the same order as the settlement report:
+// TWO VIEWS, each its own page within the tab (owner: *"dari waktu dan per produk bedakan halamannya"*,
+// `the-statistics-tab-is-two-views`) — they were two tables stacked, the second under a pager of the first:
 //
-//   the headline   how much came from this supplier in the window, and how much of it arrived broken or short
-//   over time      which day, month or year it happened in
-//   by product     which item it happens to
+//   Dari Waktu ke Waktu | Per Produk                                  ← which view — a tab row, over the filters
+//   [Semua tim ⌄] [30 hari terakhir ⌄] [Harian|Bulanan|Tahunan]     ← the grain right of the window, Over Time only
+//   Total · Direstok · Hilang · Rusak                                 ← the headline: the whole window, both views
+//   the view's table, and its pager
+//
+// The team and the window are the tab's, so switching view keeps them: the same question, read by period or by item.
 //
 // ⚠ EVERY TEAM'S RESTOCKS by default (every-selling-team-sees-every-teams-figures) — a broken rate is worth most to
 // the team that has NOT bought there yet — narrowed to one selling team by a picker (the-team-filter-picks-any-selling-team).
@@ -49,6 +61,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   const { current } = useTeam();
   const { t } = useTranslation();
 
+  const [view, setView] = useState<StatisticsView>("time");
   const [grain, setGrain] = useState<PeriodGrain>("day");
   const [range, setRange] = useState<DateRange>({ kind: "relative", days: 30 });
   // Whose restocks — 0n is every team's.
@@ -79,6 +92,7 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
 
   const teamId = current?.teamId;
 
+  // The series is read on BOTH views — its `total` is the headline.
   const series = useSupplierFigureSeries({
     teamId,
     supplierId,
@@ -90,12 +104,13 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
     page: seriesPage,
     pageSize: PAGE_SIZE,
   });
+  // By product only once that view is open — nobody waits on a table they are not looking at.
   const products = useSupplierFiguresByProduct({
     teamId,
     supplierId,
     from,
     to,
-    valid,
+    valid: valid && view === "product",
     restockTeamId,
     page: productPage,
     pageSize: PAGE_SIZE,
@@ -104,77 +119,111 @@ export function SupplierStatistics({ supplierId }: SupplierStatisticsProps) {
   // Nothing at all in the window — said once, instead of a headline of zeroes over a table of zeroes.
   const quiet = series.data !== undefined && unitsReceived(series.data.total) === 0;
 
+  const empty = (
+    <Text color="fg.muted" data-testid="statistics-empty">
+      {restockTeamId !== 0n ? t("supplierStats.emptyTeam") : t("supplierStats.empty")}
+    </Text>
+  );
+
   return (
-    <Stack gap="section" data-testid="supplier-statistics">
-      <FilterBar
-        testId="statistics-filter"
-        active={restockTeamId !== 0n}
-        count={restockTeamId !== 0n ? 1 : 0}
-        onClear={() => pickTeam(0n)}
-      >
-        <FilterField w="15rem" testId="statistics-team">
-          <RestockTeamFilter value={restockTeamId} onChange={pickTeam} />
-        </FilterField>
-        <FilterField w="auto">
-          <PeriodGrainPicker value={grain} onChange={pickGrain} testId="statistics-grain" />
-        </FilterField>
-        <FilterField w="auto">
-          <DateRangePicker value={range} onChange={pickRange} testId="statistics-range" />
-        </FilterField>
-      </FilterBar>
+    <Tabs.Root
+      value={view}
+      onValueChange={(e) => setView(e.value as StatisticsView)}
+      // Only the open view is mounted — its table, its pager, and one empty line, never two.
+      lazyMount
+      unmountOnExit
+      data-testid="supplier-statistics"
+    >
+      <Stack gap="section">
+        {/* WHICH VIEW — first, over the filters (owner: *"tipe dari waktu ke waktu dan per produk di atas filter"*): the
+            view decides which filters there are, so it is picked before them. The line tabs in the main tone
+            (a-selected-tab-is-in-the-main-tone). */}
+        <Tabs.List data-testid="statistics-views">
+          <Tabs.Trigger value="time" data-testid="statistics-view-time">
+            {t("supplierStats.overTime")}
+          </Tabs.Trigger>
+          <Tabs.Trigger value="product" data-testid="statistics-view-product">
+            {t("supplierStats.byProduct")}
+          </Tabs.Trigger>
+        </Tabs.List>
 
-      {!valid && (
-        <Text fontSize="sm" color="error.fg" data-testid="statistics-range-invalid">
-          {t("supplierFigures.rangeInvalid")}
-        </Text>
-      )}
+        <FilterBar
+          testId="statistics-filter"
+          active={restockTeamId !== 0n}
+          count={restockTeamId !== 0n ? 1 : 0}
+          onClear={() => pickTeam(0n)}
+        >
+          <FilterField w="15rem" testId="statistics-team">
+            <RestockTeamFilter value={restockTeamId} onChange={pickTeam} />
+          </FilterField>
+          <FilterField w="auto">
+            <DateRangePicker value={range} onChange={pickRange} testId="statistics-range" />
+          </FilterField>
+          {/* The grain RIGHT OF THE WINDOW it cuts (owner: *"harian bulanan di kanan tanggal"*). A grain is a property of
+              a SERIES — by product, the window is one figure per item, so it is Over Time's only. */}
+          {view === "time" && (
+            <FilterField w="auto">
+              <PeriodGrainPicker value={grain} onChange={pickGrain} testId="statistics-grain" />
+            </FilterField>
+          )}
+        </FilterBar>
 
-      <RefreshOverlay busy={series.isFetching && !series.isPending}>
-        <FiguresSummary figures={series.data?.total} testId="statistics-summary" />
-      </RefreshOverlay>
+        {!valid && (
+          <Text fontSize="sm" color="error.fg" data-testid="statistics-range-invalid">
+            {t("supplierFigures.rangeInvalid")}
+          </Text>
+        )}
 
-      {quiet ? (
-        <Text color="fg.muted" data-testid="statistics-empty">
-          {restockTeamId !== 0n ? t("supplierStats.emptyTeam") : t("supplierStats.empty")}
-        </Text>
-      ) : (
-        <>
-          <Stack gap="field">
-            <Heading size="sm">{t("supplierStats.overTime")}</Heading>
+        <RefreshOverlay busy={series.isFetching && !series.isPending}>
+          <FiguresSummary figures={series.data?.total} testId="statistics-summary" />
+        </RefreshOverlay>
 
-            <RefreshOverlay busy={series.isFetching && !series.isPending}>
-              <SeriesTable points={series.data?.points ?? []} />
-            </RefreshOverlay>
+        <Stack gap="field">
+          <Tabs.Content value="time" p="0">
+            {quiet ? (
+              empty
+            ) : (
+              <Stack gap="field">
+                <RefreshOverlay busy={series.isFetching && !series.isPending}>
+                  <SeriesTable points={series.data?.points ?? []} />
+                </RefreshOverlay>
 
-            <Box>
-              <Pagination
-                page={seriesPage}
-                pageSize={PAGE_SIZE}
-                count={series.data?.totalItems ?? 0}
-                onPageChange={setSeriesPage}
-              />
-            </Box>
-          </Stack>
+                {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
+                <GrowingPager
+                  page={seriesPage}
+                  onPageChange={setSeriesPage}
+                  hasNext={series.isPlaceholderData ? undefined : seriesPage * PAGE_SIZE < (series.data?.totalItems ?? 0)}
+                  resetKey={[grain, from, to, restockTeamId].join("|")}
+                  pageSize={PAGE_SIZE}
+                  testId="statistics-series-pager"
+                />
+              </Stack>
+            )}
+          </Tabs.Content>
 
-          <Stack gap="field">
-            <Heading size="sm">{t("supplierStats.byProduct")}</Heading>
+          <Tabs.Content value="product" p="0">
+            {quiet ? (
+              empty
+            ) : (
+              <Stack gap="field">
+                <RefreshOverlay busy={products.isFetching && !products.isPending}>
+                  {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} />}
+                </RefreshOverlay>
 
-            <RefreshOverlay busy={products.isFetching && !products.isPending}>
-              {products.data && <ProductTable rows={products.data.rows} showTeam={restockTeamId === 0n} />}
-            </RefreshOverlay>
-
-            <Box>
-              <Pagination
-                page={productPage}
-                pageSize={PAGE_SIZE}
-                count={products.data?.totalItems ?? 0}
-                onPageChange={setProductPage}
-              />
-            </Box>
-          </Stack>
-        </>
-      )}
-    </Stack>
+                <GrowingPager
+                  page={productPage}
+                  onPageChange={setProductPage}
+                  hasNext={products.isPlaceholderData ? undefined : productPage * PAGE_SIZE < (products.data?.totalItems ?? 0)}
+                  resetKey={[from, to, restockTeamId].join("|")}
+                  pageSize={PAGE_SIZE}
+                  testId="statistics-products-pager"
+                />
+              </Stack>
+            )}
+          </Tabs.Content>
+        </Stack>
+      </Stack>
+    </Tabs.Root>
   );
 }
 
@@ -187,14 +236,34 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
   if (isMobile) {
     return (
       <Stack gap="2" data-testid="statistics-series">
-        {points.map((point) => (
-          <FigureBlock
-            key={point.at}
-            title={point.at}
-            figures={point.figures}
-            testId={`statistics-series-row-${point.at}`}
-          />
-        ))}
+        {points.map((point) =>
+          // A QUIET PERIOD IS ONE THIN LINE, not a block of zeroes (owner, on the phone: *"oke"*,
+          // `a-quiet-period-is-one-line-on-a-phone`) — still there, so a missing day never reads as one that did not
+          // load; thirty days were thirty full blocks, most of them "Direstok 0 · Rp 0".
+          unitsReceived(point.figures) === 0 ? (
+            <Text
+              key={point.at}
+              fontSize="sm"
+              color="fg.muted"
+              px="3"
+              py="1.5"
+              borderWidth="1px"
+              borderStyle="dashed"
+              borderRadius="md"
+              data-testid={`statistics-series-row-${point.at}`}
+              data-quiet="true"
+            >
+              {point.at} · {t("supplierStats.quietPeriod")}
+            </Text>
+          ) : (
+            <FigureBlock
+              key={point.at}
+              title={point.at}
+              figures={point.figures}
+              testId={`statistics-series-row-${point.at}`}
+            />
+          ),
+        )}
       </Stack>
     );
   }
@@ -210,7 +279,7 @@ function SeriesTable({ points }: { points: SupplierFigurePoint[] }) {
         </Table.Header>
         <Table.Body>
           {points.map((point) => (
-            <Table.Row key={point.at} data-testid={`statistics-series-row-${point.at}`}>
+            <Table.Row key={point.at} data-testid={`statistics-series-row-${point.at}`} css={LIGHTS_UP}>
               <Table.Cell>
                 <Text fontSize="sm">{point.at}</Text>
               </Table.Cell>
@@ -235,6 +304,14 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
     row.team.name || t("supplierFigures.teamNumber", { id: row.team.teamId.toString() });
   const productLabel = (row: SupplierProductRow) =>
     row.name || t("supplierFigures.productNumber", { id: row.productId.toString() });
+  // THE PRODUCT AS THE APP DRAWS A PRODUCT — its picture, its name, its SKU under it (owner: *"statistik per produk ada
+  // gambar"*, `a-figures-product-shows-its-picture`), as the Produk tab draws it. No picture → the placeholder.
+  const productOf = (row: SupplierProductRow) => ({
+    id: row.productId,
+    name: productLabel(row),
+    sku: row.sku,
+    defaultImageThumbnailUrl: row.thumbnailUrl,
+  });
 
   if (rows.length === 0) {
     return (
@@ -251,7 +328,8 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
           <FigureBlock
             key={row.key}
             title={productLabel(row)}
-            sub={showTeam ? `${row.sku} · ${teamLabel(row)}` : row.sku}
+            // The team as a badge beside the SKU — the Produk tab's phone block.
+            header={<ProductListItem product={productOf(row)} teamName={showTeam ? teamLabel(row) : undefined} />}
             figures={row.figures}
             testId={`statistics-product-row-${row.key}`}
           />
@@ -272,12 +350,11 @@ function ProductTable({ rows, showTeam }: { rows: SupplierProductRow[]; showTeam
         </Table.Header>
         <Table.Body>
           {rows.map((row) => (
-            <Table.Row key={row.key} data-testid={`statistics-product-row-${row.key}`}>
+            <Table.Row key={row.key} data-testid={`statistics-product-row-${row.key}`} css={LIGHTS_UP}>
               <Table.Cell>
-                <Text fontSize="sm">{productLabel(row)}</Text>
-                <Text fontSize="xs" color="fg.muted">
-                  {row.sku}
-                </Text>
+                <Box minW="14rem">
+                  <ProductListItem product={productOf(row)} />
+                </Box>
               </Table.Cell>
               {showTeam && (
                 <Table.Cell>

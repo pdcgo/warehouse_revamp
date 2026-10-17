@@ -61,6 +61,26 @@ export function useLiabilityPositions(args: {
   });
 }
 
+// THE MENU'S COUNT — payments waiting for THIS team to confirm, across every counterparty (owner,
+// `the-sidebar-is-in-sections`). The response's `awaiting_confirmation` is whole-set — it ignores the page — so a
+// one-row page carries it. Under `key.liability`, so recording, confirming or rejecting a payment refreshes it.
+export function useLiabilityAwaiting(teamId: bigint | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: key.liability(teamId, { awaiting: true }),
+    enabled: enabled && teamId !== undefined,
+    queryFn: async () => {
+      const res = await liabilityClient.liabilityPositionList({
+        teamId: teamId!,
+        filter: { unsettledOnly: false },
+        dataRequest: positionRowData(),
+        page: { page: 1, limit: 1 },
+      });
+
+      return res.awaitingConfirmation;
+    },
+  });
+}
+
 export function useLiabilityLogs(args: {
   teamId: bigint | undefined;
   counterpartyId: bigint;
@@ -146,6 +166,9 @@ export function useRecordPayment() {
       // ⚠ AT LEAST ONE, and the server refuses without (a-payment-must-carry-proof). Each must
       // already be SHARED with the creditor — see useProofUpload, which does both.
       documentIds: string[];
+      // *Paid from* — one of the payer's own active accounts (a-team-payment-posts-on-accept). The
+      // server asks the financial accounts and refuses any other.
+      fromAccountId: bigint;
     }) =>
       liabilityPaymentClient.liabilityPaymentRecord({
         teamId: args.teamId,
@@ -153,6 +176,7 @@ export function useRecordPayment() {
         amount: args.amount,
         note: args.note,
         documentIds: args.documentIds,
+        fromAccountId: args.fromAccountId,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });
@@ -167,10 +191,13 @@ export function useConfirmPayment() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (args: { teamId: bigint; paymentId: bigint }) =>
+    // `toAccountId` — *Received into*, one of the creditor's own active accounts. Accepting is final, so it
+    // is required and never defaulted (a-team-payment-posts-on-accept).
+    mutationFn: (args: { teamId: bigint; paymentId: bigint; toAccountId: bigint }) =>
       liabilityPaymentClient.liabilityPaymentConfirm({
         teamId: args.teamId,
         paymentId: args.paymentId,
+        toAccountId: args.toAccountId,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["liability"] });

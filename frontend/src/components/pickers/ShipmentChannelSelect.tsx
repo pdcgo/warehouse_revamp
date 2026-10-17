@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
 import { useShipmentChannelOptions } from "../../features/shipment/queries";
 import { ShipmentChannelBadge } from "../badges/ShipmentChannelBadge";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 export interface ShipmentChannelSelectProps {
   /** Selected channel ID — what orders.shipment_channel_id stores. 0n / undefined = none. */
@@ -69,7 +70,8 @@ export function ShipmentChannelSelect({ value, onChange, placeholder, disabled }
         const picked = e.value[0];
         onChange?.(picked ? BigInt(picked) : 0n);
       }}
-      onInputValueChange={(e) => filter(e.inputValue)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      {...searchOnlyWhatIsTyped(filter)}
       data-testid="shipment-channel-select"
     >
       <Combobox.Control>

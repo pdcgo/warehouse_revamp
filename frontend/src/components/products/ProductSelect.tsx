@@ -39,6 +39,12 @@ export interface ProductSelectProps {
   onChange?: (product: PickedProduct) => void;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Render the list in a portal (the default) or inline. Pass `false` inside a modal Dialog: a portalled listbox
+   * renders OUTSIDE the dialog, where the modal makes it inert and aria-hidden — unclickable, and absent from the a11y
+   * tree (the reason RackSelect and ShopSelect never portal). Kept on by default so every page-level use is unchanged.
+   */
+  portalled?: boolean;
 }
 
 // ProductSelect is the shared catalogue picker for an order line (#90). Unlike the bounded ShopSelect,
@@ -54,6 +60,7 @@ export function ProductSelect({
   onChange,
   placeholder = "Search products by name or SKU",
   disabled,
+  portalled = true,
 }: ProductSelectProps) {
   const [input, setInput] = useState("");
 
@@ -96,7 +103,7 @@ export function ProductSelect({
         </Combobox.IndicatorGroup>
       </Combobox.Control>
 
-      <Portal>
+      <Portal disabled={!portalled}>
         <Combobox.Positioner>
           <Combobox.Content>
             <Combobox.Empty>

@@ -2,9 +2,27 @@
 
 Critique, questions and warnings about [mutation_and_ledger.md](./mutation_and_ledger.md). That doc is
 yours; this one is mine. Answered points are **deleted**, so this is always the current open set.
+> ✅ **Answered in chat (2026-10-16, last):** Q1, option **a** — this doc shrinks to an index: the words, the three shared
+> rules, where each ledger lives, one line on events ([the-template-is-an-index](./mutation_and_ledger_decision.md#the-template-is-an-index)).
+> **No question is open here.** All four Contradictions sit in sections the cut removes, so they close when you make it.
+> Critiques 2–4 stay: they apply to every ledger's implementation. Critique 6 moved to analytic.
 
+> 🔄 **Re-examined 2026-10-16 — your read: *"seems stale, many things covered by san_event"*.** Agreed for the second
+> half: the stat pipeline and the Idempotency Layer are built in `san_event` and `event_source`. The concept half is still
+> yours, with its flow behind two decisions. [Proposed Design](#proposed-design--what-this-doc-keeps) goes section by
+> section; [Q1](#question) is widened to the trim. Critique 5 deleted — the publish after commit is decided (no outbox).
+
+
+> ✅ **Answered 2026-10-15 in chat, as recommended:** Q3 [ledger-logs-are-append-only](./mutation_and_ledger_decision.md#ledger-logs-are-append-only)
+> and Q4 [the-caller-opens-the-transaction](./mutation_and_ledger_decision.md#the-caller-opens-the-transaction). Open: Q1. ⚠ Your §Flow Mutation and
+> Ledger still draws the mutation opening the transaction.
+>
 > **Full re-examination.** Rewritten tight — the previous version had grown past the doc it tracks.
 > Nothing still-open was dropped.
+>
+> ✅ **Answered 2026-10-10 and deleted:** Q2 and Critique 1, against my integer minor-units — float64 is the
+> template's default, and the payment ledger inherits it
+> ([every-ledger-keeps-money-as-float64](./mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
 
 ---
 
@@ -73,27 +91,63 @@ decision and re-deriving it.
 
 ---
 
+# Proposed Design — what this doc keeps
+
+*(2026-10-16)* Your two reads: *"seems stale, many things covered by san_event"* and *"any service have design like
+mutation and ledger, but they are defined better"*. Both hold. Section by section:
+
+| section | now described better by | → Recommend |
+| --- | --- | --- |
+| General Brief · What is mutation · Ledger · State · Scope · Ledger Log · `transaction` | each service's own ledger: inventory [batch.md](../../business/inventory/batch.md), [placement.md](../../business/inventory/placement.md), [transaction.md](../../business/inventory/transaction.md) · balance [team_balance_design.md](../balance/team_balance_design.md) · [cost](../cost/design.md) | keep the **vocabulary only**, four lines |
+| Implementation Plan | the same instances | becomes the index of instances |
+| Flow Mutation and Ledger · Entity Relationship Template | the instances' own flows and tables, which follow the decisions; this one does not (Critique 4, and the mutation opens the transaction) | delete |
+| Statistic Design · General Flow | ✅ built — `event_source` (send, push, replay), `san_event` (decode, claim, ack); [no-outbox-the-publish-is-trusted](../event_architecture/context_decision.md#no-outbox-the-publish-is-trusted); the stat plan is [analytic](../../business/analytic/context.md)'s | delete, one pointer line |
+| Idempotency Layer · Schema · Flow | ✅ built — `san_event.NewDedup(table)`, a table per service | delete, one rule line |
+
+**Why not delete the doc outright:** three decisions here are **shared by every ledger** and cited from inventory,
+balance, cost and the warehouse team docs. They need one home:
+[every-ledger-keeps-money-as-float64](./mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64) ·
+[the-caller-opens-the-transaction](./mutation_and_ledger_decision.md#the-caller-opens-the-transaction) ·
+[ledger-logs-are-append-only](./mutation_and_ledger_decision.md#ledger-logs-are-append-only).
+
+The doc as an index, about 25 lines:
+
+```
+# Mutation and Ledger.
+## Words.        state · ledger log (append-only, balance after) · scope · transaction
+## Every ledger. caller opens the tx · logs append-only · money float64, compared at 4 digits
+## Where each one lives.  inventory (batch, placement, transaction) · balance · cost
+## Events.       sent, received and processed once through san_event / event_source — a table per service
+```
+
+```mermaid
+flowchart LR
+  I["mutation_and_ledger.md - the index"] --> R["3 shared rules"]
+  I --> B["inventory - batch, placement, transaction"]
+  I --> L["balance - team_balance_design"]
+  I --> C["cost - design"]
+  I --> E["san_event, event_source - built"]
+```
+
+---
+
 # Critique
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **1** | **`float64` in the template reaches the Payment ledger, where the stock argument does not apply.** `## Implementation Plan.` item 3 is a *"Payment and Balance Ledger"*. Stock justified float by COGS division (`(fee) / qty`) — payments have no such division: an amount owed is an exact number of rupiah. Inheriting float there is a money ledger that cannot reconcile to a bank statement, for a reason that was never about payments. | Integer minor-units in the template. If stock keeps float for valuation, that is a stock-local exception and should be stated as one — not the default every future ledger copies. |
 | **2** | **Lock ordering is undefined → deadlock.** `mut` locks its business rows, then `lg` locks state rows, and the change list is applied in a `loop` in list order. Two mutations touching the same two scopes in opposite order deadlock — and this system's normal case is two people on one shelf. | **Sort the change list by scope key inside the write session.** Invisible to callers, impossible to get wrong at a call site, and it exists once. Then `audit-sql` on the first mutation that uses it. |
 | **3** | **`lock states` and `update atomic balance + change` are redundant.** If the update is `UPDATE … SET balance = balance + ? RETURNING balance`, the row lock is implicit and the explicit lock does nothing. If the explicit lock is what protects it, "atomic" is doing nothing. | Drop the `lg->>st: lock states` step. `UPDATE … RETURNING` **is** the protocol, and a guard becomes `WHERE balance + ? >= 0` with zero-rows-affected as the rejection. |
 | **4** | **Get-or-create races.** `alt Exist / else create` — two concurrent transactions both miss, both insert, one dies on the unique violation and takes the whole business transaction with it. The same check-then-act shape the event library rejects for dedup. | Collapse the `alt` **and** the `loop` into one statement: `INSERT … ON CONFLICT (scope…) DO UPDATE SET balance = ledger_state.balance + EXCLUDED.change RETURNING balance`. The race disappears rather than being handled. |
-| **5** | **`rpc->>pub` publishes after the mutation returns, outside the transaction.** Crash in between and the event is gone: the stock moved, the stat never hears, nothing detects it. This is the template for three flows in `stock_design.md` that all do the same. | An **outbox** — event row written in the mutation's transaction, a relay publishes. Or state plainly that the midnight reconcile is the recovery path, which makes it load-bearing rather than a safety net. Currently neither is written down. ⛔ **The outbox half is decided the other way** — [no-outbox-the-publish-is-trusted](../event_architecture/context_decision.md#no-outbox-the-publish-is-trusted). |
-| **6** | **`Preloading Data if Needed` breaks reconcilability.** If the pipeline enriches an event with a live read from another service at processing time, replaying it at midnight gets a *different* answer because that service's data moved. Reconcile would then "correct" a right number to a wrong one. | Freeze preloaded values into the event **at publish time** — the event library's own *"an event carries CHANGE, never a level"* is the same instinct. If a value genuinely cannot be frozen, that metric is not reconcilable and must be excluded from the midnight pass. |
+| **6** | ➡ *(2026-10-16)* **Moved to [analytic Critique 20](../../business/analytic/context_clarify.md#critique)** — its section, the stat pipeline, leaves this doc | — |
 
 ---
 
 # Question
 
-1. **Does `## Idempotency Layer.` survive at all**, now that item 1 defers to `event_library`? I recommend
-   deleting it.
-2. **Is `float64` a stock-local exception or the template's default?** It decides what the Payment ledger
-   inherits.
-3. **Is `ledger_logs` append-only?** Stock has answered it; the template has not, and `## Ledger Log.`'s
-   source-of-truth rule rests on the answer.
+1. ✅ *(2026-10-16)* **Answered: a — shrink to an index, don't delete** — [the-template-is-an-index](./mutation_and_ledger_decision.md#the-template-is-an-index). The cut is yours to make.
+3. ✅ *(2026-10-15)* **Answered: append-only** — [ledger-logs-are-append-only](./mutation_and_ledger_decision.md#ledger-logs-are-append-only).
+4. ✅ *(2026-10-15)* **Answered: the caller** — [the-caller-opens-the-transaction](./mutation_and_ledger_decision.md#the-caller-opens-the-transaction).
+   ⚠ Your §Flow Mutation and Ledger still draws the mutation opening it.
 
 ---
 

@@ -27,20 +27,13 @@ test("Inventory: the stock screen is reachable and prompts for a warehouse", asy
 });
 
 // #95/#122 — the Inventories sub-menu. The group shows for selling/warehouse teams (root reaches the
-// routes directly). "Stock" is the on-hand screen; Placements is a stub. ("Restock" used to be this
-// same screen under another title — it is now the request flow, covered by restock.spec.ts.)
+// routes directly). "Stock" is the on-hand screen. ("Restock" used to be this same screen under
+// another title — it is now the request flow, covered by restock.spec.ts.) The placement list is
+// Racks (the-racks-page-is-the-placement-list), so there is no Placements stub to visit.
 test("Inventories: Stock is the on-hand screen", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
   await page.goto("/inventories/stock");
   await expect(page.getByRole("heading", { name: "Stock" })).toBeVisible();
   await expect(page.getByTestId("inventory-pick-warehouse")).toBeVisible();
-});
-
-test("Inventories: Placements is a stub until warehouse locations exist", async ({ page }) => {
-  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-
-  await page.goto("/inventories/placements");
-  await expect(page.getByTestId("placements-page")).toBeVisible();
-  await expect(page.getByText("Placements are coming soon")).toBeVisible();
 });

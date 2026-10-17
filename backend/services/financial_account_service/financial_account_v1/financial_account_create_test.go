@@ -98,19 +98,24 @@ func TestFinancialAccountCreate_ANameIsUniqueInTheTeamOnly(t *testing.T) {
 	mustCreate(t, svc, cash(teamB, "Kas", 0))
 }
 
-func TestFinancialAccountCreate_RefusesWhatOnlyAWithdrawalOrTomorrowCouldMake(t *testing.T) {
+// the-type-decides-the-provider: type Lainnya SETS provider Lainnya, so half the pair is refused — a bank at
+// provider Lainnya was another-bank-is-provider-lainnya, which the later decision replaced.
+func TestFinancialAccountCreate_RefusesHalfALainnyaPairOrTomorrow(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	unknown := bca(teamA, "Unknown", "", 0)
-	unknown.typ = financial_accountv1.FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_UNKNOWN
-	unknown.provider = financial_accountv1.FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN
+	lainnyaAtBCA := other(teamA, "Lainnya at BCA", "", 0)
+	lainnyaAtBCA.provider = financial_accountv1.FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_BCA
+
+	bankAtLainnya := bca(teamA, "Mandiri", "1370000001", 0)
+	bankAtLainnya.provider = financial_accountv1.FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN
 
 	cases := map[string]accountSpec{
-		"an unknown account":    unknown,
-		"a bank with no number": bca(teamA, "No number", "", 0),
-		"a day after today":     func() accountSpec { s := cash(teamA, "Tomorrow", 0); s.on = day(-1); return s }(),
-		"below zero":            cash(teamA, "Negative", -1),
+		"type Lainnya at a bank provider": lainnyaAtBCA,
+		"a bank at provider Lainnya":      bankAtLainnya,
+		"a bank with no number":           bca(teamA, "No number", "", 0),
+		"a day after today":               func() accountSpec { s := cash(teamA, "Tomorrow", 0); s.on = day(-1); return s }(),
+		"below zero":                      cash(teamA, "Negative", -1),
 	}
 
 	for name, spec := range cases {
@@ -133,4 +138,60 @@ func TestFinancialAccountCreate_TypeAndProviderArePickedApart(t *testing.T) {
 	if a.GetType() != financial_accountv1.FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT {
 		t.Fatalf("type = %v", a.GetType())
 	}
+}
+
+// the-type-decides-the-provider: a person opens a Lainnya account — type and provider unknown, no number asked —
+// and it opens with its row like any other (an-account-opens-with-a-log-row).
+func TestFinancialAccountCreate_TypeLainnyaOpensWithoutANumber(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	a := mustCreate(t, svc, other(teamA, "Mandiri Usaha", "", 250_000))
+
+	if a.GetType() != financial_accountv1.FinancialAccountType_FINANCIAL_ACCOUNT_TYPE_UNKNOWN ||
+		a.GetProvider() != financial_accountv1.FinancialAccountProvider_FINANCIAL_ACCOUNT_PROVIDER_UNKNOWN ||
+		a.GetAccountNumber() != "" {
+		t.Fatalf("account = %+v", a)
+	}
+
+	rows := logs(t, db, a.GetId())
+	if len(rows) != 1 || rows[0].ChangeType != "opening_balance" || rows[0].Change != 250_000 {
+		t.Fatalf("rows = %+v", rows)
+	}
+
+	// A number, when given, is still one real account, once — every Lainnya number shares provider Lainnya.
+	mustCreate(t, svc, other(teamA, "BRI Gudang", "1370000002", 0))
+
+	_, err := create(svc, other(teamB, "BRI elsewhere", "1370000002", 0))
+	if code := connectCode(t, err); code != connect.CodeAlreadyExists {
+		t.Fatalf("code = %v, want AlreadyExists", code)
+	}
+}
+
+// A Lainnya account is allowed what any unknown one is (the-type-decides-the-provider): money does not go INTO it,
+// it is not reconciled and it is never operational — Tentukan Rekening makes it a real one first.
+func TestFinancialAccountCreate_ALainnyaIsAllowedWhatAnUnknownIs(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc := newService(t, db)
+
+	lainnya := mustCreate(t, svc, other(teamA, "Mandiri Usaha", "", 100_000))
+	kas := mustCreate(t, svc, cash(teamA, "Kas", 100_000))
+
+	if err := transfer(svc, teamA, kas.GetId(), lainnya.GetId(), 1_000, day(0)); connectCode(t, err) != connect.CodeInvalidArgument {
+		t.Fatalf("a transfer INTO a Lainnya account: %v", err)
+	}
+
+	if _, err := reconcile(svc, teamA, lainnya.GetId(), 90_000, "bank app"); err == nil {
+		t.Fatal("a Lainnya account was reconciled")
+	}
+
+	_, err := svc.FinancialAccountOperationalSet(asAni(), connect.NewRequest(&financial_accountv1.FinancialAccountOperationalSetRequest{
+		TeamId: teamA, AccountId: lainnya.GetId(), Operational: true,
+	}))
+	if err == nil {
+		t.Fatal("a Lainnya account was marked operational")
+	}
+
+	// Out of it is how the money leaves it — as from the listener's.
+	mustTransfer(t, svc, teamA, lainnya.GetId(), kas.GetId(), 100_000, day(0))
 }

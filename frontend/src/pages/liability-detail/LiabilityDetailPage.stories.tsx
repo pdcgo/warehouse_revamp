@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { teams } from "../../../.storybook/fixtures";
+import { account } from "../../../.storybook/financialAccountFixtures";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { LiabilityDetailPage } from "./index";
 
@@ -247,6 +248,95 @@ export const ARejectedClaimShowsWhy: Story = {
 
     const reason = await canvas.findByTestId("liability-detail-reason-603");
     await expect(reason).toHaveTextContent("no transfer of this amount reached our account");
+  },
+};
+
+// ── WHICH ACCOUNT (a-team-payment-posts-on-accept) ──────────────────────────────────────────────
+//
+// A team payment reaches the financial accounts when it is ACCEPTED, as two movements: out of the
+// payer's account, into the creditor's. Each side names its own — the payer when recording, the
+// creditor when accepting — because each is the only one who knows which bank the money touched.
+//
+// Both are SENT, and both are required — the stub refuses a request without its account, as the
+// contract does, so a story that reaches "sent" proves the pick travelled. Team 11 has two accounts, Kas Gudang and BCA Gudang, so neither picker fills itself in.
+const KAS_GUDANG = account("Kas Gudang");
+const BCA_GUDANG = account("BCA Gudang");
+
+// The payer's half. Amount and proof are not enough any more: the send waits for the account the
+// transfer left, and once it is sent the claim is pending — the balance does not move.
+export const APaymentNamesTheAccountItWasPaidFrom: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const balanceBefore = canvas.getByTestId("liability-detail-balance").textContent;
+
+    await userEvent.click(canvas.getByTestId("liability-detail-make-payment"));
+
+    // The dialog portals, so it is queried from the document rather than the canvas.
+    await userEvent.type(await screen.findByTestId("record-amount"), "500000", { delay: 40 });
+    await userEvent.upload(
+      screen.getByTestId("record-proof-input") as HTMLInputElement,
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "transfer.png", { type: "image/png" }),
+    );
+    await waitFor(() => expect(screen.getByTestId("record-proof-list")).toHaveTextContent("transfer.png"));
+
+    // ⚠ Amount and proof, and still not ready — the account the transfer left is required too.
+    const submit = screen.getByTestId("record-submit");
+    await waitFor(() => expect(submit).toBeDisabled());
+
+    const trigger = screen.getByTestId("record-from-account");
+    await waitFor(() => expect(trigger).not.toBeDisabled());
+    await userEvent.click(trigger);
+    const option = await screen.findByTestId(`record-from-account-option-${BCA_GUDANG.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() => expect(submit).toBeEnabled());
+    await userEvent.click(submit);
+
+    // Sent — with its account, or the stub would have refused it and the dialog would still be open —
+    // and pending: it appears under My payments, and nothing has posted.
+    //
+    // ⚠ THIS LINE IS THE REGRESSION TEST for the form's `noValidate`. Before it, the cleared (but
+    // required) proof input made the browser swallow the submit, the dialog stayed open, and no
+    // story had ever pressed Send to notice.
+    await waitFor(() => expect(screen.queryByTestId("record-submit")).not.toBeInTheDocument());
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-mine"));
+    await expect(await canvas.findByTestId("liability-detail-payment-700")).toHaveTextContent("Recorded");
+    await expect(canvas.getByTestId("liability-detail-balance").textContent).toBe(balanceBefore);
+  },
+};
+
+// The creditor's half. Accepting is FINAL (an-accepted-payment-is-final), so it waits for the account
+// the money landed in — and once accepted, the balance goes down by the payment.
+export const AcceptingNamesTheAccountItLandedIn: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // Toko Melati owes 8.700.000 and claims a 2.000.000 transfer (payment 602).
+    await expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("8.700.000");
+
+    await userEvent.click(canvas.getByTestId("liability-detail-tab-team"));
+    await userEvent.click(await canvas.findByTestId("liability-detail-confirm-602"));
+
+    const submit = await screen.findByTestId("liability-detail-confirm-submit");
+    await waitFor(() => expect(submit).toBeDisabled());
+
+    const trigger = screen.getByTestId("liability-detail-confirm-account");
+    await waitFor(() => expect(trigger).not.toBeDisabled());
+    await userEvent.click(trigger);
+
+    // Both of the warehouse's accounts are offered — any active one, not only the operational Kas.
+    const option = await screen.findByTestId(`liability-detail-confirm-account-option-${BCA_GUDANG.id}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await expect(screen.getByTestId(`liability-detail-confirm-account-option-${KAS_GUDANG.id}`)).toBeVisible();
+    await userEvent.click(option);
+
+    await waitFor(() => expect(submit).toBeEnabled());
+    await userEvent.click(submit);
+
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-balance")).toHaveTextContent("6.700.000"));
+    await expect(canvas.getByTestId("liability-detail-payment-602")).toHaveTextContent("Confirmed");
+    await expect(canvas.queryByTestId("liability-detail-confirm-602")).not.toBeInTheDocument();
   },
 };
 

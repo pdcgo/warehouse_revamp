@@ -4,7 +4,7 @@
 //
 // A row arrives two ways and no other (a-row-comes-by-hand-or-from-the-broker): a manager on the account
 // screens — opening_balance, transfer, capital, adjustment — or a listener on another service's event —
-// withdrawal today, restock, expense and team payment when their events exist (one-way-in-per-type). There
+// withdrawal and team payment today, restock and expense when their events exist (one-way-in-per-type). There
 // is no write RPC for other services.
 //
 // Every write goes through ONE path, `post` in ledger.go: lock the account, append the log row, move the
@@ -96,7 +96,9 @@ var (
 
 	errOpeningBelowZero = errors.New("an opening balance cannot be below zero")
 
-	errUnknownByHand = connect.NewError(connect.CodeInvalidArgument, errors.New("an unknown account is made only by a withdrawal"))
+	errNameARealAccount = connect.NewError(connect.CodeInvalidArgument, errors.New("name a real account — a bank, a wallet or a cash box, never Lainnya again"))
+
+	errOtherIsAPair = connect.NewError(connect.CodeInvalidArgument, errors.New("type Lainnya sets provider Lainnya — the two come together"))
 )
 
 func dbError(err error) error {

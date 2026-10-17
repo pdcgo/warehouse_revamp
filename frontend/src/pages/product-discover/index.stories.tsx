@@ -41,7 +41,7 @@ const Routed = routedPage(
 const meta = {
   title: "Pages/Products/DiscoverProducts",
   component: DiscoverProductsPage,
-  parameters: { signedIn: true, layout: "padded" },
+  parameters: { signedIn: true },
   beforeEach: () => {
     asTeam(SELLING_TEAM)();
     asRole(Role.SELLING_OWNER)();

@@ -31,12 +31,21 @@ func (s *Service) LiabilityPaymentRecord(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errSameTeam)
 	}
 
+	// *Paid from* must be the PAYER's own live account (a-team-payment-posts-on-accept) — asked now, though
+	// nothing posts until the creditor accepts, so a claim is never accepted against an account the payer
+	// could not have paid from.
+	err := s.checkAccount(ctx, payerTeamID, req.Msg.GetFromAccountId())
+	if err != nil {
+		return nil, err
+	}
+
 	payment := liability_service_models.LiabilityPayment{
 		PayerTeamID:    payerTeamID,
 		CreditorTeamID: creditorTeamID,
 		Amount:         req.Msg.GetAmount(),
 		Status:         paymentRecorded,
 		Note:           req.Msg.GetNote(),
+		FromAccountID:  req.Msg.GetFromAccountId(),
 		// PROOF, written in the same INSERT as the payment — GORM creates the association with the
 		// parent, so a payment can never exist for a moment with its proof missing.
 		//
@@ -50,7 +59,7 @@ func (s *Service) LiabilityPaymentRecord(
 		RecordedBy: actorUserID(ctx),
 	}
 
-	err := s.db.WithContext(ctx).Create(&payment).Error
+	err = s.db.WithContext(ctx).Create(&payment).Error
 	if err != nil {
 		return nil, dbError(err)
 	}

@@ -33,8 +33,10 @@ func (s *Service) RestockRequestCancel(
 			return loadErr
 		}
 
-		if rr.Status != restockStatusPending {
-			return errRestockNotPending
+		// Ongoing only (a-restock-is-cancelled-only-while-ongoing): a box that arrived is in the building, a lost one
+		// was paid for, and a cancelled one must not refund twice.
+		if rr.Status != restockStatusOngoing {
+			return errRestockNotOngoing
 		}
 
 		// WHEN it was called off, stamped here rather than left to `updated_at`: any later write would
@@ -62,12 +64,28 @@ func (s *Service) RestockRequestCancel(
 			return updateErr
 		}
 
-		// Same transaction, same instant as the column above — see recordRestockEvent.
-		return recordRestockEvent(tx, rr.ID, restockEventCancelled, actor, now)
+		// Same transaction, same instant as the column above — see recordRestockLog. Whether the money came back is
+		// the trail's to say (a-restock-names-its-paying-account): it is a fact about this cancel, not a column.
+		description := restockLogCancelled + " — money not returned"
+		if req.Msg.GetMoneyReturned() {
+			description = restockLogCancelled + " — money returned"
+		}
+
+		logErr := recordRestockLog(tx, rr.ID, restockStatusOngoing, restockStatusCancelled, actor, description, now)
+		if logErr != nil {
+			return logErr
+		}
+
+		// The lines, for the amount the cancel announces.
+		return tx.Where("restock_request_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
 	})
 	if err != nil {
 		return nil, restockErr(err)
 	}
+
+	// AFTER the commit: the paying account hears it was called off, and whether the money came back
+	// (a-restock-names-its-paying-account).
+	s.publishRestockMoney(ctx, restockCancelledEvent(&rr, req.Msg.GetMoneyReturned()))
 
 	return connect.NewResponse(&inventoryv1.RestockRequestCancelResponse{
 		Request: restockRequestToProto(&rr),

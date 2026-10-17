@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Dialog, Portal } from "@chakra-ui/react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
@@ -216,5 +217,36 @@ export const Interactive: Story = {
     await userEvent.click(await screen.findByTestId(`team-select-option-${teams[0]!.teamCode}`));
 
     await expect(canvas.getByRole("combobox")).toHaveValue(teams[0]!.name);
+  },
+};
+
+// INSIDE A MODAL DIALOG the list must not portal: a portalled listbox lands outside the dialog, where the modal makes it
+// inert. `portalled={false}` renders it inline, so it opens and takes a click (the stock count's New Count dialog).
+export const InsideADialog: Story = {
+  args: { portalled: false, teamType: TeamType.SELLING },
+  render: (args) => (
+    <Dialog.Root open>
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content data-testid="team-select-dialog">
+            <Dialog.Body p="6">
+              <TeamSelect {...args} />
+            </Dialog.Body>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
+  ),
+  play: async ({ args }) => {
+    const dialog = await screen.findByTestId("team-select-dialog");
+    await waitFor(() => expect(dialog).toBeVisible());
+
+    await userEvent.click(within(dialog).getByRole("combobox"));
+    // The option is INSIDE the dialog, not portalled out of it.
+    const option = await within(dialog).findByTestId(`team-select-option-${teams[1]!.teamCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await waitFor(() => expect(args.onChange).toHaveBeenCalledWith(teams[1]!.id));
   },
 };

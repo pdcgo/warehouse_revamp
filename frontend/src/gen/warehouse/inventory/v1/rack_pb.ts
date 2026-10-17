@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/inventory/v1/rack.proto.
  */
 export const file_warehouse_inventory_v1_rack: GenFile = /*@__PURE__*/
-  fileDesc("CiF3YXJlaG91c2UvaW52ZW50b3J5L3YxL3JhY2sucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEiagoEUmFjaxIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDAoEY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgijQEKEVJhY2tDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYIBIWCgRuYW1lGAMgASgJQgi6SAVyAxjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECBgkiQAoSUmFja0NyZWF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2siqwIKD1JhY2tMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI2CgZmaWx0ZXIYAiABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0RmlsdGVyEjgKBHNvcnQYAyABKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0RmlsdGVyU29ydBI+CgxkYXRhX3JlcXVlc3QYBCADKA4yKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgYJCCIkCg5SYWNrTGlzdEZpbHRlchISCgFxGAEgASgJQge6SARyAhhkIrsBChJSYWNrTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjMKBHJhY2sYAyABKA4yIy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tSb3dTb3J0SABCAwoBcyKlAQoOUmFja1Jvd01hcEl0ZW0SRQoIbWFwX2RhdGEYASADKAsyMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpMCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEisKBXZhbHVlGAIgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrOgI4ASKLAQoUUmFja0xpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI2CgRyYWNrGAIgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrUm93TWFwSXRlbUgAQgMKAWQijgEKEFJhY2tMaXN0UmVzcG9uc2USOwoFaXRlbXMYASADKAsyLC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvIlgKEVJhY2tEZXRhaWxSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAA6C5K1GAcKBQECBgkIInYKElJhY2tEZXRhaWxSZXNwb25zZRIqCgRyYWNrGAEgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrEjQKB3N1bW1hcnkYAiABKAsyIy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdW1tYXJ5InEKC1JhY2tTdW1tYXJ5EhUKDXRvdGFsX29uX2hhbmQYASABKAMSEwoLdG90YWxfdmFsdWUYAiABKAMSHQoVdW5rbm93bl9jb3N0X3Byb2R1Y3RzGAMgASgNEhcKD2xhc3RfY291bnRlZF9hdBgEIAEoCSJqCg1SYWNrU3RvY2tMaW5lEhIKCnByb2R1Y3RfaWQYASABKAQSDwoHb25faGFuZBgCIAEoAxIRCgl1bml0X2Nvc3QYAyABKAMSEgoKY29zdF9rbm93bhgEIAEoCBINCgV2YWx1ZRgFIAEoAyL0AQoQUmFja1N0b2NrUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja0ZpbHRlchI/CgxkYXRhX3JlcXVlc3QYAyADKA4yKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja0RhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIGCQgiKwoPUmFja1N0b2NrRmlsdGVyEhgKB3JhY2tfaWQYASABKARCB7pIBDICIAAisgEKEFJhY2tTdG9ja01hcEl0ZW0SRwoIbWFwX2RhdGEYASADKAsyNS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja01hcEl0ZW0uTWFwRGF0YUVudHJ5GlUKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNAoFdmFsdWUYAiABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja0xpbmU6AjgBIpQBChVSYWNrU3RvY2tSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI+CgpyYWNrX3N0b2NrGAIgASgLMigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tNYXBJdGVtSABCAwoBZCKQAQoRUmFja1N0b2NrUmVzcG9uc2USPAoFaXRlbXMYASADKAsyLS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTdG9ja1Jlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyLYAQoRUmFja1VwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHcmFja19pZBgCIAEoBEIHukgEMgIgABIcCgRjb2RlGAMgASgJQgm6SAZyBBABGCBIAIgBARIbCgRuYW1lGAQgASgJQgi6SAVyAxjIAUgBiAEBEiIKC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxj0A0gCiAEBOgqStRgGCgQBAgYJQgcKBV9jb2RlQgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbiJAChJSYWNrVXBkYXRlUmVzcG9uc2USKgoEcmFjaxgBIAEoCzIcLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFjayJXChFSYWNrRGVsZXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAOgqStRgGCgQBAgYJIhQKElJhY2tEZWxldGVSZXNwb25zZSL6AQoSUmFja0hpc3RvcnlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEjkKBmZpbHRlchgCIAEoCzIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlGaWx0ZXISQQoMZGF0YV9yZXF1ZXN0GAMgAygOMisud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeURhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToLkrUYBwoFAQIGCQgibAoRUmFja0hpc3RvcnlGaWx0ZXISGAoHcmFja19pZBgBIAEoBEIHukgEMgIgABI9CgVraW5kcxgCIAMoDjIkLndhcmVob3VzZS5pbnZlbnRvcnkudjEuTW92ZW1lbnRLaW5kQgi6SAWSAQIQCCK2AQoSUmFja0hpc3RvcnlNYXBJdGVtEkkKCG1hcF9kYXRhGAEgAygLMjcud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeU1hcEl0ZW0uTWFwRGF0YUVudHJ5GlUKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNAoFdmFsdWUYAiABKAsyJS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlN0b2NrTW92ZW1lbnQ6AjgBIpYBChdSYWNrSGlzdG9yeVJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEj4KCG1vdmVtZW50GAIgASgLMioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeU1hcEl0ZW1IAEIDCgFkIpQBChNSYWNrSGlzdG9yeVJlc3BvbnNlEj4KBWl0ZW1zGAEgAygLMi8ud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeVJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyp2ChBSYWNrTGlzdERhdGFUeXBlEiMKH1JBQ0tfTElTVF9EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIfChtSQUNLX0xJU1RfREFUQV9UWVBFX0dFTkVSQUwQARIcChhSQUNLX0xJU1RfREFUQV9UWVBFX1JBQ0sQAipaCgtSYWNrUm93U29ydBIdChlSQUNLX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASFgoSUkFDS19ST1dfU09SVF9DT0RFEAESFAoQUkFDS19ST1dfU09SVF9JRBACKoABChFSYWNrU3RvY2tEYXRhVHlwZRIkCiBSQUNLX1NUT0NLX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiAKHFJBQ0tfU1RPQ0tfREFUQV9UWVBFX0dFTkVSQUwQARIjCh9SQUNLX1NUT0NLX0RBVEFfVFlQRV9SQUNLX1NUT0NLEAIqhgEKE1JhY2tIaXN0b3J5RGF0YVR5cGUSJgoiUkFDS19ISVNUT1JZX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlJBQ0tfSElTVE9SWV9EQVRBX1RZUEVfR0VORVJBTBABEiMKH1JBQ0tfSElTVE9SWV9EQVRBX1RZUEVfTU9WRU1FTlQQAjLKBQoLUmFja1NlcnZpY2USYwoKUmFja0NyZWF0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0NyZWF0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tDcmVhdGVSZXNwb25zZRJdCghSYWNrTGlzdBInLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0xpc3RSZXF1ZXN0Gigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTGlzdFJlc3BvbnNlEmMKClJhY2tEZXRhaWwSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZXRhaWxSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrRGV0YWlsUmVzcG9uc2USYAoJUmFja1N0b2NrEigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXNwb25zZRJmCgtSYWNrSGlzdG9yeRIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlSZXF1ZXN0Gisud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeVJlc3BvbnNlEmMKClJhY2tVcGRhdGUSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tVcGRhdGVSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrVXBkYXRlUmVzcG9uc2USYwoKUmFja0RlbGV0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RlbGV0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZWxldGVSZXNwb25zZUJSWlBnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2ludmVudG9yeS92MTtpbnZlbnRvcnl2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_inventory_v1_inventory, file_warehouse_role_base_v1_role]);
+  fileDesc("CiF3YXJlaG91c2UvaW52ZW50b3J5L3YxL3JhY2sucHJvdG8SFndhcmVob3VzZS5pbnZlbnRvcnkudjEiagoEUmFjaxIKCgJpZBgBIAEoBBIUCgx3YXJlaG91c2VfaWQYAiABKAQSDAoEY29kZRgDIAEoCRIMCgRuYW1lGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEg8KB2RlbGV0ZWQYBiABKAgijQEKEVJhY2tDcmVhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhcKBGNvZGUYAiABKAlCCbpIBnIEEAEYIBIWCgRuYW1lGAMgASgJQgi6SAVyAxjIARIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECBgkiQAoSUmFja0NyZWF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2siqwIKD1JhY2tMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI2CgZmaWx0ZXIYAiABKAsyJi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0RmlsdGVyEjgKBHNvcnQYAyABKAsyKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0RmlsdGVyU29ydBI+CgxkYXRhX3JlcXVlc3QYBCADKA4yKC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOguStRgHCgUBAgYJCCIkCg5SYWNrTGlzdEZpbHRlchISCgFxGAEgASgJQge6SARyAhhkIrsBChJSYWNrTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjMKBHJhY2sYAyABKA4yIy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tSb3dTb3J0SABCAwoBcyKlAQoOUmFja1Jvd01hcEl0ZW0SRQoIbWFwX2RhdGEYASADKAsyMy53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tSb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpMCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEisKBXZhbHVlGAIgASgLMhwud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrOgI4ASJNCg5SYWNrU3RvY2tUb3RhbBIPCgdyYWNrX2lkGAEgASgEEhMKC3N0b2NrX2NvdW50GAIgASgDEhUKDXByb2R1Y3RfY291bnQYAyABKA0ivQEKFVJhY2tTdG9ja1RvdGFsTWFwSXRlbRJMCghtYXBfZGF0YRgBIAMoCzI6LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1N0b2NrVG90YWxNYXBJdGVtLk1hcERhdGFFbnRyeRpWCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tUb3RhbDoCOAEiywEKFFJhY2tMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASNgoEcmFjaxgCIAEoCzImLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1Jvd01hcEl0ZW1IABI+CgVzdG9jaxgDIAEoCzItLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1N0b2NrVG90YWxNYXBJdGVtSABCAwoBZCKOAQoQUmFja0xpc3RSZXNwb25zZRI7CgVpdGVtcxgBIAMoCzIsLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0xpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iWAoRUmFja0RldGFpbFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHcmFja19pZBgCIAEoBEIHukgEMgIgADoLkrUYBwoFAQIGCQgidgoSUmFja0RldGFpbFJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2sSNAoHc3VtbWFyeRgCIAEoCzIjLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1N1bW1hcnkicQoLUmFja1N1bW1hcnkSFQoNdG90YWxfb25faGFuZBgBIAEoAxITCgt0b3RhbF92YWx1ZRgCIAEoAxIdChV1bmtub3duX2Nvc3RfcHJvZHVjdHMYAyABKA0SFwoPbGFzdF9jb3VudGVkX2F0GAQgASgJInwKDVJhY2tTdG9ja0xpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIPCgdvbl9oYW5kGAIgASgDEhEKCXVuaXRfY29zdBgDIAEoAxISCgpjb3N0X2tub3duGAQgASgIEg0KBXZhbHVlGAUgASgDEhAKCGNvdW50aW5nGAYgASgIIjoKD1JhY2tUcmFuc2FjdGlvbhIWCg50cmFuc2FjdGlvbl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEIrwBCg9SYWNrTW92ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHQoMZnJvbV9yYWNrX2lkGAIgASgEQge6SAQyAiAAEkAKBWxpbmVzGAMgAygLMiQud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTW92ZUxpbmVCC7pICJIBBQgBEMgBEh0KC2Rlc2NyaXB0aW9uGAQgASgJQgi6SAVyAxj0AzoLkrUYBwoFAQIGCQgiYwoMUmFja01vdmVMaW5lEhsKCnByb2R1Y3RfaWQYASABKARCB7pIBDICIAASGQoIcXVhbnRpdHkYAiABKANCB7pIBCICIAASGwoKdG9fcmFja19pZBgDIAEoBEIHukgEMgIgACJRChBSYWNrTW92ZVJlc3BvbnNlEj0KDHRyYW5zYWN0aW9ucxgBIAMoCzInLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1RyYW5zYWN0aW9uItoBChFSYWNrU2FtcGxlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIYCgdyYWNrX2lkGAIgASgEQge6SAQyAiAAEkIKBWxpbmVzGAMgAygLMiYud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU2FtcGxlTGluZUILukgIkgEFCAEQyAESHQoJcmVjaXBpZW50GAQgASgJQgq6SAdyBRABGMgBEh0KC2Rlc2NyaXB0aW9uGAUgASgJQgi6SAVyAxj0AzoLkrUYBwoFAQIGCQgiSAoOUmFja1NhbXBsZUxpbmUSGwoKcHJvZHVjdF9pZBgBIAEoBEIHukgEMgIgABIZCghxdWFudGl0eRgCIAEoA0IHukgEIgIgACJTChJSYWNrU2FtcGxlUmVzcG9uc2USPQoMdHJhbnNhY3Rpb25zGAEgAygLMicud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrVHJhbnNhY3Rpb24i9AEKEFJhY2tTdG9ja1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tGaWx0ZXISPwoMZGF0YV9yZXF1ZXN0GAMgAygOMikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tEYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6C5K1GAcKBQECBgkIIisKD1JhY2tTdG9ja0ZpbHRlchIYCgdyYWNrX2lkGAEgASgEQge6SAQyAiAAIrIBChBSYWNrU3RvY2tNYXBJdGVtEkcKCG1hcF9kYXRhGAEgAygLMjUud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tNYXBJdGVtLk1hcERhdGFFbnRyeRpVCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjQKBXZhbHVlGAIgASgLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tMaW5lOgI4ASKUAQoVUmFja1N0b2NrUmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASPgoKcmFja19zdG9jaxgCIAEoCzIoLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja1N0b2NrTWFwSXRlbUgAQgMKAWQikAEKEVJhY2tTdG9ja1Jlc3BvbnNlEjwKBWl0ZW1zGAEgAygLMi0ud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8i2AEKEVJhY2tVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhgKB3JhY2tfaWQYAiABKARCB7pIBDICIAASHAoEY29kZRgDIAEoCUIJukgGcgQQARggSACIAQESGwoEbmFtZRgEIAEoCUIIukgFcgMYyAFIAYgBARIiCgtkZXNjcmlwdGlvbhgFIAEoCUIIukgFcgMY9ANIAogBAToKkrUYBgoEAQIGCUIHCgVfY29kZUIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb24iQAoSUmFja1VwZGF0ZVJlc3BvbnNlEioKBHJhY2sYASABKAsyHC53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2siVwoRUmFja0RlbGV0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGAoHcmFja19pZBgCIAEoBEIHukgEMgIgADoKkrUYBgoEAQIGCSIUChJSYWNrRGVsZXRlUmVzcG9uc2Ui+gEKElJhY2tIaXN0b3J5UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI5CgZmaWx0ZXIYAiABKAsyKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tIaXN0b3J5RmlsdGVyEkEKDGRhdGFfcmVxdWVzdBgDIAMoDjIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlEYXRhVHlwZRI7CgRwYWdlGAQgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6C5K1GAcKBQECBgkIImwKEVJhY2tIaXN0b3J5RmlsdGVyEhgKB3JhY2tfaWQYASABKARCB7pIBDICIAASPQoFa2luZHMYAiADKA4yJC53YXJlaG91c2UuaW52ZW50b3J5LnYxLk1vdmVtZW50S2luZEIIukgFkgECEAgitgEKElJhY2tIaXN0b3J5TWFwSXRlbRJJCghtYXBfZGF0YRgBIAMoCzI3LndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlNYXBJdGVtLk1hcERhdGFFbnRyeRpVCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEjQKBXZhbHVlGAIgASgLMiUud2FyZWhvdXNlLmludmVudG9yeS52MS5TdG9ja01vdmVtZW50OgI4ASKWAQoXUmFja0hpc3RvcnlSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI+Cghtb3ZlbWVudBgCIAEoCzIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlNYXBJdGVtSABCAwoBZCKUAQoTUmFja0hpc3RvcnlSZXNwb25zZRI+CgVpdGVtcxgBIAMoCzIvLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8qlQEKEFJhY2tMaXN0RGF0YVR5cGUSIwofUkFDS19MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEh8KG1JBQ0tfTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEhwKGFJBQ0tfTElTVF9EQVRBX1RZUEVfUkFDSxACEh0KGVJBQ0tfTElTVF9EQVRBX1RZUEVfU1RPQ0sQAypaCgtSYWNrUm93U29ydBIdChlSQUNLX1JPV19TT1JUX1VOU1BFQ0lGSUVEEAASFgoSUkFDS19ST1dfU09SVF9DT0RFEAESFAoQUkFDS19ST1dfU09SVF9JRBACKoABChFSYWNrU3RvY2tEYXRhVHlwZRIkCiBSQUNLX1NUT0NLX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiAKHFJBQ0tfU1RPQ0tfREFUQV9UWVBFX0dFTkVSQUwQARIjCh9SQUNLX1NUT0NLX0RBVEFfVFlQRV9SQUNLX1NUT0NLEAIqhgEKE1JhY2tIaXN0b3J5RGF0YVR5cGUSJgoiUkFDS19ISVNUT1JZX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiIKHlJBQ0tfSElTVE9SWV9EQVRBX1RZUEVfR0VORVJBTBABEiMKH1JBQ0tfSElTVE9SWV9EQVRBX1RZUEVfTU9WRU1FTlQQAjKOBwoLUmFja1NlcnZpY2USYwoKUmFja0NyZWF0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0NyZWF0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tDcmVhdGVSZXNwb25zZRJdCghSYWNrTGlzdBInLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0xpc3RSZXF1ZXN0Gigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTGlzdFJlc3BvbnNlEmMKClJhY2tEZXRhaWwSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZXRhaWxSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrRGV0YWlsUmVzcG9uc2USYAoJUmFja1N0b2NrEigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXF1ZXN0Gikud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU3RvY2tSZXNwb25zZRJmCgtSYWNrSGlzdG9yeRIqLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0hpc3RvcnlSZXF1ZXN0Gisud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrSGlzdG9yeVJlc3BvbnNlEmMKClJhY2tVcGRhdGUSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tVcGRhdGVSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrVXBkYXRlUmVzcG9uc2USYwoKUmFja0RlbGV0ZRIpLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja0RlbGV0ZVJlcXVlc3QaKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tEZWxldGVSZXNwb25zZRJdCghSYWNrTW92ZRInLndhcmVob3VzZS5pbnZlbnRvcnkudjEuUmFja01vdmVSZXF1ZXN0Gigud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrTW92ZVJlc3BvbnNlEmMKClJhY2tTYW1wbGUSKS53YXJlaG91c2UuaW52ZW50b3J5LnYxLlJhY2tTYW1wbGVSZXF1ZXN0Gioud2FyZWhvdXNlLmludmVudG9yeS52MS5SYWNrU2FtcGxlUmVzcG9uc2VCUlpQZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9pbnZlbnRvcnkvdjE7aW52ZW50b3J5djFiBnByb3RvMw", [file_buf_validate_validate, file_warehouse_common_v1_page, file_warehouse_common_v1_list, file_warehouse_inventory_v1_inventory, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.inventory.v1.Rack
@@ -224,6 +224,56 @@ export const RackRowMapItemSchema: GenMessage<RackRowMapItem> = /*@__PURE__*/
   messageDesc(file_warehouse_inventory_v1_rack, 6);
 
 /**
+ * One rack's stock count, and how many products make it up, for the Racks list. A rack holding nothing is in the map
+ * with 0 and 0 — an empty rack is an answer, not a missing one.
+ *
+ * @generated from message warehouse.inventory.v1.RackStockTotal
+ */
+export type RackStockTotal = Message<"warehouse.inventory.v1.RackStockTotal"> & {
+  /**
+   * @generated from field: uint64 rack_id = 1;
+   */
+  rackId: bigint;
+
+  /**
+   * @generated from field: int64 stock_count = 2;
+   */
+  stockCount: bigint;
+
+  /**
+   * How many DIFFERENT products are on the rack — a product counts once however many units it has, and a product
+   * whose count fell to 0 is not on the rack.
+   *
+   * @generated from field: uint32 product_count = 3;
+   */
+  productCount: number;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackStockTotal.
+ * Use `create(RackStockTotalSchema)` to create a new message.
+ */
+export const RackStockTotalSchema: GenMessage<RackStockTotal> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 7);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackStockTotalMapItem
+ */
+export type RackStockTotalMapItem = Message<"warehouse.inventory.v1.RackStockTotalMapItem"> & {
+  /**
+   * @generated from field: map<uint64, warehouse.inventory.v1.RackStockTotal> map_data = 1;
+   */
+  mapData: { [key: string]: RackStockTotal };
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackStockTotalMapItem.
+ * Use `create(RackStockTotalMapItemSchema)` to create a new message.
+ */
+export const RackStockTotalMapItemSchema: GenMessage<RackStockTotalMapItem> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 8);
+
+/**
  * @generated from message warehouse.inventory.v1.RackListResponseItem
  */
 export type RackListResponseItem = Message<"warehouse.inventory.v1.RackListResponseItem"> & {
@@ -242,6 +292,12 @@ export type RackListResponseItem = Message<"warehouse.inventory.v1.RackListRespo
      */
     value: RackRowMapItem;
     case: "rack";
+  } | {
+    /**
+     * @generated from field: warehouse.inventory.v1.RackStockTotalMapItem stock = 3;
+     */
+    value: RackStockTotalMapItem;
+    case: "stock";
   } | { case: undefined; value?: undefined };
 };
 
@@ -250,7 +306,7 @@ export type RackListResponseItem = Message<"warehouse.inventory.v1.RackListRespo
  * Use `create(RackListResponseItemSchema)` to create a new message.
  */
 export const RackListResponseItemSchema: GenMessage<RackListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 7);
+  messageDesc(file_warehouse_inventory_v1_rack, 9);
 
 /**
  * @generated from message warehouse.inventory.v1.RackListResponse
@@ -277,7 +333,7 @@ export type RackListResponse = Message<"warehouse.inventory.v1.RackListResponse"
  * Use `create(RackListResponseSchema)` to create a new message.
  */
 export const RackListResponseSchema: GenMessage<RackListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 8);
+  messageDesc(file_warehouse_inventory_v1_rack, 10);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDetailRequest
@@ -301,7 +357,7 @@ export type RackDetailRequest = Message<"warehouse.inventory.v1.RackDetailReques
  * Use `create(RackDetailRequestSchema)` to create a new message.
  */
 export const RackDetailRequestSchema: GenMessage<RackDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 9);
+  messageDesc(file_warehouse_inventory_v1_rack, 11);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDetailResponse
@@ -327,7 +383,7 @@ export type RackDetailResponse = Message<"warehouse.inventory.v1.RackDetailRespo
  * Use `create(RackDetailResponseSchema)` to create a new message.
  */
 export const RackDetailResponseSchema: GenMessage<RackDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 10);
+  messageDesc(file_warehouse_inventory_v1_rack, 12);
 
 /**
  * What is on a rack, in one line each (#197) — the header tiles of the detail page.
@@ -381,7 +437,7 @@ export type RackSummary = Message<"warehouse.inventory.v1.RackSummary"> & {
  * Use `create(RackSummarySchema)` to create a new message.
  */
 export const RackSummarySchema: GenMessage<RackSummary> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 11);
+  messageDesc(file_warehouse_inventory_v1_rack, 13);
 
 /**
  * One product sitting on a rack, and how many (#138).
@@ -431,6 +487,16 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
    * @generated from field: int64 value = 5;
    */
   value: bigint;
+
+  /**
+   * A COUNT HOLDS THIS PRODUCT ON THIS RACK (a-count-locks-the-product-on-the-rack): a move or a sample cannot take
+   * it until the count ends, so the Move dialog shows it locked at 0 (a-move-is-all-or-nothing).
+   *
+   * ⚠ Always false until the stock count (opname) is built; only the Storybook stub sets it.
+   *
+   * @generated from field: bool counting = 6;
+   */
+  counting: boolean;
 };
 
 /**
@@ -438,7 +504,210 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
  * Use `create(RackStockLineSchema)` to create a new message.
  */
 export const RackStockLineSchema: GenMessage<RackStockLine> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 12);
+  messageDesc(file_warehouse_inventory_v1_rack, 14);
+
+/**
+ * One owning team's share of a rack write. A product belongs to one selling team and a rack holds several teams'
+ * goods, so a move or a sample carrying two teams' goods writes ONE TRANSACTION PER OWNING TEAM
+ * (a-move-writes-one-transaction-per-owning-team), all in one database transaction.
+ *
+ * @generated from message warehouse.inventory.v1.RackTransaction
+ */
+export type RackTransaction = Message<"warehouse.inventory.v1.RackTransaction"> & {
+  /**
+   * @generated from field: uint64 transaction_id = 1;
+   */
+  transactionId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackTransaction.
+ * Use `create(RackTransactionSchema)` to create a new message.
+ */
+export const RackTransactionSchema: GenMessage<RackTransaction> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 15);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackMoveRequest
+ */
+export type RackMoveRequest = Message<"warehouse.inventory.v1.RackMoveRequest"> & {
+  /**
+   * The warehouse. Every rack on the request must stand in it: a move never leaves the building (a transfer does).
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The ONE rack the goods leave.
+   *
+   * @generated from field: uint64 from_rack_id = 2;
+   */
+  fromRackId: bigint;
+
+  /**
+   * One line per (product, destination). A product may appear on several lines with different destinations — a
+   * split (a-move-is-one-rack-to-one-or-more-racks) — but never twice to the same rack.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RackMoveLine lines = 3;
+   */
+  lines: RackMoveLine[];
+
+  /**
+   * Optional, for a person reading the history later: "tidy Rak A".
+   *
+   * @generated from field: string description = 4;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackMoveRequest.
+ * Use `create(RackMoveRequestSchema)` to create a new message.
+ */
+export const RackMoveRequestSchema: GenMessage<RackMoveRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 16);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackMoveLine
+ */
+export type RackMoveLine = Message<"warehouse.inventory.v1.RackMoveLine"> & {
+  /**
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * At most what the source rack's line holds, summed over the product's lines — refused otherwise, and the WHOLE
+   * move with it (a-move-is-all-or-nothing, a-move-leaves-sold-units-on-their-rack).
+   *
+   * @generated from field: int64 quantity = 2;
+   */
+  quantity: bigint;
+
+  /**
+   * Never the source rack.
+   *
+   * @generated from field: uint64 to_rack_id = 3;
+   */
+  toRackId: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackMoveLine.
+ * Use `create(RackMoveLineSchema)` to create a new message.
+ */
+export const RackMoveLineSchema: GenMessage<RackMoveLine> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 17);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackMoveResponse
+ */
+export type RackMoveResponse = Message<"warehouse.inventory.v1.RackMoveResponse"> & {
+  /**
+   * One per owning team among the lines, in team id order.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RackTransaction transactions = 1;
+   */
+  transactions: RackTransaction[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackMoveResponse.
+ * Use `create(RackMoveResponseSchema)` to create a new message.
+ */
+export const RackMoveResponseSchema: GenMessage<RackMoveResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 18);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackSampleRequest
+ */
+export type RackSampleRequest = Message<"warehouse.inventory.v1.RackSampleRequest"> & {
+  /**
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The rack staff took it from — the page's rack, never chosen (a-sample-names-the-rack-it-was-taken-from).
+   *
+   * @generated from field: uint64 rack_id = 2;
+   */
+  rackId: bigint;
+
+  /**
+   * One line per product, each at most that product's stock on this rack.
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RackSampleLine lines = 3;
+   */
+  lines: RackSampleLine[];
+
+  /**
+   * WHO RECEIVED IT — a name as the person gave it. Proposed at the prototype: nothing in the decisions requires it,
+   * and design_accept decides whether it stays.
+   *
+   * @generated from field: string recipient = 4;
+   */
+  recipient: string;
+
+  /**
+   * @generated from field: string description = 5;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackSampleRequest.
+ * Use `create(RackSampleRequestSchema)` to create a new message.
+ */
+export const RackSampleRequestSchema: GenMessage<RackSampleRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 19);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackSampleLine
+ */
+export type RackSampleLine = Message<"warehouse.inventory.v1.RackSampleLine"> & {
+  /**
+   * @generated from field: uint64 product_id = 1;
+   */
+  productId: bigint;
+
+  /**
+   * @generated from field: int64 quantity = 2;
+   */
+  quantity: bigint;
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackSampleLine.
+ * Use `create(RackSampleLineSchema)` to create a new message.
+ */
+export const RackSampleLineSchema: GenMessage<RackSampleLine> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 20);
+
+/**
+ * @generated from message warehouse.inventory.v1.RackSampleResponse
+ */
+export type RackSampleResponse = Message<"warehouse.inventory.v1.RackSampleResponse"> & {
+  /**
+   * One per owning team, like a move. A sample is final: it is never rolled back (a-handed-over-sample-is-final).
+   *
+   * @generated from field: repeated warehouse.inventory.v1.RackTransaction transactions = 1;
+   */
+  transactions: RackTransaction[];
+};
+
+/**
+ * Describes the message warehouse.inventory.v1.RackSampleResponse.
+ * Use `create(RackSampleResponseSchema)` to create a new message.
+ */
+export const RackSampleResponseSchema: GenMessage<RackSampleResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_inventory_v1_rack, 21);
 
 /**
  * @generated from message warehouse.inventory.v1.RackStockRequest
@@ -470,7 +739,7 @@ export type RackStockRequest = Message<"warehouse.inventory.v1.RackStockRequest"
  * Use `create(RackStockRequestSchema)` to create a new message.
  */
 export const RackStockRequestSchema: GenMessage<RackStockRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 13);
+  messageDesc(file_warehouse_inventory_v1_rack, 22);
 
 /**
  * @generated from message warehouse.inventory.v1.RackStockFilter
@@ -487,7 +756,7 @@ export type RackStockFilter = Message<"warehouse.inventory.v1.RackStockFilter"> 
  * Use `create(RackStockFilterSchema)` to create a new message.
  */
 export const RackStockFilterSchema: GenMessage<RackStockFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 14);
+  messageDesc(file_warehouse_inventory_v1_rack, 23);
 
 /**
  * The RACK_STOCK slice reuses RackStockLine, keyed by product_id.
@@ -506,7 +775,7 @@ export type RackStockMapItem = Message<"warehouse.inventory.v1.RackStockMapItem"
  * Use `create(RackStockMapItemSchema)` to create a new message.
  */
 export const RackStockMapItemSchema: GenMessage<RackStockMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 15);
+  messageDesc(file_warehouse_inventory_v1_rack, 24);
 
 /**
  * @generated from message warehouse.inventory.v1.RackStockResponseItem
@@ -535,7 +804,7 @@ export type RackStockResponseItem = Message<"warehouse.inventory.v1.RackStockRes
  * Use `create(RackStockResponseItemSchema)` to create a new message.
  */
 export const RackStockResponseItemSchema: GenMessage<RackStockResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 16);
+  messageDesc(file_warehouse_inventory_v1_rack, 25);
 
 /**
  * @generated from message warehouse.inventory.v1.RackStockResponse
@@ -562,7 +831,7 @@ export type RackStockResponse = Message<"warehouse.inventory.v1.RackStockRespons
  * Use `create(RackStockResponseSchema)` to create a new message.
  */
 export const RackStockResponseSchema: GenMessage<RackStockResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 17);
+  messageDesc(file_warehouse_inventory_v1_rack, 26);
 
 /**
  * @generated from message warehouse.inventory.v1.RackUpdateRequest
@@ -601,7 +870,7 @@ export type RackUpdateRequest = Message<"warehouse.inventory.v1.RackUpdateReques
  * Use `create(RackUpdateRequestSchema)` to create a new message.
  */
 export const RackUpdateRequestSchema: GenMessage<RackUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 18);
+  messageDesc(file_warehouse_inventory_v1_rack, 27);
 
 /**
  * @generated from message warehouse.inventory.v1.RackUpdateResponse
@@ -618,7 +887,7 @@ export type RackUpdateResponse = Message<"warehouse.inventory.v1.RackUpdateRespo
  * Use `create(RackUpdateResponseSchema)` to create a new message.
  */
 export const RackUpdateResponseSchema: GenMessage<RackUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 19);
+  messageDesc(file_warehouse_inventory_v1_rack, 28);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDeleteRequest
@@ -640,7 +909,7 @@ export type RackDeleteRequest = Message<"warehouse.inventory.v1.RackDeleteReques
  * Use `create(RackDeleteRequestSchema)` to create a new message.
  */
 export const RackDeleteRequestSchema: GenMessage<RackDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 20);
+  messageDesc(file_warehouse_inventory_v1_rack, 29);
 
 /**
  * @generated from message warehouse.inventory.v1.RackDeleteResponse
@@ -653,7 +922,7 @@ export type RackDeleteResponse = Message<"warehouse.inventory.v1.RackDeleteRespo
  * Use `create(RackDeleteResponseSchema)` to create a new message.
  */
 export const RackDeleteResponseSchema: GenMessage<RackDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 21);
+  messageDesc(file_warehouse_inventory_v1_rack, 30);
 
 /**
  * RackHistory is the movement ledger narrowed to ONE SHELF (#197).
@@ -694,7 +963,7 @@ export type RackHistoryRequest = Message<"warehouse.inventory.v1.RackHistoryRequ
  * Use `create(RackHistoryRequestSchema)` to create a new message.
  */
 export const RackHistoryRequestSchema: GenMessage<RackHistoryRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 22);
+  messageDesc(file_warehouse_inventory_v1_rack, 31);
 
 /**
  * @generated from message warehouse.inventory.v1.RackHistoryFilter
@@ -718,7 +987,7 @@ export type RackHistoryFilter = Message<"warehouse.inventory.v1.RackHistoryFilte
  * Use `create(RackHistoryFilterSchema)` to create a new message.
  */
 export const RackHistoryFilterSchema: GenMessage<RackHistoryFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 23);
+  messageDesc(file_warehouse_inventory_v1_rack, 32);
 
 /**
  * The MOVEMENT slice reuses StockMovement, keyed by movement id.
@@ -737,7 +1006,7 @@ export type RackHistoryMapItem = Message<"warehouse.inventory.v1.RackHistoryMapI
  * Use `create(RackHistoryMapItemSchema)` to create a new message.
  */
 export const RackHistoryMapItemSchema: GenMessage<RackHistoryMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 24);
+  messageDesc(file_warehouse_inventory_v1_rack, 33);
 
 /**
  * @generated from message warehouse.inventory.v1.RackHistoryResponseItem
@@ -766,7 +1035,7 @@ export type RackHistoryResponseItem = Message<"warehouse.inventory.v1.RackHistor
  * Use `create(RackHistoryResponseItemSchema)` to create a new message.
  */
 export const RackHistoryResponseItemSchema: GenMessage<RackHistoryResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 25);
+  messageDesc(file_warehouse_inventory_v1_rack, 34);
 
 /**
  * @generated from message warehouse.inventory.v1.RackHistoryResponse
@@ -793,7 +1062,7 @@ export type RackHistoryResponse = Message<"warehouse.inventory.v1.RackHistoryRes
  * Use `create(RackHistoryResponseSchema)` to create a new message.
  */
 export const RackHistoryResponseSchema: GenMessage<RackHistoryResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_inventory_v1_rack, 26);
+  messageDesc(file_warehouse_inventory_v1_rack, 35);
 
 /**
  * @generated from enum warehouse.inventory.v1.RackListDataType
@@ -813,6 +1082,14 @@ export enum RackListDataType {
    * @generated from enum value: RACK_LIST_DATA_TYPE_RACK = 2;
    */
   RACK = 2,
+
+  /**
+   * Each rack's STOCK COUNT — the sum of its products' stock counts, as Rack detail shows them
+   * (a-rack-shows-its-stock-count-for-now). Asked for by the Racks page; a picker that only needs codes leaves it out.
+   *
+   * @generated from enum value: RACK_LIST_DATA_TYPE_STOCK = 3;
+   */
+  STOCK = 3,
 }
 
 /**
@@ -974,6 +1251,31 @@ export const RackService: GenService<{
     methodKind: "unary";
     input: typeof RackDeleteRequestSchema;
     output: typeof RackDeleteResponseSchema;
+  },
+  /**
+   * ⚠ PROTOTYPE until design_accept — the server answers Unimplemented, and the screens run against the Storybook
+   * stub (docs/business/inventory/placement_decision.md).
+   *
+   * MOVE GOODS off ONE rack onto one or more racks of the same warehouse: staff reorganizing space
+   * (a-move-is-one-rack-to-one-or-more-racks). All or nothing (a-move-is-all-or-nothing).
+   *
+   * @generated from rpc warehouse.inventory.v1.RackService.RackMove
+   */
+  rackMove: {
+    methodKind: "unary";
+    input: typeof RackMoveRequestSchema;
+    output: typeof RackMoveResponseSchema;
+  },
+  /**
+   * RECORD A SAMPLE taken from ONE rack and handed to a person at the warehouse
+   * (a-sample-is-handed-over-at-the-warehouse, a-sample-is-recorded-on-rack-detail).
+   *
+   * @generated from rpc warehouse.inventory.v1.RackService.RackSample
+   */
+  rackSample: {
+    methodKind: "unary";
+    input: typeof RackSampleRequestSchema;
+    output: typeof RackSampleResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_warehouse_inventory_v1_rack, 0);

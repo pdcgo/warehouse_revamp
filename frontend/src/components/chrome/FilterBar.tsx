@@ -55,7 +55,9 @@ const InSheet = createContext(false);
 //      a narrow window gives a second row of full-size controls instead of one row of unusable ones.
 //      Only FilterSearch flexes, because a search box is the one control that reads fine at any width.
 //   3. CLEAR EXISTS ONLY WHILE FILTERING — a permanent Clear over an unnarrowed list is a control
-//      that does nothing, and it makes an unfiltered list look filtered.
+//      that does nothing, and it makes an unfiltered list look filtered. When it IS there it is RED and
+//      BOLD (owner, `clear-filters-is-red-and-bold`): it throws away what somebody set, and it should be
+//      found at a glance when a list looks emptier than expected.
 //   4. A PHONE GETS A SHEET (owner: *"bentuk filter di order list cukup berantakan pada tampilan
 //      mobile"*). Six controls wrapped into six ragged rows — 15rem, 13rem and `auto` wide, the ⚠ badges
 //      pushing some narrower — and ~280px of a phone before the tabs. The search stays in the row,
@@ -131,7 +133,8 @@ export function FilterBar({
                   {onClear && active && (
                     <Button
                       variant="ghost"
-                      colorPalette="gray"
+                      colorPalette="error"
+                      fontWeight="bold"
                       data-testid={`${testId}-clear`}
                       onClick={onClear}
                     >
@@ -168,7 +171,8 @@ export function FilterBar({
       {onClear && active && (
         <Button
           variant="ghost"
-          colorPalette="gray"
+          colorPalette="error"
+          fontWeight="bold"
           data-testid={`${testId}-clear`}
           onClick={onClear}
         >

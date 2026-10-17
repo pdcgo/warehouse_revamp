@@ -48,7 +48,7 @@ they are packing. So `OrderPick`/`Pack`/`Ship` carry the **warehouse** as their 
 find the order by `(order_id, warehouse_id)`. Another warehouse's order reads as **NotFound**, never
 PermissionDenied, so a crew cannot discover that an id belongs to someone else's building.
 
-It mirrors `RestockRequestFulfill`, where the warehouse also acts on a record a selling team created.
+It mirrors `RestockRequestAccept`, where the warehouse also acts on a record a selling team created.
 
 ### Forward only, one step at a time
 

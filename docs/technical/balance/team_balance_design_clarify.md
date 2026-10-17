@@ -25,8 +25,8 @@ Answered points are **deleted**, so this is always the current open set.
 > COGS — so the money movement and the borrower's cost accounting are one number — and `COGS = UnitPrice
 > + fee` is now written as a formula, which kills the 10× reading the prose alone allowed. Moving
 > `### Cross/Shared Fee Markup` out of `business_level.md` removed the second copy of it, same fix as the
-> `Ledger A` diagram. **The markup stays a float percent** (owner) — which is safe here because the rate
-> is not the stored money: the *rounded* `fee` is.
+> `Ledger A` diagram. **The markup stays a float percent** (owner), and the `fee` it prices is float money too
+> ([every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
 >
 > **Still the load-bearing thing in the doc:** items 4 and 5 make the warehouse a **debtor**, so this
 > ledger is signed and bidirectional rather than "what selling teams owe".
@@ -278,7 +278,7 @@ flowchart LR
 counterparty_team_id)`, one row per direction. Nothing below is a proposal about the grain; it is what
 that choice obliges.
 
-- **One measure, `balance` — `int64` rupiah, positive means "the counterparty owes me".** Between one
+- **One measure, `balance` — `float64` rupiah ([every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)), positive means "the counterparty owes me".** Between one
   pair the two directions net, so payable and receivable are the same column with a sign.
 - **The mirror is why authorization works.** `use_scope` pins exactly one field. With a mirror a team
   reads its own rows with `team_id` as the scope, and the counterparty is never trusted input.
@@ -300,7 +300,7 @@ erDiagram
     uint id "primary_key"
     uint team_id "unique (team_id, counterparty_team_id)"
     uint counterparty_team_id "unique (team_id, counterparty_team_id)"
-    int64 balance "positive means the counterparty owes this team"
+    float64 balance "positive means the counterparty owes this team"
     datetime updated_at
     datetime created_at
   }
@@ -314,8 +314,8 @@ erDiagram
     string source_type "order, restock, inventory_transaction, payment"
     uint source_id
     uint reverses_id "the log row this one compensates, null otherwise"
-    int64 change
-    int64 balance_after
+    float64 change
+    float64 balance_after
     datetime created_at
   }
 
@@ -331,7 +331,7 @@ erDiagram
     uint to_team_id
     uint created_by_id
     uint accepted_by_id
-    int64 amount
+    float64 amount
     string method "the proof — transfer, cash, offset"
     string status "created, accepted, rejected"
     datetime accepted_at
@@ -549,7 +549,7 @@ sequenceDiagram
 | --- | --- |
 | #1 | the warehouse's rate at the moment the order is created, **frozen onto the entry** |
 | #2 | the sum of the cost lines entered at accept — [Q1](#question) |
-| #3 | `UnitPrice + fee`, per consumed layer, with **`fee` rounded to whole rupiah on each line, half-up** — the float rate is an input, never a stored amount. **Keep the two components on the entry, not just their sum** — `unit_price` is what makes the owner whole, `fee` is what they *earned*, and only the second is the owner's revenue. And `product_context.md` prices per FIFO layer, so a cross order spanning two layers is a sum of two lines, never one average. |
+| #3 | `UnitPrice + fee`, per consumed layer, with **`fee` computed on each line and frozen there** — float money like every amount ([every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)); whether a frozen figure is also rounded to whole rupiah is a mitigation [rupiah-is-floating-point](../../business/order/context_decision.md#rupiah-is-floating-point) lists and leaves open. **Keep the two components on the entry, not just their sum** — `unit_price` is what makes the owner whole, `fee` is what they *earned*, and only the second is the owner's revenue. And `product_context.md` prices per FIFO layer, so a cross order spanning two layers is a sum of two lines, never one average. |
 | #4 | the COGS of the layers the loss consumed |
 | #5 | **read back off the #4 entry it reverses.** Never recomputed. |
 | #6 | the payer states it, the creditor's acceptance is what makes it true |
@@ -608,49 +608,43 @@ drift again.
 > `liability_terms.product_markup_bp int64` — *"Basis points rather than a float for the same reason
 > money is int64."*
 
-**Which one I think is wrong: the recorded decision, and the code is right.** My own argument for
-tolerating a float was that the rate never becomes stored money — true, but it makes correctness depend
-on every future caller rounding at the right moment. Basis points removes the question: `2000` is 20%
-exactly, it compares and sums exactly, and there is no moment at which somebody can forget to round.
+🔄 *(2026-10-10)* **Verdict reversed: the code is wrong, and the decision is right.** I first said the opposite, but
+my case for basis points was the code's own: *"for the same reason money is int64"*. Money is not `int64`. It is float
+by [rupiah-is-floating-point](../../business/order/context_decision.md#rupiah-is-floating-point), decided before I
+wrote this, and again by [every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64).
+With the fee stored as a float, an exact integer rate buys nothing. The rate and the money it prices then disagree
+about type, and every caller converts between them. This is one site of
+[my-clarifies-kept-int64-after-double-was-decided](../../business/teams/warehouse/context_clarify.md#my-clarifies-kept-int64-after-double-was-decided).
 
-⚠ **But it is a recorded owner decision, so I am not treating the code as having settled it.** If the
-percent is the shape you want in the UI, that is a display concern and basis points still serve it
-(`bp / 100`). If you want the stored rate to be a float, the code has to change — and I would argue
-against it.
-
-**→ RECOMMEND** confirm basis points and let the decision be renamed with its verdict (RULE 12) —
-`markup-is-a-float-percent` → `markup-is-basis-points`. What stops this recurring: **a decision about a
-NUMBER'S TYPE is only settled once it names the stored column type, not the mental model.**
+**→ RECOMMEND** keep [the float percent](#-the-markup-is-a-float-percent-owner) as decided. The code's
+`product_markup_bp int64` becomes a float percent when liability's money moves to float, in the same change, and its
+comment goes with it.
 
 ```mermaid
 flowchart LR
-  R["the rate — 20 percent"] --> F["float 0.2 — exact only by luck"]
-  R --> B["bp 2000 — exact by construction"]
-  F -.->|"safe ONLY if every caller rounds at the right moment"| M["the stored fee, int64 rupiah"]
-  B -->|"safe with no convention to remember"| M
+  D["rupiah-is-floating-point"] --> M["the stored fee - float64"]
+  R["markup - float percent, decided"] --> M
+  C["liability_terms.product_markup_bp int64 - the build"] -.->|"moves with liability's money"| R
 ```
 
 ## COGS is `float64` and money is `int64` — items 4 and 5 are where they meet
 
-Two positions settled elsewhere collide here for the first time:
-
-> `stock_design.md`: *"stock valuation → that be `float64`"*
-> `cost_design_clarity.md` #3 and the settlement plan's invariant 2: money is `int64` rupiah
-
-Items 3, 4 and 5 price a money entry **out of the stock ledger**. Whatever the stock side stores, a
-balance entry is an exact rupiah amount owed by one team to another, and `sum(change)` must reconcile to
-zero without a tolerance.
-
-**→ Recommend** the conversion happens **once**, at the posting boundary, half-up, on the **entry total**
-and never on the unit — and the rounded number is the frozen one item 5 reads back. If the stock side
-becomes `int64` (recommended in two clarity files already), this collapses to nothing.
+✅ *(2026-10-10)* **Closed: there is no collision.** Both sides are `float64`.
+[stock-money-is-float64-compared-at-4-digits](../stock/design_decision.md#stock-money-is-float64-compared-at-4-digits)
+settles the stock side, and [every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)
+the balance side. An entry priced out of the stock ledger crosses no type boundary, and the two compare at the same
+4-digit precision. One of my two sources was my own cost Critique 3, written before money was decided and never
+re-checked after: [my-clarifies-kept-int64-after-double-was-decided](../../business/teams/warehouse/context_clarify.md#my-clarifies-kept-int64-after-double-was-decided).
+What is left is the **build**: liability stores `BIGINT` today, as
+[rupiah-is-floating-point](../../business/order/context_decision.md#rupiah-is-floating-point) records.
 
 ## ✅ The markup is a FLOAT percent (owner)
 
-**What the decision obliges here, and it is small:** a float **rate** is fine because it is never the
-stored money — see [Where the amount comes from](#where-the-amount-comes-from--and-why-item-5-never-recomputes-it).
-`fee` is rounded to `int64` rupiah **per consumed layer**, half-up, and the *rounded* number is what the
-entry freezes. The float never reaches the ledger, so it can never drift a balance.
+**What the decision obliges here, and it is small:** the `fee` is float money like the balance it posts to
+([every-ledger-keeps-money-as-float64](../ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
+It is computed **per consumed layer** and frozen on the entry
+([Where the amount comes from](#where-the-amount-comes-from--and-why-item-5-never-recomputes-it)), so a later rate edit
+can never change it. Freezing is what stops it drifting.
 
 ## "Broken or lost in warehouse" is flat here and conditional in `business_level.md`
 

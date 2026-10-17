@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Flex, HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
+import { HStack, Icon, Link, Stack, Table, Text } from "@chakra-ui/react";
 import { ExternalLink } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import type { SupplierChannelRecord } from "./adapt";
@@ -10,12 +10,17 @@ import { useDebounced } from "../../lib/useDebounced";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useIsMobile } from "../../layouts/shell";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
-import { Pagination } from "../../components/chrome/Pagination";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// A ROW LIGHTS UP under the pointer, every cell of it (owner, on the Toko and Produk tabs: *"toko dan produk hoverable"*,
+// `a-supplier-tab-row-lights-up`). On the cells, so the whole width turns; Chakra's `_hover` honours `data-hover`, which
+// is how a story drives it.
+export const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 // A channel's link, opened in a new tab — or a dash, since the link is optional.
 function ChannelLink({ uri }: { uri: string }) {
@@ -31,12 +36,24 @@ function ChannelLink({ uri }: { uri: string }) {
   );
 }
 
+// A store as one cell in two lines: its name, then its type — the badge UNDER the reference, so the badges line up
+// down the list (a-store-reads-its-name-then-its-type). Bold where the store is the row's subject (the Toko tab),
+// plain where it only says where a product was bought (the Produk tab).
+export function ChannelName({ channel, bold = true }: { channel: SupplierChannelRecord; bold?: boolean }) {
+  return (
+    <Stack gap="1" align="start" minW="0">
+      <Text fontWeight={bold ? "bold" : undefined}>{channel.name}</Text>
+      <MarketplaceBadge marketplace={channel.channelType} />
+    </Stack>
+  );
+}
+
 export interface ChannelBrowserProps {
   /** The CALLER's team — the scope the read is authorised in, not the team that keeps the supplier. */
   teamId: bigint;
   /** Any team's live supplier — reads cross teams. */
   supplierId: bigint;
-  /** Page actions in the filter bar's action slot — Add Channel on the manage page. */
+  /** Page actions in the filter bar's action slot — Add Store on the manage page. */
   actions?: ReactNode;
   /** Per-row actions; absent = read-only, as on the discover detail. */
   rowActions?: (channel: SupplierChannelRecord) => ReactNode;
@@ -97,25 +114,22 @@ export function ChannelBrowser({
     }
 
     if (isMobile) {
-      // A phone reads each channel as a block: the type and the name, then the link and the description on
-      // their own lines.
+      // A phone reads each channel as a block: the store's name, its type under it, then the link and the
+      // description on their own lines — and the row's actions at the foot, so they never squeeze the name
+      // into a narrow column (a-supplier-action-is-labelled).
       return (
         <Stack gap="2" data-testid="channels-table">
           {channels.map((ch) => (
-            <Flex
+            <Stack
               key={ch.id.toString()}
               data-testid={`channel-row-${ch.id}`}
               borderWidth="1px"
               borderRadius="md"
               p="3"
               gap="2"
-              align="start"
             >
-              <Stack gap="1" minW="0" flex="1">
-                <HStack gap="2">
-                  <MarketplaceBadge marketplace={ch.channelType} />
-                  <Text fontWeight="bold">{ch.name}</Text>
-                </HStack>
+              <Stack gap="1" minW="0">
+                <ChannelName channel={ch} />
                 <ChannelLink uri={ch.uri} />
                 {ch.description && (
                   <Text fontSize="sm" color="fg.muted">
@@ -124,7 +138,7 @@ export function ChannelBrowser({
                 )}
               </Stack>
               {rowActions?.(ch)}
-            </Flex>
+            </Stack>
           ))}
         </Stack>
       );
@@ -148,12 +162,9 @@ export function ChannelBrowser({
 
         <Table.Body>
           {channels.map((ch) => (
-            <Table.Row key={ch.id.toString()} data-testid={`channel-row-${ch.id}`}>
+            <Table.Row key={ch.id.toString()} data-testid={`channel-row-${ch.id}`} css={LIGHTS_UP}>
               <Table.Cell>
-                <HStack gap="2">
-                  <MarketplaceBadge marketplace={ch.channelType} />
-                  <Text>{ch.name}</Text>
-                </HStack>
+                <ChannelName channel={ch} />
               </Table.Cell>
 
               <Table.Cell maxW="xs">
@@ -215,16 +226,19 @@ export function ChannelBrowser({
         <RefreshOverlay busy={query.isFetching && !query.isPending}>{list()}</RefreshOverlay>
       )}
 
-      <Pagination
-        count={totalItems}
-        pageSize={pageSize}
+      {/* every-list-pages-with-the-growing-pager — the pages opened so far, one click back to any of them. */}
+      <GrowingPager
         page={page}
         onPageChange={setPage}
+        hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
+        resetKey={[term, channelType, pageSize].join("|")}
+        pageSize={pageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
         onPageSizeChange={(n) => {
           setPageSize(n);
           setPage(1);
         }}
+        testId="channels-pager"
       />
     </Stack>
   );

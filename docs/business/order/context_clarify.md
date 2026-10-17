@@ -4,9 +4,59 @@ What [context.md](./context.md) leaves open. **That doc is yours — this one is
 are deleted, so this file is always the current open set; what was settled is in
 [context_decision.md](./context_decision.md).
 
+> ✅ **Answered in chat (2026-10-16, later):** [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses) —
+> yes, as recommended ([picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses)),
+> amending [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) and
+> [order-timeline-logs-replaces-order-events](./context_decision.md#order-timeline-logs-replaces-order-events). ⛔ Your §Status Move
+> and §Complete Journey still go `processed --> shipped`: [the-status-moves-miss-picked-and-shipping](#the-status-moves-miss-picked-and-shipping) stays.
+
+> 🔄 **Re-examined 2026-10-16 — `picked` and `shipping` joined your status list**, and inventory's
+> [order.md](../inventory/order.md) now sets them. 🆕 [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses):
+> they reverse [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses)
+> for two steps. ⛔ [the-status-moves-miss-picked-and-shipping](#the-status-moves-miss-picked-and-shipping): the Status Move,
+> the journey and the warehouse tabs still draw the old path. Its redraw also closes
+> [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back).
+
+> 🔄 **Re-examined 2026-10-15 — your `order_timeline_logs` and the way back to `pending`.** Missing goods send a confirmed
+> order back to `pending` with a note, and the selling team decides
+> ([missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)).
+> ⛔ The status diagram has no `processed --> pending` and still has `processed --> cancel`:
+> [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back). 🆕
+> ✅ [the-timeline-is-order-events](#the-timeline-is-order-events) — answered: `order_timeline_logs` replaces `order_events`. 🔄
+> ✅ [who-may-cancel-a-pending-order](#who-may-cancel-a-pending-order) answered — only the selling team cancels ([only-the-selling-team-cancels](./context_decision.md#only-the-selling-team-cancels)).
+
+> ✅ **Answered 2026-10-15, all three as recommended, and deleted:** `a-blocked-line-refuses-the-whole-order`
+> ([over-the-limit-refuses-the-create](./context_decision.md#over-the-limit-refuses-the-create)) · `the-warehouse-is-a-creditor-too`
+> ([the-warehouse-is-a-creditor-on-every-order](./context_decision.md#the-warehouse-is-a-creditor-on-every-order)) · the critique
+> `the-owners-are-needed-before-the-take` ([a-failed-owner-lookup-refuses-the-create](./context_decision.md#a-failed-owner-lookup-refuses-the-create)).
+> The box to draw: [the debt check, as decided](#proposed--the-debt-check-as-decided). ⛔ Until it is drawn, the box and
+> balance §Balance Policy 2 still say *shared product only* — [the-debt-check-skips-the-warehouse](#the-debt-check-skips-the-warehouse).
+>
+> 🔄 **Re-examined 2026-10-15 — the owner drew the debt check** into [order_creation.md](./order_creation.md), before the
+> transaction ([the-debt-check-runs-before-the-take](./context_decision.md#the-debt-check-runs-before-the-take)).
+> ✅ `the-order-consults-the-debt-it-does-not-manage` — answered by its new §Reference line, and deleted.
+> ✅ `finalize-enforces-every-rule-on-both-doors` — **nothing left in it**, deleted: the debt is the new box, the reserve and
+> the shared lock are the take's ([the-take-checks-the-product-first](../inventory/order_decision.md#the-take-checks-the-product-first)),
+> there is one door now (the app only drafts), and the team is the request's own scoped `team_id`.
+> 🔄 [a-blocked-line-refuses-the-whole-order](#a-blocked-line-refuses-the-whole-order) — the box has no refusal branch.
+> 🆕 [the-warehouse-is-a-creditor-too](#the-warehouse-is-a-creditor-too), with its
+> [Contradiction](#the-debt-check-skips-the-warehouse), and the critique `the-owners-are-needed-before-the-take`.
+>
+> 🔄 **Re-examined 2026-10-15 — a duplicate ref is warned, not refused**
+> ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused)), against my
+> partial index. The uniqueness decision is renamed `superseded-…` and every link to it moved (RULE 12).
+> [one-uniqueness-check-covers-drafts-and-orders](#one-uniqueness-check-covers-drafts-and-orders) narrows to whether the
+> warning reads drafts; the uniqueness design becomes [a warning design](./context_decision.md#the-duplicate-warning-reads-drafts-too).
+> ⛔ The doc's §How We Manage Order Uniqueness still denies:
+> [the-uniqueness-section-still-denies](#the-uniqueness-section-still-denies), which replaces
+> `the-uniqueness-flow-cannot-enforce-its-own-rule`. ✅ Later the same day: the warning reads drafts too
+> ([the-duplicate-warning-reads-drafts-too](./context_decision.md#the-duplicate-warning-reads-drafts-too)) — the question
+> and its design are closed. ➡ Settlement's side — a ref on two live orders — is asked in
+> [settlement_importer Q15](../settlement/settlement_importer_clarify.md#question).
+
 > **Rewritten 2026-09-15 after a session of edits to the doc.** ✅ Closed and recorded:
 > [the-order-follows-settlement-for-its-money](./context_decision.md#the-order-follows-settlement-for-its-money) ·
-> [an-order-is-unique-by-shop-and-marketplace-ref](./context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref) ·
+> [superseded-an-order-is-unique-by-shop-and-marketplace-ref](./context_decision.md#superseded-an-order-is-unique-by-shop-and-marketplace-ref) ·
 > [drafts-keep-their-own-table](./context_decision.md#drafts-keep-their-own-table) ·
 > [superseded-the-order-has-eight-statuses](./context_decision.md#superseded-the-order-has-eight-statuses) ·
 > [lost-is-final](./context_decision.md#lost-is-final). That also closes the old *"there is no lifecycle"*, the
@@ -92,24 +142,48 @@ flowchart LR
   OS -.->|"not ours, deferred"| CASH
 ```
 
-### Proposed — one uniqueness check across both tables
+### Proposed — the debt check, as decided
 
-For [one-uniqueness-check-covers-drafts-and-orders](#one-uniqueness-check-covers-drafts-and-orders).
+For your box in [order_creation.md](./order_creation.md) — it draws
+[the-debt-check-runs-before-the-take](./context_decision.md#the-debt-check-runs-before-the-take),
+[a-failed-owner-lookup-refuses-the-create](./context_decision.md#a-failed-owner-lookup-refuses-the-create),
+[the-warehouse-is-a-creditor-on-every-order](./context_decision.md#the-warehouse-is-a-creditor-on-every-order) and
+[over-the-limit-refuses-the-create](./context_decision.md#over-the-limit-refuses-the-create). It replaces the lines from
+`state "Create RPC called" as rpc` to `ordcheck-->tx`; the rest of your diagram is unchanged.
 
 ```mermaid
-flowchart TD
-  IN["about to write an order or a draft"] --> Q{"does a draft, or an order that is not cancel, already have this shop and ref?"}
-  Q -->|"no"| W["write it"]
-  Q -->|"yes — it is the very draft being finalized"| W
-  Q -->|"yes — anything else"| D["deny, naming the order or draft that holds the ref"]
+stateDiagram-v2
+direction LR
+
+state "Create RPC called" as rpc
+state create_err <<choice>>
+state "Product Owners Lookup" as owners
+state "Product Service" as prod
+state "Debt Threshold Check" as ordcheck
+state "Balance Service" as bal
+state limit_ok <<choice>>
+state "Refuse the Create" as refuse
+state "Open Database Transaction" as tx
+
+rpc-->owners: product ids
+owners-->prod: whose product is each one
+prod-->owners: each product owning team
+owners-->refuse: lookup failed
+owners-->ordcheck: creditors - the warehouse, and each team a shared product belongs to
+ordcheck-->bal: the ordering team and its creditors
+bal-->ordcheck: each pair committed debt and limit
+ordcheck-->limit_ok
+limit_ok-->refuse: a creditor at or over its limit - name it, with the debt and the limit
+limit_ok-->tx: every creditor under its limit
+refuse-->[*]: an error to the form
 ```
 
 | | |
 | --- | --- |
-| checked on | draft create · order create · finalize |
-| looks at | `order_drafts` **and** `orders` where `status <> 'cancel'`, both on `(shop_id, order_external_ref_id)` |
-| finalize | writes the order and deletes the draft **in one transaction** — the build already does this (`inTx`) |
-| the race | two writes in the same second both pass a code check. **→ A partial unique index on `orders` as a backstop**, `WHERE status <> 'cancel'` — or record that the race is accepted |
+| `owners` | new — the take returns the owners too, but only after this check |
+| `ordcheck` | now a named state; your box was the bare id `ordcheck` |
+| the label | *the warehouse, and each team a shared product belongs to* — replaces *if order contain shared product* |
+| `refuse` | both refusals end the create before the transaction, so nothing is taken and nothing is compensated |
 
 ### Proposed — the order announces what shipped and what came back
 
@@ -133,8 +207,7 @@ sequenceDiagram
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **uniqueness-flow-never-denies** | §How We Manage Order Uniqueness fetches the existing order *"that not canceled"*, then asks *"Is Existing Order Cancel"* — always **no**, so every path reaches `Order Created` and `Deny` is unreachable. See [Contradiction](#the-uniqueness-flow-cannot-enforce-its-own-rule) | one question: *a draft, or an order not `cancel`, with this shop and ref?* — yes → deny |
-| **two-tables-one-ref** | `orders` and `order_drafts` both carry the ref *"for order uniqueness"*, and nothing says whether one blocks the other. A check across both refuses a finalize on the draft's own row | [one check, finalize excluded](#proposed--one-uniqueness-check-across-both-tables) |
+| **the-uniqueness-section-still-denies** | 🔄 §How We Manage Order Uniqueness is titled *uniqueness* and ends in *Deny Order Create*, while a duplicate is now warned and created ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused)). See [Contradiction](#the-uniqueness-section-still-denies) | a *duplicate warning* section, whose flow ends in *warn, then create anyway* |
 | **short-pick-and-return-are-silent** | only *placed* and *cancelled* are announced. A short pick leaves another team charged for units that never left; a return never reverses COGS | [two more events](#proposed--the-order-announces-what-shipped-and-what-came-back) |
 | **the-empty-ref-lives-on-in-the-build** | the doc says the ref *"cannot empty"*; the build says `''` is *"the ordinary state of an order taken over the phone"* and skips the settlement account when the platform total is 0 — both now forbidden by [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize). See [Contradiction](#the-build-still-treats-an-empty-ref-as-a-phone-order) | a `selling_service` migration + handler check when this is built |
 | **what-an-order-must-prove** | nothing lists what the business must be able to show about an order later: who took it, by which door, what shipped, who picked | frozen at finalize: shop, warehouse, lines, owners, cost, source. Recorded as it moves: picker, packer, handover time |
@@ -143,13 +216,11 @@ sequenceDiagram
 
 ## Question
 
-### one-uniqueness-check-covers-drafts-and-orders
-*(was Q1 — the rule itself is decided: [an-order-is-unique-by-shop-and-marketplace-ref](./context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref))*
+### picked-and-shipping-are-order-statuses
+✅ *(2026-10-16)* **Answered: yes, and in your status list** — [picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses), as recommended. It amends [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses). Kept as a heading so the links into it hold.
 
-Does a draft block an order with the same shop and ref, and an order block a draft — with a finalize never
-blocked by its own draft? And is a simultaneous double entry stopped by an index, or accepted?
-**→ One check over both tables, finalize excluded, and a partial unique index on `orders` as the backstop** —
-[the design](#proposed--one-uniqueness-check-across-both-tables).
+### one-uniqueness-check-covers-drafts-and-orders
+✅ *(2026-10-15)* **Answered: yes, the warning reads drafts too, never the draft being finalized** — [the-duplicate-warning-reads-drafts-too](./context_decision.md#the-duplicate-warning-reads-drafts-too). Kept as a heading so the links into it hold.
 
 ### the-order-announces-what-shipped-and-what-came-back
 *(was Q6)* Does the order emit the lines **actually shipped** at handover, and the lines **received back** on a
@@ -168,22 +239,11 @@ settlement records exactly that — a residual balance is already normal
 [Contradiction](#the-journey-still-sets-the-old-statuses). **→ Take the `set status …` boxes out of the journey**
 so the status diagram is the only place a status is defined.
 
-### finalize-enforces-every-rule-on-both-doors
-*(was Q2)* Which rules does finalize run — reserve · shared lock · debt threshold — and may an app create an
-order for a team other than its own? **→ All three, on both doors, and never another team.**
-
-### a-blocked-line-refuses-the-whole-order
-*(was Q5)* One order can borrow from B and C and be over its limit with only one of them. **→ All-or-nothing at
-finalize**, the refusal naming the line and the reason.
-
 ### who-may-cancel-a-pending-order
-*(was Q3's remainder)* `pending --> cancel` exists. Is that also how the **warehouse declines** an order it
-cannot fulfil, or only the seller's act? **→ Both may**, with a required reason, so a warehouse refusal is
-visible rather than a silent stall in `pending`.
+✅ *(2026-10-15)* **Answered: only the selling team cancels** — the warehouse hands the order back to `pending` with a note, so customer service chases it ([only-the-selling-team-cancels](./context_decision.md#only-the-selling-team-cancels)). Against my *both may*.
 
-### the-order-consults-the-debt-it-does-not-manage
-*(was Q13)* The order reads the debt threshold before placing. **→ One line:** *"we do not manage the debt; we
-do consult it before placing"* — so the pre-check does not read as a scope violation.
+### the-timeline-is-order-events
+✅ *(2026-10-15)* **Answered: drop `order_events`, create `order_timeline_logs`** — [order-timeline-logs-replaces-order-events](./context_decision.md#order-timeline-logs-replaces-order-events). Simpler than my keep-`kind`.
 
 ### an-order-cannot-be-created-without-a-channel
 *(re-routed from [shipment](../shipment/context_clarify.md))* The third-party app converts the platform's
@@ -201,7 +261,7 @@ an order with no courier cannot be handed over.
 | §Order Status — Status Move (revised) | §Complete Journey Of The Orders (not revised) |
 | --- | --- |
 | `problem --> completed`, `problem --> lost`, `problem --> return` | `set status problem --> e` — a problem simply ends |
-| `processed --> cancel` | cancel only at `Is Cancel ?`, before `Warehouse Accept Order` |
+| `processed --> cancel` | cancel only at `Is Cancel ?`, before `Warehouse Accept Order` — 🔄 *the journey was right on this row*: [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back) |
 | `lost`, `return`, `return_completed` exist | none of the three appears |
 
 **Which is wrong:** the journey — the status diagram is the newer statement and was revised deliberately.
@@ -217,18 +277,79 @@ flowchart LR
   SD --> B["build: placed, confirmed, picking, packed — stale, a migration when built"]
 ```
 
-## the-uniqueness-flow-cannot-enforce-its-own-rule
+## the-status-moves-miss-the-way-back
 
-*"`order_external_ref_id`, its for order uniqueness"* (§Table That Must Have) — while the flow beneath §How We
-Manage Order Uniqueness reaches `Order Created` on **every** path: it fetches only orders *"that not canceled"*,
-then asks whether the fetched one is cancelled. **Which is wrong:** the flow's last diamond.
-**→ Recommend** [one-uniqueness-check-covers-drafts-and-orders](#one-uniqueness-check-covers-drafts-and-orders).
+*(2026-10-15)* §Order Status — Status Move against
+[missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)
+and [no-cancel-after-the-warehouse-confirms](../inventory/order_decision.md#no-cancel-after-the-warehouse-confirms):
+
+| §Status Move | decided |
+| --- | --- |
+| no `processed --> pending` | the warehouse sends a confirmed order back to `pending` when its goods are missing |
+| `processed --> cancel` | a confirmed order is not cancelled directly — it goes back to `pending` first, and the selling team cancels from there |
+
+**Which is wrong:** the diagram — both decisions are newer than its `processed` row. **→ Recommend** adding
+`processed --> pending` and removing `processed --> cancel`. 🔄 This reverses my verdict on that one row of
+[the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses): there, the journey was right.
+
+```mermaid
+stateDiagram-v2
+  pending --> processed
+  processed --> pending: goods missing - a note on the timeline
+  pending --> cancel: the selling team
+  processed --> shipped
+```
+
+## the-status-moves-miss-picked-and-shipping
+
+*(2026-10-16)* Your §Order Status list against the places that still draw the old path. One cause, four sites:
+
+| site | says |
+| --- | --- |
+| §Order Status, the list | `processed`, `picked`, `shipping`, `shipped` |
+| §Status Move | `processed --> shipped`, with no `picked` and no `shipping` |
+| §Complete Journey | one *"Process Order (Packing/Picking)"* step, and `shipped` set after the handover |
+| [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) | picking and the handover are steps inside `processed`, not statuses — ✅ amended 2026-10-16 |
+| [the-warehouse-tabs-are-the-processed-steps](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps) | *Sedang diambil, Sudah diambil, Dikemas, Sudah diserahkan* as steps of `processed` |
+
+**Which is wrong:** everything except the list — now decided ([picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses)). **→ Recommend**
+this Status Move. It also carries the way back ([the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back)),
+so one redraw closes both. The journey follows [the-journey-stops-setting-statuses](#the-journey-stops-setting-statuses),
+and the warehouse tabs are redrawn with the two statuses.
+
+```mermaid
+stateDiagram-v2
+  pending --> processed
+  pending --> cancel: the selling team
+  processed --> pending: goods on no rack - a note
+  processed --> picked: every good scanned
+  picked --> pending: platform cancelled - unpacked
+  picked --> shipping: the handover scan
+  shipping --> shipped: the parcel moves
+  shipped --> completed
+  shipped --> problem
+  shipped --> lost
+  shipped --> return
+```
+
+## the-uniqueness-section-still-denies
+
+*(2026-10-15, replacing `the-uniqueness-flow-cannot-enforce-its-own-rule`)* Your doc against your answer in chat:
+
+| [context.md](./context.md) | [a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused) |
+| --- | --- |
+| §Table That Must Have — *"`order_external_ref_id`, its for order uniqueness"*, on `orders` and `order_drafts` | the ref is required, not unique |
+| §How We Manage Order Uniqueness — *"Order uniqueness manage by code"*, ending in *"Deny Order Create"* | warn, then create anyway |
+
+**Which is wrong:** the section — the chat answer is newer. (Its flow never reached *Deny* anyway: it fetches only orders
+*"that not canceled"*, then asks whether the one it fetched is cancelled.) **→ Recommend** a *duplicate warning* section,
+drawn as [the warning design](./context_decision.md#the-duplicate-warning-reads-drafts-too), and *"its for order uniqueness"* on
+the two columns read as *"its for the duplicate warning"*.
 
 ```mermaid
 flowchart LR
-  F["fetch: orders NOT cancel"] --> Q{"is it cancel?"}
-  Q -->|"always no"| C["Order Created"]
-  Q -.->|"unreachable"| D["Deny"]
+  S["context.md - uniqueness, Deny Order Create"] -.->|"stale"| D["a-duplicate-ref-is-warned-not-refused"]
+  D --> W["warn, then create anyway"]
 ```
 
 ## the-build-still-treats-an-empty-ref-as-a-phone-order
@@ -304,6 +425,30 @@ flowchart LR
   subgraph "return — the status decision holds"
     R["return — the claim"] --> RC["return_completed — the goods are here"]
   end
+```
+
+## the-debt-check-skips-the-warehouse
+
+*(2026-10-15)* Who the debt check asks about, in three places:
+
+| where | checks |
+| --- | --- |
+| your box in [order_creation.md](./order_creation.md) | *"if order contain shared product"* — the lending teams, and only then |
+| [balance/context.md](../balance/context.md) §Balance Policy 2 | *"when customer service finalizes order that contain cross products"* — the same |
+| [the-block-stops-orders-only](../balance/context_decision.md#the-block-stops-orders-only), and the build (`credit_checker.go`) | *"the fulfilling warehouse **and** every team whose goods it sells, each creditor checked independently"* — on every order |
+
+**Which is wrong:** the two docs — ✅ decided *(2026-10-15)*: the warehouse is checked on every order
+([the-warehouse-is-a-creditor-on-every-order](./context_decision.md#the-warehouse-is-a-creditor-on-every-order)).
+**→ Recommend** the box is redrawn as [the debt check, as decided](#proposed--the-debt-check-as-decided), and
+[balance/context.md](../balance/context.md) §Balance Policy 2 reads *"when customer service creates an order, the fulfilling
+warehouse and each team a cross product belongs to are compared to their committed pair rows"*.
+
+```mermaid
+flowchart LR
+  O["an order of Melati - own goods only"] --> W["the warehouse pair - its limit"]
+  O2["an order of Melati - with a borrowed line"] --> W
+  O2 --> A["the lending team pair - its limit"]
+  W -.->|"your box - never checked"| X["a limit nothing enforces"]
 ```
 
 ---

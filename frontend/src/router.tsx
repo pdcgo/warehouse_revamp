@@ -93,9 +93,6 @@ const LiabilityDetailPage = lazy(() =>
 const InventoryPage = lazy(() =>
   import("./pages/inventory").then((m) => ({ default: m.InventoryPage })),
 );
-const PlacementsPage = lazy(() =>
-  import("./pages/placements").then((m) => ({ default: m.PlacementsPage })),
-);
 const ReturnsPage = lazy(() =>
   import("./pages/returns").then((m) => ({ default: m.ReturnsPage })),
 );
@@ -104,6 +101,20 @@ const ReturnDetailPage = lazy(() =>
 );
 const OpnamePage = lazy(() =>
   import("./pages/opname").then((m) => ({ default: m.OpnamePage })),
+);
+// The stock count's sessions — a PROTOTYPE until design_accept (docs/business/inventory/opname.md). They sit BESIDE the
+// one-rack page above, which keeps working on the real backend until the backend step replaces it.
+const OpnameSessionsPage = lazy(() =>
+  import("./pages/opname-sessions").then((m) => ({ default: m.OpnameSessionsPage })),
+);
+const OpnameSessionDetailPage = lazy(() =>
+  import("./pages/opname-session-detail").then((m) => ({ default: m.OpnameSessionDetailPage })),
+);
+const OpnameCountPage = lazy(() =>
+  import("./pages/opname-count").then((m) => ({ default: m.OpnameCountPage })),
+);
+const OpnameFinalizePage = lazy(() =>
+  import("./pages/opname-finalize").then((m) => ({ default: m.OpnameFinalizePage })),
 );
 const SuppliersPage = lazy(() =>
   import("./pages/suppliers").then((m) => ({ default: m.SuppliersPage })),
@@ -169,6 +180,28 @@ const RestockWarehouseDetailPage = lazy(() =>
     default: m.RestockWarehouseDetailPage,
   })),
 );
+// The warehouse transfer — a PROTOTYPE until design_accept: the real server answers Unimplemented, so every screen shows
+// its error state outside Storybook (docs/business/inventory/warehouse_transfer.md).
+const WarehouseTransferSellingPage = lazy(() =>
+  import("./pages/warehouse-transfer-selling").then((m) => ({ default: m.WarehouseTransferSellingPage })),
+);
+const WarehouseTransferWarehousePage = lazy(() =>
+  import("./pages/warehouse-transfer-warehouse").then((m) => ({ default: m.WarehouseTransferWarehousePage })),
+);
+const WarehouseTransferFormPage = lazy(() =>
+  import("./pages/warehouse-transfer-form").then((m) => ({ default: m.WarehouseTransferFormPage })),
+);
+const WarehouseTransferSellingDetailPage = lazy(() =>
+  import("./pages/warehouse-transfer-selling-detail").then((m) => ({ default: m.WarehouseTransferSellingDetailPage })),
+);
+const WarehouseTransferWarehouseDetailPage = lazy(() =>
+  import("./pages/warehouse-transfer-warehouse-detail").then((m) => ({
+    default: m.WarehouseTransferWarehouseDetailPage,
+  })),
+);
+const WarehouseTransferAcceptPage = lazy(() =>
+  import("./pages/warehouse-transfer-accept").then((m) => ({ default: m.WarehouseTransferAcceptPage })),
+);
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
   import("./pages/user-detail").then((m) => ({ default: m.UserDetailPage })),
@@ -225,6 +258,25 @@ function RestockDetailRoute() {
     <RestockWarehouseDetailPage />
   ) : (
     <RestockSellingDetailPage />
+  );
+}
+
+// /inventories/transfer is TWO screens behind ONE path, on restock's rule and for the same reason (RestockRoute above):
+// the selling team that owns the goods reads its own transfers; a warehouse reads its queue of outgoing and incoming
+// ones — two different jobs (the-team-opens-the-sender-ships-the-receiver-accepts).
+function WarehouseTransferRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? <WarehouseTransferWarehousePage /> : <WarehouseTransferSellingPage />;
+}
+
+function WarehouseTransferDetailRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? (
+    <WarehouseTransferWarehouseDetailPage />
+  ) : (
+    <WarehouseTransferSellingDetailPage />
   );
 }
 
@@ -325,7 +377,6 @@ export const router = createBrowserRouter([
       // The Inventories sub-menu (#95). Restock IS the request flow (#105/#122), and it is now TWO
       // screens behind ONE path — see RestockRoute. The on-hand list is "Stock" (it was only ever
       // called Restock under the superseded "pick a warehouse and receive there" design).
-      // Placements is a stub.
       { path: "inventories/restock", element: <RestockRoute /> },
       // `new` is static and `:requestId` is dynamic, so React Router ranks `new` first regardless of
       // the order here — /inventories/restock/new stays the create form, not a detail of id "new".
@@ -344,16 +395,27 @@ export const router = createBrowserRouter([
       // The goods-received receipt for the delivery (#219) — a printable document, reached from an
       // accepted restock and from a batch's Print receipt (?batch= highlights that product's line).
       { path: "inventories/restock/:requestId/receipt", element: <BatchReceiptPage /> },
+      // A selling team moving its own stock between warehouses — one path, two screens (WarehouseTransferRoute).
+      // `new` is static, so it ranks above :transferId whatever the order here. Create only: lines are never edited.
+      { path: "inventories/transfer", element: <WarehouseTransferRoute /> },
+      { path: "inventories/transfer/new", element: <WarehouseTransferFormPage /> },
+      { path: "inventories/transfer/:transferId", element: <WarehouseTransferDetailRoute /> },
+      // Warehouse B counts the box in — a page, not a dialog.
+      { path: "inventories/transfer/:transferId/accept", element: <WarehouseTransferAcceptPage /> },
       { path: "inventories/stock", element: <InventoryPage title="Stock" /> },
       // What a WAREHOUSE sees when it opens a product it handles (#158) — the stock, not the
       // catalogue entry it does not own.
       { path: "inventories/products/:productId", element: <WarehouseProductPage /> },
-      { path: "inventories/placements", element: <PlacementsPage /> },
       { path: "inventories/returns", element: <ReturnsPage /> },
       // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
       // dialog (CLAUDE.md).
       { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
       { path: "inventories/opname", element: <OpnamePage /> },
+      // Under /inventories/opname, so the menu's Opname stays lit (nav.ts matches the longest prefix).
+      { path: "inventories/opname/sessions", element: <OpnameSessionsPage /> },
+      { path: "inventories/opname/sessions/:sessionId", element: <OpnameSessionDetailPage /> },
+      { path: "inventories/opname/sessions/:sessionId/count", element: <OpnameCountPage /> },
+      { path: "inventories/opname/sessions/:sessionId/finalize", element: <OpnameFinalizePage /> },
       { path: "inventories/suppliers", element: <SuppliersPage /> },
       { path: "inventories/suppliers/:supplierId", element: <SupplierDetailPage /> },
       // Every team's suppliers, searched across teams — independent of the team's own list above
@@ -363,8 +425,9 @@ export const router = createBrowserRouter([
       // Suppliers ranked by what was restocked from them (the-figures-are-a-statistics-tab-and-a-supplier-report).
       // "report" is static too, so it outranks :supplierId the same way.
       { path: "inventories/suppliers/report", element: <SupplierReportPage /> },
-      // Racks are the warehouse's own shelves (#129) — the menu offers them to warehouse teams
-      // only, but the route is open and the server's policy is what actually decides.
+      // Racks are the warehouse's own shelves (#129), and this IS the placement list
+      // (the-racks-page-is-the-placement-list) — the menu offers them to warehouse teams only, but
+      // the route is open and the server's policy is what actually decides.
       { path: "inventories/racks", element: <RacksPage /> },
       // Every stock batch in the warehouse (#209) — cost layers, browsable by receipt and expiry.
       { path: "inventories/batches", element: <BatchesPage /> },

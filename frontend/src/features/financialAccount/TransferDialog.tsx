@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, Input, Text } from "@chakra-ui/react";
+import { Field, Text, Textarea } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
@@ -105,7 +105,14 @@ export function TransferDialog({
 
       <Field.Root>
         <Field.Label>{t("financialAccounts.note")}</Field.Label>
-        <Input value={note} placeholder={t("financialAccounts.transfer.notePlaceholder")} data-testid="transfer-note" onChange={(e) => setNote(e.target.value)} />
+        <Textarea
+          value={note}
+          rows={3}
+          resize="vertical"
+          placeholder={t("financialAccounts.transfer.notePlaceholder")}
+          data-testid="transfer-note"
+          onChange={(e) => setNote(e.target.value)}
+        />
       </Field.Root>
     </FormDialog>
   );

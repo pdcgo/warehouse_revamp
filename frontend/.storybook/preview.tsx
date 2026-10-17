@@ -23,6 +23,10 @@ import { resetFinancialAccounts } from "./financialAccountStub";
 import { resetSessionScenario } from "./sessionScenario";
 import { resetUserStub } from "./userStub";
 import { resetSupplierStub } from "./supplierStub";
+import { resetRestockStub } from "./restockStub";
+import { resetWarehouseTransferStub } from "./warehouseTransferStub";
+import { resetOpnameStub } from "./opnameStub";
+import { resetRackStub } from "./rackStub";
 import { SYSTEM_FONT_STACK, system } from "../src/theme";
 import i18n from "../src/i18n/config";
 import type { Lang } from "../src/i18n/language";
@@ -116,7 +120,11 @@ function StoryProviders({
   // Wrapping outside would leave the page's padding keyed to a subtree that may now render nothing.
   const marked = <PendingMarksProvider show={pendingMarks}>{children}</PendingMarksProvider>;
 
-  const content = pageGutter ? <Box p="page">{marked}</Box> : marked;
+  // ⚠ THE PHONE SHELL'S GUTTER ON A PHONE — `card`, as MobileLayout's <main> has it — and `page` from `md` up, as
+  // DesktopLayout's. A page story on a phone viewport used to get the desktop's 20px, and with a story's own
+  // `layout: "padded"` (Storybook's 16px) on top it showed 36px a side where the app has 12 (owner: *"di mobile, padding
+  // xnya kebesaran"* — *"padding semuanya kayaknya"*). A page story never sets `layout: "padded"`: the gutter is this.
+  const content = pageGutter ? <Box p={{ base: "card", md: "page" }}>{marked}</Box> : marked;
 
   return (
     <ChakraProvider value={system}>
@@ -357,6 +365,8 @@ const preview: Preview = {
     // …and for the legacy sidebar's collapse preference, which is persisted on purpose (an operator
     // sets it once) and would otherwise leave every later sidebar story rendering collapsed.
     localStorage.removeItem("legacy-sidebar-collapsed");
+    // …and the desktop sidebar's, persisted the same way (the-sidebar-collapses-to-its-icons).
+    localStorage.removeItem("wh-sidebar-collapsed");
     // …and for the auth token, so a `signedIn` story cannot leave the next one authenticated. The
     // selected team is sessionStorage, and is cleared with it.
     clearToken();
@@ -379,6 +389,13 @@ const preview: Preview = {
     resetUserStub();
     // …and the suppliers and their channels, which a create, an edit or a delete writes to.
     resetSupplierStub();
+    // …and the restocks, which every create, edit, sign-for, accept, lost and cancel writes to.
+    resetRestockStub();
+    resetWarehouseTransferStub();
+    // …and the stock count, which every count, send-back and finalize writes to.
+    resetOpnameStub();
+    // …and the shelves, which a move or a sample on Rack detail writes to.
+    resetRackStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();

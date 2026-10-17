@@ -34,7 +34,7 @@ const AtUnknown = routedPage(routes, "/settlement/imports/999");
 const meta = {
   title: "Pages/Settlement/ImportDetail",
   component: SettlementImportDetailPage,
-  parameters: { signedIn: true, dataRouter: true, layout: "padded" },
+  parameters: { signedIn: true, dataRouter: true },
   beforeEach: asTeam(TEAM.id),
   render: () => <AtShopeeDone />,
 } satisfies Meta<typeof SettlementImportDetailPage>;

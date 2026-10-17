@@ -42,6 +42,16 @@ type Service struct {
 // not the supplier's team. Asked of supplier_service under the caller's token.
 type SupplierChecker interface {
 	SupplierIsLive(ctx context.Context, teamID, supplierID uint64) (bool, error)
+	// Stores answers, for each store (supplier channel) id, the supplier it belongs to and whether it is live — deleted
+	// stores included, marked. An id that exists nowhere is absent from the map.
+	Stores(ctx context.Context, teamID uint64, storeIDs []uint64) (map[uint64]SupplierStore, error)
+}
+
+// SupplierStore is what inventory needs to know about a store a restock line names: whose it is, and whether it may be
+// newly named (a-line-may-name-a-supplier-without-a-channel).
+type SupplierStore struct {
+	SupplierID uint64
+	Live       bool
 }
 
 // noSuppliers refuses every supplier — with nothing to ask, a restock naming one is not trusted.
@@ -49,6 +59,10 @@ type noSuppliers struct{}
 
 func (noSuppliers) SupplierIsLive(context.Context, uint64, uint64) (bool, error) {
 	return false, errors.New("no supplier service to ask")
+}
+
+func (noSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]SupplierStore, error) {
+	return nil, errors.New("no supplier service to ask")
 }
 
 // compile-time proof Service satisfies the generated handler interfaces it serves.

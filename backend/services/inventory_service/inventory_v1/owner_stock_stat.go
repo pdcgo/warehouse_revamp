@@ -54,14 +54,14 @@ func (s *Service) OwnerStockStat(
 		       COALESCE(SUM(ri.total_price), 0) AS value
 		FROM restock_request_items ri
 		JOIN restock_requests r ON r.id = ri.restock_request_id
-		WHERE r.requesting_team_id = ? AND r.status = ? AND (? = 0 OR r.warehouse_id = ?)`
+		WHERE r.requesting_team_id = ? AND r.status IN ? AND (? = 0 OR r.warehouse_id = ?)`
 
 	var ongoing struct {
 		Qty   int64
 		Value int64
 	}
 
-	err = db.Raw(ongoingSQL, teamID, restockStatusPending, warehouseID, warehouseID).Scan(&ongoing).Error
+	err = db.Raw(ongoingSQL, teamID, restockInboundStatuses, warehouseID, warehouseID).Scan(&ongoing).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

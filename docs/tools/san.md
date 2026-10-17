@@ -804,6 +804,7 @@ constant beside the handler that serves it):
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
 | `supplier-fold` | `restock-accepted` | a supplier's figures fold — push route `/event/supplier-fold/push` ([the-report-is-processed-like-settlement](../business/supplier/context_decision.md#the-report-is-processed-like-settlement)) |
 | `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
+| `financial-account-team-payment` | `liability-payment-accepted` | an accepted team payment posts out of the payer's account and into the creditor's ([a-team-payment-posts-on-accept](../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) — push route `/event/financial-account-team-payment/push` |
 
 ⚠ **`settlement-fold` and `supplier-fold` are SEEKED by their service's `AnalyticReplayCompute`**, which reaches back as far as the topic's
 31-day retention. The replay reads that reach from Pub/Sub itself, so a topic created by anything other

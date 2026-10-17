@@ -28,8 +28,7 @@ import (
 
 // The tables this audit writes, CHILDREN FIRST.
 var raceRestockTables = []string{
-	"restock_request_events",
-	"restock_cost_lines",
+	"restock_logs",
 	"restock_request_items",
 	"restock_requests",
 	"warehouse_products",
@@ -43,10 +42,19 @@ const (
 )
 
 func raceRestockItems() []*inventoryv1.RestockRequestItem {
-	return []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Quantity: 1, TotalPrice: 100}}
+	return []*inventoryv1.RestockRequestItem{{ProductId: 100, Sku: "SKU1", Name: "Widget", Count: 1, Total: 100}}
 }
 
-// raceRestockSeed commits one PENDING restock naming no supplier — so seeding never asks the checker.
+// raceRestockItemsFrom is the same line naming a supplier — the supplier rides each line
+// (a-line-connects-to-any-teams-supplier-from-a-popup), and the handler asks supplier_service about it.
+func raceRestockItemsFrom(supplierID uint64) []*inventoryv1.RestockRequestItem {
+	items := raceRestockItems()
+	items[0].SupplierId = supplierID
+
+	return items
+}
+
+// raceRestockSeed commits one ONGOING restock naming no supplier — so seeding never asks the checker.
 func raceRestockSeed(t *testing.T, db *gorm.DB) uint64 {
 	t.Helper()
 
@@ -69,7 +77,9 @@ func raceRestockStatusAndSupplier(t *testing.T, db *gorm.DB, id uint64) (string,
 		SupplierID *uint64
 	}
 
-	err := db.Raw(`SELECT status, supplier_id FROM restock_requests WHERE id = ?`, id).Scan(&row).Error
+	err := db.Raw(`SELECT r.status, (SELECT i.supplier_id FROM restock_request_items i
+		WHERE i.restock_request_id = r.id ORDER BY i.id LIMIT 1) AS supplier_id
+		FROM restock_requests r WHERE r.id = ?`, id).Scan(&row).Error
 	if err != nil {
 		t.Fatalf("read restock %d: %v", id, err)
 	}
@@ -198,8 +208,9 @@ func TestRace_RestockRequestUpdate_ACancelDoesNotWaitForTheSupplierRoundTrip(t *
 	res := h.Race(t, 2, func(i int) error {
 		if i == 0 {
 			_, err := updater.RestockRequestUpdate(ctx, connect.NewRequest(&inventoryv1.RestockRequestUpdateRequest{
+				FinanceAccountId: 7, // required while ongoing (a-restock-names-its-paying-account)
 				TeamId: raceRestockTeam, RequestId: reqID, WarehouseId: raceRestockWarehouse,
-				SupplierId: newSupplier, Items: raceRestockItems(),
+				Items: raceRestockItemsFrom(newSupplier),
 			}))
 
 			return err
@@ -263,7 +274,7 @@ func TestRace_RestockRequestCreate_HoldsNoTransactionDuringTheSupplierCall(t *te
 
 	_, err := inventory_v1.NewService(h.DB(), nil, nil, probe, nil).RestockRequestCreate(ctxUser(1),
 		connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, SupplierId: supplier, Items: raceRestockItems(),
+			TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, Items: raceRestockItemsFrom(supplier),
 		}))
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -309,8 +320,8 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 			func(tx *gorm.DB) error {
 				_, err := inventory_v1.NewService(tx, nil, nil, answering, nil).RestockRequestCreate(ctx,
 					connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-						TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse, SupplierId: supplierID,
-						Items: raceRestockItems(),
+						TeamId: raceRestockTeam, WarehouseId: raceRestockWarehouse,
+						Items: raceRestockItemsFrom(supplierID),
 					}))
 
 				return err
@@ -350,9 +361,11 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 	}
 
 	err = h.DB().Raw(`
-		SELECT r.created_at AS restock_created, s.deleted_at AS supplier_deleted, r.supplier_id AS restock_supplier
-		FROM restock_requests r JOIN suppliers s ON s.id = r.supplier_id
-		WHERE r.supplier_id = ?`, supplierID).Scan(&row).Error
+		SELECT r.created_at AS restock_created, s.deleted_at AS supplier_deleted, i.supplier_id AS restock_supplier
+		FROM restock_requests r
+		JOIN restock_request_items i ON i.restock_request_id = r.id
+		JOIN suppliers s ON s.id = i.supplier_id
+		WHERE i.supplier_id = ?`, supplierID).Scan(&row).Error
 	if err != nil {
 		t.Fatalf("read end state: %v", err)
 	}
@@ -364,4 +377,13 @@ func TestInterleave_RestockRequestCreate_SupplierDeletedWhileTheAnswerIsInFlight
 	if row.RestockSupplier != supplierID {
 		t.Fatalf("expected the restock to commit naming the supplier — the window was not hit")
 	}
+}
+
+// Stores: the race audits name suppliers, never stores, so neither fake knows one.
+func (f *raceRestockParkedSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
+}
+
+func (f *raceRestockRealSuppliers) Stores(context.Context, uint64, []uint64) (map[uint64]inventory_v1.SupplierStore, error) {
+	return map[uint64]inventory_v1.SupplierStore{}, nil
 }

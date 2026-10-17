@@ -30,17 +30,13 @@ func (s *Service) RestockRequestDetail(
 		// the screen that shows them; the LIST deliberately does not — see restock_request_list.go.
 		Preload("Items.Placements", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
 		Preload("Items.Damaged", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		// THE HISTORY (00019), oldest first — this is the screen with a timeline on it, and the list is
+		// THE TRAIL (00024), oldest first — this is the screen with a timeline on it, and the list is
 		// deliberately without one for the same reason it skips placements.
 		//
-		// Ordered by `at` and then `id`: `at` is the event's own moment (a backfilled row carries a date
-		// from months ago), and the id breaks the tie when two events share a second — an edit made in
+		// Ordered by `at` and then `id`: `at` is the row's own moment (a backfilled row carries a date
+		// from months ago), and the id breaks the tie when two rows share a second — an edit made in
 		// the same second as the create must still read second.
-		Preload("Events", func(db *gorm.DB) *gorm.DB { return db.Order("at ASC, id ASC") }).
-		// WHAT THE WAREHOUSE LAID OUT (00021), in the order it was typed. The detail carries them for
-		// the same reason it carries the timeline: this is the screen where the requesting team is told
-		// what it owes, and a total with no lines under it is a number nobody can question.
-		Preload("CostLines", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
+		Preload("Logs", func(db *gorm.DB) *gorm.DB { return db.Order("at ASC, id ASC") }).
 		Where("id = ? AND (requesting_team_id = ? OR warehouse_id = ?)", req.Msg.GetRequestId(), teamID, teamID).
 		First(&rr).
 		Error

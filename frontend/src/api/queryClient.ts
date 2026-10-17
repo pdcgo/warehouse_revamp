@@ -123,6 +123,11 @@ export const key = {
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),
   racks: (teamId: bigint | undefined, params?: Params) => scope("racks", teamId, params),
   restock: (teamId: bigint | undefined, params?: Params) => scope("restock", teamId, params),
+  // Its OWN prefix, not a filter on `restock`: a transfer is not a purchase, and its writes move stock at two
+  // warehouses, so they refresh `inventory` as well (features/warehouseTransfer/queries.ts).
+  warehouseTransfer: (teamId: bigint | undefined, params?: Params) => scope("warehouseTransfer", teamId, params),
+  // The stock count's sessions, rows and racks. Its own prefix: a finalize moves stock, so it refreshes `inventory` too.
+  opname: (teamId: bigint | undefined, params?: Params) => scope("opname", teamId, params),
   suppliers: (teamId: bigint | undefined, params?: Params) => scope("suppliers", teamId, params),
   users: (teamId: bigint | undefined, params?: Params) => scope("users", teamId, params),
   teams: (teamId: bigint | undefined, params?: Params) => scope("teams", teamId, params),

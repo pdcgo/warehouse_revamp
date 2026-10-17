@@ -23,6 +23,24 @@ export const Tokopedia: Story = { args: { marketplace: Marketplace.TOKOPEDIA } }
 
 export const Compact: Story = { args: { marketplace: Marketplace.LAZADA, size: "sm" } };
 
+// HOW MANY, INSIDE THE BADGE (a-store-count-sits-in-its-badge) — a supplier's three Shopee stores read "Shopee ×3", the
+// count a step quieter than the name; one shows no count.
+export const WithACount: Story = {
+  args: { count: 3 },
+  play: async ({ canvasElement }) => {
+    const badge = within(canvasElement).getByTestId(`marketplace-badge-${Marketplace.SHOPEE}`);
+    await expect(badge).toHaveTextContent("Shopee×3");
+  },
+};
+
+export const ACountOfOneShowsNone: Story = {
+  args: { count: 1 },
+  play: async ({ canvasElement }) => {
+    const badge = within(canvasElement).getByTestId(`marketplace-badge-${Marketplace.SHOPEE}`);
+    await expect(badge).toHaveTextContent(/^Shopee$/);
+  },
+};
+
 // The whole point of the component: ONE place owns marketplace → colour, so a marketplace looks the
 // same in every table, dropdown and detail panel. Seeing them together is how that mapping stays a
 // decision rather than independent guesses — review it in BOTH colour modes (toolbar), since every

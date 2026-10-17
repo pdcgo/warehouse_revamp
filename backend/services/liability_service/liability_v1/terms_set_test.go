@@ -45,7 +45,7 @@ func rupiah(v int64) *int64 { return &v }
 // system was silently 0. This is the test that the write path is real.
 func TestTermsSet_WritesARateTheFeesCanRead(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	got := putTerms(t, svc, warehouse, selling, 12000, 2000, rupiah(50_000_000))
 
@@ -68,7 +68,7 @@ func TestTermsSet_WritesARateTheFeesCanRead(t *testing.T) {
 // somebody just froze.
 func TestTermsSet_AbsentLimitIsUnlimitedAndZeroIsNoCredit(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	unlimited := putTerms(t, svc, warehouse, selling, 0, 0, nil)
 	if unlimited.CreditLimit != nil {
@@ -89,7 +89,7 @@ func TestTermsSet_AbsentLimitIsUnlimitedAndZeroIsNoCredit(t *testing.T) {
 // create that failed on the second edit would make the screen's Save button work only once.
 func TestTermsSet_IsAnUpsert(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	putTerms(t, svc, warehouse, selling, 12000, 2000, rupiah(50_000_000))
 	got := putTerms(t, svc, warehouse, selling, 15000, 2500, rupiah(80_000_000))
@@ -117,7 +117,7 @@ func TestTermsSet_IsAnUpsert(t *testing.T) {
 // clears it back to unlimited; COALESCE-ing to the stored value would make a limit permanent once set.
 func TestTermsSet_OmittingTheLimitClearsIt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	putTerms(t, svc, warehouse, selling, 12000, 2000, rupiah(50_000_000))
 	got := putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
@@ -137,7 +137,7 @@ func TestTermsSet_OmittingTheLimitClearsIt(t *testing.T) {
 // one of their own. It is the entire override mechanism, so it must be writable.
 func TestTermsSet_CounterpartyZeroWritesTheDefaultRow(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	got := putTerms(t, svc, warehouse, 0, 9000, 1000, nil)
 
@@ -154,7 +154,7 @@ func TestTermsSet_CounterpartyZeroWritesTheDefaultRow(t *testing.T) {
 // reaches the caller as an internal error — a mistake worth naming is named.
 func TestTermsSet_RefusesTermsAgainstYourself(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	_, err := svc.LiabilityTermsSet(context.Background(),
 		connect.NewRequest(&liabilityv1.LiabilityTermsSetRequest{
@@ -175,7 +175,7 @@ func TestTermsSet_RefusesTermsAgainstYourself(t *testing.T) {
 // discover (and a bug could apply) somebody else's configuration.
 func TestTermsSet_IsDirectional(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	putTerms(t, svc, warehouse, selling, 12000, 2000, nil)
 

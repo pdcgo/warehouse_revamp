@@ -47,6 +47,8 @@ export interface SupplierProductRow {
   /** "" when product_service could not name it — the screen reads "Product #<id>". */
   name: string;
   sku: string;
+  /** The product's list-sized picture — "" when it has none, and the shared item draws its placeholder. */
+  thumbnailUrl: string;
   /** The team whose product it is — the team that restocked it. */
   team: FigureTeam;
   figures: SupplierFigures;
@@ -184,7 +186,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
       const productIds = res.datas.map((d) => d.productId);
 
       // The names are product_service's — any team's product, by id. A label, so a failure leaves the ids standing.
-      const products = new Map<string, { name: string; sku: string }>();
+      const products = new Map<string, { name: string; sku: string; thumbnailUrl: string }>();
       if (productIds.length > 0) {
         try {
           const resolved = await productClient.productByIds({
@@ -192,7 +194,11 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
             filter: { ids: productIds },
             dataRequest: productByIdsRowData(),
           });
-          for (const p of productsFromByIds(resolved)) products.set(p.id.toString(), { name: p.name, sku: p.sku });
+          for (const p of productsFromByIds(resolved)) {
+            // The picture rides the same read — the thumbnail, or the full image when there is no thumbnail.
+            const thumbnailUrl = p.defaultImageThumbnailUrl || p.defaultImageUrl;
+            products.set(p.id.toString(), { name: p.name, sku: p.sku, thumbnailUrl });
+          }
         } catch {
           // Labels only.
         }
@@ -208,6 +214,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
           productId: d.productId,
           name: product?.name ?? "",
           sku: product?.sku ?? "",
+          thumbnailUrl: product?.thumbnailUrl ?? "",
           team: { teamId: d.teamId, name: teams.get(d.teamId.toString()) ?? "" },
           figures: figuresOf(d.metric),
         };

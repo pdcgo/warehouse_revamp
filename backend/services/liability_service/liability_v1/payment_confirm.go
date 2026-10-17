@@ -34,13 +34,23 @@ var (
 // the check, and the debt would be paid off twice. The ledger's own unique index would catch the
 // second posting — but as `ErrAlreadyPosted` from inside a transaction, which is a worse way to
 // learn it.
+//
+// ⚠ IT NAMES WHERE THE MONEY LANDED, and then tells the financial accounts (a-team-payment-posts-on-accept).
+// `to_account_id` is the creditor's own live account, asked of financial_account_service BEFORE the
+// transaction; it is stored with the status, and `LiabilityPaymentAccepted` is published once the commit
+// lands — the accounts post one `team_payment` row out of the payer's account and one into this one.
 func (s *Service) LiabilityPaymentConfirm(
 	ctx context.Context,
 	req *connect.Request[liabilityv1.LiabilityPaymentConfirmRequest],
 ) (*connect.Response[liabilityv1.LiabilityPaymentConfirmResponse], error) {
 	var payment liability_service_models.LiabilityPayment
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.checkAccount(ctx, req.Msg.GetTeamId(), req.Msg.GetToAccountId())
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		found, loadErr := lockPayment(tx, req.Msg.GetTeamId(), req.Msg.GetPaymentId())
 		if loadErr != nil {
 			return loadErr
@@ -58,14 +68,16 @@ func (s *Service) LiabilityPaymentConfirm(
 		found.Status = paymentConfirmed
 		found.ConfirmedBy = actorUserID(ctx)
 		found.ConfirmedAt = &now
+		found.ToAccountID = req.Msg.GetToAccountId()
 
 		updateErr := tx.Model(&liability_service_models.LiabilityPayment{}).
 			Where("id = ?", found.ID).
 			Updates(map[string]any{
-				"status":       found.Status,
-				"confirmed_by": found.ConfirmedBy,
-				"confirmed_at": now,
-				"updated_at":   now,
+				"status":        found.Status,
+				"confirmed_by":  found.ConfirmedBy,
+				"confirmed_at":  now,
+				"to_account_id": found.ToAccountID,
+				"updated_at":    now,
 			}).Error
 		if updateErr != nil {
 			return updateErr
@@ -83,6 +95,8 @@ func (s *Service) LiabilityPaymentConfirm(
 	if err != nil {
 		return nil, paymentError(err)
 	}
+
+	s.publishAccepted(ctx, &payment)
 
 	return connect.NewResponse(&liabilityv1.LiabilityPaymentConfirmResponse{
 		Payment: paymentToProto(&payment),

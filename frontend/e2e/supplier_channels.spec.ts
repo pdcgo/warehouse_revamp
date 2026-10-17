@@ -52,6 +52,8 @@ async function call(page: Page, method: string, body: unknown) {
 
 async function useSellingTeam(page: Page) {
   await page.getByTestId("team-switcher").click();
+  // Search is per section (the-workspace-searches-one-section) — root owns this team, so it is under My teams.
+  await page.getByTestId("team-search-mine").click();
   await page.getByTestId("team-search").fill(TEAM_NAME);
   await page.getByTestId(/^team-option-/).first().click();
   await expect(page.getByTestId("team-switcher")).toContainText(TEAM_NAME);
@@ -59,7 +61,8 @@ async function useSellingTeam(page: Page) {
 
 async function gotoSuppliers(page: Page) {
   await page.goto("/inventories/suppliers");
-  await expect(page.getByTestId("suppliers-table")).toBeVisible();
+  // The PAGE, not the table: an empty list says so in a sentence, and draws no table (the-suppliers-list-follows-the-screen-rules).
+  await expect(page.getByTestId("suppliers-page")).toBeVisible();
 }
 
 test.describe.configure({ mode: "serial" });

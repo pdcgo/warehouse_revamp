@@ -20,6 +20,7 @@ const SUFFIX = Date.now().toString().slice(-6);
 const BCA_NAME = `E2E BCA ${SUFFIX}`;
 const BCA_NUMBER = `88${SUFFIX}01`;
 const KAS_NAME = `E2E Kas ${SUFFIX}`;
+const OTHER_NAME = `E2E Lainnya ${SUFFIX}`;
 const SHOP_CODE = `FA${SUFFIX}`;
 const SHOP_NAME = `E2E Account Shop ${SUFFIX}`;
 // A shop id no shop has — the listener does not need the shop to exist to hold its money.
@@ -62,9 +63,13 @@ async function createAccount(page: Page, args: { name: string; cash?: boolean; p
   await expect(form).toBeVisible();
 
   await form.getByTestId("account-name").fill(args.name);
-  if (args.cash) await form.getByTestId("account-type-3").click();
-  await form.getByTestId("account-provider").click();
-  await form.getByRole("option", { name: args.provider, exact: true }).click();
+  if (args.cash) {
+    // A cash box's provider is Kas by itself (the-type-decides-the-provider) — nothing to pick.
+    await form.getByTestId("account-type-3").click();
+  } else {
+    await form.getByTestId("account-provider").click();
+    await form.getByRole("option", { name: args.provider, exact: true }).click();
+  }
   if (args.number) await form.getByTestId("account-number").fill(args.number);
   await form.getByTestId("account-opening").fill(args.opening);
   await form.getByTestId("account-form-save").click();
@@ -73,8 +78,8 @@ async function createAccount(page: Page, args: { name: string; cash?: boolean; p
 }
 
 async function transfer(page: Page, from: string, to: string, amount: string) {
-  await openMenu(page, from);
-  await page.getByRole("menuitem", { name: "Transfer" }).click();
+  // A button on the row now, not a menu item (transfer-and-reconcile-sit-on-the-row).
+  await accountRow(page, from).getByRole("button", { name: "Transfer", exact: true }).click();
 
   const dialog = page.getByTestId("transfer");
   await expect(dialog).toBeVisible();
@@ -230,6 +235,42 @@ test("An account is archived only at zero", async ({ page }) => {
   await expect(accountRow(page, KAS_NAME)).toHaveCount(0);
 });
 
+// the-archive-is-its-own-view — the archived ALONE, served by the server: the cash box archived above, and none of
+// the active accounts beside it. Nothing on the view says it is worked out on screen any more.
+test("The archive lists the archived alone", async ({ page }) => {
+  await login(page);
+  await gotoAccounts(page);
+
+  await page.getByTestId("open-archived-accounts").click();
+  await expect(page.getByTestId("financial-accounts-heading")).toHaveText("Archived Accounts");
+  await expect(accountRow(page, KAS_NAME)).toHaveCount(1);
+  await expect(accountRow(page, BCA_NAME)).toHaveCount(0);
+  await expect(page.getByTestId("not-implemented-summary")).toHaveCount(0);
+
+  await page.getByTestId("back-to-active-accounts").click();
+  await expect(accountRow(page, BCA_NAME)).toHaveCount(1);
+  await expect(accountRow(page, KAS_NAME)).toHaveCount(0);
+});
+
+// the-type-decides-the-provider — type Lainnya opens on the real server, its provider set by the type and no number
+// asked. Opened at zero, so the team's totals the later steps check are unchanged.
+test("A Lainnya account opens without a number", async ({ page }) => {
+  await login(page);
+  await gotoAccounts(page);
+
+  await page.getByTestId("open-create-account").click();
+  const form = page.getByTestId("account-form");
+  await expect(form).toBeVisible();
+  await form.getByTestId("account-name").fill(OTHER_NAME);
+  await form.getByTestId("account-type-4").click();
+  await expect(form.getByTestId("account-provider")).toHaveCount(0);
+  await form.getByTestId("account-opening").fill("0");
+  await form.getByTestId("account-form-save").click();
+  await expect(form).toBeHidden();
+
+  await expect(accountRow(page, OTHER_NAME)).toContainText("Other");
+});
+
 // a-shop-with-no-account-gets-an-unknown-one — and one-contract-for-both-handler-types: the same event twice
 // posts once.
 test("A withdrawal from a shop with no account makes an unknown one, once", async ({ page, request }) => {
@@ -245,9 +286,11 @@ test("A withdrawal from a shop with no account makes an unknown one, once", asyn
   await gotoAccounts(page);
 
   const row = accountRow(page, `shop #${ORPHAN_SHOP}`);
-  await expect(row).toContainText("Bank not named");
+  // No badge any more — its provider reads Other (the-unknown-account-reads-lainnya).
+  await expect(row).toContainText("Other");
   await expect(balanceOf(row)).toHaveText(rp(150_000));
-  await expect(page.getByTestId("unknown-warning")).toBeVisible();
+  // Its own totals card says it — the banner is gone (the-accounts-page-has-no-banners). 4 = UNKNOWN.
+  await expect(page.getByTestId("account-total-4")).toBeVisible();
 });
 
 // an-unknown-account-is-filled-in-or-moved-in — MOVE IN: the money crosses, the unknown one is archived.
@@ -258,7 +301,9 @@ test("The unknown account is moved into the real one", async ({ page }) => {
   await accountRow(page, `shop #${ORPHAN_SHOP}`).getByText(`shop #${ORPHAN_SHOP}`).click();
   await expect(page.getByTestId("account-unknown-explained")).toBeVisible();
 
-  await page.locator('[data-testid^="account-identify-button-"]').click();
+  // Set account is in the menu now (the-unknown-row-warns-and-sets-from-the-menu).
+  await page.locator('[data-testid^="account-actions-"]').click();
+  await page.locator('[data-testid^="account-identify-"]').click();
   const dialog = page.getByTestId("identify");
   await expect(dialog).toBeVisible();
   await dialog.getByTestId("identify-move").click();

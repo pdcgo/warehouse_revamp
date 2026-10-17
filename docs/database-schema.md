@@ -408,9 +408,8 @@ erDiagram
     `Shop.primary_user_id` and by `ShopAccessCheck` — a shop with none cannot import a statement.
 - **`orders_team_external_ref_idx`** (`00014`) — `(team_id, order_external_ref_id) WHERE
   order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
-  statement's refs to orders in one query. **Not unique** —
-  [an-order-is-unique-by-shop-and-marketplace-ref](business/order/context_decision.md#an-order-is-unique-by-shop-and-marketplace-ref)
-  excludes cancelled orders, which a plain unique index cannot say, and is checked in code (not built yet).
+  statement's refs to orders in one query. **Not unique, by decision** — two live orders may share a ref, and the
+  form warns instead ([a-duplicate-ref-is-warned-not-refused](business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)).
 - **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
   read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
   claim that something happened at a moment, and a mutable history is not a history.
@@ -464,7 +463,7 @@ erDiagram
     revenue report was optimistic by exactly the freight.
 
     ```
-    additional = (shipping_cost + SUM(restock_cost_lines.amount)) / sellable units on the request
+    additional = (shipping_cost + warehouse_additional_cost) / sellable units on the request
     hpp        = (line total / that line's sellable units) + additional
     ```
 
@@ -742,58 +741,61 @@ erDiagram
     }
 
     restock_requests ||--o{ restock_request_items : "restock_request_id"
-    restock_requests ||--o{ restock_request_events : "restock_request_id"
-    restock_requests ||--o{ restock_cost_lines : "restock_request_id"
+    restock_requests ||--o{ restock_logs : "restock_request_id"
 
     restock_requests {
         bigserial   id                 PK
         bigint      requesting_team_id "SELLING team that raised it, opaque, no FK"
         bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
         text        shipping_code      "opaque courier code — matched against shipment_service.shipment_channels.code"
-        text        status             "RestockRequestStatus as text (pending/fulfilled/cancelled); no CHECK"
-        text        order_ref          "optional: free-text reference to an order elsewhere; '' = none"
+        text        status             "ongoing / arrived / accepted / lost / cancelled (mapper-guarded, #80); 00024 rewrote pending and fulfilled"
+        text        order_ref          "the store's INVOICE reference; becomes invoice_ref_id with the rename"
         text        receipt            "optional: courier tracking number (resi)"
-        bigint      supplier_id        "optional, OPAQUE supplier_service id, no FK since 00023"
+        text        receipt_file       "00024: a photo of the label; '' = none"
+        bigint      shipment_id        "00024: the courier, opaque shipment_service id, no FK; 0 = not named"
+        bigint      finance_account_id "00024: the account that paid, opaque financial_account_service id; 0 = raised before it was required"
+        bigint      transaction_id     "00024: the accept's inventory transaction; 0 until the accept writes the ledgers"
         bigint      shipping_cost      "the freight the REQUESTER agreed, whole rupiah, CHECK >= 0"
-        text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); no CHECK"
-        text        note               "optional free text"
+        bigint      warehouse_additional_cost "00024: the courier's ONE charge at the door, CHECK >= 0; outside the total, inside the unit price"
+        text        warehouse_additional_cost_note "00024: what the charge was for — required above 0 by the contract"
+        text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); read-only history"
+        text        note               "the selling team's note on the whole restock"
         bigint      created_by_user_id "who RAISED it, opaque user_service id, no FK; 0 = not recorded"
+        bigint      arrived_by_user_id "00024: who SIGNED for the box; 0 = not signed"
         bigint      accepted_by_user_id "who COUNTED it, opaque user_service id, no FK; 0 = not accepted yet"
+        bigint      lost_by_user_id    "00024: who GAVE IT UP as lost; 0 = not lost"
         bigint      cancelled_by_user_id "who CALLED IT OFF, opaque user_service id, no FK; 0 = not cancelled"
+        timestamptz arrived_at         "00024: nullable: when the box was signed for"
         timestamptz accepted_at        "nullable: when the warehouse accepted; NULL = not accepted"
+        timestamptz lost_at            "00024: nullable: when it was given up as lost"
         timestamptz cancelled_at       "nullable: when the requester called it off; NULL = not cancelled"
         timestamptz created_at
         timestamptz updated_at
     }
 
-    restock_cost_lines {
+    restock_logs {
         bigserial   id                 PK
         bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
-        text        kind               "incidental — the ONLY kind (mapper-guarded, #80); 00022 collapsed two into one"
-        bigint      amount             "whole rupiah the WAREHOUSE laid out, CHECK > 0"
-        text        note               "why — REQUIRED by the contract; rows before 00022 may be empty"
-        bigint      actor_id           "who typed it, opaque user_service id, no FK"
-        timestamptz created_at
-    }
-
-    restock_request_events {
-        bigserial   id                 PK
-        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
-        text        kind               "created | edited | accepted | cancelled | cost_recorded (mapper-guarded, #80)"
+        text        from_status        "status words as restock_requests stores them; '' = the create"
+        text        to_status          "the same as from_status for an edit"
         bigint      actor_user_id      "who did it, opaque user_service id, no FK; 0 = not recorded"
-        timestamptz at                 "WHEN IT HAPPENED — not the insert time; the backfill carries old dates"
+        text        description        "what moved it, or what an edit changed"
+        timestamptz at                 "WHEN IT HAPPENED — not the insert time; the 00024 backfill carries old dates"
         timestamptz created_at
     }
 
     restock_request_items {
         bigserial   id                 PK
-        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
-        bigint      product_id         "opaque product_service id, no FK"
+        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE; UNIQUE with product_id (00024)"
+        bigint      product_id         "opaque product_service id, no FK; once per restock"
         text        sku                "snapshot at request time"
         text        name               "snapshot"
         bigint      quantity           "how many were ASKED FOR, CHECK > 0"
         bigint      total_price        "whole rupiah, THE LINE TOTAL (#140), CHECK >= 0"
-        bigint      received_quantity  "what is SELLABLE and entered stock, counted at acceptance; EXCLUDES damage (#154); 0 until fulfilled"
+        bigint      received_quantity  "what is SELLABLE and entered stock, counted at acceptance; EXCLUDES damage (#154); 0 until accepted"
+        bigint      supplier_id        "00024: the line's supplier, opaque supplier_service id, nullable"
+        bigint      supplier_channel_id "00024: the line's store, opaque supplier_service id, nullable"
+        text        note               "00024: the selling team's note on the line"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -810,8 +812,10 @@ erDiagram
         bigserial   id                      PK
         bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
         bigint      quantity                "CHECK > 0"
-        text        reason                  "required, CHECK <> empty"
-        text        damage_type             "broken | lost (mapper-guarded, #80)"
+        text        reason                  "the warehouse's optional note; 00024 dropped the non-empty CHECK"
+        text        damage_type             "broken | missing (mapper-guarded, #80); 00024 rewrote lost"
+        bigint      price_unit              "00024: the LANDED unit price, filled at accept, CHECK >= 0"
+        bigint      total                   "00024: price_unit x quantity, CHECK >= 0"
         timestamptz created_at
     }
 
@@ -928,7 +932,17 @@ erDiagram
   > subsequent read with `cached plan must not change result type (SQLSTATE 0A000)` until it
   > reconnects. It reads as a code bug and is a connection-lifetime one. **The same applies to 00019**,
   > which adds `cancelled_by_user_id` to the same table.
-- **`restock_request_events` — the restock's own history** (00019), one **append-only** row per thing
+- **00024 — the decided restock, on today's names** (restocks-non-stock-parts-come-before-the-switch-over). Every
+  field the contract carried and the mapper dropped got a column (above, marked 00024), and the stopgaps became data:
+  `pending`/`fulfilled` → `ongoing`/`accepted`, a problem `lost` → `missing`, the problem note's non-empty CHECK
+  dropped. **`restock_cost_lines` folded into the one `warehouse_additional_cost` + note and was dropped**
+  (the-courier-is-paid-once-per-restock); **`restock_request_events` became `restock_logs`** — from and to status, so
+  an edit is a row with the status unchanged (edits-are-in-the-same-trail) — and was dropped; **the restock-level
+  `supplier_id` moved onto each line** and was dropped; `UNIQUE (restock_request_id, product_id)` makes a product
+  appear once per restock. Nothing is in production, so a developer's database is reseeded rather than trusted to the
+  Down. The tables take the owner's names (`restocks`, `restock_items`, `restock_problem_items`) in the commit that
+  moves the accept onto the ledgers.
+- **`restock_request_events` — the restock's own history** (00019, **replaced by `restock_logs` in 00024**), one **append-only** row per thing
   that happened to it: `created`, `edited`, `accepted`, `cancelled` (text, mapper-guarded, cf. #80),
   each with an `actor_user_id` and the moment it happened. Written **in the same transaction as the
   change it describes**, carrying the *same instant* as the column that change stamps — an event that
@@ -1202,6 +1216,8 @@ erDiagram
         text        reason           "why it was REJECTED or REVERSED — the status says which"
         bigint      recorded_by      "who claimed it — opaque user id"
         bigint      confirmed_by     "who agreed — opaque user id"
+        bigint      from_account_id  "the payers account the transfer left, financial_account id, 0 before 00009"
+        bigint      to_account_id    "the creditors account it landed in, named on accept, 0 until then"
         timestamptz created_at
         timestamptz confirmed_at     "NULL until confirmed; SURVIVES a reversal. STAYS NULL on a reject"
         timestamptz updated_at
@@ -1331,6 +1347,13 @@ erDiagram
     Confirm in the same second is ordinary here — without the lock both reads see `recorded`, both post,
     and the debt is paid off twice. Proven against a real Postgres in `payment_confirm_race_test.go`
     (8 concurrent confirms → exactly one succeeds, balance lands on 0).
+  - **`from_account_id` / `to_account_id` say where the money LEFT and where it LANDED**
+    ([a-team-payment-posts-on-accept](business/financial_account/context_decision.md#a-team-payment-posts-on-accept),
+    migration `00009`) — opaque financial_account_service ids, no FK. The payer names `from` when recording,
+    the creditor names `to` when accepting; each is checked as one of that team's active, named accounts
+    before it is written. On accept both ride `LiabilityPaymentAccepted`, and the accounts post one
+    `team_payment` row on each. `0` = not named: `to` until accepted, and `from` on every payment recorded
+    before `00009` — that one's acceptance posts only the `to` leg.
 
 ---
 

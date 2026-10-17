@@ -63,6 +63,10 @@ export const racks = [
   { id: 41n, warehouseId: 11n, code: "A-01-1", name: "Aisle A bawah", description: "", deleted: false },
   { id: 42n, warehouseId: 11n, code: "A-01-2", name: "Aisle A tengah", description: "", deleted: false },
   { id: 43n, warehouseId: 11n, code: "B-02-1", name: "Aisle B bawah", description: "", deleted: false },
+  // Gudang Cabang's shelves — APPENDED for the warehouse transfer, whose receiving warehouse (B) puts the good units
+  // away on its OWN racks. RackList is scoped by the warehouse, so these never show at Gudang Pusat.
+  { id: 44n, warehouseId: 14n, code: "C-01-1", name: "Cabang rak depan", description: "", deleted: false },
+  { id: 45n, warehouseId: 14n, code: "C-01-2", name: "Cabang rak belakang", description: "", deleted: false },
 ];
 
 // ── Categories (a two-level tree — CategorySelect drills into children) ──────────────────────────
@@ -165,6 +169,17 @@ anggrek[4]!.name =
 anggrek[9]!.name = "Lada Bubuk";
 
 // ── Products ────────────────────────────────────────────────────────────────────────────────────
+
+// A flat drawing standing in for a product photo — so a screen's picture path is exercised by at least one product
+// (Beras), while the others keep the placeholder. Inline, so no story waits on a network image.
+const RICE_PICTURE = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
+    `<rect width="64" height="64" fill="#fef3c7"/>` +
+    `<rect x="14" y="10" width="36" height="46" rx="6" fill="#f5f5f4" stroke="#a8a29e" stroke-width="2"/>` +
+    `<rect x="14" y="24" width="36" height="14" fill="#16a34a"/>` +
+    `</svg>`,
+)}`;
+
 export const products = [
   {
     id: 71n, teamId: 11n, sku: "SKU-KOPI-250", name: "Kopi Arabika 250g",
@@ -188,7 +203,7 @@ export const products = [
   // "Other" and "Priority" would be indistinguishable from "everyone else" and "everyone else".
   {
     id: 74n, teamId: 12n, sku: "SKU-BERAS-5K", name: "Beras Pandan Wangi 5kg",
-    description: "", categoryId: 54n, defaultImageUrl: "", defaultImageThumbnailUrl: "",
+    description: "", categoryId: 54n, defaultImageUrl: RICE_PICTURE, defaultImageThumbnailUrl: RICE_PICTURE,
     deleted: false, crossMarkupBps: 0, crossLocked: false, reservedStock: 0,
   },
   // ⚠ LAST, and that is load-bearing rather than tidiness. The stub filters this array in order, so
@@ -291,6 +306,9 @@ export const warehouseStock: Record<string, bigint> = {
   // warehouse cannot fill, so one fixture product is kept scarce on purpose.
   "72": 3n,
   "73": 12n,
+  // Toko Melati's own Beras — APPENDED so the team the warehouse transfer form runs as has something of its own on
+  // Gudang Pusat's shelves to send. Without it OwnStockedProductPicker opens empty for team 12.
+  "74": 25n,
 };
 
 // HPP, in whole rupiah.
@@ -672,7 +690,8 @@ export const liabilityTerms = [
 
 // What each debtor owes team 11 right now. Positive = they owe us, so these are what the limits cap.
 export const liabilityPositions = [
-  { counterpartyId: 12n, balance: 8_700_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
+  // 12 has one payment waiting for team 11 to confirm — liabilityPayments' 602.
+  { counterpartyId: 12n, balance: 8_700_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 1 },
   { counterpartyId: 13n, balance: 1_000_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 14n, balance: 6_200_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
   { counterpartyId: 15n, balance: 250_000n, oldestUnsettledAtUnix: 0n, awaitingConfirmation: 0 },
@@ -740,11 +759,13 @@ export const liabilityEntries = [
 // ⚠ EVERY PAYMENT CARRIES PROOF, because the contract requires at least one document
 // (a-payment-must-carry-proof). A fixture with an empty `documentIds` would be a payment the server
 // would have refused, and it would let a story pass against a screen that cannot happen.
+// And each names the account it LEFT (a-team-payment-posts-on-accept) — 1307 BCA Gudang is team 11's,
+// 1301 BCA Operasional team 12's — and, once accepted, the one it LANDED in; 0 until then.
 export const liabilityPayments = [
-  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "" },
-  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "" },
+  { id: 601n, payerTeamId: 11n, creditorTeamId: 12n, amount: 500_000n, status: 2, note: "Transfer BCA", recordedBy: 1n, confirmedBy: 2n, createdAtUnix: 1_755_600_000n, confirmedAtUnix: 1_755_610_000n, documentIds: ["doc-601"], reason: "", fromAccountId: 1307n, toAccountId: 1301n },
+  { id: 602n, payerTeamId: 12n, creditorTeamId: 11n, amount: 2_000_000n, status: 1, note: "Transfer Mandiri", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_500_000n, confirmedAtUnix: 0n, documentIds: ["doc-602a", "doc-602b"], reason: "", fromAccountId: 1301n, toAccountId: 0n },
   // A REFUSED CLAIM — status 4, nothing posted, and the reason the payer has to read.
-  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account" },
+  { id: 603n, payerTeamId: 12n, creditorTeamId: 11n, amount: 750_000n, status: 4, note: "Transfer BNI", recordedBy: 2n, confirmedBy: 0n, createdAtUnix: 1_755_400_000n, confirmedAtUnix: 0n, documentIds: ["doc-603"], reason: "no transfer of this amount reached our account", fromAccountId: 1301n, toAccountId: 0n },
 ];
 
 // ── The settlement reports ──────────────────────────────────────────────────────────────────────

@@ -247,6 +247,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "settlement-log-posted",
 			Filter: `attributes.event_type = "warehouse.events.v1.SettlementLogPosted"`,
 		},
+		// financial_account_service's team-payment listener — mirrors financial_account_service.TeamPaymentSubscription
+		// (a-team-payment-posts-on-accept). liability's acceptance, out of the payer's account and into the creditor's.
+		{
+			ID:     "financial-account-team-payment",
+			Topic:  "liability-payment-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.LiabilityPaymentAccepted"`,
+		},
 	}
 }
 

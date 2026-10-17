@@ -7,10 +7,12 @@ one is mine.** An answered point is deleted; what you settled is in [context_dec
 and the service, the withdrawal listener and the screens are implemented, tested and audited
 ([state report](../../development_state/financial_account/context.md)). Nothing here is open.
 
-🔄 **Re-examined through 2026-10-01 — newest first.**
+🔄 **Re-examined through 2026-10-14 — newest first.**
 
 | | |
 | --- | --- |
+| ✅ built 2026-10-14 | the accounts list's two marks — the archive listed and counted by the server, type Lainnya opened by it: [lainnya-is-opened-by-the-server](./context_decision.md#lainnya-is-opened-by-the-server) · ⚠ my spec, no question: half a Lainnya pair is refused |
+| ✅ built 2026-10-14 | the team payment — liability's *Paid from* / *Received into* are real, checked fields, its accept publishes `LiabilityPaymentAccepted`, and the second listener posts both legs ([state](../../development_state/financial_account/context.md)) · ⚠ my spec, no question: a payment recorded before *Paid from* existed posts only its `to` leg · nothing new to ask |
 | ✅ built | the service, its schema, the withdrawal listener, the routed screens — tests and audits in the [state report](../../development_state/financial_account/context.md) · the restock, expense and team-payment listeners wait on their services' events |
 | ✅ design_accept | accepted in chat — *"i have review the frontend, make fully implemented"*: [the-prototype-and-its-contract-are-accepted](./context_decision.md#the-prototype-and-its-contract-are-accepted) · the build starts |
 | 🔨 the prototype | built for design_accept · nothing new to ask · ⛔ one [contradiction](#identify-derives-the-type-and-the-form-picks-it) found between two decisions, settled by the later one |
@@ -137,7 +139,7 @@ nothing is left open.
 | `expense` | out | ✅ broker only — 🆕 an expense event — every kind a person types but `ADS` | created · a void reverses it — ✅ [an-expense-must-name-the-account-that-paid](./context_decision.md#an-expense-must-name-the-account-that-paid) |
 | `ads_expense` ✅ | out | ✅ broker only — the same expense event, when its kind is `ADS` — ⚠ my reading | created · a void reverses it — [ads-expense-joins-the-types](./context_decision.md#ads-expense-joins-the-types) |
 | `transfer` ✅ | out of one, into another | ✅ by hand only — two legs, one act | when typed |
-| `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — 🆕 the balance service's acceptance, carrying both account ids | the creditor accepts — [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · never reversed: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
+| `team_payment` ✅ | out of the payer, into the creditor | ✅ broker only — ✅ built: liability's `LiabilityPaymentAccepted`, carrying both account ids | the creditor accepts — [a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept) · never reversed: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 | `capital` ✅ | in or out | ✅ by hand only — the business owner's own money | when typed |
 | `adjustment` ✅ | in or out | ✅ by hand only — a reconcile; the difference, never typed | [adjustment-is-for-reconciling-only](./context_decision.md#adjustment-is-for-reconciling-only) |
 
@@ -243,7 +245,7 @@ sequenceDiagram
 | `settlement-log-posted` | ✅ | a `withdrawal` row → a `withdrawal` into its shop's account — a shop with none gets an `unknown` one first — the sign turned — money leaving the wallet is money arriving here · a reversal of one reverses it · every other settlement type is ignored |
 | a restock topic | 🆕 inventory publishes | `restock` — the account that paid, and the change |
 | an expense topic | 🆕 expense publishes | `expense`, or `ads_expense` when its kind is `ADS` — every expense a person types · settlement's ads never, [settlement-ads-and-accounts-are-independent](./context_decision.md#settlement-ads-and-accounts-are-independent) |
-| a payment-accepted topic | 🆕 the balance service publishes | `team_payment` — out of `from_account_id`, into `to_account_id` ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)) · no reversal topic: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
+| `liability-payment-accepted` | ✅ liability publishes, since 2026-10-14 | `team_payment` — out of `from_account_id`, into `to_account_id` ([a-team-payment-posts-on-accept](./context_decision.md#a-team-payment-posts-on-accept)) · no reversal topic: [a-team-payment-is-never-reversed](./context_decision.md#a-team-payment-is-never-reversed) |
 
 ### The data
 

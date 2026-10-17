@@ -2,6 +2,7 @@ package liability_v1_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -65,7 +66,7 @@ func owed(t *testing.T, db *gorm.DB, team, counterparty uint64) int64 {
 // that moved on a claim would let any team write off its own debt by typing a number.
 func TestPaymentRecord_MovesNoMoney(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	recordPayment(t, svc, selling, warehouse, 15000)
@@ -80,7 +81,7 @@ func TestPaymentRecord_MovesNoMoney(t *testing.T) {
 // would be arithmetically consistent and completely wrong: paying would double the debt.
 func TestPaymentConfirm_SettlesTheDebt(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -108,7 +109,7 @@ func TestPaymentConfirm_SettlesTheDebt(t *testing.T) {
 // break if the posting used the payment's amount for one leg and the balance for the other.
 func TestPaymentConfirm_PartialPaymentLeavesTheRemainder(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 5000)
@@ -127,7 +128,7 @@ func TestPaymentConfirm_PartialPaymentLeavesTheRemainder(t *testing.T) {
 // their own payment could write off any debt they liked by agreeing with themselves.
 func TestPaymentConfirm_ThePayerCannotConfirmTheirOwnPayment(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -153,7 +154,7 @@ func TestPaymentConfirm_ThePayerCannotConfirmTheirOwnPayment(t *testing.T) {
 // ordinary event here, not a hypothetical.
 func TestPaymentConfirm_CannotBeConfirmedTwice(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -181,7 +182,7 @@ func TestPaymentConfirm_CannotBeConfirmedTwice(t *testing.T) {
 // settled it, the same way a fee traces back to its order.
 func TestPaymentConfirm_TheEntryNamesThePayment(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := liability_v1.NewService(db)
+	svc := liability_v1.NewService(db, nil, nil)
 
 	oweThem(t, svc, db, 15000, 1)
 	payment := recordPayment(t, svc, selling, warehouse, 15000)
@@ -208,5 +209,130 @@ func TestPaymentConfirm_TheEntryNamesThePayment(t *testing.T) {
 
 	if !found {
 		t.Fatal("no PAYMENT entry in the history — the liability is untraceable")
+	}
+}
+
+func confirmInto(svc *liability_v1.Service, creditor, paymentID, toAccount uint64) (*liabilityv1.LiabilityPayment, error) {
+	res, err := svc.LiabilityPaymentConfirm(context.Background(),
+		connect.NewRequest(&liabilityv1.LiabilityPaymentConfirmRequest{
+			TeamId:      creditor,
+			PaymentId:   paymentID,
+			ToAccountId: toAccount,
+		}))
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Msg.GetPayment(), nil
+}
+
+// a-team-payment-posts-on-accept: accepting names where the money LANDED, and tells the financial accounts both
+// ends — the payer's account the payer named, and this one.
+func TestPaymentConfirm_PublishesWhereTheMoneyLeftAndLanded(t *testing.T) {
+	db := san_testdb.DB(t)
+	sent := &recordingSender{}
+	svc := liability_v1.NewService(db, sent.send, bothBanks)
+
+	oweThem(t, svc, db, 15000, 1)
+
+	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	if len(sent.sent) != 0 {
+		t.Fatalf("recording published %d events — a claim moves no account", len(sent.sent))
+	}
+
+	got, err := confirmInto(svc, warehouse, payment.GetId(), warehouseBCA)
+	if err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+
+	if got.GetToAccountId() != warehouseBCA || got.GetFromAccountId() != sellingBCA {
+		t.Fatalf("from/to = %d/%d, want %d/%d", got.GetFromAccountId(), got.GetToAccountId(), sellingBCA, warehouseBCA)
+	}
+
+	if len(sent.sent) != 1 {
+		t.Fatalf("published %d events on accept, want 1", len(sent.sent))
+	}
+
+	event := sent.sent[0]
+	accepted := event.GetLiabilityPaymentAccepted()
+
+	if accepted == nil {
+		t.Fatalf("published %T, want LiabilityPaymentAccepted", event.GetMessage())
+	}
+
+	if accepted.GetPaymentId() != payment.GetId() ||
+		accepted.GetPayerTeamId() != selling || accepted.GetCreditorTeamId() != warehouse ||
+		accepted.GetFromAccountId() != sellingBCA || accepted.GetToAccountId() != warehouseBCA ||
+		accepted.GetAmount() != 15000 {
+		t.Fatalf("event = %+v", accepted)
+	}
+
+	// Derived from the payment — a retried publish collides in the accounts' dedup instead of posting twice.
+	if want := "liability-payment-accepted:" + strconv.FormatUint(payment.GetId(), 10); event.GetEventId() != want {
+		t.Fatalf("event_id = %q, want %q", event.GetEventId(), want)
+	}
+
+	// The day both rows count on is the day the creditor accepted.
+	if event.GetOccurredAt().AsTime().Unix() != got.GetConfirmedAtUnix() {
+		t.Fatalf("occurred_at = %v, want the accept at %d", event.GetOccurredAt().AsTime(), got.GetConfirmedAtUnix())
+	}
+}
+
+// ⚠ THE CREDITOR CANNOT LAND THE MONEY IN THE PAYER'S ACCOUNT. Refused before the payment is touched: it stays
+// RECORDED, the debt stands, and nothing reaches the accounts.
+func TestPaymentConfirm_RefusesAnAccountThatIsNotTheCreditors(t *testing.T) {
+	db := san_testdb.DB(t)
+	sent := &recordingSender{}
+	svc := liability_v1.NewService(db, sent.send, bothBanks)
+
+	oweThem(t, svc, db, 15000, 1)
+
+	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	_, err = confirmInto(svc, warehouse, payment.GetId(), sellingBCA)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("code = %v, want InvalidArgument", connect.CodeOf(err))
+	}
+
+	if debt := owed(t, db, selling, warehouse); debt != 15000 {
+		t.Fatalf("debt = %d, want 15000 — a refused accept moved money", debt)
+	}
+
+	if len(sent.sent) != 0 {
+		t.Fatalf("a refused accept published %d events", len(sent.sent))
+	}
+
+	// Still waiting, so the creditor can accept it into the right account.
+	if _, err := confirmInto(svc, warehouse, payment.GetId(), warehouseBCA); err != nil {
+		t.Fatalf("accept into the right account after a refusal: %v", err)
+	}
+}
+
+// A REJECTED payment moves no account, so it tells the accounts nothing.
+func TestPaymentConfirm_ARejectPublishesNothing(t *testing.T) {
+	db := san_testdb.DB(t)
+	sent := &recordingSender{}
+	svc := liability_v1.NewService(db, sent.send, bothBanks)
+
+	oweThem(t, svc, db, 15000, 1)
+
+	payment, err := recordFrom(svc, selling, warehouse, sellingBCA, 15000)
+	if err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	if _, err := rejectPayment(t, svc, warehouse, payment.GetId(), "no such transfer reached us"); err != nil {
+		t.Fatalf("reject: %v", err)
+	}
+
+	if len(sent.sent) != 0 {
+		t.Fatalf("a reject published %d events", len(sent.sent))
 	}
 }

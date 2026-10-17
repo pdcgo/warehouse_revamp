@@ -1,4 +1,4 @@
-import { Badge, type BadgeProps } from "@chakra-ui/react";
+import { Badge, type BadgeProps, Span } from "@chakra-ui/react";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 
 // marketplaceLabel is the shared display name for a marketplace — the badge's text, the picker's
@@ -32,7 +32,8 @@ export function marketplaceLabel(m: Marketplace): string {
 // The colours themselves are the marketplace's brand colour adapted per colour mode, and live in
 // theme.ts (`marketplace.<name>.bg` / `.fg`, MARKETPLACE COLOURS) — this only picks which one. Anything
 // without its own colour (Other, an unrecognised value) is `others`, a plain gray.
-function marketplaceKey(m: Marketplace): string {
+/** The theme's `marketplace.<key>` colour pair — a shop's chip is tinted with it too (AccountLinks). */
+export function marketplaceKey(m: Marketplace): string {
   switch (m) {
     case Marketplace.SHOPEE:
       return "shopee";
@@ -54,15 +55,20 @@ function marketplaceKey(m: Marketplace): string {
 // MarketplaceBadge renders a shop's marketplace as a Chakra Badge in its standard colour (#84).
 // This is THE way to show a marketplace type — never render the label as bare text.
 export const description =
-  "A shop's marketplace as a Chakra Badge in its brand colour, adapted for light and dark mode (Shopee orange-red, Tokopedia green, Lazada blue, …).";
+  "A shop's marketplace as a Chakra Badge in its brand colour, adapted for light and dark mode (Shopee orange-red, Tokopedia green, Lazada blue, …). Pass `count` for how many there are — \"Shopee ×3\", the count inside the badge, a step quieter; one shows no count.";
 
 export interface MarketplaceBadgeProps {
   marketplace: Marketplace;
   // Chakra Badge size — defaults to the theme default; pass "sm" for a compact table cell.
   size?: BadgeProps["size"];
+  /**
+   * How many of this marketplace — a supplier's three Shopee stores read "Shopee ×3", the count INSIDE the badge
+   * (owner, `a-store-count-sits-in-its-badge`), a step quieter than the name. 1 or none shows no count.
+   */
+  count?: number;
 }
 
-export function MarketplaceBadge({ marketplace, size }: MarketplaceBadgeProps) {
+export function MarketplaceBadge({ marketplace, size, count }: MarketplaceBadgeProps) {
   const key = marketplaceKey(marketplace);
 
   return (
@@ -73,6 +79,7 @@ export function MarketplaceBadge({ marketplace, size }: MarketplaceBadgeProps) {
       data-testid={`marketplace-badge-${marketplace}`}
     >
       {marketplaceLabel(marketplace)}
+      {count !== undefined && count > 1 && <Span opacity={0.7}>×{count}</Span>}
     </Badge>
   );
 }

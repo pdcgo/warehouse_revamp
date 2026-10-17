@@ -27,6 +27,8 @@ func channelToProto(c *supplier_service_models.SupplierChannel) *supplierv1.Supp
 		Name:        c.Name,
 		Uri:         c.URI,
 		Description: c.Description,
+		// Only SupplierChannelByIds ever returns a deleted store; every list filters them out.
+		Deleted: c.DeletedAt != nil,
 	}
 }
 

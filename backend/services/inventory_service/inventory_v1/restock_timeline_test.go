@@ -1,9 +1,11 @@
 package inventory_v1_test
 
 import (
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -29,11 +31,30 @@ const (
 	tlReceiver    uint64 = 12
 )
 
-// kinds is the timeline as a reader sees it, in order.
-func kinds(r *inventoryv1.RestockRequest) []inventoryv1.RestockRequestEventKind {
-	out := make([]inventoryv1.RestockRequestEventKind, 0, len(r.GetEvents()))
-	for _, e := range r.GetEvents() {
-		out = append(out, e.GetKind())
+// trailStep is one row of a restock's trail as a reader sees it (every-status-change-is-logged,
+// edits-are-in-the-same-trail): the status it left, the status it reached, and what happened. An edit or a charge
+// leaves the status where it was.
+type trailStep struct {
+	from        inventoryv1.RestockRequestStatus
+	to          inventoryv1.RestockRequestStatus
+	description string
+}
+
+// The steps a restock's trail is made of, as the stored history reads back.
+var (
+	stepCreated   = trailStep{inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED, ongoing, "created"}
+	stepEdited    = trailStep{ongoing, ongoing, "edited"}
+	stepAccepted  = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing"}
+	// The courier's charge is said on the acceptance itself, the step that paid it (#184, every-status-change-is-logged).
+	stepAcceptedWithCharge = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing; courier's charge Rp 25.000"}
+	stepCancelled = trailStep{ongoing, cancelled, "cancelled — money not returned"}
+)
+
+// trail is the timeline as a reader sees it, in order.
+func trail(r *inventoryv1.RestockRequest) []trailStep {
+	out := make([]trailStep, 0, len(r.GetLogs()))
+	for _, l := range r.GetLogs() {
+		out = append(out, trailStep{from: l.GetFromStatus(), to: l.GetToStatus(), description: l.GetDescription()})
 	}
 
 	return out
@@ -45,16 +66,17 @@ func kinds(r *inventoryv1.RestockRequest) []inventoryv1.RestockRequestEventKind 
 // own write".
 func acceptAndReadAsSellingTeam(
 	t *testing.T,
+	db *gorm.DB,
 	svc *inventory_v1.Service,
 	codFee int64,
 ) *inventoryv1.RestockRequest {
 	t.Helper()
 
 	created, err := svc.RestockRequestCreate(ctxUser(tlBuyer), connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
-		TeamId: tlSellingTeam, WarehouseId: tlWarehouse, ShippingCode: "jne",
-		ShippingCost: 15000,
+		TeamId: tlSellingTeam, WarehouseId: tlWarehouse,
+		ShipmentCost: 15000,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: tlProduct, Sku: "SKU-TL", Name: "Widget", Quantity: 10, TotalPrice: 500000},
+			{ProductId: tlProduct, Sku: "SKU-TL", Name: "Widget", Count: 10, Total: 500000},
 		},
 	}))
 	if err != nil {
@@ -63,13 +85,13 @@ func acceptAndReadAsSellingTeam(
 
 	reqID := created.Msg.GetRequest().GetId()
 
-	_, err = svc.RestockRequestFulfill(ctxUser(tlReceiver), connect.NewRequest(&inventoryv1.RestockRequestFulfillRequest{
+	_, err = svc.RestockRequestAccept(ctxUser(tlReceiver), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: tlWarehouse, RequestId: reqID,
-		CostLines: codLines(codFee),
-		Lines:     allArrived(created.Msg.GetRequest()),
+		WarehouseAdditionalCost: codFee, WarehouseAdditionalCostNote: courierNote,
+		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 	if err != nil {
-		t.Fatalf("fulfil: %v", err)
+		t.Fatalf("accept: %v", err)
 	}
 
 	detail, err := svc.RestockRequestDetail(ctxUser(tlBuyer), connect.NewRequest(&inventoryv1.RestockRequestDetailRequest{
@@ -88,14 +110,11 @@ func TestRestockDetail_TheSellingTeamSeesTheAcceptanceOnItsTimeline(t *testing.T
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	req := acceptAndReadAsSellingTeam(t, svc, 0)
+	req := acceptAndReadAsSellingTeam(t, db, svc, 0)
 
-	got := kinds(req)
+	got := trail(req)
 
-	want := []inventoryv1.RestockRequestEventKind{
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CREATED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_ACCEPTED,
-	}
+	want := []trailStep{stepCreated, stepAccepted}
 
 	if len(got) != len(want) {
 		t.Fatalf("timeline = %v, want %v", got, want)
@@ -108,70 +127,53 @@ func TestRestockDetail_TheSellingTeamSeesTheAcceptanceOnItsTimeline(t *testing.T
 		}
 	}
 
-	accepted := req.GetEvents()[1]
+	acceptance := req.GetLogs()[1]
 
 	// WHO. The accepting warehouse's person, not the buyer who raised it — the step exists to name the
 	// other side, and an actor copied off the request would name the wrong one while looking right.
-	if accepted.GetActorUserId() != tlReceiver {
+	if acceptance.GetActorUserId() != tlReceiver {
 		t.Fatalf("the acceptance names user %d, want the warehouse's %d (the buyer is %d)",
-			accepted.GetActorUserId(), tlReceiver, tlBuyer)
+			acceptance.GetActorUserId(), tlReceiver, tlBuyer)
 	}
 
 	// WHEN, and the same second the `accepted_at` column carries — the timeline and the accepted-date
 	// filter must not disagree about which day a delivery landed.
-	if accepted.GetAtUnix() != req.GetAcceptedAtUnix() {
-		t.Fatalf("the acceptance event is stamped %d and the column says %d — one delivery, one moment",
-			accepted.GetAtUnix(), req.GetAcceptedAtUnix())
+	if acceptance.GetAtUnix() != req.GetAcceptedAtUnix() {
+		t.Fatalf("the acceptance step is stamped %d and the column says %d — one delivery, one moment",
+			acceptance.GetAtUnix(), req.GetAcceptedAtUnix())
 	}
 
-	if accepted.GetAtUnix() <= 0 {
-		t.Fatalf("the acceptance carries no moment (%d)", accepted.GetAtUnix())
+	if acceptance.GetAtUnix() <= 0 {
+		t.Fatalf("the acceptance carries no moment (%d)", acceptance.GetAtUnix())
 	}
 }
 
-// A COD DELIVERY WRITES TWO STEPS, AND THE FEE COMES FIRST (owner).
+// A COD DELIVERY NAMES ITS CHARGE ON THE ACCEPTANCE (owner, #184; every-status-change-is-logged).
 //
-// The order is the claim: the courier is paid at the door, and THEN the box is opened and counted. Two
-// steps rather than one because they are two facts about two pockets — one says goods landed, the
-// other says the warehouse is out of pocket for goods it does not own and the selling team now owes it
-// (#184). Folded into the acceptance, the payment is invisible on the timeline of the team that has to
-// settle it.
-func TestRestockDetail_ACODFeeRecordsItsOwnStepBeforeTheAcceptance(t *testing.T) {
+// The team that settles the charge has to see it on its own timeline: folded silently into the acceptance, the
+// payment would be invisible to the side that owes it. The trail is one row per status change, so the charge is not
+// a step of its own any more — it is in the words of the step that paid it, by the person who accepted, at that moment.
+func TestRestockDetail_ACODFeeIsNamedOnTheAcceptance(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	req := acceptAndReadAsSellingTeam(t, svc, 25000)
+	req := acceptAndReadAsSellingTeam(t, db, svc, 25000)
 
-	got := kinds(req)
-
-	want := []inventoryv1.RestockRequestEventKind{
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_CREATED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED,
-		inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_ACCEPTED,
-	}
+	got := trail(req)
+	want := []trailStep{stepCreated, stepAcceptedWithCharge}
 
 	if len(got) != len(want) {
-		t.Fatalf("timeline = %v, want %v — a COD acceptance is TWO things happening", got, want)
+		t.Fatalf("timeline = %v, want %v", got, want)
 	}
 
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("timeline = %v, want %v — the fee is paid at the door BEFORE the box is counted "+
-				"in, and the order is what makes the sequence readable", got, want)
+			t.Fatalf("timeline = %v, want %v — the charge is named on the acceptance", got, want)
 		}
 	}
 
-	fee := req.GetEvents()[1]
-
-	// The person who paid it is the person who accepted it — one act, one actor. They share a moment
-	// too, which is why the ORDER above cannot come from the timestamps and comes from the insert order.
-	if fee.GetActorUserId() != tlReceiver {
-		t.Fatalf("the fee step names user %d, want the warehouse's %d", fee.GetActorUserId(), tlReceiver)
-	}
-
-	if fee.GetAtUnix() != req.GetEvents()[2].GetAtUnix() {
-		t.Fatalf("the fee (%d) and the acceptance (%d) are one act and must carry one moment",
-			fee.GetAtUnix(), req.GetEvents()[2].GetAtUnix())
+	if acceptance := req.GetLogs()[1]; acceptance.GetActorUserId() != tlReceiver {
+		t.Fatalf("the acceptance names user %d, want the warehouse's %d", acceptance.GetActorUserId(), tlReceiver)
 	}
 }
 
@@ -181,11 +183,11 @@ func TestRestockDetail_NoCODFeeWritesNoFeeStep(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	req := acceptAndReadAsSellingTeam(t, svc, 0)
+	req := acceptAndReadAsSellingTeam(t, db, svc, 0)
 
-	for _, e := range req.GetEvents() {
-		if e.GetKind() == inventoryv1.RestockRequestEventKind_RESTOCK_REQUEST_EVENT_KIND_COST_RECORDED {
-			t.Fatalf("a non-COD delivery wrote a fee step — timeline %v", kinds(req))
+	for _, step := range trail(req) {
+		if strings.Contains(step.description, "courier's charge") {
+			t.Fatalf("a non-COD delivery names a charge — timeline %v", trail(req))
 		}
 	}
 }

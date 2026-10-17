@@ -1,55 +1,56 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { SegmentGroup, Select, createListCollection } from "@chakra-ui/react";
+import { Select, createListCollection } from "@chakra-ui/react";
+
+import { RadioPills } from "../../components/inputs/RadioPills";
 
 import type {
   FinancialAccountProvider,
   FinancialAccountType,
 } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
-import { PICKABLE_PROVIDERS, PICKABLE_TYPES, PROVIDER_KEY, TYPE_KEY } from "./vocab";
+import { PICKABLE_TYPES, PROVIDER_KEY, TYPE_KEY } from "./vocab";
 
-// The two controls an account's identity is picked with — on New Account, and when an unknown account
-// is filled in. Picked APART: neither constrains the other, and a mismatched pair saves
-// (type-and-provider-are-picked-apart).
+// The two controls an account's identity is picked with — on New Account, and when an unknown account is filled
+// in. THE TYPE DECIDES THE PROVIDER (`the-type-decides-the-provider`): the caller hands the picker the type's own
+// options (`PROVIDERS_BY_TYPE`), and a cash box or type Lainnya shows no picker at all.
 
 /** Bank account · Wallet · Cash. Never `unknown` — only a withdrawal makes one. */
 export function TypeSegment({
   value,
   onChange,
+  types = PICKABLE_TYPES,
   testId = "account-type",
 }: {
   value: FinancialAccountType;
   onChange: (type: FinancialAccountType) => void;
+  /** The types offered — New Account's four, or Tentukan Rekening's three. */
+  types?: FinancialAccountType[];
   testId?: string;
 }) {
   const { t } = useTranslation();
 
+  // Radio pills, not a segmented switch (`a-dialog-choice-is-a-radio-pill`).
   return (
-    <SegmentGroup.Root
+    <RadioPills
       value={String(value)}
-      onValueChange={(e) => onChange(e.value ? (Number(e.value) as FinancialAccountType) : value)}
-      aria-label={t("financialAccounts.form.type")}
-      data-testid={testId}
-    >
-      <SegmentGroup.Indicator />
-      {PICKABLE_TYPES.map((type) => (
-        <SegmentGroup.Item key={type} value={String(type)} data-testid={`${testId}-${type}`}>
-          <SegmentGroup.ItemText>{t(TYPE_KEY[type]!)}</SegmentGroup.ItemText>
-          <SegmentGroup.ItemHiddenInput />
-        </SegmentGroup.Item>
-      ))}
-    </SegmentGroup.Root>
+      onChange={(v) => onChange(Number(v) as FinancialAccountType)}
+      ariaLabel={t("financialAccounts.form.type")}
+      testId={testId}
+      options={types.map((type) => ({ value: String(type), label: t(TYPE_KEY[type]!), testId: `${testId}-${type}` }))}
+    />
   );
 }
 
-/** BCA · BNI · Jago · ShopeePay · Cash. Never `unknown`. */
+/** The providers of one type — the banks for a bank account, ShopeePay for a digital wallet. */
 export function ProviderPicker({
   value,
   onChange,
+  options,
   testId = "account-provider",
 }: {
   value: FinancialAccountProvider;
   onChange: (provider: FinancialAccountProvider) => void;
+  options: FinancialAccountProvider[];
   testId?: string;
 }) {
   const { t } = useTranslation();
@@ -57,9 +58,9 @@ export function ProviderPicker({
   const collection = useMemo(
     () =>
       createListCollection({
-        items: PICKABLE_PROVIDERS.map((p) => ({ label: t(PROVIDER_KEY[p]!), value: String(p) })),
+        items: options.map((p) => ({ label: t(PROVIDER_KEY[p]!), value: String(p) })),
       }),
-    [t],
+    [t, options],
   );
 
   return (

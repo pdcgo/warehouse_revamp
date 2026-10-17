@@ -83,9 +83,11 @@ enum FinancialAccountType {
   FINANCIAL_ACCOUNT_TYPE_WALLET = 1;
   FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT = 2;
   FINANCIAL_ACCOUNT_TYPE_CASH = 3;
-  // The owner's `unknown` — an account the withdrawal listener made for a shop that named none
-  // (a-shop-with-no-account-gets-an-unknown-one). NOT the same as UNSPECIFIED, which is "not sent".
-  // Never picked by hand (my spec): it leaves `unknown` only through FinancialAccountIdentify.
+  // The owner's `unknown`, *Lainnya* on screen — an account the withdrawal listener made for a shop that
+  // named none (a-shop-with-no-account-gets-an-unknown-one), or one a person opened on New Account for an
+  // account outside the three types (the-type-decides-the-provider). NOT the same as UNSPECIFIED, which is
+  // "not sent". Either way it is allowed what any unknown account is — no transfer into it, no reconcile,
+  // no operational mark — and leaves `unknown` only through FinancialAccountIdentify.
   FINANCIAL_ACCOUNT_TYPE_UNKNOWN = 4;
 }
 
@@ -203,6 +205,9 @@ message FinancialAccountListFilter {
   repeated FinancialAccountType types = 4 [(buf.validate.field).repeated.max_items = 4];
   // The account this shop withdraws into — at most one (a-shop-has-one-account). 0 = no filter.
   uint64 shop_id = 5;
+  // ARCHIVED ONLY — the accounts page's archive view (the-archive-is-its-own-view): counted and paged here,
+  // not on screen. Wins over `include_archived`, which adds the archived to the active.
+  bool archived_only = 6;
 }
 
 enum FinancialAccountListDataType {
@@ -334,6 +339,10 @@ message FinancialAccountOverviewFilter {
     max_items: 200
     unique: true
   }];
+  // For TYPE_TOTAL — count the ARCHIVED accounts instead of the active: the archive view's type tabs
+  // (the-archive-is-its-own-view). Their balance and below-zero count are 0 by rule — an account is
+  // archived only at zero. Ignored by BALANCE.
+  bool archived = 2;
 }
 
 enum FinancialAccountMetricDataType {
@@ -496,22 +505,24 @@ message FinancialAccountCreateRequest {
     (buf.validate.field).uint64.gt = 0,
     (warehouse.role_base.v1.use_scope) = true
   ];
-  // Not UNKNOWN — only the withdrawal listener makes one (my spec).
+  // UNKNOWN is type *Lainnya* (the-type-decides-the-provider): the type sets its provider, so the two come
+  // as a PAIR — UNKNOWN with UNKNOWN, refused otherwise — and its number is optional.
   FinancialAccountType type = 2 [(buf.validate.field).enum = {
     defined_only: true
-    in: [1, 2, 3]
+    in: [1, 2, 3, 4]
   }];
   FinancialAccountProvider provider = 3 [(buf.validate.field).enum = {
     defined_only: true
-    in: [1, 2, 3, 4, 5]
+    in: [1, 2, 3, 4, 5, 6]
   }];
   string name = 4 [(buf.validate.field).string = {
     min_len: 1
     max_len: 120
   }];
   string holder_name = 5 [(buf.validate.field).string.max_len = 120];
-  // Empty only for a cash box. Refused with ALREADY_EXISTS when this provider and number are recorded
-  // in ANY team, archived included (a-real-account-is-recorded-once).
+  // Required for a bank and a wallet, optional for *Lainnya*, dropped for a cash box. Refused with
+  // ALREADY_EXISTS when this provider and number are recorded in ANY team, archived included
+  // (a-real-account-is-recorded-once) — so every *Lainnya* number shares one provider.
   string account_number = 6 [(buf.validate.field).string.max_len = 40];
   string description = 7 [(buf.validate.field).string.max_len = 500];
   // Posted as the `opening_balance` row, in the same transaction — even at 0, so every account's log

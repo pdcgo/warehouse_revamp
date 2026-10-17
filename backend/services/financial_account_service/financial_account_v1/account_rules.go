@@ -22,11 +22,16 @@ type identity struct {
 }
 
 // checkIdentity — a pickable type and provider, picked APART (type-and-provider-are-picked-apart: a
-// mismatched pair saves), and a number unless it is a cash box. Never `unknown`: only a withdrawal makes one.
+// mismatched pair saves), and a number unless it is a cash box.
+//
+// `unknown` only where `allowOther`: New Account's type *Lainnya* (the-type-decides-the-provider). The type sets
+// its provider, so the two come as a PAIR — unknown with unknown — and its number is optional. Tentukan Rekening
+// passes false: it exists to make an unknown account a real one, never another unknown one.
 func checkIdentity(
 	t financial_accountv1.FinancialAccountType,
 	p financial_accountv1.FinancialAccountProvider,
 	number string,
+	allowOther bool,
 ) (identity, error) {
 	accountType, okType := typeText[t]
 	provider, okProvider := providerText[p]
@@ -35,11 +40,19 @@ func checkIdentity(
 		return identity{}, connect.NewError(connect.CodeInvalidArgument, errors.New("pick a type and a provider"))
 	}
 
-	if accountType == m.TypeUnknown || provider == m.ProviderUnknown {
-		return identity{}, errUnknownByHand
-	}
-
 	number = strings.TrimSpace(number)
+
+	if accountType == m.TypeUnknown || provider == m.ProviderUnknown {
+		if !allowOther {
+			return identity{}, errNameARealAccount
+		}
+
+		if accountType != m.TypeUnknown || provider != m.ProviderUnknown {
+			return identity{}, errOtherIsAPair
+		}
+
+		return identity{accountType: accountType, provider: provider, number: number}, nil
+	}
 
 	if accountType == m.TypeCash {
 		// A cash box has no number to record (a-real-account-is-recorded-once exempts it).

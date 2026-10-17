@@ -15,11 +15,11 @@ import { toDateInputValue } from "../../lib/datetime";
 import { FormDialog } from "./FormDialog";
 import { ProviderPicker, TypeSegment } from "./fields";
 import { useCreateAccount, useUpdateAccount } from "./queries";
-import { PROVIDER_KEY, TYPE_KEY } from "./vocab";
+import { PROVIDERS_BY_TYPE, PROVIDER_KEY, TYPE_KEY, fixedProvider, providerFor } from "./vocab";
 
 // New Account, or Edit — docs/business/financial_account/context_decision.md.
 //
-//  - create — type and provider picked APART (type-and-provider-are-picked-apart), the number, the holder
+//  - create — the type first, and it decides the provider (the-type-decides-the-provider), the number, the holder
 //    (an-account-has-a-name-and-a-holder), and an opening balance posted as the first row, even at 0
 //    (an-account-opens-with-a-log-row). A number already recorded in ANY team is refused by the server
 //    (a-real-account-is-recorded-once) — the dialog shows its answer as-is.
@@ -46,15 +46,20 @@ export function AccountFormDialog({
   const [error, setError] = useState("");
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState(account?.type ?? FinancialAccountType.BANK_ACCOUNT);
-  const [provider, setProvider] = useState(account?.provider ?? FinancialAccountProvider.UNSPECIFIED);
+  const [provider, setProvider] = useState(account?.provider ?? providerFor(FinancialAccountType.BANK_ACCOUNT, FinancialAccountProvider.UNSPECIFIED));
   const [accountNumber, setAccountNumber] = useState(account?.accountNumber ?? "");
   const [holderName, setHolderName] = useState(account?.holderName ?? "");
   const [description, setDescription] = useState(account?.description ?? "");
   const [opening, setOpening] = useState("0");
   const [openingOn, setOpeningOn] = useState(today);
 
-  // A cash box has no number — every other account does.
-  const needsNumber = type !== FinancialAccountType.CASH;
+  // A cash box has no number; type Lainnya may have one, but need not; a bank or a wallet always does.
+  const showsNumber = type !== FinancialAccountType.CASH;
+  const needsNumber = type === FinancialAccountType.BANK_ACCOUNT || type === FinancialAccountType.WALLET;
+  const pickType = (next: FinancialAccountType) => {
+    setType(next);
+    setProvider(providerFor(next, provider));
+  };
   const canSave = editing
     ? name.trim() !== ""
     : name.trim() !== "" &&
@@ -93,7 +98,7 @@ export function AccountFormDialog({
         provider,
         name,
         holderName,
-        accountNumber: needsNumber ? accountNumber : "",
+        accountNumber: showsNumber ? accountNumber : "",
         description,
         openingBalance: Number(opening),
         openingOn,
@@ -121,7 +126,7 @@ export function AccountFormDialog({
     >
       <Field.Root required>
         <Field.Label>{t("financialAccounts.form.name")}</Field.Label>
-        <Input value={name} placeholder="BCA Operasional" data-testid="account-name" onChange={(e) => setName(e.target.value)} />
+        <Input value={name} placeholder={t("financialAccounts.form.namePlaceholder")} data-testid="account-name" onChange={(e) => setName(e.target.value)} />
         <Field.HelperText>{t("financialAccounts.form.nameHelp")}</Field.HelperText>
       </Field.Root>
 
@@ -135,20 +140,25 @@ export function AccountFormDialog({
         <>
           <Field.Root required>
             <Field.Label>{t("financialAccounts.form.type")}</Field.Label>
-            <TypeSegment value={type} onChange={setType} />
+            <TypeSegment value={type} onChange={pickType} />
           </Field.Root>
 
-          <Field.Root required>
-            <Field.Label>{t("financialAccounts.form.provider")}</Field.Label>
-            <ProviderPicker value={provider} onChange={setProvider} />
-          </Field.Root>
-
-          {needsNumber && (
+          {/* NO PROVIDER FIELD WHERE THE TYPE SETS IT (owner, `kas-and-lainnya-ask-no-provider`) — a cash box is Kas,
+              type Lainnya is Lainnya, and a field with nothing to choose is only noise. A wallet keeps its picker. */}
+          {fixedProvider(type) === undefined && (
             <Field.Root required>
+              <Field.Label>{t("financialAccounts.form.provider")}</Field.Label>
+              <ProviderPicker value={provider} onChange={setProvider} options={PROVIDERS_BY_TYPE[type] ?? []} />
+            </Field.Root>
+          )}
+
+          {showsNumber && (
+            <Field.Root required={needsNumber}>
               <Field.Label>{t("financialAccounts.form.number")}</Field.Label>
               <Input
                 value={accountNumber}
                 inputMode="numeric"
+                placeholder={t("financialAccounts.form.numberPlaceholder")}
                 data-testid="account-number"
                 onChange={(e) => setAccountNumber(e.target.value.replace(/\s/g, ""))}
               />
@@ -160,13 +170,25 @@ export function AccountFormDialog({
 
       <Field.Root>
         <Field.Label>{t("financialAccounts.form.holder")}</Field.Label>
-        <Input value={holderName} data-testid="account-holder" onChange={(e) => setHolderName(e.target.value)} />
+        <Input
+          value={holderName}
+          placeholder={t("financialAccounts.form.holderPlaceholder")}
+          data-testid="account-holder"
+          onChange={(e) => setHolderName(e.target.value)}
+        />
         <Field.HelperText>{t("financialAccounts.form.holderHelp")}</Field.HelperText>
       </Field.Root>
 
       <Field.Root>
         <Field.Label>{t("financialAccounts.form.description")}</Field.Label>
-        <Textarea value={description} data-testid="account-description" onChange={(e) => setDescription(e.target.value)} />
+        <Textarea
+          value={description}
+          rows={3}
+          resize="vertical"
+          placeholder={t("financialAccounts.form.descriptionPlaceholder")}
+          data-testid="account-description"
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </Field.Root>
 
       {!editing && (

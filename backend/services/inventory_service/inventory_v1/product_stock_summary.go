@@ -58,8 +58,8 @@ func (s *Service) ProductStockSummary(
 		SELECT COALESCE(SUM(i.quantity), 0) AS qty, COALESCE(SUM(i.total_price), 0) AS value
 		FROM restock_request_items i
 		JOIN restock_requests r ON r.id = i.restock_request_id
-		WHERE r.warehouse_id = ? AND i.product_id = ? AND r.status = ?`,
-		warehouseID, productID, restockStatusPending).Scan(&o).Error
+		WHERE r.warehouse_id = ? AND i.product_id = ? AND r.status IN ?`,
+		warehouseID, productID, restockInboundStatuses).Scan(&o).Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

@@ -5,6 +5,7 @@ import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamTypeBadge } from "../badges/TeamTypeBadge";
 import { TeamItem } from "../entity/TeamItem";
+import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
 export interface TeamSelectProps {
   value?: bigint;
@@ -24,6 +25,12 @@ export interface TeamSelectProps {
    * a combination the form has just declared invalid.
    */
   excludeTeamIds?: bigint[];
+  /**
+   * Render the list in a portal (the default) or inline. Pass `false` inside a modal Dialog: a portalled listbox
+   * renders OUTSIDE the dialog, where the modal makes it inert and aria-hidden — unclickable, and absent from the a11y
+   * tree (the reason RackSelect and ShopSelect never portal). Kept on by default so every page-level use is unchanged.
+   */
+  portalled?: boolean;
 }
 
 // TeamSelect is the shared team picker (#49): a Chakra Combobox so the list is searchable, matching
@@ -51,6 +58,7 @@ export function TeamSelect({
   disabled,
   teamType,
   excludeTeamIds,
+  portalled = true,
 }: TeamSelectProps) {
 
 
@@ -138,6 +146,8 @@ export function TeamSelect({
   const [open, setOpen] = useState(false);
   const showSelected = selected !== undefined && !open;
 
+  const search = searchOnlyWhatIsTyped(filter);
+
   return (
     <Combobox.Root
       // Remounted once, the moment the team list lands — this is load-bearing, not a hack.
@@ -178,8 +188,12 @@ export function TeamSelect({
         const picked = e.value[0];
         onChange?.(picked !== undefined ? BigInt(picked) : 0n);
       }}
-      onInputValueChange={(e) => filter(e.inputValue)}
-      onOpenChange={(e) => setOpen(e.open)}
+      // Only a keystroke searches; a pick, a blur or a click-to-open starts over — so the list reopens whole.
+      onInputValueChange={search.onInputValueChange}
+      onOpenChange={(e) => {
+        setOpen(e.open);
+        search.onOpenChange(e);
+      }}
       data-testid="team-select"
     >
       <Combobox.Control position="relative">
@@ -229,7 +243,7 @@ export function TeamSelect({
         </Combobox.IndicatorGroup>
       </Combobox.Control>
 
-      <Portal>
+      <Portal disabled={!portalled}>
         <Combobox.Positioner>
           <Combobox.Content>
             {loading ? (

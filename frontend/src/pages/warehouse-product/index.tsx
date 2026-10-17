@@ -95,8 +95,10 @@ export function WarehouseProductPage() {
   const activityQuery = useWarehouseProductActivity({
     warehouseId,
     productId,
-    fulfilledStatus: RestockRequestStatus.FULFILLED,
-    pendingStatus: RestockRequestStatus.PENDING,
+    fulfilledStatus: RestockRequestStatus.ACCEPTED,
+    // "Incoming" reads the ONGOING restocks only — an ARRIVED box is incoming too, but the activity read takes one
+    // status, and widening it is features/inventory's change to make.
+    pendingStatus: RestockRequestStatus.ONGOING,
   });
 
   const product = stockQuery.data?.product ?? null;
@@ -344,7 +346,7 @@ export function WarehouseProductPage() {
                     sum +
                     r.items
                       .filter((i) => i.productId === productId)
-                      .reduce((q, i) => q + i.quantity, 0n),
+                      .reduce((q, i) => q + i.count, 0n),
                   0n,
                 )
                 .toString()}

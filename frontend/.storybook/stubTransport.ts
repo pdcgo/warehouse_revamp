@@ -60,6 +60,13 @@ import {
 } from "../src/gen/warehouse/financial_account/v1/financial_account_pb";
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
+import { restockRequestService } from "./restockStub";
+import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
+import { warehouseTransferService } from "./warehouseTransferStub";
+import { opnameService } from "./opnameStub";
+import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
+import { rackService } from "./rackStub";
+import { WarehouseTransferService } from "../src/gen/warehouse/inventory/v1/warehouse_transfer_pb";
 import { Marketplace } from "../src/gen/warehouse/marketplace/v1/marketplace_pb";
 import { SettlementType as ImportSettlementType } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import {
@@ -104,7 +111,6 @@ import {
   orders,
   productCosts,
   products,
-  racks,
   regionTree,
   regions,
   liabilityDays,
@@ -208,8 +214,14 @@ function pagedColumnarBy<C extends string, R>(
 type StubTerms = (typeof liabilityTerms)[number];
 let termsTable: StubTerms[] = [...liabilityTerms];
 
-// The payments the stub serves — WRITEABLE, because rejecting one changes it. Reset per story.
+// The payments the stub serves — WRITEABLE, because recording, accepting and rejecting one change it.
+// Reset per story.
 let paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+let nextPaymentId = 700n;
+
+// The positions — WRITEABLE too, because ACCEPTING a payment moves one. Signed from team 11's side,
+// like the fixture. Reset with the payments, since only a payment's acceptance writes it.
+let positionsTable = liabilityPositions.map((p) => ({ ...p }));
 
 // The shipment channel table — WRITEABLE, because create, edit, delete and restore are the screen. The
 // rows carry real timestamps so the Updated column moves when a write lands. Reset per story.
@@ -240,6 +252,8 @@ export function resetLiabilityTerms() {
 // depend on which story ran first.
 export function resetLiabilityPayments() {
   paymentsTable = liabilityPayments.map((p) => ({ ...p }));
+  nextPaymentId = 700n;
+  positionsTable = liabilityPositions.map((p) => ({ ...p }));
 }
 
 // ── The settlement importer — a statement in, rows posted, the import streamed ─────────────────────
@@ -704,7 +718,12 @@ export const transport = createRouterTransport(({ service }) => {
       // root team for Root or the Administrator, whose reach comes from there.
       const mine = sessionScenario.memberOf === null ? teams : teams.filter((t) => sessionScenario.memberOf!.includes(t.id));
       const platform = sessionScenario.role === Role.ROOT || sessionScenario.role === Role.ADMINISTRATOR;
-      const rows = mine.map((t) => ({ teamId: t.id, teamName: t.name, teamType: t.type }));
+      // A story may rename one (sessionScenario.teamNames) — a long name, to see how it is cut.
+      const rows = mine.map((t) => ({
+        teamId: t.id,
+        teamName: sessionScenario.teamNames[t.id.toString()] ?? t.name,
+        teamType: t.type,
+      }));
 
       if (sessionScenario.memberOf !== null && platform) {
         rows.unshift({ teamId: 1n, teamName: "Root", teamType: TeamType.ROOT });
@@ -746,15 +765,22 @@ export const transport = createRouterTransport(({ service }) => {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
   });
 
+  // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
+  service(RestockRequestService, restockRequestService);
+  // The warehouse transfer — a prototype, so this stub is its only implementation until the backend step.
+  service(WarehouseTransferService, warehouseTransferService);
+  // The stock count — a prototype too: opnameStub.ts plays the decided opname rules (opname_decision.md).
+  service(OpnameService, opnameService);
+
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.
   service(SupplierService, supplierService);
   service(SupplierChannelService, supplierChannelService);
   // Its figures — supplierFigureFixtures.ts, read as the folded table is (the-figures-screens-are-accepted).
   service(SupplierAnalyticService, supplierAnalyticService);
 
-  service(RackService, {
-    rackList: () => columnar("rack", racks),
-  });
+  // The rack registry (scoped by the warehouse, as the server is), Rack detail's reads and the two prototype writes —
+  // rackStub.ts plays them, writeable, with the placement decisions.
+  service(RackService, rackService);
 
   service(CategoryService, {
     // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
@@ -1236,7 +1262,7 @@ export const transport = createRouterTransport(({ service }) => {
     // read against. `unsettledOnly` is honoured because the terms screen deliberately asks for
     // EVERY pair, including the square ones: a team at zero still has a limit worth seeing.
     liabilityPositionList: (req) => {
-      const set = liabilityPositions.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
+      const set = positionsTable.filter((p) => !req.filter?.unsettledOnly || p.balance !== 0n);
 
       // ⚠ THE SUMMARY IS COMPUTED OVER `set`, NEVER OVER THE PAGE — the stub models the server, and
       // the whole point of these fields is that the tiles cannot be a reduce of what loaded. A stub
@@ -1247,7 +1273,9 @@ export const transport = createRouterTransport(({ service }) => {
 
       return {
         ...pagedColumnarBy("position", set, (p) => p.counterpartyId, req.page),
-        awaitingConfirmation: 0,
+        // Whole-set, as the server counts it: every payment recorded TO this team and not yet confirmed or
+        // refused — the menu's count on Kewajiban reads it (`the-sidebar-is-in-sections`).
+        awaitingConfirmation: paymentsTable.filter((p) => p.creditorTeamId === req.teamId && p.status === 1).length,
         totalReceivable: set.reduce((s, p) => (p.balance > 0n ? s + p.balance : s), 0n),
         // A MAGNITUDE, as the wire carries it — direction is words on this screen, never a sign.
         totalPayable: set.reduce((s, p) => (p.balance < 0n ? s - p.balance : s), 0n),
@@ -1267,7 +1295,7 @@ export const transport = createRouterTransport(({ service }) => {
         req.page,
       ),
       balance:
-        liabilityPositions.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
+        positionsTable.find((p) => p.counterpartyId === req.filter?.counterpartyId)?.balance ?? 0n,
     }),
 
     // The WAREHOUSE half — the fees it charged, split by source so the screen can pick which of them
@@ -1313,6 +1341,74 @@ export const transport = createRouterTransport(({ service }) => {
         ),
         req.page,
       ),
+
+    // RECORD — the payer's claim. ⚠ IT POSTS NOTHING: a recorded payment is pending until the creditor
+    // accepts it, so the stub adds the row and leaves every balance where it was.
+    //
+    // ⚠ *Paid from* is REQUIRED, as the contract's `gt = 0` makes it — so a screen that forgot to send the
+    // account it picked fails here, the way it would against the server.
+    liabilityPaymentRecord: (req) => {
+      if (!req.fromAccountId) {
+        throw new ConnectError("from_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
+      const row = {
+        id: nextPaymentId++,
+        payerTeamId: req.teamId,
+        creditorTeamId: req.creditorTeamId,
+        amount: req.amount,
+        status: 1,
+        note: req.note,
+        recordedBy: 1n,
+        confirmedBy: 0n,
+        createdAtUnix: BigInt(Math.floor(Date.now() / 1000)),
+        confirmedAtUnix: 0n,
+        documentIds: [...req.documentIds],
+        reason: "",
+        fromAccountId: req.fromAccountId,
+        toAccountId: 0n,
+      };
+      paymentsTable.unshift(row);
+
+      return { payment: row };
+    },
+
+    // ACCEPT — the `yes` arm, and the only act that lets a balance go down. The positions are signed
+    // from team 11's side, so a payment FROM the counterparty shrinks what they owe us, and a payment
+    // TO them shrinks what we owe them.
+    //
+    // ⚠ *Received into* is REQUIRED, as the contract makes it — accepting is final, so the stub refuses a
+    // screen that did not send the account the money landed in.
+    liabilityPaymentConfirm: (req) => {
+      if (!req.toAccountId) {
+        throw new ConnectError("to_account_id: value must be greater than 0", Code.InvalidArgument);
+      }
+
+      const row = paymentsTable.find((p) => p.id === req.paymentId);
+
+      if (!row) {
+        throw new ConnectError("payment not found", Code.NotFound);
+      }
+
+      if (row.status !== 1) {
+        throw new ConnectError("only a recorded payment can be accepted", Code.FailedPrecondition);
+      }
+
+      row.status = 2;
+      row.confirmedBy = 1n;
+      row.confirmedAtUnix = BigInt(Math.floor(Date.now() / 1000));
+      row.toAccountId = req.toAccountId;
+
+      const theyPaid = positionsTable.find((p) => p.counterpartyId === row.payerTeamId);
+      const wePaid = positionsTable.find((p) => p.counterpartyId === row.creditorTeamId);
+      if (theyPaid) {
+        theyPaid.balance -= row.amount;
+      } else if (wePaid) {
+        wePaid.balance += row.amount;
+      }
+
+      return { payment: row };
+    },
 
     // REJECT — the `no` arm of §Payment Flow. ⚠ IT POSTS NOTHING, so unlike confirm the stub mutates
     // only the claim's own row: a stub that also moved a balance would be modelling the bug this
@@ -1380,6 +1476,9 @@ export const transport = createRouterTransport(({ service }) => {
         },
       };
     },
+    // A payment's proof is SHARED with the creditor as it is uploaded (useProofUpload). The stub has
+    // no reader ACL to widen, so the share only has to succeed.
+    shareDocument: () => ({}),
     // A document uploaded in this story opens its own bytes; a fixture id (a proof the fixtures name)
     // gets a placeholder, as before.
     getDownloadUrl: (req) => ({

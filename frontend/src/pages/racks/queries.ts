@@ -1,9 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { productClient, rackClient } from "../../api/clients";
-import { key } from "../../api/queryClient";
+import { key, listQuery } from "../../api/queryClient";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
-import { racksFromList, rackListRowData, rackStockFromList, rackStockRowData } from "../../features/racks/adapt";
+import {
+  racksFromList,
+  rackListPageRowData,
+  rackStockFromList,
+  rackStockRowData,
+  rackStockTotalsFromList,
+} from "../../features/racks/adapt";
 
 // The rack screens' reads (#176).
 
@@ -16,18 +22,22 @@ export function useRacks(args: {
   const { teamId, q, page, pageSize } = args;
 
   return useQuery({
+    // A page turn or a search REFINES the same list, so the previous rows stay while it refetches (RULE 10).
+    ...listQuery,
     queryKey: key.racks(teamId, { q, page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const res = await rackClient.rackList({
         teamId: teamId!,
         filter: { q },
-        dataRequest: rackListRowData(),
+        dataRequest: rackListPageRowData(),
         page: { page, limit: pageSize },
       });
 
       return {
         racks: racksFromList(res.items, res.ids),
+        // Each rack's stock count and product count (a-rack-shows-its-stock-count-for-now).
+        stockTotals: rackStockTotalsFromList(res.items),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },

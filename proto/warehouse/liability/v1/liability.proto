@@ -567,6 +567,16 @@ message LiabilityPayment {
   // ⚠ IT IS SHOWN TO THE PAYER. A refusal a debtor cannot read is a debt they cannot fix — they would
   // see a claim marked wrong with no way to learn whether to re-send the slip or the money.
   string reason = 12;
+
+  // WHERE THE MONEY LEFT AND WHERE IT LANDED — financial_account_service ids, opaque here
+  // (a-team-payment-posts-on-accept). The payer names `from` when recording; the creditor names `to`
+  // when accepting, because only they looked at their bank and saw it arrive. On acceptance both ride
+  // `LiabilityPaymentAccepted`, and the accounts post one `team_payment` row on each.
+  //
+  // 0 = not named: `to` until the payment is accepted, and `from` on a payment recorded before
+  // *Paid from* existed — that one's acceptance posts only the `to` leg.
+  uint64 from_account_id = 13;
+  uint64 to_account_id = 14;
 }
 
 message LiabilityPaymentRecordRequest {
@@ -614,6 +624,12 @@ message LiabilityPaymentRecordRequest {
       }
     }
   }];
+
+  // *Paid from* — the PAYER's account the transfer left (a-team-payment-posts-on-accept). Required:
+  // an accepted payment is final (an-accepted-payment-is-final), so an account the money is not
+  // traced out of stays short until a reconcile finds it. Must be one of `team_id`'s ACTIVE accounts,
+  // never an `unknown` one — asked of financial_account_service under the caller's token.
+  uint64 from_account_id = 6 [(buf.validate.field).uint64.gt = 0];
 }
 
 message LiabilityPaymentRecordResponse {
@@ -640,6 +656,12 @@ message LiabilityPaymentConfirmRequest {
   ];
 
   uint64 payment_id = 2 [(buf.validate.field).uint64.gt = 0];
+
+  // *Received into* — the CREDITOR's account the money landed in (a-team-payment-posts-on-accept).
+  // Required, never defaulted: nothing reverses an accept, so a wrong account stays wrong until a
+  // reconcile finds the gap. Must be one of `team_id`'s ACTIVE accounts, never an `unknown` one —
+  // money does not go INTO an account whose bank nobody has named.
+  uint64 to_account_id = 3 [(buf.validate.field).uint64.gt = 0];
 }
 
 message LiabilityPaymentConfirmResponse {

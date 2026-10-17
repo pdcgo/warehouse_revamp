@@ -51,7 +51,7 @@ func (s *Service) BatchList(
 		}
 
 		if supplierID := req.Msg.GetFilter().GetSupplierId(); supplierID != 0 {
-			q = q.Where("r.supplier_id = ?", supplierID)
+			q = q.Where("i.supplier_id = ?", supplierID)
 		}
 
 		switch req.Msg.GetFilter().GetExpiry() {
@@ -122,7 +122,7 @@ func (s *Service) BatchList(
 	err = base().
 		Select(`
 			b.id, b.delivery_id, r.receipt AS receipt_no,
-			b.product_id, i.sku, i.name, COALESCE(r.supplier_id, 0) AS supplier_id,
+			b.product_id, i.sku, i.name, COALESCE(i.supplier_id, 0) AS supplier_id,
 			b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
 			` + lostExpr + ` AS lost,
 			` + readyExpr + ` AS ready,

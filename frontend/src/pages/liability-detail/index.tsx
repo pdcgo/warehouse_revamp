@@ -34,6 +34,8 @@ import { LiabilityLedgerTable } from "./components/LiabilityLedgerTable";
 import { fmtDate } from "./format";
 import { PaymentProof } from "./components/PaymentProof";
 import { RejectPaymentDialog } from "./components/RejectPaymentDialog";
+import { AcceptPaymentDialog } from "./components/AcceptPaymentDialog";
+import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
 import { useProofUpload, type UploadedProof } from "../../features/documents/useProofUpload";
 import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -48,13 +50,7 @@ import {
 } from "../../components/datetime/DateRangePicker";
 import { useTeam } from "../../features/team/TeamContext";
 import { directionCopy, directionPalette } from "../../features/liability/direction";
-import {
-  useConfirmPayment,
-  useRecordPayment,
-  useLiabilityLogs,
-  useLiabilityPayments,
-} from "../../features/liability/queries";
-import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { useRecordPayment, useLiabilityLogs, useLiabilityPayments } from "../../features/liability/queries";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { Pagination } from "../../components/chrome/Pagination";
 
@@ -165,8 +161,6 @@ export function LiabilityDetailPage() {
       ),
   });
   const counterparty = teamQuery.data?.[counterpartyId.toString()];
-
-  const confirmPayment = useConfirmPayment();
 
   if (!current) {
     return (
@@ -481,24 +475,12 @@ export function LiabilityDetailPage() {
         </Tabs.Root>
       )}
 
-      {/* CONFIRM PAYMENT — it posts to the ledger and is not trivially reversible, so a ConfirmDialog
-          (not destructive: confirming is the intended forward action). */}
-      <ConfirmDialog
-        open={confirmTarget !== null}
-        onOpenChange={(o) => {
-          if (!o) setConfirmTarget(null);
-        }}
-        title={t("liabilityDetail.confirmTitle")}
-        message={t("liabilityDetail.confirmMessage", {
-          amount: confirmTarget ? formatRupiah(confirmTarget.amount) : "",
-        })}
-        confirmLabel={t("liabilityDetail.confirmLabel")}
-        destructive={false}
-        onConfirm={async () => {
-          if (!confirmTarget) return;
-          await confirmPayment.mutateAsync({ teamId: current.teamId, paymentId: confirmTarget.id });
-          setConfirmTarget(null);
-        }}
+      {/* ACCEPT PAYMENT — it posts to the ledger and is final, and it names the account the money
+          landed in (a-team-payment-posts-on-accept), so it is a dialog with a field, not a yes/no. */}
+      <AcceptPaymentDialog
+        target={confirmTarget}
+        onClose={() => setConfirmTarget(null)}
+        teamId={current.teamId}
       />
 
       <RejectPaymentDialog
@@ -542,6 +524,10 @@ function MakePaymentDialog({
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [proofs, setProofs] = useState<UploadedProof[]>([]);
+  // WHICH OF YOUR ACCOUNTS PAID — the payer's half of a-team-payment-posts-on-accept. When they
+  // accept, this account goes down and theirs goes up, so it is chosen here, by the one person who
+  // knows which bank the transfer left from.
+  const [fromAccountId, setFromAccountId] = useState(0n);
 
   const proof = useProofUpload({ teamId: payerTeamId, shareWithTeamId: creditorTeamId });
   const busy = record.isPending || proof.uploading;
@@ -549,7 +535,9 @@ function MakePaymentDialog({
   // ⚠ PROOF IS PART OF "READY", not a nicety. The contract requires amount > 0 AND at least one
   // document (a-payment-must-carry-proof) — this mirrors the server rather than inventing a second
   // idea of ready, so the button is disabled instead of the send being refused after the fact.
-  const ready = amount !== "" && Number(amount) > 0 && proofs.length > 0;
+  // ⚠ AND THE ACCOUNT. The acceptance has to post OUT of somewhere; a payment with no account is one
+  // the financial accounts can never hear. The server requires it too, and refuses one not yours.
+  const ready = amount !== "" && Number(amount) > 0 && proofs.length > 0 && fromAccountId > 0n;
 
   function change(next: boolean) {
     onOpenChange(next);
@@ -557,6 +545,7 @@ function MakePaymentDialog({
       setAmount("");
       setNote("");
       setError("");
+      setFromAccountId(0n);
       // ⚠ THE UPLOADED FILES ARE NOT DELETED, only forgotten. They are already shared with the
       // creditor and a share cannot be withdrawn; a cancelled dialog leaves an orphan document, which
       // is the cheap side of that trade.
@@ -586,6 +575,7 @@ function MakePaymentDialog({
         amount: BigInt(amount),
         note,
         documentIds: proofs.map((p) => p.id),
+        fromAccountId,
       },
       {
         onSuccess: () => change(false),
@@ -600,7 +590,11 @@ function MakePaymentDialog({
         <Dialog.Backdrop />
         <Dialog.Positioner>
           <Dialog.Content>
-            <form onSubmit={submit}>
+            {/* ⚠ noValidate — `ready` above IS this form's validation. The proof input is `required`
+                (from its Field) and is cleared after every upload so the same file can be picked
+                again, so the browser saw an empty required field and silently swallowed every
+                submit: Make Payment could not be sent from this screen at all. */}
+            <form onSubmit={submit} noValidate>
               <Dialog.Header>
                 <Dialog.Title>{t("liabilityDetail.recordTitle")}</Dialog.Title>
               </Dialog.Header>
@@ -619,6 +613,23 @@ function MakePaymentDialog({
                       disabled={busy}
                       data-testid="record-amount"
                     />
+                  </Field.Root>
+
+                  {/* PAID FROM — any active account of yours, not only the operational ones: those
+                      are what a RESTOCK may be paid from (operational-accounts-pay-for-operations),
+                      and settling a debt with another team is not an operation. */}
+                  <Field.Root required>
+                    <Field.Label>{t("liabilityDetail.recordFromAccount")}</Field.Label>
+                    <FinancialAccountSelect
+                      teamId={payerTeamId}
+                      value={fromAccountId}
+                      onChange={setFromAccountId}
+                      autoPickSingle
+                      disabled={busy}
+                      placeholder={t("liabilityDetail.recordFromAccountPlaceholder")}
+                      testId="record-from-account"
+                    />
+                    <Field.HelperText>{t("liabilityDetail.recordFromAccountHelp")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root>
