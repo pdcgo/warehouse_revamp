@@ -50,6 +50,31 @@ export const ThreeFoldIntoTheMenu: Story = {
   },
 };
 
+/** A DISABLED action in the ⋯ does nothing when clicked — its DOM click still fires, so it carries no handler (owner, on
+ * the category page: "actionmu yang disabled masih trigger"). */
+const disabledDelete = {
+  id: "delete",
+  label: "Delete",
+  icon: Trash2,
+  danger: true,
+  disabled: true,
+  testId: "act-delete",
+  onClick: fn(),
+};
+
+export const ADisabledActionDoesNothing: Story = {
+  args: { actions: [exportAction, importAction, disabledDelete] },
+  play: async ({ canvasElement, args }) => {
+    await userEvent.click(within(canvasElement).getByTestId("actions-menu"));
+    const del = await screen.findByTestId("act-delete");
+    await waitFor(() => expect(del).toBeVisible());
+    await expect(del).toHaveAttribute("data-disabled");
+
+    await userEvent.click(del, { pointerEventsCheck: 0 });
+    await expect((args.actions[2] as typeof disabledDelete).onClick).not.toHaveBeenCalled();
+  },
+};
+
 /** An action this person may not take is passed as `false` and left out — two remain, so they are icons. */
 export const ALeftOutActionDoesNotCount: Story = {
   args: { actions: [exportAction, false, { id: "delete", label: "Delete", icon: Trash2, danger: true, testId: "act-delete" }] },

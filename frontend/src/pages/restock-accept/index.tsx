@@ -285,7 +285,8 @@ export function RestockAcceptPage() {
                       value="accept"
                       disabled={!ready || busy}
                       data-testid="accept-submit"
-                      onClick={() => setConfirmOpen(true)}
+                      // No handler while disabled — a disabled item's DOM click still fires.
+                      onClick={!ready || busy ? undefined : () => setConfirmOpen(true)}
                     >
                       <Icon as={CheckCheck} boxSize="4" />
                       {t("restock.accept.action")}

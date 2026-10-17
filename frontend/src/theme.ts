@@ -167,6 +167,17 @@ const APP_FONT_STACK = `Lato, ${SYSTEM_FONT_STACK}`;
 // ever appears inside the phone-sized shell.
 const OPTION_PY = { base: "3", md: "1.5" };
 
+// A tree's row as a table's (see `treeView` below): square, a line under it, the hover turning in the hover beat, the
+// main tone's focus ring.
+const TREE_ROW = {
+  rounded: "none",
+  borderBottomWidth: "1px",
+  borderColor: "border",
+  transitionProperty: "background-color",
+  transitionDuration: "hover",
+  focusRingColor: "brand.focusRing",
+} as const;
+
 // What a field does UNDER THE POINTER, shared by every control that takes input (see the field recipes
 // below). The RESTING line stays the neutral `border` — a form at rest should read as a form, not as a
 // row of pink boxes — and only the reacting states carry the main tone:
@@ -402,6 +413,46 @@ const customConfig = defineConfig({
       table: {
         base: { cell: { transitionProperty: "background-color", transitionDuration: "hover" } },
         variants: { variant: { line: { row: { bg: "transparent" } } } },
+      },
+      // ── A TREE READS LIKE THE APP'S TABLES (owner, on the category tree: *"secara tema kurang sesuai"*) ─────────
+      //
+      // Chakra's tree is a file explorer: rounded pills 32px tall floating on the page, a grey 2px focus ring. Every
+      // list in this app is a table — rows the full width, a line between them, a table row's height with an `xs`
+      // action in it (48px), lighting up under the pointer in the hover beat, the rose focus ring. So the tree's rows
+      // are those, and a branch's children read as the next rows down, set in by their depth.
+      //
+      // ⚠ THE PADDING IS NAMED ON THE `md` SIZE — the default — because the size variant sets those variables and a
+      // variant beats `base` (the trap `table` above walked into).
+      treeView: {
+        base: {
+          branchControl: TREE_ROW,
+          item: TREE_ROW,
+          // The chevron turns in the arriving beat, with the children it opens.
+          branchIndicator: { transitionDuration: "enter", transitionTimingFunction: "ease-out" },
+        },
+        variants: {
+          // A BRANCH SLIDES OPEN AND SHUT (owner: *"animasi kurang, tidak smooth"*) — Chakra's own height-and-fade, on
+          // a page's `animateContent`, retimed from its `moderate` to the app's 180ms beat
+          // (`motion-is-small-quick-and-shared`). Zag's collapsible waits for the closing one before it hides the
+          // children; where the device asks for less motion there is none, and nothing to wait for.
+          animateContent: {
+            true: {
+              branchContent: {
+                _open: { animationDuration: "enter", animationTimingFunction: "ease-out" },
+                _closed: { animationDuration: "enter", animationTimingFunction: "ease-in" },
+              },
+            },
+          },
+          size: {
+            md: {
+              tree: {
+                "--tree-padding-block": "spacing.2",
+                "--tree-padding-inline": "spacing.2",
+                "--tree-indentation": "spacing.5",
+              },
+            },
+          },
+        },
       },
       // ── A SELECTED TAB IS IN THE MAIN TONE (owner, `a-selected-tab-is-in-the-main-tone`) ─────────────
       //

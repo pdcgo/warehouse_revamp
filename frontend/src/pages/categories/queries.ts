@@ -35,20 +35,24 @@ export function useInvalidateCategories() {
 // invalidating it is what refreshes them both.
 
 interface SaveCategoryVars {
-  /** Set to rename/reparent an existing node; omitted to add one. */
+  /** Set to rename or move an existing node; omitted to add one. */
   categoryId?: bigint;
-  name: string;
-  parentId: bigint;
+  /** Absent on an edit = leave the name alone (a Move). Required to add one. */
+  name?: string;
+  /** Absent on an edit = leave the parent alone (a Rename); 0n = top-level. */
+  parentId?: bigint;
 }
 
+// Rename and Move are TWO edits of one RPC — CategoryUpdate's fields are optional, so each sends only its own and the
+// other is left as it is on the server, not overwritten with what a form happened to hold.
 export function useSaveCategory() {
   const invalidate = useInvalidateCategories();
 
   return useMutation({
-    mutationFn: async ({ categoryId, ...vars }: SaveCategoryVars) =>
+    mutationFn: async ({ categoryId, name, parentId }: SaveCategoryVars) =>
       categoryId === undefined
-        ? await categoryClient.categoryCreate(vars)
-        : await categoryClient.categoryUpdate({ ...vars, categoryId }),
+        ? await categoryClient.categoryCreate({ name: name ?? "", parentId: parentId ?? 0n })
+        : await categoryClient.categoryUpdate({ categoryId, name, parentId }),
     onSuccess: () => invalidate(),
   });
 }

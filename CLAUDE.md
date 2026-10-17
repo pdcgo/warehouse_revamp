@@ -949,6 +949,9 @@ More UI rules:
   or more), collapse them behind a single overflow trigger (a kebab `IconButton`, `MoreHorizontal`)
   opening a Chakra [`Menu`](https://chakra-ui.com/docs/components/menu) — not a row of buttons. **Every
   menu item carries a leading icon** (lucide via `<Icon>`). One or two actions may stay inline.
+  ⚠ **A disabled `Menu.Item` still fires its `onClick`** — Zag only skips *selecting* it, the DOM click goes through
+  (owner: *"hapus disabled masih bisa ku klik"*). Act through the menu's `onSelect`, or give a disabled item no
+  handler (`onClick={disabled ? undefined : …}`), and pin it with a story that clicks the disabled item.
 - **Destructive actions always confirm.** Delete, suspend, remove, reset — anything not trivially
   reversible — goes through a [`ConfirmDialog`](frontend/src/components/feedback/ConfirmDialog.tsx) (Chakra
   `Dialog`) before it runs. Never a bare one-click destructive button.

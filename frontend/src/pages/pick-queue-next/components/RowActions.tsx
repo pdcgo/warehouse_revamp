@@ -83,7 +83,13 @@ export function RowActions({
               </Menu.Item>
             )}
 
-            <Menu.Item value="print" disabled={!hasReceipt} data-testid={`pick-queue-print-${order.id}`} onClick={onPrint}>
+            {/* No handler while disabled — a disabled item's DOM click still fires. */}
+            <Menu.Item
+              value="print"
+              disabled={!hasReceipt}
+              data-testid={`pick-queue-print-${order.id}`}
+              onClick={hasReceipt ? onPrint : undefined}
+            >
               <Icon as={Printer} boxSize="4" />
               {hasReceipt ? t("warehouseOrders.row.printLabel") : t("warehouseOrders.row.noReceipt")}
             </Menu.Item>

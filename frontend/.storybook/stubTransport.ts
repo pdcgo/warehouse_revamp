@@ -61,6 +61,7 @@ import {
 import { financialAccountAnalyticService, financialAccountService } from "./financialAccountStub";
 import { supplierAnalyticService, supplierChannelService, supplierService } from "./supplierStub";
 import { shopService } from "./shopStub";
+import { categoryService } from "./categoryStub";
 import { restockRequestService } from "./restockStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
@@ -95,7 +96,6 @@ const stubSourceType: Record<string, WireSourceType> = {
 };
 
 import {
-  categories,
   settlementImportLines,
   settlementImports,
   shipmentChannels,
@@ -778,11 +778,9 @@ export const transport = createRouterTransport(({ service }) => {
   // rackStub.ts plays them, writeable, with the placement decisions.
   service(RackService, rackService);
 
-  service(CategoryService, {
-    // The one full-tree read the pagination rule exempts (a picker needs every node to assemble the
-    // tree), so there is no filter here — the drill-down happens in the component.
-    categoryList: () => ({ categories }),
-  });
+  // The global taxonomy — categoryStub.ts plays its rules, writeable: a parent must exist, a name once per parent, a
+  // delete is soft and refused while the category has sub-categories.
+  service(CategoryService, categoryService);
 
   // The courier catalogue, served with the rules shipment_service owns — so a story that passes here is
   // asserting on the decisions, not on a permissive echo. ShippingSelect and ShippingBadge read it too.

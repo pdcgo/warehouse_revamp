@@ -94,7 +94,8 @@ export function CompactActions({
                 color={action.danger ? "fg.error" : undefined}
                 disabled={action.disabled}
                 data-testid={action.testId}
-                onClick={action.onClick}
+                // A disabled item's DOM click still fires — the menu only skips SELECTING it — so it gets no handler.
+                onClick={action.disabled ? undefined : action.onClick}
               >
                 <Icon as={action.icon} boxSize="4" />
                 {action.label}

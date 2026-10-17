@@ -114,3 +114,43 @@ export function flattenTree(categories: Category[]): CategoryNode[] {
 
   return out;
 }
+
+/** One node of the category tree as a tree view draws it — a branch carries `children`, a leaf does not. */
+export interface CategoryTreeNode {
+  id: string;
+  name: string;
+  category?: Category;
+  children?: CategoryTreeNode[];
+}
+
+// categoryTreeRoot nests the FLAT list into the tree a TreeView reads: a root node whose children are the top-level
+// categories, each with its own, siblings by name. A leaf has NO `children` at all — an empty array would make it a
+// branch with nothing to open. As defensive as flattenTree: an orphan (its parent not in the list) is surfaced at the
+// top level, and a cycle is broken (each id is placed at most once).
+export function categoryTreeRoot(categories: Category[]): CategoryTreeNode {
+  const byParent = childrenByParent(categories);
+  const ids = new Set(categories.map((c) => c.id.toString()));
+  const placed = new Set<string>();
+
+  const node = (category: Category): CategoryTreeNode => {
+    const id = category.id.toString();
+    placed.add(id);
+    const children = (byParent.get(id) ?? []).filter((c) => !placed.has(c.id.toString())).map(node);
+
+    return children.length > 0 ? { id, name: category.name, category, children } : { id, name: category.name, category };
+  };
+
+  const tops = categories
+    .filter((c) => c.parentId === 0n || !ids.has(c.parentId.toString()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const children = tops.map(node);
+
+  // A cycle has no top to hang from (the server refuses only a category as its own parent, not a deeper loop) — so
+  // whatever is still unplaced is surfaced at the top level rather than silently missing from the tree.
+  for (const category of [...categories].sort((a, b) => a.name.localeCompare(b.name))) {
+    if (!placed.has(category.id.toString())) children.push(node(category));
+  }
+
+  return { id: "ROOT", name: "", children };
+}
