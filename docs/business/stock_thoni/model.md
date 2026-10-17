@@ -33,7 +33,7 @@ SKU_STATEMENT {
 
 RACKS {
     int id pk
-    string name
+    string name "UNIQUE (warehouse_id, lower(name))"
     int warehouse_id
     string image_url "nullable"
     timestamptz created_at

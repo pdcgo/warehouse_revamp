@@ -320,7 +320,7 @@ flowchart TB
 
     Semua item placement dihitung dan dibandingkan dengan `TRANSACTION_ITEMS` terkait, jumlah setiap item harus sama dengan saat `restock` dibuat, sehingga menghindari kesalahan saat API ditembak diluar UI.
 
-    Jika ada `item_id` yang tidak terkait maka tolak request ini.
+    Jika ada `item_id` yang tidak terkait maka tolak request ini. Jika ada `rack_id` yang tidak ditemukan, atau raknya bukan milik gudang transaksi (`racks.warehouse_id` ≠ `transactions.warehouse_id`), tolak request ini.
 
     Tentunya cek dulu apakah PIC merupakan anggota gudang, sama seperti saat arrived.
 
@@ -364,6 +364,16 @@ flowchart TB
         if (lastStatus !== "arrived") throw new IllegalOp()
 
         const txItems = await dbTx.findMany("transaction_items", { where: { txId: tx.id } })
+
+        const rackIds = [...new Set(rackIdsOf(payload))]
+        const racks = await dbTx.findMany("racks", { where: { id: rackIds } })
+
+        if (
+            racks.length !== rackIds.length ||
+            racks.some((r) => r.warehouse_id !== tx.warehouse_id)
+        ) {
+            throw new InvalidPlacementProvided() // rak tidak ada, atau milik gudang lain
+        }
 
         if (!isPlacementValid(payload, txItems)) throw new InvalidPlacementProvided()
 

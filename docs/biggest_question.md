@@ -30,6 +30,8 @@ context.md §General 3 asks. Its seven rows (all 0) are removed from the table, 
 history, kept as merged; on this branch they are not tracked, and the seven still wait for a full re-rank.
 🔄 Later the same day the owner widened it — Heri's inventory must not influence stock_thoni even through other contexts: the reserve contradiction narrows to `qty` ([cadangan-tanpa-qty](business/stock_thoni/order_creation_provide_clarify.md#cadangan-tanpa-qty)), the supplier question keeps only the supplier's own need, and a parked item resting on Heri's design is dropped. Counts unchanged.
 🆕 Then a `RACKS` table in stock_thoni's model: no new question (the rack mechanism is unwritten, its questions parked); two small critiques on the table and one on placement, which does not yet check that a rack belongs to the transaction's warehouse. A comparison with `technical/stock` (Heri's) was withdrawn. Counts unchanged.
+▼▲ 0 then: same-instant slots are ordered by `id` after all — the owner reversed "ignore it" within minutes ([slot-seri-diurutkan-dengan-id](business/stock_thoni/context_decision.md#slot-seri-diurutkan-dengan-id)); to be written in the take's slot pick.
+▼▲ 0 then: all written — rack names unique per warehouse, placement refuses a rack of another warehouse, slots ordered `created_at, id`; and (missed earlier) the create request now has its team scope and the items and log carry the transaction id. The restock flow's open set: one question (supplier) and one critique (topic names).
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the

@@ -7,6 +7,14 @@ Kritik, pertanyaan dan peringatan untuk [context.md](./context.md) dan ERD-nya, 
 Tetangga: [order_creation](../order/order_creation_clarify.md) · [order_return](../order/order_return_clarify.md) ·
 [product](../product/context_clarify.md). 
 
+> **2026-10-17 (RACKS selesai)** — model.md: `name "UNIQUE (warehouse_id, lower(name))"`. ✅ Dicatat:
+> [nama-rak-unik-per-gudang](./context_decision.md#nama-rak-unik-per-gudang) — kritik *nama-rak-belum-unik* selesai. Tabel `RACKS` tanpa kritik;
+> mekanisme pembuatan raknya masih ditunda sampai ditulis.
+>
+> **2026-10-17 (seri diurutkan)** — Anda: *"saya jadi ikut saranmu urutkan `created_at, id`"* (sebelumnya *"abaikan saja"*). ✅ Kritik
+> *slot-tertua-seri* selesai — [slot-seri-diurutkan-dengan-id](./context_decision.md#slot-seri-diurutkan-dengan-id); tinggal ditulis di
+> order_creation_provide.md baris 74. Tersisa di RACKS: [nama-rak-belum-unik](#uji-racks).
+>
 > **2026-10-17 (RACKS)** — model.md: tabel baru `RACKS` (`name`, `warehouse_id`, `image_url`), `RACKS ||--o{ SKU_SLOT` dan
 > `SKU_BROKEN_SLOT`; semua `created_at` kini `timestamptz`. ✅ `rack_id fk` di slot kini punya tujuan · ✅ barang hilang tetap
 > tanpa rak ([hilang-punya-tabel-tanpa-rak](./context_decision.md#hilang-punya-tabel-tanpa-rak)) · ✅ `timestamptz` membuat
@@ -1076,15 +1084,10 @@ belum ditulis; yang di bawah hanya soal tabelnya.
 | --- | --- |
 | `RACKS \|\|--o{ SKU_SLOT`, `RACKS \|\|--o{ SKU_BROKEN_SLOT` | ✅ satu item dibagi ke beberapa rak, satu slot per rak ([penerimaan-boleh-dipecah-ke-beberapa-rak](./context_decision.md#penerimaan-boleh-dipecah-ke-beberapa-rak)) · ✅ barang rusak dicatat raknya ([barang-rusak-wajib-di-rak](./context_decision.md#barang-rusak-wajib-di-rak)) |
 | `SKU_LOST_SLOT` tanpa rak | ✅ [hilang-punya-tabel-tanpa-rak](./context_decision.md#hilang-punya-tabel-tanpa-rak) |
-| `warehouse_id` di rak | ✅ satu rak milik satu gudang — dipakai saat penempatan ([rak-gudang-lain-diterima](./restock_flow_clarify.md#critique)) |
+| `warehouse_id` di rak | ✅ satu rak milik satu gudang — dipakai saat penempatan (*rak-gudang-lain-diterima* ✅) |
 | rak khusus barang rusak | ✅ tidak perlu kolom jenis — tabel slot sudah membedakan baik dan rusak; rak yang mana, pilihan staff |
-| `created_at` `timestamptz` | ✅ slot tertua bisa diurutkan di dalam satu hari · ⚠ kecil: [slot-tertua-seri](#uji-racks) |
-| `name` | ⚠ [nama-rak-belum-unik](#uji-racks) |
-
-| | Masalah | → Rekomendasi |
-| --- | --- | --- |
-| **nama-rak-belum-unik** 🆕 | `name` tanpa aturan unik. Gudang 3 punya dua rak bernama `A-01`; staff menempatkan 500 kaos ke *"A-01"* dan pemetik dikirim ke *"A-01"* — yang mana? Dan `a-01` vs `A-01` dibaca dua rak. | `UNIQUE (warehouse_id, lower(name))` — sama seperti resi ([resi-dibandingkan-tanpa-beda-huruf](./context_decision.md#resi-dibandingkan-tanpa-beda-huruf)). Gudang lain boleh punya `A-01` juga. |
-| **slot-tertua-seri** 🆕 | `now()` di Postgres adalah waktu **mulai transaksi**: 500 kaos ke Rak A dan 500 ke Rak B dalam satu penempatan punya `created_at` yang sama persis. Harganya sama, jadi FIFO tidak salah — tapi rak mana yang dipetik dulu tidak tentu, dan bisa berganti di setiap take. | *Slot tertua dulu* diurutkan `created_at, id` ([order_creation_provide.md](./order_creation_provide.md) baris 74). |
+| `created_at` `timestamptz` | ✅ slot tertua bisa diurutkan di dalam satu hari · ✅ slot yang seri diurutkan `id` — [slot-seri-diurutkan-dengan-id](./context_decision.md#slot-seri-diurutkan-dengan-id) |
+| `name` | ✅ unik per gudang, tanpa beda huruf — [nama-rak-unik-per-gudang](./context_decision.md#nama-rak-unik-per-gudang) |
 
 ```mermaid
 erDiagram

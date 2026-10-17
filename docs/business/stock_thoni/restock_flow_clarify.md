@@ -5,6 +5,14 @@ Kritik dan pertanyaan untuk [restock_flow.md](./restock_flow.md) — **satu-satu
 [context_decision.md](./context_decision.md); pertanyaan tentang ERD dan konteks secara umum tetap di
 [context_clarify.md](./context_clarify.md).
 
+> **2026-10-17 (pembuatan)** — terlewat di uji sebelumnya: `CreateRestockPayload` kini membawa `team_id` scope (baris 136), dan item
+> serta log `ongoing` menempel ke `trx.id` (baris 193–194). ✅ Selesai: *pembuatan-tanpa-scope-tim* · *item-dan-log-tanpa-id-transaksi*.
+> Catatan di [gudang-dikirim-sebagai-scope-lalu-dicocokkan](./context_decision.md#gudang-dikirim-sebagai-scope-lalu-dicocokkan).
+>
+> **2026-10-17 (rak dicocokkan)** — baris 323 dan kode baris 368–376: rak yang tidak ada atau milik gudang lain menolak seluruh
+> penempatan. ✅ Dicatat: [rak-dicocokkan-ke-gudang-transaksi](./context_decision.md#rak-dicocokkan-ke-gudang-transaksi) — kritik
+> *rak-gudang-lain-diterima* selesai.
+>
 > **2026-10-17 (RACKS)** — model.md kini punya `RACKS` dengan `warehouse_id`. 🆕 [rak-gudang-lain-diterima](#critique) —
 > penempatan belum memastikan rak yang dikirim milik gudang transaksinya. Tabelnya sendiri diuji di
 > [context_clarify](./context_clarify.md#uji-racks).
@@ -71,11 +79,8 @@ Kritik dan pertanyaan untuk [restock_flow.md](./restock_flow.md) — **satu-satu
 
 | | apa | di mana |
 | --- | --- | --- |
-| 1 | `team_id` di kiriman pembuatan belum scope | [pembuatan-tanpa-scope-tim](#critique) |
-| 2 | kecil — item dan log pembuatan belum menempel ke id transaksi | [item-dan-log-tanpa-id-transaksi](#critique) |
-| 3 | apakah penerimaan mengabari supplier | [penerimaan-tidak-mengabari-supplier](#penerimaan-tidak-mengabari-supplier) |
-| 4 | nama topik kabar bentrok dengan yang sudah dibangun | [nama-topik-bentrok](#critique) |
-| 5 | rak dari gudang lain diterima saat penempatan | [rak-gudang-lain-diterima](#critique) |
+| 1 | apakah penerimaan mengabari supplier | [penerimaan-tidak-mengabari-supplier](#penerimaan-tidak-mengabari-supplier) |
+| 2 | nama topik kabar bentrok dengan yang sudah dibangun | [nama-topik-bentrok](#critique) |
 
 Keempat langkah — pembuatan, tiba, penempatan, pembatalan — **tanpa sisa** selain itu.
 
@@ -83,10 +88,7 @@ Keempat langkah — pembuatan, tiba, penempatan, pembatalan — **tanpa sisa** s
 
 | | Masalah | → Rekomendasi |
 | --- | --- | --- |
-| **pembuatan-tanpa-scope-tim** 🆕 | Tiga langkah lain kini membawa scope dan mencocokkannya. `CreateRestockPayload` (baris 133–142) membawa `team_id` tapi bukan sebagai scope, tanpa `request_policy`. Pemeriksaan item (baris 150–152) membandingkan pemilik produk dengan `team_id` **kiriman** — tapi tidak ada yang memastikan pengirim anggota tim itu. CS tim 5 mengirim `team_id` 2 dengan kaos milik tim 2: item lolos, restock tim 2 dibuat oleh orang luar, `stock_ongoing` kaos tim 2 naik 100. | Pola yang sama: `option (warehouse.role_base.v1.request_policy) = { roles: [/* CS dan admin tim */] }` dan `uint64 team_id = … [(warehouse.role_base.v1.use_scope) = true]`. Tidak perlu cocok ke transaksi — transaksinya belum ada; pemeriksaan item yang sudah ada menjadi pasangannya. |
-| **item-dan-log-tanpa-id-transaksi** 🆕 | Baris 183: `const trx = await createTrx(...)` — id transaksi kini ada. Tapi baris 189–190 masih `createTrxItems(tx, payload)` dan `createTrxLog(tx, { status: "ongoing" })`, tanpa `trx.id`. Item dan log `ongoing` tx 7 tidak tahu milik transaksi mana — dan penempatan (`transaction_items` `where txId`) serta pemeriksaan status (`lastStatus`) membacanya lewat id itu. | `createTrxItems(tx, trx.id, payload)` dan `createTrxLog(tx, { txId: trx.id, status: "ongoing", createdBy: … })`. |
 | **nama-topik-bentrok** 🆕 | Baris 38: `publishTopic({ topic: \`restock-${kind}\`, data })` — penerbit yang menamai topiknya. Aturan repo ini: **event menamai topiknya sendiri** — satu pesan proto, `event_config` di pesan itu (CLAUDE.md, *Events*); penerbit tidak pernah menulis nama topik. Fakta teknis, bukan masukan desain: `event.proto` sudah memakai nama `restock-created` dan `restock-cancelled` untuk pesan dengan isi lain, dan satu topik hanya bisa membawa satu bentuk pesan. | Setiap kabar satu pesan proto dengan topiknya sendiri — nama dan isinya keputusan Anda, asal tidak sama persis dengan nama yang sudah ada. `publishAndMark` menerima pesannya, bukan nama topik. |
-| **rak-gudang-lain-diterima** 🆕 | `rack_id` di kiriman penempatan (baris 300, 312) hanya angka. Kode baris 360 mencocokkan gudang **transaksi**, dan `isPlacementValid` (baris 368) mencocokkan item dan jumlah — tidak ada yang memeriksa **rak**-nya. Staff gudang 3 menempatkan tx 1 dengan `rack_id` 12, padahal rak 12 milik gudang 5: slot tercatat di statement gudang 3, pemetik gudang 3 dikirim ke rak yang tidak ada di gedungnya, dan daftar rak 12 di gudang 5 memuat kaos yang tidak pernah datang. | Sesudah cek gudang: baca rak-rak di kiriman, tolak kalau ada yang tidak ditemukan atau `rack.warehouse_id !== tx.warehouse_id` — `const racks = await dbTx.findMany("racks", { where: { id: rackIdsOf(payload) } })`. Bisa digabung ke `isPlacementValid(payload, txItems, racks)`. |
 
 ## Proposed Design
 
@@ -96,7 +98,7 @@ Ringkasan alur yang kini tertulis — semuanya sudah Anda tulis; tabel ini hanya
 
 | langkah | kunci | pemeriksa akses | status yang diperiksa, sesudah kunci | status sesudahnya | statement |
 | --- | --- | --- | --- | --- | --- |
-| Transaksi Restock Dibuat | *kunci resi* | ⚠ belum ada — [pembuatan-tanpa-scope-tim](#critique) | resi: tidak ada transaksi resi itu yang status terakhirnya bukan `cancelled` | `ongoing` | `stock_ongoing` + dikirim |
+| Transaksi Restock Dibuat | *kunci resi* | `team_id` scope, item dicocokkan ke tim itu | resi: tidak ada transaksi resi itu yang status terakhirnya bukan `cancelled` | `ongoing` | `stock_ongoing` + dikirim |
 | Tandai Tiba | *kunci tx* | `warehouse_id` scope, cocok `transactions.warehouse_id` | `ongoing` | `arrived` | tidak berubah |
 | Tandai Di terima Gudang | *kunci tx* | `warehouse_id` scope, cocok `transactions.warehouse_id` | `arrived` | `approved` | `stock_ongoing` − dikirim · ready, broken, lost + |
 | Catat Pembatalan | *kunci tx* | `team_id` scope, cocok `transactions.team_id` | `ongoing` | `cancelled` | `stock_ongoing` − dikirim |

@@ -71,7 +71,7 @@ flowchart TB
 
 - **Pilih Slot**
 
-    Pemilihan Slot diurutkan dari `created_at tertua`, jika tidak mencukupi maka cari slot lain tapi tetap urutan dari yang tertua untuk FIFO. Tentunya cocokan juga gudang nya. kalau semua slot kurang, seluruh take gagal.
+    Pemilihan Slot diurutkan dari `created_at` tertua, lalu `id` terkecil kalau `created_at`-nya sama (slot dari satu penempatan), jika tidak mencukupi maka cari slot lain tapi tetap urutan dari yang tertua untuk FIFO. Tentunya cocokan juga gudang nya. kalau semua slot kurang, seluruh take gagal.
 
 - **Perbarui Slot Map**
 

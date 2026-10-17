@@ -175,6 +175,9 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [paket-yang-sudah-tiba-tidak-bisa-dibatalkan](#paket-yang-sudah-tiba-tidak-bisa-dibatalkan) | restock hanya bisa dibatalkan saat `ongoing` — paket yang sudah `arrived` diselesaikan lewat penempatan |
 | [kabar-restock-ditandai-dan-dikirim-ulang](#kabar-restock-ditandai-dan-dikirim-ulang) | kabar created, cancelled dan penagihan dikirim sesudah commit, ditandai di `TRANSACTIONS`, dikirim ulang tugas berkala — cancelled menunggu created |
 | [inventory-heri-diabaikan-di-thoni](#inventory-heri-diabaikan-di-thoni) | di branch `thoni`, `business/inventory/` milik Heri tidak dibaca, dirujuk atau dibandingkan; stock_thoni tetap di foldernya sendiri |
+| [slot-seri-diurutkan-dengan-id](#slot-seri-diurutkan-dengan-id) | *slot tertua dulu* diurutkan `created_at`, lalu `id` — slot dari satu penempatan dipetik dalam urutan tetap |
+| [nama-rak-unik-per-gudang](#nama-rak-unik-per-gudang) | satu gudang tidak punya dua rak bernama sama, tanpa beda huruf — `UNIQUE (warehouse_id, lower(name))` |
+| [rak-dicocokkan-ke-gudang-transaksi](#rak-dicocokkan-ke-gudang-transaksi) | penempatan menolak seluruh kiriman kalau satu rak tidak ada atau milik gudang lain |
 
 ---
 
@@ -4967,7 +4970,10 @@ panggilan User Service yang ditulis di handler. **Siapa** yang dicek tetap: staf
 
 > ✅ **2026-10-17** — *Catat Pembatalan* memakai pola yang sama dengan `team_id`: `CancelRestockPayload` ([restock_flow.md](./restock_flow.md)
 > baris 362–366), cocok `transactions.team_id` sesudah kunci (baris 389). Tinggal pembuatan tanpa scope
-> ([pembuatan-tanpa-scope-tim](./restock_flow_clarify.md#critique)).
+> (*pembuatan-tanpa-scope-tim* ✅).
+>
+> ✅ **2026-10-17 (pembuatan)** — `CreateRestockPayload` kini membawa `team_id` scope ([restock_flow.md](./restock_flow.md) baris 136);
+> pasangannya pemeriksaan item: semua item milik tim itu. Keempat kiriman restock kini memakai pola ini.
 
 ---
 
@@ -5094,3 +5100,81 @@ flowchart LR
 > | product — cadangan | stok ≥ cadangan, tanpa `qty` | *"total semua gudang"*, *"dicek sebelum transaksi"* |
 > | supplier — laporan | angka restock, rusak, hilang per supplier per hari | dibaca saat *accept*, lewat `restock-accepted`, menautkan produk ke channel |
 > | order — batal | Order Cancel dan `InventoryTxCancel` lewat kunci | order kembali ke `pending` saat gudang tidak menemukan barang |
+
+---
+
+## slot-seri-diurutkan-dengan-id
+
+> Anda, di chat (2026-10-17): *"saya jadi ikut saranmu urutkan `created_at, id`"* — menjawab kritik *slot-tertua-seri*
+> ([context_clarify](./context_clarify.md#uji-racks)). Sesuai rekomendasi. 🔄 Beberapa menit sebelumnya Anda memutuskan
+> sebaliknya (*"abaikan saja"*) — entri itu, *urutan-slot-seri-dibiarkan*, diganti oleh yang ini.
+
+**Putusannya.** *Slot tertua dulu* diurutkan `created_at`, lalu `id`. Slot yang lahir di satu penempatan punya `created_at`
+yang sama persis — `now()` adalah waktu mulai transaksi — dan `id` membuat urutannya tetap di setiap take.
+
+| | |
+| --- | --- |
+| urutan | `order by created_at, id` |
+| di mana | take — *Pilih Slot*, [order_creation_provide.md](./order_creation_provide.md) baris 74 |
+| akibatnya | 500 kaos Rak A (slot 41) dan 500 Rak B (slot 42), satu penempatan: take selalu memetik Rak A dulu |
+
+```mermaid
+flowchart LR
+  P["satu penempatan — slot 41 Rak A, slot 42 Rak B, created_at sama"] --> O["order by created_at, id"]
+  O --> T["take — slot 41 dulu, selalu"]
+```
+
+> ✅ **2026-10-17** — tertulis di [order_creation_provide.md](./order_creation_provide.md) baris 74.
+
+---
+
+## nama-rak-unik-per-gudang
+
+> [model.md](./model.md) (2026-10-17) — `RACKS.name "UNIQUE (warehouse_id, lower(name))"`. Menjawab kritik *nama-rak-belum-unik*
+> ([context_clarify](./context_clarify.md#uji-racks)). Sesuai rekomendasi.
+
+**Putusannya.** Satu gudang tidak punya dua rak dengan nama yang sama, tanpa membedakan huruf besar dan kecil. Gudang lain
+boleh memakai nama yang sama.
+
+| gudang | rak yang sudah ada | rak baru | hasil |
+| --- | --- | --- | --- |
+| 3 | `A-01` | `A-01` | ⛔ ditolak |
+| 3 | `A-01` | `a-01` | ⛔ ditolak — `lower(name)` sama |
+| 5 | — (gudang 3 punya `A-01`) | `A-01` | ✅ |
+
+```mermaid
+erDiagram
+  RACKS {
+    int id PK
+    string name "UNIQUE bersama warehouse_id, tanpa beda huruf"
+    int warehouse_id
+  }
+```
+
+Sejalan dengan [resi-dibandingkan-tanpa-beda-huruf](#resi-dibandingkan-tanpa-beda-huruf).
+
+---
+
+## rak-dicocokkan-ke-gudang-transaksi
+
+> [restock_flow.md](./restock_flow.md) (2026-10-17) baris 323 — *"Jika ada `rack_id` yang tidak ditemukan, atau raknya bukan milik
+> gudang transaksi … tolak request ini"*; kode baris 368–376. Menjawab kritik *rak-gudang-lain-diterima*
+> ([restock_flow_clarify](./restock_flow_clarify.md#critique)). Sesuai rekomendasi.
+
+**Putusannya.** Penempatan membaca setiap rak di kiriman — tanpa duplikat — dan menolak **seluruh** kiriman kalau satu rak
+tidak ditemukan atau milik gudang lain. Patokannya `transactions.warehouse_id`, yang sudah dicocokkan dengan pengirim lebih
+dulu ([gudang-dikirim-sebagai-scope-lalu-dicocokkan](#gudang-dikirim-sebagai-scope-lalu-dicocokkan)).
+
+| kiriman staff gudang 3, tx 1 milik gudang 3 | hasil |
+| --- | --- |
+| kaos → rak 7 (gudang 3), celana → rak 7 | ✅ — rak 7 dibaca sekali |
+| kaos → rak 12 (gudang 5) | ⛔ seluruh penempatan ditolak |
+| kaos → rak 99 (tidak ada) | ⛔ seluruh penempatan ditolak |
+| hilang — tanpa rak | ✅ tidak diperiksa ([hilang-punya-tabel-tanpa-rak](#hilang-punya-tabel-tanpa-rak)) |
+
+```mermaid
+flowchart LR
+  T["tx dibaca — gudang cocok dengan pengirim"] --> R["baca rak di kiriman, tanpa duplikat"]
+  R -->|"ada yang tidak ditemukan atau gudang lain"| X["tolak seluruhnya"]
+  R -->|"semua milik gudang tx"| V["isPlacementValid — item dan jumlah"]
+```

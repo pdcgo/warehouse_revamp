@@ -5,6 +5,9 @@ Kritik dan pertanyaan untuk [order_creation_provide.md](./order_creation_provide
 [context_decision.md](./context_decision.md), sama seperti restock; pertanyaan tentang ERD tetap di
 [context_clarify.md](./context_clarify.md).
 
+> **2026-10-17 (urutan slot)** — baris 74: *"diurutkan dari `created_at` tertua, lalu `id` terkecil kalau `created_at`-nya sama"*.
+> ✅ [slot-seri-diurutkan-dengan-id](./context_decision.md#slot-seri-diurutkan-dengan-id) tertulis — kritik *urutan-slot-belum-menyebut-id* selesai.
+>
 > **2026-10-17 (uji sesudah merge `backup/inventory`)** — dokumen ini tidak berubah; yang berubah dokumen **order** dan
 > **product**. ⚠ Catatan 10-17 sebelumnya (*"tidak ada kontradiksi"*) **dikoreksi**: 🆕 kontradiksi
 > [cadangan-tanpa-qty](#cadangan-tanpa-qty) — product 10-15 mendefinisikan cadangan sebagai stok ≥ cadangan,
