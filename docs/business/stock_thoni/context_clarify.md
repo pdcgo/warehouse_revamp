@@ -5,9 +5,19 @@ Kritik, pertanyaan dan peringatan untuk [context.md](./context.md) dan ERD-nya, 
 [context_decision.md](./context_decision.md) — daftar di atasnya adalah indeks semua yang sudah diputuskan.
 
 Tetangga: [order_creation](../order/order_creation_clarify.md) · [order_return](../order/order_return_clarify.md) ·
-[inventory (Heri)](../inventory/context_clarify.md) · [product](../product/context_clarify.md) ·
-[technical/stock](../../technical/stock/design_clarify.md).
+[product](../product/context_clarify.md). 
 
+> **2026-10-17 (RACKS)** — model.md: tabel baru `RACKS` (`name`, `warehouse_id`, `image_url`), `RACKS ||--o{ SKU_SLOT` dan
+> `SKU_BROKEN_SLOT`; semua `created_at` kini `timestamptz`. ✅ `rack_id fk` di slot kini punya tujuan · ✅ barang hilang tetap
+> tanpa rak ([hilang-punya-tabel-tanpa-rak](./context_decision.md#hilang-punya-tabel-tanpa-rak)) · ✅ `timestamptz` membuat
+> *slot tertua dulu* bisa diurutkan di dalam satu hari. 🆕 kecil: [Uji RACKS](#uji-racks) — nama rak belum unik per gudang.
+> Mekanisme pembuatan raknya belum ditulis — pertanyaannya ditunda. 🔄 Kontradiksi *slot-vs-batch-dan-rak-teknis* dilepas:
+> pembandingnya `technical/stock`, rancangan Heri ([inventory-heri-diabaikan-di-thoni](./context_decision.md#inventory-heri-diabaikan-di-thoni)).
+>
+> **2026-10-17 (inventory Heri diabaikan)** — Anda: *"abaikan inventory nya heri"*. Semua rujukan file ini ke
+> `business/inventory/` dilepas; ✅ pertanyaan *pindah-ke-inventory* dan kritik *folder-di-luar-inventory* selesai —
+> [inventory-heri-diabaikan-di-thoni](./context_decision.md#inventory-heri-diabaikan-di-thoni).
+>
 > **2026-10-17** — model.md baris 20: `"unique bersama warehouse_id"` — ✅ [unik-per-kolom-kembali](#unik-per-kolom-kembali) selesai.
 > Kontradiksi lain di dokumen ini tidak tersentuh putaran ini.
 >
@@ -137,7 +147,7 @@ Tetangga: [order_creation](../order/order_creation_clarify.md) · [order_return]
 > **Uji keempatpuluh lima, 2026-10-03 13:54** — alur: *Check Approver Access* dan *Kirim Kabar Penagihan* kini di luar
 > kotak transaksi DB. ✅ Dicatat: [service-lain-di-luar-transaksi-db](./context_decision.md#service-lain-di-luar-transaksi-db).
 > ⛔ Butir kunci kini **dihapus** — [status-akhir-dua-kali](#critique) tetap satu-satunya penjaga; ditanyakan di
-> [ongoing-diperiksa-server](./restock_flow_clarify.md#ongoing-diperiksa-server).
+> *ongoing-diperiksa-server* ✅.
 >
 > **Uji keempatpuluh empat, 2026-10-03 13:42** — alur: dua kotak *DB Transaction* digambar; butir *kunci, lalu periksa
 > `ongoing`* **dikomentari**; paket yang tiba setelah batal → restock baru. ✅ Empat putusan dicatat, dari
@@ -629,9 +639,9 @@ ditutup adalah L1.
 
 | aturan | alasannya dari gudang |
 | --- | --- |
-| akibat baru ditulis saat `final` | ada kesempatan hitung ulang sebelum selisih jadi uang gudang ([inventory Q4](../inventory/context_clarify.md#question)) |
-| `confirmed_by` ≠ `created_by` | selisih opname adalah uang gudang — satu orang tidak mengesahkan hitungannya sendiri ([inventory Critique 2](../inventory/context_clarify.md#critique)) |
-| selama `draft`, take melewati slot di rak itu | satu orang menghitung, satu memetik di rak yang sama — hitungannya benar, catatannya salah ([inventory Critique 7](../inventory/context_clarify.md#critique)) |
+| akibat baru ditulis saat `final` | ada kesempatan hitung ulang sebelum selisih jadi uang gudang |
+| `confirmed_by` ≠ `created_by` | selisih opname adalah uang gudang — satu orang tidak mengesahkan hitungannya sendiri |
+| selama `draft`, take melewati slot di rak itu | satu orang menghitung, satu memetik di rak yang sama — hitungannya benar, catatannya salah |
 | `system_qty` dibekukan saat mulai menghitung | selisih dihitung terhadap angka saat itu, bukan angka saat difinalkan |
 
 ---
@@ -647,7 +657,7 @@ ditutup adalah L1.
 | --- | --- | --- |
 | **sebagian-itu-tiga-kejadian** | *"Sebagian"* menyatukan tiga kejadian yang akibatnya berbeda: **rusak** — barangnya ada, tidak bisa dijual · **hilang** — barangnya tidak ada · **menyusul** — belum ada, tapi akan datang. Satu angka *"diterima"* tidak bisa membedakannya, dan yang ketiga bukan kerugian sama sekali. | **Tiga angka per baris**: `qty_baik`, `qty_rusak`, `qty_hilang`. *Menyusul* bukan angka — baris berikut. |
 | **menyusul-atau-hilang** | Kalau sisa ditunggu, transaksi tidak pernah selesai dan *on the way* membengkak selamanya. Kalau langsung ditutup, barang yang telat datang tidak punya transaksi. | **Satu transaksi = satu resi = satu paket, diterima sekali.** Resi sudah diisi saat restock dibuat, jadi supplier yang mengirim dua paket = dua transaksi. Yang tidak ada di paket = **hilang, final**. |
-| **kerugian-jangan-diratakan** | Cara termudah — total bayar dibagi ke unit yang baik — membuat kerugian **tidak terlihat**. Lebih buruk: tim lain yang meminjam barang ini membayar markup di atas harga yang sudah menanggung kerugian pemilik. Padahal kerugian saat terima milik **tim pemilik sendiri** ([selling-team-bears-the-receiving-loss](../inventory/context_clarify.md#selling-team-bears-the-receiving-loss)). | Semua unit **harganya sama** — harga beli + ongkir ÷ qty **dikirim**. Unit rusak dan hilang membawa harga itu sebagai **kerugian** — [contoh](#contoh-restock--10-dikirim-8-baik). |
+| **kerugian-jangan-diratakan** | Cara termudah — total bayar dibagi ke unit yang baik — membuat kerugian **tidak terlihat**. Lebih buruk: tim lain yang meminjam barang ini membayar markup di atas harga yang sudah menanggung kerugian pemilik. Padahal kerugian saat terima milik **tim pemilik sendiri**. | Semua unit **harganya sama** — harga beli + ongkir ÷ qty **dikirim**. Unit rusak dan hilang membawa harga itu sebagai **kerugian** — [contoh](#contoh-restock--10-dikirim-8-baik). |
 | **retur-utuh-penerimaannya-tidak** | Retur selalu seluruh order ([a-return-is-never-partial](../order/context_decision.md#a-return-is-never-partial)) — jadi *retur sebagian* tidak ada. | **Dua lapis**: order diretur utuh dan jadi `return_completed`; **penerimaan** di inventory mencatat apa yang benar-benar datang. Keduanya benar sekaligus. |
 
 ### Rekomendasi
@@ -713,9 +723,7 @@ flowchart TB
 
 ⚠ Ini berbeda dengan rekomendasi yang dulu terbuka di sisi order —
 [a-short-delivered-parcel-has-no-home](../order/order_return_clarify.md#a-short-delivered-parcel-has-no-home) mengusulkan
-`problem`, dan sudah saya revisi di sana. Dan ia membalik rekomendasi saya di
-[inventory Q1](../inventory/context_clarify.md#question) (bagi ongkir ke qty *diterima*), yang hanya benar kalau
-kerugian diratakan. Catatan sudah ditambahkan di sana.
+`problem`, dan sudah saya revisi di sana. Dan ia membalik rekomendasi lama saya (bagi ongkir ke qty *diterima*), yang hanya benar kalau kerugian diratakan.
 
 ### pindah-antar-tiga-tabel
 
@@ -755,7 +763,7 @@ flowchart LR
 | OrderCreation butuh | sumber | sekarang |
 | --- | --- | --- |
 | hanya stok di satu gudang | `OrderTransactionCreateRequest.warehouse_id` | ✅ `SKU_SLOT.warehouse_id` · ✅ `SKU_STATEMENT` per gudang ([stok-diringkas-per-sku-per-gudang](./context_decision.md#stok-diringkas-per-sku-per-gudang)) |
-| dari rak mana — instruksi petik | [order_creation](../order/order_creation_clarify.md#a-take-is-a-stock-movement-that-names-its-order) | ✅ slot membawa raknya |
+| dari rak mana — instruksi petik | *order_creation* ✅ | ✅ slot membawa raknya |
 | per baris: tim pemilik | `TransactionItem.team_id` | ✅ tim product — SKU = product |
 | `unit_cost` | `TransactionItem.unit_cost` | ✅ jumlah tiga harga slot · ⚠ saran: satu kolom yang menjumlahkannya ([nilai-unit-satu-kolom](#nilai-unit-satu-kolom)) |
 | `unit_cost_with_markup` | [inventory-computes-the-markup](../order/context_decision.md#inventory-computes-the-markup) | ✅ `cross_markup_percent` product |
@@ -1059,6 +1067,41 @@ message ReturnItem {
 Inventory memeriksanya lewat K: `product_id` dan `qty` harus sama dengan yang diambil take K-77 — beda → tolak, karena
 Order Service dan inventory tidak sepakat tentang apa yang dulu terjual.
 
+## Uji RACKS
+
+*2026-10-17* — tabel yang Anda usulkan di [model.md](./model.md), diuji terhadap putusan stock_thoni. Mekanisme pembuatan rak
+belum ditulis; yang di bawah hanya soal tabelnya.
+
+| | penilaian |
+| --- | --- |
+| `RACKS \|\|--o{ SKU_SLOT`, `RACKS \|\|--o{ SKU_BROKEN_SLOT` | ✅ satu item dibagi ke beberapa rak, satu slot per rak ([penerimaan-boleh-dipecah-ke-beberapa-rak](./context_decision.md#penerimaan-boleh-dipecah-ke-beberapa-rak)) · ✅ barang rusak dicatat raknya ([barang-rusak-wajib-di-rak](./context_decision.md#barang-rusak-wajib-di-rak)) |
+| `SKU_LOST_SLOT` tanpa rak | ✅ [hilang-punya-tabel-tanpa-rak](./context_decision.md#hilang-punya-tabel-tanpa-rak) |
+| `warehouse_id` di rak | ✅ satu rak milik satu gudang — dipakai saat penempatan ([rak-gudang-lain-diterima](./restock_flow_clarify.md#critique)) |
+| rak khusus barang rusak | ✅ tidak perlu kolom jenis — tabel slot sudah membedakan baik dan rusak; rak yang mana, pilihan staff |
+| `created_at` `timestamptz` | ✅ slot tertua bisa diurutkan di dalam satu hari · ⚠ kecil: [slot-tertua-seri](#uji-racks) |
+| `name` | ⚠ [nama-rak-belum-unik](#uji-racks) |
+
+| | Masalah | → Rekomendasi |
+| --- | --- | --- |
+| **nama-rak-belum-unik** 🆕 | `name` tanpa aturan unik. Gudang 3 punya dua rak bernama `A-01`; staff menempatkan 500 kaos ke *"A-01"* dan pemetik dikirim ke *"A-01"* — yang mana? Dan `a-01` vs `A-01` dibaca dua rak. | `UNIQUE (warehouse_id, lower(name))` — sama seperti resi ([resi-dibandingkan-tanpa-beda-huruf](./context_decision.md#resi-dibandingkan-tanpa-beda-huruf)). Gudang lain boleh punya `A-01` juga. |
+| **slot-tertua-seri** 🆕 | `now()` di Postgres adalah waktu **mulai transaksi**: 500 kaos ke Rak A dan 500 ke Rak B dalam satu penempatan punya `created_at` yang sama persis. Harganya sama, jadi FIFO tidak salah — tapi rak mana yang dipetik dulu tidak tentu, dan bisa berganti di setiap take. | *Slot tertua dulu* diurutkan `created_at, id` ([order_creation_provide.md](./order_creation_provide.md) baris 74). |
+
+```mermaid
+erDiagram
+  RACKS ||--o{ SKU_SLOT : "satu slot per rak"
+  RACKS ||--o{ SKU_BROKEN_SLOT : "rusak di rak"
+  RACKS {
+    int id PK
+    string name "UNIQUE bersama warehouse_id, tanpa beda huruf"
+    int warehouse_id "satu rak, satu gudang"
+    string image_url "nullable"
+    timestamptz created_at
+  }
+```
+
+> ⏸ **Ditunda — tidak dihitung**, sampai mekanisme pembuatan raknya ditulis: siapa yang membuat dan mengubah rak, menghapus
+> atau menonaktifkan rak yang masih berisi slot, dan label yang dipindai staff di rak.
+
 ## Critique
 
 | | Masalah | → Rekomendasi |
@@ -1069,7 +1112,6 @@ Order Service dan inventory tidak sepakat tentang apa yang dulu terjual.
 | **status-akhir-dua-kali** | ✅ 17:27: aturannya tertulis — *"tidak boleh status log nya double"* ([approved-sekali-dan-final](./context_decision.md#approved-sekali-dan-final)). ✅ 10-03 12:54: alur kini **mengunci** baris transaksi dan memeriksa `ongoing` sebelum menerima atau membatalkan ([kunci-transaksi-lalu-periksa-ongoing](./context_decision.md#kunci-transaksi-lalu-periksa-ongoing)) — dua petugas yang menekan *terima* bersamaan tidak lagi melahirkan slot dua kali. Yang tersisa hanya cadangan: kunci itu dijaga **kode** di dua tempat, dan kelak return serta adjustment juga menulis log status — satu jalur baru yang lupa mengunci membuka lubang yang sama. ✅ 10-03 14:09: setelah sempat dihapus 13:54, kunci dan periksa `ongoing` kembali — kini pada baris statement ([kunci-statement-lalu-periksa-ongoing](./context_decision.md#kunci-statement-lalu-periksa-ongoing)). Penjaga di bawah ini kembali menjadi **cadangan**. | **Penjaga cadangan di database**, ditulis di bawah ERD: satu status akhir per `tx_id` — indeks unik parsial `UNIQUE (tx_id) WHERE status IN (approved, cancelled)` di `TRANSACTION_STATUS_LOGS`. Jalur yang lupa mengunci ditolak database, bukan diam-diam menulis dua kali. |
 | **ref-order-id-belum-unik** | Sama polanya, untuk retur: CS mengklaim retur order 78, gudang juga ([both-cs-and-the-warehouse-can-return-an-order](../order/context_decision.md#both-cs-and-the-warehouse-can-return-an-order)) — dua transaksi `return` untuk satu order, dan barangnya **masuk stok dua kali**. | `ref_order_id` **unik** untuk `type = return`. |
 | **nama-kolom** | ✅ `shipping_fee` kini `float` (14:38). Tersisa: `order_id` di sistem yang punya tabel `orders` akan dibaca *order kita* — catatan di bawah ERD menjelaskannya, tapi kolom dibaca di kode dan query, bukan di catatan. ⚠ 10-12: kini **dua** `order_id` di satu ERD — `TRANSACTIONS.order_id` (string, nomor pesanan di supplier) dan `ORDER_SLOT_MAP.order_id` (int, order kita). Programmer yang menggabungkan keduanya dengan `order_id = order_id` mendapat hasil yang salah tanpa error. | `supplier_order_ref`. |
-| **folder-di-luar-inventory** | *"Service ini bernama `Inventory Service`"* — service yang **sama** dengan [inventory/context.md](../inventory/context.md) Heri. Dua proposal untuk satu service, di dua folder. | Pindah ke `business/inventory/`, dinamai sebagai proposal Toni. |
 
 ### di-luar-pass-ini
 
@@ -1244,8 +1286,7 @@ nama Anda sendiri** — `count` = sisa fisik baik di rak, turun saat **dipetik**
 order dibuat · `CHECK (ready_stock BETWEEN 0 AND count)`. Opname membandingkan `count`, take membaca
 `ready_stock`. Harus per slot, bukan hanya di statement: FIFO memilih slot **saat order dibuat**, jadi slot yang isinya
 sudah terjual tidak boleh terpilih lagi. 🔄 Dulu saya tulis *"turun saat diserahkan ke ekspedisi"* — yang benar
-*dipetik*: opname menghitung rak, dan unit yang sudah dipetik tidak di rak lagi. ⚠ Sama dengan
-[inventory Q11](../inventory/context_clarify.md#question).
+*dipetik*: opname menghitung rak, dan unit yang sudah dipetik tidak di rak lagi.
 
 ### jalan-balik-masih-berlaku
 Dua keputusan lama masih berlaku dengan kosakata yang kini diputuskan —
@@ -1256,8 +1297,8 @@ Dua keputusan lama masih berlaku dengan kosakata yang kini diputuskan —
 ### sisanya-ditunda
 Jadwal opname, transfer antar gudang, nasib unit rusak, kedaluwarsa — ditunda, atau dibuang? **→ Saran: ditunda, dan ditulis begitu.**
 
-### pindah-ke-inventory
-Proposal ini pindah ke `business/inventory/`? **→ Saran: ya** ([folder-di-luar-inventory](#critique)).
+✅ *pindah-ke-inventory* dijawab 2026-10-17 — **tidak**: stock_thoni tetap di foldernya sendiri, dan di branch `thoni` folder
+`business/inventory/` diabaikan — [inventory-heri-diabaikan-di-thoni](./context_decision.md#inventory-heri-diabaikan-di-thoni).
 
 ---
 
@@ -1352,20 +1393,8 @@ menulisnya tersisa di *unik-terbaca-dua-aturan* — ✅ selesai 2026-10-03 12:45
 
 ## slot-vs-batch-dan-rak-teknis
 
-> [model.md](./model.md) — `SKU_SLOT`, **diputuskan**: [slot-lahir-saat-barang-tiba](./context_decision.md#slot-lahir-saat-barang-tiba)
-> [technical/stock/design.md](../../technical/stock/design.md) — `batches` untuk harga, `product_placements` untuk rak, terpisah
-
-Dua model stok untuk **satu service**. `technical/stock` di-commit dari mesin Heri, jadi ini perbedaan
-**antar-proposal**, dan siapa yang memutus masih terbuka di [member_clarify Q4](../project/member_clarify.md#question).
-**→ Rekomendasi:** `technical/stock` mengikuti slot. Sudah dilaporkan di
-[design_clarify](../../technical/stock/design_clarify.md#the-business-proposal-decided-one-row-per-pile).
-
-```mermaid
-flowchart LR
-  B["stock_thoni — slot, diputuskan"] --> Q{"member_clarify Q4"}
-  T["technical/stock — batch dan rak"] --> Q
-  Q -->|"stok milik Toni"| TF["technical/stock mengikuti slot"]
-```
+✅ Dilepas 2026-10-17 — pembandingnya `technical/stock`, rancangan Heri; di branch `thoni` rancangan itu tidak dipakai
+([inventory-heri-diabaikan-di-thoni](./context_decision.md#inventory-heri-diabaikan-di-thoni)).
 
 ## dua-keputusan-kehilangan-teksnya
 

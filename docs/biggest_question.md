@@ -14,7 +14,7 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**154 open questions across 40 files.** The five below are shown — #1 and #4 closed, their slots wait for a full rank; **149 are not** — they are not
+**154 open questions across 33 files.** The five below are shown — #1 and #4 closed, their slots wait for a full rank; **149 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Merged into `thoni`** (2026-10-17). This file is `backup/inventory`'s fresh recount, plus the three `business/stock_thoni/` rows
@@ -22,6 +22,14 @@ it did not carry, recounted by the rule at the foot of the table: `context_clari
 `order_creation_provide_clarify.md` **0** — 141 + 13 = **154** across **40** files. The two files both branches touched and git
 merged on its own (`order/order_return_clarify.md` 9, `technical/stock/design_clarify.md` 0) recount to the same numbers.
 ⚠ The seven were **not** re-ranked in this merge — the stock_thoni questions are counted, not yet ranked against them.
+▲ +1 the same day, testing the merge: the supplier context reads its figures from an accepted restock, and stock_thoni's approval sends nothing ([penerimaan-tidak-mengabari-supplier](business/stock_thoni/restock_flow_clarify.md#penerimaan-tidak-mengabari-supplier)) — 155. On `thoni`, Heri's `business/inventory/` is ignored at its owner's request; its rows below are all 0.
+🔄 **2026-10-17 — Heri's inventory left out on `thoni`.** The owner: *"abaikan inventory nya heri"*, as that folder's own
+context.md §General 3 asks. Its seven rows (all 0) are removed from the table, and `stock_thoni/context_clarify.md` drops to
+**12** (*pindah-ke-inventory* answered — [inventory-heri-diabaikan-di-thoni](business/stock_thoni/context_decision.md#inventory-heri-diabaikan-di-thoni))
+— **154** across **33** files. ⚠ The log lines and row #1 below that name `business/inventory/` are `backup/inventory`'s
+history, kept as merged; on this branch they are not tracked, and the seven still wait for a full re-rank.
+🔄 Later the same day the owner widened it — Heri's inventory must not influence stock_thoni even through other contexts: the reserve contradiction narrows to `qty` ([cadangan-tanpa-qty](business/stock_thoni/order_creation_provide_clarify.md#cadangan-tanpa-qty)), the supplier question keeps only the supplier's own need, and a parked item resting on Heri's design is dropped. Counts unchanged.
+🆕 Then a `RACKS` table in stock_thoni's model: no new question (the rack mechanism is unwritten, its questions parked); two small critiques on the table and one on placement, which does not yet check that a rack belongs to the transaction's warehouse. A comparison with `technical/stock` (Heri's) was withdrawn. Counts unchanged.
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
@@ -141,24 +149,21 @@ flowchart LR
 | **6** | **How is drift repaired when the LOG is right and only the FOLD was lost?** `system_adjustment` moves the log and the report together, so it repairs damage where both were wrong — and every known drift cause leaves only the report wrong | out-of-window report drift, which the replay cannot reach by decision and the adjustment cannot express — found only when a person notices | [settlement](business/settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) | **A targeted DAY RE-FOLD from the log** — re-read one scope's rows for one day and rewrite that day; it reaches any date and leaves the ledger true. ⚠ It is a second reader of the log, so decide it on its own rather than inheriting [the-replay-seeks-the-broker](business/settlement/context_decision.md#the-replay-seeks-the-broker) |
 | **7** | **Where does a returned parcel land — and does an OWN product go through the cross-product map?** [order_return.md](business/order/order_return.md) adds `product_return_maps` beside a config that already ships: `team_infos.return_warehouse_id`, written by no screen and read by no server. No order-create gate on it exists in code (re-checked 2026-10-12), so nothing live is blocked | the return context, which cannot be built from a flow that clones own products · a duplicate table in a second service | [order_return](business/order/order_return_clarify.md#question) | **No new table** — keep `team_infos.return_warehouse_id`, add a per-**shop** override, resolve it on the order form and **freeze it on the order**. **Gate the request, not the config row** |
 
-## Where the other 136 are
+## Where the other 149 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **141**, the whole set, not to 136. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **154**, the whole set, not to 149. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
 | [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 18 |  |
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 13 |  |
-| [business/stock_thoni/context_clarify.md](business/stock_thoni/context_clarify.md#question) | 13 |  |
+| [business/stock_thoni/context_clarify.md](business/stock_thoni/context_clarify.md#question) | 12 |  |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 9 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 |  |
-| [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 4 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | #7 |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | #5 |
-| [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 0 |  |
-| [business/inventory/transaction_clarify.md](business/inventory/transaction_clarify.md#question) | 0 |  |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 8 |  |
 | [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 8 | #2 (its contradiction) |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 |  |
@@ -172,18 +177,14 @@ the column sums to **141**, the whole set, not to 136. *Feeds* names the row of 
 | [technical/development/workflow_clarify.md](technical/development/workflow_clarify.md#question) | 4 |  |
 | [technical/ledger/mutation_and_ledger_clarify.md](technical/ledger/mutation_and_ledger_clarify.md#question) | 0 |  |
 | [technical/stock/design_clarify.md](technical/stock/design_clarify.md#question) | 0 |  |
-| [business/inventory/order_clarify.md](business/inventory/order_clarify.md#question) | 0 |  |
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 0 |  |
-| [business/stock_thoni/restock_flow_clarify.md](business/stock_thoni/restock_flow_clarify.md#question) | 0 |  |
+| [business/stock_thoni/restock_flow_clarify.md](business/stock_thoni/restock_flow_clarify.md#question) | 1 |  |
 | [business/stock_thoni/order_creation_provide_clarify.md](business/stock_thoni/order_creation_provide_clarify.md#question) | 0 |  |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 |  |
 | [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 |  |
-| [business/inventory/warehouse_transfer_clarify.md](business/inventory/warehouse_transfer_clarify.md#question) | 0 |  |
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 1 |  |
 | [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 1 |  |
 | [business/financial_account/context_clarify.md](business/financial_account/context_clarify.md#question) | 0 |  |
-| [business/inventory/placement_clarify.md](business/inventory/placement_clarify.md#question) | 0 |  |
-| [business/inventory/restock_clarify.md](business/inventory/restock_clarify.md#question) | 0 |  |
 | [business/settlement/analytic_context_clarify.md](business/settlement/analytic_context_clarify.md#question) | 0 |  |
 | [business/settlement/settlement_importer_clarify.md](business/settlement/settlement_importer_clarify.md#question) | 0 |  |
 | [business/user/context_clarify.md](business/user/context_clarify.md#question) | 0 |  |
@@ -192,5 +193,5 @@ the column sums to **141**, the whole set, not to 136. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **154** across **40** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **154** across **33** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

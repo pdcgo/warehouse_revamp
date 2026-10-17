@@ -145,6 +145,7 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 
 | | Problem | → Recommend |
 | --- | --- | --- |
+| **the-request-names-the-key-twice** 🆕 | *(2026-10-17, found testing the merge of `backup/inventory`)* `OrderTransactionCreateRequest` declares `string idempotency_key` twice — [order_creation.md](./order_creation.md) lines 145 and 148. A message with two fields of one name does not compile, and a reader cannot tell whether the second was meant to be a different field | delete line 148 — the key is one field |
 | **one-line-many-batches** | FIFO can draw one line from two batches at different costs, so a single `unit_cost` × `qty` only approximates `total` | `total` is authoritative; `unit_cost` is informational |
 | **the-checks-are-not-drawn** | nothing checks a present `platform_total` before stock is taken. 🔄 The duplicate ref left this list — it is the form's warning now ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused)). ✅ *(2026-10-15)* The debt threshold is drawn — [the-debt-check-runs-before-the-take](./context_decision.md#the-debt-check-runs-before-the-take) | `platform_total` present ([platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize)) — beside the debt check, before the transaction |
 | **the-draft-delete-is-outside-the-transaction** | *"Delete Draft Order"* hangs off `if success`, after the commit | delete inside the transaction — same service, same database |

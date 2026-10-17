@@ -16,6 +16,9 @@ TRANSACTIONS ||--o{ SKU_BROKEN_SLOT: ""
 SKU_SLOT ||--o{ ORDER_SLOT_MAP: ""
 ORDER_TAKES ||--o{ ORDER_SLOT_MAP: ""
 
+RACKS ||--o{ SKU_SLOT: ""
+RACKS ||--o{ SKU_BROKEN_SLOT: ""
+
 SKU_STATEMENT {
     int id pk
     int sku_id "unique bersama warehouse_id"
@@ -24,8 +27,16 @@ SKU_STATEMENT {
     int stock_ready
     int stock_lost
     int stock_broken
-    date created_at
-    date updated_at
+    timestamptz created_at
+    timestamptz updated_at
+}
+
+RACKS {
+    int id pk
+    string name
+    int warehouse_id
+    string image_url "nullable"
+    timestamptz created_at
 }
 
 TRANSACTIONS {
@@ -53,7 +64,7 @@ TRANSACTIONS {
     %% tanda dia pernah publishTopicCancelled ke msg broker
     bool publish_cancelled
 
-    date created_at
+    timestamptz created_at
 }
 
 TRANSACTION_STATUS_LOGS {
@@ -61,7 +72,7 @@ TRANSACTION_STATUS_LOGS {
     int created_by fk
     int tx_id fk
     string status
-    date created_at
+    timestamptz created_at
 }
 
 TRANSACTION_ITEMS {
@@ -89,7 +100,7 @@ SKU_SLOT {
     float unit_shipping_cost
     float unit_additional_shipping_cost
 
-    date created_at
+    timestamptz created_at
 }
 
 SKU_LOST_SLOT {
@@ -108,7 +119,7 @@ SKU_LOST_SLOT {
 
     string notes "nullable"
 
-    date created_at
+    timestamptz created_at
 }
 
 SKU_BROKEN_SLOT {
@@ -129,13 +140,13 @@ SKU_BROKEN_SLOT {
     string notes "nullable"
     string image_of_proof_url "nullable"
 
-    date created_at
+    timestamptz created_at
 }
 
 ORDER_TAKES {
     int id pk
     string take_ref "unique"
-    date created_at
+    timestamptz created_at
 }
 
 ORDER_SLOT_MAP {

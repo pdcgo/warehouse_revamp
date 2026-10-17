@@ -174,6 +174,7 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [gudang-dikirim-sebagai-scope-lalu-dicocokkan](#gudang-dikirim-sebagai-scope-lalu-dicocokkan) | kiriman tiba dan penempatan membawa `warehouse_id` scope; handler mencocokkannya dengan `transactions.warehouse_id` |
 | [paket-yang-sudah-tiba-tidak-bisa-dibatalkan](#paket-yang-sudah-tiba-tidak-bisa-dibatalkan) | restock hanya bisa dibatalkan saat `ongoing` — paket yang sudah `arrived` diselesaikan lewat penempatan |
 | [kabar-restock-ditandai-dan-dikirim-ulang](#kabar-restock-ditandai-dan-dikirim-ulang) | kabar created, cancelled dan penagihan dikirim sesudah commit, ditandai di `TRANSACTIONS`, dikirim ulang tugas berkala — cancelled menunggu created |
+| [inventory-heri-diabaikan-di-thoni](#inventory-heri-diabaikan-di-thoni) | di branch `thoni`, `business/inventory/` milik Heri tidak dibaca, dirujuk atau dibandingkan; stock_thoni tetap di foldernya sendiri |
 
 ---
 
@@ -653,8 +654,8 @@ pemilik, pecah di rak ditanggung gudang — dan keduanya kini membawa `tx_id`, j
 
 | `adjustment_id` | terjadi | yang menanggung | ke balance |
 | --- | --- | --- | --- |
-| **kosong** | saat terima — paket datang sudah rusak atau kurang | tim pemilik ([selling-team-bears-the-receiving-loss](../inventory/context_clarify.md#selling-team-bears-the-receiving-loss)) | tidak ada — kerugian pemilik sendiri, bukan utang antar-tim |
-| **terisi** | di gudang — pecah di rak, tidak ketemu saat opname | gudang ([in-custody-shortfall-is-the-warehouses](../inventory/context_clarify.md#in-custody-shortfall-is-the-warehouses)) | `broken_good` atau `lost_good` ([the-ledger-speaks-the-business-words](../balance/context_decision.md#the-ledger-speaks-the-business-words)) |
+| **kosong** | saat terima — paket datang sudah rusak atau kurang | tim pemilik  | tidak ada — kerugian pemilik sendiri, bukan utang antar-tim |
+| **terisi** | di gudang — pecah di rak, tidak ketemu saat opname | gudang  | `broken_good` atau `lost_good` ([the-ledger-speaks-the-business-words](../balance/context_decision.md#the-ledger-speaks-the-business-words)) |
 
 ```mermaid
 flowchart LR
@@ -2138,7 +2139,7 @@ flowchart LR
 ```
 
 ⚠ **Yang TIDAK ikut diputuskan:** resi dari restock yang sudah `approved` · resi dihitung per jasa kirim · database yang
-menjaga, bukan teks ([resi-dijaga-database](./restock_flow_clarify.md#resi-dijaga-database)).
+menjaga, bukan teks (*resi-dijaga-database* ✅).
 
 > ✅ **2026-10-02 14:14** — resi dari restock `approved` juga tertutup:
 > [resi-dipakai-lagi-hanya-setelah-cancelled](#resi-dipakai-lagi-hanya-setelah-cancelled).
@@ -2231,7 +2232,7 @@ flowchart LR
 ulang dengan resi yang sama — itu satu-satunya alasan sebuah resi dipakai dua kali.
 
 ⚠ **Yang TIDAK ikut diputuskan:** database yang menjaga, dan resi dihitung per jasa kirim
-([resi-dijaga-database](./restock_flow_clarify.md#resi-dijaga-database)).
+(*resi-dijaga-database* ✅).
 
 > ✅ **2026-10-02 14:43** — bacaan di atas kini tertulis persis di [restock_flow.md](./restock_flow.md) *Ketentuan
 > Transaksi Restock*: *"Resi yang sudah dipakai di transaksi dengan status `ongoing` dan `approved` tidak boleh dipakai
@@ -3043,7 +3044,7 @@ ditulis di *Validasi*, di luar transaksi DB ([ongkir-tambahan-di-luar-transaksi-
 > membaliknya, entri ini diganti nama dan semua rujukannya di-grep (RULE 12).
 >
 > ⚠ **2026-10-03 13:54 — butir itu kini DIHAPUS**, tidak lagi dikomentari. Masih belum dibaca sebagai pembalikan —
-> ditanyakan langsung ([ongoing-diperiksa-server](./restock_flow_clarify.md#ongoing-diperiksa-server)); kritiknya kini
+> ditanyakan langsung (*ongoing-diperiksa-server* ✅); kritiknya kini
 > bernama [server-tidak-memeriksa-ongoing](./restock_flow_clarify.md#critique).
 >
 > 🔄 **2026-10-03 14:05** — penerimaan kini mengunci baris `SKU_STATEMENT`, bukan `TRANSACTIONS`:
@@ -3081,7 +3082,7 @@ sequenceDiagram
 | hasilnya | transaksi tanpa log, atau kaos 10 *di jalan* tidak pernah naik | tidak ada yang tertulis — CS menekan *Simpan* lagi |
 
 ⚠ **Yang TIDAK ikut diputuskan:** dua permintaan dengan resi R1 di detik yang sama — dua transaksi DB tidak saling melihat
-sebelum commit, jadi keduanya lolos ([resi-dijaga-database](./restock_flow_clarify.md#resi-dijaga-database)).
+sebelum commit, jadi keduanya lolos (*resi-dijaga-database* ✅).
 
 > ✅ **2026-10-03 14:20** — dijawab: [kunci-statement-lalu-periksa-resi](#kunci-statement-lalu-periksa-resi) ·
 > [resi-unik-lintas-jasa-kirim](#resi-unik-lintas-jasa-kirim).
@@ -3381,7 +3382,7 @@ flowchart LR
 | tipe | `float` — tepat sampai sekitar 16,7 juta | `double` — sama dengan `shipping_fee` dan `total` |
 
 ⚠ **Yang TIDAK ikut diputuskan:** foto nota ongkir dikirim sebagai file atau link
-([foto-nota-file-atau-link](./restock_flow_clarify.md#foto-nota-file-atau-link)).
+(*foto-nota-file-atau-link* ✅).
 
 > ✅ **2026-10-03 14:39** — link: [foto-nota-dikirim-sebagai-link](#foto-nota-dikirim-sebagai-link).
 
@@ -3442,8 +3443,8 @@ flowchart LR
 | batal | 1 ke Rak A, 2 ke Rak B — rak yang sama dengan tempat diambil |
 
 ⚠ **Yang TIDAK ikut diputuskan:** `SKU_SLOT.count` beku atau sisa
-([count-slot-beku-atau-sisa](./context_clarify.md#count-slot-beku-atau-sisa)) · baris map sesudah batal — dihapus atau
-ditandai ([slot-map-saat-batal](./context_clarify.md#slot-map-saat-batal)) · ⏸ retur — kembali ke slot asal atau slot baru,
+(*count-slot-beku-atau-sisa* ✅) · baris map sesudah batal — dihapus atau
+ditandai (*slot-map-saat-batal* ✅) · ⏸ retur — kembali ke slot asal atau slot baru,
 ditanyakan saat alur retur ditulis.
 
 > ⚠ **2026-10-12 12:32** — alur take di [order_creation_provide.md](./order_creation_provide.md) belum menulis baris map ini
@@ -3747,7 +3748,7 @@ sequenceDiagram
 
 | | |
 | --- | --- |
-| yang harus dilakukan Order Service | menyimpan `transaction_id` di ordernya, dan mengirimnya di event pembatalan — ditanyakan ke penulisnya: [does-the-order-keep-the-take-id](../order/order_creation_clarify.md#does-the-order-keep-the-take-id) |
+| yang harus dilakukan Order Service | menyimpan `transaction_id` di ordernya, dan mengirimnya di event pembatalan — ditanyakan ke penulisnya: *does-the-order-keep-the-take-id* ✅ |
 
 ⚠ **Yang TIDAK ikut diputuskan:** kasus **timeout** — take sudah tercatat, tapi balasannya tidak pernah sampai, jadi
 Order Service tidak pernah tahu `transaction_id`-nya ([timeout-tanpa-rujukan](./order_creation_provide_clarify.md#critique)).
@@ -3908,6 +3909,10 @@ flowchart LR
 ([keduanya-dipakai-bagaimana](./order_creation_provide_clarify.md#critique)). Baris 66 masih menulis *"akan mengirim
 `transaction_id`"* tanpa *optional* (*batal-user-lewat-event-mana* — ✅ [dua-event-batal-satu-webhook](#dua-event-batal-satu-webhook); baris 68 tinggal di [diagram-tertinggal-dari-teks](./order_creation_provide_clarify.md#diagram-tertinggal-dari-teks)).
 
+> 🔄 **2026-10-17** — sisi order kini menyimpan `orders.transaction_id` saat create
+> ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)): Order Cancel selalu bisa
+> membawanya; hanya kompensasi yang mungkin tanpa. Putusan ini tetap — cari lewat K, `transaction_id` opsional.
+
 ---
 
 ## batal-mengunci-statement-lebih-dulu
@@ -4064,6 +4069,11 @@ pemesan belum ada di permintaan ([tim-pemesan-tidak-dikirim](./order_creation_pr
 > ✅ **2026-10-13 16:04** — tim pemesan kini di permintaan: [tim-pemesan-dikirim-di-permintaan-take](#tim-pemesan-dikirim-di-permintaan-take).
 
 > ✅ **2026-10-13 17:07** — diagram baris 31 kini hanya *"dikunci"*, sama dengan teks.
+
+> ⚠ **2026-10-17** — pemilik product, 10-15, mendefinisikan cadangan sebagai stok ≥ cadangan, **tanpa** `qty`
+> ([the-reserve-stops-other-teams-at-low-stock](../product/context_decision.md#the-reserve-stops-other-teams-at-low-stock)) — bertentangan
+(./order_creation_provide_clarify.md#cadangan-tanpa-qty). Bagian *"semua gudang"* di putusan product
+> tidak dipakai — dasarnya inventory Heri ([inventory-heri-diabaikan-di-thoni](#inventory-heri-diabaikan-di-thoni)).
 
 ---
 
@@ -5044,3 +5054,43 @@ Memperluas [kabar-penagihan-ditandai-billed](#kabar-penagihan-ditandai-billed) k
 
 ⚠ **Yang TIDAK ikut diputuskan:** **siapa** yang mendengar *created* dan *cancelled* — penandanya membuat jawaban itu tidak
 lagi menentukan desain inventory, jadi boleh menyusul.
+
+---
+
+## inventory-heri-diabaikan-di-thoni
+
+> Anda, di chat (2026-10-17): *"abaikan inventory nya heri"* — sesudah merge `backup/inventory` membawa folder
+> `business/inventory/` milik Heri ke branch `thoni`. Folder itu sendiri meminta hal yang sama (context.md §General butir 3).
+> Menjawab *pindah-ke-inventory* dan kritik *folder-di-luar-inventory* — **berlawanan** dengan saran saya (*ya, pindah*).
+
+**Putusannya.** Di branch `thoni`, `docs/business/inventory/` dianggap **tidak ada**: tidak dibaca, tidak dirujuk, tidak
+dibandingkan, tidak dijadikan dasar. stock_thoni tetap usulan sendiri, di foldernya sendiri.
+
+| | |
+| --- | --- |
+| stock_thoni | tidak merujuk `business/inventory/` — rujukan lama dilepas 10-17 |
+| uji kontradiksi | dibandingkan dengan konteks lain (order, product, supplier), CLAUDE.md dan kode bersama — **bukan** dengan rancangan Heri |
+| rollup di `thoni` | baris `business/inventory/` tidak dihitung |
+| siapa memilih antara dua rancangan | bukan di sini — [member_clarify Q4](../project/member_clarify.md#question) |
+
+```mermaid
+flowchart LR
+  T["stock_thoni — usulan Thoni"] --> B["branch thoni"]
+  H["business/inventory — usulan Heri"] -.->|"diabaikan di thoni"| B
+  T -->|"diuji terhadap"| O["order, product, supplier, CLAUDE.md, kode bersama"]
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** **kode** yang dibangun untuk rancangan Heri (`inventory_service`, event `restock-*` di
+`event.proto`) tetap ada di branch ini dan tetap bersinggungan kalau stock_thoni dibangun di repo yang sama —
+[nama-topik-bentrok](./restock_flow_clarify.md#critique).
+>
+> 🔄 **2026-10-17 (diperluas)** — Anda: *"saya thoni untuk sekarang saya fokus di inventory versi saya sendiri dan jangan
+> biarkan keputusan yang ada di inventory heri mempengaruhi keputusan saya"*. Berlaku juga **tidak langsung**: keputusan
+> konteks lain (order, product, supplier) dipakai hanya untuk bagian yang **tidak** bersandar pada inventory Heri; bagian yang
+> bersandar — ditelusuri lewat dasar dan rujukannya — diabaikan.
+>
+> | konteks | dipakai | dilepas — dasarnya inventory Heri |
+> | --- | --- | --- |
+> | product — cadangan | stok ≥ cadangan, tanpa `qty` | *"total semua gudang"*, *"dicek sebelum transaksi"* |
+> | supplier — laporan | angka restock, rusak, hilang per supplier per hari | dibaca saat *accept*, lewat `restock-accepted`, menautkan produk ke channel |
+> | order — batal | Order Cancel dan `InventoryTxCancel` lewat kunci | order kembali ke `pending` saat gudang tidak menemukan barang |

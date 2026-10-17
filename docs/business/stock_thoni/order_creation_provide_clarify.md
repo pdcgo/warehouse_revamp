@@ -5,6 +5,15 @@ Kritik dan pertanyaan untuk [order_creation_provide.md](./order_creation_provide
 [context_decision.md](./context_decision.md), sama seperti restock; pertanyaan tentang ERD tetap di
 [context_clarify.md](./context_clarify.md).
 
+> **2026-10-17 (uji sesudah merge `backup/inventory`)** — dokumen ini tidak berubah; yang berubah dokumen **order** dan
+> **product**. ⚠ Catatan 10-17 sebelumnya (*"tidak ada kontradiksi"*) **dikoreksi**: 🆕 kontradiksi
+> [cadangan-tanpa-qty](#cadangan-tanpa-qty) — product 10-15 mendefinisikan cadangan sebagai stok ≥ cadangan,
+> **tanpa** `qty`. 🔄 10-17, atas permintaan Anda: bagian *"semua gudang"* dan *"order kembali ke `pending`"* **dilepas** —
+> dasarnya inventory Heri. 🔄 Sisi order kini **menyimpan** `orders.transaction_id` —
+> [diagram-tertinggal-dari-teks](#diagram-tertinggal-dari-teks) menyempit ke kompensasi saja. Selebihnya cocok:
+> [Dampak perubahan restock](#dampak-perubahan-restock) kini juga memuat order dan product. Folder `business/inventory/` milik
+> Heri **tidak** dipakai di sini — di branch `thoni` folder itu diabaikan, atas permintaan pemiliknya.
+>
 > **2026-10-17 (dampak restock)** — dokumen ini tidak berubah sejak 10-13 17:16; yang diuji adalah perubahan besar di
 > [restock_flow.md](./restock_flow.md) 10-16 – 10-17 terhadap take dan pembatalan: [Dampak perubahan restock](#dampak-perubahan-restock).
 > **Tidak ada kontradiksi, tidak ada pertanyaan baru.** Satu dampak: *kunci sku_statement* kini didefinisikan restock sebagai
@@ -133,7 +142,7 @@ Nomor baris dokumen versi 2026-10-13 17:16.
 | --- | --- |
 | Permintaan Order Masuk (baris 38) | ✅ dari Order Service, `OrderTransactionCreateRequest` · ✅ membawa `idempotency_key` · ✅ membawa tim pemesan, `team_id` ([tim-pemesan-dikirim-di-permintaan-take](./context_decision.md#tim-pemesan-dikirim-di-permintaan-take)) |
 | Kontak Product Service (baris 52) | ✅ sebelum kotak ([product-service-dibaca-sebelum-kunci](./context_decision.md#product-service-dibaca-sebelum-kunci)) · ✅ hanya `cross_locked`, untuk tim lain — teks dan diagram baris 31 sama |
-| Kunci baris SKU_STATEMENT dan Validasi (baris 42) | ✅ kunci dulu, baru periksa ([take-kunci-statement-lalu-periksa-stok](./context_decision.md#take-kunci-statement-lalu-periksa-stok)) · ⚠ 10-17: cara menguncinya belum tertulis ([kunci-take-belum-terdefinisi](#critique)) · ✅ gudang permintaan, urut `sku_id`, `stock_ready` ≥ `qty`, semua atau tidak ([validasi-take-per-item-semua-atau-tidak](./context_decision.md#validasi-take-per-item-semua-atau-tidak)) · ✅ cadangan di sini, per gudang ([cadangan-dibandingkan-per-gudang-sesudah-kunci](./context_decision.md#cadangan-dibandingkan-per-gudang-sesudah-kunci)) |
+| Kunci baris SKU_STATEMENT dan Validasi (baris 42) | ✅ kunci dulu, baru periksa ([take-kunci-statement-lalu-periksa-stok](./context_decision.md#take-kunci-statement-lalu-periksa-stok)) · ⚠ 10-17: cara menguncinya belum tertulis ([kunci-take-belum-terdefinisi](#critique)) · ✅ gudang permintaan, urut `sku_id`, `stock_ready` ≥ `qty`, semua atau tidak ([validasi-take-per-item-semua-atau-tidak](./context_decision.md#validasi-take-per-item-semua-atau-tidak)) · ⛔ 10-17: cadangan dengan `qty` — product tanpa `qty` ([cadangan-tanpa-qty](#cadangan-tanpa-qty)) |
 | Lempar error Validasi (baris 48) | ✅ transaksi DB ditutup, tidak ada yang tertulis |
 | Pilih Slot (baris 72) | ✅ tertua dulu, di gudangnya ([slot-dipilih-tertua-dulu](./context_decision.md#slot-dipilih-tertua-dulu)) · ✅ semua slot kurang → seluruh take gagal, juga di diagram baris 29 ([slot-kurang-seluruh-take-gagal](./context_decision.md#slot-kurang-seluruh-take-gagal)) |
 | Hitung data Markup (baris 56) | ✅ sesudah slot dipilih |
@@ -161,6 +170,12 @@ Setiap perubahan [restock_flow.md](./restock_flow.md) 10-16 – 10-17, terhadap 
 | statement dikunci oleh barisnya sendiri ([statement-dikunci-oleh-barisnya-sendiri](./context_decision.md#statement-dikunci-oleh-barisnya-sendiri)) | ⚠ take memakai baris yang sama, tapi memeriksa dulu baru menulis — [kunci-take-belum-terdefinisi](#critique) |
 | scope `warehouse_id` di kiriman staff gudang ([gudang-dikirim-sebagai-scope-lalu-dicocokkan](./context_decision.md#gudang-dikirim-sebagai-scope-lalu-dicocokkan)) | ✅ tidak ada — take dipanggil Order Service, bukan staff gudang |
 | Product Service hanya ditanya pemiliknya saat restock | ✅ tidak ada — take tetap membaca markup, `cross_locked` dan `reserved_stock` ([markup-dibaca-dari-product-service-saat-take](./context_decision.md#markup-dibaca-dari-product-service-saat-take)) |
+| order: take satu transaksi inventory lintas pemilik ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)) | ✅ satu `ORDER_TAKES` per take, satu `transaction_id` |
+| order: kunci yang sudah dipakai ditolak ([the-order-refuses-a-used-key](../order/context_decision.md#the-order-refuses-a-used-key)) | ✅ `take_ref` `UNIQUE`, dan K disimpan saat batal datang lebih dulu |
+| order: `orders.transaction_id` kini disimpan saat create ([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)) | 🔄 Order Cancel **bisa** membawa id take; hanya kompensasi yang mungkin tanpa — [diagram-tertinggal-dari-teks](#diagram-tertinggal-dari-teks) menyempit |
+| order: baris response `owner_team_id` ([the-take-names-the-orderer-and-each-owner](../order/context_decision.md#the-take-names-the-orderer-and-each-owner)) | ✅ nama baru, isi sama — pemilik dari Product Service |
+| order: event kompensasi `InventoryTxCancel` membawa K ([the-compensation-event-is-inventory-tx-cancel](../order/context_decision.md#the-compensation-event-is-inventory-tx-cancel)) | ✅ webhook yang sama · ⚠ belum dibangun: `OrderCancelled` di `proto/warehouse/events/v1/event.proto` belum membawa K, dan `InventoryTxCancel` belum ada — milik sisi order (*"the key is a field the event gains"*) |
+| product: cadangan = stok ≥ cadangan, tanpa `qty` ([the-reserve-stops-other-teams-at-low-stock](../product/context_decision.md#the-reserve-stops-other-teams-at-low-stock)) | ⛔ [cadangan-tanpa-qty](#cadangan-tanpa-qty) — *"semua gudang"* tidak dipakai: dasarnya inventory Heri |
 
 **Urutan kunci — tidak ada lingkaran.** Semua langkah mengunci baris statement urut `sku_id`. Restock mengambil kunci
 advisory-nya **sebelum** statement; take dan pembatalan order tidak mengambil kunci advisory sama sekali. Penempatan menulis slot
@@ -312,7 +327,40 @@ Tidak ada pertanyaan terbuka di dokumen ini.
 
 # Contradiction
 
+## cadangan-tanpa-qty
+
+**Contohnya.** Baris 46: *"kalau tim pemesan bukan pemilik: `stock_ready` − `qty` ≥ `reserved_stock`"*, per gudang permintaan,
+sesudah kunci ([cadangan-dibandingkan-per-gudang-sesudah-kunci](./context_decision.md#cadangan-dibandingkan-per-gudang-sesudah-kunci), 10-13).
+Pemilik product, 10-15 ([the-reserve-stops-other-teams-at-low-stock](../product/context_decision.md#the-reserve-stops-other-teams-at-low-stock)):
+*"simple stock >= reserve"* — *"the quantity wanted — not counted"*. Arti `reserved_stock` milik product.
+
+🔄 10-17, atas permintaan Anda: putusan product juga menyebut *"total semua gudang"* dan *"dicek sebelum transaksi"* — dua
+bagian itu bersandar pada inventory Heri, jadi **tidak** dipakai di sini. Gudang dan kuncinya tetap putusan Anda.
+
+Cadangan kaos tim 2 = 10. Tim 5 meminjam 3 dari gudang 3, yang punya 12:
+
+| | hitungan | hasil |
+| --- | --- | --- |
+| product | 12 ≥ 10 | boleh — sisa 9 |
+| baris 46 | 12 − 3 = 9 < 10 | ditolak |
+
+**→ Rekomendasi: ikuti product untuk `qty`** — baris 46 → *"kalau tim pemesan bukan pemilik: `stock_ready` ≥ `reserved_stock`"*,
+tetap per gudang permintaan dan tetap sesudah kunci. Kalau Anda ingin tetap dengan `qty`, itu permintaan ke pemilik
+product, karena artinya cadangan berubah — bukan perubahan di sini.
+
+```mermaid
+flowchart LR
+  P["product 10-15 — stok lebih dari atau sama dengan cadangan, tanpa qty"] --> R["arti reserved_stock"]
+  S["baris 46 — stock_ready dikurangi qty, 10-13"] -.->|"bertentangan"| R
+  R -.->|"usulan"| N["baris 46 — stock_ready gudang ini, tanpa qty"]
+```
+
 ## diagram-tertinggal-dari-teks
+
+🔄 **2026-10-17 — menyempit.** Sisi order kini menyimpan `orders.transaction_id` saat create
+([an-order-is-one-inventory-transaction](../order/context_decision.md#an-order-is-one-inventory-transaction)): order hanya ada kalau take
+menjawab, jadi **Order Cancel** selalu bisa membawa id itu. Yang tetap tanpa id hanya **kompensasi** `InventoryTxCancel` —
+create yang gagal karena timeout. Kalimat baris 70 kini salah hanya untuk kompensasi.
 
 *Dulu `diagram-dan-teks-beda-soal-cadangan`; 15:52 digabung dengan sisa `batal-user-lewat-event-mana`. 17:07 dan 17:16:
 diperbaiki di baris 29, 31, 86 dan 94.*
