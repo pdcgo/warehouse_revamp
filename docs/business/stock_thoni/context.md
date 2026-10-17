@@ -51,7 +51,7 @@ setiap SKU membawa data:
 Berikut alur `restock`: [Lihat](./restock_flow.md)
 
 Notes:
-1 `transaction` hanya boleh melewati status `ongoing`, `cancelled`, dan `approved` secara urut, tidak boleh status log nya double, misal jika sudah `approved` dia sudah tidak bisa di apa-apakan. transaction yang sudah diterima tidak bisa di cancel. `cancelled` juga termasuk final status, artinya `cancelled` tidak bisa jadi `approved`.
+1 `transaction` hanya boleh melewati status `ongoing`, `cancelled`, `arrived`, dan `approved` secara urut, tidak boleh status log nya double, misal jika sudah `approved` dia sudah tidak bisa di apa-apakan. transaction yang sudah diterima tidak bisa di cancel. `cancelled` juga termasuk final status, artinya `cancelled` tidak bisa jadi `approved`.
 
 ### Penyediaan data OrderCreation
 

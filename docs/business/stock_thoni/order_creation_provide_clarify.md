@@ -5,6 +5,12 @@ Kritik dan pertanyaan untuk [order_creation_provide.md](./order_creation_provide
 [context_decision.md](./context_decision.md), sama seperti restock; pertanyaan tentang ERD tetap di
 [context_clarify.md](./context_clarify.md).
 
+> **2026-10-17 (dampak restock)** — dokumen ini tidak berubah sejak 10-13 17:16; yang diuji adalah perubahan besar di
+> [restock_flow.md](./restock_flow.md) 10-16 – 10-17 terhadap take dan pembatalan: [Dampak perubahan restock](#dampak-perubahan-restock).
+> **Tidak ada kontradiksi, tidak ada pertanyaan baru.** Satu dampak: *kunci sku_statement* kini didefinisikan restock sebagai
+> *"perintah tulis itu sendiri"* — cukup untuk restock yang hanya menambah, **tidak** cukup untuk take yang memeriksa dulu
+> baru menulis: 🆕 [kunci-take-belum-terdefinisi](#critique).
+>
 > **2026-10-13 17:16** — baris 32 dan 82: take dengan `take_ref` yang sudah ada **gagal seluruhnya**; kotak baris 106 kini
 > `take_ref = idempotency_key`; kotak baris 94 dan kalimat baris 86 kini menyebut **kedua** event. ✅ Catatan di
 > [batal-tanpa-take-menyimpan-k](./context_decision.md#batal-tanpa-take-menyimpan-k) dan [dua-event-batal-satu-webhook](./context_decision.md#dua-event-batal-satu-webhook).
@@ -127,7 +133,7 @@ Nomor baris dokumen versi 2026-10-13 17:16.
 | --- | --- |
 | Permintaan Order Masuk (baris 38) | ✅ dari Order Service, `OrderTransactionCreateRequest` · ✅ membawa `idempotency_key` · ✅ membawa tim pemesan, `team_id` ([tim-pemesan-dikirim-di-permintaan-take](./context_decision.md#tim-pemesan-dikirim-di-permintaan-take)) |
 | Kontak Product Service (baris 52) | ✅ sebelum kotak ([product-service-dibaca-sebelum-kunci](./context_decision.md#product-service-dibaca-sebelum-kunci)) · ✅ hanya `cross_locked`, untuk tim lain — teks dan diagram baris 31 sama |
-| Kunci baris SKU_STATEMENT dan Validasi (baris 42) | ✅ kunci dulu, baru periksa ([take-kunci-statement-lalu-periksa-stok](./context_decision.md#take-kunci-statement-lalu-periksa-stok)) · ✅ gudang permintaan, urut `sku_id`, `stock_ready` ≥ `qty`, semua atau tidak ([validasi-take-per-item-semua-atau-tidak](./context_decision.md#validasi-take-per-item-semua-atau-tidak)) · ✅ cadangan di sini, per gudang ([cadangan-dibandingkan-per-gudang-sesudah-kunci](./context_decision.md#cadangan-dibandingkan-per-gudang-sesudah-kunci)) |
+| Kunci baris SKU_STATEMENT dan Validasi (baris 42) | ✅ kunci dulu, baru periksa ([take-kunci-statement-lalu-periksa-stok](./context_decision.md#take-kunci-statement-lalu-periksa-stok)) · ⚠ 10-17: cara menguncinya belum tertulis ([kunci-take-belum-terdefinisi](#critique)) · ✅ gudang permintaan, urut `sku_id`, `stock_ready` ≥ `qty`, semua atau tidak ([validasi-take-per-item-semua-atau-tidak](./context_decision.md#validasi-take-per-item-semua-atau-tidak)) · ✅ cadangan di sini, per gudang ([cadangan-dibandingkan-per-gudang-sesudah-kunci](./context_decision.md#cadangan-dibandingkan-per-gudang-sesudah-kunci)) |
 | Lempar error Validasi (baris 48) | ✅ transaksi DB ditutup, tidak ada yang tertulis |
 | Pilih Slot (baris 72) | ✅ tertua dulu, di gudangnya ([slot-dipilih-tertua-dulu](./context_decision.md#slot-dipilih-tertua-dulu)) · ✅ semua slot kurang → seluruh take gagal, juga di diagram baris 29 ([slot-kurang-seluruh-take-gagal](./context_decision.md#slot-kurang-seluruh-take-gagal)) |
 | Hitung data Markup (baris 56) | ✅ sesudah slot dipilih |
@@ -143,12 +149,40 @@ Nomor baris dokumen versi 2026-10-13 17:16.
 | Kembalikan ke slot asal (baris 129) | ✅ dari `slot_id` di map · ✅ statement dikunci lebih dulu — judul kotak baris 100 ([batal-mengunci-statement-lebih-dulu](./context_decision.md#batal-mengunci-statement-lebih-dulu)) · ✅ ditandai `released` ([map-diubah-jadi-released](./context_decision.md#map-diubah-jadi-released)) · ✅ kiriman kedua tidak mengembalikan apa pun |
 | Perbarui Statement SKU (baris 133) | ✅ `stock_ready` dikembalikan, di transaksi yang sama ([batal-mengembalikan-slot-dan-stock-ready](./context_decision.md#batal-mengembalikan-slot-dan-stock-ready)) |
 
+## Dampak perubahan restock
+
+Setiap perubahan [restock_flow.md](./restock_flow.md) 10-16 – 10-17, terhadap take dan pembatalan order:
+
+| perubahan di restock | dampak ke dokumen ini |
+| --- | --- |
+| status `arrived` — tiba dulu, baru ditempatkan ([paket-tiba-ditandai-sebelum-penempatan](./context_decision.md#paket-tiba-ditandai-sebelum-penempatan)) | ✅ tidak ada — take hanya membaca `stock_ready`, dan kaos yang tiba tapi belum di rak tetap di `stock_ongoing`: tidak bisa dijual sebelum ada di rak |
+| statement tidak berubah saat tiba ([statement-tidak-berubah-saat-tiba](./context_decision.md#statement-tidak-berubah-saat-tiba)) | ✅ tidak ada — `stock_ready` naik hanya saat penempatan, bersama slot barunya, di satu transaksi |
+| *kunci tx* untuk ganti status ([ganti-status-dikunci-per-transaksi](./context_decision.md#ganti-status-dikunci-per-transaksi)) | ✅ tidak ada — take tidak pernah mengambil kunci itu |
+| statement dikunci oleh barisnya sendiri ([statement-dikunci-oleh-barisnya-sendiri](./context_decision.md#statement-dikunci-oleh-barisnya-sendiri)) | ⚠ take memakai baris yang sama, tapi memeriksa dulu baru menulis — [kunci-take-belum-terdefinisi](#critique) |
+| scope `warehouse_id` di kiriman staff gudang ([gudang-dikirim-sebagai-scope-lalu-dicocokkan](./context_decision.md#gudang-dikirim-sebagai-scope-lalu-dicocokkan)) | ✅ tidak ada — take dipanggil Order Service, bukan staff gudang |
+| Product Service hanya ditanya pemiliknya saat restock | ✅ tidak ada — take tetap membaca markup, `cross_locked` dan `reserved_stock` ([markup-dibaca-dari-product-service-saat-take](./context_decision.md#markup-dibaca-dari-product-service-saat-take)) |
+
+**Urutan kunci — tidak ada lingkaran.** Semua langkah mengunci baris statement urut `sku_id`. Restock mengambil kunci
+advisory-nya **sebelum** statement; take dan pembatalan order tidak mengambil kunci advisory sama sekali. Penempatan menulis slot
+sebelum statement, take sebaliknya — aman karena slot penempatan selalu **baris baru**
+([slot-lahir-saat-barang-tiba](./context_decision.md#slot-lahir-saat-barang-tiba)), yang belum terlihat oleh take mana pun.
+
+```mermaid
+flowchart LR
+  R["restock dibuat"] --> KR["kunci resi"] --> S
+  P["tiba, penempatan, batal restock"] --> KT["kunci tx"] --> S
+  T["take order"] --> S["baris SKU_STATEMENT — urut sku_id"]
+  C["batal order"] --> S
+  S --> SL["SKU_SLOT — baris lama diubah take dan batal order, baris baru dibuat penempatan"]
+```
+
 ## Critique
 
 Diurutkan dari yang paling berbahaya.
 
 | | Masalah | → Rekomendasi |
 | --- | --- | --- |
+| **kunci-take-belum-terdefinisi** 🆕 | Baris 44: *"Kunci `SKU_STATEMENT` setiap item … urut `sku_id`. Lalu per item: `stock_ready ≥ qty`"* — **cara** menguncinya tidak ditulis. Sejak 10-17 restock mendefinisikan *kunci sku_statement* sebagai perintah tulis itu sendiri, tanpa advisory lock ([statement-dikunci-oleh-barisnya-sendiri](./context_decision.md#statement-dikunci-oleh-barisnya-sendiri)). Untuk restock itu cukup — restock hanya **menambah**. Take **memeriksa dulu**, baru menulis di akhir (baris 64). Kalau programmer membaca definisi restock: dua CS menjual 3 kaos terakhir di detik yang sama, keduanya membaca `stock_ready` 3 ≥ 3 — lolos — dan baru terkunci saat `UPDATE` di akhir: `stock_ready` −3, enam kaos terjual dari tiga. | Satu kalimat di baris 44: *"kunci dengan `select … from sku_statement where warehouse_id = $gudang and sku_id in (…) order by sku_id for update` — baris yang sama yang dikunci restock, tanpa advisory lock; baru sesudahnya validasi."* Pemeriksaan dan penulisan lalu terjadi di bawah kunci yang sama. |
 | **simpan-k-belum-dirinci** | ⚠ ✅ 17:16: take yang telat kini gagal (baris 32, 82), dan kotak memakai `idempotency_key`. Tinggal **simpan K yang bentrok**: detik 5,1 webhook mencari K-77 — tidak ada; di milidetik yang sama take K-77 commit; simpan K-77 lalu ditolak `UNIQUE`. Kalau itu dibalas sukses, 3 kaos tertahan, 51 → 48. Jarang — hanya di milidetik yang sama — tapi akibatnya sama dengan ⛔ yang baru ditutup. | Satu Referensi Proses untuk kotak baris 106: *"**Simpan ORDER_TAKES tanpa slot** — buat `ORDER_TAKES` dengan `take_ref` = `idempotency_key`, tanpa baris map. Kalau ditolak `UNIQUE` — take-nya baru saja commit — ulangi dari *Mencari di ORDER SLOT MAP*."* |
 | **keduanya-dipakai-bagaimana** | ⚠ 12:42, baris 122: *"Cari `transaction_id` (optional) **atau** `idempotency_key` terkait, di table `ORDER_SLOT_MAP`"* — jadi *salah satu*. Dua hal: K tidak ada di `ORDER_SLOT_MAP`, ia di `ORDER_TAKES.take_ref`. Dan dengan *atau*, jalan lewat K hanya berjalan saat id kosong — saat timeout, kasus paling jarang — sehingga rusaknya baru ketahuan saat flash sale. Kalau id yang dikirim salah (bug di sisi order), take tim lain yang dilepas. | Cari lewat K, **selalu** — kalau *take-tidak-ketemu-tidak-disimpan* (✅ [batal-tanpa-take-menyimpan-k](./context_decision.md#batal-tanpa-take-menyimpan-k)) diputuskan *disimpan*, setiap event memang mulai dari K. `transaction_id`, kalau ada, harus sama dengan id take itu; beda → tolak, tidak ada yang dilepas. *Dipindah dari sisi order, 10-12 17:22.* |
 | **dua-nama-untuk-satu-kunci** | 🆕 16:38: kunci yang sama bernama `idempotency_key` di permintaan dan di `orders`, dan `take_ref` di `ORDER_TAKES`. Baris 78 menghubungkannya — tapi programmer yang mencari `idempotency_key` di inventory, misalnya saat menulis penerima `InventoryTxCancel`, tidak menemukan apa-apa. | Namai kolomnya `idempotency_key` juga. Kalau tetap `take_ref`, biarkan kalimat baris 78 — itu satu-satunya jembatannya. |

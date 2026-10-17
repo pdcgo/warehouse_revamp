@@ -8,6 +8,75 @@ Tetangga: [order_creation](../order/order_creation_clarify.md) · [order_return]
 [inventory (Heri)](../inventory/context_clarify.md) · [product](../product/context_clarify.md) ·
 [technical/stock](../../technical/stock/design_clarify.md).
 
+> **2026-10-17** — model.md baris 20: `"unique bersama warehouse_id"` — ✅ [unik-per-kolom-kembali](#unik-per-kolom-kembali) selesai.
+> Kontradiksi lain di dokumen ini tidak tersentuh putaran ini.
+>
+> **2026-10-16 (alur lama dihapus)** — restock_flow.md kini hanya Flow Baru: ✅ pointer
+> *status-arrived-belum-ikut-di-pemeriksaan* selesai seluruhnya (situs terakhirnya di teks lama). Tetap:
+> [unik-per-kolom-kembali](#unik-per-kolom-kembali) — rujukan alurnya kini baris 13.
+>
+> **2026-10-16 (Mark Placement)** — context.md baris 54 kini memuat `arrived`: ✅ situs terakhir
+> [status-arrived-belum-ikut-di-pemeriksaan](#status-arrived-belum-ikut-di-pemeriksaan) di dokumen ini selesai. Tetap:
+> [unik-per-kolom-kembali](#unik-per-kolom-kembali).
+>
+> **2026-10-16 (rencana penggantian)** — model.md baris 45 kini `int payment_id`: ✅
+> [cara-bayar-dirujuk-lewat-payment-id](./context_decision.md#cara-bayar-dirujuk-lewat-payment-id) —
+> [payment-id-belum-di-model](#payment-id-belum-di-model) selesai. Tetap: [unik-per-kolom-kembali](#unik-per-kolom-kembali) ·
+> context.md baris 54 ([status-arrived-belum-ikut-di-pemeriksaan](#status-arrived-belum-ikut-di-pemeriksaan)). Uji penggantian
+> alur restock: *uji-penggantian* ✅ (alur lama dihapus 10-16).
+>
+> **2026-10-16 (poin 1, selesai)** — pemilik item kini dibaca dari Product Service: ✅
+> [pemilik-item-dibaca-dari-product-service](./context_decision.md#pemilik-item-dibaca-dari-product-service). 🆕 kontradiksi
+> [payment-id-belum-di-model](#payment-id-belum-di-model) — kiriman kini `uint64 payment_id`, model.md baris 45 masih
+> `string payment_method`. Tetap: [unik-per-kolom-kembali](#unik-per-kolom-kembali).
+>
+> **2026-10-16 (uji ulang)** — model.md baris 21–22: `SKU_STATEMENT.sku_id "unique"` dan `warehouse_id "unique"` — tanda
+> per kolom **kembali**, `fk` dihapus. ⛔ 🆕 kontradiksi [unik-per-kolom-kembali](#unik-per-kolom-kembali). `fk` yang hilang
+> sejalan dengan [inventory-hanya-merujuk-sku](./context_decision.md#inventory-hanya-merujuk-sku) — SKU dan gudang milik
+> service lain. Alurnya diuji di [restock_flow_clarify](./restock_flow_clarify.md).
+>
+> **2026-10-16** — model.md: enum status kini `ongoing | arrived | approved | cancelled` (baris 157), dan
+> `TRANSACTIONS.billed` (baris 46). ✅ Dicatat: [paket-tiba-ditandai-sebelum-penempatan](./context_decision.md#paket-tiba-ditandai-sebelum-penempatan) ·
+> [kabar-penagihan-ditandai-billed](./context_decision.md#kabar-penagihan-ditandai-billed). Alurnya diuji di
+> [restock_flow_clarify](./restock_flow_clarify.md). Di dokumen ini tersisa satu situs:
+> [status-arrived-belum-ikut-di-pemeriksaan](#status-arrived-belum-ikut-di-pemeriksaan) — context.md baris 54. ✅ Diuji
+> ulang: [relasi-masih-orders](#relasi-masih-orders) selesai — model.md baris 17 kini `ORDER_TAKES`.
+>
+> **2026-10-14 (lanjutan 5)** — Anda: *"masalah barang rusak atau hilang, itu mekanismenya sama dengan restock … cukup
+> tempatkan dia di slot rusak atau hilang. Itu sudah cukup."* ✅ Dicatat: [retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama) — slot lama untuk unit baik, ⚠ melawan
+> rekomendasi saya. Selesai: *retur-ke-slot-asal-atau-slot-baru*. 🆕 tinggal aturannya:
+> [aturan-slot-lama-untuk-retur](#aturan-slot-lama-untuk-retur).
+>
+> **2026-10-14 (lanjutan 4)** — Anda: *"mekanisme retur dia sama dengan restock"* dan *"return juga bisa diterima sebagian …
+> untuk sementara ini, kondisinya bisa hilang atau rusak saja"*. ✅ Dicatat: [retur-berjalan-seperti-restock](./context_decision.md#retur-berjalan-seperti-restock) — selesai: kontradiksi
+> *retur-dibuat-saat-klaim-atau-saat-diterima* · [retur-diterima-baik-rusak-hilang](./context_decision.md#retur-diterima-baik-rusak-hilang). ⏸ keadaan lain ditunda.
+> Lalu: *"saya akan menggunakan slot baru"* — dan beberapa menit kemudian dibalik: *"Retur tetap di tempatkan di slot lama.
+> Dikarenakan retur tidak mempunyai supplier ID"*. Belum saya catat sebagai keputusan, karena alasannya juga mengenai slot
+> lama — saya jawab di *retur-ke-slot-asal-atau-slot-baru* (✅ [retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama)).
+>
+> **2026-10-14 (lanjutan 3)** — Anda: *"Kenapa harus ditempatkan di slot baru? apa tidak pakai slot lama saja."* Saya
+> menjawab di *retur-ke-slot-asal-atau-slot-baru* (✅ [retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama)): slot lama **bisa**, tapi hanya
+> kalau empat syarat terpenuhi — dan saya bertanya apa yang ingin Anda jaga dengannya.
+>
+> **2026-10-14 (lanjutan 2)** — Anda: *"dari order service dia membawa data apa saja … saya membutuhkan idempotensi key untuk
+> mengidentifikasi slot mana yang digunakan untuk order tersebut"*. ✅ K memang satu-satunya jembatan — `ORDER_TAKES` tidak
+> menyimpan id order. ⏸ yang ditunda sejak 10-12 kini dibuka:
+> *retur-ke-slot-asal-atau-slot-baru* (✅ [retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama)). 🆕 usulan isi panggilan Order Service:
+> [Kontrak retur — usulan](#kontrak-retur--usulan).
+>
+> **2026-10-14 (lanjutan)** — Anda: *"Apakah bisa dikerjakan tanpa menunggu?"* lalu *"saya harus mulai dari mana?"* — ⏸ dibuka
+> lagi: alur retur sisi inventory tidak perlu menunggu order service, cukup kontraknya disepakati dengan teman Anda.
+> 🔄 **Saran saya berubah dari A ke B.** Membandingkan dengan [restock_flow.md](./restock_flow.md): penerimaan — rak, rusak,
+> hilang — terjadi di halaman **inventory**, dan layar order tidak tahu rak. Alasannya dan kerangka alurnya:
+> *retur-dibuat-saat-klaim-atau-saat-diterima* (✅ [retur-berjalan-seperti-restock](./context_decision.md#retur-berjalan-seperti-restock)).
+>
+> **2026-10-14** — Anda, di chat, sebelum menulis alur retur: *"dari mana return berasal? apakah dari order service?"*
+> Jawabannya ada di dokumen Anda sendiri — ya, Order Service ([order_return.md](../order/order_return.md) §Order Return
+> Flow: *"Call Inventory Service to Create Return Transaction"*). Tapi **kapan** dipanggil bertentangan dengan catatan
+> lama di sisi stok: 🆕 kontradiksi *retur-dibuat-saat-klaim-atau-saat-diterima* (✅ [retur-berjalan-seperti-restock](./context_decision.md#retur-berjalan-seperti-restock)).
+> ⏸ Ditunda atas permintaan Anda: *"order service sedang dikerjakan oleh developer yang lain, saya akan menunggu sampai
+> teman saya menyelesaikan order service"* — dicabut di hari yang sama (lihat di atas).
+>
 > **2026-10-13 12:51** — ✅ ⏸ dari uji kelimapuluh satu terjawab: baris map yang sama diubah —
 > [map-diubah-jadi-released](./context_decision.md#map-diubah-jadi-released).
 >
@@ -907,6 +976,89 @@ sequenceDiagram
 
 ---
 
+### Alur retur — usulan
+
+Diputuskan [retur-berjalan-seperti-restock](./context_decision.md#retur-berjalan-seperti-restock). Kerangkanya:
+
+Alur retur bisa dimulai dengan menyalin [restock_flow.md](./restock_flow.md) — hampir setiap kotak tetap, beberapa diganti:
+
+| restock | retur | yang berubah |
+| --- | --- | --- |
+| Transaksi Restock Dibuat | **Transaksi Return Dibuat** | dibuat **Order Service** saat klaim atau *force* — `ref_order_id`, tim, gudang retur tim, baris order sebagai produk tim sendiri, qty seluruh order |
+| Validasi Awal | Validasi Awal | `ref_order_id` belum punya retur yang masih berjalan |
+| Pencatatan Awal | Pencatatan Awal | `TRANSACTIONS` `type` `return`, `ongoing` · statement `stock_ongoing` + qty |
+| Menunggu Paket Datang | Menunggu Paket Datang | dari pembeli, bukan dari supplier |
+| Staff Gudang Mengisi Placement | sama | dicari lewat resi retur, atau nomor order |
+| Check Approver Access | sama | anggota gudang retur |
+| Validasi Penerimaan Placement | sama | baik, rusak, hilang |
+| Kalkulasi Server | Kalkulasi Server | `unit_price` = COGS dari order 78 ([retur-merujuk-order-lewat-ref-order-id](./context_decision.md#retur-merujuk-order-lewat-ref-order-id)) — sumbernya Anda tentukan |
+| Pencatatan Penerimaan | sama | |
+| Kirim Kabar Penagihan | **Kabari Order Service** | order → `return_completed` |
+| Pencatatan Pembatalan | sama | klaim dibatalkan, atau paket hilang |
+
+```mermaid
+flowchart TB
+    subgraph "DB Transaction"
+        create["Transaksi Return Dibuat — dari Order Service saat klaim"]
+        validate[Validasi Awal]
+        insert1[Pencatatan Awal]
+    end
+    waiting{Menunggu Paket Datang}
+    acc1[Staff Gudang Mengisi Placement]
+    checkAccess[Check Approver Access]
+    subgraph "DB Transaction "
+        acc2[Validasi Penerimaan Placement]
+        acc3[Kalkulasi Server]
+        acc4[Pencatatan Penerimaan]
+    end
+    subgraph "DB Transaction  "
+        cancel1[Pencatatan Pembatalan]
+    end
+    notify["Kabari Order Service — return_completed"]
+    finish[Proses selesai]
+    create --> validate --> insert1 --> waiting
+    waiting --Paket Tiba Gudang--> acc1 --> checkAccess --> acc2 --> acc3 --> acc4 --> notify --> finish
+    waiting --Klaim Dibatalkan atau Paket Hilang--> cancel1 --> finish
+```
+
+### Kontrak retur — usulan
+
+Apa yang Order Service kirim ke inventory — semuanya sudah ada di sisi order, dan setiap field berasal dari keputusan yang
+ada. Order 77 di atas:
+
+| field | isi untuk order 77 | dari | inventory memakainya untuk |
+| --- | --- | --- | --- |
+| `idempotency_key` | K-77 | `orders.idempotency_key` | menemukan take-nya: `ORDER_TAKES.take_ref` → `ORDER_SLOT_MAP` — permintaan Anda |
+| `ref_order_id` | 77 | id order | `TRANSACTIONS.ref_order_id`, `UNIQUE` untuk `return` — order 77 tidak masuk dua kali ([ref-order-id-belum-unik](#critique)) |
+| `team_id` | 5 | tim penjual order itu | `TRANSACTIONS.team_id` — pemilik barang sesudah retur |
+| `warehouse_id` | 4 | gudang retur tim, dibaca saat retur ([the-return-warehouse-is-read-when-the-return-happens](../order/context_decision.md#the-return-warehouse-is-read-when-the-return-happens)) | tempat slot baru lahir |
+| `receipt_number` | resi paket retur, kalau sudah ada | klaim | petugas mencari paket lewat resi — diterima seperti restock — [retur-berjalan-seperti-restock](./context_decision.md#retur-berjalan-seperti-restock) |
+| per baris `product_id` | kaos tim 2 | produk yang dulu diambil | dicocokkan dengan baris map dari K-77 |
+| per baris `return_product_id` | kaos tim 5 (clone) | sama dengan `product_id` untuk produk sendiri; dari `product_return_maps` untuk silang | SKU slot baru |
+| per baris `qty` | 3 | qty baris order — retur selalu utuh ([a-return-is-never-partial](../order/context_decision.md#a-return-is-never-partial)) | dicocokkan dengan jumlah di map: 1 + 2 |
+| per baris `total` | 41.520 | `total` baris order | harga slot baru: 41.520 ÷ 3 = 13.840 |
+
+```proto
+message ReturnTransactionCreateRequest {
+    string                  idempotency_key   // K order itu — menemukan take-nya
+    uint64                  ref_order_id      // UNIQUE untuk type return
+    uint64                  team_id           // tim yang meretur
+    uint64                  warehouse_id      // gudang retur tim, dibaca saat retur
+    optional string         receipt_number    // resi paket retur
+    repeated ReturnItem     items
+}
+
+message ReturnItem {
+    uint64 product_id           // produk yang dulu diambil — sama dengan di take
+    uint64 return_product_id    // produk yang diterima — clone untuk produk silang
+    uint32 qty                  // seluruh qty baris
+    double total                // total baris order — harga = total / qty
+}
+```
+
+Inventory memeriksanya lewat K: `product_id` dan `qty` harus sama dengan yang diambil take K-77 — beda → tolak, karena
+Order Service dan inventory tidak sepakat tentang apa yang dulu terjual.
+
 ## Critique
 
 | | Masalah | → Rekomendasi |
@@ -968,8 +1120,10 @@ itu bohong.
 > ✅ Dijawab dan dihapus (2026-10-12): *take-dicatat-di-mana* —
 > [take-dicatat-per-slot-di-order-slot-map](./context_decision.md#take-dicatat-per-slot-di-order-slot-map).
 >
-> ⏸ **Ditunda sampai alur retur ditulis — tidak dihitung:** barang retur kembali ke **slot asalnya** (dibaca dari
-> `ORDER_SLOT_MAP`), atau lahir sebagai **slot baru** lewat `TRANSACTIONS` `type` `return`?
+> 🔄 **Dibuka 2026-10-14** — ditunda sejak 10-12 sampai alur retur ditulis; kini pertanyaan:
+> *retur-ke-slot-asal-atau-slot-baru* (✅ [retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama)).
+>
+> ⏸ **Ditunda atas permintaan Anda (2026-10-14) — tidak dihitung:** keadaan retur selain hilang dan rusak.
 >
 > ✅ Dijawab dan dihapus (2026-10-03 12:25): *tim-di-kunci-statement* —
 > [statement-tanpa-kolom-tim](./context_decision.md#statement-tanpa-kolom-tim). Kunci kembali `(sku_id, warehouse_id)`.
@@ -994,6 +1148,24 @@ itu bohong.
 >
 > ➡ Dipindah ke clarify kasus pertama, karena kasus itulah yang menjawabnya: *harga-diisi-di-item* →
 > [harga-disimpan-di-item](./context_decision.md#supplier-dan-total-disimpan-di-item) — kini diputuskan.
+
+> ✅ Dijawab dan dihapus (2026-10-14): *retur-ke-slot-asal-atau-slot-baru* — slot lama untuk unit baik, rusak dan hilang ke slot
+> rusak dan hilang: [retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama). ⚠ Melawan rekomendasi saya (slot baru, supplier disalin lewat K).
+
+### aturan-slot-lama-untuk-retur
+[retur-baik-kembali-ke-slot-lama](./context_decision.md#retur-baik-kembali-ke-slot-lama) butuh tiga aturan yang belum ada. Masing-masing satu kalimat, dan semuanya memakai K:
+
+| kasusnya | contoh | → Saran |
+| --- | --- | --- |
+| **slot asal tidak ada di gudang retur** | order 77: kaos tim 2 kembali sebagai kaos tim 5, ke gudang 4 ([a-return-may-land-in-another-warehouse](../order/context_decision.md#a-return-may-land-in-another-warehouse)). Slot 1 dan 2 ada di gudang 3, milik tim 2 — tidak ada slot lama yang bisa ditambah. Sama untuk produk sendiri kalau gudang retur tim beda dengan gudang pengirim | slot **baru** di gudang retur, `supplier_id` disalin dari slot asal lewat K |
+| **`supplier_id` baris rusak dan hilang** | order 78: 1 kaos robek masuk `SKU_BROKEN_SLOT` baru — kolom `supplier_id`-nya wajib ([model.md](./model.md)). Restock mengambilnya dari item; retur tidak punya | salin dari slot asal lewat K — slot 2, CV Maju |
+| **satu baris dulu diambil dari dua slot** | 3 kaos dari slot 1 (1, Januari) dan slot 2 (2, Maret); kembali 2 baik + 1 robek. Slot mana yang bertambah? | isi kembali dari slot **tertua** dulu, paling banyak sejumlah yang dulu diambil darinya: slot 1 + 1, slot 2 + 1. Yang robek ikut supplier slot berikutnya di map |
+
+Satu akibat untuk layar penerimaan: slot punya **satu rak** ([slot-lahir-saat-barang-tiba](./context_decision.md#slot-lahir-saat-barang-tiba)),
+jadi unit baik harus ditaruh di **rak slot asalnya** — layar menampilkan rak itu, petugas tidak memilih. Ditaruh di rak lain, dan
+pemetik mencari di tempat yang salah.
+
+**→ Saran:** ketiga baris di atas, sebagai satu kalimat di langkah *Pencatatan Penerimaan* alur retur Anda.
 
 ### rekonsiliasi-dihitung-dari-apa
 Baris 152 menyebut *kalkulasi ulang*, tapi tidak dari apa. Tiap kolom butuh sumbernya sendiri:
@@ -1116,22 +1288,27 @@ flowchart LR
   R -->|"kunci baris statement dulu"| OK["take antre, hitungannya tepat"]
 ```
 
+## payment-id-belum-di-model
+
+✅ Selesai 2026-10-16 — model.md baris 45 kini `int payment_id`:
+[cara-bayar-dirujuk-lewat-payment-id](./context_decision.md#cara-bayar-dirujuk-lewat-payment-id). Tinggal satu catatan kecil di
+sana: rujukannya belum ditulis.
+
+## unik-per-kolom-kembali
+
+✅ Selesai 2026-10-17 — model.md baris 20 kini `int sku_id "unique bersama warehouse_id"`, `warehouse_id` tanpa tanda: satu
+aturan atas pasangan, sama dengan catatan baris 151. Kini juga syarat
+[statement-dikunci-oleh-barisnya-sendiri](./context_decision.md#statement-dikunci-oleh-barisnya-sendiri) — `on conflict (sku_id,
+warehouse_id)` butuh satu indeks unik atas pasangan itu.
+
+## status-arrived-belum-ikut-di-pemeriksaan
+
+✅ Selesai 2026-10-16 — situs terakhirnya ada di teks lama restock_flow.md, yang kini dihapus. Kedua situs di dokumen ini
+(model.md baris 157, context.md baris 54) sudah selesai sebelumnya.
+
 ## relasi-masih-orders
 
-**Contohnya.** [model.md](./model.md) baris 17: `ORDERS ||--o{ ORDER_SLOT_MAP: ""` — sedangkan kotak tabelnya kini
-`ORDER_TAKES` (baris 125), dan `ORDER_SLOT_MAP.order_id` *"ref to ORDER_TAKES"*. Mermaid tidak menolak nama yang tidak
-ada: ia menggambar kotak `ORDERS` kosong yang tersambung ke map, dan `ORDER_TAKES` melayang tanpa garis. Yang benar
-kotaknya — namanya baru diganti 13:36, garisnya tidak ikut.
-
-**→ Rekomendasi:** baris 17 → `ORDER_TAKES ||--|{ ORDER_SLOT_MAP: "satu baris per slot"`. Supaya tidak terulang: setelah
-mengganti nama tabel, cari nama lamanya di garis relasi juga.
-
-```mermaid
-flowchart LR
-  r["13:36 — ORDERS diganti ORDER_TAKES"] --> a["kotak tabel — ORDER_TAKES"]
-  r --> b["komentar ORDER_SLOT_MAP — ORDER_TAKES"]
-  r -.->|"tidak ikut"| c["garis relasi baris 17 — ORDERS"]
-```
+✅ Selesai — diuji ulang 2026-10-16: model.md baris 17 kini `ORDER_TAKES ||--o{ ORDER_SLOT_MAP`.
 
 ✅ Selesai dan dihapus (2026-09-30 15:30): *teks-tertinggal-dari-model* — supplier dan harga kini disimpan saat restock
 dibuat, seperti tertulis di [context.md](./context.md) baris 37–38 (kini 41–43).
@@ -1235,3 +1412,4 @@ flowchart LR
 ✅ Selesai dan dihapus (2026-10-02 14:36): *hilang-kini-punya-kolom-rak* — `rack_id` anomali boleh kosong lagi, sejalan
 dengan kiriman alur; hilang boleh di rak tempat ia hilang, atau tanpa rak kalau hilang di jalan. Yang tersisa — rusak
 wajib punya rak — di *rak-rusak-dijaga-database* (selesai 14:46).
+

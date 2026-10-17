@@ -18,8 +18,8 @@ ORDER_TAKES ||--o{ ORDER_SLOT_MAP: ""
 
 SKU_STATEMENT {
     int id pk
-    int sku_id fk
-    int warehouse_id fk
+    int sku_id "unique bersama warehouse_id"
+    int warehouse_id
     int stock_ongoing
     int stock_ready
     int stock_lost
@@ -42,7 +42,17 @@ TRANSACTIONS {
     string additional_shipping_proof_url  "foto nota kurir, nullable"
     string order_id "nullable"
     string notes "nullable"
-    string payment_method
+    int payment_id
+
+    %% tanda dia pernah publishTopicBilled ke msg broker
+    bool publish_billed
+
+    %% tanda dia pernah publishTopicCreated ke msg broker
+    bool publish_created
+
+    %% tanda dia pernah publishTopicCancelled ke msg broker
+    bool publish_cancelled
+
     date created_at
 }
 
@@ -150,6 +160,10 @@ SKU_SLOT akan dibuat ketika barang sampai di gudang.
 Table ini `UNIQUE (sku_id, warehouse_id)`, jika kombinasi keduanya belum ada maka buat baru, jika sudah ada maka tambahkan nilai nya.
 baris statement selalu ditulis urut `sku_id`.
 Table ini bersifat statement artinya dia bertujuan agar kita gampang menyimpulkan kondisi suatu SKU, dia bisa saja miss dalam perhitungan saat proses `restock`, `order`, ataupun `order`, maka dari itu saya berencana mentrigger kalkulasi ulang setiap tengah malam untuk merekonsiliasi statement, bisa juga ada fungsi untuk "force reconcile" yang bisa di tekan user untuk memicu reconcile, tapi saya ingin ketika force reconcile di tekan saat jam kerja berikan user warning.
+
+### TRANSACTION_STATUS_LOGS
+
+status berupa enum `ongoing | arrived | approved | cancelled`
 
 ---
 

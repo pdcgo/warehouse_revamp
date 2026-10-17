@@ -77,7 +77,7 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [ongkir-tambahan-dicatat-lalu-dikabarkan](#ongkir-tambahan-dicatat-lalu-dikabarkan) | alur lengkapnya: petugas mengirim ongkir tambahan **dan** fotonya, disimpan, dibagi per unit, lalu dikabarkan sesudah semua tulis selesai |
 | [kabar-membawa-tx-tim-jumlah-dan-foto](#kabar-membawa-tx-tim-jumlah-dan-foto) | kabar ke penagihan membawa transaksi, gudang, tim, CS, jumlah ongkir tambahan dan fotonya |
 | [penerimaan-boleh-dipecah-ke-beberapa-rak](#penerimaan-boleh-dipecah-ke-beberapa-rak) | petugas boleh membagi satu item ke beberapa rak saat menerima — satu slot per rak, harganya sama |
-| [approved-sekali-dan-final](#approved-sekali-dan-final) | status berjalan `ongoing` lalu `approved`, masing-masing sekali — sesudah `approved`, transaksinya tidak berubah lagi |
+| [approved-sekali-dan-final](#approved-sekali-dan-final) | status berjalan `ongoing` lalu `approved`, masing-masing sekali — sesudah `approved`, transaksinya tidak berubah lagi · ⚠ 10-16 kini lewat `arrived` |
 | [tim-pemilik-dikirim-saat-restock-dibuat](#tim-pemilik-dikirim-saat-restock-dibuat) | CS mengirim satu `team_id` untuk seluruh restock, saat membuatnya — 🔄 **dibalik 18:04**: [tim-dibaca-dari-keanggotaan-cs](#tim-dibaca-dari-keanggotaan-cs) |
 | [diterima-tidak-bisa-dibatalkan](#diterima-tidak-bisa-dibatalkan) | status batal ada — `cancel` — dan transaksi yang sudah `approved` tidak bisa dibatalkan |
 | [cancelled-juga-final](#cancelled-juga-final) | batal bernama `cancelled`, dan final — tidak bisa jadi `approved` |
@@ -92,7 +92,7 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [restock-boleh-diterima-sebagian](#restock-boleh-diterima-sebagian) | penerimaan boleh kurang dari yang dikirim — rusak di jalan, hilang di jalan |
 | [satu-resi-satu-restock-berjalan](#satu-resi-satu-restock-berjalan) | resi yang sedang dipakai restock `ongoing` tidak boleh dipakai restock lain |
 | [foto-nota-ongkir-tambahan-opsional](#foto-nota-ongkir-tambahan-opsional) | ongkir tambahan boleh dicatat tanpa foto nota — `CHECK` dihapus · ⚠ melawan saran saya, membalik [foto-nota-wajib-kalau-ada-ongkir-tambahan](#foto-nota-wajib-kalau-ada-ongkir-tambahan) |
-| [tim-sku-dari-kiriman-untuk-sementara](#tim-sku-dari-kiriman-untuk-sementara) | untuk sementara tim pemilik SKU dibaca dari kiriman; kelak dari Product Service · ⚠ melawan saran saya |
+| [tim-sku-dari-kiriman-untuk-sementara](#tim-sku-dari-kiriman-untuk-sementara) | untuk sementara tim pemilik SKU dibaca dari kiriman; kelak dari Product Service · ⚠ melawan saran saya · 🔄 10-16 *kelak* tiba: [pemilik-item-dibaca-dari-product-service](#pemilik-item-dibaca-dari-product-service) |
 | [resi-dipakai-lagi-hanya-setelah-cancelled](#resi-dipakai-lagi-hanya-setelah-cancelled) | resi bebas untuk restock baru hanya kalau restock lamanya `cancelled` |
 | [tim-pemilik-ikut-di-item-dan-slot](#tim-pemilik-ikut-di-item-dan-slot) | `team_id` juga disimpan di item, slot, dan baris rusak atau hilang |
 | [rusak-dan-hilang-dikirim-bersama-penempatan](#rusak-dan-hilang-dikirim-bersama-penempatan) | saat menerima, staff mengirim satu daftar: tiap baris penempatan di rak, **atau** unit rusak atau hilang |
@@ -125,8 +125,8 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [paket-tiba-setelah-batal-dibuat-restock-baru](#paket-tiba-setelah-batal-dibuat-restock-baru) | paket yang tiba setelah batal diterima lewat restock baru dengan resi yang sama |
 | [service-lain-di-luar-transaksi-db](#service-lain-di-luar-transaksi-db) | cek staff ke User/Team Service sebelum transaksi DB, kabar ke penagihan sesudah commit |
 | [penerimaan-mengunci-statement-lebih-dulu](#penerimaan-mengunci-statement-lebih-dulu) | penerimaan mengunci baris statement SKU-nya lebih dulu — dua penerimaan tx yang sama antre |
-| [kunci-statement-lalu-periksa-ongoing](#kunci-statement-lalu-periksa-ongoing) | penerimaan dan pembatalan mengunci baris statement, lalu memeriksa masih `ongoing` — yang kedua ditolak |
-| [kunci-statement-lalu-periksa-resi](#kunci-statement-lalu-periksa-resi) | restock dibuat: kunci baris statement, lalu periksa resi — dua *Simpan* kembar antre, yang kedua ditolak |
+| [kunci-statement-lalu-periksa-ongoing](#kunci-statement-lalu-periksa-ongoing) | penerimaan dan pembatalan mengunci baris statement, lalu memeriksa masih `ongoing` — yang kedua ditolak · ⚠ 10-16 tiba memakai *kunci tx*; penempatan dan pembatalan harus menyusul — [ganti-status-dikunci-per-transaksi](#ganti-status-dikunci-per-transaksi) |
+| [kunci-statement-lalu-periksa-resi](#kunci-statement-lalu-periksa-resi) | restock dibuat: kunci baris statement, lalu periksa resi — dua *Simpan* kembar antre, yang kedua ditolak · 🔄 10-16 bagian resi digantikan: [resi-dikunci-dengan-advisory-lock](#resi-dikunci-dengan-advisory-lock) |
 | [resi-unik-lintas-jasa-kirim](#resi-unik-lintas-jasa-kirim) | resi dari jasa kirim berbeda tidak pernah sama — resi saja menunjuk satu paket |
 | [nilai-ongkir-tambahan-bertipe-double](#nilai-ongkir-tambahan-bertipe-double) | ongkir tambahan dikirim sebagai `additional_shipping_fee.value`, `double` |
 | [foto-nota-dikirim-sebagai-link](#foto-nota-dikirim-sebagai-link) | foto nota ongkir dikirim sebagai link yang sudah diunggah, sama dengan foto barang rusak |
@@ -154,6 +154,26 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [dua-event-batal-satu-webhook](#dua-event-batal-satu-webhook) | *Order Cancel* (user batal) dan *InventoryTxCancel* (create gagal) masuk webhook inventory yang sama — satu jalan pelepasan |
 | [tim-pemesan-dikirim-di-permintaan-take](#tim-pemesan-dikirim-di-permintaan-take) | permintaan take membawa `team_id` tim pemesan; inventory membandingkannya dengan pemilik, per item — sendiri atau silang |
 | [batal-tanpa-take-menyimpan-k](#batal-tanpa-take-menyimpan-k) | event batal yang tidak menemukan take menyimpan `ORDER_TAKES` dengan `take_ref` K, tanpa slot — take yang datang belakangan ditolak `UNIQUE` |
+| [retur-berjalan-seperti-restock](#retur-berjalan-seperti-restock) | retur memakai alur restock, `type` `return` — dibuat Order Service saat klaim, diterima di halaman inventory, lalu Order Service dikabari |
+| [retur-diterima-baik-rusak-hilang](#retur-diterima-baik-rusak-hilang) | retur bisa diterima sebagian — tiap unit baik, rusak atau hilang, jumlahnya sama dengan qty yang diretur; keadaan lain ditunda |
+| [retur-baik-kembali-ke-slot-lama](#retur-baik-kembali-ke-slot-lama) | unit retur yang baik kembali ke slot yang dulu diambil take, lewat K; rusak dan hilang ke slot rusak dan hilang — ⚠ melawan rekomendasi |
+| [paket-tiba-ditandai-sebelum-penempatan](#paket-tiba-ditandai-sebelum-penempatan) | status `arrived` — paket di gudang, belum di rak; wajib sebelum penempatan, PIC dicek dan dicatat |
+| [resi-dibandingkan-tanpa-beda-huruf](#resi-dibandingkan-tanpa-beda-huruf) | `jn7827` dan `JN7827` resi yang sama |
+| [restock-membaca-product-service-sebelum-kunci](#restock-membaca-product-service-sebelum-kunci) | restock dibuat: data produk dibaca dari Product Service sebelum kunci · ✅ 10-16 pemilik item kini juga dari Product Service |
+| [kabar-penagihan-ditandai-billed](#kabar-penagihan-ditandai-billed) | `TRANSACTIONS.billed` mencatat apakah ongkir tambahan sudah dikabarkan ke penagihan |
+| [resi-dikunci-dengan-advisory-lock](#resi-dikunci-dengan-advisory-lock) | restock dibuat: *kunci resi* — `pg_advisory_xact_lock` pada `'resi:' \|\| lower(resi)` — lalu periksa resi · 🔄 menggantikan bagian resi dari [kunci-statement-lalu-periksa-resi](#kunci-statement-lalu-periksa-resi) · ✅ 10-16 lepas lewat commit atau rollback |
+| [pemilik-item-dibaca-dari-product-service](#pemilik-item-dibaca-dari-product-service) | pemilik setiap item dibaca dari Product Service dan dibandingkan dengan `team_id` restock — `Sku.team_id` keluar dari kiriman |
+| [cara-bayar-dirujuk-lewat-payment-id](#cara-bayar-dirujuk-lewat-payment-id) | cara bayar restock disimpan sebagai `payment_id`, bukan teks |
+| [pic-dicek-saat-tiba-dan-saat-penempatan](#pic-dicek-saat-tiba-dan-saat-penempatan) | staff gudang dicek sebagai anggota gudang tujuan dua kali — saat menandai tiba, dan sebelum penempatan ditulis |
+| [resi-dicek-ke-semua-transaksinya](#resi-dicek-ke-semua-transaksinya) | resi bebas hanya kalau **setiap** transaksi dengan resi itu berstatus terakhir `cancelled` |
+| [ongkir-tambahan-diisi-dan-dikabarkan-saat-tiba](#ongkir-tambahan-diisi-dan-dikabarkan-saat-tiba) | ongkir tambahan dikirim bersama konfirmasi tiba, dan penagihan dikabari lewat message broker saat itu — tidak menunggu penempatan |
+| [tiba-dan-penempatan-dua-rpc](#tiba-dan-penempatan-dua-rpc) | tiba dan penempatan adalah dua RPC — penempatan dan *diterima gudang* satu permintaan, tidak dicicil |
+| [statement-tidak-berubah-saat-tiba](#statement-tidak-berubah-saat-tiba) | saat paket tiba, `SKU_STATEMENT` tidak berubah — `stock_ongoing` turun sekali, saat penempatan, sebanyak dikirim |
+| [ganti-status-dikunci-per-transaksi](#ganti-status-dikunci-per-transaksi) | perubahan status satu restock antre di *kunci tx* — `pg_advisory_xact_lock` pada id transaksinya; statement hanya dikunci oleh langkah yang mengubah angkanya |
+| [statement-dikunci-oleh-barisnya-sendiri](#statement-dikunci-oleh-barisnya-sendiri) | `SKU_STATEMENT` tanpa advisory lock — baris uniknya yang dikunci: satu perintah per SKU, urut `sku_id`, dihitung di SQL |
+| [gudang-dikirim-sebagai-scope-lalu-dicocokkan](#gudang-dikirim-sebagai-scope-lalu-dicocokkan) | kiriman tiba dan penempatan membawa `warehouse_id` scope; handler mencocokkannya dengan `transactions.warehouse_id` |
+| [paket-yang-sudah-tiba-tidak-bisa-dibatalkan](#paket-yang-sudah-tiba-tidak-bisa-dibatalkan) | restock hanya bisa dibatalkan saat `ongoing` — paket yang sudah `arrived` diselesaikan lewat penempatan |
+| [kabar-restock-ditandai-dan-dikirim-ulang](#kabar-restock-ditandai-dan-dikirim-ulang) | kabar created, cancelled dan penagihan dikirim sesudah commit, ditandai di `TRANSACTIONS`, dikirim ulang tugas berkala — cancelled menunggu created |
 
 ---
 
@@ -401,6 +421,9 @@ mana take dicatat masih terbuka di clarify.
 
 ⚠ **Yang TIDAK ikut diputuskan:** tidak ada status batal, dan tidak ada yang menjaga `ongoing → arrived` dari
 ditekan dua kali — keduanya di clarify.
+
+> ✅ **2026-10-14** — baris `return` di tabel ini dikonfirmasi: dibuat saat klaim, diterima belakangan —
+> [retur-berjalan-seperti-restock](#retur-berjalan-seperti-restock).
 
 ---
 
@@ -1727,6 +1750,9 @@ mendaftar kasus *Restock dibatalkan*, tapi aturan ini hanya punya dua status
 > ✅ **2026-09-30 17:44** — status batal ditambahkan, dan yang sudah diterima tidak bisa dibatalkan:
 > [diterima-tidak-bisa-dibatalkan](#diterima-tidak-bisa-dibatalkan).
 
+> ⚠ **2026-10-16** — diperluas: `ongoing` → `arrived` → `approved`, masing-masing tetap sekali —
+> [paket-tiba-ditandai-sebelum-penempatan](#paket-tiba-ditandai-sebelum-penempatan).
+
 ---
 
 ## tim-pemilik-dikirim-saat-restock-dibuat
@@ -2169,6 +2195,13 @@ flowchart LR
 ⚠ **Yang perlu diingat sampai *kelak* tiba:** layar yang salah — atau siapa pun yang memanggil API langsung — bisa
 memasukkan SKU tim lain dengan menulis `team_id` yang sama. [sku-tim-lain-ditolak-saat-dibuat](#sku-tim-lain-ditolak-saat-dibuat)
 hanya sekuat layarnya.
+
+> 🔄 **2026-10-16** — *kelak* tiba: [restock-membaca-product-service-sebelum-kunci](#restock-membaca-product-service-sebelum-kunci).
+>
+> ⚠ **2026-10-16 (poin 1)** — belum sepenuhnya: Product Service kini dibaca, tapi baris 341 masih mencocokkan `Item.Sku.team_id`
+> dari kiriman. Ditanyakan: *pemilik-item-dari-kiriman-atau-product-service* (✅ [pemilik-item-dibaca-dari-product-service](#pemilik-item-dibaca-dari-product-service)).
+>
+> ✅ **2026-10-16 (poin 1, selesai)** — kini sepenuhnya: [pemilik-item-dibaca-dari-product-service](#pemilik-item-dibaca-dari-product-service).
 
 ---
 
@@ -2619,6 +2652,14 @@ tiba sesudah batal ([paket-tiba-setelah-batal](./restock_flow_clarify.md#questio
 > ✅ **2026-10-02 16:02** — statement kini diperbarui saat batal:
 > [statement-diperbarui-di-setiap-langkah](#statement-diperbarui-di-setiap-langkah).
 
+> ⚠ **2026-10-17** — *Catat Pembatalan* ditulis ([restock_flow.md](./restock_flow.md) baris 357–363). *"Selama masih `ongoing`"*
+> kini juga menolak paket yang sudah `arrived`: [paket-yang-sudah-tiba-tidak-bisa-dibatalkan](#paket-yang-sudah-tiba-tidak-bisa-dibatalkan).
+> Baris 359 *"hanya oleh pembuat restock"* bisa dibaca bertentangan dengan putusan ini
+> (*pembatal-orangnya-atau-timnya* ✅).
+>
+> ✅ **2026-10-17 (dibetulkan)** — baris 359: *"hanya oleh CS atau admin tim restock (`transactions.team_id`), bukan staff
+> gudang"* — **timnya**, bukan orangnya. Putusan ini tetap; dicek lewat `team_id` scope lalu `trx.team_id` (baris 362–366, 389).
+
 ---
 
 ## penempatan-menunjuk-item-id
@@ -2685,6 +2726,11 @@ akhir ([terima-dua-kali](./restock_flow_clarify.md#critique)) · statement sebag
 > validasi sampai pencatatan: [transaksi-db-penerimaan-mulai-dari-validasi](#transaksi-db-penerimaan-mulai-dari-validasi).
 > Putusan ini tetap berlaku di dalamnya.
 
+> 🔄 **2026-10-16 (alur lama dihapus)** — butir (5) pindah ke langkah tiba
+> ([ongkir-tambahan-diisi-dan-dikabarkan-saat-tiba](#ongkir-tambahan-diisi-dan-dikabarkan-saat-tiba)); penempatan kini tidak
+> mengirim kabar apa pun. Butir (1)–(4) tetap — *Tandai Di terima Gudang*, [restock_flow.md](./restock_flow.md) baris 312–328,
+> di dalam *kunci tx* lalu periksa `arrived` ([ganti-status-dikunci-per-transaksi](#ganti-status-dikunci-per-transaksi)).
+
 ---
 
 ## statement-diperbarui-di-setiap-langkah
@@ -2747,6 +2793,9 @@ flowchart LR
 ⚠ **Yang TIDAK ikut diputuskan:** server menolak penerimaan dari staff gudang lain — `tx_id` hanya angka, dan bisa
 dikirim tanpa lewat halaman — serta slot dan statement memakai gudang **transaksi**
 ([penerima-belum-dicek](./restock_flow_clarify.md#critique)).
+
+> ⚠ **2026-10-16 (alur lama dihapus)** — kalimat halaman gudang dan cari lewat resi tidak ikut ke Flow Baru. Putusannya
+> tetap; sampai ditulis lagi, ia hanya ada di sini (*halaman-gudang-hilang-dari-alur* (dilepas 10-17)).
 
 ---
 
@@ -3112,6 +3161,11 @@ sequenceDiagram
 > ✅ **2026-10-03 14:20** — kini kotaknya sendiri di diagram, dan kunci serta periksa `ongoing` tertulis
 > ([kunci-statement-lalu-periksa-ongoing](#kunci-statement-lalu-periksa-ongoing)).
 
+> ⚠ **2026-10-16 (alur lama dihapus)** — teks *Pencatatan Pembatalan* ikut terhapus; Flow Baru baru punya node
+> `createTrxCancel`. Putusan ini, [pembatalan-oleh-cs-atau-admin](#pembatalan-oleh-cs-atau-admin) dan
+> [paket-tiba-setelah-batal-dibuat-restock-baru](#paket-tiba-setelah-batal-dibuat-restock-baru) tetap — kuncinya kini *kunci tx*
+> ([ganti-status-dikunci-per-transaksi](#ganti-status-dikunci-per-transaksi)), bukan statement.
+
 ---
 
 ## paket-tiba-setelah-batal-dibuat-restock-baru
@@ -3274,6 +3328,14 @@ sequenceDiagram
 
 > ✅ **2026-10-03 14:27** — kunci baris `TRANSACTIONS` dan pemeriksaan resi kedua di *Validasi Awal* dan *Pencatatan Awal*
 > dihapus; resi kini hanya diperiksa di sini. Tidak ada kunci tabel di pembuatan restock.
+
+> ⛔ **2026-10-16** — baris 86 kini *"Kunci baris `TRANSACTIONS` dengan `receipt` terkait"*, tanpa statement: resi yang baru
+> pertama dipakai tidak punya baris untuk dikunci. Kontradiksi
+> *kunci-resi-kembali-ke-baris-transaksi* — putusan ini tetap sampai dijawab.
+
+> 🔄 **2026-10-16 (uji ulang)** — dijawab: resi kini dikunci dengan *kunci resi* (Flow Baru baris 229, 343) —
+> [resi-dikunci-dengan-advisory-lock](#resi-dikunci-dengan-advisory-lock). Bagian resi entri ini digantikan; kunci statement
+> tetap dipakai untuk menambah `stock_ongoing`.
 
 ---
 
@@ -3446,6 +3508,11 @@ sequenceDiagram
 ⚠ **Yang TIDAK ikut diputuskan:** Product Service dipanggil di dalam kunci
 ([product-service-di-dalam-kunci](./order_creation_provide_clarify.md#critique)) · angka yang diperiksa
 ([validasi-belum-menyebut-angka](./order_creation_provide_clarify.md#critique)).
+
+> ⚠ **2026-10-17** — *"pola yang sama dengan restock"* tidak lagi berlaku: restock kini mengunci ganti status dengan *kunci tx*, dan
+> statement oleh perintah tulisnya sendiri ([statement-dikunci-oleh-barisnya-sendiri](#statement-dikunci-oleh-barisnya-sendiri)).
+> Putusan ini tetap — take mengunci baris statement **sebelum** memeriksa — tapi caranya belum tertulis
+> ([kunci-take-belum-terdefinisi](./order_creation_provide_clarify.md#critique)).
 
 > ✅ **2026-10-13 13:03** — angka yang diperiksa kini tertulis: [validasi-take-per-item-semua-atau-tidak](#validasi-take-per-item-semua-atau-tidak).
 
@@ -4168,3 +4235,812 @@ belum tertulis, kotak memakai contoh *K-77* sebagai nama, dan belum ada Referens
 > ✅ **2026-10-13 17:16** — baris 32 dan 82: take dengan `take_ref` yang sudah ada **gagal seluruhnya**, lempar error;
 > kotak baris 106 kini `take_ref = idempotency_key`. Tinggal: simpan K yang bentrok
 > ([simpan-k-belum-dirinci](./order_creation_provide_clarify.md#critique)).
+
+---
+
+## retur-berjalan-seperti-restock
+
+> Anda, di chat (2026-10-14): *"mekanisme retur dia sama dengan restock. Yang membedakan adalah tipenya retur."* Menutup
+> kontradiksi *retur-dibuat-saat-klaim-atau-saat-diterima* dengan pilihan **B**, sesuai rekomendasi — yang hari itu juga
+> berubah dari A ke B, karena penerimaan (rak, rusak, hilang) ada di halaman inventory. Saya membacanya: transaksi retur
+> dibuat saat klaim, menunggu paket, diterima seperti restock, lalu Order Service dikabari. Kalau maksud Anda lain, katakan.
+
+**Putusannya.** Retur memakai alur [restock_flow.md](./restock_flow.md) dengan `type` `return`. Yang berbeda hanya tiga kotak:
+
+| restock | retur |
+| --- | --- |
+| Transaksi Restock Dibuat — oleh CS atau Admin tim | **Transaksi Return Dibuat** — oleh **Order Service**, saat CS mengklaim atau gudang *force* |
+| Kalkulasi Server — `unit_price` = `total ÷ count` | harga dari order yang diretur ([retur-merujuk-order-lewat-ref-order-id](#retur-merujuk-order-lewat-ref-order-id)) |
+| Kirim Kabar Penagihan | **Kabari Order Service** — order menjadi `return_completed` |
+
+```mermaid
+sequenceDiagram
+  participant CS as CS
+  participant O as Order Service
+  participant I as Inventory Service
+  participant G as petugas gudang
+  CS->>O: Senin — klaim retur order 78
+  O->>I: buat transaksi return — ref_order_id 78
+  I->>I: TRANSACTIONS return ongoing, stock_ongoing bertambah
+  G->>I: Rabu — paket tiba, isi placement, baik rusak hilang
+  I->>I: Pencatatan Penerimaan — satu transaksi DB
+  I->>O: kabari — order 78 diterima
+  O->>O: order 78 return_completed
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** barang baik masuk slot lama atau slot baru
+(*retur-ke-slot-asal-atau-slot-baru* (✅ [retur-baik-kembali-ke-slot-lama](#retur-baik-kembali-ke-slot-lama))) · urutan ini mengubah
+[order_return.md](../order/order_return.md) — panggilan ke inventory pindah ke saat klaim — jadi perlu disepakati dengan
+developer order service.
+
+---
+
+## retur-diterima-baik-rusak-hilang
+
+> Anda, di chat (2026-10-14): *"return juga bisa diterima sebagian. return bisa hilang di pengiriman bisa rusak dan keadaan
+> lainnya. Tapi untuk sementara ini, kondisinya bisa hilang atau rusak saja."* Sejalan dengan saran lama
+> *retur-utuh-penerimaannya-tidak*: order diretur utuh, penerimaan mencatat apa yang benar-benar datang.
+
+**Putusannya.** Seperti restock ([rusak-dan-hilang-dikirim-bersama-penempatan](#rusak-dan-hilang-dikirim-bersama-penempatan) ·
+[jumlah-dicocokkan-per-item](#jumlah-dicocokkan-per-item)): petugas mengirim tiap unit sebagai **baik** (dengan raknya),
+**rusak** atau **hilang**, dan jumlahnya harus sama dengan qty yang diretur. Order-nya tetap diretur **utuh**
+([a-return-is-never-partial](../order/context_decision.md#a-return-is-never-partial)) — dua lapis, keduanya benar.
+
+```mermaid
+flowchart LR
+  P["paket order 77 tiba — 3 kaos"] --> B["1 baik — Rak C"]
+  P --> K["1 robek — rak rusak"]
+  P --> H["1 hilang"]
+  B --> C{"1 + 1 + 1 = 3?"}
+  K --> C
+  H --> C
+  C -->|"ya"| OK["Pencatatan Penerimaan"]
+  C -->|"tidak"| X["tolak"]
+```
+
+| statement gudang retur | sebelum | sesudah |
+| --- | ---: | ---: |
+| `stock_ongoing` | 3 | 0 |
+| `stock_ready` | — | + 1 |
+| `stock_broken` | — | + 1 |
+| `stock_lost` | — | + 1 |
+
+⏸ **Ditunda atas permintaan Anda:** keadaan lain selain hilang dan rusak.
+⚠ **Yang TIDAK ikut diputuskan:** dari mana `supplier_id` baris rusak dan hilang
+(*retur-ke-slot-asal-atau-slot-baru* (✅ [retur-baik-kembali-ke-slot-lama](#retur-baik-kembali-ke-slot-lama))).
+
+> ✅ **2026-10-14** — Anda: *"jika menemukan barang rusak atau hilang, saat retur, cukup tempatkan dia di slot rusak atau
+> hilang"* — sama dengan restock. Barang baik: [retur-baik-kembali-ke-slot-lama](#retur-baik-kembali-ke-slot-lama).
+
+---
+
+## retur-baik-kembali-ke-slot-lama
+
+> Anda, di chat (2026-10-14): *"Retur tetap di tempatkan di slot lama. Dikarenakan retur tidak mempunyai supplier ID"* · lalu
+> *"masalah barang rusak atau hilang, itu mekanismenya sama dengan restock … cukup tempatkan dia di slot rusak atau hilang.
+> Itu sudah cukup."* Menjawab *retur-ke-slot-asal-atau-slot-baru* — ⚠ **melawan rekomendasi saya** (slot baru, `supplier_id`
+> disalin dari slot asal lewat K). Alasan Anda: slot lama sudah membawa suppliernya, jadi retur tidak perlu menyebut supplier.
+
+**Putusannya.** Unit retur yang **baik** kembali ke **slot asalnya** — slot yang dulu diambil take order itu, ditemukan lewat K:
+`ORDER_TAKES.take_ref` → `ORDER_SLOT_MAP` → `slot_id` — dan `count` slot itu bertambah. Unit **rusak** masuk
+`SKU_BROKEN_SLOT` baru, unit **hilang** `SKU_LOST_SLOT` baru, seperti restock
+([retur-diterima-baik-rusak-hilang](#retur-diterima-baik-rusak-hilang)).
+
+```mermaid
+flowchart LR
+  K["K-78 — take order 78"] --> M["ORDER_SLOT_MAP — slot 2, 2 kaos"]
+  P["paket order 78 tiba"] --> G["1 baik"]
+  P --> B["1 robek"]
+  G -->|"count slot 2 bertambah 1"| S2["slot 2 — gudang 3, Rak A"]
+  M --> S2
+  B --> BS["SKU_BROKEN_SLOT baru"]
+```
+
+| order 78 — 2 kaos tim 5, dulu diambil dari slot 2 | sebelum | sesudah |
+| --- | ---: | ---: |
+| slot 2 `count` | 48 | 49 |
+| `SKU_BROKEN_SLOT` | — | 1 baris, 1 kaos |
+| statement gudang 3 `stock_ongoing` · `stock_ready` · `stock_broken` | 2 · 48 · 0 | 0 · 49 · 1 |
+
+⚠ **Yang TIDAK ikut diputuskan** — aturannya belum ada, ditanyakan di
+[aturan-slot-lama-untuk-retur](./context_clarify.md#aturan-slot-lama-untuk-retur): slot asal tidak ada di gudang retur ·
+`supplier_id` baris rusak dan hilang · baris yang dulu diambil dari dua slot.
+
+---
+
+## paket-tiba-ditandai-sebelum-penempatan
+
+> [restock_flow.md](./restock_flow.md) (2026-10-15 – 10-16) baris 107 — *"Staff gudang menandai paket mana yang sudah tiba di
+> gudang mereka tidak harus melakukan penempatan, di sisi server transaksi terkait cukup ditandai sebagai `arrived` jangan
+> lupa isi PIC nya."* · kedua diagram: tiba → cek PIC → `arrived` → penempatan (baris 43, 275–277) ·
+> [model.md](./model.md) baris 157 — *"`ongoing | arrived | approved | cancelled`"*. Usulan Anda; *wajib* sesuai rekomendasi.
+
+**Putusannya.** Restock punya status di antara dibuat dan diterima: **`arrived`** — paket sudah di gudang, belum di rak.
+Setiap paket **wajib** ditandai tiba sebelum ditempatkan. Yang menandai (PIC) dicek sebagai anggota gudang tujuan, dan
+dicatat di `TRANSACTION_STATUS_LOGS.created_by`. Slot tetap lahir di `approved`, saat ditempatkan.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> ongoing : CS atau admin membuat restock
+  ongoing --> arrived : PIC gudang menandai paket tiba
+  arrived --> approved : staff gudang menempatkan
+  ongoing --> cancelled : CS atau admin membatalkan
+  approved --> [*]
+  cancelled --> [*]
+```
+
+| status | artinya | stok |
+| --- | --- | --- |
+| `ongoing` | di jalan | `stock_ongoing` |
+| `arrived` | di gudang, belum di rak | `stock_ongoing` — bacaan saya, belum tertulis |
+| `approved` | di rak | `stock_ready`, `stock_broken`, `stock_lost` |
+| `cancelled` | batal | — |
+
+> ⚠ **2026-10-16 (step tiba, uji ulang)** — baris 414 kini menurunkan `stock_ongoing` saat tiba, *"sejumlah yang tiba"* — melawan
+> bacaan di tabel ini dan [ongoing-turun-sebanyak-dikirim](#ongoing-turun-sebanyak-dikirim). Kontradiksi
+> *ongoing-turun-saat-tiba-sejumlah-yang-tiba*; ditanyakan di *unit-yang-sudah-tiba-dicatat-di-mana*.
+>
+> ✅ **2026-10-16 (A)** — butir decrement dihapus: [statement-tidak-berubah-saat-tiba](#statement-tidak-berubah-saat-tiba). Bacaan di
+> tabel ini kini putusan.
+
+**Kenapa ini benar dari gudang:** kurir menyerahkan paket di pintu, dan menghitung serta menaruh isinya di rak bisa
+berhari-hari kemudian, oleh orang lain (baris 109). Dua kejadian, dua status — dan daftar *sudah di gudang, belum di rak*
+selalu lengkap karena tidak ada paket yang melewatinya.
+
+Saya membaca dari Flow Baru (pembatalan hanya dari *sedang dikirim*, baris 264) dan *"periksa transaksi masih ongoing"*
+(baris 207): restock yang sudah `arrived` **tidak bisa dibatalkan** — paketnya sudah di gudang. Kalau maksud Anda lain,
+katakan.
+
+⚠ Memperluas [approved-sekali-dan-final](#approved-sekali-dan-final), [cancelled-juga-final](#cancelled-juga-final) dan
+[diterima-tidak-bisa-dibatalkan](#diterima-tidak-bisa-dibatalkan) — urutannya kini `ongoing` → `arrived` → `approved`.
+⚠ Kata *tiba* di [slot-lahir-saat-barang-tiba](#slot-lahir-saat-barang-tiba), dan `arrived` sebagai nama kerja di
+[transaksi-adalah-barang-masuk](#transaksi-adalah-barang-masuk) (09-29), berarti *slot lahir*. Kini `arrived` berarti *tiba,
+belum di rak*; slot lahir di `approved`.
+
+⚠ **Yang TIDAK ikut diputuskan:** ongkir tambahan diisi di mana
+(*ongkir-tambahan-saat-tiba-atau-saat-penempatan* ✅) ·
+penempatan masih memeriksa `ongoing`
+(*status-arrived-belum-ikut-di-pemeriksaan* ✅) · cek PIC
+di penempatan ([pic-hanya-dicek-saat-tiba](./restock_flow_clarify.md#critique)).
+
+---
+
+## resi-dibandingkan-tanpa-beda-huruf
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) baris 86 — *"Kunci baris `TRANSACTIONS` dengan `receipt` terkait
+> (abaikan lower atau upper case)."*
+
+**Putusannya.** Resi dibandingkan tanpa membedakan huruf besar dan kecil — `jn7827` dan `JN7827` menunjuk paket yang sama,
+sejalan dengan [resi-unik-lintas-jasa-kirim](#resi-unik-lintas-jasa-kirim).
+
+```mermaid
+flowchart LR
+  a["tx 1 — resi JN7827, ongoing"] --> q{"tx 2 — resi jn7827"}
+  q --> x["ditolak — resi yang sama"]
+```
+
+| | |
+| --- | --- |
+| disimpan | seperti diketik CS |
+| dibandingkan | `lower(receipt)` — dengan indeks di `lower(receipt)`, supaya pemeriksaan tidak membaca seluruh tabel |
+
+⚠ **Yang TIDAK ikut diputuskan:** cara kuncinya —
+*kunci-resi-kembali-ke-baris-transaksi* (✅ [resi-dikunci-dengan-advisory-lock](#resi-dikunci-dengan-advisory-lock)).
+
+---
+
+## restock-membaca-product-service-sebelum-kunci
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) Flow Baru baris 236–240 — *"Request data produk terlampir ke Product
+> Service"*, sebelum *"With Lock: Periksa apakah transaksi sudah pernah dibuat?"*. 🔄 *Kelak* di
+> [tim-sku-dari-kiriman-untuk-sementara](#tim-sku-dari-kiriman-untuk-sementara) kini tiba — sesuai rekomendasi lama.
+
+**Putusannya.** Saat restock dibuat, data produk setiap item dibaca dari Product Service **sebelum** kunci dan transaksi DB
+dibuka — pola yang sama dengan take ([product-service-dibaca-sebelum-kunci](#product-service-dibaca-sebelum-kunci)). Item
+tim lain ditolak berdasarkan data itu, bukan berdasarkan kiriman.
+
+```mermaid
+sequenceDiagram
+  participant C as CS tim 2
+  participant I as inventory
+  participant P as Product Service
+  participant D as database
+  C->>I: buat restock — kaos SKU 1, tim 2, resi JN7827
+  I->>P: SKU 1 milik tim siapa?
+  P-->>I: tim 2 — lolos
+  I->>D: kunci, periksa resi, tulis — commit
+```
+
+| | sebelumnya | sekarang |
+| --- | --- | --- |
+| tim pemilik SKU dibaca dari | `Sku.team_id` di kiriman | Product Service |
+| SKU tim lain lewat API langsung | lolos kalau `team_id` ditulis sama | ditolak |
+| kunci menunggu service lain | — | tidak — dibaca sebelum kunci |
+
+⚠ **Yang TIDAK ikut diputuskan:** `Sku.team_id` masih di kiriman (baris 298) — dua sumber
+([dua-sumber-tim-sku](./restock_flow_clarify.md#critique)) · isi *Periksa item terlampir* belum ditulis.
+
+> ⚠ **2026-10-16 (poin 1) — koreksi bacaan saya.** Baris 341 kini: *"cek apakah `Item.Sku.team_id` sama dengan
+> `CreateRestockPayload.team_id`"* — pemiliknya dibaca dari **kiriman**. Kalimat *"Item tim lain ditolak berdasarkan data itu,
+> bukan berdasarkan kiriman"* di atas, dan baris *"SKU tim lain lewat API langsung — ditolak"* di tabelnya, adalah bacaan saya dan
+> **tidak berlaku**. Yang diputuskan hanya: Product Service dibaca sebelum kunci. Sumber pemilik ditanyakan di
+> *pemilik-item-dari-kiriman-atau-product-service* (✅ [pemilik-item-dibaca-dari-product-service](#pemilik-item-dibaca-dari-product-service)).
+>
+> ✅ **2026-10-16 (poin 1, selesai)** — baris 337 kini membandingkan *"response dari product service dengan
+> `CreateRestockPayload.team_id`"*: bacaan awal entri ini kini benar —
+> [pemilik-item-dibaca-dari-product-service](#pemilik-item-dibaca-dari-product-service).
+
+---
+
+## kabar-penagihan-ditandai-billed
+
+> [model.md](./model.md) (2026-10-16) baris 46 — `TRANSACTIONS.billed bool` *"tanda apakah sudah pernah ditagih-kan ke
+> service penagihan"*.
+
+**Putusannya.** Transaksi mencatat apakah ongkir tambahannya sudah dikabarkan ke penagihan. Kabar dikirim sesudah commit
+([service-lain-di-luar-transaksi-db](#service-lain-di-luar-transaksi-db)), jadi bisa gagal sesudah datanya tersimpan —
+`billed` memisahkan *sudah sampai* dari *belum*.
+
+```mermaid
+flowchart LR
+  c["commit — ongkir tambahan 2.000"] --> k["kabar ke penagihan"]
+  k -->|"sukses"| t["billed true"]
+  k -->|"gagal — bacaan saya"| f["billed tetap false, terlihat belum sampai"]
+```
+
+| | `billed` |
+| --- | --- |
+| tanpa ongkir tambahan | tidak ada yang dikabarkan — nilainya belum ditulis |
+| kabar sampai | true |
+| kabar gagal sesudah commit | false — bisa ditemukan dan dikirim ulang |
+
+> ✅ **2026-10-16 (tiba)** — *Tandai Tiba* baris 437–441: publish sesudah commit, lalu `updateTrxBilled` di transaksi DB sendiri —
+> `billed` kini punya langkah yang menulisnya. Belum: hanya kalau ongkir tambahan > 0, dan jalan kirim ulang
+> (*billed-tidak-ditulis* ✅).
+>
+> ✅ **2026-10-17** — publish dan `updateTrxBilled` di `try/catch`, sesudah commit, tanpa `await` ([restock_flow.md](./restock_flow.md)
+> baris 223–237): publish yang gagal tidak lagi membalas error ke staff. Belum: kirim ulang saat `billed` false.
+>
+> ✅ **2026-10-17 (kirim ulang)** — instruksi di `catch` ([restock_flow.md](./restock_flow.md) baris 231–234): tugas berkala
+> mencari transaksi dengan ongkir tambahan > 0 dan `billed` false lalu `publishBilling` lagi · penagihan menolak `tx_id` yang
+> sama dua kali. Ketiga hal di *"Yang TIDAK ikut diputuskan"* di bawah kini terjawab: `billed` ditulis true sesudah publish
+> berhasil, tugas berkala yang mengirim ulang, dan penagihan menolak duplikat.
+
+⚠ **Yang TIDAK ikut diputuskan** — ditunda sampai langkahnya ditulis: kapan ditulis true, siapa yang mengirim ulang, dan
+apakah penagihan menolak `tx_id` yang sama dua kali. Ongkir yang bisa diisi lagi saat penempatan membuat satu bool tidak
+cukup (*ongkir-tambahan-saat-tiba-atau-saat-penempatan* ✅).
+
+---
+
+## resi-dikunci-dengan-advisory-lock
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) baris 226–230 — *"mari kita sebut ini `kunci resi`"*,
+> `select pg_advisory_xact_lock(hashtextextended('resi:' || lower(${resi}::text), 0));` · baris 343 — *"Buat DB Transaction
+> dengan `kunci resi`. Pastikan jika resi belum pernah ada maka loloskan, jika resi sudah pernah ada maka check pada table
+> log jika status terakhirnya adalah `cancelled` maka loloskan selain status itu maka tolak."* Menutup kontradiksi
+> *kunci-resi-kembali-ke-baris-transaksi*. Sesuai rekomendasi — dan lebih baik: awalan `'resi:'` memisahkannya dari kunci
+> lain yang kelak memakai advisory lock, dan hash 64-bit membuat dua resi berbeda hampir tidak pernah antre bersama.
+> 🔄 Menggantikan bagian resi dari [kunci-statement-lalu-periksa-resi](#kunci-statement-lalu-periksa-resi).
+
+**Putusannya.** Saat restock dibuat, transaksi DB dibuka dengan mengunci **resinya** — sebuah nama, bukan baris — lalu
+resi diperiksa. Kunci itu ada walau belum ada satu baris pun dengan resi tersebut, dan lepas sendiri saat commit atau
+rollback.
+
+```mermaid
+sequenceDiagram
+  participant K1 as Simpan ke-1
+  participant L as kunci resi jn7827
+  participant K2 as Simpan ke-2
+  K1->>L: kunci — belum ada transaksi JN7827, lanjut
+  K2->>L: kunci — menunggu ke-1
+  K1->>L: tx 1, item, log ongoing, stock_ongoing +10 — commit, kunci lepas
+  L-->>K2: giliran ke-2 — tx 1 ongoing
+  K2-->>K2: ditolak, rollback — tidak ada yang tertulis
+```
+
+| di detik yang sama | kunci baris `TRANSACTIONS` (sebelumnya) | *kunci resi* |
+| --- | --- | --- |
+| resi JN7827 **baru**, *Simpan* ditekan dua kali | tidak ada baris untuk dikunci — keduanya lolos | yang kedua menunggu, lalu ditolak |
+| resi sama, SKU berbeda | lolos — dulu *"diterima sebagai risiko"* | antre |
+| `jn7827` dan `JN7827` | — | satu kunci — `lower()` ([resi-dibandingkan-tanpa-beda-huruf](#resi-dibandingkan-tanpa-beda-huruf)) |
+| melepas kunci | langkah tersendiri | otomatis saat commit atau rollback |
+
+| | |
+| --- | --- |
+| urutan kunci | *kunci resi* dulu, lalu baris statement urut `sku_id` — pembatalan dan penerimaan tidak memakai *kunci resi*, jadi tidak ada urutan yang bisa terbalik |
+| yang tetap dari [kunci-statement-lalu-periksa-resi](#kunci-statement-lalu-periksa-resi) | baris statement tetap dikunci saat `stock_ongoing` ditambah |
+
+⚠ **Yang TIDAK ikut diputuskan:** *"status terakhirnya"* dibaca dari transaksi yang mana kalau resinya sudah dipakai lebih
+dari sekali ([resi-diperiksa-di-satu-transaksi-saja](./restock_flow_clarify.md#critique)) · node `releaseLock` di diagram
+(*lepas-kunci-satu-node* — kini [diagram-pembuatan-berbeda-dengan-kode](./restock_flow_clarify.md#critique)).
+
+> ✅ **2026-10-16 (Lepas penguncian baris)** — baris 350–352: *"Cukup dengan commit \ rollback transaction"*. Kunci lepas
+> lewat commit atau rollback, tanpa langkah sendiri — sesuai putusan ini. Node `releaseLock` masih ada di diagram, dan ilustrasinya
+> belum meneruskan transaksi ke fungsinya ([transaksi-tidak-diteruskan-ke-fungsi](./restock_flow_clarify.md#critique)).
+>
+> ✅ **2026-10-16 (cek resi)** — *"status terakhirnya"* kini *"status terakhir transaksi yang ditemukan"*, dengan `isReceiptInUse`:
+> [resi-dicek-ke-semua-transaksinya](#resi-dicek-ke-semua-transaksinya).
+>
+> ✅ **2026-10-16 (ilustrasi diperbarui)** — baris 355: `async (tx)`, dan `tx` diteruskan ke `lockReceipt` dan setiap tulisan, termasuk
+> `createOrUpdateStmt`. Kunci dan tulisan kini benar-benar di satu transaksi.
+
+---
+
+## pemilik-item-dibaca-dari-product-service
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) Flow Baru baris 307–312 — `message Item { uint64 sku_id; … }`, tanpa
+> `Sku.team_id` · baris 337 — *"Mekanisme pengecekan dengan membandingkan response dari product service dengan
+> `CreateRestockPayload.team_id`."* Menjawab *pemilik-item-dari-kiriman-atau-product-service* dengan **B**. Sesuai rekomendasi.
+> 🔄 Menyelesaikan [tim-sku-dari-kiriman-untuk-sementara](#tim-sku-dari-kiriman-untuk-sementara) — *kelak* tiba.
+
+**Putusannya.** Kiriman hanya membawa `sku_id` tiap item. Pemiliknya dibaca dari Product Service, sebelum kunci, dan harus
+sama dengan `CreateRestockPayload.team_id` untuk **setiap** item — satu saja beda, seluruh restock ditolak
+([sku-tim-lain-ditolak-saat-dibuat](#sku-tim-lain-ditolak-saat-dibuat)).
+
+```mermaid
+flowchart LR
+  K["kiriman — team_id 2, sku 1 dan sku 7"] --> P["Product Service — sku 1 tim 2, sku 7 tim 1"]
+  P --> V{"setiap pemilik = team_id 2?"}
+  V -->|"ya"| W["lanjut ke kunci resi"]
+  V -->|"sku 7 milik tim 1"| X["ditolak seluruhnya — tidak ada yang ditulis"]
+```
+
+| pertanyaan | sumbernya |
+| --- | --- |
+| restock ini untuk tim mana | `CreateRestockPayload.team_id` ([tim-dikirim-dan-disimpan-di-transaksi](#tim-dikirim-dan-disimpan-di-transaksi)) |
+| pembuat boleh membuat restock untuk tim itu | sistem izin, dari `team_id` yang sama |
+| setiap item milik tim mana | Product Service — satu-satunya sumber |
+| celana tim 1 dikirim sebagai tim 2 lewat API langsung | ditolak — kiriman tidak lagi menyebut pemilik |
+
+⚠ **Yang TIDAK ikut diputuskan:** *dikunci* dan *reserved* yang ikut diminta tapi tidak dipakai
+(*kunci-produk-dibaca-untuk-restock* (dilepas 10-17)) · kalimat pertama baris 337 masih menyebut *"team si
+pembuat request"* (*kalimat-tim-pembuat-tertinggal* (dilepas 10-17)).
+
+---
+
+## cara-bayar-dirujuk-lewat-payment-id
+
+> [model.md](./model.md) (2026-10-16) baris 45 — `int payment_id`, menggantikan `string payment_method` · [restock_flow.md](./restock_flow.md)
+> Flow Baru baris 320 — `uint64 payment_id;`. Menutup kontradiksi *payment-id-belum-di-model*. Sesuai rekomendasi.
+
+**Putusannya.** Cara tim membayar barang restock dipilih dari sebuah daftar dan disimpan sebagai id di
+`TRANSACTIONS.payment_id` — bukan teks yang diketik CS.
+
+```mermaid
+flowchart LR
+  C["CS memilih cara bayar dari daftar"] --> K["kiriman — payment_id"]
+  K --> T["TRANSACTIONS.payment_id"]
+```
+
+| | teks — sebelumnya | id — sekarang |
+| --- | --- | --- |
+| *transfer*, *Transfer*, *tf* | tiga nilai untuk satu cara bayar | satu id |
+| laporan per cara bayar | dikelompokkan dari teks yang tidak seragam | dikelompokkan per id |
+
+⚠ **Yang TIDAK ikut diputuskan:** id itu merujuk ke mana — tabel atau service yang memegang daftar cara bayar. Kolom lain di ERD
+menulis rujukannya (`"ref to shipping_agent_id"`); `payment_id` belum.
+
+---
+
+## pic-dicek-saat-tiba-dan-saat-penempatan
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) Flow Baru baris 278–290 — `checkPic["Check PIC Staff Gudang (Arrived
+> Confirmation)"]` sebelum *Tandai Tiba di Gudang*, dan `checkPic2["Check PIC Staff Gudang (Placement)"]` sebelum *Tandai Di
+> terima Gudang*, masing-masing dengan jalur *no access* ke error. Menutup kritik *pic-hanya-dicek-saat-tiba*. Sesuai rekomendasi.
+
+**Putusannya.** Staff gudang dicek sebagai anggota gudang tujuan
+([penerima-dicek-anggota-gudang-tujuan](#penerima-dicek-anggota-gudang-tujuan)) **di setiap permintaan yang menulis**: saat
+menandai tiba, dan sebelum penempatan ditulis. Tiba dan penempatan bisa berselang hari, oleh orang yang berbeda — cek yang
+pertama tidak berlaku untuk yang kedua.
+
+```mermaid
+sequenceDiagram
+  participant A as staff A gudang 3
+  participant B as staff gudang 4
+  participant I as inventory
+  A->>I: Senin — tx 1 tiba
+  I->>I: cek PIC — A anggota gudang 3, lanjut
+  B->>I: Rabu — penempatan tx 1
+  I->>I: cek PIC — gudang 4 bukan tujuan tx 1
+  I-->>B: Lempar Error Access Ditolak — tidak ada yang ditulis
+```
+
+| | |
+| --- | --- |
+| *Penempatan Rak* | saya baca: staff mengisi di layar — belum menulis apa pun |
+| cek PIC kedua | sesudah layar diisi, sebelum *Tandai Di terima Gudang* menulis — urutan yang sama dengan alur lama (*Mengisi Placement* → *Check PIC Access* → transaksi DB) |
+| di luar transaksi DB | ya — service lain ([service-lain-di-luar-transaksi-db](#service-lain-di-luar-transaksi-db)) |
+
+⚠ **Yang TIDAK ikut diputuskan:** teks kedua node itu belum ditulis — cara ceknya masih hanya di teks lama baris 121–123.
+
+---
+
+## resi-dicek-ke-semua-transaksinya
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) baris 336 — *"jika resi sudah pernah ada maka check pada table log jika
+> status terakhir transaksi yang ditemukan adalah `cancelled` maka loloskan selain status itu maka tolak"* · ilustrasi baris 362
+> — `isReceiptInUse(tx, receipt)`. Menutup kritik *resi-diperiksa-di-satu-transaksi-saja*. Saya membacanya: **setiap** transaksi
+> yang ditemukan dengan resi itu diperiksa — nama `isReceiptInUse` yang membuat bacaan ini pasti. Kalau maksud Anda lain,
+> katakan. Melengkapi [resi-dipakai-lagi-hanya-setelah-cancelled](#resi-dipakai-lagi-hanya-setelah-cancelled).
+
+**Putusannya.** Resi **sedang dipakai** kalau ada satu saja transaksi dengan resi itu yang status terakhirnya bukan
+`cancelled`. Resi bebas hanya kalau belum pernah dipakai, atau **semua** transaksinya `cancelled` — berapa pun jumlahnya.
+
+```mermaid
+flowchart LR
+  r["tx 3 — resi JN7827"] --> f["ditemukan: tx 1 cancelled, tx 2 approved"]
+  f --> q{"ada yang bukan cancelled?"}
+  q -->|"tx 2 approved"| x["ditolak — resi sedang dipakai"]
+  q -->|"semua cancelled"| ok["boleh"]
+```
+
+| transaksi lama dengan resi JN7827 | restock baru |
+| --- | --- |
+| tidak ada | boleh |
+| tx 1 `cancelled` | boleh |
+| tx 1 `cancelled`, tx 2 `ongoing`, `arrived` atau `approved` | ditolak — urutan tx 1 dan tx 2 tidak berpengaruh |
+| tx 1 `cancelled`, tx 2 `cancelled` | boleh |
+
+**Kenapa ini penting:** satu resi bisa punya beberapa transaksi justru karena aturan pakai-ulang sesudah batal
+([paket-tiba-setelah-batal-dibuat-restock-baru](#paket-tiba-setelah-batal-dibuat-restock-baru)). Membaca satu transaksi saja
+bergantung pada mana yang kebetulan ditemukan — tx 1 yang `cancelled` meloloskan restock untuk paket yang sudah diterima.
+
+⚠ Kalimat baris 336 masih bisa dibaca *satu* transaksi tanpa ilustrasinya; satu kata — *"**setiap** transaksi yang ditemukan"* —
+membuatnya pasti tanpa ilustrasi.
+
+---
+
+## ongkir-tambahan-diisi-dan-dikabarkan-saat-tiba
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) Flow Baru baris 400–408 — `ArrivedConfirmationRestockPayload { tx_id;
+> optional AdditionalShippingFee additional_shipping_fee; }` · baris 416–417 — *"periksa jika ada ongkir tambahan maka publish ke
+> message broker untuk info penagihan"*. Menjawab *ongkir-tambahan-saat-tiba-atau-saat-penempatan*. Sesuai rekomendasi.
+
+**Putusannya.** Ongkir tambahan dikirim staff bersama **konfirmasi tiba** — saat kurir menyerahkan paket dan menagihnya — bukan
+saat penempatan. Penagihan dikabari saat itu juga, lewat message broker, tanpa menunggu penempatan yang bisa berhari-hari.
+
+```mermaid
+sequenceDiagram
+  participant K as kurir
+  participant A as staff A gudang 3
+  participant I as inventory
+  participant B as message broker
+  K->>A: Senin — paket tx 1, minta ongkir tambahan 2.000
+  A->>I: konfirmasi tiba — ongkir tambahan 2.000, foto nota
+  I-)B: kabar ongkir tambahan 2.000 — tim 2
+  Note over A,I: Rabu — penempatan tidak membawa ongkir tambahan
+```
+
+| | |
+| --- | --- |
+| diisi di | `ArrivedConfirmationRestockPayload.additional_shipping_fee` — `value`, foto opsional |
+| tidak lagi di | kiriman penempatan — sekali isi, sekali kabar, satu `billed` |
+| dikabarkan lewat | message broker — sejalan dengan [ongkir-tambahan-dikabarkan-ke-penagihan](#ongkir-tambahan-dikabarkan-ke-penagihan) |
+| dibagi per unit | saat penempatan, membaca `TRANSACTIONS.additional_shipping_fee` ([ongkir-dibagi-ke-unit-yang-dikirim](#ongkir-dibagi-ke-unit-yang-dikirim)) |
+
+⚠ **Yang TIDAK ikut diputuskan:** ongkirnya belum **disimpan** di langkah tiba — hanya dikabarkan
+(*ongkir-tambahan-dikabarkan-tapi-tidak-disimpan* (✅ selesai 10-16)) ·
+kabar sesudah commit, dan kapan `billed` ditulis (*billed-tidak-ditulis* ✅) · kiriman penempatan
+belum ditulis — saya uji bahwa ia tidak membawa ongkir tambahan lagi.
+
+> ✅ **2026-10-16 (step tiba, uji ulang)** — baris 415: *"catat di table transaksi terkait di field `additional_shipping_fee`,
+> `additional_shipping_proof_url` (optional), dan publish"* — kini disimpan, lalu dikabarkan.
+>
+> ✅ **2026-10-16 (Mark Placement)** — `PlacementRestockPayload` (baris 453–456) tidak membawa ongkir tambahan: sekali isi, saat tiba.
+
+---
+
+## tiba-dan-penempatan-dua-rpc
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) Flow Baru baris 276–285 — `subgraph "RPC Procedure: Mark Arrived"` (cek PIC,
+> *Tandai Tiba di Gudang*) dan `subgraph "RPC Procedure: Mark Placement"` (cek PIC, *Penempatan Rak*, *Tandai Di terima Gudang*).
+> Menjawab bacaan yang saya tunda: penempatan dan *diterima gudang* satu permintaan, atau dicicil. Sesuai bacaan saya.
+
+**Putusannya.** Restock diterima lewat **dua RPC**: *Mark Arrived* saat paket tiba, dan *Mark Placement* saat isinya ditaruh di rak.
+*Mark Placement* adalah **satu** permintaan — penempatan dan *diterima gudang* ditulis bersama, tidak dicicil — sehingga
+[penerimaan-dicatat-dalam-satu-transaksi-db](#penerimaan-dicatat-dalam-satu-transaksi-db) dan
+[jumlah-dicocokkan-per-item](#jumlah-dicocokkan-per-item) tetap berlaku.
+
+```mermaid
+sequenceDiagram
+  participant A as staff A
+  participant B as staff B
+  participant I as inventory
+  A->>I: Senin — Mark Arrived tx 1, cek PIC, log arrived
+  B->>I: Rabu — Mark Placement tx 1, cek PIC, 8 Rak A, 1 rusak, 1 hilang
+  I->>I: satu transaksi DB — slot, rusak, hilang, log approved, statement
+```
+
+| RPC | isinya | cek PIC |
+| --- | --- | --- |
+| *Mark Arrived* | log `arrived`, ongkir tambahan | ✅ |
+| *Mark Placement* | penempatan seluruh item, log `approved` | ✅ ([pic-dicek-saat-tiba-dan-saat-penempatan](#pic-dicek-saat-tiba-dan-saat-penempatan)) |
+
+⚠ **Yang TIDAK ikut diputuskan:** teks *Mark Placement* belum ditulis.
+
+---
+
+## statement-tidak-berubah-saat-tiba
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) *Tandai Tiba di Gudang* baris 410–414 — butir *"kunci `sku_statement` terkait
+> item-item pada transaksi kemudian decrement `stock_ongoing` sejumlah yang tiba"* **dihapus**, sesudah saya menulis kontradiksi
+> *ongoing-turun-saat-tiba-sejumlah-yang-tiba*. Saya membacanya sebagai **A** dari *unit-yang-sudah-tiba-dicatat-di-mana* — sesuai
+> rekomendasi. Kalau maksud Anda lain, katakan.
+
+**Putusannya.** Saat paket tiba, `SKU_STATEMENT` **tidak berubah**. Paket yang sudah di gudang tetap dihitung `stock_ongoing` sampai
+ditempatkan; `stock_ongoing` turun **sekali**, saat penempatan, sebanyak yang dikirim
+([ongoing-turun-sebanyak-dikirim](#ongoing-turun-sebanyak-dikirim)).
+
+```mermaid
+flowchart LR
+  C["dibuat — ongoing +10"] --> T["Senin tiba — statement tidak berubah"]
+  T --> P["Rabu ditempatkan — ongoing −10, ready +8, broken +1, lost +1"]
+```
+
+| | `stock_ongoing` kaos gudang 3 | `stock_ready` |
+| --- | ---: | ---: |
+| restock dibuat, 10 | 10 | 0 |
+| Senin — tiba | 10 | 0 |
+| Rabu — 8 di rak, 1 rusak, 1 hilang | 0 | 8 |
+
+| | |
+| --- | --- |
+| arti `stock_ongoing` | belum di rak — di jalan, atau sudah di gudang menunggu ditempatkan |
+| *paket mana yang menunggu rak* | dibaca dari transaksi yang status terakhirnya `arrived` — bukan dari statement |
+| kolom `stock_arrived` | tidak dibuat |
+
+⚠ **Yang TIDAK ikut diputuskan:** kalimatnya belum tertulis di *Tandai Tiba* — dan kunci `sku_statement` ikut terhapus bersama butir
+itu, padahal langkah tiba tetap butuh antrean dengan pembatalan ([tiba-tanpa-kunci](./restock_flow_clarify.md#critique)).
+
+> ✅ **2026-10-16 (Mark Placement)** — penempatan kini menurunkan `stock_ongoing` dan menaikkan ready, broken, lost
+> (`updateSkuStatement`, baris 545) — satu-satunya tempat ia turun, sesuai putusan ini.
+
+> ✅ **2026-10-16 (kunci tx)** — kunci kembali, kini per transaksi: [ganti-status-dikunci-per-transaksi](#ganti-status-dikunci-per-transaksi).
+
+---
+
+## ganti-status-dikunci-per-transaksi
+
+> [restock_flow.md](./restock_flow.md) (2026-10-16) *Tandai Tiba di Gudang* baris 416–435 — `await db.transaction(async function (tx)
+> { // lock menggunakan pg_advisory_xact_lock … await lockTxId(txId) …`. Usulan Anda, sesudah bertanya *"kenapa yang dikunci malah
+> statement, bukan transaction dan transaction_log?"*. Menjawab *kunci-perubahan-status-di-baris-transaksi* dengan **A** — saya
+> menyarankan kunci baris `TRANSACTIONS`; Anda memilih kunci **nama** per transaksi. Sama baiknya, dan sejalan dengan
+> [resi-dikunci-dengan-advisory-lock](#resi-dikunci-dengan-advisory-lock).
+
+**Putusannya.** Setiap perubahan status sebuah restock antre di **kunci tx** — `pg_advisory_xact_lock` pada id transaksinya, di
+dalam transaksi DB. Statement dikunci hanya oleh langkah yang mengubah angkanya, sesudah kunci tx. Sesudah kunci, status terakhir
+dibaca ulang dengan query terpisah, dan yang bukan status yang diharapkan ditolak.
+
+```mermaid
+sequenceDiagram
+  participant A as staff A — Tiba
+  participant L as kunci tx 1
+  participant B as staff B — Tiba
+  A->>L: kunci — status terakhir ongoing, lanjut
+  B->>L: kunci — menunggu A
+  A->>L: log arrived, ongkir 2.000 — commit, kunci lepas
+  L-->>B: giliran B — status terakhir arrived
+  B-->>B: ditolak — tidak ada yang tertulis
+```
+
+| langkah | kunci, berurutan | status yang diperiksa |
+| --- | --- | --- |
+| restock dibuat | *kunci resi* → statement urut `sku_id` | resi tidak sedang dipakai |
+| tiba | *kunci tx* | `ongoing` |
+| penempatan | *kunci tx* → statement urut `sku_id` | `arrived` |
+| pembatalan | *kunci tx* → statement urut `sku_id` | `ongoing` |
+| take, rekonsiliasi | statement urut `sku_id` | — |
+
+| kenapa tidak | |
+| --- | --- |
+| statement, untuk tiba | tiba tidak menulis statement — kuncinya hanya akan menahan order kaos di gudang yang sama |
+| baris log terakhir | log hanya ditambah: penunggu kedua bangun memegang baris lama `ongoing` dan tidak melihat baris `arrived` yang baru ditulis — ia lolos |
+
+Tidak ada jalan yang mengunci statement **lalu** *kunci tx*, jadi tidak ada dua jalan yang saling menunggu selamanya.
+
+⚠ **Yang TIDAK ikut diputuskan:** ilustrasi baris 421 belum meneruskan `tx` ke `lockTxId`, dan belum memeriksa status sesudah
+kunci ([kunci-tx-tanpa-periksa-status](./restock_flow_clarify.md#critique)) · nama kuncinya — saya usul `'tx:' || tx_id`, seperti
+*kunci resi* · penempatan dan pembatalan belum ditulis — keduanya harus mengambil *kunci tx* yang sama, membalik sasaran kunci
+[kunci-statement-lalu-periksa-ongoing](#kunci-statement-lalu-periksa-ongoing) untuk keduanya; saya uji saat ditulis.
+
+> ✅ **2026-10-16 (disesuaikan)** — baris 421 `lockTxId(tx, txId)`, baris 423 `lastStatus` sesudah kunci: kunci kini di dalam
+> transaksi, dan permintaan kedua ditolak. Tersisa: nama kuncinya dan teksnya (*kunci-tx-belum-di-daftar* (dilepas 10-17)).
+>
+> ✅ **2026-10-16 (Mark Placement)** — penempatan kini mengambil *kunci tx* lewat `dbTx` dan memeriksa `arrived` (baris 532–536).
+> ⛔ Belum: statement tidak dikunci maupun ditulis (*statement-tidak-diperbarui-saat-diterima*).
+>
+> ✅ **2026-10-16 (dibetulkan)** — baris 545 `updateSkuStatement(dbTx, payload)`, sesudah *kunci tx*, di transaksi DB yang sama.
+>
+> ✅ **2026-10-16 (ongkir sesudah kunci)** — penempatan kini membaca baris transaksi dan itemnya **sesudah** *kunci tx*
+> ([restock_flow.md](./restock_flow.md) baris 309–315): ongkir tambahan yang di-commit langkah tiba pasti terbaca. Tersisa di
+> ilustrasi: `lockTxId(dbTx, tx.id)` memakai `tx` sebelum dibaca, dan dua bacaan lewat `db`, bukan `dbTx`
+> (*kunci-memakai-tx-sebelum-dibaca* ✅ · *baca-lewat-db-di-dalam-transaksi* ✅).
+>
+> ⚠ **2026-10-17 (dbTx)** — bacaan kini lewat `dbTx` ✅, tapi `tx` kembali dibaca **sebelum** kunci ([restock_flow.md](./restock_flow.md)
+> baris 307, kunci baris 310) — catatan 10-16 di atas tidak berlaku lagi sampai urutannya dibalik
+> (*ongkir-dibaca-sebelum-kunci* ✅). Kritik *kunci-memakai-tx-sebelum-dibaca* dan
+> *baca-lewat-db-di-dalam-transaksi* ditutup di sana.
+>
+> ✅ **2026-10-17 (kunci dulu)** — urutannya kini dibalik: *kunci tx* dengan `payload.txId` ([restock_flow.md](./restock_flow.md)
+> baris 308), lalu baca `tx` (baris 310), lalu `if (!tx)` (baris 312) — semua lewat `dbTx`. Catatan 10-16 berlaku lagi: ongkir
+> tambahan yang di-commit langkah tiba pasti terbaca. Tersisa di ilustrasi hanya `createdBy` di log `approved` (baris 326).
+>
+> ✅ **2026-10-17 (kunci dulu)** — urutannya kini: *kunci tx* dengan `payload.txId` ([restock_flow.md](./restock_flow.md) baris 308)
+> → baca `tx` → `if (!tx)` → status `arrived` → baru item dan cocok jumlah — semua lewat `dbTx`. Catatan 10-16 berlaku lagi:
+> ongkir tambahan yang di-commit langkah tiba pasti terbaca. Tersisa di ilustrasi hanya `createdBy` di log `approved` (baris 326).
+>
+> 🔄 **2026-10-17 (kode cukup)** — pemilik dokumen: ilustrasi kode di [restock_flow.md](./restock_flow.md) **adalah**
+> spesifikasinya; aturan yang sudah terlihat di kode tidak perlu ditulis ulang sebagai kalimat. Kritik yang hanya meminta itu
+> dilepas — daftar di [restock_flow_clarify](./restock_flow_clarify.md#yang-masih-kurang).
+
+---
+
+## statement-dikunci-oleh-barisnya-sendiri
+
+> [restock_flow.md](./restock_flow.md) (2026-10-17) baris 11–14 — *"tanpa advisory lock — baris `(sku_id, warehouse_id)` yang
+> unik sudah menjadi kuncinya. Syaratnya: satu perintah per SKU, urut `sku_id`, dan hitungan dilakukan di SQL, bukan di kode."*
+> Menjawab pertanyaan Anda 10-17 (*apakah `pg_advisory_xact_lock` perlu untuk statement?*) dan kritik
+> *kunci-sku-statement-belum-terdefinisi*. Sesuai rekomendasi.
+
+**Putusannya.** `SKU_STATEMENT` tidak memakai advisory lock. Kuncinya baris `(sku_id, warehouse_id)` itu sendiri — Postgres
+mengunci baris saat perintah menulis ke sana, sampai commit. Yang membuatnya aman adalah **bentuk perintahnya**:
+
+| langkah | perintah — satu per SKU, urut `sku_id` |
+| --- | --- |
+| restock dibuat | `insert … on conflict (sku_id, warehouse_id) do update set stock_ongoing = sku_statement.stock_ongoing + excluded.stock_ongoing` |
+| tandai di terima gudang | `update … set stock_ongoing = stock_ongoing - dikirim, stock_ready = stock_ready + baik, stock_broken = stock_broken + rusak, stock_lost = stock_lost + hilang` |
+| catat pembatalan | `update … set stock_ongoing = stock_ongoing - dikirim` |
+
+Tiga syarat, dan apa yang terjadi tanpanya:
+
+| syarat | tanpanya — dua restock kaos +50 ke gudang 3, `stock_ongoing` 100, detik yang sama |
+| --- | --- |
+| hitungan di SQL (`stock_x = stock_x + n`) | keduanya membaca 100 ke kode, keduanya menulis 150 — seharusnya 200 |
+| urut `sku_id` | A [kaos, celana] dan B [celana, kaos] saling menunggu — Postgres membatalkan salah satu |
+| unik pada **pasangan** | `on conflict (sku_id, warehouse_id)` ditolak Postgres — model.md baris 151, per kolom dihapus 10-17 |
+
+```mermaid
+sequenceDiagram
+  participant A as restock A
+  participant D as database
+  participant B as restock B
+  A->>D: on conflict do update — kaos gudang 3, +50
+  D-->>A: baris kaos dikunci untuk A, 150
+  B->>D: on conflict do update — kaos gudang 3, +50
+  Note over B,D: menunggu — baris dikunci A
+  A->>D: commit
+  D-->>B: baris kaos untuk B, 150 + 50 = 200
+  B->>D: commit
+```
+
+Sejalan dengan [statement-dibuat-atau-ditambah](#statement-dibuat-atau-ditambah). *Kunci resi* dan *kunci tx* **tetap**
+advisory lock — keduanya tidak punya baris yang di-`UPDATE` ([resi-dikunci-dengan-advisory-lock](#resi-dikunci-dengan-advisory-lock) ·
+[ganti-status-dikunci-per-transaksi](#ganti-status-dikunci-per-transaksi)).
+
+⚠ **Yang TIDAK ikut diputuskan:** langkah lain yang menulis statement — take, retur, rekonsiliasi — belum diuji terhadap
+putusan ini.
+
+---
+
+## gudang-dikirim-sebagai-scope-lalu-dicocokkan
+
+> [restock_flow.md](./restock_flow.md) (2026-10-17) baris 180 dan 264 — `uint64 warehouse_id = 1 [(warehouse.role_base.v1.use_scope) = true]`
+> di kiriman tiba dan penempatan; baris 192 — *"sistem akses memastikan staff anggota gudang itu sebelum handler berjalan.
+> Handler memastikan transaksinya milik gudang itu"*; kode baris 212 dan 334 —
+> `if (trx.warehouse_id !== payload.warehouseId) throw AccessDenied()`. Menjawab kritik *cek-akses-tanpa-field-gudang*. Sesuai
+> rekomendasi.
+
+**Putusannya.** Kiriman *Mark Arrived* dan *Mark Placement* membawa `warehouse_id` sebagai **field scope**. Dua pemeriksa,
+masing-masing satu pertanyaan:
+
+| pemeriksa | pertanyaannya | kalau gagal |
+| --- | --- | --- |
+| sistem akses — dari proto | apakah staff anggota gudang `warehouse_id`? | ditolak sebelum handler berjalan |
+| handler — sesudah membaca transaksi | apakah `transactions.warehouse_id` = `warehouse_id`? | `AccessDenied` |
+
+```mermaid
+flowchart LR
+  S["staff gudang 5 — warehouse_id 5, tx 1 milik gudang 3"] --> A{"sistem akses — anggota gudang 5?"}
+  A -->|"bukan"| X1["ditolak"]
+  A -->|"ya"| H{"handler — tx 1 milik gudang 5?"}
+  H -->|"bukan — gudang 3"| X2["AccessDenied"]
+  H -->|"ya"| OK["tiba atau penempatan berjalan"]
+```
+
+Menggantikan **cara** pengecekan di [pic-dicek-saat-tiba-dan-saat-penempatan](#pic-dicek-saat-tiba-dan-saat-penempatan) —
+panggilan User Service yang ditulis di handler. **Siapa** yang dicek tetap: staff gudang tujuan
+([penerima-dicek-anggota-gudang-tujuan](#penerima-dicek-anggota-gudang-tujuan)).
+
+⚠ **Yang TIDAK ikut diputuskan:** nama peran staff gudang di `request_policy` (masih `/* peran staff gudang */`) · scope
+*Catat Pembatalan* — CS atau admin **tim**, jadi field-nya `team_id`, saat langkahnya ditulis.
+
+> ✅ **2026-10-17** — *Catat Pembatalan* memakai pola yang sama dengan `team_id`: `CancelRestockPayload` ([restock_flow.md](./restock_flow.md)
+> baris 362–366), cocok `transactions.team_id` sesudah kunci (baris 389). Tinggal pembuatan tanpa scope
+> ([pembuatan-tanpa-scope-tim](./restock_flow_clarify.md#critique)).
+
+---
+
+## paket-yang-sudah-tiba-tidak-bisa-dibatalkan
+
+> [restock_flow.md](./restock_flow.md) (2026-10-17) baris 359 — *"Restock hanya bisa dibatalkan ketika dia masih dalam status
+> `ongoing`"*. Menjawab ⏸ *pembatalan sesudah `arrived`* — putusan [pembatalan-oleh-cs-atau-admin](#pembatalan-oleh-cs-atau-admin)
+> (*"selama masih `ongoing`"*) dibuat sebelum ada `arrived`. Sesuai rekomendasi.
+
+**Putusannya.** Begitu paket ditandai tiba, restock tidak bisa lagi dibatalkan. Paket yang sudah di gudang diselesaikan lewat
+penempatan: yang tidak sesuai ditandai rusak atau hilang
+([penempatan-tiga-varian](#penempatan-tiga-varian) · [restock-boleh-diterima-sebagian](#restock-boleh-diterima-sebagian)).
+
+| status terakhir | Catat Pembatalan |
+| --- | --- |
+| `ongoing` | ✅ log `cancelled`, `stock_ongoing` − dikirim |
+| `arrived` | ⛔ ditolak — tempatkan, tandai rusak atau hilang |
+| `approved` | ⛔ ditolak — [diterima-tidak-bisa-dibatalkan](#diterima-tidak-bisa-dibatalkan) |
+| `cancelled` | ⛔ ditolak — [cancelled-juga-final](#cancelled-juga-final) |
+
+```mermaid
+stateDiagram-v2
+  [*] --> ongoing: restock dibuat
+  ongoing --> cancelled: Catat Pembatalan
+  ongoing --> arrived: Tandai Tiba
+  arrived --> approved: Tandai Di terima Gudang
+  cancelled --> [*]
+  approved --> [*]
+```
+
+Sebelum 10-15 paket yang tiba tapi belum ditempatkan masih `ongoing`, jadi masih bisa dibatalkan — putusan ini menutup celah
+itu: barang yang secara fisik ada di gudang tidak bisa hilang dari catatan lewat tombol Batal.
+
+⚠ **Yang TIDAK ikut diputuskan:** siapa yang boleh membatalkan — orangnya atau timnya
+(*pembatal-orangnya-atau-timnya* ✅).
+
+> ✅ **2026-10-17** — timnya: CS atau admin `transactions.team_id` ([pembatalan-oleh-cs-atau-admin](#pembatalan-oleh-cs-atau-admin)).
+
+---
+
+## kabar-restock-ditandai-dan-dikirim-ulang
+
+> [model.md](./model.md) (2026-10-17) — `TRANSACTIONS.publish_created` dan `publish_cancelled` (bool).
+> [restock_flow.md](./restock_flow.md) (2026-10-17) baris 18–47 — *"Kabar ke message broker, mari kita sebut ini `kirim kabar`"*,
+> tabel tiga kabar dan `publishAndMark`; baris 176–198 pembuatan, baris 417–445 pembatalan. Menjawab
+> *siapa-mendengar-restock-cancel* dengan **B** — kabar tidak boleh hilang. Sesuai rekomendasi untuk B.
+
+**Putusannya.** Ketiga kabar restock dikirim **sesudah commit**, ditandai di `TRANSACTIONS` saat berhasil, dan dikirim ulang
+oleh tugas berkala selama belum ditandai. Gagal publish tidak pernah membalas error ke pengguna — langkahnya sudah berhasil.
+
+| kabar | dikirim saat | kolom | tugas berkala mengirim ulang kalau |
+| --- | --- | --- | --- |
+| restock created | pembuatan, sesudah commit | `publish_created` | `publish_created` false |
+| restock cancelled | pembatalan, sesudah commit — **hanya kalau** `publish_created` sudah true | `publish_cancelled` | status terakhir `cancelled`, `publish_cancelled` false, `publish_created` true |
+| penagihan ongkir tambahan | tiba, sesudah commit, kalau ongkir tambahan > 0 | `billed` | `additional_shipping_fee` > 0, `billed` false |
+
+Dua aturan yang menjaga urutan dan duplikat:
+
+- **`cancelled` menunggu `created`.** Kabar batal tidak pernah sampai lebih dulu dari kabar dibuat — pendengar tidak pernah
+  menerima "tx 7 batal" untuk restock yang belum ia kenal.
+- **Pendengar menolak kabar yang sama dua kali** (`tx_id` + jenis kabar) — publish berhasil tapi penanda gagal ditulis berarti
+  terkirim dua kali.
+
+```mermaid
+sequenceDiagram
+  participant I as inventory
+  participant D as database
+  participant B as message broker
+  participant J as tugas berkala
+  I->>D: commit — tx 7 dibuat, publish_created false
+  I->>B: restock created tx 7
+  B--xI: gagal — broker mati
+  I->>D: commit — tx 7 cancelled
+  Note over I: publish_created masih false — cancelled tidak dikirim sekarang
+  J->>D: cari yang belum ditandai
+  J->>B: restock created tx 7
+  J->>D: publish_created true
+  J->>B: restock cancelled tx 7
+  J->>D: publish_cancelled true
+```
+
+Memperluas [kabar-penagihan-ditandai-billed](#kabar-penagihan-ditandai-billed) ke dua kabar lain, dengan satu fungsi
+(`publishAndMark`) dan satu tugas berkala.
+
+⚠ **Yang TIDAK ikut diputuskan:** **siapa** yang mendengar *created* dan *cancelled* — penandanya membuat jawaban itu tidak
+lagi menentukan desain inventory, jadi boleh menyusul.
