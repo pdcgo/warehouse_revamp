@@ -4,6 +4,54 @@ What [context.md](./context.md) leaves open. **That doc is yours — this one is
 are deleted, so this file is always the current open set; what was settled is in
 [context_decision.md](./context_decision.md).
 
+> 🔄 **Re-examined 2026-10-17 — your redrawn [order_creation.md](./order_creation.md).** The debt box is drawn as
+> [proposed](#proposed--the-debt-check-as-decided); [the-debt-check-skips-the-warehouse](#the-debt-check-skips-the-warehouse)
+> is left with only balance §Balance Policy 2. *Delete Draft Order* moved inside the transaction —
+> [the-draft-is-deleted-in-the-orders-transaction](./context_decision.md#the-draft-is-deleted-in-the-orders-transaction).
+> **No open question.**
+
+> 🔄 **Re-examined 2026-10-17 — your §How We Warn Duplicate Order** replaces §How We Manage Order Uniqueness, as drawn.
+> [the-uniqueness-section-still-denies](#the-uniqueness-section-still-denies) shrinks to the two column notes that still
+> say *"for order uniqueness"*. ⚠ §Order Shipments item 4 still reads *"mark **return** manually"*. **No open question.**
+
+> 🔄 **Re-examined 2026-10-17, last — your §Status Move redraw and §Complete Journey deleted.** ✅
+> [the-journey-stops-setting-statuses](#the-journey-stops-setting-statuses) answered
+> ([the-status-move-is-the-only-journey](./context_decision.md#the-status-move-is-the-only-journey)). Resolved with it:
+> [the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses),
+> [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back), and
+> [the-status-moves-miss-picked-and-shipping](#the-status-moves-miss-picked-and-shipping) but for the warehouse tabs.
+> The menu contradiction is down to one row (`return --> completed`). ⚠ A slip in your §Order Shipments item 4:
+> `return` to `lost` reads *"mark **return** manually"* — *lost* meant, I think. **No open question.**
+
+> ✅ **Answered in chat (2026-10-17), all as recommended:** `return → lost` exists
+> ([a-return-that-never-arrives-goes-lost](./context_decision.md#a-return-that-never-arrives-goes-lost)) ·
+> [lost-and-return-do-not-reverse-initial-total](#lost-and-return-do-not-reverse-initial-total) — only a cancel reverses
+> the sale ([lost-and-return-leave-the-sale-open](./context_decision.md#lost-and-return-leave-the-sale-open)) ·
+> [an-order-cannot-be-created-without-a-channel](#an-order-cannot-be-created-without-a-channel) — the courier is required
+> ([no-order-without-a-courier](./context_decision.md#no-order-without-a-courier)). The §Status Move redraw gains
+> `return --> lost`. **1 open:** [the-journey-stops-setting-statuses](#the-journey-stops-setting-statuses).
+
+> 🔄 **Re-examined 2026-10-17, later — your §Order Shipments item 3.** ✅ [an-unmarked-order-can-leave-shipping](#an-unmarked-order-can-leave-shipping)
+> answered: `shipping → return` exists, set by customer service, and the warehouse's force takes the same edge
+> ([shipping-can-go-straight-to-return](./context_decision.md#shipping-can-go-straight-to-return)). The proposed
+> [§Status Move redraw](#the-status-moves-miss-picked-and-shipping) is now drawn whole, with who makes each move. **3 open.**
+
+> 🔄 **Re-examined 2026-10-17 — your §Order Shipments.** ✅ [nobody-is-named-after-the-handover](#nobody-is-named-after-the-handover)
+> answered: customer service marks `shipped` and `problem` by hand ([customer-service-sets-shipped-and-problem-by-hand](./context_decision.md#customer-service-sets-shipped-and-problem-by-hand)),
+> against my merge. 🆕 [an-unmarked-order-can-leave-shipping](#an-unmarked-order-can-leave-shipping) — a parcel back
+> before anyone marked it `shipped`. Your §General item 3 (the return link) raises nothing. **Still 4 open.**
+
+> 🆕 **Opened 2026-10-17:** [nobody-is-named-after-the-handover](#nobody-is-named-after-the-handover) — nothing sets
+> `shipped` or `problem`. Its [Contradiction](#the-order-menu-and-the-status-move-disagree-after-the-handover): your order-list
+> menu offers three moves §Status Move does not have, one of them a real hole (`return --> lost`). **4 open.**
+
+> ✅ **Answered in chat (2026-10-17):** [the-order-announces-what-shipped-and-what-came-back](#the-order-announces-what-shipped-and-what-came-back) —
+> no new events, both fees stay on a return, as recommended ([what-shipped-is-what-was-ordered](./context_decision.md#what-shipped-is-what-was-ordered),
+> [a-return-keeps-both-fees](./context_decision.md#a-return-keeps-both-fees)). Also decided, asked in chat only: a cancel refunds the
+> warehouse fee in full, after `picked` too ([a-cancel-refunds-the-warehouse-fee-in-full](./context_decision.md#a-cancel-refunds-the-warehouse-fee-in-full)),
+> against my *keep it once picked*. No contradictions — the one older decision that leaned on the question,
+> [a-lines-money-is-frozen-at-finalize](./context_decision.md#a-lines-money-is-frozen-at-finalize), carries a note. **3 open.**
+
 > ✅ **Answered in chat (2026-10-16, later):** [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses) —
 > yes, as recommended ([picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses)),
 > amending [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) and
@@ -144,62 +192,10 @@ flowchart LR
 
 ### Proposed — the debt check, as decided
 
-For your box in [order_creation.md](./order_creation.md) — it draws
-[the-debt-check-runs-before-the-take](./context_decision.md#the-debt-check-runs-before-the-take),
-[a-failed-owner-lookup-refuses-the-create](./context_decision.md#a-failed-owner-lookup-refuses-the-create),
-[the-warehouse-is-a-creditor-on-every-order](./context_decision.md#the-warehouse-is-a-creditor-on-every-order) and
-[over-the-limit-refuses-the-create](./context_decision.md#over-the-limit-refuses-the-create). It replaces the lines from
-`state "Create RPC called" as rpc` to `ordcheck-->tx`; the rest of your diagram is unchanged.
+✅ *(2026-10-17)* **Drawn** — your pasted [order_creation.md](./order_creation.md) diagram carries it as proposed: the owners
+lookup, the warehouse and each lending team checked, both refusals before the transaction. Kept as a heading so the links
+into it hold.
 
-```mermaid
-stateDiagram-v2
-direction LR
-
-state "Create RPC called" as rpc
-state create_err <<choice>>
-state "Product Owners Lookup" as owners
-state "Product Service" as prod
-state "Debt Threshold Check" as ordcheck
-state "Balance Service" as bal
-state limit_ok <<choice>>
-state "Refuse the Create" as refuse
-state "Open Database Transaction" as tx
-
-rpc-->owners: product ids
-owners-->prod: whose product is each one
-prod-->owners: each product owning team
-owners-->refuse: lookup failed
-owners-->ordcheck: creditors - the warehouse, and each team a shared product belongs to
-ordcheck-->bal: the ordering team and its creditors
-bal-->ordcheck: each pair committed debt and limit
-ordcheck-->limit_ok
-limit_ok-->refuse: a creditor at or over its limit - name it, with the debt and the limit
-limit_ok-->tx: every creditor under its limit
-refuse-->[*]: an error to the form
-```
-
-| | |
-| --- | --- |
-| `owners` | new — the take returns the owners too, but only after this check |
-| `ordcheck` | now a named state; your box was the bare id `ordcheck` |
-| the label | *the warehouse, and each team a shared product belongs to* — replaces *if order contain shared product* |
-| `refuse` | both refusals end the create before the transaction, so nothing is taken and nothing is compensated |
-
-### Proposed — the order announces what shipped and what came back
-
-For [the-order-announces-what-shipped-and-what-came-back](#the-order-announces-what-shipped-and-what-came-back).
-
-```mermaid
-sequenceDiagram
-  participant O as order_service
-  participant L as liability and inventory
-  participant S as settlement
-  O->>L: OrderPlaced — the lines ORDERED
-  O->>L: OrderShipped — the lines actually handed to the courier
-  O->>L: OrderReturned — the lines received back
-  Note over O,L: the difference is the consumer's arithmetic, not the order's
-  Note over S: marketplace money arrives as settlement entries, whatever the status
-```
 
 ---
 
@@ -207,8 +203,7 @@ sequenceDiagram
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **the-uniqueness-section-still-denies** | 🔄 §How We Manage Order Uniqueness is titled *uniqueness* and ends in *Deny Order Create*, while a duplicate is now warned and created ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused)). See [Contradiction](#the-uniqueness-section-still-denies) | a *duplicate warning* section, whose flow ends in *warn, then create anyway* |
-| **short-pick-and-return-are-silent** | only *placed* and *cancelled* are announced. A short pick leaves another team charged for units that never left; a return never reverses COGS | [two more events](#proposed--the-order-announces-what-shipped-and-what-came-back) |
+| **the-uniqueness-section-still-denies** | ✅ *(2026-10-17)* the section is redrawn as §How We Warn Duplicate Order — only two column notes still say *"for order uniqueness"*. See [Contradiction](#the-uniqueness-section-still-denies) | *"its for duplicate warning"* on both |
 | **the-empty-ref-lives-on-in-the-build** | the doc says the ref *"cannot empty"*; the build says `''` is *"the ordinary state of an order taken over the phone"* and skips the settlement account when the platform total is 0 — both now forbidden by [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize). See [Contradiction](#the-build-still-treats-an-empty-ref-as-a-phone-order) | a `selling_service` migration + handler check when this is built |
 | **what-an-order-must-prove** | nothing lists what the business must be able to show about an order later: who took it, by which door, what shipped, who picked | frozen at finalize: shop, warehouse, lines, owners, cost, source. Recorded as it moves: picker, packer, handover time |
 
@@ -223,21 +218,13 @@ sequenceDiagram
 ✅ *(2026-10-15)* **Answered: yes, the warning reads drafts too, never the draft being finalized** — [the-duplicate-warning-reads-drafts-too](./context_decision.md#the-duplicate-warning-reads-drafts-too). Kept as a heading so the links into it hold.
 
 ### the-order-announces-what-shipped-and-what-came-back
-*(was Q6)* Does the order emit the lines **actually shipped** at handover, and the lines **received back** on a
-return? Today it emits neither, the fee is posted from the ordered quantity, and ledger entries are immutable.
-**→ Yes, both.** The business half is yours: **is a short-picked borrowed line charged at what shipped, or at
-what was ordered?** There is a case for *ordered* — the owner lost that stock to this order.
+✅ *(2026-10-17)* **Answered: no new events, and both fees stay on a return** — [what-shipped-is-what-was-ordered](./context_decision.md#what-shipped-is-what-was-ordered), [a-return-keeps-both-fees](./context_decision.md#a-return-keeps-both-fees). A short pick never ships and a return is whole, so the question's two cases are gone. Kept as a heading so the links into it hold.
 
 ### lost-and-return-do-not-reverse-initial-total
-*(new)* Settlement names `initial_total_cancel` as the only reversal. Should `lost` and `return` also cancel the
-sale on the settlement account? **→ No.** The marketplace decides what a lost or returned parcel is worth, and
-settlement records exactly that — a residual balance is already normal
-([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)).
+✅ *(2026-10-17)* **Answered: no — only a cancel reverses the sale** — [lost-and-return-leave-the-sale-open](./context_decision.md#lost-and-return-leave-the-sale-open), as recommended. Kept as a heading so the links into it hold.
 
 ### the-journey-stops-setting-statuses
-*(new)* §Complete Journey still sets statuses by the old rules — see
-[Contradiction](#the-journey-still-sets-the-old-statuses). **→ Take the `set status …` boxes out of the journey**
-so the status diagram is the only place a status is defined.
+✅ *(2026-10-17)* **Answered by your edit: §Complete Journey is deleted, and §Status Move — with who makes each move — is the one journey** — [the-status-move-is-the-only-journey](./context_decision.md#the-status-move-is-the-only-journey). My revised recommendation; the first one (*take the boxes out*) would have left the journey almost empty. Kept as a heading so the links into it hold.
 
 ### who-may-cancel-a-pending-order
 ✅ *(2026-10-15)* **Answered: only the selling team cancels** — the warehouse hands the order back to `pending` with a note, so customer service chases it ([only-the-selling-team-cancels](./context_decision.md#only-the-selling-team-cancels)). Against my *both may*.
@@ -246,11 +233,13 @@ so the status diagram is the only place a status is defined.
 ✅ *(2026-10-15)* **Answered: drop `order_events`, create `order_timeline_logs`** — [order-timeline-logs-replaces-order-events](./context_decision.md#order-timeline-logs-replaces-order-events). Simpler than my keep-`kind`.
 
 ### an-order-cannot-be-created-without-a-channel
-*(re-routed from [shipment](../shipment/context_clarify.md))* The third-party app converts the platform's
-courier text to our id ([the-app-converts-the-courier-to-a-channel-id](../shipment/context_decision.md#the-app-converts-the-courier-to-a-channel-id)).
-When it cannot — a courier we have no channel for — the draft's `shipment_channel_id` stays empty. May an order
-be created from that draft? **→ No.** The person picks the channel on the create form, or root adds it first —
-an order with no courier cannot be handed over.
+✅ *(2026-10-17)* **Answered: no — the courier is required, picked on the form when the draft has none** — [no-order-without-a-courier](./context_decision.md#no-order-without-a-courier), as recommended. Kept as a heading so the links into it hold.
+
+### nobody-is-named-after-the-handover
+✅ *(2026-10-17)* **Answered by your §Order Shipments: customer service marks `shipped` and `problem` by hand, from the platform** — [customer-service-sets-shipped-and-problem-by-hand](./context_decision.md#customer-service-sets-shipped-and-problem-by-hand). Against my *merge them if the app cannot see the platform*. Kept as a heading so the links into it hold.
+
+### an-unmarked-order-can-leave-shipping
+✅ *(2026-10-17)* **Answered by your §Order Shipments item 3: `shipping → return` exists** — [shipping-can-go-straight-to-return](./context_decision.md#shipping-can-go-straight-to-return). Customer service sets it from the platform, and the warehouse's force takes the same edge. Kept as a heading so the links into it hold.
 
 ---
 
@@ -258,98 +247,48 @@ an order with no courier cannot be handed over.
 
 ## the-journey-still-sets-the-old-statuses
 
-| §Order Status — Status Move (revised) | §Complete Journey Of The Orders (not revised) |
-| --- | --- |
-| `problem --> completed`, `problem --> lost`, `problem --> return` | `set status problem --> e` — a problem simply ends |
-| `processed --> cancel` | cancel only at `Is Cancel ?`, before `Warehouse Accept Order` — 🔄 *the journey was right on this row*: [the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back) |
-| `lost`, `return`, `return_completed` exist | none of the three appears |
-
-**Which is wrong:** the journey — the status diagram is the newer statement and was revised deliberately.
-**→ Recommend** removing statuses from the journey entirely
-([the-journey-stops-setting-statuses](#the-journey-stops-setting-statuses)). ⚠ **The pattern:** a status written
-in two diagrams has to be changed in two diagrams, and only one was.
-
-```mermaid
-flowchart LR
-  SD["Status Move — revised"] --> J1["journey: problem ends — stale"]
-  SD --> J2["journey: cancel only before accept — stale"]
-  SD --> J3["journey: no lost, no return — stale"]
-  SD --> B["build: placed, confirmed, picking, packed — stale, a migration when built"]
-```
+✅ *(2026-10-17)* **Resolved — you deleted §Complete Journey** ([the-status-move-is-the-only-journey](./context_decision.md#the-status-move-is-the-only-journey)).
+⚠ What it also named and is still true: the build's statuses (*placed, confirmed, picking, packed*) need a migration when
+this context is built. Kept as a heading so the links into it hold.
 
 ## the-status-moves-miss-the-way-back
 
-*(2026-10-15)* §Order Status — Status Move against
-[missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending)
-and [no-cancel-after-the-warehouse-confirms](../inventory/order_decision.md#no-cancel-after-the-warehouse-confirms):
-
-| §Status Move | decided |
-| --- | --- |
-| no `processed --> pending` | the warehouse sends a confirmed order back to `pending` when its goods are missing |
-| `processed --> cancel` | a confirmed order is not cancelled directly — it goes back to `pending` first, and the selling team cancels from there |
-
-**Which is wrong:** the diagram — both decisions are newer than its `processed` row. **→ Recommend** adding
-`processed --> pending` and removing `processed --> cancel`. 🔄 This reverses my verdict on that one row of
-[the-journey-still-sets-the-old-statuses](#the-journey-still-sets-the-old-statuses): there, the journey was right.
-
-```mermaid
-stateDiagram-v2
-  pending --> processed
-  processed --> pending: goods missing - a note on the timeline
-  pending --> cancel: the selling team
-  processed --> shipped
-```
+✅ *(2026-10-17)* **Resolved — your §Status Move has `processed --> pending` and no `processed --> cancel`.** Kept as a
+heading so the links into it hold.
 
 ## the-status-moves-miss-picked-and-shipping
 
-*(2026-10-16)* Your §Order Status list against the places that still draw the old path. One cause, four sites:
+✅ *(2026-10-17)* **Resolved in your doc** — §Status Move is the full redraw, with who makes each move, and §Complete
+Journey is gone. One site is left, outside your doc:
 
 | site | says |
 | --- | --- |
-| §Order Status, the list | `processed`, `picked`, `shipping`, `shipped` |
-| §Status Move | `processed --> shipped`, with no `picked` and no `shipping` |
-| §Complete Journey | one *"Process Order (Packing/Picking)"* step, and `shipped` set after the handover |
-| [the-warehouse-steps-are-not-order-statuses](./context_decision.md#the-warehouse-steps-are-not-order-statuses) | picking and the handover are steps inside `processed`, not statuses — ✅ amended 2026-10-16 |
 | [the-warehouse-tabs-are-the-processed-steps](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps) | *Sedang diambil, Sudah diambil, Dikemas, Sudah diserahkan* as steps of `processed` |
 
-**Which is wrong:** everything except the list — now decided ([picked-and-shipping-are-order-statuses](./context_decision.md#picked-and-shipping-are-order-statuses)). **→ Recommend**
-this Status Move. It also carries the way back ([the-status-moves-miss-the-way-back](#the-status-moves-miss-the-way-back)),
-so one redraw closes both. The journey follows [the-journey-stops-setting-statuses](#the-journey-stops-setting-statuses),
-and the warehouse tabs are redrawn with the two statuses.
+**→ Recommend** the warehouse order list's tabs follow the statuses when that screen is next touched — `processed` (to
+pick), `picked` (to pack and hand over), `shipping` (handed over). Packing has no status, so *Dikemas* has no tab of its own.
 
 ```mermaid
-stateDiagram-v2
-  pending --> processed
-  pending --> cancel: the selling team
-  processed --> pending: goods on no rack - a note
-  processed --> picked: every good scanned
-  picked --> pending: platform cancelled - unpacked
-  picked --> shipping: the handover scan
-  shipping --> shipped: the parcel moves
-  shipped --> completed
-  shipped --> problem
-  shipped --> lost
-  shipped --> return
+flowchart LR
+  T1["tab - processed, to pick"] --> T2["tab - picked, to pack and hand over"] --> T3["tab - shipping, handed over"]
+  D["Dikemas - packing has no status"] -.->|"folds into"| T2
 ```
 
 ## the-uniqueness-section-still-denies
 
-*(2026-10-15, replacing `the-uniqueness-flow-cannot-enforce-its-own-rule`)* Your doc against your answer in chat:
+✅ *(2026-10-17)* **Your section is redrawn** — §How We Warn Duplicate Order warns, never refuses, reads drafts, and checks
+on every Try Again ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused),
+[the-duplicate-warning-reads-drafts-too](./context_decision.md#the-duplicate-warning-reads-drafts-too),
+[a-try-again-always-warns](./context_decision.md#a-try-again-always-warns)). **One site is left:**
 
-| [context.md](./context.md) | [a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused) |
+| [context.md](./context.md) §Table That Must Have | decided |
 | --- | --- |
-| §Table That Must Have — *"`order_external_ref_id`, its for order uniqueness"*, on `orders` and `order_drafts` | the ref is required, not unique |
-| §How We Manage Order Uniqueness — *"Order uniqueness manage by code"*, ending in *"Deny Order Create"* | warn, then create anyway |
-
-**Which is wrong:** the section — the chat answer is newer. (Its flow never reached *Deny* anyway: it fetches only orders
-*"that not canceled"*, then asks whether the one it fetched is cancelled.) **→ Recommend** a *duplicate warning* section,
-drawn as [the warning design](./context_decision.md#the-duplicate-warning-reads-drafts-too), and *"its for order uniqueness"* on
-the two columns read as *"its for the duplicate warning"*.
+| `orders` and `order_drafts`: `order_external_ref_id`, *"its for order uniqueness"* | the ref is required, not unique — *"its for duplicate warning"* |
 
 ```mermaid
 flowchart LR
-  S["context.md - uniqueness, Deny Order Create"] -.->|"stale"| D["a-duplicate-ref-is-warned-not-refused"]
-  D --> W["warn, then create anyway"]
+  S["the section - redrawn, warns"] --> OK["agrees"]
+  C["two column notes - for order uniqueness"] -.->|"stale"| D["a-duplicate-ref-is-warned-not-refused"]
 ```
 
 ## the-build-still-treats-an-empty-ref-as-a-phone-order
@@ -433,30 +372,60 @@ flowchart LR
 
 | where | checks |
 | --- | --- |
-| your box in [order_creation.md](./order_creation.md) | *"if order contain shared product"* — the lending teams, and only then |
-| [balance/context.md](../balance/context.md) §Balance Policy 2 | *"when customer service finalizes order that contain cross products"* — the same |
+| your box in [order_creation.md](./order_creation.md) | ✅ *(2026-10-17)* redrawn — *"creditors - the warehouse, and each team a shared product belongs to"* |
+| [balance/context.md](../balance/context.md) §Balance Policy 2 | *"when customer service finalizes order that contain cross products"* — the lending teams, and only then |
 | [the-block-stops-orders-only](../balance/context_decision.md#the-block-stops-orders-only), and the build (`credit_checker.go`) | *"the fulfilling warehouse **and** every team whose goods it sells, each creditor checked independently"* — on every order |
 
-**Which is wrong:** the two docs — ✅ decided *(2026-10-15)*: the warehouse is checked on every order
+**Which is wrong:** the balance doc, now alone — ✅ decided *(2026-10-15)*: the warehouse is checked on every order
 ([the-warehouse-is-a-creditor-on-every-order](./context_decision.md#the-warehouse-is-a-creditor-on-every-order)).
-**→ Recommend** the box is redrawn as [the debt check, as decided](#proposed--the-debt-check-as-decided), and
-[balance/context.md](../balance/context.md) §Balance Policy 2 reads *"when customer service creates an order, the fulfilling
-warehouse and each team a cross product belongs to are compared to their committed pair rows"*.
+**→ Recommend** [balance/context.md](../balance/context.md) §Balance Policy 2 reads *"when customer service creates an order,
+the fulfilling warehouse and each team a cross product belongs to are compared to their committed pair rows"*.
 
 ```mermaid
 flowchart LR
-  O["an order of Melati - own goods only"] --> W["the warehouse pair - its limit"]
-  O2["an order of Melati - with a borrowed line"] --> W
-  O2 --> A["the lending team pair - its limit"]
-  W -.->|"your box - never checked"| X["a limit nothing enforces"]
+  OC["order_creation.md - the warehouse and each lending team"] --> OK["agrees with the decision"]
+  B["balance/context.md Balance Policy 2 - cross products only"] -.->|"stale"| D["the-warehouse-is-a-creditor-on-every-order"]
+```
+
+## the-order-menu-and-the-status-move-disagree-after-the-handover
+
+*(2026-10-17)* Your order-list menu ([the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status),
+2026-09-28) against §Status Move. One cause: the menu was given after the diagram and in the old status names, and
+nobody drew its moves back in.
+
+🔄 *(2026-10-17, later)* Your §Status Move redraw closes the first and third rows. **One row is left — the second.**
+
+| the menu offers | from | §Status Move |
+| --- | --- | --- |
+| *Jadikan Lost* | `return` | ✅ drawn — `return --> lost` |
+| *Selesaikan Order*, when the withdrawal is above zero | `return` | ⛔ no `return --> completed` |
+| *Retur Barang* · *Selesaikan Order* | the handover step — now `shipping` | ✅ `shipping --> return` drawn; *Selesaikan Order* waits for `shipped` |
+
+**Which is wrong:** the diagram, I think — the menu is the later statement of what customer service does. The first row
+is a real hole: a claimed return whose parcel never arrives stays in `return` forever. **→ Recommend** adding
+`return --> lost` to §Status Move — ✅ *(2026-10-17)* decided:
+[a-return-that-never-arrives-goes-lost](./context_decision.md#a-return-that-never-arrives-goes-lost). The second row needs the withdrawal figure, which is settlement's — leave it out
+until that exists. 🔄 *(2026-10-17)* The third row stands — the two stay apart
+([customer-service-sets-shipped-and-problem-by-hand](./context_decision.md#customer-service-sets-shipped-and-problem-by-hand)):
+*Retur Barang* from `shipping` is now yours ([shipping-can-go-straight-to-return](./context_decision.md#shipping-can-go-straight-to-return));
+*Selesaikan Order* waits for `shipped`. Only §Status Move is left to draw it.
+
+```mermaid
+flowchart LR
+  M["order-list menu - 2026-09-28"] --> R1["return - Jadikan Lost"]
+  M --> R2["return - Selesaikan Order"]
+  M --> R3["handover step - Retur, Selesaikan"]
+  R1 -.->|"no edge"| SM["Status Move"]
+  R2 -.->|"no edge"| SM
+  R3 -.->|"no edge"| SM
 ```
 
 ---
 
 # Awaiting
 
-- **The money of a return** beyond settlement: COGS reversed into inventory at the frozen cost, and the payable
-  to a borrowed line's owner standing, since the unit becomes the borrower's own (§Stock Ownership When Order Return).
+- **The money of a return** beyond settlement: ✅ balance reverses nothing ([a-return-keeps-both-fees](./context_decision.md#a-return-keeps-both-fees)).
+  What is left — the value the units re-enter stock at — is inventory return's brief.
 - **A parcel found after `lost`** — [lost-is-final](./context_decision.md#lost-is-final) means it does not come
   back through its order; how its goods re-enter stock is unwritten.
 - **Buyer shipping and COD** — still unmentioned.

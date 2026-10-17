@@ -3,6 +3,7 @@
 ## General.
 1. for order settlement, its follow [this](../settlement/context.md).
 2. for order event related, see [this](./event_context.md)
+3. for order return related, see [this](./order_return.md)
 
 ## Whats Order Responsbility And Not.
 ### Responsbility.
@@ -147,20 +148,28 @@ when order created. its bring 4 things.
 2. Status Move.
     ```mermaid
     stateDiagram-v2
-
-    pending-->cancel
-    pending-->processed
-    processed-->cancel
-    processed-->shipped
-    shipped-->completed
-    shipped-->problem
-    problem-->completed
-    problem-->lost
-    problem-->return
-    shipped-->lost
-    shipped-->return
-    completed-->return
-    return-->return_completed
+    [*] --> pending
+    pending --> processed: warehouse - confirms, the label printed
+    pending --> cancel: the selling team
+    processed --> pending: warehouse - goods on no rack, a note
+    processed --> picked: warehouse - Set Picked
+    picked --> pending: warehouse - platform cancelled, unpacked
+    picked --> shipping: warehouse - the handover scan
+    shipping --> shipped: customer service - seen moving on the platform
+    shipping --> return: customer service, or the warehouse forcing it
+    shipped --> completed: customer service
+    shipped --> problem: customer service - seen on the platform
+    shipped --> lost: customer service
+    shipped --> return: customer service, or the warehouse forcing it
+    problem --> completed: customer service
+    problem --> lost: customer service
+    problem --> return: customer service, or the warehouse forcing it
+    completed --> return: customer service, or the warehouse forcing it
+    return --> return_completed: warehouse - accepts, the goods are here
+    return --> lost: customer service - the parcel never came back
+    cancel --> [*]
+    lost --> [*]
+    return_completed --> [*]
     ```
 
 ## Order Draft Behavior and What Used For.
@@ -200,28 +209,29 @@ fork_state-->ord: finalized and create new order
 ```
 
 
-## How We Manage Order Uniqueness.
-1. Order uniqueness manage by code.
-2. Unique Scope by `order_external_ref_id` + `shop_id`
+## How We Warn Duplicate Order.
+1. `order_external_ref_id` + `shop_id` is not unique. same reference can be created twice, ex: cancel and create new one.
+2. frontend check before create order, and in every Try Again. it look in `orders` that not `cancel`, and in `order_drafts`.
+3. draft that being finalized is not warned.
+4. if found, frontend show warning with that order or draft. customer service can open it, or still create.
+5. backend not refuse duplicate reference.
 
     ```mermaid
     flowchart TD
-    
     s(("Start"))
     e(("End"))
 
-    s-->ordcreate["Order need Create"]
-    ordcreate-->refcheck{"is `order_external_ref_id` exist ?"}
+    s-->ordcreate["Order Need Create"]
+    ordcreate-->refcheck{"same shop and ref in orders not cancel, or in drafts ?"}
     refcheck-->|no|created["Order Created"]
-    refcheck-->|yes|fetch["Fetch existing order with `order_external_ref_id` that not canceled"]
-
-    fetch-->iscancel{"Is Existing Order Cancel"}
-    iscancel-->|no|created
-    iscancel-->|yes|deny["Deny Order Create"]
-
-    deny-->e
+    refcheck-->|"yes, only the draft being finalized"|created
+    refcheck-->|"yes, other order or draft"|warn["Show Warning With That Order or Draft"]
+    warn-->|open it|open["Open That Order or Draft"]
+    warn-->|still create|created
+    open-->e
     created-->e
     ```
+
 
 ## How Order Enter Our System.
 1. Order Draft is stored to another place. not in table `orders` but in `order_drafts`
@@ -335,31 +345,6 @@ how we charge that 2 item is managed by balance service that explained in [balan
 
 
 
-## Complete Journey Of The Orders.
-```mermaid
-flowchart TD
-s(("start"))
-e(("End"))
-
-s-->create["Order Created"]
-create-->cancel{"Is Cancel ?"}
-cancel-->|yes|uc["User Cancel Order"]
-    uc-->e
-cancel-->|no|waccept["Warehouse Accept Order"]
-    waccept-->process["Warehouse Process Order (Packing/Picking)"]
-    process-->give["Warehouse Give to Shipping Channel"]
-    give-->setwcompleted["set status warehouse process `completed`"]
-    setwcompleted-->setship["set status `shipped`"]
-    setship-->shipproblem{"is Shipment Problem ?"}
-    shipproblem-->|yes|setproblem["set status `problem`"]
-        setproblem-->e
-    shipproblem-->|no|completed["set status `completed`"]
-        completed-->e
-
-```
-
-
-
 ## Stock Ownership When Order Return. 
 ```mermaid
 flowchart TD
@@ -389,3 +374,14 @@ ivcreate-->e
 2. its use for map product ownership when its return.
 
 
+
+## Order Shipments.
+### who change status `shipping` and `shipped`
+1. `shipping` to `shipped`
+    - customer service check manually to external platform and mark shipped manually.
+2. `shipped` to `problem`
+    - customer service check manually to external platform and mark problem manually.
+3. `shipping` to `return`
+    - customer service check manually to external platform and mark return manually.
+4. `return` to `lost`
+    - customer service check manually to external platform and mark return manually.

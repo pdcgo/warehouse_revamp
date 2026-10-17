@@ -14,13 +14,21 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**141 open questions across 37 files.** The five below are shown — #1 and #4 closed, their slots wait for a full rank; **136 are not** — they are not
+**141 open questions across 38 files.** The five below are shown — #1 and #4 closed, their slots wait for a full rank; **136 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- 🔄 *(2026-10-17)* **141**: your redrawn order_creation.md and §How We Warn Duplicate Order resolve four contradictions and the debt box; the draft is deleted inside the order's transaction ([the-draft-is-deleted-in-the-orders-transaction](business/order/context_decision.md#the-draft-is-deleted-in-the-orders-transaction)). No question opened or closed. Net zero.
+- ▼ *(2026-10-17)* **141**: your §Status Move redraw and the deleted §Complete Journey close `the-journey-stops-setting-statuses` ([the-status-move-is-the-only-journey](business/order/context_decision.md#the-status-move-is-the-only-journey)), and three contradictions with it — plus inventory order's `two-journeys-for-one-order`. **Order context has no open question.**
+- ▼ *(2026-10-17)* **142**: two order context questions closed in chat, as recommended — only a cancel reverses the sale ([lost-and-return-leave-the-sale-open](business/order/context_decision.md#lost-and-return-leave-the-sale-open)), an order needs its courier ([no-order-without-a-courier](business/order/context_decision.md#no-order-without-a-courier)). Also `return → lost` ([a-return-that-never-arrives-goes-lost](business/order/context_decision.md#a-return-that-never-arrives-goes-lost)), closing a contradiction row. Order context has one open question left.
+- ▼ *(2026-10-17)* **144**: your §Order Shipments item 3 closes `an-unmarked-order-can-leave-shipping` — `shipping → return` exists, customer service from the platform, the warehouse forcing it on the same edge ([shipping-can-go-straight-to-return](business/order/context_decision.md#shipping-can-go-straight-to-return)).
+- 🔄 *(2026-10-17)* **145**: your §Order Shipments answers `nobody-is-named-after-the-handover` — customer service marks `shipped` and `problem` by hand ([customer-service-sets-shipped-and-problem-by-hand](business/order/context_decision.md#customer-service-sets-shipped-and-problem-by-hand)), against my merge. Opened: [an-unmarked-order-can-leave-shipping](business/order/context_clarify.md#an-unmarked-order-can-leave-shipping) — a parcel back before anyone marked it. Net zero.
+- ▲ *(2026-10-17)* **145**: order context [nobody-is-named-after-the-handover](business/order/context_clarify.md#nobody-is-named-after-the-handover) — nothing sets `shipped` or `problem`; if the third-party app cannot see the platform's shipping status, I recommend merging `shipping` and `shipped`. One contradiction: the order-list menu offers three moves §Status Move lacks, one a real hole (`return --> lost`).
+- ▼ *(2026-10-17)* **144**: order context's `the-order-announces-what-shipped-and-what-came-back` closed, as recommended — no new events, since a short pick never ships and a return is whole ([what-shipped-is-what-was-ordered](business/order/context_decision.md#what-shipped-is-what-was-ordered)), and `return` reverses neither fee ([a-return-keeps-both-fees](business/order/context_decision.md#a-return-keeps-both-fees)). Also decided in chat: a cancel refunds the warehouse fee in full, after `picked` too ([a-cancel-refunds-the-warehouse-fee-in-full](business/order/context_decision.md#a-cancel-refunds-the-warehouse-fee-in-full)), against my *keep it once picked*.
+- ▲ *(2026-10-16)* **145**: the cut-over keeps `StockAdjust` and the one-rack `StockOpname` as provisional ledger adjustments ([old-shelf-corrections-move-onto-the-ledgers-provisionally](technical/stock/design_decision.md#old-shelf-corrections-move-onto-the-ledgers-provisionally)), against my *remove until designed*. Opened: [adjustment Q1–Q4](business/inventory/adjustment_clarify.md#question) — the port's choices, for you to confirm or reverse. One contradiction: a recount books money on one screen only. Nothing blocked: the port runs on today's behaviour meanwhile.
 - ▼ *(2026-10-16)* **141**: inventory context Q16 closed, as recommended — only inventory's half of a return is parked; order_return.md's calls into inventory are return.md's brief ([order-returns-calls-are-return-mds-brief](business/inventory/context_decision.md#order-returns-calls-are-return-mds-brief)). **No inventory clarify has an open question.**
 - ▼ *(2026-10-16)* **142**: inventory context Q7 closed, as recommended — expiry is a report; the take keeps oldest-first and a rack does not track batches ([expiry-is-a-report](business/inventory/context_decision.md#expiry-is-a-report)).
 - ▼ *(2026-10-16)* **143**: inventory context Q17 closed, as recommended — a transfer's create links its products to the receiving warehouse ([a-transfer-links-its-products-to-the-receiver](business/inventory/context_decision.md#a-transfer-links-its-products-to-the-receiver)).
@@ -146,8 +154,9 @@ the column sums to **141**, the whole set, not to 136. *Feeds* names the row of 
 | [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 13 |  |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 9 |  |
 | [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 |  |
+| [business/inventory/adjustment_clarify.md](business/inventory/adjustment_clarify.md#question) | 4 |  |
 | [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |
-| [business/order/context_clarify.md](business/order/context_clarify.md#question) | 4 |  |
+| [business/order/context_clarify.md](business/order/context_clarify.md#question) | 0 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 9 | #7 |
 | [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 8 | #5 |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 0 |  |
@@ -183,5 +192,5 @@ the column sums to **141**, the whole set, not to 136. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **141** across **37** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **141** across **38** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

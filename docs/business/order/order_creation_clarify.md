@@ -4,6 +4,15 @@ What [order_creation.md](./order_creation.md) leaves open. **That doc is yours �
 points are deleted, so this file is always the current open set. Decisions land in
 [context_decision.md](./context_decision.md).
 
+> ✅ **2026-10-17 — you pasted [the whole diagram](#the-whole-diagram-ready-to-paste)** and `team_id` into the request.
+> Resolved: [the-request-still-names-no-orderer](#the-request-still-names-no-orderer),
+> [the-form-diagram-still-reuses-the-key](#the-form-diagram-still-reuses-the-key),
+> [the-diagram-still-names-the-old-totals](#the-diagram-still-names-the-old-totals), the critiques `the-checks-are-not-drawn`
+> and `the-draft-delete-is-outside-the-transaction` (deleted), and order context's debt box. *Delete Draft Order* inside the
+> transaction is recorded as [the-draft-is-deleted-in-the-orders-transaction](./context_decision.md#the-draft-is-deleted-in-the-orders-transaction).
+> Left: [settlement-subscribes-here-and-is-called-in-its-own-doc](#settlement-subscribes-here-and-is-called-in-its-own-doc) —
+> the settlement doc's to change. Still no open question.
+
 > **Opened 2026-09-17**, re-examining the whole flow after the owner's correction: *"provision"* was the wrong
 > word — **calling inventory takes the stock directly.** That withdraws two of my earlier recommendations (a
 > confirm call, and an expiry on unconfirmed holds): a take has nothing to confirm and nothing to expire.
@@ -100,8 +109,15 @@ sequenceDiagram
 | the take | one take per K, ever — [inventory-takes-a-key-once](./context_decision.md#inventory-takes-a-key-once) |
 | spent | by its one submit — [every-submit-mints-a-new-key](./context_decision.md#every-submit-mints-a-new-key) |
 | the release | one path, by K, for `InventoryTxCancel` and the Order Cancel — [every-release-goes-by-the-key](./context_decision.md#every-release-goes-by-the-key) |
-| the pre-transaction checks | ⚠ **proposed** — [the-checks-are-not-drawn](#critique) |
+| the pre-transaction checks | ✅ drawn *(2026-10-17)* — *Check the Request*, the owners lookup, the debt check |
 | the resend shortcut | ✅ **gone** — a used key is refused, never answered with an order: [the-order-refuses-a-used-key](./context_decision.md#the-order-refuses-a-used-key) |
+
+### The whole diagram, ready to paste
+
+✅ *(2026-10-17)* **Pasted into [order_creation.md](./order_creation.md) as drawn**, with `team_id` on
+`OrderTransactionCreateRequest`. It closed three Contradictions below and the debt box, and moved *Delete Draft Order*
+inside the transaction ([the-draft-is-deleted-in-the-orders-transaction](./context_decision.md#the-draft-is-deleted-in-the-orders-transaction)).
+Kept as a heading so the links into it hold.
 
 ### What a take reduces — moved to inventory
 
@@ -116,8 +132,6 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **one-line-many-batches** | FIFO can draw one line from two batches at different costs, so a single `unit_cost` × `qty` only approximates `total` | `total` is authoritative; `unit_cost` is informational |
-| **the-checks-are-not-drawn** | nothing checks a present `platform_total` before stock is taken. 🔄 The duplicate ref left this list — it is the form's warning now ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused)). ✅ *(2026-10-15)* The debt threshold is drawn — [the-debt-check-runs-before-the-take](./context_decision.md#the-debt-check-runs-before-the-take) | `platform_total` present ([platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize)) — beside the debt check, before the transaction |
-| **the-draft-delete-is-outside-the-transaction** | *"Delete Draft Order"* hangs off `if success`, after the commit | delete inside the transaction — same service, same database |
 | **the-fee-call-is-inside-the-transaction** | `WarehouseFeeCalculate` holds the order's transaction open across a network call | acceptable, since its basis only exists after the take — but it is a pure calculation, so reading the rate before the transaction and computing locally removes the call |
 
 ---
@@ -136,62 +150,15 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 
 ## the-request-still-names-no-orderer
 
-*(2026-10-15)* Your §How We Call Inventory Service to Take Stock against your answer the same day:
-
-| [order_creation.md](./order_creation.md) | [the-take-names-the-orderer-and-each-owner](./context_decision.md#the-take-names-the-orderer-and-each-owner) |
-| --- | --- |
-| `TransactionItem.owner_team_id` | ✅ agrees |
-| `OrderTransactionCreateRequest { idempotency_key, warehouse_id, items }` | the request carries `team_id`, the ordering team |
-
-**Which is wrong:** the proto — the rename landed, its other half did not. **→ Recommend** one line in the request,
-`uint64 team_id // the ordering team`, beside `idempotency_key`. Without it inventory cannot tell own from borrowed, so the
-private and reserve checks of [inventory order.md](../inventory/order.md) have nothing to compare against.
-
-```mermaid
-flowchart LR
-  R["OrderTransactionCreateRequest - no team_id"] -.->|"own or borrowed?"| X["inventory cannot tell"]
-  R2["with team_id B"] --> Y["Kaos Hitam own - Kemeja Putih borrowed, checked"]
-```
+✅ *(2026-10-17)* **Resolved by your pasted diagram** — `OrderTransactionCreateRequest` carries `team_id`, the ordering team. Kept as a heading so the links into it hold.
 
 ## the-form-diagram-still-reuses-the-key
 
-*(2026-10-15)* Your frontend box in [order_creation.md](./order_creation.md) against your answer in chat the same day:
-
-| order_creation.md, the frontend box | [every-submit-mints-a-new-key](./context_decision.md#every-submit-mints-a-new-key) |
-| --- | --- |
-| *"Order Need Created"* → *"Create Idempotency Key"* → *"Filling Order Form"* — minted once, before filling | minted at each submit |
-| *"no answer, Try Again with the same key"* | *Try Again* under a new key |
-| *"an error, new key, the form keeps what was typed"* | ✅ agrees |
-
-**Which is wrong:** the diagram — the chat answer is newer, and it is what closes the twin case.
-**→ Recommend** minting inside the loop, right before *Create Order*, so every arrow back into *Create* passes through it:
-
-```mermaid
-stateDiagram-v2
-  direction LR
-  state "Filling Order Form" as fill
-  state "Create Idempotency Key" as idem
-  state "Create Order" as cre
-  state "Waiting for the Answer, Form Locked" as wait
-  state answer <<choice>>
-  state "Open the Created Order" as done
-  [*] --> fill
-  fill --> idem
-  idem --> cre
-  cre --> wait
-  wait --> answer
-  answer --> done: the order
-  answer --> fill: an error, the form keeps what was typed
-  answer --> idem: no answer, Try Again under a new key
-```
+✅ *(2026-10-17)* **Resolved by your pasted diagram** — the key is made right before each *Create*, and *Try Again* gets a new one ([every-submit-mints-a-new-key](./context_decision.md#every-submit-mints-a-new-key)). Kept as a heading so the links into it hold.
 
 ## the-diagram-still-names-the-old-totals
 
-*"Subtotal info Product"* and *"bring total & subtotal"* (lines 42, 48, 54) — while §Table That Must Have in
-[context.md](./context.md) replaced both with `goods_cost` and `total_cost`
-([the-warehouse-fee-is-a-percentage-of-the-goods](./context_decision.md#the-warehouse-fee-is-a-percentage-of-the-goods)).
-**Which is wrong:** the diagram. **→ Recommend** the take returns lines, the order sums `goods_cost`, the fee is
-taken on it, and `total_cost = goods_cost + warehouse_fee`.
+✅ *(2026-10-17)* **Resolved by your pasted diagram** — the transaction box names the lines, `goods_cost`, `warehouse_fee` and `total_cost`. Kept as a heading so the links into it hold.
 
 ## settlement-subscribes-here-and-is-called-in-its-own-doc
 
@@ -201,6 +168,6 @@ Settlement is a push subscriber of *Order Created Event* here (lines 92–101), 
 
 ```mermaid
 flowchart LR
-  D["order_creation.md — revised"] --> A["its own diagram: subtotal and total — stale"]
+  D["order_creation.md — redrawn 2026-10-17"] --> A["its own diagram — agrees"]
   D --> C["settlement/context.md: order calls settlement — stale"]
 ```

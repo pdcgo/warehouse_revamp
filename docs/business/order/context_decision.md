@@ -75,6 +75,16 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [a-return-is-never-partial](#a-return-is-never-partial) | a return is the whole order or nothing — no line comes back on its own |
 | [platform-total-is-required-at-finalize](#platform-total-is-required-at-finalize) | an order cannot be finalized without the buyer-paid figure — it is what settlement opens on |
 | [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses) | `picked` (Set Picked, every good scanned) and `shipping` (the handover scan) are order statuses; packing stays a step | chat and your §Order Status, 2026-10-16 — as recommended |
+| [a-cancel-refunds-the-warehouse-fee-in-full](#a-cancel-refunds-the-warehouse-fee-in-full) | a cancel reverses the whole warehouse fee, however far the warehouse got — nothing kept once `picked`, no cancel fee |
+| [what-shipped-is-what-was-ordered](#what-shipped-is-what-was-ordered) | no OrderShipped or OrderReturned lines — a short pick never ships and a return is whole, so the ordered lines are the answer |
+| [a-return-keeps-both-fees](#a-return-keeps-both-fees) | `return` reverses nothing in balance — the warehouse fee and the product fee both stay |
+| [customer-service-sets-shipped-and-problem-by-hand](#customer-service-sets-shipped-and-problem-by-hand) | customer service reads the platform and marks `shipped` and `problem` by hand — `shipping` and `shipped` stay apart |
+| [shipping-can-go-straight-to-return](#shipping-can-go-straight-to-return) | `shipping → return` without `shipped` first — customer service from the platform, or the warehouse forcing it |
+| [a-return-that-never-arrives-goes-lost](#a-return-that-never-arrives-goes-lost) | `return → lost`, by customer service, when the parcel never reaches the warehouse — nothing moves in stock or money |
+| [lost-and-return-leave-the-sale-open](#lost-and-return-leave-the-sale-open) | only a cancel reverses the sale — `lost` and `return` leave it open for the platform's own entries |
+| [no-order-without-a-courier](#no-order-without-a-courier) | `shipment_channel_id` is required to create an order — picked on the form when the draft has none |
+| [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) | §Complete Journey is deleted — §Status Move, each edge naming who, is the one drawing of an order's statuses |
+| [the-draft-is-deleted-in-the-orders-transaction](#the-draft-is-deleted-in-the-orders-transaction) | a finalized draft is deleted inside the order's transaction — both commit, or neither |
 
 ---
 
@@ -107,6 +117,9 @@ flowchart LR
 | **at** | **one atomic act.** Map each external SKU to our product · resolve each line's owner · commit stock · write the money · publish `Order Created`. All of it, or none. |
 | **after** | the journey. The order is the warehouse's to accept. |
 | **therefore** | **finalize may REFUSE.** Availability seen while drafting can go stale, and every check runs here — so a refusal is an ordinary outcome, not an error path. |
+
+🔄 *(2026-10-17)* §Complete Journey is deleted ([the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey)).
+The verdict holds — *Order Created* is now `[*] --> pending` in §Status Move.
 
 **What it closes.** The seam is gone, so *"when is stock committed?"* has one answer: **at finalize, which
 is creation**. The words *"at creation"* are no longer ambiguous, and the diagrams now join.
@@ -716,6 +729,10 @@ stay as written — so the difference can only be carried by a **new** fact, whi
 announce what actually shipped
 ([the-order-announces-what-shipped-and-what-came-back](./context_clarify.md#the-order-announces-what-shipped-and-what-came-back)).
 
+🔄 *(2026-10-17)* **No longer so.** The picked quantity cannot differ any more — a short pick never ships
+([what-shipped-is-what-was-ordered](#what-shipped-is-what-was-ordered)) — so the frozen figures are always the shipped
+ones, and no new fact is needed.
+
 ---
 
 ## superseded-the-two-draft-line-tables-are-not-linked
@@ -937,7 +954,7 @@ where it was.
 `if success` branch **after** the commit, so a failed delete still leaves a finalized draft in the queue —
 the benign failure, but an avoidable one. Drafts and orders are the same service and the same database, so
 **→ recommend the delete run inside the order's transaction**, which makes *"the order exists and the draft is
-gone"* one fact.
+gone"* one fact. ✅ *(2026-10-17)* Taken — [the-draft-is-deleted-in-the-orders-transaction](#the-draft-is-deleted-in-the-orders-transaction).
 
 ⚠ **And a re-scrape can still resurrect it.** The app's push is create-or-update on the reference, so a
 deleted draft returns the next time the app reads that platform order. **→ A push whose reference already
@@ -2402,8 +2419,8 @@ flowchart LR
 | inventory's own names | `inventory_transaction_items.product_team_id` and `is_owned` ([an-item-carries-its-owning-team](../inventory/transaction_decision.md#an-item-carries-its-owning-team)) — the contract's `owner_team_id` is `product_team_id` |
 | the inventory transaction | carries the ordering team ([an-order-transaction-is-the-ordering-teams](../inventory/transaction_decision.md#an-order-transaction-is-the-ordering-teams)) |
 
-⚠ **Not drawn yet:** `team_id` on `OrderTransactionCreateRequest` in [order_creation.md](./order_creation.md) — reported in
-[order_creation_clarify](./order_creation_clarify.md#the-request-still-names-no-orderer).
+✅ *(2026-10-17)* **Drawn:** `team_id` on `OrderTransactionCreateRequest` in [order_creation.md](./order_creation.md) —
+was reported in [order_creation_clarify](./order_creation_clarify.md#the-request-still-names-no-orderer).
 
 ---
 
@@ -2658,6 +2675,320 @@ stateDiagram-v2
 | --- | --- |
 | each move | one `order_timeline_logs` row, `from = warehouse` ([order-timeline-logs-replaces-order-events](#order-timeline-logs-replaces-order-events)) |
 | packing | no status; a note on the timeline only if someone writes one |
-| ⚠ not drawn yet | §Status Move and §Complete Journey still go `processed --> shipped` — [the-status-moves-miss-picked-and-shipping](./context_clarify.md#the-status-moves-miss-picked-and-shipping) |
+| ✅ drawn *(2026-10-17)* | was: §Status Move and §Complete Journey still go `processed --> shipped`. §Status Move is redrawn and the journey deleted — [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) |
 | ⚠ the warehouse tabs | [the-warehouse-tabs-are-the-processed-steps](../../technical/frontend/warehouse_order_list_decision.md#the-warehouse-tabs-are-the-processed-steps) still lists them as steps of `processed` |
 | ⚠ the build | `OrderStatus` is placed · confirmed · picking · packed · shipped — a migration when this is built |
+
+---
+
+## a-cancel-refunds-the-warehouse-fee-in-full
+
+> Owner, in chat (2026-10-17): *"full refund is fine, that our policy in work, and its fair"* — asked as *"an order
+> cancelled after `picked` refunds the whole warehouse fee, though the staff picked, packed and unpacked it — should the
+> fee stay once picked?"*. Against my *the fee stays once `picked`*.
+
+**The verdict.** A cancel refunds the warehouse fee **in full**, however far the warehouse got — from `pending`, or
+handed back to `pending` from `processed` or `picked`
+([a-platform-cancel-goes-back-through-pending](../inventory/order_decision.md#a-platform-cancel-goes-back-through-pending)).
+It is the policy the business already works by, and the owner holds it fair.
+[inventory-returns-stock-on-order-cancelled](#inventory-returns-stock-on-order-cancelled) stands unchanged.
+
+```mermaid
+flowchart LR
+  P["pending - nothing done yet"] --> C["cancel - by the selling team"]
+  PR["processed - handed back to pending"] --> C
+  PK["picked - unpacked, handed back to pending"] --> C
+  C --> B["balance - warehouse fee and product fee reversed in full"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| warehouse fee | reversed in full on every cancel |
+| product fee | reversed in full — the unit is back on the rack and back to its owner |
+| Order Cancel | carries nothing about how far the warehouse got; balance reads back what was posted |
+| the staff's work | picking, packing and unpacking a cancelled order is not charged |
+
+**What it rules out.** A fee kept once `picked`, a separate cancel fee, and a cancel that reads the timeline for a past
+`picked`. Nothing new is built.
+
+---
+
+## what-shipped-is-what-was-ordered
+
+> Owner, in chat (2026-10-17): **"yes"** — to closing
+> [the-order-announces-what-shipped-and-what-came-back](./context_clarify.md#the-order-announces-what-shipped-and-what-came-back)
+> as recommended: no new events, both fees stay on a return. The fee half is
+> [a-return-keeps-both-fees](#a-return-keeps-both-fees).
+
+**The verdict.** The order announces no *OrderShipped* and no *OrderReturned* lines. Two later decisions made both
+redundant: a short pick never ships, and a return is never partial — so what left and what came back are always the
+ordered lines. **Order Status Change** ([event_context.md](./event_context.md)) is all a consumer needs.
+
+```mermaid
+flowchart LR
+  S["picker short"] -->|"another rack has it"| T["taken from there"]
+  S -->|"no rack has it"| P["back to pending - cancel or wait"]
+  R["return"] --> W["always the whole order"]
+  T --> E["what shipped = what was ordered"]
+  W --> E2["what came back = what was ordered"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| a short pick | never ships — [missing-goods-send-the-order-back-to-pending](../inventory/order_decision.md#missing-goods-send-the-order-back-to-pending) |
+| a return | the whole order — [a-return-is-never-partial](#a-return-is-never-partial) |
+| events | Order Created, Order Cancel, Order Status Change, InventoryTxCancel — unchanged |
+| a parcel back with an item missing | the one case where what came back differs; asked in [a-short-delivered-parcel-has-no-home](./order_return_clarify.md#a-short-delivered-parcel-has-no-home) |
+
+---
+
+## a-return-keeps-both-fees
+
+> Owner, in chat (2026-10-17): **"yes"** — the money half of the same answer, as recommended.
+
+**The verdict.** Moving an order to `return` reverses nothing in balance. The warehouse fee stays, because the
+warehouse picked, packed and handed over. The product fee stays, because the borrowed unit becomes the borrower's own
+product (§Stock Ownership When Order Return) — a refund would give the borrower the unit for free. Same shape as
+[a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand).
+
+| Melati's order, B's unit borrowed | at create | on return |
+| --- | ---: | --- |
+| warehouse fee — Melati to the warehouse | 8.600 | **stays** |
+| product fee — Melati to Toko B | 72.000 | **stays** — the unit is Melati's now |
+
+```mermaid
+flowchart LR
+  R["order moves to return"] --> B["balance - nothing reversed"]
+  R --> I["inventory - the units come back, the borrowed one as Melati's own"]
+  A["the return warehouse accepts"] -.->|"may ADD a cod_fee"| B
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| warehouse fee | stays |
+| product fee | stays |
+| a return may | **add** a charge — a `cod_fee` when the warehouse accepts ([balance context](../balance/context.md)) — never remove one |
+| the unit's value back in stock | inventory return's brief, not the order's ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)) |
+
+---
+
+## customer-service-sets-shipped-and-problem-by-hand
+
+> Owner, in [context.md](./context.md) §Order Shipments (2026-10-17): *"`shipping` to `shipped` — customer service check
+> manually to external platform and mark shipped manually"*, and the same words for `shipped` to `problem` — answering
+> [nobody-is-named-after-the-handover](./context_clarify.md#nobody-is-named-after-the-handover). Against my *merge
+> `shipping` and `shipped` if the third-party app cannot see the platform*.
+
+**The verdict.** Customer service reads the platform and sets `shipped` and `problem` by hand. `shipping` and `shipped`
+stay two statuses — `shipping` is the warehouse handing the parcel over, `shipped` is customer service seeing it move on
+the platform. Every move after the handover is now a person's; none comes from the third-party app.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  picked --> shipping: warehouse - the handover scan
+  shipping --> shipped: customer service - seen moving on the platform
+  shipped --> problem: customer service - seen on the platform
+  shipped --> completed: customer service
+```
+
+**The spec.**
+
+| move | who | from what |
+| --- | --- | --- |
+| `picked → shipping` | the warehouse | the handover scan ([picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)) |
+| `shipping → shipped` | customer service | the platform, checked by hand |
+| `shipped → problem` | customer service | the platform, checked by hand |
+| each move | one `order_timeline_logs` row, `from = selling` | |
+| ⚠ the menu | [the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status) has no *mark shipped* on `shipping` and no way into `problem` — both are needed | |
+
+**What it leaves open.** An order nobody has marked yet, when the parcel is already back —
+[an-unmarked-order-can-leave-shipping](./context_clarify.md#an-unmarked-order-can-leave-shipping).
+
+---
+
+## shipping-can-go-straight-to-return
+
+> Owner, in [context.md](./context.md) §Order Shipments item 3 (2026-10-17): *"`shipping` to `return` — customer service
+> check manually to external platform and mark return manually"* — answering
+> [an-unmarked-order-can-leave-shipping](./context_clarify.md#an-unmarked-order-can-leave-shipping). The edge as
+> recommended; I had named only the warehouse, you named customer service.
+
+**The verdict.** An order may move `shipping → return` without being marked `shipped` first. Customer service sets it
+from the platform. The warehouse's force — a parcel back that nobody marked — takes the same edge, since
+[both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order) forces any order not
+yet `return`. No other move leaves `shipping` but `shipped`.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  shipping --> shipped: customer service - seen moving
+  shipping --> return: customer service from the platform, or the warehouse forcing it
+  shipped --> return: customer service or the warehouse
+  return --> return_completed: the warehouse accepts
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `shipping → return` | customer service, from the platform · the warehouse, forcing it with the parcel in hand |
+| `shipping → completed`, `→ problem`, `→ lost` | not allowed — customer service marks `shipped` first |
+| the timeline | one `return` row; no *shipped* row is written on the way |
+| ✅ drawn *(2026-10-17)* | in §Status Move — [the-status-move-is-the-only-journey](#the-status-move-is-the-only-journey) |
+
+---
+
+## a-return-that-never-arrives-goes-lost
+
+> Owner, in chat (2026-10-17): **"for a yes"** — to *"if a return parcel never arrives, can the order go to `lost`?"*,
+> from [the-order-menu-and-the-status-move-disagree-after-the-handover](./context_clarify.md#the-order-menu-and-the-status-move-disagree-after-the-handover).
+> As recommended.
+
+**The verdict.** `return → lost` is a move. Customer service sets it when a parcel claimed as coming back never reaches
+the warehouse — the order no longer waits in `return` forever. It is the menu's *Jadikan Lost*
+([the-action-menu-is-a-table-keyed-by-status](../../technical/frontend/order_list_decision.md#the-action-menu-is-a-table-keyed-by-status)).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  return --> return_completed: the warehouse accepts - the goods are here
+  return --> lost: customer service - the parcel never came back
+  lost --> [*]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| who | customer service, from the platform |
+| stock | nothing moves — the goods left at create and were never accepted back ([both-cs-and-the-warehouse-can-return-an-order](#both-cs-and-the-warehouse-can-return-an-order): only the accept moves stock) |
+| money | nothing moves — as [a-lost-parcel-is-settled-by-hand](#a-lost-parcel-is-settled-by-hand) |
+| after | `lost` is final ([lost-is-final](#lost-is-final)) |
+| ✅ drawn *(2026-10-17)* | in §Status Move |
+
+---
+
+## lost-and-return-leave-the-sale-open
+
+> Owner, in chat (2026-10-17): **"b no"** — to *"when an order goes `lost` or `return`, should it cancel the sale in
+> settlement?"*, [lost-and-return-do-not-reverse-initial-total](./context_clarify.md#lost-and-return-do-not-reverse-initial-total).
+> As recommended.
+
+**The verdict.** Only a cancel reverses the sale (`initial_total_cancel`). `lost` and `return` leave it open: what the
+platform pays, deducts or refunds for the parcel arrives as settlement entries, by API or by hand, and an account left
+with a residual is normal ([a-residual-balance-is-normal](../settlement/context_decision.md#a-residual-balance-is-normal)).
+
+```mermaid
+flowchart LR
+  C["cancel"] --> X["initial_total_cancel - the sale reversed"]
+  L["lost"] --> N["the sale stays open"]
+  R["return"] --> N
+  P["the platform - refund, deduction, claim"] --> S["settlement entries - by API or by hand"]
+```
+
+| status | the sale on the settlement account |
+| --- | --- |
+| `cancel` | reversed |
+| `lost` · `return` · `return_completed` | open — the platform's own entries say what it was worth |
+
+---
+
+## no-order-without-a-courier
+
+> Owner, in chat (2026-10-17): **"for d no"** — to *"can an order be created without a courier?"*,
+> [an-order-cannot-be-created-without-a-channel](./context_clarify.md#an-order-cannot-be-created-without-a-channel)
+> (re-routed from shipment). As recommended.
+
+**The verdict.** `shipment_channel_id` is required to create an order. A draft whose courier the app could not convert
+arrives with it empty, and the person picks the courier on the create form — or root adds the missing channel first.
+An order with no courier cannot be handed over.
+
+```mermaid
+flowchart LR
+  D["draft - shipment_channel_id empty"] --> F["create form - the courier field required"]
+  F -->|"picked"| O["order created"]
+  F -->|"no channel exists"| R["root adds the channel first"]
+  R --> F
+```
+
+| | |
+| --- | --- |
+| `orders.shipment_channel_id` | required — the create refuses without it |
+| `order_drafts.shipment_channel_id` | may be empty — the app could not convert the platform's courier |
+| the form | the courier field is required, seeded from the draft when it has one |
+
+---
+
+## the-status-move-is-the-only-journey
+
+> Owner, in [context.md](./context.md) (2026-10-17): §Complete Journey Of The Orders deleted, and §Status Move replaced
+> by the redraw with who makes each move — answering
+> [the-journey-stops-setting-statuses](./context_clarify.md#the-journey-stops-setting-statuses) by my revised
+> recommendation (*delete it*), not my first (*take the status boxes out*).
+
+**The verdict.** An order's statuses are drawn in **one** place: §Status Move. Each edge names who makes the move, so
+the diagram is the journey too — there is no second drawing to fall behind. Since `picked` and `shipping` became
+statuses, every journey box was a status move; a journey without statuses would have been nearly empty.
+
+```mermaid
+flowchart LR
+  J["§Complete Journey - deleted"] -.->|"every box was a status move"| SM["§Status Move - each edge names who"]
+  SM --> W["warehouse - confirm, Set Picked, handover scan, accept a return"]
+  SM --> CS["customer service - cancel, shipped, problem, completed, lost, return"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the statuses | §Order Status 1, the list — 11 |
+| the moves, and who | §Status Move — the one diagram |
+| who changes `shipping` onwards | §Order Shipments, in words |
+| a new move | drawn in §Status Move only |
+
+**What it closes.** [the-journey-still-sets-the-old-statuses](./context_clarify.md#the-journey-still-sets-the-old-statuses),
+[the-status-moves-miss-the-way-back](./context_clarify.md#the-status-moves-miss-the-way-back) and, but for the warehouse
+tabs, [the-status-moves-miss-picked-and-shipping](./context_clarify.md#the-status-moves-miss-picked-and-shipping).
+[order-created-is-finalize](#order-created-is-finalize) drew its seam against the journey; the seam is now `[*] --> pending`.
+
+---
+
+## the-draft-is-deleted-in-the-orders-transaction
+
+> Owner, in [order_creation.md](./order_creation.md) (2026-10-17): the pasted diagram puts *"Delete Draft Order, if from a
+> draft"* inside *Open Database Transaction*, after *Insert Order Item Table* — taking the recommendation made in
+> [create-order-takes-the-draft-id-and-deletes-it](#create-order-takes-the-draft-id-and-deletes-it) (2026-09-16), and the
+> spec of [the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too). It was flagged before the paste.
+
+**The verdict.** When an order is created from a draft, the draft is deleted **in the order's own transaction**. *"The
+order exists"* and *"the draft is gone"* are one fact: both commit, or neither does.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  state "Insert Order Table" as o
+  state "Insert Order Item Table" as i
+  state "Delete Draft Order, if from a draft" as d
+  state "Order Created" as c
+  [*] --> o
+  o --> i
+  i --> d
+  d --> c
+  c --> [*]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| when | inside the order's transaction, after its lines |
+| a typed order | no `order_draft_id`, nothing deleted |
+| the create fails | the draft stays, unchanged — the person fixes the form and sends again |
+| the duplicate warning | never meets the finalized draft afterwards ([the-duplicate-warning-reads-drafts-too](#the-duplicate-warning-reads-drafts-too)) |
