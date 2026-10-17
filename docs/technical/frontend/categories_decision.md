@@ -15,6 +15,7 @@ is the one decision that touches them.
 | [the-category-tree-arrives-shut](#the-category-tree-arrives-shut) | the tree opens on its top level only, and ONE button opens every branch or shuts them all |
 | [the-product-count-is-a-marked-sample](#the-product-count-is-a-marked-sample) | a **Produk** column, its figures invented and marked ⚠ until something counts a category's products; the row's add action reads **＋ Sub-kategori**; a disabled ⋯ item does nothing |
 | [a-branch-slides-open-and-shut](#a-branch-slides-open-and-shut) | a branch's children slide open and shut — height and fade in 180ms — and the chevron turns with them |
+| [a-branch-shows-the-hand](#a-branch-shows-the-hand) | a branch, which opens on a click, shows the hand cursor; a leaf keeps the arrow |
 
 ## the-category-page-is-a-tree
 
@@ -103,8 +104,9 @@ Nama                                    Sub-kategori                       Aksi
 | a search | still opens every branch on the way to a match; clearing it returns the tree as it was left |
 | the column bug | the actions column was 11rem and Indonesian's *Tambah Sub-kategori* is wider, so the button spilled out of it over the count. The column is **14rem** now, and a row's is a **minimum**, so a longer label widens its row rather than covering the count. 🔄 The label is *＋ Sub-kategori* since, and the column 11rem again — still a minimum ([the-product-count-is-a-marked-sample](#the-product-count-is-a-marked-sample)) |
 
-- Stories: `TheTreeArrivesShut`, `OneButtonOpensAndShutsAll`, and `InIndonesian` — which measures each row's ＋ button
-  against its count, and fails on the old 11rem column.
+- Stories: `TheTreeArrivesShut`, `OneButtonOpensAndShutsAll`. An `InIndonesian` story measured each row's ＋ button
+  against its count in Indonesian; it was removed (owner, 2026-10-17: *"kurasa tidak perlu"*) once the label became
+  *＋ Sub-kategori*. `TheTreeReadsLikeATable` still measures the same overlap, in English.
 
 ## the-product-count-is-a-marked-sample
 
@@ -146,3 +148,17 @@ Nama                              Sub-kategori   Produk ⚠1                  Ak
 
 - Measured with motion on: opening 0 → 26 → 44 → 49px at 0 / 60 / 120 / 400ms; shutting 49 → 40 → 19 → 0px, the child
   row hidden at the end; the same for a branch a search had opened.
+
+## a-branch-shows-the-hand
+
+> Owner, in chat (2026-10-17): *"sekarang aku punya masalah pada cursor, setiap dia ingin membuka detail, dia cuma
+> selector biasa, terasa aneh"*.
+
+| | |
+| --- | --- |
+| the gap | a branch opens on a click, but Chakra's tree leaves its rows on the plain arrow (\`cursor: auto\`) — the one place in the app where something that opens showed no hand |
+| now | a **branch** shows the hand (\`cursor: pointer\`), set once in \`theme.ts\`'s \`treeView\`, so any tree after this one does the same |
+| a leaf | keeps the arrow — it opens nothing, and the hand would promise a click that does nothing |
+| the rest of the app | checked: every list row, phone block and card that opens a page already shows the hand (\`cursor="pointer"\`, or \`PRESSABLE\` / \`LIFTS\`); the scan found no other row that opens something without it |
+
+- Story: \`TheTreeReadsLikeATable\` reads a branch's cursor (\`pointer\`) and a leaf's (\`auto\`).

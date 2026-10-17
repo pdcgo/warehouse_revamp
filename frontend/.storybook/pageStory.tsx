@@ -88,11 +88,17 @@ export function marker(path: string, testId: string): RouteObject {
  *
  * TeamSelect PORTALS its listbox, so the option is found on `screen`, never inside the canvas; and the list animates
  * in, so the option is waited visible before it is clicked (until then `pointer-events: none` refuses the click).
+ *
+ * ⚠ A PAGE MAY HOLD SEVERAL — a product's page has a warehouse lens on three tabs, each portalling its own list — so
+ * the option is the VISIBLE one of those that match, never simply the first.
  */
 export async function pickTeam(field: HTMLElement, teamCode: string) {
   await userEvent.click(within(field).getByRole("combobox"));
 
-  const option = await screen.findByTestId(`team-select-option-${teamCode}`);
+  const id = `team-select-option-${teamCode}`;
+  const visible = () => screen.queryAllByTestId(id).find((o) => o.checkVisibility());
+  await waitFor(() => expect(visible()).toBeDefined());
+  const option = visible()!;
   await waitFor(() => expect(option).toBeVisible());
   await userEvent.click(option);
 }

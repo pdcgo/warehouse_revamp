@@ -112,17 +112,6 @@ export const Mobile: Story = {
   },
 };
 
-/** In Indonesian — *＋ Sub-kategori* fits its column, and never runs over the counts beside it. */
-export const InIndonesian: Story = {
-  globals: { locale: "id" },
-  play: async ({ canvasElement }) => {
-    const canvas = await openAll(canvasElement);
-
-    await expect(canvas.getByTestId("add-child-51")).toHaveTextContent(/^Sub-kategori$/);
-    await columnsDoNotOverlap(canvasElement);
-  },
-};
-
 /** A taxonomy with nothing in it says what next, and its own New Category opens the form. */
 export const AnEmptyTreeSaysWhatNext: Story = {
   beforeEach: () => clearCategoriesForStory(),
@@ -182,6 +171,11 @@ export const TheTreeReadsLikeATable: Story = {
     await expect(canvas.getByTestId("add-child-51")).toHaveTextContent(/^Sub-category$/);
     await expect(canvasElement.querySelector(".chakra-card__root")).toBeNull();
     await columnsDoNotOverlap(canvasElement);
+
+    // A branch opens on a click, so it shows the hand, as a list row that opens something does; a leaf opens nothing
+    // and keeps the arrow ("setiap dia ingin membuka detail, dia cuma selector biasa").
+    await expect(row.cursor).toBe("pointer");
+    await expect(getComputedStyle(canvas.getByTestId("category-row-53")).cursor).toBe("auto");
   },
 };
 

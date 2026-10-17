@@ -425,7 +425,10 @@ const customConfig = defineConfig({
       // variant beats `base` (the trap `table` above walked into).
       treeView: {
         base: {
-          branchControl: TREE_ROW,
+          // A BRANCH OPENS ON A CLICK, SO IT SHOWS THE HAND (owner: *"setiap dia ingin membuka detail, dia cuma selector
+          // biasa"*) — as every list row that opens something does. Chakra leaves the tree's rows on the plain arrow. A
+          // leaf opens nothing, so it keeps the arrow: the hand would promise a click that does nothing.
+          branchControl: { ...TREE_ROW, cursor: "pointer" },
           item: TREE_ROW,
           // The chevron turns in the arriving beat, with the children it opens.
           branchIndicator: { transitionDuration: "enter", transitionTimingFunction: "ease-out" },

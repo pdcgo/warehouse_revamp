@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { products, teams, warehouseStock } from "../../../.storybook/fixtures";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
+import { patchProduct } from "../../../.storybook/productStub";
 import { asRole } from "../../../.storybook/sessionScenario";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { DiscoverProductDetailPage } from "./index";
@@ -46,15 +47,9 @@ const AtTeh = routedAt(TEH.id);
 const AtBeras = routedAt(BERAS.id);
 const AtNothing = routedAt(999n);
 
-/** A `beforeEach` that flips one flag on the Teh fixture for the story, and puts it back after. */
+/** A `beforeEach` that flips one flag on Teh for the story — in the product stub, whose reset puts it back. */
 function tehIs(flag: "crossLocked" | "deleted") {
-  return () => {
-    TEH[flag] = true;
-
-    return () => {
-      TEH[flag] = false;
-    };
-  };
+  return () => patchProduct(TEH.id, { [flag]: true });
 }
 
 const meta = {
