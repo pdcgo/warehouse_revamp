@@ -46,7 +46,7 @@ import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { daysSinceUnix, formatUnixDate } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -244,7 +244,7 @@ export function RestockWarehousePage() {
         <Stat.Root>
           <Stat.Label>{t("restock.stat.inboundAmount")}</Stat.Label>
           <Stat.ValueText data-testid="restock-stat-amount">
-            {formatRupiah(inbound.data?.amount ?? 0n)}
+            {formatRupiahNumber(inbound.data?.amount ?? 0)}
           </Stat.ValueText>
           <Stat.HelpText>{t("restock.stat.inboundAmountHint")}</Stat.HelpText>
         </Stat.Root>

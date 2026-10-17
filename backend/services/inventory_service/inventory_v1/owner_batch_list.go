@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"math"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -17,7 +18,7 @@ import (
 // one purchase history — so the warehouse becomes a column on the row and a LENS on the filter,
 // never the scope.
 //
-// ── Two joins to restock_requests, deliberately ─────────────────────────────────────────────────
+// ── Two joins to restocks, deliberately ─────────────────────────────────────────────────
 //
 // `rr` is the restock the LINE belongs to and answers WHO OWNS this — the same climb every owner read
 // makes. `r` is the delivery the batch was accepted on and answers what the receipt and supplier were.
@@ -32,13 +33,8 @@ func (s *Service) OwnerBatchList(
 
 	// The shared shape of the list query and the aggregate — same WHERE, different projection.
 	base := func() *gorm.DB {
-		q := s.db.
-			WithContext(ctx).
-			Table("stock_batches AS b").
-			Joins("JOIN restock_request_items i ON i.id = b.restock_request_item_id").
-			Joins("JOIN restock_requests rr ON rr.id = i.restock_request_id").
-			Joins("JOIN restock_requests r ON r.id = b.delivery_id").
-			Where("rr.requesting_team_id = ?", teamID)
+		// The owner is written on the batch at mint (a-batch-carries-its-owner) — no climb through restocks.
+		q := batchQuery(s.db.WithContext(ctx)).Where("b.team_id = ?", teamID)
 
 		if productID := req.Msg.GetFilter().GetProductId(); productID != 0 {
 			q = q.Where("b.product_id = ?", productID)
@@ -58,8 +54,6 @@ func (s *Service) OwnerBatchList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	const readyExpr = "COALESCE((SELECT SUM(sb.qty) FROM stock_shelf_batches sb WHERE sb.batch_id = b.id), 0)"
-
 	// batchRow/batchSelect/batchRowToProto are BatchDetail's, shared on purpose: a batch is a batch, and
 	// the owner reading one must not see different arithmetic from the warehouse holding it.
 	var rows []batchRow
@@ -76,10 +70,10 @@ func (s *Service) OwnerBatchList(
 	}
 
 	// Over the WHOLE filtered set, not the page. Unknown-cost batches add units and no money (#74).
-	var readyValue int64
+	var readyValue float64
 
 	err = base().
-		Select(`COALESCE(SUM(CASE WHEN b.unit_cost IS NOT NULL THEN ` + readyExpr + ` * b.unit_cost ELSE 0 END), 0)`).
+		Select(`COALESCE(SUM(b.stock_valuation), 0)`).
 		Scan(&readyValue).
 		Error
 	if err != nil {
@@ -97,6 +91,6 @@ func (s *Service) OwnerBatchList(
 		Items:           items,
 		Ids:             ids,
 		PageInfo:        pageInfo(page, total),
-		ReadyValueTotal: readyValue,
+		ReadyValueTotal: int64(math.Round(readyValue)),
 	}), nil
 }

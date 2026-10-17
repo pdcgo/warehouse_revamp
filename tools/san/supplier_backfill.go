@@ -64,7 +64,7 @@ func runSupplierBackfill(ctx context.Context, cmd *cli.Command) error {
 // BackfillSupplierFigures folds every accepted restock through supplier_service's fold, in batches, oldest first.
 func (s *San) BackfillSupplierFigures(ctx context.Context) (supplier_v1.BackfillResult, error) {
 	return s.suppliers.FoldBackfill(ctx, func(each func(*eventsv1.Event) error) error {
-		var batch []inventory_service_models.RestockRequest
+		var batch []inventory_service_models.Restock
 
 		return inventory_v1.AcceptedRestocks(s.db.WithContext(ctx)).
 			FindInBatches(&batch, backfillBatch, func(_ *gorm.DB, _ int) error {

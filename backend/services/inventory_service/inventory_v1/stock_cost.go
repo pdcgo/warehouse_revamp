@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"math"
 
 	"connectrpc.com/connect"
 
@@ -10,19 +11,15 @@ import (
 
 // StockCost reports what products cost this warehouse, so an order can freeze its COGS (#74).
 //
-// THE COST IS THE LATEST FULFILLED RESTOCK'S PRICE for that product into this warehouse. That is a
-// deliberate simplification, written down here rather than hidden:
-// a product can arrive on several restocks at different prices, so "what it cost" is genuinely
-// ambiguous, and the honest alternatives — a weighted average, or FIFO cost layers — both need a model
-// nothing here has yet. Latest-price needs nothing new and is right whenever prices are stable.
+// THE COST IS THE AVERAGE VALUE OF THE UNITS HELD, read from the batch ledger (see unitCosts).
 //
 // It is safe to change later precisely because the caller FREEZES the answer onto the order line: a
 // different rule changes what future orders record, and never rewrites what past ones already froze.
 //
-// Only FULFILLED restocks count. A pending request is a price somebody hoped for, not one that was
-// paid — costing goods against it would book a margin on a delivery that has not happened.
+// Only stock that arrived counts: a pending restock is a price somebody hoped for, not one that was paid, and it has
+// no batch yet.
 //
-// A product with no restock history is ABSENT from the response rather than reported as 0. "We do not
+// A product with no batch here is ABSENT from the response rather than reported as 0. "We do not
 // know what this cost" and "this cost nothing" are different facts, and a zero row would let a caller
 // compute a margin as if the goods were free.
 func (s *Service) StockCost(
@@ -47,15 +44,18 @@ func (s *Service) StockCost(
 	}), nil
 }
 
-// unitCosts is the HPP query itself, shared by StockCost and by the rack's valuation (#197).
+// unitCosts is the unit value of each product's stock in this warehouse, read from the batch ledger — shared by
+// StockCost and by the rack's valuation (#197), so a shelf's value and an order's COGS are never two formulas.
 //
-// Extracted rather than copied, and that is the whole point: the formula below is the owner's, it has
-// four documented rounding decisions in it, and a second copy would be a second answer to "what did
-// this cost" the first time either was tweaked.
+// It is the WEIGHTED AVERAGE of the units held: Σ stock_valuation ÷ Σ stock_count over the product's batches here. The
+// batches already carry the decided landed price (unit-price-is-line-price-plus-costs-per-unit), freight included. A
+// product with no units left reads its NEWEST batch's price — the last thing it cost here.
 //
-// A product with NO restock history is ABSENT from the map, never present as 0 — "we do not know what
-// this cost" and "this cost nothing" are different facts, and collapsing them lets a caller compute a
-// margin, or value a shelf, as if the goods were free.
+// ⚠ The order's take charges oldest batch first, so its real cost can differ from this average; the take answers its
+// own costs, and this is the preview a form freezes before it.
+//
+// A product with NO batch here is ABSENT from the map, never present as 0 — "we do not know what this cost" and "this
+// cost nothing" are different facts. Whole rupiah until these reads turn `double` (money-is-double-in-the-api-too).
 func (s *Service) unitCosts(
 	ctx context.Context,
 	warehouseID uint64,
@@ -63,72 +63,30 @@ func (s *Service) unitCosts(
 ) (map[uint64]int64, error) {
 	costs := map[uint64]int64{}
 
-	// An empty id list would make `IN ?` invalid SQL, and "the cost of nothing" is an empty map rather
-	// than an error.
+	// An empty id list would make `IN ?` invalid SQL, and "the cost of nothing" is an empty map rather than an error.
 	if len(productIDs) == 0 {
 		return costs, nil
 	}
 
-	type row struct {
+	var rows []struct {
 		ProductID uint64
-		UnitCost  int64
+		UnitCost  float64
 	}
 
-	var rows []row
-
-	// DISTINCT ON gives one row per product — the first in each group by the ORDER BY, which is the
-	// most recently fulfilled request. Postgres-specific and worth it: the portable alternative is a
-	// correlated subquery per product or a window-function wrapper, both noisier for the same answer.
-	//
-	// Ordered by the REQUEST's id, not the item's: a request is fulfilled as a unit, so its id is what
-	// says "this delivery came after that one". Item ids only say what order the lines were typed in.
 	err := s.db.
 		WithContext(ctx).
 		Raw(`
-			SELECT DISTINCT ON (i.product_id)
-			       i.product_id AS product_id,
-			       -- HPP — WHAT THE GOODS COST TO GET HERE (#155, owner's formula):
-			       --
-			       --   additional = (shipping_cost + what the warehouse laid out) / sellable units
-			       --   hpp        = (line total / line's sellable units) + additional
-			       --
-			       -- Freight is part of what a product costs, so an order's COGS carries it. Before
-			       -- this it did not, and every margin was quietly optimistic by the freight.
-			       --
-			       -- Divided by SELLABLE units, not by everything that arrived (owner, 2026-07-20).
-			       -- You paid to ship the broken ones too, and that cost has to land somewhere: the
-			       -- good units carry it, so a damaged delivery correctly reads as more expensive per
-			       -- piece rather than hiding the loss.
-			       --
-			       -- Both divisions are integer and round DOWN, deliberately: an order that rounded up
-			       -- would claim to have paid more than the invoice says. The dropped rupiah is never
-			       -- written back over the stored totals (#140).
-			       ((i.total_price / i.received_quantity) + COALESCE(f.additional, 0)) AS unit_cost
-			FROM restock_request_items i
-			JOIN restock_requests r ON r.id = i.restock_request_id
-			-- The freight share is a property of the WHOLE REQUEST, so it is computed once per request
-			-- and applies to each of its lines. Spread by UNIT COUNT (owner): every unit carries the
-			-- same freight whichever line it sits on, which is what "all stock count" means.
-			LEFT JOIN LATERAL (
-			    -- ⚠ EVERY SUM() IS CAST BACK TO BIGINT. SUM() returns NUMERIC, and any arithmetic
-			      -- touching a numeric is a numeric — a decimal that will not scan into an int64 and
-			      -- would not have floored anyway. The divisor is the sum here that needs it.
-			    --
-			    -- That outlay is the restock's one courier's charge (00024, the-courier-is-paid-once-per-restock).
-			    SELECT (r.shipping_cost + r.warehouse_additional_cost)
-			           / NULLIF(SUM(x.received_quantity)::BIGINT, 0) AS additional
-			    FROM restock_request_items x
-			    WHERE x.restock_request_id = r.id
-			) f ON TRUE
-			WHERE r.warehouse_id = ?
-			  AND r.status = ?
-			  AND i.product_id IN ?
-			  -- A line that brought nothing has no cost basis: dividing by its zero would fail, and
-			  -- "what did the units cost" has no answer when no units came. Such a line is skipped, so
-			  -- the product falls back to its previous delivery rather than to a fabricated figure.
-			  AND i.received_quantity > 0
-			ORDER BY i.product_id, r.id DESC`,
-			warehouseID, restockStatusAccepted, productIDs,
+			SELECT b.product_id,
+			       CASE WHEN SUM(b.stock_count) > 0
+			            THEN SUM(b.stock_valuation) / SUM(b.stock_count)
+			            ELSE (SELECT n.price_unit FROM batches n
+			                  WHERE n.warehouse_id = b.warehouse_id AND n.product_id = b.product_id
+			                  ORDER BY n.id DESC LIMIT 1)
+			       END AS unit_cost
+			FROM batches b
+			WHERE b.warehouse_id = ? AND b.product_id IN ?
+			GROUP BY b.warehouse_id, b.product_id`,
+			warehouseID, productIDs,
 		).
 		Scan(&rows).
 		Error
@@ -136,8 +94,8 @@ func (s *Service) unitCosts(
 		return nil, err
 	}
 
-	for i := range rows {
-		costs[rows[i].ProductID] = rows[i].UnitCost
+	for _, row := range rows {
+		costs[row.ProductID] = int64(math.Round(row.UnitCost))
 	}
 
 	return costs, nil

@@ -23,7 +23,7 @@ func (s *Service) RackUpdate(
 	updates := map[string]any{}
 
 	if req.Msg.Code != nil {
-		updates["code"] = req.Msg.GetCode()
+		updates["code"] = inventory_service_models.CleanRackCode(req.Msg.GetCode())
 	}
 
 	if req.Msg.Name != nil {

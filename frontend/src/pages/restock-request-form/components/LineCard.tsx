@@ -23,7 +23,7 @@ import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { SupplierChannelPicker } from "../../../components/pickers/SupplierChannelPicker";
 import { useIsMobile } from "../../../layouts/shell";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 import { type FormMode, type LineDraft, needsNote, perPiece, toQty } from "../draft";
 
 export interface LineCardProps {
@@ -97,7 +97,7 @@ export function LineCard({ line, index, mode, teamId, suppliers, channels, onPat
         {/* Derived for the eye only — the TOTAL is what is stored, so a rounded piece price can never disagree
             with what was paid. */}
         <Field.HelperText data-testid={`restock-per-piece-${index}`}>
-          {toQty(line.count) > 0 ? t("restock.form.perPiece", { price: formatRupiah(perPiece(line)) }) : "—"}
+          {toQty(line.count) > 0 ? t("restock.form.perPiece", { price: formatRupiahNumber(perPiece(line)) }) : "—"}
         </Field.HelperText>
       </Field.Root>
     </>

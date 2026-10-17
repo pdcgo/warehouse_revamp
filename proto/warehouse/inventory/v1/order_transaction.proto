@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// OrderTransactionService is inventory's side of an order (docs/business/inventory/order.md §Inventory Service Flow When
+// Order Created Called Our `OrderTransactionCreate`): the order's TAKE on the decided ledgers, and its RELEASE by the
+// idempotency key.
+//
+// It is called by the order service while it creates an order, before the order exists, so inventory never learns an
+// order id: the take and its release are found by the key K the order form minted for this submit
+// (every-submit-mints-a-new-key, every-release-goes-by-the-key).
+service OrderTransactionService {
+  // The take: K looked up first (a used key is refused), the products read (a borrowed private product, or one whose
+  // owner's total stock is below its reserve, is refused), then ONE transaction — batches oldest first, racks holding
+  // the fewest first — that claims K. One order is ONE inventory transaction, of the ORDERING team, even across owners
+  // (an-order-is-one-inventory-transaction, an-order-transaction-is-the-ordering-teams).
+  //
+  // A refusal is ONE error with one reason, naming every refused line (a-refusal-names-its-reason-and-every-line): the
+  // Connect error carries an OrderTransactionRefusal detail.
+  rpc OrderTransactionCreate(OrderTransactionCreateRequest) returns (OrderTransactionCreateResponse);
+
+  // The release by K, for an order cancelled or a create that failed after the take (the-key-is-claimed-in-its-own-table):
+  // K claimed with a transaction → that transaction is rolled back, once · claimed with none → nothing · not claimed
+  // yet → claimed with none, so a take arriving late is refused.
+  rpc OrderTransactionRelease(OrderTransactionReleaseRequest) returns (OrderTransactionReleaseResponse);
+}
+
+// OrderTransactionLine is one product the order wants from the warehouse.
+message OrderTransactionLine {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  int64 quantity = 2 [(buf.validate.field).int64.gt = 0];
+}
+
+message OrderTransactionCreateRequest {
+  // Write: the SELLING team placing the order, the same roles that may create one. Scoped to the ORDERING team — any
+  // team may draw stock from any warehouse, so the question is "are you a member of the team placing this order?".
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The ORDERING team (the-take-names-the-orderer-and-each-owner) — the transaction's team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  // K, minted by the order form for this submit (every-submit-mints-a-new-key). Claimed once, in its own table.
+  string idempotency_key = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  uint64 warehouse_id = 3 [(buf.validate.field).uint64.gt = 0];
+
+  // Each product once.
+  repeated OrderTransactionLine lines = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+// OrderTransactionItem is one product as the take priced it.
+message OrderTransactionItem {
+  uint64 product_id = 1;
+  // The product's OWNER — whose batches gave the units (an-item-carries-its-owning-team).
+  uint64 owner_team_id = 2;
+  int64 quantity = 3;
+  // What the units cost — the value the owner's batches gave up, per unit.
+  double unit_cost = 4;
+  // For a borrowed line, the cost with the owner's markup (inventory-computes-the-markup); equal to unit_cost for the
+  // ordering team's own product.
+  double unit_cost_with_markup = 5;
+  // total − unit_cost × quantity.
+  double markup_total = 6;
+  // unit_cost_with_markup × quantity.
+  double total = 7;
+}
+
+message OrderTransactionCreateResponse {
+  uint64 transaction_id = 1;
+  uint64 warehouse_id = 2;
+  // Σ items' total.
+  double total = 3;
+  repeated OrderTransactionItem items = 4;
+}
+
+// Why a take was refused — exactly one per refusal.
+enum OrderTransactionRefusalReason {
+  ORDER_TRANSACTION_REFUSAL_REASON_UNSPECIFIED = 0;
+  // K was already claimed — by an earlier take or by a release that came first.
+  ORDER_TRANSACTION_REFUSAL_REASON_KEY_USED = 1;
+  // A borrowed line on a private product, an owner whose total stock is below its reserve, or a product that exists
+  // nowhere.
+  ORDER_TRANSACTION_REFUSAL_REASON_NOT_ALLOWED = 2;
+  // The warehouse holds fewer units than a line wants.
+  ORDER_TRANSACTION_REFUSAL_REASON_NOT_ENOUGH_STOCK = 3;
+}
+
+// OrderTransactionRefusedLine is one line a refusal names.
+message OrderTransactionRefusedLine {
+  uint64 product_id = 1;
+  int64 wanted = 2;
+  // For NOT_ENOUGH_STOCK, the units the owner holds in this warehouse; 0 otherwise.
+  int64 available = 3;
+}
+
+// OrderTransactionRefusal rides on the Connect error of a refused take.
+message OrderTransactionRefusal {
+  OrderTransactionRefusalReason reason = 1;
+  // Every line refused for that reason; empty for KEY_USED.
+  repeated OrderTransactionRefusedLine lines = 2;
+}
+
+message OrderTransactionReleaseRequest {
+  // Write: the order's selling team — a cancel, or the create's own compensation.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  string idempotency_key = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message OrderTransactionReleaseResponse {
+  // The transaction rolled back, 0 when K had none — taken by nothing, or released before any take.
+  uint64 transaction_id = 1;
+  // True when this call rolled it back; false when there was nothing to roll back or it already was.
+  bool released = 2;
+}

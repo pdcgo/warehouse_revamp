@@ -5,46 +5,55 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// StockHistory returns the movement ledger for one product at the scoped warehouse (paged,
-// newest-first) — so a wrong on-hand number is explainable.
+// StockHistory returns the ledger rows for one product at the scoped warehouse (paged, newest first) — so a wrong
+// on-hand number is explainable.
+//
+// Without a batch it reads the RACK rows: every change to where the product sits, each with its rack and the rack's
+// count after. Narrowed to a batch it reads that batch's rows instead, each with the batch's count after. No log row
+// carries both a rack and a batch (see ledger_history.go).
 func (s *Service) StockHistory(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockHistoryRequest],
 ) (*connect.Response[inventoryv1.StockHistoryResponse], error) {
+	filter := req.Msg.GetFilter()
 	page := req.Msg.GetPage()
 
-	query := s.db.
-		WithContext(ctx).
-		Model(&inventory_service_models.StockMovement{}).
-		Where("warehouse_id = ? AND product_id = ?", req.Msg.GetWarehouseId(), req.Msg.GetFilter().GetProductId())
+	var (
+		query     *gorm.DB
+		selection string
+		change    string
+	)
 
-	// One kind, or all of them (#158). Server-side because the ledger is paginated and grows forever:
-	// a client-side filter would narrow the loaded page only, so "when was this last counted" would read
-	// as "never" the moment the last stock-take fell off page one.
-	if kind := req.Msg.GetFilter().GetKind(); kind != inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED {
-		query = query.Where("kind = ?", int32(kind))
+	if batchID := filter.GetBatchId(); batchID != 0 {
+		query = s.db.WithContext(ctx).
+			Table("batch_logs AS l").
+			Joins("JOIN batches b ON b.id = l.batch_id").
+			Where("l.warehouse_id = ? AND b.product_id = ? AND l.batch_id = ?",
+				req.Msg.GetWarehouseId(), filter.GetProductId(), batchID)
+		selection, change = batchHistorySelect, "change_count"
+	} else {
+		query = s.db.WithContext(ctx).
+			Table("product_placement_logs AS l").
+			Where("l.warehouse_id = ? AND l.product_id = ?", req.Msg.GetWarehouseId(), filter.GetProductId())
+		selection, change = placementHistorySelect, "stock_change"
 	}
 
-	// One batch, or all of them (#209). A batch-specific view drops batch-less events (a shelf recount)
-	// by construction — `batch_id = N` never matches a NULL — which is exactly the "—" row falling out
-	// of the filter.
-	if batchID := req.Msg.GetFilter().GetBatchId(); batchID != 0 {
-		query = query.Where("batch_id = ?", batchID)
+	if kind := filter.GetKind(); kind != inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED {
+		cond, args := kindsWhere("l", change, kind)
+		query = query.Where(cond, args...)
 	}
 
-	// A date range over the movement's OWN created_at (#218/#225). Server-side for the same reason as
-	// kind: the ledger is paginated and grows forever, so a client-side date filter would narrow only
-	// the loaded page. 0 = open on that end; the frontend pushes the upper bound to end-of-day.
-	if from := req.Msg.GetFilter().GetFromUnix(); from > 0 {
-		query = query.Where("created_at >= ?", time.Unix(from, 0))
+	if from := filter.GetFromUnix(); from > 0 {
+		query = query.Where("l.created_at >= ?", time.Unix(from, 0))
 	}
-	if to := req.Msg.GetFilter().GetToUnix(); to > 0 {
-		query = query.Where("created_at <= ?", time.Unix(to, 0))
+
+	if to := filter.GetToUnix(); to > 0 {
+		query = query.Where("l.created_at <= ?", time.Unix(to, 0))
 	}
 
 	var total int64
@@ -54,21 +63,22 @@ func (s *Service) StockHistory(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	var movements []inventory_service_models.StockMovement
+	var rows []historyRow
 
 	err = query.
-		Order("id DESC").
+		Select(selection).
+		Order("l.id DESC").
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
-		Find(&movements).
+		Scan(&rows).
 		Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	out := make([]*inventoryv1.StockMovement, 0, len(movements))
-	for i := range movements {
-		out = append(out, movementToProto(&movements[i]))
+	out := make([]*inventoryv1.StockMovement, 0, len(rows))
+	for i := range rows {
+		out = append(out, rows[i].proto())
 	}
 
 	items, ids := stockHistoryItems(out, req.Msg.GetDataRequest())

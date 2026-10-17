@@ -13,7 +13,7 @@ import (
 )
 
 // RestockRequestCancel is called by the REQUESTING team (#105): it cancels its own still-pending
-// request. Scoped to requesting_team_id (another team's request reads as NotFound); a fulfilled or
+// request. Scoped to team_id (another team's request reads as NotFound); a fulfilled or
 // already-cancelled request is rejected (FailedPrecondition). No stock is touched.
 func (s *Service) RestockRequestCancel(
 	ctx context.Context,
@@ -21,12 +21,12 @@ func (s *Service) RestockRequestCancel(
 ) (*connect.Response[inventoryv1.RestockRequestCancelResponse], error) {
 	teamID := req.Msg.GetTeamId()
 
-	var rr inventory_service_models.RestockRequest
+	var rr inventory_service_models.Restock
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND requesting_team_id = ?", req.Msg.GetRequestId(), teamID).
+			Where("id = ? AND team_id = ?", req.Msg.GetRequestId(), teamID).
 			First(&rr).
 			Error
 		if loadErr != nil {
@@ -77,7 +77,7 @@ func (s *Service) RestockRequestCancel(
 		}
 
 		// The lines, for the amount the cancel announces.
-		return tx.Where("restock_request_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		return tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
 	})
 	if err != nil {
 		return nil, restockErr(err)

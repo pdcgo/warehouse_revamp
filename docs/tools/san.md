@@ -568,12 +568,12 @@ It calls the fold, never a hand-written INSERT ([HARD RULE 3b](../../CLAUDE.md))
 ```mermaid
 sequenceDiagram
   participant SAN as san supplier backfill-figures
-  participant INV as restock_requests and their items
+  participant INV as restocks, their lines and problem rows
   participant SUP as supplier_service fold
   SAN->>SUP: figures_backfilled set? then stop — already backfilled
   SAN->>SUP: read figures_live_since — the earliest accept the webhook folded
   loop 500 accepted restocks naming a supplier at a time, oldest first
-    SAN->>INV: the restocks, their lines, each line's damaged units
+    SAN->>INV: the restocks, their lines, their problem rows
     SAN->>SUP: fold each — skipped when accepted at or after figures_live_since, or already claimed
   end
   SAN->>SUP: set figures_backfilled
@@ -803,6 +803,7 @@ constant beside the handler that serves it):
 | `settlement-fold` | `settlement-log-posted` | settlement's reports fold — push route `/event/settlement-fold/push` |
 | `financial-account-withdrawal` | `settlement-log-posted` | a shop's withdrawals post into its financial account — push route `/event/financial-account-withdrawal/push` |
 | `supplier-fold` | `restock-accepted` | a supplier's figures fold — push route `/event/supplier-fold/push` ([the-report-is-processed-like-settlement](../business/supplier/context_decision.md#the-report-is-processed-like-settlement)) |
+| `liability-restock-accepted` | `restock-accepted` | the selling team owes the warehouse the courier's charge at a restock's door, posted once per restock ([balance-posts-the-couriers-debt-from-the-event](../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)) — push route `/event/liability-restock-accepted/push` |
 | `selling-member-removed` | `member-removed` | a person removed from a team loses their grants on its shops ([removing-a-member-drops-their-shop-access](../business/user/context_decision.md#removing-a-member-drops-their-shop-access)) — push route `/event/selling-member-removed/push` |
 | `financial-account-team-payment` | `liability-payment-accepted` | an accepted team payment posts out of the payer's account and into the creditor's ([a-team-payment-posts-on-accept](../business/financial_account/context_decision.md#a-team-payment-posts-on-accept)) — push route `/event/financial-account-team-payment/push` |
 

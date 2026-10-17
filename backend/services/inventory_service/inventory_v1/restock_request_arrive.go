@@ -25,7 +25,7 @@ func (s *Service) RestockRequestArrive(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestArriveRequest],
 ) (*connect.Response[inventoryv1.RestockRequestArriveResponse], error) {
-	var rr inventory_service_models.RestockRequest
+	var rr inventory_service_models.Restock
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
@@ -70,7 +70,7 @@ func (s *Service) RestockRequestArrive(
 			return logErr
 		}
 
-		return tx.Where("restock_request_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		return tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
 	})
 	if err != nil {
 		return nil, restockErr(err)

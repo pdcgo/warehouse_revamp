@@ -25,7 +25,7 @@ const Routed = routedPage(routes, "/inventories/opname/sessions/21/finalize");
 const RoutedMidCount = routedPage(routes, "/inventories/opname/sessions/15/finalize");
 
 const meta = {
-  title: "Pages/Opname/Finalize",
+  title: "Pages/Inventory/Opname/Finalize",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {

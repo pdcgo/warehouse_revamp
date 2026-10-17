@@ -109,8 +109,8 @@ would take the goods twice.
 ### The cancel window (#70/#150)
 
 Cancel is allowed while the goods are still in the building, and returns the stock **exactly where it
-came from** — same shelves, same split, because `StockReturn` reverses the movements it recorded rather
-than trusting quantities.
+came from** — same racks, same batches, because the release (`OrderTransactionRelease`, by the order's key) reverses the
+take's own ledger rows rather than trusting quantities (a-rollback-reverses-its-log-rows).
 
 It is **refused once SHIPPED**. Putting the stock back then would book goods onto a shelf while they
 are on a courier's van; the count would say something untrue until a human noticed. What comes back
@@ -118,7 +118,7 @@ after shipping is a **return** — a different event, with different money — a
 would hide that rather than record it.
 
 > A cancel mid-pick leaves physical goods in a picker's hands that the books have already returned to
-> their shelves. Re-shelving them is `StockMove`'s job (#136). The books are right; the shelf needs a
+> their racks. Re-shelving them is `RackMove`'s job (#136). The books are right; the shelf needs a
 > person.
 
 ---
@@ -149,27 +149,21 @@ sequenceDiagram
     else it fits
         CS->>UI: Create
         UI->>SELL: OrderCreate
-        SELL->>INV: StockPick (same transaction as the order write)
+        SELL->>INV: OrderTransactionCreate - key order:id, before the order commits
         INV-->>SELL: taken, or insufficient
         SELL-->>UI: the order, or the refusal
     end
 ```
 
-**The check is ADVISORY. `StockPick` remains the authority** — two people can place orders against one
+**The check is ADVISORY. The take remains the authority** — two people can place orders against one
 shelf in the same second, so anything read beforehand is already historical. The pre-check exists to
 stop somebody wasting five minutes of typing, not to guarantee the pick.
 
-### Why not `OwnerStockByIds`
+### What it reads
 
-That RPC derives ownership from the restock a unit arrived on
-(`stock_shelf_batches → stock_batches → restock_request_items → restock_requests.requesting_team_id`).
-Stock that reached a shelf any other way — a direct receive, an adjustment, a transfer — belongs to
-nobody by that chain and reads as **0**, while a pick would take it happily.
-
-Gating a Create button on that number refuses orders the warehouse can plainly fill, which is a worse
-lie than showing nothing. `StockAvailability` reads the rows `pickOneLine` actually drains, and carries
-`StockPick`'s policy and scoping exactly — the selling team's roles, scoped to their own team, with the
-warehouse as an ordinary parameter.
+The product's batches in the warehouse, summed — the rows the order's take counts (`inventory_ledgers.LockBatches`). A product has
+one owner, so they are its owner's batches whoever asks; the take's other refusals (a locked product, the reserve) are
+its own and are not repeated here.
 
 ## The pick screen's reads (#151)
 
@@ -196,7 +190,7 @@ still reports the unfiltered total.
 ### Which shelf to walk to — `StockPickLocations`
 
 The screen's one hard question: a product can sit on several racks (#135), so which does the picker
-walk to? Answered by **inventory_service**, from the **ledger**:
+walk to? Answered by **inventory_service**, from the **take's own rack rows**:
 
 ```mermaid
 sequenceDiagram
@@ -216,23 +210,19 @@ sequenceDiagram
     Note over UI: joined on product_id —<br/>a product drawn from 3 shelves = 3 stops
 ```
 
-**From the ledger, not from stock levels — this is the whole design.** The goods were drawn at
-placement (#149) and `StockPick` recorded, per rack, exactly how much it took under `ref =
-order:<id>`. Those movements are what the order *holds*. Current levels answer a question whose answer
+**From the take, not from the racks now — this is the whole design.** The goods were drawn at placement (#149) and the
+take recorded, per rack, exactly how much it took under the order's key (`order:<id>`, found through
+`idempotency_order_check`). Those rows are what the order *holds*. Current levels answer a question whose answer
 keeps moving — another order draws from the same shelf, a stock-take shifts goods — and a picker sent
 by current levels can arrive at a shelf whose stock is spoken for.
 
-`PICK` and `RETURN` rows are **netted**, and only a positive remainder is a stop on the walk. Reading
-`PICK` alone looks right and is not: the ledger is append-only, so a cancelled order's `PICK` rows
-survive its return and the screen would send a picker after goods that are back on the shelf.
-
-The walk is ordered as `StockPick` drained it (#149) — the unplaced pile first, then shelves by label —
-so it reads as the route the system already planned.
+The take and its rollback are **netted**, and only a positive remainder is a stop on the walk: the log is append-only,
+so a released take's rows survive beside their reversal, and reading the take alone would send a picker after goods
+that are back on the rack. The walk is ordered by rack label.
 
 > A product on two shelves appears **twice**, each with its own quantity. #151 asked for "a shelf, or
 > all of them with quantities, rather than silently picking one"; when the goods genuinely are in two
-> places, listing both is the only honest answer. `rack_id = 0` is the **unplaced pile** — a real place
-> (#135), named in words on screen, never a blank cell.
+> places, listing both is the only honest answer. Every unit is on a rack (there-is-no-unplaced-pile).
 
 ---
 
@@ -388,7 +378,7 @@ sequenceDiagram
         Note over D,I: one transaction
         D->>D: INSERT the order and its lines
         D->>D: DELETE the draft
-        D->>I: StockPick — the order's lines leave the warehouse
+        D->>I: OrderTransactionCreate — the order's lines leave the warehouse
     end
     D->>R: Event with OrderPlaced, after the commit
     D-->>CS: the order

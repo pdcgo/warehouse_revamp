@@ -24,7 +24,7 @@ import (
 // skips the access interceptor. That is sound here, not a shortcut:
 //
 //   - The caller was already authorized. OrderCreate/OrderCancel ran their own policy against the
-//     SELLING team before reaching this, and StockPick/StockReturn are scoped to that same team — so
+//     SELLING team before reaching this, and OrderTransactionCreate/Release are scoped to that same team — so
 //     the check this path skips is the one that just ran.
 //   - There is no per-warehouse permission to enforce (owner, 2026-07-20): any team may draw from any
 //     warehouse, so no authorization decision is being bypassed, only re-executed.
@@ -47,19 +47,21 @@ func (p *stockPicker) Pick(
 	lines []selling_v1.PickLine,
 	ref string,
 ) error {
-	out := make([]*inventoryv1.StockPickLine, 0, len(lines))
+	out := make([]*inventoryv1.OrderTransactionLine, 0, len(lines))
 	for _, line := range lines {
-		out = append(out, &inventoryv1.StockPickLine{
+		out = append(out, &inventoryv1.OrderTransactionLine{
 			ProductId: line.ProductID,
 			Quantity:  line.Quantity,
 		})
 	}
 
-	_, err := p.inventory.StockPick(ctx, connect.NewRequest(&inventoryv1.StockPickRequest{
-		TeamId:      sellingTeamID,
-		WarehouseId: warehouseID,
-		Lines:       out,
-		Ref:         ref,
+	// THE ORDER'S REF IS ITS KEY until the order form mints one per submit (the-order-take-bridges-its-key-per-order):
+	// `order:<order id>` takes once, and the cancel releases by the same key.
+	_, err := p.inventory.OrderTransactionCreate(ctx, connect.NewRequest(&inventoryv1.OrderTransactionCreateRequest{
+		TeamId:         sellingTeamID,
+		IdempotencyKey: ref,
+		WarehouseId:    warehouseID,
+		Lines:          out,
 	}))
 
 	return err
@@ -67,13 +69,14 @@ func (p *stockPicker) Pick(
 
 func (p *stockPicker) Return(
 	ctx context.Context,
-	sellingTeamID, warehouseID uint64,
+	sellingTeamID, _ uint64,
 	ref string,
 ) error {
-	_, err := p.inventory.StockReturn(ctx, connect.NewRequest(&inventoryv1.StockReturnRequest{
-		TeamId:      sellingTeamID,
-		WarehouseId: warehouseID,
-		Ref:         ref,
+	// A release of a key that never took answers released = false, never an error — an order that drew no stock
+	// cancels cleanly. The warehouse is the take's own; the key finds it.
+	_, err := p.inventory.OrderTransactionRelease(ctx, connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
+		TeamId:         sellingTeamID,
+		IdempotencyKey: ref,
 	}))
 
 	return err

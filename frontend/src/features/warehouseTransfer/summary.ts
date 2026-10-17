@@ -32,8 +32,8 @@ export function problemUnits(transfer: WarehouseTransfer): bigint {
 }
 
 /** What the broken and missing units were worth — the selling team's loss (the-selling-team-bears-broken-missing-and-lost). */
-export function problemValue(transfer: WarehouseTransfer): bigint {
-  return transfer.items.reduce((sum, item) => sum + item.problems.reduce((s, p) => s + p.total, 0n), 0n);
+export function problemValue(transfer: WarehouseTransfer): number {
+  return transfer.items.reduce((sum, item) => sum + item.problems.reduce((s, p) => s + p.total, 0), 0);
 }
 
 /** Which way the transfer runs, seen from a warehouse team. */

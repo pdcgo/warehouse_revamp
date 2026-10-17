@@ -68,7 +68,7 @@ function arrivedWithoutBeras() {
 }
 
 const meta = {
-  title: "Pages/Restock/RestockRequestForm",
+  title: "Pages/Inventory/Restock/RestockRequestForm",
   component: Create,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

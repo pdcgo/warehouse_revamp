@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -295,6 +296,9 @@ SET restock_count             = d.restock_count + EXCLUDED.restock_count,
 // lineValue values units at the line's price — total × units ÷ ordered (each-figure-is-read-at-the-accept), never
 // through a rounded unit price, so a line's figures add back to what the supplier charged. A line with nothing
 // ordered has no price, and its units are worth 0.
+//
+// The event carries the total as inventory stores it, a double (money-is-double-in-the-api-too); the figures are
+// still whole rupiah, so the value is rounded HERE, at this service's edge, and nowhere upstream.
 func lineValue(line *eventsv1.RestockAcceptedLine) func(units int64) int64 {
 	total, ordered := line.GetTotalPrice(), line.GetOrderedCount()
 
@@ -303,7 +307,7 @@ func lineValue(line *eventsv1.RestockAcceptedLine) func(units int64) int64 {
 			return 0
 		}
 
-		return total * units / ordered
+		return int64(math.Round(total * float64(units) / float64(ordered)))
 	}
 }
 

@@ -24,7 +24,7 @@ const Routed = routedPage(
 );
 
 const meta = {
-  title: "Pages/WarehouseTransfer/TransferForm",
+  title: "Pages/Inventory/WarehouseTransfer/TransferForm",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

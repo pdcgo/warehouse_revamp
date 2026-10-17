@@ -79,7 +79,7 @@ export const ACostNeedsAnAccount: Story = {
     await userEvent.type(await screen.findByTestId("transfer-cost-amount"), "18000", { delay: 20 });
 
     await waitFor(() => expect(screen.getByTestId("confirm-action")).toBeDisabled());
-    // The cost reaches no account until the backend step — the dialog says so on the field.
+    // The cost reaches no account until its listener is built — the dialog says so on the field.
     await expect(screen.getByTestId("not-implemented-costEvent")).toBeInTheDocument();
   },
 };

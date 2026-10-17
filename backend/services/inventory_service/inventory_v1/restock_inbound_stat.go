@@ -17,7 +17,7 @@ import (
 // headline move whenever somebody turned a page — and describe page 1 of 6 while looking like a total.
 //
 // The scope is `warehouse_id = team`, which is the RECEIVING side and the mirror of OwnerStockStat's
-// `requesting_team_id = team`. A restock this warehouse is not the target of can never be counted here,
+// `team_id = team`. A restock this warehouse is not the target of can never be counted here,
 // whatever the filter asks for.
 func (s *Service) RestockInboundStat(
 	ctx context.Context,
@@ -36,16 +36,16 @@ func (s *Service) RestockInboundStat(
 	// ONE thing to find a shelf for, and counting the lines instead would report four.
 	const linesSQL = `
 		SELECT COUNT(DISTINCT ri.product_id) AS product_count,
-		       COALESCE(SUM(ri.quantity), 0) AS unit_count,
-		       COALESCE(SUM(ri.total_price), 0) AS amount
-		FROM restock_request_items ri
-		JOIN restock_requests r ON r.id = ri.restock_request_id
-		WHERE r.warehouse_id = ? AND r.status IN ? AND (? = 0 OR r.requesting_team_id = ?)`
+		       COALESCE(SUM(ri.count), 0) AS unit_count,
+		       COALESCE(SUM(ri.total), 0) AS amount
+		FROM restock_items ri
+		JOIN restocks r ON r.id = ri.restock_id
+		WHERE r.warehouse_id = ? AND r.status IN ? AND (? = 0 OR r.team_id = ?)`
 
 	var lines struct {
 		ProductCount int64
 		UnitCount    int64
-		Amount       int64
+		Amount       float64
 	}
 
 	err := db.
@@ -65,8 +65,8 @@ func (s *Service) RestockInboundStat(
 	// errors on the conversion.
 	const requestsSQL = `
 		SELECT COUNT(*) AS restock_count, MIN(r.created_at) AS oldest
-		FROM restock_requests r
-		WHERE r.warehouse_id = ? AND r.status IN ? AND (? = 0 OR r.requesting_team_id = ?)`
+		FROM restocks r
+		WHERE r.warehouse_id = ? AND r.status IN ? AND (? = 0 OR r.team_id = ?)`
 
 	var requests struct {
 		RestockCount int64

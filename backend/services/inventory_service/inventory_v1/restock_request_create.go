@@ -28,6 +28,12 @@ func (s *Service) RestockRequestCreate(
 		return nil, restockErr(err)
 	}
 
+	// Only the team's own products (a-restock-carries-only-the-teams-own-products) — asked before any transaction.
+	err = s.ownProductsOnly(ctx, teamID, req.Msg.GetItems())
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
 	// Asked BEFORE the transaction, never inside one: a call to another service would hold a pooled connection — and
 	// any lock already taken — for a network round-trip (audits/services/inventory_service/concurrency/lock-order.md).
 	// A supplier deleted between this answer and the commit leaves the same state as "restock first, then delete",
@@ -46,16 +52,16 @@ func (s *Service) RestockRequestCreate(
 		}
 	}
 
-	rr := inventory_service_models.RestockRequest{
-		RequestingTeamID: teamID,
+	rr := inventory_service_models.Restock{
+		TeamID:           teamID,
 		WarehouseID:      req.Msg.GetWarehouseId(),
 		Status:           restockStatusOngoing,
-		OrderRef:         req.Msg.GetInvoiceRefId(),
+		InvoiceRefID:     req.Msg.GetInvoiceRefId(),
 		Receipt:          req.Msg.GetReceipt(),
 		ReceiptFile:      req.Msg.GetReceiptFile(),
 		ShipmentID:       req.Msg.GetShipmentId(),
 		FinanceAccountID: req.Msg.GetFinanceAccountId(),
-		ShippingCost:     req.Msg.GetShipmentCost(),
+		ShipmentCost:     req.Msg.GetShipmentCost(),
 		Note:             req.Msg.GetNote(),
 		Items:            restockItemModels(req.Msg.GetItems()),
 		// WHO RAISED IT, from the caller's identity rather than the request body — a client that could nominate its
@@ -63,8 +69,10 @@ func (s *Service) RestockRequestCreate(
 		CreatedByUserID: actorFrom(ctx),
 	}
 
+	// Subtotal, total and each line's unit price, from the lines as typed — stored with them (restockTotals).
+	restockTotals(&rr)
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// GORM inserts the restock and its lines in this transaction, stamping their RestockRequestID — a restock
+		// GORM inserts the restock and its lines in this transaction, stamping their RestockID — a restock
 		// without its lines is not a restock.
 		createErr := tx.Create(&rr).Error
 		if createErr != nil {

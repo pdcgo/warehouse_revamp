@@ -9,11 +9,12 @@ import (
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
 // RestockRequestUpdate lets the RAISING team edit its own restock until the warehouse accepts it. Scoped to
-// requesting_team_id: another team's restock reads as NotFound, exactly as for Cancel. It is a full REPLACE — the
+// team_id: another team's restock reads as NotFound, exactly as for Cancel. It is a full REPLACE — the
 // edit screen is the create form re-opened — and how much of it may change depends on where the box is:
 //
 //	ongoing  → every field (a-restock-is-edited-only-while-ongoing).
@@ -39,6 +40,12 @@ func (s *Service) RestockRequestUpdate(
 		return nil, restockErr(err)
 	}
 
+	// Only the team's own products (a-restock-carries-only-the-teams-own-products) — asked before the row is locked.
+	err = s.ownProductsOnly(ctx, teamID, msg.GetItems())
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
 	// The suppliers are asked BEFORE the row is locked — a call to another service must never run while this restock
 	// is held FOR UPDATE, or a warehouse accepting the delivery waits out a network round-trip
 	// (audits/services/inventory_service/concurrency/RestockRequestUpdate.md). Whether an answer MATTERS — only a line
@@ -47,9 +54,9 @@ func (s *Service) RestockRequestUpdate(
 	stores := s.askLineStores(ctx, teamID, msg.GetItems())
 
 	var (
-		rr         inventory_service_models.RestockRequest
+		rr         inventory_service_models.Restock
 		oldAccount uint64
-		oldAmount  int64
+		oldAmount  float64
 		editedAt   time.Time
 		editLogID  uint64
 	)
@@ -57,17 +64,17 @@ func (s *Service) RestockRequestUpdate(
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND requesting_team_id = ?", msg.GetRequestId(), teamID).
+			Where("id = ? AND team_id = ?", msg.GetRequestId(), teamID).
 			First(&rr).
 			Error
 		if loadErr != nil {
 			return loadErr
 		}
 
-		var stored []inventory_service_models.RestockRequestItem
+		var stored []inventory_service_models.RestockItem
 
 		storedErr := tx.
-			Where("restock_request_id = ?", rr.ID).
+			Where("restock_id = ?", rr.ID).
 			Order("id").
 			Find(&stored).
 			Error
@@ -75,7 +82,7 @@ func (s *Service) RestockRequestUpdate(
 			return storedErr
 		}
 
-		byProduct := make(map[uint64]*inventory_service_models.RestockRequestItem, len(stored))
+		byProduct := make(map[uint64]*inventory_service_models.RestockItem, len(stored))
 		for i := range stored {
 			byProduct[stored[i].ProductID] = &stored[i]
 		}
@@ -122,9 +129,9 @@ func (s *Service) RestockRequestUpdate(
 		// The money BEFORE the edit, for the difference it may make (an-edit-sends-the-difference). Read here, before
 		// editArrived changes the stored lines in place.
 		oldAccount = rr.FinanceAccountID
-		oldAmount = rr.ShippingCost
+		oldAmount = rr.ShipmentCost
 		for i := range stored {
-			oldAmount += stored[i].TotalPrice
+			oldAmount += stored[i].Total
 		}
 
 		editedAt = time.Now()
@@ -142,6 +149,15 @@ func (s *Service) RestockRequestUpdate(
 
 		if editErr != nil {
 			return editErr
+		}
+
+		// What the lines now add up to, on the restock — the same in both windows (restockTotals).
+		totalsErr := tx.
+			Model(&rr).
+			Updates(map[string]any{"subtotal": rr.Subtotal, "total": rr.Total}).
+			Error
+		if totalsErr != nil {
+			return totalsErr
 		}
 
 		row, logErr := recordRestockLogRow(tx, rr.ID, rr.Status, rr.Status, actorFrom(ctx), restockLogEdited, editedAt)
@@ -162,7 +178,7 @@ func (s *Service) RestockRequestUpdate(
 	// AFTER the commit, and only when the edit moved money: the amount changed, or the paying account did
 	// (an-edit-sends-the-difference, an-edit-may-move-the-payment-to-another-account). A note or a tracking number
 	// changes nothing the account holds.
-	if rr.FinanceAccountID != oldAccount || restockAmount(&rr) != oldAmount {
+	if rr.FinanceAccountID != oldAccount || !san_money.Equal(restockAmount(&rr), oldAmount) {
 		s.publishRestockMoney(ctx, restockUpdatedEvent(&rr, editLogID, oldAccount, oldAmount, actorFrom(ctx), editedAt))
 	}
 
@@ -175,7 +191,7 @@ func (s *Service) RestockRequestUpdate(
 // accept — so the lines are rewritten rather than diffed.
 func (s *Service) editOngoing(
 	tx *gorm.DB,
-	rr *inventory_service_models.RestockRequest,
+	rr *inventory_service_models.Restock,
 	msg *inventoryv1.RestockRequestUpdateRequest,
 	editedAt time.Time,
 ) error {
@@ -189,9 +205,9 @@ func (s *Service) editOngoing(
 	rr.Receipt = msg.GetReceipt()
 	rr.ReceiptFile = msg.GetReceiptFile()
 	rr.ShipmentID = msg.GetShipmentId()
-	rr.OrderRef = msg.GetInvoiceRefId()
+	rr.InvoiceRefID = msg.GetInvoiceRefId()
 	rr.FinanceAccountID = msg.GetFinanceAccountId()
-	rr.ShippingCost = msg.GetShipmentCost()
+	rr.ShipmentCost = msg.GetShipmentCost()
 	rr.Note = msg.GetNote()
 
 	// A map, not the struct: GORM skips a struct's zero values, which is precisely backwards here — clearing the note
@@ -203,9 +219,9 @@ func (s *Service) editOngoing(
 			"receipt":            rr.Receipt,
 			"receipt_file":       rr.ReceiptFile,
 			"shipment_id":        rr.ShipmentID,
-			"order_ref":          rr.OrderRef,
+			"invoice_ref_id":     rr.InvoiceRefID,
 			"finance_account_id": rr.FinanceAccountID,
-			"shipping_cost":      rr.ShippingCost,
+			"shipment_cost":      rr.ShipmentCost,
 			"note":               rr.Note,
 			"updated_at":         editedAt,
 		}).
@@ -215,8 +231,8 @@ func (s *Service) editOngoing(
 	}
 
 	delErr := tx.
-		Where("restock_request_id = ?", rr.ID).
-		Delete(&inventory_service_models.RestockRequestItem{}).
+		Where("restock_id = ?", rr.ID).
+		Delete(&inventory_service_models.RestockItem{}).
 		Error
 	if delErr != nil {
 		return delErr
@@ -224,7 +240,7 @@ func (s *Service) editOngoing(
 
 	items := restockItemModels(msg.GetItems())
 	for i := range items {
-		items[i].RestockRequestID = rr.ID
+		items[i].RestockID = rr.ID
 	}
 
 	createErr := tx.Create(&items).Error
@@ -233,6 +249,7 @@ func (s *Service) editOngoing(
 	}
 
 	rr.Items = items
+	restockTotals(rr)
 
 	return nil
 }
@@ -241,9 +258,9 @@ func (s *Service) editOngoing(
 // its count, total and note follow the request. A line the request adds is inserted whole.
 func editArrived(
 	tx *gorm.DB,
-	rr *inventory_service_models.RestockRequest,
-	stored []inventory_service_models.RestockRequestItem,
-	byProduct map[uint64]*inventory_service_models.RestockRequestItem,
+	rr *inventory_service_models.Restock,
+	stored []inventory_service_models.RestockItem,
+	byProduct map[uint64]*inventory_service_models.RestockItem,
 	msg *inventoryv1.RestockRequestUpdateRequest,
 	editedAt time.Time,
 ) error {
@@ -262,13 +279,13 @@ func editArrived(
 		}
 	}
 
-	var added []inventory_service_models.RestockRequestItem
+	var added []inventory_service_models.RestockItem
 
 	for _, item := range msg.GetItems() {
 		old, ok := byProduct[item.GetProductId()]
 		if !ok {
 			row := restockItemModels([]*inventoryv1.RestockRequestItem{item})[0]
-			row.RestockRequestID = rr.ID
+			row.RestockID = rr.ID
 			added = append(added, row)
 
 			continue
@@ -279,17 +296,19 @@ func editArrived(
 			return errRestockArrivedSupplierLocked
 		}
 
-		old.Quantity = item.GetCount()
-		old.TotalPrice = item.GetTotal()
+		old.Count = item.GetCount()
+		old.Total = item.GetTotal()
+		old.PriceUnit = linePriceUnit(old.Total, old.Count)
 		old.Note = item.GetNote()
 
 		lineErr := tx.
 			Model(old).
 			Updates(map[string]any{
-				"quantity":    old.Quantity,
-				"total_price": old.TotalPrice,
-				"note":        old.Note,
-				"updated_at":  editedAt,
+				"count":      old.Count,
+				"total":      old.Total,
+				"price_unit": old.PriceUnit,
+				"note":       old.Note,
+				"updated_at": editedAt,
 			}).
 			Error
 		if lineErr != nil {
@@ -310,20 +329,21 @@ func editArrived(
 	}
 
 	rr.Items = append(stored, added...)
+	restockTotals(rr)
 
 	return nil
 }
 
 // restockFieldsUnchanged is true when everything but the lines is what is stored — the only edit an arrived restock
 // takes.
-func restockFieldsUnchanged(rr *inventory_service_models.RestockRequest, msg *inventoryv1.RestockRequestUpdateRequest) bool {
+func restockFieldsUnchanged(rr *inventory_service_models.Restock, msg *inventoryv1.RestockRequestUpdateRequest) bool {
 	return rr.WarehouseID == msg.GetWarehouseId() &&
 		rr.Receipt == msg.GetReceipt() &&
 		rr.ReceiptFile == msg.GetReceiptFile() &&
 		rr.ShipmentID == msg.GetShipmentId() &&
-		rr.OrderRef == msg.GetInvoiceRefId() &&
+		rr.InvoiceRefID == msg.GetInvoiceRefId() &&
 		rr.FinanceAccountID == msg.GetFinanceAccountId() &&
-		rr.ShippingCost == msg.GetShipmentCost() &&
+		san_money.Equal(rr.ShipmentCost, msg.GetShipmentCost()) &&
 		rr.Note == msg.GetNote()
 }
 

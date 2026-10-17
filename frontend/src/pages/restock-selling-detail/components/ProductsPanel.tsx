@@ -16,7 +16,7 @@ import {
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
 import { useProductsByIds } from "../../../features/products/queries";
 import { ProductListItem } from "../../../components/products/ProductListItem";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 
 export interface ProductsPanelProps {
   request: RestockRequest;
@@ -151,8 +151,8 @@ export function ProductsPanel({ request, teamId }: ProductsPanelProps) {
                       />
                       <ProblemCell item={item} type={RestockProblemType.BROKEN} testId={`restock-detail-broken-${item.productId}`} />
                       <ProblemCell item={item} type={RestockProblemType.MISSING} testId={`restock-detail-missing-${item.productId}`} />
-                      <Table.Cell textAlign="end">{formatRupiah(unitPrice(item))}</Table.Cell>
-                      <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
+                      <Table.Cell textAlign="end">{formatRupiahNumber(unitPrice(item))}</Table.Cell>
+                      <Table.Cell textAlign="end">{formatRupiahNumber(lineTotal(item))}</Table.Cell>
                     </Table.Row>
                   );
                 })}
@@ -211,7 +211,7 @@ function ProblemCell({ item, type, testId }: { item: RestockRequestItem; type: R
           {count.toString()}
         </Text>
         <Text fontSize="xs" color="fg.muted" data-testid={`${testId}-value`}>
-          {t("restock.detail.problemWorth", { amount: formatRupiah(problemValue(item, type)) })}
+          {t("restock.detail.problemWorth", { amount: formatRupiahNumber(problemValue(item, type)) })}
         </Text>
         {note && (
           <Text fontSize="xs" color="fg.muted" lineClamp={2} title={note} data-testid={`${testId}-note`}>

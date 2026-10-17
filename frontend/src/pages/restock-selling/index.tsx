@@ -47,7 +47,7 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiah, formatRupiahNumber } from "../../lib/money";
 import { SellingRestockActions } from "../../features/restock/SellingRestockActions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -480,7 +480,7 @@ export function RestockSellingPage() {
                           />
                         </Table.Cell>
                         <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`restock-value-${request.id}`}>
-                          {formatRupiah(committedValue(request))}
+                          {formatRupiahNumber(committedValue(request))}
                         </Table.Cell>
 
                         {/* Stop the row's navigate from firing when a row action is used. */}

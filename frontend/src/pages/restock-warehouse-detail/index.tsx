@@ -32,7 +32,7 @@ import { RestockStatusBadge } from "../../components/badges/RestockStatusBadge";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { LinesCard } from "./components/LinesCard";
 import { RestockTimeline } from "../../features/restock/RestockTimeline";
 import { WarehouseRestockActions } from "../../features/restock/WarehouseRestockActions";
@@ -260,17 +260,17 @@ export function RestockWarehouseDetailPage() {
               <Text fontSize="sm" color="fg.muted">
                 {t("restock.detail.subtotal")}:{" "}
                 <Text as="span" color="fg" data-testid="restock-detail-subtotal">
-                  {formatRupiah(goodsTotal(request.items))}
+                  {formatRupiahNumber(goodsTotal(request.items))}
                 </Text>
               </Text>
               <Text fontSize="sm" color="fg.muted">
                 {t("restock.detail.shipping")}:{" "}
                 <Text as="span" color="fg" data-testid="restock-detail-shipping">
-                  {formatRupiah(request.shipmentCost)}
+                  {formatRupiahNumber(request.shipmentCost)}
                 </Text>
               </Text>
               <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
-                {t("restock.detail.total")}: {formatRupiah(committedValue(request))}
+                {t("restock.detail.total")}: {formatRupiahNumber(committedValue(request))}
               </Text>
             </Stack>
 
@@ -284,7 +284,7 @@ export function RestockWarehouseDetailPage() {
                   {charge > 0n ? (
                     <>
                       <Text fontWeight="semibold" data-testid="restock-detail-courier-charge">
-                        {formatRupiah(charge)}
+                        {formatRupiahNumber(charge)}
                       </Text>
                       <Text fontSize="sm" wordBreak="break-word" data-testid="restock-detail-courier-charge-note">
                         {request.warehouseAdditionalCostNote}

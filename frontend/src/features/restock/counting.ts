@@ -36,12 +36,13 @@ export function toBroken(raw: string): bigint {
   return toCount(raw);
 }
 
-// Whole rupiah from a typed field. Blank and rubbish are both 0.
-export function toRupiah(raw: string): bigint {
+// An amount from a typed field, as typed — restock money is a double on the wire (money-is-double-in-the-api-too), so
+// nothing is truncated here. Blank and rubbish are both 0.
+export function toRupiah(raw: string): number {
   const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) return 0n;
+  if (!Number.isFinite(n) || n < 0) return 0;
 
-  return BigInt(Math.trunc(n));
+  return n;
 }
 
 // More in the box than the line ordered — accept is refused until the selling team edits the line.
@@ -73,10 +74,10 @@ export function deltaLabel(t: TFunction, ordered: bigint, received: bigint): str
 // What a unit cost BEFORE the restock's costs — the line's own unit price, total ÷ ORDERED count
 // (unit-price-is-line-price-plus-costs-per-unit). Shown beside the HPP so the person typing the courier's charge can
 // see what the delivery added.
-export function unitGoods(lineTotal: bigint, lineCount: bigint): bigint {
-  if (lineCount <= 0n) return 0n;
+export function unitGoods(lineTotal: number, lineCount: bigint): number {
+  if (lineCount <= 0n) return 0;
 
-  return lineTotal / lineCount;
+  return lineTotal / Number(lineCount);
 }
 
 // HPP — the LANDED unit price, the same for every unit of the line, good, broken or missing
@@ -87,13 +88,12 @@ export function unitGoods(lineTotal: bigint, lineCount: bigint): bigint {
 //
 // A broken or missing unit carries this same price on its problem row, so the batch and the problem rows add up to
 // what was paid, even when nothing arrives good. The courier's charge is OUTSIDE the restock's total and INSIDE the
-// unit price (the-couriers-charge-stays-out-of-total, the-couriers-ask-is-in-the-unit-price). Rounded down at both
-// steps. ⚠ The accept handler still divides by good units until the backend step rebuilds it on the ledgers
-// (the-decided-ledgers-come-before-the-restock-accept).
-export function unitHpp(lineTotal: bigint, lineCount: bigint, costs: bigint, allQty: bigint): bigint {
-  if (lineCount <= 0n) return 0n;
+// unit price (the-couriers-charge-stays-out-of-total, the-couriers-ask-is-in-the-unit-price). Not rounded: it is the
+// same figure the accept stores on the batch (inventory_mutations.LandedPrice), and the screen rounds it for display.
+export function unitHpp(lineTotal: number, lineCount: bigint, costs: number, allQty: bigint): number {
+  if (lineCount <= 0n) return 0;
 
-  const perUnit = allQty > 0n ? costs / allQty : 0n;
+  const perUnit = allQty > 0n ? costs / Number(allQty) : 0;
 
-  return lineTotal / lineCount + perUnit;
+  return lineTotal / Number(lineCount) + perUnit;
 }

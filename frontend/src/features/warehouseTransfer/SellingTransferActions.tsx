@@ -131,8 +131,8 @@ export function SellingTransferActions({ transfer, teamId, variant, pending }: S
   );
 }
 
-const digitsOf = (n: bigint) => (n > 0n ? n.toString() : "");
-const bigintOf = (digits: string) => (digits === "" ? 0n : BigInt(digits));
+const digitsOf = (n: number) => (n > 0 ? Math.round(n).toString() : "");
+const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 
 // EDIT COST — the shipping expense and the account that pays it, plus the note. The courier prices by the packed
 // weight, so the team usually knows the cost only after A has packed — which is why this stays open until accepted. A
@@ -154,15 +154,15 @@ function EditCostDialog({
   const [accountId, setAccountId] = useState(transfer.financeAccountId);
   const [note, setNote] = useState(transfer.note);
 
-  const needsAccount = bigintOf(cost) > 0n && accountId === 0n;
+  const needsAccount = amountOf(cost) > 0 && accountId === 0n;
 
   async function confirm() {
     try {
       await update.mutateAsync({
         teamId,
         transferId: transfer.id,
-        shipmentCost: bigintOf(cost),
-        financeAccountId: bigintOf(cost) > 0n ? accountId : 0n,
+        shipmentCost: amountOf(cost),
+        financeAccountId: amountOf(cost) > 0 ? accountId : 0n,
         note: note.trim(),
       });
       toaster.create({ type: "success", title: t("warehouseTransfer.toast.costSaved") });
@@ -195,7 +195,7 @@ function EditCostDialog({
           <Field.HelperText>{t("warehouseTransfer.cost.shippingCostHint")}</Field.HelperText>
         </Field.Root>
 
-        <Field.Root required={bigintOf(cost) > 0n} invalid={needsAccount}>
+        <Field.Root required={amountOf(cost) > 0} invalid={needsAccount}>
           <Field.Label>
             {t("warehouseTransfer.cost.account")}
             <Field.RequiredIndicator />
@@ -205,7 +205,7 @@ function EditCostDialog({
             value={accountId > 0n ? accountId : undefined}
             onChange={setAccountId}
             operationalOnly
-            disabled={bigintOf(cost) === 0n}
+            disabled={amountOf(cost) === 0}
             testId="transfer-cost-account"
           />
           {needsAccount && <Field.ErrorText>{t("warehouseTransfer.cost.accountRequired")}</Field.ErrorText>}

@@ -2,92 +2,29 @@ package inventory_v1
 
 import (
 	"context"
+	"math"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
 
-// CostLayerList backs the product detail's PRICES tab (#209): the warehouse's on-hand of one product,
-// grouped by the FROZEN COST it carries. Batches that arrived at the same price form one layer; the
-// value of the shelf is the sum across layers, not on-hand × a single price.
-//
-// A batch with no cost basis is its OWN layer with `cost_known = false` — "Unknown", never Rp 0 (#74),
-// and it does not count toward the header total. Depleted layers (nothing ready) drop out.
+// CostLayerList backs the product detail's PRICES tab (#209): the warehouse's units of one product, grouped by the
+// price each batch carries. Batches at the same price form one layer; the value of the shelf is the sum of the layers'
+// own values, not units × a single price. Depleted layers (nothing left) drop out. Every batch carries its price, so
+// there is no unknown layer.
 func (s *Service) CostLayerList(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.CostLayerListRequest],
 ) (*connect.Response[inventoryv1.CostLayerListResponse], error) {
-	warehouseID := req.Msg.GetTeamId()
-	productID := req.Msg.GetFilter().GetProductId()
 	page := req.Msg.GetPage()
 
-	// One layer per distinct frozen cost, its on-hand the Ready across every batch at that price. NULL
-	// cost groups on its own (the Unknown layer). Only layers that still hold stock are shown.
-	const grouped = `
-		SELECT unit_cost, SUM(ready) AS on_hand
-		FROM (
-			SELECT b.unit_cost,
-			       COALESCE((SELECT SUM(sb.qty) FROM stock_shelf_batches sb WHERE sb.batch_id = b.id), 0) AS ready
-			FROM stock_batches b
-			WHERE b.warehouse_id = ? AND b.product_id = ?
-		) x
-		GROUP BY unit_cost
-		HAVING SUM(ready) > 0`
-
-	var total int64
-
-	err := s.db.WithContext(ctx).
-		Raw("SELECT COUNT(*) FROM ("+grouped+") g", warehouseID, productID).
-		Scan(&total).Error
+	layers, total, totalValue, err := costLayers(s.db.WithContext(ctx), page,
+		"b.warehouse_id = ? AND b.product_id = ?", req.Msg.GetTeamId(), req.Msg.GetFilter().GetProductId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// The header total values every KNOWN-cost layer; an unknown layer is worth "Unknown", not 0 (#74).
-	var totalValue int64
-
-	err = s.db.WithContext(ctx).
-		Raw("SELECT COALESCE(SUM(on_hand * unit_cost), 0) FROM ("+grouped+") g WHERE unit_cost IS NOT NULL",
-			warehouseID, productID).
-		Scan(&totalValue).Error
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	type row struct {
-		UnitCost *int64
-		OnHand   int64
-	}
-
-	var rows []row
-
-	offset := int((page.GetPage() - 1) * page.GetLimit())
-
-	// Dearest first, Unknown last — the same order the Prices tab reads top-down.
-	err = s.db.WithContext(ctx).
-		Raw(grouped+" ORDER BY unit_cost DESC NULLS LAST LIMIT ? OFFSET ?",
-			warehouseID, productID, int(page.GetLimit()), offset).
-		Scan(&rows).Error
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	layers := make([]*inventoryv1.CostLayer, 0, len(rows))
-	for i := range rows {
-		costKnown := rows[i].UnitCost != nil
-		var unitCost int64
-		if costKnown {
-			unitCost = *rows[i].UnitCost
-		}
-
-		layers = append(layers, &inventoryv1.CostLayer{
-			UnitCost:  unitCost,
-			CostKnown: costKnown,
-			OnHand:    rows[i].OnHand,
-			Amount:    rows[i].OnHand * unitCost,
-		})
 	}
 
 	items, ids := costLayerItems(layers, req.Msg.GetDataRequest())
@@ -102,4 +39,55 @@ func (s *Service) CostLayerList(
 		},
 		TotalValue: totalValue,
 	}), nil
+}
+
+// costLayers groups the batches matching `where` that still hold units by their price, dearest first, one page. A
+// layer's price is rounded to 4 places before grouping, so float dust never splits one price into two layers
+// (stock-money-is-float64-compared-at-4-digits). Its amount is its batches' own value. Whole rupiah on this contract.
+func costLayers(db *gorm.DB, page pager, where string, args ...any) ([]*inventoryv1.CostLayer, int64, int64, error) {
+	grouped := `
+		SELECT ROUND(b.price_unit::numeric, 4)::float8 AS price, SUM(b.stock_count) AS on_hand, SUM(b.stock_valuation) AS amount
+		FROM batches b
+		WHERE ` + where + ` AND b.stock_count > 0
+		GROUP BY ROUND(b.price_unit::numeric, 4)`
+
+	var total int64
+
+	err := db.Raw("SELECT COUNT(*) FROM ("+grouped+") g", args...).Scan(&total).Error
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	var totalValue float64
+
+	err = db.Raw("SELECT COALESCE(SUM(amount), 0) FROM ("+grouped+") g", args...).Scan(&totalValue).Error
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	var rows []struct {
+		Price  float64
+		OnHand int64
+		Amount float64
+	}
+
+	err = db.
+		Raw(grouped+" ORDER BY price DESC LIMIT ? OFFSET ?", append(append([]any{}, args...), int(page.GetLimit()), pageOffset(page))...).
+		Scan(&rows).
+		Error
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	layers := make([]*inventoryv1.CostLayer, 0, len(rows))
+	for _, r := range rows {
+		layers = append(layers, &inventoryv1.CostLayer{
+			UnitCost:  int64(math.Round(r.Price)),
+			CostKnown: true,
+			OnHand:    r.OnHand,
+			Amount:    int64(math.Round(r.Amount)),
+		})
+	}
+
+	return layers, total, int64(math.Round(totalValue)), nil
 }

@@ -34,7 +34,7 @@ const At505 = routedAt(505n);
 const At507 = routedAt(507n);
 
 const meta = {
-  title: "Pages/Restock/RestockWarehouseDetail",
+  title: "Pages/Inventory/Restock/RestockWarehouseDetail",
   component: At501,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

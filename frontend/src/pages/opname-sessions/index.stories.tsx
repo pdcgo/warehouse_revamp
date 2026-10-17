@@ -22,7 +22,7 @@ const Routed = routedPage(
 );
 
 const meta = {
-  title: "Pages/Opname/Sessions",
+  title: "Pages/Inventory/Opname/Sessions",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {

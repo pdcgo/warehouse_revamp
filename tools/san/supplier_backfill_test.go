@@ -14,22 +14,22 @@ import (
 )
 
 // seedRestock writes one restock as inventory_service stores it — its status, one line naming its supplier and that line's
-// damaged units — accepted at `acceptedAt` when it is "accepted".
+// problem rows — accepted at `acceptedAt` when it is "accepted". 9 were in the box, 2 of them broken: 7 good.
 func seedRestock(t *testing.T, db *gorm.DB, status string, supplierID *uint64, acceptedAt time.Time) uint64 {
 	t.Helper()
 
-	rr := inventory_service_models.RestockRequest{
-		RequestingTeamID: 12,
-		WarehouseID:      5,
-		Status:           status,
-		Items: []inventory_service_models.RestockRequestItem{{
-			ProductID: 100, SKU: "SKU1", Name: "Kaos", Quantity: 10, TotalPrice: 30000, ReceivedQuantity: 7,
+	rr := inventory_service_models.Restock{
+		TeamID:      12,
+		WarehouseID: 5,
+		Status:      status,
+		Items: []inventory_service_models.RestockItem{{
+			ProductID: 100, SKU: "SKU1", Name: "Kaos", Count: 10, Total: 30000, PriceUnit: 3000, ReceivedCount: 9,
 			SupplierID: supplierID,
-			Damaged: []inventory_service_models.RestockDamagedUnit{
-				{Quantity: 2, Reason: "crushed", DamageType: "broken"},
-				{Quantity: 1, Reason: "short", DamageType: "missing"},
-			},
 		}},
+		Problems: []inventory_service_models.RestockProblemItem{
+			{ProductID: 100, Count: 2, Note: "crushed", ProblemType: "broken"},
+			{ProductID: 100, Count: 1, Note: "short", ProblemType: "missing"},
+		},
 	}
 
 	if status == "accepted" {

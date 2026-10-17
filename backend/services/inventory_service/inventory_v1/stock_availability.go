@@ -10,14 +10,10 @@ import (
 
 // StockAvailability reports what a pick from this warehouse would find for each product.
 //
-// It reads the SAME rows pickOneLine drains — `stock_levels` for the warehouse, every place summed —
-// so the number a person sees before placing an order is the number the order will meet. Anything
-// cleverer here (ownership, reservations, a projection) would be a second definition of "available",
-// and the first time the two disagreed it would be this screen that looked broken.
-//
-// ⚠ It is NOT filtered by owning team, exactly as the pick is not. Any team may draw stock from any
-// warehouse (owner, 2026-07-20), so filtering the READ while leaving the WRITE open would tell people
-// they cannot do something the system would let them do.
+// It reads the SAME rows the order take counts — the product's batches in the warehouse, every batch summed — so
+// the number a person sees before placing an order is the number the order will meet. A product has one owner, so
+// these are its owner's batches whoever asks; the take's other refusals (a locked product, the reserve) are its own and
+// are not repeated here.
 func (s *Service) StockAvailability(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockAvailabilityRequest],
@@ -36,8 +32,8 @@ func (s *Service) StockAvailability(
 	// an order the warehouse can actually fill.
 	err := s.db.
 		WithContext(ctx).
-		Table("stock_levels").
-		Select("product_id, COALESCE(SUM(on_hand), 0) AS available").
+		Table("batches").
+		Select("product_id, COALESCE(SUM(stock_count), 0) AS available").
 		Where("warehouse_id = ?", req.Msg.GetWarehouseId()).
 		Where("product_id IN ?", productIDs).
 		Group("product_id").

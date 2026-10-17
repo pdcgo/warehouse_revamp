@@ -76,7 +76,7 @@ export function WarehouseTransferAcceptPage() {
   }
 
   const itemOf = (line: LineCount) => transfer.items.find((item) => item.id === line.itemId)!;
-  const chargeValue = toCount(charge);
+  const chargeValue = Number(toCount(charge));
   const sent = transfer.items.reduce((sum, item) => sum + item.count, 0n);
   const arrived = lines.reduce((sum, line) => sum + toCount(line.arrived), 0n);
   const good = lines.reduce((sum, line) => sum + (isCounted(line) ? goodOf(line) : 0n), 0n);
@@ -84,7 +84,7 @@ export function WarehouseTransferAcceptPage() {
   const blocked =
     lines.length === 0 ||
     lines.some((line) => problemOf(itemOf(line), line) !== null) ||
-    (chargeValue > 0n && chargeNote.trim() === "");
+    (chargeValue > 0 && chargeNote.trim() === "");
 
   async function confirm() {
     try {
@@ -151,7 +151,7 @@ export function WarehouseTransferAcceptPage() {
               <Field.Label>{t("warehouseTransfer.accept.chargeAmount")}</Field.Label>
               <CurrencyInput value={charge} onChange={setCharge} data-testid="accept-charge-amount" />
             </Field.Root>
-            <Field.Root required={chargeValue > 0n} invalid={chargeValue > 0n && chargeNote.trim() === ""}>
+            <Field.Root required={chargeValue > 0} invalid={chargeValue > 0 && chargeNote.trim() === ""}>
               <Field.Label>
                 {t("warehouseTransfer.accept.chargeNote")}
                 <Field.RequiredIndicator />
@@ -159,7 +159,7 @@ export function WarehouseTransferAcceptPage() {
               <Input
                 value={chargeNote}
                 maxLength={200}
-                disabled={chargeValue === 0n}
+                disabled={chargeValue === 0}
                 data-testid="accept-charge-note"
                 onChange={(e) => setChargeNote(e.target.value)}
               />

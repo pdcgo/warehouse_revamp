@@ -59,12 +59,12 @@ func TestRestockInboundStat(t *testing.T) {
 
 	widget := func(qty, total int64) *inventoryv1.RestockRequestItem {
 		return &inventoryv1.RestockRequestItem{
-			ProductId: 100, Sku: "SKU-W", Name: "Widget", Count: qty, Total: total,
+			ProductId: 100, Sku: "SKU-W", Name: "Widget", Count: qty, Total: float64(total),
 		}
 	}
 	gadget := func(qty, total int64) *inventoryv1.RestockRequestItem {
 		return &inventoryv1.RestockRequestItem{
-			ProductId: 200, Sku: "SKU-G", Name: "Gadget", Count: qty, Total: total,
+			ProductId: 200, Sku: "SKU-G", Name: "Gadget", Count: qty, Total: float64(total),
 		}
 	}
 
@@ -126,7 +126,7 @@ func TestRestockInboundStat(t *testing.T) {
 		t.Fatalf("unit count = %d, want 25", all.GetUnitCount())
 	}
 	if all.GetAmount() != 250_000 {
-		t.Fatalf("amount = %d, want 250000", all.GetAmount())
+		t.Fatalf("amount = %v, want 250000", all.GetAmount())
 	}
 
 	// The oldest is the FIRST pending one this test wrote, so it lands inside the window rather than at

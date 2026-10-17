@@ -22,9 +22,12 @@ func NewRegister(
 		mux.Handle(inventoryv1connect.NewInventoryServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRestockRequestServiceHandler(inventory, opts))
 		mux.Handle(inventoryv1connect.NewRackServiceHandler(inventory, opts))
-		// A prototype until design_accept: every RPC answers Unimplemented (warehouse_transfer_prototype.go).
-		mux.Handle(inventoryv1connect.NewWarehouseTransferServiceHandler(inventory_v1.WarehouseTransferPrototype{}, opts))
-		// A prototype until design_accept, the same way (opname_prototype.go).
+		// An order's take and its release, on the decided ledgers — called by the order service while it creates or
+		// cancels an order (order_transaction_create.go, order_transaction_release.go).
+		mux.Handle(inventoryv1connect.NewOrderTransactionServiceHandler(inventory, opts))
+		// A selling team moving its own stock from one warehouse to another, on the decided ledgers (warehouse_transfer_*.go).
+		mux.Handle(inventoryv1connect.NewWarehouseTransferServiceHandler(inventory, opts))
+		// A prototype until design_accept: every RPC answers Unimplemented (opname_prototype.go).
 		mux.Handle(inventoryv1connect.NewOpnameServiceHandler(inventory_v1.OpnamePrototype{}, opts))
 
 		// Pub/Sub PUSH receiver (#102) — a plain HTTP endpoint (not a Connect RPC), so it is mounted
@@ -35,6 +38,7 @@ func NewRegister(
 			inventoryv1connect.InventoryServiceName,
 			inventoryv1connect.RestockRequestServiceName,
 			inventoryv1connect.RackServiceName,
+			inventoryv1connect.OrderTransactionServiceName,
 			inventoryv1connect.WarehouseTransferServiceName,
 			inventoryv1connect.OpnameServiceName,
 		}

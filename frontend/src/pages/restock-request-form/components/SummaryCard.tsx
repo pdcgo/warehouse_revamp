@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, Flex, Separator, Stack, Text } from "@chakra-ui/react";
 
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 import { type LineDraft, lineMoney, perPiece, toQty, totals } from "../draft";
 
 // THE MONEY, as the selling team agrees to it: each line at its typed total, the goods, the shipping it paid, and their
@@ -40,11 +40,11 @@ export function SummaryCard({ lines, shippingCost }: { lines: LineDraft[]; shipp
                       {line.name || line.sku}
                     </Text>
                     <Text fontSize="xs" color="fg.muted">
-                      {toQty(line.count)} × {t("restock.form.perPiece", { price: formatRupiah(perPiece(line)) })}
+                      {toQty(line.count)} × {t("restock.form.perPiece", { price: formatRupiahNumber(perPiece(line)) })}
                     </Text>
                   </Stack>
                   <Text fontSize="sm" flexShrink={0}>
-                    {formatRupiah(lineMoney(line))}
+                    {formatRupiahNumber(lineMoney(line))}
                   </Text>
                 </Flex>
               ))}
@@ -58,7 +58,7 @@ export function SummaryCard({ lines, shippingCost }: { lines: LineDraft[]; shipp
               {t("restock.form.summary.goods")}
             </Text>
             <Text fontSize="sm" fontWeight="bold" data-testid="restock-summary-products">
-              {formatRupiah(goods)}
+              {formatRupiahNumber(goods)}
             </Text>
           </Flex>
 
@@ -67,7 +67,7 @@ export function SummaryCard({ lines, shippingCost }: { lines: LineDraft[]; shipp
               {t("restock.form.summary.shipping")}
             </Text>
             <Text fontSize="sm" fontWeight="bold" data-testid="restock-summary-shipping">
-              {formatRupiah(shipping)}
+              {formatRupiahNumber(shipping)}
             </Text>
           </Flex>
 
@@ -76,7 +76,7 @@ export function SummaryCard({ lines, shippingCost }: { lines: LineDraft[]; shipp
           <Flex align="center" justify="space-between" gap="card">
             <Text fontWeight="bold">{t("restock.form.summary.total")}</Text>
             <Text fontSize="lg" fontWeight="bold" data-testid="restock-summary-total">
-              {formatRupiah(total)}
+              {formatRupiahNumber(total)}
             </Text>
           </Flex>
 

@@ -22,7 +22,7 @@ const Routed = routedPage(
 );
 
 const meta = {
-  title: "Pages/WarehouseTransfer/TransferWarehouse",
+  title: "Pages/Inventory/WarehouseTransfer/TransferWarehouse",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

@@ -23,160 +23,90 @@ func pickLocations(t *testing.T, svc *inventory_v1.Service, ref string) []*inven
 	return res.Msg.GetLocations()
 }
 
-// #151 — THE question the pick screen exists to answer: a product drawn from THREE places is reported
-// as three shelves with their own quantities, not as one shelf the screen picked for itself.
-//
-// The order matters as much as the contents: it is the walk StockPick already planned (#149) — unplaced
-// first, then shelves by label — so the picker follows the route the system committed to rather than a
-// shuffle that changes between page loads.
-func TestStockPickLocations_ReportsEveryShelfTheGoodsCameFrom(t *testing.T) {
+// #151 — THE question the pick screen exists to answer: a product drawn from THREE racks is reported as three racks
+// with their own quantities. The take chose them, fewest first (an-order-takes-from-the-lowest-shelf-first); the walk
+// reads them by label, and the quantity is POSITIVE — a picker is told "take 3", never "take -3".
+func TestStockPickLocations_ReportsEveryRackTheGoodsCameFrom(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
-	const sellingTeam uint64 = 2
-
-	// Out of label order on purpose, exactly as the drain test does.
 	rackB := insertRack(t, db, warehouseA, "B-02-1")
 	rackA := insertRack(t, db, warehouseA, "A-01-3")
+	rack0 := insertRack(t, db, warehouseA, "A-00-9")
 
-	seed := func(rack *uint64, onHand int64) {
-		t.Helper()
+	seedLevel(t, db, warehouseA, productX, &rack0, 3)
+	seedLevel(t, db, warehouseA, productX, &rackA, 4)
+	seedLevel(t, db, warehouseA, productX, &rackB, 100)
 
-		err := db.Exec(`
-			INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
-			VALUES (?, ?, ?, ?, NOW())`,
-			warehouseA, productX, rack, onHand,
-		).Error
-		if err != nil {
-			t.Fatalf("seed: %v", err)
-		}
-	}
-
-	seed(nil, 3)
-	seed(&rackA, 4)
-	seed(&rackB, 100)
-
-	_, err := svc.StockPick(ctxUser(1), connect.NewRequest(&inventoryv1.StockPickRequest{
-		TeamId: sellingTeam, WarehouseId: warehouseA, Ref: "order:42",
-		Lines: []*inventoryv1.StockPickLine{{ProductId: productX, Quantity: 10}},
-	}))
-	if err != nil {
-		t.Fatalf("StockPick: %v", err)
-	}
+	takeForOrder(t, svc, seedOwner, warehouseA, productX, 10, "order:42")
 
 	got := pickLocations(t, svc, "order:42")
-
 	if len(got) != 3 {
-		t.Fatalf("the goods came from 3 places, the screen was told about %d: %+v", len(got), got)
+		t.Fatalf("the goods came from 3 racks, the screen was told about %d: %+v", len(got), got)
 	}
 
-	// Unplaced first — rack 0, and the quantity is POSITIVE even though the ledger stores a pick as a
-	// negative delta. A picker is told "take 3", never "take -3".
-	if got[0].GetRackId() != 0 || got[0].GetQuantity() != 3 {
-		t.Fatalf("first stop = rack %d qty %d, want the unplaced pile (rack 0) qty 3",
-			got[0].GetRackId(), got[0].GetQuantity())
-	}
+	want := []struct {
+		code string
+		qty  int64
+	}{{"a-00-9", 3}, {"a-01-3", 4}, {"b-02-1", 3}}
 
-	if got[1].GetRackCode() != "A-01-3" || got[1].GetQuantity() != 4 {
-		t.Fatalf("second stop = %q qty %d, want A-01-3 qty 4", got[1].GetRackCode(), got[1].GetQuantity())
-	}
-
-	// Only the REMAINDER from B-02-1 — it holds 100, but this order took 3.
-	if got[2].GetRackCode() != "B-02-1" || got[2].GetQuantity() != 3 {
-		t.Fatalf("third stop = %q qty %d, want B-02-1 qty 3", got[2].GetRackCode(), got[2].GetQuantity())
+	for i, w := range want {
+		if got[i].GetRackCode() != w.code || got[i].GetQuantity() != w.qty {
+			t.Fatalf("stop %d = %q qty %d, want %q qty %d", i, got[i].GetRackCode(), got[i].GetQuantity(), w.code, w.qty)
+		}
 	}
 }
 
-// #151 — the locations belong to ONE ref. Another order's pick from the same shelves must not appear in
-// this order's walk, or a picker collects twice what the order needs.
-func TestStockPickLocations_AreScopedToTheirOwnPick(t *testing.T) {
+// #151 — the locations belong to ONE key. Another order's take from the same rack must not appear in this order's
+// walk, or a picker collects twice what the order needs.
+func TestStockPickLocations_AreScopedToTheirOwnTake(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
-	ctx := ctxUser(1)
-
-	const sellingTeam uint64 = 2
 
 	rack := insertRack(t, db, warehouseA, "A-01-1")
+	seedLevel(t, db, warehouseA, productX, &rack, 50)
 
-	err := db.Exec(`
-		INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
-		VALUES (?, ?, ?, ?, NOW())`, warehouseA, productX, &rack, int64(50)).Error
-	if err != nil {
-		t.Fatalf("seed: %v", err)
-	}
+	takeForOrder(t, svc, seedOwner, warehouseA, productX, 2, "order:1")
+	takeForOrder(t, svc, seedOwner, warehouseA, productX, 7, "order:2")
 
-	for _, spec := range []struct {
-		ref string
-		qty int64
-	}{{"order:1", 2}, {"order:2", 7}} {
-		_, pickErr := svc.StockPick(ctx, connect.NewRequest(&inventoryv1.StockPickRequest{
-			TeamId: sellingTeam, WarehouseId: warehouseA, Ref: spec.ref,
-			Lines: []*inventoryv1.StockPickLine{{ProductId: productX, Quantity: spec.qty}},
-		}))
-		if pickErr != nil {
-			t.Fatalf("StockPick(%s): %v", spec.ref, pickErr)
-		}
-	}
-
-	first := pickLocations(t, svc, "order:1")
-	if len(first) != 1 || first[0].GetQuantity() != 2 {
+	if first := pickLocations(t, svc, "order:1"); len(first) != 1 || first[0].GetQuantity() != 2 {
 		t.Fatalf("order:1's walk = %+v, want a single stop for 2", first)
 	}
 
-	second := pickLocations(t, svc, "order:2")
-	if len(second) != 1 || second[0].GetQuantity() != 7 {
+	if second := pickLocations(t, svc, "order:2"); len(second) != 1 || second[0].GetQuantity() != 7 {
 		t.Fatalf("order:2's walk = %+v, want a single stop for 7", second)
 	}
 
-	// An unknown ref is an empty walk, not an error — nothing was ever picked under it.
+	// An unknown key is an empty walk, not an error — nothing was ever taken under it.
 	if none := pickLocations(t, svc, "order:999"); len(none) != 0 {
-		t.Fatalf("an unpicked ref reported %d stops, want none", len(none))
+		t.Fatalf("an untaken key reported %d stops, want none", len(none))
 	}
 }
 
-// #151/#70 — a RETURNED pick leaves no walk. The goods went back on the shelf, so sending a picker after
-// them would be sending them after stock that is once again available to everybody else.
-//
-// This is why the query reads PICK rows only rather than netting PICK against RETURN.
-func TestStockPickLocations_AReturnedPickHasNoWalk(t *testing.T) {
+// #151/#70 — a RELEASED take leaves no walk. The goods went back on the rack, so sending a picker after them would be
+// sending them after stock that is available to everybody else. The take's rows are still in the log beside their
+// reversal; what must not survive is the WALK.
+func TestStockPickLocations_AReleasedTakeHasNoWalk(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
-	ctx := ctxUser(1)
-
-	const sellingTeam uint64 = 2
 
 	rack := insertRack(t, db, warehouseA, "A-01-1")
+	seedLevel(t, db, warehouseA, productX, &rack, 20)
 
-	err := db.Exec(`
-		INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
-		VALUES (?, ?, ?, ?, NOW())`, warehouseA, productX, &rack, int64(20)).Error
-	if err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	_, err = svc.StockPick(ctx, connect.NewRequest(&inventoryv1.StockPickRequest{
-		TeamId: sellingTeam, WarehouseId: warehouseA, Ref: "order:7",
-		Lines: []*inventoryv1.StockPickLine{{ProductId: productX, Quantity: 5}},
-	}))
-	if err != nil {
-		t.Fatalf("StockPick: %v", err)
-	}
+	takeForOrder(t, svc, seedOwner, warehouseA, productX, 5, "order:7")
 
 	if got := pickLocations(t, svc, "order:7"); len(got) != 1 {
-		t.Fatalf("before the return the walk had %d stops, want 1", len(got))
+		t.Fatalf("before the release the walk had %d stops, want 1", len(got))
 	}
 
-	_, err = svc.StockReturn(ctx, connect.NewRequest(&inventoryv1.StockReturnRequest{
-		TeamId: sellingTeam, WarehouseId: warehouseA, Ref: "order:7",
+	_, err := svc.OrderTransactionRelease(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
+		TeamId: seedOwner, IdempotencyKey: "order:7",
 	}))
 	if err != nil {
-		t.Fatalf("StockReturn: %v", err)
+		t.Fatalf("release: %v", err)
 	}
 
-	// NOTE what this pins, precisely: the PICK rows are still in the ledger (it is append-only, and the
-	// history of "we took 5, then gave 5 back" must survive). What must not survive is the WALK.
-	got := pickLocations(t, svc, "order:7")
-	if len(got) != 0 {
-		t.Fatalf("a returned pick still lists %d stops to walk to: %+v", len(got), got)
+	if got := pickLocations(t, svc, "order:7"); len(got) != 0 {
+		t.Fatalf("a released take still lists %d stops to walk to: %+v", len(got), got)
 	}
 }

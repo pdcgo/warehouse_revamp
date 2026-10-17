@@ -20,7 +20,7 @@ import (
 // tested where the other team reads it: through Detail, called with the SELLING team's id.
 //
 // That distinction is the whole point of these cases. `RestockRequestDetail` scopes by
-// `requesting_team_id OR warehouse_id`, and a scope narrowed to the warehouse would leave every one of
+// `team_id OR warehouse_id`, and a scope narrowed to the warehouse would leave every one of
 // these passing when called as the warehouse and returning NotFound to the team that has been waiting.
 
 const (
@@ -42,12 +42,12 @@ type trailStep struct {
 
 // The steps a restock's trail is made of, as the stored history reads back.
 var (
-	stepCreated   = trailStep{inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED, ongoing, "created"}
-	stepEdited    = trailStep{ongoing, ongoing, "edited"}
-	stepAccepted  = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing"}
+	stepCreated  = trailStep{inventoryv1.RestockRequestStatus_RESTOCK_REQUEST_STATUS_UNSPECIFIED, ongoing, "created"}
+	stepEdited   = trailStep{ongoing, ongoing, "edited"}
+	stepAccepted = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing"}
 	// The courier's charge is said on the acceptance itself, the step that paid it (#184, every-status-change-is-logged).
 	stepAcceptedWithCharge = trailStep{ongoing, accepted, "accepted — 0 broken, 0 missing; courier's charge Rp 25.000"}
-	stepCancelled = trailStep{ongoing, cancelled, "cancelled — money not returned"}
+	stepCancelled          = trailStep{ongoing, cancelled, "cancelled — money not returned"}
 )
 
 // trail is the timeline as a reader sees it, in order.
@@ -87,7 +87,7 @@ func acceptAndReadAsSellingTeam(
 
 	_, err = svc.RestockRequestAccept(ctxUser(tlReceiver), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: tlWarehouse, RequestId: reqID,
-		WarehouseAdditionalCost: codFee, WarehouseAdditionalCostNote: courierNote,
+		WarehouseAdditionalCost: float64(codFee), WarehouseAdditionalCostNote: courierNote,
 		Lines: allArrived(t, db, created.Msg.GetRequest()),
 	}))
 	if err != nil {

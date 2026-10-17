@@ -43,6 +43,88 @@ async function login(page: Page, username: string, password: string) {
   await expect(page.getByTestId("current-user")).toHaveText(username);
 }
 
+// The real contract, called with the signed-in user's token — every seed below goes through it, so a seed that the
+// server would refuse fails here, by name, rather than as a screen that never fills.
+async function api(page: Page, method: string, body: unknown) {
+  return page.evaluate(
+    async ([m, b]) => {
+      const token =
+        window.sessionStorage.getItem("warehouse_revamp.token") ??
+        window.localStorage.getItem("warehouse_revamp.token");
+
+      const res = await fetch(`http://localhost:8081/warehouse.${m as string}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(b),
+      });
+      if (!res.ok) throw new Error(`${m as string}: ${res.status} ${await res.text()}`);
+
+      return res.json();
+    },
+    [method, body] as const,
+  );
+}
+
+// An operational account of team 1 to pay from — every restock names the account that paid
+// (a-restock-must-name-the-account-that-paid), and the form offers operational ones only.
+async function payingAccount(page: Page, tag: string): Promise<string> {
+  const created = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+    teamId: "1",
+    type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+    provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+    name: `E2E restock ${tag} ${SUFFIX}`,
+    holderName: "E2E",
+    accountNumber: `E2E-RST-${tag}-${SUFFIX}`,
+    openingBalance: 0,
+    openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+  });
+  const accountId = String(created.account.id);
+
+  await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+    teamId: "1",
+    accountId,
+    operational: true,
+  });
+
+  return accountId;
+}
+
+// Everything a restock needs before it can be raised and counted in: the warehouse it goes to, a rack there for the
+// good units (there-is-no-unplaced-pile), one of team 1's products, and the account that paid.
+async function restockGround(page: Page, tag: string) {
+  const { whCode, whName, category, skuA } = names(tag);
+
+  const wh = await api(page, "team.v1.TeamService/TeamCreate", {
+    type: 3,
+    name: whName,
+    teamCode: whCode,
+    ownerUserId: ROOT_USER_ID,
+  });
+  const warehouseId = String(wh.team.id);
+
+  const rack = await api(page, "inventory.v1.RackService/RackCreate", {
+    teamId: warehouseId,
+    code: `e2e-${tag.toLowerCase()}`,
+    name: "E2E shelf",
+  });
+
+  const cat = await api(page, "category.v1.CategoryService/CategoryCreate", { name: category });
+  const product = await api(page, "product.v1.ProductService/ProductCreate", {
+    teamId: "1",
+    sku: skuA,
+    name: `E2E ${skuA}`,
+    categoryId: cat.category.id,
+  });
+
+  return {
+    skuA,
+    warehouseId,
+    rackId: String(rack.rack.id),
+    productId: String(product.product.id),
+    accountId: await payingAccount(page, tag),
+  };
+}
+
 // Seeds the warehouse team and the two products through the API. The form under test is the product
 // PICKER, not product creation — seeding those through their own screens would make this test fail
 // for reasons that have nothing to do with what it is named after.
@@ -99,7 +181,7 @@ async function seed(page: Page, tag: string) {
     [whCode, whName, category, skuA, skuB, ROOT_USER_ID] as const,
   );
 
-  return { whCode, whName, skuA, skuB };
+  return { whCode, whName, skuA, skuB, accountId: await payingAccount(page, tag) };
 }
 
 // Searches for one product by SKU and toggles it, leaving the dialog OPEN — a caller ticks several
@@ -155,51 +237,29 @@ test("Restock requests page renders for root", async ({ page }) => {
 test("Restock list: raised-by and accepted-by offer who did it, and narrow to theirs", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  const { whCode, whName, category, skuA } = names("W");
+  const ground = await restockGround(page, "W");
 
-  const requestId = await page.evaluate(
-    async ([whCode, whName, category, skuA, ownerId]) => {
-      const token =
-        window.sessionStorage.getItem("warehouse_revamp.token") ??
-        window.localStorage.getItem("warehouse_revamp.token");
+  // Raised by root, and accepted by root at the warehouse it owns — so root is on the row twice.
+  const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+    teamId: "1",
+    warehouseId: ground.warehouseId,
+    financeAccountId: ground.accountId,
+    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 2, total: 20000 }],
+  });
 
-      const call = async (method: string, body: unknown) => {
-        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
-        return res.json();
-      };
+  await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+    teamId: ground.warehouseId,
+    requestId: created.request.id,
+    lines: [
+      {
+        itemId: created.request.items[0].id,
+        receivedCount: 2,
+        placements: [{ placementId: ground.rackId, quantity: 2 }],
+      },
+    ],
+  });
 
-      const wh = await call("team.v1.TeamService/TeamCreate", { type: 3, name: whName, teamCode: whCode, ownerUserId: ownerId });
-      const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
-      const product = await call("product.v1.ProductService/ProductCreate", {
-        teamId: "1",
-        sku: skuA,
-        name: `E2E ${skuA}`,
-        categoryId: cat.category.id,
-      });
-
-      // Raised by root, and accepted by root at the warehouse it owns — so root is on the row twice.
-      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
-        teamId: "1",
-        warehouseId: wh.team.id,
-        shippingCode: "jne",
-        items: [{ productId: product.product.id, sku: skuA, name: `E2E ${skuA}`, quantity: 2, totalPrice: 20000 }],
-      });
-
-      await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
-        teamId: wh.team.id,
-        requestId: created.request.id,
-        lines: [{ itemId: created.request.items[0].id, receivedQuantity: 2, placements: [{ unplaced: true, quantity: 2 }] }],
-      });
-
-      return created.request.id as string;
-    },
-    [whCode, whName, category, skuA, ROOT_USER_ID] as const,
-  );
+  const requestId = String(created.request.id);
 
   await page.goto("/inventories/restock");
   await expect(page.getByTestId(`restock-row-${requestId}`)).toBeVisible();
@@ -219,7 +279,7 @@ test("Restock list: raised-by and accepted-by offer who did it, and narrow to th
 // shared multi-select dialog, in one pass, instead of one combobox per line.
 test("Restock create: tick two products in the picker and save (#165)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
-  const { whCode, skuA, skuB } = await seed(page, "S");
+  const { whCode, skuA, skuB, accountId } = await seed(page, "S");
 
   await page.goto("/inventories/restock/new");
 
@@ -263,6 +323,11 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await page.getByTestId("restock-warehouse").locator("input").fill(whCode);
   await page.getByTestId(`team-select-option-${whCode}`).click();
 
+  // The account that paid (a-restock-must-name-the-account-that-paid) — picked by its id, since other tests open
+  // operational accounts on the same team and the form only pre-fills when there is exactly one.
+  await page.getByTestId("restock-finance-account").click();
+  await page.getByTestId(`restock-finance-account-option-${accountId}`).click();
+
   await expect(page.getByTestId("submit-restock")).toBeEnabled();
   await page.getByTestId("submit-restock").click();
 
@@ -295,7 +360,7 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // It asserts the line EXISTS rather than which name is in it, because the account the suite logs
   // in as is the fixture's business, not this assertion's.
   await page.getByTestId("restock-detail-tab-timeline").click();
-  await expect(page.getByTestId("restock-timeline-created-by")).toBeVisible();
+  await expect(page.locator("[data-kind='created'] [data-testid$='-by']")).toBeVisible();
   // A pending request ends with what has NOT happened yet, rather than stopping dead at "raised".
   await expect(page.getByTestId("restock-timeline-awaiting")).toBeVisible();
 
@@ -304,7 +369,9 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   // …and EDITING it shows the cover too, which is a SEPARATE path worth its own assertion: a stored
   // restock line holds sku/name and no image at all, so the form has to resolve covers by id rather
   // than read them off the row. Line 0's picture proves that lookup ran and landed on the right line.
-  await page.getByTestId("restock-detail-edit").click();
+  // The action carries the restock's id, which the URL already says.
+  const restockId = new URL(page.url()).pathname.split("/").pop();
+  await page.getByTestId(`restock-action-edit-${restockId}`).click();
   await expect(page.getByTestId("restock-edit-page")).toBeVisible();
   await expect(page.getByTestId("restock-line-0").locator("img")).toHaveAttribute(
     "src",
@@ -400,262 +467,134 @@ test("Restock create: reopening the picker keeps what was already typed (#165)",
   await expect(page.getByTestId("restock-qty-0")).toHaveValue("3");
 });
 
-// LOST and BROKEN on the buyer's Product tab (#154 → owner). The two come from ONE `damaged` array
-// filtered by TYPE, and crossing them is a bug nothing else would catch: both cells would still show a
-// number, both would still show a reason, and the buyer would chase a re-send for goods that arrived
-// crushed. So the test asserts the pairing — which number and which reason land in which column.
+// BROKEN and MISSING on the buyer's Product tab (#154, a-short-unit-at-the-door-is-missing). The warehouse types what
+// was IN THE BOX and how many of those are broken; missing is worked out. Crossing the two kinds is a bug nothing else
+// would catch: both cells would still show a number and a note, and the buyer would chase a re-send for goods that
+// arrived crushed. So the test asserts the pairing — which number and which note land in which column.
 //
-// The delivery is accepted through the API rather than the accept FORM: that form has its own coverage
-// in orders.spec, and driving it here would make a rendering test fail for reasons about racks and
-// placements. `unplaced` is a legal place (#135), which is what lets this skip creating shelves.
-test("Restock detail: lost and broken show with their reasons (#154)", async ({ page }) => {
+// The delivery is accepted through the API rather than the accept FORM: that form has its own coverage in its
+// stories, and driving it here would make a rendering test fail for reasons about racks and placements.
+test("Restock detail: broken and missing show with the warehouse's notes (#154)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  const tag = "D";
-  const { whCode, whName, category, skuA } = names(tag);
+  const ground = await restockGround(page, "D");
 
-  const seeded = await page.evaluate(
-    async ([whCode, whName, category, skuA, ownerId]) => {
-      const token =
-        window.sessionStorage.getItem("warehouse_revamp.token") ??
-        window.localStorage.getItem("warehouse_revamp.token");
+  // 10 ordered. 9 in the box, 2 of them crushed — so 7 good, 2 broken, 1 missing, and each column shows a different
+  // number.
+  const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+    teamId: "1",
+    warehouseId: ground.warehouseId,
+    financeAccountId: ground.accountId,
+    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
+  });
 
-      const call = async (method: string, body: unknown) => {
-        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
-        return res.json();
-      };
+  await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+    teamId: ground.warehouseId,
+    requestId: created.request.id,
+    lines: [
+      {
+        itemId: created.request.items[0].id,
+        receivedCount: 9,
+        brokenCount: 2,
+        brokenNote: "crushed in transit",
+        missingNote: "never in the box",
+        placements: [{ placementId: ground.rackId, quantity: 7 }],
+      },
+    ],
+  });
 
-      const wh = await call("team.v1.TeamService/TeamCreate", {
-        type: 3,
-        name: whName,
-        teamCode: whCode,
-        ownerUserId: ownerId,
-      });
-      const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
-      const product = await call("product.v1.ProductService/ProductCreate", {
-        teamId: "1",
-        sku: skuA,
-        name: `E2E ${skuA}`,
-        categoryId: cat.category.id,
-      });
+  const productId = ground.productId;
 
-      // 10 asked. 7 turn up sellable, 2 arrive crushed, 1 was never in the box — so the three columns
-      // must each show a different number, and the row is legitimately short by 3.
-      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
-        teamId: "1",
-        warehouseId: wh.team.id,
-        shippingCode: "jne",
-        items: [
-          { productId: product.product.id, sku: skuA, name: `E2E ${skuA}`, quantity: 10, totalPrice: 500000 },
-        ],
-      });
-
-      await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
-        teamId: wh.team.id,
-        requestId: created.request.id,
-        lines: [
-          {
-            itemId: created.request.items[0].id,
-            receivedQuantity: 7,
-            // The unplaced pile — a real place (#135), so no rack has to exist for this test.
-            placements: [{ unplaced: true, quantity: 7 }],
-            damaged: [
-              { quantity: 2, reason: "crushed in transit", type: "RESTOCK_DAMAGE_TYPE_BROKEN" },
-              { quantity: 1, reason: "never in the box", type: "RESTOCK_DAMAGE_TYPE_LOST" },
-            ],
-          },
-        ],
-      });
-
-      return {
-        requestId: created.request.id,
-        productId: product.product.id,
-        warehouseId: wh.team.id,
-      };
-    },
-    [whCode, whName, category, skuA, ROOT_USER_ID] as const,
-  );
-
-  await page.goto(`/inventories/restock/${seeded.requestId}`);
+  await page.goto(`/inventories/restock/${created.request.id}`);
   await page.getByTestId("restock-detail-tab-products").click();
 
-  // ACCEPTED is what became sellable stock — 7, not the 10 asked and not the 9 that physically turned
-  // up. And the shortfall is flagged, because 3 of what was paid for is not on a shelf.
-  const accepted = page.getByTestId(`restock-detail-received-${seeded.productId}`);
-  await expect(accepted).toContainText("7");
+  // RECEIVED is what was in the box, broken included (any-warehouse-member-counts-what-arrived); GOOD is what became
+  // stock. And the shortfall is flagged once, in the header.
+  await expect(page.getByTestId(`restock-detail-received-${productId}`)).toContainText("9");
+  await expect(page.getByTestId(`restock-detail-good-${productId}`)).toContainText("7");
+  await expect(page.getByTestId("restock-detail-missing")).toContainText("1");
 
-  // The shortfall is flagged ONCE, in the page header — the per-line "short by n" badge was removed
-  // (owner) because the row itself now itemises the gap: asked 10, accepted 7, lost 1, broken 2.
-  await expect(page.getByTestId("restock-detail-short")).toBeVisible();
+  // ⚠ THE PAIRING IS THE POINT. Each cell carries ITS OWN count and ITS OWN note.
+  await expect(page.getByTestId(`restock-detail-broken-${productId}-count`)).toContainText("2");
+  await expect(page.getByTestId(`restock-detail-broken-${productId}-note`)).toContainText("crushed in transit");
+  await expect(page.getByTestId(`restock-detail-broken-${productId}`)).not.toContainText("never in the box");
 
-  // ⚠ THE PAIRING IS THE POINT. Each cell carries ITS OWN number and ITS OWN reason; a filter on the
-  // wrong damage type puts "crushed in transit" under Lost and reads as a supplier who shorted us.
-  const lost = page.getByTestId(`restock-detail-lost-${seeded.productId}`);
-  await expect(lost).toContainText("1");
-  await expect(lost).toContainText("never in the box");
-  await expect(lost).not.toContainText("crushed in transit");
+  await expect(page.getByTestId(`restock-detail-missing-${productId}-count`)).toContainText("1");
+  await expect(page.getByTestId(`restock-detail-missing-${productId}-note`)).toContainText("never in the box");
+  await expect(page.getByTestId(`restock-detail-missing-${productId}`)).not.toContainText("crushed in transit");
 
-  const broken = page.getByTestId(`restock-detail-broken-${seeded.productId}`);
-  await expect(broken).toContainText("2");
-  await expect(broken).toContainText("crushed in transit");
-  await expect(broken).not.toContainText("never in the box");
+  // Each problem row is worth the landed unit price, filled by the server (the-problem-price-is-filled-by-the-system):
+  // 500.000 ÷ 10, and no freight on this one — Rp 100.000 broken, Rp 50.000 missing.
+  await expect(page.getByTestId(`restock-detail-broken-${productId}-value`)).toContainText("100.000");
+  await expect(page.getByTestId(`restock-detail-missing-${productId}-value`)).toContainText("50.000");
 
-  // The columns are there on a request NOBODY HAS COUNTED too, reading "—" rather than 0 — a pending
-  // delivery has not arrived empty, and gating the columns on acceptance is what used to hide them
-  // from every restock still in flight.
-  const pending = await page.evaluate(
-    async ([skuA, warehouseId, productId]) => {
-      const token =
-        window.sessionStorage.getItem("warehouse_revamp.token") ??
-        window.localStorage.getItem("warehouse_revamp.token");
+  // The columns are there on a restock NOBODY HAS COUNTED too, reading "—" rather than 0 — a box on its way has not
+  // arrived empty.
+  const pending = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+    teamId: "1",
+    warehouseId: ground.warehouseId,
+    financeAccountId: ground.accountId,
+    items: [{ productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 4, total: 100000 }],
+  });
 
-      const res = await fetch(
-        "http://localhost:8081/warehouse.inventory.v1.RestockRequestService/RestockRequestCreate",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            teamId: "1",
-            warehouseId,
-            items: [{ productId, sku: skuA, name: `E2E ${skuA}`, quantity: 4, totalPrice: 100000 }],
-          }),
-        },
-      );
-      if (!res.ok) throw new Error(`create pending: ${res.status} ${await res.text()}`);
-
-      return (await res.json()).request.id;
-    },
-    [skuA, seeded.warehouseId, seeded.productId] as const,
-  );
-
-  await page.goto(`/inventories/restock/${pending}`);
+  await page.goto(`/inventories/restock/${pending.request.id}`);
   await page.getByTestId("restock-detail-tab-products").click();
-  await expect(page.getByTestId(`restock-detail-lost-${seeded.productId}`)).toHaveText("—");
-  await expect(page.getByTestId(`restock-detail-broken-${seeded.productId}`)).toHaveText("—");
-  await expect(page.getByTestId(`restock-detail-received-${seeded.productId}`)).toHaveText("—");
+  await expect(page.getByTestId(`restock-detail-missing-${productId}`)).toHaveText("—");
+  await expect(page.getByTestId(`restock-detail-broken-${productId}`)).toHaveText("—");
+  await expect(page.getByTestId(`restock-detail-received-${productId}`)).toHaveText("—");
 });
 
-// THE COD FEE, ON THE SCREEN OF THE TEAM THAT HAS TO PAY IT (#155/#184).
-//
-// The backend has this covered where the numbers are written; what only a browser can answer is
-// whether the fee reaches the SELLING team's page at all — the fee is entered by the warehouse, and
-// the requesting team never sees the accept form. Two things are asserted, and they fail separately:
-// the money (the fee is listed and the total moved by exactly it) and the HISTORY (paying the courier
-// and counting the box in are TWO steps, in that order).
-//
-// Accepted through the API rather than the accept form for the same reason the test above it is: that
-// form has its own coverage, and driving it here would make this fail for reasons about racks.
-test("Restock detail: a COD fee shows in the total and as its own timeline step (#155)", async ({
-  page,
-}) => {
+// THE COURIER'S CHARGE, ON THE SCREEN OF THE TEAM THAT OWES IT (#155/#184). The warehouse types it at the door; the
+// selling team never sees the accept form, so only a browser can answer whether it reaches the selling team's page.
+// Two things are asserted, and they fail separately: the MONEY — the charge shows on its own and the total stays goods
+// plus shipping (the-couriers-charge-stays-out-of-total) — and the HISTORY — the charge sits on the accept's step, not a
+// step of its own (every-status-change-is-logged).
+test("Restock detail: the courier's charge shows on its own and stays out of the total (#155)", async ({ page }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  const tag = "C";
-  const { whCode, whName, category, skuA } = names(tag);
+  const ground = await restockGround(page, "C");
 
-  const seeded = await page.evaluate(
-    async ([whCode, whName, category, skuA, ownerId]) => {
-      const token =
-        window.sessionStorage.getItem("warehouse_revamp.token") ??
-        window.localStorage.getItem("warehouse_revamp.token");
+  // 500.000 of goods and 15.000 of freight agreed up front.
+  const created = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+    teamId: "1",
+    warehouseId: ground.warehouseId,
+    financeAccountId: ground.accountId,
+    shipmentCost: 15000,
+    items: [{ productId: ground.productId, sku: ground.skuA, name: `E2E ${ground.skuA}`, count: 10, total: 500000 }],
+  });
 
-      const call = async (method: string, body: unknown) => {
-        const res = await fetch(`http://localhost:8081/warehouse.${method}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(`${method}: ${res.status} ${await res.text()}`);
-        return res.json();
-      };
+  await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+    teamId: ground.warehouseId,
+    requestId: created.request.id,
+    // What the courier asked at the door — known only to the warehouse, and only now; its note is required.
+    warehouseAdditionalCost: 25000,
+    warehouseAdditionalCostNote: "courier asked at the door",
+    lines: [
+      {
+        itemId: created.request.items[0].id,
+        receivedCount: 10,
+        placements: [{ placementId: ground.rackId, quantity: 10 }],
+      },
+    ],
+  });
 
-      const wh = await call("team.v1.TeamService/TeamCreate", {
-        type: 3,
-        name: whName,
-        teamCode: whCode,
-        ownerUserId: ownerId,
-      });
-      const cat = await call("category.v1.CategoryService/CategoryCreate", { name: category });
-      const product = await call("product.v1.ProductService/ProductCreate", {
-        teamId: "1",
-        sku: skuA,
-        name: `E2E ${skuA}`,
-        categoryId: cat.category.id,
-      });
-
-      // 500.000 of goods and 15.000 of freight agreed up front — so the only number that can move the
-      // total once the delivery lands is the fee the courier takes at the door.
-      const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
-        teamId: "1",
-        warehouseId: wh.team.id,
-        shippingCode: "jne",
-        shippingCost: 15000,
-        items: [
-          {
-            productId: product.product.id,
-            sku: skuA,
-            name: `E2E ${skuA}`,
-            quantity: 10,
-            totalPrice: 500000,
-          },
-        ],
-      });
-
-      await call("inventory.v1.RestockRequestService/RestockRequestFulfill", {
-        teamId: wh.team.id,
-        requestId: created.request.id,
-        // What the delivery cost the warehouse — known only to it, and only now.
-        // `INCIDENTAL` with a required note — see the liability spec for why the pair rule went.
-        costLines: [
-          { kind: "RESTOCK_COST_KIND_INCIDENTAL", amount: 25000, note: "courier asked at the door" },
-        ],
-        lines: [
-          {
-            itemId: created.request.items[0].id,
-            receivedQuantity: 10,
-            placements: [{ unplaced: true, quantity: 10 }],
-          },
-        ],
-      });
-
-      return { requestId: created.request.id };
-    },
-    [whCode, whName, category, skuA, ROOT_USER_ID] as const,
-  );
-
-  await page.goto(`/inventories/restock/${seeded.requestId}`);
+  await page.goto(`/inventories/restock/${created.request.id}`);
 
   // ── THE MONEY ────────────────────────────────────────────────────────────────────────────────
-  await page.getByTestId("restock-detail-tab-products").click();
+  // Listed on its own, with its note: the charge is the selling team's debt to the warehouse, and a total that merely
+  // got bigger tells nobody what to settle.
+  await expect(page.getByTestId("restock-detail-courier-charge")).toContainText("25.000");
+  await expect(page.getByTestId("restock-detail-courier-charge-note")).toContainText("courier asked at the door");
 
-  // Listed as its own line, not folded into the freight: the fee is a separate obligation to the
-  // warehouse (#184), and a total that merely got bigger tells nobody what to settle.
-  await expect(page.getByTestId("restock-detail-cost-incidental")).toContainText("25.000");
-
-  // 500.000 goods + 15.000 freight + 25.000 at the door. A total still reading 515.000 means the fee
-  // was stored and never counted — which is exactly how it stays unpaid.
-  await expect(page.getByTestId("restock-detail-total")).toContainText("540.000");
+  // 500.000 goods + 15.000 freight — what the paying account was charged. The courier's charge is NOT in it.
+  await expect(page.getByTestId("restock-detail-total")).toContainText("515.000");
 
   // ── THE HISTORY ──────────────────────────────────────────────────────────────────────────────
   await page.getByTestId("restock-detail-tab-timeline").click();
 
-  // The WHOLE sequence, in order, rather than two separate visibility checks: the order is the claim
-  // — the courier is paid at the door and THEN the box is opened and counted. `-by` nodes are the
-  // person inside a step, not steps of their own.
-  const steps = await page.getByTestId("restock-detail-timeline").evaluate((root) =>
-    Array.from(root.querySelectorAll("[data-testid^='restock-timeline-']"))
-      .map((node) => node.getAttribute("data-testid"))
-      .filter((id): id is string => !!id && !id.endsWith("-by")),
-  );
-
-  expect(steps).toEqual([
-    "restock-timeline-created",
-    "restock-timeline-cost-recorded",
-    "restock-timeline-accepted",
-  ]);
+  // Two steps, in order — raised, then counted in — and the charge is on the second, where it was paid.
+  const steps = page.locator("[data-testid^='restock-timeline-'][data-kind]");
+  await expect(steps).toHaveCount(2);
+  await expect(steps.nth(0)).toHaveAttribute("data-kind", "created");
+  await expect(steps.nth(1)).toContainText("25.000");
 });

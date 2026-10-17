@@ -34,7 +34,7 @@ func (s *sentEvents) send(_ context.Context, _ *role_basev1.Identity, event *eve
 func moneyService(t *testing.T, sent *sentEvents) *inventory_v1.Service {
 	t.Helper()
 
-	return inventory_v1.NewService(san_testdb.DB(t), nil, nil, fakeSuppliers{arrMelati: true, arrSinar: true}, sent.send)
+	return inventory_v1.NewService(san_testdb.DB(t), nil, nil, fakeSuppliers{arrMelati: true, arrSinar: true}, sent.send, nil)
 }
 
 // Raised: goods 250.000 + shipping 20.000 left account 7 — never the courier's charge, which comes later and is the

@@ -10,7 +10,7 @@ import { ProductListItem } from "../../../components/products/ProductListItem";
 import { QuantityInput } from "../../../components/inputs/QuantityInput";
 import { LineSupplier } from "../../../features/restock/LineSupplier";
 import type { SupplierRecord } from "../../../features/suppliers/adapt";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 import type { LineDraft, LineState } from "../draft";
 import { PlacementPanel } from "./PlacementPanel";
 
@@ -44,8 +44,8 @@ export function LineCard({
   thumbnailUrl?: string;
   suppliers: Record<string, SupplierRecord>;
   channels: Record<string, SupplierChannel>;
-  goodsPrice: bigint;
-  hpp: bigint;
+  goodsPrice: number;
+  hpp: number;
   recommendations: ProductPlace[];
   update: (fn: (d: LineDraft) => LineDraft) => void;
 }) {
@@ -110,13 +110,13 @@ export function LineCard({
             <Stack gap="1" borderTopWidth="1px" borderColor="border" pt="2">
               <PriceRow
                 label={t("restock.accept.goodsPrice")}
-                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiah(goodsPrice) }) : "—"}
+                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiahNumber(goodsPrice) }) : "—"}
                 testId={`accept-goods-${pid}`}
                 muted
               />
               <PriceRow
                 label={t("restock.accept.hpp")}
-                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiah(hpp) }) : "—"}
+                value={st.good > 0n ? t("restock.accept.perPiece", { price: formatRupiahNumber(hpp) }) : "—"}
                 testId={`accept-hpp-${pid}`}
               />
             </Stack>
@@ -269,7 +269,7 @@ function Outcome({
 }: {
   label: string;
   value: string;
-  worth?: bigint;
+  worth?: number;
   testId: string;
   worthTestId?: string;
 }) {
@@ -281,7 +281,7 @@ function Outcome({
       <Spacer />
       {worth !== undefined && (
         <Text fontSize="xs" color="fg.muted" data-testid={worthTestId}>
-          {t("restock.accept.worth", { value: formatRupiah(worth) })}
+          {t("restock.accept.worth", { value: formatRupiahNumber(worth) })}
         </Text>
       )}
       <Text fontWeight="bold" minW="8" textAlign="end" data-testid={testId}>

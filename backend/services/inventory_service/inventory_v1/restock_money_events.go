@@ -19,17 +19,17 @@ import (
 
 // restockAmount is what the selling team's account paid for a restock: the goods plus the shipping — never the
 // courier's charge, which the warehouse paid (the-couriers-charge-stays-out-of-total).
-func restockAmount(rr *inventory_service_models.RestockRequest) int64 {
-	amount := rr.ShippingCost
+func restockAmount(rr *inventory_service_models.Restock) float64 {
+	amount := rr.ShipmentCost
 	for i := range rr.Items {
-		amount += rr.Items[i].TotalPrice
+		amount += rr.Items[i].Total
 	}
 
 	return amount
 }
 
 // restockCreatedEvent announces a restock raised — the money left the paying account then.
-func restockCreatedEvent(rr *inventory_service_models.RestockRequest) *eventsv1.Event {
+func restockCreatedEvent(rr *inventory_service_models.Restock) *eventsv1.Event {
 	ref := strconv.FormatUint(rr.ID, 10)
 
 	return &eventsv1.Event{
@@ -39,7 +39,7 @@ func restockCreatedEvent(rr *inventory_service_models.RestockRequest) *eventsv1.
 		AggregateId: "restock:" + ref,
 		Message: &eventsv1.Event_RestockCreated{RestockCreated: &eventsv1.RestockCreated{
 			RestockId:        rr.ID,
-			TeamId:           rr.RequestingTeamID,
+			TeamId:           rr.TeamID,
 			WarehouseId:      rr.WarehouseID,
 			FinanceAccountId: rr.FinanceAccountID,
 			Amount:           restockAmount(rr),
@@ -53,10 +53,10 @@ func restockCreatedEvent(rr *inventory_service_models.RestockRequest) *eventsv1.
 // carries both sides, so the listener posts the difference, or moves the whole amount between accounts. `logID` is
 // the edit's trail row — one event per edit, however many edits a restock has.
 func restockUpdatedEvent(
-	rr *inventory_service_models.RestockRequest,
+	rr *inventory_service_models.Restock,
 	logID uint64,
 	oldAccount uint64,
-	oldAmount int64,
+	oldAmount float64,
 	actor uint64,
 	at time.Time,
 ) *eventsv1.Event {
@@ -68,7 +68,7 @@ func restockUpdatedEvent(
 		AggregateId: "restock:" + ref,
 		Message: &eventsv1.Event_RestockUpdated{RestockUpdated: &eventsv1.RestockUpdated{
 			RestockId:           rr.ID,
-			TeamId:              rr.RequestingTeamID,
+			TeamId:              rr.TeamID,
 			OldFinanceAccountId: oldAccount,
 			NewFinanceAccountId: rr.FinanceAccountID,
 			OldAmount:           oldAmount,
@@ -80,7 +80,7 @@ func restockUpdatedEvent(
 }
 
 // restockCancelledEvent announces a restock called off, and whether the money came back.
-func restockCancelledEvent(rr *inventory_service_models.RestockRequest, moneyReturned bool) *eventsv1.Event {
+func restockCancelledEvent(rr *inventory_service_models.Restock, moneyReturned bool) *eventsv1.Event {
 	ref := strconv.FormatUint(rr.ID, 10)
 
 	cancelledAt := rr.UpdatedAt
@@ -95,7 +95,7 @@ func restockCancelledEvent(rr *inventory_service_models.RestockRequest, moneyRet
 		AggregateId: "restock:" + ref,
 		Message: &eventsv1.Event_RestockCancelled{RestockCancelled: &eventsv1.RestockCancelled{
 			RestockId:        rr.ID,
-			TeamId:           rr.RequestingTeamID,
+			TeamId:           rr.TeamID,
 			FinanceAccountId: rr.FinanceAccountID,
 			Amount:           restockAmount(rr),
 			MoneyReturned:    moneyReturned,

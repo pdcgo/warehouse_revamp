@@ -23,7 +23,7 @@ export interface LineFixture {
   sku: string;
   name: string;
   count: bigint;
-  total: bigint;
+  total: number;
   supplierId: bigint;
   supplierChannelId: bigint;
   note: string;
@@ -54,8 +54,8 @@ export interface RestockFixture {
   shipmentId: bigint;
   invoiceRefId: string;
   financeAccountId: bigint;
-  shipmentCost: bigint;
-  warehouseAdditionalCost: bigint;
+  shipmentCost: number;
+  warehouseAdditionalCost: number;
   warehouseAdditionalCostNote: string;
   note: string;
   transactionId: bigint;
@@ -86,7 +86,7 @@ function line(
     sku,
     name,
     count: BigInt(count),
-    total: BigInt(total),
+    total,
     supplierId: supplier.supplierId ?? 0n,
     supplierChannelId: supplier.supplierChannelId ?? 0n,
     note: supplier.note ?? "",
@@ -106,8 +106,8 @@ function restock(fields: Partial<RestockFixture> & Pick<RestockFixture, "id" | "
     shipmentId: 0n,
     invoiceRefId: "",
     financeAccountId: 1301n,
-    shipmentCost: 0n,
-    warehouseAdditionalCost: 0n,
+    shipmentCost: 0,
+    warehouseAdditionalCost: 0,
     warehouseAdditionalCostNote: "",
     note: "",
     transactionId: 0n,
@@ -144,7 +144,7 @@ export const restockFixtures: RestockFixture[] = [
     receipt: "JNE0123456789",
     shipmentId: 91n,
     invoiceRefId: "INV/2026/10/1001",
-    shipmentCost: 20000n,
+    shipmentCost: 20000,
     note: "Untuk promo 10.10",
     items: [
       line(5011, 74n, "SKU-BERAS-5K", "Beras Pandan Wangi 5kg", 10, 650000, { supplierId: 31n, supplierChannelId: 311n }),
@@ -164,7 +164,7 @@ export const restockFixtures: RestockFixture[] = [
     receipt: "JNT9988776655",
     shipmentId: 92n,
     invoiceRefId: "INV/2026/10/0987",
-    shipmentCost: 15000n,
+    shipmentCost: 15000,
     arrivedByUserId: 62n,
     arrivedAtUnix: daysAgo(1),
     items: [
@@ -193,8 +193,8 @@ export const restockFixtures: RestockFixture[] = [
     receiptFile: "https://example.test/labels/scp5544332211.jpg",
     shipmentId: 93n,
     invoiceRefId: "INV/2026/09/0412",
-    shipmentCost: 30000n,
-    warehouseAdditionalCost: 5000n,
+    shipmentCost: 30000,
+    warehouseAdditionalCost: 5000,
     warehouseAdditionalCostNote: "Ongkos bongkar di gudang",
     note: "Stok bulanan",
     transactionId: 9001n,
@@ -236,7 +236,7 @@ export const restockFixtures: RestockFixture[] = [
     receipt: "JNE0000111122",
     shipmentId: 91n,
     invoiceRefId: "INV/2026/09/0200",
-    shipmentCost: 18000n,
+    shipmentCost: 18000,
     lostByUserId: 61n,
     lostAtUnix: daysAgo(5),
     items: [line(5041, 73n, "SKU-GULA-1K", "Gula Pasir 1kg", 40, 640000, { supplierId: 32n })],
@@ -283,7 +283,7 @@ export const restockFixtures: RestockFixture[] = [
     receipt: "JNE5555666677",
     shipmentId: 91n,
     invoiceRefId: "INV/2026/09/0050",
-    shipmentCost: 10000n,
+    shipmentCost: 10000,
     arrivedByUserId: 62n,
     acceptedByUserId: 62n,
     arrivedAtUnix: daysAgo(27),

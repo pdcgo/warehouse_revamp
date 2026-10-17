@@ -12,7 +12,7 @@ import { DetailField } from "../restock/DetailField";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { formatUnixDateTime } from "../../lib/datetime";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 import { brokenOf, missingOf, problemValue, unitsSent } from "./summary";
 
 // The three cards both transfer detail pages show — the route, the parcel and the lines — in one place, so the selling
@@ -121,8 +121,8 @@ export function ParcelCard({
               <DetailField
                 label={t("warehouseTransfer.detail.shippingCost")}
                 value={
-                  transfer.shipmentCost > 0n ? (
-                    formatRupiah(transfer.shipmentCost)
+                  transfer.shipmentCost > 0 ? (
+                    formatRupiahNumber(transfer.shipmentCost)
                   ) : (
                     <Span color="fg.muted">{t("warehouseTransfer.detail.noCostYet")}</Span>
                   )
@@ -141,12 +141,12 @@ export function ParcelCard({
               )}
             </>
           )}
-          {transfer.warehouseAdditionalCost > 0n && (
+          {transfer.warehouseAdditionalCost > 0 && (
             <DetailField
               label={t("warehouseTransfer.detail.onSiteCharge")}
               value={
                 <Stack gap="0">
-                  <Span>{formatRupiah(transfer.warehouseAdditionalCost)}</Span>
+                  <Span>{formatRupiahNumber(transfer.warehouseAdditionalCost)}</Span>
                   <Span fontSize="xs" color="fg.muted">
                     {transfer.warehouseAdditionalCostNote}
                   </Span>
@@ -232,11 +232,11 @@ export function TransferLinesCard({
         {showPrices && (
           <Stack gap="1" pt="card" align="end">
             <Text fontWeight="bold" data-testid="transfer-detail-total">
-              {t("warehouseTransfer.detail.total", { amount: formatRupiah(transfer.total) })}
+              {t("warehouseTransfer.detail.total", { amount: formatRupiahNumber(transfer.total) })}
             </Text>
-            {lost > 0n && (
+            {lost > 0 && (
               <Text fontSize="sm" color="warning.fg" data-testid="transfer-detail-loss">
-                {t("warehouseTransfer.detail.loss", { amount: formatRupiah(lost) })}
+                {t("warehouseTransfer.detail.loss", { amount: formatRupiahNumber(lost) })}
               </Text>
             )}
           </Stack>
@@ -296,9 +296,9 @@ function LineRow({
       {showPrices && (
         <Table.Cell textAlign="end" whiteSpace="nowrap">
           <Stack gap="0" align="end">
-            <Span>{formatRupiah(item.total)}</Span>
+            <Span>{formatRupiahNumber(item.total)}</Span>
             <Span fontSize="xs" color="fg.muted">
-              {t("warehouseTransfer.table.perPiece", { amount: formatRupiah(item.priceUnit) })}
+              {t("warehouseTransfer.table.perPiece", { amount: formatRupiahNumber(item.priceUnit) })}
             </Span>
           </Stack>
         </Table.Cell>

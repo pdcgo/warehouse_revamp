@@ -1,5 +1,18 @@
 # Development state — inventory / restock
 
+✅ **2026-10-17: the accept is on the ledgers, the tables carry the owner's names, the money is `double`** — uncommitted,
+for the owner's review ([ledgers.md](ledgers.md), stages 2a, 2c, 2b).
+
+| | |
+| --- | --- |
+| the accept | one `restock` transaction (`PostRestock`): a batch per line with good units at the landed price, the good units on the racks named; `restocks.transaction_id` set. No old `stock_*` write is left |
+| `00030` | `restock_requests` → `restocks` (`team_id`, `invoice_ref_id`, `shipment_cost`; `shipping_code` dropped; `subtotal` and `total` stored) · `restock_request_items` → `restock_items` (`count`, `total`, `price_unit` stored as total ÷ count, `received_count` = the box, broken included) · `restock_damaged_units` → `restock_problem_items`, keyed by restock + product (composite FK to its line, one row per kind, the line's store copied) · `restock_logs` keyed by `restock_id`, its `at` folded into `created_at` |
+| money | `DOUBLE PRECISION` in the tables, `double` in `restock_request.proto` and the four restock events; the landed price is no longer floored at each step, so the screens round it once for display (Coffee's 34.215,69 shows Rp 34.216, where it showed 34.215) |
+| models | one per file: `restock.go`, `restock_item.go`, `restock_problem_item.go`, `restock_log.go` (`Restock`, `RestockItem`, `RestockProblemItem`); the problems hang off the restock, not the line |
+| tests | the restock suites rewritten onto the new names; `restock_request_totals_test.go` pins the stored totals over create, an ongoing edit and an arrived edit, and the problem rows' keys |
+| e2e | `restock.spec` (6), `liability.spec` (6), `opname.spec` (4) and `orders.spec` (19, 2 deliberately skipped) green: every seed names a paying account, uses `count`/`total` and `RestockRequestAccept` onto a real rack; the detail tests assert the decided screen (broken and missing with their notes, the courier's charge outside the total) |
+| left | the count lock on the accept's rack picker (below). The accept is audited and fixed — 17 statements whatever the lines ([RestockRequestAccept](../../../audits/services/inventory_service/performances/RestockRequestAccept.md)) |
+
 🔨 **2026-10-15: building.** Stage 1 (`0f5ea6f`: migration 00024, every handler on the decided tables) and stage 2
 (`1b9548b`: Arrive, MarkLost) committed. Stage 3 done: `SupplierChannelByIds`, a line's store checked against its
 supplier, and *Restock Created / Updated / Cancelled* published after commit. ⚠ Nothing LISTENS to those three yet:

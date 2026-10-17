@@ -266,9 +266,8 @@ func TestOwnerBatchList_AnotherTeamGetsNothing(t *testing.T) {
 // The tab's whole purpose: a delivery in, a pick out, and a running balance that explains the number
 // on the Info tab.
 //
-// The PICK is the interesting half — it is written with no batch (stock_pick.go), so the restock chain
-// cannot reach it and it only appears at all because a batch-less movement belongs to whoever owns
-// stock of that product in that building.
+// The TAKE comes off the owner's oldest batch (an-order-takes-from-the-lowest-shelf-first), so it names the batch it
+// drew from, exactly as the delivery names the batch it minted.
 func TestOwnerStockHistory_RunningBalanceAcrossReceiveAndPick(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -279,13 +278,7 @@ func TestOwnerStockHistory_RunningBalanceAcrossReceiveAndPick(t *testing.T) {
 
 	acceptOwnedBy(t, svc, owner, warehouse, rack, product, 100, 4_000_000)
 
-	_, err := svc.StockPick(ctxUser(1), connect.NewRequest(&inventoryv1.StockPickRequest{
-		TeamId: owner, WarehouseId: warehouse, Ref: "ORD-1",
-		Lines: []*inventoryv1.StockPickLine{{ProductId: product, Quantity: 30}},
-	}))
-	if err != nil {
-		t.Fatalf("StockPick: %v", err)
-	}
+	takeForOrder(t, svc, owner, warehouse, product, 30, "ORD-1")
 
 	rows := ownerHistory(t, svc, owner, product, warehouse)
 
@@ -299,8 +292,8 @@ func TestOwnerStockHistory_RunningBalanceAcrossReceiveAndPick(t *testing.T) {
 			rows[0].GetDelta(), rows[0].GetBalance())
 	}
 
-	if rows[0].GetBatchId() != 0 {
-		t.Errorf("pick names batch %d — it is written batch-less", rows[0].GetBatchId())
+	if rows[0].GetBatchId() != rows[1].GetBatchId() {
+		t.Errorf("the take drew from batch %d, want the delivery's %d", rows[0].GetBatchId(), rows[1].GetBatchId())
 	}
 
 	if rows[1].GetDelta() != 100 || rows[1].GetBalance() != 100 {
@@ -313,8 +306,8 @@ func TestOwnerStockHistory_RunningBalanceAcrossReceiveAndPick(t *testing.T) {
 	}
 }
 
-// A shelf-to-shelf move changes where a building's stock sits and nothing the owner holds, so it never
-// reaches this ledger. Projecting it would also put a −q/+q pair in the middle of the running balance.
+// A rack-to-rack move changes where a building's stock sits and nothing the owner holds, so it writes no batch row
+// (a-move-writes-two-rack-rows-and-no-batch-row) and never reaches this history.
 func TestOwnerStockHistory_ExcludesShelfMoves(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -326,13 +319,12 @@ func TestOwnerStockHistory_ExcludesShelfMoves(t *testing.T) {
 
 	acceptOwnedBy(t, svc, owner, warehouse, from, product, 100, 4_000_000)
 
-	_, err := svc.StockMove(ctxUser(1), connect.NewRequest(&inventoryv1.StockMoveRequest{
-		WarehouseId: warehouse, ProductId: product, Quantity: 40,
-		From: &inventoryv1.StockPlace{Place: &inventoryv1.StockPlace_RackId{RackId: from}},
-		To:   &inventoryv1.StockPlace{Place: &inventoryv1.StockPlace_RackId{RackId: to}},
+	_, err := svc.RackMove(ctxUser(1), connect.NewRequest(&inventoryv1.RackMoveRequest{
+		TeamId: warehouse, FromRackId: from,
+		Lines: []*inventoryv1.RackMoveLine{{ProductId: product, Quantity: 40, ToRackId: to}},
 	}))
 	if err != nil {
-		t.Fatalf("StockMove: %v", err)
+		t.Fatalf("RackMove: %v", err)
 	}
 
 	rows := ownerHistory(t, svc, owner, product, warehouse)
@@ -389,15 +381,11 @@ func TestOwnerStockHistory_AnotherTeamGetsNothing(t *testing.T) {
 	}
 }
 
-// ── The draw must reach the BATCHES, not only the shelf (#232) ───────────────────────────────────
+// ── The take must reach the BATCHES, not only the racks (#232) ───────────────────────────────────
 
-// A pick moved `stock_levels` and left `stock_shelf_batches` untouched, so every batch kept its
-// arrival quantity as Ready forever. Found by reading the two numbers side by side in the running app:
-// the ledger said 120 on hand and the cost layers still totalled 150.
-//
-// It was never an owner-side bug — the warehouse's own Prices and Batches tabs read the same figure —
-// which is why this test asserts on BOTH sides of the same shelf.
-func TestStockPick_DrawsDownTheBatchesItTook(t *testing.T) {
+// An order's take draws the oldest batch down, so the owner's cost layers and batch rows agree with the racks' count —
+// this asserts on BOTH sides.
+func TestOrderTake_DrawsDownTheBatchesItTook(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -408,13 +396,7 @@ func TestStockPick_DrawsDownTheBatchesItTook(t *testing.T) {
 	acceptOwnedBy(t, svc, owner, warehouse, rack, product, 100, 4_000_000) // 40.000/pc, oldest
 	acceptOwnedBy(t, svc, owner, warehouse, rack, product, 50, 1_250_000)  // 25.000/pc
 
-	_, err := svc.StockPick(ctxUser(1), connect.NewRequest(&inventoryv1.StockPickRequest{
-		TeamId: owner, WarehouseId: warehouse, Ref: "ORD-1",
-		Lines: []*inventoryv1.StockPickLine{{ProductId: product, Quantity: 30}},
-	}))
-	if err != nil {
-		t.Fatalf("StockPick: %v", err)
-	}
+	takeForOrder(t, svc, owner, warehouse, product, 30, "ORD-1")
 
 	// FIFO: the 30 come off the OLDEST batch, so the dear layer drops to 70 and the cheap one is
 	// untouched. Total ready 120 — the same number the ledger's running balance reports.
@@ -454,9 +436,9 @@ func TestStockPick_DrawsDownTheBatchesItTook(t *testing.T) {
 	}
 }
 
-// Putting a cancelled order's stock back must reach the batches too, or the shelf ends up holding more
-// units than its batches account for — the same drift, pointing the other way.
-func TestStockReturn_PutsTheUnitsBackOnTheBatch(t *testing.T) {
+// Releasing a cancelled order's take must reach the batches too, or the racks end up holding more units than the
+// batches account for — the same drift, pointing the other way.
+func TestOrderRelease_PutsTheUnitsBackOnTheBatch(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -466,24 +448,31 @@ func TestStockReturn_PutsTheUnitsBackOnTheBatch(t *testing.T) {
 
 	acceptOwnedBy(t, svc, owner, warehouse, rack, product, 100, 4_000_000)
 
-	_, err := svc.StockPick(ctxUser(1), connect.NewRequest(&inventoryv1.StockPickRequest{
-		TeamId: owner, WarehouseId: warehouse, Ref: "ORD-1",
-		Lines: []*inventoryv1.StockPickLine{{ProductId: product, Quantity: 30}},
-	}))
-	if err != nil {
-		t.Fatalf("StockPick: %v", err)
-	}
+	takeForOrder(t, svc, owner, warehouse, product, 30, "ORD-1")
 
-	_, err = svc.StockReturn(ctxUser(1), connect.NewRequest(&inventoryv1.StockReturnRequest{
-		TeamId: owner, WarehouseId: warehouse, Ref: "ORD-1",
+	_, err := svc.OrderTransactionRelease(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
+		TeamId: owner, IdempotencyKey: "ORD-1",
 	}))
 	if err != nil {
-		t.Fatalf("StockReturn: %v", err)
+		t.Fatalf("OrderTransactionRelease: %v", err)
 	}
 
 	layers, _ := ownerLayers(t, svc, owner, product, warehouse)
 
 	if len(layers) != 1 || layers[0].GetOnHand() != 100 {
 		t.Fatalf("after a cancelled order the layer is %v, want a single layer back at 100", layers)
+	}
+}
+
+// takeForOrder takes an order's units through the order take, under its key.
+func takeForOrder(t *testing.T, svc *inventory_v1.Service, team, warehouse, product uint64, qty int64, key string) {
+	t.Helper()
+
+	_, err := svc.OrderTransactionCreate(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionCreateRequest{
+		TeamId: team, IdempotencyKey: key, WarehouseId: warehouse,
+		Lines: []*inventoryv1.OrderTransactionLine{{ProductId: product, Quantity: qty}},
+	}))
+	if err != nil {
+		t.Fatalf("take %d for %s: %v", qty, key, err)
 	}
 }

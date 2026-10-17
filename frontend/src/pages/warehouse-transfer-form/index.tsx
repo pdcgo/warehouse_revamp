@@ -71,7 +71,7 @@ export function WarehouseTransferFormPage() {
   const [accountId, setAccountId] = useState(0n);
 
   const teamId = current?.teamId;
-  const costValue = cost === "" ? 0n : BigInt(cost);
+  const costValue = cost === "" ? 0 : Number(cost);
 
   // What A holds of each picked product — a count above it would fail the create (a-shelf-never-goes-below-zero).
   const availability = useStockAvailability({
@@ -120,7 +120,7 @@ export function WarehouseTransferFormPage() {
   if (lines.length === 0) missing.push(t("warehouseTransfer.form.missing.lines"));
   if (lines.some((l) => countOf(l.count) === 0n)) missing.push(t("warehouseTransfer.form.missing.count"));
   if (overStock) missing.push(t("warehouseTransfer.form.missing.stock"));
-  if (costValue > 0n && accountId === 0n) missing.push(t("warehouseTransfer.form.missing.account"));
+  if (costValue > 0 && accountId === 0n) missing.push(t("warehouseTransfer.form.missing.account"));
 
   async function submit() {
     if (teamId === undefined) return;
@@ -133,7 +133,7 @@ export function WarehouseTransferFormPage() {
         lines: lines.map((l) => ({ productId: l.productId, count: countOf(l.count) })),
         note: note.trim(),
         shipmentCost: costValue,
-        financeAccountId: costValue > 0n ? accountId : 0n,
+        financeAccountId: costValue > 0 ? accountId : 0n,
       });
       toaster.create({ type: "success", title: t("warehouseTransfer.toast.created") });
       navigate(`/inventories/transfer/${res.transfer?.id ?? ""}`);
@@ -297,7 +297,7 @@ export function WarehouseTransferFormPage() {
               </Field.Label>
               <CurrencyInput value={cost} onChange={setCost} data-testid="transfer-form-cost" />
             </Field.Root>
-            <Field.Root required={costValue > 0n}>
+            <Field.Root required={costValue > 0}>
               <Field.Label>
                 {t("warehouseTransfer.cost.account")}
                 <Field.RequiredIndicator />
@@ -307,7 +307,7 @@ export function WarehouseTransferFormPage() {
                 value={accountId > 0n ? accountId : undefined}
                 onChange={setAccountId}
                 operationalOnly
-                disabled={costValue === 0n}
+                disabled={costValue === 0}
                 testId="transfer-form-account"
               />
             </Field.Root>

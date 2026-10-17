@@ -2118,7 +2118,6 @@
       "onHand": "Tersedia",
       "actions": "Aksi"
     },
-    "receive": "Terima",
     "adjust": "Sesuaikan",
     "returnsTitle": "Retur",
     "returnsComingSoon": "Retur segera hadir",
@@ -2127,11 +2126,8 @@
     "opnameComingSoon": "Stok opname segera hadir",
     "opnameBody": "Penghitungan stok fisik yang direkonsiliasi dengan sistem — hitung sebuah rak, catat yang benar-benar ada, lalu posting koreksinya — akan ada di sini setelah alur opname dirancang.",
     "quantityPositiveError": "Jumlah harus berupa bilangan bulat positif.",
-    "receivedToast": "Menerima {{qty}} × {{sku}}",
-    "receiveStockTitle": "Terima Stok",
     "quantity": "Jumlah",
     "reason": "Alasan",
-    "receiveReasonPlaceholder": "mis. PO #123, pengiriman pemasok",
     "cancel": "Batal",
     "countedOnHandError": "Stok terhitung harus nol atau bilangan bulat positif.",
     "placeRequiredError": "Pilih tempat yang Anda hitung — sebuah rak, atau tumpukan yang belum ditempatkan.",
@@ -2164,10 +2160,7 @@
     "moveFromHelper": "Tempat stok berada sekarang — sebuah rak, atau tumpukan yang belum ditempatkan.",
     "moveTo": "Ke",
     "moveToHelper": "Tempat tujuannya. Total gudang tidak berubah — hanya letak barangnya.",
-    "moveBatch": "Batch",
-    "moveBatchPlaceholder": "Unit dari pengiriman mana…",
     "moveBatchOption": "#{{id}} · {{ready}} siap",
-    "moveBatchHelper": "Stok dilacak per pengiriman — batch ikut berpindah bersama unit yang Anda pindahkan.",
     "moveQuantityHelper": "Berapa banyak yang dipindahkan. Memindahkan lebih dari isi tempat asal akan ditolak.",
     "moveReasonPlaceholder": "mis. penempatan barang, penataan ulang rak",
     "movePlacesRequiredError": "Pilih kedua tempat — lokasi stok sekarang, dan tujuannya.",
@@ -2415,11 +2408,11 @@
     "lost": "Hilang",
     "used": "Terpakai",
     "ready": "Siap",
-    "tabPlacements": "Penempatan",
+    "tabPlacements": "Ditaruh Saat Diterima",
     "tabHistory": "Riwayat",
     "place": "Tempat",
-    "readyHere": "Siap di sini",
-    "noPlacements": "Tidak ada batch ini di rak saat ini.",
+    "readyHere": "Ditaruh",
+    "noPlacements": "Batch ini tidak ditaruh di rak saat masuk. Letak produk sekarang ada di tab Rak produknya.",
     "when": "Waktu",
     "what": "Jenis",
     "change": "Perubahan",
@@ -3906,7 +3899,7 @@
       "pending": {
         "costEvent": {
           "label": "Biaya kirim",
-          "reason": "Biaya tersimpan di transfer, tetapi akun pembayar belum menerimanya — event-nya hadir di tahap backend."
+          "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
         }
       }
     },
@@ -3942,7 +3935,7 @@
       "pending": {
         "costEvent": {
           "label": "Biaya kirim",
-          "reason": "Biaya tersimpan di transfer, tetapi akun pembayar belum menerimanya — event-nya hadir di tahap backend."
+          "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
         }
       }
     },
@@ -3973,7 +3966,7 @@
       "pending": {
         "costEvent": {
           "label": "Biaya kirim",
-          "reason": "Biaya tersimpan di transfer, tetapi akun pembayar belum menerimanya — event-nya hadir di tahap backend."
+          "reason": "Biaya tersimpan dan diumumkan setiap kali disimpan, tetapi akun pembayar belum mencatatnya — pendengarnya belum dibuat."
         },
         "labelPhoto": {
           "label": "Foto label",
@@ -4029,7 +4022,7 @@
       "pending": {
         "courierDebt": {
           "label": "Biaya kurir",
-          "reason": "Biaya ini tersimpan di transfer, tetapi balance belum menerimanya — utang tim penjual ke gudang ini dicatat dari event transfer diterima, yang hadir bersama tahap backend."
+          "reason": "Biaya ini tersimpan dan diumumkan saat diterima, tetapi balance belum mencatat utang tim penjual ke gudang ini — jenis entri yang dipakai masih dibahas."
         }
       }
     }

@@ -196,7 +196,7 @@ export function useRestockInbound(args: { teamId: bigint | undefined; requesting
         restockCount: res.preview?.restockCount ?? 0n,
         productCount: res.preview?.productCount ?? 0n,
         unitCount: res.preview?.unitCount ?? 0n,
-        amount: res.preview?.amount ?? 0n,
+        amount: res.preview?.amount ?? 0,
         oldestPendingUnix: res.preview?.oldestPendingUnix ?? 0n,
       };
     },
