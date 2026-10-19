@@ -178,6 +178,16 @@ kelak dibalik diganti namanya dan referensinya di-grep (RULE 12), tidak pernah d
 | [slot-seri-diurutkan-dengan-id](#slot-seri-diurutkan-dengan-id) | *slot tertua dulu* diurutkan `created_at`, lalu `id` — slot dari satu penempatan dipetik dalam urutan tetap |
 | [nama-rak-unik-per-gudang](#nama-rak-unik-per-gudang) | satu gudang tidak punya dua rak bernama sama, tanpa beda huruf — `UNIQUE (warehouse_id, lower(name))` |
 | [rak-dicocokkan-ke-gudang-transaksi](#rak-dicocokkan-ke-gudang-transaksi) | penempatan menolak seluruh kiriman kalau satu rak tidak ada atau milik gudang lain |
+| [kabar-restock-dikirim-sebagai-pesan-proto](#kabar-restock-dikirim-sebagai-pesan-proto) | setiap kabar restock satu pesan proto yang menamai topiknya sendiri (`stock-restock-*`); `event_id` = transaksi + jenis kabar |
+| [rak-tidak-bisa-dihapus](#rak-tidak-bisa-dihapus) | tidak ada RPC hapus rak — setiap slot selalu menunjuk rak yang ada |
+| [rak-dibuat-diubah-admin-dicari-semua-anggota](#rak-dibuat-diubah-admin-dicari-semua-anggota) | admin gudang membuat dan mengubah rak; semua anggota gudang mencarinya, berhalaman |
+| [isi-rak-menjumlah-baik-dan-rusak](#isi-rak-menjumlah-baik-dan-rusak) | `sku_count` dan `sku_sum` rak menjumlah slot baik dan rusak yang `count`-nya lebih dari 0 |
+| [urutan-rak-diakhiri-id](#urutan-rak-diakhiri-id) | cari rak diurutkan `(sku_count, id)`, `(sku_sum, id)`, `(created_at, id)` atau `name` — halaman tidak mengulang atau melewatkan rak yang seri |
+| [isi-rak-dihitung-dari-slot-saat-dicari](#isi-rak-dihitung-dari-slot-saat-dicari) | cari rak menghitung `sku_count`/`sku_sum` dari `SKU_SLOT` dan `SKU_BROKEN_SLOT` saat dicari, dengan index parsial `where count > 0` — tanpa tabel ringkasan, bukan dari `SKU_STATEMENT` |
+| [nama-rak-dicari-tanpa-pg-trgm](#nama-rak-dicari-tanpa-pg-trgm) | filter nama rak tidak memakai `pg_trgm` — untuk kode pendek ia menemukan rak tetangga, bukan membetulkan salah ketik |
+| [tanda-pisah-membedakan-nama-rak](#tanda-pisah-membedakan-nama-rak) | `A-01`, `A01` dan `a 01` tiga rak berbeda — unik tetap `lower(name)`, hanya beda huruf besar-kecil yang dianggap sama |
+| [nama-rak-dicari-lewat-kunci](#nama-rak-dicari-lewat-kunci) | filter nama cari rak mencocokkan `rack_name_key` — huruf kecil, selain huruf dan angka dibuang — di DB, hanya untuk pencarian, bukan untuk aturan unik |
+| [nama-persis-selalu-pertama](#nama-persis-selalu-pertama) | saat nama diisi, rak yang nama aslinya persis sama (tanpa beda huruf) selalu di baris pertama, lalu urutan pilihan, lalu `id` |
 
 ---
 
@@ -5088,7 +5098,7 @@ flowchart LR
 
 ⚠ **Yang TIDAK ikut diputuskan:** **kode** yang dibangun untuk rancangan Heri (`inventory_service`, event `restock-*` di
 `event.proto`) tetap ada di branch ini dan tetap bersinggungan kalau stock_thoni dibangun di repo yang sama —
-[nama-topik-bentrok](./restock_flow_clarify.md#critique).
+*nama-topik-bentrok* ✅.
 >
 > 🔄 **2026-10-17 (diperluas)** — Anda: *"saya thoni untuk sekarang saya fokus di inventory versi saya sendiri dan jangan
 > biarkan keputusan yang ada di inventory heri mempengaruhi keputusan saya"*. Berlaku juga **tidak langsung**: keputusan
@@ -5177,4 +5187,318 @@ flowchart LR
   T["tx dibaca — gudang cocok dengan pengirim"] --> R["baca rak di kiriman, tanpa duplikat"]
   R -->|"ada yang tidak ditemukan atau gudang lain"| X["tolak seluruhnya"]
   R -->|"semua milik gudang tx"| V["isPlacementValid — item dan jumlah"]
+```
+
+---
+
+## kabar-restock-dikirim-sebagai-pesan-proto
+
+> [restock_flow.md](./restock_flow.md) (2026-10-17) baris 38 — ``sendEvent({ eventId: `stock-restock:${txId}:${kind}`, event })``;
+> baris 202, 276, 451 — `publishAndMark("created" | "billing" | "cancelled", …, { stockRestock…: { … } })`. Menjawab kritik
+> *nama-topik-bentrok* (*Kabar sebagai pesan proto — usulan* ✅). Sesuai rekomendasi.
+
+**Putusannya.** Setiap kabar restock adalah **satu pesan proto** yang menamai topiknya sendiri lewat `event_config`; penerbit
+hanya mengirim pesan itu dan tidak pernah menulis nama topik — aturan repo (CLAUDE.md, *Events*). `event_id` menjadi kunci
+tolak-ganda pendengar: transaksi + jenis kabar.
+
+| kabar | pesan | topik | `event_id` untuk tx 7 |
+| --- | --- | --- | --- |
+| restock created | `StockRestockCreated` | `stock-restock-created` | `stock-restock:7:created` |
+| restock cancelled | `StockRestockCancelled` | `stock-restock-cancelled` | `stock-restock:7:cancelled` |
+| penagihan ongkir tambahan | `StockRestockBilling` | `stock-restock-billing` | `stock-restock:7:billing` |
+
+```mermaid
+flowchart LR
+  P["publishAndMark — kind, tx 7, pesan"] --> E["Event — event_id stock-restock:7:created"]
+  E --> C["event_config pesan — stock-restock-created"]
+  C --> B["message broker"]
+  B --> L["pendengar — tolak event_id yang sama dua kali"]
+```
+
+Satu jalan untuk ketiganya: [kabar-restock-ditandai-dan-dikirim-ulang](#kabar-restock-ditandai-dan-dikirim-ulang) tetap berlaku —
+penanda, tugas berkala, dan *cancelled* menunggu *created*.
+
+⚠ **Yang TIDAK ikut diputuskan:** **isi** pesan *created* dan *cancelled* — di dokumen masih `/* isi data */`; usulannya di
+*Kabar sebagai pesan proto — usulan* (dipangkas 10-19). Isi *penagihan* sudah diputuskan:
+[kabar-membawa-tx-tim-jumlah-dan-foto](#kabar-membawa-tx-tim-jumlah-dan-foto).
+>
+> ✅ **2026-10-19** — isi ketiga pesan kini ditulis di [events.md](./events.md): *created* membawa tx, tim, gudang, pembuat, cara
+> bayar, ongkir dan item; *cancelled* membawa tx, tim, gudang dan pembatal; *penagihan* sesuai
+> [kabar-membawa-tx-tim-jumlah-dan-foto](#kabar-membawa-tx-tim-jumlah-dan-foto). Yang tadinya tidak ikut diputuskan kini diputuskan.
+
+---
+
+## rak-tidak-bisa-dihapus
+
+> [rack_flow.md](./rack_flow.md) (2026-10-19) baris 12 — *"Rak tidak bisa dihapus"*. Menjawab kritik *rak-tidak-dihapus-belum-tertulis*
+> ([rack_flow_clarify](./rack_flow_clarify.md#critique)). Sesuai rekomendasi.
+
+**Putusannya.** Tidak ada RPC hapus rak. Setiap slot — baik maupun rusak — selalu menunjuk rak yang masih ada.
+
+| | |
+| --- | --- |
+| buat | ✅ admin gudang |
+| ubah nama, gambar | ✅ admin gudang |
+| hapus | ⛔ tidak ada |
+
+```mermaid
+flowchart LR
+  R["Rak 7 — gudang 3"] --> S["slot 41 — 500 kaos"]
+  R -.->|"tidak bisa dihapus"| X["slot tanpa rak — tidak pernah terjadi"]
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** rak yang sudah tidak dipakai — dibiarkan, atau suatu hari dinonaktifkan.
+
+---
+
+## rak-dibuat-diubah-admin-dicari-semua-anggota
+
+> [rack_flow.md](./rack_flow.md) (2026-10-19) baris 7, 17, 23 — buat dan ubah *"hanya oleh admin gudang"*; cari *"bisa dilakukan oleh
+> semua anggota gudang semua level. Tambahkan support paginasi"*. Menjawab kritik *cari-rak-juga-untuk-staff* dan
+> *daftar-rak-tanpa-halaman*, dan pertanyaan *siapa-mengubah-rak*. Sesuai rekomendasi.
+
+**Putusannya.** Rak dikelola admin gudang dan dicari semua anggota gudang itu — staff penempatan memilih rak tanpa admin.
+Pencarian berhalaman, dan scope-nya gudang.
+
+| RPC | siapa | scope | |
+| --- | --- | --- | --- |
+| buat rak | admin gudang | `warehouse_id` | nama unik per gudang ([nama-rak-unik-per-gudang](#nama-rak-unik-per-gudang)) |
+| ubah nama, gambar | admin gudang | `warehouse_id` | rak harus milik gudang itu |
+| cari rak | semua anggota gudang, semua level | `warehouse_id` | `PageFilter` / `PageInfo`; urut `sku_count`, `sku_sum`, `created_at`, `name` |
+
+```mermaid
+flowchart LR
+  A["admin gudang 3"] -->|"buat, ubah"| R["RACKS gudang 3"]
+  S["staff gudang 3, semua level"] -->|"cari — berhalaman"| R
+```
+
+---
+
+## isi-rak-menjumlah-baik-dan-rusak
+
+> [rack_flow.md](./rack_flow.md) (2026-10-19) baris 19–20 — `sku_count`: *"count(unique(sku)), hitung termasuk yang rusak, abaikan yang
+> 0"*; `sku_sum`: *"sku x quantity, hitung termasuk yang rusak, abaikan yang 0"*. Menjawab *isi-rak-dihitung-dari-apa*
+> ([rack_flow_clarify](./rack_flow_clarify.md#question)) dengan **B** dan slot 0 tidak ikut — **berlawanan** dengan saran saya (C, dua
+> angka terpisah).
+
+**Putusannya.** Isi rak dihitung dari **semua** slot di rak itu — `SKU_SLOT` dan `SKU_BROKEN_SLOT` — yang `count`-nya lebih dari 0.
+Satu sku yang ada baik dan rusaknya di rak yang sama dihitung **sekali** di `sku_count`.
+
+| rak | isinya | `sku_count` | `sku_sum` |
+| --- | --- | --- | --- |
+| R — khusus rusak | kaos rusak 12 | 1 | 12 |
+| A | kaos habis (slot `count` 0), celana 30 | 1 | 30 |
+| B | kaos baik 20, kaos rusak 2 | 1 | 22 |
+
+```mermaid
+flowchart LR
+  G["SKU_SLOT di rak — count lebih dari 0"] --> C["sku_count — unique sku"]
+  B["SKU_BROKEN_SLOT di rak — count lebih dari 0"] --> C
+  G --> S["sku_sum — jumlah unit"]
+  B --> S
+  Z["slot dengan count 0"] -.->|"diabaikan"| X["tidak dihitung"]
+```
+
+Yang diterima dengan putusan ini: di urutan `sku_sum`, rak penuh barang rusak tampak sama dengan rak penuh barang jual — staff
+membedakannya dari nama atau gambar rak.
+
+> 📎 **2026-10-19 — filter *"hanya rak yang kosong"*** ([rack_flow.md](./rack_flow.md) baris 26) dibaca dengan hitungan yang sama:
+> rak kosong = `sku_count` 0, tidak ada slot baik maupun rusak yang `count`-nya lebih dari 0. Di tabel di atas, rak R **tidak**
+> kosong; rak yang semua slotnya `count` 0 kosong.
+
+---
+
+## urutan-rak-diakhiri-id
+
+> [rack_flow.md](./rack_flow.md) (2026-10-19) baris 19–22 — `(sku_count, id)`, `(sku_sum, id)`, `(created_at, id)`, `name`. Menjawab
+> kritik *urutan-isi-rak-sering-seri* ([rack_flow_clarify](./rack_flow_clarify.md#critique)). Sesuai rekomendasi.
+
+**Putusannya.** Setiap urutan cari rak diakhiri `id`, jadi rak yang angkanya sama selalu tersusun sama di setiap permintaan
+halaman. `name` tidak perlu `id`, karena nama sudah unik per gudang ([nama-rak-unik-per-gudang](#nama-rak-unik-per-gudang)).
+
+| 45 rak kosong, urut `sku_count`, 20 per halaman | tanpa `id` | dengan `id` |
+| --- | --- | --- |
+| halaman 1 | rak 3, 7, 12, … | rak 1–20 |
+| halaman 2 | rak 7 bisa muncul lagi, rak 19 bisa tidak pernah muncul | rak 21–40 |
+
+```mermaid
+flowchart LR
+  Q["cari rak — urut sku_count"] --> T{"sku_count sama?"}
+  T -->|"tidak"| O["urut sku_count"]
+  T -->|"ya"| I["urut id — tetap di setiap halaman"]
+```
+
+Pola yang sama dengan [slot-seri-diurutkan-dengan-id](#slot-seri-diurutkan-dengan-id).
+
+---
+
+## isi-rak-dihitung-dari-slot-saat-dicari
+
+> Chat 2026-10-19 — *"iya maksud saya table slot"*. Menjawab *isi-rak-dibaca-dari-slot-atau-ringkasan*
+> ([rack_flow_clarify](./rack_flow_clarify.md#question)) dengan **A**. Sesuai rekomendasi.
+
+**Putusannya.** `sku_count` dan `sku_sum` cari rak dihitung dari `SKU_SLOT` dan `SKU_BROKEN_SLOT` setiap kali dicari. Tidak ada
+tabel ringkasan, dan `SKU_STATEMENT` tidak dipakai karena ia tidak menyimpan rak. Kedua tabel slot diberi index parsial, jadi slot yang
+sudah 0 tidak ikut dibaca.
+
+```sql
+create index on sku_slot        (warehouse_id, rack_id) where count > 0;
+create index on sku_broken_slot (warehouse_id, rack_id) where count > 0;
+```
+
+**Diuji di Postgres 17** (lokal, satu transaksi yang di-rollback). Datanya 300 rak per gudang, 2 gudang, dan 600.000 slot, dengan
+97% slot sudah 0. Query yang diuji adalah urutan `sku_sum`, 20 rak per halaman.
+
+| | tanpa index parsial | dengan index parsial |
+| --- | --- | --- |
+| slot berisi di ujung tabel (FIFO: yang lama habis duluan) | 56–90 ms | **7–9 ms**, 150 blok dibaca |
+| slot berisi tersebar di seluruh tabel (terburuk) | 55–75 ms | **11 ms** |
+| ukuran | tabel `sku_slot` 39 MB | index 160 kB |
+
+Isi yang dihitung juga diuji: R (rusak 12) → 1 / 12, A (kaos 0, celana 30) → 1 / 30, B (kaos 20 + rusak 2) → 1 / 22. Rak gudang 4
+tidak muncul. *Hanya kosong* mengembalikan rak tanpa slot dan rak yang slotnya 0 semua, dan halaman 3 / 3 / 2 tidak berulang.
+
+```mermaid
+flowchart LR
+  ST["SKU_STATEMENT — per sku per gudang"] -.->|"tidak tahu rak — tidak dipakai"| C
+  S1["SKU_SLOT — count lebih dari 0"] -->|"index parsial"| C["sku_count, sku_sum per rak — dihitung saat dicari"]
+  S2["SKU_BROKEN_SLOT — count lebih dari 0"] -->|"index parsial"| C
+  C --> K["rak kosong = keduanya 0"]
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** tabel ringkasan per (rak, sku). Ia baru dibahas kalau audit performa RPC ini nanti keluar HEAVY.
+
+---
+
+## nama-rak-dicari-tanpa-pg-trgm
+
+> Chat 2026-10-19 — *"oke jangan pakai pg_trgm"*, setelah uji di Postgres 17. Membatalkan [rack_flow.md](./rack_flow.md) baris 25
+> *"type tolerance seperti `pg_trgm`"*. Sesuai temuan kritik *nama-persis-tenggelam* ([rack_flow_clarify](./rack_flow_clarify.md#critique)).
+
+**Putusannya.** Filter nama rak tidak memakai `pg_trgm`. Nama dicari sebagai potongan nama, tanpa beda huruf. Untuk kode rak yang
+pendek, `pg_trgm` lebih banyak menemukan rak tetangga daripada membetulkan salah ketik:
+
+| staff mengetik | dengan `pg_trgm` (ambang 0,3) |
+| --- | --- |
+| `A-01` | A-01, juga A-02 … A-09, B-01, C-01 dan A (kemiripan 0,40–0,43). Diurutkan `sku_sum`, A-01 ada di urutan **ke-9 dari 12** |
+| `A-O1` (huruf O) | A-01 **tidak** ketemu (0,25), hanya rak A |
+| `A01` | tidak ada hasil (0,29) |
+
+```mermaid
+flowchart LR
+  K["ketik A-01"] -->|"pg_trgm"| T["A-01 dan sepuluh tetangga"]
+  K -->|"tanpa pg_trgm"| P["nama yang memuat A-01"]
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** apakah tanda pisah dan spasi diabaikan saat mencari (`A01` → A-01), dan apakah nama persis selalu
+di baris pertama. Keduanya masih kritik di [rack_flow_clarify](./rack_flow_clarify.md#critique).
+
+---
+
+## tanda-pisah-membedakan-nama-rak
+
+> Chat 2026-10-19 — *"saya memang menyetujui jika `a-01` dan `a01` itu dianggap beda, jadi tidak masalah"*. Menjawab saran saya
+> untuk menjadikan kunci tanpa tanda pisah sebagai aturan unik — **ditolak**. [nama-rak-unik-per-gudang](#nama-rak-unik-per-gudang)
+> tetap seperti semula.
+
+**Putusannya.** Hanya beda huruf besar-kecil yang membuat dua nama rak dianggap sama. Tanda pisah dan spasi membedakan nama.
+`UNIQUE (warehouse_id, lower(name))` tidak berubah, dan tidak ada kolom `name_key`.
+
+| di gudang 3 sudah ada `A-01`, admin membuat | hasil (diuji di Postgres 17) |
+| --- | --- |
+| `a-01` | ⛔ ditolak — sama dengan `A-01` |
+| `A01` | ✅ rak baru |
+| `a 01` | ✅ rak baru |
+
+```mermaid
+flowchart LR
+  N["A-01 sudah ada"] --> X["a-01 — ditolak, beda huruf saja"]
+  N --> Y["A01 — rak lain"]
+  N --> Z["a 01 — rak lain"]
+```
+
+Akibatnya pada pencarian: kalau tanda pisah diabaikan saat mencari (kritik *kode-tanpa-tanda-tidak-ketemu*), mengetik `A01` akan
+menemukan ketiganya. *Nama persis* tetap dibandingkan dengan nama aslinya (`lower(name)`), jadi A01 di baris pertama.
+
+⚠ **Yang TIDAK ikut diputuskan:** apakah pencarian mengabaikan tanda pisah, dan apakah nama persis selalu di baris pertama. Keduanya
+masih kritik di [rack_flow_clarify](./rack_flow_clarify.md#critique).
+
+---
+
+## nama-rak-dicari-lewat-kunci
+
+> Chat 2026-10-19 — *"saya setuju dengan `rack_name_key` tapi hanya untuk pencarian"*. Menjawab kritik *kode-tanpa-tanda-tidak-ketemu*
+> ([rack_flow_clarify](./rack_flow_clarify.md#critique)). Sesuai rekomendasi, dengan batas: tidak dipakai untuk aturan unik
+> ([tanda-pisah-membedakan-nama-rak](#tanda-pisah-membedakan-nama-rak)). [rack_flow.md](./rack_flow.md) baris 25 kini cukup *"nama"*,
+> dan aturan pencocokannya dicatat di sini.
+
+**Putusannya.** Filter nama cari rak mencocokkan **kunci**. Ketikan dan nama rak dibuat huruf kecil, lalu semua selain huruf dan
+angka dibuang. Kunci dihitung di DB oleh satu fungsi di migrasi service, dan app mengirim ketikan apa adanya. Kunci tidak disimpan
+sebagai kolom.
+
+```sql
+create function rack_name_key(t text) returns text immutable language sql
+    as $$ select regexp_replace(lower(t), '[^a-z0-9]', '', 'g') $$;
+
+-- di query cari rak
+and ($2 = '' or rack_name_key(r.name) like '%' || rack_name_key($2) || '%')
+```
+
+| | memakai `rack_name_key`? |
+| --- | --- |
+| filter nama cari rak | ✅ |
+| aturan unik nama | ⛔ tetap `lower(name)` — `A-01`, `A01`, `a 01` tiga rak |
+| salah ketik (`A-O1`) | ⛔ tidak ditolong ([nama-rak-dicari-tanpa-pg-trgm](#nama-rak-dicari-tanpa-pg-trgm)) |
+
+Diuji di Postgres 17 (di-rollback):
+
+| staff mengetik | ditemukan |
+| --- | --- |
+| `A01`, `a 01`, `a.01` | A-01 — dengan `ilike` biasa tidak ada hasil |
+| `kaosdepan` | Rak Kaos Depan |
+| `A-O1` | tidak ada hasil |
+
+```mermaid
+flowchart LR
+  K["app kirim ketikan apa adanya — A01"] --> Q["DB: rack_name_key = a01"]
+  R["rak A-01, A01, a 01 — kunci a01"] --> C{"kunci memuat a01?"}
+  Q --> C
+  C -->|"ya"| H["masuk hasil"]
+  U["aturan unik — lower name"] -.->|"tidak memakai kunci"| R
+```
+
+⚠ **Yang TIDAK ikut diputuskan:** apakah nama persis selalu di baris pertama — kritik *nama-persis-tenggelam*.
+
+---
+
+## nama-persis-selalu-pertama
+
+> Chat 2026-10-19 — *"saya ikuti saranmu"*, untuk kritik *nama-persis-tenggelam* ([rack_flow_clarify](./rack_flow_clarify.md#critique)).
+> Sesuai rekomendasi.
+
+**Putusannya.** Saat filter nama diisi, rak yang **nama aslinya** persis sama dengan ketikan, tanpa beda huruf, selalu di baris
+pertama. Sesudah itu baru urutan yang dipilih, lalu `id` ([urutan-rak-diakhiri-id](#urutan-rak-diakhiri-id)). Yang dibandingkan
+adalah nama asli, bukan kunci pencarian ([nama-rak-dicari-lewat-kunci](#nama-rak-dicari-lewat-kunci)). Karena `A-01` dan `A01` dua
+rak ([tanda-pisah-membedakan-nama-rak](#tanda-pisah-membedakan-nama-rak)), paling banyak satu rak yang naik.
+
+```sql
+order by lower(r.name) = lower($2) desc,   -- nama asli yang persis, selalu pertama
+         sku_sum desc, r.id                -- urutan pilihan, lalu id
+```
+
+Diuji di Postgres 17 (di-rollback):
+
+| staff mengetik | tanpa aturan ini | dengan aturan ini |
+| --- | --- | --- |
+| `A` | rak A urutan ke-4 dari 11 | **A**, lalu A-09, A-06, A-02 … |
+| `A01` (ada A-01, A01, a 01) | menurut isinya | **A01**, lalu A-01, a 01 |
+| `A-01` | menurut isinya | **A-01**, lalu A01, a 01 |
+| `a.01` | menurut isinya | tidak ada yang persis — ketiganya menurut isinya |
+
+```mermaid
+flowchart LR
+  K["ketik A01"] -->|"saring lewat rack_name_key"| F["A-01, A01, a 01"]
+  F --> C{"lower name = lower ketikan?"}
+  C -->|"ya"| P["A01 — baris pertama"]
+  C -->|"tidak"| U["A-01, a 01 — urutan pilihan, lalu id"]
 ```

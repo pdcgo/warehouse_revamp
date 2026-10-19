@@ -32,10 +32,10 @@ Pendengar menolak kabar yang sama dua kali (`tx_id` + jenis kabar).
 async function publishAndMark(
     kind: "created" | "cancelled" | "billing",
     txId: number,
-    data: unknown,
+    event: unknown,
 ) {
     try {
-        await publishTopic({ topic: `restock-${kind}`, data })
+        await sendEvent({ eventId: `stock-restock:${txId}:${kind}`, event })
 
         await db.transaction(async function (tx) {
             await markPublished(tx, txId, kind) // publish_created, publish_cancelled, atau billed = true
@@ -199,7 +199,11 @@ flowchart TB
     })
 
     // sesudah commit
-    publishAndMark("created", trx.id, payload)
+    publishAndMark("created", trx.id, {
+        stockRestockCreated: {
+            /* isi data */
+        },
+    })
     ```
 
     Mungkin kurang lebih akan seperti itu, semua fungsi hanya ilustrasi dari saya.
@@ -269,7 +273,11 @@ flowchart TB
     })
 
     if (additionalShippingFee > 0) {
-        publishAndMark("billing" /* etc. */)
+        publishAndMark("billing", txId, {
+            stockRestockBilling: {
+                /* isi data */
+            },
+        })
     }
     ```
 
@@ -440,7 +448,11 @@ flowchart TB
 
     // sesudah commit
     if (trx.publish_created) {
-        publishAndMark("cancelled", trx.id, { txId: trx.id })
+        publishAndMark("cancelled", trx.id, {
+            stockRestockCancelled: {
+                /* isi data */
+            },
+        })
     }
     // kalau publish_created masih false: jangan kirim sekarang — tugas berkala
     // akan mengirim created dulu, baru cancelled

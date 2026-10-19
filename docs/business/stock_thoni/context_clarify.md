@@ -1102,8 +1102,7 @@ erDiagram
   }
 ```
 
-> ⏸ **Ditunda — tidak dihitung**, sampai mekanisme pembuatan raknya ditulis: siapa yang membuat dan mengubah rak, menghapus
-> atau menonaktifkan rak yang masih berisi slot, dan label yang dipindai staff di rak.
+> ➡ 2026-10-19 — mekanisme raknya kini ditulis di [rack_flow.md](./rack_flow.md); pertanyaannya pindah ke [rack_flow_clarify](./rack_flow_clarify.md).
 
 ## Critique
 

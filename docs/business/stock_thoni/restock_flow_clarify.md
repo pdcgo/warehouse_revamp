@@ -5,6 +5,14 @@ Kritik dan pertanyaan untuk [restock_flow.md](./restock_flow.md) — **satu-satu
 [context_decision.md](./context_decision.md); pertanyaan tentang ERD dan konteks secara umum tetap di
 [context_clarify.md](./context_clarify.md).
 
+> **2026-10-19 (events.md)** — isi ketiga pesan kini ditulis di [events.md](./events.md), sama dengan usulan — usulannya dipangkas dari
+> file ini. Kecil: events.md belum ditautkan dari mana pun; satu link dari bagian *kirim kabar* (baris 18) cukup.
+>
+> **2026-10-17 (kabar sebagai pesan)** — baris 38: ``sendEvent({ eventId: `stock-restock:${txId}:${kind}`, event })``; pembuatan (baris 202),
+> tiba (baris 276) dan pembatalan (baris 451) mengirim pesannya masing-masing. ✅ Dicatat:
+> [kabar-restock-dikirim-sebagai-pesan-proto](./context_decision.md#kabar-restock-dikirim-sebagai-pesan-proto) — kritik *nama-topik-bentrok*
+> selesai. Isi pesannya masih `/* isi data */` — usulan pesan proto tetap di bawah untuk dipakai kapan saja.
+>
 > **2026-10-17 (pembuatan)** — terlewat di uji sebelumnya: `CreateRestockPayload` kini membawa `team_id` scope (baris 136), dan item
 > serta log `ongoing` menempel ke `trx.id` (baris 193–194). ✅ Selesai: *pembuatan-tanpa-scope-tim* · *item-dan-log-tanpa-id-transaksi*.
 > Catatan di [gudang-dikirim-sebagai-scope-lalu-dicocokkan](./context_decision.md#gudang-dikirim-sebagai-scope-lalu-dicocokkan).
@@ -20,7 +28,7 @@ Kritik dan pertanyaan untuk [restock_flow.md](./restock_flow.md) — **satu-satu
 > **2026-10-17 (uji sesudah merge `backup/inventory`)** — restock_flow.md tidak berubah; yang diuji dokumen konteks lain dan
 > kode bersama yang kini ada di branch ini. Folder `business/inventory/` milik Heri **tidak** dipakai — di branch `thoni` folder
 > itu diabaikan, atas permintaan pemiliknya. 🆕 pertanyaan [penerimaan-tidak-mengabari-supplier](#penerimaan-tidak-mengabari-supplier)
-> — supplier ingin angka restock, rusak, hilang per hari · 🆕 kritik [nama-topik-bentrok](#critique) — penerbit menamai topiknya.
+> — supplier ingin angka restock, rusak, hilang per hari · 🆕 kritik *nama-topik-bentrok* ✅ — penerbit menamai topiknya.
 > 🔄 Sesudahnya, atas permintaan Anda, dasar yang berasal dari inventory Heri dilepas dari keduanya.
 >
 > **2026-10-17 (kirim kabar)** — model.md: `publish_created`, `publish_cancelled`; restock_flow.md baris 18–47: bagian
@@ -80,15 +88,12 @@ Kritik dan pertanyaan untuk [restock_flow.md](./restock_flow.md) — **satu-satu
 | | apa | di mana |
 | --- | --- | --- |
 | 1 | apakah penerimaan mengabari supplier | [penerimaan-tidak-mengabari-supplier](#penerimaan-tidak-mengabari-supplier) |
-| 2 | nama topik kabar bentrok dengan yang sudah dibangun | [nama-topik-bentrok](#critique) |
 
 Keempat langkah — pembuatan, tiba, penempatan, pembatalan — **tanpa sisa** selain itu.
 
 ## Critique
 
-| | Masalah | → Rekomendasi |
-| --- | --- | --- |
-| **nama-topik-bentrok** 🆕 | Baris 38: `publishTopic({ topic: \`restock-${kind}\`, data })` — penerbit yang menamai topiknya. Aturan repo ini: **event menamai topiknya sendiri** — satu pesan proto, `event_config` di pesan itu (CLAUDE.md, *Events*); penerbit tidak pernah menulis nama topik. Fakta teknis, bukan masukan desain: `event.proto` sudah memakai nama `restock-created` dan `restock-cancelled` untuk pesan dengan isi lain, dan satu topik hanya bisa membawa satu bentuk pesan. | Setiap kabar satu pesan proto dengan topiknya sendiri — nama dan isinya keputusan Anda, asal tidak sama persis dengan nama yang sudah ada. `publishAndMark` menerima pesannya, bukan nama topik. |
+Tidak ada kritik terbuka (uji 2026-10-17).
 
 ## Proposed Design
 

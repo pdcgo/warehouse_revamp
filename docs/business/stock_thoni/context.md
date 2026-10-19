@@ -56,3 +56,7 @@ Notes:
 ### Penyediaan data OrderCreation
 
 Berikut merupakan alur penyediaan data untuk Order Creation, [Lihat Selengkapnya](./order_creation_provide.md)
+
+### Pengelolaan Rak
+
+Berikut selengkapnya pengelolaan rak, [Lihat](./rack_flow.md)
