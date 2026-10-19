@@ -527,7 +527,7 @@ flowchart LR
 
 | | Problem *(arising from [balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event), 2026-10-15)* | → Recommend |
 | --- | --- | --- |
-| **21** | **A warehouse transfer's courier charge has no source type, and the obvious one silently drops it.** Your cause 2 says *"to receive restock"*; a transfer received at Warehouse B now has the same courier's ask, paid by B and owed by the selling team, posted from *Warehouse Transfer Accepted*. `INCIDENTAL_FEE`'s `source_id` is **the restock** ([liability.proto:114](../../../proto/warehouse/liability/v1/liability.proto#L114)), and the ledger refuses a second row with the same *(team, counterparty, source type, source id, reversal)* ([00001…ledger.sql:69](../../../backend/services/liability_service/db_migrations/00001_create_liability_ledger.sql#L69)). Restocks and transfers are numbered separately, so **transfer 41 beside restock 41 — same team, same warehouse — reads as a duplicate, is acknowledged, and is gone.** That is the normal case, not an edge: a team restocks into and transfers into the same warehouse. | **A transfer's charge gets its own source type** (e.g. `TRANSFER_INCIDENTAL_FEE`, `source_id` = the transfer), so each source type names one business object — the rule the enum's own comment already states. Cause 2 then reads *"to receive a restock or a transfer"*. [Q13](#question). |
+| **21** | **A warehouse transfer's courier charge has no source type, and the obvious one silently drops it.** Your cause 2 says *"to receive restock"*; a transfer received at Warehouse B now has the same courier's ask, paid by B and owed by the selling team, posted from *Warehouse Transfer Accepted*. `INCIDENTAL_FEE`'s `source_id` is **the restock** ([liability.proto:114](../../../proto/warehouse/liability/v1/liability.proto#L114)), and the ledger refuses a second row with the same *(team, counterparty, source type, source id, reversal)* ([00001…ledger.sql:69](../../../backend/services/liability_service/db_migrations/00001_create_liability_ledger.sql#L69)). Restocks and transfers are numbered separately, so **transfer 41 beside restock 41 — same team, same warehouse — reads as a duplicate, is acknowledged, and is gone.** That is the normal case, not an edge: a team restocks into and transfers into the same warehouse. | **A transfer's charge gets its own source type** (e.g. `TRANSFER_INCIDENTAL_FEE`, `source_id` = the transfer), so each source type names one business object — the rule the enum's own comment already states. Cause 2 then reads *"to receive a restock or a transfer"*. [Q13](#question). ✅ *(2026-10-19)* **Decided:** [a-transfer-charge-is-a-transfer-fee](./context_decision.md#a-transfer-charge-is-a-transfer-fee). |
 
 ## Question
 
@@ -592,19 +592,8 @@ flowchart LR
 > [an-accepted-payment-is-final](./context_decision.md#an-accepted-payment-is-final). The reverse RPC is removed, and
 > financial_account’s Q14 closes with it — there is no reversal for the accounts to hear.
 
-13. **🆕 *(2026-10-15)* Does a warehouse transfer's courier charge get its OWN source type?** ([Critique 21](#critique))
-    The transfer now posts its on-site charge through balance, from an event
-    ([balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)).
-    Under `INCIDENTAL_FEE`, a transfer whose id equals a restock's — same team, same warehouse — is dropped as a duplicate.
-    **→ I recommend yes: its own type, `source_id` = the transfer**, and cause 2 widened in words to *"to receive a restock
-    or a transfer"*. Same money and same note rule; a different business object, so a different type.
-
-    ```mermaid
-    flowchart LR
-      R["restock 41 - Rp 5.000"] -->|"INCIDENTAL_FEE, 41"| L["the ledger"]
-      T["transfer 41 - Rp 3.000"] -->|"INCIDENTAL_FEE, 41 - same key, dropped"| L
-      T -.->|"its own type, 41"| L
-    ```
+13. ✅ *(2026-10-19)* **Answered: its own type, `TRANSFER_FEE`, keyed by the transfer** — [a-transfer-charge-is-a-transfer-fee](./context_decision.md#a-transfer-charge-is-a-transfer-fee).
+    As recommended. Kept as a line so the numbers hold.
 
 ---
 
@@ -707,6 +696,20 @@ kinds map onto one ledger source type and a boolean. That is [Critique 13](#crit
 contradiction: nothing in the doc contradicts anything else in the doc.
 
 ---
+
+## cause-2-names-the-restock-only
+
+Your §What Things That Affect The Team Balance, item 2: *"Additional Cost that Warehouse Team spent to receive restock."*
+But a transfer received at a warehouse has the same courier charge, owed the same way
+([balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event),
+[a-transfer-charge-is-a-transfer-fee](./context_decision.md#a-transfer-charge-is-a-transfer-fee)). The list says restock only.
+**→ Recommend** item 2 reads *"to receive a restock or a transfer"*. Yours to edit.
+
+```mermaid
+flowchart LR
+  C["cause 2 - to receive restock"] --> R["restock door charge - INCIDENTAL_FEE"]
+  C -.->|"not named"| T["transfer door charge - TRANSFER_FEE"]
+```
 
 # Awaiting
 

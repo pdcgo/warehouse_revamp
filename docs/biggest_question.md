@@ -14,13 +14,34 @@ Every open question in every `_clarify.md`, rolled up to the seven that block th
 > lifecycle pass outranks one that merely matters. Several rows below are **one question asked in several
 > docs**, and merging those is most of what this file is for.
 
-**126 open questions across 38 files.** ⛔ **All seven rows are closed** — a full re-rank is due to fill them; **all 126 are in the table below** — they are not
+**112 open questions across 38 files.** The three below are shown; **109 are not** — they are not
 closed, only smaller. The per-file counts are at the bottom.
+
+🔄 **Re-ranked fresh** (2026-10-19), after all seven rows closed. Every live claim in the new seven was checked against the code the same day. ⚠ **Two counted questions are re-routes already decided elsewhere** (ledger Q1 → [a-limit-change-is-recorded](business/balance/context_decision.md#a-limit-change-is-recorded), [the-block-stops-orders-only](business/balance/context_decision.md#the-block-stops-orders-only); excel_readers Q6 → [only-a-successful-withdrawal-is-recorded](business/settlement/settlement_importer_decision.md#only-a-successful-withdrawal-is-recorded)), and **about 13 more look overtaken** by today's decisions — they stay counted until each is closed at source.
 
 🔄 **Rebuilt fresh** (2026-10-12), after `dev` merged into `backup/inventory`. Every count is recounted from the files, and
 every row of the seven was re-checked against the clarify it names and, where it claims something is live, against the
 code. What changed:
 
+- 🔄 *(2026-10-19)* **112**: #1, an adjustment counts on the day of the expense it fixes, so the wrong month becomes right, visibly ([an-adjustment-counts-on-the-day-it-fixes](business/analytic/context_decision.md#an-adjustment-counts-on-the-day-it-fixes)), as recommended. Left: `ExpenseVoid`, a reducing adjustment. Net zero.
+- 🔄 *(2026-10-19)* **112**: #1, half answered — an expense is never edited; a correction is a new row ([an-expense-is-never-edited](business/analytic/context_decision.md#an-expense-is-never-edited)), against my *edit, logged*. Left: the adjustment's date, `ExpenseVoid`, a reducing adjustment. Net zero.
+- ✅ *(2026-10-19)* **112**: **#1 closed as a row** — export is one `OrderExport(team_id, filter)` for both lists ([one-export-is-the-list-as-a-file](technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)), as recommended; the workbench contract is settled. Q18 stays open and counted for the barcode alone, ⏸ parked by you. The rest move up one. Three rows shown.
+- 🔄 *(2026-10-19)* **112**: #1, Q18 labels settled — `OrderLabels` merges the labels of orders a warehouse ships into one PDF, access following the order ([a-warehouse-prints-the-labels-of-orders-it-ships](technical/frontend/warehouse_order_list_decision.md#a-warehouse-prints-the-labels-of-orders-it-ships)), as recommended. ⛔ Found live: the warehouse cannot open even one label today. The barcode is ⏸ parked by you. Left: export. Net zero.
+- 🔄 *(2026-10-19)* **112**: #1, Q18 four of seven settled — one `OrderStatusChange` for every plain move, many orders at once, while cancel and return accept keep their own RPCs ([one-status-change-for-every-plain-move](technical/frontend/warehouse_order_list_decision.md#one-status-change-for-every-plain-move)), as recommended; two parts were already overtaken. Left: the barcode, labels printed together, export. Net zero.
+- ▼ *(2026-10-19)* **112**: #1, Q17 closed — `OrderListFilter` gains seller team, marketplace and courier; the shipment-state switch is dropped for the status tabs ([the-filter-gains-seller-marketplace-and-courier](technical/frontend/warehouse_order_list_decision.md#the-filter-gains-seller-marketplace-and-courier)), as recommended. Q18 left.
+- ▼ *(2026-10-19)* **113**: #1, Q16 closed — the warehouse row fills from a new unscoped `ShopByIds` and `UserByIDs`, one call each per page, with `item_quantity` on the list row ([the-warehouse-row-fills-from-shop-and-user-by-ids](technical/frontend/warehouse_order_list_decision.md#the-warehouse-row-fills-from-shop-and-user-by-ids)) — your proposal. Q17 and Q18 left.
+- ✅ *(2026-10-19)* **114**: **#1 closed** — root reads every team's orders: a request scoped to the root team has no team filter, as settlement's reports already do ([root-reads-every-teams-orders](technical/frontend/order_list_decision.md#root-reads-every-teams-orders)), as recommended. ⚠ Not built. The rest move up one. Four rows shown.
+- ✅ *(2026-10-19)* **115**: **#1 closed** — a transfer's door charge is its own type, `TRANSFER_FEE`, keyed by the transfer ([a-transfer-charge-is-a-transfer-fee](business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)), as recommended. ⚠ Still booked nowhere until liability subscribes to the event. One contradiction: balance context.md's cause 2 names the restock only. The rest move up one. Five rows shown.
+- ✅ *(2026-10-19)* **116**: **#1 closed** — `OrderPlaced` carries the frozen `warehouse_fee` ([the-event-carries-the-warehouse-fee](business/teams/warehouse/context_decision.md#the-event-carries-the-warehouse-fee)), as recommended. The fee contract is whole: `goods_cost`, one rate per warehouse, a floor and a cap, no rate refuses, one warehouse per call, the flat rate dropped last. The rest move up one. Six rows shown.
+- ▼ *(2026-10-19)* **117**: #1, step 5 closed — `handling_fee` is dropped as the last of five steps ([the-flat-rate-is-dropped-last](business/teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)), as recommended; technical balance Q8, its rename, closes as moot. #1 has one part left: does `OrderPlaced` carry the amount.
+- ▼ *(2026-10-19)* **119**: #1, step 4 closed — one warehouse per call, as your payload has it ([the-fee-is-priced-one-warehouse-at-a-time](business/teams/warehouse/context_decision.md#the-fee-is-priced-one-warehouse-at-a-time)), as recommended, which reversed my `repeated`.
+- ▼ *(2026-10-19)* **120**: #1, step 3 closed — a warehouse that never set its fee refuses the order ([a-warehouse-with-no-rate-takes-no-orders](business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)), against my *charge nothing, with a `configured` flag*. Your rollback already undoes the take; the refusal goes live after every warehouse has a rate.
+- 🔄 *(2026-10-19)* **121**: #1, step 2 reversed — you changed your mind: `min_fee`, default 0 ([the-fee-has-a-floor-and-a-cap](business/teams/warehouse/context_decision.md#the-fee-has-a-floor-and-a-cap)), as recommended; the old entry is renamed `superseded-`. A warehouse's default flat fee carries over exactly again; only a seller's own flat rate changes. Net zero.
+- ▼ *(2026-10-19)* **121**: #1, step 2 closed — a cap and no floor ([superseded-the-fee-has-a-cap-and-no-floor](business/teams/warehouse/context_decision.md#superseded-the-fee-has-a-cap-and-no-floor)), against my `min_fee`. ⚠ With one rate per warehouse too, today's flat fee has no percent form: the cut-over changes every seller's charge.
+- ▼ *(2026-10-19)* **122**: #1, step 1 closed — one rate per warehouse, the same for every seller ([one-rate-per-warehouse](business/teams/warehouse/context_decision.md#one-rate-per-warehouse)), against my per-seller override; `team_id` stays as the scope only.
+- ▼ *(2026-10-19)* **123**: two of #1's warehouse questions closed at the source — the fee is priced on `goods_cost`, as your order docs already say ([the-fee-is-priced-on-goods-cost](business/teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost)), and the refund question was overtaken by the order decisions. `how-does-the-amount-reach-balance` narrows to the event. #1 stands.
+- ✅ *(2026-10-19)* **125**: **#1 closed** — the label samples are not sensitive and stay committed; the repo stays public ([the-label-samples-may-be-committed](technical/packages/receipt_readers/context_decision.md#the-label-samples-may-be-committed)), against my *make it private, untrack the folder*. The six below move up one, and [meta Q2](business/settlement/meta_context_clarify.md#question) — a replay lock nothing releases if the process dies, ⛔ live — enters at #7.
+- 🔄 *(2026-10-19)* **126**: **re-ranked** — a new seven: label PDFs in the public repo, the warehouse fee contract, the transfer's courier charge, root's empty order list, the warehouse workbench, a closed month's expense, TikTok's new layout. Five are live in code, each checked.
 - ✅ *(2026-10-19)* **126**: **#6 closed** — a wrong day is re-folded from the log by an operator command ([a-wrong-day-is-refolded-from-the-log](business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)), as recommended. **All seven rows are closed; a full re-rank is due.** Net zero — the drift item was a section, not a numbered question.
 - ✅ *(2026-10-19)* **126**: **#5 closed** — events only, for now ([a-report-is-fed-by-events-only-for-now](business/analytic/context_decision.md#a-report-is-fed-by-events-only-for-now)), against my two paths. #6 now covers every lost event. One row shown.
 - ▼ *(2026-10-19)* **127**: shop Q6 closed — a grant goes only to a team member ([a-grant-goes-only-to-a-team-member](business/shop/context_decision.md#a-grant-goes-only-to-a-team-member)), as recommended. **Shop has no open question.**
@@ -150,47 +171,47 @@ code. What changed:
 
 ```mermaid
 flowchart LR
-  L["#1 the ledgers"] --> R["restock - accepted, waiting"]
-  L --> T["warehouse transfer - accepted, waiting"]
-  L --> P["placement - accepted, waiting"]
-  L --> O["order create's take"]
+  E["1 a closed month's expense"] --> M2["last month changes silently"]
+  K["2 TikTok's new layout"] --> M3["adjustments booked twice"]
+  LK["3 a replay that dies holding the lock"] --> M4["every settlement report stops"]
 ```
 
 | # | The question | Blocks | Asked in | My recommendation |
 | --- | --- | --- | --- | --- |
-| **1** | ✅ *(2026-10-16)* **Closed — the inventory ledgers' rules are decided.** Every business question that stood in the way of building them is answered: the key ([the-key-is-claimed-in-its-own-table](business/inventory/transaction_decision.md#the-key-is-claimed-in-its-own-table)), items ([items-are-what-history-and-reports-read](business/inventory/transaction_decision.md#items-are-what-history-and-reports-read)), the rollback ([a-rollback-only-undoes-a-take](business/inventory/transaction_decision.md#a-rollback-only-undoes-a-take)), the types ([problem-and-found-replace-opname](business/inventory/transaction_decision.md#problem-and-found-replace-opname)), an emptied batch ([an-emptying-take-takes-all-the-value](business/inventory/context_decision.md#an-emptying-take-takes-all-the-value)), a late cost ([a-late-cost-is-an-expense-not-a-revaluation](business/inventory/context_decision.md#a-late-cost-is-an-expense-not-a-revaluation)). ✅ The template's *Idempotency Layer* ([mutation_and_ledger Q1](technical/ledger/mutation_and_ledger_clarify.md#question)) is answered too — the doc becomes an index ([the-template-is-an-index](technical/ledger/mutation_and_ledger_decision.md#the-template-is-an-index)); it was technical and never a blocker: the rule it states — an event is processed once, per service — is already built in the event library (`san_event`), and the order's key is a different thing, keeping create and rollback consistent | — | — | the owner's docs still owe their redraws — each listed in its clarify |
-| **2** | ✅ *(2026-10-19)* **Closed — the markup is the product's, and the ledger charges the frozen line total.** Inventory's take applies `products.cross_markup_bps` and freezes each line; liability posts the sum of the owner's line totals and reads no markup; `liability_terms.product_markup_bp` is dropped ([the-ledger-charges-the-frozen-line-total](technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)). ⚠ **Not built:** `order_fees.go` still bills the pair's rate while the take freezes the product's, and `OrderPlacedLine` needs the line total. **The slot is empty until the next full rank** | — | — | — |
-| **3** | ✅ *(2026-10-19)* **Closed — a shop is closed, never deleted, and a closed shop is still paid.** It refuses only new selling; `ShopAccessCheck` returns its status and each caller decides; its drafts wait; its code frees; owner and admin close it and its grants stay editable ([a-shop-is-closed-never-deleted](business/shop/context_decision.md#a-shop-is-closed-never-deleted) and four more, listed in [shop Q3](business/shop/context_clarify.md#question)). ⚠ **Not built:** every site still refuses a deleted shop. **The slot is empty until the next full rank** | — | — | — |
-| **4** | ✅ *(2026-10-15)* **Closed — two live orders on one ref.** Every part is decided: a duplicate is warned ([a-duplicate-ref-is-warned-not-refused](business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)), a used key is refused ([the-order-refuses-a-used-key](business/order/context_decision.md#the-order-refuses-a-used-key)), and a statement line on two live orders posts to the shop ([two-live-orders-on-a-ref-post-to-the-shop](business/settlement/settlement_importer_decision.md#two-live-orders-on-a-ref-post-to-the-shop)). ⚠ **Not built:** `orderInShop` still pays the newest. **The slot is empty until the next full rank** | — | — | — |
-| **5** | ✅ *(2026-10-19)* **Closed — events only, for now.** A report has no catch-up path; a lost event leaves it short until a person notices ([a-report-is-fed-by-events-only-for-now](business/analytic/context_decision.md#a-report-is-fed-by-events-only-for-now)), against my two paths. ⚠ It makes **#6** the repair for every lost event, and [mutation_and_ledger.md](technical/ledger/mutation_and_ledger.md) still promises a nightly reconcile. **The slot is empty until the next full rank** | — | — | — |
-| **6** | ✅ *(2026-10-19)* **Closed — a wrong day is re-folded from the log.** An operator command re-reads one day of the log for one shop and rewrites that day's report row ([a-wrong-day-is-refolded-from-the-log](business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log)), as recommended. Since #5 it repairs every lost event. ⚠ **Not built.** **The slot is empty until the next full rank** | — | — | — |
-| **7** | ✅ *(2026-10-17)* **Closed — where a return lands, and the create gate.** A `team_return_configurations` row per team ([the-return-warehouse-lives-in-team-return-configurations](business/order/context_decision.md#the-return-warehouse-lives-in-team-return-configurations)), read when the return happens, an own line never touches the map, and create refuses a team with no row — turned on after every team has one ([create-refuses-a-team-with-no-return-warehouse](business/order/context_decision.md#create-refuses-a-team-with-no-return-warehouse)). ⚠ **Not built:** the table, its screen, the `team_infos` drop. **The slot is empty until the next full rank** | — | — | — |
+| **1** | **Does an edit to a closed month's expense rewrite that month?** ⛔ **Live:** [expense_update.go](../backend/services/expense_service/expense_v1/expense_update.go) overwrites `amount` and `occurred_at` in place and publishes nothing, and the daily report reads the live rows — last month changes silently | every expense or P&L figure, now that reports are events-only ([a-report-is-fed-by-events-only-for-now](business/analytic/context_decision.md#a-report-is-fed-by-events-only-for-now)) | [analytic Q6](business/analytic/context_clarify.md#question) | a business rule first: restate the old month, or show the change in the month it arrived |
+| **2** | **Do TikTok adjustments get booked twice after its 2026-09 export layout change?** A live risk in the shipped importer, not yet measured | wrong money on a shop's position if a period is downloaded again | [excel_readers Q7](technical/packages/excel_readers/context_clarify.md#question) | measure first — re-download one period already in the samples; if adjustments re-key, map each respelled `Type` to its old spelling before hashing |
+| **3** | **What releases a lock the replay died holding?** ⛔ **Live:** [analytic_replay_compute.go](../backend/services/settlement_service/settlement_v1/analytic_replay_compute.go) sets `process_event_lock` and releases it in a `defer`, with no lease — a process killed mid-replay leaves it set, every settlement fold answers 500, and good events pile into the dead-letter topic until a person resets it by hand. `supplier_service` has the same lock | every settlement report, now that a replay is the range-rebuild path ([the-replay-seeks-the-broker](business/settlement/context_decision.md#the-replay-seeks-the-broker)) | [meta Q2](business/settlement/meta_context_clarify.md#question) | a one-minute lease: the replay stamps the lock, the fold treats an older one as released and logs it loudly |
 
-## Where the other 125 are
+**Runners-up:** the analytic contract ([analytic Q1, Q3, Q4](business/analytic/context_clarify.md#question))
+· [balance Q5](business/balance/context_clarify.md#question) — a dispute can stay open forever ·
+[member Q1, Q2, Q4](business/project/member_clarify.md#question) — who owns ledger · [shipment Q1](business/shipment/context_clarify.md#question)
+— eight couriers live orders use have no channel, and an order now needs one.
+
+## Where the other 109 are
 
 ⚠ **This table is every file's FULL open count, not the residue** — the seven above are rolled up *from* these files, so
-the column sums to **126**, the whole set, not to 125. *Feeds* names the row of the seven a file's questions are part of.
+the column sums to **112**, the whole set, not to 109. *Feeds* names the row of the seven a file's questions are part of.
 
 | File | Open | Feeds |
 | --- | ---: | --- |
-| [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 18 |  |
-| [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 13 |  |
+| [technical/order/design_clarify.md](technical/order/design_clarify.md#question) | 15 |  |
+| [business/teams/warehouse/context_clarify.md](business/teams/warehouse/context_clarify.md#question) | 5 |  |
 | [business/product/context_clarify.md](business/product/context_clarify.md#question) | 9 |  |
-| [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 10 |  |
+| [technical/packages/receipt_readers/context_clarify.md](technical/packages/receipt_readers/context_clarify.md#question) | 9 |  |
 | [business/inventory/adjustment_clarify.md](business/inventory/adjustment_clarify.md#question) | 4 |  |
 | [business/inventory/opname_clarify.md](business/inventory/opname_clarify.md#question) | 0 |  |
 | [business/order/context_clarify.md](business/order/context_clarify.md#question) | 0 |  |
 | [business/order/order_return_clarify.md](business/order/order_return_clarify.md#question) | 0 |  |
-| [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 7 |  |
+| [business/analytic/context_clarify.md](business/analytic/context_clarify.md#question) | 7 | #1 |
 | [business/inventory/context_clarify.md](business/inventory/context_clarify.md#question) | 0 |  |
 | [business/inventory/transaction_clarify.md](business/inventory/transaction_clarify.md#question) | 0 |  |
 | [technical/architecture/context_clarify.md](technical/architecture/context_clarify.md#question) | 8 |  |
-| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 8 |  |
+| [business/balance/context_clarify.md](business/balance/context_clarify.md#question) | 7 |  |
 | [business/ledger/context_clarify.md](business/ledger/context_clarify.md#question) | 7 |  |
-| [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 7 |  |
+| [technical/packages/excel_readers/context_clarify.md](technical/packages/excel_readers/context_clarify.md#question) | 7 | #2 |
 | [business/business_level_clarify.md](business/business_level_clarify.md#question) | 6 |  |
 | [business/mcp/context_clarify.md](business/mcp/context_clarify.md#question) | 6 |  |
-| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 5 |  |
+| [technical/balance/team_balance_design_clarify.md](technical/balance/team_balance_design_clarify.md#question) | 4 |  |
 | [business/project/member_clarify.md](business/project/member_clarify.md#question) | 5 |  |
 | [business/settlement/context_clarify.md](business/settlement/context_clarify.md#question) | 4 |  |
 | [business/shop/context_clarify.md](business/shop/context_clarify.md#question) | 0 |  |
@@ -200,7 +221,7 @@ the column sums to **126**, the whole set, not to 125. *Feeds* names the row of 
 | [business/inventory/order_clarify.md](business/inventory/order_clarify.md#question) | 0 |  |
 | [business/order/order_creation_clarify.md](business/order/order_creation_clarify.md#question) | 0 |  |
 | [technical/cost/design_clarify.md](technical/cost/design_clarify.md#question) | 2 |  |
-| [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 |  |
+| [business/settlement/meta_context_clarify.md](business/settlement/meta_context_clarify.md#question) | 1 | #3 |
 | [business/inventory/warehouse_transfer_clarify.md](business/inventory/warehouse_transfer_clarify.md#question) | 0 |  |
 | [business/shipment/context_clarify.md](business/shipment/context_clarify.md#question) | 1 |  |
 | [business/supplier/context_clarify.md](business/supplier/context_clarify.md#question) | 1 |  |
@@ -215,5 +236,5 @@ the column sums to **126**, the whole set, not to 125. *Feeds* names the row of 
 > **Counted from each file's Question section, at either heading level** — a numbered item or a `###` named one. An
 > item marked ✅, moved (➡) or withdrawn is not open, and **a question whose parts are all answered or moved counts as
 > closed** even when its own line carries no ✅ ([inventory context Q11](business/inventory/context_clarify.md#question) is
-> the one case). Rows sum to **126** across **38** files. ⚠ **Worth fixing at the source:** one heading
+> the one case). Rows sum to **112** across **38** files. ⚠ **Worth fixing at the source:** one heading
 > level and one closed-marker across every clarify makes this count mechanical instead of a judgement call.

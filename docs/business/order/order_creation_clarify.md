@@ -86,7 +86,7 @@ points are deleted, so this file is always the current open set. Decisions land 
 > ([the drawing](./context_clarify.md#proposed--the-debt-check-as-decided)).
 
 Siblings: [order context](./context_clarify.md) · [event_context](./event_context.md) ·
-[warehouse](../warehouse/context_clarify.md) · [inventory](../inventory/context_clarify.md).
+[warehouse](../teams/warehouse/context_clarify.md) · [inventory](../inventory/context_clarify.md).
 
 ---
 
@@ -143,7 +143,7 @@ hazard is re-routed to [inventory Q11](../inventory/context_clarify.md#question)
 | | Problem | → Recommend |
 | --- | --- | --- |
 | **one-line-many-batches** | FIFO can draw one line from two batches at different costs, so a single `unit_cost` × `qty` only approximates `total` | `total` is authoritative; `unit_cost` is informational |
-| **the-fee-call-is-inside-the-transaction** | `WarehouseFeeCalculate` holds the order's transaction open across a network call | acceptable, since its basis only exists after the take — but it is a pure calculation, so reading the rate before the transaction and computing locally removes the call |
+| **the-fee-call-is-inside-the-transaction** | `WarehouseFeeCalculate` holds the order's transaction open across a network call | acceptable, since its basis only exists after the take — but it is a pure calculation, so reading the rate before the transaction and computing locally removes the call. 🔄 *(2026-10-19)* The call can now refuse, for a warehouse with no rate ([a-warehouse-with-no-rate-takes-no-orders](../teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)): your rollback undoes the take, so no new box. Rare once every warehouse has a rate |
 
 ---
 

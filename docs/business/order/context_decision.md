@@ -527,7 +527,7 @@ sequenceDiagram
 | --- | --- |
 | basis | `orders.total` — never `platform_total`, which can be missing and would compute a fee of 0 |
 | rate | `fee_percent`, capped by `max_fee`, both from the warehouse's own config |
-| frozen | when the order calls, per [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records) |
+| frozen | when the order calls, per [warehouse-prices-balance-records](../teams/warehouse/context_decision.md#warehouse-prices-balance-records) |
 | stored | `orders.warehouse_fee`, the frozen copy |
 | balance | is told the amount and records it; it computes nothing |
 
@@ -537,7 +537,10 @@ sale or not, so the warehouse should not absorb a promotion it had no part in.
 ⚠ **What it leaves open:** `total` includes **shipping cost**, so the warehouse earns a percentage of the
 courier's fee as well as of the goods. If that is not intended the basis is `subtotal`, not `total`.
 ⚠ And the build still charges a **flat** `liability_terms.handling_fee`, which this supersedes —
-see [is-the-old-flat-rate-column-dropped](../warehouse/context_clarify.md#question).
+see [is-the-old-flat-rate-column-dropped](../teams/warehouse/context_clarify.md#question).
+
+🔄 *(2026-10-19)* **Both settled:** the basis is `goods_cost` ([the-fee-is-priced-on-goods-cost](../teams/warehouse/context_decision.md#the-fee-is-priced-on-goods-cost)),
+never shipping, and the flat rate is dropped last ([the-flat-rate-is-dropped-last](../teams/warehouse/context_decision.md#the-flat-rate-is-dropped-last)).
 
 ---
 
@@ -595,7 +598,7 @@ answer — *what were the goods worth?*
 | --- | --- |
 | basis | `orders.sub_total` |
 | rate | `fee_percent`, capped by `max_fee`, from the warehouse's own config |
-| frozen | when the order calls, per [warehouse-prices-balance-records](../warehouse/context_decision.md#warehouse-prices-balance-records) |
+| frozen | when the order calls, per [warehouse-prices-balance-records](../teams/warehouse/context_decision.md#warehouse-prices-balance-records) |
 | stored | `orders.warehouse_fee` |
 | balance | is told the amount; it computes nothing |
 

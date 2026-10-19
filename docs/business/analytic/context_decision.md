@@ -160,3 +160,57 @@ flowchart LR
 | the repair | whatever [settlement's drift question](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) settles — it now covers every lost event |
 | the nightly reconcile | not built — [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) item 2 still promises it: [the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other](./context_clarify.md#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other) |
 | later | the catch-up path ([what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) needs no change to a source log, only a way to read one from row N |
+
+---
+
+## an-expense-is-never-edited
+
+> Owner, in chat (2026-10-19): *"expense cannot be edited, but it can be adjusted in new expense or adjustment"* — to
+> [Q6](./context_clarify.md#question), *"when a past month's expense is edited, does that month's report change, or does the fix
+> show up in the month it was made?"*. Against my recommendation (edit in place, logged and published).
+
+**The verdict.** Once an expense is saved it **never changes**. A mistake is corrected by a **new row**: another expense,
+or an adjustment. Every correction is a row anyone can see, and a report fed by events receives it like any other cost.
+
+```mermaid
+flowchart LR
+  E["28 Sep - expense 77, ads 5.000.000 - a typo"] --> X["never edited"]
+  A["adjustment - minus 4.500.000, for expense 77"] --> R["the report - the correction is its own row"]
+  E --> R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| an expense row | never changes after it is saved. `ExpenseUpdate` is removed |
+| a correction | a new row: another expense to add cost, or an adjustment to correct one. Proposed: the adjustment names the expense it corrects |
+| the reports | each new row publishes its event, so the events-only reports ([a-report-is-fed-by-events-only-for-now](#a-report-is-fed-by-events-only-for-now)) need nothing special |
+| ⛔ today | `ExpenseUpdate` overwrites `amount` and `occurred_at` in place and publishes nothing ([expense_update.go](../../../backend/services/expense_service/expense_v1/expense_update.go)) |
+| still open, in [Q6](./context_clarify.md#question) | ~~the adjustment's date~~ ✅ [an-adjustment-counts-on-the-day-it-fixes](#an-adjustment-counts-on-the-day-it-fixes) · whether `ExpenseVoid` stays · how an adjustment that reduces is written, since amounts are always positive today |
+
+---
+
+## an-adjustment-counts-on-the-day-it-fixes
+
+> Owner, in chat (2026-10-19): *"yes, follow recomendation"* — to [Q6](./context_clarify.md#question), *"which day does an
+> adjustment count on: the day it's made, or the day of the expense it fixes?"*. As recommended.
+
+**The verdict.** An adjustment counts on **the day of the expense it fixes**, so the month that holds the mistake becomes
+correct. It is never silent: the adjustment is its own row in that month, saying who made it and when.
+
+```mermaid
+flowchart LR
+  E["expense 77 - 28 Sep - 5.000.000"] --> S["September - 500.000"]
+  A["adjustment - counts on 28 Sep - minus 4.500.000 - made 3 Oct by ani"] --> S
+  A -.->|"October untouched"| O["October"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the day it counts on | the corrected expense's day, copied, never typed |
+| when it was made | its own timestamp and its maker, shown on the row |
+| the report | the event carries the expense's day, so the fold lands it in that day ([a-report-is-fed-by-events-only-for-now](#a-report-is-fed-by-events-only-for-now)) |
+| the month's list | shows the expense and its adjustment together |

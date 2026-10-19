@@ -146,11 +146,11 @@ The first two decisions (three-fields-only, the-reader-finds-the-courier) are **
   Q17 asks for the owner's `source` values. `shopee_instant_01` tests the pickup-code decision.
 - ⚠ **Never copy a sample's values into code, tests or docs.** Real names, a street address, phones, tracking
   numbers and order ids had leaked into fixtures, comments and the clarify; all were replaced with invented ones of
-  the same shape on 2026-10-02, before anything was committed. The samples folder is still not gitignored (Q5).
+  the same shape on 2026-10-02, before anything was committed. The samples are committed and stay so: the owner judged them not sensitive ([the-label-samples-may-be-committed](../../technical/packages/receipt_readers/context_decision.md#the-label-samples-may-be-committed), 2026-10-19).
 - `jnttest.pdf` is almost certainly a **TikTok** label: the same generator as the TikTok J&T Cargo one (Q1).
 
 ## Next
 
-Answers to the clarify's Q1, Q4, Q5, Q8–Q11, Q13, Q14 and Q17 (Q3, Q6, Q7, Q12, Q15 and Q16 are answered, Q2 moved to shipment Q4 and answered there; Q17 the stored receipts of five clean reads; the newest: Q12 Lazada's uncaptioned order id, Q13 OCR for picture labels, Q14 a reservation's number), and
+Answers to the clarify's Q1, Q4, Q8–Q11, Q13, Q14 and Q17 (Q3, Q5, Q6, Q7, Q12, Q15 and Q16 are answered, Q2 moved to shipment Q4 and answered there; Q17 the stored receipts of five clean reads; the newest: Q12 Lazada's uncaptioned order id, Q13 OCR for picture labels, Q14 a reservation's number), and
 [shipment Q1](../../business/shipment/context_clarify.md#question). The owner keeps iterating live receipts,
 and each failure arrives as a new sample.

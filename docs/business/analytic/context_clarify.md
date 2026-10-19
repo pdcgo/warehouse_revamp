@@ -802,6 +802,10 @@ having to be won.
    So the question is live before the pipeline is built: does last month's report **change**, or does the
    correction show in the month it arrived? A business rule, and every technical answer above depends on
    it.
+   🔄 *(2026-10-19)* **Half answered:** an expense is never edited, and a correction is a new row
+   ([an-expense-is-never-edited](./context_decision.md#an-expense-is-never-edited)), counting on the day of the expense it
+   fixes ([an-adjustment-counts-on-the-day-it-fixes](./context_decision.md#an-adjustment-counts-on-the-day-it-fixes)). Left: whether
+   `ExpenseVoid` stays, and how a reducing adjustment is written.
 7. **What lag is acceptable, per report?** *"Yesterday's totals by 6am"* and *"this hour, within a
    minute"* are different systems. ([C8](#critique))
 8. **What does this do that `revenue_service` did not?** It was this design, built and then deleted, and

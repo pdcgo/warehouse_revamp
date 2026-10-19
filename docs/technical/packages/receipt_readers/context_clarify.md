@@ -449,10 +449,8 @@ flowchart LR
    accepts both. → I recommend **PDF only** for now: a photo needs OCR, which is a different package with a
    different cost. ⚠ A PDF can hold a photo too: `jnt_eco_01.pdf` is a label printed as a picture
    ([Q13](#question)), so "PDF only" doesn't mean "text only".
-5. **Sample privacy.** Every sample carries a buyer's full street address, and now the package **returns**
-   it. This repo is **public**, and the samples are untracked today. → I recommend that the PDFs **never get
-   committed**: gitignore `examples/receipt_file_samples/`. CI doesn't need them, since the tests build
-   synthetic labels.
+> ✅ **Answered and deleted: Q5**, *sample privacy*: the label samples are not sensitive and stay committed
+> ([the-label-samples-may-be-committed](./context_decision.md#the-label-samples-may-be-committed)), against my *never commit them*. Kept as a line so the numbers hold.
 
 > ✅ **Answered by your data and deleted: Q6**, *what is a Shopee Instant order's receipt?* It's the pickup code
 > (`Kode Pengambilan`), which is what live orders store

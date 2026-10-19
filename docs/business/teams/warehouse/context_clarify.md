@@ -88,24 +88,23 @@ screen has to call two services, and the owner of one property cannot say who ow
 
 ### the-fee-is-a-percent-with-a-floor-and-a-cap
 
-🔄 *(2026-10-10)* **Rewritten.** It argued for basis points because money was `int64`, and money is float
-([rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point)). Your `fee_percent` stays, the same shape as the markup's float percent. What I still add is
-the floor and the cap's meaning.
+🔄 *(2026-10-19)* **A floor and a cap**, as recommended ([the-fee-has-a-floor-and-a-cap](./context_decision.md#the-fee-has-a-floor-and-a-cap)), and **one rate per warehouse** ([one-rate-per-warehouse](./context_decision.md#one-rate-per-warehouse)).
+Money is float ([rupiah-is-floating-point](../../order/context_decision.md#rupiah-is-floating-point)). What I still add is the cap's meaning.
 
 ```
-fee = clamp( basis * fee_percent / 100 , min_fee , max_fee )
+fee = clamp( goods_cost * fee_percent / 100 , min_fee , max_fee )
 ```
 
 | field | type | meaning |
 | --- | --- | --- |
 | `fee_percent` | `double` | 2.5 = 2.5%, as your payload has it |
-| `min_fee` | `double` | 🆕 **not in your list — I think it is missing.** Picking and packing a Rp 10.000 order is the same work as a Rp 1.000.000 one. At 2.5% the small one pays Rp 250 |
+| `min_fee` | `double` | ✅ decided, default 0 = no floor. Above `max_fee` is refused when saved; equal means a flat fee |
 | `max_fee` | `optional double` | ⚠ **absent = uncapped, and `0` must be REFUSED.** `liability_terms.credit_limit` already carries this trap — nil is unlimited, 0 is nothing — and it is the one field in that table with a warning comment on it |
-| no row at all | — | **charge nothing.** The same default liability already ships: a warehouse that configured nothing is not silently billing anybody |
+| no row at all | — | 🔄 **refused**, never charged nothing ([a-warehouse-with-no-rate-takes-no-orders](./context_decision.md#a-warehouse-with-no-rate-takes-no-orders)). `0%` is how a warehouse charges nothing |
 
 ### the-payload-as-i-would-write-it
 
-Your payload, and the same contract with the three changes I am arguing for. The shape and the types are yours —
+Your payload, and the same contract with the two changes now decided: `team_id` as the scope, and `min_fee`. The shape and the types are yours —
 the changes are fields.
 
 ```proto
@@ -113,8 +112,7 @@ the changes are fields.
 message WarehouseFeeCalculateRequest {
   double order_total = 1;                  //  double order_total    — as you wrote
   uint64 warehouse_id = 2;                 //  uint64 warehouse_id
-                                           //  uint64 team_id        — the SELLING team: the pair's rate, AND the scope
-                                           //  repeated items        — price several warehouses in one call
+                                           //  uint64 team_id        — the ORDERING team: the scope only, never a rate key
 }
 
 message WarehouseFeeCalculateResponse {
@@ -122,18 +120,14 @@ message WarehouseFeeCalculateResponse {
   double order_total = 2;                  //  double order_total    — echoed back as given
   double max_fee = 3;                      //  optional double max_fee — ABSENT = uncapped
   double fee_percent = 4;                  //  double fee_percent   — as you wrote
-                                           //  double min_fee       — the floor the doc has no field for
-                                           //  bool configured       — false = no rate set, charge nothing
-                                           //  Source source         — PAIR row or DEFAULT row answered
+                                           //  double min_fee       — the floor, default 0
   double calculated_warehouse_fee = 5;     //  double calculated_warehouse_fee — frozen by the order
 }
 ```
 
 | change | why |
 | --- | --- |
-| **`team_id` in the request** | without it the rate cannot differ per seller, which **loses a capability liability already has**. ⚠ And it is not only a rate question: a request message carries its team scope as a **field** (`use_scope`), never a header — with no team on this message the interceptor has nothing to scope, so the policy collapses to *root/admin only* or to *any authenticated caller* |
-| **`repeated` items** | the order form's real question is *"what would this order cost me at each of these warehouses"*. One call, one page of rows — the same reason the guideline makes cross-service reads `ByIDs` rather than a call per id. The response already echoes `warehouse_id`, which only earns its place in a batch |
-| **`configured` + `min_fee` + `source`** | `calculated_warehouse_fee = 0` today cannot be told apart from *no rate set*, and both are normal. `min_fee` has no field at all, so a floor cannot be expressed even if you want one |
+| **`team_id` in the request** | 🔄 *(2026-10-19)* **the scope only**: one rate per warehouse ([one-rate-per-warehouse](./context_decision.md#one-rate-per-warehouse)). A request message carries its team as a field (`use_scope`), never a header, the same as inventory's `OrderTransactionCreateRequest`. Without it the policy collapses to *root/admin only* |
 
 🔄 *(2026-10-10)* **My *what it ROUNDS to* line is withdrawn.** It was there so an `int64` ledger would not truncate a
 `double` fee, and the ledger is float too ([every-ledger-keeps-money-as-float64](../../../technical/ledger/mutation_and_ledger_decision.md#every-ledger-keeps-money-as-float64)).
@@ -164,11 +158,11 @@ sequenceDiagram
 | --- | --- |
 | the RPC is **pure** | it reads config, writes nothing, and knows nothing about orders — which is what lets the form preview a fee for a warehouse the seller has not chosen yet |
 | ✅ it takes a **basis**, not an `order_id` | **your payload says so** — `order_total` + `warehouse_id`. `warehouse_service` never depends on `order_service` to price work |
-| ✅ it returns the **rate snapshot** | **your payload says so** — it echoes `max_fee` and `fee_percent`, so a disputed charge can be explained months later. I would add `min_fee` and which row answered |
-| ⛔ it is **batch** | not yet — one warehouse per call. [Why it should be](#the-payload-as-i-would-write-it) |
+| ✅ it returns the **rate snapshot** | **your payload says so** — it echoes `max_fee` and `fee_percent`, so a disputed charge can be explained months later. `min_fee` is echoed too |
+| ✅ it is **one warehouse** | per call, as your payload has it ([the-fee-is-priced-one-warehouse-at-a-time](./context_decision.md#the-fee-is-priced-one-warehouse-at-a-time)) |
 | history | no effective-dating. The order froze the amount, and a `warehouse_fee_terms_log` records who changed the rate and when — the pattern `liability_terms_log` already uses |
 
-### the-rate-moves-in-five-steps-and-no-day-charges-differently
+### the-rate-moves-in-five-steps
 
 The elaboration of [who-owns-the-rate-after-this](#who-owns-the-rate-after-this). **What is true today, read
 off the code** — this is what any answer has to survive:
@@ -193,26 +187,28 @@ is shipped.
 | --- | --- |
 | ✅ **A — the rate moves**, balance posts what it is handed | **DECIDED** — [warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records). One owner, one number. Same shape as [the-cross-markup-belongs-to-the-product](../balance/context_decision.md#the-cross-markup-belongs-to-the-product) |
 | **B — the rate stays**, `warehouse_service` only calculates | ⛔ ruled out: `WarehouseFeeCalculate` would be a proxy for another service's column, and `warehouse_service` would own nothing it can answer for |
-| **C — both hold a copy** | ⛔ **still reachable by accident** — it is what happens if the rate lands in `warehouse_service` while `handling_fee` stays in balance. It is **#5 in the rollup happening a second time**: one number quoted, another charged, nothing comparing them. This is why [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped) is still open |
+| **C — both hold a copy** | ✅ ruled out: `handling_fee` is dropped as the last step of the move ([the-flat-rate-is-dropped-last](./context_decision.md#the-flat-rate-is-dropped-last)) |
 
 **Five steps, each deployable on its own, none of them changing a charge:**
 
 ```mermaid
 flowchart TD
   S1["1 — warehouse_service: terms table, the log, the history RPC, WarehouseFeeCalculate. Nothing charges yet"]
-  S2["2 — backfill: each liability_terms row becomes fee_percent 0, min_fee = max_fee = the flat fee. The same charge, exactly"]
-  S3["3 — orders gains warehouse_fee and the rate snapshot. Finalize calls Calculate and freezes. The event carries the amount"]
+  S2["2 — each warehouse sets fee_percent, min_fee and max_fee. Its default flat fee carries over as 0 percent, min = max = the flat fee"]
+  S3["3 — orders gains warehouse_fee and the rate snapshot. Finalize calls Calculate and freezes, and a warehouse with no rate is refused. The event carries the amount"]
   S4["4 — liability posts the amount from the event. chargeHandlingFee stops reading terms"]
   S5["5 — drop liability_terms.handling_fee and its field on the Credit Terms screen"]
   S1 --> S2 --> S3 --> S4 --> S5
 ```
 
-**The charge only ever changes when a warehouse edits its own rate** — step 2 reproduces today's flat fee as a
-degenerate percent (`0%`, floor = cap), so every pair keeps paying what it pays until somebody decides otherwise.
+🔄 *(2026-10-19)* **Only a seller's own rate changes on the day of step 4.** A warehouse's default flat fee still carries over
+exactly, as `0%` with floor = cap ([the-fee-has-a-floor-and-a-cap](./context_decision.md#the-fee-has-a-floor-and-a-cap)). A seller with its own flat row (`counterparty_id ≠ 0`) has no
+equivalent under [one-rate-per-warehouse](./context_decision.md#one-rate-per-warehouse), and pays the warehouse's rate from that day: [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped).
 
-⚠ **Four things must travel with the rate or the move is a regression:** the **pair grain** and its default row ·
-the **actor + `reason`** on every edit · the **history** RPC · and *nothing configured = charge nothing*. They
-are all built in liability today, and none of them is in your field list.
+⚠ **Two things must travel with the rate or the move is a regression** (the pair grain was dropped by
+[one-rate-per-warehouse](./context_decision.md#one-rate-per-warehouse), and *nothing configured = charge nothing* reversed by
+[a-warehouse-with-no-rate-takes-no-orders](./context_decision.md#a-warehouse-with-no-rate-takes-no-orders)): the **actor + `reason`** on every edit · the **history** RPC. They
+are both built in liability today, and none of them is in your field list.
 
 ### closed-means-refused
 
@@ -232,69 +228,47 @@ An open/close grid nothing consults is decoration — that is its state today.
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **the-request-names-no-seller** | 🆕 `{order_total, warehouse_id}` cannot express *whose* order. It **silently drops the per-pair rate** liability already charges, and it leaves the message with no `use_scope` field — so the roling system has no team to scope the call to and the policy has to be all-or-nothing | add `team_id`, and let it be both the pair key and the scope |
-| **one-warehouse-per-call** | 🆕 the seller's real question is which of several warehouses is cheapest for this order. One call each, and the response echoes `warehouse_id` as though it were already a batch | `repeated` in, `repeated` out |
-| **zero-is-two-different-answers** | 🆕 `calculated_warehouse_fee = 0` means both *this warehouse charges nothing* and *no rate has been configured*, and both are normal states | a `configured` bool. ⚠ The same trap as `max_fee = 0` (cap of zero) vs absent (uncapped) — `liability_terms.credit_limit` has it already |
-| **percent-of-what** | 🔄 **narrowed by the payload — you named `order_total`, and the build has four candidates for that word.** `orders.total` is `subtotal + shipping_cost`, beside `subtotal`, `cogs` and `marketplace_total` | **goods `subtotal`, frozen at finalize.** The warehouse handled goods, not courier money, and `marketplace_total` is `0` on a phone order. One word in the doc settles it |
-| **flat-vs-percent-is-a-live-rate-change** | `liability_terms.handling_fee` is charging money **today**, flat per order. A percent with a cap is not an extension of it — it is a different contract for every existing pair | a migration that reads each pair's flat fee and writes `fee_percent = 0, min_fee = max_fee = <the flat fee>`, reproducing today's charge exactly, and the warehouse edits from there. Never a silent reinterpretation of the old column |
-| **two-services-would-own-one-rate** | if the rate moves to `warehouse_service` and `liability_terms.handling_fee` stays, both are *the fee* and nothing says which wins. See [Contradiction](#the-fee-rate-would-exist-in-two-services) | **liability keeps the posting and the credit limit, and loses the rate.** Drop `handling_fee` from `liability_terms` in the same change that adds `warehouse_fee_terms` |
-| **the-pair-override-disappears** | your field list is one config per warehouse. `liability_terms` is per **pair**, with `counterparty_id = 0` as the default row — so a warehouse can already price one seller differently, and that capability would vanish | keep the pair grain: `(warehouse_id, selling_team_id)`, `selling_team_id = 0` = the default row. The same shape liability already uses, so the screen and the concept carry over |
+| **flat-vs-percent-is-a-live-rate-change** | `liability_terms.handling_fee` is charging money **today**, flat per order. 🔄 *(2026-10-19)* A warehouse's **default** flat fee carries over as `0%`, floor = cap; a **per-seller** flat fee has no form under one rate per warehouse | carry the default row over exactly, and tell a seller with its own row the day its charge changes. Never a silent reinterpretation of the old column |
 | **nobody-reads-the-calendar** | `receiving_hours` has a table, a proto, an editor and a test, and **no caller** — an order can be placed into a warehouse that is shut | [closed-means-refused](#closed-means-refused) |
 | **location-is-free-text** | one string cannot be matched against `region_service`, cannot suggest the nearest warehouse, and cannot fill a courier pickup form. `orders` already freezes provinsi→desa codes **and** names for exactly this reason | the same shape as the order address: codes + names + `address_line`, with the free text kept as the last line |
 | **who-may-change-a-price-others-pay** | `WarehouseInfoUpdate` is `WAREHOUSE_OWNER` / `WAREHOUSE_ADMIN`. A fee is money other teams owe — a rate edited unilaterally at 2am changes every order placed after it | the rate is writable by `ROOT`/`ADMIN` **and** the warehouse owner, every edit is logged with the actor, and the seller sees the rate on the order form before finalizing. If a rate is meant to be *agreed* rather than *set*, that is a different feature and worth saying |
-| **the-fee-is-invisible-to-the-payer** | nothing in the doc lets a selling team **see** a warehouse's rate before choosing it. Today the first sight of the charge is a ledger row | `WarehouseFeeCalculate` is callable by any authenticated team, pricing the caller's own pair, and the warehouse picker shows the fee beside each candidate |
+| **the-fee-is-invisible-to-the-payer** | nothing in the doc lets a selling team **see** a warehouse's rate before choosing it. Today the first sight of the charge is a ledger row | `WarehouseFeeCalculate` is callable by any authenticated team, pricing the caller's own order, and the order form shows the chosen warehouse's fee ([the-fee-is-priced-one-warehouse-at-a-time](./context_decision.md#the-fee-is-priced-one-warehouse-at-a-time)) |
 | **responsibility-is-one-line** | *"manage warehouse teams"* is the only stated responsibility, and it is the one thing `team_service` already does. What is **not** ours is unwritten — stock is inventory's, the balance is liability's, the racks are inventory's | a *Whats Not* section, like the order context has. It is what stops this service growing into the warehouse's everything |
-| **no-cancel-rule** | balance context says `order_fee` *"can be canceled in order canceled"*. Nothing here says whether a **return** or a **lost** parcel refunds the fee — the work was done either way | **the charge stands on return and on lost**, reversed only on `cancel`. Worth one line, because the opposite is arguable and someone will ask |
 
 ---
 
 ## Question
 
 ### does-order-total-include-shipping
-*(narrowed — you named `order_total`, and the build has four numbers that answer to it)* `orders.total` is
-`subtotal + shipping_cost`, beside `subtotal`, `cogs` and `marketplace_total`.
-**→ Recommend goods `subtotal`** — the warehouse should not take a percentage of courier money, and
-`marketplace_total` is `0` for an order taken over the phone, which would silently make that fee 0 too.
+✅ **Answered by your docs and closed (2026-10-19):** the basis is `goods_cost`, goods only — [order/context.md](../../order/context.md)
+line 42 and [order_creation.md](../../order/order_creation.md) line 84 ([the-fee-is-priced-on-goods-cost](./context_decision.md#the-fee-is-priced-on-goods-cost)).
+Kept as a heading so the links into it hold.
+
 
 ### does-the-request-name-the-selling-team
-*(was does-the-fee-stay-per-pair — the payload makes it sharper)* `{order_total, warehouse_id}` has no seller in
-it, so the rate cannot vary per pair — which `liability_terms` does today — and the message has no `use_scope`
-field for the access interceptor. **→ Recommend `team_id` in the request**, serving as both the pair key and the
-scope, with `team_id = 0` on the terms row as the default rate.
+✅ **Answered and closed (2026-10-19):** one rate per warehouse, the same for every seller ([one-rate-per-warehouse](./context_decision.md#one-rate-per-warehouse)),
+against my per-seller override. `team_id` stays in the request as the scope only. Kept as a heading so the links into it hold.
 
 ### does-a-min-fee-exist
-A cap with no floor prices small orders at nearly nothing while the picking work is identical, and the payload
-has no field for one. **→ Recommend adding `min_fee`**, defaulting to 0 so it changes nothing until a warehouse
-sets it.
+✅ **Answered and closed (2026-10-19):** yes, `min_fee`, default 0 ([the-fee-has-a-floor-and-a-cap](./context_decision.md#the-fee-has-a-floor-and-a-cap)), as recommended, after a
+first *no* the same day. Kept as a heading so the links into it hold.
 
 ### what-does-it-return-when-nothing-is-configured
-*(new)* A warehouse that has set no rate and a warehouse that charges 0 return the same response.
-**→ Recommend a `configured` bool**, with *not configured* meaning **charge nothing** — the default liability
-already ships.
+✅ **Answered and closed (2026-10-19):** an error. The order is refused until the warehouse sets its fee ([a-warehouse-with-no-rate-takes-no-orders](./context_decision.md#a-warehouse-with-no-rate-takes-no-orders)),
+against my *charge nothing, with a `configured` flag*. Kept as a heading so the links into it hold.
 
 ### does-it-price-several-warehouses-at-once
-*(new)* The order form's question is which warehouse is cheapest for this order, and the response already echoes
-`warehouse_id` as if it were a batch. **→ Recommend `repeated` items in and out**, one call.
+✅ **Answered and closed (2026-10-19):** no, one warehouse per call ([the-fee-is-priced-one-warehouse-at-a-time](./context_decision.md#the-fee-is-priced-one-warehouse-at-a-time)), as recommended. That
+reversed my own `repeated`: the form picks one warehouse, where the stock is. Kept as a heading so the links into it hold.
 
 ### is-the-old-flat-rate-column-dropped
-*(what is left of who-owns-the-rate-after-this, now that
-[warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records) has settled the fork)*
-`liability_terms.handling_fee` **stores a rate and computes from it today**. The decision leaves balance
-recording only — so does that column go, in the same change?
-**→ Recommend yes, dropped at step 5** of [the move](#the-rate-moves-in-five-steps-and-no-day-charges-differently).
-⚠ Doing nothing is not neutral: a rate in `warehouse_service` while `handling_fee` stays **is** the
-two-copies option, chosen by accident. ⚠ And decide it **before**
-[technical/balance Q8](../../technical/balance/team_balance_design_clarify.md#question) renames that column.
+✅ **Answered and closed (2026-10-19):** yes, dropped as the last of five steps ([the-flat-rate-is-dropped-last](./context_decision.md#the-flat-rate-is-dropped-last)), as recommended.
+[technical/balance Q8](../../../technical/balance/team_balance_design_clarify.md#question)'s rename is moot. Kept as a heading so the links into it hold.
 
 ### how-does-the-amount-reach-balance
-*(what is left of does-the-order-freeze-the-fee —
-[warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records) settled that balance is
-**told**, since it has no rate to compute from)* Does the amount ride on the `OrderPlaced` event balance already
-consumes, or does balance call back for it? And is it kept on `orders.warehouse_fee`, the column the order
-context promises and the build does not have?
-**→ Recommend both: stored on the order, and carried on the event** — [the design](#the-order-freezes-the-fee-and-the-ledger-posts-it).
-An event that carries ids only would force balance to ask somebody, and the only service that knows is the one
-that already has the number.
+✅ **Answered and closed (2026-10-19):** stored on the order and carried on `OrderPlaced` as `warehouse_fee`
+([the-event-carries-the-warehouse-fee](./context_decision.md#the-event-carries-the-warehouse-fee)), as recommended. Kept as a
+heading so the links into it hold.
 
 ### does-the-warehouse-profile-move-out-of-team-service
 `warehouse_infos` (location + both weekly grids) lives in `team_service` and is built. Does it move whole into
@@ -311,8 +285,11 @@ The weekly grid cannot express a public holiday. **→ Recommend a `warehouse_cl
 reason, read by the same check.
 
 ### is-the-fee-refunded-on-return-or-lost
-Balance context reverses `order_fee` on **cancel**. Return and lost are unstated.
-**→ Recommend the charge stands** on both — the warehouse did the work.
+✅ **Overtaken and closed (2026-10-19):** a return keeps the fee ([a-return-keeps-both-fees](../../order/context_decision.md#a-return-keeps-both-fees)),
+`lost` triggers nothing and is settled by hand ([a-lost-parcel-is-settled-by-hand](../../order/context_decision.md#a-lost-parcel-is-settled-by-hand)),
+and a cancel refunds it in full ([a-cancel-refunds-the-warehouse-fee-in-full](../../order/context_decision.md#a-cancel-refunds-the-warehouse-fee-in-full)).
+Kept as a heading so the links into it hold.
+
 
 ### is-a-warehouse-ever-two-buildings
 Everything built assumes `warehouse_id` is a warehouse **team**. If one team can run two locations, that
@@ -328,29 +305,8 @@ are team's. **→ Recommend a *Whats Not* section** naming those four, as the or
 
 ## the-fee-rate-would-exist-in-two-services
 
-One decision — *the fee config belongs to `warehouse_service`* — leaves **four** sites asserting the old
-answer. Grouped by cause, not by symptom.
-
-| site | what it says today | |
-| --- | --- | --- |
-| `liability_terms.handling_fee` | *"Flat per order, whole rupiah"* — and it is **charging** | the rate, in the wrong service and the wrong shape |
-| `chargeHandlingFee` ([order_fees.go](../../../backend/services/liability_service/liability_v1/order_fees.go)) | computes the fee from those terms at push time | would have to post a number it is handed |
-| the Credit Terms screen | edits *Handling fee* beside the credit limit | the fee field leaves, the limit stays |
-| [technical/balance Q8](../../technical/balance/team_balance_design_clarify.md#question) | asks whether `handling_fee` should be **renamed** `order_fee` | ⚠ **overtaken** — a column about to move should not be renamed first |
-
-✅ **Which is wrong is no longer a judgement call** —
-[warehouse-prices-balance-records](./context_decision.md#warehouse-prices-balance-records) says balance *handles
-and records*, so **every site above that COMPUTES is stale**. What is left is disposal and ordering:
-**→ Recommend** answering [is-the-old-flat-rate-column-dropped](#is-the-old-flat-rate-column-dropped) **before**
-that Q8 rename runs, or the rename lands on a column that is being deleted.
-
-```mermaid
-flowchart LR
-  D["decision — the rate belongs to warehouse_service"] --> S1["liability_terms.handling_fee — stale"]
-  D --> S2["chargeHandlingFee computes — stale"]
-  D --> S3["Credit Terms screen field — stale"]
-  D --> S4["the handling_fee to order_fee rename — overtaken"]
-```
+✅ *(2026-10-19)* **Resolved by decision:** all four sites go in the move's five steps, and the rename is moot ([the-flat-rate-is-dropped-last](./context_decision.md#the-flat-rate-is-dropped-last)).
+⚠ Live in the code until built. Kept as a heading so the links into it hold.
 
 ## money-is-a-double-here-and-an-integer-everywhere-else
 
@@ -365,7 +321,7 @@ that *"it reverses the build everywhere"*. The build has not moved yet.
 
 **→ Recommend** `warehouse_service` is built `double` from the start, as your payload is. Liability's `int64` moves in
 the same change that makes it post the amount from the event (step 4 of
-[the move](#the-rate-moves-in-five-steps-and-no-day-charges-differently)), so the fee crosses no type boundary once it
+[the move](#the-rate-moves-in-five-steps)), so the fee crosses no type boundary once it
 is live.
 
 ```mermaid
