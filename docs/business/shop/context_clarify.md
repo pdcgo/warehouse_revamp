@@ -10,6 +10,10 @@ other services may ask it.**
 
 | | |
 | --- | --- |
+| ✅ answered (2026-10-19) | [Q3](#question) — close, never delete, all five parts as recommended: [a-shop-is-closed-never-deleted](./context_decision.md#a-shop-is-closed-never-deleted) · [a-closed-shop-refuses-only-new-selling](./context_decision.md#a-closed-shop-refuses-only-new-selling) · [a-close-leaves-the-drafts-waiting](./context_decision.md#a-close-leaves-the-drafts-waiting) · [a-shop-code-is-unique-among-open-shops](./context_decision.md#a-shop-code-is-unique-among-open-shops) · [a-closed-shop-locks-all-but-its-grants](./context_decision.md#a-closed-shop-locks-all-but-its-grants). **3 open** — Q4, Q5, Q6 |
+| ✅ answered (2026-10-19, later) | [Q4](#question) — marketplace and team fixed at creation: [a-shops-marketplace-and-team-are-fixed](./context_decision.md#a-shops-marketplace-and-team-are-fixed). **2 open** — Q5, Q6 |
+| ✅ answered (2026-10-19, later still) | [Q5](#question) — no `platform_shop_ref`, the import trusts the picked shop: [the-picked-shop-is-trusted-no-platform-ref](./context_decision.md#the-picked-shop-is-trusted-no-platform-ref). **1 open** — Q6 |
+| ✅ answered (2026-10-19, last) | [Q6](#question) — a grant goes only to a team member: [a-grant-goes-only-to-a-team-member](./context_decision.md#a-grant-goes-only-to-a-team-member). **No question is open here** |
 | 🔄 narrowed (2026-10-06) | [Q6](#question) — *leaving the team ends a grant* was decided in the user context and is built ([removing-a-member-drops-their-shop-access](../user/context_decision.md#removing-a-member-drops-their-shop-access)); left: may a grant be made to a non-member (recommend no) |
 | 🔄 elaborated (2026-10-01) | [Q3](#question) — five parts: close only · only new selling refused · waiting drafts stay · the code unique among **open** shops (🔄 my *reserved* revised) · grants stay editable. ⛔ Checked against the code: **four built sites refuse a deleted shop**, and a fifth is being built — financial_account's *Point a shop here* ([A shop's life](#a-shops-life--q3)) |
 | ✅ answered (2026-09-29) | [Q2](#question) — its own `shop_service`: [the-shop-gets-its-own-service](./context_decision.md#the-shop-gets-its-own-service). ⚠ `ShopAccessCheck` and the primary CS were built into `selling_service` an hour earlier (f6dab3b) — they move with the shop |
@@ -92,6 +96,8 @@ now that a grant is real access. **Q4 and Q5 cost least now** — the move to `s
 | orders · settlement · expense · importer | ask whether a shop is the team's, and whether this person may work on it | every write |
 
 ### A shop's life — Q3
+
+✅ *(2026-10-19)* **Decided as drawn here** — Q3's five parts. ⚠ Not built: every site below still refuses a deleted shop.
 
 ```mermaid
 stateDiagram-v2
@@ -212,53 +218,23 @@ erDiagram
    [the-shop-gets-its-own-service](./context_decision.md#the-shop-gets-its-own-service). It also answers
    architecture Q6. Kept as a line so the numbers hold.
 
-3. **What does *delete* do to a shop with history — and what may a closed shop still do?** Critique 3.
-   **→ Recommend: close, not delete.** The platform pays out a shop's last orders and its balance **after** it stops
-   selling, and today every one of those payouts is refused. 🔄 *Elaborated 2026-10-01* — five parts, each its own
-   yes or no. Every site, today and after: [A shop's life](#a-shops-life--q3).
+3. ✅ **Answered 2026-10-19 — close, never delete**, all five parts as recommended:
+   [a-shop-is-closed-never-deleted](./context_decision.md#a-shop-is-closed-never-deleted) (3a) ·
+   [a-closed-shop-refuses-only-new-selling](./context_decision.md#a-closed-shop-refuses-only-new-selling) (3b) ·
+   [a-close-leaves-the-drafts-waiting](./context_decision.md#a-close-leaves-the-drafts-waiting) (3c) ·
+   [a-shop-code-is-unique-among-open-shops](./context_decision.md#a-shop-code-is-unique-among-open-shops) (3d) ·
+   [a-closed-shop-locks-all-but-its-grants](./context_decision.md#a-closed-shop-locks-all-but-its-grants) (3e).
+   Every site, before and after: [A shop's life](#a-shops-life--q3). Kept as a line so the numbers hold.
 
-   | | the question | → Recommend |
-   | --- | --- | --- |
-   | **3a** | close **instead of** delete, or keep a delete for a shop made by mistake? | **Close only.** *"It has no history"* means asking five services (orders, drafts, settlement, expense, accounts), and a draft can land mid-check. A mistaken shop is closed, and the default *open* filter hides it |
-   | **3b** | what does a closed shop refuse? | **Only new selling**: an order, a draft pushed or promoted, the order form's picker. Everything else runs |
-   | **3c** | its drafts still waiting? | **The close goes through. They stay, and promote refuses** *"the shop is closed"*: the CS deletes them, or the owner reopens. Refusing the close would let one forgotten draft keep a shop open |
-   | **3d** | its `shop_code` | 🔄 **Revised: unique among OPEN shops, as today.** I had *reserved while closed*, but the code is a label `ShopUpdate` already edits, and no other table stores it. Reopen refuses while an open shop holds it. Rename one, then reopen. It also spares the migration from rewriting codes already reused |
-   | **3e** | who closes it, and what still works on it? | **Close and Reopen take `ShopDelete`'s roles**: owner, admin. **Grants and the primary CS stay editable.** An import needs a primary CS ([a-shop-with-no-primary-cs-cannot-import](../settlement/settlement_importer_decision.md#a-shop-with-no-primary-cs-cannot-import)), so if theirs leaves after the close, the last statements wait until someone names another |
+4. ✅ **Answered 2026-10-19 — both fixed at creation**, as recommended:
+   [a-shops-marketplace-and-team-are-fixed](./context_decision.md#a-shops-marketplace-and-team-are-fixed). Kept as a line so the numbers hold.
 
-   **How `ShopAccessCheck` says it:** the `Shop` it returns carries `status`, and **each caller decides**. The
-   importer, settlement and the accounts take a closed shop, and an order refuses it. What a closed shop may do is
-   the caller's rule, so it lives with the caller, not as a flag on the shop's RPC.
-   ⚠ It changes the importer's check: [its spec](../settlement/settlement_importer_decision.md#the-shop-is-checked-before-the-file-is-stored)
-   refuses a deleted shop (my reading, marked ⚠ there), and a closed shop must pass it.
-   ⚠ **The shops already deleted become `closed`**, with `closed_at` set to their `updated_at`. They come back under
-   *Closed*, and their report rows get their names back instead of `#7`.
+5. ✅ **Answered 2026-10-19 — no `platform_shop_ref`; the picked shop is trusted**:
+   [the-picked-shop-is-trusted-no-platform-ref](./context_decision.md#the-picked-shop-is-trusted-no-platform-ref). Against my first
+   recommendation, as my revised one. Kept as a line so the numbers hold.
 
-4. **Are a shop's marketplace and team fixed once it exists?** 🆕 Critique 5.
-   **→ Recommend yes, both.** A storefront cannot change platforms or teams: the marketplace picks the import
-   and scopes the ref, and settlement freezes `shop_id` and `team_id` on every row. `ShopUpdate` stops taking
-   `marketplace`. Nothing moves a shop between teams today, and the rule says nothing will. A marketplace
-   picked wrongly is fixed by closing the shop — it has no history yet — and opening the right one.
-
-5. **Does a shop record who it is on the platform?** 🆕 Critique 7.
-   **→ Recommend yes — `platform_shop_ref`**: the seller username or shop id the platform shows, required at
-   creation, unique per marketplace among open shops **across all teams**. A storefront can then be
-   registered only once, and a Shopee statement's `Username (Penjual)` is checked against its shop even when
-   no ref finds an order — the case the file check cannot see.
-   ⚠ A TikTok statement names no shop, so it gains nothing there — and uniqueness across teams tells a team
-   that a storefront is already registered elsewhere.
-
-6. **May a grant be made to somebody who is not in the shop's team?** 🔄 *(2026-10-06, narrowed)* Half of the first
-   question — *leaving the team ends every shop grant* — was decided in the user context
-   ([removing-a-member-drops-their-shop-access](../user/context_decision.md#removing-a-member-drops-their-shop-access)) and is built: a removal is announced, and the shop side
-   drops the person's grants in that team, the primary flag with them. What is left is the other half.
-   **→ Recommend no.** `ShopUserAdd` refuses a user who is not a member of the shop's team — so a shop's access list
-   is always people who can work there. *(Opened 2026-09-29 as Critique 9 — by *manage*.)* A stale
-   grant opens nothing today, since the interceptor refuses a non-member first. What it breaks is the list you now
-   manage, which shows people who left — and ⛔ now that a grant gates writes
-   ([a-write-needs-a-grant-or-a-manager](./context_decision.md#a-write-needs-a-grant-or-a-manager)), a person who
-   rejoins gets their old shops back without anyone granting them. That is real access, not only a wrong list.
-   ⚠ The price: the shop has to hear when a membership ends — one event from `user_service`, or a membership
-   check when the list is read.
+6. ✅ **Answered 2026-10-19 — no; a grant goes only to a member of the shop's team**, as recommended:
+   [a-grant-goes-only-to-a-team-member](./context_decision.md#a-grant-goes-only-to-a-team-member). Kept as a line so the numbers hold.
 
 7. ✅ **Answered 2026-09-29 — the primary CS is a flag on a grant**, as recommended:
    [the-primary-cs-is-a-flag-on-a-grant](./context_decision.md#the-primary-cs-is-a-flag-on-a-grant). Kept as a line so

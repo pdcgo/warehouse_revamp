@@ -130,3 +130,33 @@ flowchart LR
 | ⏸ **parked** | *which consumer goes first* · the settlement event and its publisher · when the analytic service gets built |
 | ⛔ **NOT parked — it is now the whole job** | the contract itself: what a source must promise, what the fold must promise, what a report must promise ([C17](./context_clarify.md#critique) → [what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) |
 | ⛔ **also NOT parked** | the three named report tables still contradict the doc's stated responsibility, and a **pattern** is exactly the wrong place for them ([C15](./context_clarify.md#critique)) |
+
+---
+
+## a-report-is-fed-by-events-only-for-now
+
+> Owner, in chat (2026-10-19): *"for now, i prefer 1"* — to [Q2](./context_clarify.md#question), *"events plus a timer that
+> catches up from the log, or events only?"*, option 1. **Against my recommendation** (two paths, one fold).
+
+**The verdict.** For now, a report is updated **only by events**, as [context.md](./context.md) draws it: source log → broker →
+streaming → report. There is no timer that reads the log to catch up. A lost event — the service saved the row and crashed
+before publishing — leaves the report short until a person notices. *"For now"*: the catch-up path can be added later without
+changing a source log.
+
+```mermaid
+flowchart LR
+  L["source log - row 501, +96.000"] -->|"event"| B["broker"]
+  B --> S["streaming"]
+  S --> R["report"]
+  L -.->|"a lost event - the report stays short until noticed"| X["no catch-up path, for now"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the only path | the event — the broker is load-bearing for every report |
+| a lost publish | the report is wrong until noticed; with [no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted), that is an accepted cost |
+| the repair | whatever [settlement's drift question](../settlement/context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other) settles — it now covers every lost event |
+| the nightly reconcile | not built — [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) item 2 still promises it: [the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other](./context_clarify.md#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other) |
+| later | the catch-up path ([what-the-pattern-owes-an-implementer](./context_clarify.md#what-the-pattern-owes-an-implementer)) needs no change to a source log, only a way to read one from row N |

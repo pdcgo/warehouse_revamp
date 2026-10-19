@@ -13,6 +13,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [terms-live-on-the-pair-detail](#terms-live-on-the-pair-detail) | Credit Terms is a **section** of the pair detail, not a screen. ⚠ opened the default-row question below |
 | [the-summary-is-tiles-on-the-list](../frontend/liability_list_decision.md#the-summary-is-tiles-on-the-list) | *Summarize All Balance* is the **tiles on `/liability`** — and the totals must come from the SERVER, not the loaded page |
 | [the-default-terms-row-is-a-dialog-on-the-list](../frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) | `counterparty_id = 0` is edited in a **dialog opened from the list**. ⚠ against recommendation. Fixes a live regression |
+| [the-ledger-charges-the-frozen-line-total](#the-ledger-charges-the-frozen-line-total) | the markup is the product's, applied once at the take — the ledger posts the frozen line totals and reads no markup; `liability_terms.product_markup_bp` is dropped |
 
 ---
 
@@ -345,3 +346,39 @@ until somebody overrides it, which is what an exception-to-a-rule should look li
 
 ➡ **Moved** to [frontend/liability_list_decision.md](../frontend/liability_list_decision.md#the-default-terms-row-is-a-dialog-on-the-list) — a screen decision (owner, 2026-10-02: screen decisions live in `docs/technical/frontend/`).
 
+---
+
+## the-ledger-charges-the-frozen-line-total
+
+> Owner, in chat (2026-10-19): *"yes, per products"* — to *"is the markup set per product, or per pair of teams?"*, with
+> the fix stated beside it: liability posts the frozen line totals and reads no markup;
+> `liability_terms.product_markup_bp` is dropped. Answers the clarify's Q10, *"which markup does the LEDGER charge from"*,
+> in a simpler form than its recommendation (read the product's rate at the fee).
+
+**The verdict.** The markup is the **product's** — `products.cross_markup_bps`, as
+[the-cross-markup-belongs-to-the-product](../../business/balance/context_decision.md#the-cross-markup-belongs-to-the-product)
+already said. Inventory's take applies it and freezes each line's `total`
+([inventory-computes-the-markup](../../business/order/context_decision.md#inventory-computes-the-markup)). The ledger reads **no
+markup**: the product fee it posts for each owning team is **Σ that team's frozen line `total`**
+([the-product-fee-is-the-line-total](../../business/order/context_decision.md#the-product-fee-is-the-line-total)).
+`liability_terms.product_markup_bp` is dropped.
+
+```mermaid
+flowchart LR
+  P["products.cross_markup_bps - 20%"] --> T["inventory take - line total 72.000, frozen"]
+  T --> E["OrderPlaced - each line carries its total"]
+  E --> F["liability - product fee = sum of the owner's line totals = 72.000"]
+  L["liability_terms.product_markup_bp"] -.->|"dropped"| X["read by nothing"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the rate | per product, `products.cross_markup_bps` — the same for every borrower |
+| applied | once, by inventory's take — frozen on `order_items` |
+| the fee | Σ `total` of the owning team's lines, one fee per owning team per order — posted as frozen, never recomputed |
+| `OrderPlacedLine` | gains the line's frozen `total` (`double`, [rupiah-is-floating-point](../../business/order/context_decision.md#rupiah-is-floating-point)) — today it carries only `unit_cost` |
+| `order_fees.go` | stops reading `terms.ProductMarkupBP`; sums the event's line totals |
+| dropped together | `liability_terms.product_markup_bp`, its proto field and the frontend's pass-through — in one change, or the fee breaks |
+| old fees | none in production to reinterpret ([no-switch-over-the-ledgers-replace-todays-tables](../stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)) |

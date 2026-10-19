@@ -72,6 +72,11 @@ permanently wrong number with nothing to detect it.
 **→ Recommend:** draw the reconcile arrow. It is the same arrow that answers *rebuild*, *late events* and
 *lost publish* at once — see [log-is-the-source-broker-is-the-trigger](#log-is-the-source-broker-is-the-trigger).
 
+🔄 *(2026-10-19)* **Decided the other way — events only, for now**
+([a-report-is-fed-by-events-only-for-now](./context_decision.md#a-report-is-fed-by-events-only-for-now)). So the stale line is
+[mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) `# Statistic Design.` item 2. **→ Recommend** it
+reads *"Statistic is streaming"*, or *"streaming; a reconcile later"* — so no reader builds on a reconcile that is not planned.
+
 ```mermaid
 flowchart LR
   src["Source Truth Logs"] -->|"the drawn path"| msg["Message Broker"]
@@ -744,6 +749,10 @@ having to be won.
 
 # Question
 
+> ✅ **Answered in chat (2026-10-19):** Q2 — events only, for now ([a-report-is-fed-by-events-only-for-now](./context_decision.md#a-report-is-fed-by-events-only-for-now)),
+> against my two paths. One contradiction left to you: mutation_and_ledger.md still promises a nightly reconcile
+> ([the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other](#the-reconcile-pass-exists-in-one-doc-and-has-no-box-in-the-other)). **7 open.**
+
 > ✅ **CLOSED and removed:** *"which numbers, for whom"* ([reports-belong-to-the-consumer](./context_decision.md#reports-belong-to-the-consumer)
 > → [analytic-is-a-pattern-not-a-data-product](./context_decision.md#analytic-is-a-pattern-not-a-data-product))
 > · *"is Admin Team team 1"* — the audience no longer exists here, re-routed to
@@ -762,11 +771,9 @@ having to be won.
    need your eye: **F4** — a fold reads nothing mutable, which is what your `Preload If Needed` box
    invites a bug on — and **S6**, a cursor-paged `LogRead` on every source, which is the pattern's one
    real build cost.
-2. ⛔ **Do you accept TWO PATHS — a best-effort fast path and a convergent tick?** It is the reconcile
-   arrow [mutation_and_ledger.md](../../technical/ledger/mutation_and_ledger.md) already promises, and it
-   is what makes the broker optional to *correctness*. ⚠ It also makes the thin-vs-fat event argument
-   **stop mattering**. Say if you would rather keep the broker load-bearing — that is the one choice the
-   rest of the contract cannot compensate for.
+2. ✅ *(2026-10-19)* **Answered: events only, for now** — [a-report-is-fed-by-events-only-for-now](./context_decision.md#a-report-is-fed-by-events-only-for-now),
+   against my *two paths*. The broker is load-bearing; a lost event is repaired by hand. ⚠ In Q1's contract, the
+   truth-path rules (the cursor, **S6** `LogRead`) are parked with it.
 3. ⛔ **Is a GRAIN a TABLE, or a KEY?** ([C15](#critique)) — **elaborated into a full answer**:
    [a-grain-is-a-key-a-measure-set-is-a-table](#a-grain-is-a-key-a-measure-set-is-a-table). The short
    version: **the question is a false binary**, and the false binary is what produced the three

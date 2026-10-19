@@ -453,7 +453,7 @@ sequenceDiagram
 | | |
 | --- | --- |
 | the service | `ShopService`, in `selling_service` ([selling.proto](../../../proto/warehouse/selling/v1/selling.proto)) — shops live there · ⚠ **Amended** by §Flow 1 *(owner, 2026-09-29)*: the call is **`ShopAccessCheck`** — the shop, its primary CS and the caller's access in one answer ([one-call-answers-the-shop-and-the-access](../shop/context_decision.md#one-call-answers-the-shop-and-the-access)) |
-| the right shop | ⚠ my reading: `ShopDetail(team_id, shop_id)` answers it — the shop exists in the request's team, is not `deleted`, and its `marketplace` is the RPC's platform, so a TikTok file into a Shopee shop fails here · 🔄 read off `ShopAccessCheck`'s `shop` now |
+| the right shop | ⚠ my reading: `ShopDetail(team_id, shop_id)` answers it — the shop exists in the request's team, is not `deleted`, and its `marketplace` is the RPC's platform, so a TikTok file into a Shopee shop fails here · 🔄 read off `ShopAccessCheck`'s `shop` now · 🔄 *(2026-10-19)* a **closed** shop passes — its last payouts arrive after the close ([a-closed-shop-refuses-only-new-selling](../shop/context_decision.md#a-closed-shop-refuses-only-new-selling)) |
 | the caller may work on it | shop access (#86): `shop_users`, one grant of one user to one shop. ⚠ **Nothing reads it today** except its own three RPCs, so this is its first enforcement — and who counts is [importer Q12](./settlement_importer_clarify.md#question), ➡ re-routed to [shop Q1](../shop/context_clarify.md#question) · 🔄 `ShopAccessCheck`'s `is_have_access` now |
 | when it fails | ⚠ my proposal: an `ERROR` line naming what failed, then the stream ends |
 | the order | before the upload — a refused request stores nothing |

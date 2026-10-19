@@ -612,6 +612,8 @@ flowchart LR
 
 ## two markups exist, and the screen and the ledger read different ones
 
+✅ *(2026-10-19)* **Decided — one number, the product's; the ledger posts the frozen line totals and `liability_terms.product_markup_bp` is dropped** ([the-ledger-charges-the-frozen-line-total](../../technical/balance/team_balance_design_decision.md#the-ledger-charges-the-frozen-line-total)). ⚠ Still live in the code until that change lands — the take now freezes the product's rate while [`order_fees.go`](../../../backend/services/liability_service/liability_v1/order_fees.go) bills the pair's.
+
 **Found while acting on [the-cross-markup-belongs-to-the-product](./context_decision.md#the-cross-markup-belongs-to-the-product).** It is not a doc-vs-doc drift like the one below — it is a **doc-vs-code** one, and it is live.
 
 The cross-product markup is stored **twice**, in two services, and nothing keeps the two equal:
