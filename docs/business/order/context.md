@@ -28,7 +28,7 @@ when order created. its bring 4 things.
     - `id`, primary key
     - `idempotency_key`
     - `transaction_id`
-    - `order_external_ref_id`, its for order uniqueness, its cannot empty
+    - `order_external_ref_id`, its for duplicate warning, its cannot empty
     - `shop_id`
     - `team_id`
     - `warehouse_id`
@@ -90,7 +90,7 @@ when order created. its bring 4 things.
 
     field that must have:
     - `id`, primary key
-    - `order_external_ref_id`, its for order uniqueness, its cannot empty
+    - `order_external_ref_id`, its for order duplicate warning, its cannot empty
     - `shop_id`
     - `team_id`
     - `shipment_channel_id`
@@ -345,36 +345,6 @@ how we charge that 2 item is managed by balance service that explained in [balan
 
 
 
-## Stock Ownership When Order Return. 
-```mermaid
-flowchart TD
-
-s(("Start"))
-e(("End"))
-
-s-->ret["Order Return Happen"]
-ret-->iscross{"Is Product Cross"}
-iscross-->|yes|linkmap{"Is Product Have LinkMap"}
-    linkmap-->|no|pcreate["Duplicate Cross Product"]
-        pcreate-->own["Set Ownership to Own"]
-        own-->reg["Register To LinkMap"]
-        reg-->claim["Claim Cross Return Stock With Own Product"]
-    linkmap-->|yes|pget["Getting Own Product Have Linked"]
-        pget-->claim
-    
-    claim-->ivcreate["Create Return"]
-
-iscross-->|no|ivcreate
-ivcreate-->e
-
-
-```
-### What Is Product LinkMap
-1. its use for prevent duplicate create product when order return happened.
-2. its use for map product ownership when its return.
-
-
-
 ## Order Shipments.
 ### who change status `shipping` and `shipped`
 1. `shipping` to `shipped`
@@ -384,4 +354,4 @@ ivcreate-->e
 3. `shipping` to `return`
     - customer service check manually to external platform and mark return manually.
 4. `return` to `lost`
-    - customer service check manually to external platform and mark return manually.
+    - customer service check manually to external platform and mark lost manually.

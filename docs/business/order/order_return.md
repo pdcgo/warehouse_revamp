@@ -17,11 +17,12 @@
     that have fields:
     - `id` primary key
     - `team_id`, team that have map
-    - `shared_product_id`, composite unique with `to_product_id`, shared/cross product 
+    - `shared_product_id`, composite unique with `team_id`, shared/cross product 
     - `own_product_id`, product id that owned by `team_id`
-    - `warehouse_id`
     - `updated_at`
     - `created_at`
+
+
 
 
 ## Order Return Flow.
@@ -40,22 +41,24 @@ retconf-->iscross{"Is Product Shared/Cross"}
 
 subgraph "Iterate Over Order Item"
     
-    iscross-->|no|setretconf["Set Team Return Configuration, `warehouse_id` from order."]
-        setretconf-->itemlist
+    iscross-->|no|itemlist["Item List Payload"]
 
     iscross-->|yes|prodlink["Get Product Map"]
     prodlink-->ismapped{"is cross product mapped"}
     
 
-    ismapped-->|no|clone["Clone Product"]
-        clone-->mapadd["Add Product Map"]
+    
 
     
 end
 
-mapadd-->|add to item list payload |itemlist["Item List Payload"]
+
+
 ismapped-->|yes, add to item list payload|itemlist
 itemlist-->invpay
+
+ismapped-->|no|merr["Error"]
+    merr-->e
 
 invpay-->calinv["Call Inventory Service to Create Return Transaction"]
 calinv-->change["Change Order Status"]

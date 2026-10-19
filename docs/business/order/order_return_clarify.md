@@ -4,6 +4,55 @@ What [order_return.md](./order_return.md) leaves open. **That doc is yours — t
 are deleted, so this file is always the current open set. Decisions land in
 [context_decision.md](./context_decision.md).
 
+> ✅ **Your edits (2026-10-19):** item 2 of §Table Must Have and the own branch of §Order Return Flow —
+> [the-map-table-still-has-warehouse-and-to-product](#the-map-table-still-has-warehouse-and-to-product) and the last critique resolved.
+> **Nothing is open here.**
+
+> ✅ **Answered in chat (2026-10-19), last:** [return_user_id-is-unread](#return_user_id-is-unread) — dropped
+> ([return-user-id-is-dropped](./context_decision.md#return-user-id-is-dropped)). **No question is open here.** Left: the
+> Contradictions below and the one critique — all yours to draw.
+
+> ✅ **Answered in chat (2026-10-19), after that:** [a-short-delivered-parcel-has-no-home](#a-short-delivered-parcel-has-no-home) —
+> accepted, the gap written off ([a-short-return-is-accepted-and-the-gap-written-off](./context_decision.md#a-short-return-is-accepted-and-the-gap-written-off)). **1 open.**
+
+> ✅ **Answered in chat (2026-10-19), later still:** [the-returned-unit-keeps-the-lenders-label](#the-returned-unit-keeps-the-lenders-label) —
+> relabel at the accept ([a-returned-borrowed-unit-is-relabelled-at-the-accept](./context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)). **2 open.**
+
+> ✅ **Answered in chat (2026-10-19), later:** [when-must-the-map-exist](#when-must-the-map-exist) — at order create
+> ([a-borrowed-line-needs-its-map-at-create](./context_decision.md#a-borrowed-line-needs-its-map-at-create)). **3 open.**
+
+> 🔄 **Re-examined 2026-10-19 — your new §Order Return Flow** (a §Product Return Mapper was drafted and removed the same day). Nothing is cloned; an unmapped
+> borrowed line is an error ([a-return-never-clones-a-product](./context_decision.md#a-return-never-clones-a-product)).
+> ✅ [who-names-a-cloned-product](#who-names-a-cloned-product) is moot. 🆕 [when-must-the-map-exist](#when-must-the-map-exist) ·
+> [the-returned-unit-keeps-the-lenders-label](#the-returned-unit-keeps-the-lenders-label). ⛔ [the-map-table-still-has-warehouse-and-to-product](#the-map-table-still-has-warehouse-and-to-product),
+> and in order context [the-stock-ownership-section-still-clones](./context_clarify.md#the-stock-ownership-section-still-clones).
+> Four settled critiques pruned. **4 open.**
+
+> ✅ **Answered in chat (2026-10-19):** [does-the-accept-record-where-it-was-accepted](#does-the-accept-record-where-it-was-accepted) — yes,
+> automatically ([the-accept-records-where-it-was-accepted](./context_decision.md#the-accept-records-where-it-was-accepted)). **3 open.**
+
+> ✅ **Closed in chat (2026-10-17), after:** [what-bounds-a-forced-return](#what-bounds-a-forced-return) — no, it follows §Status Move
+> ([a-forced-return-follows-the-status-move](./context_decision.md#a-forced-return-follows-the-status-move)) · [a-claimed-return-that-never-arrives](#a-claimed-return-that-never-arrives)
+> — `return → lost` ([a-return-that-never-arrives-goes-lost](./context_decision.md#a-return-that-never-arrives-goes-lost)). **4 open.**
+
+> ✅ **Answered in chat (2026-10-17), last:** [who-moves-the-drifted-stock-back](#who-moves-the-drifted-stock-back) — not drift; the team
+> transfers it if it wants ([stock-in-the-return-warehouse-is-not-drift](./context_decision.md#stock-in-the-return-warehouse-is-not-drift)). **6 open.**
+
+> ✅ **Answered in chat (2026-10-17), later still:** [which-warehouses-may-be-named](#which-warehouses-may-be-named) — any
+> warehouse ([a-team-may-pick-any-return-warehouse](./context_decision.md#a-team-may-pick-any-return-warehouse)), against my
+> *only one it works with*; one with no fee agreement takes the returns uncharged. **7 open.**
+
+> ✅ **Answered in chat (2026-10-17), later:** [the-gate-is-on-the-order-not-the-config](#the-gate-is-on-the-order-not-the-config) —
+> the team's row, turned on after every team has one ([create-refuses-a-team-with-no-return-warehouse](./context_decision.md#create-refuses-a-team-with-no-return-warehouse)).
+> The critiques `the-gate-contradicts-its-own-twin` and `every-team-stops-at-rollout` are deleted — the decision carries the
+> rollout order. **8 open.**
+
+> ✅ **Answered in chat (2026-10-17):** the return warehouse lives in `team_return_configurations`, and
+> `team_infos.return_warehouse_id` is dropped as stale
+> ([the-return-warehouse-lives-in-team-return-configurations](./context_decision.md#the-return-warehouse-lives-in-team-return-configurations)),
+> against my *no new table*. The critique `the-config-already-ships-elsewhere` is deleted; its
+> [Contradiction](#the-return-warehouse-moved-out-of-team-infos) lists what still names `team_infos`. Questions unchanged — 9 open.
+
 > 🔄 **From inventory (2026-10-16):** this doc is **not** parked — only inventory's half of a return is
 > ([order-returns-calls-are-return-mds-brief](../inventory/context_decision.md#order-returns-calls-are-return-mds-brief)). Your three
 > calls into inventory are the brief [return.md](../inventory/return.md) will answer. Nothing here changes.
@@ -87,59 +136,61 @@ Siblings: [order context](./context_clarify.md) · [order_creation](./order_crea
 
 ### the-return-warehouse-as-decided
 
-✅ Settled in three answers: **one per team**, **read when the return happens**, and it **need not be the
-warehouse that shipped the order**. The order carries nothing about returns.
+✅ Settled in four answers: **one per team**, **read when the return happens**, it **need not be the warehouse that
+shipped the order**, and it **lives in `team_return_configurations`**
+([the-return-warehouse-lives-in-team-return-configurations](./context_decision.md#the-return-warehouse-lives-in-team-return-configurations)).
+The order carries nothing about returns.
 
 ```mermaid
 flowchart LR
-  T["team_infos.return_warehouse_id — one per team, ALREADY SHIPPED"] -->|"read at the moment of the return"| R["the return being received"]
+  T["team_return_configurations - one row per team"] -->|"read at the moment of the return"| R["the return being received"]
   R --> MV["the inventory movement records which warehouse got it"]
   O["orders"] -.->|"carries no return warehouse"| R
+  X["team_infos.return_warehouse_id"] -.->|"stale - dropped"| T
 ```
 
 | | | |
 | --- | --- | --- |
-| the configuration | `team_infos.return_warehouse_id` | ✅ exists |
-| a `team_return_configurations` table | not built | ⚠ the owner's §Table Must Have still asks for it |
+| the configuration | `team_return_configurations` — `team_id` unique, `warehouse_id` | not built |
+| `team_infos.return_warehouse_id` | **dropped** | a `team_service` migration |
 | `shops.return_warehouse_id` | not built | [the-return-warehouse-is-per-team](./context_decision.md#the-return-warehouse-is-per-team) |
 | `orders.return_warehouse_id` | not built | [the-return-warehouse-is-read-when-the-return-happens](./context_decision.md#the-return-warehouse-is-read-when-the-return-happens) |
-| **an editor** | ⛔ **missing** — no screen sets the column | this is what blocks the gate |
-| **a reader** | ⛔ **missing** — no server reads it | |
-| the gate | create refuses a team with no configuration | still [where it lives](#the-gate-is-on-the-order-not-the-config) is open |
+| **an editor** | ⛔ **missing** — no screen sets a row | this is what blocks the gate |
+| the gate | create refuses a team with no configuration | still [what it checks](#the-gate-is-on-the-order-not-the-config) is open |
 
 ### the-return-flow-corrected
 
-One change left to the owner’s diagram: an own line never touches the map. The warehouse is read once, from the
-team configuration — the flow’s own first box.
+🔄 *(2026-10-19)* Redrawn for your new §Order Return Flow — no clone, an unmapped borrowed line is an error
+([a-return-never-clones-a-product](./context_decision.md#a-return-never-clones-a-product)). ✅ *(2026-10-19)* Your diagram now matches it —
+the own branch goes straight to *Item List Payload*.
 
 ```mermaid
 flowchart TD
-  S(("Start")) --> R["a return is received at the warehouse"]
-  R --> W["read team_infos.return_warehouse_id NOW — not from the order"]
-  W --> IT{"for each returned line — is it a cross line?"}
-  IT -->|"no, our own product"| ADD["add product_id and its ORDERED qty — a return is never partial"]
-  IT -->|"yes, borrowed"| M{"does this team already map that product?"}
+  S(("Start")) --> R["the warehouse person accepts the return"]
+  R --> W["read team_return_configurations NOW - not from the order"]
+  W --> IT{"for each line - is it a borrowed line?"}
+  IT -->|"no, our own product"| ADD["add product_id and its ORDERED qty - a return is never partial"]
+  IT -->|"yes, borrowed"| M{"does this team map that product?"}
   M -->|"yes"| USE["use the mapped own product"]
   USE --> ADD
-  M -->|"no"| C["clone it into this team’s catalogue — a NEW product_code"]
-  C --> REG["record the map"]
-  REG --> ADD
+  M -->|"no"| ERR["Error - name the product, the order stays return"]
   ADD --> P["ONE inventory return transaction, referencing the order"]
-  P --> ST["set return_completed — the accept is a STATUS"]
+  P --> ST["set return_completed"]
   ST --> E2(("Accepted"))
 ```
 
 ### the-map-as-decided
 
 ✅ Settled — [the-map-is-unique-on-its-source](./context_decision.md#the-map-is-unique-on-its-source) and
-[a-return-map-is-written-once](./context_decision.md#a-return-map-is-written-once). Kept here as the spec the
-owner's §Table Must Have still has to be amended to (RULE 7b — reported, never edited).
+[a-return-map-is-written-once](./context_decision.md#a-return-map-is-written-once); a map is made ahead, never by a clone
+([a-return-never-clones-a-product](./context_decision.md#a-return-never-clones-a-product)). ✅ *(2026-10-19)* Your §Table Must Have
+item 2 now matches it ([the-map-table-still-has-warehouse-and-to-product](#the-map-table-still-has-warehouse-and-to-product)).
 
 | column | | |
 | --- | --- | --- |
-| `team_id` | the team that owns the map | |
-| `shared_product_id` | the borrowed product | |
-| `own_product_id` | the clone in this team's catalogue | `to_product_id` never existed |
+| `team_id` | the borrower, who owns the map | |
+| `shared_product_id` | the lender's product | |
+| `own_product_id` | the borrower's own product | `to_product_id` never existed |
 | `created_at` / `updated_at` | | `updated_at` can only mirror `created_at` — the row is written once |
 | **unique** | `(team_id, shared_product_id)` | the SOURCE, not the pair |
 | ~~`warehouse_id`~~ | **dropped** | a map is a catalogue fact, not a location |
@@ -148,78 +199,46 @@ owner's §Table Must Have still has to be amended to (RULE 7b — reported, neve
 
 ## Critique
 
-| | Problem | → Recommend |
-| --- | --- | --- |
-| **the-config-already-ships-elsewhere** | `team_return_configurations` duplicates [`team_infos.return_warehouse_id`](../../../backend/services/team_service/db_migrations/00001_create_teams.sql), shipped in `team_service` beside its outbound twin `default_warehouse_id`. Two rows, two editors, and nothing says which is true when they differ | **no new table.** Keep the column, read it by RPC (HARD RULE 3) |
-| **the-gate-contradicts-its-own-twin** | the twin's migration argues the opposite deliberately — *"It is a DEFAULT, not a rule… a fallback applied server-side would quietly undo that refusal"*. The outbound warehouse is named BY THE ORDER and refused if absent, while the doc gates on a CONFIG ROW | same shape for both: the order names it, create refuses when absent |
-| **the-own-branch-still-reads-the-order-for-its-warehouse** | `setretconf["Set Team Return Configuration, warehouse_id from order."]` survives the change, and [the-return-warehouse-is-read-when-the-return-happens](./context_decision.md#the-return-warehouse-is-read-when-the-return-happens) settled that the warehouse comes from the CONFIGURATION. `retconf` at the top already has it | delete the box — for an own line there is nothing left for it to do |
-| **a-clone-needs-a-code-nobody-generates** | there is no clone RPC ([product_v1](../../../backend/services/product_service/product_v1/) has create/update/delete/restore and nothing else), and the code is now composed and globally unique ([the-code-is-composed-from-the-team-code](../product/context_decision.md#the-code-is-composed-from-the-team-code)) — so a clone **cannot** copy the lender's code | the clone takes the borrowing team's prefix and a generated tail, and the map is what preserves the link |
-| **the-return-warehouse-is-a-SECOND-warehouse** | the order is fulfilled from `orders.warehouse_id` and returns to the configured one. Stock is keyed `(warehouse_id, product_id)` ([stock_levels](../../../backend/services/inventory_service/db_migrations/00001_create_inventory.sql)), so a unit taken from **X** comes back onto **Y**'s shelf — two different piles. Nothing in the design says that is intended, and over months every return drains the fulfilling warehouses into the return one | say plainly whether a return may land in a warehouse the order did not ship from. If yes, the drift is a real operational cost and needs a transfer back. If no, the return warehouse must **be** the fulfilling warehouse and the whole configuration collapses to a validation |
-| **a-return-warehouse-may-have-no-terms** | `liability_terms` means *no row = charge nothing* ([00002_create_liability_terms.sql](../../../backend/services/liability_service/db_migrations/00002_create_liability_terms.sql)). A team names warehouse Y for returns, Y has no terms row for that team — so Y receives, inspects and stores returned goods **for free, silently**, for a team it has no commercial relationship with | the named warehouse must have a terms row, which is the same constraint as [which-warehouses-may-be-named](#which-warehouses-may-be-named) approached from the money side |
-| **any-warehouse-can-be-named** | nothing limits which warehouse a team may name, so returns can be sent somewhere holding none of its stock and under no obligation to receive them | only a warehouse the team has a `liability_terms` pair with — that relation already means "works with" |
-| **every-team-stops-at-rollout** | every `return_warehouse_id` is NULL today, **no screen sets one**, and no server reads one. Ship the gate as written and no team can create an order | the editor and a backfill first, the gate second — two commits, never one |
-| **the-accept-is-not-in-the-other-flow** | §Order Return Flow moves stock and THEN sets the status. §Who Change The Returns sets the status FIRST and ends at an accept the other diagram does not contain. The two sections order the same three steps differently — see [Contradiction](#the-two-return-sections-order-the-steps-differently) | the ACCEPT is the moment stock moves. §Order Return Flow is what happens inside it, not a rival sequence |
-| **the-money-still-does-not-move** | the flow ends at status. COGS is not reversed, and a borrowed line's payable to its owner still stands — while the unit has just become the borrower's own by clone | the money is the same pass as the status — see [the order clarify's Awaiting](./context_clarify.md#awaiting) |
+✅ *(2026-10-19)* None open — `the-own-branch-still-reads-the-order-for-its-warehouse` resolved: your own branch goes straight to *Item List Payload*.
+
+✅ *(2026-10-19)* Pruned as settled: `a-clone-needs-a-code-nobody-generates` (nothing is cloned), `the-return-warehouse-is-a-SECOND-warehouse` ([a-return-may-land-in-another-warehouse](./context_decision.md#a-return-may-land-in-another-warehouse), [stock-in-the-return-warehouse-is-not-drift](./context_decision.md#stock-in-the-return-warehouse-is-not-drift)), `the-accept-is-not-in-the-other-flow` ([resolved](#resolved-the-two-return-sections-order-the-steps-differently)), `the-money-still-does-not-move` ([a-return-keeps-both-fees](./context_decision.md#a-return-keeps-both-fees)).
 
 ---
 
 ## Question
 
 ### the-gate-is-on-the-order-not-the-config
-Does create refuse because the TEAM has no configuration, or because the REQUEST names no return warehouse?
-**→ The request** — it matches `default_warehouse_id` and cannot be undone by a silent server-side fallback.
+✅ *(2026-10-17)* **Answered: the team's row** — create refuses a team with no `team_return_configurations` row, turned on after every team has one ([create-refuses-a-team-with-no-return-warehouse](./context_decision.md#create-refuses-a-team-with-no-return-warehouse)). As my revised recommendation; the heading's *on the order* was my first one. Kept as a heading so the links into it hold.
 
 ### which-warehouses-may-be-named
-May a team name any warehouse, or only one it already works with? **→ Only one it works with**, which
-`liability_terms` already records. ⚠ Sharper now that
-[a-return-may-land-in-another-warehouse](./context_decision.md#a-return-may-land-in-another-warehouse) is
-decided: the receiving warehouse is a **real second counterparty**, not a formality.
+✅ *(2026-10-17)* **Answered: any warehouse** — [a-team-may-pick-any-return-warehouse](./context_decision.md#a-team-may-pick-any-return-warehouse), against my *only one it works with*. A warehouse with no fee agreement takes the returns uncharged — accepted. The critiques `a-return-warehouse-may-have-no-terms` and `any-warehouse-can-be-named` are deleted. Kept as a heading so the links into it hold.
 
 ### who-moves-the-drifted-stock-back
-*(successor to [a-return-may-land-in-another-warehouse](./context_decision.md#a-return-may-land-in-another-warehouse))*
-Every return moves a unit from a fulfilling warehouse to the return warehouse, permanently. Who notices, and who
-moves it back? **→ Nobody automatically** — but the selling team needs a screen that shows *where my stock
-actually is versus where I sell from*, or the drift is invisible until a warehouse cannot fulfil. A transfer
-already has to exist for other reasons, so this is a **report**, not a new mechanism.
+✅ *(2026-10-17)* **Answered: it is not drift** — stock in several warehouses is normal, and the team moves it by warehouse transfer if it decides to ([stock-in-the-return-warehouse-is-not-drift](./context_decision.md#stock-in-the-return-warehouse-is-not-drift)). Against my *a report of the drift*. Kept as a heading so the links into it hold.
 
 ### what-bounds-a-forced-return
-*(new)* *"Warehouse Force Order To Return"* lets the warehouse move an order to `return` from wherever it was.
-[context.md](./context.md)'s status diagram allows it only from `shipped`, `problem` and `completed`. May a
-warehouse force a `pending` or `processed` order — one whose stock was never even picked? **→ No.** Force means
-*skip the CS step*, not *skip the status rules*: the parcel is in the person's hands, so the order can only have
-been one that left. ⚠ If it can be forced from anywhere, say so, because it makes every earlier transition
-optional.
+✅ *(2026-10-17)* **Answered: no** — a forced return follows §Status Move, so only from `shipping`, `shipped`, `problem`, `completed` ([a-forced-return-follows-the-status-move](./context_decision.md#a-forced-return-follows-the-status-move)). As recommended. Kept as a heading so the links into it hold.
 
 ### a-claimed-return-that-never-arrives
-*(new)* CS sets `return`, and the parcel is lost on its way back. The order sits in `return` forever, the stock
-never comes back, and nothing distinguishes it from a return sitting in a queue. **→ It is `lost`** — but
-[lost-is-final](./context_decision.md#lost-is-final) says `lost` never moves again, and
-[context.md](./context.md)'s diagram has no `return --> lost` edge. Either the edge is added or the claim needs
-an expiry.
+✅ *(2026-10-17)* **Answered: `return → lost`** — [a-return-that-never-arrives-goes-lost](./context_decision.md#a-return-that-never-arrives-goes-lost), decided from the order context the same day. Kept as a heading so the links into it hold.
 
 ### does-the-accept-record-where-it-was-accepted
-*(new — and it is new EVIDENCE, not a re-litigation of
-[a-stale-return-location-is-accepted](./context_decision.md#a-stale-return-location-is-accepted))* That decision
-rested on there being nobody in the receiving building at the keyboard. §Who Change The Returns puts one there:
-the **warehouse person accepting** is holding the goods, in the building. **→ Keep reading the configuration for
-the form** — the ops argument is unchanged and the operator still picks nothing — **but record the accepting
-person's warehouse on the return record**, so the rare mismatch is visible afterwards rather than invisible
-forever. That costs a column, not a decision.
+✅ *(2026-10-19)* **Answered: yes, automatically** — [the-accept-records-where-it-was-accepted](./context_decision.md#the-accept-records-where-it-was-accepted), as recommended. ⚠ Where it is stored is proposed, not decided: the `return_completed` row of `order_timeline_logs`. Kept as a heading so the links into it hold.
 
 ### who-names-a-cloned-product
-A clone cannot reuse the lender's `product_code` now that it is composed and globally unique. Who generates the
-borrowing team's part, and what else does the clone inherit — price, categories, images, `cross_markup`,
-`is_private`? **→ Generated tail, catalogue attributes copied, all money and sharing fields reset.**
+✅ *(2026-10-19)* **Moot — nothing is cloned any more** ([a-return-never-clones-a-product](./context_decision.md#a-return-never-clones-a-product)). The team maps the lender's product to one of its own, which it named itself. Its one surviving part is [the-returned-unit-keeps-the-lenders-label](#the-returned-unit-keeps-the-lenders-label). Kept as a heading so the links into it hold.
+
+### when-must-the-map-exist
+✅ *(2026-10-19)* **Answered: at order create** — a borrowed line with no map refuses the create, and the team maps it once ([a-borrowed-line-needs-its-map-at-create](./context_decision.md#a-borrowed-line-needs-its-map-at-create)). As recommended. The return's error stays as a backstop. Kept as a heading so the links into it hold.
+
+### the-returned-unit-keeps-the-lenders-label
+✅ *(2026-10-19)* **Answered: relabel at the accept** — [a-returned-borrowed-unit-is-relabelled-at-the-accept](./context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept). As recommended. Kept as a heading so the links into it hold.
 
 ### a-short-delivered-parcel-has-no-home
-*(successor to [a-return-is-never-partial](./context_decision.md#a-return-is-never-partial))* A parcel comes back
-with two of its three items. It is not a return, because a return is the whole order — and it is not `completed`
-either. **→ `problem`**, which already exists and already means *"something went wrong in transit"*, with the
-missing goods written off rather than returned to stock. Is that where it goes, or does it need its own path?
+✅ *(2026-10-19)* **Answered: accept it, and write off the missing units at the same moment** — [a-short-return-is-accepted-and-the-gap-written-off](./context_decision.md#a-short-return-is-accepted-and-the-gap-written-off). As my revised recommendation. Kept as a heading so the links into it hold.
 
 ### return_user_id-is-unread
-`team_infos.return_user_id` sits beside the warehouse column, written by nobody and read by nobody. Is a return
-addressed to a **person** as well as a building? **→ Say if it is dead, and it gets dropped.**
+✅ *(2026-10-19)* **Answered: dropped**, with `return_warehouse_id` — [return-user-id-is-dropped](./context_decision.md#return-user-id-is-dropped). As recommended. Kept as a heading so the links into it hold.
 
 ## resolved-the-own-line-goes-through-the-cross-product-machinery
 
@@ -272,3 +291,34 @@ flowchart TD
 were describing **different altitudes** of the same act, and the missing piece was a status neither of them had
 yet. **Deleting a box because it looks duplicated is how the newer statement gets destroyed** — the right move
 was the one the owner made, adding the state that made both readings true at once.
+
+# Contradiction
+
+## the-return-warehouse-moved-out-of-team-infos
+
+*(2026-10-17)* [the-return-warehouse-lives-in-team-return-configurations](./context_decision.md#the-return-warehouse-lives-in-team-return-configurations)
+moves the return warehouse out of `team_infos`. One cause, these sites:
+
+| site | said | now |
+| --- | --- | --- |
+| [the-return-warehouse-is-per-team](./context_decision.md#the-return-warehouse-is-per-team) | *"no new configuration table — the column already exists"* | ✅ noted — per team holds, the location moved |
+| [the-return-warehouse-is-read-when-the-return-happens](./context_decision.md#the-return-warehouse-is-read-when-the-return-happens) | reads `team_infos.return_warehouse_id` | ✅ noted — reads `team_return_configurations` |
+| this file's Proposed Design and the corrected flow | `team_infos.return_warehouse_id` | ✅ redrawn |
+| the build — `team_service` columns `return_warehouse_id` and `return_user_id` ([return-user-id-is-dropped](./context_decision.md#return-user-id-is-dropped)), `TeamInfoUpdate` fields 6 and 7, their handler and test, the frontend hook, the `00006` comment | the columns are live | ⛔ a `team_service` migration when built, with [database-schema.md](../../database-schema.md) in the same commit |
+
+**Which is wrong:** everything that names `team_infos` — your answer is the newer statement. **→ Recommend** the drop is
+its own `team_service` commit, so nothing that still writes the field is left behind.
+
+```mermaid
+flowchart LR
+  D["team-return-configurations decision"] --> A["per-team decision - noted"]
+  D --> B["read-when-the-return-happens - noted"]
+  D --> C["this clarify - redrawn"]
+  D --> E["the build - team_service column and API - a migration"]
+```
+
+
+## the-map-table-still-has-warehouse-and-to-product
+
+✅ *(2026-10-19)* **Resolved** — item 2 has no `warehouse_id`, and `shared_product_id` is *composite unique with `team_id`*. Kept as a heading so the links into it hold.
+

@@ -4,6 +4,17 @@ What [order_creation.md](./order_creation.md) leaves open. **That doc is yours �
 points are deleted, so this file is always the current open set. Decisions land in
 [context_decision.md](./context_decision.md).
 
+> ✅ **Your edits (2026-10-19):** both return refusals are drawn —
+> [the-request-check-misses-the-return-warehouse](#the-request-check-misses-the-return-warehouse),
+> [the-create-does-not-check-the-return-map](#the-create-does-not-check-the-return-map). Left: the settlement doc's
+> [settlement-subscribes-here-and-is-called-in-its-own-doc](#settlement-subscribes-here-and-is-called-in-its-own-doc).
+
+> 🆕 **2026-10-19:** [the-create-does-not-check-the-return-map](#the-create-does-not-check-the-return-map) — create now also refuses a
+> borrowed line with no return map; one label after the owners lookup. Still no open question.
+
+> 🆕 **2026-10-17, later:** [the-request-check-misses-the-return-warehouse](#the-request-check-misses-the-return-warehouse) —
+> create now also refuses a team with no return warehouse; one label in *Check the Request*. Still no open question.
+
 > ✅ **2026-10-17 — you pasted [the whole diagram](#the-whole-diagram-ready-to-paste)** and `team_id` into the request.
 > Resolved: [the-request-still-names-no-orderer](#the-request-still-names-no-orderer),
 > [the-form-diagram-still-reuses-the-key](#the-form-diagram-still-reuses-the-key),
@@ -171,3 +182,13 @@ flowchart LR
   D["order_creation.md — redrawn 2026-10-17"] --> A["its own diagram — agrees"]
   D --> C["settlement/context.md: order calls settlement — stale"]
 ```
+
+## the-request-check-misses-the-return-warehouse
+
+✅ *(2026-10-19)* **Resolved** — *Check the Request* refuses *"or the team has no return warehouse"*. Kept as a heading so the links into it hold.
+
+
+## the-create-does-not-check-the-return-map
+
+✅ *(2026-10-19)* **Resolved** — the owners lookup refuses *"or a borrowed product has no return map"*. Kept as a heading so the links into it hold.
+

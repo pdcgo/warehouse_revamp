@@ -32,3 +32,5 @@ development_data/
 
 # san remote's persisted token (--persist-token) — a live credential, never committed
 .san/
+
+app_development.exe

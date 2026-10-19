@@ -48,11 +48,11 @@ state "Refuse the Create" as refuse
 state create_err <<choice>>
 
 rpc-->reqcheck
-reqcheck-->refuse: ref, platform_total or courier missing
+reqcheck-->refuse: ref, platform_total or courier missing, or the team has no return warehouse
 reqcheck-->owners: product ids
 owners-->prod: whose product is each one
 prod-->owners: each product owning team
-owners-->refuse: lookup failed
+owners-->refuse: lookup failed, or a borrowed product has no return map
 owners-->ordcheck: creditors - the warehouse, and each team a shared product belongs to
 ordcheck-->bal: the ordering team and its creditors
 bal-->ordcheck: each pair committed debt and limit

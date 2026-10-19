@@ -4,6 +4,13 @@ What [context.md](./context.md) leaves open. **That doc is yours — this one is
 are deleted, so this file is always the current open set; what was settled is in
 [context_decision.md](./context_decision.md).
 
+> ✅ **Your edits (2026-10-19):** both column notes, §Order Shipments item 4 (*mark lost*), and §Stock Ownership When Order Return
+> deleted — [the-uniqueness-section-still-denies](#the-uniqueness-section-still-denies) and
+> [the-stock-ownership-section-still-clones](#the-stock-ownership-section-still-clones) resolved. **No open question.**
+
+> ⛔ **From order return (2026-10-19):** a return never clones a product now, so §Stock Ownership When Order Return is
+> stale — [the-stock-ownership-section-still-clones](#the-stock-ownership-section-still-clones). **No open question.**
+
 > 🔄 **Re-examined 2026-10-17 — your redrawn [order_creation.md](./order_creation.md).** The debt box is drawn as
 > [proposed](#proposed--the-debt-check-as-decided); [the-debt-check-skips-the-warehouse](#the-debt-check-skips-the-warehouse)
 > is left with only balance §Balance Policy 2. *Delete Draft Order* moved inside the transaction —
@@ -203,7 +210,6 @@ into it hold.
 
 | | Problem | → Recommend |
 | --- | --- | --- |
-| **the-uniqueness-section-still-denies** | ✅ *(2026-10-17)* the section is redrawn as §How We Warn Duplicate Order — only two column notes still say *"for order uniqueness"*. See [Contradiction](#the-uniqueness-section-still-denies) | *"its for duplicate warning"* on both |
 | **the-empty-ref-lives-on-in-the-build** | the doc says the ref *"cannot empty"*; the build says `''` is *"the ordinary state of an order taken over the phone"* and skips the settlement account when the platform total is 0 — both now forbidden by [platform-total-is-required-at-finalize](./context_decision.md#platform-total-is-required-at-finalize). See [Contradiction](#the-build-still-treats-an-empty-ref-as-a-phone-order) | a `selling_service` migration + handler check when this is built |
 | **what-an-order-must-prove** | nothing lists what the business must be able to show about an order later: who took it, by which door, what shipped, who picked | frozen at finalize: shop, warehouse, lines, owners, cost, source. Recorded as it moves: picker, packer, handover time |
 
@@ -276,20 +282,8 @@ flowchart LR
 
 ## the-uniqueness-section-still-denies
 
-✅ *(2026-10-17)* **Your section is redrawn** — §How We Warn Duplicate Order warns, never refuses, reads drafts, and checks
-on every Try Again ([a-duplicate-ref-is-warned-not-refused](./context_decision.md#a-duplicate-ref-is-warned-not-refused),
-[the-duplicate-warning-reads-drafts-too](./context_decision.md#the-duplicate-warning-reads-drafts-too),
-[a-try-again-always-warns](./context_decision.md#a-try-again-always-warns)). **One site is left:**
+✅ *(2026-10-19)* **Resolved** — §How We Warn Duplicate Order is redrawn, and both column notes say *duplicate warning*. Kept as a heading so the links into it hold.
 
-| [context.md](./context.md) §Table That Must Have | decided |
-| --- | --- |
-| `orders` and `order_drafts`: `order_external_ref_id`, *"its for order uniqueness"* | the ref is required, not unique — *"its for duplicate warning"* |
-
-```mermaid
-flowchart LR
-  S["the section - redrawn, warns"] --> OK["agrees"]
-  C["two column notes - for order uniqueness"] -.->|"stale"| D["a-duplicate-ref-is-warned-not-refused"]
-```
 
 ## the-build-still-treats-an-empty-ref-as-a-phone-order
 
@@ -420,7 +414,11 @@ flowchart LR
   R3 -.->|"no edge"| SM
 ```
 
----
+
+## the-stock-ownership-section-still-clones
+
+✅ *(2026-10-19)* **Resolved** — you deleted §Stock Ownership When Order Return and §What Is Product LinkMap; [order_return.md](./order_return.md) is the one drawing. Kept as a heading so the links into it hold.
+
 
 # Awaiting
 
