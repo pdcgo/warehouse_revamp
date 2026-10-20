@@ -9,7 +9,7 @@ message StockRestockCreated {
     uint64 warehouse_id = 3;
     uint64 created_by = 4;
     uint64 payment_id = 5;
-    double shipping_fee = 6;
+    uint64 shipping_fee = 6;
     repeated Item items = 7;
 }
 
@@ -27,7 +27,7 @@ message StockRestockBilling {
     uint64 team_id = 2;
     uint64 warehouse_id = 3;
     uint64 cs_id = 4;
-    double additional_shipping_fee = 5;
+    uint64 additional_shipping_fee = 5;
     optional string image_of_proof_url = 6;
 }
 

@@ -48,8 +48,8 @@ TRANSACTIONS {
     int warehouse_id
     string type "restock | return"
     string receipt
-    float shipping_fee "default 0"
-    float additional_shipping_fee "default 0"
+    bigint shipping_fee "default 0"
+    bigint additional_shipping_fee "default 0"
     string additional_shipping_proof_url  "foto nota kurir, nullable"
     string order_id "nullable"
     string notes "nullable"
@@ -82,7 +82,7 @@ TRANSACTION_ITEMS {
     int team_id fk
     int supplier_id
     int count
-    float total
+    bigint total
 }
 
 SKU_SLOT {
@@ -96,9 +96,9 @@ SKU_SLOT {
     int rack_id fk
     int team_id fk
 
-    float unit_price
-    float unit_shipping_cost
-    float unit_additional_shipping_cost
+    bigint unit_price
+    bigint unit_shipping_cost
+    bigint unit_additional_shipping_cost
 
     timestamptz created_at
 }
@@ -113,9 +113,9 @@ SKU_LOST_SLOT {
 
     int count
 
-    float unit_price
-    float unit_shipping_cost
-    float unit_additional_shipping_cost
+    bigint unit_price
+    bigint unit_shipping_cost
+    bigint unit_additional_shipping_cost
 
     string notes "nullable"
 
@@ -133,9 +133,9 @@ SKU_BROKEN_SLOT {
     int count
     int rack_id fk
 
-    float unit_price
-    float unit_shipping_cost
-    float unit_additional_shipping_cost
+    bigint unit_price
+    bigint unit_shipping_cost
+    bigint unit_additional_shipping_cost
 
     string notes "nullable"
     string image_of_proof_url "nullable"

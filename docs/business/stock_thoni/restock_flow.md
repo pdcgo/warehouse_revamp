@@ -127,7 +127,7 @@ flowchart TB
         uint64 sku_id = 1 [(buf.validate.field).uint64.gt = 0];
         uint64 supplier_id = 2 [(buf.validate.field).uint64.gt = 0];
         uint64 count = 3 [(buf.validate.field).uint64.gt = 0];
-        double total = 4 [(buf.validate.field).double.gte = 0]; // total saat belanja exclude ongkir
+        uint64 total = 4 [(buf.validate.field).uint64.gte = 0]; // total saat belanja exclude ongkir
     }
 
     message CreateRestockPayload {
@@ -138,7 +138,7 @@ flowchart TB
         uint64          shipping_id = 3 [(buf.validate.field).uint64.gt = 0];
         string          receipt = 4 [(buf.validate.field).string.min_len = 1];
         uint64          payment_id = 5 [(buf.validate.field).uint64.gt = 0];
-        double          shipping_fee = 6 [(buf.validate.field).double.gte = 0];
+        uint64          shipping_fee = 6 [(buf.validate.field).uint64.gte = 0];
         optional string order_id = 7;
         repeated Item   items = 8 [(buf.validate.field).repeated.min_items = 1];
     }
@@ -227,7 +227,7 @@ flowchart TB
     }
 
     message AdditionalShippingFee {
-        double              value = 1; // nilai ongkir tambahan
+        uint64              value = 1; // nilai ongkir tambahan
         optional string     image_of_proof_url = 2; // bukti nota tidak wajib
     }
 
@@ -344,11 +344,11 @@ flowchart TB
 
     Pada tahap ini kita lakukan step kalkulasi antara lain:
     - `unit_price`
-      Unit price diperoleh dari `TRANSACTION_ITEMS.total / TRANSACTION_ITEMS.count`
+      Unit price diperoleh dari `TRANSACTION_ITEMS.total / TRANSACTION_ITEMS.count` (Pembulatan ke bawah)
     - `unit_shipping_cost`
-      Unit Shipping cost diperoleh dari `TRANSACTIONS.shipping_fee / sum(TRANSACTION_ITEMS.map(item => item.count))`
-    - `unit_additional_shipping_cost`
-      Unit Additional Shipping Cost diperoleh dari `TRANSACTIONS.additional_shipping_fee / sum(TRANSACTION_ITEMS.map(item => item.count))`
+      Unit Shipping cost diperoleh dari `TRANSACTIONS.shipping_fee / sum(TRANSACTION_ITEMS.map(item => item.count))` (Pembulatan ke bawah)
+    - `unit_additional_shipping_cost` Unit Additional Shipping Cost diperoleh dari `TRANSACTIONS.additional_shipping_fee / sum(TRANSACTION_ITEMS.map(item => item.count))`
+      (Pembulatan ke bawah)
 
     Akan saya ilustrasikan alur kode-nya dalam typescript dan drizzle:
 
