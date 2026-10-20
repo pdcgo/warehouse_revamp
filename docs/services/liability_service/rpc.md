@@ -2,60 +2,54 @@
 
 Tables: [database-schema.md](../../database-schema.md#liability_service).
 
-## The first writer — a COD restock (#184)
+## The first writer — a restock's courier charge, from *Restock Accepted* (#184)
 
-An obligation this system already creates and never recorded: a warehouse **accepts** a restock that
-arrived COD, paying the courier at the door for goods it does not own.
+An obligation the system creates at a restock's door: the warehouse pays the courier for goods it does not own, so the
+selling team owes it. 🔄 *(2026-10-16)* **Posted from the event, no longer inside the accept**
+([balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event)):
+the accept saves the charge and its note on the restock, and liability posts the debt when *Restock Accepted* arrives.
 
 ```mermaid
 sequenceDiagram
     participant W as warehouse crew
     participant I as inventory_service
+    participant PS as Pub/Sub
     participant S as liability_service
 
     W->>I: RestockRequestAccept — counts, placements, the courier charge and its note
-    rect rgb(240, 240, 240)
-        Note over I,S: ONE transaction
-        I->>I: record what arrived, what was broken and what was missing
-        I->>I: move stock onto the named shelves
-        I->>I: status ACCEPTED, the courier charge as one cost line
-        I->>S: PostEntry — the selling team owes the warehouse
-        S->>S: two legs, one group id, both balances moved
-    end
+    I->>I: ONE transaction - the ledgers, the charge and its note on the restock, status ACCEPTED
     I-->>W: the accepted restock
+    I->>PS: Restock Accepted - carries the charge, its note and who counted the box in
+    PS->>S: push to /event/liability-restock-accepted/push
+    S->>S: ChargeRestockCourier - incidental_fee keyed by the restock, two legs
 ```
 
-**Why in the transaction and not after it.** If the stock movement commits and the obligation does
-not, the warehouse is out of pocket with no record — which is *exactly* the situation this service
-was built to fix, reproduced by the code meant to fix it. A test rolls the posting back and asserts
-the goods never reach a shelf.
+**Why after the commit now.** Each service keeps its own data (HARD RULE 3): inventory never writes balance's tables,
+and balance never joins inventory's transaction. A lost event leaves the debt **unposted but not unrecorded** — the
+charge is on the accepted restock and can be posted again
+([no-outbox-the-publish-is-trusted](../../technical/event_architecture/context_decision.md#no-outbox-the-publish-is-trusted)).
 
-⚠ **This does not change what COD does today.** The fee still flows into HPP and into the order's
-COGS (#155) — that is *costing*, and it stays. Liability adds the missing half: who is owed it, and
-has it been repaid. The same rupiah answers two different questions, and there is a test asserting
-the costing column still holds the number, because a change like this is exactly where one of the two
-quietly disappears.
+**A redelivery posts nothing new**: the posting is keyed by `(incidental_fee, restock id)`, and `ErrAlreadyPosted` is a
+normal answer. **A charge of 0 posts nothing.**
 
-**A fee of 0 posts nothing.** Most deliveries are not COD, and an entry of zero would be a ledger row
-saying nothing happened — worse than no row, because it reads as a debt of nothing rather than the
-absence of one.
+⚠ **The route is an open webhook** (the-event-webhook-is-open), and here a forged event writes a **debt**, not a
+re-computable figure. Restrict `/event/liability-restock-accepted/push` at the ingress to Pub/Sub's push.
+
+⚠ **This does not change costing.** The charge still flows into the batch's landed price — the same rupiah answers what
+the goods cost and who is owed for them.
 
 ## How the two services are joined
 
-`inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability;
-the adapter lives in
-[cmd/app_development/liability_poster.go](../../../backend/cmd/app_development/liability_poster.go).
-Same shape as `StockPicker` and `ProductCatalog`, with **one deliberate difference**:
+`inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability; the adapter lives in
+[cmd/app_development/liability_poster.go](../../../backend/cmd/app_development/liability_poster.go). Since the courier
+charge moved to the event, the port carries only **stock damage** (`PostStockDamage`, the warehouse owes the owner),
+called inside the adjust's or count's transaction:
 
 | | Atomic? | Failure handling |
 | --- | --- | --- |
 | selling → inventory (`StockPicker`) | ❌ another service's commit | takes the stock, **compensates** if the order then fails |
-| inventory → liability (`LiabilityPoster`) | ✅ same database | one transaction, **nothing to compensate** |
-
-The cost is named rather than buried: passing a transaction across a service boundary means the two
-are not independently deployable while this call is in-process. The day liability moves to its own
-database this becomes an event, the atomicity argument has to be re-made, and the reconciliation
-report (#187) is what covers the gap.
+| inventory → liability, stock damage (`LiabilityPoster`) | ✅ same database | one transaction, **nothing to compensate** |
+| inventory → liability, courier charge (*Restock Accepted*) | ❌ after commit | the event; a lost one is found on the restock |
 
 ## The write path has no wire surface
 

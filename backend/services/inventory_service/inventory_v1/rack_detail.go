@@ -24,7 +24,7 @@ func (s *Service) RackDetail(
 
 	err := s.db.
 		WithContext(ctx).
-		Where("id = ? AND warehouse_id = ? AND deleted = ?", req.Msg.GetRackId(), req.Msg.GetTeamId(), false).
+		Where("id = ? AND warehouse_id = ? AND deleted_at IS NULL", req.Msg.GetRackId(), req.Msg.GetTeamId()).
 		First(&rack).
 		Error
 	if err != nil {
@@ -56,13 +56,13 @@ func (s *Service) rackSummary(
 	ctx context.Context,
 	warehouseID, rackID uint64,
 ) (*inventoryv1.RackSummary, error) {
-	var levels []inventory_service_models.StockLevel
+	var levels []inventory_service_models.ProductPlacement
 
-	// Rows with nothing on them are not on the shelf: a level can fall to 0 without being deleted (a
+	// Rows with nothing on them are not on the shelf: a rack row can fall to 0 without being deleted (a
 	// stock-take zeroing it), and counting it would value a product that is not there.
 	err := s.db.
 		WithContext(ctx).
-		Where("rack_id = ? AND on_hand > 0", rackID).
+		Where("placement_id = ? AND stock_count > 0", rackID).
 		Find(&levels).
 		Error
 	if err != nil {
@@ -73,12 +73,12 @@ func (s *Service) rackSummary(
 
 	ids := make([]uint64, 0, len(levels))
 	for i := range levels {
-		summary.TotalOnHand += levels[i].OnHand
+		summary.TotalOnHand += levels[i].StockCount
 
 		ids = append(ids, levels[i].ProductID)
 	}
 
-	// The same HPP query StockCost runs — shared rather than copied, so the shelf's value and an
+	// The same unit value StockCost answers — shared rather than copied, so the shelf's value and an
 	// order's COGS can never be computed two different ways (see unitCosts).
 	costs, err := s.unitCosts(ctx, warehouseID, ids)
 	if err != nil {
@@ -96,18 +96,17 @@ func (s *Service) rackSummary(
 			continue
 		}
 
-		summary.TotalValue += levels[i].OnHand * unitCost
+		summary.TotalValue += levels[i].StockCount * unitCost
 	}
 
-	// WHEN THIS SHELF WAS LAST COUNTED. A stock-take is an ADJUST naming the rack (#139), so this is
-	// derived from the ledger rather than stored — there is no "last counted" column that could drift
-	// from the movements that actually happened.
-	var counted inventory_service_models.StockMovement
+	// WHEN THIS SHELF WAS LAST COUNTED. A count writes an `adjustment` rack row on the rack it counted — 0 when it found
+	// the rack exact — so this is derived from the log rather than stored.
+	var counted inventory_service_models.ProductPlacementLog
 
 	err = s.db.
 		WithContext(ctx).
-		Where("warehouse_id = ? AND rack_id = ? AND kind = ?",
-			warehouseID, rackID, int32(inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST)).
+		Where("warehouse_id = ? AND placement_id = ? AND change_type = ?",
+			warehouseID, rackID, string(inventory_service_models.TxAdjustment)).
 		Order("id DESC").
 		Take(&counted).
 		Error

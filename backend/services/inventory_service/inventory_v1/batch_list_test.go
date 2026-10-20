@@ -107,11 +107,12 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 		t.Fatalf("shirt identity wrong: %+v", shirt)
 	}
 
-	// Frozen cost + the lifecycle numbers (freight 130.000 / 128 sellable = 1.015/pc):
-	//   shirt cost 41.015; arrived 100, damaged 0, ready 100, used 0
-	//   hat   cost 31.015; arrived 30, damaged 2, ready 28, used 0
-	if !shirt.GetCostKnown() || shirt.GetUnitCost() != 41015 {
-		t.Fatalf("shirt cost = %d known=%v, want 41015/true", shirt.GetUnitCost(), shirt.GetCostKnown())
+	// The landed price + the lifecycle numbers — freight 130.000 over the 130 units ORDERED = 1.000/pc
+	// (all-qty-is-every-unit-ordered):
+	//   shirt 4.000.000/100 + 1.000 = 41.000; arrived 100, broken 0, ready 100, used 0
+	//   hat     840.000/30  + 1.000 = 29.000; arrived 30, broken 2, ready 28, used 0
+	if !shirt.GetCostKnown() || shirt.GetUnitCost() != 41000 {
+		t.Fatalf("shirt cost = %d known=%v, want 41000/true", shirt.GetUnitCost(), shirt.GetCostKnown())
 	}
 	if shirt.GetArrived() != 100 || shirt.GetBroken() != 0 || shirt.GetReady() != 100 || shirt.GetUsed() != 0 {
 		t.Fatalf("shirt lifecycle = a%d b%d r%d u%d, want 100/0/100/0",
@@ -122,16 +123,16 @@ func TestBatchList_ReadsCostLayers(t *testing.T) {
 	}
 
 	// line_cost = arrived × cost; ready_value = ready × cost.
-	if shirt.GetLineCost() != 4101500 || shirt.GetReadyValue() != 4101500 {
-		t.Fatalf("shirt line=%d ready_value=%d, want 4101500/4101500", shirt.GetLineCost(), shirt.GetReadyValue())
+	if shirt.GetLineCost() != 4100000 || shirt.GetReadyValue() != 4100000 {
+		t.Fatalf("shirt line=%d ready_value=%d, want 4100000/4100000", shirt.GetLineCost(), shirt.GetReadyValue())
 	}
-	if hat.GetLineCost() != 930450 || hat.GetReadyValue() != 868420 {
-		t.Fatalf("hat line=%d ready_value=%d, want 930450/868420", hat.GetLineCost(), hat.GetReadyValue())
+	if hat.GetLineCost() != 870000 || hat.GetReadyValue() != 812000 {
+		t.Fatalf("hat line=%d ready_value=%d, want 870000/812000", hat.GetLineCost(), hat.GetReadyValue())
 	}
 
-	// Header tile: ready value over the whole set = 4.101.500 + 868.420.
-	if msg.GetReadyValueTotal() != 4969920 {
-		t.Fatalf("ready_value_total = %d, want 4969920", msg.GetReadyValueTotal())
+	// Header tile: ready value over the whole set = 4.100.000 + 812.000.
+	if msg.GetReadyValueTotal() != 4912000 {
+		t.Fatalf("ready_value_total = %d, want 4912000", msg.GetReadyValueTotal())
 	}
 
 	// Filter to one product — the detail's Batches tab.

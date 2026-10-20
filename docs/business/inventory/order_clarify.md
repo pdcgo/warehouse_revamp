@@ -3,6 +3,9 @@
 [order.md](./order.md) is yours — this one is mine. An answered point is deleted; what you settle is recorded in
 [order_decision.md](./order_decision.md).
 
+> ✅ *(2026-10-17)* [two-journeys-for-one-order](#two-journeys-for-one-order) **resolved** — order context deleted its journey,
+> and its §Status Move agrees with your §How Warehouse Process The Order. Still no open question here.
+
 > ✅ **Answered in chat (2026-10-16, after Q12):** *picked* lives on the order's timeline
 > ([picked-lives-on-the-order-timeline](./transaction_decision.md#picked-lives-on-the-order-timeline)), so Q1's
 > [superseded-the-verify-scan-tells-inventory-picked](./order_decision.md#superseded-the-verify-scan-tells-inventory-picked) is
@@ -333,34 +336,8 @@ flowchart LR
 
 ## two-journeys-for-one-order
 
-*(2026-10-08)* The same order's warehouse steps are drawn twice, and they disagree:
-
-| | [order/context.md](../order/context.md) §Complete Journey Of The Orders | [order.md](./order.md) §How Warehouse Process The Order |
-| --- | --- | --- |
-| first step | *"Warehouse Accept Order"* | *"Order Processed"* — confirm, change status, print the receipt |
-| the work | *"Warehouse Process Order (Packing/Picking)"* — one step | picking · scan to verify · packing — three |
-| when the warehouse is done | *"set status warehouse process `completed`"* — **after** *"Give to Shipping Channel"* | *"Order Packing Completed"* — **before** the courier comes |
-| shipped | set after the warehouse is done | *"staff scan to change shipped"*, at the handover |
-
-So while a parcel waits for the courier, one doc says the warehouse is done and the other says it is not.
-
-🔄 *(2026-10-16)* Your redraw narrowed it. **They agree now** that the warehouse's work ends at the courier handover.
-**They still differ:** context.md's journey has one *"Process Order (Packing/Picking)"* step and sets `shipped` at the
-handover, while yours has `picked` and sets `shipping` there. The recommendation is unchanged. The status half is
-[the-status-moves-miss-picked-and-shipping](../order/context_clarify.md#the-status-moves-miss-picked-and-shipping).
-
-**→ Recommend** one journey, kept where the statuses belong — [order/context.md](../order/context.md), since they are the
-order's statuses — and this doc links it and adds only what inventory hears (the table above). Two copies of a status list
-drift every time one is edited.
-
-```mermaid
-flowchart LR
-  subgraph oc["order/context.md"]
-    a1["Accept"] --> a2["Process - picking and packing"] --> a3["Give to courier"] --> a4["warehouse completed"] --> a5["shipped"]
-  end
-  subgraph io["inventory/order.md"]
-    b1["Processed"] --> b2["Picking"] --> b3["Scan verify"] --> b4["Packing completed"] --> b5["Shipped at the handover"]
-  end
-  a4 -.->|"after the courier"| X["which is it"]
-  b4 -.->|"before the courier"| X
-```
+✅ *(2026-10-17)* **Resolved — [order/context.md](../order/context.md) deleted §Complete Journey**, and its §Status Move is
+now the one drawing of an order's statuses, each edge naming who
+([the-status-move-is-the-only-journey](../order/context_decision.md#the-status-move-is-the-only-journey)). It agrees with
+your §How Warehouse Process The Order: `processed`, *Set Picked* to `picked`, the handover scan to `shipping`. Kept as a
+heading so the links into it hold.

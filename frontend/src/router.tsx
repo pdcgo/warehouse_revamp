@@ -180,8 +180,8 @@ const RestockWarehouseDetailPage = lazy(() =>
     default: m.RestockWarehouseDetailPage,
   })),
 );
-// The warehouse transfer — a PROTOTYPE until design_accept: the real server answers Unimplemented, so every screen shows
-// its error state outside Storybook (docs/business/inventory/warehouse_transfer.md).
+// The warehouse transfer (docs/business/inventory/warehouse_transfer.md) — served by inventory_service on the decided
+// ledgers.
 const WarehouseTransferSellingPage = lazy(() =>
   import("./pages/warehouse-transfer-selling").then((m) => ({ default: m.WarehouseTransferSellingPage })),
 );

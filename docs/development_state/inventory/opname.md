@@ -16,7 +16,7 @@ The implementation analysis is done: four screens run in **Storybook** against a
 contract they derive is `OpnameService` ([opname.proto](../../../proto/warehouse/inventory/v1/opname.proto)). In the app the
 service is mounted answering **Unimplemented**. Nothing in the backend is built — no table, no migration.
 
-**Next step: design_accept** — the owner previews `Pages/Opname/*` in Storybook (`npm run storybook`). It blocks
+**Next step: design_accept** — the owner previews `Pages/Inventory/Opname/*` in Storybook (`npm run storybook`). It blocks
 everything after it ([design-accept-blocks](../../development_lifecycle_decision.md#design-accept-blocks)). Then the
 backend analysis, which waits on the ledgers like placement's
 ([the-decided-ledgers-come-before-the-transfer](../../business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)).
@@ -54,7 +54,7 @@ flowchart LR
 | shared | `features/opname/` — `queries.ts`, `adapt.ts`, `OpnameBadges.tsx` (status, plan, row state, difference, drafts); `lib/roles.ts` `canManageOpname` |
 | routes | `/inventories/opname/sessions`, `…/:sessionId`, `…/:sessionId/count`, `…/:sessionId/finalize` |
 | copy | the `opnameSession` namespace in `en.json` and `id.json` |
-| stories | `Pages/Opname/{Sessions,SessionDetail,Count,Finalize}` and `Features/Opname/OpnameBadges` — 26, each a test; every page has a Mobile story. The whole suite passes (1403) |
+| stories | `Pages/Inventory/Opname/{Sessions,SessionDetail,Count,Finalize}` and `Features/Opname/OpnameBadges` — 26, each a test; every page has a Mobile story. The whole suite passes (1403) |
 
 ## Proposed at the prototype — accept or reject at design_accept
 

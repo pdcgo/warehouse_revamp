@@ -4,9 +4,9 @@ import { expect, screen, userEvent, within } from "storybook/test";
 import { ProductLinesPopover, description, type ProductLine } from "./ProductLinesPopover";
 
 const lines: ProductLine[] = [
-  { id: "1", sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", quantity: 3n, totalPrice: 10_000n },
-  { id: "2", sku: "SKU-TEH-100", name: "Teh Melati 100g", quantity: 10n, totalPrice: 55_000n },
-  { id: "3", sku: "SKU-GULA-1K", name: "Gula Pasir 1kg", quantity: 2n, totalPrice: 24_000n },
+  { id: "1", sku: "SKU-KOPI-250", name: "Kopi Arabika 250g", quantity: 3n, totalPrice: 10_000 },
+  { id: "2", sku: "SKU-TEH-100", name: "Teh Melati 100g", quantity: 10n, totalPrice: 55_000 },
+  { id: "3", sku: "SKU-GULA-1K", name: "Gula Pasir 1kg", quantity: 2n, totalPrice: 24_000 },
 ];
 
 const meta = {

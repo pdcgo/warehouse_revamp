@@ -14,7 +14,7 @@ import {
   problemValue,
 } from "../../../features/restock/summary";
 import { LineSupplier, useLineSuppliers } from "../../../features/restock/LineSupplier";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 
 // THE LINES, AS THE WAREHOUSE COUNTED THEM — what was ordered, where it was bought, what the box held, and WHERE the good
 // units went.
@@ -129,8 +129,8 @@ export function LinesCard({ request, teamId }: { request: RestockRequest; teamId
                         {placementLabel(t, item, codes) || "—"}
                       </Table.Cell>
                     )}
-                    <Table.Cell textAlign="end">{formatRupiah(unitPrice(item))}</Table.Cell>
-                    <Table.Cell textAlign="end">{formatRupiah(lineTotal(item))}</Table.Cell>
+                    <Table.Cell textAlign="end">{formatRupiahNumber(unitPrice(item))}</Table.Cell>
+                    <Table.Cell textAlign="end">{formatRupiahNumber(lineTotal(item))}</Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>
@@ -187,7 +187,7 @@ function ProblemCell({ item, type, testId }: { item: RestockRequestItem; type: R
           {count.toString()}
         </Text>
         <Text fontSize="xs" color="fg.muted" data-testid={`${testId}-value`}>
-          {t("restock.detail.problemWorth", { amount: formatRupiah(problemValue(item, type)) })}
+          {t("restock.detail.problemWorth", { amount: formatRupiahNumber(problemValue(item, type)) })}
         </Text>
         {note && (
           <Text fontSize="xs" color="fg.muted" lineClamp={2} title={note} data-testid={`${testId}-note`}>

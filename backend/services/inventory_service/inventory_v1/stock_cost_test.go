@@ -9,10 +9,9 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
-// #74 — what a product cost this warehouse is the LATEST FULFILLED restock's price. Two things it must
-// get right, and both are easy to get wrong: only fulfilled requests count, and "latest" is by the
-// REQUEST, not by the line.
-func TestStockCost_LatestAcceptedRestockPrice(t *testing.T) {
+// #74 — what a product costs this warehouse is the AVERAGE VALUE OF THE UNITS HELD, read from its batches: only
+// accepted deliveries have batches, so a pending price somebody hoped for counts for nothing.
+func TestStockCost_TheAverageOfTheUnitsHeld(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
@@ -32,7 +31,7 @@ func TestStockCost_LatestAcceptedRestockPrice(t *testing.T) {
 			Items: []*inventoryv1.RestockRequestItem{
 				{
 					ProductId: productX, Sku: "SKU1", Name: "Widget",
-					Count: lineQty, Total: unitPrice * lineQty,
+					Count: lineQty, Total: float64(unitPrice * lineQty),
 				},
 			},
 		}))
@@ -68,9 +67,9 @@ func TestStockCost_LatestAcceptedRestockPrice(t *testing.T) {
 		t.Fatalf("costs = %+v, want one line", stockCostLines(res.Msg))
 	}
 
-	// 7000, not 9999 (pending) and not 5000 (superseded).
-	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 7000 {
-		t.Fatalf("unit cost = %d, want 7000 — the latest FULFILLED price", got)
+	// The two accepted deliveries, equal units at 5.000 and 7.000 — never the pending 9.999.
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 6000 {
+		t.Fatalf("unit cost = %d, want 6000 — the average of the units held", got)
 	}
 }
 
@@ -159,7 +158,7 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 
 	// The stored total is untouched by the awkward division — this is what the old contract could not do.
 	if got := created.Msg.GetRequest().GetItems()[0].GetTotal(); got != 10000 {
-		t.Fatalf("stored total = %d, want the typed 10000", got)
+		t.Fatalf("stored total = %v, want the typed 10000", got)
 	}
 
 	_, err = svc.RestockRequestAccept(ctx, connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
@@ -181,10 +180,9 @@ func TestStockCost_DerivesThePerUnitCostFromTheLineTotal(t *testing.T) {
 		t.Fatalf("costs = %+v, want one line", stockCostLines(res.Msg))
 	}
 
-	// Rounded DOWN, and defined rather than incidental: an order books 3.333 for a unit that cost
-	// 3.333,33. Rounding up would have the order claim to have paid more than the invoice.
+	// The batch keeps 3.333,33… as is; this contract carries whole rupiah, so the read rounds it to 3.333.
 	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 3333 {
-		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, rounded down)", got)
+		t.Fatalf("unit cost = %d, want 3333 (10000 / 3, to the rupiah)", got)
 	}
 }
 
@@ -237,12 +235,9 @@ func TestStockCost_HPPIncludesFreightAndTheCODFee(t *testing.T) {
 	}
 }
 
-// #155/#154 — freight is spread over the SELLABLE units, not over everything that arrived.
-//
-// You paid to ship the broken ones too, and that cost has to land somewhere. Putting it on the good
-// units means a damaged delivery correctly reads as more expensive per piece; dividing by 10 instead
-// would leave the freight paid on the broken pair absorbed by nobody, and the margin quietly optimistic.
-func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
+// #155 — freight is spread over EVERY UNIT ORDERED (all-qty-is-every-unit-ordered), broken ones included: the crushed
+// pair carries its share on its problem row, at the same landed price.
+func TestStockCost_FreightIsSpreadOverEveryUnitOrdered(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 	ctx := ctxUser(1)
@@ -284,10 +279,9 @@ func TestStockCost_FreightIsSpreadOverSellableUnitsOnly(t *testing.T) {
 		t.Fatalf("StockCost: %v", err)
 	}
 
-	// goods 100.000 / 8 = 12.500 ; freight 20.000 / 8 = 2.500 ; HPP = 15.000.
-	// Dividing the freight by 10 instead would give 12.500 + 2.000 = 14.500.
-	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 15000 {
-		t.Fatalf("HPP = %d, want 15000 — freight over the 8 SELLABLE units, not over all 10", got)
+	// goods 100.000 / 10 = 10.000 ; freight 20.000 / 10 = 2.000 ; the batch's price 12.000.
+	if got := stockCostLines(res.Msg)[0].GetUnitCost(); got != 12000 {
+		t.Fatalf("HPP = %d, want 12000 — freight over all 10 ordered", got)
 	}
 }
 

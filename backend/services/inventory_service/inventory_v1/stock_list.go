@@ -9,8 +9,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// StockList returns the on-hand of every product at the scoped warehouse (paged) — reading the
-// derived snapshot, not the ledger.
+// StockList returns the on-hand of every product at the scoped warehouse (paged) — the placement ledger's rack rows,
+// summed.
 //
 // One row PER PRODUCT, summed across its racks (#135). This is the warehouse's answer to "how much of
 // X do we have here?", and that has never meant "on which shelf" — a product on three racks is one
@@ -29,7 +29,7 @@ func (s *Service) StockList(
 
 	query := s.db.
 		WithContext(ctx).
-		Model(&inventory_service_models.StockLevel{}).
+		Model(&inventory_service_models.ProductPlacement{}).
 		Where("warehouse_id = ?", req.Msg.GetWarehouseId()).
 		Group("warehouse_id, product_id")
 
@@ -40,7 +40,7 @@ func (s *Service) StockList(
 	err := s.db.
 		WithContext(ctx).
 		Raw(`SELECT COUNT(*) FROM (
-		       SELECT 1 FROM stock_levels WHERE warehouse_id = ? GROUP BY warehouse_id, product_id
+		       SELECT 1 FROM product_placements WHERE warehouse_id = ? GROUP BY warehouse_id, product_id
 		     ) g`, req.Msg.GetWarehouseId()).
 		Scan(&total).
 		Error
@@ -48,10 +48,10 @@ func (s *Service) StockList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	var levels []inventory_service_models.StockLevel
+	var levels []stockLevelRow
 
 	err = query.
-		Select("warehouse_id, product_id, SUM(on_hand) AS on_hand, MAX(updated_at) AS updated_at").
+		Select("warehouse_id, product_id, SUM(stock_count) AS on_hand").
 		Order("product_id ASC").
 		Offset(pageOffset(page)).
 		Limit(int(page.GetLimit())).
@@ -63,7 +63,7 @@ func (s *Service) StockList(
 
 	out := make([]*inventoryv1.StockLevel, 0, len(levels))
 	for i := range levels {
-		out = append(out, levelToProto(&levels[i]))
+		out = append(out, levels[i].proto())
 	}
 
 	items, ids := stockLevelItems(out, req.Msg.GetDataRequest())
@@ -73,4 +73,15 @@ func (s *Service) StockList(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// stockLevelRow is one product's total in one warehouse.
+type stockLevelRow struct {
+	WarehouseID uint64
+	ProductID   uint64
+	OnHand      int64
+}
+
+func (r stockLevelRow) proto() *inventoryv1.StockLevel {
+	return &inventoryv1.StockLevel{ProductId: r.ProductID, WarehouseId: r.WarehouseID, OnHand: r.OnHand}
 }

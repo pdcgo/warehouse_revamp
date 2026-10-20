@@ -2122,7 +2122,6 @@
       "onHand": "On hand",
       "actions": "Actions"
     },
-    "receive": "Receive",
     "adjust": "Adjust",
     "returnsTitle": "Returns",
     "returnsComingSoon": "Returns are coming soon",
@@ -2131,11 +2130,8 @@
     "opnameComingSoon": "Stock opname is coming soon",
     "opnameBody": "A physical stock count reconciled against the system — count a shelf, record what is really there, and post the corrections — will live here once the opname flow is designed.",
     "quantityPositiveError": "Quantity must be a positive whole number.",
-    "receivedToast": "Received {{qty}} × {{sku}}",
-    "receiveStockTitle": "Receive Stock",
     "quantity": "Quantity",
     "reason": "Reason",
-    "receiveReasonPlaceholder": "e.g. PO #123, supplier delivery",
     "cancel": "Cancel",
     "countedOnHandError": "Counted on-hand must be zero or a positive whole number.",
     "placeRequiredError": "Choose the place you counted — a rack, or the unplaced pile.",
@@ -2168,10 +2164,7 @@
     "moveFromHelper": "Where the stock sits now — a rack, or the unplaced pile.",
     "moveTo": "To",
     "moveToHelper": "Where it is going. The warehouse total does not change — only where the goods sit.",
-    "moveBatch": "Batch",
-    "moveBatchPlaceholder": "Which delivery's units…",
     "moveBatchOption": "#{{id}} · {{ready}} ready",
-    "moveBatchHelper": "Stock is tracked per delivery — the batch travels with the units you move.",
     "moveQuantityHelper": "How many to move. Moving more than the source place holds is refused.",
     "moveReasonPlaceholder": "e.g. put away, shelf reorganised",
     "movePlacesRequiredError": "Choose both places — where the stock is now, and where it is going.",
@@ -2419,11 +2412,11 @@
     "lost": "Lost",
     "used": "Used",
     "ready": "Ready",
-    "tabPlacements": "Placements",
+    "tabPlacements": "Put Away at Accept",
     "tabHistory": "History",
     "place": "Place",
-    "readyHere": "Ready here",
-    "noPlacements": "None of this batch is on a shelf right now.",
+    "readyHere": "Put away",
+    "noPlacements": "This batch was put on no rack when it came in. Where the product sits now is on its Racks tab.",
     "when": "At",
     "what": "Type",
     "change": "Change",
@@ -3916,7 +3909,7 @@
       "pending": {
         "costEvent": {
           "label": "Shipping cost",
-          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
         }
       }
     },
@@ -3952,7 +3945,7 @@
       "pending": {
         "costEvent": {
           "label": "Shipping cost",
-          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
         }
       }
     },
@@ -3983,7 +3976,7 @@
       "pending": {
         "costEvent": {
           "label": "Shipping cost",
-          "reason": "The cost is stored on the transfer, but the paying account does not hear of it yet — the event lands with the backend step."
+          "reason": "The cost is stored and announced after each save, but the paying account does not post it yet — its listener is not built."
         },
         "labelPhoto": {
           "label": "Label photo",
@@ -4039,7 +4032,7 @@
       "pending": {
         "courierDebt": {
           "label": "Courier's charge",
-          "reason": "The charge is saved on the transfer, but balance does not hear of it yet — the selling team's debt to this warehouse is posted from the accepted event, which lands with the backend step."
+          "reason": "The charge is saved and announced at accept, but balance does not post the selling team's debt to this warehouse yet — which kind of entry it posts as is still open."
         }
       }
     }

@@ -15,11 +15,10 @@ import (
 //
 // ONE LABEL PER PLACEMENT, not per line: a delivery of 100 split across three shelves is three labels,
 // each carrying its own rack and quantity, because a sticker names ONE physical spot. Two shelves of
-// the same line share a batch_id — location is separate from batch.
+// the same batch share its batch_id — location is separate from batch.
 //
-// BROKEN/LOST UNITS ARE NEVER HERE, and it costs nothing to exclude them: damaged units produce no
-// `restock_received_placements` row (they never entered stock, #154), so a query over placements omits
-// them by construction rather than by a filter that could be forgotten.
+// BROKEN/LOST UNITS ARE NEVER HERE, and it costs nothing to exclude them: damaged units put nothing on a rack (they
+// never entered stock, #154), so a query over the accept's rack rows omits them by construction.
 //
 // Scoped to the ACCEPTING warehouse (`team_id`/use_scope). A request belonging to another warehouse
 // reads as NotFound, exactly as Detail and Fulfill do — the id itself must not confirm it exists.
@@ -32,7 +31,7 @@ func (s *Service) RestockRequestLabels(
 
 	// The receipt itself, scoped — its id and acceptance time head every label. A missing or
 	// cross-warehouse request is NotFound via restockErr's gorm mapping.
-	var rr inventory_service_models.RestockRequest
+	var rr inventory_service_models.Restock
 
 	err := s.db.
 		WithContext(ctx).
@@ -49,19 +48,17 @@ func (s *Service) RestockRequestLabels(
 		return nil, restockErr(errRestockNotAccepted)
 	}
 
-	// One row per placement. The HPP is the accept screen's figure (#155) recomputed for THIS receipt —
-	// the same arithmetic as unitCosts (stock_cost.go), but scoped to this request rather than the
-	// product's latest restock, which a newer delivery could have moved. Freight is spread over the
-	// request's sellable units, so every unit of the delivery carries the same share.
+	// One row per rack the accept put units on. The HPP is the batch's own landed price
+	// (unit-price-is-line-price-plus-costs-per-unit) — freight included, the figure the ledger values the units at.
 	type labelRow struct {
 		BatchID   uint64
 		ProductID uint64
 		SKU       string
 		Name      string
 		Quantity  int64
-		RackID    *uint64
-		RackCode  *string
-		HPP       int64
+		RackID    uint64
+		RackCode  string
+		HPP       float64
 	}
 
 	var rows []labelRow
@@ -70,30 +67,24 @@ func (s *Service) RestockRequestLabels(
 		WithContext(ctx).
 		Raw(`
 			SELECT
-			    i.id          AS batch_id,
-			    i.product_id  AS product_id,
-			    i.sku         AS sku,
-			    i.name        AS name,
-			    p.quantity    AS quantity,
-			    p.rack_id     AS rack_id,
-			    rk.code       AS rack_code,
-			    ((i.total_price / NULLIF(i.received_quantity, 0))
-			     + COALESCE(
-			           (r.shipping_cost + r.warehouse_additional_cost)
-			           / NULLIF((SELECT SUM(x.received_quantity)::BIGINT
-			                     FROM restock_request_items x
-			                     WHERE x.restock_request_id = r.id), 0),
-			           0)
-			    ) AS hpp
-			FROM restock_request_items i
-			JOIN restock_requests r            ON r.id = i.restock_request_id
-			JOIN restock_received_placements p ON p.restock_request_item_id = i.id
-			LEFT JOIN racks rk                 ON rk.id = p.rack_id
+			    b.id                         AS batch_id,
+			    b.product_id                 AS product_id,
+			    i.sku                        AS sku,
+			    i.name                       AS name,
+			    l.stock_change               AS quantity,
+			    l.placement_id               AS rack_id,
+			    rk.code                      AS rack_code,
+			    b.price_unit                 AS hpp
+			FROM restocks r
+			JOIN batches b                 ON b.transaction_id = r.transaction_id
+			JOIN restock_items i           ON i.restock_id = r.id AND i.product_id = b.product_id
+			JOIN product_placement_logs l  ON l.transaction_id = r.transaction_id AND l.product_id = b.product_id
+			                              AND l.stock_change > 0
+			JOIN placements rk                ON rk.id = l.placement_id
 			WHERE r.id = ?
 			  AND r.warehouse_id = ?
 			  AND r.status = ?
-			  AND i.received_quantity > 0
-			ORDER BY i.id, p.rack_id NULLS LAST`,
+			ORDER BY b.id, l.placement_id`,
 			requestID, warehouseID, restockStatusAccepted,
 		).
 		Scan(&rows).
@@ -103,17 +94,16 @@ func (s *Service) RestockRequestLabels(
 	}
 
 	// The units that got NO label because they never entered stock (#154) — stated so a short run reads
-	// as deliberate. A separate scalar query rather than a join: damage lives in its own table and must
+	// as deliberate. A separate scalar query rather than a join: the problem rows live in their own table and must
 	// not multiply the placement rows above.
 	var excluded int64
 
 	err = s.db.
 		WithContext(ctx).
 		Raw(`
-			SELECT COALESCE(SUM(d.quantity), 0)
-			FROM restock_damaged_units d
-			JOIN restock_request_items i ON i.id = d.restock_request_item_id
-			WHERE i.restock_request_id = ?`,
+			SELECT COALESCE(SUM(p.count), 0)
+			FROM restock_problem_items p
+			WHERE p.restock_id = ?`,
 			requestID,
 		).
 		Scan(&excluded).
@@ -133,11 +123,7 @@ func (s *Service) RestockRequestLabels(
 			Hpp:       rows[i].HPP,
 		}
 
-		// Every unit in stock is on a placement (there-is-no-unplaced-pile). A row from the old unplaced pile prints
-		// with no code rather than a placement a picker would go looking for.
-		if rows[i].RackID != nil && rows[i].RackCode != nil {
-			label.PlacementCode = *rows[i].RackCode
-		}
+		label.PlacementCode = rows[i].RackCode
 
 		labels = append(labels, label)
 	}

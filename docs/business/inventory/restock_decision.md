@@ -56,6 +56,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-box-nobody-raised-comes-in-by-the-teams-restock](#a-box-nobody-raised-comes-in-by-the-teams-restock) | a box with no restock is not signed for; staff tell the team named on it, the team creates the restock, the warehouse accepts it | chat, 2026-10-14 — answers Q23, b, as opname's rule |
 | [the-restock-prototype-is-accepted](#the-restock-prototype-is-accepted) | design_accept: the seven restock screens and the restock contract are the design to build; a contract change from here is a new pass | chat, 2026-10-15 |
 | [restocks-non-stock-parts-come-before-the-switch-over](#restocks-non-stock-parts-come-before-the-switch-over) | everything in restock that writes no stock is built now, on today's backend; only the accept waits for the ledgers | chat, 2026-10-15 — as recommended |
+| [a-restock-carries-only-the-teams-own-products](#a-restock-carries-only-the-teams-own-products) | a selling team restocks only the products it owns; create and update refuse another team's product, so every unit in stock has one owner | chat, 2026-10-16 — option a, as recommended |
 
 ## a-line-names-the-channel-it-was-bought-from
 
@@ -1467,3 +1468,32 @@ flowchart LR
 
 🔄 *(2026-10-15)* *"After the switch-over"* now reads *once the ledgers exist*: no switch-over is staged
 ([no-switch-over-the-ledgers-replace-todays-tables](../../technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)).
+
+## a-restock-carries-only-the-teams-own-products
+
+> Owner, in chat (2026-10-16): *"a"* — to *"may a selling team restock a product that another team owns?"*, raised while
+> building the accept on the ledgers, with option **a**: no, a restock carries only the team's own products.
+
+**The verdict.** A restock is the owning team bringing **its own** goods into a warehouse. Create and update refuse a line
+on a product the team does not own, so every unit in stock has exactly one owner: the batch's team
+([a-batch-carries-its-owner](./warehouse_transfer_decision.md#a-batch-carries-its-owner)) and the rack row's team
+([one-shelf-row-per-product-per-placement](./context_decision.md#one-shelf-row-per-product-per-placement)) are the same
+team, the product's. A team that sells another team's product borrows it at order time, with the markup.
+
+```mermaid
+flowchart LR
+  M["Melati creates a restock"] --> Q{"each product owned by Melati?"}
+  Q -->|"yes"| OK["created"]
+  Q -->|"Sinar's, or unknown"| X["refused - a restock carries only the team's own products"]
+  OK --> A["accept - batch and rack row both Melati's"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| checked by | create and update, before any transaction, asking product_service (`ProductByIds`) through inventory's `ProductOwners` port |
+| a product of another team, or one that exists nowhere | refused, `InvalidArgument`, naming the product |
+| the ledgers | `batches.team_id` = `product_placements.team_id` = the product's owner, always |
+| selling another team's product | an order's borrowed line, at the markup — never a restock |
+| what it retires | the old opname test *"a shortfall splits across owners"*: two owners of one product on one shelf cannot happen |

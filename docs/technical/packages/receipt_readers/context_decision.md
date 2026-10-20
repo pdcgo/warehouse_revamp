@@ -20,6 +20,7 @@ The open set is [context_clarify.md](./context_clarify.md).
 | [a-shopee-resi-is-confirmed-by-its-barcode](#a-shopee-resi-is-confirmed-by-its-barcode) | A Shopee label no courier layout knows is read from its Resi box when a barcode says the same |
 | [a-lazada-receipt-is-its-tracking-number](#a-lazada-receipt-is-its-tracking-number) | A Lazada label's `Receipt` is the courier's tracking number, its `OrderID` the 16-digit order number |
 | [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module) | The package is the public repo `pdcgo/san_receipt_readers`, a submodule at `backend/packages/`, with its own `go.mod` |
+| [the-label-samples-may-be-committed](#the-label-samples-may-be-committed) | The label PDFs in `examples/receipt_file_samples/` are not sensitive: they stay committed, the repo stays public |
 
 ---
 
@@ -409,6 +410,38 @@ flowchart LR
 | folder | `backend/packages/`, meaning "another repo, checked out here", beside `backend/pkgs/` (this repo's own packages) |
 | wiring | the root `go.mod` requires it and `replace`s it with `./backend/packages/san_receipt_readers`, so an edit there is seen here at once |
 | CI | both checkouts take `submodules: true` (every `go` command reads the replaced folder's `go.mod`), and a step runs `go vet` and `go test` inside each `backend/packages/*`, which the root's `./...` never enters |
-| privacy | `*.pdf` is gitignored in the submodule. The real samples stay untracked in this repo's `examples/` ([Q5](./context_clarify.md#question)), and the tests build their labels in code |
+| privacy | `*.pdf` is gitignored in the submodule. The real samples stay untracked in this repo's `examples/` ([Q5](./context_clarify.md#question)), and the tests build their labels in code. 🔄 *Reversed 2026-10-19 by [the-label-samples-may-be-committed](#the-label-samples-may-be-committed): the samples are committed here, and the diagram's "never pushed" is stale* |
 | docs | stay here, in `docs/technical/packages/receipt_readers/`. The submodule's README links to them by URL |
 | a change | is two commits: one in the submodule (pushed to its repo), then one here moving the submodule pointer |
+
+---
+
+## the-label-samples-may-be-committed
+
+> Owner, in chat (2026-10-19): *"pdf example its not sensitive, its okay"* — to [Q5](./context_clarify.md#question),
+> *sample privacy*, after the rollup's #1 found 47 label PDFs committed in `34849174` (2026-10-05) and pushed to `dev`,
+> `backup/inventory`, `thoni` and `hfrada` of this public repo. **Against my recommendation** (make the repo private,
+> untrack and gitignore the folder).
+
+**The verdict.** The label samples in `examples/receipt_file_samples/` are not sensitive. They stay committed, the repo
+stays public, and history is not rewritten. Nothing ignores the folder, so a label `tools/receipt_iterate` downloads
+there may be committed too.
+
+```mermaid
+flowchart LR
+  B["the receipt bucket"] -->|"tools/receipt_iterate"| X["examples/receipt_file_samples - 47 PDFs, committed"]
+  X -->|"read by TestSamples"| S["san_receipt_readers"]
+  X -->|"pushed"| G["pdcgo/warehouse_revamp - stays public"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the samples | stay committed, on every branch as they are |
+| the repo | stays public |
+| history | not rewritten, nothing force-pushed |
+| `.gitignore` | no entry for the folder |
+| the submodule | unchanged: `*.pdf` stays gitignored in `pdcgo/san_receipt_readers`, whose own history holds no PDF |
+| reverses | the privacy row of [the-reader-is-a-submodule-with-its-own-module](#the-reader-is-a-submodule-with-its-own-module), *"the real samples stay untracked"* |
+| stale, outside this repo's docs | the submodule's README, line 25, still says the folder is untracked |

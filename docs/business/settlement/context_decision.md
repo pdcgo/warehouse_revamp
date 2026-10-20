@@ -88,6 +88,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-gap-is-an-adjustment](../../technical/frontend/order_settlement_decision.md#the-gap-is-an-adjustment) | what reached us less the selling price is **Penyesuaian** (EN *Adjustment*), signed — not *Hilang* / *Lebih* |
 | [the-unitemised-take-is-a-deduction](../../technical/frontend/order_settlement_decision.md#the-unitemised-take-is-a-deduction) | the selling price less every payout is **Potongan** (EN *Deductions*) — not *Tidak dirinci* |
 | [the-source-is-a-badge](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge) | an entry's source — Import · Manual · Order — is a badge in the ledger; the list row shows none |
+| [a-wrong-day-is-refolded-from-the-log](#a-wrong-day-is-refolded-from-the-log) | a report day that is wrong while the log is right is re-folded from the log by an operator command — one report, one shop, one date |
 
 ---
 
@@ -3781,3 +3782,36 @@ flowchart LR
 ## the-source-is-a-badge
 
 ➡ **Moved** to [frontend/order_settlement_decision.md](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge) — a screen decision (owner, 2026-10-02: *"keputusanku sebelumnya mungkin akan lebih tepat kalau masuk ke docs/technical/frontend"*).
+
+---
+
+## a-wrong-day-is-refolded-from-the-log
+
+> Owner, in chat (2026-10-19): **"yes"** — to *"add the one-day re-fold command?"*, the repair for a report that is short
+> while its log is right ([`system_adjustment` repairs one class of damage](./context_clarify.md#-system_adjustment-in-the-log-repairs-one-class-of-damage-and-cannot-repair-the-other)).
+> As recommended. It became the repair for every lost event the day reports went events-only
+> ([a-report-is-fed-by-events-only-for-now](../analytic/context_decision.md#a-report-is-fed-by-events-only-for-now)).
+
+**The verdict.** When a report's day is wrong while the log is right, an operator **re-folds that one day** from the log: one
+report, one shop, one date — re-read that day's log rows and rewrite that day's report row. It reaches any date, adds no log
+row, and leaves the ledger true. The broker replay ([the-replay-seeks-the-broker](#the-replay-seeks-the-broker)) stays for
+range rebuilds.
+
+```mermaid
+flowchart LR
+  L["settlement log - Melati 10 Oct, row 501 included"] --> F["san report refold - settlement-daily, shop 57, 2026-10-10"]
+  F --> R["Melati's 10 Oct report row - rewritten from the log"]
+  E["the lost event"] -.->|"never needed"| R
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the command | `go run ./tools/san report refold --report <report> --shop <id> --date <yyyy-mm-dd>` — an operator act, in the operations CLI |
+| it does | reads one day of the source log for one scope, recomputes that day's report row, replaces it |
+| it does not | add a log row, or touch any other day |
+| when | on demand, when a person notices a wrong day — nothing detects it automatically ([a-report-is-fed-by-events-only-for-now](../analytic/context_decision.md#a-report-is-fed-by-events-only-for-now)) |
+| `system_adjustment` | stays for its own case — a fact the log never recorded |
+| the broker replay | stays for range rebuilds |
+| a second reader of the log | accepted, for a one-day repair — the replay decision avoided it for range rebuilds only |

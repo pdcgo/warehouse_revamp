@@ -24,7 +24,7 @@ import { useCancelRestockRequest, useMarkLostRestockRequest } from "./queries";
 import { committedValue } from "./summary";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 
 // WHAT THE SELLING TEAM MAY DO TO ITS RESTOCK, BY STATUS — the one matrix both the selling list's row menu and the
 // selling detail's header read (the-warehouse-signs-and-accepts-the-team-does-the-rest):
@@ -216,7 +216,7 @@ function CancelRestockDialog({
           </Stack>
         </RadioGroup.Root>
         <Field.HelperText>
-          {t("restock.cancel.moneyHint", { amount: formatRupiah(committedValue(request)) })}
+          {t("restock.cancel.moneyHint", { amount: formatRupiahNumber(committedValue(request)) })}
         </Field.HelperText>
       </Field.Root>
     </ConfirmDialog>

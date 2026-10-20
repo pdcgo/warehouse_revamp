@@ -39,12 +39,12 @@ func (s *Service) RackStock(
 		return nil, rackNotFound()
 	}
 
-	// Rows with nothing on them are not "on the rack" — a level can fall to 0 without being deleted
+	// Rows with nothing on them are not "on the rack" — a rack row can fall to 0 without being deleted
 	// (a stock-take zeroing a shelf), and listing it would show a product that is not there.
 	query := s.db.
 		WithContext(ctx).
-		Model(&inventory_service_models.StockLevel{}).
-		Where("rack_id = ? AND on_hand > 0", rackID)
+		Model(&inventory_service_models.ProductPlacement{}).
+		Where("placement_id = ? AND stock_count > 0", rackID)
 
 	var total int64
 
@@ -53,7 +53,7 @@ func (s *Service) RackStock(
 		return nil, rackDBError(err)
 	}
 
-	var levels []inventory_service_models.StockLevel
+	var levels []inventory_service_models.ProductPlacement
 
 	err = query.
 		Order("product_id ASC").
@@ -65,7 +65,7 @@ func (s *Service) RackStock(
 		return nil, rackDBError(err)
 	}
 
-	// WHAT EACH LINE COST (#197) — the same HPP query StockCost runs, for THIS PAGE's products only.
+	// WHAT EACH LINE IS WORTH (#197) — the same unit value StockCost answers, for THIS PAGE's products only.
 	// A cost per page rather than per shelf: the contents page, so valuing rows the caller cannot see
 	// would be work nobody asked for.
 	ids := make([]uint64, 0, len(levels))
@@ -85,7 +85,7 @@ func (s *Service) RackStock(
 
 		line := &inventoryv1.RackStockLine{
 			ProductId: levels[i].ProductID,
-			OnHand:    levels[i].OnHand,
+			OnHand:    levels[i].StockCount,
 			// ⚠ 0 IS UNKNOWN, NOT FREE, and `cost_known` is what carries the difference. A screen left
 			// to infer it from a zero would show a shelf of never-restocked goods as worthless.
 			UnitCost:  unitCost,
@@ -95,7 +95,7 @@ func (s *Service) RackStock(
 		if known {
 			// Multiplied HERE rather than in the client, so a line and the header tile cannot disagree
 			// about the same arithmetic.
-			line.Value = levels[i].OnHand * unitCost
+			line.Value = levels[i].StockCount * unitCost
 		}
 
 		lines = append(lines, line)

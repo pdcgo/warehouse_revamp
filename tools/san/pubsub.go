@@ -233,6 +233,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "restock-accepted",
 			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
 		},
+		// liability_service's courier charge — mirrors liability_service.RestockAcceptedSubscription. The SAME topic as
+		// supplier's fold, its OWN subscription (balance-posts-the-couriers-debt-from-the-event).
+		{
+			ID:     "liability-restock-accepted",
+			Topic:  "restock-accepted",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockAccepted"`,
+		},
 		// selling_service's shop-access listener — mirrors selling_service.MemberRemovedSubscription
 		// (removing-a-member-drops-their-shop-access).
 		{

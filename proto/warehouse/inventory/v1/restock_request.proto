@@ -17,8 +17,8 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inv
 // for the box and accepts it; the selling team does everything else
 // (the-warehouse-signs-and-accepts-the-team-does-the-rest).
 //
-// ⚠ Until the backend step: fields with no database column yet are ACCEPTED BUT NOT STORED, and RestockRequestArrive
-// / RestockRequestMarkLost answer Unimplemented. Each such field says so.
+// MONEY IS `double` (money-is-double-in-the-api-too): a landed price of 11.714,2857… reaches the screen as it is stored,
+// and the screen rounds it for display. Amounts are compared at 4 digits, never with ==.
 service RestockRequestService {
   // The selling team raises a restock — the restock and its lines in one transaction, then Restock Created
   // (a-created-restock-tells-the-financial-account).
@@ -90,12 +90,13 @@ message RestockProblemItem {
     not_in: [0]
   }];
   int64 count = 2 [(buf.validate.field).int64.gt = 0];
-  // What they were worth, FILLED BY THE SYSTEM from the line and never editable by the warehouse
-  // (the-problem-price-is-filled-by-the-system): line total × count ÷ line count.
-  int64 price_unit = 3;
-  int64 total = 4;
+  // What they were worth, FILLED BY THE SYSTEM and never editable by the warehouse
+  // (the-problem-price-is-filled-by-the-system): the landed unit price, the same as a good unit's
+  // (all-qty-is-every-unit-ordered). total = price_unit × count.
+  double price_unit = 3;
+  double total = 4;
   // The WAREHOUSE's note on this row — "box crushed". Optional (a-broken-reason-is-optional); its one writer is the
-  // warehouse (three-notes-one-writer-each). ⚠ Not stored until the backend step.
+  // warehouse (three-notes-one-writer-each).
   string note = 5 [(buf.validate.field).string.max_len = 200];
 }
 
@@ -125,11 +126,15 @@ message RestockRequestItem {
   }];
   // How many were ORDERED. Renamed in place from `quantity`.
   int64 count = 5 [(buf.validate.field).int64.gt = 0];
-  // The line's TOTAL, whole rupiah, as the invoice prints it (a-line-is-typed-as-its-total). Renamed in place from
+  // The line's TOTAL, as the invoice prints it (a-line-is-typed-as-its-total) — the truth. Renamed in place from
   // `total_price`. Zero is legitimate (a sample).
-  int64 total = 6 [(buf.validate.field).int64.gte = 0];
-  // total ÷ count, for display only — never typed, never stored as the truth. Set on read.
-  int64 price_unit = 11;
+  double total = 6 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  // total ÷ count, for display — never typed. Stored beside the total and rewritten whenever either changes; ignored on
+  // a create or an update.
+  double price_unit = 11;
 
   // 7 was `received_quantity`, the SELLABLE units only. Replaced by received_count, which includes the broken ones
   // (any-warehouse-member-counts-what-arrived).
@@ -146,12 +151,10 @@ message RestockRequestItem {
   // Who sold it, and from which store — both optional; a stall has a supplier and no store
   // (a-line-may-name-a-supplier-without-a-channel). Any team's supplier, picked from the Connect Supplier Channel
   // popup (a-line-connects-to-any-teams-supplier-from-a-popup). A store, when given, must be that supplier's.
-  // ⚠ Not stored until the backend step.
   uint64 supplier_id = 13;
   uint64 supplier_channel_id = 14;
 
-  // The SELLING team's note on the line — "extra stock" (extra-units-are-added-by-the-selling-teams-edit). ⚠ Not
-  // stored until the backend step.
+  // The SELLING team's note on the line — "extra stock" (extra-units-are-added-by-the-selling-teams-edit).
   string note = 15 [(buf.validate.field).string.max_len = 200];
 
   // 8 was `received_rack_id`, long superseded by placements.
@@ -185,36 +188,36 @@ message RestockRequest {
   // The parcel — what finds the box at the door (the-receipt-is-the-tracking-number).
   // The courier's tracking number (resi). Empty = none yet.
   string receipt = 13;
-  // A photo of the label. ⚠ Not stored until the backend step.
+  // A photo of the label.
   string receipt_file = 29;
-  // The courier — a shipment channel. ⚠ Not stored until the backend step.
+  // The courier — a shipment channel.
   uint64 shipment_id = 28;
 
   // The money — what the selling team paid when it raised it.
   // The store's invoice or order number; one per restock (a-restock-has-one-invoice). Renamed in place from
   // `order_ref`.
   string invoice_ref_id = 15;
-  // The operational account that paid (a-restock-names-its-paying-account). ⚠ Not stored until the backend step.
+  // The operational account that paid (a-restock-names-its-paying-account).
   uint64 finance_account_id = 27;
   // History only — see RestockPaymentType.
   RestockPaymentType payment_type = 17;
   // Freight the selling team paid. Renamed in place from `shipping_cost`.
-  int64 shipment_cost = 16;
-  // Σ line totals. Set on read.
-  int64 subtotal = 30;
-  // subtotal + shipment_cost — and NOT the courier's charge (the-couriers-charge-stays-out-of-total). Set on read.
-  int64 total = 31;
+  double shipment_cost = 16;
+  // Σ line totals. Stored, written by every create and edit.
+  double subtotal = 30;
+  // subtotal + shipment_cost — and NOT the courier's charge (the-couriers-charge-stays-out-of-total). Stored.
+  double total = 31;
 
   // The courier's charge at the door — paid by the warehouse on the spot, compensated by the selling team
   // (the-warehouse-cost-is-the-couriers-charge-at-the-door). One per restock, with its note
   // (the-courier-is-paid-once-per-restock). Entered at accept; 0 until then.
-  int64 warehouse_additional_cost = 38;
+  double warehouse_additional_cost = 38;
   string warehouse_additional_cost_note = 39;
 
   // The SELLING team's note on the restock as a whole (three-notes-one-writer-each).
   string note = 18;
 
-  // The inventory transaction the accept made; 0 until accepted. ⚠ Not stored until the backend step.
+  // The inventory transaction the accept made; 0 until accepted.
   uint64 transaction_id = 32;
 
   // Who did what, and when — user_service ids, 0 = not yet or not recorded; unix seconds, 0 = not yet.
@@ -264,8 +267,11 @@ message RestockRequestCreateRequest {
   string invoice_ref_id = 12 [(buf.validate.field).string.max_len = 100];
   // REQUIRED — every restock names the account that paid (a-restock-must-name-the-account-that-paid).
   uint64 finance_account_id = 16 [(buf.validate.field).uint64.gt = 0];
-  // Whole rupiah; zero is legitimate (free shipping).
-  int64 shipment_cost = 13 [(buf.validate.field).int64.gte = 0];
+  // Zero is legitimate (free shipping).
+  double shipment_cost = 13 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   string note = 15 [(buf.validate.field).string.max_len = 1000];
 
   reserved 3, 4, 5, 6, 7, 9, 11, 14;
@@ -472,8 +478,8 @@ message RestockInboundPreview {
   int64 product_count = 1;
   // Pieces ORDERED — nobody has counted them yet.
   int64 unit_count = 2;
-  // The line totals, whole rupiah. Freight and the courier's charge are not the goods' worth.
-  int64 amount = 3;
+  // The line totals. Freight and the courier's charge are not the goods' worth.
+  double amount = 3;
   // When the longest-waiting one was raised, unix seconds; 0 when nothing is waiting.
   int64 oldest_pending_unix = 4;
 }
@@ -544,7 +550,10 @@ message RestockRequestUpdateRequest {
   // REQUIRED while ongoing (above 0). While arrived it must EQUAL the stored value — and a restock raised before paying
   // accounts stores 0 — so the rule is the handler's, not a field constraint that would lock such a restock's lines.
   uint64 finance_account_id = 13;
-  int64 shipment_cost = 9 [(buf.validate.field).int64.gte = 0];
+  double shipment_cost = 9 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   string note = 11 [(buf.validate.field).string.max_len = 1000];
 
   reserved 4, 7, 10, 12;
@@ -602,10 +611,13 @@ message RestockRequestAcceptRequest {
   // One entry per line, EVERY line exactly once — accepting IS the count.
   repeated RestockRequestReceivedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
 
-  // The courier's charge at the door, whole rupiah; 0 = none (the-courier-is-paid-once-per-restock). Its note is
-  // REQUIRED when it is above 0 — the handler checks, since a rule across two fields cannot be written here
+  // The courier's charge at the door; 0 = none (the-courier-is-paid-once-per-restock). Its note is REQUIRED when it
+  // is above 0 — the handler checks, since a rule across two fields cannot be written here
   // (an-incidental-line-must-say-what-it-was-for).
-  int64 warehouse_additional_cost = 6 [(buf.validate.field).int64.gte = 0];
+  double warehouse_additional_cost = 6 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
   string warehouse_additional_cost_note = 7 [(buf.validate.field).string.max_len = 200];
 
   reserved 4, 5;
@@ -722,8 +734,8 @@ message RestockLabel {
   // 7 was `unplaced` — every unit is on a placement now.
   reserved 7;
   reserved "unplaced";
-  // Per-unit landed price for this restock, the courier's charge included.
-  int64 hpp = 8;
+  // Per-unit landed price for this restock, the courier's charge included — the batch's price, as stored.
+  double hpp = 8;
 }
 
 message RestockRequestLabelsResponse {

@@ -86,8 +86,8 @@ export interface LineState {
   good: bigint;
   missing: bigint;
   /** What the broken / missing units were worth — the line's share, never typed (the-problem-price-is-filled-by-the-system). */
-  brokenValue: bigint;
-  missingValue: bigint;
+  brokenValue: number;
+  missingValue: number;
   rows: PlacementRow[];
   placed: bigint;
   /** good − placed: above 0 still to place, below 0 too many. */
@@ -99,14 +99,14 @@ export interface LineState {
 
 // What n broken or missing units are worth: the line's LANDED unit price × n, the same price a good unit carries
 // (all-qty-is-every-unit-ordered), filled by the system (the-problem-price-is-filled-by-the-system).
-export function worthOf(landed: bigint, n: bigint): bigint {
-  if (n <= 0n) return 0n;
+export function worthOf(landed: number, n: bigint): number {
+  if (n <= 0n) return 0;
 
-  return landed * n;
+  return landed * Number(n);
 }
 
 // `landed` is the line's landed unit price (unitHpp), worked out by the page from the whole restock's costs.
-export function lineState(item: RestockRequestItem, draft: LineDraft, landed: bigint): LineState {
+export function lineState(item: RestockRequestItem, draft: LineDraft, landed: number): LineState {
   const counted = isCounted(draft.received);
   const received = toCount(draft.received);
   const broken = toBroken(draft.broken);

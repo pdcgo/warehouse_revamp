@@ -11,7 +11,7 @@ import { useShipmentChannelsByIds } from "../../../features/shipment/queries";
 import { paymentTypeLabel } from "../../../components/pickers/PaymentTypeSelect";
 import { ShipmentChannelBadge } from "../../../components/badges/ShipmentChannelBadge";
 import { formatUnixDateTime } from "../../../lib/datetime";
-import { formatRupiah } from "../../../lib/money";
+import { formatRupiahNumber } from "../../../lib/money";
 
 export interface InfoPanelProps {
   request: RestockRequest;
@@ -128,7 +128,7 @@ export function InfoPanel({ request, teamId, warehouseName }: InfoPanelProps) {
               <MoneyLine label={t("restock.detail.subtotal")} value={goodsTotal(request.items)} testId="restock-detail-subtotal" />
               <MoneyLine label={t("restock.detail.shipping")} value={request.shipmentCost} testId="restock-detail-shipping" />
               <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-total">
-                {t("restock.detail.total")}: {formatRupiah(committedValue(request))}
+                {t("restock.detail.total")}: {formatRupiahNumber(committedValue(request))}
               </Text>
             </Stack>
           </Stack>
@@ -146,7 +146,7 @@ export function InfoPanel({ request, teamId, warehouseName }: InfoPanelProps) {
               {charge > 0n ? (
                 <Stack gap="1">
                   <Text fontSize="md" fontWeight="semibold" data-testid="restock-detail-courier-charge">
-                    {formatRupiah(charge)}
+                    {formatRupiahNumber(charge)}
                   </Text>
                   <Text fontSize="sm" wordBreak="break-word" data-testid="restock-detail-courier-charge-note">
                     {request.warehouseAdditionalCostNote}
@@ -182,12 +182,12 @@ export function InfoPanel({ request, teamId, warehouseName }: InfoPanelProps) {
   );
 }
 
-function MoneyLine({ label, value, testId }: { label: string; value: bigint; testId: string }) {
+function MoneyLine({ label, value, testId }: { label: string; value: number; testId: string }) {
   return (
     <Text fontSize="sm" color="fg.muted">
       {label}:{" "}
       <Text as="span" color="fg" data-testid={testId}>
-        {formatRupiah(value)}
+        {formatRupiahNumber(value)}
       </Text>
     </Text>
   );

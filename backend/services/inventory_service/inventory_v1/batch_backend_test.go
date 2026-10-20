@@ -9,7 +9,6 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 )
 
@@ -31,7 +30,7 @@ func acceptLine(
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse, Receipt: "GRN-BK",
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: total},
+			{ProductId: product, Sku: "KPH-001", Name: "Kaos", Count: good + broken + missing, Total: float64(total)},
 		},
 	}))
 	if err != nil {
@@ -143,28 +142,24 @@ func TestBatchPlacement_LastOpname(t *testing.T) {
 		t.Fatalf("last opname before any count = %d, want 0", got)
 	}
 
-	// A stock-take on the shelf — recorded as an ADJUST movement (kind 2) on this warehouse/product/rack.
-	counted := time.Now().Add(-time.Hour)
-	rid := rackID
-	mv := inventory_service_models.StockMovement{
-		WarehouseID: warehouse, ProductID: product, RackID: &rid,
-		Delta: 0, Balance: 10,
-		Kind:      int32(inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST),
-		Reason:    "recount",
-		CreatedAt: counted,
-	}
-	if err = db.Create(&mv).Error; err != nil {
-		t.Fatalf("seed opname movement: %v", err)
+	// A stock-take on the rack that finds it exact still counts: the recount writes an `adjustment` rack row of 0.
+	before := time.Now().Add(-time.Minute)
+
+	_, err = svc.StockAdjust(ctxUser(1), connect.NewRequest(&inventoryv1.StockAdjustRequest{
+		WarehouseId: warehouse, ProductId: product, OnHand: 10, Reason: "recount",
+		Place: &inventoryv1.StockAdjustRequest_RackId{RackId: rackID},
+	}))
+	if err != nil {
+		t.Fatalf("recount: %v", err)
 	}
 
-	if got := shelf().GetLastOpnameUnix(); got != counted.Unix() {
-		t.Fatalf("last opname = %d, want %d", got, counted.Unix())
+	if got := shelf().GetLastOpnameUnix(); got < before.Unix() {
+		t.Fatalf("last opname = %d, want the recount just made", got)
 	}
 }
 
-// BatchDetail totals the batch's RETURN movements (#228). Returns are batch-less in the pick/return
-// flow today (see StockReturn — they reverse batch-less picks), so this seeds batch-tagged RETURN rows
-// directly to prove the aggregate; production totals will fill in once returns carry their batch (#71).
+// BatchDetail totals the units that came BACK into the batch (#228): an order's take released, which reverses the
+// take's own batch rows (a-rollback-reverses-its-log-rows).
 func TestBatchDetail_ReturnAggregate(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -191,26 +186,20 @@ func TestBatchDetail_ReturnAggregate(t *testing.T) {
 		t.Fatalf("before any return: qty=%d last=%d, want 0/0", d.GetReturnedQty(), d.GetLastReturnUnix())
 	}
 
-	bid := batchID
-	first := time.Now().Add(-2 * time.Hour)
-	last := time.Now().Add(-time.Hour)
-	for _, r := range []struct {
-		delta int64
-		at    time.Time
-	}{{4, first}, {1, last}} {
-		mv := inventory_service_models.StockMovement{
-			WarehouseID: warehouse, ProductID: product, BatchID: &bid,
-			Delta: r.delta, Balance: r.delta,
-			Kind:      int32(inventoryv1.MovementKind_MOVEMENT_KIND_RETURN),
-			Reason:    "order returned",
-			CreatedAt: r.at,
-		}
-		if err = db.Create(&mv).Error; err != nil {
-			t.Fatalf("seed return movement: %v", err)
+	before := time.Now().Add(-time.Minute)
+
+	for key, qty := range map[string]int64{"order:1": 4, "order:2": 1} {
+		takeForOrder(t, svc, 2, warehouse, product, qty, key)
+
+		_, err = svc.OrderTransactionRelease(ctxUser(1), connect.NewRequest(&inventoryv1.OrderTransactionReleaseRequest{
+			TeamId: 2, IdempotencyKey: key,
+		}))
+		if err != nil {
+			t.Fatalf("release %s: %v", key, err)
 		}
 	}
 
-	if d := detail(); d.GetReturnedQty() != 5 || d.GetLastReturnUnix() != last.Unix() {
-		t.Fatalf("after returns: qty=%d last=%d, want 5/%d", d.GetReturnedQty(), d.GetLastReturnUnix(), last.Unix())
+	if d := detail(); d.GetReturnedQty() != 5 || d.GetLastReturnUnix() < before.Unix() {
+		t.Fatalf("after two released takes: qty=%d last=%d, want 5 and the latest release", d.GetReturnedQty(), d.GetLastReturnUnix())
 	}
 }

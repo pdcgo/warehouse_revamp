@@ -21,7 +21,7 @@ const RackA1 = routed("/inventories/opname/sessions/15/count?rack=41");
 const RackB1 = routed("/inventories/opname/sessions/15/count?rack=43");
 
 const meta = {
-  title: "Pages/Opname/Count",
+  title: "Pages/Inventory/Opname/Count",
   component: Racks,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {

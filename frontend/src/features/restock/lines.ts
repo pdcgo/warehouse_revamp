@@ -8,16 +8,16 @@ import type { RestockRequestItem } from "../../gen/warehouse/inventory/v1/restoc
 // differently from the other.
 
 // A line's money is STORED as the total, as the invoice prints it (a-line-is-typed-as-its-total).
-export function lineTotal(item: RestockRequestItem): bigint {
+export function lineTotal(item: RestockRequestItem): number {
   return item.total;
 }
 
-// What one piece cost, DERIVED and openly a rounding: 10.000 over 3 pieces shows 3.333 while the line still totals
-// 10.000. The server sends the same figure as `price_unit`.
-export function unitPrice(item: RestockRequestItem): bigint {
-  if (item.count <= 0n) return 0n;
+// What one piece cost, DERIVED: 10.000 over 3 pieces is 3.333,33… while the line still totals 10.000. The server stores
+// and sends the same figure as `price_unit`; worked out here too so a line being typed shows it before it is saved.
+export function unitPrice(item: RestockRequestItem): number {
+  if (item.count <= 0n) return 0;
 
-  return item.total / item.count;
+  return item.total / Number(item.count);
 }
 
 // Where a line's good units went, as a person would say it — "A-01-1 (60), B-02-1 (30)". Every unit in stock is on a

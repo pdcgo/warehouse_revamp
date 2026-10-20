@@ -116,15 +116,15 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 		t.Fatalf("excluded_count = %d, want 2 (the broken hats)", msg.GetExcludedCount())
 	}
 
-	// The two shirt labels share the line's batch id and name their shelves; their quantities are the
+	// The two shirt labels share the batch the line minted and name their racks; their quantities are the
 	// per-shelf split, not the line total.
 	byRack := map[string]*inventoryv1.RestockLabel{}
 	for _, l := range msg.GetLabels() {
 		byRack[l.GetPlacementCode()] = l
 	}
 
-	shirtA := byRack["A-01-3"]
-	shirtB := byRack["B-02-1"]
+	shirtA := byRack["a-01-3"]
+	shirtB := byRack["b-02-1"]
 	hats := byRack[stagingCode]
 	if shirtA == nil || shirtB == nil || hats == nil {
 		t.Fatalf("missing a label: %+v", byRack)
@@ -133,9 +133,9 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 	if shirtA.GetQuantity() != 60 || shirtB.GetQuantity() != 40 {
 		t.Fatalf("shirt split = %d/%d, want 60/40", shirtA.GetQuantity(), shirtB.GetQuantity())
 	}
-	if shirtA.GetBatchId() != items[0].GetId() || shirtB.GetBatchId() != items[0].GetId() {
-		t.Fatalf("two shelves of one line must share the batch id (%d): got %d/%d",
-			items[0].GetId(), shirtA.GetBatchId(), shirtB.GetBatchId())
+	if shirtA.GetBatchId() == 0 || shirtA.GetBatchId() != shirtB.GetBatchId() || shirtA.GetBatchId() == hats.GetBatchId() {
+		t.Fatalf("two racks of one line must share its batch, and the hats have their own: got %d/%d/%d",
+			shirtA.GetBatchId(), shirtB.GetBatchId(), hats.GetBatchId())
 	}
 	if shirtA.GetSku() != "KPH-001" {
 		t.Fatalf("sku = %q, want KPH-001", shirtA.GetSku())
@@ -150,14 +150,15 @@ func TestRestockLabels_OnePerPlacementDamageExcluded(t *testing.T) {
 		t.Fatalf("hats placed = %d, want 28 (2 broken excluded)", hats.GetQuantity())
 	}
 
-	// HPP carries freight (shipping 80.000 + COD 50.000 = 130.000 over 128 sellable units = 1.015/pc):
-	//   shirts: 4.000.000 / 100 + 1.015 = 41.015
-	//   hats:   840.000 / 28  + 1.015 = 31.015
-	if shirtA.GetHpp() != 41015 {
-		t.Fatalf("shirt HPP = %d, want 41015 (line cost + freight share)", shirtA.GetHpp())
+	// HPP is the batch's landed price — freight (shipping 80.000 + courier 50.000 = 130.000) over the 130 units ORDERED,
+	// 1.000 a piece (all-qty-is-every-unit-ordered):
+	//   shirts: 4.000.000 / 100 + 1.000 = 41.000
+	//   hats:     840.000 / 30  + 1.000 = 29.000
+	if shirtA.GetHpp() != 41000 {
+		t.Fatalf("shirt HPP = %v, want 41000 (line cost + freight share)", shirtA.GetHpp())
 	}
-	if hats.GetHpp() != 31015 {
-		t.Fatalf("hat HPP = %d, want 31015", hats.GetHpp())
+	if hats.GetHpp() != 29000 {
+		t.Fatalf("hat HPP = %v, want 29000", hats.GetHpp())
 	}
 }
 

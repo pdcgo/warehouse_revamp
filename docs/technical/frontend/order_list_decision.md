@@ -18,6 +18,7 @@ each old heading there now points here.
 | [a-deadline-is-loud-or-it-is-nothing](#a-deadline-is-loud-or-it-is-nothing) | four urgency bands, and an overdue order tints its whole row |
 | [the-preview-became-the-order-list](#the-preview-became-the-order-list) | a seller's `/orders` IS this screen now — the preview page is gone |
 | [the-summary-follows-the-tab](#the-summary-follows-the-tab) | All Status shows the piles; a status tab shows its own figures as cards; the measure line is gone. The cards fill the row again |
+| [root-reads-every-teams-orders](#root-reads-every-teams-orders) | a request scoped to the root team reads every team's orders: the list, its counts and order detail |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -227,6 +228,8 @@ selling team", so root and admin get Team instead of a Shop column that would be
 and sees an empty list — the column would be correct and the table empty. That is a server change,
 not a column; it is open in the clarify file.
 
+🔄 *(2026-10-19)* **Decided:** [root-reads-every-teams-orders](#root-reads-every-teams-orders). Buildable now, not built.
+
 ## the-action-menu-is-a-table-keyed-by-status
 
 > Owner, in chat (2026-09-28) — the per-status action list, given in the OLD status names.
@@ -379,3 +382,32 @@ flowchart LR
   With `auto-fit` the drafts page's three cards fill the row, so a draft card is no longer the width of an order
   card. The shape is shared; the width follows how many cards share the row, on every tab alike.
 - The cost-unknown note stays, under whichever strip is showing.
+
+---
+
+## root-reads-every-teams-orders
+
+> Owner, in chat (2026-10-19): *"yes, follow your recomendation"* — to
+> [technical order Q6](../order/design_clarify.md#question), *"does a root or admin reader see every team's orders in the
+> order list?"*. As recommended.
+
+**The verdict.** A request scoped to the **root team** reads **every team's** orders, in the list, its counts and order
+detail. Only ROOT and ADMIN hold that scope, so this is no new permission: it's the rule the settlement reports already use
+([isRootScope](../../../backend/services/settlement_service/settlement_v1/analytic_shared.go)). Every other team is unchanged.
+
+```mermaid
+flowchart LR
+  Q{"the request's team"} -->|"team 1 - root"| A["every team's orders, with the Team column"]
+  Q -->|"any other team"| B["team_id or warehouse_id = that team - unchanged"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the rule | `team_id` = the root team means no team filter |
+| where | `scopedOrders`, so the list and `OrderStat` stay one set of orders, and order detail's lookup |
+| who | ROOT and ADMIN in the root team, the only ones the interceptor lets hold that scope |
+| any other team | `(team_id = ? OR warehouse_id = ?)`, as today |
+| the screen | the Team column ([harga-beli-team-and-gudang-are-on-the-row](#harga-beli-team-and-gudang-are-on-the-row)) gets its rows |
+| not built | [order_list.go](../../../backend/services/selling_service/selling_v1/order_list.go) has no root case today |

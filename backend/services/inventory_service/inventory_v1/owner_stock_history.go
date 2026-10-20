@@ -12,16 +12,15 @@ import (
 // OwnerStockHistory is the STOCK HISTORY tab of the catalogue owner's product detail (#232): every
 // movement of the owner's units, newest first, so a number that looks wrong can be explained.
 //
-// It reads `stock_owner_movements` — the owner's projection of the ledger — and not `stock_movements`
-// itself. That table answers for a SHELF: its balance is a rack's running total and a shelf-to-shelf
-// move is one of its most common rows. Neither is a fact about what the owner holds. See the
-// projection's migration for why the translation happens at write time.
+// It reads the BATCH ledger's rows of the owner's batches (`batches.team_id`, a-batch-carries-its-owner) — not the
+// racks' rows. A rack's row answers for a SHELF: its count is a rack's running total and a shelf-to-shelf move is one
+// of its most common rows. Neither is a fact about what the owner holds; a move writes no batch row at all.
 //
 // ── The running balance is computed here, and the window comes BEFORE the filters ────────────────
 //
 // `balance` is the owner's on-hand of this product in that building after the movement — a running sum
 // over their own ledger. It is derived rather than stored so it cannot drift from the rows it is made
-// of (see the migration), and the window runs over the UNFILTERED set in a subquery: summing after a
+// of, and the window runs over the UNFILTERED set in a subquery: summing after a
 // kind or date filter would produce "the total of the adjustments I asked to see", which is a number
 // about the filter rather than about the stock.
 //
@@ -37,26 +36,27 @@ func (s *Service) OwnerStockHistory(
 	page := req.Msg.GetPage()
 
 	inner := `
-		SELECT id, movement_id, product_id, warehouse_id,
-		       COALESCE(batch_id, 0) AS batch_id, kind, delta,
-		       SUM(delta) OVER (PARTITION BY warehouse_id ORDER BY id) AS balance,
-		       reason, ref, actor_user_id, created_at
-		FROM stock_owner_movements
-		WHERE owner_team_id = ? AND product_id = ?`
+		SELECT l.id, l.transaction_id AS movement_id, b.product_id, l.warehouse_id, l.batch_id,
+		       l.change_type, l.change_count AS delta,
+		       SUM(l.change_count) OVER (PARTITION BY l.warehouse_id ORDER BY l.id) AS balance,
+		       l.description AS reason, ` + refExpr("l") + ` AS ref, l.actor_id AS actor_user_id, l.created_at
+		FROM batch_logs l
+		JOIN batches b ON b.id = l.batch_id
+		WHERE b.team_id = ? AND b.product_id = ?`
 
 	args := []any{teamID, filter.GetProductId()}
 
 	if warehouseID := filter.GetWarehouseId(); warehouseID > 0 {
-		inner += ` AND warehouse_id = ?`
+		inner += ` AND l.warehouse_id = ?`
 		args = append(args, warehouseID)
 	}
 
 	// The narrowing filters sit OUTSIDE the window — see the header.
 	where := ` WHERE TRUE`
 
-	if kind := filter.GetKind(); kind != inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED {
-		where += ` AND kind = ?`
-		args = append(args, int32(kind))
+	if cond, kindArgs := kindsWhere("x", "delta", filter.GetKind()); cond != "" {
+		where += ` AND ` + cond
+		args = append(args, kindArgs...)
 	}
 
 	// Server-side, like the warehouse's ledger: the history is paginated and grows forever, so a
@@ -86,7 +86,7 @@ func (s *Service) OwnerStockHistory(
 		ProductID   uint64
 		WarehouseID uint64
 		BatchID     uint64
-		Kind        int32
+		ChangeType  string
 		Delta       int64
 		Balance     int64
 		Reason      string
@@ -117,7 +117,7 @@ func (s *Service) OwnerStockHistory(
 			ProductId:     r.ProductID,
 			WarehouseId:   r.WarehouseID,
 			BatchId:       r.BatchID,
-			Kind:          inventoryv1.MovementKind(r.Kind),
+			Kind:          kindOf(r.ChangeType, r.Delta),
 			Delta:         r.Delta,
 			Balance:       r.Balance,
 			Reason:        r.Reason,

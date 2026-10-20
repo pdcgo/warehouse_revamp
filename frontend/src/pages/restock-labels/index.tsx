@@ -26,7 +26,7 @@ import { RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_r
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useRestockLabels, useRestockRequest } from "../../features/restock/queries";
-import { formatRupiah } from "../../lib/money";
+import { formatRupiahNumber } from "../../lib/money";
 
 // One printable job entry — a label to draw, plus which copy of how many it is (piece mode).
 interface JobEntry {
@@ -453,7 +453,7 @@ function LabelCard({
         </div>
         <div className="label-foot">
           <span className="label-sku">{payload}</span>
-          {showHpp && <span className="label-hpp">{formatRupiah(label.hpp)}</span>}
+          {showHpp && <span className="label-hpp">{formatRupiahNumber(label.hpp)}</span>}
         </div>
         {meta.length > 0 && <span className="label-meta">{meta.join(" · ")}</span>}
       </div>

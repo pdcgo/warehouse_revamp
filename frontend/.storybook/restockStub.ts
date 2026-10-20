@@ -13,7 +13,7 @@
 //   lines-can-be-added-not-removed-while-arrived              total and note, new lines (with a note), none removed.
 //   accept-refuses-more-than-the-line-says                  received > count is refused.
 //   a-short-unit-at-the-door-is-missing                     missing = count − received, worked out.
-//   the-problem-price-is-filled-by-the-system               a problem row's price = line total × n ÷ line count.
+//   the-problem-price-is-filled-by-the-system               a problem row's price = the landed unit price × n.
 //   the-courier-is-paid-once-per-restock                    one charge, its note required when above 0.
 //   the-couriers-charge-stays-out-of-total                  total = goods + shipping.
 //   every-status-change-is-logged, edits-are-in-the-same-trail   every change appends a trail row.
@@ -102,22 +102,27 @@ const goodOf = (l: LineFixture) => {
   return l.receivedCount - broken;
 };
 
-// The restock as the wire carries it — prices worked out, totals summed, the trail only when asked. A broken or
-// missing row carries the LANDED unit price: the line's own price plus its share of the restock's costs over every
-// unit ordered (all-qty-is-every-unit-ordered), the same figure the accept screen previews.
+// The landed unit price of one line — the line's own price plus its share of the restock's costs over every unit
+// ordered (all-qty-is-every-unit-ordered): the batch's price, and a broken or missing unit's.
+function landedOf(r: RestockFixture, l: LineFixture): number {
+  const allQty = r.items.reduce((s, x) => s + x.count, 0n);
+
+  return unitHpp(l.total, l.count, r.shipmentCost + r.warehouseAdditionalCost, allQty);
+}
+
+// The restock as the wire carries it — prices worked out, totals summed, the trail only when asked. Money is a
+// double, unrounded, as the server stores it (money-is-double-in-the-api-too).
 function toWire(r: RestockFixture, withLogs: boolean) {
-  const allQty = r.items.reduce((s, l) => s + l.count, 0n);
-  const costs = r.shipmentCost + r.warehouseAdditionalCost;
   const items = r.items.map((l) => {
-    const landed = unitHpp(l.total, l.count, costs, allQty);
+    const landed = landedOf(r, l);
 
     return {
       ...l,
-      priceUnit: l.count > 0n ? l.total / l.count : 0n,
-      problems: l.problems.map((p) => ({ ...p, priceUnit: landed, total: landed * p.count })),
+      priceUnit: l.count > 0n ? l.total / Number(l.count) : 0,
+      problems: l.problems.map((p) => ({ ...p, priceUnit: landed, total: landed * Number(p.count) })),
     };
   });
-  const subtotal = r.items.reduce((s, l) => s + l.total, 0n);
+  const subtotal = r.items.reduce((s, l) => s + l.total, 0);
 
   return {
     ...r,
@@ -133,7 +138,7 @@ type LineIn = {
   sku: string;
   name: string;
   count: bigint;
-  total: bigint;
+  total: number;
   supplierId: bigint;
   supplierChannelId: bigint;
   note: string;
@@ -189,7 +194,7 @@ export function restockWire(id: bigint) {
   return toWire(found, true);
 }
 
-const rupiah = (n: bigint) => `Rp ${n.toLocaleString("id-ID")}`;
+const rupiah = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 
 export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestService>> = {
   restockRequestCreate(req) {
@@ -211,7 +216,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
       invoiceRefId: req.invoiceRefId,
       financeAccountId: req.financeAccountId,
       shipmentCost: req.shipmentCost,
-      warehouseAdditionalCost: 0n,
+      warehouseAdditionalCost: 0,
       warehouseAdditionalCostNote: "",
       note: req.note,
       transactionId: 0n,
@@ -380,7 +385,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     if (r.status !== S.ONGOING && r.status !== S.ARRIVED) {
       throw precondition("restock request can only be accepted while ongoing or arrived");
     }
-    if (req.warehouseAdditionalCost > 0n && req.warehouseAdditionalCostNote.trim() === "") {
+    if (req.warehouseAdditionalCost > 0 && req.warehouseAdditionalCostNote.trim() === "") {
       throw invalid("the courier's charge needs a note");
     }
 
@@ -438,7 +443,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     r.transactionId = 9000n + r.id;
 
     const parts = [`${broken} broken, ${missing} missing`];
-    if (req.warehouseAdditionalCost > 0n) parts.push(`courier's charge ${rupiah(req.warehouseAdditionalCost)}`);
+    if (req.warehouseAdditionalCost > 0) parts.push(`courier's charge ${rupiah(req.warehouseAdditionalCost)}`);
     appendLog(r, from, S.ACCEPTED, `accepted — ${parts.join("; ")}`);
 
     return { request: toWire(r, true) };
@@ -472,12 +477,9 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     const r = comingTo(req.teamId, req.requestId);
     if (r.status !== S.ACCEPTED) throw precondition("restock request is not accepted");
 
-    const good = r.items.reduce((s, l) => s + goodOf(l), 0n);
-    const perUnit = good > 0n ? (r.shipmentCost + r.warehouseAdditionalCost) / good : 0n;
-
+    // Each label carries its batch's price — the landed unit price, the same the accept minted the batch at.
     const labels = r.items.flatMap((l) => {
-      const lineGood = goodOf(l);
-      const hpp = lineGood > 0n ? l.total / lineGood + perUnit : 0n;
+      const hpp = goodOf(l) > 0n ? landedOf(r, l) : 0;
 
       return l.placements.map((p) => ({
         productId: l.productId,
@@ -508,7 +510,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
         restockCount: BigInt(waiting.length),
         productCount: BigInt(new Set(lines.map((l) => l.productId.toString())).size),
         unitCount: lines.reduce((s, l) => s + l.count, 0n),
-        amount: lines.reduce((s, l) => s + l.total, 0n),
+        amount: lines.reduce((s, l) => s + l.total, 0),
         oldestPendingUnix: waiting.reduce((min, r) => (min === 0n || r.createdAtUnix < min ? r.createdAtUnix : min), 0n),
       },
     };

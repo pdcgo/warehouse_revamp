@@ -28,6 +28,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-cross-markup-belongs-to-the-product](#the-cross-markup-belongs-to-the-product) | the cross-product markup is **`product_service`'s**. ⚠ removed from the balance frontend; the ledger still CHARGES from balance's column |
 | [found-posts-without-a-handshake](#found-posts-without-a-handshake) | cause 5 posts **unilaterally** — no acknowledgement. ⚠ against recommendation, and it hands the whole weight to the unbuilt dispute |
 | [an-accepted-payment-is-final](#an-accepted-payment-is-final) | once the creditor accepts, the payment **never changes and is never reversed**. `LiabilityPaymentReverse` is removed. ⚠ against recommendation |
+| [a-transfer-charge-is-a-transfer-fee](#a-transfer-charge-is-a-transfer-fee) | a warehouse transfer's door charge is its own source type, `TRANSFER_FEE`, keyed by the transfer |
 
 ---
 
@@ -1150,3 +1151,33 @@ stateDiagram-v2
 ✅ **The tests that now hold the rule** are the ones that already existed:
 `TestPaymentConfirm_CannotBeConfirmedTwice` and `TestPaymentReject_RefusesAConfirmedPayment`. Between
 them, nothing can move a payment out of `accepted`.
+
+---
+
+## a-transfer-charge-is-a-transfer-fee
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — to [Q13](./context_clarify.md#question), *"does a
+> transfer's courier charge get its own type in the balance ledger?"*. As recommended.
+
+**The verdict.** The courier's charge at the receiving warehouse's door on a warehouse transfer is posted as its own source type,
+**`TRANSFER_FEE`**, keyed by the transfer. It is never posted as `INCIDENTAL_FEE`, whose key is a restock: transfer 41 and
+restock 41 would share a key, and the second would be dropped as a duplicate.
+
+```mermaid
+flowchart LR
+  R["restock 41 - Rp 5.000"] -->|"INCIDENTAL_FEE, 41"| L["the ledger - Melati owes Gudang B"]
+  T["transfer 41 - Rp 3.000 at B's door"] -->|"TRANSFER_FEE, 41"| L
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the type | `TRANSFER_FEE`, business word `transfer_fee`, beside `INCIDENTAL_FEE` |
+| `source_id` | the transfer's id |
+| who owes whom | the selling team (`team_id`) owes the warehouse that paid the courier at its door (B, `to_warehouse_id`) |
+| from | `WarehouseTransferAccepted`: `warehouse_additional_cost` and its note. 0 posts no row |
+| the note | the same rule as an incidental fee ([an-incidental-line-must-say-what-it-was-for](#an-incidental-line-must-say-what-it-was-for)) |
+| posted | once per transfer, by balance from the event ([balance-posts-the-transfers-on-site-debt-from-the-event](../inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event)) |
+| not built | liability has no subscription to `warehouse-transfer-accepted` and no case for it in `push_handler.go`, so today the charge is booked nowhere |
+| your doc | §What Things That Affect The Team Balance, cause 2, says *"to receive restock"*. Widening it to a transfer is yours: [cause-2-names-the-restock-only](./context_clarify.md#cause-2-names-the-restock-only) |

@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/liability/v1/liabilityv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_grpc"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
@@ -31,6 +32,11 @@ func NewRegister(
 		mux.Handle(liabilityv1connect.NewLiabilityServiceHandler(liability, opts))
 		mux.Handle(liabilityv1connect.NewLiabilityTermsServiceHandler(liability, opts))
 		mux.Handle(liabilityv1connect.NewLiabilityPaymentServiceHandler(liability, opts))
+
+		// THE COURIER'S CHARGE WEBHOOK — /event/<sub_id>/push, a plain HTTP route like supplier's fold, so the roling
+		// ACL does not reach it (the-event-webhook-is-open). ⚠ Unlike a fold, what it writes is a DEBT, so a forged
+		// event here is worth more than a skewed figure: restrict this path at the ingress to Pub/Sub's push.
+		mux.Handle("/event/"+RestockAcceptedSubscription+"/push", event_source.NewMuxPushHandler(NewLiabilityPushHandler(liability)))
 
 		return san_grpc.ServiceReflectNames{
 			liabilityv1connect.LiabilityServiceName,

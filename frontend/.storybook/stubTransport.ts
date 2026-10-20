@@ -767,9 +767,9 @@ export const transport = createRouterTransport(({ service }) => {
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
   service(RestockRequestService, restockRequestService);
-  // The warehouse transfer — a prototype, so this stub is its only implementation until the backend step.
+  // The warehouse transfer — warehouseTransferStub.ts plays the same rules the server keeps (warehouse_transfer_decision.md).
   service(WarehouseTransferService, warehouseTransferService);
-  // The stock count — a prototype too: opnameStub.ts plays the decided opname rules (opname_decision.md).
+  // The stock count — a prototype: opnameStub.ts plays the decided opname rules (opname_decision.md).
   service(OpnameService, opnameService);
 
   // supplier_service — supplierStub.ts plays its decided rules: reads cross teams, writes do not, deletes are soft.

@@ -20,7 +20,7 @@ func acceptOne(t *testing.T, svc *inventory_v1.Service, warehouse, rackID, produ
 	created, err := svc.RestockRequestCreate(ctx, connect.NewRequest(&inventoryv1.RestockRequestCreateRequest{
 		TeamId: 2, WarehouseId: warehouse,
 		Items: []*inventoryv1.RestockRequestItem{
-			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: total},
+			{ProductId: product, Sku: "SKU", Name: "P", Count: qty, Total: float64(total)},
 		},
 	}))
 	if err != nil {

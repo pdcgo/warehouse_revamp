@@ -3,7 +3,7 @@ package inventory_v1
 import (
 	"context"
 	"errors"
-	"time"
+	"math"
 
 	"connectrpc.com/connect"
 
@@ -12,8 +12,8 @@ import (
 
 // BatchReceipt is the goods-received document for ONE delivery (#219): every product line that arrived
 // on it — arrived / damaged / accepted / unit cost / line cost / rack — plus the two actors (who raised
-// the restock, who accepted it). It is assembled from the delivery's batches (stock_batches grouped by
-// delivery_id): the stock service owns the acceptance/cost projection, so it owns the receipt.
+// the restock, who accepted it). It is assembled from the batches the delivery's accept minted (batches whose
+// transaction is the restock's): the stock service owns the acceptance and the cost, so it owns the receipt.
 //
 // A delivery of another warehouse reads NotFound, so its id cannot probe another building's receipts.
 func (s *Service) BatchReceipt(
@@ -23,35 +23,11 @@ func (s *Service) BatchReceipt(
 	warehouseID := req.Msg.GetTeamId()
 	deliveryID := req.Msg.GetDeliveryId()
 
-	type row struct {
-		ID         uint64
-		ProductID  uint64
-		SKU        string
-		Name       string
-		SupplierID uint64
-		ReceiptNo  string
-		UnitCost   *int64
-		Arrived    int64
-		Damaged    int64
-		// The batch is minted AT acceptance, so created_at IS when the goods arrived. accepted_at is a
-		// vestigial column the fulfil flow never sets — do not read it.
-		CreatedAt  time.Time
-		CreatedBy  uint64
-		AcceptedBy uint64
-	}
+	var rows []batchRow
 
-	var rows []row
-
-	err := s.db.
-		WithContext(ctx).
-		Table("stock_batches AS b").
-		Joins("JOIN restock_request_items i ON i.id = b.restock_request_item_id").
-		Joins("JOIN restock_requests r ON r.id = b.delivery_id").
-		Select(`
-			b.id, b.product_id, i.sku, i.name, COALESCE(i.supplier_id, 0) AS supplier_id,
-			r.receipt AS receipt_no, b.unit_cost, b.arrived_qty AS arrived, b.damaged_qty AS damaged,
-			b.created_at, b.created_by, b.accepted_by`).
-		Where("b.delivery_id = ? AND b.warehouse_id = ?", deliveryID, warehouseID).
+	err := batchQuery(s.db.WithContext(ctx)).
+		Select(batchSelect).
+		Where("r.id = ? AND b.warehouse_id = ?", deliveryID, warehouseID).
 		Order("b.id ASC").
 		Scan(&rows).
 		Error
@@ -62,39 +38,29 @@ func (s *Service) BatchReceipt(
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("delivery not found"))
 	}
 
-	// Where each batch's units were put away — one query for the whole delivery. A line can span
-	// shelves; 0 = the unplaced pile.
-	batchIDs := make([]uint64, len(rows))
-	for i := range rows {
-		batchIDs[i] = rows[i].ID
+	// WHERE EACH PRODUCT WAS PUT AWAY at the accept (a-batch-shows-the-racks-it-was-put-on) — the restock's own rack
+	// rows. A rack counts units per product, never per batch, so this is history, not where they sit now.
+	var putAway []struct {
+		ProductID uint64
+		RackID    uint64
 	}
-
-	type shelfRow struct {
-		BatchID uint64
-		RackID  *uint64
-	}
-
-	var shelves []shelfRow
 
 	err = s.db.
 		WithContext(ctx).
-		Table("stock_shelf_batches AS sb").
-		Select("sb.batch_id, sb.rack_id").
-		Where("sb.batch_id IN ? AND sb.qty > 0", batchIDs).
-		Order("sb.rack_id ASC NULLS LAST").
-		Scan(&shelves).
+		Table("product_placement_logs AS l").
+		Joins("JOIN restocks r ON r.transaction_id = l.transaction_id").
+		Select("l.product_id, l.placement_id AS rack_id").
+		Where("r.id = ? AND l.stock_change > 0", deliveryID).
+		Order("l.placement_id ASC").
+		Scan(&putAway).
 		Error
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	racksByBatch := make(map[uint64][]uint64, len(rows))
-	for _, sh := range shelves {
-		var rackID uint64
-		if sh.RackID != nil {
-			rackID = *sh.RackID
-		}
-		racksByBatch[sh.BatchID] = append(racksByBatch[sh.BatchID], rackID)
+	racksByProduct := make(map[uint64][]uint64, len(rows))
+	for _, p := range putAway {
+		racksByProduct[p.ProductID] = append(racksByProduct[p.ProductID], p.RackID)
 	}
 
 	lines := make([]*inventoryv1.BatchReceiptLine, 0, len(rows))
@@ -104,33 +70,26 @@ func (s *Service) BatchReceipt(
 	for i := range rows {
 		r := &rows[i]
 
-		costKnown := r.UnitCost != nil
-		var unitCost int64
-		if costKnown {
-			unitCost = *r.UnitCost
-		}
+		// Accepted = arrived − damaged: the good units the batch was minted with.
+		damaged := r.Broken + r.Lost
+		arrived := r.InitStockCount + damaged
+		lineCost := int64(math.Round(float64(arrived) * r.PriceUnit))
 
-		// Accepted = arrived − damaged: only accepted units entered stock and froze their cost.
-		accepted := r.Arrived - r.Damaged
-		lineCost := r.Arrived * unitCost
-
-		totalAccepted += accepted
-		if costKnown {
-			totalValue += lineCost
-		}
+		totalAccepted += r.InitStockCount
+		totalValue += lineCost
 
 		lines = append(lines, &inventoryv1.BatchReceiptLine{
 			BatchId:   r.ID,
 			ProductId: r.ProductID,
 			Sku:       r.SKU,
 			Name:      r.Name,
-			Arrived:   r.Arrived,
-			Damaged:   r.Damaged,
-			Accepted:  accepted,
-			UnitCost:  unitCost,
-			CostKnown: costKnown,
+			Arrived:   arrived,
+			Damaged:   damaged,
+			Accepted:  r.InitStockCount,
+			UnitCost:  int64(math.Round(r.PriceUnit)),
+			CostKnown: true,
 			LineCost:  lineCost,
-			RackIds:   racksByBatch[r.ID],
+			RackIds:   racksByProduct[r.ProductID],
 		})
 	}
 

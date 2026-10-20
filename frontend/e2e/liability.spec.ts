@@ -107,6 +107,38 @@ async function uploadProof(page: Page, ownerTeam: string, shareWith: string, fil
   return confirmed.body.document.id as string;
 }
 
+// *Restock Accepted* as the broker pushes it to liability's listener (balance-posts-the-couriers-debt-from-the-event).
+// The e2e broker has no push subscriptions, so the route, the decode, the claim and the posting are what is
+// exercised — built from the restock the server returned, never from what this spec sent. The restock is the
+// server's protojson: every 64-bit field a string, money a number.
+function pushRestockAccepted(restock: Record<string, string | number>) {
+  const acceptedAt = new Date(Number(restock.acceptedAtUnix) * 1000);
+  const event = {
+    eventId: `restock-accepted:${restock.id}`,
+    occurredAt: acceptedAt.toISOString(),
+    aggregateId: `restock:${restock.id}`,
+    restockAccepted: {
+      restockId: restock.id,
+      teamId: restock.requestingTeamId,
+      warehouseId: restock.warehouseId,
+      acceptedOn: acceptedAt.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+      acceptedAtUnix: restock.acceptedAtUnix,
+      warehouseAdditionalCost: restock.warehouseAdditionalCost,
+      warehouseAdditionalCostNote: restock.warehouseAdditionalCostNote,
+      actorId: restock.acceptedByUserId,
+    },
+  };
+
+  return {
+    message: {
+      data: Buffer.from(JSON.stringify(event)).toString("base64"),
+      attributes: { event_type: "warehouse.events.v1.RestockAccepted" },
+      messageId: `${event.eventId}-${Date.now()}`,
+    },
+    subscription: "projects/warehouse-dev/subscriptions/liability-restock-accepted",
+  };
+}
+
 // A COD restock, accepted — the one obligation this system creates today. Team 1 (root) plays the
 // requesting team; team 1 cannot owe itself, so the warehouse is a separate id.
 const WAREHOUSE_TEAM = 1;
@@ -119,6 +151,7 @@ test.describe.configure({ mode: "serial" });
 
 test("Liability: a COD acceptance creates the debt every test below reads (#185)", async ({
   page,
+  request,
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
@@ -134,40 +167,62 @@ test("Liability: a COD acceptance creates the debt every test below reads (#185)
 
   warehouseId = String(wh.body.team.id);
 
+  // What a restock needs before it can be raised and counted in: a shelf for the good units
+  // (there-is-no-unplaced-pile), one of team 1's own products (a-restock-carries-only-the-teams-own-products), and
+  // the account that paid (a-restock-must-name-the-account-that-paid).
+  const rack = await call(page, "inventory.v1.RackService/RackCreate", {
+    teamId: warehouseId,
+    code: "e2e-cod",
+    name: "E2E COD shelf",
+  });
+  expect(rack.status).toBe(200);
+
+  const category = await call(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E Settle ${SUFFIX}` });
+  expect(category.status).toBe(200);
+
+  const product = await call(page, "product.v1.ProductService/ProductCreate", {
+    teamId: String(WAREHOUSE_TEAM),
+    sku: SKU,
+    name: "Widget",
+    categoryId: category.body.category.id,
+  });
+  expect(product.status).toBe(200);
+
+  // Opened at 0, so team 1's accounts still add up to what the financial accounts spec expects.
+  const paidFrom = await openAccount(page, String(WAREHOUSE_TEAM), `E2E COD ${SUFFIX}`, `E2E-COD-${SUFFIX}`, 0);
+
   const created = await call(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
     teamId: String(WAREHOUSE_TEAM),
     warehouseId,
-    shippingCode: "jne",
-    items: [{ productId: "100", sku: SKU, name: "Widget", quantity: 10, totalPrice: "500000" }],
+    financeAccountId: paidFrom,
+    items: [{ productId: product.body.product.id, sku: SKU, name: "Widget", count: 10, total: 500000 }],
   });
   expect(created.status).toBe(200);
 
-  const request = created.body.request;
+  const raised = created.body.request;
 
-  // The warehouse accepts, paying the courier at the door. THIS is what creates the obligation.
-  const accepted = await call(page, "inventory.v1.RestockRequestService/RestockRequestFulfill", {
+  // The warehouse counts the box in, paying the courier at the door — one charge, its note required
+  // (the-courier-is-paid-once-per-restock).
+  const accepted = await call(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
     teamId: warehouseId,
-    requestId: String(request.id),
-    // ⚠ `INCIDENTAL`, and the NOTE IS REQUIRED. The kinds collapsed to one
-    // (the-ledger-speaks-the-business-words) and the note rule stopped being conditional with them:
-    // every line is now the untyped case, so the words are the only thing saying what the money was
-    // (an-incidental-line-must-say-what-it-was-for).
-    costLines: [
-      {
-        kind: "RESTOCK_COST_KIND_INCIDENTAL",
-        amount: String(COD_FEE),
-        note: "courier asked at the door",
-      },
-    ],
-    lines: request.items.map((item: { id: string; quantity: number }) => ({
+    requestId: String(raised.id),
+    warehouseAdditionalCost: COD_FEE,
+    warehouseAdditionalCostNote: "courier asked at the door",
+    lines: raised.items.map((item: { id: string; count: string }) => ({
       itemId: item.id,
-      receivedQuantity: item.quantity,
-      // "unplaced" is a REAL PLACE in this system (#135), not a rack id of zero — the contract makes
-      // that a oneof so an empty row cannot masquerade as a partial put-away.
-      placements: [{ unplaced: true, quantity: String(item.quantity) }],
+      receivedCount: item.count,
+      placements: [{ placementId: rack.body.rack.id, quantity: item.count }],
     })),
   });
   expect(accepted.status).toBe(200);
+
+  // THIS is what creates the obligation: liability posts the courier's charge from *Restock Accepted*, after the
+  // accept committed (balance-posts-the-couriers-debt-from-the-event) — once, however often the event arrives.
+  const route = "http://localhost:8081/event/liability-restock-accepted/push";
+  for (let i = 0; i < 2; i++) {
+    const res = await request.post(route, { data: pushRestockAccepted(accepted.body.request) });
+    expect(res.status()).toBe(200);
+  }
 
   // ⚠ NO SCREEN ASSERTION HERE ANY MORE. This test used to read the debt off `/settlement`, which is
   // deleted — the word now means the MARKETPLACE PAYOUT, and this ledger reads at `/liability`. What

@@ -13,7 +13,7 @@ import (
 )
 
 // RestockRequestMarkLost is the selling team giving the parcel up: ongoing → lost
-// (lost-is-set-only-before-the-box-arrives). Scoped to requesting_team_id: another team's restock reads as NotFound.
+// (lost-is-set-only-before-the-box-arrives). Scoped to team_id: another team's restock reads as NotFound.
 //
 // Only while ongoing. A box already in the building is not lost — a unit missing from it is a problem row at the count
 // — and a counted or called-off restock is closed. A lost box that turns up after all is signed for as arrived
@@ -23,12 +23,12 @@ func (s *Service) RestockRequestMarkLost(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestMarkLostRequest],
 ) (*connect.Response[inventoryv1.RestockRequestMarkLostResponse], error) {
-	var rr inventory_service_models.RestockRequest
+	var rr inventory_service_models.Restock
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND requesting_team_id = ?", req.Msg.GetRequestId(), req.Msg.GetTeamId()).
+			Where("id = ? AND team_id = ?", req.Msg.GetRequestId(), req.Msg.GetTeamId()).
 			First(&rr).
 			Error
 		if loadErr != nil {
@@ -70,7 +70,7 @@ func (s *Service) RestockRequestMarkLost(
 			return logErr
 		}
 
-		return tx.Where("restock_request_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		return tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
 	})
 	if err != nil {
 		return nil, restockErr(err)

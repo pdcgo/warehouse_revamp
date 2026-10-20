@@ -25,7 +25,7 @@ var jakarta = time.FixedZone("WIB", 7*60*60)
 // ⚠ A PUBLISH FAILURE DOES NOT FAIL THE ACCEPT. The goods are on the shelf and that is the truth; the event is how a
 // supplier's figures learn of it (no-outbox-the-publish-is-trusted). A lost publish is logged with its event_id —
 // the figures are then short that restock until a replay or an adjustment, never wrong in the other direction.
-func (s *Service) publishAccepted(ctx context.Context, rr *inventory_service_models.RestockRequest) {
+func (s *Service) publishAccepted(ctx context.Context, rr *inventory_service_models.Restock) {
 	event := RestockAcceptedEvent(rr)
 
 	err := s.events(ctx, publishIdentity(ctx), event)
@@ -38,10 +38,10 @@ func (s *Service) publishAccepted(ctx context.Context, rr *inventory_service_mod
 	}
 }
 
-// RestockAcceptedEvent builds the event an ACCEPTED restock announces — its items loaded, each with its damaged units.
+// RestockAcceptedEvent builds the event an ACCEPTED restock announces — its items and its problem rows loaded.
 // Pure, and exported: the accept sends it, and `san supplier backfill-figures` builds the very same event for a restock
 // accepted before the event existed (past-accepts-are-backfilled-once), so the two cannot disagree.
-func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1.Event {
+func RestockAcceptedEvent(rr *inventory_service_models.Restock) *eventsv1.Event {
 	acceptedAt := rr.UpdatedAt
 	if rr.AcceptedAt != nil {
 		acceptedAt = *rr.AcceptedAt
@@ -49,28 +49,22 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 
 	supplierID := commonLineSupplier(rr.Items)
 
+	problems := problemCountsByProduct(rr.Problems)
+
 	lines := make([]*eventsv1.RestockAcceptedLine, 0, len(rr.Items))
 
 	for _, item := range rr.Items {
-		var broken, missing int64
-
-		for _, d := range item.Damaged {
-			switch d.DamageType {
-			case restockProblemBroken:
-				broken += d.Quantity
-			case restockProblemMissing:
-				missing += d.Quantity
-			}
-		}
+		counts := problems[item.ProductID]
 
 		lines = append(lines, &eventsv1.RestockAcceptedLine{
-			ItemId:        item.ID,
-			ProductId:     item.ProductID,
-			OrderedCount:  item.Quantity,
-			TotalPrice:    item.TotalPrice,
-			AcceptedCount: item.ReceivedQuantity,
-			BrokenCount:   broken,
-			MissingCount:  missing,
+			ItemId:       item.ID,
+			ProductId:    item.ProductID,
+			OrderedCount: item.Count,
+			TotalPrice:   item.Total,
+			// What was in the box, less what was broken — the batch's sellable count.
+			AcceptedCount:     item.ReceivedCount - counts.broken,
+			BrokenCount:       counts.broken,
+			MissingCount:      counts.missing,
 			SupplierId:        idOrZero(item.SupplierID),
 			SupplierChannelId: idOrZero(item.SupplierChannelID),
 		})
@@ -88,29 +82,34 @@ func RestockAcceptedEvent(rr *inventory_service_models.RestockRequest) *eventsv1
 		Message: &eventsv1.Event_RestockAccepted{
 			RestockAccepted: &eventsv1.RestockAccepted{
 				RestockId:   rr.ID,
-				TeamId:      rr.RequestingTeamID,
+				TeamId:      rr.TeamID,
 				WarehouseId: rr.WarehouseID,
 				SupplierId:  supplierID,
 				AcceptedOn:  acceptedAt.In(jakarta).Format("2006-01-02"),
 				Lines:       lines,
 				// restock-accepted-carries-every-line: the instant, beside the day derived from it.
 				AcceptedAtUnix: acceptedAt.Unix(),
+				// The courier's charge, which balance posts as the selling team's debt to the warehouse
+				// (balance-posts-the-couriers-debt-from-the-event), and who counted the box in — both from the stored row.
+				WarehouseAdditionalCost:     rr.WarehouseAdditionalCost,
+				WarehouseAdditionalCostNote: rr.WarehouseAdditionalCostNote,
+				ActorId:                     rr.AcceptedByUserID,
 			},
 		},
 	}
 }
 
 // AcceptedRestocks is every ACCEPTED restock that names a supplier, oldest first, loaded the way RestockAcceptedEvent
-// needs it — its items in order, each with its damaged units. For `san supplier backfill-figures`
+// needs it — its items in order, and its problem rows. For `san supplier backfill-figures`
 // (past-accepts-are-backfilled-once): what "accepted" is stored as stays inventory's to know.
 func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 	return db.
-		Model(&inventory_service_models.RestockRequest{}).
+		Model(&inventory_service_models.Restock{}).
 		Preload("Items", func(db *gorm.DB) *gorm.DB { return db.Order("id ASC") }).
-		Preload("Items.Damaged").
+		Preload("Problems").
 		Where("status = ?", restockStatusAccepted).
-		Where("EXISTS (SELECT 1 FROM restock_request_items i " +
-			"WHERE i.restock_request_id = restock_requests.id AND i.supplier_id IS NOT NULL)").
+		Where("EXISTS (SELECT 1 FROM restock_items i " +
+			"WHERE i.restock_id = restocks.id AND i.supplier_id IS NOT NULL)").
 		Order("id")
 }
 
@@ -120,7 +119,7 @@ func AcceptedRestocks(db *gorm.DB) *gorm.DB {
 // own supplier now (a-line-names-the-channel-it-was-bought-from) and the event carries each, but until the fold reads a
 // line's own, a restock whose lines name one supplier keeps feeding it, and one that mixes suppliers credits none of
 // them rather than all of it to the first.
-func commonLineSupplier(items []inventory_service_models.RestockRequestItem) uint64 {
+func commonLineSupplier(items []inventory_service_models.RestockItem) uint64 {
 	var supplier uint64
 
 	for i := range items {

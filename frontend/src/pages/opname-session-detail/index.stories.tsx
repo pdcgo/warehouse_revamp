@@ -31,7 +31,7 @@ const RoutedReady = routedPage(
 );
 
 const meta = {
-  title: "Pages/Opname/SessionDetail",
+  title: "Pages/Inventory/Opname/SessionDetail",
   component: Routed,
   parameters: { signedIn: true, dataRouter: true },
   beforeEach: () => {

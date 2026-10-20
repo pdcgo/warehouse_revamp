@@ -235,11 +235,43 @@ test("setup: stock in the warehouse for the order to draw", async ({ page }) => 
       throw new Error(`product ${sku} not found among ${discovered.length} discovered`);
     }
 
-    await call("inventory.v1.InventoryService/StockReceive", {
+    // Stock comes in the way it really does — a restock raised by the product's OWN team and accepted onto a rack
+    // (a-restock-carries-only-the-teams-own-products, there-is-no-unplaced-pile). At Rp 0 a unit, so every money
+    // figure below stays the Rp 0 this spec has always asserted.
+    const rack = await call("inventory.v1.RackService/RackCreate", {
+      teamId: warehouse.id,
+      code: "e2e-seed",
+      name: "E2E seed",
+    });
+
+    const account = await call("financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: product.teamId,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: "E2E restock",
+      holderName: "E2E",
+      accountNumber: "E2E-ORDERS-1",
+      openingBalance: 0,
+      openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+    });
+
+    const restock = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
+      teamId: product.teamId,
       warehouseId: warehouse.id,
-      productId: product.id,
-      quantity: "50",
-      reason: "e2e seed",
+      financeAccountId: account.account.id,
+      items: [{ productId: product.id, sku: product.sku, name: product.name, count: "50", total: "0" }],
+    });
+
+    await call("inventory.v1.RestockRequestService/RestockRequestAccept", {
+      teamId: warehouse.id,
+      requestId: restock.request.id,
+      lines: [
+        {
+          itemId: restock.request.items[0].id,
+          receivedCount: "50",
+          placements: [{ placementId: rack.rack.id, quantity: "50" }],
+        },
+      ],
     });
 
     return { warehouse: warehouse.id, product: product.id };
@@ -383,10 +415,9 @@ test("Create: place an order through the form; money computes; the detail opens"
 
   await page.getByTestId("order-line-qty-0").fill("3");
 
-  // NO price is typed any more — a line is valued at the warehouse's HPP (owner). This fixture's
-  // product reached the shelf through StockReceive and was never restocked, so no cost was ever
-  // recorded for it: the line says "not recorded" rather than showing a confident Rp 0, which is the
-  // same distinction the revenue screen already makes for this product (#74).
+  // NO price is typed any more — a line is valued at the warehouse's HPP (owner): what its batches are worth. This
+  // fixture's restock cost Rp 0, and on StockCost's contract a cost of 0 means UNKNOWN, never free — so the line says
+  // "not recorded" rather than booking the goods as costing nothing.
   await expect(page.getByTestId("order-line-hpp-0")).toContainText("not recorded");
   await expect(page.getByTestId("order-line-total-0")).toHaveText("Rp 0");
   // There is no subtotal line any more — the rebuilt form states one TOTAL, asserted below.
@@ -726,13 +757,11 @@ test("Fulfilment: the warehouse takes an order from placed through to shipped (#
   await expect(row).toBeVisible();
   await row.click();
 
-  // THE POINT OF THE SCREEN: the line names a shelf. The e2e's stock was received without a rack, so
-  // the honest answer is the unplaced pile — a real place in this system (#135), named in words rather
-  // than left blank. A blank would read as "we forgot" instead of "it is not on a shelf yet".
+  // THE POINT OF THE SCREEN: the line names the rack the take drew from — the seed's, the only one holding it.
   const pickList = page.getByTestId("pick-list-table");
   await expect(pickList).toBeVisible();
   await expect(pickList).toContainText(PRODUCT_NAME);
-  await expect(pickList).toContainText("Unplaced");
+  await expect(pickList).toContainText("e2e-seed");
 
   // Forward, one step at a time — and the button always reads as the single next thing that happened.
   // FOUR steps now, not three: the first is this building accepting the job.
@@ -845,10 +874,23 @@ test("Products: a warehouse sees the products it was asked to stock (#142)", asy
 
       // RestockRequestService, not InventoryService — restock requests are their own proto service, and
       // the wrong path is a 404 rather than a helpful error.
+      // Every restock names the account that paid (a-restock-must-name-the-account-that-paid).
+      const account = await call("financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+        teamId: "1",
+        type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+        provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+        name: "E2E stock ask",
+        holderName: "E2E",
+        accountNumber: "E2E-ORDERS-2",
+        openingBalance: 0,
+        openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+      });
+
       await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
         teamId: "1",
         warehouseId: warehouse.id,
-        items: [{ productId: product.id, sku, name: "e2e", quantity: "1", price: "1000" }],
+        financeAccountId: account.account.id,
+        items: [{ productId: product.id, sku, name: "e2e", count: "1", total: 1000 }],
       });
     },
     [WH_CODE, SKU],
@@ -920,7 +962,7 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
 }) => {
   await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
-  // A pending restock for 10, plus two shelves to put them on.
+  // A restock for 10 on its way, plus two shelves to put them on.
   const seeded = await page.evaluate(
     async ([whCode, sku]) => {
       const token =
@@ -948,8 +990,11 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
       const product = (Object.values(products.items?.find((it: any) => it.product)?.product?.mapData ?? {}) as any[]).find((p: any) => p.sku === sku);
       if (!product) throw new Error(`product ${sku} not found`);
 
-      for (const code of ["ACC-01", "ACC-02"]) {
-        await call("inventory.v1.RackService/RackCreate", { teamId: warehouse.id, code });
+      // Saved lowercase (rack-codes-are-saved-lowercase).
+      const shelves: string[] = [];
+      for (const code of ["acc-01", "acc-02"]) {
+        const rack = await call("inventory.v1.RackService/RackCreate", { teamId: warehouse.id, code });
+        shelves.push(rack.rack.id);
       }
 
       // A supplier kept by a SELLING team of its own — only a selling team has suppliers
@@ -968,98 +1013,102 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
         name: supplierName,
       });
 
+      // Every restock names the account that paid (a-restock-must-name-the-account-that-paid).
+      const account = await call("financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+        teamId: "1",
+        type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+        provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+        name: "E2E accept",
+        holderName: "E2E",
+        accountNumber: "E2E-ORDERS-3",
+        openingBalance: 0,
+        openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+      });
+
+      // The supplier is the LINE's (a-line-names-the-channel-it-was-bought-from).
       const created = await call("inventory.v1.RestockRequestService/RestockRequestCreate", {
         teamId: "1",
         warehouseId: warehouse.id,
-        shippingCost: "20000",
-        supplierId: supplier.supplier.id,
+        financeAccountId: account.account.id,
+        shipmentCost: 20000,
         items: [
-          { productId: product.id, sku, name: "e2e accept", quantity: "10", totalPrice: "100000" },
+          { productId: product.id, sku, name: "e2e accept", count: "10", total: 100000, supplierId: supplier.supplier.id },
         ],
       });
 
-      return { requestId: created.request.id, productId: product.id, supplierName };
+      return { requestId: created.request.id, productId: product.id, supplierName, shelves };
     },
     [WH_CODE, SKU],
   );
 
+  const pid = seeded.productId;
+  const [first, second] = seeded.shelves;
+
   await switchToWarehouse(page);
   await page.goto(`/inventories/restock/${seeded.requestId}/accept`);
 
-  const line = page.getByTestId(`accept-line-${seeded.productId}`);
+  const line = page.getByTestId(`accept-line-${pid}`);
   await expect(line).toBeVisible();
 
-  // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs
-  // to a selling team and we are reading as the WAREHOUSE — by id, which still names a vendor deleted since
-  // the restock was raised. If this regresses to "Supplier #<id>", the crew at the door is back to matching a
-  // carton against a number.
-  await expect(page.getByTestId("accept-supplier")).toHaveText(seeded.supplierName);
+  // The vendor is named, not numbered. This is the whole point of SupplierByIds: the supplier belongs to a selling
+  // team and we are reading as the WAREHOUSE — by id, which still names a vendor deleted since the restock was raised.
+  // If this regresses to "Supplier #<id>", the crew at the door is back to matching a carton against a number.
+  await expect(page.getByTestId(`accept-supplier-${pid}`)).toContainText(seeded.supplierName);
 
-  // The count is DERIVED now (#206): the line seeds with the ordered 10 on ONE row with no shelf, so
-  // Accept is blocked until every quantity has a home — there is no separate "arrived" box to type.
-  const firstQty = line.getByTestId(/^accept-placement-qty-(?!.*-(?:minus|plus)$)/).first();
-  await expect(firstQty).toHaveValue("10");
-  await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeVisible();
+  // Nothing counted yet, so nothing can be accepted.
   await expect(page.getByTestId("accept-submit")).toBeDisabled();
 
-  // The disabled button SAYS WHY, beside itself — the header names the line still to place.
-  await expect(page.getByTestId("accept-progress")).toContainText("1 line not placed");
+  // The warehouse types what is IN THE BOX and how many of those are broken (any-warehouse-member-counts-what-arrived):
+  // 10 arrived, 2 crushed — so 8 good and nothing missing.
+  await page.getByTestId(`accept-received-${pid}`).fill("10");
+  await page.getByTestId(`accept-broken-${pid}`).fill("2");
+  await page.getByTestId(`accept-broken-note-${pid}`).fill("crushed in transit");
+  await expect(page.getByTestId(`accept-good-${pid}`)).toContainText("8");
 
-  // RackSelect is a Chakra Select, not a native one, so a place is CHOSEN — open the trigger, click
-  // the option — rather than set with selectOption(). `getByRole` only sees the open listbox: a
-  // closed Select.Content is hidden, and hidden nodes are out of the accessibility tree.
-  const pickRack = async (index: number, code: string) => {
-    await line.getByTestId("rack-select").nth(index).click();
-    await page.getByRole("option", { name: new RegExp(`^${code}\\b`) }).click();
+  // RackSelect is a Chakra Select, not a native one, so a place is CHOSEN — open the trigger, click the option — rather
+  // than set with selectOption().
+  const pickRack = async (index: number, rackId: string) => {
+    const row = page.getByTestId(`accept-placement-${pid}-${index}`);
+    await row.getByTestId("rack-select").click();
+    // Inline, not portalled — every row holds its own list, so the option is found in ITS row.
+    await row.getByTestId(`rack-select-option-${rackId}`).click();
   };
 
-  // 8 are sellable: split 5 on the first shelf, 3 on the second.
-  await firstQty.fill("5");
-  await pickRack(0, "ACC-01");
+  // The 8 good units split over two shelves: 3 on the second, and the first follows what is left — 5.
+  await pickRack(0, first);
+  await page.getByTestId(`accept-add-placement-${pid}`).click();
+  await page.getByTestId(`accept-placement-qty-${pid}-1`).fill("3");
+  await pickRack(1, second);
+  await expect(page.getByTestId(`accept-placement-qty-${pid}-0`)).toHaveValue("5");
+  await expect(page.getByTestId(`accept-balanced-${pid}`)).toBeVisible();
 
-  await page.getByTestId(`accept-add-placement-${seeded.productId}`).click();
-  await line.getByTestId(/^accept-placement-qty-(?!.*-(?:minus|plus)$)/).nth(1).fill("3");
-  await pickRack(1, "ACC-02");
-
-  // Everything typed now has a shelf — the blocking pill is gone and the progress line with it.
-  await expect(page.getByTestId(`accept-unbalanced-${seeded.productId}`)).toBeHidden();
-  await expect(page.getByTestId("accept-progress")).toBeHidden();
-
-  // The other 2 never arrived sellable — recorded as a PROBLEM (broken), which never enters stock.
-  // The problems section is COLLAPSED until asked for: most deliveries have none.
-  await expect(line.getByTestId(/^accept-problem-qty-(?!.*-(?:minus|plus)$)/)).toHaveCount(0);
-  await page.getByTestId(`accept-add-problem-${seeded.productId}`).click();
-  await line.getByTestId(/^accept-problem-qty-(?!.*-(?:minus|plus)$)/).first().fill("2");
-  await line.getByTestId(/^accept-problem-note-/).first().fill("crushed in transit");
-
-  // The COD fee changes what everything cost, and the HPP must move as it is typed (#155).
-  const hpp = page.getByTestId(`accept-hpp-${seeded.productId}`);
+  // The courier's charge changes what every unit cost, and the HPP must move as it is typed
+  // (the-couriers-ask-is-in-the-unit-price).
+  const hpp = page.getByTestId(`accept-hpp-${pid}`);
   const before = await hpp.innerText();
-  await page.getByTestId("accept-cod-fee").fill("8000");
+  await page.getByTestId("accept-courier-charge").fill("8000");
   await expect(hpp).not.toHaveText(before);
 
-  // ⚠ THE NOTE IS REQUIRED, and without it Accept stays disabled
-  // (an-incidental-line-must-say-what-it-was-for). It used to be a PAIR rule — optional for the COD
-  // kind because the kind said what the money was, required for OTHER — and collapsing the kinds took
-  // away the thing it keyed on: every line is the untyped case now, so the words are the only thing
-  // saying what the courier was paid for. This test predates that and typed an amount alone.
-  await page.getByTestId("accept-cost-note-0").fill("courier asked at the door");
+  // ⚠ THE NOTE IS REQUIRED once there is a charge (the-courier-is-paid-once-per-restock), and without it Accept stays
+  // disabled.
+  await expect(page.getByTestId("accept-submit")).toBeDisabled();
+  await page.getByTestId("accept-courier-note").fill("courier asked at the door");
 
   await expect(page.getByTestId("accept-submit")).toBeEnabled();
   await page.getByTestId("accept-submit").click();
   await page.getByTestId("confirm-action").click();
 
-  // It lands on the request, now fulfilled, showing BOTH shelves with their quantities (#154).
+  // It lands on the restock, accepted, showing BOTH shelves with their quantities — read back from the accept's own
+  // rack rows (putting-away-at-accept-is-not-a-move).
   await expect(page.getByTestId("restock-detail-page")).toBeVisible();
-  await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-01 (5)");
-  await expect(page.getByTestId("restock-detail-page")).toContainText("ACC-02 (3)");
+  await expect(page.getByTestId("restock-detail-page")).toContainText("acc-01 (5)");
+  await expect(page.getByTestId("restock-detail-page")).toContainText("acc-02 (3)");
 
   // #207 — once accepted, the warehouse prints the shelf labels for exactly what entered stock.
-  await page.getByTestId("restock-detail-labels").click();
+  await page.goto(`/inventories/restock/${seeded.requestId}/labels`);
   await expect(page.getByTestId("labels-sheet")).toBeVisible();
 
-  // Piece mode by default: 8 sellable units (5 + 3) → 8 labels. The 2 broken got none, and the screen
-  // says so out loud.
+  // Piece mode by default: 8 good units (5 + 3) → 8 labels. The 2 broken got none, and the screen says so.
   await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(8);
   await expect(page.getByTestId("labels-excluded")).toContainText("2");
 
@@ -1067,12 +1116,10 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await page.getByTestId("labels-mode").getByText("Shelf").click();
   await expect(page.getByTestId("labels-sheet").locator(".print-label")).toHaveCount(2);
 
-  // #219 — the goods-received receipt for the whole delivery. One product line, and the numbers the
-  // acceptance wrote: 10 arrived, 2 broken, 8 accepted into stock, so the delivery total is 8.
+  // #219 — the goods-received receipt for the whole delivery: 10 arrived, 2 broken, 8 accepted into stock.
   await page.goto(`/inventories/restock/${seeded.requestId}/receipt`);
   await expect(page.getByTestId("batch-receipt-doc")).toBeVisible();
-  const receiptLine = page.getByTestId("batch-receipt-lines");
-  await expect(receiptLine).toContainText("e2e accept");
+  await expect(page.getByTestId("batch-receipt-lines")).toContainText("e2e accept");
   await expect(page.getByTestId("batch-receipt-total-accepted")).toHaveText("8");
 });
 
@@ -1177,10 +1224,10 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   await expect(page.getByTestId("wp-prices-table")).not.toContainText("Unknown");
   await expect(page.getByTestId("warehouse-product-valuation")).not.toHaveText("Unknown");
 
-  // Placements — both shelves it was split across.
+  // Placements — both shelves it was split across, their codes saved lowercase (rack-codes-are-saved-lowercase). by the codes as saved (rack-codes-are-saved-lowercase).
   await page.getByTestId("wp-tab-placement").click();
-  await expect(page.getByTestId("wp-placement-table")).toContainText("ACC-01");
-  await expect(page.getByTestId("wp-placement-table")).toContainText("ACC-02");
+  await expect(page.getByTestId("wp-placement-table")).toContainText("acc-01");
+  await expect(page.getByTestId("wp-placement-table")).toContainText("acc-02");
 
   // Tab 4 — the receives that put it there.
   await page.getByTestId("wp-tab-history").click();
@@ -1196,12 +1243,12 @@ test("Warehouse product: the stock view shows placement, valuation and history (
   await expect(page.getByTestId("warehouse-product-last-order")).not.toHaveText("None");
   await expect(page.getByTestId("warehouse-product-last-restock")).not.toHaveText("None");
 
-  // Tab 1 (#160) — a BATCH IS A DELIVERY. The Accept test received 8 of 10 with 2 written off, so
-  // this product has exactly one batch and it remembers both numbers.
+  // Tab 1 (#160) — a BATCH IS A DELIVERY. Two restocks were counted in here — the setup's 50 and the Accept test's 8
+  // of 10 with 2 written off — so the product has exactly two batches, and the second remembers both numbers.
   await page.getByTestId("wp-tab-batches").click();
   const batches = page.getByTestId("wp-batches-table");
   await expect(batches).toBeVisible();
-  await expect(batches.locator("tbody tr")).toHaveCount(1);
+  await expect(batches.locator("tbody tr")).toHaveCount(2);
   await expect(batches).toContainText("8");
   await expect(batches).toContainText("2");
 });

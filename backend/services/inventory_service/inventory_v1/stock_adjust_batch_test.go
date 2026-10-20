@@ -11,8 +11,8 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// The reason drives the model (#211): DAMAGED/LOST/FOUND change a specific batch on a shelf; a RECOUNT
-// reconciles the shelf and FIFOs its delta onto the oldest batch. All keep shelf_batch reconciled.
+// The reason drives the model (#211): DAMAGED/LOST/FOUND change a specific batch and the rack; a RECOUNT corrects the
+// rack and takes its shortfall off the oldest batch. Every one keeps the two ledgers equal.
 func TestStockAdjust_ReasonDrivenAndBatchAware(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -33,12 +33,18 @@ func TestStockAdjust_ReasonDrivenAndBatchAware(t *testing.T) {
 	}
 	batchID := batchRows(list.Msg)[0].GetId()
 
+	// The batch's units, and -1 when the rack row disagrees with it.
 	shelfBatch := func() int64 {
-		var sb inventory_service_models.StockShelfBatch
-		if e := db.Where("batch_id = ? AND rack_id = ?", batchID, rackID).Take(&sb).Error; e != nil {
+		var b inventory_service_models.Batch
+		if e := db.First(&b, batchID).Error; e != nil {
 			return -1
 		}
-		return sb.Qty
+
+		if placeOnHand(t, db, warehouse, product, &rackID) != b.StockCount {
+			return -1
+		}
+
+		return b.StockCount
 	}
 
 	adjust := func(reason inventoryv1.StockAdjustReason, batch uint64, qty, onHand int64) error {

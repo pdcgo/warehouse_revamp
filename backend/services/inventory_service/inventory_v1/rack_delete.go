@@ -11,19 +11,17 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
-// RackDelete SOFT-deletes a rack in the scoped warehouse (#129) — the row stays, `deleted` flips.
+// RackDelete SOFT-deletes a rack in the scoped warehouse (#129) — the row stays, `deleted_at` is stamped.
 //
 // Soft, because a rack is a physical thing that gets re-labelled or taken out of service, not a
 // mistake to erase; and the partial unique index frees its code for reuse the moment it is deleted.
 //
 // A rack that still HOLDS STOCK is refused (#138, owner's call): empty the shelf first.
 //
-// The check has to live here because the FK cannot do it. `stock_levels.rack_id` is ON DELETE
+// The check has to live here because the FK cannot do it. `product_placements.placement_id` is ON DELETE
 // RESTRICT, but this is a SOFT delete — the row is never removed, so the constraint never fires. Left
-// unguarded, the goods would be STRANDED: still in stock_levels, at a location that had vanished from
-// every list, where nobody could find them or fix them. Moving them to unplaced instead was considered
-// and rejected — the boxes are still physically on that shelf until a person moves them, so recording
-// them as "somewhere" would be inventing a location nobody observed.
+// unguarded, the goods would be STRANDED: still on the rack rows, at a location that had vanished from
+// every list, where nobody could find them or fix them (a-placement-deletes-at-zero-stock).
 func (s *Service) RackDelete(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RackDeleteRequest],
@@ -46,7 +44,7 @@ func (s *Service) RackDelete(
 		var onShelf int64
 
 		countErr := tx.Raw(
-			`SELECT COALESCE(SUM(on_hand), 0) FROM stock_levels WHERE rack_id = ?`,
+			`SELECT COALESCE(SUM(stock_count), 0) FROM product_placements WHERE placement_id = ?`,
 			rackID,
 		).Scan(&onShelf).Error
 		if countErr != nil {
@@ -60,7 +58,7 @@ func (s *Service) RackDelete(
 		return tx.
 			Model(&inventory_service_models.Rack{}).
 			Where("id = ? AND warehouse_id = ?", rackID, warehouseID).
-			Updates(withUpdatedAt(map[string]any{"deleted": true})).
+			Updates(withUpdatedAt(map[string]any{"deleted_at": gorm.Expr("NOW()")})).
 			Error
 	})
 	if err != nil {

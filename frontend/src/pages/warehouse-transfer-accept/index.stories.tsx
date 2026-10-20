@@ -31,7 +31,7 @@ const At608 = routedAt(608n);
 const At601 = routedAt(601n);
 
 const meta = {
-  title: "Pages/WarehouseTransfer/TransferAccept",
+  title: "Pages/Inventory/WarehouseTransfer/TransferAccept",
   component: At608,
   parameters: { signedIn: true, dataRouter: true, layout: "padded" },
   beforeEach: () => {

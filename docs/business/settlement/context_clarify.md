@@ -70,6 +70,8 @@ reverse would not have been.
 
 ## ⛔ `system_adjustment` in the LOG repairs one class of damage and cannot repair the other
 
+✅ *(2026-10-19)* **Decided — the day re-fold, as recommended**: [a-wrong-day-is-refolded-from-the-log](./context_decision.md#a-wrong-day-is-refolded-from-the-log), an operator command in `tools/san`. Since [a-report-is-fed-by-events-only-for-now](../analytic/context_decision.md#a-report-is-fed-by-events-only-for-now) it is the repair for every lost event. ⚠ Not built.
+
 **Q5 is answered** — it is a `settlement_type`, so it is a ledger row, shop-addressed, and it reaches the
 report through the broker like everything else. ⚠ **My report-column recommendation is withdrawn as the
 default**, and what survives of it is a gap this design leaves open rather than an argument against it.

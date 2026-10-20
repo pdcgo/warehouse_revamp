@@ -16,6 +16,11 @@ each old heading there now points here.
 | [a-warehouse-step-moves-by-the-old-systems-table](#a-warehouse-step-moves-by-the-old-systems-table) | the old system's transition table: skips forward allowed, back only to Dikonfirmasi and with a reason |
 | [scanning-is-the-crews-hands](#scanning-is-the-crews-hands) | three scans — handover, find a parcel, validate the items — plus selection, bulk actions, labels and export |
 | [the-bulk-actions-are-always-on-screen](#the-bulk-actions-are-always-on-screen) | the action bar shows from the start; tick-only actions are off until a tick, and Export takes the filtered list when nothing is ticked |
+| [the-warehouse-row-fills-from-shop-and-user-by-ids](#the-warehouse-row-fills-from-shop-and-user-by-ids) | the row's shop and marketplace come from a new unscoped `ShopByIds`, its creator from `UserByIDs`, and `item_quantity` from the list |
+| [the-filter-gains-seller-marketplace-and-courier](#the-filter-gains-seller-marketplace-and-courier) | `OrderListFilter` gains seller team, marketplace and courier; the shipment-state switch is dropped for the status tabs |
+| [one-status-change-for-every-plain-move](#one-status-change-for-every-plain-move) | one `OrderStatusChange(order_ids, to, note)` for every plain move, many orders at once; cancel and return accept keep their own RPCs |
+| [a-warehouse-prints-the-labels-of-orders-it-ships](#a-warehouse-prints-the-labels-of-orders-it-ships) | `OrderLabels(team_id, order_ids)` merges the labels of orders this warehouse ships into one PDF; access follows the order, nothing is shared |
+| [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file) | one `OrderExport(team_id, filter)` for both lists: the list's rows, the reader's columns, .xlsx, streamed with progress |
 
 ## the-two-ends-are-two-screens
 
@@ -157,8 +162,8 @@ flowchart LR
 | cari | one box, looks everywhere — so no "filter type" choosing which field it searches. ⚠ It does not reach the MP order id or the resi yet ([design_clarify.md](../order/design_clarify.md#question)) |
 | status | not built: the warehouse's steps are already the tabs ([the-warehouse-tabs-are-the-processed-steps](#the-warehouse-tabs-are-the-processed-steps)) |
 | tanggal | the date the order was written down — the marketplace date has no field |
-| team · marketplace · jasa kirim | search selects (team, courier) and the marketplace list, each with a ⚠: `OrderListFilter` has none of the three, so they narrow nothing yet (`dropped`) |
-| status pengiriman | a three-way switch shown only on the tabs a handed-over parcel can be listed under; leaving those tabs clears it. ⚠ It belongs to a shipment record that does not exist |
+| team · marketplace · jasa kirim | search selects (team, courier) and the marketplace list, each with a ⚠: `OrderListFilter` has none of the three, so they narrow nothing yet (`dropped`). 🔄 *(2026-10-19)* **Decided:** all three join the filter ([the-filter-gains-seller-marketplace-and-courier](#the-filter-gains-seller-marketplace-and-courier)), not built |
+| status pengiriman | a three-way switch shown only on the tabs a handed-over parcel can be listed under; leaving those tabs clears it. ⚠ It belongs to a shipment record that does not exist. 🔄 *(2026-10-19)* **Dropped:** the order status is that state now, and the status tabs filter it ([the-filter-gains-seller-marketplace-and-courier](#the-filter-gains-seller-marketplace-and-courier)) |
 
 - On a phone everything but the search sits in the Filter sheet, as on the seller's list.
 - **Assumed, not asked back:** "filter type" meant choosing the searched field, and "status (bukan status order)"
@@ -230,7 +235,7 @@ flowchart TB
 
 - The scanner types the code and presses Enter; the field keeps focus and empties itself for the next one.
 - Two sounds made by the browser — a short high "fulfilled" and a low "wrong" — failing silent where audio is unavailable.
-- Labels: one prints through the receipt's signed URL; several at once need a merge (⚠ `printMerge`). Export ⚠ `exportFile`.
+- Labels: one prints through the receipt's signed URL; several at once need a merge (⚠ `printMerge`). 🔄 *(2026-10-19)* Both go through `OrderLabels` ([a-warehouse-prints-the-labels-of-orders-it-ships](#a-warehouse-prints-the-labels-of-orders-it-ships)): the signed-URL read is refused today, because the label is the seller's. Export ⚠ `exportFile`. 🔄 *(2026-10-19)* Export is [one-export-is-the-list-as-a-file](#one-export-is-the-list-as-a-file).
 - Built in the preview `Pages/Warehouse/PickQueueNextPage`.
 
 🔄 *(2026-10-16)* **Amended by [a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)**:
@@ -256,3 +261,176 @@ flowchart LR
   header into the bar, so there is one Export, not two.
 - Replaces the line in [scanning-is-the-crews-hands](#scanning-is-the-crews-hands) that had the bar appear only
   while rows are selected.
+
+---
+
+## the-warehouse-row-fills-from-shop-and-user-by-ids
+
+> Owner, in chat (2026-10-19): *"we can have rpc that allow get basic info on shop data that can access all team, like
+> GetShopByIds"*, then **"yes"** to recording it — on [technical order Q16](../order/design_clarify.md#question), *"how does
+> a warehouse's order list show the seller's shop, marketplace and unit count?"*. The owner's proposal, replacing both of
+> mine (copy onto the order, or join in the list query).
+
+**The verdict.** The warehouse row ([the-warehouse-row-is-the-old-systems-columns](#the-warehouse-row-is-the-old-systems-columns))
+is filled by two bulk lookups per page. **`ShopByIds`** gives the shop's name and marketplace, and **`UserByIDs`** gives
+who created the order. The unit count is the one thing the list itself adds: `item_quantity`, the sum of the order's lines.
+Nothing is copied onto the order, and it works wherever shops live.
+
+```mermaid
+sequenceDiagram
+  participant W as warehouse screen
+  participant O as OrderList
+  participant S as ShopByIds
+  participant U as UserByIDs
+  W->>O: Gudang A, page 1
+  O-->>W: 20 orders - shop_id, created_by_user_id, item_quantity
+  W->>S: shop ids 57, 61
+  S-->>W: 57 Toko Melati, Shopee - 61 Toko B, TikTok
+  W->>U: user ids 12, 15
+  U-->>W: 12 ani - 15 budi
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `ShopByIds` | new, on the shop RPCs. `allow_only_authenticated: true`, unscoped, the same as `TeamByIds` and `UserByIDs`: a cross-team bulk lookup |
+| what it returns | basic fields only: id, name, marketplace, owning team. Never members, grants or settings. The guideline ByIds shape ([guidelines/](../../../guidelines/)) |
+| the creator | `created_by_user_id` is already on `Order` → `UserByIDs` |
+| `item_quantity` | new on the list row: the sum of the order's line quantities, computed by the list query. Orders and their lines live together |
+| per page | one `OrderList`, one `ShopByIds`, one `UserByIDs`, never a call per row |
+| a renamed shop | old orders show its current name |
+
+---
+
+## the-filter-gains-seller-marketplace-and-courier
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — on [technical order Q17](../order/design_clarify.md#question),
+> *"what can a warehouse filter its order list by?"*. As recommended.
+
+**The verdict.** `OrderListFilter` gains the three filters the warehouse strip offers
+([the-warehouse-filters-by-team-marketplace-and-courier](#the-warehouse-filters-by-team-marketplace-and-courier)): **seller
+team, marketplace, courier**. The separate shipment-state switch is dropped, because the order status is that state now
+(`shipping`, `shipped`, `problem`, `return`, `lost`) and the status tabs already filter it. The search reaches the tracking
+number once the order stores one.
+
+```mermaid
+flowchart LR
+  F["warehouse filter strip"] --> T["seller_team_id - orders.team_id"]
+  F --> M["marketplace - the order's shop is on it"]
+  F --> C["shipping_code - orders.shipping_code"]
+  F --> S["search - customer, phone, MP ref, id, and the tracking number"]
+  F -.->|"dropped"| P["shipment state - the status tabs are it"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| `seller_team_id` | new: the order's `team_id`. Named apart from the request's `team_id`, which is the warehouse's scope |
+| `marketplace` | new: orders whose shop is on that marketplace, a subquery on shops in the same database. A shop's marketplace never changes ([a-shops-marketplace-and-team-are-fixed](../../business/shop/context_decision.md#a-shops-marketplace-and-team-are-fixed)) |
+| `shipping_code` | new: the courier, already a column on the order |
+| the shipment state | dropped. The order status carries it, and the status tabs filter it |
+| the search | today: customer name, phone, MP order ref, order id. Plus the tracking number once `orders.receipt` is built ([a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)) |
+| the stat | the same filter feeds `OrderStat` through `scopedOrders`, so the counts match the rows |
+
+---
+
+## one-status-change-for-every-plain-move
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — on [technical order Q18](../order/design_clarify.md#question),
+> *"one RPC for every move, or one per move?"*. As recommended.
+
+**The verdict.** Every move in the status diagram that only changes the status goes through **one RPC,
+`OrderStatusChange(order_ids, to, note)`**, for the warehouse, customer service and the selling team alike. The server holds
+the table of who may make which move ([the-status-move-is-the-only-journey](../../business/order/context_decision.md#the-status-move-is-the-only-journey)).
+It takes many orders, so a handover scan of 30 parcels is one call. The two moves that do more keep their own RPCs:
+**cancel** and **return accept**.
+
+```mermaid
+flowchart LR
+  P["plain moves - confirm, pick, hand over, back to pending, shipped, completed, problem, lost, forced return"] --> SC["OrderStatusChange - many ids, a result each"]
+  C["pending to cancel - refund the fee, stock back"] --> OC["OrderCancel"]
+  A["return to return_completed - warehouse, relabel, stock back"] --> RA["return accept"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the RPC | `OrderStatusChange(team_id, order_ids, to, note)`. `team_id` is the caller's scope: the warehouse, or the selling team for its customer service |
+| the table | from → to → who, on the server, taken from the status diagram. A move the caller's side may not make is refused |
+| many orders | a result per order, moved or refused with the reason. One refusal never blocks the rest: 30 scanned, 28 moved, 2 *"not picked yet"* |
+| a note | required for a move back (`processed → pending`, `picked → pending`). Written with the move to `order_timeline_logs` |
+| its own RPCs | `OrderCancel` (refunds the warehouse fee, returns the stock) and the return accept (records the warehouse, relabels borrowed units, returns the stock) |
+| folded in | `OrderPick` and `OrderShip` become `OrderStatusChange` calls |
+| the handover | the bulk handover is this RPC with `to: shipping` |
+
+---
+
+## a-warehouse-prints-the-labels-of-orders-it-ships
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — on [technical order Q18](../order/design_clarify.md#question),
+> *"how does the warehouse get the labels it prints, one or fifty at once?"*. As recommended.
+
+**The verdict.** Reading a label follows the order: **a warehouse reads the labels of the orders it ships.** One RPC in
+the order service, **`OrderLabels(team_id, order_ids)`**, checks that each order ships from the caller's warehouse, merges
+their labels into **one PDF** and returns one download link. One label is the same call with one id. No label is
+shared document by document.
+
+```mermaid
+sequenceDiagram
+  participant W as Gudang A - 50 ticked
+  participant O as order service
+  participant D as document store
+  W->>O: OrderLabels - Gudang A, 50 order ids
+  O->>O: each order ships from Gudang A? - 50 yes
+  O->>D: read the 48 label files - as the order service
+  D-->>O: 48 PDFs
+  O-->>W: one PDF, 48 pages, a link - 2 refused, no label uploaded
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the RPC | `OrderLabels(team_id, order_ids)`, in the order service. `team_id` is the warehouse, the scope |
+| the check | each order's `warehouse_id` is the caller's team. The order service checks this itself |
+| reading the files | the order service reads them under its own service identity, after its check. The warehouse's team never meets the document's owner check |
+| the answer | one merged PDF behind an expiring link, plus a result per order: included, or refused with the reason (*no label uploaded*, *the file can't be read*) |
+| page order | the order of the ids sent, which is the list's order |
+| a broken file | refused for that order, and the rest still merge. A hostile PDF must not crash the service |
+| no sharing | no `document_shares` rows for labels, and nothing to re-share when customer service replaces one |
+| ⛔ today | the warehouse screen reads a label with `GetDownloadUrl` under its own team, and the label belongs to the seller, so it comes back *not found*. Print Label fails on every order |
+
+---
+
+## one-export-is-the-list-as-a-file
+
+> Owner, in chat (2026-10-19): *"yes, i follow your recomendation"* — on [technical order Q18](../order/design_clarify.md#question),
+> *"what does Export produce, and is it one export for both lists?"*. As recommended.
+
+**The verdict.** One **`OrderExport(team_id, filter)`** serves both the seller's list and the warehouse's. It takes the list's
+own filter, so the file holds exactly the rows the list holds, every page of them. The columns are the reader's own row, and the
+file is **.xlsx**. It runs as a server stream that reports progress and ends with a download link.
+
+```mermaid
+sequenceDiagram
+  participant W as Gudang A - Shopee, J and T, shipping
+  participant O as OrderExport
+  W->>O: Gudang A, the list's filter
+  O-->>W: 1.200 of 3.400 rows
+  O-->>W: 3.400 of 3.400 rows
+  O-->>W: orders-2026-10-19.xlsx - a link
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the RPC | `OrderExport(team_id, filter)`, a server stream ([code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md)): progress messages, then the link |
+| the rows | the list's `OrderListFilter` through `scopedOrders`, the same set as the list and `OrderStat`, all pages |
+| the columns | the reader's side, as on screen: a warehouse gets its row ([the-warehouse-row-is-the-old-systems-columns](#the-warehouse-row-is-the-old-systems-columns)), and a selling team gets its own |
+| the file | .xlsx. Phone numbers and ids are written as text, so `0812…` keeps its 0 and a long marketplace id never becomes `5.78E+17` |
+| one for both | the seller's Export and the warehouse's Export call the same RPC |
+| the link | expiring, like any other document link |

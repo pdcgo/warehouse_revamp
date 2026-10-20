@@ -9,7 +9,10 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 // directly — the menu gate is UX only.
 
 const SUFFIX = Date.now().toString().slice(-6);
-const CODE = `R${SUFFIX}`;
+// Typed as a person might, saved trimmed and lowercase (rack-codes-are-saved-lowercase) — every row, heading and
+// action below is found by the code AS SAVED, so a code stored as typed fails here.
+const TYPED = ` R${SUFFIX} `;
+const CODE = TYPED.trim().toLowerCase();
 const NAME = `E2E Rack ${SUFFIX}`;
 
 async function login(page: Page, username: string, password: string) {
@@ -42,7 +45,7 @@ test("Create: a new rack appears; the code is required", async ({ page }) => {
   // description are optional.
   await expect(page.getByTestId("submit-rack")).toBeDisabled();
 
-  await page.getByTestId("rack-code").fill(CODE);
+  await page.getByTestId("rack-code").fill(TYPED);
 
   await expect(page.getByTestId("submit-rack")).toBeEnabled();
 

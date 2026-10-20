@@ -8,7 +8,7 @@ import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 // the RPCs are authorised in the root team — the page is reached by its route, exactly as racks.spec.ts
 // does. The menu gate is UX only.
 //
-// The shelf is seeded through the REAL flow (create a rack, raise a restock, fulfil it onto the rack),
+// The shelf is seeded through the REAL flow (create a rack, raise a restock, accept it onto the rack),
 // because a stock-take is only meaningful over stock that arrived the way stock arrives — cost layers
 // included, since a shortfall is priced off them.
 
@@ -21,16 +21,16 @@ const SUFFIX = Date.now().toString().slice(-6);
 // handler rather than in the fixture. A rack code is unique per warehouse, so re-seeding the same one
 // also just 409s.
 //
-// The product ids are far from anything else in the suite, so another spec's stock can never appear on
-// a shelf this one is counting.
+// The products are NEW ones of team 1's, made per shelf — a restock carries only the team's own products
+// (a-restock-carries-only-the-teams-own-products), and a fresh product can never already be on a shelf this
+// one is counting.
 let shelfSeq = 0;
 
 function shelfIds() {
   shelfSeq += 1;
 
-  const base = 900_000 + shelfSeq * 10;
-
-  return { code: `OP${SUFFIX}-${shelfSeq}`, productA: base, productB: base + 1 };
+  // Saved lowercase (rack-codes-are-saved-lowercase), so written that way here too.
+  return { code: `op${SUFFIX}-${shelfSeq}` };
 }
 
 const ARRIVED_A = 50;
@@ -74,32 +74,61 @@ async function rpc(page: Page, method: string, body: unknown): Promise<Record<st
   );
 }
 
-// Seeds one shelf holding two products, and returns its rack id.
-async function seedShelf(page: Page): Promise<{ rack: string; productA: number; productB: number }> {
-  const { code, productA, productB } = shelfIds();
+// Seeds one shelf holding two products, and returns its rack id and the products' ids.
+async function seedShelf(page: Page): Promise<{ rack: string; productA: string; productB: string }> {
+  const { code } = shelfIds();
 
   const rack = (await rpc(page, "warehouse.inventory.v1.RackService/RackCreate", {
     teamId: "1",
     code,
   })) as { rack: { id: string } };
 
+  const category = (await rpc(page, "warehouse.category.v1.CategoryService/CategoryCreate", {
+    name: `E2E Opname ${code}`,
+  })) as { category: { id: string } };
+
+  const product = async (sku: string, name: string) =>
+    (
+      (await rpc(page, "warehouse.product.v1.ProductService/ProductCreate", {
+        teamId: "1",
+        sku,
+        name,
+        categoryId: category.category.id,
+      })) as { product: { id: string } }
+    ).product.id;
+
+  const productA = await product(`A${code}`, "Opname A");
+  const productB = await product(`B${code}`, "Opname B");
+
+  // Every restock names the account that paid (a-restock-must-name-the-account-that-paid).
+  const account = (await rpc(page, "warehouse.financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+    teamId: "1",
+    type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+    provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+    name: `E2E opname ${code}`,
+    holderName: "E2E",
+    accountNumber: `E2E-OP-${code}`,
+    openingBalance: 0,
+    openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+  })) as { account: { id: string } };
+
   const created = (await rpc(page, "warehouse.inventory.v1.RestockRequestService/RestockRequestCreate", {
     teamId: "1",
     warehouseId: "1",
-    shippingCode: "jne",
+    financeAccountId: account.account.id,
     items: [
-      { productId: String(productA), sku: `A${code}`, name: "Opname A", quantity: String(ARRIVED_A), totalPrice: String(TOTAL_A) },
-      { productId: String(productB), sku: `B${code}`, name: "Opname B", quantity: String(ARRIVED_B), totalPrice: String(TOTAL_B) },
+      { productId: productA, sku: `A${code}`, name: "Opname A", count: ARRIVED_A, total: TOTAL_A },
+      { productId: productB, sku: `B${code}`, name: "Opname B", count: ARRIVED_B, total: TOTAL_B },
     ],
   })) as { request: { id: string; items: { id: string }[] } };
 
-  await rpc(page, "warehouse.inventory.v1.RestockRequestService/RestockRequestFulfill", {
+  await rpc(page, "warehouse.inventory.v1.RestockRequestService/RestockRequestAccept", {
     teamId: "1",
     requestId: created.request.id,
     lines: created.request.items.map((item, i) => ({
       itemId: item.id,
-      receivedQuantity: String(i === 0 ? ARRIVED_A : ARRIVED_B),
-      placements: [{ rackId: rack.rack.id, quantity: String(i === 0 ? ARRIVED_A : ARRIVED_B) }],
+      receivedCount: i === 0 ? ARRIVED_A : ARRIVED_B,
+      placements: [{ placementId: rack.rack.id, quantity: i === 0 ? ARRIVED_A : ARRIVED_B }],
     })),
   });
 

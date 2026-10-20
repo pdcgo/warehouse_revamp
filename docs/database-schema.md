@@ -439,47 +439,16 @@ erDiagram
     order time (`StockCost`), because a client supplying it would be writing its own margin — the one
     number nobody placing an order should get to choose. `orderItemModels` deliberately does not read
     it, the same way it ignores `id`.
-  - **The line stores its TOTAL, not a per-unit price** (#140, owner). People buying stock read a
-    total off an invoice — "that box of 12 cost 240.000" — and asking for a per-unit figure makes them
-    divide in their head, storing a rounded number whose product no longer equals what they paid. The
-    total is therefore the stored truth, and **StockCost DERIVES** the per-unit cost as
-    `total_price / quantity`, rounded down. That rounding happens at READ time and is never written
-    back: 10.000 over 3 pieces reports 3.333 a piece while the stored total stays 10.000.
-  - **The cost is HPP — what the goods cost TO GET HERE** (#155, owner). Freight is part of what a
-    product cost, so an order's COGS carries it:
-
-    
-
-    Spread over **sellable** units, not over everything that arrived: you paid to ship the broken
-    ones too (#154), and that cost lands on the good units, so a damaged delivery correctly reads as
-    more expensive per piece. Spread by **unit count** across the request's lines, so every unit
-    carries the same freight whichever line it is on. Both divisions round DOWN — rounding up would
-    have an order claim it paid more than the invoice says.
-  - A line that received **nothing is skipped**: dividing by its zero would fail, and "what did the
-    units cost" has no answer when none came. The product falls back to its previous delivery rather
-    than to a fabricated figure.
-  - **The cost is HPP — what the goods cost TO GET HERE** (#155, owner). Freight is part of what a
-    product cost, so an order's COGS carries it. Before this it did not, and every margin in the
-    revenue report was optimistic by exactly the freight.
-
-    ```
-    additional = (shipping_cost + warehouse_additional_cost) / sellable units on the request
-    hpp        = (line total / that line's sellable units) + additional
-    ```
-
-    Spread over **sellable** units, not over everything that arrived: you paid to ship the broken ones
-    too (#154), and that cost lands on the good units — so a damaged delivery correctly reads as more
-    expensive per piece instead of hiding the loss. Split across the request's lines by **unit count**,
-    so every unit carries the same freight whichever line it sits on. Both divisions round **down**:
-    rounding up would have an order claim it paid more than the invoice says.
-  - A line that received **nothing is skipped**. Dividing by its zero would fail, and "what did the
-    units cost" has no answer when none came — so the product falls back to its previous delivery
-    rather than to a fabricated figure.
-  - **The rule is the LATEST FULFILLED restock's price** for that product into that warehouse. Only
-    fulfilled ones count: a pending request is a price somebody hoped for, not one that was paid.
-    That is a documented simplification — a weighted average or FIFO cost layers are truer and need a
-    model nothing has yet — and it is safe to change because the answer is **frozen onto the line**, so
-    a new rule changes future orders and never rewrites what past ones recorded.
+  - **The cost is the batches' — what the goods cost TO GET HERE** (#155, ledgers stage 3). `StockCost` answers the
+    WEIGHTED AVERAGE of the units the warehouse holds, Σ `stock_valuation` ÷ Σ `stock_count` over the product's
+    `batches` there, and a product with none left reads its newest batch's price. Each batch was minted at the
+    accept's LANDED price — the line total ÷ the ordered count, plus (shipping + the courier's charge) ÷ every unit
+    ordered in the restock (unit-price-is-line-price-plus-costs-per-unit, all-qty-is-every-unit-ordered) — so freight
+    is in the COGS, and a broken unit costs what a good one does. Only arrived stock counts: a restock not yet accepted
+    has no batch. The order take itself charges oldest batch first, so this is the preview a form freezes.
+  - It is safe to change because the answer is **frozen onto the line**: a new rule changes future orders and never
+    rewrites what past ones recorded. This contract is still whole rupiah, rounded at the read, until it turns
+    `double` too (money-is-double-in-the-api-too).
   - **0 means UNKNOWN, not free.** A product never restocked has no recorded cost, and every row
     predating this column is in that position. A margin computed over an unknown cost reads as pure
     profit, so treat 0 as a flag rather than a figure. `StockCost` omits unknown products entirely
@@ -633,81 +602,15 @@ erDiagram
 
 ```mermaid
 erDiagram
-    stock_levels {
-        bigint      warehouse_id "opaque team_service id (a WAREHOUSE team), no FK"
-        bigint      product_id   "opaque product_service id, no FK"
-        bigint      rack_id      FK "-> racks(id) ON DELETE RESTRICT; NULL = UNPLACED (#135)"
-        bigint      on_hand      "THIS PLACE's running total, CHECK >= 0; a warehouse total is a SUM"
-        timestamptz updated_at
-    }
-
-    stock_movements {
-        bigserial   id            PK
-        bigint      warehouse_id  "opaque, no FK"
-        bigint      product_id    "opaque, no FK"
-        bigint      rack_id       FK "-> racks(id); the place moved onto/off; NULL = unplaced (#135)"
-        bigint      batch_id      FK "-> stock_batches(id); which batch moved; NULL = batch-less recount (#211)"
-        bigint      delta         "signed: + in, - out"
-        bigint      balance       "THIS PLACE's on-hand after this movement"
-        smallint    kind          "MovementKind enum number"
-        text        reason
-        text        ref
-        bigint      actor_user_id "who, best-effort audit"
-        timestamptz created_at
-    }
-
-    stock_batches {
-        bigserial   id                      PK
-        bigint      warehouse_id            "opaque team id, scope"
-        bigint      product_id              "opaque product_service id"
-        bigint      delivery_id             "the accepted restock request id (display '#3007')"
-        bigint      restock_request_item_id FK "-> restock_request_items(id); UNIQUE — the line IS the batch (#207)"
-        bigint      unit_cost               "FROZEN HPP, whole rupiah; NULL = Unknown, never 0 (#74)"
-        bigint      arrived_qty             "units on the line, CHECK >= 0; Ready = sum shelf_batch.qty"
-        bigint      damaged_qty             "never entered stock, CHECK >= 0"
-        date        expires_on              "NULLABLE — perishables only (#208)"
-        bigint      created_by              "who raised the restock, opaque user id, 0=unknown"
-        bigint      accepted_by             "who accepted it"
-        timestamptz created_at
-        timestamptz accepted_at
-    }
-
-    stock_shelf_batches {
-        bigserial   id       PK
-        bigint      batch_id FK "-> stock_batches(id) ON DELETE RESTRICT"
-        bigint      rack_id  FK "-> racks(id) ON DELETE RESTRICT; NULL = unplaced (#135)"
-        bigint      qty      "READY units of this batch on this shelf, CHECK >= 0; UNIQUE(batch,rack) NULLS NOT DISTINCT"
-        timestamptz updated_at
-    }
-
-    stock_owner_movements {
-        bigserial   id            PK
-        bigint      movement_id   FK "-> stock_movements(id) ON DELETE CASCADE"
-        bigint      owner_team_id "the SELLING team, derived from the restock; CHECK > 0"
-        bigint      warehouse_id  "opaque, no FK"
-        bigint      product_id    "opaque, no FK"
-        bigint      batch_id      FK "-> stock_batches(id); NULL = batch-less event, owner from the product"
-        smallint    kind          "MovementKind enum number; a shelf MOVE is never projected"
-        bigint      delta         "signed: + in, - out"
-        text        reason
-        text        ref
-        bigint      actor_user_id
-        timestamptz created_at    "the EVENT's time, copied from the movement; UNIQUE(movement_id, owner_team_id)"
-    }
-
-    stock_batches ||--o{ stock_shelf_batches : "batch_id"
-    restock_request_items ||--o| stock_batches : "restock_request_item_id (one batch per line)"
-    stock_movements ||--o{ stock_owner_movements : "movement_id (projected per owner)"
-
     legacy_suppliers ||--o{ legacy_supplier_channels : "supplier_id"
 
-    racks {
-        bigserial   id           PK
+    placements {
+        bigserial   id           PK "the screen says Racks (00028 renamed racks)"
         bigint      warehouse_id "the WAREHOUSE team it stands in, opaque, no FK"
-        text        code         "the label on the shelf (A-01-3); unique per warehouse among active"
+        text        code         "the label on the shelf, saved trimmed and lowercase (a-01-3) - CHECK; unique per warehouse among those in use"
         text        name         "optional human name"
         text        description
-        boolean     deleted      "soft delete"
+        timestamptz deleted_at   "soft delete, only at zero stock; NULL = in use"
         timestamptz created_at
         timestamptz updated_at
     }
@@ -740,82 +643,78 @@ erDiagram
         timestamptz updated_at
     }
 
-    restock_requests ||--o{ restock_request_items : "restock_request_id"
-    restock_requests ||--o{ restock_logs : "restock_request_id"
+    restocks ||--o{ restock_items : "restock_id"
+    restocks ||--o{ restock_logs : "restock_id"
+    restock_items ||--o{ restock_problem_items : "restock_id, product_id"
 
-    restock_requests {
+    restocks {
         bigserial   id                 PK
-        bigint      requesting_team_id "SELLING team that raised it, opaque, no FK"
-        bigint      warehouse_id       "target WAREHOUSE team that fulfils it, opaque, no FK"
-        text        shipping_code      "opaque courier code — matched against shipment_service.shipment_channels.code"
-        text        status             "ongoing / arrived / accepted / lost / cancelled (mapper-guarded, #80); 00024 rewrote pending and fulfilled"
-        text        order_ref          "the store's INVOICE reference; becomes invoice_ref_id with the rename"
+        bigint      team_id            "SELLING team that raised it, opaque, no FK (requesting_team_id until 00030)"
+        bigint      warehouse_id       "target WAREHOUSE team that accepts it, opaque, no FK"
+        text        status             "ongoing / arrived / accepted / lost / cancelled (mapper-guarded, #80)"
+        text        invoice_ref_id     "the store's INVOICE reference (order_ref until 00030)"
         text        receipt            "optional: courier tracking number (resi)"
-        text        receipt_file       "00024: a photo of the label; '' = none"
-        bigint      shipment_id        "00024: the courier, opaque shipment_service id, no FK; 0 = not named"
-        bigint      finance_account_id "00024: the account that paid, opaque financial_account_service id; 0 = raised before it was required"
-        bigint      transaction_id     "00024: the accept's inventory transaction; 0 until the accept writes the ledgers"
-        bigint      shipping_cost      "the freight the REQUESTER agreed, whole rupiah, CHECK >= 0"
-        bigint      warehouse_additional_cost "00024: the courier's ONE charge at the door, CHECK >= 0; outside the total, inside the unit price"
-        text        warehouse_additional_cost_note "00024: what the charge was for — required above 0 by the contract"
+        text        receipt_file       "a photo of the label; '' = none"
+        bigint      shipment_id        "the courier, opaque shipment_service id, no FK; 0 = not named"
+        bigint      finance_account_id "the account that paid, opaque financial_account_service id; 0 = raised before it was required"
+        bigint      transaction_id     "the accept's inventory transaction; 0 until accepted"
+        float8      shipment_cost      "the freight the selling team paid, CHECK >= 0 (shipping_cost until 00030)"
+        float8      subtotal           "00030: sum of line totals, written by every create and edit"
+        float8      total              "00030: subtotal + shipment_cost, never the courier's charge"
+        float8      warehouse_additional_cost "the courier's ONE charge at the door, CHECK >= 0; outside the total, inside the unit price"
+        text        warehouse_additional_cost_note "what the charge was for — required above 0 by the contract"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); read-only history"
         text        note               "the selling team's note on the whole restock"
         bigint      created_by_user_id "who RAISED it, opaque user_service id, no FK; 0 = not recorded"
-        bigint      arrived_by_user_id "00024: who SIGNED for the box; 0 = not signed"
-        bigint      accepted_by_user_id "who COUNTED it, opaque user_service id, no FK; 0 = not accepted yet"
-        bigint      lost_by_user_id    "00024: who GAVE IT UP as lost; 0 = not lost"
-        bigint      cancelled_by_user_id "who CALLED IT OFF, opaque user_service id, no FK; 0 = not cancelled"
-        timestamptz arrived_at         "00024: nullable: when the box was signed for"
-        timestamptz accepted_at        "nullable: when the warehouse accepted; NULL = not accepted"
-        timestamptz lost_at            "00024: nullable: when it was given up as lost"
-        timestamptz cancelled_at       "nullable: when the requester called it off; NULL = not cancelled"
+        bigint      arrived_by_user_id "who SIGNED for the box; 0 = not signed"
+        bigint      accepted_by_user_id "who COUNTED it; 0 = not accepted yet"
+        bigint      lost_by_user_id    "who GAVE IT UP as lost; 0 = not lost"
+        bigint      cancelled_by_user_id "who CALLED IT OFF; 0 = not cancelled"
+        timestamptz arrived_at         "nullable: when the box was signed for"
+        timestamptz accepted_at        "nullable: when the warehouse accepted"
+        timestamptz lost_at            "nullable: when it was given up as lost"
+        timestamptz cancelled_at       "nullable: when the selling team called it off"
         timestamptz created_at
         timestamptz updated_at
     }
 
     restock_logs {
         bigserial   id                 PK
-        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE"
-        text        from_status        "status words as restock_requests stores them; '' = the create"
+        bigint      restock_id         FK "-> restocks(id), ON DELETE CASCADE"
+        text        from_status        "status words as restocks stores them; '' = the create"
         text        to_status          "the same as from_status for an edit"
         bigint      actor_user_id      "who did it, opaque user_service id, no FK; 0 = not recorded"
         text        description        "what moved it, or what an edit changed"
-        timestamptz at                 "WHEN IT HAPPENED — not the insert time; the 00024 backfill carries old dates"
-        timestamptz created_at
+        timestamptz created_at         "WHEN IT HAPPENED, set by the writer; 00030 folded the backfill's at into it"
     }
 
-    restock_request_items {
+    restock_items {
         bigserial   id                 PK
-        bigint      restock_request_id FK "-> restock_requests(id), ON DELETE CASCADE; UNIQUE with product_id (00024)"
+        bigint      restock_id         FK "-> restocks(id), ON DELETE CASCADE; UNIQUE with product_id"
         bigint      product_id         "opaque product_service id, no FK; once per restock"
-        text        sku                "snapshot at request time"
+        text        sku                "snapshot at raise time"
         text        name               "snapshot"
-        bigint      quantity           "how many were ASKED FOR, CHECK > 0"
-        bigint      total_price        "whole rupiah, THE LINE TOTAL (#140), CHECK >= 0"
-        bigint      received_quantity  "what is SELLABLE and entered stock, counted at acceptance; EXCLUDES damage (#154); 0 until accepted"
-        bigint      supplier_id        "00024: the line's supplier, opaque supplier_service id, nullable"
-        bigint      supplier_channel_id "00024: the line's store, opaque supplier_service id, nullable"
-        text        note               "00024: the selling team's note on the line"
+        bigint      count              "how many were ORDERED, CHECK > 0 (quantity until 00030)"
+        float8      total              "THE LINE TOTAL, the truth, CHECK >= 0 (total_price until 00030)"
+        float8      price_unit         "00030: total / count, for display, rewritten whenever either changes"
+        bigint      received_count     "what was IN THE BOX, broken included; 0 until accepted (received_quantity, good units only, until 00030)"
+        bigint      supplier_id        "the line's supplier, opaque supplier_service id, nullable"
+        bigint      supplier_channel_id "the line's store, opaque supplier_service id, nullable"
+        text        note               "the selling team's note on the line"
         timestamptz created_at
         timestamptz updated_at
     }
 
-    restock_received_placements {
-        bigserial   id                      PK
-        bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
-        bigint      rack_id                 FK "-> racks(id) ON DELETE RESTRICT; NULL = the unplaced pile (#135)"
-        bigint      quantity                "how many went to THIS place, CHECK > 0"
-        timestamptz created_at
-    }
-
-    restock_damaged_units {
-        bigserial   id                      PK
-        bigint      restock_request_item_id FK "-> restock_request_items(id), ON DELETE CASCADE"
-        bigint      quantity                "CHECK > 0"
-        text        reason                  "the warehouse's optional note; 00024 dropped the non-empty CHECK"
-        text        damage_type             "broken | missing (mapper-guarded, #80); 00024 rewrote lost"
-        bigint      price_unit              "00024: the LANDED unit price, filled at accept, CHECK >= 0"
-        bigint      total                   "00024: price_unit x quantity, CHECK >= 0"
+    restock_problem_items {
+        bigserial   id                  PK
+        bigint      restock_id          FK "with product_id -> restock_items(restock_id, product_id), ON DELETE CASCADE"
+        bigint      product_id          "the line's product — a product IS its line"
+        bigint      supplier_channel_id "the line's store, copied at accept, nullable"
+        text        problem_type        "broken | missing, CHECKed; UNIQUE with restock_id, product_id"
+        bigint      count               "CHECK > 0"
+        float8      price_unit          "the LANDED unit price, filled at accept, CHECK >= 0"
+        float8      total               "price_unit x count, CHECK >= 0"
+        text        note                "the warehouse's optional note"
         timestamptz created_at
     }
 
@@ -832,60 +731,23 @@ erDiagram
   team-scoped product list shows it nothing useful. This is the list it should see instead.
   - **Written by `RestockRequestCreate`**, in the same transaction as the request (owner,
     2026-07-20): asking a warehouse to stock something is what makes that product visible there, and a
-    request whose products the crew cannot see is one nobody can act on. That is the only writer today.
-  - **Not derivable from `stock_levels`**, which is why it is its own table rather than a query over
-    that one. A product asked for but not yet received has no stock level at all, and the crew
+    request whose products the crew cannot see is one nobody can act on. A transfer's create links its products to the
+    receiving warehouse the same way (a-transfer-links-its-products-to-the-receiver).
+  - **Not derivable from the rack rows**, which is why it is its own table rather than a query over
+    them. A product asked for but not yet received has no stock level at all, and the crew
     expecting it still have to be able to find it. "Handles" and "currently holds" are two facts.
   - `UNIQUE (warehouse_id, product_id)` — the arrangement exists once. Writers upsert with
     `ON CONFLICT DO NOTHING`, because a second restock request for a product a warehouse already
     stocks is the normal case, not an error worth failing the request over.
   - It lives in **inventory_service** because this service already owns warehouse×product facts
-    (`stock_levels` is keyed on exactly that pair) and owns the restock flow that writes it — so no
+    (`batches` and `product_placements` are keyed on that pair) and owns the restock flow that writes it — so no
     cross-service write is needed to maintain it (HARD RULE 3).
-- **`stock_owner_movements`** — the CATALOGUE OWNER's ledger (#232): the same events as
-  `stock_movements`, projected into the lens of the selling team that owns the goods. It exists
-  because `stock_movements` answers for a *shelf* — its `balance` is a rack's running total and a
-  shelf-to-shelf move is one of its commonest rows — and none of that is a fact about what an owner
-  holds. Three things happen at projection time so they need not happen per request:
-  - **Ownership is resolved**, by the same climb every owner read makes
-    (`stock_batches → restock_request_items → restock_requests.requesting_team_id`).
-  - **A batch-less event** (a shelf recount, and every `PICK`, which is written with no batch) cannot
-    make that climb, so it is attributed to whoever owns batches of that product *in that warehouse*.
-    A movement that resolves to no owner is simply not projected.
-  - **A shelf `MOVE` is dropped**, which is also what keeps the running balance honest — projecting
-    one leg and not the other would corrupt every figure after it.
-
-  There is deliberately **no balance column**: the owner's on-hand after each event is a running
-  `SUM(delta) OVER (PARTITION BY warehouse_id ORDER BY id)` computed at read time, so it cannot drift
-  from the rows it is made of and a rebuilt projection produces identical figures. Written today
-  inside `appendMovement`'s transaction; it becomes an event consumer later, with no change to the
-  rows or to the read.
-- **`stock_levels`** / **`stock_movements`** — on-hand stock and the append-only ledger behind it.
-  `stock_movements` is the source of truth (never UPDATE/DELETE a row); `stock_levels` is a derived
-  cache of the running on-hand, maintained inside each movement's transaction, with a
-  `CHECK (on_hand >= 0)` that turns an over-draw into a failed movement rather than a negative on-hand.
-  Scoped by `warehouse_id` (`use_scope`); `product_id` is an opaque `product_service` id. Both ids are
-  opaque cross-service ids — no FK. `rack_id` **is** a real FK: racks live in the same service.
-- **Stock is located ON a rack** (#135) — the grain is **(warehouse, rack, product)**, and a row's
-  `on_hand` is **that place's**, not the warehouse's total for the product. A warehouse total is a
-  **SUM across a product's places** (`StockList` groups by `(warehouse_id, product_id)`); a ledger
-  row's `balance` is likewise that place's running balance, because a movement is a statement about
-  one place — "this shelf went from 40 to 49".
-  - **`rack_id IS NULL` means UNPLACED** — "somewhere in this warehouse, not yet on a shelf". It is a
-    real, workable state (the put-away queue, #136), not a missing value: it is what arrived before
-    anyone shelved it. Every row predating #135 is unplaced, which is the truth — the system had never
-    been told where anything sits, and it must not invent a location it was never given.
-  - **The identity is a UNIQUE INDEX, not a PK**, because a PK column may not be NULL and "unplaced"
-    must be. `stock_levels_place_unique` carries **`NULLS NOT DISTINCT`** (Postgres 15+; compose pins
-    17) and that clause is load-bearing: by default Postgres treats every NULL as distinct from every
-    other, so a plain unique index would accept *many* unplaced rows for one (warehouse, product) —
-    each a separate "somewhere", silently double-counting the same goods on every read.
-  - **Consequently every query matches the rack with `IS NOT DISTINCT FROM`, never `=`.** In SQL
-    `rack_id = NULL` is never true, not even against a NULL row, so a plain `=` would fail to find
-    unplaced stock and report a phantom shortage for goods sitting right there. This is also why
-    writes to `stock_levels` go through raw SQL rather than GORM's primary-key path — see the model.
-  - **`ON DELETE RESTRICT`** on both `rack_id` FKs: stock on a rack being deleted must be dealt with
-    explicitly (#138), never stranded at a location nobody can reach.
+- **Stock lives in the decided ledgers** — see [The decided ledgers](#the-decided-ledgers-00025-00026) below. `00029`
+  **dropped** the tables they replaced: `stock_levels` and `stock_movements` (→ `product_placements` and their log),
+  `stock_batches` and `stock_shelf_batches` (→ `batches` and their log — a rack counts units per product, never per
+  batch), `stock_owner_movements` (→ the owner's `batch_logs`, the owner being `batches.team_id`) and
+  `restock_received_placements` (→ the restock accept's own rack rows). Its down half is not reversible: nothing is in
+  production and development data is reseeded (no-switch-over-the-ledgers-replace-todays-tables).
 - **`legacy_suppliers`** / **`legacy_supplier_channels`** — **MOVED OUT** (the-supplier-gets-its-own-service).
   They were `suppliers` and `supplier_channels`; `00023_legacy_suppliers` renamed them — and their indexes and
   sequences, whose names are schema-wide — so supplier_service's `00001` can create its own under the decided
@@ -894,134 +756,253 @@ erDiagram
   (existing-suppliers-move-with-their-ids). ⚠ A **later** migration drops them, once the move has run on every
   database — dropping them in 00023 would have lost the rows before the command could read them.
   inventory_service is therefore pinned before supplier_service in every apply order.
-- **`racks`** — the physical places inside one warehouse (#129). Scoped to the `warehouse_id`, which
-  **is** a team (a warehouse is a team), carrying `use_scope`; opaque, no FK. `code` is the label
-  someone reads off the shelf and is unique per warehouse **among active racks only**
-  (`UNIQUE (warehouse_id, code) WHERE deleted = FALSE`), so a soft-deleted rack frees its label for
-  re-use — a shelf gets re-labelled — and two warehouses may both have an `A-01-3`. Only **warehouse**
-  teams have racks; a selling team has nowhere to put a shelf.
-- **`racks` is the REGISTRY, not a location model.** Nothing references a rack yet: stock is still
-  counted per `(warehouse_id, product_id)` in `stock_levels`. Putting stock **on** a rack is
-  an **open owner decision** (warehouse-level vs bin-level), and writing down the racks a warehouse
-  has does not settle it — it is the prerequisite, not the answer.
-- **`restock_requests`** / **`restock_request_items`** — a SELLING team's request for a WAREHOUSE to
-  restock (#105/#124). Two-sided: `requesting_team_id` (the selling team, `use_scope` on
-  create/cancel/list) raises a `pending` request naming a `warehouse_id` (the target warehouse,
-  `use_scope` on fulfil/list) and a `shipping_code`. The warehouse **fulfils** it in one transaction —
-  a `stock_movements` RECEIVE for **every line** plus a status flip to `fulfilled`, so the ledger and
-  the request can't diverge and a request is never half-received; the requester may **cancel** a
-  still-pending one. `status` is the `RestockRequestStatus` enum **as text** (mapped in the handler,
-  no `CHECK` IN-list, cf. #80). Both team ids are opaque — no FK; indexes on `requesting_team_id` and
-  `warehouse_id` serve the two list views.
-- **Who handled it, and when** (00018): `created_by_user_id` is stamped from the caller's identity on
-  create, `accepted_by_user_id` + `accepted_at` at acceptance (the same actor the delivery's
-  `stock_batches.accepted_by` records, written in one transaction so a batch and its delivery can
-  never name two different people), and `cancelled_at` on cancel. The user ids are **opaque
-  user_service ids — no FK**, and names are resolved through `UserByIDs` at read time rather than
-  snapshotted: unlike a line's `sku`/`name` (which must keep reading as it was ordered), a person's
-  name is not part of what was agreed, so a renamed user should read with their current name
-  everywhere. **Nothing is backfilled** — a restock raised before 00018 keeps `0` / `NULL`, because
-  inventing an id would put a real person's name against work they may not have done.
-  The two timestamps are stored rather than derived from `updated_at`, which any later write moves,
-  and they are what the list's date-range filter ranges on (`RestockDateField`: created / accepted /
-  cancelled). Partial indexes `(requesting_team_id, accepted_at) WHERE accepted_at IS NOT NULL` and
-  the same for `cancelled_at` serve it — at any moment most restocks are neither, so skipping those
-  rows indexes the smaller half of the table.
-  > ⚠ **Restart a running API after applying 00018.** Postgres caches a prepared statement's result
-  > type, so a process that ran `SELECT *` on `restock_requests` before the `ALTER TABLE` fails every
-  > subsequent read with `cached plan must not change result type (SQLSTATE 0A000)` until it
-  > reconnects. It reads as a code bug and is a connection-lifetime one. **The same applies to 00019**,
-  > which adds `cancelled_by_user_id` to the same table.
-- **00024 — the decided restock, on today's names** (restocks-non-stock-parts-come-before-the-switch-over). Every
-  field the contract carried and the mapper dropped got a column (above, marked 00024), and the stopgaps became data:
-  `pending`/`fulfilled` → `ongoing`/`accepted`, a problem `lost` → `missing`, the problem note's non-empty CHECK
-  dropped. **`restock_cost_lines` folded into the one `warehouse_additional_cost` + note and was dropped**
-  (the-courier-is-paid-once-per-restock); **`restock_request_events` became `restock_logs`** — from and to status, so
-  an edit is a row with the status unchanged (edits-are-in-the-same-trail) — and was dropped; **the restock-level
-  `supplier_id` moved onto each line** and was dropped; `UNIQUE (restock_request_id, product_id)` makes a product
-  appear once per restock. Nothing is in production, so a developer's database is reseeded rather than trusted to the
-  Down. The tables take the owner's names (`restocks`, `restock_items`, `restock_problem_items`) in the commit that
-  moves the accept onto the ledgers.
-- **`restock_request_events` — the restock's own history** (00019, **replaced by `restock_logs` in 00024**), one **append-only** row per thing
-  that happened to it: `created`, `edited`, `accepted`, `cancelled` (text, mapper-guarded, cf. #80),
-  each with an `actor_user_id` and the moment it happened. Written **in the same transaction as the
-  change it describes**, carrying the *same instant* as the column that change stamps — an event that
-  could survive a rolled-back write, or that named a different second from `accepted_at`, would be a
-  history contradicting the row it belongs to.
-  - **Why a table and not `updated_at`/`updated_by`.** Editing a restock had to appear on the
-    timeline, and the two-column version can only remember the **most recent** edit — but a pending
-    restock is edited repeatedly (a quantity corrected, a courier added, a line dropped), so a request
-    edited five times would read identically to one edited once. That is the failure the column pair
-    cannot be fixed out of.
-  - **The columns are NOT superseded.** `created_by_user_id` and the three timestamps stay, because
-    the **list** filters and sorts on them and a filter cannot reach into a child table cheaply. The
-    columns answer *what is the current state*; the events answer *what happened, in order*. The
-    detail RPC preloads the events (ordered `at, id` — the id breaks a same-second tie); the list
-    deliberately does not, exactly as it skips a line's placements.
-  - **Backfilled from those columns** for every pre-existing restock, so an old request shows a
-    history rather than an empty timeline. `actor_user_id` comes across including `0` — carrying "not
-    recorded" forward honestly. **`edited` events cannot be backfilled and are not faked:** nothing
-    ever recorded an edit, so an old restock's history legitimately begins with what is known.
-  - No `UNIQUE (restock_request_id, kind)`: a restock legitimately has **many** edits, and the
-    one-of-each kinds are kept unique by the lifecycle rather than by the schema — as `status` is.
-- **Who called it off** (00019): `cancelled_by_user_id`, from the caller's identity like the two above.
-  00018 recorded *when* a cancellation happened but never *who*, so the timeline's cancelled step was
-  the one step that could not name a person. `0` on any row cancelled before 00019 — the same
-  "not recorded" the other actor ids carry.
-- A request carries **many priced lines** (#124), same shape as `orders`/`order_items`:
-  `restock_request_items` snapshots each line's `sku`/`name` at request time (the product may live in
-  another team's catalogue and be renamed later), with a `quantity` (`CHECK > 0`) and a `total_price`
-  (whole rupiah, **the LINE total, not per unit** — #140: people buying stock think in totals, so the
-  total is the stored truth and a per-unit figure is derived where one is needed. `CHECK >= 0`, since
-  zero is legitimate for a transfer or a sample). `ON DELETE CASCADE`.
-- **`quantity` is what was ASKED FOR; `received_quantity` is what ARRIVED** (#133), and the two are
-  different facts, which is why both are stored. A request is a *promise*; the delivery is a *fact*,
-  and they disagree often enough — 9 of the 10, one line that never turned up, occasionally 11 — that
-  conflating them would mean recording stock the warehouse does not physically have. **Stock receives
-  `received_quantity`**, counted by the warehouse at acceptance. The asked-for is never overwritten by
-  it: the **gap between the two is the point**, being what someone chases the supplier about, and a row
-  that quietly said 9 were asked for would erase the discrepancy it exists to record.
-  - `received_quantity` is `0` until acceptance and stays `0` for a line that never arrived, so it only
-    means anything once `status = 'fulfilled'` — on a pending request it reads as *uncounted*, not as
-    *nothing came*.
-  - **No `CHECK` against `quantity`.** A short delivery is ordinary and an over-delivery is real; the
-    column records what was counted, and the person counting is the authority. A constraint here would
-    only force them to write down a number they can see is wrong.
-  - **`restock_received_placements` says WHERE it went** (#137/#154) — counting and shelving are one
-    act, so acceptance records both. A LIST, because a delivery of 100 does not go on one shelf: the
-    quantities must sum to `received_quantity` exactly, and a mismatch is refused rather than
-    interpreted (somebody who counts 8 and places 7 has erred in one of the two, and which is not
-    knowable). `rack_id IS NULL` is the **unplaced pile** — a real place (#135), not a missing answer —
-    and `UNIQUE NULLS NOT DISTINCT` is what stops a line naming that pile, or any shelf, twice.
-    Each placement is its **own ledger row**, so the movements say where the goods actually sat rather
-    than averaging a location they never occupied.
-  - **`restock_damaged_units` says what NEVER became stock** (#154, owner). Units that arrived broken
-    are recorded with a reason and a value and are **never on-hand** — `received_quantity` counts what
-    is sellable, so what physically arrived is `received_quantity + Σ damaged.quantity`. Rows rather
-    than a note, because the point is that breakage is a **number something can total**. Deliberately
-    not a `StockAdjust` afterwards: the goods never became stock, and adjusting them out would claim
-    they sat on a shelf for an instant when they never did.
-  - `received_quantity`, the placements and the damage are all **write-only-by-the-warehouse**. They
-    ride the shared line message so a line can READ back what happened to it, and `restockItemModels`
-    therefore ignores every one of them on the way in — a requesting team that could set them would be
-    declaring its own delivery received, saying which shelf it went on, and writing off goods the
-    warehouse never saw.
-- **Optional** context on the header (#124/#127): `order_ref` — the order this restock is *for*, as
-  **free text** (`''` = untied); `receipt` — the courier's tracking number (resi); and `supplier_id` —
-  who the goods are bought from. Since `00023` `supplier_id` is an **opaque supplier_service id** with no FK,
-  as an order's shop is. The handler asks supplier_service (`SupplierByIds`) that it is a **live supplier of any
-  selling team** (a-team-restocks-from-another-teams-supplier); a deleted or unknown one is `NotFound`. An edit
-  re-sending the supplier a request already holds is not re-checked, so deleting a supplier never bricks the
-  pending requests that name it.
-- `order_ref` **was** a `uint64 order_id` (#124) and became text in #127. That was a shape fix, not a
-  rename: the order is written down from a marketplace or a chat *elsewhere*, so it was never a row in
-  this system — a reference that happens to be numeric never pointed at anything here, and a real one
-  like `SHP-2026-ABC/01` could not be stored at all. The migration carries the old ids across as text.
-- The restock's own money (#127): `shipping_cost` is the **freight** (whole rupiah, `CHECK >= 0`) —
-  the goods' cost lives per line in `restock_request_items.price`, and this sits on top, which is what
-  the create screen's summary adds to the products' total. `payment_type` is the `RestockPaymentType`
-  enum **as text** (`shopee_pay` / `bank_account`, mapped in the handler, no `CHECK` IN-list per #80;
-  `''` = none recorded), and `note` is free text.
+- **`placements`** (`racks` until `00028`) — the physical places inside one warehouse (#129); the screen still says
+  Racks (the-racks-page-is-the-placement-list). Scoped to the `warehouse_id`, which **is** a team, carrying
+  `use_scope`; opaque, no FK. `code` is the label someone reads off the shelf, saved **trimmed and lowercase**
+  (rack-codes-are-saved-lowercase, `CHECK (code = lower(btrim(code)))`), unique per warehouse **among those in use**
+  (`WHERE deleted_at IS NULL`) — a soft-deleted rack frees its label for re-use. Soft delete is `deleted_at`, allowed
+  only at zero stock (a-placement-deletes-at-zero-stock). `00028` lowercased the existing codes; two that differed only
+  by case in one warehouse keep the later one's id as a suffix. What a rack holds is its `product_placements` rows.
+- **`restocks`** / **`restock_items`** / **`restock_problem_items`** — a SELLING team's parcel to a WAREHOUSE
+  (restock.md §Table Should We Have In Restock). They were `restock_requests`, `restock_request_items` and
+  `restock_damaged_units` until **`00030`** gave them the owner's names and turned their money `DOUBLE PRECISION`
+  (money-is-double-in-the-api-too) in one migration. Two-sided: `team_id` (the selling team, `use_scope` on create,
+  update, cancel, mark lost) raises it to a `warehouse_id` (`use_scope` on arrive, accept, labels); either side lists
+  and reads it. `status` is text, mapped in the handler (no `CHECK` IN-list, cf. #80). The **accept** is one
+  transaction: the row locked, the problem rows, the decided ledgers' `restock` transaction (a batch per line with good
+  units, their rack rows) and the status — so the ledger and the restock never diverge.
+- **The money** is double and stored as typed. A line's `total` is the truth (a-line-is-typed-as-its-total); its
+  `price_unit` is `total ÷ count`, rewritten with it, for display. `restocks.subtotal` (Σ line totals) and `total`
+  (`subtotal + shipment_cost`) are written by every create and every edit, never the courier's charge
+  (the-couriers-charge-stays-out-of-total), which is `warehouse_additional_cost`, one per restock with its note.
+- **`count` is what was ORDERED; `received_count` is what was IN THE BOX**, broken units included
+  (any-warehouse-member-counts-what-arrived). Both are kept: the gap is what somebody chases the supplier about. The
+  good units are `received_count − broken`; more in the box than ordered is refused
+  (accept-refuses-more-than-the-line-says). Until `00030` the column was `received_quantity` and held only the good
+  units; the migration added the broken back.
+- **`restock_problem_items` is what never became stock** — `broken` as typed, `missing` worked out as
+  `count − received_count` (a-short-unit-at-the-door-is-missing), each with the landed unit price filled by the system
+  (the-problem-price-is-filled-by-the-system) and the warehouse's optional note. Keyed by **restock and product**: a
+  product appears once per restock, so the product finds its line, and the composite FK to
+  `restock_items (restock_id, product_id)` says so. One row per kind (`UNIQUE (restock_id, product_id, problem_type)`);
+  `00030` merged the older rows of one kind on one line.
+- **Where the good units went** is the accept's own rack rows in `product_placement_logs` — there is no unplaced pile
+  (there-is-no-unplaced-pile). `restock_received_placements` held this until `00029` dropped it.
+- **`restock_logs`** — the trail, one append-only row per status change and per edit, from and to status
+  (every-status-change-is-logged, edits-are-in-the-same-trail), written in the same transaction as the change with the
+  same instant. It replaced `restock_request_events` in `00024`; `00030` keyed it by `restock_id` and folded its `at`
+  into `created_at` (the backfilled rows keep their moment). The columns on `restocks` stay too: the list filters and
+  sorts on them, and a filter cannot reach into a child table cheaply.
+- **Who handled it, and when**: the `*_by_user_id` columns are stamped from the caller's identity, never the request
+  body; opaque user_service ids with no FK, names resolved at read time. Nothing is backfilled — a restock raised
+  before `00018` keeps `0` / `NULL`. The timestamps are what the list's date-range filter ranges on
+  (`RestockDateField`); partial indexes on `(team_id, accepted_at)` and `(team_id, cancelled_at)` serve it.
+- **A line's supplier and store** (`supplier_id`, `supplier_channel_id`) are opaque supplier_service ids, both
+  optional, the store one of the supplier's (a-line-may-name-a-supplier-without-a-channel). The handler asks
+  supplier_service that a newly named one is live; one a line already holds is not re-checked, so deleting a supplier
+  never bricks the restocks that name it.
+- **`sku` / `name`** are snapshots at raise time — the product may be renamed later, and the restock must keep reading
+  as it was raised.
+- `payment_type` is read-only history from before paying accounts (a-restock-must-name-the-account-that-paid).
+  `shipping_code` (a free-text courier code from `00003`) was never on the contract's restock, and `00030` dropped it.
+
+### The decided ledgers (`00025`, `00026`)
+
+Stage 1 of [the ledger build](development_state/inventory/ledgers.md): the tables that replace `stock_levels`,
+`stock_movements`, `stock_batches`, `stock_shelf_batches` and `stock_owner_movements` outright
+([no-switch-over-the-ledgers-replace-todays-tables](technical/stock/design_decision.md#no-switch-over-the-ledgers-replace-todays-tables)).
+They are written only through `inventory_service/inventory_ledgers`; `00029` dropped the old tables (stage 5).
+
+```mermaid
+erDiagram
+    inventory_transactions {
+        bigserial   id                PK
+        bigint      warehouse_id      "opaque team id, no FK"
+        bigint      team_id           "the ORDERING team for an order, the owner otherwise"
+        text        tx_type           "order restock return sample transfer_in transfer_out adjustment revaluation problem found move"
+        bigint      create_by_user_id
+        boolean     is_rollback       "set once by a rollback; only a take is rolled back"
+        text        description
+        text        recipient         "a sample's only"
+        timestamptz updated_at
+        timestamptz created_at
+    }
+    inventory_transaction_items {
+        bigserial   id               PK
+        bigint      warehouse_id
+        bigint      transaction_id   FK
+        bigint      product_id       "UNIQUE with transaction_id - one item per product"
+        bigint      product_team_id  "the product's owner"
+        boolean     is_owned         "owner = the transaction's team"
+        bigint      quantity         "positive; the type gives the direction"
+        float8      total            "= its batch rows' value"
+        timestamptz created_at
+    }
+    batches {
+        bigserial   id                   PK
+        bigint      warehouse_id
+        bigint      team_id              "the owner, never changed"
+        bigint      product_id
+        bigint      transaction_id       FK "the transaction that minted it"
+        float8      price_unit
+        bigint      stock_count          "CHECK >= 0"
+        float8      stock_valuation      "the truth; exactly 0 at 0 units"
+        bigint      init_stock_count
+        float8      init_stock_valuation
+        bigint      supplier_id
+        bigint      supplier_channel_id
+        timestamptz expired_at           "read by the expiry report only"
+        timestamptz updated_at
+        timestamptz created_at
+    }
+    batch_logs {
+        bigserial   id                    PK "append-only, read in id order"
+        bigint      batch_id              FK
+        bigint      transaction_id        FK
+        text        change_type           "the tx type, or broken or lost for a problem"
+        bigint      change_count          "signed"
+        float8      change_valuation      "signed"
+        bigint      stock_count_after
+        float8      stock_valuation_after
+        float8      price_unit_after
+        bigint      actor_id
+        timestamptz created_at
+    }
+    batch_price_logs {
+        bigserial   id               PK
+        bigint      batch_id         FK
+        float8      new_price_unit
+        float8      delta_price_unit "a mint's is the whole price"
+        bigint      actor_id
+        timestamptz created_at
+    }
+    product_placements {
+        bigserial   id           PK
+        bigint      team_id      "the owner"
+        bigint      warehouse_id
+        bigint      product_id   "UNIQUE with placement_id"
+        bigint      placement_id FK "-> placements (00028)"
+        bigint      stock_count  "CHECK >= 0"
+        timestamptz updated_at
+        timestamptz created_at
+    }
+    idempotency_order_check {
+        bigserial   id              PK
+        text        idempotency_key "UNIQUE - the order form's K"
+        bigint      transaction_id  FK "NULL = released before anything was taken"
+        timestamptz created_at
+    }
+    product_placement_logs {
+        bigserial   id             PK "append-only, read in id order"
+        bigint      product_id
+        bigint      placement_id   FK
+        bigint      transaction_id FK
+        text        change_type    "the tx type, or broken or lost for a problem"
+        bigint      stock_change   "signed"
+        bigint      stock_after    "CHECK >= 0"
+        bigint      actor_id
+        timestamptz created_at
+    }
+    inventory_transactions ||--|{ inventory_transaction_items : "lists"
+    inventory_transactions ||--o{ batches : "mints"
+    inventory_transactions ||--o{ batch_logs : "moves"
+    inventory_transactions ||--o{ product_placement_logs : "moves"
+    batches ||--o{ batch_logs : "state of"
+    batches ||--o{ batch_price_logs : "prices"
+    product_placements ||--o{ product_placement_logs : "state of"
+    inventory_transactions |o--o| idempotency_order_check : "claimed by K"
+```
+
+- **Money is `double precision`**, compared at 4 places through `pkgs/san_money`, never with `=`
+  ([stock-money-is-float64-compared-at-4-digits](technical/stock/design_decision.md#stock-money-is-float64-compared-at-4-digits)).
+- **Logs are append-only** — no `updated_at`, no UPDATE, no DELETE
+  ([ledger-logs-are-append-only](technical/ledger/mutation_and_ledger_decision.md#ledger-logs-are-append-only)).
+- **Two invariants**, checked by `inventory_ledgers.Verify` in every mutation's test: both ledgers move the same units
+  per product, and an item equals its batch rows.
+- **Each log is indexed by its transaction alone** — `batch_logs_transaction_idx` and, since `00031`,
+  `product_placement_logs_transaction_idx (transaction_id)`, which replaced `(warehouse_id, transaction_id)`: every
+  reader asks by transaction and none names the warehouse
+  ([placement-logs-are-indexed-by-transaction](technical/stock/design_decision.md#placement-logs-are-indexed-by-transaction)).
+- **Written set-based** — a write locks each ledger's rows in one statement, works the rows out in memory, and stores
+  each table with one `UPDATE … FROM unnest(…)` or one multi-row `INSERT`, however many lines
+  ([ledger-writes-are-set-based](technical/stock/design_decision.md#ledger-writes-are-set-based)).
+
+### Warehouse transfers (`00027`)
+
+A selling team moving its own stock from warehouse A to warehouse B
+([warehouse_transfer_decision.md](business/inventory/warehouse_transfer_decision.md)). Its two legs are ledger
+transactions — `transfer_out` at create, `transfer_in` at accept — so these tables hold only what the ledgers cannot:
+the trip, the lifecycle, and what went wrong at B's door. **A line's pick list and B's put-away are not stored here**:
+they are the legs' `product_placement_logs`, read back.
+
+```mermaid
+erDiagram
+    warehouse_transfers {
+        bigserial   id                             PK
+        bigint      team_id                        "the selling team that owns the goods"
+        bigint      from_warehouse_id              "A - CHECK not to_warehouse_id"
+        bigint      to_warehouse_id                "B"
+        text        status                         "created process shipped arrived accepted cancel lost"
+        text        note
+        float8      total                          "sum of the items' totals"
+        bigint      shipment_id                    "0 = none"
+        text        receipt                        "optional"
+        text        receipt_file                   "optional"
+        float8      shipment_cost                  "the team's expense - CHECK 0 or an account"
+        bigint      finance_account_id             "0 when the cost is 0"
+        bigint      cost_revision                  "bumped by each edit that moves money - the edit's event id"
+        float8      warehouse_additional_cost      "the courier's charge at B - CHECK 0 or a note"
+        text        warehouse_additional_cost_note
+        bigint      outbound_transaction_id        FK "the transfer_out"
+        bigint      inbound_transaction_id         FK "the transfer_in, NULL until accepted"
+        bigint      created_by_user_id
+        bigint      processed_by_user_id           "and processed_at - likewise shipped, arrived, accepted, cancelled, lost"
+        timestamptz updated_at
+        timestamptz created_at
+    }
+    warehouse_transfer_items {
+        bigserial   id            PK
+        bigint      transfer_id   FK
+        bigint      product_id    "UNIQUE with transfer_id"
+        text        sku           "snapshot at create"
+        text        name          "snapshot at create"
+        bigint      count         "sent - CHECK above 0"
+        float8      price_unit    "total over count, display only"
+        float8      total         "what the out-leg took"
+        bigint      arrived_count "in the box at B, broken included - CHECK not above count"
+        timestamptz created_at
+    }
+    warehouse_transfer_problem_items {
+        bigserial   id           PK
+        bigint      transfer_id  FK
+        bigint      product_id   "UNIQUE with transfer_id and problem_type"
+        text        problem_type "broken missing"
+        text        note
+        bigint      count
+        float8      price_unit   "total over count, display only"
+        float8      total        "priced from the layers it came off, newest first"
+        timestamptz created_at
+    }
+    warehouse_transfer_logs {
+        bigserial   id            PK
+        bigint      transfer_id   FK
+        text        from_status   "empty on the first row"
+        text        to_status
+        bigint      actor_user_id
+        text        description
+        timestamptz created_at
+    }
+    warehouse_transfers ||--|{ warehouse_transfer_items : "sends"
+    warehouse_transfers ||--o{ warehouse_transfer_problem_items : "found wrong at B"
+    warehouse_transfers ||--|{ warehouse_transfer_logs : "trail"
+    warehouse_transfers }o--|| inventory_transactions : "out-leg"
+    warehouse_transfers }o--o| inventory_transactions : "in-leg"
+```
+
+- **Money is `double precision`** like the ledgers'; the contract still carries whole rupiah until the cut-over turns it
+  `double`.
+- **Indexed for each side's list**, newest first: `(team_id, id DESC)`, `(from_warehouse_id, id DESC)`,
+  `(to_warehouse_id, id DESC)`.
 
 ---
 
@@ -1079,7 +1060,7 @@ erDiagram
     teams ||--o{ documents : "team_id, opaque via RPC"
     categories ||--o{ products : "category_id, opaque via RPC"
     teams ||--o{ suppliers : "team_id, opaque via RPC"
-    suppliers ||--o{ restock_requests : "supplier_id, opaque via RPC"
+    suppliers ||--o{ restock_items : "supplier_id, opaque via RPC"
 ```
 
 `user_team_roles.team_id`, `products.team_id`, `documents.team_id`,

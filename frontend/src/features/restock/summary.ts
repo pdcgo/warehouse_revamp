@@ -56,25 +56,25 @@ export function problemNotes(item: RestockRequestItem, type: RestockProblemType)
 
 // What a line's broken / missing units were worth — FILLED BY THE SYSTEM from the line, never typed
 // (the-problem-price-is-filled-by-the-system).
-export function problemValue(item: RestockRequestItem, type: RestockProblemType): bigint {
-  return item.problems.filter((p) => p.type === type).reduce((sum, p) => sum + p.total, 0n);
+export function problemValue(item: RestockRequestItem, type: RestockProblemType): number {
+  return item.problems.filter((p) => p.type === type).reduce((sum, p) => sum + p.total, 0);
 }
 
 // What the GOODS cost — the line totals as typed off the invoice (a-line-is-typed-as-its-total), no freight.
-export function goodsTotal(items: RestockRequestItem[]): bigint {
-  return items.reduce((sum, item) => sum + item.total, 0n);
+export function goodsTotal(items: RestockRequestItem[]): number {
+  return items.reduce((sum, item) => sum + item.total, 0);
 }
 
 // The courier's charge at the door: paid by the warehouse, owed back by the selling team
 // (the-warehouse-cost-is-the-couriers-charge-at-the-door). 0 until accepted. Never part of the total.
-export function courierCharge(request: RestockRequest): bigint {
+export function courierCharge(request: RestockRequest): number {
   return request.warehouseAdditionalCost;
 }
 
 // What the selling team PAID when it raised the restock — goods plus shipping, the amount its account was charged.
 // The courier's charge is NOT in it (the-couriers-charge-stays-out-of-total): the warehouse paid that, later, and it
 // is owed back as its own debt.
-export function committedValue(request: RestockRequest): bigint {
+export function committedValue(request: RestockRequest): number {
   return goodsTotal(request.items) + request.shipmentCost;
 }
 

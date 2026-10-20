@@ -1,14 +1,16 @@
 # Development state — inventory / order
 
-**As of 2026-10-16, inventory's side of an order is DECIDED — not prototyped, not built.**
+**As of 2026-10-17, inventory's side of an order is BUILT** (uncommitted, for the owner's review — [ledgers.md](ledgers.md),
+stage 4a and the cut-over). The order FORM does not call it yet: selling's `OrderCreate` and `OrderCancel` reach it
+through a bridge that uses `order:<id>` as the key ([the-order-take-bridges-its-key-per-order](../../technical/stock/design_decision.md#the-order-take-bridges-its-key-per-order)).
 [order_clarify.md](../../business/inventory/order_clarify.md) has **no open question**; what is left there is five
 Contradictions in the owner's [order.md](../../business/inventory/order.md), for the owner to redraw. The decisions are in
 [order_decision.md](../../business/inventory/order_decision.md), with the key's in
 [transaction_decision.md](../../business/inventory/transaction_decision.md) and the order side's in
 [order/context_decision.md](../../business/order/context_decision.md).
 
-**Next step: backend analysis of `OrderTransactionCreate`, which waits on the ledgers** — the same critical path as
-placement and the transfer ([the-decided-ledgers-come-before-the-transfer](../../business/inventory/warehouse_transfer_decision.md#the-decided-ledgers-come-before-the-transfer)).
+**Next step: the order context builds its form's K** (every submit mints a key, the take before the order row) — then
+the bridge goes and the placement page reads by `orders.transaction_id`.
 The take has no screen of its own; its screens are the order form (order context) and the placement page, which exists.
 
 ```mermaid
@@ -39,8 +41,8 @@ flowchart LR
 
 | | as built | decided |
 | --- | --- | --- |
-| the take | no `OrderTransactionCreate`, no `PostOrder`, no `idempotency_order_check` | the flow above |
-| the placement page | `pick-order` → `StockPickLocations` by `ref = "order:<id>"` | by `orders.transaction_id` — the take is filed before the order exists |
+| the take | ✅ `OrderTransactionCreate` / `Release`, `PostOrder`, `RollbackTake`, `00026` `idempotency_order_check`; 7 handler + 4 race tests. Selling calls it AFTER its order row exists, with K = `order:<id>` (`cmd/app_development/stock_picker.go`) | the form mints K and takes BEFORE the order row exists |
+| the placement page | `pick-order` → `StockPickLocations` by `ref = "order:<id>"`, now read off the take's own rack rows (the key → `product_placement_logs`, netted against a rollback) | by `orders.transaction_id` — the take is filed before the order exists |
 | the order's history | `order_events` (selling_service `00011`), the Timeline tab | `order_timeline_logs` replaces it ([order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events)) |
 | the settlement importer | `orderInShop` pays the newest of two live orders | the shop, naming both |
 | the order's statuses | `OrderStatus` placed · confirmed · picking · packed · shipped; `pick-order` advances one step per button, with no item scan (the scan is only in the `PickQueueNextPage` preview) | `processed` · `picked` at *Set Picked* after every good is scanned · `shipping` at the handover |

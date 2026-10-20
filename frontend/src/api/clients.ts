@@ -63,8 +63,8 @@ export const supplierAnalyticClient = createClient(SupplierAnalyticService, tran
 // Racks belong to ONE warehouse — the team in the request body IS that warehouse (#129).
 export const rackClient = createClient(RackService, transport);
 export const restockClient = createClient(RestockRequestService, transport);
-// A selling team moving its own stock between two warehouses (docs/business/inventory/warehouse_transfer.md). A
-// prototype until design_accept: the real server answers Unimplemented, Storybook plays the decided rules.
+// A selling team moving its own stock between two warehouses (docs/business/inventory/warehouse_transfer.md), served by
+// inventory_service on the decided ledgers; Storybook's stub plays the same rules.
 export const warehouseTransferClient = createClient(WarehouseTransferService, transport);
 // The stock count — a prototype until design_accept: the server answers Unimplemented, Storybook's stub plays it.
 export const opnameClient = createClient(OpnameService, transport);

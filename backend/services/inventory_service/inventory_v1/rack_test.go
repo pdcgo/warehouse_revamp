@@ -18,7 +18,8 @@ import (
 func insertRack(t *testing.T, db *gorm.DB, warehouseID uint64, code string) uint64 {
 	t.Helper()
 
-	r := inventory_service_models.Rack{WarehouseID: warehouseID, Code: code}
+	// Saved as every writer saves it — trimmed and lowercase (rack-codes-are-saved-lowercase).
+	r := inventory_service_models.Rack{WarehouseID: warehouseID, Code: inventory_service_models.CleanRackCode(code)}
 
 	err := db.Create(&r).Error
 	if err != nil {
@@ -72,7 +73,7 @@ func TestRack_CreateAndList(t *testing.T) {
 	}
 
 	// Ordered by the label, because that is how someone walking the aisles finds it.
-	if got[0].GetCode() != "A-01-3" || got[1].GetCode() != "B-02-1" {
+	if got[0].GetCode() != "a-01-3" || got[1].GetCode() != "b-02-1" {
 		t.Fatalf("not code-ordered: %q, %q", got[0].GetCode(), got[1].GetCode())
 	}
 
@@ -111,7 +112,7 @@ func TestRack_SearchByCodeOrName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RackList (q): %v", err)
 	}
-	if len(rackRows(resp.Msg)) != 1 || rackRows(resp.Msg)[0].GetCode() != "C-09-2" {
+	if len(rackRows(resp.Msg)) != 1 || rackRows(resp.Msg)[0].GetCode() != "c-09-2" {
 		t.Fatalf("search by name = %+v", rackRows(resp.Msg))
 	}
 
@@ -141,7 +142,7 @@ func TestRack_Update(t *testing.T) {
 	}
 
 	got := resp.Msg.GetRack()
-	if got.GetName() != "Re-labelled bay" || got.GetCode() != "A-01-4" {
+	if got.GetName() != "Re-labelled bay" || got.GetCode() != "a-01-4" {
 		t.Fatalf("unexpected after update: %+v", got)
 	}
 }
@@ -211,9 +212,9 @@ func TestRack_SoftDeleteFreesTheCode(t *testing.T) {
 
 // #138 — a shelf with goods on it cannot be deleted; empty it first.
 //
-// This was a LIVE bug, not a hypothetical: RackDelete is a SOFT delete, so stock_levels' ON DELETE
+// This was a LIVE bug, not a hypothetical: RackDelete is a SOFT delete, so the rack rows' ON DELETE
 // RESTRICT never fires, and #137 made it reachable by putting stock on shelves. Unguarded, the goods
-// were STRANDED — still in stock_levels, at a location that had vanished from every list.
+// were STRANDED — still on the rack rows, at a location that had vanished from every list.
 func TestRack_DeleteRefusedWhileItHoldsStock(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -223,16 +224,9 @@ func TestRack_DeleteRefusedWhileItHoldsStock(t *testing.T) {
 
 	rack := createRack(t, svc, warehouse, "A-01-3", "Aisle A")
 
-	err := db.Exec(`
-		INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
-		VALUES (?, ?, ?, ?, NOW())`,
-		warehouse, 100, rack, 40,
-	).Error
-	if err != nil {
-		t.Fatalf("seed stock: %v", err)
-	}
+	seedLevel(t, db, warehouse, 100, &rack, 40)
 
-	_, err = svc.RackDelete(ctx, connect.NewRequest(&inventoryv1.RackDeleteRequest{
+	_, err := svc.RackDelete(ctx, connect.NewRequest(&inventoryv1.RackDeleteRequest{
 		TeamId: warehouse, RackId: rack,
 	}))
 	if code := connect.CodeOf(err); code != connect.CodeFailedPrecondition {
@@ -242,7 +236,7 @@ func TestRack_DeleteRefusedWhileItHoldsStock(t *testing.T) {
 	// The refusal left the rack alive — a rack half-deleted would be the worst of both.
 	var deleted bool
 
-	err = db.Raw(`SELECT deleted FROM racks WHERE id = ?`, rack).Scan(&deleted).Error
+	err = db.Raw(`SELECT deleted_at IS NOT NULL FROM placements WHERE id = ?`, rack).Scan(&deleted).Error
 	if err != nil {
 		t.Fatalf("read rack: %v", err)
 	}
@@ -251,7 +245,7 @@ func TestRack_DeleteRefusedWhileItHoldsStock(t *testing.T) {
 	}
 
 	// Empty the shelf and it deletes — the refusal is a precondition, not a life sentence.
-	err = db.Exec(`UPDATE stock_levels SET on_hand = 0 WHERE rack_id = ?`, rack).Error
+	err = db.Exec(`UPDATE product_placements SET stock_count = 0 WHERE placement_id = ?`, rack).Error
 	if err != nil {
 		t.Fatalf("empty shelf: %v", err)
 	}
@@ -278,20 +272,13 @@ func TestRackStock_ListsWhatIsOnTheShelf(t *testing.T) {
 	place := func(rack *uint64, product uint64, onHand int64) {
 		t.Helper()
 
-		err := db.Exec(`
-			INSERT INTO stock_levels (warehouse_id, product_id, rack_id, on_hand, updated_at)
-			VALUES (?, ?, ?, ?, NOW())`,
-			warehouse, product, rack, onHand,
-		).Error
-		if err != nil {
-			t.Fatalf("seed: %v", err)
-		}
+		seedLevel(t, db, warehouse, product, rack, onHand)
 	}
 
 	place(&rackA, 100, 40)
 	place(&rackA, 200, 7)
 	place(&rackB, 100, 60) // the same product on another shelf
-	place(nil, 300, 5)     // unplaced — on no shelf at all
+	place(nil, 300, 5)     // on another rack altogether
 	place(&rackA, 400, 0)  // a shelf that was counted to zero: not ON the rack
 
 	got, err := svc.RackStock(ctx, connect.NewRequest(&inventoryv1.RackStockRequest{
@@ -367,7 +354,7 @@ func TestRackDetail_ReturnsTheRack(t *testing.T) {
 		t.Fatalf("RackDetail: %v", err)
 	}
 
-	if got.Msg.GetRack().GetCode() != "A-01-3" || got.Msg.GetRack().GetName() != "Aisle A" {
+	if got.Msg.GetRack().GetCode() != "a-01-3" || got.Msg.GetRack().GetName() != "Aisle A" {
 		t.Fatalf("rack did not round-trip: %+v", got.Msg.GetRack())
 	}
 

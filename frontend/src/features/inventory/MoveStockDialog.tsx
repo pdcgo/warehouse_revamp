@@ -8,39 +8,22 @@ import {
   Dialog,
   Field,
   Input,
-  NativeSelect,
   Portal,
   Stack,
   Text,
 } from "@chakra-ui/react";
 import { rpcError } from "../../api/clients";
-import type { StockMoveRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
-import { RackSelect, UNPLACED } from "../../components/pickers/RackSelect";
-import { useMoveStock, useProductBatches, useProductPlaces } from "./queries";
+import { RackSelect } from "../../components/pickers/RackSelect";
+import { useRackMove } from "../racks/queries";
+import { useProductPlaces } from "./queries";
 import { QuantityInput } from "../../components/inputs/QuantityInput";
 
-// placeToOneof turns RackSelect's plain string into the request's `place` oneof — the same encoding
-// AdjustStockDialog does, for the same reason: `""` (unanswered) has no representation in the
-// contract, so submit is blocked before it can get here.
-//
-// Sending nothing would be worse than sending the wrong thing: the server reads an absent place as
-// the unplaced pile, so an unanswered end would silently become a real — and probably wrong — answer.
-function placeToOneof(place: string): NonNullable<StockMoveRequest["from"]>["place"] {
-  if (place === UNPLACED) {
-    return { case: "unplaced", value: true };
-  }
-
-  return { case: "rackId", value: BigInt(place) };
-}
-
-// MoveStockDialog moves stock between two places INSIDE one warehouse (#136). The warehouse total
-// never changes — only where the goods sit — which is what makes this a different act from receiving.
-//
-// One dialog for both jobs the issue names, because they are one act with different arguments:
-// unplaced → rack is putting away what arrived (today that is everything predating #137), and
-// rack → rack is re-organising a shelf. It is also how you empty a rack you want to delete (#138).
+// MoveStockDialog moves one product from one rack to another INSIDE one warehouse (#136), through RackMove on the
+// decided ledgers (a-move-is-one-rack-to-one-or-more-racks). The warehouse total never changes — only where the goods
+// sit. Every unit is on a rack (there-is-no-unplaced-pile), and a rack counts units per product, never per batch, so a
+// move names no batch. It is also how you empty a rack you want to delete (#138).
 //
 // The three rules the server enforces are mirrored here — both ends answered, the two ends DIFFERENT,
 // and a quantity of at least one — so the everyday mistakes never cost a round trip. The one it
@@ -64,49 +47,41 @@ export function MoveStockDialog({
   // applied to the wrong shelf is worse than no move: the ledger would believe it.
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  // WHICH delivery's units move (#210): stock is per (shelf × batch), so a move carries a batch.
-  const [batch, setBatch] = useState("");
   // Held as a string while editing — an empty input is not zero, and coercing it to one would make
   // a blank field look like a legitimate answer.
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
-  const batches = useProductBatches({ warehouseId, productId: product.id });
-  const batchList = batches.data ?? [];
-
   // The shelves this product sits on, with each shelf's TOTAL on-hand — so the dialog can show what a
-  // move does to both ends before it commits (#210). A move changes a shelf's total by the quantity,
-  // whichever batch it draws.
+  // move does to both ends before it commits (#210).
   const placesQuery = useProductPlaces({ warehouseId, productIds: [product.id] });
   const places = placesQuery.data ?? [];
 
-  // A RackSelect value → that shelf's current on-hand. "" is unanswered; UNPLACED and a rack id map to
-  // the place's rackId (0 for the unplaced pile).
+  // A RackSelect value → that rack's current on-hand. "" is unanswered.
   function shelfOnHand(place: string): bigint {
     if (place === "") return 0n;
-    const rackId = place === UNPLACED ? 0n : BigInt(place);
+    const rackId = BigInt(place);
     const found = places.find((p) => p.rackId === rackId);
     return found?.onHand ?? 0n;
   }
 
-  // How a shelf reads in the balance line — its code if the product already sits there, else the pile
-  // or the raw id for a shelf it is arriving on for the first time.
+  // How a rack reads in the balance line — its code if the product already sits there, else the raw id for a rack it
+  // is arriving on for the first time.
   function shelfLabel(place: string): string {
-    if (place === UNPLACED) return t("racks.select.unplaced");
     const found = places.find((p) => p.rackId === BigInt(place));
     return found?.rackCode ?? `#${place}`;
   }
 
   // A move is the clearest case for the cross-domain fan-out (#177): nothing about the WAREHOUSE
   // total changes, only which shelf holds it — so the rack views are the screens that go stale.
-  const move = useMoveStock();
+  const move = useRackMove();
   const busy = move.isPending;
 
   const samePlace = from !== "" && from === to;
   const qty = Number(quantity);
   const qtyValid = Number.isInteger(qty) && qty >= 1;
-  const canSubmit = from !== "" && to !== "" && !samePlace && qtyValid && batch !== "";
+  const canSubmit = from !== "" && to !== "" && !samePlace && qtyValid;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -130,13 +105,10 @@ export function MoveStockDialog({
 
     move.mutate(
       {
-        warehouseId,
-        productId: product.id,
-        from: { place: placeToOneof(from) },
-        to: { place: placeToOneof(to) },
-        quantity: BigInt(qty),
-        reason,
-        batchId: BigInt(batch),
+        teamId: warehouseId,
+        fromRackId: BigInt(from),
+        lines: [{ productId: product.id, quantity: BigInt(qty), toRackId: BigInt(to) }],
+        description: reason,
       },
       {
         onSuccess: () => {
@@ -182,13 +154,13 @@ export function MoveStockDialog({
                       before the figure because they are what the figure is bounded by. */}
                   <Field.Root required invalid={samePlace}>
                     <Field.Label>{t("inventory.moveFrom")}</Field.Label>
-                    <RackSelect warehouseId={warehouseId} value={from} onChange={setFrom} />
+                    <RackSelect warehouseId={warehouseId} value={from} onChange={setFrom} allowUnplaced={false} />
                     <Field.HelperText>{t("inventory.moveFromHelper")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required invalid={samePlace}>
                     <Field.Label>{t("inventory.moveTo")}</Field.Label>
-                    <RackSelect warehouseId={warehouseId} value={to} onChange={setTo} />
+                    <RackSelect warehouseId={warehouseId} value={to} onChange={setTo} allowUnplaced={false} />
                     {/* Says WHY Confirm is dead rather than leaving a disabled button unexplained —
                         the same courtesy AdjustStockDialog pays for a missing place. */}
                     {samePlace ? (
@@ -198,33 +170,6 @@ export function MoveStockDialog({
                     ) : (
                       <Field.HelperText>{t("inventory.moveToHelper")}</Field.HelperText>
                     )}
-                  </Field.Root>
-
-                  {/* WHICH delivery's units (#210). A move relocates one batch, and the batch travels
-                      with them — the server refuses a move of more than that batch holds on the source. */}
-                  <Field.Root required>
-                    <Field.Label>{t("inventory.moveBatch")}</Field.Label>
-                    <NativeSelect.Root>
-                      <NativeSelect.Field
-                        value={batch}
-                        data-testid="move-batch"
-                        onChange={(e) => setBatch(e.target.value)}
-                      >
-                        <option value="" disabled>
-                          {t("inventory.moveBatchPlaceholder")}
-                        </option>
-                        {batchList.map((b) => (
-                          <option key={b.id.toString()} value={b.id.toString()}>
-                            {t("inventory.moveBatchOption", {
-                              id: b.deliveryId.toString(),
-                              ready: b.ready.toString(),
-                            })}
-                          </option>
-                        ))}
-                      </NativeSelect.Field>
-                      <NativeSelect.Indicator />
-                    </NativeSelect.Root>
-                    <Field.HelperText>{t("inventory.moveBatchHelper")}</Field.HelperText>
                   </Field.Root>
 
                   <Field.Root required>
@@ -250,8 +195,7 @@ export function MoveStockDialog({
                     />
                   </Field.Root>
 
-                  {/* What the move does to both ends, before it commits (#210). A shelf's total moves
-                      by the quantity whichever batch it draws from. */}
+                  {/* What the move does to both ends, before it commits (#210). */}
                   {canSubmit && (
                     <Box
                       borderWidth="1px"

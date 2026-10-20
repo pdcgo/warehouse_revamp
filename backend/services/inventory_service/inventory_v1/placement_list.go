@@ -8,14 +8,15 @@ import (
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
 // PlacementList backs the product detail's PLACEMENT tab (#209): where a product sits, per shelf, with
 // the last time stock left, arrived, and was counted there. A stale Last-opname is what flags a shelf
 // overdue for a stock-take — the whole reason the dates ride beside the quantity.
 //
-// On-hand per shelf is the derived stock_levels cache; the dates are aggregates over the ledger. Only
-// shelves that hold something are listed — a depleted shelf is not where the product "sits".
+// On-hand per rack is the placement ledger's rack row; the dates are maxima over its log. Only racks that hold
+// something are listed — a depleted rack is not where the product "sits".
 func (s *Service) PlacementList(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.PlacementListRequest],
@@ -27,7 +28,7 @@ func (s *Service) PlacementList(
 	var total int64
 
 	err := s.db.WithContext(ctx).
-		Raw(`SELECT COUNT(*) FROM stock_levels WHERE warehouse_id = ? AND product_id = ? AND on_hand > 0`,
+		Raw(`SELECT COUNT(*) FROM product_placements WHERE warehouse_id = ? AND product_id = ? AND stock_count > 0`,
 			warehouseID, productID).
 		Scan(&total).Error
 	if err != nil {
@@ -35,7 +36,7 @@ func (s *Service) PlacementList(
 	}
 
 	type row struct {
-		RackID     *uint64
+		RackID     uint64
 		OnHand     int64
 		LastOut    *time.Time
 		LastIn     *time.Time
@@ -46,28 +47,24 @@ func (s *Service) PlacementList(
 
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
-	// The three dates are correlated maxima over the ledger for THIS shelf. `IS NOT DISTINCT FROM`
-	// matches the unplaced pile (a NULL rack) the same way stock_levels' own writes do. Last opname is
-	// the last ADJUST — a stock-take is recorded as an adjustment (kind 2).
+	// The three dates are correlated maxima over THIS rack row's log. Last opname is the last `adjustment` row — a
+	// count writes one even when it finds the rack exact, so the rack reads as counted.
 	err = s.db.WithContext(ctx).
 		Raw(`
 			SELECT
-			    sl.rack_id,
-			    sl.on_hand,
-			    (SELECT MAX(m.created_at) FROM stock_movements m
-			       WHERE m.warehouse_id = sl.warehouse_id AND m.product_id = sl.product_id
-			         AND m.rack_id IS NOT DISTINCT FROM sl.rack_id AND m.delta < 0) AS last_out,
-			    (SELECT MAX(m.created_at) FROM stock_movements m
-			       WHERE m.warehouse_id = sl.warehouse_id AND m.product_id = sl.product_id
-			         AND m.rack_id IS NOT DISTINCT FROM sl.rack_id AND m.delta > 0) AS last_in,
-			    (SELECT MAX(m.created_at) FROM stock_movements m
-			       WHERE m.warehouse_id = sl.warehouse_id AND m.product_id = sl.product_id
-			         AND m.rack_id IS NOT DISTINCT FROM sl.rack_id AND m.kind = ?) AS last_opname
-			FROM stock_levels sl
-			WHERE sl.warehouse_id = ? AND sl.product_id = ? AND sl.on_hand > 0
-			ORDER BY sl.rack_id ASC NULLS LAST
+			    pp.placement_id AS rack_id,
+			    pp.stock_count AS on_hand,
+			    (SELECT MAX(l.created_at) FROM product_placement_logs l
+			       WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.stock_change < 0) AS last_out,
+			    (SELECT MAX(l.created_at) FROM product_placement_logs l
+			       WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.stock_change > 0) AS last_in,
+			    (SELECT MAX(l.created_at) FROM product_placement_logs l
+			       WHERE l.product_id = pp.product_id AND l.placement_id = pp.placement_id AND l.change_type = ?) AS last_opname
+			FROM product_placements pp
+			WHERE pp.warehouse_id = ? AND pp.product_id = ? AND pp.stock_count > 0
+			ORDER BY pp.placement_id ASC
 			LIMIT ? OFFSET ?`,
-			int32(inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST),
+			string(inventory_service_models.TxAdjustment),
 			warehouseID, productID, int(page.GetLimit()), offset).
 		Scan(&rows).Error
 	if err != nil {
@@ -76,12 +73,8 @@ func (s *Service) PlacementList(
 
 	placements := make([]*inventoryv1.ProductPlacement, 0, len(rows))
 	for i := range rows {
-		p := &inventoryv1.ProductPlacement{OnHand: rows[i].OnHand}
+		p := &inventoryv1.ProductPlacement{RackId: rows[i].RackID, OnHand: rows[i].OnHand}
 
-		// A nil rack is the unplaced pile — 0 on the wire (#135).
-		if rows[i].RackID != nil {
-			p.RackId = *rows[i].RackID
-		}
 		if rows[i].LastOut != nil {
 			p.LastOutUnix = rows[i].LastOut.Unix()
 		}

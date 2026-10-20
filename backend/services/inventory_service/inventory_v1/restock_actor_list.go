@@ -31,8 +31,8 @@ func (s *Service) RestockActorList(
 	scope := func() *gorm.DB {
 		return s.db.
 			WithContext(ctx).
-			Table("restock_requests").
-			Where("(requesting_team_id = ? OR warehouse_id = ?)", teamID, teamID).
+			Table("restocks").
+			Where("(team_id = ? OR warehouse_id = ?)", teamID, teamID).
 			Where(userCol + " <> 0")
 	}
 
