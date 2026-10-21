@@ -58,7 +58,8 @@ func (s *Service) OrderCancel(
 			return errOnlyPendingCancels
 		}
 
-		statusErr := setOrderStatus(tx, &order, orderStatusCancel, eventActor(ctx), "")
+		// A cancel is the selling team's (who-may-cancel-a-pending-order).
+		statusErr := setOrderStatus(tx, &order, orderStatusCancel, timelineFromSelling, eventActor(ctx), "")
 		if statusErr != nil {
 			return statusErr
 		}

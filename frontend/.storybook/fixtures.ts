@@ -405,7 +405,8 @@ export const orderDetailExtras: Record<
     note?: string;
     orderExternalRefId?: string;
     items?: { id: bigint; productId: bigint; sku: string; name: string; quantity: number; unitPrice: bigint; unitCost: bigint }[];
-    events?: { id: bigint; kind: number; actorUserId: bigint; atUnix: bigint }[];
+    /** The timeline (order-timeline-logs-replaces-order-events): status 0 = a note; from 1 = warehouse, 2 = selling. */
+    timelineLogs?: { id: bigint; status: number; note?: string; from: number; actorId: bigint; createdAtUnix: bigint }[];
     address?: Record<string, string>;
     receipt?: { documentId: string; filename: string; mimeType: string };
   }
@@ -427,9 +428,9 @@ export const orderDetailExtras: Record<
       { id: 2n, productId: 302n, sku: "KPP-L", name: "Kaos Polos Putih — L", quantity: 1, unitPrice: 75_000n, unitCost: 46_000n },
       { id: 3n, productId: 303n, sku: "TOP-01", name: "Topi Rajut", quantity: 1, unitPrice: 10_000n, unitCost: 6_000n },
     ],
-    events: [
-      { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(1) },
-      { id: 2n, kind: 2, actorUserId: 62n, atUnix: daysAgo(1) + 3_600n },
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: daysAgo(1) },
+      { id: 2n, status: 2, from: 1, actorId: 62n, createdAtUnix: daysAgo(1) + 3_600n },
     ],
     address: {
       provinsiCode: "32", provinsiName: "Jawa Barat",
@@ -448,21 +449,20 @@ export const orderDetailExtras: Record<
   // says it does not have — the same order reading as costed on one screen and uncosted on the next.
   // The row is the source of truth for the money; extras add what a list row cannot carry.
   "107": {
-    events: [
-      { id: 1n, kind: 1, actorUserId: 61n, atUnix: daysAgo(8) },
-      { id: 2n, kind: 3, actorUserId: 63n, atUnix: daysAgo(7) },
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: daysAgo(8) },
+      { id: 2n, status: 3, from: 2, actorId: 63n, createdAtUnix: daysAgo(7) },
     ],
   },
 
-  // NO ACTOR AT ALL — every event backfilled by the history migration is in this state, and 0 is
-  // "not recorded", not "user zero". The page must show the step and stay silent about who took it,
-  // rather than inventing a name or hiding the step.
+  // NO ACTOR AT ALL — 0 is "not recorded", not "user zero". The page must show the step and stay silent
+  // about who took it, rather than inventing a name or hiding the step.
   "108": {
     marketplaceTotal: 0n,
     cogs: 310_000n,
-    events: [
-      { id: 1n, kind: 1, actorUserId: 0n, atUnix: daysAgo(120) },
-      { id: 2n, kind: 6, actorUserId: 0n, atUnix: daysAgo(119) },
+    timelineLogs: [
+      { id: 1n, status: 1, from: 2, actorId: 0n, createdAtUnix: daysAgo(120) },
+      { id: 2n, status: 6, from: 1, actorId: 0n, createdAtUnix: daysAgo(119) },
     ],
   },
 };
@@ -508,7 +508,7 @@ export function orderDetailFor(id: bigint) {
         unitCost: row.cogs ?? 0n,
       },
     ],
-    events: extra.events ?? [{ id: 1n, kind: 1, actorUserId: 61n, atUnix: row.createdAtUnix }],
+    timelineLogs: extra.timelineLogs ?? [{ id: 1n, status: 1, from: 2, actorId: 61n, createdAtUnix: row.createdAtUnix }],
   };
 }
 

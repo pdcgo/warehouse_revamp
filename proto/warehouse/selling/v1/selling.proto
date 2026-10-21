@@ -34,6 +34,9 @@ service ShopService {
   // (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
   // settlement asks it for an imported shop row's primary CS.
   rpc ShopAccessCheck(ShopAccessCheckRequest) returns (ShopAccessCheckResponse);
+  // Shops by id, across teams — the warehouse's order row names each order's shop
+  // (the-warehouse-row-fills-from-shop-and-user-by-ids).
+  rpc ShopByIds(ShopByIdsRequest) returns (ShopByIdsResponse);
 }
 
 message Shop {
@@ -382,4 +385,67 @@ message ShopAccessCheckResponse {
   // May the user WRITE on the shop (a-write-needs-a-grant-or-a-manager): granted it, or the team's
   // owner or admin, or root or admin.
   bool is_have_access = 3;
+}
+
+// ---------------------------------------------------------------------------- by ids
+
+// SHOPS BY ID, ACROSS TEAMS (the-warehouse-row-fills-from-shop-and-user-by-ids): a warehouse ships other teams'
+// orders, and its row names each order's shop and marketplace. One call per page, never one per row.
+//
+// BASIC FIELDS ONLY — id, name, marketplace, owning team. Never members, grants or settings: an unscoped read must
+// not become a way into another team's shop. A DELETED shop is still returned, so an old order still names its
+// shop; an id that never existed is absent.
+message ShopByIdsRequest {
+  // Deliberately UNSCOPED, like TeamByIds and UserByIDs: a cross-team bulk lookup.
+  option (warehouse.role_base.v1.request_policy) = {allow_only_authenticated: true};
+
+  ShopByIdsFilter filter = 1 [(buf.validate.field).required = true];
+  // Empty defaults to the BASIC slice.
+  repeated ShopByIdsDataType data_request = 2;
+}
+
+message ShopByIdsFilter {
+  repeated uint64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+enum ShopByIdsDataType {
+  SHOP_BY_IDS_DATA_TYPE_UNSPECIFIED = 0;
+  SHOP_BY_IDS_DATA_TYPE_GENERAL = 1;
+  SHOP_BY_IDS_DATA_TYPE_BASIC = 2;
+}
+
+// What anyone signed in may know about a shop.
+message ShopBasic {
+  uint64 id = 1;
+  // The owning SELLING team.
+  uint64 team_id = 2;
+  string name = 3;
+  warehouse.marketplace.v1.Marketplace marketplace = 4;
+}
+
+message ShopBasicMapItem {
+  map<uint64, ShopBasic> map_data = 1;
+}
+
+message ShopByIdsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ShopBasicMapItem basic = 2;
+  }
+}
+
+message ShopByIdsResponseList {
+  repeated ShopByIdsResponseItem items = 1;
+}
+
+// Keyed by shop id.
+message ShopByIdsResponse {
+  map<uint64, ShopByIdsResponseList> items = 1;
 }

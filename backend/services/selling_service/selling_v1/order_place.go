@@ -217,16 +217,22 @@ func (s *Service) placeOrder(
 			return createErr
 		}
 
-		// THE FIRST EVENT ON ITS HISTORY (00011). Both doors into `orders` run this function, so a
-		// promoted draft gets the same opening step as a typed-in order — recorded here rather than in
-		// the two handlers precisely so they cannot differ.
+		// THE FIRST ROW ON ITS TIMELINE (order-timeline-logs-replaces-order-events), from the selling team that
+		// placed it. Both doors into `orders` run this function, so a promoted draft gets the same opening row
+		// as a typed-in order — recorded here rather than in the two handlers precisely so they cannot differ.
 		//
 		// `order.CreatedAt` is the order's own moment, stamped by GORM on the insert above, not a fresh
-		// time.Now(): the event says when the order came into being, and the two must be the same
-		// instant or the timeline disagrees with the header beside it.
-		eventErr := recordOrderEvent(tx, order.ID, orderStatusPending, eventActor(ctx), order.CreatedAt, "")
-		if eventErr != nil {
-			return eventErr
+		// time.Now(): the row says when the order came into being, and the two must be the same instant or
+		// the timeline disagrees with the header beside it.
+		logErr := recordTimelineLogs(tx, []selling_service_models.OrderTimelineLog{{
+			OrderID:   order.ID,
+			Status:    orderStatusPending,
+			From:      timelineFromSelling,
+			ActorID:   eventActor(ctx),
+			CreatedAt: order.CreatedAt,
+		}})
+		if logErr != nil {
+			return logErr
 		}
 
 		// Whatever the caller needs done atomically with the order. For promote (#194) this is the

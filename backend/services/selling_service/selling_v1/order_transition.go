@@ -102,23 +102,31 @@ func setOrderStatus(
 	tx *gorm.DB,
 	order *selling_service_models.Order,
 	status string,
+	from string,
 	actor uint64,
 	note string,
 ) error {
-	return setOrdersStatus(tx, []*selling_service_models.Order{order}, status, actor, note)
+	return setOrdersStatus(tx, []timelineMove{{order: order, from: from}}, status, actor, note)
+}
+
+// timelineMove is one order of a batch move, and the side its timeline row is written from — per order, because
+// one caller may be the warehouse of one order and the selling team of another.
+type timelineMove struct {
+	order *selling_service_models.Order
+	from  string
 }
 
 // setOrdersStatus is setOrderStatus for a batch that all moves INTO the same status: one UPDATE and one
-// multi-row history INSERT, whatever the size of the batch (a-batch-move-saves-in-one-transaction). The
+// multi-row timeline INSERT, whatever the size of the batch (a-batch-move-saves-in-one-transaction). The
 // orders must be distinct and already locked by the caller. An empty batch writes nothing.
 func setOrdersStatus(
 	tx *gorm.DB,
-	orders []*selling_service_models.Order,
+	moves []timelineMove,
 	status string,
 	actor uint64,
 	note string,
 ) error {
-	if len(orders) == 0 {
+	if len(moves) == 0 {
 		return nil
 	}
 
@@ -128,9 +136,19 @@ func setOrdersStatus(
 	// different days depending on who read it (guidelines/event-guideline.md #2).
 	now := time.Now()
 
-	ids := make([]uint64, 0, len(orders))
-	for _, order := range orders {
-		ids = append(ids, order.ID)
+	ids := make([]uint64, 0, len(moves))
+	logs := make([]selling_service_models.OrderTimelineLog, 0, len(moves))
+
+	for _, move := range moves {
+		ids = append(ids, move.order.ID)
+		logs = append(logs, selling_service_models.OrderTimelineLog{
+			OrderID:   move.order.ID,
+			Status:    status,
+			Note:      note,
+			From:      move.from,
+			ActorID:   actor,
+			CreatedAt: now,
+		})
 	}
 
 	err := tx.
@@ -142,16 +160,15 @@ func setOrdersStatus(
 		return err
 	}
 
-	// The kind IS the status moved into — see orderEventKinds for why the two vocabularies are written
-	// down separately despite being equal today.
-	err = recordOrderEvents(tx, ids, status, actor, now, note)
+	// The timeline row names the status moved INTO (order-timeline-logs-replaces-order-events).
+	err = recordTimelineLogs(tx, logs)
 	if err != nil {
 		return err
 	}
 
-	for _, order := range orders {
-		order.Status = status
-		order.UpdatedAt = now
+	for _, move := range moves {
+		move.order.Status = status
+		move.order.UpdatedAt = now
 	}
 
 	return nil

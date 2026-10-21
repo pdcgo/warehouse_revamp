@@ -3,9 +3,9 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // WHAT THIS SCREEN CANNOT DO YET — in ONE list, the same way the order form carries its own.
 //
 // This is a PREVIEW of the orders list the owner specified: an export, a per-marketplace import, and
-// four filters. Four of the six things it adds have nothing behind them — `OrderListFilter` carries a
-// status, a product, a search term, a shop, a date window and the creator, and NOTHING ELSE, so two of
-// the new pickers narrow the list by exactly nothing; and there is no RPC on either side of a file.
+// four filters. Three of the six things it adds have nothing behind them — `OrderListFilter` has no
+// warehouse field, so that picker narrows the list by exactly nothing; and there is no RPC on either
+// side of a file. The marketplace filter is real (the-filter-gains-seller-marketplace-and-courier).
 //
 // The list shrinks by one entry each time something behind it lands. See `features/pending` for the
 // four kinds and for why the badge's number is the position in this array.
@@ -14,7 +14,6 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 export type PendingId =
   | "summaryCost"
   | "summaryItems"
-  | "export"
   | "import"
   | "warehouseFilter"
   | "mpDate"
@@ -22,7 +21,6 @@ export type PendingId =
   | "receiptCode"
   | "deadline"
   | "totalFee"
-  | "marketplaceFilter"
   | "withdrawal";
 
 const PARTS: PendingPart<PendingId>[] = [
@@ -38,9 +36,6 @@ const PARTS: PendingPart<PendingId>[] = [
   // them server-side. The sibling message already solved this — `OrderDraft.item_count`, computed on
   // every read for exactly this reason — so the fix is a known shape, not an open question.
   { id: "summaryItems", kind: "sample" },
-  // Nothing builds a file. The button is here so the ACTION has a place on the screen and a shape to
-  // argue about — which columns, which rows (this page, or every row the filters match?).
-  { id: "export", kind: "dropped" },
   // ⚠ THE FILE IS READ BY NOTHING. The dialog takes a marketplace and a file and stops there: no
   // upload, no parse, no status written back. Each marketplace prints a different sheet, so the
   // PARSER is per-marketplace too — that is the work behind this entry, not the button.
@@ -53,9 +48,9 @@ const PARTS: PendingPart<PendingId>[] = [
   // order taken on Saturday and typed in on Monday has two dates and the contract carries one. (Who typed
   // it in — the cell's other line — is a real field now, `created_by_user_id`.)
   { id: "mpDate", kind: "sample" },
-  // ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderEvent` is already `kind` + `at_unix`, which
-  // is exactly "when did it enter this status" — but events are populated by `OrderDetail` only, so
-  // the fix here is not a new field, it is the list carrying the one event the filter asks about.
+  // ⚠ THE SHAPE EXISTS AND THE LIST CANNOT READ IT. `OrderTimelineLog` is already `status` + `created_at_unix`,
+  // which is exactly "when did it enter this status" — but the timeline is populated by `OrderDetail` only, so
+  // the fix here is not a new field, it is the list carrying the one row the filter asks about.
   { id: "stageDate", kind: "sample" },
   // ⚠ THE COURIER IS STORED, THE TRACKING NUMBER IS NOT. `shipping_code` is the CARRIER (`jne`) and
   // `OrderReceipt` is the attached FILE — there is no field for the number printed on the slip,
@@ -75,7 +70,7 @@ const PARTS: PendingPart<PendingId>[] = [
   // options were a real number answering the wrong question, or the right question with a sampled
   // half and a mark. This is the second.
   // ⚠ NOTHING CARRIES A SHIP-BY DATE. Not `Order`, not `ShipmentChannel` (no lead time), and not
-  // `OrderEvent`, which records what HAPPENED rather than what is due. The real thing it stands in for
+  // `OrderTimelineLog`, which records what HAPPENED rather than what is due. The real thing it stands in for
   // is the marketplace's own ship-by clock, which is per storefront — so the field it needs is a
   // deadline ON the order, written when the order is imported.
   //
@@ -83,14 +78,12 @@ const PARTS: PendingPart<PendingId>[] = [
   // problem". Both are the owner's to set; they are named in one place (`deadlineMock`) for that.
   { id: "deadline", kind: "sample" },
   { id: "totalFee", kind: "sample" },
-  { id: "marketplaceFilter", kind: "dropped" },
-  // ⚠ WHAT THE IMPORT IS FOR, and it has nowhere to land — nor anywhere to land NEXT to.
+  // ⚠ AN ORDER STILL HAS NO WITHDRAWAL FIGURE — the mark on a completed order's Edit Withdrawal.
   //
-  // The owner settled which sense this is: a WALLET → BANK withdrawal, a shop-level cash event that
-  // names no order. That is not settlement's `fund` (money the platform released against one order,
-  // which does exist), and settlement cannot take it either — every entry there is required to name
-  // an order. It is an open question in two places at once; see
-  // `docs/technical/order/design_clarify.md`.
+  // A withdrawal is WALLET → BANK, a shop-level cash event that names no order, and Settlement Imports now
+  // records it on the shop (withdrawal-is-a-settlement-type). The order list's Import no longer promises it
+  // (the-order-import-moves-statuses-only), so this entry backs only the row action — and
+  // finish-order-on-a-return-waits-for-the-withdrawal, which waits on the same per-order figure.
   { id: "withdrawal", kind: "missing" },
 ];
 

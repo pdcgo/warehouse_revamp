@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderClient, teamReturnConfigurationClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { useInvalidateStock } from "../inventory/queries";
 import { peopleFor, WHO_FILTER_SIZE } from "../users/queries";
 import { orderListRowData, ordersFromList } from "./adapt";
@@ -24,6 +25,12 @@ export interface OrderFilters {
   toUnix: bigint;
   /** Only orders this person typed in. 0n or absent = anybody. */
   createdByUserId?: bigint;
+  /** Only this selling team's orders — the warehouse's filter (the-filter-gains-seller-marketplace-and-courier). 0n or absent = any. */
+  sellerTeamId?: bigint;
+  /** Only orders whose shop is on this marketplace. UNSPECIFIED or absent = any. */
+  marketplace?: Marketplace;
+  /** Only orders with this courier (`shipping_code`). "" or absent = any. */
+  shippingCode?: string;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -41,14 +48,23 @@ const filterKey = (f: OrderFilters) => ({
   fromUnix: f.fromUnix.toString(),
   toUnix: f.toUnix.toString(),
   createdByUserId: (f.createdByUserId ?? 0n).toString(),
+  sellerTeamId: (f.sellerTeamId ?? 0n).toString(),
+  marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
+  shippingCode: f.shippingCode ?? "",
 });
 
-const filterMsg = (f: OrderFilters) => ({
+const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
+
+/** The OrderListFilter fields for these filters — what the list, the stat and the export all send. */
+export const orderListFilterMsg = (f: OrderFilters) => ({
   search: f.search,
   shopId: f.shopId,
   createdFromUnix: f.fromUnix,
   createdToUnix: f.toUnix,
   createdByUserId: f.createdByUserId ?? 0n,
+  sellerTeamId: f.sellerTeamId ?? 0n,
+  marketplace: f.marketplace ?? Marketplace.UNSPECIFIED,
+  shippingCode: f.shippingCode ?? "",
 });
 
 export function useOrders(args: {

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { statSync } from "node:fs";
 import { ROOT_PASSWORD, ROOT_USERNAME } from "./global-setup";
 
 // #68 — Order list + read-only detail. #90 — the order CREATE form.
@@ -1296,4 +1297,26 @@ test.skip("Revenue: cancelling an order stops it counting, but the row stays vis
 
   // But the total has DROPPED — it no longer counts an order that fell through.
   await expect(page.getByTestId("revenue-total-revenue")).not.toHaveText(before);
+});
+
+// THE LIST AS A FILE (one-export-is-the-list-as-a-file) — the whole chain on a real server: the stream, the file stored
+// in document_service as the person exporting, and the expiring link the browser downloads.
+test("Export: the order list downloads as an .xlsx file", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/orders");
+  await expect(page.getByTestId("orders-export")).toBeVisible();
+
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("orders-export").click();
+  const download = await downloading;
+
+  // ⚠ The NAME is the storage key, not `orders-….xlsx`: the signed link is on another origin, where a browser ignores
+  // the anchor's `download` name, and document_service sends no Content-Disposition — true of every document download
+  // today, asked of the owner rather than changed here. So the test pins the type and the content, not the name.
+  expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
+
+  const path = await download.path();
+  expect(statSync(path).size).toBeGreaterThan(0);
+
+  await expect(page.getByText("Export ready — the file is downloading")).toBeVisible();
 });

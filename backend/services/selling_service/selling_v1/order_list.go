@@ -10,8 +10,10 @@ import (
 	"gorm.io/gorm"
 
 	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
+	marketplacev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/marketplace/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_marketplace"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 )
 
@@ -35,6 +37,9 @@ type orderScopeFilter interface {
 	GetCreatedFromUnix() int64
 	GetCreatedToUnix() int64
 	GetCreatedByUserId() uint64
+	GetSellerTeamId() uint64
+	GetMarketplace() marketplacev1.Marketplace
+	GetShippingCode() string
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
@@ -134,6 +139,21 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 		query = query.Where("created_by_user_id = ?", createdBy)
 	}
 
+	// The warehouse's three filters (the-filter-gains-seller-marketplace-and-courier).
+	if sellerTeam := filter.GetSellerTeamId(); sellerTeam > 0 {
+		query = query.Where("team_id = ?", sellerTeam)
+	}
+
+	// A shop's marketplace never changes (a-shops-marketplace-and-team-are-fixed), so the order's shop answers it:
+	// a subquery on shops, which live in this database.
+	if marketplace := filter.GetMarketplace(); marketplace != marketplacev1.Marketplace_MARKETPLACE_UNSPECIFIED {
+		query = query.Where("shop_id IN (SELECT id FROM shops WHERE marketplace = ?)", san_marketplace.ToText(marketplace))
+	}
+
+	if courier := strings.TrimSpace(filter.GetShippingCode()); courier != "" {
+		query = query.Where("shipping_code = ?", courier)
+	}
+
 	return query
 }
 
@@ -171,7 +191,10 @@ func (s *Service) OrderList(
 
 	offset := int((page.GetPage() - 1) * page.GetLimit())
 
+	// The unit count rides on each row (the-warehouse-row-fills-from-shop-and-user-by-ids): one correlated sum over
+	// the page's lines, on order_items_order_idx — the lines themselves are never sent with a list.
 	err = query.
+		Select("orders.*, (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = orders.id) AS item_quantity").
 		Order(orderOrderClause(req.Msg.GetSort())).
 		Offset(offset).
 		Limit(int(page.GetLimit())).

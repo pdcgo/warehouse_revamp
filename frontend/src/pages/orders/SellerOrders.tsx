@@ -22,6 +22,7 @@ import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { rpcError } from "../../api/clients";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
+import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
 import {
   orderSummaryRows,
@@ -94,10 +95,9 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 // while this is looked at; when it is accepted this page replaces it, exactly as `order-create-next`
 // became the order form. Nothing here is routed — it is reached from Storybook.
 //
-// ⚠ TWO OF THE FOUR NEW FILTERS NARROW NOTHING. `OrderListFilter` carries a status, a product, a
-// search term, a shop, a date window and who typed the order in; there is no warehouse field and no
-// marketplace field. They are on screen so the SHAPE of the bar can be judged, each carrying the mark
-// that says so — see `pending.ts`.
+// ⚠ ONE OF THE FOUR NEW FILTERS NARROWS NOTHING. `OrderListFilter` has no warehouse field. It is on screen so
+// the SHAPE of the bar can be judged, carrying the mark that says so — see `pending.ts`. The marketplace filter
+// is real (the-filter-gains-seller-marketplace-and-courier).
 //
 // WHY THEY ARE SEARCH SELECTS (owner). A picker over data that grows is typed into; only a static,
 // small set stays a plain dropdown. Warehouse and creator and shop all grow, so all three search.
@@ -152,17 +152,18 @@ export function SellerOrdersPage() {
   const filters: OrderFilters = useMemo(() => {
     const { fromUnix, toUnix } = resolveRange(range);
 
-    // ⚠ `warehouseId` and `marketplace` are deliberately NOT here. There is nowhere on
-    // `OrderListFilter` to put them, and inventing a field the server ignores would make the screen
-    // look wired while the rows stayed the same — the exact lie the marks are there to prevent.
+    // ⚠ `warehouseId` is deliberately NOT here. There is nowhere on `OrderListFilter` to put it, and inventing a
+    // field the server ignores would make the screen look wired while the rows stayed the same — the exact lie the
+    // marks are there to prevent. The marketplace IS here (the-filter-gains-seller-marketplace-and-courier).
     return {
       search: debouncedSearch,
       shopId: canFilterByShop ? shopId : 0n,
       fromUnix,
       toUnix,
       createdByUserId: creatorId ?? 0n,
+      marketplace,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, creatorId, marketplace]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
@@ -172,6 +173,8 @@ export function SellerOrdersPage() {
 
   // A tab IS one status (one-tab-per-status), so it always narrows the table; All narrows nothing.
   const listStatus = stage ? stage.status : OrderStatus.UNSPECIFIED;
+
+  const exporter = useOrderExport();
 
   const query = useOrders({
     teamId,
@@ -366,15 +369,26 @@ export function SellerOrdersPage() {
             Only the last is the brand button — three coloured buttons side by side would say all
             three are the thing to do. */}
         <Flex gap="2" align="center" wrap="wrap">
+          {/* THE LIST AS A FILE (one-export-is-the-list-as-a-file): exactly the rows on screen with this filter and
+              tab, every page of them. */}
           <Button
             size="xs"
             variant="outline"
             colorPalette="gray"
             data-testid="orders-export"
+            loading={exporter.running}
+            loadingText={
+              exporter.progress
+                ? t("orders.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                : undefined
+            }
+            onClick={() =>
+              teamId !== undefined &&
+              void exporter.start({ teamId, filters, status: listStatus, view: OrderExportView.SELLER })
+            }
           >
             <Icon as={Download} boxSize="4" />
             {t("orders.export.action")}
-            <NotImplemented list={ORDERS_LIST_PENDING} id="export" />
           </Button>
 
           <Button
@@ -466,16 +480,11 @@ export function SellerOrdersPage() {
             typed into. Seven marketplaces, changed by entering a new country — searching a list you
             can see in full is a keystroke tax. */}
         <FilterField w="15rem" testId="orders-marketplace-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <MarketplaceSelect
-                value={marketplace}
-                placeholder={t("orders.marketplaceAll")}
-                onChange={(m) => refilter(() => setMarketplace(m))}
-              />
-            </Box>
-            <NotImplemented list={ORDERS_LIST_PENDING} id="marketplaceFilter" />
-          </Flex>
+          <MarketplaceSelect
+            value={marketplace}
+            placeholder={t("orders.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
         </FilterField>
 
         {canFilterByShop && (

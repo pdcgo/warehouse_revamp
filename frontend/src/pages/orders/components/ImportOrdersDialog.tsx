@@ -119,12 +119,12 @@ export function ImportOrdersDialog({
                       <Text fontSize="sm" color="fg.muted">
                         {t("orders.import.updatesStatus")}
                       </Text>
-                      <Flex align="center" gap="2">
-                        <Text fontSize="sm" color="fg.muted">
-                          {t("orders.import.updatesWithdrawal")}
-                        </Text>
-                        <NotImplemented list={ORDERS_LIST_PENDING} id="withdrawal" />
-                      </Flex>
+                      {/* THE MONEY IS NOT THIS FILE'S (the-order-import-moves-statuses-only): payouts and
+                          withdrawals come from the statement, through Settlement Imports — said here so
+                          nobody waits for this file to post them. */}
+                      <Text fontSize="sm" color="fg.muted" data-testid="import-money-elsewhere">
+                        {t("orders.import.moneyFromSettlement")}
+                      </Text>
                     </Stack>
                   </Box>
 

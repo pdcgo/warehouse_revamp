@@ -52,7 +52,7 @@ import {
 } from "../src/gen/warehouse/settlement/v1/settlement_pb";
 import * as settlementFixtures from "../src/pages/order-settlement/fixtures";
 import { resetSettlementImportScenario, settlementImportScenario } from "./settlementImportScenario";
-import { sessionScenario, teamCreateScenario } from "./sessionScenario";
+import { orderExportScenario, sessionScenario, teamCreateScenario } from "./sessionScenario";
 import { userStub } from "./userStub";
 import {
   FinancialAccountAnalyticService,
@@ -588,7 +588,17 @@ const WAREHOUSE_ID = teams[0]!.id;
 // table, so if the two narrowed differently the tab counts would describe a different population
 // than the rows under them — and nothing on screen would explain the gap.
 type OrderScopeFilter =
-  | { search?: string; shopId?: bigint; createdFromUnix?: bigint; createdToUnix?: bigint; createdByUserId?: bigint }
+  | {
+      search?: string;
+      shopId?: bigint;
+      createdFromUnix?: bigint;
+      createdToUnix?: bigint;
+      createdByUserId?: bigint;
+      // The warehouse's three (the-filter-gains-seller-marketplace-and-courier).
+      sellerTeamId?: bigint;
+      marketplace?: Marketplace;
+      shippingCode?: string;
+    }
   | undefined;
 
 // Free text over the customer's NAME, their PHONE, and — only when the term is ALL DIGITS — the
@@ -614,6 +624,10 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => !filter?.createdToUnix || o.createdAtUnix <= filter.createdToUnix)
     // Who typed it in; 0 is anybody, and an unrecorded creator (0) is nobody's.
     .filter((o) => !filter?.createdByUserId || o.createdByUserId === filter.createdByUserId)
+    // The seller team, the marketplace its shop is on, the courier — as the server's scopedOrders applies them.
+    .filter((o) => !filter?.sellerTeamId || o.teamId === filter.sellerTeamId)
+    .filter((o) => !filter?.marketplace || shops.find((s) => s.id === o.shopId)?.marketplace === filter.marketplace)
+    .filter((o) => !filter?.shippingCode || o.shippingCode === filter.shippingCode)
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
@@ -757,6 +771,30 @@ export const transport = createRouterTransport(({ service }) => {
 
   service(ShopService, {
     shopList: (req) => columnar("shop", shops.filter((s) => match(req.filter?.q, s.name, s.shopCode))),
+    // Across teams, basic fields only (the-warehouse-row-fills-from-shop-and-user-by-ids).
+    shopByIds: (req) => ({
+      items: Object.fromEntries(
+        shops
+          .filter((s) => (req.filter?.ids ?? []).includes(s.id))
+          .map((s) => [
+            s.id.toString(),
+            {
+              items: [
+                {
+                  d: {
+                    case: "basic" as const,
+                    value: {
+                      mapData: {
+                        [s.id.toString()]: { id: s.id, teamId: s.teamId, name: s.name, marketplace: s.marketplace },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ]),
+      ),
+    }),
   });
 
   // inventory_service's restocks — restockStub.ts plays the decided restock rules (restock_decision.md).
@@ -1094,11 +1132,17 @@ export const transport = createRouterTransport(({ service }) => {
     orderList: (req) =>
       pagedColumnar(
         "order",
-        visibleOrders(req.teamId, req.filter).filter(
-          // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
-          // order can hold — so it must not be compared against one.
-          (o) => !req.filter?.status || o.status === req.filter.status,
-        ),
+        visibleOrders(req.teamId, req.filter)
+          .filter(
+            // UNSPECIFIED is the ABSENCE of a status filter (the "All Status" tab), never a status an
+            // order can hold — so it must not be compared against one.
+            (o) => !req.filter?.status || o.status === req.filter.status,
+          )
+          // The row's unit count, summed from the order's lines as the server's query does.
+          .map((o) => ({
+            ...o,
+            itemQuantity: BigInt((orderDetailFor(o.id)?.items ?? []).reduce((n, it) => n + it.quantity, 0)),
+          })),
         req.page,
       ),
 
@@ -1129,6 +1173,25 @@ export const transport = createRouterTransport(({ service }) => {
     // One result per order, like the server: an order at either end of the caller's scope moves, any
     // other is refused — and a refusal never fails the call. The who-may-make-which-move table is the
     // server's and is not copied here.
+    // THE LIST AS A FILE (one-export-is-the-list-as-a-file): progress, then a link. The link is an empty data: URL, so
+    // the download a story triggers goes nowhere. What was asked is kept for the story to read.
+    orderExport: async function* (req) {
+      const rows = visibleOrders(req.teamId, req.filter)
+        .filter((o) => !req.filter?.status || o.status === req.filter.status)
+        .filter((o) => req.orderIds.length === 0 || req.orderIds.includes(o.id));
+      const total = BigInt(rows.length);
+
+      orderExportScenario.last = { view: req.view, status: req.filter?.status ?? 0, orderIds: req.orderIds, rows: rows.length };
+
+      yield { message: "exporting orders", done: 0n, total };
+      yield {
+        message: "the file is ready",
+        done: total,
+        total,
+        downloadUrl: "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,",
+        filename: "orders.xlsx",
+      };
+    },
     orderStatusChange: (req) => ({
       results: req.orderIds.map((orderId) => {
         const order = orders.find(

@@ -311,6 +311,7 @@ sequenceDiagram
 | `item_quantity` | new on the list row: the sum of the order's line quantities, computed by the list query. Orders and their lines live together |
 | per page | one `OrderList`, one `ShopByIds`, one `UserByIDs`, never a call per row |
 | a renamed shop | old orders show its current name |
+| ✅ built *(2026-10-21)* | `ShopByIds` on ShopService — unscoped, basic fields, a deleted shop still named ([shop_by_ids.go](../../../backend/services/selling_service/selling_v1/shop_by_ids.go)); `Order.item_quantity`, a correlated sum per row (0.002 ms a row on `order_items_order_idx`). The warehouse list names each row's shop with one `ShopByIds` per page and counts its units from the row; its `shop` and `quantity` marks are gone |
 
 ---
 
@@ -344,6 +345,7 @@ flowchart LR
 | the shipment state | dropped. The order status carries it, and the status tabs filter it |
 | the search | today: customer name, phone, MP order ref, order id. Plus the tracking number once `orders.receipt` is built ([a-label-scan-reads-the-ref-or-the-receipt](../../business/inventory/order_decision.md#a-label-scan-reads-the-ref-or-the-receipt)) |
 | the stat | the same filter feeds `OrderStat` through `scopedOrders`, so the counts match the rows |
+| ✅ built *(2026-10-21)* | `seller_team_id`, `marketplace`, `shipping_code` on `OrderListFilter` **and** `OrderStatFilter`, applied in `scopedOrders`. The warehouse list's three filters and the seller list's marketplace filter now narrow the rows; their marks are gone. The tracking-number search waits on `orders.receipt` |
 
 ---
 
@@ -447,6 +449,7 @@ sequenceDiagram
 | the file | .xlsx. Phone numbers and ids are written as text, so `0812…` keeps its 0 and a long marketplace id never becomes `5.78E+17` |
 | one for both | the seller's Export and the warehouse's Export call the same RPC |
 | the link | expiring, like any other document link |
+| ✅ built *(2026-10-21)* | `OrderExport` ([order_export.go](../../../backend/services/selling_service/selling_v1/order_export.go)), a server stream of 200-row steps; the file is a private `order_export` document (document `00008`) stored as the caller. Both lists' Export buttons run it, with their progress on the button. Two things the spec did not say, built so: **only real data** — the tracking number, the marketplace date and the deadline are invented on screen behind a ⚠, which a spreadsheet cannot carry, so they join the file when their fields exist; and **`order_ids`**, so the warehouse bar exports the ticked rows ([the-bulk-actions-are-always-on-screen](#the-bulk-actions-are-always-on-screen)). Flow: [rpc.md](../../services/selling_service/rpc.md#the-list-as-a-file--orderexport) |
 
 ---
 

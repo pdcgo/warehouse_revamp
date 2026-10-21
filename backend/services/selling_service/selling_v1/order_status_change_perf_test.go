@@ -118,10 +118,23 @@ func TestPerf_OrderStatusChange(t *testing.T) {
 	}
 }
 
-// ROOT READS EVERY TEAM — no team clause, so this is the whole orders table: the count, and the page.
+// ROOT READS EVERY TEAM — no team clause, so this is the whole orders table: the count, and the page. Two lines per
+// order (100 000 order_items), so the row's unit count — a correlated sum per row — is measured against real lines.
 func TestPerf_OrderList_Root(t *testing.T) {
 	db, probe := san_perf.Wrap(san_testdb.DB(t))
-	seedOrders(t, db)
+	orders := seedOrders(t, db)
+
+	lines := make([]selling_service_models.OrderItem, 0, 2*len(orders))
+	for _, o := range orders {
+		for j := range 2 {
+			lines = append(lines, selling_service_models.OrderItem{
+				OrderID: o.ID, ProductID: uint64(1 + j), SKU: "SKU", Name: "Widget", Quantity: uint32(1 + j),
+				UnitPrice: 5_000, CreatedAt: time.Now(),
+			})
+		}
+	}
+
+	san_perf.SeedRows(t, db, lines)
 
 	svc := newService(t, db)
 	ctx := t.Context()
@@ -244,6 +257,51 @@ func TestPerf_TeamReturnConfiguration(t *testing.T) {
 
 		for _, q := range probe.Queries() {
 			t.Log(san_perf.Explain(t, db, q.SQL))
+		}
+	}
+}
+
+// THE EXPORT — a warehouse exporting everything shipping from it: ~16 700 of the 50 000 orders, two lines each, in
+// 200-row steps. The query count grows with the rows BY DESIGN (two per step: the page and its shops), so what is
+// measured is the time per step and whether either query degrades as the keyset walks down the table.
+func TestPerf_OrderExport(t *testing.T) {
+	db, probe := san_perf.Wrap(san_testdb.DB(t))
+	orders := seedOrders(t, db)
+
+	lines := make([]selling_service_models.OrderItem, 0, 2*len(orders))
+	for _, o := range orders {
+		for j := range 2 {
+			lines = append(lines, selling_service_models.OrderItem{
+				OrderID: o.ID, ProductID: uint64(1 + j), SKU: "SKU", Name: "Widget", Quantity: uint32(1 + j),
+				UnitPrice: 5_000, CreatedAt: time.Now(),
+			})
+		}
+	}
+
+	san_perf.SeedRows(t, db, lines)
+
+	store := &fakeExports{}
+	req := &sellingv1.OrderExportRequest{
+		TeamId: 900, Filter: &sellingv1.OrderListFilter{}, View: sellingv1.OrderExportView_ORDER_EXPORT_VIEW_WAREHOUSE,
+	}
+
+	export(t, db, store, req) // warm-up
+
+	probe.Reset()
+
+	var run exportRun
+
+	wall, dbTime := probe.Measure(func() { run = export(t, db, store, req) })
+
+	t.Logf("rows=%d wall=%v db=%v go=%v queries=%d file=%d bytes messages=%d",
+		len(run.rows)-1, wall, dbTime, wall-dbTime, probe.Count(), len(store.content), len(run.messages))
+	probe.Report(t, "OrderExport — warehouse 900, every order")
+
+	for _, q := range probe.Queries() {
+		if strings.Contains(q.SQL, "item_quantity") {
+			t.Log(san_perf.Explain(t, db, q.SQL))
+
+			break
 		}
 	}
 }

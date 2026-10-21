@@ -6,9 +6,9 @@ import { ArrowLeft } from "lucide-react";
 import { useIsMobile } from "../../../layouts/shell";
 
 import {
-  OrderEventKind,
   OrderSchema,
   OrderStatus,
+  OrderTimelineFrom,
   type Order,
 } from "../../../gen/warehouse/selling/v1/order_pb";
 import { OrderStatusBadge } from "../../../components/badges/OrderStatusBadge";
@@ -183,10 +183,10 @@ function orderFor(settlement: OrderSettlement): Order {
         unitCost: settlement.cogs / 2n,
       },
     ],
-    events: [
-      { id: 1n, kind: OrderEventKind.PENDING, actorUserId: 61n, atUnix: 1_767_225_600n },
-      { id: 2n, kind: OrderEventKind.PROCESSED, actorUserId: 62n, atUnix: 1_767_232_800n },
-      { id: 3n, kind: OrderEventKind.SHIPPING, actorUserId: 62n, atUnix: 1_767_312_000n },
+    timelineLogs: [
+      { id: 1n, status: OrderStatus.PENDING, from: OrderTimelineFrom.SELLING, actorId: 61n, createdAtUnix: 1_767_225_600n },
+      { id: 2n, status: OrderStatus.PROCESSED, from: OrderTimelineFrom.WAREHOUSE, actorId: 62n, createdAtUnix: 1_767_232_800n },
+      { id: 3n, status: OrderStatus.SHIPPING, from: OrderTimelineFrom.WAREHOUSE, actorId: 62n, createdAtUnix: 1_767_312_000n },
     ],
     createdAtUnix: 1_767_225_600n,
   });

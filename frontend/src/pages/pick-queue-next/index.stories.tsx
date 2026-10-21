@@ -3,8 +3,9 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
+import { orderExportScenario } from "../../../.storybook/sessionScenario";
 import { mockReceiptCode } from "../../features/orders/rowMock";
-import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
 import { WAREHOUSE_ORDERS_PENDING } from "./pending";
 import { PickQueueNextPage } from "./index";
@@ -190,6 +191,56 @@ export const TheFiltersAreTheCrews: Story = {
     await expect(controls.getByTestId("warehouse-orders-team-filter")).toBeInTheDocument();
     await expect(controls.getByTestId("warehouse-orders-marketplace-filter")).toBeInTheDocument();
     await expect(controls.getByTestId("warehouse-orders-courier-filter")).toBeInTheDocument();
+  },
+};
+
+/**
+ * THE ROW NAMES ITS REAL SHOP AND COUNTS ITS UNITS (the-warehouse-row-fills-from-shop-and-user-by-ids): the shop comes
+ * from one ShopByIds read for the page, the count from the list's `item_quantity` — order 101 is Melati Official, and
+ * its three lines hold 2 + 1 + 1 units.
+ */
+export const TheRowNamesItsShopAndCountsItsUnits: Story = {
+  play: async ({ canvasElement }) => {
+    const row = await rowOf(canvasElement, 101n);
+
+    await waitFor(() => expect(row).toHaveTextContent("Melati Official"));
+
+    // Its own column on a desktop row; "Qty 4" on a phone block.
+    const qtyCell = within(canvasElement).queryByTestId("pick-queue-qty-101");
+    if (qtyCell) {
+      await expect(qtyCell).toHaveTextContent(/^4$/);
+    } else {
+      await expect(row).toHaveTextContent(/Qty\s*4/);
+    }
+  },
+};
+
+/**
+ * THE SELLER FILTER NARROWS THE ROWS (the-filter-gains-seller-marketplace-and-courier). Gudang Pusat ships for Toko
+ * Melati and Toko Kenanga; picking Kenanga leaves Kenanga's order and drops Melati's.
+ */
+export const TheSellerFilterNarrowsTheRows: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const kenanga = teams.find((t) => t.teamCode === "SL-02")!;
+    const kenangaOrder = HERE.find((o) => o.teamId === kenanga.id)!;
+
+    await userEvent.click(canvas.getByTestId("pick-tab-all"));
+    await rowOf(canvasElement, NEW_HERE[0]!.id);
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(within(controls.getByTestId("warehouse-orders-team-filter")).getByRole("combobox"));
+
+    const option = await screen.findByTestId(`team-select-option-${kenanga.teamCode}`);
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+
+    await waitFor(() =>
+      expect(
+        canvas.queryByTestId(`pick-queue-row-${NEW_HERE[0]!.id}`) ?? canvas.queryByTestId(`pick-queue-block-${NEW_HERE[0]!.id}`),
+      ).toBeNull(),
+    );
+    await rowOf(canvasElement, kenangaOrder.id);
   },
 };
 
@@ -445,17 +496,35 @@ export const EveryDeclaredGapIsMarkedOnScreen: Story = {
     collect();
     await userEvent.keyboard("{Escape}");
 
-    // On a phone the filters are in the sheet — open it, then look across the whole document (the sheet
-    // portals out of the canvas).
+    // The All tab's rows. The filters carry no mark any more: all three are real
+    // (the-filter-gains-seller-marketplace-and-courier).
     await userEvent.click(canvas.getByTestId("pick-tab-all"));
     await rowOf(canvasElement, NEW_HERE[0]!.id);
-    await filterControls(canvasElement);
-
-    await waitFor(() => expect(screen.queryAllByTestId("not-implemented-teamFilter").length).toBeGreaterThan(0));
     collect();
 
     for (const part of WAREHOUSE_ORDERS_PENDING.parts) {
       await expect(found.has(part.id), part.id).toBe(true);
     }
+  },
+};
+
+/**
+ * THE BAR EXPORTS THE SELECTION WHEN THERE IS ONE (the-bulk-actions-are-always-on-screen) — in the warehouse's
+ * columns, only the ticked order.
+ */
+export const ExportTakesTheTickedRows: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const order = NEW_HERE[0]!;
+
+    await rowOf(canvasElement, order.id);
+    await userEvent.click(within(canvas.getByTestId(`pick-queue-select-${order.id}`)).getByRole("checkbox", { hidden: true }));
+    await userEvent.click(canvas.getByTestId("pick-queue-bulk-export"));
+
+    await expect(await screen.findByText("Export ready — the file is downloading")).toBeInTheDocument();
+
+    const asked = orderExportScenario.last!;
+    await expect(asked.view).toBe(OrderExportView.WAREHOUSE);
+    await expect(asked.orderIds).toEqual([order.id]);
   },
 };

@@ -31,6 +31,17 @@ the same order at once was tested: exactly one move lands.
 3. ✅ *Decided the same day:* every selling team sets its own return warehouse on Settings — nothing is filled in for
    them. Orders start requiring one once every team has set it, and the Teams list badges the teams still missing one.
 
+**Later the same day:** the order lists lost six of their 'not implemented' marks.
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Export** on both order lists | the list downloads as a spreadsheet, exactly the rows on screen (or the ticked ones on the warehouse list) |
+| **Marketplace, seller and courier filters** | they now narrow the list. They were on screen before but did nothing |
+| **The warehouse row's shop and unit count** | real now; before they were sample values |
+| **Each timeline step says which side did it** | Warehouse or Seller, on every row of an order's timeline |
+
+The seller list has 10 parts still waiting and the warehouse list 6; each needs a decision or a bigger piece (the fee).
+
 Detail: [order/context.md](order/context.md).
 
 ---

@@ -95,7 +95,7 @@ func (s *Service) moveOrders(
 		}
 
 		results = make([]*sellingv1.OrderStatusChangeResult, 0, len(orderIDs))
-		moving := make([]*selling_service_models.Order, 0, len(orders))
+		moving := make([]timelineMove, 0, len(orders))
 
 		for _, orderID := range orderIDs {
 			result := &sellingv1.OrderStatusChangeResult{OrderId: orderID}
@@ -117,12 +117,15 @@ func (s *Service) moveOrders(
 				continue
 			}
 
+			// The side is read before the status changes in memory: it depends on the move, from → to.
+			from := moveFrom(order, teamID, to)
+
 			// Moved in memory now, so an id sent twice reads "already <to>" the second time rather than being
 			// written twice. The proto refuses duplicates; a direct caller gets the same answer.
 			order.Status = to
 			result.Moved = true
 			result.Status = orderStatusFromText(to)
-			moving = append(moving, order)
+			moving = append(moving, timelineMove{order: order, from: from})
 		}
 
 		return setOrdersStatus(tx, moving, to, eventActor(ctx), note)
@@ -162,6 +165,18 @@ func refuseMove(order *selling_service_models.Order, teamID uint64, to, note str
 	}
 
 	return ""
+}
+
+// moveFrom is the side a move's timeline row is written from: the end of the order that made it. A team that is
+// both ends, making a move either may make (a forced return), writes it as the warehouse.
+func moveFrom(order *selling_service_models.Order, teamID uint64, to string) string {
+	rule := orderMoves[orderMove{from: order.Status, to: to}]
+
+	if rule.by&callerSide(order, teamID)&sideWarehouse != 0 {
+		return timelineFromWarehouse
+	}
+
+	return timelineFromSelling
 }
 
 // callerSide is which end of the order the caller is. Both, for a team that is its own warehouse.

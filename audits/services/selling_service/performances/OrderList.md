@@ -81,3 +81,4 @@ There is no index on `status`, so root's tab counts scan the table too (4.2 ms).
 | Date | Median (root, all, 20) | Queries | Change |
 | --- | --- | --- | --- |
 | 2026-10-21 | 4.4 ms | 2 | first audit — root reads every team since today |
+| 2026-10-21 | 3.7 ms | 2 | the row's `item_quantity` added — a correlated sum per row on `order_items_order_idx`, 0.002 ms a row; the page is still 0.08 ms in Postgres, measured over 100 000 lines |

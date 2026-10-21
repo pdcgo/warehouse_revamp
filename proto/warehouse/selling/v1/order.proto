@@ -5,6 +5,7 @@ package warehouse.selling.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/common/v1/list.proto";
+import "warehouse/marketplace/v1/marketplace.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
@@ -32,6 +33,9 @@ service OrderService {
   //   shipping / shipped / problem / completed → return · shipped / problem / return → lost
   //
   // Cancel and the return accept do more than move a status, so they keep their own RPCs.
+  // THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
+  // .xlsx. A server stream — progress, then an expiring link.
+  rpc OrderExport(OrderExportRequest) returns (stream OrderExportResponse);
   rpc OrderStatusChange(OrderStatusChangeRequest) returns (OrderStatusChangeResponse);
 
   // ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
@@ -105,46 +109,27 @@ enum OrderStatus {
   ORDER_STATUS_RETURN_COMPLETED = 12;
 }
 
-// WHAT HAPPENED TO AN ORDER — one kind per step of its life.
-//
-// Deliberately NOT the same enum as OrderStatus, though today they map one-to-one. A status is where
-// the order IS; an event is something that WAS DONE, and the two come apart the moment anything
-// happens that does not change the status — a note edited, a receipt attached, a courier corrected.
-// Reusing OrderStatus here would mean the first such event has nowhere to go.
-//
-// Every kind so far is a move and names the status moved INTO, so the numbers follow OrderStatus's.
-enum OrderEventKind {
-  reserved 4;
-  reserved "ORDER_EVENT_KIND_PLACED", "ORDER_EVENT_KIND_CONFIRMED", "ORDER_EVENT_KIND_CANCELLED",
-    "ORDER_EVENT_KIND_PICKING", "ORDER_EVENT_KIND_PACKED";
-
-  ORDER_EVENT_KIND_UNSPECIFIED = 0;
-  // Placed — every order has one, at its creation — or handed back to pending by the warehouse.
-  ORDER_EVENT_KIND_PENDING = 1;
-  ORDER_EVENT_KIND_PROCESSED = 2;
-  ORDER_EVENT_KIND_CANCEL = 3;
-  ORDER_EVENT_KIND_PICKED = 5;
-  ORDER_EVENT_KIND_SHIPPING = 6;
-  ORDER_EVENT_KIND_SHIPPED = 7;
-  ORDER_EVENT_KIND_COMPLETED = 8;
-  ORDER_EVENT_KIND_PROBLEM = 9;
-  ORDER_EVENT_KIND_LOST = 10;
-  ORDER_EVENT_KIND_RETURN = 11;
-  ORDER_EVENT_KIND_RETURN_COMPLETED = 12;
+// WHICH SIDE wrote a timeline row (order-timeline-logs-replaces-order-events): the warehouse working the order, or
+// the selling team that owns it.
+enum OrderTimelineFrom {
+  ORDER_TIMELINE_FROM_UNSPECIFIED = 0;
+  ORDER_TIMELINE_FROM_WAREHOUSE = 1;
+  ORDER_TIMELINE_FROM_SELLING = 2;
 }
 
-// One entry in an order's history — WHAT happened, WHO did it, WHEN.
-message OrderEvent {
+// One row of an order's timeline (order-timeline-logs-replaces-order-events) — a STATUS CHANGE, or a NOTE written
+// while working it (*no goods on Rak A*), with who wrote it and from which side.
+message OrderTimelineLog {
   uint64 id = 1;
-  OrderEventKind kind = 2;
-  // The opaque user_service id of whoever did it; 0 = not recorded. Resolved to a name through
-  // UserByIDs at read time, never snapshotted — a person's name is theirs to change.
-  uint64 actor_user_id = 3;
-  // WHEN IT HAPPENED, unix seconds — not when the row was written. A backfilled event carries the
-  // moment its column recorded, which may be months before the row existed.
-  int64 at_unix = 4;
-  // Why, when the move needed a reason: required for a move back to pending, empty otherwise.
-  string note = 5;
+  // The status the order moved INTO. UNSPECIFIED = a note only, no move.
+  OrderStatus status = 2;
+  // Why, on a move that needed a reason (back to pending), or the note itself.
+  string note = 3;
+  OrderTimelineFrom from = 4;
+  // The opaque user_service id of whoever wrote it; 0 = not recorded. Resolved to a name at read time, never
+  // snapshotted — a person's name is theirs to change.
+  uint64 actor_id = 5;
+  int64 created_at_unix = 6;
 }
 
 // OrderItem is one order line. product_id is an OPAQUE product_service id; sku/name/unit_price are a
@@ -262,14 +247,12 @@ message Order {
   // The lines — populated by OrderDetail (OrderList returns a summary without them).
   repeated OrderItem items = 12;
 
-  // The order's HISTORY, oldest first — populated by OrderDetail only, exactly like `items`. A list
-  // returning every order's whole history would multiply its page size by the length of each life.
-  //
-  // ⚠ An order in `status: SHIPPED` does NOT necessarily carry six events. Everything placed before
-  // the events table existed was backfilled from the two moments the row actually recorded — when it
-  // was created, and when it last changed — so an old order's history is short because that is all
-  // that was ever known, not because the steps were skipped.
-  repeated OrderEvent events = 20;
+  // The order's TIMELINE, oldest first — populated by OrderDetail only, exactly like `items`. A list returning every
+  // order's whole history would multiply its page size by the length of each life.
+  repeated OrderTimelineLog timeline_logs = 23;
+  // 20 was `events` (order_events), dropped for order_timeline_logs (order-timeline-logs-replaces-order-events).
+  reserved 20;
+  reserved "events";
 
   int64 created_at_unix = 13;
 
@@ -338,6 +321,10 @@ message Order {
   // updated. An opaque user_service id; the screen resolves the name with UserByIDs. 0 = not recorded
   // (an order placed before the creator was kept).
   uint64 created_by_user_id = 22;
+
+  // HOW MANY UNITS — the sum of the order's line quantities (the-warehouse-row-fills-from-shop-and-user-by-ids),
+  // computed by the query, so OrderList carries it without carrying the lines. OrderDetail fills it too.
+  int64 item_quantity = 24;
 }
 
 message OrderCreateRequest {
@@ -491,6 +478,17 @@ message OrderListFilter {
   // creator was kept matches nobody: the record does not say, and filing it under a name would invent the
   // one fact being filtered on. The picker offers OrderCreatorList.
   uint64 created_by_user_id = 7;
+
+  // The warehouse's three filters (the-filter-gains-seller-marketplace-and-courier). The same filter feeds OrderStat
+  // through scopedOrders, so the counts match the rows.
+  //
+  // Only orders of THIS selling team — the order's `team_id`. Named apart from the request's `team_id`, which is
+  // the caller's scope. 0 = any.
+  uint64 seller_team_id = 8;
+  // Only orders whose shop is on this marketplace. UNSPECIFIED = any.
+  warehouse.marketplace.v1.Marketplace marketplace = 9 [(buf.validate.field).enum.defined_only = true];
+  // Only orders with this courier — `shipping_code` (jne, jnt …). Empty = any.
+  string shipping_code = 10 [(buf.validate.field).string.max_len = 50];
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -583,6 +581,66 @@ message OrderCancelRequest {
 
 message OrderCancelResponse {
   Order order = 1;
+}
+
+// WHOSE COLUMNS an export is written in — the reader's own row, as on screen (one-export-is-the-list-as-a-file).
+enum OrderExportView {
+  ORDER_EXPORT_VIEW_UNSPECIFIED = 0;
+  // The selling team's order list.
+  ORDER_EXPORT_VIEW_SELLER = 1;
+  // The warehouse's order list.
+  ORDER_EXPORT_VIEW_WAREHOUSE = 2;
+}
+
+// THE LIST AS A FILE (one-export-is-the-list-as-a-file) — exactly the rows the list holds with this filter, every page
+// of them, in the reader's columns.
+message OrderExportRequest {
+  // Whoever may read the list may export it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The list's own filter — the status tab included.
+  OrderListFilter filter = 2;
+  OrderExportView view = 3 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).enum.not_in = 0
+  ];
+  // THE TICKED ROWS, when the warehouse's bar exports a selection (the-bulk-actions-are-always-on-screen): only these
+  // orders, still within the scope and the filter. Empty = every row the filter holds.
+  repeated uint64 order_ids = 4 [(buf.validate.field).repeated = {
+    max_items: 200
+    unique: true
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// One message of the stream (code-implementation-guideline.md): a log line, the progress, and — on the last message —
+// the file.
+message OrderExportResponse {
+  // A sentence about the step, as the guideline requires every long task's message to carry.
+  string message = 1;
+  // Rows written so far, of the total the filter holds.
+  int64 done = 2;
+  int64 total = 3;
+  // Set on the LAST message only: the file's expiring link, and its name.
+  string download_url = 4;
+  string filename = 5;
 }
 
 // OrderStatusChange makes one plain move for many orders (one-status-change-for-every-plain-move).
@@ -748,6 +806,8 @@ message OrderActivityStatResponse {
 // GROUPS BY status, so filtering to one would leave every other tab's count at zero. The screen's tab
 // is a filter on the list, never on the stat.
 message OrderStatFilter {
+  // ⚠ Every field mirrors OrderListFilter's, because both feed scopedOrders: the strip above the list must count
+  // exactly the rows below it (the-filter-gains-seller-marketplace-and-courier).
   // Only orders carrying THIS product on one of their lines, exactly as OrderListFilter means it.
   // 0 = no filter.
   uint64 product_id = 1;
@@ -765,6 +825,11 @@ message OrderStatFilter {
   int64 created_from_unix = 4;
   int64 created_to_unix = 5;
   uint64 created_by_user_id = 6;
+
+  // The warehouse's three filters, as on OrderListFilter.
+  uint64 seller_team_id = 7;
+  warehouse.marketplace.v1.Marketplace marketplace = 8 [(buf.validate.field).enum.defined_only = true];
+  string shipping_code = 9 [(buf.validate.field).string.max_len = 50];
 }
 
 message OrderStatRequest {

@@ -94,16 +94,21 @@ type Order struct {
 	// recorded.
 	CreatedByUserID uint64
 
+	// HOW MANY UNITS — the sum of the lines' quantities (the-warehouse-row-fills-from-shop-and-user-by-ids). Not a
+	// column: OrderList selects it with a subquery, and OrderDetail sums the lines it loads. Read-only to GORM.
+	ItemQuantity int64 `gorm:"->;-:migration"`
+
 	// The lines; loaded on demand (OrderDetail).
 	Items []OrderItem `gorm:"foreignKey:OrderID"`
 
-	// What has happened to this order, oldest first; loaded on demand (OrderDetail), like Items.
+	// The order's timeline, oldest first; loaded on demand (OrderDetail), like Items
+	// (order-timeline-logs-replaces-order-events).
 	//
-	// ⚠ The events are the HISTORY; `Status` above is the CURRENT STATE, and both are kept. The list
+	// ⚠ The timeline is the HISTORY; `Status` above is the CURRENT STATE, and both are kept. The list
 	// filters, sorts and counts on the column — which a child table cannot do cheaply — while the
 	// timeline reads these. Neither is derivable from the other: the column cannot say when or by whom,
 	// and rebuilding "where is it now" by replaying rows on every list query would be absurd.
-	Events []OrderEvent `gorm:"foreignKey:OrderID"`
+	TimelineLogs []OrderTimelineLog `gorm:"foreignKey:OrderID"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

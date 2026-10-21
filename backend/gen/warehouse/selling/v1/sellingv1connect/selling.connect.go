@@ -57,6 +57,8 @@ const (
 	// ShopServiceShopAccessCheckProcedure is the fully-qualified name of the ShopService's
 	// ShopAccessCheck RPC.
 	ShopServiceShopAccessCheckProcedure = "/warehouse.selling.v1.ShopService/ShopAccessCheck"
+	// ShopServiceShopByIdsProcedure is the fully-qualified name of the ShopService's ShopByIds RPC.
+	ShopServiceShopByIdsProcedure = "/warehouse.selling.v1.ShopService/ShopByIds"
 )
 
 // ShopServiceClient is a client for the warehouse.selling.v1.ShopService service.
@@ -77,6 +79,9 @@ type ShopServiceClient interface {
 	// (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
 	// settlement asks it for an imported shop row's primary CS.
 	ShopAccessCheck(context.Context, *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error)
+	// Shops by id, across teams — the warehouse's order row names each order's shop
+	// (the-warehouse-row-fills-from-shop-and-user-by-ids).
+	ShopByIds(context.Context, *connect.Request[v1.ShopByIdsRequest]) (*connect.Response[v1.ShopByIdsResponse], error)
 }
 
 // NewShopServiceClient constructs a client for the warehouse.selling.v1.ShopService service. By
@@ -150,6 +155,12 @@ func NewShopServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
 			connect.WithClientOptions(opts...),
 		),
+		shopByIds: connect.NewClient[v1.ShopByIdsRequest, v1.ShopByIdsResponse](
+			httpClient,
+			baseURL+ShopServiceShopByIdsProcedure,
+			connect.WithSchema(shopServiceMethods.ByName("ShopByIds")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -165,6 +176,7 @@ type shopServiceClient struct {
 	shopUserRemove     *connect.Client[v1.ShopUserRemoveRequest, v1.ShopUserRemoveResponse]
 	shopUserSetPrimary *connect.Client[v1.ShopUserSetPrimaryRequest, v1.ShopUserSetPrimaryResponse]
 	shopAccessCheck    *connect.Client[v1.ShopAccessCheckRequest, v1.ShopAccessCheckResponse]
+	shopByIds          *connect.Client[v1.ShopByIdsRequest, v1.ShopByIdsResponse]
 }
 
 // ShopCreate calls warehouse.selling.v1.ShopService.ShopCreate.
@@ -217,6 +229,11 @@ func (c *shopServiceClient) ShopAccessCheck(ctx context.Context, req *connect.Re
 	return c.shopAccessCheck.CallUnary(ctx, req)
 }
 
+// ShopByIds calls warehouse.selling.v1.ShopService.ShopByIds.
+func (c *shopServiceClient) ShopByIds(ctx context.Context, req *connect.Request[v1.ShopByIdsRequest]) (*connect.Response[v1.ShopByIdsResponse], error) {
+	return c.shopByIds.CallUnary(ctx, req)
+}
+
 // ShopServiceHandler is an implementation of the warehouse.selling.v1.ShopService service.
 type ShopServiceHandler interface {
 	ShopCreate(context.Context, *connect.Request[v1.ShopCreateRequest]) (*connect.Response[v1.ShopCreateResponse], error)
@@ -235,6 +252,9 @@ type ShopServiceHandler interface {
 	// (one-call-answers-the-shop-and-the-access). The settlement importer asks it before storing a file;
 	// settlement asks it for an imported shop row's primary CS.
 	ShopAccessCheck(context.Context, *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error)
+	// Shops by id, across teams — the warehouse's order row names each order's shop
+	// (the-warehouse-row-fills-from-shop-and-user-by-ids).
+	ShopByIds(context.Context, *connect.Request[v1.ShopByIdsRequest]) (*connect.Response[v1.ShopByIdsResponse], error)
 }
 
 // NewShopServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -304,6 +324,12 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(shopServiceMethods.ByName("ShopAccessCheck")),
 		connect.WithHandlerOptions(opts...),
 	)
+	shopServiceShopByIdsHandler := connect.NewUnaryHandler(
+		ShopServiceShopByIdsProcedure,
+		svc.ShopByIds,
+		connect.WithSchema(shopServiceMethods.ByName("ShopByIds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.ShopService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ShopServiceShopCreateProcedure:
@@ -326,6 +352,8 @@ func NewShopServiceHandler(svc ShopServiceHandler, opts ...connect.HandlerOption
 			shopServiceShopUserSetPrimaryHandler.ServeHTTP(w, r)
 		case ShopServiceShopAccessCheckProcedure:
 			shopServiceShopAccessCheckHandler.ServeHTTP(w, r)
+		case ShopServiceShopByIdsProcedure:
+			shopServiceShopByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -373,4 +401,8 @@ func (UnimplementedShopServiceHandler) ShopUserSetPrimary(context.Context, *conn
 
 func (UnimplementedShopServiceHandler) ShopAccessCheck(context.Context, *connect.Request[v1.ShopAccessCheckRequest]) (*connect.Response[v1.ShopAccessCheckResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopAccessCheck is not implemented"))
+}
+
+func (UnimplementedShopServiceHandler) ShopByIds(context.Context, *connect.Request[v1.ShopByIdsRequest]) (*connect.Response[v1.ShopByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.ShopService.ShopByIds is not implemented"))
 }

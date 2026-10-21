@@ -2,7 +2,6 @@ package selling_v1
 
 import (
 	"context"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -62,57 +61,39 @@ func orderStatusFromText(text string) sellingv1.OrderStatus {
 	return orderStatusTexts[text]
 }
 
-// OrderEventKind as stored in the `kind` TEXT column of `order_events` (00011).
-//
-// ⚠ THE STRINGS ARE THE STATUS STRINGS ABOVE, ON PURPOSE — every event so far is a move, so a move
-// records the status it moved INTO (setOrderStatus writes its status as the kind). They are paired in
-// their own table rather than aliased because the two vocabularies are only coincidentally equal: the
-// first event that is not a status change (a note edited, a receipt attached) gets a kind here and no
-// status anywhere, and an alias would have to be untangled first.
-var orderEventKinds = map[string]sellingv1.OrderEventKind{
-	"pending":          sellingv1.OrderEventKind_ORDER_EVENT_KIND_PENDING,
-	"processed":        sellingv1.OrderEventKind_ORDER_EVENT_KIND_PROCESSED,
-	"picked":           sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKED,
-	"shipping":         sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPING,
-	"shipped":          sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPED,
-	"completed":        sellingv1.OrderEventKind_ORDER_EVENT_KIND_COMPLETED,
-	"problem":          sellingv1.OrderEventKind_ORDER_EVENT_KIND_PROBLEM,
-	"lost":             sellingv1.OrderEventKind_ORDER_EVENT_KIND_LOST,
-	"return":           sellingv1.OrderEventKind_ORDER_EVENT_KIND_RETURN,
-	"return_completed": sellingv1.OrderEventKind_ORDER_EVENT_KIND_RETURN_COMPLETED,
-	"cancel":           sellingv1.OrderEventKind_ORDER_EVENT_KIND_CANCEL,
+// Which side wrote a timeline row (order-timeline-logs-replaces-order-events), as stored in its `from` column.
+const (
+	timelineFromWarehouse = "warehouse"
+	timelineFromSelling   = "selling"
+)
+
+var timelineFroms = map[string]sellingv1.OrderTimelineFrom{
+	timelineFromWarehouse: sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_WAREHOUSE,
+	timelineFromSelling:   sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_SELLING,
 }
 
-// orderEventKindFromText is UNSPECIFIED for a kind written by a newer build than this one. UNSPECIFIED
-// travels out and the screen renders it as an unknown step, which is better than dropping the row — a
-// gap in a history reads as nothing having happened.
-func orderEventKindFromText(text string) sellingv1.OrderEventKind {
-	return orderEventKinds[text]
-}
-
-// recordOrderEvent appends one row to the order's history, with the move's note ("" when it needs none).
-//
-// `at` is passed in rather than taken here so the event and the thing it describes share ONE moment:
-// setOrderStatus already stamped `updated_at`, and a second time.Now() at this line would file a
-// midnight transition on a different day from the row it belongs to (guidelines/event-guideline.md #2).
-func recordOrderEvent(tx *gorm.DB, orderID uint64, kind string, actor uint64, at time.Time, note string) error {
-	return recordOrderEvents(tx, []uint64{orderID}, kind, actor, at, note)
-}
-
-// recordOrderEvents appends the same step to several orders' histories in one INSERT — a batch move.
-func recordOrderEvents(tx *gorm.DB, orderIDs []uint64, kind string, actor uint64, at time.Time, note string) error {
-	events := make([]selling_service_models.OrderEvent, 0, len(orderIDs))
-	for _, orderID := range orderIDs {
-		events = append(events, selling_service_models.OrderEvent{
-			OrderID:     orderID,
-			Kind:        kind,
-			ActorUserID: actor,
-			At:          at,
-			Note:        note,
-		})
+// recordTimelineLogs appends rows to orders' timelines in one INSERT — one row for a placement, one per order for a
+// batch move. The caller stamps CreatedAt, so a row and the change it describes share ONE moment
+// (guidelines/event-guideline.md #2).
+func recordTimelineLogs(tx *gorm.DB, logs []selling_service_models.OrderTimelineLog) error {
+	if len(logs) == 0 {
+		return nil
 	}
 
-	return tx.Create(&events).Error
+	return tx.Create(&logs).Error
+}
+
+// timelineLogToProto maps one timeline row. A status this build does not know travels as UNSPECIFIED, which the
+// screen shows as an unknown step rather than dropping the row — a gap reads as nothing having happened.
+func timelineLogToProto(log *selling_service_models.OrderTimelineLog) *sellingv1.OrderTimelineLog {
+	return &sellingv1.OrderTimelineLog{
+		Id:            log.ID,
+		Status:        orderStatusFromText(log.Status),
+		Note:          log.Note,
+		From:          timelineFroms[log.From],
+		ActorId:       log.ActorID,
+		CreatedAtUnix: log.CreatedAt.Unix(),
+	}
 }
 
 // eventActor is WHO is doing this, for the history — 0 when the caller cannot be identified.
@@ -154,7 +135,15 @@ func eventIdentity(ctx context.Context) *role_basev1.Identity {
 
 func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	items := make([]*sellingv1.OrderItem, 0, len(o.Items))
+
+	// The list query selects the unit count; a detail, which loads the lines, counts them here.
+	itemQuantity := o.ItemQuantity
+
 	for i := range o.Items {
+		if o.ItemQuantity == 0 {
+			itemQuantity += int64(o.Items[i].Quantity)
+		}
+
 		items = append(items, &sellingv1.OrderItem{
 			Id:        o.Items[i].ID,
 			ProductId: o.Items[i].ProductID,
@@ -167,15 +156,9 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 	}
 
 	// Empty on every path but OrderDetail, which is the only one that preloads them.
-	events := make([]*sellingv1.OrderEvent, 0, len(o.Events))
-	for i := range o.Events {
-		events = append(events, &sellingv1.OrderEvent{
-			Id:          o.Events[i].ID,
-			Kind:        orderEventKindFromText(o.Events[i].Kind),
-			ActorUserId: o.Events[i].ActorUserID,
-			AtUnix:      o.Events[i].At.Unix(),
-			Note:        o.Events[i].Note,
-		})
+	timeline := make([]*sellingv1.OrderTimelineLog, 0, len(o.TimelineLogs))
+	for i := range o.TimelineLogs {
+		timeline = append(timeline, timelineLogToProto(&o.TimelineLogs[i]))
 	}
 
 	return &sellingv1.Order{
@@ -200,9 +183,10 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		// The storefront's own id for this order, verbatim in both directions.
 		OrderExternalRefId: o.OrderExternalRefID,
 		Items:              items,
-		Events:             events,
+		TimelineLogs:       timeline,
 		CreatedAtUnix:      o.CreatedAt.Unix(),
 		CreatedByUserId:    o.CreatedByUserID,
+		ItemQuantity:       itemQuantity,
 	}
 }
 

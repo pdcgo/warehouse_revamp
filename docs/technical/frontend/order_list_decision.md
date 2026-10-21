@@ -23,6 +23,7 @@ each old heading there now points here.
 | [one-tab-per-status](#one-tab-per-status) | one tab per decided status plus All, in the status diagram's order; `return_completed` has its own |
 | [shipping-is-cyan-and-picked-is-sky](#shipping-is-cyan-and-picked-is-sky) | picked joins processed in sky; shipping, the handover, gets its own cyan |
 | [pink-follows-retur-diterima-to-return-completed](#pink-follows-retur-diterima-to-return-completed) | return completed is pink, *Retur Diterima*'s colour; return is red |
+| [the-order-import-moves-statuses-only](#the-order-import-moves-statuses-only) | the order list's Import moves statuses only; payouts and withdrawals come from Settlement Imports |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -531,3 +532,34 @@ flowchart LR
 | the near pair | return's red sits next to cancel's rose: the same kind of accepted near-neighbours as processed's sky and shipped's blue. The label carries which |
 | what it amends | the `return` row of [status-colours-are-carried-over-verbatim](#status-colours-are-carried-over-verbatim). The rule there still holds: pink went where its meaning went |
 | ✅ built *(2026-10-21)* | already so in [OrderStatusBadge.tsx](../../../frontend/src/components/badges/OrderStatusBadge.tsx); its comment no longer calls it a proposal |
+
+---
+
+## the-order-import-moves-statuses-only
+
+> Owner, in chat (2026-10-21): *"okay, i follow your recomendation"* — to *"the order list's Import promises to move each order
+> to the marketplace's status AND to record the payout against the order. The payout is what Settlement Imports already does.
+> Keep the payout promise?"*. As recommended: drop it.
+
+**The verdict.** The order list's **Import** reads the marketplace's **order export** and moves statuses — nothing else. Money
+always comes from the marketplace's **statement**, through **Settlement Imports**: each order's payout and fees onto its
+settlement, each wallet → bank withdrawal onto the shop
+([withdrawal-is-a-settlement-type](../../business/settlement/context_decision.md#withdrawal-is-a-settlement-type)). One file,
+one job, and no payout can be posted from two screens.
+
+```mermaid
+flowchart LR
+  OE["the marketplace's order export"] --> OI["Orders - Import"] --> S["each order's status"]
+  ST["the marketplace's statement"] --> SI["Settlement Imports"] --> P["payouts and fees - per order"]
+  SI --> W["withdrawals - per shop"]
+```
+
+**The spec.**
+
+| | |
+| --- | --- |
+| the dialog | keeps *"each order it names is moved to the status the marketplace reports"*. The payout line is gone, and in its place: *payouts and withdrawals are not read from this file — import the statement on Settlement Imports* |
+| why not both | the importer refuses a repeated row only by the row's key from the statement. A payout read from a different file would carry a different key and be posted twice |
+| the `withdrawal` pending entry | **stays** — it no longer explains the dialog, but it still explains a completed order's **Edit Withdrawal**: settlement records withdrawals per shop, so an order still has no withdrawal figure ([finish-order-on-a-return-waits-for-the-withdrawal](#finish-order-on-a-return-waits-for-the-withdrawal) waits on the same figure). The strip stays at 12 |
+| the status half | still not built, and which marketplace status maps to which of ours is not decided |
+| ✅ built *(2026-10-21)* | the dialog line in [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx). The stale reasons found with it — the list's Export and Withdrawal, the order detail's Withdrawal — now say what is true |

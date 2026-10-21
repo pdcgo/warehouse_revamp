@@ -44,7 +44,7 @@ export function WarehouseOrderDetailPage() {
   // THE PEOPLE ON THE TIMELINE. The ids come from the EVENTS (00011) — the order row itself records no
   // actor at all, which is precisely why the history had to become a table before this tab could exist.
   // Deduplicated into one lookup: the same person often takes several steps.
-  const actors = useActors(order?.events.map((event) => event.actorUserId) ?? []);
+  const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // Names an actor the lookup could not resolve. 0 is "not recorded" — every event backfilled by
   // 00011 is in that state — and gets nothing, because inventing a name there would be worse than the

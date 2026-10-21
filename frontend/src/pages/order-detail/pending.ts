@@ -72,9 +72,9 @@ const PARTS: PendingPart<PendingId>[] = [
   // settlement itu, jadi aku masih bingung di sini"*.
   //
   // Withdrawal in the owner's sense is a WALLET → BANK movement: a shop-level cash event that names no
-  // order. Settlement's ledger is the opposite — every entry there is required to name one. So the two
-  // are not the same thing, and the columns asked for here (tgl import, tgl wd, sumber, nilai, negara
-  // lain, deskripsi) have no home in either today. See `docs/technical/order/design_clarify.md`.
+  // order. Settlement Imports now records it — on the SHOP (withdrawal-is-a-settlement-type) — and brings the
+  // order's payouts into its ledger, but nothing gives one order a withdrawal figure, so the columns asked
+  // for here (tgl import, tgl wd, sumber, nilai, negara lain, deskripsi) still have no per-order source.
   { id: "withdrawal", kind: "missing" },
 ];
 

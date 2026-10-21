@@ -49,7 +49,7 @@ sequenceDiagram
     autonumber
     participant C as caller - warehouse or customer service
     participant S as OrderStatusChange
-    participant DB as orders, order_events
+    participant DB as orders, order_timeline_logs
 
     C->>S: team_id, order_ids 1..200, to, note
     Note over S,DB: ONE transaction for the batch
@@ -89,12 +89,14 @@ the shop whose order they are packing, so the warehouse's moves carry the **ware
 `use_scope` field. Another team's order reads as refused-not-ours, never PermissionDenied, so a crew
 cannot discover that an id belongs to someone else's building.
 
-### Every move leaves a step — the order's history (`order_events`)
+### Every move leaves a step — the order's timeline (`order_timeline_logs`)
 
 The lifecycle above is drawn as states, but a state is a fact about *now*. Nothing in `orders` could
 say **when** an order was confirmed, **how long** it then sat before the crew picked it, or **who** did
 either — the row carries `status`, `created_at` and `updated_at`, and no actor at all. So each
-transition appends a row to `order_events`, and the detail page's **Timeline** tab reads those.
+transition appends a row to `order_timeline_logs`, saying which side made it
+([order-timeline-logs-replaces-order-events](../../business/order/context_decision.md#order-timeline-logs-replaces-order-events)),
+and the detail page's **Timeline** tab reads those.
 
 **The append happens at the single choke point**, not in the handlers:
 
@@ -102,32 +104,31 @@ transition appends a row to `order_events`, and the detail page's **Timeline** t
 sequenceDiagram
     autonumber
     participant H as OrderCancel (selling) / OrderStatusChange (either end)
-    participant S as setOrderStatus
+    participant S as setOrdersStatus
     participant O as orders
-    participant E as order_events
+    participant E as order_timeline_logs
 
-    H->>S: (tx, order, newStatus, eventActor(ctx), note)
+    H->>S: (tx, the orders and the side each move is from, newStatus, eventActor(ctx), note)
     Note over S: one now := time.Now() for everything below
-    S->>O: UPDATE status, updated_at
-    S->>E: INSERT kind=newStatus, actor, at=now, note
+    S->>O: UPDATE status, updated_at WHERE id IN the batch
+    S->>E: INSERT one row per order - status=newStatus, from, actor, note, created_at=now
     S-->>H: order updated in memory too
 ```
 
-- **One clock, one moment.** The status stamp, the event's `at` and the domain event a caller may
+- **One clock, one moment.** The status stamp, the row's `created_at` and the domain event a caller may
   publish afterwards all read the same `now`. Two clock reads for one fact would file a midnight
   transition on different days depending on who looked.
-- **`placeOrder` appends its own `pending` step**, so an order typed into the form and one promoted from
-  a draft start the same history — the two doors cannot differ.
+- **`placeOrder` appends its own `pending` row, from `selling`**, so an order typed into the form and one
+  promoted from a draft start the same timeline — the two doors cannot differ.
 - **The actor is `eventActor(ctx)` — 0 when unidentifiable, and that never fails the call.** This is a
   deliberate contrast with `draftAuthor`, which refuses the request outright: a draft is personal, so an
   unidentifiable caller has no correct answer to receive, whereas an event is a byproduct and the
   record-keeping must not be able to veto the work.
-- **`OrderDetail` is the only RPC that returns them**, preloaded ordered by `at` — never by `id`, since
-  the 00011 backfill inserted every order's `placed` row before any later one. `OrderList` stays a
-  summary: a page of 20 orders carrying 20 whole lifecycles is a list that grows with history.
+- **`OrderDetail` is the only RPC that returns them** (`timeline_logs`), preloaded by `created_at`, then `id`.
+  `OrderList` stays a summary: a page of 20 orders carrying 20 whole lifecycles is a list that grows with history.
 
-See [database-schema.md](../../database-schema.md) for the table, the backfill's honest two-event
-ceiling, and why the status column is kept beside the events rather than replaced by them.
+See [database-schema.md](../../database-schema.md) for the table, and why the status column is kept beside the
+timeline rather than replaced by it.
 
 ### Picking does NOT move stock
 
@@ -551,3 +552,41 @@ cancelled orders and other shops' included. A ref nothing carries is absent. The
 counts: the order in its own shop — live first — and a ref found only in another shop fails the file
 ([a-file-with-another-shops-orders-is-refused](../../business/settlement/settlement_importer_decision.md#a-file-with-another-shops-orders-is-refused)).
 It reads `orders_team_external_ref_idx` (`00014`); up to 2,000 refs a call.
+
+## The list as a file — `OrderExport`
+
+[one-export-is-the-list-as-a-file](../../technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file):
+one server stream for both lists. It takes the list's own filter and tab, so the file holds exactly the rows the list
+holds, every page of them, and it writes them in the reader's columns as .xlsx.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as a list's Export - seller or warehouse
+    participant S as OrderExport
+    participant DB as orders, order_items, shops
+    participant T as team_service and user_service
+    participant D as document_service
+
+    C->>S: team_id, the list's filter and tab, the view, the ticked ids if any
+    S->>DB: COUNT through scopedOrders
+    S-->>C: exporting orders - 0 of N
+    loop 200 rows at a time, newest first, keyset on id
+        S->>DB: the page, with each row's item_quantity, and its shops
+        S->>T: TeamByIds and UserByIDs - the sellers' and creators' names, as the caller
+        S->>S: write the rows - ids and phones as text
+        S-->>C: rows written - done of N
+    end
+    S->>D: RequestUpload ORDER_EXPORT, PUT, ConfirmUpload, GetDownloadUrl - as the caller
+    S-->>C: the file is ready - the expiring link and the filename
+```
+
+| | |
+| --- | --- |
+| the rows | `scopedOrders` with the list's filter and status — the same set as `OrderList` and `OrderStat`. With `order_ids` (the warehouse bar's ticked rows, [the-bulk-actions-are-always-on-screen](../../technical/frontend/warehouse_order_list_decision.md#the-bulk-actions-are-always-on-screen)), only those, still inside the scope |
+| the columns | **seller**: order id, marketplace ref, shop, marketplace, status, created, created by, customer, phone, courier, qty, goods cost, marketplace total. **Warehouse**: order id, created, created by, seller, shop, marketplace, marketplace ref, courier, qty, status |
+| only real data | the tracking number, the marketplace date and the deadline are invented on screen behind a ⚠. A spreadsheet cannot carry the mark, so they are left out until their fields exist |
+| text cells | ids, refs and phone numbers are strings, so `0812…` keeps its 0 and a long marketplace id never becomes `5.78E+17`. A money figure of 0 means "not recorded" and is left empty |
+| the clock | WIB (UTC+7), the people reading it keep that time |
+| as the caller | the names and the upload go through clients that forward the caller's token (`san_auth.ForwardBearer`): the file is stored under the caller's team, as them, as a private `order_export` document behind an expiring signed link |
+| the stream | the guideline's long-task shape ([code-implementation-guideline.md](../../../guidelines/code-implementation-guideline.md)): every step a slog line sent as `message`, with `done` and `total` on each, the link on the last |

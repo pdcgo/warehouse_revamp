@@ -133,7 +133,7 @@ export const MarketplaceTotalDiffersFromOurs: Story = {
 /**
  * THE HISTORY TAB, WITH THE PEOPLE RESOLVED.
  *
- * The actor ids come from the EVENTS — the order row records no actor at all — and are resolved
+ * The actor ids come from the TIMELINE — the order row records no actor at all — and are resolved
  * through a separate `UserByIDs` read. ⚠ `fetchActors` SWALLOWS a failure there, so an unstubbed
  * lookup does not throw: it quietly degrades every step to "User #61". This story is what notices.
  */
@@ -147,13 +147,18 @@ export const Timeline: Story = {
     await waitFor(async () => {
       await expect(canvasElement).toHaveTextContent(ani.name);
     });
+
+    // EACH ROW SAYS WHICH SIDE WROTE IT (order-timeline-logs-replaces-order-events): the seller placed the order,
+    // the warehouse confirmed it.
+    await expect(canvas.getByTestId("order-timeline-pending")).toHaveTextContent("Seller");
+    await expect(canvas.getByTestId("order-timeline-processed")).toHaveTextContent("Warehouse");
   },
 };
 
 /**
  * ACTOR 0 IS "NOT RECORDED", NOT "USER ZERO".
  *
- * Every event backfilled by the history migration is in that state. The step must still SHOW — it
+ * A row whose writer was not identified is in that state. The step must still SHOW — it
  * happened — while the page stays silent about who took it. Inventing a name there would be worse
  * than the gap, and hiding the step would be worse still.
  */

@@ -22,7 +22,7 @@ func timeline(
 	svc *selling_v1.Service,
 	ctx context.Context,
 	teamID, orderID uint64,
-) []*sellingv1.OrderEvent {
+) []*sellingv1.OrderTimelineLog {
 	t.Helper()
 
 	resp, err := svc.OrderDetail(ctx, connect.NewRequest(&sellingv1.OrderDetailRequest{
@@ -32,7 +32,7 @@ func timeline(
 		t.Fatalf("OrderDetail: %v", err)
 	}
 
-	return resp.Msg.GetOrder().GetEvents()
+	return resp.Msg.GetOrder().GetTimelineLogs()
 }
 
 // A fresh order has exactly ONE step, and it is attributed. The placement event is written inside the
@@ -49,14 +49,14 @@ func TestOrderTimeline_PlacementIsTheFirstStep(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("a new order has %d events, want exactly 1 (placed): %+v", len(events), events)
 	}
-	if events[0].GetKind() != sellingv1.OrderEventKind_ORDER_EVENT_KIND_PENDING {
-		t.Fatalf("first event kind = %v, want PENDING", events[0].GetKind())
+	if events[0].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING {
+		t.Fatalf("first event kind = %v, want PENDING", events[0].GetStatus())
 	}
-	if events[0].GetActorUserId() != 41 {
-		t.Fatalf("placed by user %d, want 41", events[0].GetActorUserId())
+	if events[0].GetActorId() != 41 {
+		t.Fatalf("placed by user %d, want 41", events[0].GetActorId())
 	}
 	// The event's moment is the ORDER's moment, not a second clock read at the insert.
-	if events[0].GetAtUnix() == 0 {
+	if events[0].GetCreatedAtUnix() == 0 {
 		t.Fatal("placed event has no timestamp")
 	}
 }
@@ -103,12 +103,12 @@ func TestOrderTimeline_EveryTransitionLeavesAStep(t *testing.T) {
 
 	events := timeline(t, svc, seller, 2, orderID)
 
-	wantKinds := []sellingv1.OrderEventKind{
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PENDING,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PROCESSED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPING,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPED,
+	wantKinds := []sellingv1.OrderStatus{
+		sellingv1.OrderStatus_ORDER_STATUS_PENDING,
+		sellingv1.OrderStatus_ORDER_STATUS_PROCESSED,
+		sellingv1.OrderStatus_ORDER_STATUS_PICKED,
+		sellingv1.OrderStatus_ORDER_STATUS_SHIPPING,
+		sellingv1.OrderStatus_ORDER_STATUS_SHIPPED,
 	}
 
 	if len(events) != len(wantKinds) {
@@ -116,8 +116,8 @@ func TestOrderTimeline_EveryTransitionLeavesAStep(t *testing.T) {
 	}
 
 	for i, want := range wantKinds {
-		if events[i].GetKind() != want {
-			t.Fatalf("event %d = %v, want %v", i, events[i].GetKind(), want)
+		if events[i].GetStatus() != want {
+			t.Fatalf("event %d = %v, want %v", i, events[i].GetStatus(), want)
 		}
 	}
 
@@ -127,16 +127,28 @@ func TestOrderTimeline_EveryTransitionLeavesAStep(t *testing.T) {
 	wantActors := []uint64{7, 9, 9, 9, 7}
 
 	for i, want := range wantActors {
-		if events[i].GetActorUserId() != want {
+		if events[i].GetActorId() != want {
 			t.Fatalf("event %d (%v) by user %d, want %d",
-				i, events[i].GetKind(), events[i].GetActorUserId(), want)
+				i, events[i].GetStatus(), events[i].GetActorId(), want)
+		}
+	}
+
+	// And FROM WHICH SIDE (order-timeline-logs-replaces-order-events): the seller placed it and saw it shipped,
+	// the warehouse confirmed, picked and handed it over.
+	selling := sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_SELLING
+	warehouse := sellingv1.OrderTimelineFrom_ORDER_TIMELINE_FROM_WAREHOUSE
+	wantFrom := []sellingv1.OrderTimelineFrom{selling, warehouse, warehouse, warehouse, selling}
+
+	for i, want := range wantFrom {
+		if events[i].GetFrom() != want {
+			t.Fatalf("event %d (%v) from %v, want %v", i, events[i].GetStatus(), events[i].GetFrom(), want)
 		}
 	}
 
 	// Non-decreasing in time — the preload orders by `at`, and a timeline that ran backwards would
 	// render the steps out of sequence while every individual step looked right.
 	for i := 1; i < len(events); i++ {
-		if events[i].GetAtUnix() < events[i-1].GetAtUnix() {
+		if events[i].GetCreatedAtUnix() < events[i-1].GetCreatedAtUnix() {
 			t.Fatalf("event %d is older than the one before it", i)
 		}
 	}
@@ -163,11 +175,11 @@ func TestOrderTimeline_CancelIsRecorded(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("%d events after cancel, want 2 (placed, cancelled): %+v", len(events), events)
 	}
-	if events[1].GetKind() != sellingv1.OrderEventKind_ORDER_EVENT_KIND_CANCEL {
-		t.Fatalf("last event = %v, want CANCEL", events[1].GetKind())
+	if events[1].GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_CANCEL {
+		t.Fatalf("last event = %v, want CANCEL", events[1].GetStatus())
 	}
-	if events[1].GetActorUserId() != 13 {
-		t.Fatalf("cancelled by user %d, want 13", events[1].GetActorUserId())
+	if events[1].GetActorId() != 13 {
+		t.Fatalf("cancelled by user %d, want 13", events[1].GetActorId())
 	}
 }
 
@@ -188,7 +200,7 @@ func TestOrderTimeline_UnknownActorIsRecordedAsZero(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("%d events, want 1: %+v", len(events), events)
 	}
-	if events[0].GetActorUserId() != 0 {
-		t.Fatalf("actor = %d, want 0 (not recorded)", events[0].GetActorUserId())
+	if events[0].GetActorId() != 0 {
+		t.Fatalf("actor = %d, want 0 (not recorded)", events[0].GetActorId())
 	}
 }

@@ -269,7 +269,7 @@ erDiagram
     shops ||--o{ shop_users : "shop_id"
     shops ||--o{ orders : "shop_id"
     orders ||--o{ order_items : "order_id"
-    orders ||--o{ order_events : "order_id"
+    orders ||--o{ order_timeline_logs : "order_id"
     order_drafts ||--o{ order_draft_items : "draft_id"
     team_return_configurations
 
@@ -338,14 +338,14 @@ erDiagram
         timestamptz created_at
     }
 
-    order_events {
-        bigserial   id            PK
-        bigint      order_id      FK "-> orders(id), ON DELETE CASCADE"
-        text        kind          "OrderEventKind as text — the status moved into (00015); no CHECK"
-        bigint      actor_user_id "who did it — opaque user_service id, no FK; 0 = not recorded"
-        timestamptz at            "WHEN IT HAPPENED — not when the row was written"
-        text        note          "why, when the move needed a reason (00015) — required back to pending, '' otherwise"
-        timestamptz created_at
+    order_timeline_logs {
+        bigserial   id         PK
+        bigint      order_id   FK "-> orders(id), ON DELETE CASCADE"
+        text        status     "OrderStatus as text, the status moved into; '' = a note only (00017)"
+        text        note       "why a move needed a reason, or the note itself"
+        text        from       "warehouse or selling — the side that wrote it; quoted, an SQL keyword"
+        bigint      actor_id   "who wrote it — opaque user_service id, no FK; 0 = not recorded"
+        timestamptz created_at "when it happened — the row is written at that moment"
     }
 
     order_drafts {
@@ -421,31 +421,27 @@ erDiagram
   order_external_ref_id <> ''`, for `OrderByExternalRefs`: the settlement importer resolves a whole
   statement's refs to orders in one query. **Not unique, by decision** — two live orders may share a ref, and the
   form warns instead ([a-duplicate-ref-is-warned-not-refused](business/order/context_decision.md#a-duplicate-ref-is-warned-not-refused)).
-- **`order_events`** — the order's own history, one **append-only** row per thing that happened to it,
-  read by the Timeline tab of the order detail. Nothing here is ever updated or deleted: an event is a
-  claim that something happened at a moment, and a mutable history is not a history.
-  - **The events and `orders.status` are BOTH kept, and neither derives the other.** The column says
-    where the order is NOW — which is what the list filters, sorts and counts on, and what a child
-    table cannot do cheaply — while the events say what happened, when, and *by whom*. The column has
-    never carried a person; the row is the only thing that can.
-  - **Written at ONE choke point.** Every transition passes through `setOrderStatus`, which stamps the
-    status and appends the event under the same timestamp, inside the same transaction. Placement
-    appends its own in `placeOrder`, so both doors into `orders` (the form and a promoted draft) open
-    the same history. A handler that had to remember the line would eventually not, and the gap is
-    invisible until somebody opens the order weeks later.
-  - **`actor_user_id = 0` means "not recorded"**, never "nobody" — every row the 00011 backfill wrote
-    is in that state, because the orders table never captured who did anything. The timeline renders
-    such a step with its date and no person rather than guessing.
-  - **A short history is honest, not missing data.** The backfill could write at most two events per
-    old order — `placed` from `created_at`, and its current status from `updated_at` — so an order that
-    shipped last month shows two steps, not six. The steps in between were never written down, and
-    inventing plausible ones would make every step untrustworthy rather than just those.
-  - **No `UNIQUE (order_id, kind)`** — and kinds DO repeat now: a warehouse hands an order back to
-    `pending` and confirms it again, so `pending` and `processed` can each appear twice on one history.
-  - **`note` (00015)** — why, when a move needed a reason. A move back to `pending` must carry one
-    (one-status-change-for-every-plain-move); every other row, and every row written before, is `''`.
-  - **00015 moved every kind with the statuses**, by the same mapping: `placed → pending`,
-    `confirmed`/`picking → processed`, `packed → picked`, `shipped → shipping`, `cancelled → cancel`.
+- **`order_timeline_logs`** (00017) — the order's timeline, the owner's own table
+  ([order-timeline-logs-replaces-order-events](business/order/context_decision.md#order-timeline-logs-replaces-order-events)):
+  one **append-only** row per status change, or per **note** written while working the order (*no goods on Rak A*),
+  with who wrote it and **from which side**. Read by the Timeline tab of the order detail.
+  - **It replaced `order_events`, which 00017 DROPPED, not migrated** — the owner's decision carries nothing over,
+    so an order placed before 00017 starts its timeline empty.
+  - **The timeline and `orders.status` are BOTH kept, and neither derives the other.** The column says where the
+    order is NOW — what the list filters, sorts and counts on — while the timeline says what happened, when, by whom
+    and from which side.
+  - **Written at ONE choke point.** Every move passes through `setOrdersStatus`, which stamps the status and appends
+    the rows under one timestamp, in the same transaction; a batch move is one multi-row INSERT
+    ([a-batch-move-saves-in-one-transaction](technical/frontend/warehouse_order_list_decision.md#a-batch-move-saves-in-one-transaction)).
+    Placement appends its own `pending` row in `placeOrder`, from `selling`.
+  - **`from`** is the end of the order that made the move — `selling` for placement and cancel, the warehouse's moves
+    `warehouse`. A team that is both ends, making a move either may make, writes `warehouse`. `from` is an SQL
+    keyword, so a hand-written query quotes it.
+  - **`CHECK (status <> '' OR note <> '')`** — a row is a move, a note, or both; never nothing.
+  - **`actor_id = 0` means "not recorded"**, never "nobody".
+  - **Statuses repeat**: a warehouse hands an order back to `pending` and confirms it again, so `pending` and
+    `processed` can each appear twice. No unique key on `(order_id, status)`.
+  - ⚠ **Nothing writes a note-only row yet** — the table and the screen take one; no RPC adds one.
 - **An order freezes what its goods COST** (#74) — `order_items.unit_cost` per line, and `orders.cogs`
   as their total. `unit_price` is what the buyer pays; `unit_cost` is what we paid, so
   **`margin = total − cogs − shipping_cost`** is computable from the order alone.
@@ -569,7 +565,7 @@ erDiagram
     documents {
         text        id            PK "uuid"
         bigint      team_id       "owning team, opaque cross-service id, no FK"
-        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement (CHECK)"
+        text        resource_type "general | profile_picture | product_image | order_receipt | payment_proof | settlement_statement | order_export (CHECK)"
         text        object_key    "storage path, incoming then assets on confirm"
         text        mime_type
         bigint      size_bytes
@@ -601,7 +597,9 @@ erDiagram
   signed URL rather than a stable public one. So is `payment_proof` (a-payment-must-carry-proof): a
   transfer slip names an account number. And `settlement_statement` (`00006`) — the .xlsx the settlement
   importer stores under the hash of its bytes before it reads it: it lists every order and what the
-  platform took. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
+  platform took. And `order_export` (`00008`) — an order list exported as .xlsx
+  ([one-export-is-the-list-as-a-file](technical/frontend/warehouse_order_list_decision.md#one-export-is-the-list-as-a-file)),
+  stored as the person who exported it: it names buyers and their phone numbers. A partial index on `created_by_id` WHERE `resource_type = 'profile_picture'` (`00007`) serves
   `ProfilePictureErase` ([erase-deletes-the-photo-file](business/user/context_decision.md#erase-deletes-the-photo-file)),
   which deletes every photo one person uploaded — removing their share rows first, deliberately, since `RESTRICT`
   would otherwise refuse it.

@@ -40,6 +40,7 @@ import { ShippingBadge } from "../../components/badges/ShippingBadge";
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { useTeam } from "../../features/team/TeamContext";
 import { useOrders, useOrderStat } from "../../features/orders/queries";
+import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
 import { summariseOrderStat } from "../../features/orders/stat";
 import { useTeams } from "../../features/teams/queries";
@@ -53,12 +54,8 @@ import {
 } from "../../features/orders/OrderRowCells";
 import { deadlineUrgency, hoursFromNow, mockDeadline } from "../../features/orders/deadlineMock";
 import { useTypists } from "../../features/orders/typists";
-import {
-  mockMarketplaceCreated,
-  mockQuantity,
-  mockReceiptCode,
-  mockSellerShop,
-} from "../../features/orders/rowMock";
+import { mockMarketplaceCreated, mockReceiptCode } from "../../features/orders/rowMock";
+import { NO_SHOPS, useShopsByIds, type ShopNames } from "../../features/shops/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
@@ -139,10 +136,8 @@ export function PickQueueNextPage() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [range, setRange] = useState<DateRange>(ALL_DATES);
-  // ⚠ THE THREE BELOW REACH NOTHING YET — `OrderListFilter` takes a status, a search, a shop and a date
-  // window, and no seller team, marketplace or courier (decided: the-filter-gains-seller-marketplace-and-courier,
-  // not built). They are on screen so the strip can be judged, each with its ⚠ (`teamFilter`,
-  // `marketplaceFilter`, `courierFilter`). The shipment-state switch is gone: the status tabs are it.
+  // The crew's three filters — seller team, marketplace, courier (the-filter-gains-seller-marketplace-and-courier).
+  // The shipment-state switch is gone: the status tabs are it.
   const [sellerId, setSellerId] = useState(0n);
   const [marketplace, setMarketplace] = useState<Marketplace>(Marketplace.UNSPECIFIED);
   const [courier, setCourier] = useState("");
@@ -161,8 +156,16 @@ export function PickQueueNextPage() {
   const debouncedSearch = useDebounced(search.trim());
   const filters: OrderFilters = useMemo(() => {
     const { fromUnix, toUnix } = resolveRange(range);
-    return { search: debouncedSearch, shopId: 0n, fromUnix, toUnix };
-  }, [debouncedSearch, range]);
+    return {
+      search: debouncedSearch,
+      shopId: 0n,
+      fromUnix,
+      toUnix,
+      sellerTeamId: sellerId,
+      marketplace,
+      shippingCode: courier,
+    };
+  }, [debouncedSearch, range, sellerId, marketplace, courier]);
   const filterCount = [
     search.trim() !== "",
     !isAllDates(range),
@@ -179,6 +182,8 @@ export function PickQueueNextPage() {
   const stat = summariseOrderStat(useOrderStat({ teamId: warehouseId, filters }).data);
   const teams = useTeams({ page: 1, pageSize: 200, reference: true });
   const teamName = (id: bigint) => teams.data?.teams.find((team) => team.id === id)?.name ?? "";
+  // The page's shops, named across teams in one read (the-warehouse-row-fills-from-shop-and-user-by-ids).
+  const shopNames = useShopsByIds({ shopIds: (query.data?.orders ?? []).map((order) => order.shopId) }).data ?? NO_SHOPS;
 
   const orders = query.data?.orders ?? [];
   // Who typed each order in — one UserByIDs for the page.
@@ -196,6 +201,7 @@ export function PickQueueNextPage() {
 
   const { move } = useStepMove(warehouseId);
   const selectedOrders = orders.filter((order) => selected.has(String(order.id)));
+  const exporter = useOrderExport();
   const allOnPageSelected = orders.length > 0 && orders.every((order) => selected.has(String(order.id)));
 
   function toggle(id: bigint) {
@@ -266,7 +272,7 @@ export function PickQueueNextPage() {
     );
   }
 
-  function sayPending(id: "printMerge" | "exportFile") {
+  function sayPending(id: "printMerge") {
     toaster.create({ type: "info", title: t(`warehouseOrders.pending.${id}.reason`) });
   }
 
@@ -341,44 +347,29 @@ export function PickQueueNextPage() {
 
         {/* WHOSE ORDER — the selling team. A search select: sellers grow with the business. */}
         <FilterField w="15rem" testId="warehouse-orders-team-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <TeamSelect
-                teamType={TeamType.SELLING}
-                value={sellerId > 0n ? sellerId : undefined}
-                placeholder={t("warehouseOrders.filter.team")}
-                onChange={(id) => refilter(() => setSellerId(id))}
-              />
-            </Box>
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="teamFilter" />
-          </Flex>
+          <TeamSelect
+            teamType={TeamType.SELLING}
+            value={sellerId > 0n ? sellerId : undefined}
+            placeholder={t("warehouseOrders.filter.team")}
+            onChange={(id) => refilter(() => setSellerId(id))}
+          />
         </FilterField>
 
         <FilterField w="15rem" testId="warehouse-orders-marketplace-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <MarketplaceSelect
-                value={marketplace}
-                placeholder={t("orders.marketplaceAll")}
-                onChange={(m) => refilter(() => setMarketplace(m))}
-              />
-            </Box>
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="marketplaceFilter" />
-          </Flex>
+          <MarketplaceSelect
+            value={marketplace}
+            placeholder={t("orders.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
         </FilterField>
 
         {/* THE COURIER — what parcels are grouped by before a pickup. */}
         <FilterField w="15rem" testId="warehouse-orders-courier-filter">
-          <Flex align="center" gap="1">
-            <Box flex="1" minW="0">
-              <ShippingSelect
-                value={courier}
-                placeholder={t("warehouseOrders.filter.courier")}
-                onChange={(code) => refilter(() => setCourier(code))}
-              />
-            </Box>
-            <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="courierFilter" />
-          </Flex>
+          <ShippingSelect
+            value={courier}
+            placeholder={t("warehouseOrders.filter.courier")}
+            onChange={(code) => refilter(() => setCourier(code))}
+          />
         </FilterField>
 
       </FilterBar>
@@ -431,7 +422,23 @@ export function PickQueueNextPage() {
               onMove={(to) => requestMove(selectedOrders, to)}
               onPrint={() => sayPending("printMerge")}
               onHandover={handOverSelected}
-              onExport={() => sayPending("exportFile")}
+              exportLabel={
+                exporter.progress
+                  ? t("orders.export.running", { done: exporter.progress.done, total: exporter.progress.total })
+                  : undefined
+              }
+              onExport={() =>
+                warehouseId !== undefined &&
+                void exporter.start({
+                  teamId: warehouseId,
+                  filters,
+                  status,
+                  view: OrderExportView.WAREHOUSE,
+                  // The bar's selection when there is one, else every row the filters show
+                  // (the-bulk-actions-are-always-on-screen).
+                  orderIds: selectedOrders.map((order) => order.id),
+                })
+              }
               onClear={() => setSelected(new Set())}
             />
 
@@ -446,6 +453,7 @@ export function PickQueueNextPage() {
                         key={String(order.id)}
                         order={order}
                         team={teamName(order.teamId)}
+                        shops={shopNames}
                         typist={typistOf(order.createdByUserId)}
                         selected={selected.has(String(order.id))}
                         onToggle={() => toggle(order.id)}
@@ -479,7 +487,6 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader>
                             <Flex align="center" gap="1">
                               {t("warehouseOrders.col.shop")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="shop" />
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader>
@@ -491,7 +498,6 @@ export function PickQueueNextPage() {
                           <Table.ColumnHeader textAlign="end">
                             <Flex align="center" gap="1" justify="flex-end">
                               {t("orders.qty")}
-                              <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="quantity" />
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
@@ -508,7 +514,7 @@ export function PickQueueNextPage() {
                       </Table.Header>
                       <Table.Body>
                         {orders.map((order) => {
-                          const facts = rowFacts(order, teamName(order.teamId));
+                          const facts = rowFacts(order, shopNames);
 
                           return (
                             <Table.Row
@@ -610,15 +616,17 @@ export function PickQueueNextPage() {
   );
 }
 
-/** The row's invented facts, in one place — each one carries a mark on its column. */
-function rowFacts(order: Order, team: string) {
+/** The row's facts in one place. The invented ones (resi, MP date, deadline) carry a mark on their column. */
+function rowFacts(order: Order, shops: ShopNames) {
   const back = mockMarketplaceCreated(order.id, order.orderExternalRefId);
   const deadline = mockDeadline(order.id, order.status);
 
   return {
-    shop: mockSellerShop(order.id, order.orderExternalRefId, team),
+    // ShopByIds, one read per page (the-warehouse-row-fills-from-shop-and-user-by-ids).
+    shop: shops.get(order.shopId.toString()),
     resi: mockReceiptCode(order.id, order.status),
-    quantity: mockQuantity(order.id),
+    // Summed by the list query — the lines themselves never travel with a list.
+    quantity: Number(order.itemQuantity),
     mpCreated: back === undefined ? undefined : order.createdAtUnix - back,
     deadline,
     overdue: deadline !== undefined && deadlineUrgency(hoursFromNow(deadline)) === "overdue",
@@ -632,6 +640,7 @@ function rowFacts(order: Order, team: string) {
 function OrderBlock({
   order,
   team,
+  shops,
   typist,
   selected,
   onToggle,
@@ -640,6 +649,8 @@ function OrderBlock({
 }: {
   order: Order;
   team: string;
+  /** The page's shops by id, from ShopByIds. */
+  shops: ShopNames;
   /** Who typed it in; "" when that was never recorded. */
   typist: string;
   selected: boolean;
@@ -648,8 +659,8 @@ function OrderBlock({
   actions: ReactNode;
 }) {
   const { t } = useTranslation();
-  const facts = rowFacts(order, team);
-  const mark = (id: "shop" | "receiptCode" | "quantity" | "mpDate" | "deadline") => (
+  const facts = rowFacts(order, shops);
+  const mark = (id: "receiptCode" | "mpDate" | "deadline") => (
     <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id={id} />
   );
 
@@ -683,7 +694,6 @@ function OrderBlock({
             <Text fontSize="xs" color="fg.muted">
               {t("orders.qty")} {facts.quantity}
             </Text>
-            {mark("quantity")}
           </Flex>
           <Box onClick={(e) => e.stopPropagation()}>{actions}</Box>
         </Flex>
@@ -692,7 +702,6 @@ function OrderBlock({
           <Text fontSize="sm" lineClamp={1}>
             {facts.shop?.name ?? "—"}
           </Text>
-          {mark("shop")}
           {order.orderExternalRefId && <CopyText value={order.orderExternalRefId} fontSize="xs" />}
         </Flex>
         <Flex align="center" gap="1.5" wrap="wrap">
@@ -756,6 +765,7 @@ function BulkBar({
   onPrint,
   onHandover,
   onExport,
+  exportLabel,
   onClear,
 }: {
   count: number;
@@ -764,6 +774,8 @@ function BulkBar({
   onPrint: () => void;
   onHandover: () => void;
   onExport: () => void;
+  /** "Exporting 200 / 456" while an export runs; undefined otherwise. */
+  exportLabel?: string;
   onClear: () => void;
 }) {
   const { t } = useTranslation();
@@ -827,10 +839,17 @@ function BulkBar({
       </Button>
 
       {/* Never off: the selection when there is one, else every order the filters show. */}
-      <Button size="xs" variant="outline" colorPalette="gray" data-testid="pick-queue-bulk-export" onClick={onExport}>
+      <Button
+        size="xs"
+        variant="outline"
+        colorPalette="gray"
+        data-testid="pick-queue-bulk-export"
+        loading={exportLabel !== undefined}
+        loadingText={exportLabel}
+        onClick={onExport}
+      >
         <Icon as={Download} boxSize="4" />
         {count > 0 ? t("warehouseOrders.bulk.exportSelected", { count }) : t("warehouseOrders.bulk.exportAll")}
-        <NotImplemented list={WAREHOUSE_ORDERS_PENDING} id="exportFile" />
       </Button>
 
       <Spacer />

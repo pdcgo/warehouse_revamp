@@ -2672,6 +2672,7 @@ flowchart LR
 | `order_events` | dropped — nothing is carried over |
 | picking, packed | not statuses: on the timeline only when someone writes them as a note |
 | the build | ⚠ `order_events` still backs the Timeline tab (selling_service `00011`) — replaced when this is built |
+| ✅ built *(2026-10-21)* | selling `00017` creates `order_timeline_logs` and drops `order_events`; every move and the placement write a row with its `from` side; `OrderDetail` returns `timeline_logs`, and the Timeline tab and the seller's rail show the side. ⚠ The status-move build earlier the same day had extended `order_events` instead (00015's `note` column) — found and corrected by 00017. Nothing writes a note-only row yet |
 
 🔄 *(2026-10-16)* **Amended by [picked-and-shipping-are-order-statuses](#picked-and-shipping-are-order-statuses)**: `picked` is a
 status now, so its row is a status change, not a note. Packing is still a note when someone writes it.

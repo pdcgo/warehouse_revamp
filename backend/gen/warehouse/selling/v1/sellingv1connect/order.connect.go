@@ -44,6 +44,9 @@ const (
 	// OrderServiceOrderCancelProcedure is the fully-qualified name of the OrderService's OrderCancel
 	// RPC.
 	OrderServiceOrderCancelProcedure = "/warehouse.selling.v1.OrderService/OrderCancel"
+	// OrderServiceOrderExportProcedure is the fully-qualified name of the OrderService's OrderExport
+	// RPC.
+	OrderServiceOrderExportProcedure = "/warehouse.selling.v1.OrderService/OrderExport"
 	// OrderServiceOrderStatusChangeProcedure is the fully-qualified name of the OrderService's
 	// OrderStatusChange RPC.
 	OrderServiceOrderStatusChangeProcedure = "/warehouse.selling.v1.OrderService/OrderStatusChange"
@@ -81,6 +84,9 @@ type OrderServiceClient interface {
 	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
 	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	// THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
+	// .xlsx. A server stream — progress, then an expiring link.
+	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest]) (*connect.ServerStreamForClient[v1.OrderExportResponse], error)
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
@@ -150,6 +156,12 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(orderServiceMethods.ByName("OrderCancel")),
 			connect.WithClientOptions(opts...),
 		),
+		orderExport: connect.NewClient[v1.OrderExportRequest, v1.OrderExportResponse](
+			httpClient,
+			baseURL+OrderServiceOrderExportProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderExport")),
+			connect.WithClientOptions(opts...),
+		),
 		orderStatusChange: connect.NewClient[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse](
 			httpClient,
 			baseURL+OrderServiceOrderStatusChangeProcedure,
@@ -195,6 +207,7 @@ type orderServiceClient struct {
 	orderList                 *connect.Client[v1.OrderListRequest, v1.OrderListResponse]
 	orderDetail               *connect.Client[v1.OrderDetailRequest, v1.OrderDetailResponse]
 	orderCancel               *connect.Client[v1.OrderCancelRequest, v1.OrderCancelResponse]
+	orderExport               *connect.Client[v1.OrderExportRequest, v1.OrderExportResponse]
 	orderStatusChange         *connect.Client[v1.OrderStatusChangeRequest, v1.OrderStatusChangeResponse]
 	orderProductActivityByIds *connect.Client[v1.OrderProductActivityByIdsRequest, v1.OrderProductActivityByIdsResponse]
 	orderActivityStat         *connect.Client[v1.OrderActivityStatRequest, v1.OrderActivityStatResponse]
@@ -221,6 +234,11 @@ func (c *orderServiceClient) OrderDetail(ctx context.Context, req *connect.Reque
 // OrderCancel calls warehouse.selling.v1.OrderService.OrderCancel.
 func (c *orderServiceClient) OrderCancel(ctx context.Context, req *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error) {
 	return c.orderCancel.CallUnary(ctx, req)
+}
+
+// OrderExport calls warehouse.selling.v1.OrderService.OrderExport.
+func (c *orderServiceClient) OrderExport(ctx context.Context, req *connect.Request[v1.OrderExportRequest]) (*connect.ServerStreamForClient[v1.OrderExportResponse], error) {
+	return c.orderExport.CallServerStream(ctx, req)
 }
 
 // OrderStatusChange calls warehouse.selling.v1.OrderService.OrderStatusChange.
@@ -271,6 +289,9 @@ type OrderServiceHandler interface {
 	//	shipping / shipped / problem / completed → return · shipped / problem / return → lost
 	//
 	// Cancel and the return accept do more than move a status, so they keep their own RPCs.
+	// THE LIST AS A FILE (one-export-is-the-list-as-a-file): the list's own filter, every page, the reader's columns,
+	// .xlsx. A server stream — progress, then an expiring link.
+	OrderExport(context.Context, *connect.Request[v1.OrderExportRequest], *connect.ServerStream[v1.OrderExportResponse]) error
 	OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error)
 	// ── What the CATALOGUE has been doing ──────────────────────────────────────────────────────────
 	//
@@ -336,6 +357,12 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(orderServiceMethods.ByName("OrderCancel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderExportHandler := connect.NewServerStreamHandler(
+		OrderServiceOrderExportProcedure,
+		svc.OrderExport,
+		connect.WithSchema(orderServiceMethods.ByName("OrderExport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	orderServiceOrderStatusChangeHandler := connect.NewUnaryHandler(
 		OrderServiceOrderStatusChangeProcedure,
 		svc.OrderStatusChange,
@@ -382,6 +409,8 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderDetailHandler.ServeHTTP(w, r)
 		case OrderServiceOrderCancelProcedure:
 			orderServiceOrderCancelHandler.ServeHTTP(w, r)
+		case OrderServiceOrderExportProcedure:
+			orderServiceOrderExportHandler.ServeHTTP(w, r)
 		case OrderServiceOrderStatusChangeProcedure:
 			orderServiceOrderStatusChangeHandler.ServeHTTP(w, r)
 		case OrderServiceOrderProductActivityByIdsProcedure:
@@ -417,6 +446,10 @@ func (UnimplementedOrderServiceHandler) OrderDetail(context.Context, *connect.Re
 
 func (UnimplementedOrderServiceHandler) OrderCancel(context.Context, *connect.Request[v1.OrderCancelRequest]) (*connect.Response[v1.OrderCancelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderCancel is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderExport(context.Context, *connect.Request[v1.OrderExportRequest], *connect.ServerStream[v1.OrderExportResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderExport is not implemented"))
 }
 
 func (UnimplementedOrderServiceHandler) OrderStatusChange(context.Context, *connect.Request[v1.OrderStatusChangeRequest]) (*connect.Response[v1.OrderStatusChangeResponse], error) {

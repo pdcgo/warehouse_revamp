@@ -587,7 +587,11 @@
     "warehouseAll": "All warehouses",
     "creatorAll": "Anyone",
     "export": {
-      "action": "Export"
+      "action": "Export",
+      "running": "Exporting {{done}} / {{total}}",
+      "ready": "Export ready — the file is downloading",
+      "failed": "The export could not be finished",
+      "noFile": "The export ended without a file"
     },
     "import": {
       "action": "Import",
@@ -596,7 +600,7 @@
       "chooseFile": "The file {{marketplace}} exported — CSV or Excel.",
       "updatesTitle": "What this file changes",
       "updatesStatus": "Each order it names is moved to the status the marketplace reports.",
-      "updatesWithdrawal": "The payout the marketplace released is recorded against the order.",
+      "moneyFromSettlement": "Payouts and withdrawals are not read from this file — import the marketplace's statement on Settlement Imports.",
       "noFile": "No file chosen",
       "dropHere": "Drop the file here, or click to choose one",
       "back": "Another Marketplace",
@@ -610,10 +614,6 @@
       "summaryItems": {
         "label": "Item count and UPT",
         "reason": "The list returns no order lines and nothing counts them server-side, so both are sample figures."
-      },
-      "export": {
-        "label": "Export",
-        "reason": "Nothing builds a file yet — which columns, and whether it is this page or every row the filters match, is still open."
       },
       "import": {
         "label": "Import",
@@ -629,7 +629,7 @@
       },
       "stageDate": {
         "label": "Status change date",
-        "reason": "The order event already has the right shape (kind + when), but events are only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
+        "reason": "The order's timeline already records when it entered each status, but the timeline is only sent with an order's detail — the list cannot read when an order entered the status you are filtering by."
       },
       "receiptCode": {
         "label": "Tracking number",
@@ -637,19 +637,15 @@
       },
       "deadline": {
         "label": "Ship-by deadline",
-        "reason": "Nothing carries one: the order has no deadline, the shipment channel has no lead time, and an order event records what happened rather than what is due. Every badge in the column is invented, and its colour bands are a guess."
+        "reason": "Nothing carries one: the order has no deadline, the shipment channel has no lead time, and the order's timeline records what happened rather than what is due. Every badge in the column is invented, and its colour bands are a guess."
       },
       "totalFee": {
         "label": "Warehouse fee in the total",
         "reason": "The total is the goods plus what fulfilling them costs, and nothing carries that fee per order: it is a liability entry keyed by order, and the liability list can only be asked by counterparty. The goods are real, the fee is a sample."
       },
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "Not on the list filter either — it would mean every shop on that marketplace."
-      },
       "withdrawal": {
         "label": "Withdrawal value",
-        "reason": "A wallet-to-bank withdrawal is a shop-level cash event naming no order, so nothing in the system has a home for it yet — not even settlement, where every entry must name one."
+        "reason": "Settlement Imports records withdrawals now, but per shop: a wallet-to-bank withdrawal names no order, so an order still has no withdrawal figure for Edit Withdrawal to change."
       }
     },
     "title": "Orders",
@@ -786,6 +782,11 @@
       "returnCompleted": "Return received by the warehouse",
       "cancelled": "Order cancelled",
       "handedBack": "Handed back to pending",
+      "note": "Note",
+      "from": {
+        "warehouse": "Warehouse",
+        "selling": "Seller"
+      },
       "unknown": "Something happened",
       "userRef": "User #{{id}}",
       "awaitingConfirm": "Waiting to be confirmed",
@@ -926,7 +927,7 @@
       },
       "withdrawal": {
         "label": "Withdrawals into the settlement ledger",
-        "reason": "Nothing imports the marketplace's withdrawals yet, so a payout only appears in the ledger when somebody posts it by hand, and Edit Withdrawal has no RPC."
+        "reason": "Settlement Imports brings the marketplace's payouts into this ledger and its withdrawals onto the shop — but a withdrawal names no order, so this section has no per-order figure to show, and Edit Withdrawal has no RPC."
       }
     },
     "stepper": {
@@ -2937,17 +2938,9 @@
       "mpDate": "Marketplace date"
     },
     "pending": {
-      "shop": {
-        "label": "The seller's shop",
-        "reason": "The order carries only the shop id, and a warehouse cannot read the seller's shops."
-      },
       "receiptCode": {
         "label": "Tracking number",
         "reason": "The order stores the courier, not the printed tracking number."
-      },
-      "quantity": {
-        "label": "Quantity",
-        "reason": "A list result carries no items, so the row cannot count units."
       },
       "mpDate": {
         "label": "Marketplace date",
@@ -2956,18 +2949,6 @@
       "deadline": {
         "label": "Ship-by deadline",
         "reason": "No order carries a ship-by deadline yet."
-      },
-      "teamFilter": {
-        "label": "Team filter",
-        "reason": "The order list has no seller-team filter yet — picking a team narrows nothing."
-      },
-      "marketplaceFilter": {
-        "label": "Marketplace filter",
-        "reason": "The order list has no marketplace filter yet — picking one narrows nothing."
-      },
-      "courierFilter": {
-        "label": "Courier filter",
-        "reason": "The order list has no courier filter yet — picking one narrows nothing."
       },
       "resiLookup": {
         "label": "Finding by tracking number",
@@ -2980,10 +2961,6 @@
       "printMerge": {
         "label": "Printing labels together",
         "reason": "Nothing merges several receipt files into one document yet."
-      },
-      "exportFile": {
-        "label": "Export",
-        "reason": "There is no export RPC yet."
       }
     },
     "tab": {

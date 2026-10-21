@@ -584,7 +584,11 @@
     "warehouseAll": "Semua gudang",
     "creatorAll": "Siapa saja",
     "export": {
-      "action": "Ekspor"
+      "action": "Ekspor",
+      "running": "Mengekspor {{done}} / {{total}}",
+      "ready": "Ekspor siap — file sedang diunduh",
+      "failed": "Ekspor tidak dapat diselesaikan",
+      "noFile": "Ekspor berakhir tanpa file"
     },
     "import": {
       "action": "Impor",
@@ -593,7 +597,7 @@
       "chooseFile": "File hasil ekspor {{marketplace}} — CSV atau Excel.",
       "updatesTitle": "Yang diubah file ini",
       "updatesStatus": "Setiap pesanan di dalamnya dipindah ke status yang dilaporkan marketplace.",
-      "updatesWithdrawal": "Nilai pencairan dari marketplace dicatat pada pesanan tersebut.",
+      "moneyFromSettlement": "Pencairan dan withdrawal tidak dibaca dari file ini — impor laporan marketplace di Impor Penyelesaian.",
       "noFile": "Belum ada file",
       "dropHere": "Letakkan file di sini, atau klik untuk memilih",
       "back": "Ganti Marketplace",
@@ -607,10 +611,6 @@
       "summaryItems": {
         "label": "Jumlah item dan UPT",
         "reason": "Daftar pesanan tidak mengembalikan barisnya dan belum ada yang menghitung di server, jadi keduanya angka contoh."
-      },
-      "export": {
-        "label": "Ekspor",
-        "reason": "Belum ada yang membuat file — kolomnya apa saja, dan apakah sehalaman ini atau semua baris hasil filter, masih terbuka."
       },
       "import": {
         "label": "Impor",
@@ -640,13 +640,9 @@
         "label": "Biaya gudang di dalam total",
         "reason": "Total di sini adalah harga barang ditambah biaya mengerjakannya, dan biaya itu belum bisa dibaca per pesanan: tercatat sebagai liabilitas dengan kunci pesanan, sementara daftarnya hanya bisa ditanya per pihak. Harga barangnya nyata, biayanya angka contoh."
       },
-      "marketplaceFilter": {
-        "label": "Filter marketplace",
-        "reason": "Belum ada di filter daftar juga — artinya semua toko di marketplace tersebut."
-      },
       "withdrawal": {
         "label": "Nilai pencairan",
-        "reason": "Tarik saldo wallet ke rekening adalah kejadian kas tingkat toko yang tidak menyebut pesanan mana pun, jadi belum ada tempatnya — settlement pun menolak karena setiap entry wajib menyebut pesanan."
+        "reason": "Impor Penyelesaian kini mencatat withdrawal, tetapi per toko: tarik saldo wallet ke rekening tidak menyebut pesanan, jadi pesanan belum punya nilai withdrawal yang bisa diubah lewat Edit Withdrawal."
       }
     },
     "title": "Pesanan",
@@ -783,6 +779,11 @@
       "returnCompleted": "Retur diterima gudang",
       "cancelled": "Pesanan dibatalkan",
       "handedBack": "Dikembalikan ke menunggu",
+      "note": "Catatan",
+      "from": {
+        "warehouse": "Gudang",
+        "selling": "Penjual"
+      },
       "unknown": "Ada perubahan",
       "userRef": "Pengguna #{{id}}",
       "awaitingConfirm": "Menunggu konfirmasi",
@@ -923,7 +924,7 @@
       },
       "withdrawal": {
         "label": "Withdrawal ke ledger settlement",
-        "reason": "Belum ada yang mengimpor withdrawal dari marketplace, jadi payout baru muncul di ledger kalau diposting manual, dan Edit Withdrawal belum punya RPC."
+        "reason": "Impor Penyelesaian membawa pencairan marketplace ke ledger ini dan withdrawal-nya ke toko — tetapi withdrawal tidak menyebut pesanan, jadi bagian ini belum punya nilai per pesanan untuk ditampilkan, dan Edit Withdrawal belum punya RPC."
       }
     },
     "stepper": {
@@ -2927,17 +2928,9 @@
       "mpDate": "Tanggal MP"
     },
     "pending": {
-      "shop": {
-        "label": "Toko seller",
-        "reason": "Order hanya membawa id toko, dan gudang tidak bisa membaca toko milik seller."
-      },
       "receiptCode": {
         "label": "Nomor resi",
         "reason": "Order menyimpan kurir, bukan nomor resi yang tercetak."
-      },
-      "quantity": {
-        "label": "Qty",
-        "reason": "Hasil daftar tidak membawa item, jadi baris tidak bisa menghitung unit."
       },
       "mpDate": {
         "label": "Tanggal MP",
@@ -2946,18 +2939,6 @@
       "deadline": {
         "label": "Deadline kirim",
         "reason": "Belum ada order yang membawa deadline kirim."
-      },
-      "teamFilter": {
-        "label": "Filter tim",
-        "reason": "Daftar order belum punya filter tim seller — memilih tim belum menyaring apa pun."
-      },
-      "marketplaceFilter": {
-        "label": "Filter marketplace",
-        "reason": "Daftar order belum punya filter marketplace — memilihnya belum menyaring apa pun."
-      },
-      "courierFilter": {
-        "label": "Filter jasa kirim",
-        "reason": "Daftar order belum punya filter jasa kirim — memilihnya belum menyaring apa pun."
       },
       "resiLookup": {
         "label": "Mencari lewat resi",
@@ -2970,10 +2951,6 @@
       "printMerge": {
         "label": "Cetak resi sekaligus",
         "reason": "Belum ada yang menggabungkan beberapa file resi menjadi satu dokumen."
-      },
-      "exportFile": {
-        "label": "Export",
-        "reason": "Belum ada RPC export."
       }
     },
     "tab": {

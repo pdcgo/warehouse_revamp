@@ -57,6 +57,8 @@ const (
 	resourcePaymentProof = "payment_proof"
 	// A marketplace settlement statement, stored by the settlement importer. Private.
 	resourceSettlementStatement = "settlement_statement"
+	// An order list exported as .xlsx (one-export-is-the-list-as-a-file). Private: it names buyers and phones.
+	resourceOrderExport = "order_export"
 )
 
 func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
@@ -73,6 +75,8 @@ func resourceTypeToText(t documentv1.DocumentResourceType) (string, error) {
 		return resourcePaymentProof, nil
 	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT:
 		return resourceSettlementStatement, nil
+	case documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT:
+		return resourceOrderExport, nil
 	default:
 		return "", fmt.Errorf("unknown resource type %v", t)
 	}
@@ -92,6 +96,8 @@ func resourceTypeFromText(text string) documentv1.DocumentResourceType {
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF
 	case resourceSettlementStatement:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_SETTLEMENT_STATEMENT
+	case resourceOrderExport:
+		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_ORDER_EXPORT
 	default:
 		return documentv1.DocumentResourceType_DOCUMENT_RESOURCE_TYPE_UNSPECIFIED
 	}

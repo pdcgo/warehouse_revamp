@@ -9,7 +9,7 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 //
 //   `Order` has no deadline, no SLA, no promised-ship date
 //   `ShipmentChannel` has no lead time
-//   `OrderEvent` records what HAPPENED, never what is due
+//   `OrderTimelineLog` records what HAPPENED, never what is due
 //
 // ⚠ DELETE THIS FILE the day the field lands. Every number it produces is a lie with an end date.
 //

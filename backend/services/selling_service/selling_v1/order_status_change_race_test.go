@@ -28,7 +28,7 @@ func orderRaceHarness(t *testing.T) *san_race.Harness {
 	h := san_race.New(t)
 
 	clean := func() {
-		// order_items and order_events go by ON DELETE CASCADE; shops do not, so the orders go first.
+		// order_items and order_timeline_logs go by ON DELETE CASCADE; shops do not, so the orders go first.
 		for _, sql := range []string{
 			`DELETE FROM orders WHERE team_id = ?`,
 			`DELETE FROM shops WHERE team_id = ?`,
@@ -71,7 +71,7 @@ func eventCount(t *testing.T, db *gorm.DB, orderID uint64, kind string) int64 {
 
 	var n int64
 
-	err := db.Raw(`SELECT count(*) FROM order_events WHERE order_id = ? AND kind = ?`, orderID, kind).Scan(&n).Error
+	err := db.Raw(`SELECT count(*) FROM order_timeline_logs WHERE order_id = ? AND status = ?`, orderID, kind).Scan(&n).Error
 	if err != nil {
 		t.Fatalf("count %s events of %d: %v", kind, orderID, err)
 	}

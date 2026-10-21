@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CircleCheck,
   Clock,
+  MessageSquareText,
   PackageCheck,
   PackageOpen,
   PackageX,
@@ -17,8 +18,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import type { Order, OrderEvent } from "../../../gen/warehouse/selling/v1/order_pb";
-import { OrderEventKind, OrderStatus } from "../../../gen/warehouse/selling/v1/order_pb";
+import type { Order, OrderTimelineLog } from "../../../gen/warehouse/selling/v1/order_pb";
+import { OrderStatus, OrderTimelineFrom } from "../../../gen/warehouse/selling/v1/order_pb";
 import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
 import { UserItem } from "../../../components/entity/UserItem";
 import { formatUnixDateTime } from "../../../lib/datetime";
@@ -35,24 +36,45 @@ export interface TimelinePanelProps {
   actorFallback: (userId: bigint) => string;
 }
 
-// How each kind renders. A map rather than a switch so an UNKNOWN kind — an event written by a newer
+// How each status renders. A map rather than a switch so an UNKNOWN status — a row written by a newer
 // build than this screen — falls through to a readable default instead of crashing the tab.
 //
 // The palette is doing work, not decoration: the ENDINGS are coloured, each in its status's own hue, and
 // the steps on the way there are not, so the state an order finished in is findable without reading a word.
-const LOOK: Partial<Record<OrderEventKind, { icon: LucideIcon; palette?: string }>> = {
-  [OrderEventKind.PENDING]: { icon: ShoppingCart },
-  [OrderEventKind.PROCESSED]: { icon: CheckCircle2 },
-  [OrderEventKind.PICKED]: { icon: PackageCheck },
-  [OrderEventKind.SHIPPING]: { icon: Truck },
-  [OrderEventKind.SHIPPED]: { icon: Navigation },
-  [OrderEventKind.COMPLETED]: { icon: CircleCheck, palette: "green" },
-  [OrderEventKind.PROBLEM]: { icon: AlertTriangle },
-  [OrderEventKind.LOST]: { icon: PackageX, palette: "purple" },
-  [OrderEventKind.RETURN]: { icon: Undo2 },
-  [OrderEventKind.RETURN_COMPLETED]: { icon: PackageOpen, palette: "pink" },
-  [OrderEventKind.CANCEL]: { icon: Ban, palette: "rose" },
+const LOOK: Partial<Record<OrderStatus, { icon: LucideIcon; palette?: string }>> = {
+  [OrderStatus.PENDING]: { icon: ShoppingCart },
+  [OrderStatus.PROCESSED]: { icon: CheckCircle2 },
+  [OrderStatus.PICKED]: { icon: PackageCheck },
+  [OrderStatus.SHIPPING]: { icon: Truck },
+  [OrderStatus.SHIPPED]: { icon: Navigation },
+  [OrderStatus.COMPLETED]: { icon: CircleCheck, palette: "green" },
+  [OrderStatus.PROBLEM]: { icon: AlertTriangle },
+  [OrderStatus.LOST]: { icon: PackageX, palette: "purple" },
+  [OrderStatus.RETURN]: { icon: Undo2 },
+  [OrderStatus.RETURN_COMPLETED]: { icon: PackageOpen, palette: "pink" },
+  [OrderStatus.CANCEL]: { icon: Ban, palette: "rose" },
 };
+
+/** A row that is a NOTE only, no move (order-timeline-logs-replaces-order-events): no goods on Rak A. */
+function isNote(log: OrderTimelineLog): boolean {
+  return log.status === OrderStatus.UNSPECIFIED && log.note !== "";
+}
+
+/** The icon for one row — a hand-back reads as a turn back, a note as a note. */
+export function timelineIcon(log: OrderTimelineLog, index: number): LucideIcon {
+  if (isNote(log)) return MessageSquareText;
+  if (log.status === OrderStatus.PENDING && index > 0) return RotateCcw;
+
+  return LOOK[log.status]?.icon ?? Clock;
+}
+
+/** The i18n key of the side that wrote a row, or "" when it is not recorded. */
+export function timelineFromKey(from: OrderTimelineFrom): string {
+  if (from === OrderTimelineFrom.WAREHOUSE) return "orders.timeline.from.warehouse";
+  if (from === OrderTimelineFrom.SELLING) return "orders.timeline.from.selling";
+
+  return "";
+}
 
 /**
  * The i18n key per event kind.
@@ -61,32 +83,37 @@ const LOOK: Partial<Record<OrderEventKind, { icon: LucideIcon; palette?: string 
  * naming the same event differently is exactly what one shared map prevents. Prefer
  * `timelineTitleKey`, which also tells a placement from a hand-back.
  */
-export const TIMELINE_TITLE: Partial<Record<OrderEventKind, string>> = {
-  [OrderEventKind.PENDING]: "orders.timeline.placed",
-  [OrderEventKind.PROCESSED]: "orders.timeline.confirmed",
-  [OrderEventKind.PICKED]: "orders.timeline.picked",
-  [OrderEventKind.SHIPPING]: "orders.timeline.shipping",
-  [OrderEventKind.SHIPPED]: "orders.timeline.shipped",
-  [OrderEventKind.COMPLETED]: "orders.timeline.completed",
-  [OrderEventKind.PROBLEM]: "orders.timeline.problem",
-  [OrderEventKind.LOST]: "orders.timeline.lost",
-  [OrderEventKind.RETURN]: "orders.timeline.return",
-  [OrderEventKind.RETURN_COMPLETED]: "orders.timeline.returnCompleted",
-  [OrderEventKind.CANCEL]: "orders.timeline.cancelled",
+export const TIMELINE_TITLE: Partial<Record<OrderStatus, string>> = {
+  [OrderStatus.PENDING]: "orders.timeline.placed",
+  [OrderStatus.PROCESSED]: "orders.timeline.confirmed",
+  [OrderStatus.PICKED]: "orders.timeline.picked",
+  [OrderStatus.SHIPPING]: "orders.timeline.shipping",
+  [OrderStatus.SHIPPED]: "orders.timeline.shipped",
+  [OrderStatus.COMPLETED]: "orders.timeline.completed",
+  [OrderStatus.PROBLEM]: "orders.timeline.problem",
+  [OrderStatus.LOST]: "orders.timeline.lost",
+  [OrderStatus.RETURN]: "orders.timeline.return",
+  [OrderStatus.RETURN_COMPLETED]: "orders.timeline.returnCompleted",
+  [OrderStatus.CANCEL]: "orders.timeline.cancelled",
 };
 
 /**
- * The i18n key for one event, given its place in the history.
+ * The i18n key for one row, given its place in the timeline.
  *
- * ⚠ A `pending` IS TWO DIFFERENT EVENTS: the order being placed — always the first row — or the warehouse
- * handing it back (goods on no rack, the platform cancelled), which carries a note saying why.
+ * ⚠ A `pending` IS TWO DIFFERENT ROWS: the order being placed — always the first row — or the warehouse
+ * handing it back (goods on no rack, the platform cancelled), which carries a note saying why. And a row with
+ * no status at all is a note written while working the order.
  */
-export function timelineTitleKey(event: OrderEvent, index: number): string {
-  if (event.kind === OrderEventKind.PENDING && index > 0) {
+export function timelineTitleKey(log: OrderTimelineLog, index: number): string {
+  if (isNote(log)) {
+    return "orders.timeline.note";
+  }
+
+  if (log.status === OrderStatus.PENDING && index > 0) {
     return "orders.timeline.handedBack";
   }
 
-  return TIMELINE_TITLE[event.kind] ?? "orders.timeline.unknown";
+  return TIMELINE_TITLE[log.status] ?? "orders.timeline.unknown";
 }
 
 // WHAT IS STILL OWED, per status — the step that has not happened yet.
@@ -115,8 +142,8 @@ const AWAITING_KEY: Partial<Record<OrderStatus, string>> = {
 // reconstructing a late delivery actually reads. It is also the shape that has somewhere honest to put
 // what has NOT happened yet.
 //
-// ⚠ IT READS `order.events`, NOT the status. The status is one word about now; the events are the
-// history, and only one of them can say a person's name.
+// ⚠ IT READS `order.timelineLogs`, NOT the status (order-timeline-logs-replaces-order-events). The status is one
+// word about now; the timeline is the history, and only it can say a person's name and which side acted.
 export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelProps) {
   const { t } = useTranslation();
 
@@ -131,15 +158,15 @@ export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelPro
             beside it stays the content. Same settings as the restock timeline, for the same reasons —
             the two screens are the same object and must not look like different products. */}
         <Timeline.Root size="lg" variant="subtle">
-          {order.events.map((event, i) => (
-            <EventStep
-              key={event.id > 0n ? event.id.toString() : `i${i}`}
-              event={event}
-              actor={actors?.get(event.actorUserId.toString())}
-              fallback={actorFallback(event.actorUserId)}
-              title={t(timelineTitleKey(event, i))}
-              icon={event.kind === OrderEventKind.PENDING && i > 0 ? RotateCcw : (LOOK[event.kind]?.icon ?? Clock)}
-              palette={LOOK[event.kind]?.palette}
+          {order.timelineLogs.map((log, i) => (
+            <LogStep
+              key={log.id > 0n ? log.id.toString() : `i${i}`}
+              log={log}
+              actor={actors?.get(log.actorId.toString())}
+              fallback={actorFallback(log.actorId)}
+              title={t(timelineTitleKey(log, i))}
+              icon={timelineIcon(log, i)}
+              palette={LOOK[log.status]?.palette}
             />
           ))}
 
@@ -172,25 +199,27 @@ export function TimelinePanel({ order, actors, actorFallback }: TimelinePanelPro
 // its caption cost three lines per step and a five-step timeline scrolls; side by side it is one line
 // each and the column of avatars becomes the thing you scan down.
 //
-// It degrades in the right direction: a step whose event records no actor starts at its title, because
+// It degrades in the right direction: a step whose row records no actor starts at its title, because
 // the flex row has nothing in its first slot rather than an empty box holding space — and the
 // separator goes with it, since a divider dangling in front of a title reads as a missing avatar.
-function EventStep({
-  event,
+function LogStep({
+  log,
   actor,
   fallback,
   title,
   icon,
   palette,
 }: {
-  event: OrderEvent;
+  log: OrderTimelineLog;
   actor?: PublicUser;
   fallback: string;
   title: string;
   icon: LucideIcon;
   palette?: string;
 }) {
-  const testId = `order-timeline-${timelineKindSlug(event.kind)}`;
+  const { t } = useTranslation();
+  const testId = `order-timeline-${timelineSlug(log)}`;
+  const fromKey = timelineFromKey(log.from);
 
   return (
     <Timeline.Item data-testid={testId}>
@@ -214,9 +243,8 @@ function EventStep({
             </Box>
           ) : (
             // An id that did not resolve still names its number — showing nothing would read as
-            // "nobody did this", a different and false claim. An actor of 0 has no fallback and
-            // correctly shows neither: every event backfilled by 00011 is in that state, because the
-            // orders table never recorded who did anything.
+            // "nobody did this", a different and false claim. An actor of 0 is "not recorded", has no
+            // fallback and correctly shows neither.
             fallback && (
               <Text fontSize="sm" fontWeight="medium" flexShrink="0">
                 {fallback}
@@ -235,11 +263,15 @@ function EventStep({
             {/* Date AND TIME. Several orders are confirmed in one morning and picked the same
                 afternoon — the day alone cannot put those in order, and "how long did it sit between
                 confirmed and picked" is the question this tab is opened to answer. */}
-            <Timeline.Description>{formatUnixDateTime(event.atUnix)}</Timeline.Description>
-            {/* WHY, when the move needed a reason — a hand-back to pending always says one. */}
-            {event.note && (
+            {/* WHICH SIDE, then when. The two teams act on one order, and "was this the warehouse or us?" is
+                half of what this tab is opened to answer. */}
+            <Timeline.Description data-testid={`${testId}-when`}>
+              {[fromKey ? t(fromKey) : "", formatUnixDateTime(log.createdAtUnix)].filter(Boolean).join(" · ")}
+            </Timeline.Description>
+            {/* WHY, when the move needed a reason — a hand-back to pending always says one — or the note itself. */}
+            {log.note && (
               <Text fontSize="sm" color="fg.muted" data-testid={`${testId}-note`}>
-                {event.note}
+                {log.note}
               </Text>
             )}
           </Box>
@@ -249,23 +281,25 @@ function EventStep({
   );
 }
 
-// The testid segment per kind. Stable strings rather than the enum's number, so a selector reads
-// `order-timeline-shipped` and survives the enum gaining a value.
+// The testid segment per row. Stable strings rather than the enum's number, so a selector reads
+// `order-timeline-shipped` and survives the enum gaining a value. A note-only row is `note`.
 /** Exported so the seller's timeline RAIL carries the same testids this tab's steps do. */
-export function timelineKindSlug(kind: OrderEventKind): string {
-  return SLUG[kind] ?? "unknown";
+export function timelineSlug(log: OrderTimelineLog): string {
+  if (isNote(log)) return "note";
+
+  return SLUG[log.status] ?? "unknown";
 }
 
-const SLUG: Partial<Record<OrderEventKind, string>> = {
-  [OrderEventKind.PENDING]: "pending",
-  [OrderEventKind.PROCESSED]: "processed",
-  [OrderEventKind.PICKED]: "picked",
-  [OrderEventKind.SHIPPING]: "shipping",
-  [OrderEventKind.SHIPPED]: "shipped",
-  [OrderEventKind.COMPLETED]: "completed",
-  [OrderEventKind.PROBLEM]: "problem",
-  [OrderEventKind.LOST]: "lost",
-  [OrderEventKind.RETURN]: "return",
-  [OrderEventKind.RETURN_COMPLETED]: "return_completed",
-  [OrderEventKind.CANCEL]: "cancel",
+const SLUG: Partial<Record<OrderStatus, string>> = {
+  [OrderStatus.PENDING]: "pending",
+  [OrderStatus.PROCESSED]: "processed",
+  [OrderStatus.PICKED]: "picked",
+  [OrderStatus.SHIPPING]: "shipping",
+  [OrderStatus.SHIPPED]: "shipped",
+  [OrderStatus.COMPLETED]: "completed",
+  [OrderStatus.PROBLEM]: "problem",
+  [OrderStatus.LOST]: "lost",
+  [OrderStatus.RETURN]: "return",
+  [OrderStatus.RETURN_COMPLETED]: "return_completed",
+  [OrderStatus.CANCEL]: "cancel",
 };

@@ -28,7 +28,7 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { stageOfStatus } from "../../features/orders/stages";
-import { timelineKindSlug, timelineTitleKey } from "./components/TimelinePanel";
+import { timelineFromKey, timelineSlug, timelineTitleKey } from "./components/TimelinePanel";
 import { SettlementTab } from "./components/SettlementTab";
 import { orderSpend } from "../../features/orders/margin";
 import { ReceiptFile } from "./components/ReceiptCard";
@@ -125,7 +125,7 @@ export function SellerOrderDetailPage() {
   const loading = query.isPending && id !== 0n;
 
   // The people on the timeline. The ids come from the EVENTS — the order row records no actor at all.
-  const actors = useActors(order?.events.map((event) => event.actorUserId) ?? []);
+  const actors = useActors(order?.timelineLogs.map((log) => log.actorId) ?? []);
 
   // The selling team's name, for the items table's Team column. One batched read.
   const teamOptions = useTeams({ page: 1, pageSize: 200, reference: true });
@@ -405,22 +405,25 @@ export function SellerOrderDetailPage() {
       icon={sectionIcon("timeline")}
       testId="section-timeline"
     >
-      {order.events.length === 0 ? (
+      {order.timelineLogs.length === 0 ? (
         <SectionEmpty>{t("orderDetail.timeline.empty")}</SectionEmpty>
       ) : (
         // THE SAME RAIL AS THE COURIER TRAIL, newest first — a sequence of moments is drawn one way
-        // on this page. The event names are the built timeline's own (`timelineTitleKey`), and an
-        // actor of 0 is "not recorded", so it names nobody rather than inventing one.
+        // on this page. The row names are the built timeline's own (`timelineTitleKey`), each row says which
+        // side wrote it, and an actor of 0 is "not recorded", so it names nobody rather than inventing one.
         <Rail
           testId="timeline-rail"
-          items={[...order.events].reverse().map((event) => {
-            const who = actors.data?.get(event.actorUserId.toString())?.name ?? "";
+          items={[...order.timelineLogs].reverse().map((log) => {
+            const who = actors.data?.get(log.actorId.toString())?.name ?? "";
+            const fromKey = timelineFromKey(log.from);
 
             return {
-              key: event.id.toString(),
-              testId: `order-timeline-${timelineKindSlug(event.kind)}`,
-              title: t(timelineTitleKey(event, order.events.indexOf(event))),
-              meta: [formatUnixDateTime(event.atUnix), who, event.note].filter(Boolean).join(" · "),
+              key: log.id.toString(),
+              testId: `order-timeline-${timelineSlug(log)}`,
+              title: t(timelineTitleKey(log, order.timelineLogs.indexOf(log))),
+              meta: [formatUnixDateTime(log.createdAtUnix), fromKey ? t(fromKey) : "", who, log.note]
+                .filter(Boolean)
+                .join(" · "),
             };
           })}
         />

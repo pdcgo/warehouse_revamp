@@ -39,6 +39,9 @@ type Service struct {
 	// from everyone else, who needs a grant (a-write-needs-a-grant-or-a-manager). An interface this
 	// service owns, so selling_service never imports user_service — see role_reader.go.
 	roles RoleReader
+	// Where an export's file goes, and the names its rows need (one-export-is-the-list-as-a-file) — document_service,
+	// team_service and user_service, behind an interface this service owns. nil = OrderExport is Unimplemented.
+	exports OrderExportStore
 }
 
 // compile-time proof Service satisfies both generated handler interfaces (one selling_service impl
@@ -56,6 +59,7 @@ func NewService(
 	catalog ProductCatalog,
 	credit CreditChecker,
 	roles RoleReader,
+	exports OrderExportStore,
 ) *Service {
 	// A nil sender would panic on the first order placed, which is a long way from where the mistake
 	// was made. EmptySender still VALIDATES the event and drops it, so a malformed event is caught even
@@ -84,6 +88,7 @@ func NewService(
 		catalog: catalog,
 		credit:  credit,
 		roles:   roles,
+		exports: exports,
 	}
 }
 

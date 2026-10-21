@@ -3,7 +3,8 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
-import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { orderExportScenario } from "../../../.storybook/sessionScenario";
+import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
 // THE ORDER LIST AS THE SELLING TEAM SEES IT — Toko Melati, standing in front of the orders it took.
@@ -407,5 +408,23 @@ export const OnAPhoneTheFiltersAreASheet: Story = {
 
     await userEvent.click(controls.getByTestId("orders-filters-done"));
     await waitFor(() => expect(screen.queryByTestId("orders-filters-sheet")).toBeNull());
+  },
+};
+
+// THE LIST AS A FILE (one-export-is-the-list-as-a-file): Export sends the list's own tab in the seller's columns, and
+// says when the file is on its way.
+export const ExportSendsTheListAsAFile: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId(`order-row-${OWN[0]!.id}`)).toBeInTheDocument());
+    await userEvent.click(canvas.getByTestId("orders-export"));
+
+    await expect(await screen.findByText("Export ready — the file is downloading")).toBeInTheDocument();
+
+    const asked = orderExportScenario.last!;
+    await expect(asked.view).toBe(OrderExportView.SELLER);
+    await expect(asked.orderIds).toHaveLength(0);
+    await expect(asked.rows).toBe(OWN.length);
   },
 };

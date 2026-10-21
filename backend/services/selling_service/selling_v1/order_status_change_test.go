@@ -94,21 +94,21 @@ func TestOrderStatusChange_TheWarehouseWalksTheOrderToTheCourier(t *testing.T) {
 		t.Fatalf("status = %v, want SHIPPING", got.Msg.GetOrder().GetStatus())
 	}
 
-	want := []sellingv1.OrderEventKind{
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PENDING,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PROCESSED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_PICKED,
-		sellingv1.OrderEventKind_ORDER_EVENT_KIND_SHIPPING,
+	want := []sellingv1.OrderStatus{
+		sellingv1.OrderStatus_ORDER_STATUS_PENDING,
+		sellingv1.OrderStatus_ORDER_STATUS_PROCESSED,
+		sellingv1.OrderStatus_ORDER_STATUS_PICKED,
+		sellingv1.OrderStatus_ORDER_STATUS_SHIPPING,
 	}
 
-	events := got.Msg.GetOrder().GetEvents()
+	events := got.Msg.GetOrder().GetTimelineLogs()
 	if len(events) != len(want) {
 		t.Fatalf("history has %d rows, want %d", len(events), len(want))
 	}
 
 	for i, kind := range want {
-		if events[i].GetKind() != kind {
-			t.Fatalf("history row %d = %v, want %v", i, events[i].GetKind(), kind)
+		if events[i].GetStatus() != kind {
+			t.Fatalf("history row %d = %v, want %v", i, events[i].GetStatus(), kind)
 		}
 	}
 }
@@ -190,11 +190,11 @@ func TestOrderStatusChange_AMoveBackNeedsANote(t *testing.T) {
 		t.Fatalf("detail: %v", err)
 	}
 
-	events := detail.Msg.GetOrder().GetEvents()
+	events := detail.Msg.GetOrder().GetTimelineLogs()
 	last := events[len(events)-1]
 
-	if last.GetKind() != sellingv1.OrderEventKind_ORDER_EVENT_KIND_PENDING || last.GetNote() != "goods on no rack" {
-		t.Fatalf("the last history row = %v %q, want PENDING with its note", last.GetKind(), last.GetNote())
+	if last.GetStatus() != sellingv1.OrderStatus_ORDER_STATUS_PENDING || last.GetNote() != "goods on no rack" {
+		t.Fatalf("the last history row = %v %q, want PENDING with its note", last.GetStatus(), last.GetNote())
 	}
 }
 

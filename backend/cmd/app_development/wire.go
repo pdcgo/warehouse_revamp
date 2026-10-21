@@ -85,6 +85,7 @@ func InitializeApp() (*App, error) {
 		NewImporterShopChecker,
 		NewImporterOrderFinder,
 		NewImporterStatementStore,
+		NewOrderExportStore,
 		NewImporterLedger,
 		// Joins inventory to liability (#184) — see liability_poster.go.
 		NewLiabilityPoster,
