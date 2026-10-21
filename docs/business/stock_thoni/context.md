@@ -57,6 +57,11 @@ Notes:
 
 Berikut merupakan alur penyediaan data untuk Order Creation, [Lihat Selengkapnya](./order_creation_provide.md)
 
+### Penyediaan Data History Penempatan Barang
+
+Ini merupakan RPC Method yang hanya mengembalikan response history penempatan barang berdasarkan `sku_ids`.
+[Lihat Selengkapnya](./item_placement_history_provide.md)
+
 ### Pengelolaan Rak
 
 Berikut selengkapnya pengelolaan rak, [Lihat](./rack_flow.md)
