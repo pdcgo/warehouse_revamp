@@ -132,7 +132,7 @@ ware->>+sell: Charge to selling as reimbursements
 ## Balance Policy.
 For prevent unfair liability, we must have feature Debt Thresholds.
 1. Debt Thresholds is manage by team owner and can overide by admin/root team.
-2. when customer service finalizes order that contain cross products. its compared to the committed pair row only.
+2. when customer service creates an order, the fulfilling warehouse and each team a cross product belongs to are compared to their committed pair rows.
 
 ## About Thresholds.
 1. there is warning on the balance screen and daily report if thresholds 80% reached.
